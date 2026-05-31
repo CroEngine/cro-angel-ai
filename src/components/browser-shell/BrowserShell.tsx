@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { TabStrip } from "./TabStrip";
 import { UrlBar, type RunState } from "./UrlBar";
@@ -24,27 +24,28 @@ export function BrowserShell() {
   const { events, status: streamStatus } = useTestStream(runId);
 
   // Promote stream terminal events to runState.
-  const lastTerminal = useMemo(() => {
+  useEffect(() => {
     for (let i = events.length - 1; i >= 0; i--) {
       const e = events[i];
-      if (e.type === "done" || e.type === "error") return e;
+      if (e.type === "done") {
+        setRunState("done");
+        setStatusMessage(e.data.aborted ? "done · aborted" : "done");
+        return;
+      }
+      if (e.type === "error") {
+        setRunState("error");
+        setStatusMessage(`error · ${String(e.data.message ?? "")}`);
+        return;
+      }
     }
-    return null;
   }, [events]);
 
-  if (lastTerminal && (runState === "running" || runState === "connecting")) {
-    if (lastTerminal.type === "done") {
-      setRunState("done");
-      setStatusMessage(lastTerminal.data.aborted ? "done · aborted" : "done");
-    } else {
-      setRunState("error");
-      setStatusMessage(`error · ${String(lastTerminal.data.message ?? "")}`);
+  useEffect(() => {
+    if (streamStatus === "error") {
+      setRunState((s) => (s === "running" ? "error" : s));
+      setStatusMessage((m) => m ?? "stream lost");
     }
-  }
-  if (streamStatus === "error" && runState === "running") {
-    setRunState("error");
-    setStatusMessage("stream lost");
-  }
+  }, [streamStatus]);
 
   const hostname = useMemo(() => {
     try { return new URL(url).hostname; } catch { return url; }
