@@ -1,21 +1,39 @@
-import { ArrowLeft, ArrowRight, RotateCw, MousePointer2, Hand } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { ArrowLeft, ArrowRight, RotateCw, Play, Square, MousePointer2, Hand } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+export type RunState = "idle" | "connecting" | "running" | "done" | "error";
 
 interface UrlBarProps {
   value: string;
+  runState: RunState;
+  statusMessage?: string;
   onSubmit: (url: string) => void;
   onReload: () => void;
+  onRun: (url: string) => void;
+  onStop: () => void;
 }
 
-export function UrlBar({ value, onSubmit, onReload }: UrlBarProps) {
+const pillStyles: Record<RunState, string> = {
+  idle: "bg-muted text-muted-foreground",
+  connecting: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  running: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  done: "bg-muted text-foreground",
+  error: "bg-destructive/15 text-destructive",
+};
+
+export function UrlBar({ value, runState, statusMessage, onSubmit, onReload, onRun, onStop }: UrlBarProps) {
   const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onSubmit(draft);
   };
+
+  const isActive = runState === "connecting" || runState === "running";
 
   return (
     <div className="flex items-center gap-2 border-b border-border bg-background px-3 py-2">
@@ -38,6 +56,27 @@ export function UrlBar({ value, onSubmit, onReload }: UrlBarProps) {
           spellCheck={false}
         />
       </form>
+
+      <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", pillStyles[runState])}>
+        {runState === "idle" && "idle"}
+        {runState === "connecting" && "connecting…"}
+        {runState === "running" && "running"}
+        {runState === "done" && (statusMessage ?? "done")}
+        {runState === "error" && (statusMessage ?? "error")}
+      </span>
+
+      {isActive ? (
+        <Button variant="destructive" size="sm" className="h-8 gap-1" type="button" onClick={onStop}>
+          <Square className="h-3.5 w-3.5" />
+          Stop
+        </Button>
+      ) : (
+        <Button size="sm" className="h-8 gap-1" type="button" onClick={() => onRun(draft)}>
+          <Play className="h-3.5 w-3.5" />
+          Run tests
+        </Button>
+      )}
+
       <div className="flex items-center gap-1 text-muted-foreground">
         <Button variant="ghost" size="icon" className="h-8 w-8" type="button">
           <MousePointer2 className="h-4 w-4" />

@@ -1,30 +1,30 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { StreamEvent } from "./hooks/useTestStream";
 
-export interface LogRow {
-  time: string;
-  message: string;
+function fmtTime(ts: unknown) {
+  const n = typeof ts === "number" ? ts : Date.now();
+  const d = new Date(n);
+  return d.toLocaleTimeString([], { hour12: false });
 }
 
-const seedLogs: LogRow[] = [
-  { time: "23:27:00", message: "[v3-piercer] installed {url: about:blank, isTop: false, readyState: loading}" },
-  { time: "23:27:01", message: "[v3-piercer] installed {url: about:blank, isTop: false, readyState: loading}" },
-  { time: "23:27:01", message: "[v3-piercer] installed {url: about:blank, isTop: false, readyState: loading}" },
-  {
-    time: "23:27:02",
-    message:
-      "[v3-piercer] installed {url: https://www.google.com/recaptcha/api2/bframe?hl=en…iCNgjWgHLqVJ3TY8nF965RGysWivCOV1fBXjsy846u-HiuGdw, isTop: false, readyState: loading}",
-  },
-  { time: "23:27:02", message: "[v3-piercer] installed {url: about:blank, isTop: false, readyState: loading}" },
-  { time: "23:27:05", message: "Browserbase keeping connection alive" },
-  { time: "23:27:07", message: "Browserbase keeping connection alive" },
-  { time: "23:27:10", message: "browserbase-solving-finished" },
-  {
-    time: "23:27:10",
-    message: '{"key":"browserbase-captcha-event","status":"finished","id":"019e7fee-8a72-723e-88cf-da2e21b19ff8"}',
-  },
-];
+function renderEvent(ev: StreamEvent): string {
+  switch (ev.type) {
+    case "session_started":
+      return `session started · ${String(ev.data.sessionId ?? "")}`;
+    case "log":
+      return `[${String(ev.data.level ?? "info")}] ${String(ev.data.message ?? "")}`;
+    case "done":
+      return ev.data.aborted
+        ? `done · aborted (${String(ev.data.reason ?? "")})`
+        : "done";
+    case "error":
+      return `error · ${String(ev.data.message ?? "")}`;
+    default:
+      return `${ev.type} · ${JSON.stringify(ev.data)}`;
+  }
+}
 
-export function ConsolePanel() {
+export function ConsolePanel({ events }: { events: StreamEvent[] }) {
   return (
     <div className="flex h-64 flex-col border-t border-border bg-background">
       <div className="border-b border-border px-4 py-2">
@@ -32,12 +32,29 @@ export function ConsolePanel() {
       </div>
       <ScrollArea className="flex-1">
         <div className="divide-y divide-border font-mono text-xs">
-          {seedLogs.map((log, i) => (
-            <div key={i} className="flex items-start gap-4 px-4 py-2">
-              <span className="flex-1 whitespace-pre-wrap break-all text-foreground">{log.message}</span>
-              <span className="shrink-0 text-muted-foreground">{log.time}</span>
+          {events.length === 0 ? (
+            <div className="px-4 py-2 text-muted-foreground">
+              No run yet. Click <span className="font-medium text-foreground">Run tests</span> to start a Browserbase session.
             </div>
-          ))}
+          ) : (
+            events.map((ev, i) => (
+              <div key={i} className="flex items-start gap-4 px-4 py-2">
+                <span
+                  className={
+                    "flex-1 whitespace-pre-wrap break-all " +
+                    (ev.type === "error"
+                      ? "text-destructive"
+                      : ev.type === "done"
+                        ? "text-foreground"
+                        : "text-foreground")
+                  }
+                >
+                  {renderEvent(ev)}
+                </span>
+                <span className="shrink-0 text-muted-foreground">{fmtTime(ev.data.ts)}</span>
+              </div>
+            ))
+          )}
         </div>
       </ScrollArea>
     </div>
