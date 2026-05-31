@@ -10,33 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTestsRunIdStreamRoute = ApiTestsRunIdStreamRouteImport.update({
+  id: '/api/tests/$runId/stream',
+  path: '/api/tests/$runId/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/tests/$runId/stream'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/tests/$runId/stream'
+  id: '__root__' | '/' | '/api/tests/$runId/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +58,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tests/$runId/stream': {
+      id: '/api/tests/$runId/stream'
+      path: '/api/tests/$runId/stream'
+      fullPath: '/api/tests/$runId/stream'
+      preLoaderRoute: typeof ApiTestsRunIdStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
