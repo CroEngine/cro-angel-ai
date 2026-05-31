@@ -1,32 +1,24 @@
-import { useEffect, useRef, useState } from "react";
+interface ViewportProps {
+  url: string;
+  reloadKey: number;
+  liveUrl: string | null;
+}
 
-export function Viewport({ url, reloadKey }: { url: string; reloadKey: number }) {
-  const ref = useRef<HTMLIFrameElement>(null);
-  const [blocked, setBlocked] = useState(false);
-
-  useEffect(() => {
-    setBlocked(false);
-    const t = window.setTimeout(() => {
-      // Heuristic: many framed sites still load; we leave the fallback opt-in via error event.
-    }, 4000);
-    return () => window.clearTimeout(t);
-  }, [url, reloadKey]);
-
+export function Viewport({ url, reloadKey, liveUrl }: ViewportProps) {
+  const src = liveUrl ?? url;
   return (
     <div className="relative flex-1 overflow-hidden bg-muted/20">
       <iframe
-        key={reloadKey}
-        ref={ref}
-        src={url}
-        title="Preview"
+        key={liveUrl ? `live-${liveUrl}` : `static-${reloadKey}`}
+        src={src}
+        title={liveUrl ? "Browserbase live session" : "Preview"}
         className="h-full w-full border-0 bg-background"
-        onError={() => setBlocked(true)}
+        // Browserbase live debug view needs broad permissions.
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
       />
-      {blocked && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/80">
-          <p className="text-sm text-muted-foreground">
-            This site cannot be embedded. Real browser session arrives in a later stage.
-          </p>
+      {liveUrl && (
+        <div className="pointer-events-none absolute left-2 top-2 rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          live · Browserbase
         </div>
       )}
     </div>
