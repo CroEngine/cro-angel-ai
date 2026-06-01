@@ -43,9 +43,6 @@ export function Viewport({ sessionState, liveUrl, frozen, onResume }: ViewportPr
           className="h-full w-full border-0 bg-background"
           sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
         />
-        <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-          live · Browserbase
-        </div>
       </div>
     );
   }
@@ -90,10 +87,6 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
 
   return (
     <div className="relative flex-1 overflow-y-auto overflow-x-hidden bg-muted/20">
-      <div className="pointer-events-none sticky top-3 z-20 ml-3 mb-[-30px] inline-flex w-fit items-center gap-1.5 rounded-md bg-sky-500/15 px-2 py-1 text-xs font-medium text-sky-600 shadow-sm backdrop-blur-sm dark:text-sky-400">
-        <Snowflake className="h-3 w-3" />
-        Frozen · Browserbase off
-      </div>
 
       <div
         className="relative w-full"
