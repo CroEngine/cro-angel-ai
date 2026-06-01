@@ -517,6 +517,7 @@ export function buildPageReports(events: StreamEvent[]): PageReport[] {
       current.rawPageAudit = ev.data.data;
       current.findings.push(
         ...seoFindings(ev.data.data),
+        ...heroFindings(ev.data.data),
         ...structureFindings(ev.data.data),
         ...navigationFindings(ev.data.data),
         ...hierarchyFindings(ev.data.data),
