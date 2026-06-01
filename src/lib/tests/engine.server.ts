@@ -1448,18 +1448,6 @@ const SECTIONS_SCRIPT = `(() => {
     return el.tagName.toLowerCase();
   }
 
-  function classifyKind(el, rect) {
-    const tag = el.tagName;
-    const role = (el.getAttribute('role') || '').toLowerCase();
-    if (tag === 'NAV' || role === 'navigation') return 'nav';
-    if (tag === 'FOOTER' || role === 'contentinfo') return 'footer';
-    if (tag === 'HEADER' || role === 'banner') return 'header';
-    if (tag === 'ASIDE' || role === 'complementary') return 'aside';
-    // hero: first big direct child of <main> sitting in the first viewport.
-    if (rect.top + window.scrollY < viewportH * 1.1) return 'hero';
-    return 'content';
-  }
-
   function repeatedChildrenCount(el) {
     if (!el.children || el.children.length < 3) return 0;
     const kids = Array.from(el.children);
@@ -1477,60 +1465,116 @@ const SECTIONS_SCRIPT = `(() => {
     return allSimilar ? maxRun : 0;
   }
 
-  function firstHeading(el) {
-    const h = el.querySelector('h1,h2,h3');
-    return h ? (h.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 120) : '';
+  function headings(el) {
+    const h = el.querySelector('h1,h2,h3,h4');
+    const sub = el.querySelector('h2,h3,p');
+    const heading = h ? (h.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 160) : '';
+    let subheading = '';
+    if (sub && sub !== h) {
+      subheading = (sub.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 200);
+    }
+    return { heading, subheading };
+  }
+
+  function classifyType(el, rect, repeated, heading) {
+    const tag = el.tagName;
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    if (tag === 'NAV' || role === 'navigation') return 'nav';
+    if (tag === 'FOOTER' || role === 'contentinfo') return 'footer';
+    if (tag === 'HEADER' || role === 'banner') return 'header';
+    if (tag === 'ASIDE' || role === 'complementary') return 'aside';
+    if (el.querySelector('form')) return 'form';
+    const docTop = rect.top + window.scrollY;
+    if (docTop < viewportH * 0.4 && rect.height > 200) return 'hero';
+    const h = (heading || '').toLowerCase();
+    if (/pric|plan|kostnad|prenum|abonnemang/.test(h)) return 'pricing';
+    if (/faq|fr[åa]gor|questions|hj[äa]lp/.test(h)) return 'faq';
+    if (/testimonial|kund|customer|review|omd[öo]me|recension/.test(h)) return 'testimonials';
+    if (/feature|funktion|s[åa] funkar|how it works|capabilit/.test(h)) return 'features';
+    if (/benefit|f[öo]rdel|varf[öo]r|why /.test(h)) return 'benefits';
+    if (repeated >= 4) return 'cards';
+    return 'content';
+  }
+
+  function countElements(el) {
+    try { return el.querySelectorAll('*').length; } catch (_) { return 0; }
   }
 
   const seen = new Set();
-  const out = [];
+  const raw = [];
 
   function addNode(el) {
     if (!el || seen.has(el)) return;
     const rect = el.getBoundingClientRect();
-    if (rect.width < 40 || rect.height < 40) return;
+    if (rect.width < 40 || rect.height < 80) return;
     seen.add(el);
-    let kind = classifyKind(el, rect);
     const repeated = repeatedChildrenCount(el);
-    if (repeated >= 3 && kind === 'content') kind = 'cards';
-    out.push({
-      kind,
-      selector: buildSelector(el),
-      rect: {
-        x: Math.round(rect.left + window.scrollX),
-        y: Math.round(rect.top + window.scrollY),
-        w: Math.round(rect.width),
-        h: Math.round(rect.height),
-      },
-      aboveFold: rect.top < viewportH,
-      childCount: el.children ? el.children.length : 0,
-      repeatedChildren: repeated,
-      headingText: firstHeading(el),
+    const hh = headings(el);
+    const type = classifyType(el, rect, repeated, hh.heading);
+    raw.push({
+      el, rect, repeated, heading: hh.heading, subheading: hh.subheading, type,
     });
   }
 
-  // 1) Structural landmarks.
-  const landmarks = document.querySelectorAll(
+  // Landmarks
+  document.querySelectorAll(
     'header, nav, main, footer, aside, ' +
     '[role="banner"], [role="navigation"], [role="main"], [role="contentinfo"], [role="complementary"]'
-  );
-  landmarks.forEach(addNode);
+  ).forEach(addNode);
 
-  // 2) Direct children of <main> (or body) — these are the "sections".
+  // Direct children of <main>
   const main = document.querySelector('main') || document.body;
   if (main && main.children) {
     for (const child of Array.from(main.children)) {
       const r = child.getBoundingClientRect();
-      if (r.height < 120) continue;
+      if (r.height < 160) continue;
       addNode(child);
     }
   }
 
-  // 3) Explicit <section> / <article> nodes that weren't already added.
+  // Explicit <section>/<article>
   document.querySelectorAll('section, article').forEach(addNode);
 
-  // Sort by docY for stable order.
-  out.sort((a, b) => a.rect.y - b.rect.y);
+  // Sort by docY
+  raw.sort((a, b) => (a.rect.top + window.scrollY) - (b.rect.top + window.scrollY));
+
+  // Compute max area for visualWeight normalization
+  let maxArea = 1;
+  for (const r of raw) {
+    const a = r.rect.width * r.rect.height;
+    if (a > maxArea) maxArea = a;
+  }
+
+  const out = raw.map((r, i) => {
+    const area = r.rect.width * r.rect.height;
+    return {
+      id: 'section_' + (i + 1),
+      type: r.type,
+      kind: r.type,
+      position: i + 1,
+      heading: r.heading,
+      subheading: r.subheading,
+      selector: buildSelector(r.el),
+      rect: {
+        x: Math.round(r.rect.left + window.scrollX),
+        y: Math.round(r.rect.top + window.scrollY),
+        w: Math.round(r.rect.width),
+        h: Math.round(r.rect.height),
+      },
+      aboveFold: r.rect.top < viewportH,
+      heightPx: Math.round(r.rect.height),
+      visualWeight: Math.round((area / maxArea) * 100),
+      elementCount: countElements(r.el),
+      childCount: r.el.children ? r.el.children.length : 0,
+      repeatedChildren: r.repeated,
+      headingText: r.heading,
+      containsPrimaryCTA: false,
+      containsTrustSignals: false,
+      containsForm: !!r.el.querySelector('form'),
+      containsPricing: false,
+      containsNavigation: r.type === 'nav' || r.type === 'header' || r.type === 'footer',
+    };
+  });
   return out;
 })()`;
 
