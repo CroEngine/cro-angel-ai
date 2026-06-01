@@ -86,8 +86,10 @@ export async function runSteps(
             while (Date.now() < deadline) {
               if (signal?.aborted) break;
               try {
-                const { pageText } = await stagehand.extract();
-                if (typeof pageText === "string" && pageText.toLowerCase().includes(needle)) {
+                const text = await page.evaluate<string>(
+                  "(document.body && document.body.innerText) || ''",
+                );
+                if (typeof text === "string" && text.toLowerCase().includes(needle)) {
                   found = true;
                   break;
                 }
