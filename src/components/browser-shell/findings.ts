@@ -41,7 +41,7 @@ const f = (category: FindingCategory, label: string, detail?: string): Finding =
   detail,
 });
 
-function seoFindings(a: PageAuditLike): Finding[] {
+function seoFindings(a: PageAuditData): Finding[] {
   return [
     f("seo", "Title", a.head.title ? `"${a.head.title}" (${a.head.title.length} chars)` : "not set"),
     f("seo", "Meta description", a.head.description ? `${a.head.description.length} chars` : "not set"),
@@ -58,7 +58,7 @@ function seoFindings(a: PageAuditLike): Finding[] {
   ];
 }
 
-function croFindings(c: CollectLike): Finding[] {
+function croFindings(c: CollectData): Finding[] {
   const out: Finding[] = [];
   const s = c.summary;
   if (!s) return out;
@@ -80,7 +80,7 @@ function croFindings(c: CollectLike): Finding[] {
   return out;
 }
 
-function uxFindings(c: CollectLike): Finding[] {
+function uxFindings(c: CollectData): Finding[] {
   const out: Finding[] = [];
   const s = c.summary;
   if (s?.bySection) {
@@ -103,7 +103,7 @@ function uxFindings(c: CollectLike): Finding[] {
   return out;
 }
 
-function interactionFindings(c: CollectLike): Finding[] {
+function interactionFindings(c: CollectData): Finding[] {
   const out: Finding[] = [];
   out.push(f("interaction", `${c.count} ${c.target}`, "captured"));
   if (c.byCategory) {
@@ -121,7 +121,7 @@ function interactionFindings(c: CollectLike): Finding[] {
   return out;
 }
 
-function structureFindings(a: PageAuditLike): Finding[] {
+function structureFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const sections = a.sections ?? [];
   if (sections.length === 0) return out;
@@ -159,7 +159,7 @@ function structureFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function heroFindings(a: PageAuditLike): Finding[] {
+function heroFindings(a: PageAuditData): Finding[] {
   const h = a.hero;
   if (!h) return [];
   const out: Finding[] = [];
@@ -177,7 +177,7 @@ function heroFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function trustFindings(a: PageAuditLike): Finding[] {
+function trustFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const sum = a.trustSummary;
   const signals = a.trustSignals ?? [];
@@ -231,7 +231,7 @@ function trustFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function ctaFindings(a: PageAuditLike): Finding[] {
+function ctaFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const ctas = a.ctas ?? [];
   if (ctas.length === 0) return out;
@@ -257,7 +257,7 @@ function ctaFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function formFindings(a: PageAuditLike): Finding[] {
+function formFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const forms = a.forms ?? [];
   if (forms.length === 0) return out;
@@ -276,7 +276,7 @@ function formFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function navigationFindings(a: PageAuditLike): Finding[] {
+function navigationFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const n = a.navigation;
   if (!n) return out;
@@ -299,7 +299,7 @@ function navigationFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function hierarchyFindings(a: PageAuditLike): Finding[] {
+function hierarchyFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const hier = a.visualHierarchy ?? [];
   if (hier.length === 0) return out;
@@ -316,7 +316,7 @@ function hierarchyFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function pageSummaryFindings(a: PageAuditLike): Finding[] {
+function pageSummaryFindings(a: PageAuditData): Finding[] {
   const ps = a.pageSummary;
   if (!ps) return [];
   return [
