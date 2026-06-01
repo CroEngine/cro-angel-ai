@@ -29,7 +29,7 @@ function defaultSteps(url: string): Step[] {
   return [
     { kind: "goto", url },
     { kind: "wait", ms: 500 },
-    { kind: "assertText", text: "Glutenforum" },
+    { kind: "collect", target: "buttons" },
   ];
 }
 
