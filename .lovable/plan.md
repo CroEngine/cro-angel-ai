@@ -1,95 +1,51 @@
 
-# Alltid-synlig vy utan att betala för en alltid-levande browser
+# Polish av Cold/Live/Frozen — 7 småfix
 
-## Scope (medvetet smalt)
+Sju småfix på den befintliga implementationen. Inga nya features, ingen ny datamodell.
 
-1. Ta screenshot direkt efter `collect`.
-2. Stäng Browserbase-sessionen så fort screenshoten är klar (eller efter triggers nedan).
-3. Visa screenshoten i viewporten när sessionen är död.
-4. Rita befintliga overlay-rektanglar ovanpå screenshoten.
-5. Statuschip uppe: **Cold / Live / Frozen**.
-6. Resume = starta en helt ny run mot `lastUrl`. Inget state-återställande.
+## Prioriterat
 
-Allt utöver detta (cookie/localStorage-persistens, exakt state-resume, kostnadsuppskattning i kr) skjuts upp.
+### 1. `liveStartedAt` startar för tidigt
+**Idag**: sätts vid Run-klick → räknaren ljuger 1–2 s.
+**Fix**: i `BrowserShell.tsx`, ta bort `setLiveStartedAt(Date.now())` i `handleRun`. Lägg `useEffect` som lyssnar efter första `session_started`-eventet och sätter `liveStartedAt` då.
 
-## Tre tillstånd
+### 2. Resume nollar inte gammal Frozen-cache
+**Idag**: ny run startas → gamla bilden ligger kvar tills nytt collect skriver över. Om nya runnen kraschar visar vi förra körningens bild.
+**Fix**: i `handleRun` (`BrowserShell.tsx`), `setFrozen(null)` innan `startFn` anropas.
 
-| Tillstånd | Vy | Browserbase |
-|---|---|---|
-| **Cold** | Tom platta + "skriv URL för att starta" | Av |
-| **Live** | Browserbase-iframe (som idag) | På |
-| **Frozen** | Screenshot + overlay-rektanglar + Resume-knapp | Av |
+### 3. Frozen visas inte alls om collect misslyckas
+**Idag**: `done` utan screenshot → vi faller tillbaka till Cold-platta trots att vi precis kört en session.
+**Fix**: i `Viewport.tsx`, lägg en "Frozen utan snapshot"-variant:
+- Om `sessionState === "frozen"` och `frozen === null` → visa en grå panel med "Session ended · no snapshot captured" + Resume-knapp.
+- Cold-pattan visas bara när `sessionState === "cold"`.
 
-## Live → Frozen triggers
+## Mindre
 
-- **60 s efter `done`** (run klar, inget mer aktivt).
-- **15 s efter `document.visibilityState === "hidden"`**.
-- **10 min hard cap** på Live, oavsett.
+### 4. Overlay för element ovanför viewporten
+**Idag**: filter `el.rect.y < viewport.h` släpper igenom negativa `y` → rektanglar ritas utanför bilden.
+**Fix**: i `Viewport.tsx`, byt filter till `el.rect.y + el.rect.h > 0 && el.rect.y < viewport.h`.
 
-Ingen mus/tangent-baserad idle-detektor i denna iteration.
+### 5. Hidden-tab racekondition
+**Idag**: snabba flikbyten kan stapla flera timers; bara en clearas vid `visible`.
+**Fix**: i `BrowserShell.tsx` `visibilitychange`-handler, clearTimeout även när man byter till `hidden` (innan ny timer sätts), så det aldrig finns mer än en.
 
-## Frozen-state äger
+### 6. `statusMessage` "done · aborted" syns inte längre
+**Idag**: chipen visar bara "Frozen · click to resume", aborted-info försvinner.
+**Fix**: i `UrlBar.tsx`, om `sessionState === "frozen"` och `statusMessage` innehåller "aborted" → visa `Frozen · aborted` istället för standardtexten.
 
-- `screenshotUrl` (data-URL eller objekt-URL)
-- `overlayElements` (lista av `{ selector, category, rect }` från senaste collect)
-- `lastUrl`
-- `collectedData` (hela senaste collect-resultatet, för konsolen)
+### 7. Screenshot-storlek i SSE (notera, inte fix nu)
+**Idag**: ~150–200 KB base64 per `step_passed` skickas över EventSource. Fungerar, men kommer bli flaskhals vid större sidor / fler steg.
+**Plan**: lägg in en `console.warn` i `useTestStream` om `ev.data.length > 500_000` så vi ser när det börjar gör ont. Riktig fix (R2/storage-upload) skjuts till senare sprint.
 
-Bevaras i `BrowserShell`-state. Konsol-events rörs inte.
+## Filer som rörs
 
-## Tekniska ändringar
+- `src/components/browser-shell/BrowserShell.tsx` — fix 1, 2, 5
+- `src/components/browser-shell/Viewport.tsx` — fix 3, 4
+- `src/components/browser-shell/UrlBar.tsx` — fix 6
+- `src/components/browser-shell/hooks/useTestStream.ts` — fix 7
 
-### `src/lib/tests/engine.server.ts`
-- Efter att `collect`-steget byggt `data`-objektet: kör `page.screenshot({ type: "jpeg", quality: 60 })`, base64-encoda till data-URL.
-- Emit:a nytt event `snapshot` med `{ url: lastUrl, screenshotUrl, viewport: { w, h } }` innan `step_passed` skickas. (Eller bifoga som fält i `step_passed.data` — enklare. Väljs vid implementation.)
-- Inga ändringar i collect/intent/visualWeight/dedupe.
+## Inte med
 
-### `src/lib/tests/orchestrator.server.ts`
-- Lägg `freezeRun(id, reason)`: kör `closeSession()`, markera `frozen: true`, emit `frozen` event. Behåller `Run` i mappen så konsol-buffer består.
-- Lägg `IDLE_AFTER_DONE_MS = 60_000`, `HIDDEN_MS = 15_000`, `HARD_CAP_MS = 600_000` (för manuell terminate triggrad från klienten — själva timer-logiken bor i klienten i v1, se nedan).
-- Behåll nuvarande `terminate` för error/abort.
-
-### `src/lib/tests/run.functions.ts`
-- Ny server-fn: `freezeRun({ runId })` — kallar `freezeRun` i orchestrator.
-- `startTestRun` oförändrad (returnerar `runId` + `liveUrl`).
-
-### `src/components/browser-shell/BrowserShell.tsx`
-- Byt `runState` mot `sessionState: "cold" | "live" | "frozen" | "error"`.
-- Plocka ut `screenshotUrl` + overlay-data från `step_passed`/`snapshot`-eventen och spara i state.
-- Tre `setTimeout`-baserade triggers (alla i klienten):
-  - vid `done`-event → 60 s timer → `freezeRun`
-  - `visibilitychange` → om hidden, 15 s timer → `freezeRun`; cancel om visible igen
-  - vid `live`-start → 10 min timer → `freezeRun`
-- `handleResume(url)` → kalla `startTestRun({ url: lastUrl })` på nytt. Samma flöde som idag.
-
-### `src/components/browser-shell/Viewport.tsx`
-- Splitta render:
-  - `sessionState === "live"` → iframe (som idag)
-  - `sessionState === "frozen"` → `<FrozenViewport screenshotUrl overlayElements onResume />`
-  - `sessionState === "cold"` → tom placeholder
-- `FrozenViewport`: `<img>` i full container + absolut-positionerade `<div>` per overlay-element (samma kategori-färger som live-overlayen), centrerad Resume-knapp vid hover.
-
-### `src/components/browser-shell/UrlBar.tsx`
-- Lägg `SessionChip` till vänster om URL-fältet: visar tillståndet + minuträknare när Live. Klick i Frozen = Resume.
-
-## Frozen overlay — koordinatsystem
-
-`rect` från collect är dokument-relativ (`scrollY` inräknad). Screenshoten är viewport-stor (inte full page). I v1: vi tar screenshot efter att engine scrollat tillbaka till topp, så viewport-koordinater = `rect.x`/`rect.y - 0`. Element under vikningen i screenshoten klipps bort — överlay ritar bara element vars `rect.y < viewportHeight`. Acceptabelt för v1; full-page screenshot kommer senare.
-
-## Acceptanskriterier
-
-1. Cold default vid app-start. Ingen Browserbase-session.
-2. URL + Enter → Live + iframe.
-3. Run gör collect → screenshot bifogas → 60 s efter `done` → Frozen automatiskt. Användaren ser screenshot + samma färgade overlay.
-4. Tab hidden 15 s → Frozen.
-5. 10 min Live → Frozen.
-6. Klick på Resume → ny Live-session mot `lastUrl`. Screenshot kvar tills nytt collect skrivit över.
-7. Konsolen behåller alla events över freeze.
-
-## Vad vi inte rör
-
-- Cookie/storage-persistens.
-- Full-page screenshot (bara viewport i v1).
-- Idle-detektor på mus/tangent.
-- Kostnad i kronor.
-- Multi-session.
+- Ingen ändring i `engine.server.ts`, `orchestrator.server.ts`, `run.functions.ts`.
+- Ingen ändring i collect/intent/visualWeight.
+- Ingen storage-upload av screenshots (sparat till senare).
