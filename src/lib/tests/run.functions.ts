@@ -39,6 +39,7 @@ export const startTestRun = createServerFn({ method: "POST" })
         });
         if (isTerminated(runId)) return;
         emit(runId, "log", { level: "info", message: "navigation complete — session idle, click Stop to end" });
+        emit(runId, "state", { phase: "idle" });
         // Do NOT terminate; keep session alive so the live iframe stays connected.
       } catch (err) {
         if (isTerminated(runId)) return;

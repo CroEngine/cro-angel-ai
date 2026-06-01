@@ -37,6 +37,7 @@ export function useTestStream(runId: string | null) {
 
     es.addEventListener("session_started", handle("session_started"));
     es.addEventListener("log", handle("log"));
+    es.addEventListener("state", handle("state"));
     es.addEventListener("done", handle("done"));
     es.addEventListener("error", handle("error"));
     es.onerror = () => {
