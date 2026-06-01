@@ -85,6 +85,7 @@ export function BrowserShell() {
         value={url}
         runState={runState}
         statusMessage={statusMessage}
+        idleAfterLoad={idleAfterLoad}
         onSubmit={(next) => {
           setUrl(next);
           setReloadKey((k) => k + 1);
