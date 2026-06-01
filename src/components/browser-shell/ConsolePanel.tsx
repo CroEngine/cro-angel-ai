@@ -13,10 +13,19 @@ function renderEvent(ev: StreamEvent): string {
       return `session started · ${String(ev.data.sessionId ?? "")}`;
     case "log":
       return `[${String(ev.data.level ?? "info")}] ${String(ev.data.message ?? "")}`;
-    case "done":
+    case "step_started":
+      return `→ [${String(ev.data.index ?? "?")}] ${String(ev.data.summary ?? "")}`;
+    case "step_passed":
+      return `✓ [${String(ev.data.index ?? "?")}] ${String(ev.data.summary ?? "")} (${String(ev.data.durationMs ?? "?")}ms)`;
+    case "step_failed":
+      return `✗ [${String(ev.data.index ?? "?")}] ${String(ev.data.summary ?? "")} — ${String(ev.data.error ?? "")}`;
+    case "done": {
+      const p = ev.data.passed, f = ev.data.failed;
+      const counts = (typeof p === "number" || typeof f === "number") ? ` · ${p ?? 0} passed, ${f ?? 0} failed` : "";
       return ev.data.aborted
-        ? `done · aborted (${String(ev.data.reason ?? "")})`
-        : "done";
+        ? `done · aborted (${String(ev.data.reason ?? "")})${counts}`
+        : `done${counts}`;
+    }
     case "error":
       return `error · ${String(ev.data.message ?? "")}`;
     default:
@@ -42,11 +51,9 @@ export function ConsolePanel({ events }: { events: StreamEvent[] }) {
                 <span
                   className={
                     "flex-1 whitespace-pre-wrap break-all " +
-                    (ev.type === "error"
+                    (ev.type === "error" || ev.type === "step_failed"
                       ? "text-destructive"
-                      : ev.type === "done"
-                        ? "text-foreground"
-                        : "text-foreground")
+                      : "text-foreground")
                   }
                 >
                   {renderEvent(ev)}

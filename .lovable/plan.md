@@ -1,97 +1,96 @@
-# Migrera till Stagehand/Playwright via Browserbase
+# Steg 2 — Byt motor till Stagehand
+
+Spike-resultat: Spike A (playwright-core) ✅ 4.8s, Spike B (Stagehand) ✅ 6.9s. Båda kör i workerd mot Browserbase utan Node-only-fel. Vi väljer **Stagehand** — vi får både Playwright-API:t (`goto`, `click`, `fill`, `title`) och AI-primitiverna (`act`, `extract`, `observe`) genom samma motor, och Model Gateway via Browserbase-nyckeln räcker (ingen separat AI-secret).
 
 ## Mål
-All test-exekvering ska gå via Stagehand (eller Playwright direkt). Ingen egen CDP-WebSocket-kod kvar.
+Ta bort `navigateViaCDP` och köra all sessionsinteraktion via Stagehand. Introducera en step-modell och step-events så UI:t kan visa flerstegsförlopp.
 
-## Stoppregel
-**Ingen UI- eller feature-utveckling sker förrän Steg 1 (runtime-spike) är avgjord.** Risk: vi designar runt en motor som inte kan köras i workerd.
+## Filer som ändras / skapas
 
----
-
-## Steg 1 — Runtime spike (tvådelad)
-
-Avgör om Cloudflare Workers (workerd) klarar Playwright och/eller Stagehand när de bara används som CDP-klient mot en redan-startad Browserbase-session.
-
-### Spike A — `playwright-core` + `chromium.connectOverCDP(connectUrl)`
-1. `bun add playwright-core`.
-2. Ny serverfunktion `spikePlaywright()` som:
-   - Skapar Browserbase-session (befintlig `createSession`).
-   - `const browser = await chromium.connectOverCDP(session.connectUrl)`.
-   - `const page = (await browser.contexts())[0].pages()[0] ?? await ...newPage()`.
-   - `await page.goto("https://glutenforum.se")`, läs `await page.title()`.
-   - Stäng session.
-3. Anropa via `invoke-server-function`, läs `server-function-logs`.
-
-### Spike B — `@browserbasehq/stagehand` med `env: "BROWSERBASE"`
-1. `bun add @browserbasehq/stagehand`.
-2. Ny serverfunktion `spikeStagehand()` som:
-   - `new Stagehand({ env: "BROWSERBASE", apiKey: process.env.BROWSERBASE_API_KEY, projectId: process.env.BROWSERBASE_PROJECT_ID, browserbaseSessionID: session.id })`.
-   - `await stagehand.init()`.
-   - `await stagehand.page.goto("https://glutenforum.se")`.
-   - Eventuellt prova en `stagehand.page.act("scroll to footer")` för att bekräfta att Model Gateway funkar via Browserbase-nyckeln (ingen separat OpenAI/Anthropic-key).
-   - Stäng.
-3. Anropa via `invoke-server-function`, läs `server-function-logs`.
-
-### Beslutsgrind
-| A | B | Beslut |
-|---|---|--------|
-| ✅ | ✅ | Kör **Stagehand** i Worker (AI-primitiver + Playwright-API). Gå till Steg 2. |
-| ✅ | ❌ | Kör **Playwright-only** i Worker. Bygg step-DSL utan AI-primitiver tills vidare. Gå till Steg 2 med justerad step-modell. |
-| ❌ | ❌ | **Flytta test-exekvering till en separat Node-runtime** (egen tjänst, eller använd Browserbases Agent API om det matchar våra behov). Ny mini-plan skrivs då. |
-| ❌ | ✅ | Osannolikt — i så fall kör Stagehand. |
-
-### Vanliga fel att tolka korrekt
-- `__dirname is not defined` / `[unenv] X is not implemented` → Node-only import. Räknas som ❌ för det biblioteket.
-- 401 från Browserbase → secret-problem, inte runtime — fixa och kör om.
-- Timeout i `connectOverCDP` → WS-transport ok men anslutning hängde; kör om / kolla `connectUrl`.
-
-### Secrets
-Behåll: `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID` (redan finns).
-Vi använder Browserbase Model Gateway för Stagehands AI-anrop → **ingen** separat OpenAI/Anthropic-secret behövs.
-Lovable AI Gateway lämnas utanför detta jobb.
-
----
-
-## Steg 2 — Byt ut motorn (utförs efter spike-beslut)
-
-### Nya filer
-- **`src/lib/tests/engine.server.ts`** — tunn wrapper:
-  ```ts
-  export async function runSteps(sessionId: string, steps: Step[], opts: {
-    onEvent: (e: EngineEvent) => void;
-    signal: AbortSignal;
-  }): Promise<void>
-  ```
-
-### Step-modell (initial)
+### Ny: `src/lib/tests/engine.server.ts`
+Tunn wrapper runt Stagehand. Exporterar:
 ```ts
-type Step =
+export type Step =
   | { kind: "goto"; url: string }
-  | { kind: "click"; selector: string }          // Playwright
-  | { kind: "fill"; selector: string; value: string }
-  | { kind: "assertText"; text: string }
   | { kind: "wait"; ms: number }
-  // Endast om Stagehand-vägen valdes:
+  | { kind: "assertText"; text: string }
+  | { kind: "click"; selector: string }
+  | { kind: "fill"; selector: string; value: string }
   | { kind: "act"; instruction: string }
   | { kind: "extract"; instruction: string }
   | { kind: "observe"; instruction: string };
+
+export type EngineEvent =
+  | { type: "step_started"; index: number; kind: Step["kind"]; summary: string }
+  | { type: "step_passed";  index: number; kind: Step["kind"]; summary: string; durationMs: number; data?: unknown }
+  | { type: "step_failed";  index: number; kind: Step["kind"]; summary: string; durationMs: number; error: string }
+  | { type: "log"; message: string };
+
+export async function runSteps(
+  sessionId: string,
+  steps: Step[],
+  opts: { onEvent: (e: EngineEvent) => void; signal?: AbortSignal },
+): Promise<{ passed: number; failed: number; aborted: boolean }>;
+```
+- Skapar `Stagehand({ env: "BROWSERBASE", browserbaseSessionID: sessionId, apiKey, projectId })` och `init()`.
+- Hämtar/skapar aktiv `Page` via `stagehand.context`.
+- Itererar steg, emitterar `step_started` → kör → emitterar `step_passed`/`step_failed`. Vid första `step_failed` avbryter resten (markeras som "skipped" via aggregerad räknare; emitterar inte separata events för skippade steg i denna iteration).
+- Respekterar `signal.aborted` mellan steg.
+- `finally`: `stagehand.close()`.
+- `assertText`: `page.getByText(text).first().waitFor({ state: "visible", timeout: 5000 })`.
+- `wait`: `page.waitForTimeout(ms)`.
+
+### Ändras: `src/lib/tests/browserbase.server.ts`
+- Ta bort hela `navigateViaCDP` (CDP-WS-koden, ~100 rader).
+- Behåll `createSession` / `closeSession` exakt som idag.
+
+### Ändras: `src/lib/tests/orchestrator.server.ts`
+- Lägg till nya event-typer i `RunEventType`: `step_started`, `step_passed`, `step_failed`.
+- Inga andra ändringar (registry, SSE-broadcast oförändrat).
+
+### Ändras: `src/lib/tests/run.functions.ts`
+- `startTestRun` tar nu `{ url, steps? }`. Om `steps` saknas: default-test = `[{goto:url}, {wait:500}, {assertText:"Glutenforum"}]`.
+- Bygger `Step[]` (lägger `{goto:url}` först om användaren skickade `steps` utan goto).
+- Ersätter `await navigateViaCDP(...)` med `await runSteps(session.id, steps, { onEvent, signal })`.
+- `onEvent` mappar engine-events till orkestrator-events (step-events vidarebefordras 1:1, `log` → existerande `log`-event).
+- Emitterar fortfarande `state: { phase: "idle" }` efter första lyckade `goto` så `idleAfterLoad` i UI fortsätter funka.
+- Terminal `done` med `{ aborted, passed, failed }`.
+
+### Ändras: `src/components/browser-shell/hooks/useTestStream.ts`
+- Lyssna även på `step_started`, `step_passed`, `step_failed`.
+
+### Ändras: `src/components/browser-shell/ConsolePanel.tsx`
+- Rendera step-events tydligt:
+  - `→ [1] goto https://glutenforum.se`
+  - `✓ [1] goto (820ms)`
+  - `✗ [3] assertText "Glutenforum" — timeout 5000ms`
+- Behåller existerande log-rendering.
+
+### Oförändrat
+- `BrowserShell.tsx`, `UrlBar.tsx`, `Viewport.tsx`, SSE-routen `/api/tests/$runId/stream`.
+- `useTestStream` returnerar fortfarande hela `events`-arrayen, så `idleAfterLoad`-logiken i `BrowserShell` fungerar oförändrat.
+
+## Default-test (hårdkodat tills UI-editor finns)
+```ts
+[
+  { kind: "goto",       url: <inputUrl> },
+  { kind: "wait",       ms: 500 },
+  { kind: "assertText", text: "Glutenforum" },
+]
 ```
 
-### Ändringar i befintlig kod
-- **`browserbase.server.ts`** — behåll `createSession`/`closeSession`. Ta bort `navigateViaCDP` när Steg 2 är klart och verifierat.
-- **`run.functions.ts`** — `startTestRun` tar `{ url, steps }`. Hårdkodad default-test tills UI-step-editor finns: `goto → wait 500ms → assertText("Glutenforum")`.
-- **`orchestrator.server.ts`** — nya event-typer: `step_started`, `step_passed`, `step_failed` (data: `{ index, kind, summary, error? }`).
-- **`useTestStream.ts`** — lyssna på de nya eventen.
-- **`ConsolePanel.tsx`** — rendera step-events tydligt (✓/✗ prefix + steg-index).
-- **`BrowserShell.tsx`** — `idleAfterLoad` ersätts av terminal `done` (alla steg klara eller första fail).
+## Städning
+- Ta bort `spike.functions.ts`, `src/routes/spike.tsx`, `src/routes/api/public/spike.ts`. Spike-rollen är slutförd.
 
 ## Verifiering
-- Spike-funktioner returnerar 200 och loggar visar lyckad navigering via valt bibliotek.
-- Default-testet kör tre steg och visar tre step-events i konsolen.
-- Live-iframen visar sidan kontinuerligt under hela körningen.
-- `navigateViaCDP` är borttagen ur kodbasen.
+1. Klicka Run i UI:t → live-iframen visar sidan.
+2. Konsolen visar tre step-events i ordning, alla ✓.
+3. `done`-event kommer med `passed: 3, failed: 0`.
+4. Ändra default-testets `assertText` till en sträng som inte finns → step 3 blir ✗, run avslutas med `done {passed:2, failed:1}`, UI visar `error · ...`.
+5. `rg navigateViaCDP src` returnerar tomt.
 
-## Vad detta plan **inte** löser (medvetet uppskjutet)
-- UI för att skapa/redigera tester (nästa slice).
-- Persistens i DB (process-lokalt registry kvar).
-- Multi-user/auth.
+## Uttryckligen utanför scope (nästa slice)
+- UI för att skapa/redigera tester.
+- Persistens i DB.
+- Multi-user / auth-scoping av runs.
+- AI-primitiverna (`act`/`extract`/`observe`) — de finns i Step-typen och engine-implementationen, men default-testet använder dem inte än.
