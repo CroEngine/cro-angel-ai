@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicSpikeRouteImport } from './routes/api/public/spike'
 import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicSpikeRoute = ApiPublicSpikeRouteImport.update({
+  id: '/api/public/spike',
+  path: '/api/public/spike',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTestsRunIdStreamRoute = ApiTestsRunIdStreamRouteImport.update({
@@ -25,27 +31,31 @@ const ApiTestsRunIdStreamRoute = ApiTestsRunIdStreamRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/spike': typeof ApiPublicSpikeRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/spike': typeof ApiPublicSpikeRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/spike': typeof ApiPublicSpikeRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/tests/$runId/stream'
+  fullPaths: '/' | '/api/public/spike' | '/api/tests/$runId/stream'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/tests/$runId/stream'
-  id: '__root__' | '/' | '/api/tests/$runId/stream'
+  to: '/' | '/api/public/spike' | '/api/tests/$runId/stream'
+  id: '__root__' | '/' | '/api/public/spike' | '/api/tests/$runId/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicSpikeRoute: typeof ApiPublicSpikeRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/spike': {
+      id: '/api/public/spike'
+      path: '/api/public/spike'
+      fullPath: '/api/public/spike'
+      preLoaderRoute: typeof ApiPublicSpikeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tests/$runId/stream': {
@@ -70,8 +87,19 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicSpikeRoute: ApiPublicSpikeRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
