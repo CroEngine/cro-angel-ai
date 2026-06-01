@@ -352,6 +352,8 @@ export function ConsolePanel({ events }: { events: StreamEvent[] }) {
             events.map((ev, i) => {
               const isCollectPassed =
                 ev.type === "step_passed" && ev.data.kind === "collect" && isCollectData(ev.data.data);
+              const isPageAuditPassed =
+                ev.type === "step_passed" && ev.data.kind === "pageAudit" && isPageAuditData(ev.data.data);
               return (
                 <div key={i} className="flex items-start gap-4 px-4 py-2">
                   <div className="flex-1 min-w-0">
@@ -366,6 +368,8 @@ export function ConsolePanel({ events }: { events: StreamEvent[] }) {
                       {renderEventLine(ev)}
                     </span>
                     {isCollectPassed && <CollectDetails data={ev.data.data as CollectData} />}
+                    {isPageAuditPassed && <PageAuditDetails data={ev.data.data as PageAuditData} />}
+
                   </div>
                   <span className="shrink-0 text-muted-foreground">{fmtTime(ev.data.ts)}</span>
                 </div>
