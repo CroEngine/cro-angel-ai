@@ -1,70 +1,119 @@
-## Implementera vald riktning: Structured metric cards
+## Pipeline-ramverk (överenskommet)
 
-Fyra arbetsfiler. Innehållet komprimeras nedan.
-
-### 1. Fonts + tokens (`src/styles.css`, `src/routes/__root.tsx`)
-
-- Lägg till Google Fonts-länk för **Sora** (400/600/700) och **Manrope** (400/500/600) i `__root.tsx` `<head>`.
-- I `styles.css`: lägg `--font-heading: 'Sora'` och `--font-body: 'Manrope'` på `:root`, sätt `body { font-family: var(--font-body) }`, och skapa en utility-klass `.font-heading { font-family: var(--font-heading) }` (eller mappa via Tailwind v4 `@theme`).
-- Palett-tokens redan semantiska — inget byte krävs (prototypens `#fafbfc / #e8ecf1 / #94a3b8 / #3b82f6` matchar `background / border / muted-foreground / primary` i Cloud White-temat tillräckligt nära).
-
-### 2. `findings.ts` — lägg till en lätt typ-tagg per Finding (valfritt fält)
-
-Lägg till `kind?: "status" | "metric" | "quote" | "stats" | "text"` i `Finding`-typen. Sätt det på rätt ställe där finding skapas (snabb pass per kategori), så `FindingsView` kan välja kort-variant utan att gissa via regex.
-
-### 3. `FindingsView.tsx` — rewrite enligt prototyp
-
-**`PageCard` header (sticky):**
-```tsx
-<header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-5 py-4 rounded-t-xl">
-  <div className="flex flex-col gap-0.5">
-    <h1 className="font-heading text-sm font-bold text-foreground">{hostname}</h1>
-    <div className="flex items-center gap-2">
-      <span className="h-2 w-2 rounded-full bg-emerald-500" />
-      <p className="text-xs text-muted-foreground">{count} datapoints analyzed</p>
-    </div>
-  </div>
-  <Button variant="outline" size="sm" className="...">Download JSON</Button>
-</header>
+```
+1. Collect      → fakta (klar — buildPageReports + findings)
+2. Interpret    → findings + scores (deterministiska regler)  ← detta PR
+3. Recommend    → konkreta åtgärdsförslag (deterministisk mappning)
+4. AI Consultant→ LLM ovanpå facts+findings+recs (senare)
 ```
 
-**Body:** `p-5 space-y-8`.
+Analyze-knappen kommer att trigga **Steg 2 (Interpret)**. Steg 3 byggs som separat lager senare, Steg 4 ännu senare.
 
-**`CategorySection` header:**
-```tsx
-<div className="mb-4 flex items-center gap-3">
-  <h2 className="font-heading text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{label}</h2>
-  <div className="h-px flex-1 bg-border" />
-  <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">{n}</span>
-</div>
+## Detta PR: bara Steg 2-modulen, ingen UI
+
+En fil. Ingen knapp, ingen state, ingen vy, ingen koppling till `BrowserShell`. Vi verifierar output via tillfällig `console.log` innan vi rör UI.
+
+### Ny fil: `src/components/browser-shell/interpret.ts`
+
+**Namngivning:** `interpret.ts` (inte `analyze.ts`) så filnamnet matchar pipeline-steget. Exporterar `interpretReports()` (inte `analyzeReports`).
+
+**Typer:**
+```ts
+export type Severity = "low" | "medium" | "high";
+export type Category = "seo" | "cro" | "ux" | "trust";
+
+export type Finding = {
+  ruleId: string;
+  category: Category;
+  severity: Severity;
+  title: string;
+  evidence: string;       // konkret datapunkt, t.ex. "8 competing actions above fold"
+};
+
+export type Win = {
+  ruleId: string;
+  category: Category;
+  title: string;
+};
+
+export type PageInterpretation = {
+  url: string;
+  scores: { seo: number; cro: number; ux: number; trust: number; overall: number };
+  findings: Finding[];    // sorterade severity desc, sedan weight desc
+  wins: Win[];
+};
+
+type Rule = {
+  id: string;
+  category: Category;
+  severity: Severity;
+  weight: number;         // 5/10/20 default per severity, men override tillåtet
+  title: string;
+  evaluate: (r: PageReport) => null | { evidence: string };
+  // null = passed (→ win), object = triggered (→ finding)
+};
 ```
-Klick på rubriken växlar öppet/stängt (samma som idag, men hela headern är toggle-zon).
 
-**Grid:** `grid grid-cols-2 gap-3`. Vissa kort spänner 2 kolumner när värdet är långt (citat / sektionsordning) — använd `col-span-2`.
+**Konstanter:**
+```ts
+const SEVERITY_WEIGHT: Record<Severity, number> = { low: 5, medium: 10, high: 20 };
+```
 
-**Kort-varianter (en liten `<FindingCard>` med switch på `kind`):**
+**Konservativ v1-regeluppsättning (~3 per kategori, lätta att utöka):**
 
-- `status` — pill (`Found` grön, `Missing` amber, `Set` blå) + valfri italic detalj.
-- `metric` — stort tal (`font-heading text-xl font-bold`) + liten enhet under.
-- `quote` — italic text + liten blå punkt vänster, `col-span-2`.
-- `stats` — header-rad: label vänster + huvudsiffra blå höger, divider, 3-kol mini-stats (Primary/Secondary/Above fold etc.).
-- `text` (default) — label + värde + ev. liten mono-chip (t.ex. `56 chars`).
+- `SEO_RULES`:
+  - `seo.title.missing` (high) — `head.title` tom
+  - `seo.meta.description.missing` (medium) — `head.description` tom
+  - `seo.h1.count` (medium) — `headings.h1Count !== 1` (evidence: `"h1Count = N"`)
 
-Wrap: `rounded-xl border border-border bg-muted/30 p-4`. Hover: `hover:border-primary/40 transition-colors`.
+- `CRO_RULES`:
+  - `cro.primaryCta.missing` (high) — `pageSummary.primaryCtaCount === 0`
+  - `cro.hero.headline.missing` (high) — `hero` saknas eller `hero.headline === ""`
+  - `cro.cta.competition` (medium) — `pageSummary.competingAboveFold > 3` (evidence: `"N competing actions above fold"`)
 
-**Tom-läge:** behåll `min-h-full items-center justify-center` med engelska texten.
+- `UX_RULES`:
+  - `ux.hidden.interactive` (high) — `(hiddenInteractive ?? 0) > 0` *(skippas om fältet saknas)*
+  - `ux.abovefold.ratio` (medium) — `foldHeightPx / pageHeightPx < 0.3`
 
-### 4. Engelska kategori-namn
+- `TRUST_RULES`:
+  - `trust.signals.none` (high) — `trustSummary.total === 0`
+  - `trust.abovefold.missing` (medium) — `trustSummary.total > 0 && trustSummary.aboveFold === 0`
 
-`CATEGORY_LABELS` byts till: `SEO Analysis · Conversion (CRO) · UX & Structure · Interactions`.
+**Explicit utelämnade (per tidigare diskussion):**
+- "navigation saknar pricing/login/docs" — skippas i v1, kräver business-model-detection
+- Form-fieldCount-regler — skippas i v1
+- Section-h1 — skippas i v1
 
-## Vad jag INTE gör
+**Score per kategori:**
+```ts
+score = clamp(100 - sum(rule.weight for triggered rules in category), 0, 100)
+overall = round((seo + cro + ux + trust) / 4)
+```
 
-- Ingen ny data/sökning/filter — bara presentation.
-- Ingen footer-rad ("scan v2.4.1 / 1.2s") — fabricerar inte data som inte finns.
-- `findings.ts`-utdata för värden är oförändrad (bara `kind`-tagg läggs till).
-- Inga ändringar i `engine.server.ts`, ConsolePanel-shell, Viewport.
+**Sortering:** findings sorteras `severity desc → weight desc → ruleId asc` (stabilt).
 
-## Resultat
+**Export:**
+```ts
+export function interpretReports(reports: PageReport[]): PageInterpretation[]
+```
 
-Findings ser ut som prototypen: ren vit panel, kategori-band med uppercase-label + divider + count-pill, 2-kols kort-grid med varianter för status/metric/quote/stats/text. Sticky header med URL + grön ready-dot + Download JSON-knapp behålls.
+`PageReport` är redan typad — vi återanvänder den från `findings.ts`/befintlig kod (verifieras vid implementation; om typen inte är exporterad lägger jag till `export`).
+
+## Verifiering (utan UI)
+
+Efter implementation: tillfällig `console.log(interpretReports(buildPageReports(events)))` i `BrowserShell` (eller direkt i devtools) för att inspektera output mot en redan körd run. Det loggandet **tas bort** innan vi går vidare till UI-steget.
+
+## Vad detta PR INTE gör
+
+- Ingen `Analyze`-knapp (kommer i nästa PR)
+- Ingen `UrlBar`/`Viewport`/`BrowserShell`-ändring
+- Ingen `InterpretView`/`ConsolePanel`-tab
+- Inga rekommendationer (Steg 3)
+- Ingen AI (Steg 4)
+- Ingen schema-/engine-ändring
+
+## Nästa steg efter detta
+
+1. **PR 2 — UI:** Resume → Analyze (BarChart3-ikon), `interpretation` state, `InterpretView`, `ConsolePanel`-tab `Interpret`
+2. **PR 3 — Steg 3 (Recommend):** `recommend.ts` som mappar `ruleId → Recommendation[]`
+3. **PR 4 — Steg 4 (AI Consultant):** edge function ovanpå facts+findings+recs
