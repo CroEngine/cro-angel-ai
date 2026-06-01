@@ -23,6 +23,9 @@ export function useTestStream(runId: string | null) {
     esRef.current = es;
 
     const handle = (type: string) => (ev: MessageEvent) => {
+      if (typeof ev.data === "string" && ev.data.length > 500_000) {
+        console.warn(`[useTestStream] large ${type} payload: ${(ev.data.length / 1024).toFixed(0)}kb — consider offloading to storage`);
+      }
       let parsed: Record<string, unknown> = {};
       try { parsed = JSON.parse(ev.data); } catch { /* keep empty */ }
       setEvents((prev) => [...prev, { type, data: parsed }]);
@@ -34,6 +37,7 @@ export function useTestStream(runId: string | null) {
         es.close();
       }
     };
+
 
     es.addEventListener("session_started", handle("session_started"));
     es.addEventListener("log", handle("log"));

@@ -50,11 +50,28 @@ export function Viewport({ sessionState, liveUrl, frozen, onResume }: ViewportPr
     );
   }
 
-  if (sessionState === "frozen" && frozen) {
-    return <FrozenViewport frozen={frozen} onResume={onResume} />;
+  if (sessionState === "frozen") {
+    if (frozen) {
+      return <FrozenViewport frozen={frozen} onResume={onResume} />;
+    }
+    // Session ended but no snapshot was captured (e.g. collect failed).
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-muted/20 text-muted-foreground">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+          <Snowflake className="h-5 w-5" />
+        </div>
+        <p className="text-sm">Session ended · no snapshot captured.</p>
+        {onResume && (
+          <Button size="sm" onClick={onResume} className="gap-1.5">
+            <RotateCw className="h-3.5 w-3.5" />
+            Resume session
+          </Button>
+        )}
+      </div>
+    );
   }
 
-  // Cold (or live without liveUrl, or error)
+  // Cold (or error)
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-muted/20 text-muted-foreground">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
@@ -66,6 +83,7 @@ export function Viewport({ sessionState, liveUrl, frozen, onResume }: ViewportPr
     </div>
   );
 }
+
 
 function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume?: () => void }) {
   const { screenshotUrl, viewport, overlayElements } = frozen;
@@ -88,7 +106,7 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
             style={{ width: "100%", height: "100%" }}
           >
             {overlayElements
-              .filter((el) => el.rect.y < viewport.h && el.rect.w > 0 && el.rect.h > 0)
+              .filter((el) => el.rect.y + el.rect.h > 0 && el.rect.y < viewport.h && el.rect.w > 0 && el.rect.h > 0)
               .map((el, i) => {
                 const color = CATEGORY_COLORS[el.category] ?? CATEGORY_COLORS.other;
                 return (

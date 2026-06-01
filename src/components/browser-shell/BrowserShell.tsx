@@ -46,6 +46,16 @@ export function BrowserShell() {
     }
   }, [events]);
 
+  // Start the live counter only when Browserbase actually confirms the session
+  // is up — not on Run-click. Avoids ~1–2 s of lie at the start.
+  useEffect(() => {
+    if (liveStartedAt !== null) return;
+    if (sessionState !== "live") return;
+    if (events.some((e) => e.type === "session_started")) {
+      setLiveStartedAt(Date.now());
+    }
+  }, [events, liveStartedAt, sessionState]);
+
   // Promote terminal events to sessionState.
   useEffect(() => {
     for (let i = events.length - 1; i >= 0; i--) {
@@ -67,29 +77,31 @@ export function BrowserShell() {
   const hiddenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (sessionState !== "live") return;
+    const clearTimer = () => {
+      if (hiddenTimer.current) {
+        clearTimeout(hiddenTimer.current);
+        hiddenTimer.current = null;
+      }
+    };
     const onChange = () => {
+      // Always clear before setting — fix racekondition where snabba flikbyten
+      // staplade flera timers.
+      clearTimer();
       if (document.visibilityState === "hidden") {
         hiddenTimer.current = setTimeout(() => {
           if (runId) {
             void stopFn({ data: { runId } });
           }
         }, HIDDEN_FREEZE_MS);
-      } else {
-        if (hiddenTimer.current) {
-          clearTimeout(hiddenTimer.current);
-          hiddenTimer.current = null;
-        }
       }
     };
     document.addEventListener("visibilitychange", onChange);
     return () => {
       document.removeEventListener("visibilitychange", onChange);
-      if (hiddenTimer.current) {
-        clearTimeout(hiddenTimer.current);
-        hiddenTimer.current = null;
-      }
+      clearTimer();
     };
   }, [sessionState, runId, stopFn]);
+
 
   const hostname = useMemo(() => {
     try { return new URL(url).hostname; } catch { return url; }
@@ -98,10 +110,11 @@ export function BrowserShell() {
   const handleRun = useCallback(async (nextUrl: string) => {
     setUrl(nextUrl);
     setSessionState("live");
-    setLiveStartedAt(Date.now());
+    setLiveStartedAt(null); // wait for session_started event
     setStatusMessage(undefined);
     setLiveUrl(null);
     setRunId(null);
+    setFrozen(null); // drop previous snapshot so a crashed new run can't show stale data
     try {
       const res = await startFn({ data: { url: nextUrl } });
       setRunId(res.runId);
@@ -113,6 +126,7 @@ export function BrowserShell() {
       setLiveStartedAt(null);
     }
   }, [startFn]);
+
 
   const handleStop = useCallback(async () => {
     if (!runId) return;
