@@ -135,14 +135,36 @@ function CollectDetails({ data }: { data: CollectData }) {
           Download JSON
         </Button>
       </div>
+      {data.byCategory && Object.keys(data.byCategory).length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {(Object.entries(data.byCategory) as Array<[ElementCategory, number]>)
+            .sort((a, b) => b[1] - a[1])
+            .map(([cat, n]) => (
+              <span
+                key={cat}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium"
+              >
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ background: CATEGORY_COLORS[cat] }}
+                />
+                {CATEGORY_LABELS[cat]} · {n}
+              </span>
+            ))}
+        </div>
+      )}
       {preview.length > 0 && (
         <ul className="space-y-1">
           {preview.map((el, i) => {
             const bg = el.computedStyles?.backgroundColor;
             const fg = el.computedStyles?.color;
+            const catColor = el.category ? CATEGORY_COLORS[el.category] : undefined;
             return (
               <li key={i} className="flex items-center gap-2 truncate">
-                <span className="inline-flex h-4 w-5 shrink-0 items-center justify-center rounded bg-cyan-600 text-[10px] font-bold text-white">
+                <span
+                  className="inline-flex h-4 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"
+                  style={{ background: catColor ?? "#0891b2" }}
+                >
                   {i + 1}
                 </span>
                 {(bg || fg) && (
@@ -165,6 +187,7 @@ function CollectDetails({ data }: { data: CollectData }) {
           })}
         </ul>
       )}
+
     </div>
   );
 }
