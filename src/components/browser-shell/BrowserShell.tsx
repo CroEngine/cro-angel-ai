@@ -99,8 +99,14 @@ export function BrowserShell() {
         onRun={handleRun}
         onStop={handleStop}
       />
-      <Viewport liveUrl={liveUrl} ended={sessionEnded} onClose={handleCloseSession} />
-      <ConsolePanel events={events} />
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-h-0 flex-1 lg:w-1/2 lg:border-r lg:border-border">
+          <Viewport liveUrl={liveUrl} ended={sessionEnded} onClose={handleCloseSession} />
+        </div>
+        <div className="flex min-h-0 flex-1 lg:w-1/2">
+          <ConsolePanel events={events} />
+        </div>
+      </div>
     </div>
   );
 }
