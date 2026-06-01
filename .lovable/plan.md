@@ -1,64 +1,97 @@
-# Cleanup + UX-fix: enhetlig vy
+# Migrera till Stagehand/Playwright via Browserbase
 
-## Kärnproblem (ditt)
-Före Run visar iframen direkt målsidan (`https://glutenforum.se/`) inifrån vår sandbox-iframe. Under Run visar samma iframe Browserbase live-debuggern (chrome-toolbar, helsida). Det är två helt olika vyer — förvirrande.
+## Mål
+All test-exekvering ska gå via Stagehand (eller Playwright direkt). Ingen egen CDP-WebSocket-kod kvar.
 
-## Lösning på vyn
-**Skippa den statiska för-vyn helt.** Iframen renderas bara när det finns en `liveUrl`. Innan dess: en lugn empty-state ("Click Run tests to launch a Browserbase session"). Då finns det bara *en* vy och den är alltid Browserbase.
+## Stoppregel
+**Ingen UI- eller feature-utveckling sker förrän Steg 1 (runtime-spike) är avgjord.** Risk: vi designar runt en motor som inte kan köras i workerd.
 
-Bonus: vi slutar ladda godtyckliga tredjepartssajter i vår egen sandbox-iframe (säkrare och slipper X-Frame-Options/CSP-fel som ändå hindrar många sidor från att laddas direkt).
+---
 
-## Övriga code-review-fynd
+## Steg 1 — Runtime spike (tvådelad)
 
-### 1. `idleAfterLoad` är skör (BrowserShell.tsx:25)
-Detekteras genom att stringmatcha `"navigation complete"` i log-meddelanden. Om vi någonsin ändrar texten går pillen sönder.
-**Fix:** emit ett dedikerat event `state` med `{ phase: "idle" }` från orchestratorn när navigeringen är klar, och lyssna på det istället.
+Avgör om Cloudflare Workers (workerd) klarar Playwright och/eller Stagehand när de bara används som CDP-klient mot en redan-startad Browserbase-session.
 
-### 2. ConsolePanel-tidsstämpel (ConsolePanel.tsx:54)
-`fmtTime(ev.data.ts)` — SSE-routen sätter `ts` i data (`{ ...event.data, ts: event.ts }`), så det fungerar faktiskt. ✅ Inget att fixa, jag missförstod först.
+### Spike A — `playwright-core` + `chromium.connectOverCDP(connectUrl)`
+1. `bun add playwright-core`.
+2. Ny serverfunktion `spikePlaywright()` som:
+   - Skapar Browserbase-session (befintlig `createSession`).
+   - `const browser = await chromium.connectOverCDP(session.connectUrl)`.
+   - `const page = (await browser.contexts())[0].pages()[0] ?? await ...newPage()`.
+   - `await page.goto("https://glutenforum.se")`, läs `await page.title()`.
+   - Stäng session.
+3. Anropa via `invoke-server-function`, läs `server-function-logs`.
 
-### 3. UrlBar-decoration (UrlBar.tsx:42–50, 81–88)
-Back/forward/pointer/hand-knapparna är dummy. Antingen ta bort dem eller markera disabled. **Fix:** sätt `disabled` på dem så de inte ser klickbara ut.
+### Spike B — `@browserbasehq/stagehand` med `env: "BROWSERBASE"`
+1. `bun add @browserbasehq/stagehand`.
+2. Ny serverfunktion `spikeStagehand()` som:
+   - `new Stagehand({ env: "BROWSERBASE", apiKey: process.env.BROWSERBASE_API_KEY, projectId: process.env.BROWSERBASE_PROJECT_ID, browserbaseSessionID: session.id })`.
+   - `await stagehand.init()`.
+   - `await stagehand.page.goto("https://glutenforum.se")`.
+   - Eventuellt prova en `stagehand.page.act("scroll to footer")` för att bekräfta att Model Gateway funkar via Browserbase-nyckeln (ingen separat OpenAI/Anthropic-key).
+   - Stäng.
+3. Anropa via `invoke-server-function`, läs `server-function-logs`.
 
-### 4. TabStrip är statisk
-Bara titel + ett dött X. För Slice 2.1 ok — låt stå.
+### Beslutsgrind
+| A | B | Beslut |
+|---|---|--------|
+| ✅ | ✅ | Kör **Stagehand** i Worker (AI-primitiver + Playwright-API). Gå till Steg 2. |
+| ✅ | ❌ | Kör **Playwright-only** i Worker. Bygg step-DSL utan AI-primitiver tills vidare. Gå till Steg 2 med justerad step-modell. |
+| ❌ | ❌ | **Flytta test-exekvering till en separat Node-runtime** (egen tjänst, eller använd Browserbases Agent API om det matchar våra behov). Ny mini-plan skrivs då. |
+| ❌ | ✅ | Osannolikt — i så fall kör Stagehand. |
 
-### 5. Edit-URL nollar `liveUrl` (BrowserShell.tsx:93–95)
-Om man ändrar URL under en pågående körning råkar man *inte* nolla liveUrl (bra), men sandbox-iframens `reloadKey` triggas ändå vilket är meningslöst när vi visar Browserbase. **Fix:** när vi tar bort statiska för-vyn försvinner `reloadKey` helt — onödig state.
+### Vanliga fel att tolka korrekt
+- `__dirname is not defined` / `[unenv] X is not implemented` → Node-only import. Räknas som ❌ för det biblioteket.
+- 401 från Browserbase → secret-problem, inte runtime — fixa och kör om.
+- Timeout i `connectOverCDP` → WS-transport ok men anslutning hängde; kör om / kolla `connectUrl`.
 
-### 6. Hård 5 min timeout (orchestrator.server.ts:28)
-OK för prototyp, men det finns ingen UI-feedback när den slår in. Logevent säger "hard_timeout" via done-event. **Fix:** låt UrlBar visa det via `statusMessage` — redan gjort via `done`-grenen. ✅
+### Secrets
+Behåll: `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID` (redan finns).
+Vi använder Browserbase Model Gateway för Stagehands AI-anrop → **ingen** separat OpenAI/Anthropic-secret behövs.
+Lovable AI Gateway lämnas utanför detta jobb.
 
-### 7. Process-lokal run-registry (orchestrator.server.ts:26)
-Funkar bara inom en Worker-instans. Cloudflare kan rotera. Dokumenterat i fil-kommentaren, ok för Slice 2.1.
+---
 
-## Ändringar
+## Steg 2 — Byt ut motorn (utförs efter spike-beslut)
 
-**`src/components/browser-shell/Viewport.tsx`**
-- Ta bort `url` och `reloadKey` props.
-- Om `liveUrl` saknas: rendera empty-state (centrerad text + Play-ikon, muted styling, design-tokens).
-- Om `liveUrl` finns: rendera iframe som idag, med "live · Browserbase"-badgen.
+### Nya filer
+- **`src/lib/tests/engine.server.ts`** — tunn wrapper:
+  ```ts
+  export async function runSteps(sessionId: string, steps: Step[], opts: {
+    onEvent: (e: EngineEvent) => void;
+    signal: AbortSignal;
+  }): Promise<void>
+  ```
 
-**`src/components/browser-shell/BrowserShell.tsx`**
-- Ta bort `reloadKey`-state och `onReload`-handler för iframen (reload-knappen i UrlBar blir disabled, se nedan).
-- Skicka bara `liveUrl` till `<Viewport />`.
-- Lyssna på nytt `state`-event för `idleAfterLoad` istället för stringmatchning.
+### Step-modell (initial)
+```ts
+type Step =
+  | { kind: "goto"; url: string }
+  | { kind: "click"; selector: string }          // Playwright
+  | { kind: "fill"; selector: string; value: string }
+  | { kind: "assertText"; text: string }
+  | { kind: "wait"; ms: number }
+  // Endast om Stagehand-vägen valdes:
+  | { kind: "act"; instruction: string }
+  | { kind: "extract"; instruction: string }
+  | { kind: "observe"; instruction: string };
+```
 
-**`src/components/browser-shell/UrlBar.tsx`**
-- `disabled` på back/forward/reload/pointer/hand-knapparna (de är icke-funktionella nu).
-- Ta bort `onReload`-prop.
-
-**`src/lib/tests/orchestrator.server.ts`**
-- Lägg till `"state"` i `RunEventType`.
-
-**`src/lib/tests/run.functions.ts`**
-- När navigeringen är klar: emit `state` med `{ phase: "idle" }` (behåll log-raden som idag för historiken).
-
-**`src/components/browser-shell/hooks/useTestStream.ts`**
-- Lägg till `es.addEventListener("state", handle("state"))`.
+### Ändringar i befintlig kod
+- **`browserbase.server.ts`** — behåll `createSession`/`closeSession`. Ta bort `navigateViaCDP` när Steg 2 är klart och verifierat.
+- **`run.functions.ts`** — `startTestRun` tar `{ url, steps }`. Hårdkodad default-test tills UI-step-editor finns: `goto → wait 500ms → assertText("Glutenforum")`.
+- **`orchestrator.server.ts`** — nya event-typer: `step_started`, `step_passed`, `step_failed` (data: `{ index, kind, summary, error? }`).
+- **`useTestStream.ts`** — lyssna på de nya eventen.
+- **`ConsolePanel.tsx`** — rendera step-events tydligt (✓/✗ prefix + steg-index).
+- **`BrowserShell.tsx`** — `idleAfterLoad` ersätts av terminal `done` (alla steg klara eller första fail).
 
 ## Verifiering
-- Före Run: tom, lugn vy med call-to-action. Ingen iframe.
-- Run: pill `connecting → running → idle`. Live-vyn fyller området. Endast en vy hela tiden.
-- Stop: pill `done`. Live-vyn försvinner och empty-state återkommer.
-- Reload-knappen i URL-baren är synligt disabled.
+- Spike-funktioner returnerar 200 och loggar visar lyckad navigering via valt bibliotek.
+- Default-testet kör tre steg och visar tre step-events i konsolen.
+- Live-iframen visar sidan kontinuerligt under hela körningen.
+- `navigateViaCDP` är borttagen ur kodbasen.
+
+## Vad detta plan **inte** löser (medvetet uppskjutet)
+- UI för att skapa/redigera tester (nästa slice).
+- Persistens i DB (process-lokalt registry kvar).
+- Multi-user/auth.
