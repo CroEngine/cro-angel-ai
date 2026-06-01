@@ -258,6 +258,83 @@ function interactionFindings(c: CollectLike): Finding[] {
   return out;
 }
 
+function structureFindings(a: PageAuditLike): Finding[] {
+  const out: Finding[] = [];
+  const sections = a.sections ?? [];
+  if (sections.length === 0) return out;
+  const summary = sections
+    .map((s) => s.kind)
+    .reduce<Record<string, number>>((acc, k) => ((acc[k] = (acc[k] ?? 0) + 1), acc), {});
+  out.push({
+    category: "ux",
+    severity: "info",
+    label: "Sections detected",
+    detail: Object.entries(summary).map(([k, v]) => `${k} ${v}`).join(" · "),
+  });
+  for (const s of sections.slice(0, 10)) {
+    const bits = [s.kind];
+    if (s.aboveFold) bits.push("above fold");
+    if (s.repeatedChildren >= 3) bits.push(`×${s.repeatedChildren} repeated`);
+    if (s.headingText) bits.push(`"${s.headingText.slice(0, 50)}"`);
+    out.push({
+      category: "ux",
+      severity: "info",
+      label: s.selector,
+      detail: bits.join(" · "),
+    });
+  }
+  return out;
+}
+
+function trustFindings(a: PageAuditLike): Finding[] {
+  const out: Finding[] = [];
+  const sum = a.trustSummary;
+  const signals = a.trustSignals ?? [];
+  if (!sum) return out;
+
+  if (sum.total === 0) {
+    out.push({ category: "cro", severity: "warn", label: "Trust signals", detail: "none detected" });
+    return out;
+  }
+
+  out.push({
+    category: "cro",
+    severity: "info",
+    label: "Trust signals",
+    detail: `${sum.total} total · ${sum.aboveFold} above fold`,
+  });
+
+  if (sum.aboveFold === 0) {
+    out.push({ category: "cro", severity: "warn", label: "Trust above fold", detail: "none — first impression lacks proof" });
+  }
+
+  const byType = Object.entries(sum.byType).sort((a, b) => b[1] - a[1]);
+  if (byType.length > 0) {
+    out.push({
+      category: "cro",
+      severity: "info",
+      label: "By type",
+      detail: byType.map(([k, v]) => `${k.replace(/_/g, " ")} ×${v}`).join(" · "),
+    });
+  }
+
+  if (!sum.byType["contact_info"]) {
+    out.push({ category: "cro", severity: "warn", label: "Contact info", detail: "no tel/email/address found" });
+  }
+
+  for (const s of signals.slice(0, 5)) {
+    out.push({
+      category: "cro",
+      severity: "info",
+      label: s.type.replace(/_/g, " "),
+      detail: `${s.section}${s.aboveFold ? " · above fold" : ""} · "${s.text.slice(0, 60)}"`,
+    });
+  }
+  return out;
+}
+
+
+
 export function buildPageReports(events: StreamEvent[]): PageReport[] {
   const reports: PageReport[] = [];
   let current: PageReport | null = null;
