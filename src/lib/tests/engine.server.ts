@@ -2,6 +2,29 @@
 
 import { Stagehand } from "@browserbasehq/stagehand";
 
+function readJpegDimensions(buf: Buffer): { w: number; h: number } | null {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i < buf.length - 9) {
+    if (buf[i] !== 0xff) { i++; continue; }
+    const marker = buf[i + 1];
+    if (marker === 0xff) { i++; continue; }
+    const isSOF =
+      (marker >= 0xc0 && marker <= 0xc3) ||
+      (marker >= 0xc5 && marker <= 0xc7) ||
+      (marker >= 0xc9 && marker <= 0xcb) ||
+      (marker >= 0xcd && marker <= 0xcf);
+    if (isSOF) {
+      const h = buf.readUInt16BE(i + 5);
+      const w = buf.readUInt16BE(i + 7);
+      return { w, h };
+    }
+    const segLen = buf.readUInt16BE(i + 2);
+    i += 2 + segLen;
+  }
+  return null;
+}
+
 export type Step =
   | { kind: "goto"; url: string }
   | { kind: "wait"; ms: number }
