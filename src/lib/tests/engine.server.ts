@@ -738,26 +738,104 @@ const COLLECT_SCRIPT = `(() => {
 
   // Intent ordlistor — partial match, case-insensitive
   const INTENT_RX = {
-    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|subscribe|request|trial|checkout|order|beställ|köp|boka|prova|kom igång)/i,
-    information: /(learn|read|explore|see how|how|why|about|läs|utforska|så funkar)/i,
-    navigation: /(login|log in|sign in|account|menu|home|logga in|mina sidor|hem)/i,
+    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ner|lägg i (varu)?kund?korg|lägg till|ansök|bidra)/i,
+    information: /(learn|read|explore|see how|how |why |about |läs|utforska|så funkar|mer info)/i,
+    navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inställningar)/i,
     social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
-    utility: /(search|sök|language|språk|cookie|accept|godkänn|contact|kontakt)/i,
+    utility: /(search|sök|language|språk|cookie|accept|godkänn|contact|kontakt|help|hjälp|faq)/i,
+    engagement: /(like|love|save|bookmark|share|comment|reply|follow|subscribe|upvote|downvote|gilla|spara|kommentar|svara|följ|prenumerera|rösta|röst)/i,
   };
 
-  function classifyIntent(el, text) {
+  const SOCIAL_HOST_RX = /(facebook|instagram|linkedin|twitter|x\\.com|youtube|tiktok|pinterest|snapchat|reddit|threads|mastodon)\\./i;
+
+  function classifyIntent(el, text, category, rect) {
     const tag = el.tagName;
     const type = (el.getAttribute('type') || '').toLowerCase();
     const isFormSubmit = (tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit');
+    if (isFormSubmit) return 'conversion';
+
+    const href = (el.getAttribute('href') || '');
+    if (href.startsWith('tel:') || href.startsWith('mailto:')) return 'utility';
+    if (SOCIAL_HOST_RX.test(href)) return 'social';
+
+    // data-* attribute signals (data-event, data-cta, data-track, data-analytics-*)
+    const attrBag = [];
+    for (const a of Array.from(el.attributes)) {
+      if (a.name.startsWith('data-')) attrBag.push(a.value || '');
+    }
+    const attrStr = attrBag.join(' ');
+
     const t = (text || '').trim();
-    if (!t) return isFormSubmit ? 'conversion' : 'unknown';
-    if (INTENT_RX.conversion.test(t)) return 'conversion';
-    if (INTENT_RX.navigation.test(t)) return 'navigation';
-    if (INTENT_RX.social.test(t)) return 'social';
-    if (INTENT_RX.utility.test(t)) return 'utility';
-    if (INTENT_RX.information.test(t)) return 'information';
-    return isFormSubmit ? 'conversion' : 'unknown';
+    const probe = t + ' ' + attrStr;
+
+    if (INTENT_RX.conversion.test(probe)) return 'conversion';
+    if (INTENT_RX.engagement.test(probe)) return 'engagement';
+    if (INTENT_RX.navigation.test(probe)) return 'navigation';
+    if (INTENT_RX.social.test(probe)) return 'social';
+    if (INTENT_RX.utility.test(probe)) return 'utility';
+    if (INTENT_RX.information.test(probe)) return 'information';
+
+    // Position-based fallback: above-fold primary CTA without keyword match → likely conversion.
+    if (category === 'cta_primary' && rect.top < window.innerHeight) return 'conversion';
+
+    // Text-less icon buttons in a horizontal row of ≥3 siblings → engagement toolbar.
+    if (!t && category === 'icon_button') {
+      const parent = el.parentElement;
+      if (parent) {
+        const siblings = Array.from(parent.children).filter((c) =>
+          c.tagName === 'BUTTON' || c.tagName === 'A' || (c.getAttribute && c.getAttribute('role') === 'button')
+        );
+        if (siblings.length >= 3) return 'engagement';
+      }
+    }
+
+    return 'unknown';
   }
+
+  // Section detection — walk ancestors to find the structural container.
+  const viewportH = window.innerHeight || 720;
+  function detectSection(el, rect) {
+    let p = el.parentElement;
+    let inHeader = false, inFooter = false, inNav = false, inMain = false, inAside = false;
+    let cardsAncestor = null;
+    while (p && p !== document.body) {
+      const tag = p.tagName;
+      const role = (p.getAttribute && p.getAttribute('role') || '').toLowerCase();
+      if (tag === 'NAV' || role === 'navigation') inNav = true;
+      else if (tag === 'HEADER' || role === 'banner') inHeader = true;
+      else if (tag === 'FOOTER' || role === 'contentinfo') inFooter = true;
+      else if (tag === 'MAIN' || role === 'main') inMain = true;
+      else if (tag === 'ASIDE') inAside = true;
+
+      // Cards heuristic: container with ≥3 direct children of same tagName + similar height.
+      if (!cardsAncestor && p.children && p.children.length >= 3) {
+        const kids = Array.from(p.children);
+        const firstTag = kids[0].tagName;
+        const sameTag = kids.filter((c) => c.tagName === firstTag);
+        if (sameTag.length >= 3) {
+          const heights = sameTag.slice(0, 4).map((c) => c.getBoundingClientRect().height).filter((h) => h > 30);
+          if (heights.length >= 3) {
+            const avg = heights.reduce((s, v) => s + v, 0) / heights.length;
+            const allSimilar = heights.every((h) => Math.abs(h - avg) / avg < 0.4);
+            if (allSimilar) cardsAncestor = p;
+          }
+        }
+      }
+      p = p.parentElement;
+    }
+
+    if (inFooter) return 'footer';
+    if (inNav) return 'nav';
+    if (inHeader) return 'header';
+    if (cardsAncestor) return 'cards';
+    // Hero: above the fold + element is in the first big block of <main> (or just first 1.2 viewports).
+    const docTop = rect.top + window.scrollY;
+    if (docTop < viewportH * 1.2 && inMain) return 'hero';
+    if (docTop < viewportH * 1.0 && !inAside) return 'hero';
+    return 'content';
+  }
+
+
 
   // WCAG relative luminance + contrast ratio
   function parseRgb(s) {
