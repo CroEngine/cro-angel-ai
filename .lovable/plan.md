@@ -1,102 +1,44 @@
-## Mål
+## Diagnos
 
-Få overlays att sitta exakt på rätt plats i Frozen-vyn genom att använda screenshotens faktiska pixeldimensioner som referens — inte våra egna mätningar av `innerWidth` / `scrollHeight` som kan glida ifrån vad Playwright faktiskt renderar.
+I screenshotbilden (slutet av sidan) ligger flera badges stackade på fel platser. Övre delen av sidan ser rätt ut.
 
-## Ändring (endast `src/lib/tests/engine.server.ts`)
+Det här är ett klassiskt symptom på **lat-laddat innehåll som triggas av Playwrights fullPage-screenshot**.
 
-### 1. Lägg till JPEG-dimensionsläsare
+Just nu i `engine.server.ts`:
 
-En liten hjälpare högst upp i filen (efter imports):
+1. Vi skrollar 0→25→50→75→100→0 för att trigga lazy content.
+2. Vi kör `COLLECT_SCRIPT` → läser `getBoundingClientRect()` på alla element. Dokumenthöjd just nu = `H1`.
+3. Vi tar `page.screenshot({ fullPage: true })`. **Playwright skrollar själv** medan den skär bilden i remsor → fler IntersectionObservers fyrar → bilder/sektioner laddar in → dokumenthöjd växer till `H2 > H1`. JPEG-höjden vi läser är `H2`.
+4. I `Viewport.tsx` mappar vi `(rect.y / vp.h)` mot bilden. Eftersom `vp.h = H2` men rects mättes mot `H1`, blir alla y-värden **proportionellt för små** — och felet växer linjärt med y. Övre delen ser okej ut, slutet glider iväg.
 
-```ts
-function readJpegDimensions(buf: Buffer): { w: number; h: number } | null {
-  // JPEG börjar med FFD8. Scanna efter SOFn-markörer:
-  // 0xFFC0–C3, C5–C7, C9–CB, CD–CF (alla utom DHT/JPG/DAC).
-  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
-  let i = 2;
-  while (i < buf.length - 9) {
-    if (buf[i] !== 0xff) { i++; continue; }
-    const marker = buf[i + 1];
-    // hoppa över padding-FF
-    if (marker === 0xff) { i++; continue; }
-    // SOFn-markörer
-    const isSOF =
-      (marker >= 0xc0 && marker <= 0xc3) ||
-      (marker >= 0xc5 && marker <= 0xc7) ||
-      (marker >= 0xc9 && marker <= 0xcb) ||
-      (marker >= 0xcd && marker <= 0xcf);
-    if (isSOF) {
-      const h = buf.readUInt16BE(i + 5);
-      const w = buf.readUInt16BE(i + 7);
-      return { w, h };
-    }
-    // hoppa över segment
-    const segLen = buf.readUInt16BE(i + 2);
-    i += 2 + segLen;
-  }
-  return null;
-}
-```
+## Fix (endast `src/lib/tests/engine.server.ts`)
 
-Ren JS, inga deps.
+Byt ordning + ankra mätningen mot samma höjd som screenshotten:
 
-### 2. Skriv om screenshot-blocket (rad ~224–243)
+1. **Skrolla precis som idag** (0→100→0) för att förvärma lazy content.
+2. **Ta screenshotten först** (`fullPage: true`). Detta tvingar Playwright att skrolla igenom hela sidan och låter all kvarvarande lazy content mounta.
+3. **Skrolla tillbaka till 0** och `await new Promise(res => setTimeout(res, 300))` för att låta layout stabilisera.
+4. **Kör `COLLECT_SCRIPT` därefter** — nu är dokumenthöjden = `H2` (samma som JPEG-höjden).
+5. Läs JPEG-dimensioner som idag och sätt `viewport: vp`.
 
-```ts
-let screenshot: { dataUrl: string; viewport: { w: number; h: number } } | undefined;
-try {
-  const buf = await page.screenshot({ type: "jpeg", quality: 50, fullPage: true });
+Resultatet: `rect.y` och `vp.h` mäter samma värld → overlays sitter rätt hela vägen ner.
 
-  // Försök läsa faktiska bildmått ur JPEG-bufferten — autoritativ källa.
-  const dims = readJpegDimensions(Buffer.from(buf));
-  let vp: { w: number; h: number };
-  if (dims) {
-    vp = dims;
-  } else {
-    // Fallback: våra egna mätningar.
-    const win = (await page.evaluate<{ w: number; h: number }>(
-      "({ w: window.innerWidth, h: window.innerHeight })",
-    )) ?? { w: 1280, h: 720 };
-    const docH = (await page.evaluate<number>(
-      "document.documentElement.scrollHeight",
-    )) ?? win.h;
-    vp = { w: win.w, h: Math.max(docH, win.h) };
-  }
+## Bonusfix i samma patch
 
-  const b64 = Buffer.from(buf).toString("base64");
-  screenshot = {
-    dataUrl: `data:image/jpeg;base64,${b64}`,
-    viewport: vp,
-  };
+`OVERLAY_FN` (live-overlay i Browserbase) gör samma misstag — den mäter `getBoundingClientRect` direkt vid anrop. Eftersom den ritas EFTER att vi skrollat tillbaka till 0, är det ok idag. Lämnas orört.
 
-  const kb = Math.round(buf.length / 1024);
-  onEvent({ type: "log", message: `screenshot captured (${kb}kb, ${vp.w}×${vp.h}${dims ? "" : " · fallback dims"})` });
+## Inget annat
 
-  // Varning om payload blir orimligt stor — signal för framtida storage-upload.
-  if (buf.length > 6 * 1024 * 1024 || vp.h > 10000) {
-    onEvent({ type: "log", message: `warn: screenshot is large (${kb}kb, ${vp.h}px tall) — consider storage-upload soon` });
-  }
-} catch (e) {
-  onEvent({ type: "log", message: `screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
-}
-```
-
-### 3. Det här tas bort
-
-- 8000-clampen på höjden (Playwright tar ändå hela sidan — bättre att matcha verkligheten + varna).
-- Egna `window.innerWidth` / `scrollHeight`-mätningarna som primär källa (degraderas till fallback).
-
-## Inga andra filer
-
-`Viewport.tsx`, `BrowserShell.tsx`, `UrlBar.tsx`, hooks, run.functions, collect-koden: orörda. Overlay-renderingen är redan korrekt så länge `viewport.w/h` matchar bilden.
+- `Viewport.tsx`, hooks, run.functions, orchestrator: orörda.
+- `readJpegDimensions` + screenshot-fallback från förra patchen behålls.
 
 ## Trade-offs
 
-- Tappar 8000-clamp som säkerhetsnät. Mycket långa sidor (10k+ px) ger stora SSE-payloads.
-- Mitigeras av ny varningslogg → vi ser direkt när det är dags för storage-upload-patchen.
+- En extra `setTimeout(300ms)` efter screenshot. Förlorar ~0.3s per collect-steg, försumbart.
+- Om sidan har content som *bara* monterar under Playwrights fullPage-skroll och försvinner när vi skrollar tillbaka, hamnar de utanför vår collect. Mycket ovanligt; accepteras.
 
 ## Uppföljningar (inte här)
 
-- Storage-upload av screenshots, skicka URL i SSE istället för data-URL.
-- Klickbara overlays (CRO-inspector).
-- Toggle "Fit översikt" / "100%".
+- Klickbara/hovrade badges i Frozen-vyn för debugging.
+- Cluster badges när många icon-buttons sitter tätt (recipe cards).
+- Storage-upload av screenshots.
