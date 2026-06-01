@@ -58,10 +58,10 @@ export function UrlBar({ value, runState, statusMessage, idleAfterLoad, onSubmit
         />
       </form>
 
-      <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", pillStyles[runState])}>
+      <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", runState === "running" && idleAfterLoad ? "bg-sky-500/15 text-sky-600 dark:text-sky-400" : pillStyles[runState])}>
         {runState === "idle" && "idle"}
         {runState === "connecting" && "connecting…"}
-        {runState === "running" && "running"}
+        {runState === "running" && (idleAfterLoad ? "idle" : "running")}
         {runState === "done" && (statusMessage ?? "done")}
         {runState === "error" && (statusMessage ?? "error")}
       </span>
