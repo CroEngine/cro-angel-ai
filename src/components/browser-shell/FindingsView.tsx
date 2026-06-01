@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import type { StreamEvent } from "./hooks/useTestStream";
 import {
   buildPageReports,
-  countBySeverity,
   type Finding,
   type FindingCategory,
   type PageReport,
@@ -32,15 +31,9 @@ function downloadJson(filename: string, payload: unknown) {
 }
 
 function FindingRow({ f }: { f: Finding }) {
-  const icon =
-    f.severity === "warn" || f.severity === "error" ? "⚠" : "✓";
-  const tone =
-    f.severity === "warn" || f.severity === "error"
-      ? "text-amber-700 dark:text-amber-400"
-      : "text-muted-foreground";
   return (
     <li className="flex items-baseline gap-2 py-0.5">
-      <span className={"shrink-0 text-[11px] " + tone}>{icon}</span>
+      <span className="shrink-0 text-[11px] text-muted-foreground">·</span>
       <span className="text-foreground">{f.label}</span>
       {f.detail && (
         <span className="truncate text-muted-foreground">— {f.detail}</span>
@@ -58,7 +51,6 @@ function CategorySection({
 }) {
   const [open, setOpen] = useState(true);
   if (findings.length === 0) return null;
-  const warns = findings.filter((f) => f.severity !== "info").length;
   return (
     <div>
       <button
@@ -70,11 +62,6 @@ function CategorySection({
         />
         {CATEGORY_LABELS[category]}
         <span className="ml-1 text-muted-foreground">({findings.length})</span>
-        {warns > 0 && (
-          <span className="ml-1 rounded bg-amber-500/15 px-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-            {warns} ⚠
-          </span>
-        )}
       </button>
       {open && (
         <ul className="ml-4 space-y-0 font-mono text-[11px]">
@@ -88,7 +75,6 @@ function CategorySection({
 }
 
 function PageCard({ report }: { report: PageReport }) {
-  const { warns, checks } = countBySeverity(report);
   const grouped = useMemo(() => {
     const g: Partial<Record<FindingCategory, Finding[]>> = {};
     for (const f of report.findings) {
@@ -104,13 +90,8 @@ function PageCard({ report }: { report: PageReport }) {
           <div className="truncate font-mono text-xs font-semibold text-foreground">
             {report.url}
           </div>
-          <div className="mt-0.5 flex items-center gap-3 text-[10px] text-muted-foreground">
-            {warns > 0 && (
-              <span className="text-amber-700 dark:text-amber-400">
-                ⚠ {warns} issues
-              </span>
-            )}
-            <span>✓ {checks} checks</span>
+          <div className="mt-0.5 text-[10px] text-muted-foreground">
+            {report.findings.length} datapunkter
           </div>
         </div>
         {Boolean(report.rawPageAudit || report.rawCollect) && (
@@ -140,7 +121,7 @@ function PageCard({ report }: { report: PageReport }) {
         ))}
         {report.findings.length === 0 && (
           <div className="text-[11px] text-muted-foreground">
-            Inga findings än — väntar på pageAudit/collect…
+            Väntar på data…
           </div>
         )}
       </div>
@@ -154,7 +135,7 @@ export function FindingsView({ events }: { events: StreamEvent[] }) {
   if (reports.length === 0) {
     return (
       <div className="px-4 py-3 text-xs text-muted-foreground">
-        Inga sidor analyserade än. Findings dyker upp när första{" "}
+        Inga sidor analyserade än. Data dyker upp när första{" "}
         <span className="font-medium text-foreground">goto</span> körts.
       </div>
     );
