@@ -218,32 +218,10 @@ export async function runSteps(
               onEvent({ type: "log", message: `scroll failed: ${e instanceof Error ? e.message : String(e)}` });
             }
 
-            const elements = await page.evaluate(COLLECT_SCRIPT);
-            const all = elements as CollectedElement[];
-            const filtered = filterCollected(all, step.target);
-            const byCategory: Record<string, number> = {};
-            const intentBreakdown: Record<string, number> = {};
-            let aboveFold = 0;
-            let primaryCtaCount = 0;
-            let competingAboveFold = 0;
-            for (const el of filtered) {
-              byCategory[el.category] = (byCategory[el.category] ?? 0) + 1;
-              intentBreakdown[el.intent] = (intentBreakdown[el.intent] ?? 0) + 1;
-              if (el.position.viewportZone === "above_fold") aboveFold++;
-              if (el.category === "cta_primary" && el.intent === "conversion") primaryCtaCount++;
-              if (
-                (el.category === "cta_primary" || el.category === "cta_secondary" || el.category === "form_submit") &&
-                el.position.viewportZone === "above_fold" &&
-                el.intent !== "navigation"
-              ) competingAboveFold++;
-            }
-            const topVisualWeight = [...filtered]
-              .sort((a, b) => b.visualWeight.score - a.visualWeight.score)
-              .slice(0, 5)
-              .map((el) => ({ selector: el.selector, text: el.text, score: el.visualWeight.score }));
-
-            // Capture screenshot BEFORE drawing the live overlay, so the client
-            // can render its own overlay on a clean image (and toggle it).
+            // 1) Take the screenshot FIRST. Playwright's fullPage capture
+            //    scrolls the page itself and may trigger more lazy content,
+            //    growing document height. We want our rect measurements to
+            //    happen against the SAME (final) document height as the image.
             let screenshot: { dataUrl: string; viewport: { w: number; h: number } } | undefined;
             try {
               const raw = await page.screenshot({ type: "jpeg", quality: 50, fullPage: true });
@@ -279,6 +257,37 @@ export async function runSteps(
               onEvent({ type: "log", message: `screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
             }
 
+            // 2) Scroll back to top and let layout settle before measuring rects.
+            try {
+              await page.evaluate("window.scrollTo({ top: 0, behavior: 'instant' })");
+              await new Promise((res) => setTimeout(res, 300));
+            } catch { /* ignore */ }
+
+            // 3) NOW run COLLECT_SCRIPT — document height matches the JPEG.
+            const elements = await page.evaluate(COLLECT_SCRIPT);
+            const all = elements as CollectedElement[];
+            const filtered = filterCollected(all, step.target);
+            const byCategory: Record<string, number> = {};
+            const intentBreakdown: Record<string, number> = {};
+            let aboveFold = 0;
+            let primaryCtaCount = 0;
+            let competingAboveFold = 0;
+            for (const el of filtered) {
+              byCategory[el.category] = (byCategory[el.category] ?? 0) + 1;
+              intentBreakdown[el.intent] = (intentBreakdown[el.intent] ?? 0) + 1;
+              if (el.position.viewportZone === "above_fold") aboveFold++;
+              if (el.category === "cta_primary" && el.intent === "conversion") primaryCtaCount++;
+              if (
+                (el.category === "cta_primary" || el.category === "cta_secondary" || el.category === "form_submit") &&
+                el.position.viewportZone === "above_fold" &&
+                el.intent !== "navigation"
+              ) competingAboveFold++;
+            }
+            const topVisualWeight = [...filtered]
+              .sort((a, b) => b.visualWeight.score - a.visualWeight.score)
+              .slice(0, 5)
+              .map((el) => ({ selector: el.selector, text: el.text, score: el.visualWeight.score }));
+
             // Subset for FrozenViewport overlay rendering.
             const overlayElements = filtered.map((el) => ({
               selector: el.selector,
@@ -293,6 +302,7 @@ export async function runSteps(
             } catch (e) {
               onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
             }
+
             data = {
               target: step.target,
               count: filtered.length,
