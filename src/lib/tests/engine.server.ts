@@ -2,6 +2,29 @@
 
 import { Stagehand } from "@browserbasehq/stagehand";
 
+function readJpegDimensions(buf: Buffer): { w: number; h: number } | null {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i < buf.length - 9) {
+    if (buf[i] !== 0xff) { i++; continue; }
+    const marker = buf[i + 1];
+    if (marker === 0xff) { i++; continue; }
+    const isSOF =
+      (marker >= 0xc0 && marker <= 0xc3) ||
+      (marker >= 0xc5 && marker <= 0xc7) ||
+      (marker >= 0xc9 && marker <= 0xcb) ||
+      (marker >= 0xcd && marker <= 0xcf);
+    if (isSOF) {
+      const h = buf.readUInt16BE(i + 5);
+      const w = buf.readUInt16BE(i + 7);
+      return { w, h };
+    }
+    const segLen = buf.readUInt16BE(i + 2);
+    i += 2 + segLen;
+  }
+  return null;
+}
+
 export type Step =
   | { kind: "goto"; url: string }
   | { kind: "wait"; ms: number }
@@ -223,20 +246,35 @@ export async function runSteps(
             // can render its own overlay on a clean image (and toggle it).
             let screenshot: { dataUrl: string; viewport: { w: number; h: number } } | undefined;
             try {
-              const vp = (await page.evaluate<{ w: number; h: number }>(
-                "({ w: window.innerWidth, h: window.innerHeight })",
-              )) ?? { w: 1280, h: 720 };
-              const rawFullH = (await page.evaluate<number>(
-                "document.documentElement.scrollHeight",
-              )) ?? vp.h;
-              const fullH = Math.min(Math.max(rawFullH, vp.h), 8000);
-              const buf = await page.screenshot({ type: "jpeg", quality: 50, fullPage: true });
-              const b64 = Buffer.from(buf).toString("base64");
+              const raw = await page.screenshot({ type: "jpeg", quality: 50, fullPage: true });
+              const buf = Buffer.from(raw);
+
+              const dims = readJpegDimensions(buf);
+              let vp: { w: number; h: number };
+              if (dims) {
+                vp = dims;
+              } else {
+                const win = (await page.evaluate<{ w: number; h: number }>(
+                  "({ w: window.innerWidth, h: window.innerHeight })",
+                )) ?? { w: 1280, h: 720 };
+                const docH = (await page.evaluate<number>(
+                  "document.documentElement.scrollHeight",
+                )) ?? win.h;
+                vp = { w: win.w, h: Math.max(docH, win.h) };
+              }
+
+              const b64 = buf.toString("base64");
               screenshot = {
                 dataUrl: `data:image/jpeg;base64,${b64}`,
-                viewport: { w: vp.w, h: fullH },
+                viewport: vp,
               };
-              onEvent({ type: "log", message: `screenshot captured (${Math.round(buf.length / 1024)}kb, fullPage ${vp.w}×${fullH})` });
+
+              const kb = Math.round(buf.length / 1024);
+              onEvent({ type: "log", message: `screenshot captured (${kb}kb, ${vp.w}×${vp.h}${dims ? "" : " · fallback dims"})` });
+
+              if (buf.length > 6 * 1024 * 1024 || vp.h > 10000) {
+                onEvent({ type: "log", message: `warn: screenshot is large (${kb}kb, ${vp.h}px tall) — consider storage-upload soon` });
+              }
             } catch (e) {
               onEvent({ type: "log", message: `screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
             }
