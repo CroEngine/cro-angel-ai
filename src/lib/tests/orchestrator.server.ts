@@ -84,7 +84,6 @@ export async function terminate(
   const run = runs.get(id);
   if (!run || run.terminated) return;
   run.terminated = true;
-  if (run.watchdog) clearTimeout(run.watchdog);
   if (run.hardTimeout) clearTimeout(run.hardTimeout);
   try {
     run.abort.abort();
