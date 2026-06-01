@@ -18,6 +18,7 @@ const stepSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("extract"), instruction: z.string().min(1) }),
   z.object({ kind: z.literal("observe"), instruction: z.string().min(1) }),
   z.object({ kind: z.literal("collect"), target: z.enum(["clickables", "buttons"]) }),
+  z.object({ kind: z.literal("pageAudit") }),
 ]);
 
 const inputSchema = z.object({
@@ -29,9 +30,11 @@ function defaultSteps(url: string): Step[] {
   return [
     { kind: "goto", url },
     { kind: "wait", ms: 500 },
+    { kind: "pageAudit" },
     { kind: "collect", target: "clickables" },
   ];
 }
+
 
 export const startTestRun = createServerFn({ method: "POST" })
   .inputValidator((input) => inputSchema.parse(input))

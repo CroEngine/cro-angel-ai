@@ -34,7 +34,8 @@ export type Step =
   | { kind: "act"; instruction: string }
   | { kind: "extract"; instruction: string }
   | { kind: "observe"; instruction: string }
-  | { kind: "collect"; target: CollectTarget };
+  | { kind: "collect"; target: CollectTarget }
+  | { kind: "pageAudit" };
 
 export type CollectTarget = "clickables" | "buttons";
 
@@ -55,7 +56,16 @@ export type ElementIntent =
   | "navigation"
   | "social"
   | "utility"
+  | "engagement"
   | "unknown";
+
+export type SectionKind =
+  | "nav"
+  | "header"
+  | "hero"
+  | "cards"
+  | "content"
+  | "footer";
 
 export type CollectedElement = {
   text: string;
@@ -63,6 +73,7 @@ export type CollectedElement = {
   selector: string;
   category: ElementCategory;
   intent: ElementIntent;
+  section: SectionKind;
   href: string | null;
   disabled: boolean;
   visible: boolean;
@@ -80,6 +91,9 @@ export type CollectedElement = {
     backgroundContrast: number;
     score: number;
   };
+  groupId?: string;
+  groupCount?: number;
+  groupedAway?: boolean;
   attributes: Record<string, string>;
   computedStyles: {
     color: string;
@@ -93,6 +107,40 @@ export type CollectedElement = {
     display: string;
   };
 };
+
+export type PageAuditData = {
+  url: string;
+  head: {
+    title: string;
+    description: string;
+    canonical: string;
+    lang: string;
+    viewport: string;
+    robots: string;
+    ogTitle: string;
+    ogDescription: string;
+    ogImage: string;
+    ogType: string;
+    ogUrl: string;
+    twitterCard: string;
+    twitterTitle: string;
+    twitterImage: string;
+  };
+  headings: {
+    h1Count: number;
+    h2Count: number;
+    h3Count: number;
+    hierarchy: Array<{ level: number; text: string; id: string }>;
+  };
+  images: { total: number; missingAlt: number; missingAltPct: number; missingDims: number; lazy: number };
+  links: { internal: number; external: number; nofollow: number; total: number };
+  schema: { count: number; types: string[] };
+  content: { wordCount: number; sections: number; articles: number };
+  robotsTxt: { exists: boolean; blocksAll: boolean; hasSitemap: boolean };
+  sitemap: { exists: boolean; urlCount: number };
+  flags: string[];
+};
+
 
 
 
@@ -113,7 +161,9 @@ function summarize(step: Step): string {
     case "extract": return `extract "${step.instruction}"`;
     case "observe": return `observe "${step.instruction}"`;
     case "collect": return `collect ${step.target}`;
+    case "pageAudit": return "pageAudit";
   }
+
 }
 
 export async function runSteps(
@@ -267,14 +317,23 @@ export async function runSteps(
             const elements = await page.evaluate(COLLECT_SCRIPT);
             const all = elements as CollectedElement[];
             const filtered = filterCollected(all, step.target);
+
+            // Group repeated controls (vote/save/share rows on feed cards etc.)
+            // so they don't dominate the aggregated stats. Marks duplicates with
+            // groupedAway=true; first occurrence keeps groupId+groupCount.
+            const groups = groupRepeatedControls(filtered);
+
             const byCategory: Record<string, number> = {};
             const intentBreakdown: Record<string, number> = {};
+            const bySection: Record<string, number> = {};
             let aboveFold = 0;
             let primaryCtaCount = 0;
             let competingAboveFold = 0;
             for (const el of filtered) {
+              if (el.groupedAway) continue; // dedupe from aggregates
               byCategory[el.category] = (byCategory[el.category] ?? 0) + 1;
               intentBreakdown[el.intent] = (intentBreakdown[el.intent] ?? 0) + 1;
+              bySection[el.section] = (bySection[el.section] ?? 0) + 1;
               if (el.position.viewportZone === "above_fold") aboveFold++;
               if (el.category === "cta_primary" && el.intent === "conversion") primaryCtaCount++;
               if (
@@ -284,11 +343,12 @@ export async function runSteps(
               ) competingAboveFold++;
             }
             const topVisualWeight = [...filtered]
+              .filter((el) => !el.groupedAway)
               .sort((a, b) => b.visualWeight.score - a.visualWeight.score)
               .slice(0, 5)
               .map((el) => ({ selector: el.selector, text: el.text, score: el.visualWeight.score }));
 
-            // Subset for FrozenViewport overlay rendering.
+            // Overlay still draws on ALL elements so user sees the real density.
             const overlayElements = filtered.map((el) => ({
               selector: el.selector,
               category: el.category,
@@ -303,17 +363,21 @@ export async function runSteps(
               onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
             }
 
+            const uniqueCount = filtered.filter((el) => !el.groupedAway).length;
             data = {
               target: step.target,
-              count: filtered.length,
+              count: uniqueCount,
+              totalCount: filtered.length,
               byCategory,
               summary: {
-                total: filtered.length,
+                total: uniqueCount,
                 aboveFold,
                 primaryCtaCount,
                 competingAboveFold,
                 topVisualWeight,
                 intentBreakdown,
+                bySection,
+                groups,
               },
               elements: filtered,
               overlayElements,
@@ -321,14 +385,79 @@ export async function runSteps(
             };
             onEvent({
               type: "log",
-              message: `collect ${step.target}: ${filtered.length} · ${aboveFold} above fold · ${primaryCtaCount} primary CTA · competing above fold: ${competingAboveFold}`,
+              message: `collect ${step.target}: ${uniqueCount} unique (${filtered.length} total) · ${aboveFold} above fold · ${primaryCtaCount} primary CTA · competing: ${competingAboveFold} · groups: ${groups.length}`,
             });
             break;
           }
 
+          case "pageAudit": {
+            try {
+              const raw = await page.evaluate(PAGE_AUDIT_SCRIPT);
+              const audit = raw as Omit<PageAuditData, "robotsTxt" | "sitemap" | "flags" | "url"> & { url: string };
+
+              // Fetch robots.txt + sitemap.xml from inside the page context (avoids Stagehand type gap on page.request).
+              const fetched = await page.evaluate(`
+                (async () => {
+                  const origin = location.origin;
+                  const out = { robots: null, sitemap: null };
+                  try {
+                    const r = await fetch(origin + '/robots.txt', { credentials: 'omit' });
+                    if (r.ok) out.robots = await r.text();
+                  } catch (e) {}
+                  try {
+                    const r = await fetch(origin + '/sitemap.xml', { credentials: 'omit' });
+                    if (r.ok) out.sitemap = await r.text();
+                  } catch (e) {}
+                  return out;
+                })()
+              `) as { robots: string | null; sitemap: string | null };
+
+              const robotsTxt = { exists: false, blocksAll: false, hasSitemap: false };
+              const sitemap = { exists: false, urlCount: 0 };
+              if (fetched.robots) {
+                robotsTxt.exists = true;
+                robotsTxt.blocksAll = /User-agent:\s*\*[\s\S]*?Disallow:\s*\/\s*$/im.test(fetched.robots);
+                robotsTxt.hasSitemap = /^Sitemap:\s*\S+/im.test(fetched.robots);
+              }
+              if (fetched.sitemap) {
+                sitemap.exists = true;
+                sitemap.urlCount = (fetched.sitemap.match(/<loc>/g) ?? []).length;
+              }
 
 
+
+              const flags: string[] = [];
+              if (!audit.head.title) flags.push("missing_title");
+              else if (audit.head.title.length > 60) flags.push("title_too_long");
+              if (!audit.head.description) flags.push("missing_meta_description");
+              else if (audit.head.description.length > 160) flags.push("meta_description_too_long");
+              if (!audit.head.canonical) flags.push("missing_canonical");
+              if (!audit.head.ogTitle) flags.push("missing_og_title");
+              if (!audit.head.ogImage) flags.push("missing_og_image");
+              if (!audit.head.viewport) flags.push("missing_viewport");
+              if (audit.headings.h1Count === 0) flags.push("no_h1");
+              if (audit.headings.h1Count > 1) flags.push("multiple_h1");
+              if (audit.images.missingAltPct > 20) flags.push("low_alt_coverage");
+              if (audit.schema.count === 0) flags.push("no_structured_data");
+              if (audit.content.wordCount < 100) flags.push("thin_content");
+              if (!robotsTxt.exists) flags.push("no_robots_txt");
+              if (robotsTxt.blocksAll) flags.push("robots_blocks_all");
+              if (!sitemap.exists) flags.push("no_sitemap");
+
+              const full: PageAuditData = { ...audit, robotsTxt, sitemap, flags };
+              data = full;
+              onEvent({
+                type: "log",
+                message: `pageAudit: ${flags.length} flag(s) · h1=${audit.headings.h1Count} · alt missing ${audit.images.missingAlt}/${audit.images.total} · ${audit.content.wordCount} words · schema ${audit.schema.types.join(",") || "none"}`,
+              });
+            } catch (e) {
+              throw new Error(`pageAudit failed: ${e instanceof Error ? e.message : String(e)}`);
+            }
+            break;
+          }
         }
+
+
 
         void page;
 
@@ -374,6 +503,60 @@ function filterCollected(all: CollectedElement[], target: CollectTarget): Collec
   // "clickables" → everything we collected.
   return all;
 }
+
+
+export type RepeatedGroup = {
+  label: string;
+  count: number;
+  category: ElementCategory;
+  intent: ElementIntent;
+  section: SectionKind;
+  exampleSelector: string;
+};
+
+// Detect repeated controls (vote/save/share rows in feed cards, "Read more"
+// links repeating per article, etc.) and mark all but the first occurrence
+// as groupedAway so aggregates aren't dominated by them. Mutates `elements`.
+function groupRepeatedControls(elements: CollectedElement[]): RepeatedGroup[] {
+  const buckets = new Map<string, CollectedElement[]>();
+  for (const el of elements) {
+    const label = (el.text || el.attributes["aria-label"] || el.attributes["title"] || "").trim().toLowerCase();
+    if (!label) continue; // skip text-less elements (icon-only repeats often differ by attrs)
+    if (label.length > 60) continue; // long labels are unique enough
+    // Size bucket: nearest 10px to allow minor jitter.
+    const wB = Math.round(el.rect.w / 10) * 10;
+    const hB = Math.round(el.rect.h / 10) * 10;
+    const key = `${el.category}|${el.intent}|${label}|${wB}x${hB}`;
+    const arr = buckets.get(key) ?? [];
+    arr.push(el);
+    buckets.set(key, arr);
+  }
+
+  const groups: RepeatedGroup[] = [];
+  for (const [key, arr] of buckets) {
+    if (arr.length < 3) continue;
+    const groupId = `g_${groups.length + 1}`;
+    arr.forEach((el, i) => {
+      el.groupId = groupId;
+      el.groupCount = arr.length;
+      if (i > 0) el.groupedAway = true;
+    });
+    const head = arr[0];
+    groups.push({
+      label: (head.text || head.attributes["aria-label"] || head.attributes["title"] || "(no label)").trim(),
+      count: arr.length,
+      category: head.category,
+      intent: head.intent,
+      section: head.section,
+      exampleSelector: head.selector,
+    });
+    void key;
+  }
+  groups.sort((a, b) => b.count - a.count);
+  return groups;
+}
+
+
 
 
 // Runs in the browser via page.evaluate — must be self-contained string.
@@ -555,26 +738,104 @@ const COLLECT_SCRIPT = `(() => {
 
   // Intent ordlistor — partial match, case-insensitive
   const INTENT_RX = {
-    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|subscribe|request|trial|checkout|order|beställ|köp|boka|prova|kom igång)/i,
-    information: /(learn|read|explore|see how|how|why|about|läs|utforska|så funkar)/i,
-    navigation: /(login|log in|sign in|account|menu|home|logga in|mina sidor|hem)/i,
+    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ner|lägg i (varu)?kund?korg|lägg till|ansök|bidra)/i,
+    information: /(learn|read|explore|see how|how |why |about |läs|utforska|så funkar|mer info)/i,
+    navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inställningar)/i,
     social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
-    utility: /(search|sök|language|språk|cookie|accept|godkänn|contact|kontakt)/i,
+    utility: /(search|sök|language|språk|cookie|accept|godkänn|contact|kontakt|help|hjälp|faq)/i,
+    engagement: /(like|love|save|bookmark|share|comment|reply|follow|subscribe|upvote|downvote|gilla|spara|kommentar|svara|följ|prenumerera|rösta|röst)/i,
   };
 
-  function classifyIntent(el, text) {
+  const SOCIAL_HOST_RX = /(facebook|instagram|linkedin|twitter|x\\.com|youtube|tiktok|pinterest|snapchat|reddit|threads|mastodon)\\./i;
+
+  function classifyIntent(el, text, category, rect) {
     const tag = el.tagName;
     const type = (el.getAttribute('type') || '').toLowerCase();
     const isFormSubmit = (tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit');
+    if (isFormSubmit) return 'conversion';
+
+    const href = (el.getAttribute('href') || '');
+    if (href.startsWith('tel:') || href.startsWith('mailto:')) return 'utility';
+    if (SOCIAL_HOST_RX.test(href)) return 'social';
+
+    // data-* attribute signals (data-event, data-cta, data-track, data-analytics-*)
+    const attrBag = [];
+    for (const a of Array.from(el.attributes)) {
+      if (a.name.startsWith('data-')) attrBag.push(a.value || '');
+    }
+    const attrStr = attrBag.join(' ');
+
     const t = (text || '').trim();
-    if (!t) return isFormSubmit ? 'conversion' : 'unknown';
-    if (INTENT_RX.conversion.test(t)) return 'conversion';
-    if (INTENT_RX.navigation.test(t)) return 'navigation';
-    if (INTENT_RX.social.test(t)) return 'social';
-    if (INTENT_RX.utility.test(t)) return 'utility';
-    if (INTENT_RX.information.test(t)) return 'information';
-    return isFormSubmit ? 'conversion' : 'unknown';
+    const probe = t + ' ' + attrStr;
+
+    if (INTENT_RX.conversion.test(probe)) return 'conversion';
+    if (INTENT_RX.engagement.test(probe)) return 'engagement';
+    if (INTENT_RX.navigation.test(probe)) return 'navigation';
+    if (INTENT_RX.social.test(probe)) return 'social';
+    if (INTENT_RX.utility.test(probe)) return 'utility';
+    if (INTENT_RX.information.test(probe)) return 'information';
+
+    // Position-based fallback: above-fold primary CTA without keyword match → likely conversion.
+    if (category === 'cta_primary' && rect.top < window.innerHeight) return 'conversion';
+
+    // Text-less icon buttons in a horizontal row of ≥3 siblings → engagement toolbar.
+    if (!t && category === 'icon_button') {
+      const parent = el.parentElement;
+      if (parent) {
+        const siblings = Array.from(parent.children).filter((c) =>
+          c.tagName === 'BUTTON' || c.tagName === 'A' || (c.getAttribute && c.getAttribute('role') === 'button')
+        );
+        if (siblings.length >= 3) return 'engagement';
+      }
+    }
+
+    return 'unknown';
   }
+
+  // Section detection — walk ancestors to find the structural container.
+  const viewportH = window.innerHeight || 720;
+  function detectSection(el, rect) {
+    let p = el.parentElement;
+    let inHeader = false, inFooter = false, inNav = false, inMain = false, inAside = false;
+    let cardsAncestor = null;
+    while (p && p !== document.body) {
+      const tag = p.tagName;
+      const role = (p.getAttribute && p.getAttribute('role') || '').toLowerCase();
+      if (tag === 'NAV' || role === 'navigation') inNav = true;
+      else if (tag === 'HEADER' || role === 'banner') inHeader = true;
+      else if (tag === 'FOOTER' || role === 'contentinfo') inFooter = true;
+      else if (tag === 'MAIN' || role === 'main') inMain = true;
+      else if (tag === 'ASIDE') inAside = true;
+
+      // Cards heuristic: container with ≥3 direct children of same tagName + similar height.
+      if (!cardsAncestor && p.children && p.children.length >= 3) {
+        const kids = Array.from(p.children);
+        const firstTag = kids[0].tagName;
+        const sameTag = kids.filter((c) => c.tagName === firstTag);
+        if (sameTag.length >= 3) {
+          const heights = sameTag.slice(0, 4).map((c) => c.getBoundingClientRect().height).filter((h) => h > 30);
+          if (heights.length >= 3) {
+            const avg = heights.reduce((s, v) => s + v, 0) / heights.length;
+            const allSimilar = heights.every((h) => Math.abs(h - avg) / avg < 0.4);
+            if (allSimilar) cardsAncestor = p;
+          }
+        }
+      }
+      p = p.parentElement;
+    }
+
+    if (inFooter) return 'footer';
+    if (inNav) return 'nav';
+    if (inHeader) return 'header';
+    if (cardsAncestor) return 'cards';
+    // Hero: above the fold + element is in the first big block of <main> (or just first 1.2 viewports).
+    const docTop = rect.top + window.scrollY;
+    if (docTop < viewportH * 1.2 && inMain) return 'hero';
+    if (docTop < viewportH * 1.0 && !inAside) return 'hero';
+    return 'content';
+  }
+
+
 
   // WCAG relative luminance + contrast ratio
   function parseRgb(s) {
@@ -652,16 +913,19 @@ const COLLECT_SCRIPT = `(() => {
     const contrastN = norm(r.backgroundContrast, 1, 10); // 0–1
     const score = Math.round((areaN * 0.40 + fontN * 0.20 + weightN * 0.10 + contrastN * 0.30) * 100);
 
+    const cat = classifyCategory(r.el, r.cs, r.rect, r.text);
     out.push({
       text: r.text,
       tagName: classifyTag(r.el),
       selector: buildSelector(r.el),
-      category: classifyCategory(r.el, r.cs, r.rect, r.text),
-      intent: classifyIntent(r.el, r.text),
+      category: cat,
+      intent: classifyIntent(r.el, r.text, cat, r.rect),
+      section: detectSection(r.el, r.rect),
       href: r.el.tagName === 'A' ? (r.el.getAttribute('href') || null) : null,
       disabled: !!r.el.disabled || r.el.getAttribute('aria-disabled') === 'true',
       visible: true,
       aboveFold: r.viewportZone === 'above_fold',
+
       rect: { x: Math.round(r.rect.x), y: Math.round(r.rect.y), w: Math.round(r.rect.width), h: Math.round(r.rect.height) },
       position: {
         viewportZone: r.viewportZone,
@@ -759,4 +1023,111 @@ function OVERLAY_FN(pairs: Array<[string, string]>) {
     wrap.appendChild(box);
   });
 }
+
+
+// Runs in the browser via page.evaluate — extracts SEO/UX page-level signals.
+const PAGE_AUDIT_SCRIPT = `(() => {
+  function meta(name) {
+    const el = document.querySelector('meta[name="' + name + '"]');
+    return el ? (el.getAttribute('content') || '').trim() : '';
+  }
+  function og(prop) {
+    const el = document.querySelector('meta[property="' + prop + '"]');
+    return el ? (el.getAttribute('content') || '').trim() : '';
+  }
+  const canonicalEl = document.querySelector('link[rel="canonical"]');
+  const head = {
+    title: (document.title || '').trim(),
+    description: meta('description'),
+    canonical: canonicalEl ? (canonicalEl.getAttribute('href') || '') : '',
+    lang: (document.documentElement.getAttribute('lang') || '').trim(),
+    viewport: meta('viewport'),
+    robots: meta('robots'),
+    ogTitle: og('og:title'),
+    ogDescription: og('og:description'),
+    ogImage: og('og:image'),
+    ogType: og('og:type'),
+    ogUrl: og('og:url'),
+    twitterCard: meta('twitter:card'),
+    twitterTitle: meta('twitter:title'),
+    twitterImage: meta('twitter:image'),
+  };
+
+  const hs = Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6'));
+  const hierarchy = hs.slice(0, 50).map((h) => ({
+    level: parseInt(h.tagName.substring(1), 10),
+    text: (h.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 120),
+    id: h.id || '',
+  }));
+  const headings = {
+    h1Count: hs.filter((h) => h.tagName === 'H1').length,
+    h2Count: hs.filter((h) => h.tagName === 'H2').length,
+    h3Count: hs.filter((h) => h.tagName === 'H3').length,
+    hierarchy,
+  };
+
+  const imgs = Array.from(document.querySelectorAll('img'));
+  const imgTotal = imgs.length;
+  const imgMissingAlt = imgs.filter((i) => !i.hasAttribute('alt') || (i.getAttribute('alt') || '').trim() === '').length;
+  const imgMissingDims = imgs.filter((i) => !i.hasAttribute('width') || !i.hasAttribute('height')).length;
+  const imgLazy = imgs.filter((i) => (i.getAttribute('loading') || '').toLowerCase() === 'lazy').length;
+  const images = {
+    total: imgTotal,
+    missingAlt: imgMissingAlt,
+    missingAltPct: imgTotal > 0 ? Math.round((imgMissingAlt / imgTotal) * 1000) / 10 : 0,
+    missingDims: imgMissingDims,
+    lazy: imgLazy,
+  };
+
+  const origin = location.origin;
+  const anchors = Array.from(document.querySelectorAll('a[href]'));
+  let internal = 0, external = 0, nofollow = 0;
+  for (const a of anchors) {
+    const href = a.getAttribute('href') || '';
+    if (!href || href.startsWith('#') || href.startsWith('javascript:')) continue;
+    const rel = (a.getAttribute('rel') || '').toLowerCase();
+    if (rel.includes('nofollow')) nofollow++;
+    try {
+      const url = new URL(href, origin);
+      if (url.origin === origin) internal++;
+      else external++;
+    } catch (e) {}
+  }
+  const links = { internal, external, nofollow, total: internal + external };
+
+  const ldNodes = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+  const ldTypes = new Set();
+  for (const n of ldNodes) {
+    try {
+      const parsed = JSON.parse(n.textContent || '');
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      for (const it of arr) {
+        if (it && it['@type']) {
+          if (Array.isArray(it['@type'])) it['@type'].forEach((t) => ldTypes.add(t));
+          else ldTypes.add(it['@type']);
+        }
+      }
+    } catch (e) {}
+  }
+  const schema = { count: ldNodes.length, types: Array.from(ldTypes) };
+
+  const main = document.querySelector('main') || document.body;
+  const wordCount = ((main && main.innerText) || '').trim().split(/\\s+/).filter(Boolean).length;
+  const content = {
+    wordCount,
+    sections: document.querySelectorAll('section').length,
+    articles: document.querySelectorAll('article').length,
+  };
+
+  return {
+    url: location.href,
+    head,
+    headings,
+    images,
+    links,
+    schema,
+    content,
+  };
+})()`;
+
 

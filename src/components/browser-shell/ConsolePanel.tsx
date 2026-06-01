@@ -17,8 +17,9 @@ type ElementCategory =
   | "link"
   | "other";
 
-type ElementIntent = "conversion" | "information" | "navigation" | "social" | "utility" | "unknown";
+type ElementIntent = "conversion" | "information" | "navigation" | "social" | "utility" | "engagement" | "unknown";
 type ViewportZone = "above_fold" | "mid_page" | "below_fold";
+type SectionKind = "nav" | "header" | "hero" | "cards" | "content" | "footer";
 
 type CollectedElement = {
   text: string;
@@ -26,6 +27,7 @@ type CollectedElement = {
   selector: string;
   category?: ElementCategory;
   intent?: ElementIntent;
+  section?: SectionKind;
   href: string | null;
   disabled: boolean;
   visible: boolean;
@@ -33,6 +35,9 @@ type CollectedElement = {
   rect: { x: number; y: number; w: number; h: number };
   position?: { viewportZone: ViewportZone; yPercent: number; xPercent: number };
   visualWeight?: { area: number; fontSize: number; fontWeight: number; backgroundContrast: number; score: number };
+  groupId?: string;
+  groupCount?: number;
+  groupedAway?: boolean;
   attributes?: Record<string, string>;
   computedStyles?: {
     color?: string;
@@ -47,6 +52,15 @@ type CollectedElement = {
   };
 };
 
+type RepeatedGroup = {
+  label: string;
+  count: number;
+  category: ElementCategory;
+  intent: ElementIntent;
+  section: SectionKind;
+  exampleSelector: string;
+};
+
 type CollectSummary = {
   total: number;
   aboveFold: number;
@@ -54,14 +68,50 @@ type CollectSummary = {
   competingAboveFold: number;
   topVisualWeight: Array<{ selector: string; text: string; score: number }>;
   intentBreakdown: Partial<Record<ElementIntent, number>>;
+  bySection?: Partial<Record<SectionKind, number>>;
+  groups?: RepeatedGroup[];
 };
 
 type CollectData = {
   target: string;
   count: number;
+  totalCount?: number;
   byCategory?: Partial<Record<ElementCategory, number>>;
   summary?: CollectSummary;
   elements: CollectedElement[];
+};
+
+type PageAuditData = {
+  url: string;
+  head: {
+    title: string;
+    description: string;
+    canonical: string;
+    lang: string;
+    viewport: string;
+    robots: string;
+    ogTitle: string;
+    ogDescription: string;
+    ogImage: string;
+    ogType: string;
+    ogUrl: string;
+    twitterCard: string;
+    twitterTitle: string;
+    twitterImage: string;
+  };
+  headings: {
+    h1Count: number;
+    h2Count: number;
+    h3Count: number;
+    hierarchy: Array<{ level: number; text: string; id: string }>;
+  };
+  images: { total: number; missingAlt: number; missingAltPct: number; missingDims: number; lazy: number };
+  links: { internal: number; external: number; nofollow: number; total: number };
+  schema: { count: number; types: string[] };
+  content: { wordCount: number; sections: number; articles: number };
+  robotsTxt: { exists: boolean; blocksAll: boolean; hasSitemap: boolean };
+  sitemap: { exists: boolean; urlCount: number };
+  flags: string[];
 };
 
 function isCollectData(v: unknown): v is CollectData {
@@ -69,6 +119,14 @@ function isCollectData(v: unknown): v is CollectData {
   const o = v as Record<string, unknown>;
   return typeof o.target === "string" && typeof o.count === "number" && Array.isArray(o.elements);
 }
+
+function isPageAuditData(v: unknown): v is PageAuditData {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.url === "string" && !!o.head && !!o.headings && Array.isArray(o.flags);
+}
+
+
 
 
 const CATEGORY_COLORS: Record<ElementCategory, string> = {
@@ -190,6 +248,36 @@ function CollectDetails({ data }: { data: CollectData }) {
           </span>
         </div>
       )}
+      {data.summary?.bySection && Object.keys(data.summary.bySection).length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {(Object.entries(data.summary.bySection) as Array<[SectionKind, number]>)
+            .sort((a, b) => b[1] - a[1])
+            .map(([sec, n]) => (
+              <span key={sec} className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-foreground">
+                ▦ {sec} · {n}
+              </span>
+            ))}
+        </div>
+      )}
+      {data.summary?.groups && data.summary.groups.length > 0 && (
+        <div className="rounded border border-border bg-background/50 p-2">
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            Repeated controls (collapsed from aggregates)
+          </div>
+          <ul className="space-y-0.5">
+            {data.summary.groups.slice(0, 6).map((g, i) => (
+              <li key={i} className="flex items-center gap-2 truncate text-[11px]">
+                <span className="inline-flex h-4 min-w-7 shrink-0 items-center justify-center rounded bg-foreground/10 px-1 text-[9px] font-bold text-foreground">
+                  ×{g.count}
+                </span>
+                <span className="truncate text-foreground">{g.label}</span>
+                <span className="shrink-0 text-muted-foreground">— {g.section} · {g.intent}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {data.summary && data.summary.topVisualWeight.length > 0 && (
         <div className="rounded border border-border bg-background/50 p-2">
           <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Top visual weight</div>
@@ -264,6 +352,8 @@ export function ConsolePanel({ events }: { events: StreamEvent[] }) {
             events.map((ev, i) => {
               const isCollectPassed =
                 ev.type === "step_passed" && ev.data.kind === "collect" && isCollectData(ev.data.data);
+              const isPageAuditPassed =
+                ev.type === "step_passed" && ev.data.kind === "pageAudit" && isPageAuditData(ev.data.data);
               return (
                 <div key={i} className="flex items-start gap-4 px-4 py-2">
                   <div className="flex-1 min-w-0">
@@ -278,6 +368,8 @@ export function ConsolePanel({ events }: { events: StreamEvent[] }) {
                       {renderEventLine(ev)}
                     </span>
                     {isCollectPassed && <CollectDetails data={ev.data.data as CollectData} />}
+                    {isPageAuditPassed && <PageAuditDetails data={ev.data.data as PageAuditData} />}
+
                   </div>
                   <span className="shrink-0 text-muted-foreground">{fmtTime(ev.data.ts)}</span>
                 </div>

@@ -1,44 +1,124 @@
-## Diagnos
+## Mål
 
-I screenshotbilden (slutet av sidan) ligger flera badges stackade på fel platser. Övre delen av sidan ser rätt ut.
+Lyfta motorn från ~60% CRO / 15% SEO till en hel första audit-grund. Vi gör fyra fokuserade tillägg, ingen UI-omdesign denna omgång.
 
-Det här är ett klassiskt symptom på **lat-laddat innehåll som triggas av Playwrights fullPage-screenshot**.
+## Filer
 
-Just nu i `engine.server.ts`:
+Allt i `src/lib/tests/engine.server.ts` + två små tillägg i `ConsolePanel.tsx` för att rendera ny data.
 
-1. Vi skrollar 0→25→50→75→100→0 för att trigga lazy content.
-2. Vi kör `COLLECT_SCRIPT` → läser `getBoundingClientRect()` på alla element. Dokumenthöjd just nu = `H1`.
-3. Vi tar `page.screenshot({ fullPage: true })`. **Playwright skrollar själv** medan den skär bilden i remsor → fler IntersectionObservers fyrar → bilder/sektioner laddar in → dokumenthöjd växer till `H2 > H1`. JPEG-höjden vi läser är `H2`.
-4. I `Viewport.tsx` mappar vi `(rect.y / vp.h)` mot bilden. Eftersom `vp.h = H2` men rects mättes mot `H1`, blir alla y-värden **proportionellt för små** — och felet växer linjärt med y. Övre delen ser okej ut, slutet glider iväg.
+---
 
-## Fix (endast `src/lib/tests/engine.server.ts`)
+## 1. Bättre intent-klassificering
 
-Byt ordning + ankra mätningen mot samma höjd som screenshotten:
+**Problem**: 263 av 324 element blir `unknown`. "Skapa konto" → unknown.
 
-1. **Skrolla precis som idag** (0→100→0) för att förvärma lazy content.
-2. **Ta screenshotten först** (`fullPage: true`). Detta tvingar Playwright att skrolla igenom hela sidan och låter all kvarvarande lazy content mounta.
-3. **Skrolla tillbaka till 0** och `await new Promise(res => setTimeout(res, 300))` för att låta layout stabilisera.
-4. **Kör `COLLECT_SCRIPT` därefter** — nu är dokumenthöjden = `H2` (samma som JPEG-höjden).
-5. Läs JPEG-dimensioner som idag och sätt `viewport: vp`.
+**Fix**: Multi-signal classifier, inte bara regex på text:
 
-Resultatet: `rect.y` och `vp.h` mäter samma värld → overlays sitter rätt hela vägen ner.
+- Utöka `INTENT_RX` med fler verb (svenska + engelska): `skapa konto`, `registrera`, `gå med`, `gratis`, `try free`, `request access`, `download`, `ladda ner`, `add to cart`, `lägg i varukorg`, `apply`, `ansök`, `donate`, `bidra`.
+- Lägg till `engagement` som ny intent — fångar like/save/share/vote/comment/follow (idag försvinner de i `unknown`).
+- Signaler utöver text:
+  - `href` startar med `tel:` / `mailto:` → `utility`.
+  - `href` matchar social-domäner → `social`.
+  - `aria-label` används om `text` är tom (idag bara fallback i ett ställe).
+  - `data-event` / `data-cta` / `data-track` attribut → läs värdet och matcha mot regex.
+  - Position: above_fold + `cta_primary` + tom intent → fallback `conversion` (idag bara för `form_submit`).
+- Sista fallback för helt textlösa icon_buttons: `engagement` om de sitter i en kort horisontell rad med ≥2 syskon (typiskt feed-toolbar).
 
-## Bonusfix i samma patch
+## 2. Gruppering av repetitiva controls
 
-`OVERLAY_FN` (live-overlay i Browserbase) gör samma misstag — den mäter `getBoundingClientRect` direkt vid anrop. Eftersom den ritas EFTER att vi skrollat tillbaka till 0, är det ok idag. Lämnas orört.
+**Problem**: 30× "Rösta upp", 30× "Spara" → dominerar all statistik.
 
-## Inget annat
+**Fix**: I `runSteps` efter `filtered`-listan, lägg `groupRepeatedControls()`:
 
-- `Viewport.tsx`, hooks, run.functions, orchestrator: orörda.
-- `readJpegDimensions` + screenshot-fallback från förra patchen behålls.
+- Gruppera element vars `(text, category, intent, ~size, ~xPercent)` är nära identiska och dyker upp ≥3 gånger.
+- Behåll *första* förekomsten med `groupId` + `groupCount`. Övriga får `groupId` + `groupedAway: true` och filtreras bort ur de aggregerade siffrorna (count, byCategory, intentBreakdown, topVisualWeight) — men finns kvar i `elements` så overlay fortfarande ritas på alla.
+- Lägg `groups` i `data.summary`:
+  ```ts
+  groups: Array<{ label: string; count: number; category; intent; exampleSelector: string }>
+  ```
+- Console-panelen får en liten "Repeated controls"-sektion ovanför element-previewen.
+
+## 3. SEO / page-collector
+
+**Nytt step**: `pageAudit` (vid sidan av `collect`). Körs typiskt efter `goto` + `wait`.
+
+Samlar i en enda `page.evaluate`:
+
+- **Head**: `title`, meta description, canonical, og:title/description/image/type/url, twitter:card/title/image, robots, lang, viewport.
+- **Headings**: array `{ level, text, id }` i dokumentordning.
+- **Images**: total, utan `alt`, utan dimensioner, lazy-loaded.
+- **Länkar**: internal vs external (same origin?), nofollow, totala.
+- **Structured data**: alla `<script type="application/ld+json">` → parsar typer (Organization, Article, Product, FAQPage, BreadcrumbList…).
+- **Content**: word count i `<main>` (fallback `<body>`), antal `<section>`/`<article>`.
+- **Indexability**: läses från robots meta + `x-robots-tag` (om vi har response headers — annars bara meta).
+
+Plus serverside-fetch i `pageAudit` (via Playwright `page.request`):
+
+- `/robots.txt` → exists, har Disallow:/, har Sitemap-direktiv.
+- `/sitemap.xml` → exists, antal URL-entries.
+
+**Sammanställning** i `pageAudit`-data:
+```ts
+{
+  head: {...},
+  headings: { h1Count, h2Count, hierarchy: [...] },
+  images: { total, missingAlt, missingAltPct },
+  links: { internal, external, nofollow },
+  schema: { types: ["Organization", "Article"] },
+  content: { wordCount, sections },
+  robots: { hasRobotsTxt, blocksAll, hasSitemap },
+  sitemap: { exists, urlCount },
+  flags: ["missing_meta_description", "multiple_h1", ...]
+}
+```
+
+Streamas som eget `step_passed`-event och får en egen kollapsbar `<PageAuditDetails>` i `ConsolePanel.tsx`.
+
+## 4. Section detection
+
+**Problem**: idag är allt "ett flack lista element". CRO vill veta att 30 vote-knappar sitter i feed-cards, inte i nav.
+
+**Fix**: Lätt heuristik i COLLECT_SCRIPT:
+
+- För varje element, gå uppåt i DOM tills första matchande container hittas:
+  - `header`, `[role=banner]` → `nav` (om i toppen) eller `hero`.
+  - `nav`, `[role=navigation]` → `nav`.
+  - `footer`, `[role=contentinfo]` → `footer`.
+  - `main > section:first-of-type` ELLER första elementet med `rect.top < viewportHeight && height > viewportHeight*0.4` → `hero`.
+  - Container som har ≥3 syskon med samma tagName + liknande höjd → `cards`.
+  - Annars → `content`.
+- Skriv `section: SectionKind` på varje element.
+- Aggregera i `data.summary`:
+  ```ts
+  bySection: Record<SectionKind, number>
+  ```
+- Console får ett chips-rad: `nav 18 · hero 4 · cards 90 · content 25 · footer 12`.
+
+## Inget i denna patch
+
+- Lighthouse-port / Core Web Vitals (LCP, CLS, INP). Eget steg, kräver `PerformanceObserver`-fönster — separat plan.
+- WCAG-kontrast text↔egen-bg per element. Adderas i en CX-runda.
+- Visuell rapport-PDF / share-länk.
+- Klickbara overlays i Frozen-vyn (CRO inspector).
+
+## Förväntad effekt på siffrorna ChatGPT gav
+
+| Område | Idag | Efter |
+|---|---|---|
+| CRO | 60–70% | 80–85% (gruppering + section + bättre intent) |
+| UX  | 50–60% | 65–70% (section detection ger struktur) |
+| SEO | 15–20% | 70–75% (pageAudit täcker on-page-checklistan; perf saknas) |
 
 ## Trade-offs
 
-- En extra `setTimeout(300ms)` efter screenshot. Förlorar ~0.3s per collect-steg, försumbart.
-- Om sidan har content som *bara* monterar under Playwrights fullPage-skroll och försvinner när vi skrollar tillbaka, hamnar de utanför vår collect. Mycket ovanligt; accepteras.
+- `pageAudit` lägger ~0.5–1s per sida.
+- Section-heuristiken är best-effort — komplexa sidor (single-page med pseudo-sektioner i CSS-grid) får ibland fel zon. Acceptabelt för v1.
+- Intent-klassificeringen är fortfarande regex-baserad. När den når sin gräns: GPT-batch som efter-pass (separat plan).
 
-## Uppföljningar (inte här)
+## Frågor innan vi börjar
 
-- Klickbara/hovrade badges i Frozen-vyn för debugging.
-- Cluster badges när många icon-buttons sitter tätt (recipe cards).
-- Storage-upload av screenshots.
+Föreslår vi kör alla fyra delar i samma patch — de är små och hänger ihop. Säg till om du hellre vill:
+
+**(A)** Köra alla fyra delar nu (rekommenderas).
+**(B)** Bara `pageAudit` (största SEO-vinsten ensam).
+**(C)** Bara intent + grouping + section (CRO-vinsten ensam).
