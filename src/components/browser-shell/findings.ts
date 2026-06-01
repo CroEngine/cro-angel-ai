@@ -47,6 +47,26 @@ interface PageAuditLike {
   content: { wordCount: number; sections: number };
   robotsTxt: { exists: boolean; hasSitemap: boolean };
   sitemap: { exists: boolean; urlCount: number };
+  sections?: Array<{
+    kind: string;
+    selector: string;
+    aboveFold: boolean;
+    childCount: number;
+    repeatedChildren: number;
+    headingText: string;
+  }>;
+  trustSignals?: Array<{
+    type: string;
+    text: string;
+    section: string;
+    aboveFold: boolean;
+    selector: string;
+  }>;
+  trustSummary?: {
+    total: number;
+    aboveFold: number;
+    byType: Record<string, number>;
+  };
   flags: string[];
 }
 
