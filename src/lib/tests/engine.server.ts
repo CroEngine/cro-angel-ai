@@ -219,6 +219,29 @@ export async function runSteps(
               .slice(0, 5)
               .map((el) => ({ selector: el.selector, text: el.text, score: el.visualWeight.score }));
 
+            // Capture screenshot BEFORE drawing the live overlay, so the client
+            // can render its own overlay on a clean image (and toggle it).
+            let screenshot: { dataUrl: string; viewport: { w: number; h: number } } | undefined;
+            try {
+              const vp = page.viewportSize() ?? { width: 1280, height: 720 };
+              const buf = await page.screenshot({ type: "jpeg", quality: 60, fullPage: false });
+              const b64 = Buffer.from(buf).toString("base64");
+              screenshot = {
+                dataUrl: `data:image/jpeg;base64,${b64}`,
+                viewport: { w: vp.width, h: vp.height },
+              };
+              onEvent({ type: "log", message: `screenshot captured (${Math.round(buf.length / 1024)}kb)` });
+            } catch (e) {
+              onEvent({ type: "log", message: `screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
+            }
+
+            // Subset for FrozenViewport overlay rendering.
+            const overlayElements = filtered.map((el) => ({
+              selector: el.selector,
+              category: el.category,
+              rect: el.rect,
+            }));
+
             // Draw color-coded overlay rectangles in the live page.
             try {
               const pairs = filtered.map((el) => [el.selector, el.category]);
@@ -239,6 +262,8 @@ export async function runSteps(
                 intentBreakdown,
               },
               elements: filtered,
+              overlayElements,
+              screenshot,
             };
             onEvent({
               type: "log",
@@ -246,6 +271,7 @@ export async function runSteps(
             });
             break;
           }
+
 
 
         }
