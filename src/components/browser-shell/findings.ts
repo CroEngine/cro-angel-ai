@@ -145,7 +145,7 @@ function structureFindings(a: PageAuditData): Finding[] {
 
   for (const s of sections.slice(0, 12)) {
     const t = s.type || s.kind || "?";
-    const bits = [t];
+    const bits: string[] = [t];
     if (s.aboveFold) bits.push("above fold");
     if (s.heightPx) bits.push(`${s.heightPx}px`);
     if (s.containsPrimaryCTA) bits.push("CTA");
