@@ -139,7 +139,7 @@ function CollectDetails({ data }: { data: CollectData }) {
 
 export function ConsolePanel({ events }: { events: StreamEvent[] }) {
   return (
-    <div className="flex h-64 flex-col border-t border-border bg-background">
+    <div className="flex h-full min-h-0 w-full flex-col border-t border-border bg-background lg:border-t-0">
       <div className="border-b border-border px-4 py-2">
         <h2 className="text-base font-semibold text-foreground">Console</h2>
       </div>
