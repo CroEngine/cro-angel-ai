@@ -15,10 +15,20 @@ export type Step =
 
 export type CollectTarget = "buttons";
 
+export type ElementCategory =
+  | "cta_primary"
+  | "cta_secondary"
+  | "form_submit"
+  | "icon_button"
+  | "nav_item"
+  | "link"
+  | "other";
+
 export type CollectedElement = {
   text: string;
   tagName: string;
   selector: string;
+  category: ElementCategory;
   href: string | null;
   disabled: boolean;
   visible: boolean;
@@ -37,6 +47,7 @@ export type CollectedElement = {
     display: string;
   };
 };
+
 
 export type EngineEvent =
   | { type: "step_started"; index: number; kind: Step["kind"]; summary: string }
@@ -147,20 +158,39 @@ export async function runSteps(
             data = await stagehand.observe(step.instruction);
             break;
           case "collect": {
+            // Scroll through the page so lazy/intersection-observer content mounts.
+            try {
+              for (const pct of [0, 25, 50, 75, 100]) {
+                await page.evaluate(`window.scrollTo({ top: document.documentElement.scrollHeight * ${pct / 100}, behavior: 'instant' })`);
+                await new Promise((res) => setTimeout(res, 400));
+              }
+              await page.evaluate("window.scrollTo({ top: 0, behavior: 'instant' })");
+              await new Promise((res) => setTimeout(res, 200));
+              onEvent({ type: "log", message: "scrolled page to trigger lazy content" });
+            } catch (e) {
+              onEvent({ type: "log", message: `scroll failed: ${e instanceof Error ? e.message : String(e)}` });
+            }
+
             const elements = await page.evaluate(COLLECT_SCRIPT);
             const all = elements as CollectedElement[];
             const filtered = filterCollected(all, step.target);
-            // Draw overlay rectangles in the live page so the user sees what was collected.
+            const byCategory: Record<string, number> = {};
+            for (const el of filtered) {
+              byCategory[el.category] = (byCategory[el.category] ?? 0) + 1;
+            }
+            // Draw color-coded overlay rectangles in the live page.
             try {
-              const selectors = filtered.map((el) => el.selector);
-              await page.evaluate(`(${OVERLAY_FN.toString()})(${JSON.stringify(selectors)})`);
+              const pairs = filtered.map((el) => [el.selector, el.category]);
+              await page.evaluate(`(${OVERLAY_FN.toString()})(${JSON.stringify(pairs)})`);
             } catch (e) {
               onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
             }
-            data = { target: step.target, count: filtered.length, elements: filtered };
-            onEvent({ type: "log", message: `collect ${step.target}: ${filtered.length} element(s)` });
+            data = { target: step.target, count: filtered.length, byCategory, elements: filtered };
+            const catSummary = Object.entries(byCategory).map(([k, v]) => `${k}:${v}`).join(" ");
+            onEvent({ type: "log", message: `collect ${step.target}: ${filtered.length} (${catSummary})` });
             break;
           }
+
         }
 
         void page;
