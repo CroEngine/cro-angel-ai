@@ -8,10 +8,20 @@ function fmtTime(ts: unknown) {
   return d.toLocaleTimeString([], { hour12: false });
 }
 
+type ElementCategory =
+  | "cta_primary"
+  | "cta_secondary"
+  | "form_submit"
+  | "icon_button"
+  | "nav_item"
+  | "link"
+  | "other";
+
 type CollectedElement = {
   text: string;
   tagName: string;
   selector: string;
+  category?: ElementCategory;
   href: string | null;
   disabled: boolean;
   visible: boolean;
@@ -34,6 +44,7 @@ type CollectedElement = {
 type CollectData = {
   target: string;
   count: number;
+  byCategory?: Partial<Record<ElementCategory, number>>;
   elements: CollectedElement[];
 };
 
@@ -42,6 +53,27 @@ function isCollectData(v: unknown): v is CollectData {
   const o = v as Record<string, unknown>;
   return typeof o.target === "string" && typeof o.count === "number" && Array.isArray(o.elements);
 }
+
+const CATEGORY_COLORS: Record<ElementCategory, string> = {
+  cta_primary: "#10b981",
+  cta_secondary: "#22d3ee",
+  form_submit: "#f59e0b",
+  icon_button: "#a78bfa",
+  nav_item: "#64748b",
+  link: "#60a5fa",
+  other: "#f472b6",
+};
+
+const CATEGORY_LABELS: Record<ElementCategory, string> = {
+  cta_primary: "CTA primary",
+  cta_secondary: "CTA secondary",
+  form_submit: "Form submit",
+  icon_button: "Icon",
+  nav_item: "Nav",
+  link: "Link",
+  other: "Other",
+};
+
 
 function downloadJson(filename: string, payload: unknown) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -103,14 +135,36 @@ function CollectDetails({ data }: { data: CollectData }) {
           Download JSON
         </Button>
       </div>
+      {data.byCategory && Object.keys(data.byCategory).length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {(Object.entries(data.byCategory) as Array<[ElementCategory, number]>)
+            .sort((a, b) => b[1] - a[1])
+            .map(([cat, n]) => (
+              <span
+                key={cat}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium"
+              >
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ background: CATEGORY_COLORS[cat] }}
+                />
+                {CATEGORY_LABELS[cat]} · {n}
+              </span>
+            ))}
+        </div>
+      )}
       {preview.length > 0 && (
         <ul className="space-y-1">
           {preview.map((el, i) => {
             const bg = el.computedStyles?.backgroundColor;
             const fg = el.computedStyles?.color;
+            const catColor = el.category ? CATEGORY_COLORS[el.category] : undefined;
             return (
               <li key={i} className="flex items-center gap-2 truncate">
-                <span className="inline-flex h-4 w-5 shrink-0 items-center justify-center rounded bg-cyan-600 text-[10px] font-bold text-white">
+                <span
+                  className="inline-flex h-4 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold text-white"
+                  style={{ background: catColor ?? "#0891b2" }}
+                >
                   {i + 1}
                 </span>
                 {(bg || fg) && (
@@ -133,6 +187,7 @@ function CollectDetails({ data }: { data: CollectData }) {
           })}
         </ul>
       )}
+
     </div>
   );
 }
