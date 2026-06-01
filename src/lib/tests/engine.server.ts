@@ -149,6 +149,15 @@ export type PageSection = {
   containsNavigation: boolean;
 };
 
+export type HeroContent = {
+  headline: string;
+  subheadline: string;
+  primaryCtaText: string;
+  primaryCtaIntent: string;
+  sectionId: string;
+  aboveFold: boolean;
+};
+
 export type TrustSignalType =
   | "testimonial"
   | "review_rating"
