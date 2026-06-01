@@ -154,6 +154,14 @@ interface PageAuditLike {
   navigation?: NavigationLike;
   visualHierarchy?: VisualHierarchyLike[];
   pageSummary?: PageSummaryLike;
+  hero?: {
+    headline: string;
+    subheadline: string;
+    primaryCtaText: string;
+    primaryCtaIntent: string;
+    sectionId: string;
+    aboveFold: boolean;
+  };
   flags: string[];
 }
 
@@ -311,6 +319,24 @@ function structureFindings(a: PageAuditLike): Finding[] {
     const heading = s.heading || s.headingText;
     if (heading) bits.push(`"${heading.slice(0, 50)}"`);
     out.push(f("ux", s.id || s.selector || t, bits.join(" · ")));
+  }
+  return out;
+}
+
+function heroFindings(a: PageAuditLike): Finding[] {
+  const h = a.hero;
+  if (!h) return [];
+  const out: Finding[] = [];
+  if (h.headline) out.push(f("cro", "Hero headline", `"${h.headline}"`));
+  if (h.subheadline) out.push(f("cro", "Hero subheadline", `"${h.subheadline}"`));
+  if (h.primaryCtaText) {
+    out.push(
+      f(
+        "cro",
+        "Hero primary CTA",
+        `"${h.primaryCtaText}"${h.primaryCtaIntent ? " · " + h.primaryCtaIntent : ""}${h.aboveFold ? " · above fold" : ""}`,
+      ),
+    );
   }
   return out;
 }
@@ -491,6 +517,7 @@ export function buildPageReports(events: StreamEvent[]): PageReport[] {
       current.rawPageAudit = ev.data.data;
       current.findings.push(
         ...seoFindings(ev.data.data),
+        ...heroFindings(ev.data.data),
         ...structureFindings(ev.data.data),
         ...navigationFindings(ev.data.data),
         ...hierarchyFindings(ev.data.data),
