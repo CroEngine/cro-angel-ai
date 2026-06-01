@@ -199,9 +199,26 @@ export async function runSteps(
             const all = elements as CollectedElement[];
             const filtered = filterCollected(all, step.target);
             const byCategory: Record<string, number> = {};
+            const intentBreakdown: Record<string, number> = {};
+            let aboveFold = 0;
+            let primaryCtaCount = 0;
+            let competingAboveFold = 0;
             for (const el of filtered) {
               byCategory[el.category] = (byCategory[el.category] ?? 0) + 1;
+              intentBreakdown[el.intent] = (intentBreakdown[el.intent] ?? 0) + 1;
+              if (el.position.viewportZone === "above_fold") aboveFold++;
+              if (el.category === "cta_primary" && el.intent === "conversion") primaryCtaCount++;
+              if (
+                (el.category === "cta_primary" || el.category === "cta_secondary" || el.category === "form_submit") &&
+                el.position.viewportZone === "above_fold" &&
+                el.intent !== "navigation"
+              ) competingAboveFold++;
             }
+            const topVisualWeight = [...filtered]
+              .sort((a, b) => b.visualWeight.score - a.visualWeight.score)
+              .slice(0, 5)
+              .map((el) => ({ selector: el.selector, text: el.text, score: el.visualWeight.score }));
+
             // Draw color-coded overlay rectangles in the live page.
             try {
               const pairs = filtered.map((el) => [el.selector, el.category]);
@@ -209,11 +226,27 @@ export async function runSteps(
             } catch (e) {
               onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
             }
-            data = { target: step.target, count: filtered.length, byCategory, elements: filtered };
-            const catSummary = Object.entries(byCategory).map(([k, v]) => `${k}:${v}`).join(" ");
-            onEvent({ type: "log", message: `collect ${step.target}: ${filtered.length} (${catSummary})` });
+            data = {
+              target: step.target,
+              count: filtered.length,
+              byCategory,
+              summary: {
+                total: filtered.length,
+                aboveFold,
+                primaryCtaCount,
+                competingAboveFold,
+                topVisualWeight,
+                intentBreakdown,
+              },
+              elements: filtered,
+            };
+            onEvent({
+              type: "log",
+              message: `collect ${step.target}: ${filtered.length} · ${aboveFold} above fold · ${primaryCtaCount} primary CTA · competing above fold: ${competingAboveFold}`,
+            });
             break;
           }
+
 
         }
 
