@@ -108,6 +108,40 @@ export type CollectedElement = {
   };
 };
 
+export type PageSection = {
+  kind: "nav" | "header" | "hero" | "cards" | "content" | "footer" | "aside";
+  selector: string;
+  rect: { x: number; y: number; w: number; h: number };
+  aboveFold: boolean;
+  childCount: number;
+  repeatedChildren: number;
+  headingText: string;
+};
+
+export type TrustSignalType =
+  | "testimonial"
+  | "review_rating"
+  | "stars"
+  | "trusted_by"
+  | "customer_logos"
+  | "certification"
+  | "guarantee"
+  | "secure_payment"
+  | "contact_info"
+  | "org_number"
+  | "press_mention"
+  | "social_proof_count";
+
+export type TrustSignal = {
+  type: TrustSignalType;
+  text: string;
+  section: SectionKind;
+  aboveFold: boolean;
+  selector: string;
+  visualWeight: number;
+  source: "text" | "attr" | "schema" | "img_alt";
+};
+
 export type PageAuditData = {
   url: string;
   head: {
@@ -138,6 +172,13 @@ export type PageAuditData = {
   content: { wordCount: number; sections: number; articles: number };
   robotsTxt: { exists: boolean; blocksAll: boolean; hasSitemap: boolean };
   sitemap: { exists: boolean; urlCount: number };
+  sections: PageSection[];
+  trustSignals: TrustSignal[];
+  trustSummary: {
+    total: number;
+    aboveFold: number;
+    byType: Record<string, number>;
+  };
   flags: string[];
 };
 
