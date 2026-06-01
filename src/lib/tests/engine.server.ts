@@ -15,10 +15,20 @@ export type Step =
 
 export type CollectTarget = "buttons";
 
+export type ElementCategory =
+  | "cta_primary"
+  | "cta_secondary"
+  | "form_submit"
+  | "icon_button"
+  | "nav_item"
+  | "link"
+  | "other";
+
 export type CollectedElement = {
   text: string;
   tagName: string;
   selector: string;
+  category: ElementCategory;
   href: string | null;
   disabled: boolean;
   visible: boolean;
@@ -37,6 +47,7 @@ export type CollectedElement = {
     display: string;
   };
 };
+
 
 export type EngineEvent =
   | { type: "step_started"; index: number; kind: Step["kind"]; summary: string }
