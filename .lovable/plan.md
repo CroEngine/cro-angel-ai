@@ -1,29 +1,37 @@
-# Plan: behåll live-vyn så overlayen syns efter run
+# Plan: håll live-vyn vid liv under 60s-hållfönstret
 
-Två ändringar — UI behåller iframen, backend håller sessionen vid liv en stund efter sista steget.
+## Problem
 
-## 1. `BrowserShell.tsx` — behåll `liveUrl` efter done
+`stagehand.close()` i `runSteps()`-finally tear:ar ner CDP-WebSocket:en så fort sista steget passerat → Browserbase live-vyn visar "WebSocket disconnected" trots att sessionen lever vidare i 60s.
 
-Ta bort `setLiveUrl(null)` i `done`/`error`-grenarna (rad 36 + 42). Iframen ska fortsätta visa sidan med overlayen. I `Viewport`-badgen ändrar vi texten från `live · Browserbase` till `ended` när `runState === "done"`, så det är tydligt att sessionen inte längre kör.
+## Fix (förstahand): `keepAlive: true` + behåll `close()`
 
-`handleRun` nullar redan `liveUrl` i början av nästa run, så vi får inte kvarliggande state-läckage.
+Per Stagehand-docs: med `keepAlive: true` kopplar `close()` bara loss Stagehands resurser men låter Browserbase-sessionen fortsätta. Det är den rena lösningen.
 
-Lägg till en liten "Close"-knapp i `Viewport` (eller `UrlBar`) som anropar `stopTestRun` + nullar `liveUrl` lokalt, så användaren kan stänga manuellt när de är klara.
+I `src/lib/tests/engine.server.ts`:
 
-## 2. `run.functions.ts` — håll Browserbase-sessionen vid liv 60s efter sista steget
+```ts
+const stagehand = new Stagehand({
+  env: "BROWSERBASE",
+  apiKey,
+  projectId,
+  browserbaseSessionID: sessionId,
+  keepAlive: true,
+});
+```
 
-I dag: så fort `runSteps` returnerar utan fel kör vi `terminate(runId, "done", …)` som omedelbart kör `closeSession(sessionId)`. Det stänger Browserbase-sidan, overlayen försvinner.
+Befintliga `finally { await stagehand.close(); }` lämnas orörd.
 
-Ändring: efter framgångsrik körning, vänta upp till 60 000 ms (med `signal: run.abort.signal` så användarens "Stop"/"Close" avbryter direkt) **innan** vi terminerar. Vid timeout eller abort → kör befintlig `terminate(...)`.
+## Fallback (om live-vyn ändå dör)
 
-Lägg till en `log`-event före väntan: `"keeping session open 60s — click Close to end now"` så det syns i konsolen.
+Om `keepAlive: true` inte räcker (CDP-anslutningen bryts ändå), ta då bort `stagehand.close()`-anropet — Stagehand-objektet GC:as när requesten avslutas, och `closeSession(sessionId)` i orchestratorn river ner sessionen rent.
 
-Vid `result.failed > 0` → terminera direkt som idag (ingen anledning att hålla en trasig session öppen).
+## Invariant
 
-## 3. Inget annat behövs
-
-`stopTestRun` finns redan och flippar abort-signalen → väntan bryts → session stängs rent. `Viewport`-badgen är en triv ändring.
+`closeSession(sessionId)` (anropad från orchestratorns `terminate()`-callback) ska förbli den **enda** platsen där Browserbase-sessionen faktiskt avslutas. Ingen annan kod ska kunna stänga sessionen.
 
 ## Verifiering
 
-Kör Run på glutenforum.se: efter `collect`-steget passerar ska iframen fortsätta visa sidan med cyan rektanglar + nummerbadge:r i ~60 s, badge byter till "ended", och "Close" stänger sessionen direkt.
+1. Implementera förstahandslösningen.
+2. Kör Run på glutenforum.se → bekräfta att live-iframen visar sidan med overlay i 60s utan "WebSocket disconnected".
+3. Om problemet kvarstår, applicera fallbacken och verifiera igen.
