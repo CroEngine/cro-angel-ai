@@ -223,7 +223,9 @@ export async function runSteps(
             // can render its own overlay on a clean image (and toggle it).
             let screenshot: { dataUrl: string; viewport: { w: number; h: number } } | undefined;
             try {
-              const vp = page.viewportSize() ?? { width: 1280, height: 720 };
+              const vp = (await page.evaluate<{ w: number; h: number }>(
+                "({ w: window.innerWidth, h: window.innerHeight })",
+              )) ?? { w: 1280, h: 720 };
               const buf = await page.screenshot({ type: "jpeg", quality: 60, fullPage: false });
               const b64 = Buffer.from(buf).toString("base64");
               screenshot = {
