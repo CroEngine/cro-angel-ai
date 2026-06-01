@@ -43,9 +43,6 @@ export function Viewport({ sessionState, liveUrl, frozen, onResume }: ViewportPr
           className="h-full w-full border-0 bg-background"
           sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
         />
-        <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-          live · Browserbase
-        </div>
       </div>
     );
   }
