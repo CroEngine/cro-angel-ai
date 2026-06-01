@@ -248,6 +248,36 @@ function CollectDetails({ data }: { data: CollectData }) {
           </span>
         </div>
       )}
+      {data.summary?.bySection && Object.keys(data.summary.bySection).length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {(Object.entries(data.summary.bySection) as Array<[SectionKind, number]>)
+            .sort((a, b) => b[1] - a[1])
+            .map(([sec, n]) => (
+              <span key={sec} className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-foreground">
+                ▦ {sec} · {n}
+              </span>
+            ))}
+        </div>
+      )}
+      {data.summary?.groups && data.summary.groups.length > 0 && (
+        <div className="rounded border border-border bg-background/50 p-2">
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            Repeated controls (collapsed from aggregates)
+          </div>
+          <ul className="space-y-0.5">
+            {data.summary.groups.slice(0, 6).map((g, i) => (
+              <li key={i} className="flex items-center gap-2 truncate text-[11px]">
+                <span className="inline-flex h-4 min-w-7 shrink-0 items-center justify-center rounded bg-foreground/10 px-1 text-[9px] font-bold text-foreground">
+                  ×{g.count}
+                </span>
+                <span className="truncate text-foreground">{g.label}</span>
+                <span className="shrink-0 text-muted-foreground">— {g.section} · {g.intent}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {data.summary && data.summary.topVisualWeight.length > 0 && (
         <div className="rounded border border-border bg-background/50 p-2">
           <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Top visual weight</div>
