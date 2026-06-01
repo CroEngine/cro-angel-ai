@@ -19,7 +19,7 @@ function getClient() {
 
 export async function createSession(): Promise<BrowserbaseSession> {
   const { client, projectId } = getClient();
-  const session = await client.sessions.create({ projectId, keepAlive: true, timeout: 300 });
+  const session = await client.sessions.create({ projectId, keepAlive: true, timeout: 16 * 60 });
   const debug = await client.sessions.debug(session.id);
   return {
     id: session.id,
