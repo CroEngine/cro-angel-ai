@@ -913,16 +913,19 @@ const COLLECT_SCRIPT = `(() => {
     const contrastN = norm(r.backgroundContrast, 1, 10); // 0–1
     const score = Math.round((areaN * 0.40 + fontN * 0.20 + weightN * 0.10 + contrastN * 0.30) * 100);
 
+    const cat = classifyCategory(r.el, r.cs, r.rect, r.text);
     out.push({
       text: r.text,
       tagName: classifyTag(r.el),
       selector: buildSelector(r.el),
-      category: classifyCategory(r.el, r.cs, r.rect, r.text),
-      intent: classifyIntent(r.el, r.text),
+      category: cat,
+      intent: classifyIntent(r.el, r.text, cat, r.rect),
+      section: detectSection(r.el, r.rect),
       href: r.el.tagName === 'A' ? (r.el.getAttribute('href') || null) : null,
       disabled: !!r.el.disabled || r.el.getAttribute('aria-disabled') === 'true',
       visible: true,
       aboveFold: r.viewportZone === 'above_fold',
+
       rect: { x: Math.round(r.rect.x), y: Math.round(r.rect.y), w: Math.round(r.rect.width), h: Math.round(r.rect.height) },
       position: {
         viewportZone: r.viewportZone,
