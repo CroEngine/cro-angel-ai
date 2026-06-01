@@ -17,6 +17,18 @@ type CollectedElement = {
   visible: boolean;
   aboveFold: boolean;
   rect: { x: number; y: number; w: number; h: number };
+  attributes?: Record<string, string>;
+  computedStyles?: {
+    color?: string;
+    backgroundColor?: string;
+    fontSize?: string;
+    fontWeight?: string;
+    padding?: string;
+    borderRadius?: string;
+    border?: string;
+    cursor?: string;
+    display?: string;
+  };
 };
 
 type CollectData = {
