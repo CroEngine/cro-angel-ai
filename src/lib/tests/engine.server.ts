@@ -318,6 +318,7 @@ export type PageAuditData = {
   navigation: NavigationData;
   visualHierarchy: VisualHierarchyEntry[];
   pageSummary: PageSummary;
+  hero?: HeroContent;
   flags: string[];
 };
 
