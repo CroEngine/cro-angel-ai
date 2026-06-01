@@ -230,7 +230,7 @@ export async function runSteps(
               const b64 = Buffer.from(buf).toString("base64");
               screenshot = {
                 dataUrl: `data:image/jpeg;base64,${b64}`,
-                viewport: { w: vp.width, h: vp.height },
+                viewport: { w: vp.w, h: vp.h },
               };
               onEvent({ type: "log", message: `screenshot captured (${Math.round(buf.length / 1024)}kb)` });
             } catch (e) {
