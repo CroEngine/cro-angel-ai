@@ -1,37 +1,33 @@
-# Plan: håll live-vyn vid liv under 60s-hållfönstret
+## Förslag: dela skärmen i två kolumner
 
-## Problem
+Just nu ligger `Viewport` (live-iframen) ovanför `ConsolePanel` i en vertikal stack. Det betyder att man måste scrolla — och när konsolen fylls av events trycks sidan undan. Att lägga dem sida vid sida löser båda problemen och låter dig se vad som händer i sidan samtidigt som loggen rullar.
 
-`stagehand.close()` i `runSteps()`-finally tear:ar ner CDP-WebSocket:en så fort sista steget passerat → Browserbase live-vyn visar "WebSocket disconnected" trots att sessionen lever vidare i 60s.
+### Ny layout
 
-## Fix (förstahand): `keepAlive: true` + behåll `close()`
-
-Per Stagehand-docs: med `keepAlive: true` kopplar `close()` bara loss Stagehands resurser men låter Browserbase-sessionen fortsätta. Det är den rena lösningen.
-
-I `src/lib/tests/engine.server.ts`:
-
-```ts
-const stagehand = new Stagehand({
-  env: "BROWSERBASE",
-  apiKey,
-  projectId,
-  browserbaseSessionID: sessionId,
-  keepAlive: true,
-});
+```text
+┌─────────────────────────────────────────────┐
+│ TabStrip                                    │
+├─────────────────────────────────────────────┤
+│ UrlBar                                      │
+├──────────────────────┬──────────────────────┤
+│                      │                      │
+│      Viewport        │     ConsolePanel     │
+│      (live iframe)   │     (events)         │
+│                      │                      │
+└──────────────────────┴──────────────────────┘
 ```
 
-Befintliga `finally { await stagehand.close(); }` lämnas orörd.
+### Ändringar
 
-## Fallback (om live-vyn ändå dör)
+- `src/components/browser-shell/BrowserShell.tsx`
+  - Wrappa `<Viewport />` och `<ConsolePanel />` i en `flex-1 flex min-h-0` container med två `flex-1` barn och en tunn skiljare emellan.
+  - Default 50/50. Konsolen får `overflow` internt så events inte trycker layouten.
+- `src/components/browser-shell/Viewport.tsx` och `ConsolePanel.tsx`
+  - Säkerställ att rooten är `h-full w-full` så de fyller sin halva (inte fasta höjder).
 
-Om `keepAlive: true` inte räcker (CDP-anslutningen bryts ändå), ta då bort `stagehand.close()`-anropet — Stagehand-objektet GC:as när requesten avslutas, och `closeSession(sessionId)` i orchestratorn river ner sessionen rent.
+### Valfritt (kan vänta)
 
-## Invariant
+- Dra-bar skiljare för att justera bredden.
+- På smala viewports (<900px) faller layouten tillbaka till vertikal stack via `lg:flex-row`.
 
-`closeSession(sessionId)` (anropad från orchestratorns `terminate()`-callback) ska förbli den **enda** platsen där Browserbase-sessionen faktiskt avslutas. Ingen annan kod ska kunna stänga sessionen.
-
-## Verifiering
-
-1. Implementera förstahandslösningen.
-2. Kör Run på glutenforum.se → bekräfta att live-iframen visar sidan med overlay i 60s utan "WebSocket disconnected".
-3. Om problemet kvarstår, applicera fallbacken och verifiera igen.
+Vill du att jag kör med 50/50 fast split, eller lägger in en dragbar skiljare direkt?
