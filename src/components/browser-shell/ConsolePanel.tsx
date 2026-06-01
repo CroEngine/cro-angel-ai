@@ -399,45 +399,59 @@ export function ConsolePanel({ events }: { events: StreamEvent[] }) {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col border-t border-border bg-background lg:border-t-0">
-      <div className="border-b border-border px-4 py-2">
-        <h2 className="text-base font-semibold text-foreground">Console</h2>
-      </div>
-      <ScrollArea className="flex-1">
-        <div className="divide-y divide-border font-mono text-xs">
-          {events.length === 0 ? (
-            <div className="px-4 py-2 text-muted-foreground">
-              No run yet. Click <span className="font-medium text-foreground">Run tests</span> to start a Browserbase session.
-            </div>
-          ) : (
-            events.map((ev, i) => {
-              const isCollectPassed =
-                ev.type === "step_passed" && ev.data.kind === "collect" && isCollectData(ev.data.data);
-              const isPageAuditPassed =
-                ev.type === "step_passed" && ev.data.kind === "pageAudit" && isPageAuditData(ev.data.data);
-              return (
-                <div key={i} className="flex items-start gap-4 px-4 py-2">
-                  <div className="flex-1 min-w-0">
-                    <span
-                      className={
-                        "whitespace-pre-wrap break-all " +
-                        (ev.type === "error" || ev.type === "step_failed"
-                          ? "text-destructive"
-                          : "text-foreground")
-                      }
-                    >
-                      {renderEventLine(ev)}
-                    </span>
-                    {isCollectPassed && <CollectDetails data={ev.data.data as CollectData} />}
-                    {isPageAuditPassed && <PageAuditDetails data={ev.data.data as PageAuditData} />}
-
-                  </div>
-                  <span className="shrink-0 text-muted-foreground">{fmtTime(ev.data.ts)}</span>
-                </div>
-              );
-            })
-          )}
+      <Tabs defaultValue="findings" className="flex h-full min-h-0 w-full flex-col">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2">
+          <h2 className="text-base font-semibold text-foreground">Console</h2>
+          <TabsList className="h-8">
+            <TabsTrigger value="findings" className="text-xs">Findings</TabsTrigger>
+            <TabsTrigger value="activity" className="text-xs">Activity</TabsTrigger>
+          </TabsList>
         </div>
-      </ScrollArea>
+
+        <TabsContent value="findings" className="m-0 flex-1 min-h-0">
+          <ScrollArea className="h-full">
+            <FindingsView events={events} />
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="activity" className="m-0 flex-1 min-h-0">
+          <ScrollArea className="h-full">
+            <div className="divide-y divide-border font-mono text-xs">
+              {events.length === 0 ? (
+                <div className="px-4 py-2 text-muted-foreground">
+                  No run yet. Click <span className="font-medium text-foreground">Run tests</span> to start a Browserbase session.
+                </div>
+              ) : (
+                events.map((ev, i) => {
+                  const isCollectPassed =
+                    ev.type === "step_passed" && ev.data.kind === "collect" && isCollectData(ev.data.data);
+                  const isPageAuditPassed =
+                    ev.type === "step_passed" && ev.data.kind === "pageAudit" && isPageAuditData(ev.data.data);
+                  return (
+                    <div key={i} className="flex items-start gap-4 px-4 py-2">
+                      <div className="flex-1 min-w-0">
+                        <span
+                          className={
+                            "whitespace-pre-wrap break-all " +
+                            (ev.type === "error" || ev.type === "step_failed"
+                              ? "text-destructive"
+                              : "text-foreground")
+                          }
+                        >
+                          {renderEventLine(ev)}
+                        </span>
+                        {isCollectPassed && <CollectDetails data={ev.data.data as CollectData} />}
+                        {isPageAuditPassed && <PageAuditDetails data={ev.data.data as PageAuditData} />}
+                      </div>
+                      <span className="shrink-0 text-muted-foreground">{fmtTime(ev.data.ts)}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
