@@ -10,7 +10,21 @@ export type Step =
   | { kind: "fill"; selector: string; value: string }
   | { kind: "act"; instruction: string }
   | { kind: "extract"; instruction: string }
-  | { kind: "observe"; instruction: string };
+  | { kind: "observe"; instruction: string }
+  | { kind: "collect"; target: CollectTarget };
+
+export type CollectTarget = "buttons";
+
+export type CollectedElement = {
+  text: string;
+  tagName: string;
+  selector: string;
+  href: string | null;
+  disabled: boolean;
+  visible: boolean;
+  aboveFold: boolean;
+  rect: { x: number; y: number; w: number; h: number };
+};
 
 export type EngineEvent =
   | { type: "step_started"; index: number; kind: Step["kind"]; summary: string }
