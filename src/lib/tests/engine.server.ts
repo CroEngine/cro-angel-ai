@@ -699,35 +699,9 @@ export async function runSteps(
                 foldHeightPx: dims.foldHeightPx,
               };
 
+              // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
               const flags: string[] = [];
-              if (!audit.head.title) flags.push("missing_title");
-              else if (audit.head.title.length > 60) flags.push("title_too_long");
-              if (!audit.head.description) flags.push("missing_meta_description");
-              else if (audit.head.description.length > 160) flags.push("meta_description_too_long");
-              if (!audit.head.canonical) flags.push("missing_canonical");
-              if (!audit.head.ogTitle) flags.push("missing_og_title");
-              if (!audit.head.ogImage) flags.push("missing_og_image");
-              if (!audit.head.viewport) flags.push("missing_viewport");
-              if (audit.headings.h1Count === 0) flags.push("no_h1");
-              if (audit.headings.h1Count > 1) flags.push("multiple_h1");
-              if (audit.images.missingAltPct > 20) flags.push("low_alt_coverage");
-              if (audit.schema.count === 0) flags.push("no_structured_data");
-              if (audit.content.wordCount < 100) flags.push("thin_content");
-              if (!robotsTxt.exists) flags.push("no_robots_txt");
-              if (robotsTxt.blocksAll) flags.push("robots_blocks_all");
-              if (!sitemap.exists) flags.push("no_sitemap");
-              if (trustSignals.length === 0) flags.push("no_trust_signals");
-              else if (trustSummary.aboveFold === 0) flags.push("no_trust_above_fold");
-              // New v2 flags.
-              const pricingIdx = sectionOrder.indexOf("pricing");
-              const socialIdx = sectionOrder.findIndex(
-                (t) => t === "testimonials" || t === "reviews" || t === "logos",
-              );
-              if (pricingIdx >= 0 && socialIdx >= 0 && pricingIdx < socialIdx) flags.push("wrong_section_order");
-              if (ctas.some((c) => c.category === "cta_primary" && c.nearestTrustSignalDistance > 400)) {
-                flags.push("cta_no_trust_nearby");
-              }
-              if (forms.some((f) => f.requiredFields >= 6)) flags.push("form_high_friction");
+
 
               const full: PageAuditData = {
                 ...audit,
