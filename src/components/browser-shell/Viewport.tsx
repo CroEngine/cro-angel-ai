@@ -106,7 +106,7 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
             style={{ width: "100%", height: "100%" }}
           >
             {overlayElements
-              .filter((el) => el.rect.y < viewport.h && el.rect.w > 0 && el.rect.h > 0)
+              .filter((el) => el.rect.y + el.rect.h > 0 && el.rect.y < viewport.h && el.rect.w > 0 && el.rect.h > 0)
               .map((el, i) => {
                 const color = CATEGORY_COLORS[el.category] ?? CATEGORY_COLORS.other;
                 return (
