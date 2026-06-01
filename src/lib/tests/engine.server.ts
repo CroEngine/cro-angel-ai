@@ -24,16 +24,39 @@ export type ElementCategory =
   | "link"
   | "other";
 
+export type ViewportZone = "above_fold" | "mid_page" | "below_fold";
+
+export type ElementIntent =
+  | "conversion"
+  | "information"
+  | "navigation"
+  | "social"
+  | "utility"
+  | "unknown";
+
 export type CollectedElement = {
   text: string;
   tagName: string;
   selector: string;
   category: ElementCategory;
+  intent: ElementIntent;
   href: string | null;
   disabled: boolean;
   visible: boolean;
   aboveFold: boolean;
   rect: { x: number; y: number; w: number; h: number };
+  position: {
+    viewportZone: ViewportZone;
+    yPercent: number;
+    xPercent: number;
+  };
+  visualWeight: {
+    area: number;
+    fontSize: number;
+    fontWeight: number;
+    backgroundContrast: number;
+    score: number;
+  };
   attributes: Record<string, string>;
   computedStyles: {
     color: string;
@@ -47,6 +70,7 @@ export type CollectedElement = {
     display: string;
   };
 };
+
 
 
 export type EngineEvent =
@@ -175,9 +199,26 @@ export async function runSteps(
             const all = elements as CollectedElement[];
             const filtered = filterCollected(all, step.target);
             const byCategory: Record<string, number> = {};
+            const intentBreakdown: Record<string, number> = {};
+            let aboveFold = 0;
+            let primaryCtaCount = 0;
+            let competingAboveFold = 0;
             for (const el of filtered) {
               byCategory[el.category] = (byCategory[el.category] ?? 0) + 1;
+              intentBreakdown[el.intent] = (intentBreakdown[el.intent] ?? 0) + 1;
+              if (el.position.viewportZone === "above_fold") aboveFold++;
+              if (el.category === "cta_primary" && el.intent === "conversion") primaryCtaCount++;
+              if (
+                (el.category === "cta_primary" || el.category === "cta_secondary" || el.category === "form_submit") &&
+                el.position.viewportZone === "above_fold" &&
+                el.intent !== "navigation"
+              ) competingAboveFold++;
             }
+            const topVisualWeight = [...filtered]
+              .sort((a, b) => b.visualWeight.score - a.visualWeight.score)
+              .slice(0, 5)
+              .map((el) => ({ selector: el.selector, text: el.text, score: el.visualWeight.score }));
+
             // Draw color-coded overlay rectangles in the live page.
             try {
               const pairs = filtered.map((el) => [el.selector, el.category]);
@@ -185,11 +226,27 @@ export async function runSteps(
             } catch (e) {
               onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
             }
-            data = { target: step.target, count: filtered.length, byCategory, elements: filtered };
-            const catSummary = Object.entries(byCategory).map(([k, v]) => `${k}:${v}`).join(" ");
-            onEvent({ type: "log", message: `collect ${step.target}: ${filtered.length} (${catSummary})` });
+            data = {
+              target: step.target,
+              count: filtered.length,
+              byCategory,
+              summary: {
+                total: filtered.length,
+                aboveFold,
+                primaryCtaCount,
+                competingAboveFold,
+                topVisualWeight,
+                intentBreakdown,
+              },
+              elements: filtered,
+            };
+            onEvent({
+              type: "log",
+              message: `collect ${step.target}: ${filtered.length} · ${aboveFold} above fold · ${primaryCtaCount} primary CTA · competing above fold: ${competingAboveFold}`,
+            });
             break;
           }
+
 
         }
 
@@ -416,7 +473,63 @@ const COLLECT_SCRIPT = `(() => {
     return 'other';
   }
 
-  const out = [];
+  // Intent ordlistor — partial match, case-insensitive
+  const INTENT_RX = {
+    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|subscribe|request|trial|checkout|order|beställ|köp|boka|prova|kom igång)/i,
+    information: /(learn|read|explore|see how|how|why|about|läs|utforska|så funkar)/i,
+    navigation: /(login|log in|sign in|account|menu|home|logga in|mina sidor|hem)/i,
+    social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
+    utility: /(search|sök|language|språk|cookie|accept|godkänn|contact|kontakt)/i,
+  };
+
+  function classifyIntent(el, text) {
+    const tag = el.tagName;
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    const isFormSubmit = (tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit');
+    const t = (text || '').trim();
+    if (!t) return isFormSubmit ? 'conversion' : 'unknown';
+    if (INTENT_RX.conversion.test(t)) return 'conversion';
+    if (INTENT_RX.navigation.test(t)) return 'navigation';
+    if (INTENT_RX.social.test(t)) return 'social';
+    if (INTENT_RX.utility.test(t)) return 'utility';
+    if (INTENT_RX.information.test(t)) return 'information';
+    return isFormSubmit ? 'conversion' : 'unknown';
+  }
+
+  // WCAG relative luminance + contrast ratio
+  function parseRgb(s) {
+    if (!s) return null;
+    const m = s.match(/rgba?\\(([^)]+)\\)/);
+    if (!m) return null;
+    const parts = m[1].split(',').map((v) => parseFloat(v.trim()));
+    if (parts.length < 3) return null;
+    const a = parts.length >= 4 ? parts[3] : 1;
+    if (a === 0) return null;
+    return { r: parts[0], g: parts[1], b: parts[2] };
+  }
+  function relLum(c) {
+    const ch = [c.r, c.g, c.b].map((v) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  }
+  function contrastRatio(a, b) {
+    const la = relLum(a), lb = relLum(b);
+    const hi = Math.max(la, lb), lo = Math.min(la, lb);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+  const bodyBg = parseRgb(window.getComputedStyle(document.body).backgroundColor) || { r: 255, g: 255, b: 255 };
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function norm(v, lo, hi) { return (clamp(v, lo, hi) - lo) / (hi - lo); }
+
+  const docH = document.documentElement.scrollHeight || window.innerHeight;
+  const docW = document.documentElement.scrollWidth || window.innerWidth;
+
+  // First pass: collect raw records
+  const raw = [];
+  let maxArea = 1;
   for (const el of kept) {
     const rect = el.getBoundingClientRect();
     const cs = window.getComputedStyle(el);
@@ -426,32 +539,79 @@ const COLLECT_SCRIPT = `(() => {
     for (const a of Array.from(el.attributes)) {
       attrs[a.name] = (a.value || '').slice(0, 200);
     }
+
+    const docTop = rect.top + window.scrollY;
+    const docLeft = rect.left + window.scrollX;
+    const yPercent = docH > 0 ? (docTop / docH) * 100 : 0;
+    const xPercent = docW > 0 ? ((docLeft + rect.width / 2) / docW) * 100 : 0;
+    const viewportZone =
+      docTop < window.innerHeight ? 'above_fold' :
+      docTop < 2 * window.innerHeight ? 'mid_page' :
+      'below_fold';
+
+    const area = rect.width * rect.height;
+    if (area > maxArea) maxArea = area;
+    const fontSize = parseFloat(cs.fontSize) || 14;
+    const fontWeight = parseInt(cs.fontWeight, 10) || 400;
+    const elBg = parseRgb(cs.backgroundColor);
+    const backgroundContrast = elBg ? contrastRatio(elBg, bodyBg) : 1;
+
+    raw.push({
+      el, rect, cs, text, attrs,
+      docTop, docLeft, yPercent, xPercent, viewportZone,
+      area, fontSize, fontWeight, backgroundContrast,
+    });
+  }
+
+  // Second pass: normalize visualWeight score and emit
+  const out = [];
+  for (const r of raw) {
+    const areaN = r.area / maxArea;                  // 0–1
+    const fontN = norm(r.fontSize, 10, 48);           // 0–1
+    const weightN = norm(r.fontWeight, 300, 800);     // 0–1
+    const contrastN = norm(r.backgroundContrast, 1, 10); // 0–1
+    const score = Math.round((areaN * 0.40 + fontN * 0.20 + weightN * 0.10 + contrastN * 0.30) * 100);
+
     out.push({
-      text,
-      tagName: classifyTag(el),
-      selector: buildSelector(el),
-      category: classifyCategory(el, cs, rect, text),
-      href: el.tagName === 'A' ? (el.getAttribute('href') || null) : null,
-      disabled: !!el.disabled || el.getAttribute('aria-disabled') === 'true',
+      text: r.text,
+      tagName: classifyTag(r.el),
+      selector: buildSelector(r.el),
+      category: classifyCategory(r.el, r.cs, r.rect, r.text),
+      intent: classifyIntent(r.el, r.text),
+      href: r.el.tagName === 'A' ? (r.el.getAttribute('href') || null) : null,
+      disabled: !!r.el.disabled || r.el.getAttribute('aria-disabled') === 'true',
       visible: true,
-      aboveFold: rect.top < window.innerHeight,
-      rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
-      attributes: attrs,
+      aboveFold: r.viewportZone === 'above_fold',
+      rect: { x: Math.round(r.rect.x), y: Math.round(r.rect.y), w: Math.round(r.rect.width), h: Math.round(r.rect.height) },
+      position: {
+        viewportZone: r.viewportZone,
+        yPercent: Math.round(r.yPercent * 10) / 10,
+        xPercent: Math.round(r.xPercent * 10) / 10,
+      },
+      visualWeight: {
+        area: Math.round(r.area),
+        fontSize: Math.round(r.fontSize),
+        fontWeight: r.fontWeight,
+        backgroundContrast: Math.round(r.backgroundContrast * 10) / 10,
+        score,
+      },
+      attributes: r.attrs,
       computedStyles: {
-        color: cs.color,
-        backgroundColor: cs.backgroundColor,
-        fontSize: cs.fontSize,
-        fontWeight: cs.fontWeight,
-        padding: cs.padding,
-        borderRadius: cs.borderRadius,
-        border: cs.border,
-        cursor: cs.cursor,
-        display: cs.display,
+        color: r.cs.color,
+        backgroundColor: r.cs.backgroundColor,
+        fontSize: r.cs.fontSize,
+        fontWeight: r.cs.fontWeight,
+        padding: r.cs.padding,
+        borderRadius: r.cs.borderRadius,
+        border: r.cs.border,
+        cursor: r.cs.cursor,
+        display: r.cs.display,
       },
     });
   }
   return out;
 })()`;
+
 
 // Injected into the live Browserbase page to draw color-coded highlight rectangles per category.
 function OVERLAY_FN(pairs: Array<[string, string]>) {

@@ -17,16 +17,22 @@ type ElementCategory =
   | "link"
   | "other";
 
+type ElementIntent = "conversion" | "information" | "navigation" | "social" | "utility" | "unknown";
+type ViewportZone = "above_fold" | "mid_page" | "below_fold";
+
 type CollectedElement = {
   text: string;
   tagName: string;
   selector: string;
   category?: ElementCategory;
+  intent?: ElementIntent;
   href: string | null;
   disabled: boolean;
   visible: boolean;
   aboveFold: boolean;
   rect: { x: number; y: number; w: number; h: number };
+  position?: { viewportZone: ViewportZone; yPercent: number; xPercent: number };
+  visualWeight?: { area: number; fontSize: number; fontWeight: number; backgroundContrast: number; score: number };
   attributes?: Record<string, string>;
   computedStyles?: {
     color?: string;
@@ -41,10 +47,20 @@ type CollectedElement = {
   };
 };
 
+type CollectSummary = {
+  total: number;
+  aboveFold: number;
+  primaryCtaCount: number;
+  competingAboveFold: number;
+  topVisualWeight: Array<{ selector: string; text: string; score: number }>;
+  intentBreakdown: Partial<Record<ElementIntent, number>>;
+};
+
 type CollectData = {
   target: string;
   count: number;
   byCategory?: Partial<Record<ElementCategory, number>>;
+  summary?: CollectSummary;
   elements: CollectedElement[];
 };
 
@@ -53,6 +69,7 @@ function isCollectData(v: unknown): v is CollectData {
   const o = v as Record<string, unknown>;
   return typeof o.target === "string" && typeof o.count === "number" && Array.isArray(o.elements);
 }
+
 
 const CATEGORY_COLORS: Record<ElementCategory, string> = {
   cta_primary: "#10b981",
@@ -153,6 +170,45 @@ function CollectDetails({ data }: { data: CollectData }) {
             ))}
         </div>
       )}
+      {data.summary && (
+        <div className="flex flex-wrap gap-1">
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-foreground">
+            ↑ {data.summary.aboveFold} above fold
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-foreground">
+            ★ {data.summary.primaryCtaCount} primary CTA
+          </span>
+          <span
+            className={
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium " +
+              (data.summary.competingAboveFold >= 4
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                : "border-border bg-background text-foreground")
+            }
+          >
+            ⚔ Competing above fold: {data.summary.competingAboveFold}
+          </span>
+        </div>
+      )}
+      {data.summary && data.summary.topVisualWeight.length > 0 && (
+        <div className="rounded border border-border bg-background/50 p-2">
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Top visual weight</div>
+          <ul className="space-y-0.5">
+            {data.summary.topVisualWeight.slice(0, 3).map((el, i) => (
+              <li key={i} className="flex items-center gap-2 truncate text-[11px]">
+                <span className="inline-flex h-4 w-7 shrink-0 items-center justify-center rounded bg-foreground/10 text-[9px] font-bold text-foreground">
+                  {el.score}
+                </span>
+                <span className="truncate text-foreground">
+                  {el.text || <em className="text-muted-foreground">(no text)</em>}
+                </span>
+                <span className="truncate text-muted-foreground">— {el.selector}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {preview.length > 0 && (
         <ul className="space-y-1">
           {preview.map((el, i) => {
