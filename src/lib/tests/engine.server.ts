@@ -1652,10 +1652,18 @@ const TRUST_SIGNALS_SCRIPT = `(() => {
     return el;
   }
 
+  const RECOGNIZED_BRANDS = [
+    'spotify','stripe','hubspot','google','microsoft','apple','amazon','meta','facebook','instagram',
+    'linkedin','twitter','x.com','youtube','tiktok','netflix','airbnb','uber','lyft','slack',
+    'shopify','salesforce','adobe','figma','notion','intercom','zendesk','atlassian','github','gitlab',
+    'mongodb','vercel','cloudflare','klarna','ikea','volvo','ericsson','h&m','spotify','tesla',
+    'nike','adidas','coca-cola','pepsi','samsung','sony','intel','nvidia','oracle','sap',
+  ];
+
   const seen = new Set();
   const out = [];
 
-  function push(type, text, el, source) {
+  function push(type, text, el, source, extras) {
     const block = nearestBlock(el);
     if (!isVisible(block)) return;
     const cleanText = (text || '').trim().replace(/\\s+/g, ' ').slice(0, 200);
@@ -1663,7 +1671,7 @@ const TRUST_SIGNALS_SCRIPT = `(() => {
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);
     const rect = block.getBoundingClientRect();
-    out.push({
+    const entry = {
       type,
       text: cleanText,
       section: SECTION_KIND(block, rect),
@@ -1671,13 +1679,57 @@ const TRUST_SIGNALS_SCRIPT = `(() => {
       selector: buildSelector(block),
       visualWeight: Math.round(rect.width * rect.height),
       source,
-    });
+      rect: {
+        x: Math.round(rect.left + window.scrollX),
+        y: Math.round(rect.top + window.scrollY),
+        w: Math.round(rect.width),
+        h: Math.round(rect.height),
+      },
+    };
+    if (extras) Object.assign(entry, extras);
+    out.push(entry);
+  }
+
+  // Testimonial enrichment helpers
+  function extractTestimonialMeta(el, text) {
+    const extras = {};
+    // Look for <cite>, <figcaption>, or "— Name, Company" pattern
+    const cite = el.querySelector('cite, figcaption, [class*="author" i], [class*="name" i]');
+    if (cite) {
+      const t = (cite.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 120);
+      const m = t.match(/^([^,—–-]+)[,—–-]\\s*(.+)$/);
+      if (m) { extras.personName = m[1].trim(); extras.company = m[2].trim(); }
+      else if (t) { extras.personName = t; }
+    } else {
+      const m = text.match(/[—–-]\\s*([A-Z][\\w .'-]{2,40}?)\\s*,\\s*([A-Z][\\w .'-]{2,60})/);
+      if (m) { extras.personName = m[1].trim(); extras.company = m[2].trim(); }
+    }
+    extras.hasImage = !!el.querySelector('img');
+    return extras;
+  }
+
+  function extractRatingMeta(text) {
+    const extras = {};
+    const m = text.match(/(\\d[.,]\\d)\\s*(?:\\/|av|out of)\\s*5/i);
+    if (m) extras.rating = parseFloat(m[1].replace(',', '.'));
+    const rc = text.match(/\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d{2,})\\s*(reviews|recensioner|omd[öo]men|ratings)\\b/i);
+    if (rc) extras.reviewCount = parseInt(rc[1].replace(/[ ,.]/g, ''), 10);
+    if (/trustpilot/i.test(text)) extras.reviewSource = 'Trustpilot';
+    else if (/google/i.test(text)) extras.reviewSource = 'Google';
+    else if (/g2\\b/i.test(text)) extras.reviewSource = 'G2';
+    else if (/capterra/i.test(text)) extras.reviewSource = 'Capterra';
+    return extras;
+  }
+
+  function extractSocialProofCount(text) {
+    const m = text.match(/\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d{4,})/);
+    if (m) return { reviewCount: parseInt(m[1].replace(/[ ,.]/g, ''), 10) };
+    return undefined;
   }
 
   // 1) Text-based scan across visible block elements.
   const blocks = document.querySelectorAll('p, li, span, h1, h2, h3, h4, h5, h6, blockquote, figcaption, div, section, article');
   for (const el of blocks) {
-    // skip if has block descendants with text — let leaf win.
     let leaf = true;
     for (const c of el.children) {
       const tag = c.tagName;
@@ -1687,11 +1739,24 @@ const TRUST_SIGNALS_SCRIPT = `(() => {
     const text = (el.innerText || el.textContent || '').trim();
     if (!text || text.length > 600) continue;
     for (const type in PATTERNS) {
-      if (PATTERNS[type].test(text)) push(type, text, el, 'text');
+      if (PATTERNS[type].test(text)) {
+        let extras;
+        if (type === 'testimonial') extras = extractTestimonialMeta(el, text);
+        else if (type === 'review_rating') extras = extractRatingMeta(text);
+        else if (type === 'social_proof_count') extras = extractSocialProofCount(text);
+        push(type, text, el, 'text', extras);
+      }
     }
   }
 
-  // 2) Star icons — find clusters of ≥3 star-like elements in one parent.
+  // Quote-based testimonial detection (long quoted text)
+  document.querySelectorAll('blockquote, [class*="testimonial" i], [class*="quote" i]').forEach((el) => {
+    const text = (el.innerText || el.textContent || '').trim();
+    if (text.length < 40 || text.length > 600) return;
+    push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
+  });
+
+  // 2) Star icons clusters
   const starNodes = Array.from(document.querySelectorAll(
     '[class*="star" i], [class*="rating" i], svg[aria-label*="star" i], i[class*="fa-star"]'
   ));
@@ -1707,14 +1772,13 @@ const TRUST_SIGNALS_SCRIPT = `(() => {
     if (group.length < 3) continue;
     push('stars', String(group.length) + ' stars', parent, 'attr');
   }
-  // Also detect star character clusters in text.
   document.querySelectorAll('p, span, div').forEach((el) => {
     if (el.children.length > 0) return;
     const t = el.textContent || '';
     if ((t.match(/[★⭐✦]/g) || []).length >= 3) push('stars', t.trim().slice(0, 60), el, 'text');
   });
 
-  // 3) Customer logos — a row/grid of ≥4 small <img> siblings.
+  // 3) Customer logos — row/grid of ≥4 small <img>
   document.querySelectorAll('ul, ol, div, section').forEach((el) => {
     const imgs = Array.from(el.querySelectorAll(':scope > * img, :scope > img'));
     if (imgs.length < 4) return;
@@ -1723,10 +1787,16 @@ const TRUST_SIGNALS_SCRIPT = `(() => {
       return r.width > 40 && r.width < 240 && r.height > 20 && r.height < 120;
     });
     if (small.length < 4) return;
-    push('customer_logos', String(small.length) + ' logo images', el, 'img_alt');
+    const altText = small.map((i) => (i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || '')).join(' ').toLowerCase();
+    const recognized = [];
+    for (const b of RECOGNIZED_BRANDS) if (altText.indexOf(b) >= 0) recognized.push(b);
+    push('customer_logos', String(small.length) + ' logo images', el, 'img_alt', {
+      logoCount: small.length,
+      recognizedBrands: Array.from(new Set(recognized)).slice(0, 20),
+    });
   });
 
-  // 4) Payment logos via img alt.
+  // 4) Payment logos
   const paymentRx = /(visa|mastercard|amex|american express|paypal|stripe|klarna|swish|apple pay|google pay)/i;
   const paymentImgs = Array.from(document.querySelectorAll('img[alt], img[src]')).filter((i) => {
     const alt = (i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || '');
@@ -1737,12 +1807,12 @@ const TRUST_SIGNALS_SCRIPT = `(() => {
     if (parent) push('secure_payment', paymentImgs.length + ' payment provider logos', parent, 'img_alt');
   }
 
-  // 5) Contact info — tel:/mailto: links + phone-shaped text in footer.
+  // 5) Contact info
   document.querySelectorAll('a[href^="tel:"], a[href^="mailto:"]').forEach((a) => {
     push('contact_info', a.getAttribute('href') || '', a, 'attr');
   });
 
-  // 6) Schema.org — Review/AggregateRating/Organization in JSON-LD.
+  // 6) Schema.org
   const ldNodes = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
   for (const n of ldNodes) {
     try {
@@ -1754,7 +1824,11 @@ const TRUST_SIGNALS_SCRIPT = `(() => {
         for (const t of types) {
           if (t === 'Review' || t === 'AggregateRating') {
             const rating = it.ratingValue || (it.reviewRating && it.reviewRating.ratingValue);
-            push('review_rating', rating ? 'Schema rating ' + rating : 'Schema review', document.body, 'schema');
+            const reviewCount = it.reviewCount || it.ratingCount;
+            push('review_rating', rating ? 'Schema rating ' + rating : 'Schema review', document.body, 'schema', {
+              rating: rating ? parseFloat(String(rating)) : undefined,
+              reviewCount: reviewCount ? parseInt(String(reviewCount), 10) : undefined,
+            });
           }
           if (t === 'Organization' && (it.address || it.telephone || it.email)) {
             push('contact_info', 'Schema Organization contact', document.body, 'schema');
@@ -1765,6 +1839,386 @@ const TRUST_SIGNALS_SCRIPT = `(() => {
   }
 
   return out;
+})()`;
+
+
+// Deterministic CTA inventory with competition + distance context.
+const CTAS_SCRIPT = `(() => {
+  const viewportH = window.innerHeight || 720;
+
+  const INTENT_RX = {
+    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|best[äa]ll|k[öo]p|boka|prova|kom ig[åa]ng|skapa konto|registrera|ans[öo]k)/i,
+    navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst[äa]llningar)/i,
+    utility: /(search|s[öo]k|language|spr[åa]k|cookie|accept|godk[äa]nn|contact|kontakt|help|hj[äa]lp|faq)/i,
+    social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
+  };
+
+  function buildSelector(el) {
+    if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
+    const parent = el.parentElement;
+    if (parent) {
+      const same = Array.from(parent.children).filter((c) => c.tagName === el.tagName);
+      const idx = same.indexOf(el) + 1;
+      return el.tagName.toLowerCase() + ':nth-of-type(' + idx + ')';
+    }
+    return el.tagName.toLowerCase();
+  }
+
+  function isVisible(el) {
+    const cs = window.getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    if (parseFloat(cs.opacity || '1') === 0) return false;
+    const r = el.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) return false;
+    return true;
+  }
+
+  function sectionKind(el, rect) {
+    let p = el.parentElement;
+    while (p && p !== document.body) {
+      const tag = p.tagName;
+      const role = (p.getAttribute && p.getAttribute('role') || '').toLowerCase();
+      if (tag === 'FOOTER' || role === 'contentinfo') return 'footer';
+      if (tag === 'NAV' || role === 'navigation') return 'nav';
+      if (tag === 'HEADER' || role === 'banner') return 'header';
+      p = p.parentElement;
+    }
+    const docTop = rect.top + window.scrollY;
+    if (docTop < viewportH * 1.1) return 'hero';
+    return 'content';
+  }
+
+  function hasSurface(cs) {
+    const bg = cs.backgroundColor || '';
+    return !!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent';
+  }
+
+  function classifyCategory(el, cs, rect, text) {
+    const tag = el.tagName;
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    if ((tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit')) return 'form_submit';
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    const isButtonish = tag === 'BUTTON' || tag === 'INPUT' || role === 'button' || (tag === 'A' && el.hasAttribute('href'));
+    const area = rect.width * rect.height;
+    if (isButtonish && rect.width <= 56 && rect.height <= 56 && (!text || text.length <= 2)) return 'icon_button';
+    if (isButtonish) {
+      let score = 0;
+      if (rect.top < viewportH) score++;
+      if (text.length > 0 && text.length <= 32) score++;
+      if (area >= 90 * 28) score++;
+      if (hasSurface(cs)) score++;
+      if (score >= 4) return 'cta_primary';
+      if (score >= 2 && hasSurface(cs)) return 'cta_secondary';
+    }
+    if (tag === 'A' && el.hasAttribute('href')) return 'link';
+    return 'other';
+  }
+
+  function classifyIntent(text, category, rect) {
+    const t = (text || '').trim();
+    if (INTENT_RX.conversion.test(t)) return 'conversion';
+    if (INTENT_RX.navigation.test(t)) return 'navigation';
+    if (INTENT_RX.social.test(t)) return 'social';
+    if (INTENT_RX.utility.test(t)) return 'utility';
+    if (category === 'cta_primary' && rect.top < viewportH) return 'conversion';
+    return 'unknown';
+  }
+
+  // Collect candidate CTAs (buttons + anchor links with visible surface or strong CTA-ish text)
+  const SEL = 'button, a[href], input[type=submit], input[type=button], [role="button"]';
+  const nodes = Array.from(document.querySelectorAll(SEL));
+  const raw = [];
+  for (const el of nodes) {
+    if (!isVisible(el)) continue;
+    const rect = el.getBoundingClientRect();
+    const cs = window.getComputedStyle(el);
+    const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 80);
+    const category = classifyCategory(el, cs, rect, text);
+    if (category === 'other' || category === 'link') continue; // keep button-ish + form_submit only
+    raw.push({
+      el, rect, cs, text, category,
+      intent: classifyIntent(text, category, rect),
+      section: sectionKind(el, rect),
+    });
+  }
+
+  // Pre-fetch trust signal + form rects for distance calc
+  const trustRects = [];
+  document.querySelectorAll('[class*="testimonial" i], [class*="review" i], [class*="trust" i], blockquote').forEach((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.width > 1 && r.height > 1) trustRects.push({ cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
+  });
+  document.querySelectorAll('[class*="star" i], [class*="logo" i]').forEach((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.width > 1 && r.height > 1) trustRects.push({ cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
+  });
+  const formRects = Array.from(document.querySelectorAll('form')).map((f) => {
+    const r = f.getBoundingClientRect();
+    return { x: r.left, y: r.top, w: r.width, h: r.height, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  });
+
+  function dist(ax, ay, bx, by) { const dx = ax - bx, dy = ay - by; return Math.sqrt(dx * dx + dy * dy); }
+
+  function minDist(cx, cy, arr) {
+    if (arr.length === 0) return 9999;
+    let m = Infinity;
+    for (const r of arr) { const d = dist(cx, cy, r.cx, r.cy); if (d < m) m = d; }
+    return Math.round(m);
+  }
+
+  function formDistance(el, cx, cy) {
+    for (const f of formRects) {
+      if (cx >= f.x && cx <= f.x + f.w && cy >= f.y && cy <= f.y + f.h) return 0;
+    }
+    return minDist(cx, cy, formRects);
+  }
+
+  // Output
+  const out = raw.map((r) => {
+    const cx = r.rect.left + r.rect.width / 2;
+    const cy = r.rect.top + r.rect.height / 2;
+    // competingActions: CTAs in same section excluding self
+    let competing = 0;
+    for (const o of raw) {
+      if (o === r) continue;
+      if (o.section !== r.section) continue;
+      if (o.category === 'cta_primary' || o.category === 'cta_secondary' || o.category === 'form_submit') competing++;
+    }
+    return {
+      text: r.text,
+      intent: r.intent,
+      category: r.category,
+      section: r.section,
+      aboveFold: r.rect.top < viewportH,
+      visualWeight: Math.round(r.rect.width * r.rect.height),
+      competingActions: competing,
+      nearestTrustSignalDistance: minDist(cx, cy, trustRects),
+      nearestFormDistance: formDistance(r.el, cx, cy),
+      selector: buildSelector(r.el),
+      rect: {
+        x: Math.round(r.rect.left + window.scrollX),
+        y: Math.round(r.rect.top + window.scrollY),
+        w: Math.round(r.rect.width),
+        h: Math.round(r.rect.height),
+      },
+    };
+  });
+  return out;
+})()`;
+
+
+// Deterministic form inventory.
+const FORMS_SCRIPT = `(() => {
+  const viewportH = window.innerHeight || 720;
+
+  function buildSelector(el) {
+    if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
+    return 'form:nth-of-type(' + (Array.from(document.querySelectorAll('form')).indexOf(el) + 1) + ')';
+  }
+
+  function sectionKind(el, rect) {
+    let p = el.parentElement;
+    while (p && p !== document.body) {
+      const tag = p.tagName;
+      if (tag === 'FOOTER') return 'footer';
+      if (tag === 'NAV') return 'nav';
+      if (tag === 'HEADER') return 'header';
+      p = p.parentElement;
+    }
+    const docTop = rect.top + window.scrollY;
+    if (docTop < viewportH * 1.1) return 'hero';
+    return 'content';
+  }
+
+  function labelFor(input) {
+    if (input.id) {
+      const lab = document.querySelector('label[for="' + input.id.replace(/"/g, '\\\\"') + '"]');
+      if (lab) return (lab.textContent || '').trim().slice(0, 80);
+    }
+    const wrap = input.closest('label');
+    if (wrap) return (wrap.textContent || '').trim().slice(0, 80);
+    return input.getAttribute('placeholder') || input.getAttribute('aria-label') || '';
+  }
+
+  const forms = Array.from(document.querySelectorAll('form'));
+  const out = [];
+  for (const form of forms) {
+    const rect = form.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) continue;
+    const inputs = Array.from(form.querySelectorAll('input, select, textarea')).filter((i) => {
+      const t = (i.getAttribute('type') || '').toLowerCase();
+      return t !== 'hidden' && t !== 'submit' && t !== 'button';
+    });
+    const fields = inputs.map((i) => ({
+      name: i.getAttribute('name') || i.getAttribute('id') || '',
+      type: (i.getAttribute('type') || i.tagName.toLowerCase()),
+      required: i.hasAttribute('required') || i.getAttribute('aria-required') === 'true',
+      label: labelFor(i),
+    }));
+    const allText = fields.map((f) => (f.name + ' ' + f.label + ' ' + f.type)).join(' ').toLowerCase();
+    const submit = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
+    const submitText = submit ? ((submit.innerText || submit.value || '') + '').trim().slice(0, 60) : '';
+    const multiStep = !!form.querySelector('[aria-current="step"], .step, [class*="step" i], progress, fieldset legend');
+    out.push({
+      section: sectionKind(form, rect),
+      aboveFold: rect.top < viewportH,
+      selector: buildSelector(form),
+      fieldCount: fields.length,
+      requiredFields: fields.filter((f) => f.required).length,
+      containsEmail: /email|e-?post/.test(allText),
+      containsPhone: /phone|tel|mobil/.test(allText),
+      containsCompany: /company|f[öo]retag|organisation/.test(allText),
+      containsPassword: fields.some((f) => f.type === 'password'),
+      containsCreditCard: /card|kort|cvc|cvv|expir/.test(allText),
+      multiStep,
+      submitText,
+      fields,
+      rect: {
+        x: Math.round(rect.left + window.scrollX),
+        y: Math.round(rect.top + window.scrollY),
+        w: Math.round(rect.width),
+        h: Math.round(rect.height),
+      },
+    });
+  }
+  return out;
+})()`;
+
+
+// Deterministic navigation/footer analysis.
+const NAVIGATION_SCRIPT = `(() => {
+  function linksIn(scope) {
+    if (!scope) return [];
+    return Array.from(scope.querySelectorAll('a[href]'))
+      .map((a) => ((a.innerText || a.textContent || '').trim().replace(/\\s+/g, ' ')))
+      .filter((t) => t && t.length < 60);
+  }
+  const header = document.querySelector('header, [role="banner"], nav');
+  const footer = document.querySelector('footer, [role="contentinfo"]');
+  const topNavLinks = linksIn(header);
+  const footerNavLinks = linksIn(footer);
+  const all = (topNavLinks.join(' | ') + ' | ' + footerNavLinks.join(' | ')).toLowerCase();
+  const langSwitcher = !!document.querySelector('[class*="lang" i], [aria-label*="language" i], [aria-label*="spr[åa]k" i]');
+  return {
+    topNavCount: topNavLinks.length,
+    footerNavCount: footerNavLinks.length,
+    topNavLinks: topNavLinks.slice(0, 30),
+    footerNavLinks: footerNavLinks.slice(0, 60),
+    loginPresent: /\\blog[ -]?in\\b|\\bsign[ -]?in\\b|logga in|mina sidor/.test(all),
+    signupPresent: /sign[ -]?up|register|skapa konto|registrera/.test(all),
+    pricingPresent: /pricing|prices|priser|kostnad|plans/.test(all),
+    contactPresent: /contact|kontakt/.test(all),
+    blogPresent: /\\bblog\\b|nyheter/.test(all),
+    docsPresent: /\\bdocs?\\b|documentation|dokumentation/.test(all),
+    languageSwitcherPresent: langSwitcher,
+    cartPresent: /\\bcart\\b|varukorg|kund?korg|checkout|kassa/.test(all),
+  };
+})()`;
+
+
+// Visual hierarchy — top-N elements by perceived weight (area * fontSize * contrast).
+const VISUAL_HIERARCHY_SCRIPT = `(() => {
+  const viewportH = window.innerHeight || 720;
+  const docH = document.documentElement.scrollHeight || viewportH;
+  const docW = document.documentElement.scrollWidth || window.innerWidth || 1280;
+
+  function parseRgb(s) {
+    if (!s) return null;
+    const m = s.match(/rgba?\\(([^)]+)\\)/);
+    if (!m) return null;
+    const parts = m[1].split(',').map((v) => parseFloat(v.trim()));
+    if (parts.length < 3) return null;
+    const a = parts.length >= 4 ? parts[3] : 1;
+    if (a === 0) return null;
+    return { r: parts[0], g: parts[1], b: parts[2] };
+  }
+  function relLum(c) {
+    const ch = [c.r, c.g, c.b].map((v) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  }
+  function contrast(a, b) {
+    const la = relLum(a), lb = relLum(b);
+    const hi = Math.max(la, lb), lo = Math.min(la, lb);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+  const bodyBg = parseRgb(window.getComputedStyle(document.body).backgroundColor) || { r: 255, g: 255, b: 255 };
+
+  function buildSelector(el) {
+    if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
+    const parent = el.parentElement;
+    if (parent) {
+      const same = Array.from(parent.children).filter((c) => c.tagName === el.tagName);
+      const idx = same.indexOf(el) + 1;
+      return el.tagName.toLowerCase() + ':nth-of-type(' + idx + ')';
+    }
+    return el.tagName.toLowerCase();
+  }
+
+  function sectionKind(el, rect) {
+    let p = el.parentElement;
+    while (p && p !== document.body) {
+      const tag = p.tagName;
+      if (tag === 'FOOTER') return 'footer';
+      if (tag === 'NAV') return 'nav';
+      if (tag === 'HEADER') return 'header';
+      p = p.parentElement;
+    }
+    const docTop = rect.top + window.scrollY;
+    if (docTop < viewportH * 1.1) return 'hero';
+    return 'content';
+  }
+
+  function role(el) {
+    const tag = el.tagName;
+    if (/^H[1-6]$/.test(tag)) return tag.toLowerCase();
+    if (tag === 'BUTTON') return 'button';
+    if (tag === 'A') return 'link';
+    if (tag === 'IMG') return 'image';
+    if (tag === 'P') return 'paragraph';
+    return tag.toLowerCase();
+  }
+
+  const SEL = 'h1, h2, h3, button, a[href], img, p, [role="button"]';
+  const candidates = Array.from(document.querySelectorAll(SEL));
+  const scored = [];
+  for (const el of candidates) {
+    const cs = window.getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+    if (parseFloat(cs.opacity || '1') === 0) continue;
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 20 || rect.height < 20) continue;
+    const area = rect.width * rect.height;
+    const fontSize = parseFloat(cs.fontSize) || 14;
+    const fontWeight = parseInt(cs.fontWeight, 10) || 400;
+    const elBg = parseRgb(cs.backgroundColor);
+    const elFg = parseRgb(cs.color) || { r: 0, g: 0, b: 0 };
+    const con = elBg ? contrast(elBg, bodyBg) : contrast(elFg, bodyBg);
+    const score = area * (fontSize / 16) * (con / 4) * (fontWeight / 400);
+    scored.push({ el, rect, fontSize, fontWeight, con, area, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored.slice(0, 20);
+  const maxScore = top[0] ? top[0].score : 1;
+
+  return top.map((s) => ({
+    selector: buildSelector(s.el),
+    text: ((s.el.innerText || s.el.getAttribute('alt') || s.el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 100),
+    role: role(s.el),
+    visualWeight: Math.round((s.score / maxScore) * 100),
+    area: Math.round(s.area),
+    fontSize: Math.round(s.fontSize),
+    fontWeight: s.fontWeight,
+    contrast: Math.round(s.con * 10) / 10,
+    position: {
+      xPct: Math.round(((s.rect.left + s.rect.width / 2) / docW) * 100),
+      yPct: Math.round(((s.rect.top + window.scrollY) / docH) * 100),
+    },
+    aboveFold: s.rect.top < viewportH,
+    section: sectionKind(s.el, s.rect),
+  }));
 })()`;
 
 
