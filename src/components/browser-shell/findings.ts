@@ -358,7 +358,11 @@ export function buildPageReports(events: StreamEvent[]): PageReport[] {
     if (ev.data.kind === "pageAudit" && isPageAudit(ev.data.data)) {
       if (current.url === "(unknown url)" || current.url === "(no goto)") current.url = ev.data.data.url;
       current.rawPageAudit = ev.data.data;
-      current.findings.push(...seoFindings(ev.data.data));
+      current.findings.push(
+        ...seoFindings(ev.data.data),
+        ...structureFindings(ev.data.data),
+        ...trustFindings(ev.data.data),
+      );
     } else if (ev.data.kind === "collect" && isCollect(ev.data.data)) {
       current.rawCollect = ev.data.data;
       current.findings.push(
