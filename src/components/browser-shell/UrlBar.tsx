@@ -10,6 +10,7 @@ interface UrlBarProps {
   value: string;
   runState: RunState;
   statusMessage?: string;
+  idleAfterLoad?: boolean;
   onSubmit: (url: string) => void;
   onReload: () => void;
   onRun: (url: string) => void;
@@ -24,7 +25,7 @@ const pillStyles: Record<RunState, string> = {
   error: "bg-destructive/15 text-destructive",
 };
 
-export function UrlBar({ value, runState, statusMessage, onSubmit, onReload, onRun, onStop }: UrlBarProps) {
+export function UrlBar({ value, runState, statusMessage, idleAfterLoad, onSubmit, onReload, onRun, onStop }: UrlBarProps) {
   const [draft, setDraft] = useState(value);
   useEffect(() => { setDraft(value); }, [value]);
 
