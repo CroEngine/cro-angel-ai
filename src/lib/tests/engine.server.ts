@@ -434,7 +434,10 @@ export async function runSteps(
           case "pageAudit": {
             try {
               const raw = await page.evaluate(PAGE_AUDIT_SCRIPT);
-              const audit = raw as Omit<PageAuditData, "robotsTxt" | "sitemap" | "flags" | "url"> & { url: string };
+              const audit = raw as Omit<
+                PageAuditData,
+                "robotsTxt" | "sitemap" | "flags" | "url" | "sections" | "trustSignals" | "trustSummary"
+              > & { url: string };
 
               // Fetch robots.txt + sitemap.xml from inside the page context (avoids Stagehand type gap on page.request).
               const fetched = await page.evaluate(`
@@ -465,7 +468,17 @@ export async function runSteps(
                 sitemap.urlCount = (fetched.sitemap.match(/<loc>/g) ?? []).length;
               }
 
-
+              // Deterministic structural + trust signal extraction.
+              const sections = (await page.evaluate(SECTIONS_SCRIPT)) as PageSection[];
+              const trustSignals = (await page.evaluate(TRUST_SIGNALS_SCRIPT)) as TrustSignal[];
+              const trustSummary = {
+                total: trustSignals.length,
+                aboveFold: trustSignals.filter((t) => t.aboveFold).length,
+                byType: trustSignals.reduce<Record<string, number>>((acc, t) => {
+                  acc[t.type] = (acc[t.type] ?? 0) + 1;
+                  return acc;
+                }, {}),
+              };
 
               const flags: string[] = [];
               if (!audit.head.title) flags.push("missing_title");
@@ -484,12 +497,22 @@ export async function runSteps(
               if (!robotsTxt.exists) flags.push("no_robots_txt");
               if (robotsTxt.blocksAll) flags.push("robots_blocks_all");
               if (!sitemap.exists) flags.push("no_sitemap");
+              if (trustSignals.length === 0) flags.push("no_trust_signals");
+              else if (trustSummary.aboveFold === 0) flags.push("no_trust_above_fold");
 
-              const full: PageAuditData = { ...audit, robotsTxt, sitemap, flags };
+              const full: PageAuditData = {
+                ...audit,
+                robotsTxt,
+                sitemap,
+                sections,
+                trustSignals,
+                trustSummary,
+                flags,
+              };
               data = full;
               onEvent({
                 type: "log",
-                message: `pageAudit: ${flags.length} flag(s) · h1=${audit.headings.h1Count} · alt missing ${audit.images.missingAlt}/${audit.images.total} · ${audit.content.wordCount} words · schema ${audit.schema.types.join(",") || "none"}`,
+                message: `pageAudit: ${flags.length} flag(s) · h1=${audit.headings.h1Count} · alt missing ${audit.images.missingAlt}/${audit.images.total} · ${audit.content.wordCount} words · sections ${sections.length} · trust ${trustSignals.length} (${trustSummary.aboveFold} above fold)`,
               });
             } catch (e) {
               throw new Error(`pageAudit failed: ${e instanceof Error ? e.message : String(e)}`);
