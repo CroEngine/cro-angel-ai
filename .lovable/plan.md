@@ -1,96 +1,64 @@
-# Steg 2 — Byt motor till Stagehand
+# Plan: `collect(buttons)` — första datainsamlings-steget
 
-Spike-resultat: Spike A (playwright-core) ✅ 4.8s, Spike B (Stagehand) ✅ 6.9s. Båda kör i workerd mot Browserbase utan Node-only-fel. Vi väljer **Stagehand** — vi får både Playwright-API:t (`goto`, `click`, `fill`, `title`) och AI-primitiverna (`act`, `extract`, `observe`) genom samma motor, och Model Gateway via Browserbase-nyckeln räcker (ingen separat AI-secret).
+Lägg till ett nytt step `collect` i motorn som samlar interaktiva element från sidan via en enda `page.evaluate`. Vi börjar med `target: "buttons"` men bygger API:t så fler targets (links, forms, headings, images, all) kan läggas till utan att röra runtime-kontraktet.
 
-## Mål
-Ta bort `navigateViaCDP` och köra all sessionsinteraktion via Stagehand. Introducera en step-modell och step-events så UI:t kan visa flerstegsförlopp.
+## 1. Engine — `src/lib/tests/engine.server.ts`
 
-## Filer som ändras / skapas
+Utöka `Step`-unionen:
 
-### Ny: `src/lib/tests/engine.server.ts`
-Tunn wrapper runt Stagehand. Exporterar:
 ```ts
-export type Step =
-  | { kind: "goto"; url: string }
-  | { kind: "wait"; ms: number }
-  | { kind: "assertText"; text: string }
-  | { kind: "click"; selector: string }
-  | { kind: "fill"; selector: string; value: string }
-  | { kind: "act"; instruction: string }
-  | { kind: "extract"; instruction: string }
-  | { kind: "observe"; instruction: string };
-
-export type EngineEvent =
-  | { type: "step_started"; index: number; kind: Step["kind"]; summary: string }
-  | { type: "step_passed";  index: number; kind: Step["kind"]; summary: string; durationMs: number; data?: unknown }
-  | { type: "step_failed";  index: number; kind: Step["kind"]; summary: string; durationMs: number; error: string }
-  | { type: "log"; message: string };
-
-export async function runSteps(
-  sessionId: string,
-  steps: Step[],
-  opts: { onEvent: (e: EngineEvent) => void; signal?: AbortSignal },
-): Promise<{ passed: number; failed: number; aborted: boolean }>;
-```
-- Skapar `Stagehand({ env: "BROWSERBASE", browserbaseSessionID: sessionId, apiKey, projectId })` och `init()`.
-- Hämtar/skapar aktiv `Page` via `stagehand.context`.
-- Itererar steg, emitterar `step_started` → kör → emitterar `step_passed`/`step_failed`. Vid första `step_failed` avbryter resten (markeras som "skipped" via aggregerad räknare; emitterar inte separata events för skippade steg i denna iteration).
-- Respekterar `signal.aborted` mellan steg.
-- `finally`: `stagehand.close()`.
-- `assertText`: `page.getByText(text).first().waitFor({ state: "visible", timeout: 5000 })`.
-- `wait`: `page.waitForTimeout(ms)`.
-
-### Ändras: `src/lib/tests/browserbase.server.ts`
-- Ta bort hela `navigateViaCDP` (CDP-WS-koden, ~100 rader).
-- Behåll `createSession` / `closeSession` exakt som idag.
-
-### Ändras: `src/lib/tests/orchestrator.server.ts`
-- Lägg till nya event-typer i `RunEventType`: `step_started`, `step_passed`, `step_failed`.
-- Inga andra ändringar (registry, SSE-broadcast oförändrat).
-
-### Ändras: `src/lib/tests/run.functions.ts`
-- `startTestRun` tar nu `{ url, steps? }`. Om `steps` saknas: default-test = `[{goto:url}, {wait:500}, {assertText:"Glutenforum"}]`.
-- Bygger `Step[]` (lägger `{goto:url}` först om användaren skickade `steps` utan goto).
-- Ersätter `await navigateViaCDP(...)` med `await runSteps(session.id, steps, { onEvent, signal })`.
-- `onEvent` mappar engine-events till orkestrator-events (step-events vidarebefordras 1:1, `log` → existerande `log`-event).
-- Emitterar fortfarande `state: { phase: "idle" }` efter första lyckade `goto` så `idleAfterLoad` i UI fortsätter funka.
-- Terminal `done` med `{ aborted, passed, failed }`.
-
-### Ändras: `src/components/browser-shell/hooks/useTestStream.ts`
-- Lyssna även på `step_started`, `step_passed`, `step_failed`.
-
-### Ändras: `src/components/browser-shell/ConsolePanel.tsx`
-- Rendera step-events tydligt:
-  - `→ [1] goto https://glutenforum.se`
-  - `✓ [1] goto (820ms)`
-  - `✗ [3] assertText "Glutenforum" — timeout 5000ms`
-- Behåller existerande log-rendering.
-
-### Oförändrat
-- `BrowserShell.tsx`, `UrlBar.tsx`, `Viewport.tsx`, SSE-routen `/api/tests/$runId/stream`.
-- `useTestStream` returnerar fortfarande hela `events`-arrayen, så `idleAfterLoad`-logiken i `BrowserShell` fungerar oförändrat.
-
-## Default-test (hårdkodat tills UI-editor finns)
-```ts
-[
-  { kind: "goto",       url: <inputUrl> },
-  { kind: "wait",       ms: 500 },
-  { kind: "assertText", text: "Glutenforum" },
-]
+| { kind: "collect"; target: "buttons" /* framtid: | "links" | "forms" | ... */ }
 ```
 
-## Städning
-- Ta bort `spike.functions.ts`, `src/routes/spike.tsx`, `src/routes/api/public/spike.ts`. Spike-rollen är slutförd.
+Lägg till en case `collect` i loopen som kör en `page.evaluate` som alltid plockar ut **alla** klickbara element från DOM och filtrerar i JS efter `target`. Per element returneras:
+
+- `text` (trimmad innerText, max ~120 tecken)
+- `tagName` (`button` / `a` / `input[type=submit]` / `[role=button]`)
+- `selector` — prio: `#id` → `[data-testid]` → `[data-*]` → `tag:nth-of-type` fallback
+- `href` (om `<a>`)
+- `disabled` (boolean)
+- `visible` (rect-area > 0 och inom viewport-bredd)
+- `aboveFold` (rect.top < window.innerHeight)
+- `rect` `{ x, y, w, h }` (avrundade ints)
+
+Resultatet skickas som `data` i `step_passed`-eventet (samma kontrakt som `extract`/`observe` redan använder), plus en kort sammanfattning i `summary` som `collect buttons (N found)`.
+
+Cost: en `page.evaluate`, ingen LLM, ~50 ms — samma mönster som `assertText`-optimeringen.
+
+## 2. Default-test — `src/lib/tests/run.functions.ts`
+
+Default-stegsekvensen ändras från:
+
+```
+goto → wait → assertText
+```
+
+till:
+
+```
+goto → wait → collect(buttons)
+```
+
+`assertText` är kvar i unionen och kan användas när en testdefinition skickas in — vi byter bara default.
+
+## 3. UI — `src/components/browser-shell/ConsolePanel.tsx`
+
+- Rendera `collect`-steget med samma status-ikoner (→ ✓ ✗) som övriga steg.
+- När `step_passed.data` finns för ett collect-steg: visa en hopfällbar rad med antal hittade element + en kort lista (text + selector) för de första ~5, samt en "Download JSON"-knapp som laddar ner hela arrayen som `buttons-<runId>.json` (Blob → `URL.createObjectURL`).
+
+Inga ändringar i `useTestStream.ts` behövs — `step_passed` med `data` finns redan.
+
+## 4. Inget på `orchestrator.server.ts`, `browserbase.server.ts`, route-filer
+
+Steget körs genom befintlig event-pipeline; ingen ny event-typ behövs.
+
+## Utanför scope (medvetet)
+
+- Lagring i Lovable Cloud — vi sparar inte data ännu, bara visar + ladda ner.
+- Crawl över flera sidor — endast den URL som anges i `goto`.
+- Andra targets (links/forms/headings/images) — strukturen är redo, men vi wirear bara `buttons` nu.
+- Ny "Collect"-knapp i UI — Run-knappen kör default-testet som nu inkluderar collect.
 
 ## Verifiering
-1. Klicka Run i UI:t → live-iframen visar sidan.
-2. Konsolen visar tre step-events i ordning, alla ✓.
-3. `done`-event kommer med `passed: 3, failed: 0`.
-4. Ändra default-testets `assertText` till en sträng som inte finns → step 3 blir ✗, run avslutas med `done {passed:2, failed:1}`, UI visar `error · ...`.
-5. `rg navigateViaCDP src` returnerar tomt.
 
-## Uttryckligen utanför scope (nästa slice)
-- UI för att skapa/redigera tester.
-- Persistens i DB.
-- Multi-user / auth-scoping av runs.
-- AI-primitiverna (`act`/`extract`/`observe`) — de finns i Step-typen och engine-implementationen, men default-testet använder dem inte än.
+Efter implementation: klicka Run på `https://glutenforum.se` och bekräfta i ConsolePanel att `collect buttons` listar förväntade knappar (t.ex. "Logga in", "Bli medlem") med selectors, samt att JSON-downloaden fungerar.
