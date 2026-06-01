@@ -20,14 +20,12 @@ interface Run {
   abort: AbortController;
   closeSession: () => Promise<void>;
   lastActivity: number;
-  watchdog?: ReturnType<typeof setTimeout>;
   hardTimeout?: ReturnType<typeof setTimeout>;
 }
 
 const runs = new Map<string, Run>();
 
-const HARD_TIMEOUT_MS = 60_000;
-const WATCHDOG_MS = 15_000;
+const HARD_TIMEOUT_MS = 300_000;
 
 export function createRun(id: string, closeSession: () => Promise<void>) {
   const run: Run = {
@@ -44,17 +42,6 @@ export function createRun(id: string, closeSession: () => Promise<void>) {
   run.hardTimeout = setTimeout(() => {
     void terminate(id, "done", { aborted: true, reason: "hard_timeout" });
   }, HARD_TIMEOUT_MS);
-
-  const tick = () => {
-    const r = runs.get(id);
-    if (!r || r.terminated) return;
-    if (Date.now() - r.lastActivity > WATCHDOG_MS) {
-      void terminate(id, "done", { aborted: true, reason: "watchdog" });
-      return;
-    }
-    r.watchdog = setTimeout(tick, 2_000);
-  };
-  run.watchdog = setTimeout(tick, 2_000);
 
   return run;
 }
@@ -97,7 +84,6 @@ export async function terminate(
   const run = runs.get(id);
   if (!run || run.terminated) return;
   run.terminated = true;
-  if (run.watchdog) clearTimeout(run.watchdog);
   if (run.hardTimeout) clearTimeout(run.hardTimeout);
   try {
     run.abort.abort();

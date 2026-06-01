@@ -10,6 +10,7 @@ interface UrlBarProps {
   value: string;
   runState: RunState;
   statusMessage?: string;
+  idleAfterLoad?: boolean;
   onSubmit: (url: string) => void;
   onReload: () => void;
   onRun: (url: string) => void;
@@ -24,7 +25,7 @@ const pillStyles: Record<RunState, string> = {
   error: "bg-destructive/15 text-destructive",
 };
 
-export function UrlBar({ value, runState, statusMessage, onSubmit, onReload, onRun, onStop }: UrlBarProps) {
+export function UrlBar({ value, runState, statusMessage, idleAfterLoad, onSubmit, onReload, onRun, onStop }: UrlBarProps) {
   const [draft, setDraft] = useState(value);
   useEffect(() => { setDraft(value); }, [value]);
 
@@ -57,10 +58,10 @@ export function UrlBar({ value, runState, statusMessage, onSubmit, onReload, onR
         />
       </form>
 
-      <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", pillStyles[runState])}>
+      <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", runState === "running" && idleAfterLoad ? "bg-sky-500/15 text-sky-600 dark:text-sky-400" : pillStyles[runState])}>
         {runState === "idle" && "idle"}
         {runState === "connecting" && "connecting…"}
-        {runState === "running" && "running"}
+        {runState === "running" && (idleAfterLoad ? "idle" : "running")}
         {runState === "done" && (statusMessage ?? "done")}
         {runState === "error" && (statusMessage ?? "error")}
       </span>

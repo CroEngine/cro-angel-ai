@@ -38,8 +38,8 @@ export const startTestRun = createServerFn({ method: "POST" })
           onLog: (m) => emit(runId, "log", { level: "debug", message: m }),
         });
         if (isTerminated(runId)) return;
-        emit(runId, "log", { level: "info", message: "navigation complete" });
-        await terminate(runId, "done", { aborted: false });
+        emit(runId, "log", { level: "info", message: "navigation complete — session idle, click Stop to end" });
+        // Do NOT terminate; keep session alive so the live iframe stays connected.
       } catch (err) {
         if (isTerminated(runId)) return;
         const message = err instanceof Error ? err.message : String(err);
