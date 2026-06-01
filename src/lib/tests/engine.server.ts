@@ -317,14 +317,23 @@ export async function runSteps(
             const elements = await page.evaluate(COLLECT_SCRIPT);
             const all = elements as CollectedElement[];
             const filtered = filterCollected(all, step.target);
+
+            // Group repeated controls (vote/save/share rows on feed cards etc.)
+            // so they don't dominate the aggregated stats. Marks duplicates with
+            // groupedAway=true; first occurrence keeps groupId+groupCount.
+            const groups = groupRepeatedControls(filtered);
+
             const byCategory: Record<string, number> = {};
             const intentBreakdown: Record<string, number> = {};
+            const bySection: Record<string, number> = {};
             let aboveFold = 0;
             let primaryCtaCount = 0;
             let competingAboveFold = 0;
             for (const el of filtered) {
+              if (el.groupedAway) continue; // dedupe from aggregates
               byCategory[el.category] = (byCategory[el.category] ?? 0) + 1;
               intentBreakdown[el.intent] = (intentBreakdown[el.intent] ?? 0) + 1;
+              bySection[el.section] = (bySection[el.section] ?? 0) + 1;
               if (el.position.viewportZone === "above_fold") aboveFold++;
               if (el.category === "cta_primary" && el.intent === "conversion") primaryCtaCount++;
               if (
@@ -334,11 +343,12 @@ export async function runSteps(
               ) competingAboveFold++;
             }
             const topVisualWeight = [...filtered]
+              .filter((el) => !el.groupedAway)
               .sort((a, b) => b.visualWeight.score - a.visualWeight.score)
               .slice(0, 5)
               .map((el) => ({ selector: el.selector, text: el.text, score: el.visualWeight.score }));
 
-            // Subset for FrozenViewport overlay rendering.
+            // Overlay still draws on ALL elements so user sees the real density.
             const overlayElements = filtered.map((el) => ({
               selector: el.selector,
               category: el.category,
@@ -353,17 +363,21 @@ export async function runSteps(
               onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
             }
 
+            const uniqueCount = filtered.filter((el) => !el.groupedAway).length;
             data = {
               target: step.target,
-              count: filtered.length,
+              count: uniqueCount,
+              totalCount: filtered.length,
               byCategory,
               summary: {
-                total: filtered.length,
+                total: uniqueCount,
                 aboveFold,
                 primaryCtaCount,
                 competingAboveFold,
                 topVisualWeight,
                 intentBreakdown,
+                bySection,
+                groups,
               },
               elements: filtered,
               overlayElements,
@@ -371,14 +385,70 @@ export async function runSteps(
             };
             onEvent({
               type: "log",
-              message: `collect ${step.target}: ${filtered.length} · ${aboveFold} above fold · ${primaryCtaCount} primary CTA · competing above fold: ${competingAboveFold}`,
+              message: `collect ${step.target}: ${uniqueCount} unique (${filtered.length} total) · ${aboveFold} above fold · ${primaryCtaCount} primary CTA · competing: ${competingAboveFold} · groups: ${groups.length}`,
             });
             break;
           }
 
+          case "pageAudit": {
+            try {
+              const raw = await page.evaluate(PAGE_AUDIT_SCRIPT);
+              const audit = raw as Omit<PageAuditData, "robotsTxt" | "sitemap" | "flags" | "url"> & { url: string };
 
+              // Fetch robots.txt + sitemap.xml from the page's origin via Playwright's request context.
+              const origin = await page.evaluate<string>("location.origin");
+              const robotsTxt = { exists: false, blocksAll: false, hasSitemap: false };
+              const sitemap = { exists: false, urlCount: 0 };
+              try {
+                const r = await page.request.get(`${origin}/robots.txt`, { timeout: 5000 });
+                if (r.ok()) {
+                  const body = await r.text();
+                  robotsTxt.exists = true;
+                  robotsTxt.blocksAll = /User-agent:\s*\*[\s\S]*?Disallow:\s*\/\s*$/im.test(body);
+                  robotsTxt.hasSitemap = /^Sitemap:\s*\S+/im.test(body);
+                }
+              } catch { /* ignore */ }
+              try {
+                const r = await page.request.get(`${origin}/sitemap.xml`, { timeout: 5000 });
+                if (r.ok()) {
+                  const body = await r.text();
+                  sitemap.exists = true;
+                  sitemap.urlCount = (body.match(/<loc>/g) ?? []).length;
+                }
+              } catch { /* ignore */ }
 
+              const flags: string[] = [];
+              if (!audit.head.title) flags.push("missing_title");
+              else if (audit.head.title.length > 60) flags.push("title_too_long");
+              if (!audit.head.description) flags.push("missing_meta_description");
+              else if (audit.head.description.length > 160) flags.push("meta_description_too_long");
+              if (!audit.head.canonical) flags.push("missing_canonical");
+              if (!audit.head.ogTitle) flags.push("missing_og_title");
+              if (!audit.head.ogImage) flags.push("missing_og_image");
+              if (!audit.head.viewport) flags.push("missing_viewport");
+              if (audit.headings.h1Count === 0) flags.push("no_h1");
+              if (audit.headings.h1Count > 1) flags.push("multiple_h1");
+              if (audit.images.missingAltPct > 20) flags.push("low_alt_coverage");
+              if (audit.schema.count === 0) flags.push("no_structured_data");
+              if (audit.content.wordCount < 100) flags.push("thin_content");
+              if (!robotsTxt.exists) flags.push("no_robots_txt");
+              if (robotsTxt.blocksAll) flags.push("robots_blocks_all");
+              if (!sitemap.exists) flags.push("no_sitemap");
+
+              const full: PageAuditData = { ...audit, robotsTxt, sitemap, flags };
+              data = full;
+              onEvent({
+                type: "log",
+                message: `pageAudit: ${flags.length} flag(s) · h1=${audit.headings.h1Count} · alt missing ${audit.images.missingAlt}/${audit.images.total} · ${audit.content.wordCount} words · schema ${audit.schema.types.join(",") || "none"}`,
+              });
+            } catch (e) {
+              throw new Error(`pageAudit failed: ${e instanceof Error ? e.message : String(e)}`);
+            }
+            break;
+          }
         }
+
+
 
         void page;
 
