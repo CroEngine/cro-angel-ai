@@ -1,119 +1,88 @@
-## Pipeline-ramverk (överenskommet)
+## PR 2 — UI-lager för Steg 2 (Interpret)
 
-```
-1. Collect      → fakta (klar — buildPageReports + findings)
-2. Interpret    → findings + scores (deterministiska regler)  ← detta PR
-3. Recommend    → konkreta åtgärdsförslag (deterministisk mappning)
-4. AI Consultant→ LLM ovanpå facts+findings+recs (senare)
-```
+Mål: gör `interpretReports()` synlig i appen. Ingen ny logik, ingen ny data — bara koppla in regelmotorn i UI:t.
 
-Analyze-knappen kommer att trigga **Steg 2 (Interpret)**. Steg 3 byggs som separat lager senare, Steg 4 ännu senare.
+### Konventioner (låsta innan kodning)
 
-## Detta PR: bara Steg 2-modulen, ingen UI
+- **Severity-namn:** `"low" | "medium" | "high"` (matchar `interpret.ts` exakt)
+- **Tab-id internt:** `"interpret"` · **UI-label:** `Analysis`
+- **Tab-typ:** `type ConsoleTab = "findings" | "activity" | "interpret"`
 
-En fil. Ingen knapp, ingen state, ingen vy, ingen koppling till `BrowserShell`. Vi verifierar output via tillfällig `console.log` innan vi rör UI.
+### 1. `UrlBar.tsx` — Resume → Analyze
 
-### Ny fil: `src/components/browser-shell/interpret.ts`
+- Byt ikon `RotateCw` → `BarChart3`
+- Byt prop `onResume` → `onAnalyze`
+- Knappen `Analyze` visas **alltid** (live/frozen/done) — inte bundet till session-state. När `isLive` är true visas `Stop`, annars visas `Run` + `Analyze` sida vid sida (eller bara `Analyze` om en run redan körts; `Run` alltid synlig så man kan starta ny URL)
+- Ny prop `analyzeDisabled?: boolean` → disablar knappen om ingen data finns
 
-**Namngivning:** `interpret.ts` (inte `analyze.ts`) så filnamnet matchar pipeline-steget. Exporterar `interpretReports()` (inte `analyzeReports`).
+### 2. `Viewport.tsx` — ta bort Resume-overlay
 
-**Typer:**
+- Ta bort `onResume`-prop och eventuell overlay-knapp på frozen viewport
+- Viewport visar fortfarande frozen screenshot, bara utan knapp
+
+### 3. `BrowserShell.tsx` — state + handler
+
 ```ts
-export type Severity = "low" | "medium" | "high";
-export type Category = "seo" | "cro" | "ux" | "trust";
+import { interpretReports, type PageInterpretation } from "./interpret";
+import { buildPageReports } from "./findings";
 
-export type Finding = {
-  ruleId: string;
-  category: Category;
-  severity: Severity;
-  title: string;
-  evidence: string;       // konkret datapunkt, t.ex. "8 competing actions above fold"
-};
+type ConsoleTab = "findings" | "activity" | "interpret";
 
-export type Win = {
-  ruleId: string;
-  category: Category;
-  title: string;
-};
+const [interpretation, setInterpretation] = useState<PageInterpretation[] | null>(null);
+const [consoleTab, setConsoleTab] = useState<ConsoleTab>("findings");
 
-export type PageInterpretation = {
-  url: string;
-  scores: { seo: number; cro: number; ux: number; trust: number; overall: number };
-  findings: Finding[];    // sorterade severity desc, sedan weight desc
-  wins: Win[];
-};
+const pageReports = useMemo(() => buildPageReports(events), [events]);
+const analyzeDisabled = pageReports.length === 0;
 
-type Rule = {
-  id: string;
-  category: Category;
-  severity: Severity;
-  weight: number;         // 5/10/20 default per severity, men override tillåtet
-  title: string;
-  evaluate: (r: PageReport) => null | { evidence: string };
-  // null = passed (→ win), object = triggered (→ finding)
-};
+const handleAnalyze = useCallback(() => {
+  setInterpretation(interpretReports(pageReports));
+  setConsoleTab("interpret");
+}, [pageReports]);
 ```
 
-**Konstanter:**
-```ts
-const SEVERITY_WEIGHT: Record<Severity, number> = { low: 5, medium: 10, high: 20 };
-```
+- Ta bort `handleResume`
+- Töm `interpretation` vid ny `handleRun`
+- Skicka `onAnalyze`, `analyzeDisabled` till `UrlBar`; ta bort `onResume` från `Viewport`; skicka `interpretation`, `tab`, `onTabChange` till `ConsolePanel`
 
-**Konservativ v1-regeluppsättning (~3 per kategori, lätta att utöka):**
+### 4. `ConsolePanel.tsx` — kontrollerad Tabs + ny tab
 
-- `SEO_RULES`:
-  - `seo.title.missing` (high) — `head.title` tom
-  - `seo.meta.description.missing` (medium) — `head.description` tom
-  - `seo.h1.count` (medium) — `headings.h1Count !== 1` (evidence: `"h1Count = N"`)
+- Tabs blir kontrollerad:
+  ```tsx
+  <Tabs value={tab} onValueChange={(v) => onTabChange?.(v as ConsoleTab)}>
+  ```
+- Ny trigger: `<TabsTrigger value="interpret" className="text-xs">Analysis</TabsTrigger>`
+- Ny content: `<TabsContent value="interpret">` med `<InterpretView interpretation={interpretation} />` i `ScrollArea`
+- Nya props: `interpretation: PageInterpretation[] | null`, `tab?: ConsoleTab`, `onTabChange?: (v: ConsoleTab) => void`
+- Exportera `ConsoleTab`-typen så `BrowserShell` kan återanvända den
 
-- `CRO_RULES`:
-  - `cro.primaryCta.missing` (high) — `pageSummary.primaryCtaCount === 0`
-  - `cro.hero.headline.missing` (high) — `hero` saknas eller `hero.headline === ""`
-  - `cro.cta.competition` (medium) — `pageSummary.competingAboveFold > 3` (evidence: `"N competing actions above fold"`)
+### 5. Ny fil: `src/components/browser-shell/InterpretView.tsx`
 
-- `UX_RULES`:
-  - `ux.hidden.interactive` (high) — `(hiddenInteractive ?? 0) > 0` *(skippas om fältet saknas)*
-  - `ux.abovefold.ratio` (medium) — `foldHeightPx / pageHeightPx < 0.3`
+Samma visuella språk som `FindingsView` (Cloud White, Sora/Manrope, sticky header, `rounded-xl border border-border bg-muted/30`).
 
-- `TRUST_RULES`:
-  - `trust.signals.none` (high) — `trustSummary.total === 0`
-  - `trust.abovefold.missing` (medium) — `trustSummary.total > 0 && trustSummary.aboveFold === 0`
+**Tom-state:** centrerat meddelande `Click Analyze to interpret findings.`
 
-**Explicit utelämnade (per tidigare diskussion):**
-- "navigation saknar pricing/login/docs" — skippas i v1, kräver business-model-detection
-- Form-fieldCount-regler — skippas i v1
-- Section-h1 — skippas i v1
+**Per `PageInterpretation`:**
+- Sticky header: hostname (font-heading) + overall score som stor siffra höger + `Download analysis JSON`-knapp (laddar bara ner **denna** interpretation, inte findings)
+- 4 mini score-pills under header: `SEO · CRO · UX · Trust` med score (grön ≥80, amber 50–79, röd <50)
+- Body `p-5 space-y-8`. Fyra `CategorySection`-block: `SEO Analysis` / `Conversion (CRO)` / `UX & Structure` / `Trust` — samma uppercase-header + divider + count-pill som FindingsView
+- Inom varje kategori: `grid grid-cols-2 gap-3` av `<IssueCard>`:
+  - Severity-pill uppe vänster (`high`=röd, `medium`=amber, `low`=blå)
+  - Titel (`font-heading text-sm font-semibold`)
+  - Evidence-chip under (mono, muted)
+  - `ruleId` som liten muted footer
+  - `col-span-2` om evidence är lång
+- Wins-rad collapsed under varje kategori: chevron-toggle `N passed checks` → lista titlar
+- Empty category: grön pill med texten `No issues found` (inte "All checks passed")
 
-**Score per kategori:**
-```ts
-score = clamp(100 - sum(rule.weight for triggered rules in category), 0, 100)
-overall = round((seo + cro + ux + trust) / 4)
-```
+### 6. Vad detta PR INTE gör
 
-**Sortering:** findings sorteras `severity desc → weight desc → ruleId asc` (stabilt).
+- Ingen ny regel, ingen ändring i `interpret.ts`
+- Inga recommendations (Steg 3)
+- Ingen AI
+- Ingen ändring i schema, engine, eller FindingsView
 
-**Export:**
-```ts
-export function interpretReports(reports: PageReport[]): PageInterpretation[]
-```
+### Resultat
 
-`PageReport` är redan typad — vi återanvänder den från `findings.ts`/befintlig kod (verifieras vid implementation; om typen inte är exporterad lägger jag till `export`).
-
-## Verifiering (utan UI)
-
-Efter implementation: tillfällig `console.log(interpretReports(buildPageReports(events)))` i `BrowserShell` (eller direkt i devtools) för att inspektera output mot en redan körd run. Det loggandet **tas bort** innan vi går vidare till UI-steget.
-
-## Vad detta PR INTE gör
-
-- Ingen `Analyze`-knapp (kommer i nästa PR)
-- Ingen `UrlBar`/`Viewport`/`BrowserShell`-ändring
-- Ingen `InterpretView`/`ConsolePanel`-tab
-- Inga rekommendationer (Steg 3)
-- Ingen AI (Steg 4)
-- Ingen schema-/engine-ändring
-
-## Nästa steg efter detta
-
-1. **PR 2 — UI:** Resume → Analyze (BarChart3-ikon), `interpretation` state, `InterpretView`, `ConsolePanel`-tab `Interpret`
-2. **PR 3 — Steg 3 (Recommend):** `recommend.ts` som mappar `ruleId → Recommendation[]`
-3. **PR 4 — Steg 4 (AI Consultant):** edge function ovanpå facts+findings+recs
+1. Så fort en run gett `pageAudit`-data är `Analyze` aktiv — oavsett om sessionen är live, frozen eller done
+2. Klick → ConsolePanel byter till `Analysis`-tab och visar scores + findings per URL
+3. Du kan växla fritt mellan `Findings`, `Activity` och `Analysis` utan att tappa data

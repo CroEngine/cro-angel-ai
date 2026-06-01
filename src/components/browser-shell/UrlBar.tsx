@@ -1,4 +1,4 @@
-import { RotateCw, Play, Square } from "lucide-react";
+import { BarChart3, Play, Square } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,13 +9,22 @@ interface UrlBarProps {
   sessionState: SessionState;
   statusMessage?: string;
   liveStartedAt: number | null;
+  analyzeDisabled?: boolean;
   onSubmit: (url: string) => void;
   onRun: (url: string) => void;
   onStop: () => void;
-  onResume: () => void;
+  onAnalyze: () => void;
 }
 
-export function UrlBar({ value, sessionState, onSubmit, onRun, onStop, onResume }: UrlBarProps) {
+export function UrlBar({
+  value,
+  sessionState,
+  analyzeDisabled,
+  onSubmit,
+  onRun,
+  onStop,
+  onAnalyze,
+}: UrlBarProps) {
   const [draft, setDraft] = useState(value);
   useEffect(() => { setDraft(value); }, [value]);
 
@@ -42,16 +51,24 @@ export function UrlBar({ value, sessionState, onSubmit, onRun, onStop, onResume 
           <Square className="h-3.5 w-3.5" />
           Stop
         </Button>
-      ) : sessionState === "frozen" ? (
-        <Button size="sm" className="h-8 gap-1" type="button" onClick={onResume}>
-          <RotateCw className="h-3.5 w-3.5" />
-          Resume
-        </Button>
       ) : (
-        <Button size="sm" className="h-8 gap-1" type="button" onClick={() => onRun(draft)}>
-          <Play className="h-3.5 w-3.5" />
-          Run
-        </Button>
+        <>
+          <Button size="sm" className="h-8 gap-1" type="button" onClick={() => onRun(draft)}>
+            <Play className="h-3.5 w-3.5" />
+            Run
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1"
+            type="button"
+            onClick={onAnalyze}
+            disabled={analyzeDisabled}
+          >
+            <BarChart3 className="h-3.5 w-3.5" />
+            Analyze
+          </Button>
+        </>
       )}
     </div>
   );

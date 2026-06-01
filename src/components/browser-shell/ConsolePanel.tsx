@@ -2,13 +2,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FindingsView } from "./FindingsView";
+import { InterpretView } from "./InterpretView";
 import type { StreamEvent } from "./hooks/useTestStream";
+import type { PageInterpretation } from "./interpret";
 import type {
   CollectData,
   ElementCategory,
   PageAuditData,
   SectionKind,
 } from "@/lib/tests/schema";
+
+export type ConsoleTab = "findings" | "activity" | "interpret";
 
 function fmtTime(ts: unknown) {
   const n = typeof ts === "number" ? ts : Date.now();
@@ -270,14 +274,26 @@ function PageAuditDetails({ data }: { data: PageAuditData }) {
   );
 }
 
-export function ConsolePanel({ events }: { events: StreamEvent[] }) {
+interface ConsolePanelProps {
+  events: StreamEvent[];
+  interpretation: PageInterpretation[] | null;
+  tab: ConsoleTab;
+  onTabChange: (v: ConsoleTab) => void;
+}
+
+export function ConsolePanel({ events, interpretation, tab, onTabChange }: ConsolePanelProps) {
   return (
     <div className="flex h-full min-h-0 w-full flex-col border-t border-border bg-background lg:border-t-0">
-      <Tabs defaultValue="findings" className="flex h-full min-h-0 w-full flex-col">
+      <Tabs
+        value={tab}
+        onValueChange={(v) => onTabChange(v as ConsoleTab)}
+        className="flex h-full min-h-0 w-full flex-col"
+      >
         <div className="flex items-center justify-between border-b border-border px-4 py-2">
           <h2 className="text-base font-semibold text-foreground">Console</h2>
           <TabsList className="h-8">
             <TabsTrigger value="findings" className="text-xs">Findings</TabsTrigger>
+            <TabsTrigger value="interpret" className="text-xs">Analysis</TabsTrigger>
             <TabsTrigger value="activity" className="text-xs">Activity</TabsTrigger>
           </TabsList>
         </div>
@@ -285,6 +301,12 @@ export function ConsolePanel({ events }: { events: StreamEvent[] }) {
         <TabsContent value="findings" className="m-0 flex-1 min-h-0">
           <ScrollArea className="h-full">
             <FindingsView events={events} />
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="interpret" className="m-0 flex-1 min-h-0">
+          <ScrollArea className="h-full">
+            <InterpretView interpretation={interpretation} />
           </ScrollArea>
         </TabsContent>
 

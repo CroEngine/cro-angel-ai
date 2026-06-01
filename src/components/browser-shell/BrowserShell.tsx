@@ -3,8 +3,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { TabStrip } from "./TabStrip";
 import { UrlBar } from "./UrlBar";
 import { Viewport, type FrozenSnapshot, type OverlayElement, type SessionState } from "./Viewport";
-import { ConsolePanel } from "./ConsolePanel";
+import { ConsolePanel, type ConsoleTab } from "./ConsolePanel";
 import { useTestStream } from "./hooks/useTestStream";
+import { buildPageReports } from "./findings";
+import { interpretReports, type PageInterpretation } from "./interpret";
 import { startTestRun, stopTestRun } from "@/lib/tests/run.functions";
 
 const DEFAULT_URL = "https://glutenforum.se/";
@@ -19,11 +21,16 @@ export function BrowserShell() {
   const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
   const [liveStartedAt, setLiveStartedAt] = useState<number | null>(null);
   const [frozen, setFrozen] = useState<FrozenSnapshot | null>(null);
+  const [interpretation, setInterpretation] = useState<PageInterpretation[] | null>(null);
+  const [consoleTab, setConsoleTab] = useState<ConsoleTab>("findings");
 
   const startFn = useServerFn(startTestRun);
   const stopFn = useServerFn(stopTestRun);
 
   const { events } = useTestStream(runId);
+
+  const pageReports = useMemo(() => buildPageReports(events), [events]);
+  const analyzeDisabled = pageReports.length === 0;
 
   // Pull the latest collect's screenshot + overlay out of the stream and
   // stash it so we can show the Frozen viewport after the session closes.
@@ -84,8 +91,6 @@ export function BrowserShell() {
       }
     };
     const onChange = () => {
-      // Always clear before setting — fix racekondition where snabba flikbyten
-      // staplade flera timers.
       clearTimer();
       if (document.visibilityState === "hidden") {
         hiddenTimer.current = setTimeout(() => {
@@ -110,11 +115,12 @@ export function BrowserShell() {
   const handleRun = useCallback(async (nextUrl: string) => {
     setUrl(nextUrl);
     setSessionState("live");
-    setLiveStartedAt(null); // wait for session_started event
+    setLiveStartedAt(null);
     setStatusMessage(undefined);
     setLiveUrl(null);
     setRunId(null);
-    setFrozen(null); // drop previous snapshot so a crashed new run can't show stale data
+    setFrozen(null);
+    setInterpretation(null);
     try {
       const res = await startFn({ data: { url: nextUrl } });
       setRunId(res.runId);
@@ -133,9 +139,10 @@ export function BrowserShell() {
     try { await stopFn({ data: { runId } }); } catch { /* ignore */ }
   }, [runId, stopFn]);
 
-  const handleResume = useCallback(() => {
-    void handleRun(url);
-  }, [handleRun, url]);
+  const handleAnalyze = useCallback(() => {
+    setInterpretation(interpretReports(pageReports));
+    setConsoleTab("interpret");
+  }, [pageReports]);
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -145,10 +152,11 @@ export function BrowserShell() {
         sessionState={sessionState}
         statusMessage={statusMessage}
         liveStartedAt={liveStartedAt}
+        analyzeDisabled={analyzeDisabled}
         onSubmit={(next) => setUrl(next)}
         onRun={handleRun}
         onStop={handleStop}
-        onResume={handleResume}
+        onAnalyze={handleAnalyze}
       />
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="flex min-h-0 flex-1 lg:w-1/2 lg:border-r lg:border-border">
@@ -156,11 +164,15 @@ export function BrowserShell() {
             sessionState={sessionState}
             liveUrl={liveUrl}
             frozen={frozen}
-            onResume={handleResume}
           />
         </div>
         <div className="flex min-h-0 flex-1 lg:w-1/2">
-          <ConsolePanel events={events} />
+          <ConsolePanel
+            events={events}
+            interpretation={interpretation}
+            tab={consoleTab}
+            onTabChange={setConsoleTab}
+          />
         </div>
       </div>
     </div>
