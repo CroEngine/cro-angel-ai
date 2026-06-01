@@ -42,6 +42,7 @@ function summarize(step: Step): string {
     case "act": return `act "${step.instruction}"`;
     case "extract": return `extract "${step.instruction}"`;
     case "observe": return `observe "${step.instruction}"`;
+    case "collect": return `collect ${step.target}`;
   }
 }
 
