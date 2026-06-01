@@ -33,13 +33,12 @@ export function BrowserShell() {
       if (e.type === "done") {
         setRunState("done");
         setStatusMessage(e.data.aborted ? "done · aborted" : "done");
-        setLiveUrl(null);
+        // Keep liveUrl mounted so the collect overlay stays visible.
         return;
       }
       if (e.type === "error") {
         setRunState("error");
         setStatusMessage(`error · ${String(e.data.message ?? "")}`);
-        setLiveUrl(null);
         return;
       }
     }
@@ -79,6 +78,15 @@ export function BrowserShell() {
     try { await stopFn({ data: { runId } }); } catch { /* ignore */ }
   }, [runId, stopFn]);
 
+  const handleCloseSession = useCallback(async () => {
+    if (runId) {
+      try { await stopFn({ data: { runId } }); } catch { /* ignore */ }
+    }
+    setLiveUrl(null);
+  }, [runId, stopFn]);
+
+  const sessionEnded = runState === "done" || runState === "error";
+
   return (
     <div className="flex h-screen flex-col bg-background">
       <TabStrip title={hostname} />
@@ -91,7 +99,7 @@ export function BrowserShell() {
         onRun={handleRun}
         onStop={handleStop}
       />
-      <Viewport liveUrl={liveUrl} />
+      <Viewport liveUrl={liveUrl} ended={sessionEnded} onClose={handleCloseSession} />
       <ConsolePanel events={events} />
     </div>
   );

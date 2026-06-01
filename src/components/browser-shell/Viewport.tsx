@@ -1,10 +1,13 @@
-import { Play } from "lucide-react";
+import { Play, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ViewportProps {
   liveUrl: string | null;
+  ended?: boolean;
+  onClose?: () => void;
 }
 
-export function Viewport({ liveUrl }: ViewportProps) {
+export function Viewport({ liveUrl, ended, onClose }: ViewportProps) {
   return (
     <div className="relative flex-1 overflow-hidden bg-muted/20">
       {liveUrl ? (
@@ -16,9 +19,27 @@ export function Viewport({ liveUrl }: ViewportProps) {
             className="h-full w-full border-0 bg-background"
             sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
           />
-          <div className="pointer-events-none absolute left-2 top-2 rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-            live · Browserbase
+          <div
+            className={
+              "pointer-events-none absolute left-2 top-2 rounded-md px-2 py-1 text-xs font-medium " +
+              (ended
+                ? "bg-muted text-muted-foreground"
+                : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")
+            }
+          >
+            {ended ? "ended · session paused" : "live · Browserbase"}
           </div>
+          {onClose && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="absolute right-2 top-2 h-7 gap-1 px-2 text-xs"
+              onClick={onClose}
+            >
+              <X className="h-3 w-3" />
+              Close
+            </Button>
+          )}
         </>
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
