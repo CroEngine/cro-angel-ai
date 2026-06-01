@@ -105,12 +105,32 @@ function CollectDetails({ data }: { data: CollectData }) {
       </div>
       {preview.length > 0 && (
         <ul className="space-y-1">
-          {preview.map((el, i) => (
-            <li key={i} className="truncate">
-              <span className="text-foreground">{el.text || <em className="text-muted-foreground">(no text)</em>}</span>
-              <span className="ml-2 text-muted-foreground">— {el.selector}</span>
-            </li>
-          ))}
+          {preview.map((el, i) => {
+            const bg = el.computedStyles?.backgroundColor;
+            const fg = el.computedStyles?.color;
+            return (
+              <li key={i} className="flex items-center gap-2 truncate">
+                <span className="inline-flex h-4 w-5 shrink-0 items-center justify-center rounded bg-cyan-600 text-[10px] font-bold text-white">
+                  {i + 1}
+                </span>
+                {(bg || fg) && (
+                  <span
+                    className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border text-[9px] font-bold"
+                    style={{ background: bg, color: fg }}
+                    title={`bg ${bg} · fg ${fg}`}
+                  >
+                    A
+                  </span>
+                )}
+                <span className="truncate text-foreground">
+                  {el.text || <em className="text-muted-foreground">(no text)</em>}
+                </span>
+                <span className="truncate text-muted-foreground">— {el.selector}</span>
+                {!el.visible && <span className="shrink-0 rounded bg-muted px-1 text-[9px] uppercase text-muted-foreground">hidden</span>}
+                {el.visible && !el.aboveFold && <span className="shrink-0 rounded bg-muted px-1 text-[9px] uppercase text-muted-foreground">below</span>}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
