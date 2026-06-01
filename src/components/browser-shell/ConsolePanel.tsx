@@ -3,118 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FindingsView } from "./FindingsView";
 import type { StreamEvent } from "./hooks/useTestStream";
+import type {
+  CollectData,
+  ElementCategory,
+  PageAuditData,
+  SectionKind,
+} from "@/lib/tests/schema";
 
 function fmtTime(ts: unknown) {
   const n = typeof ts === "number" ? ts : Date.now();
   const d = new Date(n);
   return d.toLocaleTimeString([], { hour12: false });
 }
-
-type ElementCategory =
-  | "cta_primary"
-  | "cta_secondary"
-  | "form_submit"
-  | "icon_button"
-  | "nav_item"
-  | "link"
-  | "other";
-
-type ElementIntent = "conversion" | "information" | "navigation" | "social" | "utility" | "engagement" | "unknown";
-type ViewportZone = "above_fold" | "mid_page" | "below_fold";
-type SectionKind = "nav" | "header" | "hero" | "cards" | "content" | "footer";
-
-type CollectedElement = {
-  text: string;
-  tagName: string;
-  selector: string;
-  category?: ElementCategory;
-  intent?: ElementIntent;
-  section?: SectionKind;
-  href: string | null;
-  disabled: boolean;
-  visible: boolean;
-  aboveFold: boolean;
-  rect: { x: number; y: number; w: number; h: number };
-  position?: { viewportZone: ViewportZone; yPercent: number; xPercent: number };
-  visualWeight?: { area: number; fontSize: number; fontWeight: number; backgroundContrast: number; score: number };
-  groupId?: string;
-  groupCount?: number;
-  groupedAway?: boolean;
-  attributes?: Record<string, string>;
-  computedStyles?: {
-    color?: string;
-    backgroundColor?: string;
-    fontSize?: string;
-    fontWeight?: string;
-    padding?: string;
-    borderRadius?: string;
-    border?: string;
-    cursor?: string;
-    display?: string;
-  };
-};
-
-type RepeatedGroup = {
-  label: string;
-  count: number;
-  category: ElementCategory;
-  intent: ElementIntent;
-  section: SectionKind;
-  exampleSelector: string;
-};
-
-type CollectSummary = {
-  total: number;
-  aboveFold: number;
-  primaryCtaCount: number;
-  competingAboveFold: number;
-  topVisualWeight: Array<{ selector: string; text: string; score: number }>;
-  intentBreakdown: Partial<Record<ElementIntent, number>>;
-  bySection?: Partial<Record<SectionKind, number>>;
-  groups?: RepeatedGroup[];
-};
-
-type CollectData = {
-  target: string;
-  count: number;
-  totalCount?: number;
-  byCategory?: Partial<Record<ElementCategory, number>>;
-  summary?: CollectSummary;
-  elements: CollectedElement[];
-};
-
-type PageAuditData = {
-  url: string;
-  head: {
-    title: string;
-    description: string;
-    canonical: string;
-    lang: string;
-    viewport: string;
-    robots: string;
-    ogTitle: string;
-    ogDescription: string;
-    ogImage: string;
-    ogType: string;
-    ogUrl: string;
-    twitterCard: string;
-    twitterTitle: string;
-    twitterImage: string;
-  };
-  headings: {
-    h1Count: number;
-    h2Count: number;
-    h3Count: number;
-    hierarchy: Array<{ level: number; text: string; id: string }>;
-  };
-  images: { total: number; missingAlt: number; missingAltPct: number; missingDims: number; lazy: number };
-  links: { internal: number; external: number; nofollow: number; total: number };
-  schema: { count: number; types: string[] };
-  content: { wordCount: number; sections: number; articles: number };
-  robotsTxt: { exists: boolean; blocksAll: boolean; hasSitemap: boolean };
-  sitemap: { exists: boolean; urlCount: number };
-  flags: string[];
-};
 
 function isCollectData(v: unknown): v is CollectData {
   if (!v || typeof v !== "object") return false;
@@ -127,9 +27,6 @@ function isPageAuditData(v: unknown): v is PageAuditData {
   const o = v as Record<string, unknown>;
   return typeof o.url === "string" && !!o.head && !!o.headings && Array.isArray(o.flags);
 }
-
-
-
 
 const CATEGORY_COLORS: Record<ElementCategory, string> = {
   cta_primary: "#10b981",
@@ -150,7 +47,6 @@ const CATEGORY_LABELS: Record<ElementCategory, string> = {
   link: "Link",
   other: "Other",
 };
-
 
 function downloadJson(filename: string, payload: unknown) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -238,14 +134,7 @@ function CollectDetails({ data }: { data: CollectData }) {
           <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-foreground">
             ★ {data.summary.primaryCtaCount} primary CTA
           </span>
-          <span
-            className={
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium " +
-              (data.summary.competingAboveFold >= 4
-                ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                : "border-border bg-background text-foreground")
-            }
-          >
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-foreground">
             ⚔ Competing above fold: {data.summary.competingAboveFold}
           </span>
         </div>
@@ -333,13 +222,12 @@ function CollectDetails({ data }: { data: CollectData }) {
           })}
         </ul>
       )}
-
     </div>
   );
 }
 
 function PageAuditDetails({ data }: { data: PageAuditData }) {
-  const { head, headings, images, links, schema, content, robotsTxt, sitemap, flags } = data;
+  const { head, headings, images, links, schema, content, robotsTxt, sitemap } = data;
   return (
     <div className="mt-2 space-y-2 rounded border border-border bg-muted/30 p-2">
       <div className="flex items-center justify-between gap-2">
@@ -354,25 +242,12 @@ function PageAuditDetails({ data }: { data: PageAuditData }) {
         </Button>
       </div>
 
-      {flags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {flags.map((f) => (
-            <span
-              key={f}
-              className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
-            >
-              ⚠ {f}
-            </span>
-          ))}
-        </div>
-      )}
-
       <div className="grid grid-cols-2 gap-2 text-[11px]">
         <div className="rounded border border-border bg-background/50 p-2">
           <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Head</div>
           <ul className="space-y-0.5">
-            <li><span className="text-muted-foreground">title:</span> {head.title || <em className="text-muted-foreground">(missing)</em>}</li>
-            <li className="truncate"><span className="text-muted-foreground">desc:</span> {head.description || <em className="text-muted-foreground">(missing)</em>}</li>
+            <li><span className="text-muted-foreground">title:</span> {head.title || <em className="text-muted-foreground">—</em>}</li>
+            <li className="truncate"><span className="text-muted-foreground">desc:</span> {head.description || <em className="text-muted-foreground">—</em>}</li>
             <li><span className="text-muted-foreground">canonical:</span> {head.canonical || <em className="text-muted-foreground">—</em>}</li>
             <li><span className="text-muted-foreground">lang:</span> {head.lang || <em className="text-muted-foreground">—</em>}</li>
             <li><span className="text-muted-foreground">og:image:</span> {head.ogImage ? "✓" : "—"}</li>
@@ -396,7 +271,6 @@ function PageAuditDetails({ data }: { data: PageAuditData }) {
 }
 
 export function ConsolePanel({ events }: { events: StreamEvent[] }) {
-
   return (
     <div className="flex h-full min-h-0 w-full flex-col border-t border-border bg-background lg:border-t-0">
       <Tabs defaultValue="findings" className="flex h-full min-h-0 w-full flex-col">
