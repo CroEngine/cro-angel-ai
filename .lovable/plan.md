@@ -1,20 +1,24 @@
-## Minimal fix
+# Fix: live-iframen visar about:blank
 
-Bara två rader ändras. Inga nya states, ingen UI-logik.
+## Problem
+`debuggerFullscreenUrl` streamar den första tabben i Browserbase-sessionen (about:blank). Vår CDP-kod använder `Target.createTarget` som öppnar en *ny* tabb och navigerar den — så live-vyn fortsätter visa den tomma original­tabben medan sidan laddas osynligt i bakgrunden.
 
-### 1. `src/lib/tests/browserbase.server.ts` — skapa keepAlive-session
-I `createSession()`, byt:
-```
-const session = await client.sessions.create({ projectId });
-```
-till:
-```
-const session = await client.sessions.create({ projectId, keepAlive: true, timeout: 300 });
-```
+## Lösning (Alternativ A)
+Navigera den **befintliga** default-tabben istället för att skapa en ny. Då matchar live-vyn det som händer.
 
-### 2. Det var allt
-- Vår CDP-WebSocket stänger efter load — det är OK, för med `keepAlive: true` river inte Browserbase ner browsern bara för att en kontrollanslutning kopplas ner. Live-vyn håller sig ansluten.
-- Resten av flödet (Stop, hard timeout 5 min, error-pill) är redan korrekt.
+## Ändringar
 
-### Verifiering
-Run → iframe laddar och blir kvar. Stop → sessionen släpps. Klart.
+**`src/lib/tests/browserbase.server.ts`** — i `navigateViaCDP`, ersätt `Target.createTarget` + `Target.attachToTarget` med:
+
+1. `Target.getTargets` → hitta första target där `type === "page"`.
+2. `Target.attachToTarget` med det `targetId` + `flatten: true` för att få en `sessionId`.
+3. `Page.enable` på sessionen.
+4. `Page.navigate` med `{ url }` på samma session.
+5. Vänta som idag på `Page.loadEventFired` för samma `sessionId`.
+
+Resten (timeout, abort, logghooks, WebSocket-livscykel) är oförändrat.
+
+## Verifiering
+- Kör test mot `https://glutenforum.se/` → live-iframen visar sidan ladda, inte about:blank.
+- Pillen går `connecting → running → idle` som tidigare.
+- Stop släpper sessionen.

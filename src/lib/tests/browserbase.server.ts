@@ -88,20 +88,22 @@ export async function navigateViaCDP(
 
     ws.onopen = async () => {
       try {
-        log(`CDP connected, creating target for ${url}`);
-        const created = (await send("Target.createTarget", { url })) as {
-          result?: { targetId?: string };
+        log(`CDP connected, locating existing page target`);
+        const targets = (await send("Target.getTargets")) as {
+          result?: { targetInfos?: Array<{ targetId: string; type: string }> };
         };
-        const targetId = created.result?.targetId;
-        if (!targetId) throw new Error("Target.createTarget did not return a targetId");
+        const pageTarget = targets.result?.targetInfos?.find((t) => t.type === "page");
+        if (!pageTarget) throw new Error("no existing page target found in session");
         const attached = (await send("Target.attachToTarget", {
-          targetId,
+          targetId: pageTarget.targetId,
           flatten: true,
         })) as { result?: { sessionId?: string } };
         sessionId = attached.result?.sessionId;
         if (!sessionId) throw new Error("Target.attachToTarget did not return a sessionId");
         await send("Page.enable", {}, sessionId);
-        log("CDP page enabled, awaiting load event");
+        log(`navigating existing tab to ${url}`);
+        await send("Page.navigate", { url }, sessionId);
+        log("awaiting load event");
       } catch (err) {
         finish(err instanceof Error ? err : new Error(String(err)));
       }
