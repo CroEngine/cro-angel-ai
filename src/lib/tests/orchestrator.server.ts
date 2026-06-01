@@ -2,7 +2,15 @@
 // CRITICAL: process-local state. Works only inside a single Worker instance,
 // which is fine for the Slice 2.1 prototype.
 
-export type RunEventType = "session_started" | "log" | "state" | "done" | "error";
+export type RunEventType =
+  | "session_started"
+  | "log"
+  | "state"
+  | "step_started"
+  | "step_passed"
+  | "step_failed"
+  | "done"
+  | "error";
 
 export interface RunEvent {
   type: RunEventType;

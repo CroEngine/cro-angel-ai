@@ -1,16 +1,47 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createSession, closeSession, navigateViaCDP } from "./browserbase.server";
+import { createSession, closeSession } from "./browserbase.server";
 import { createRun, emit, terminate, getRun, isTerminated } from "./orchestrator.server";
+import { runSteps, type Step } from "./engine.server";
 
 function newRunId() {
   return `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const stepSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("goto"), url: z.string().url() }),
+  z.object({ kind: z.literal("wait"), ms: z.number().int().min(0).max(60_000) }),
+  z.object({ kind: z.literal("assertText"), text: z.string().min(1) }),
+  z.object({ kind: z.literal("click"), selector: z.string().min(1) }),
+  z.object({ kind: z.literal("fill"), selector: z.string().min(1), value: z.string() }),
+  z.object({ kind: z.literal("act"), instruction: z.string().min(1) }),
+  z.object({ kind: z.literal("extract"), instruction: z.string().min(1) }),
+  z.object({ kind: z.literal("observe"), instruction: z.string().min(1) }),
+]);
+
+const inputSchema = z.object({
+  url: z.string().url(),
+  steps: z.array(stepSchema).max(50).optional(),
+});
+
+function defaultSteps(url: string): Step[] {
+  return [
+    { kind: "goto", url },
+    { kind: "wait", ms: 500 },
+    { kind: "assertText", text: "Glutenforum" },
+  ];
+}
+
 export const startTestRun = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ url: z.string().url() }).parse(input))
+  .inputValidator((input) => inputSchema.parse(input))
   .handler(async ({ data }) => {
     const runId = newRunId();
+
+    // Build final steps: ensure run starts with a goto for the requested URL.
+    let steps: Step[] = data.steps && data.steps.length > 0 ? data.steps : defaultSteps(data.url);
+    if (steps[0]?.kind !== "goto") {
+      steps = [{ kind: "goto", url: data.url }, ...steps];
+    }
 
     let session;
     try {
@@ -20,7 +51,7 @@ export const startTestRun = createServerFn({ method: "POST" })
       throw new Error(`Failed to create Browserbase session: ${message}`);
     }
 
-    const { id: sessionId, connectUrl, liveUrl } = session;
+    const { id: sessionId, liveUrl } = session;
 
     const run = createRun(runId, async () => {
       await closeSession(sessionId);
@@ -28,19 +59,58 @@ export const startTestRun = createServerFn({ method: "POST" })
 
     emit(runId, "session_started", { runId, sessionId, liveUrl });
 
-    // Kick off navigation async — do NOT await. Frontend gets liveUrl immediately.
+    // Kick off execution async — do NOT await. Frontend gets liveUrl immediately.
     (async () => {
       try {
-        emit(runId, "log", { level: "info", message: `navigating to ${data.url}` });
-        await navigateViaCDP(connectUrl, data.url, {
+        emit(runId, "log", { level: "info", message: `running ${steps.length} step(s)` });
+
+        let firstGotoPassed = false;
+        const result = await runSteps(sessionId, steps, {
           signal: run.abort.signal,
-          timeoutMs: 30_000,
-          onLog: (m) => emit(runId, "log", { level: "debug", message: m }),
+          onEvent: (e) => {
+            if (isTerminated(runId)) return;
+            if (e.type === "log") {
+              emit(runId, "log", { level: "debug", message: e.message });
+              return;
+            }
+            const payload: Record<string, unknown> = {
+              index: e.index,
+              kind: e.kind,
+              summary: e.summary,
+            };
+            if (e.type === "step_started") {
+              emit(runId, "step_started", payload);
+            } else if (e.type === "step_passed") {
+              payload.durationMs = e.durationMs;
+              if (e.data !== undefined) payload.data = e.data;
+              emit(runId, "step_passed", payload);
+              // Promote first successful goto so the live iframe flips to "idle".
+              if (!firstGotoPassed && e.kind === "goto") {
+                firstGotoPassed = true;
+                emit(runId, "state", { phase: "idle" });
+              }
+            } else if (e.type === "step_failed") {
+              payload.durationMs = e.durationMs;
+              payload.error = e.error;
+              emit(runId, "step_failed", payload);
+            }
+          },
         });
+
         if (isTerminated(runId)) return;
-        emit(runId, "log", { level: "info", message: "navigation complete — session idle, click Stop to end" });
-        emit(runId, "state", { phase: "idle" });
-        // Do NOT terminate; keep session alive so the live iframe stays connected.
+        if (result.failed > 0) {
+          await terminate(runId, "error", {
+            message: `${result.failed} step(s) failed`,
+            passed: result.passed,
+            failed: result.failed,
+          });
+        } else {
+          await terminate(runId, "done", {
+            aborted: result.aborted,
+            passed: result.passed,
+            failed: result.failed,
+          });
+        }
       } catch (err) {
         if (isTerminated(runId)) return;
         const message = err instanceof Error ? err.message : String(err);
