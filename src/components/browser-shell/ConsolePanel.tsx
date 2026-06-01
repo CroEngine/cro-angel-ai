@@ -17,8 +17,9 @@ type ElementCategory =
   | "link"
   | "other";
 
-type ElementIntent = "conversion" | "information" | "navigation" | "social" | "utility" | "unknown";
+type ElementIntent = "conversion" | "information" | "navigation" | "social" | "utility" | "engagement" | "unknown";
 type ViewportZone = "above_fold" | "mid_page" | "below_fold";
+type SectionKind = "nav" | "header" | "hero" | "cards" | "content" | "footer";
 
 type CollectedElement = {
   text: string;
@@ -26,6 +27,7 @@ type CollectedElement = {
   selector: string;
   category?: ElementCategory;
   intent?: ElementIntent;
+  section?: SectionKind;
   href: string | null;
   disabled: boolean;
   visible: boolean;
@@ -33,6 +35,9 @@ type CollectedElement = {
   rect: { x: number; y: number; w: number; h: number };
   position?: { viewportZone: ViewportZone; yPercent: number; xPercent: number };
   visualWeight?: { area: number; fontSize: number; fontWeight: number; backgroundContrast: number; score: number };
+  groupId?: string;
+  groupCount?: number;
+  groupedAway?: boolean;
   attributes?: Record<string, string>;
   computedStyles?: {
     color?: string;
@@ -47,6 +52,15 @@ type CollectedElement = {
   };
 };
 
+type RepeatedGroup = {
+  label: string;
+  count: number;
+  category: ElementCategory;
+  intent: ElementIntent;
+  section: SectionKind;
+  exampleSelector: string;
+};
+
 type CollectSummary = {
   total: number;
   aboveFold: number;
@@ -54,14 +68,50 @@ type CollectSummary = {
   competingAboveFold: number;
   topVisualWeight: Array<{ selector: string; text: string; score: number }>;
   intentBreakdown: Partial<Record<ElementIntent, number>>;
+  bySection?: Partial<Record<SectionKind, number>>;
+  groups?: RepeatedGroup[];
 };
 
 type CollectData = {
   target: string;
   count: number;
+  totalCount?: number;
   byCategory?: Partial<Record<ElementCategory, number>>;
   summary?: CollectSummary;
   elements: CollectedElement[];
+};
+
+type PageAuditData = {
+  url: string;
+  head: {
+    title: string;
+    description: string;
+    canonical: string;
+    lang: string;
+    viewport: string;
+    robots: string;
+    ogTitle: string;
+    ogDescription: string;
+    ogImage: string;
+    ogType: string;
+    ogUrl: string;
+    twitterCard: string;
+    twitterTitle: string;
+    twitterImage: string;
+  };
+  headings: {
+    h1Count: number;
+    h2Count: number;
+    h3Count: number;
+    hierarchy: Array<{ level: number; text: string; id: string }>;
+  };
+  images: { total: number; missingAlt: number; missingAltPct: number; missingDims: number; lazy: number };
+  links: { internal: number; external: number; nofollow: number; total: number };
+  schema: { count: number; types: string[] };
+  content: { wordCount: number; sections: number; articles: number };
+  robotsTxt: { exists: boolean; blocksAll: boolean; hasSitemap: boolean };
+  sitemap: { exists: boolean; urlCount: number };
+  flags: string[];
 };
 
 function isCollectData(v: unknown): v is CollectData {
@@ -69,6 +119,14 @@ function isCollectData(v: unknown): v is CollectData {
   const o = v as Record<string, unknown>;
   return typeof o.target === "string" && typeof o.count === "number" && Array.isArray(o.elements);
 }
+
+function isPageAuditData(v: unknown): v is PageAuditData {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.url === "string" && !!o.head && !!o.headings && Array.isArray(o.flags);
+}
+
+
 
 
 const CATEGORY_COLORS: Record<ElementCategory, string> = {
