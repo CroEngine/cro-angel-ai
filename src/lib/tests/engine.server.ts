@@ -108,14 +108,45 @@ export type CollectedElement = {
   };
 };
 
+export type SectionType =
+  | "nav"
+  | "header"
+  | "hero"
+  | "logos"
+  | "benefits"
+  | "features"
+  | "testimonials"
+  | "reviews"
+  | "pricing"
+  | "faq"
+  | "cta"
+  | "form"
+  | "cards"
+  | "content"
+  | "footer"
+  | "aside";
+
 export type PageSection = {
-  kind: "nav" | "header" | "hero" | "cards" | "content" | "footer" | "aside";
+  id: string;
+  type: SectionType;
+  kind: SectionType; // legacy alias for back-compat
+  position: number;
+  heading: string;
+  subheading: string;
   selector: string;
   rect: { x: number; y: number; w: number; h: number };
   aboveFold: boolean;
+  heightPx: number;
+  visualWeight: number; // 0–100 normalized
+  elementCount: number;
   childCount: number;
   repeatedChildren: number;
-  headingText: string;
+  headingText: string; // alias of heading
+  containsPrimaryCTA: boolean;
+  containsTrustSignals: boolean;
+  containsForm: boolean;
+  containsPricing: boolean;
+  containsNavigation: boolean;
 };
 
 export type TrustSignalType =
@@ -140,6 +171,99 @@ export type TrustSignal = {
   selector: string;
   visualWeight: number;
   source: "text" | "attr" | "schema" | "img_alt";
+  rect?: { x: number; y: number; w: number; h: number };
+  personName?: string;
+  company?: string;
+  hasImage?: boolean;
+  rating?: number;
+  reviewCount?: number;
+  reviewSource?: string;
+  logoCount?: number;
+  recognizedBrands?: string[];
+};
+
+export type CTAEntity = {
+  text: string;
+  intent: ElementIntent;
+  category: ElementCategory;
+  section: SectionKind;
+  aboveFold: boolean;
+  visualWeight: number;
+  competingActions: number;
+  nearestTrustSignalDistance: number;
+  nearestFormDistance: number;
+  selector: string;
+  rect: { x: number; y: number; w: number; h: number };
+};
+
+export type FormField = {
+  name: string;
+  type: string;
+  required: boolean;
+  label: string;
+};
+
+export type FormEntity = {
+  section: SectionKind;
+  aboveFold: boolean;
+  selector: string;
+  fieldCount: number;
+  requiredFields: number;
+  containsEmail: boolean;
+  containsPhone: boolean;
+  containsCompany: boolean;
+  containsPassword: boolean;
+  containsCreditCard: boolean;
+  multiStep: boolean;
+  submitText: string;
+  fields: FormField[];
+  rect: { x: number; y: number; w: number; h: number };
+};
+
+export type NavigationData = {
+  topNavCount: number;
+  footerNavCount: number;
+  topNavLinks: string[];
+  footerNavLinks: string[];
+  loginPresent: boolean;
+  signupPresent: boolean;
+  pricingPresent: boolean;
+  contactPresent: boolean;
+  blogPresent: boolean;
+  docsPresent: boolean;
+  languageSwitcherPresent: boolean;
+  cartPresent: boolean;
+};
+
+export type VisualHierarchyEntry = {
+  selector: string;
+  text: string;
+  role: string;
+  visualWeight: number;
+  area: number;
+  fontSize: number;
+  fontWeight: number;
+  contrast: number;
+  position: { xPct: number; yPct: number };
+  aboveFold: boolean;
+  section: SectionKind;
+};
+
+export type PageSummary = {
+  primaryCtaCount: number;
+  secondaryCtaCount: number;
+  aboveFoldCtaCount: number;
+  aboveFoldTrustCount: number;
+  trustSignalCount: number;
+  testimonialCount: number;
+  logoCount: number;
+  reviewCount: number;
+  averageRating: number;
+  formCount: number;
+  navigationLinks: number;
+  sectionCount: number;
+  pageHeightPx: number;
+  foldHeightPx: number;
 };
 
 export type PageAuditData = {
@@ -173,12 +297,18 @@ export type PageAuditData = {
   robotsTxt: { exists: boolean; blocksAll: boolean; hasSitemap: boolean };
   sitemap: { exists: boolean; urlCount: number };
   sections: PageSection[];
+  sectionOrder: SectionType[];
   trustSignals: TrustSignal[];
   trustSummary: {
     total: number;
     aboveFold: number;
     byType: Record<string, number>;
   };
+  ctas: CTAEntity[];
+  forms: FormEntity[];
+  navigation: NavigationData;
+  visualHierarchy: VisualHierarchyEntry[];
+  pageSummary: PageSummary;
   flags: string[];
 };
 
