@@ -110,10 +110,11 @@ export function BrowserShell() {
   const handleRun = useCallback(async (nextUrl: string) => {
     setUrl(nextUrl);
     setSessionState("live");
-    setLiveStartedAt(Date.now());
+    setLiveStartedAt(null); // wait for session_started event
     setStatusMessage(undefined);
     setLiveUrl(null);
     setRunId(null);
+    setFrozen(null); // drop previous snapshot so a crashed new run can't show stale data
     try {
       const res = await startFn({ data: { url: nextUrl } });
       setRunId(res.runId);
@@ -125,6 +126,7 @@ export function BrowserShell() {
       setLiveStartedAt(null);
     }
   }, [startFn]);
+
 
   const handleStop = useCallback(async () => {
     if (!runId) return;
