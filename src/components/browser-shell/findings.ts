@@ -1,11 +1,9 @@
 import type { StreamEvent } from "./hooks/useTestStream";
 
-export type FindingSeverity = "info" | "warn" | "error";
 export type FindingCategory = "seo" | "cro" | "ux" | "interaction";
 
 export interface Finding {
   category: FindingCategory;
-  severity: FindingSeverity;
   label: string;
   detail?: string;
 }
@@ -193,108 +191,47 @@ function urlFromSummary(summary: unknown): string | null {
   return m ? m[1].trim() : null;
 }
 
+const f = (category: FindingCategory, label: string, detail?: string): Finding => ({
+  category,
+  label,
+  detail,
+});
+
 function seoFindings(a: PageAuditLike): Finding[] {
-  const out: Finding[] = [];
-  out.push(
-    a.head.title
-      ? { category: "seo", severity: "info", label: "Title", detail: `"${a.head.title}" (${a.head.title.length} chars)` }
-      : { category: "seo", severity: "warn", label: "Title", detail: "missing" }
-  );
-  out.push(
-    a.head.description
-      ? { category: "seo", severity: "info", label: "Meta description", detail: `${a.head.description.length} chars` }
-      : { category: "seo", severity: "warn", label: "Meta description", detail: "missing" }
-  );
-  out.push(
-    a.head.canonical
-      ? { category: "seo", severity: "info", label: "Canonical", detail: a.head.canonical }
-      : { category: "seo", severity: "warn", label: "Canonical", detail: "missing" }
-  );
-  out.push({
-    category: "seo",
-    severity: a.head.lang ? "info" : "warn",
-    label: "lang attribute",
-    detail: a.head.lang || "missing",
-  });
-  out.push({
-    category: "seo",
-    severity: a.head.ogImage ? "info" : "warn",
-    label: "Open Graph image",
-    detail: a.head.ogImage ? "set" : "missing",
-  });
-  out.push({
-    category: "seo",
-    severity: a.headings.h1Count === 1 ? "info" : "warn",
-    label: "H1",
-    detail: `${a.headings.h1Count} found · h2:${a.headings.h2Count} h3:${a.headings.h3Count}`,
-  });
-  out.push({
-    category: "seo",
-    severity: a.images.missingAltPct > 10 ? "warn" : "info",
-    label: "Images alt",
-    detail: `${a.images.total} total, ${a.images.missingAlt} missing alt (${a.images.missingAltPct}%)`,
-  });
-  out.push({
-    category: "seo",
-    severity: "info",
-    label: "Schema.org",
-    detail: a.schema.count > 0 ? a.schema.types.join(", ") : "none",
-  });
-  out.push({
-    category: "seo",
-    severity: a.robotsTxt.exists ? "info" : "warn",
-    label: "robots.txt",
-    detail: a.robotsTxt.exists ? "found" : "missing",
-  });
-  out.push({
-    category: "seo",
-    severity: a.sitemap.exists ? "info" : "warn",
-    label: "sitemap.xml",
-    detail: a.sitemap.exists ? `found (${a.sitemap.urlCount} urls)` : "missing",
-  });
-  out.push({
-    category: "seo",
-    severity: "info",
-    label: "Word count",
-    detail: String(a.content.wordCount),
-  });
-  for (const f of a.flags) {
-    out.push({ category: "seo", severity: "warn", label: "Flag", detail: f });
-  }
-  return out;
+  return [
+    f("seo", "Title", a.head.title ? `"${a.head.title}" (${a.head.title.length} chars)` : "not set"),
+    f("seo", "Meta description", a.head.description ? `${a.head.description.length} chars` : "not set"),
+    f("seo", "Canonical", a.head.canonical || "not set"),
+    f("seo", "lang attribute", a.head.lang || "not set"),
+    f("seo", "Open Graph image", a.head.ogImage ? "set" : "not set"),
+    f("seo", "Headings", `h1:${a.headings.h1Count} · h2:${a.headings.h2Count} · h3:${a.headings.h3Count}`),
+    f("seo", "Images alt", `${a.images.total} total · ${a.images.missingAlt} missing alt (${a.images.missingAltPct}%)`),
+    f("seo", "Schema.org", a.schema.count > 0 ? a.schema.types.join(", ") : "none"),
+    f("seo", "robots.txt", a.robotsTxt.exists ? "found" : "not found"),
+    f("seo", "sitemap.xml", a.sitemap.exists ? `found (${a.sitemap.urlCount} urls)` : "not found"),
+    f("seo", "Word count", String(a.content.wordCount)),
+    f("seo", "Links", `${a.links.total} total · internal ${a.links.internal} · external ${a.links.external}`),
+  ];
 }
 
 function croFindings(c: CollectLike): Finding[] {
   const out: Finding[] = [];
   const s = c.summary;
   if (!s) return out;
-  out.push({
-    category: "cro",
-    severity: s.primaryCtaCount === 0 ? "warn" : "info",
-    label: "Primary CTAs above fold",
-    detail: String(s.primaryCtaCount),
-  });
-  out.push({
-    category: "cro",
-    severity: s.competingAboveFold >= 4 ? "warn" : "info",
-    label: "Competing CTAs above fold",
-    detail: String(s.competingAboveFold),
-  });
+  out.push(f("cro", "Primary CTAs above fold", String(s.primaryCtaCount)));
+  out.push(f("cro", "Competing CTAs above fold", String(s.competingAboveFold)));
   const top = s.topVisualWeight[0];
   if (top) {
-    out.push({
-      category: "cro",
-      severity: "info",
-      label: "Top visual weight",
-      detail: `"${top.text || top.selector}" (${top.score})`,
-    });
+    out.push(f("cro", "Top visual weight", `"${top.text || top.selector}" (${top.score})`));
   }
   if (s.groups && s.groups.length > 0) {
-    const summary = s.groups
-      .slice(0, 4)
-      .map((g) => `×${g.count} ${g.label}`)
-      .join(" · ");
-    out.push({ category: "cro", severity: "info", label: "Repeated controls", detail: summary });
+    out.push(
+      f(
+        "cro",
+        "Repeated controls",
+        s.groups.slice(0, 4).map((g) => `×${g.count} ${g.label}`).join(" · "),
+      ),
+    );
   }
   return out;
 }
@@ -303,46 +240,39 @@ function uxFindings(c: CollectLike): Finding[] {
   const out: Finding[] = [];
   const s = c.summary;
   if (s?.bySection) {
-    const parts = Object.entries(s.bySection)
-      .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
-      .map(([k, v]) => `${k} ${v}`)
-      .join(" · ");
-    out.push({ category: "ux", severity: "info", label: "Sections", detail: parts });
+    out.push(
+      f(
+        "ux",
+        "Elements by section",
+        Object.entries(s.bySection)
+          .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+          .map(([k, v]) => `${k} ${v}`)
+          .join(" · "),
+      ),
+    );
   }
   if (s) {
-    out.push({
-      category: "ux",
-      severity: "info",
-      label: "Above fold",
-      detail: `${s.aboveFold} / ${s.total} elements`,
-    });
+    out.push(f("ux", "Above fold", `${s.aboveFold} / ${s.total} elements`));
   }
   const hiddenInteractive = c.elements.filter((e) => !e.visible).length;
-  if (hiddenInteractive > 0) {
-    out.push({
-      category: "ux",
-      severity: "warn",
-      label: "Hidden but interactive",
-      detail: String(hiddenInteractive),
-    });
-  }
+  out.push(f("ux", "Hidden interactive elements", String(hiddenInteractive)));
   return out;
 }
 
 function interactionFindings(c: CollectLike): Finding[] {
   const out: Finding[] = [];
-  out.push({
-    category: "interaction",
-    severity: "info",
-    label: `${c.count} ${c.target}`,
-    detail: "captured",
-  });
+  out.push(f("interaction", `${c.count} ${c.target}`, "captured"));
   if (c.byCategory) {
-    const parts = Object.entries(c.byCategory)
-      .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
-      .map(([k, v]) => `${k.replace(/_/g, " ")} ${v}`)
-      .join(" · ");
-    out.push({ category: "interaction", severity: "info", label: "By category", detail: parts });
+    out.push(
+      f(
+        "interaction",
+        "By category",
+        Object.entries(c.byCategory)
+          .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+          .map(([k, v]) => `${k.replace(/_/g, " ")} ${v}`)
+          .join(" · "),
+      ),
+    );
   }
   return out;
 }
@@ -353,12 +283,7 @@ function structureFindings(a: PageAuditLike): Finding[] {
   if (sections.length === 0) return out;
 
   if (a.sectionOrder && a.sectionOrder.length > 0) {
-    out.push({
-      category: "ux",
-      severity: "info",
-      label: "Section order",
-      detail: a.sectionOrder.join(" → "),
-    });
+    out.push(f("ux", "Section order", a.sectionOrder.join(" → ")));
   }
 
   const typeCounts: Record<string, number> = {};
@@ -366,12 +291,13 @@ function structureFindings(a: PageAuditLike): Finding[] {
     const t = s.type || s.kind || "content";
     typeCounts[t] = (typeCounts[t] ?? 0) + 1;
   }
-  out.push({
-    category: "ux",
-    severity: "info",
-    label: "Sections detected",
-    detail: Object.entries(typeCounts).map(([k, v]) => `${k} ${v}`).join(" · "),
-  });
+  out.push(
+    f(
+      "ux",
+      "Sections detected",
+      Object.entries(typeCounts).map(([k, v]) => `${k} ${v}`).join(" · "),
+    ),
+  );
 
   for (const s of sections.slice(0, 12)) {
     const t = s.type || s.kind || "?";
@@ -384,12 +310,7 @@ function structureFindings(a: PageAuditLike): Finding[] {
     if (s.repeatedChildren && s.repeatedChildren >= 3) bits.push(`×${s.repeatedChildren} repeated`);
     const heading = s.heading || s.headingText;
     if (heading) bits.push(`"${heading.slice(0, 50)}"`);
-    out.push({
-      category: "ux",
-      severity: "info",
-      label: s.id || s.selector || t,
-      detail: bits.join(" · "),
-    });
+    out.push(f("ux", s.id || s.selector || t, bits.join(" · ")));
   }
   return out;
 }
@@ -400,58 +321,36 @@ function trustFindings(a: PageAuditLike): Finding[] {
   const signals = a.trustSignals ?? [];
   if (!sum) return out;
 
-  if (sum.total === 0) {
-    out.push({ category: "cro", severity: "warn", label: "Trust signals", detail: "none detected" });
-    return out;
-  }
-
-  out.push({
-    category: "cro",
-    severity: "info",
-    label: "Trust signals",
-    detail: `${sum.total} total · ${sum.aboveFold} above fold`,
-  });
-
-  if (sum.aboveFold === 0) {
-    out.push({ category: "cro", severity: "warn", label: "Trust above fold", detail: "none — first impression lacks proof" });
-  }
+  out.push(f("cro", "Trust signals", `${sum.total} total · ${sum.aboveFold} above fold`));
 
   const byType = Object.entries(sum.byType).sort((a, b) => b[1] - a[1]);
   if (byType.length > 0) {
-    out.push({
-      category: "cro",
-      severity: "info",
-      label: "By type",
-      detail: byType.map(([k, v]) => `${k.replace(/_/g, " ")} ×${v}`).join(" · "),
-    });
+    out.push(
+      f(
+        "cro",
+        "By type",
+        byType.map(([k, v]) => `${k.replace(/_/g, " ")} ×${v}`).join(" · "),
+      ),
+    );
   }
 
-  // Aggregate review/rating
   const ps = a.pageSummary;
   if (ps && (ps.averageRating > 0 || ps.reviewCount > 0)) {
-    const bits = [];
+    const bits: string[] = [];
     if (ps.averageRating > 0) bits.push(`★ ${ps.averageRating}/5`);
     if (ps.reviewCount > 0) bits.push(`${ps.reviewCount} reviews`);
-    out.push({ category: "cro", severity: "info", label: "Aggregate rating", detail: bits.join(" · ") });
+    out.push(f("cro", "Aggregate rating", bits.join(" · ")));
   }
 
-  // Recognized brands
   const brands = new Set<string>();
   for (const s of signals) {
     if (s.recognizedBrands) for (const b of s.recognizedBrands) brands.add(b);
   }
   if (brands.size > 0) {
-    out.push({
-      category: "cro",
-      severity: "info",
-      label: "Recognized brands",
-      detail: Array.from(brands).slice(0, 10).join(", "),
-    });
+    out.push(f("cro", "Recognized brands", Array.from(brands).slice(0, 10).join(", ")));
   }
 
-  if (!sum.byType["contact_info"]) {
-    out.push({ category: "cro", severity: "warn", label: "Contact info", detail: "no tel/email/address found" });
-  }
+  out.push(f("cro", "Contact info signals", String(sum.byType["contact_info"] ?? 0)));
 
   for (const s of signals.slice(0, 5)) {
     const extras: string[] = [];
@@ -459,12 +358,13 @@ function trustFindings(a: PageAuditLike): Finding[] {
     if (s.company) extras.push(s.company);
     if (s.rating) extras.push(`★ ${s.rating}`);
     if (s.reviewSource) extras.push(s.reviewSource);
-    out.push({
-      category: "cro",
-      severity: "info",
-      label: s.type.replace(/_/g, " "),
-      detail: `${s.section}${s.aboveFold ? " · above fold" : ""}${extras.length ? " · " + extras.join(" / ") : ""} · "${s.text.slice(0, 60)}"`,
-    });
+    out.push(
+      f(
+        "cro",
+        s.type.replace(/_/g, " "),
+        `${s.section}${s.aboveFold ? " · above fold" : ""}${extras.length ? " · " + extras.join(" / ") : ""} · "${s.text.slice(0, 60)}"`,
+      ),
+    );
   }
   return out;
 }
@@ -475,38 +375,22 @@ function ctaFindings(a: PageAuditLike): Finding[] {
   if (ctas.length === 0) return out;
   const ps = a.pageSummary;
   if (ps) {
-    out.push({
-      category: "cro",
-      severity: ps.primaryCtaCount === 0 ? "warn" : "info",
-      label: "CTAs total",
-      detail: `${ctas.length} · primary ${ps.primaryCtaCount} · secondary ${ps.secondaryCtaCount} · ${ps.aboveFoldCtaCount} above fold`,
-    });
+    out.push(
+      f(
+        "cro",
+        "CTAs total",
+        `${ctas.length} · primary ${ps.primaryCtaCount} · secondary ${ps.secondaryCtaCount} · ${ps.aboveFoldCtaCount} above fold`,
+      ),
+    );
   }
-  const orphan = ctas.filter((c) => c.category === "cta_primary" && c.nearestTrustSignalDistance > 400);
-  if (orphan.length > 0) {
-    out.push({
-      category: "cro",
-      severity: "warn",
-      label: "Primary CTAs without nearby trust",
-      detail: `${orphan.length} (>400px to nearest trust signal)`,
-    });
-  }
-  const highCompetition = ctas.filter((c) => c.category === "cta_primary" && c.competingActions >= 4);
-  if (highCompetition.length > 0) {
-    out.push({
-      category: "cro",
-      severity: "warn",
-      label: "High CTA competition",
-      detail: `${highCompetition.length} primary CTA(s) with ≥4 competing actions in same section`,
-    });
-  }
-  for (const c of ctas.filter((x) => x.category === "cta_primary").slice(0, 4)) {
-    out.push({
-      category: "cro",
-      severity: "info",
-      label: `"${c.text || "(no text)"}"`,
-      detail: `${c.section}${c.aboveFold ? " · af" : ""} · ${c.intent} · competing ${c.competingActions} · trust ${c.nearestTrustSignalDistance}px · form ${c.nearestFormDistance === 0 ? "in" : c.nearestFormDistance + "px"}`,
-    });
+  for (const c of ctas.filter((x) => x.category === "cta_primary").slice(0, 6)) {
+    out.push(
+      f(
+        "cro",
+        `"${c.text || "(no text)"}"`,
+        `${c.section}${c.aboveFold ? " · af" : ""} · ${c.intent} · competing ${c.competingActions} · trust ${c.nearestTrustSignalDistance}px · form ${c.nearestFormDistance === 0 ? "in" : c.nearestFormDistance + "px"}`,
+      ),
+    );
   }
   return out;
 }
@@ -515,26 +399,17 @@ function formFindings(a: PageAuditLike): Finding[] {
   const out: Finding[] = [];
   const forms = a.forms ?? [];
   if (forms.length === 0) return out;
-  out.push({
-    category: "cro",
-    severity: "info",
-    label: "Forms",
-    detail: `${forms.length} on page`,
-  });
-  for (const f of forms.slice(0, 4)) {
-    const friction = f.requiredFields >= 6 ? "warn" : "info";
-    const bits = [`${f.fieldCount} fields`, `${f.requiredFields} required`];
-    if (f.multiStep) bits.push("multi-step");
-    if (f.containsPhone) bits.push("phone");
-    if (f.containsCompany) bits.push("company");
-    if (f.containsCreditCard) bits.push("card");
-    if (f.submitText) bits.push(`"${f.submitText}"`);
-    out.push({
-      category: "cro",
-      severity: friction,
-      label: `Form (${f.section}${f.aboveFold ? " · af" : ""})`,
-      detail: bits.join(" · "),
-    });
+  out.push(f("cro", "Forms", `${forms.length} on page`));
+  for (const fm of forms.slice(0, 4)) {
+    const bits = [`${fm.fieldCount} fields`, `${fm.requiredFields} required`];
+    if (fm.multiStep) bits.push("multi-step");
+    if (fm.containsEmail) bits.push("email");
+    if (fm.containsPhone) bits.push("phone");
+    if (fm.containsCompany) bits.push("company");
+    if (fm.containsPassword) bits.push("password");
+    if (fm.containsCreditCard) bits.push("card");
+    if (fm.submitText) bits.push(`"${fm.submitText}"`);
+    out.push(f("cro", `Form (${fm.section}${fm.aboveFold ? " · af" : ""})`, bits.join(" · ")));
   }
   return out;
 }
@@ -543,31 +418,22 @@ function navigationFindings(a: PageAuditLike): Finding[] {
   const out: Finding[] = [];
   const n = a.navigation;
   if (!n) return out;
-  out.push({
-    category: "ux",
-    severity: n.topNavCount > 9 ? "warn" : "info",
-    label: "Top nav links",
-    detail: `${n.topNavCount}${n.topNavCount > 9 ? " (consider trimming — choice overload)" : ""}`,
-  });
-  out.push({
-    category: "ux",
-    severity: "info",
-    label: "Footer nav links",
-    detail: String(n.footerNavCount),
-  });
-  const missing: string[] = [];
-  if (!n.pricingPresent) missing.push("pricing");
-  if (!n.contactPresent) missing.push("contact");
-  if (missing.length > 0) {
-    out.push({ category: "ux", severity: "warn", label: "Missing nav essentials", detail: missing.join(", ") });
-  }
-  const present: string[] = [];
-  if (n.loginPresent) present.push("login");
-  if (n.blogPresent) present.push("blog");
-  if (n.docsPresent) present.push("docs");
-  if (present.length > 0) {
-    out.push({ category: "ux", severity: "info", label: "Nav features", detail: present.join(", ") });
-  }
+  out.push(f("ux", "Top nav links", String(n.topNavCount)));
+  out.push(f("ux", "Footer nav links", String(n.footerNavCount)));
+  const entries: Array<[string, boolean]> = [
+    ["login", n.loginPresent],
+    ["pricing", n.pricingPresent],
+    ["contact", n.contactPresent],
+    ["blog", n.blogPresent],
+    ["docs", n.docsPresent],
+  ];
+  out.push(
+    f(
+      "ux",
+      "Nav entries",
+      entries.map(([k, v]) => `${k}: ${v ? "present" : "absent"}`).join(" · "),
+    ),
+  );
   return out;
 }
 
@@ -575,23 +441,15 @@ function hierarchyFindings(a: PageAuditLike): Finding[] {
   const out: Finding[] = [];
   const hier = a.visualHierarchy ?? [];
   if (hier.length === 0) return out;
-  for (const h of hier.slice(0, 3)) {
-    out.push({
-      category: "ux",
-      severity: "info",
-      label: `#${hier.indexOf(h) + 1} ${h.role}`,
-      detail: `weight ${h.visualWeight} · ${h.section}${h.aboveFold ? " · af" : ""} · "${h.text.slice(0, 60)}"`,
-    });
-  }
-  const top5 = hier.slice(0, 5);
-  const hasCta = top5.some((h) => h.role === "button" || h.role === "link");
-  if (!hasCta) {
-    out.push({
-      category: "ux",
-      severity: "warn",
-      label: "Top 5 visual hierarchy",
-      detail: "no CTA in top 5 — primary action lacks visual prominence",
-    });
+  for (let i = 0; i < Math.min(5, hier.length); i++) {
+    const h = hier[i];
+    out.push(
+      f(
+        "ux",
+        `#${i + 1} ${h.role}`,
+        `weight ${h.visualWeight} · ${h.section}${h.aboveFold ? " · af" : ""} · "${h.text.slice(0, 60)}"`,
+      ),
+    );
   }
   return out;
 }
@@ -600,12 +458,11 @@ function pageSummaryFindings(a: PageAuditLike): Finding[] {
   const ps = a.pageSummary;
   if (!ps) return [];
   return [
-    {
-      category: "interaction",
-      severity: "info",
-      label: "Page summary",
-      detail: `${ps.sectionCount} sections · ${ps.trustSignalCount} trust · ${ps.testimonialCount} testimonials · ${ps.logoCount} logos · ${ps.formCount} forms · ${ps.navigationLinks} nav links`,
-    },
+    f(
+      "interaction",
+      "Page summary",
+      `${ps.sectionCount} sections · ${ps.trustSignalCount} trust · ${ps.testimonialCount} testimonials · ${ps.logoCount} logos · ${ps.formCount} forms · ${ps.navigationLinks} nav links`,
+    ),
   ];
 }
 
@@ -653,14 +510,4 @@ export function buildPageReports(events: StreamEvent[]): PageReport[] {
   }
 
   return reports;
-}
-
-export function countBySeverity(report: PageReport) {
-  let warns = 0;
-  let checks = 0;
-  for (const f of report.findings) {
-    if (f.severity === "warn" || f.severity === "error") warns++;
-    else checks++;
-  }
-  return { warns, checks };
 }
