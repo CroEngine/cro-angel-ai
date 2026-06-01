@@ -1,51 +1,53 @@
+## Mål
 
-# Polish av Cold/Live/Frozen — 7 småfix
+Frozen-vyn ska som default fyllas till hela Viewport-containern ("Fit") istället för att scrolla. Toggle till 100% sparas till nästa patch.
 
-Sju småfix på den befintliga implementationen. Inga nya features, ingen ny datamodell.
+## Ändring (endast `src/components/browser-shell/Viewport.tsx`)
 
-## Prioriterat
+Skriv om `FrozenViewport` enligt denna struktur:
 
-### 1. `liveStartedAt` startar för tidigt
-**Idag**: sätts vid Run-klick → räknaren ljuger 1–2 s.
-**Fix**: i `BrowserShell.tsx`, ta bort `setLiveStartedAt(Date.now())` i `handleRun`. Lägg `useEffect` som lyssnar efter första `session_started`-eventet och sätter `liveStartedAt` då.
+```tsx
+<div className="relative h-full w-full overflow-hidden flex items-center justify-center bg-muted/20">
+  <div
+    className="relative max-h-full max-w-full"
+    style={{
+      aspectRatio: `${viewport.w} / ${viewport.h}`,
+      width: "100%",
+      height: "auto",
+    }}
+  >
+    <img
+      src={screenshotUrl}
+      alt="Frozen page snapshot"
+      className="absolute inset-0 h-full w-full object-contain"
+      draggable={false}
+    />
+    {/* overlays — oförändrade, procent-baserade mot viewport.w/h */}
+  </div>
 
-### 2. Resume nollar inte gammal Frozen-cache
-**Idag**: ny run startas → gamla bilden ligger kvar tills nytt collect skriver över. Om nya runnen kraschar visar vi förra körningens bild.
-**Fix**: i `handleRun` (`BrowserShell.tsx`), `setFrozen(null)` innan `startFn` anropas.
+  {/* statuschip + Resume-overlay — oförändrade */}
+</div>
+```
 
-### 3. Frozen visas inte alls om collect misslyckas
-**Idag**: `done` utan screenshot → vi faller tillbaka till Cold-platta trots att vi precis kört en session.
-**Fix**: i `Viewport.tsx`, lägg en "Frozen utan snapshot"-variant:
-- Om `sessionState === "frozen"` och `frozen === null` → visa en grå panel med "Session ended · no snapshot captured" + Resume-knapp.
-- Cold-pattan visas bara när `sessionState === "cold"`.
+### Princip
 
-## Mindre
+- Yttre flex-container: håller hela ytan, centrerar innehållet, döljer overflow.
+- Aspect-ratio-wrapper: `width: 100%`, `height: auto`, `max-h/max-w-full` → wrapper bestämmer ratio, och krymper själv om höjden blir för stor.
+- Bilden fyller wrappern med `object-contain`.
+- Overlays sitter i samma wrapper och behåller sina procent → följer skalningen automatiskt.
 
-### 4. Overlay för element ovanför viewporten
-**Idag**: filter `el.rect.y < viewport.h` släpper igenom negativa `y` → rektanglar ritas utanför bilden.
-**Fix**: i `Viewport.tsx`, byt filter till `el.rect.y + el.rect.h > 0 && el.rect.y < viewport.h`.
+### Detaljer
 
-### 5. Hidden-tab racekondition
-**Idag**: snabba flikbyten kan stapla flera timers; bara en clearas vid `visible`.
-**Fix**: i `BrowserShell.tsx` `visibilitychange`-handler, clearTimeout även när man byter till `hidden` (innan ny timer sätts), så det aldrig finns mer än en.
+- Ta bort `overflow-auto` och den manuella `mx-auto` + fasta `width: viewport.w`.
+- Undvik `width: 100%` + `height: 100%` samtidigt på aspect-ratio-wrappern (kan tvinga fel ratio i vissa container-höjder).
+- Statuschip (Frozen · Browserbase off) och Resume-hover-knapp: oförändrade, ligger kvar absolut mot yttersta containern.
+- Frozen-utan-snapshot-grenen och Cold-grenen: oförändrade.
 
-### 6. `statusMessage` "done · aborted" syns inte längre
-**Idag**: chipen visar bara "Frozen · click to resume", aborted-info försvinner.
-**Fix**: i `UrlBar.tsx`, om `sessionState === "frozen"` och `statusMessage` innehåller "aborted" → visa `Frozen · aborted` istället för standardtexten.
+## Inte i denna patch
 
-### 7. Screenshot-storlek i SSE (notera, inte fix nu)
-**Idag**: ~150–200 KB base64 per `step_passed` skickas över EventSource. Fungerar, men kommer bli flaskhals vid större sidor / fler steg.
-**Plan**: lägg in en `console.warn` i `useTestStream` om `ev.data.length > 500_000` så vi ser när det börjar gör ont. Riktig fix (R2/storage-upload) skjuts till senare sprint.
+- Fit / 100%-toggle (kommer som separat liten patch: state `mode: "fit" | "actual"`, knapp uppe i hörnet, i `actual` återinför vi `overflow-auto` + fast `width: viewport.w`).
+- Klickbara overlays / tooltips (separat CRO-inspector-feature).
 
-## Filer som rörs
+## Inga andra filer
 
-- `src/components/browser-shell/BrowserShell.tsx` — fix 1, 2, 5
-- `src/components/browser-shell/Viewport.tsx` — fix 3, 4
-- `src/components/browser-shell/UrlBar.tsx` — fix 6
-- `src/components/browser-shell/hooks/useTestStream.ts` — fix 7
-
-## Inte med
-
-- Ingen ändring i `engine.server.ts`, `orchestrator.server.ts`, `run.functions.ts`.
-- Ingen ändring i collect/intent/visualWeight.
-- Ingen storage-upload av screenshots (sparat till senare).
+`BrowserShell.tsx`, `UrlBar.tsx`, hooks, engine, run.functions: orörda.

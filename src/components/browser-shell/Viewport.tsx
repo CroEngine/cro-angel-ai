@@ -89,51 +89,48 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
   const { screenshotUrl, viewport, overlayElements } = frozen;
 
   return (
-    <div className="relative flex-1 overflow-auto bg-muted/20">
+    <div className="relative flex h-full w-full flex-1 items-center justify-center overflow-hidden bg-muted/20">
       <div
-        className="relative mx-auto"
-        style={{ width: viewport.w, maxWidth: "100%" }}
+        className="relative max-h-full max-w-full"
+        style={{
+          aspectRatio: `${viewport.w} / ${viewport.h}`,
+          width: "100%",
+          height: "auto",
+        }}
       >
-        <div className="relative" style={{ aspectRatio: `${viewport.w} / ${viewport.h}` }}>
-          <img
-            src={screenshotUrl}
-            alt="Frozen page snapshot"
-            className="absolute inset-0 h-full w-full object-contain"
-            draggable={false}
-          />
-          <div
-            className="absolute inset-0"
-            style={{ width: "100%", height: "100%" }}
-          >
-            {overlayElements
-              .filter((el) => el.rect.y + el.rect.h > 0 && el.rect.y < viewport.h && el.rect.w > 0 && el.rect.h > 0)
-              .map((el, i) => {
-                const color = CATEGORY_COLORS[el.category] ?? CATEGORY_COLORS.other;
-                return (
-                  <div
-                    key={`${el.selector}-${i}`}
-                    className="absolute pointer-events-none"
-                    style={{
-                      left: `${(el.rect.x / viewport.w) * 100}%`,
-                      top: `${(el.rect.y / viewport.h) * 100}%`,
-                      width: `${(el.rect.w / viewport.w) * 100}%`,
-                      height: `${(el.rect.h / viewport.h) * 100}%`,
-                      outline: `2px solid ${color}`,
-                      background: `${color}1f`,
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    <div
-                      className="absolute -top-2 -left-2 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white shadow"
-                      style={{ background: color }}
-                    >
-                      {i + 1}
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
+        <img
+          src={screenshotUrl}
+          alt="Frozen page snapshot"
+          className="absolute inset-0 h-full w-full object-contain"
+          draggable={false}
+        />
+        {overlayElements
+          .filter((el) => el.rect.y + el.rect.h > 0 && el.rect.y < viewport.h && el.rect.w > 0 && el.rect.h > 0)
+          .map((el, i) => {
+            const color = CATEGORY_COLORS[el.category] ?? CATEGORY_COLORS.other;
+            return (
+              <div
+                key={`${el.selector}-${i}`}
+                className="absolute pointer-events-none"
+                style={{
+                  left: `${(el.rect.x / viewport.w) * 100}%`,
+                  top: `${(el.rect.y / viewport.h) * 100}%`,
+                  width: `${(el.rect.w / viewport.w) * 100}%`,
+                  height: `${(el.rect.h / viewport.h) * 100}%`,
+                  outline: `2px solid ${color}`,
+                  background: `${color}1f`,
+                  boxSizing: "border-box",
+                }}
+              >
+                <div
+                  className="absolute -top-2 -left-2 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white shadow"
+                  style={{ background: color }}
+                >
+                  {i + 1}
+                </div>
+              </div>
+            );
+          })}
       </div>
 
       <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-md bg-sky-500/15 px-2 py-1 text-xs font-medium text-sky-600 dark:text-sky-400">
