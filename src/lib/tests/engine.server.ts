@@ -241,9 +241,96 @@ function filterCollected(all: CollectedElement[], target: CollectTarget): Collec
 
 // Runs in the browser via page.evaluate — must be self-contained string.
 const COLLECT_SCRIPT = `(() => {
-  const SELECTOR = 'button, a[href], input[type=submit], input[type=button], [role="button"]';
-  const out = [];
-  const nodes = Array.from(document.querySelectorAll(SELECTOR));
+  const SEMANTIC_SEL =
+    'button, a[href], input[type=submit], input[type=button], ' +
+    '[role="button"], [role="link"], [role="menuitem"], [role="tab"], [role="switch"], ' +
+    '[onclick], [tabindex]:not([tabindex="-1"])';
+
+  // Priority for dedupe: lower = more semantic, kept over higher-priority ancestors/descendants.
+  function semanticPriority(el) {
+    const tag = el.tagName;
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    if (tag === 'BUTTON' || tag === 'INPUT') return 1;
+    if (tag === 'A' && el.hasAttribute('href')) return 2;
+    if (role === 'button' || role === 'link' || role === 'menuitem' || role === 'tab' || role === 'switch') return 3;
+    if (el.hasAttribute('onclick')) return 4;
+    if (el.hasAttribute('tabindex') && el.getAttribute('tabindex') !== '-1') return 5;
+    return 6; // cursor:pointer sweep
+  }
+
+  function isVisible(el, cs, rect) {
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    if (parseFloat(cs.opacity || '1') === 0) return false;
+    if (rect.width < 1 || rect.height < 1) return false;
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    return true;
+  }
+
+  // Walk light + shadow DOM, collect all matching nodes.
+  function walk(root, selector, sink) {
+    try {
+      const list = root.querySelectorAll(selector);
+      for (const n of list) sink.push(n);
+    } catch (_) { /* ignore */ }
+    const all = root.querySelectorAll('*');
+    for (const n of all) {
+      if (n.shadowRoot) walk(n.shadowRoot, selector, sink);
+    }
+  }
+
+  const semanticNodes = [];
+  walk(document, SEMANTIC_SEL, semanticNodes);
+
+  // Optional cursor:pointer sweep — hard filters to avoid wrappers/cards.
+  const semanticSet = new Set(semanticNodes);
+  const cursorCandidates = [];
+  const allEls = [];
+  walk(document, '*', allEls);
+  for (const el of allEls) {
+    if (semanticSet.has(el)) continue;
+    const cs = window.getComputedStyle(el);
+    if (cs.cursor !== 'pointer') continue;
+    const text = ((el.innerText || el.getAttribute('aria-label') || '') + '').trim();
+    if (!text || text.length > 120) continue;
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 8 || rect.height < 8) continue;
+    if (!isVisible(el, cs, rect)) continue;
+    // Skip if it has a semantic descendant or ancestor that will be collected.
+    let skip = false;
+    for (const s of semanticNodes) {
+      if (el.contains(s) || s.contains(el)) { skip = true; break; }
+    }
+    if (skip) continue;
+    cursorCandidates.push(el);
+  }
+
+  const candidates = semanticNodes.concat(cursorCandidates);
+
+  // Semantic-priority dedupe: when two collected nodes overlap (ancestor/descendant),
+  // keep the one with the lower (more semantic) priority. Tie → keep descendant (more specific).
+  const kept = [];
+  const dropped = new Set();
+  for (let i = 0; i < candidates.length; i++) {
+    if (dropped.has(candidates[i])) continue;
+    const a = candidates[i];
+    const pa = semanticPriority(a);
+    for (let j = 0; j < candidates.length; j++) {
+      if (i === j) continue;
+      const b = candidates[j];
+      if (dropped.has(b)) continue;
+      if (!(a.contains(b) || b.contains(a))) continue;
+      const pb = semanticPriority(b);
+      // Winner = lower priority; tie → descendant wins.
+      let loser;
+      if (pa < pb) loser = b;
+      else if (pb < pa) loser = a;
+      else loser = a.contains(b) ? a : b;
+      dropped.add(loser);
+      if (loser === a) break;
+    }
+    if (!dropped.has(a)) kept.push(a);
+  }
+
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
     const testId = el.getAttribute('data-testid') || el.getAttribute('data-test') || el.getAttribute('data-cy');
@@ -261,7 +348,8 @@ const COLLECT_SCRIPT = `(() => {
     }
     return el.tagName.toLowerCase();
   }
-  function classify(el) {
+
+  function classifyTag(el) {
     if (el.tagName === 'INPUT') {
       const t = (el.getAttribute('type') || '').toLowerCase();
       if (t === 'submit') return 'input[type=submit]';
@@ -272,21 +360,80 @@ const COLLECT_SCRIPT = `(() => {
     if ((el.getAttribute('role') || '').toLowerCase() === 'button') return '[role=button]';
     return el.tagName.toLowerCase();
   }
-  for (const el of nodes) {
+
+  function inNavOrFooter(el) {
+    let p = el;
+    while (p && p !== document.body) {
+      const tag = p.tagName;
+      const role = (p.getAttribute && p.getAttribute('role') || '').toLowerCase();
+      if (tag === 'NAV' || tag === 'HEADER' || tag === 'FOOTER' || role === 'navigation') return true;
+      p = p.parentElement;
+    }
+    return false;
+  }
+
+  function hasMeaningfulSurface(cs) {
+    const bg = cs.backgroundColor || '';
+    const border = cs.border || '';
+    // Detect non-transparent bg or visible border.
+    const bgSolid = !!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent';
+    const hasBorder = /\\d+px/.test(border) && !/0px/.test(border.split(' ')[0] || '');
+    return bgSolid || hasBorder;
+  }
+
+  function classifyCategory(el, cs, rect, text) {
+    const tag = el.tagName;
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    if ((tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit')) {
+      return 'form_submit';
+    }
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    const isButtonish = tag === 'BUTTON' || tag === 'INPUT' || role === 'button' || (tag === 'A' && el.hasAttribute('href'));
+    const area = rect.width * rect.height;
+    const smallSquareish = rect.width <= 56 && rect.height <= 56;
+    const shortLabel = text.length <= 2 || (!text && !!el.getAttribute('aria-label'));
+    if (isButtonish && smallSquareish && shortLabel) return 'icon_button';
+
+    const aboveFold = rect.top < window.innerHeight;
+    const inChrome = inNavOrFooter(el);
+
+    if (isButtonish) {
+      // Multi-signal CTA primary heuristic.
+      let score = 0;
+      if (aboveFold) score++;
+      if (text.length > 0 && text.length <= 32) score++;
+      if (area >= 90 * 28) score++; // sizeable click target
+      if (hasMeaningfulSurface(cs)) score++;
+      if (!inChrome) score++;
+      if (score >= 4) return 'cta_primary';
+      if (score >= 2 && hasMeaningfulSurface(cs)) return 'cta_secondary';
+    }
+
+    if (tag === 'A' && el.hasAttribute('href')) {
+      if (inChrome) return 'nav_item';
+      return 'link';
+    }
+    return 'other';
+  }
+
+  const out = [];
+  for (const el of kept) {
     const rect = el.getBoundingClientRect();
+    const cs = window.getComputedStyle(el);
+    if (!isVisible(el, cs, rect)) continue;
     const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 120);
     const attrs = {};
     for (const a of Array.from(el.attributes)) {
       attrs[a.name] = (a.value || '').slice(0, 200);
     }
-    const cs = window.getComputedStyle(el);
     out.push({
       text,
-      tagName: classify(el),
+      tagName: classifyTag(el),
       selector: buildSelector(el),
+      category: classifyCategory(el, cs, rect, text),
       href: el.tagName === 'A' ? (el.getAttribute('href') || null) : null,
       disabled: !!el.disabled || el.getAttribute('aria-disabled') === 'true',
-      visible: rect.width > 0 && rect.height > 0,
+      visible: true,
       aboveFold: rect.top < window.innerHeight,
       rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
       attributes: attrs,
@@ -306,12 +453,21 @@ const COLLECT_SCRIPT = `(() => {
   return out;
 })()`;
 
-// Injected into the live Browserbase page to draw highlight rectangles over collected elements.
-// Written as a real function so we can stringify + call with arguments via page.evaluate.
-function OVERLAY_FN(selectors: string[]) {
+// Injected into the live Browserbase page to draw color-coded highlight rectangles per category.
+function OVERLAY_FN(pairs: Array<[string, string]>) {
   const OVERLAY_ID = "__lovable_collect_overlay__";
   const existing = document.getElementById(OVERLAY_ID);
   if (existing) existing.remove();
+
+  const COLORS: Record<string, string> = {
+    cta_primary: "#10b981",
+    cta_secondary: "#22d3ee",
+    form_submit: "#f59e0b",
+    icon_button: "#a78bfa",
+    nav_item: "#64748b",
+    link: "#60a5fa",
+    other: "#f472b6",
+  };
 
   const wrap = document.createElement("div");
   wrap.id = OVERLAY_ID;
@@ -319,12 +475,14 @@ function OVERLAY_FN(selectors: string[]) {
     "position:absolute;top:0;left:0;width:0;height:0;pointer-events:none;z-index:2147483647;";
   document.body.appendChild(wrap);
 
-  selectors.forEach((sel, i) => {
+  pairs.forEach(([sel, category], i) => {
     let el: Element | null = null;
     try { el = document.querySelector(sel); } catch { el = null; }
     if (!el) return;
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return;
+
+    const color = COLORS[category] ?? COLORS.other;
 
     const box = document.createElement("div");
     box.style.cssText = [
@@ -333,8 +491,8 @@ function OVERLAY_FN(selectors: string[]) {
       `left:${Math.round(r.left + window.scrollX)}px`,
       `width:${Math.round(r.width)}px`,
       `height:${Math.round(r.height)}px`,
-      "outline:2px solid #22d3ee",
-      "background:rgba(34,211,238,0.08)",
+      `outline:2px solid ${color}`,
+      `background:${color}1f`,
       "box-sizing:border-box",
       "pointer-events:none",
     ].join(";");
@@ -349,7 +507,7 @@ function OVERLAY_FN(selectors: string[]) {
       "height:20px",
       "padding:0 6px",
       "border-radius:10px",
-      "background:#0891b2",
+      `background:${color}`,
       "color:#fff",
       "font:bold 11px system-ui,sans-serif",
       "line-height:20px",
@@ -361,3 +519,4 @@ function OVERLAY_FN(selectors: string[]) {
     wrap.appendChild(box);
   });
 }
+
