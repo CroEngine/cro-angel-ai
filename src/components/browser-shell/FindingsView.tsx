@@ -113,7 +113,7 @@ function PageCard({ report }: { report: PageReport }) {
             <span>✓ {checks} checks</span>
           </div>
         </div>
-        {(report.rawPageAudit || report.rawCollect) && (
+        {Boolean(report.rawPageAudit || report.rawCollect) && (
           <Button
             size="sm"
             variant="outline"
