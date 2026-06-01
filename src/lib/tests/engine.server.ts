@@ -712,6 +712,24 @@ export async function runSteps(
               // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
               const flags: string[] = [];
 
+              // Deterministic hero summary — convenience derived from already-collected data.
+              const heroSection =
+                sections.find((s) => s.type === "hero") ??
+                sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading);
+              let hero: HeroContent | undefined;
+              if (heroSection) {
+                const heroCta =
+                  ctas.find((c) => c.category === "cta_primary" && c.section === "hero") ??
+                  ctas.find((c) => c.category === "cta_primary" && c.aboveFold);
+                hero = {
+                  headline: heroSection.heading || "",
+                  subheadline: heroSection.subheading || "",
+                  primaryCtaText: heroCta?.text || "",
+                  primaryCtaIntent: heroCta?.intent || "",
+                  sectionId: heroSection.id,
+                  aboveFold: heroSection.aboveFold,
+                };
+              }
 
               const full: PageAuditData = {
                 ...audit,
@@ -726,6 +744,7 @@ export async function runSteps(
                 navigation,
                 visualHierarchy,
                 pageSummary,
+                hero,
                 flags,
               };
               data = full;
