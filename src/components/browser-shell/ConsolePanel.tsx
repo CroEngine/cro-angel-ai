@@ -8,10 +8,20 @@ function fmtTime(ts: unknown) {
   return d.toLocaleTimeString([], { hour12: false });
 }
 
+type ElementCategory =
+  | "cta_primary"
+  | "cta_secondary"
+  | "form_submit"
+  | "icon_button"
+  | "nav_item"
+  | "link"
+  | "other";
+
 type CollectedElement = {
   text: string;
   tagName: string;
   selector: string;
+  category?: ElementCategory;
   href: string | null;
   disabled: boolean;
   visible: boolean;
@@ -34,6 +44,7 @@ type CollectedElement = {
 type CollectData = {
   target: string;
   count: number;
+  byCategory?: Partial<Record<ElementCategory, number>>;
   elements: CollectedElement[];
 };
 
@@ -42,6 +53,27 @@ function isCollectData(v: unknown): v is CollectData {
   const o = v as Record<string, unknown>;
   return typeof o.target === "string" && typeof o.count === "number" && Array.isArray(o.elements);
 }
+
+const CATEGORY_COLORS: Record<ElementCategory, string> = {
+  cta_primary: "#10b981",
+  cta_secondary: "#22d3ee",
+  form_submit: "#f59e0b",
+  icon_button: "#a78bfa",
+  nav_item: "#64748b",
+  link: "#60a5fa",
+  other: "#f472b6",
+};
+
+const CATEGORY_LABELS: Record<ElementCategory, string> = {
+  cta_primary: "CTA primary",
+  cta_secondary: "CTA secondary",
+  form_submit: "Form submit",
+  icon_button: "Icon",
+  nav_item: "Nav",
+  link: "Link",
+  other: "Other",
+};
+
 
 function downloadJson(filename: string, payload: unknown) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
