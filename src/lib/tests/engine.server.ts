@@ -10,7 +10,21 @@ export type Step =
   | { kind: "fill"; selector: string; value: string }
   | { kind: "act"; instruction: string }
   | { kind: "extract"; instruction: string }
-  | { kind: "observe"; instruction: string };
+  | { kind: "observe"; instruction: string }
+  | { kind: "collect"; target: CollectTarget };
+
+export type CollectTarget = "buttons";
+
+export type CollectedElement = {
+  text: string;
+  tagName: string;
+  selector: string;
+  href: string | null;
+  disabled: boolean;
+  visible: boolean;
+  aboveFold: boolean;
+  rect: { x: number; y: number; w: number; h: number };
+};
 
 export type EngineEvent =
   | { type: "step_started"; index: number; kind: Step["kind"]; summary: string }
@@ -28,6 +42,7 @@ function summarize(step: Step): string {
     case "act": return `act "${step.instruction}"`;
     case "extract": return `extract "${step.instruction}"`;
     case "observe": return `observe "${step.instruction}"`;
+    case "collect": return `collect ${step.target}`;
   }
 }
 
@@ -111,6 +126,14 @@ export async function runSteps(
           case "observe":
             data = await stagehand.observe(step.instruction);
             break;
+          case "collect": {
+            const elements = await page.evaluate(COLLECT_SCRIPT);
+            const all = elements as CollectedElement[];
+            const filtered = filterCollected(all, step.target);
+            data = { target: step.target, count: filtered.length, elements: filtered };
+            onEvent({ type: "log", message: `collect ${step.target}: ${filtered.length} element(s)` });
+            break;
+          }
         }
 
         void page;
@@ -130,3 +153,65 @@ export async function runSteps(
 
   return { passed, failed, aborted };
 }
+
+function filterCollected(all: CollectedElement[], target: CollectTarget): CollectedElement[] {
+  if (target === "buttons") {
+    return all.filter((el) =>
+      el.tagName === "button" ||
+      el.tagName === "input[type=submit]" ||
+      el.tagName === "input[type=button]" ||
+      el.tagName === "[role=button]"
+    );
+  }
+  return all;
+}
+
+// Runs in the browser via page.evaluate — must be self-contained string.
+const COLLECT_SCRIPT = `(() => {
+  const SELECTOR = 'button, a[href], input[type=submit], input[type=button], [role="button"]';
+  const out = [];
+  const nodes = Array.from(document.querySelectorAll(SELECTOR));
+  function buildSelector(el) {
+    if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
+    const testId = el.getAttribute('data-testid') || el.getAttribute('data-test') || el.getAttribute('data-cy');
+    if (testId) return el.tagName.toLowerCase() + '[data-testid="' + testId.replace(/"/g, '\\\\"') + '"]';
+    for (const a of Array.from(el.attributes)) {
+      if (a.name.startsWith('data-') && a.value && a.value.length < 64) {
+        return el.tagName.toLowerCase() + '[' + a.name + '="' + a.value.replace(/"/g, '\\\\"') + '"]';
+      }
+    }
+    const parent = el.parentElement;
+    if (parent) {
+      const same = Array.from(parent.children).filter((c) => c.tagName === el.tagName);
+      const idx = same.indexOf(el) + 1;
+      return el.tagName.toLowerCase() + ':nth-of-type(' + idx + ')';
+    }
+    return el.tagName.toLowerCase();
+  }
+  function classify(el) {
+    if (el.tagName === 'INPUT') {
+      const t = (el.getAttribute('type') || '').toLowerCase();
+      if (t === 'submit') return 'input[type=submit]';
+      if (t === 'button') return 'input[type=button]';
+    }
+    if (el.tagName === 'A') return 'a';
+    if (el.tagName === 'BUTTON') return 'button';
+    if ((el.getAttribute('role') || '').toLowerCase() === 'button') return '[role=button]';
+    return el.tagName.toLowerCase();
+  }
+  for (const el of nodes) {
+    const rect = el.getBoundingClientRect();
+    const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 120);
+    out.push({
+      text,
+      tagName: classify(el),
+      selector: buildSelector(el),
+      href: el.tagName === 'A' ? (el.getAttribute('href') || null) : null,
+      disabled: !!el.disabled || el.getAttribute('aria-disabled') === 'true',
+      visible: rect.width > 0 && rect.height > 0,
+      aboveFold: rect.top < window.innerHeight,
+      rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
+    });
+  }
+  return out;
+})()`;

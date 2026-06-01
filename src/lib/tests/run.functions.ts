@@ -17,6 +17,7 @@ const stepSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("act"), instruction: z.string().min(1) }),
   z.object({ kind: z.literal("extract"), instruction: z.string().min(1) }),
   z.object({ kind: z.literal("observe"), instruction: z.string().min(1) }),
+  z.object({ kind: z.literal("collect"), target: z.enum(["buttons"]) }),
 ]);
 
 const inputSchema = z.object({
@@ -28,7 +29,7 @@ function defaultSteps(url: string): Step[] {
   return [
     { kind: "goto", url },
     { kind: "wait", ms: 500 },
-    { kind: "assertText", text: "Glutenforum" },
+    { kind: "collect", target: "buttons" },
   ];
 }
 
