@@ -154,6 +154,14 @@ interface PageAuditLike {
   navigation?: NavigationLike;
   visualHierarchy?: VisualHierarchyLike[];
   pageSummary?: PageSummaryLike;
+  hero?: {
+    headline: string;
+    subheadline: string;
+    primaryCtaText: string;
+    primaryCtaIntent: string;
+    sectionId: string;
+    aboveFold: boolean;
+  };
   flags: string[];
 }
 
