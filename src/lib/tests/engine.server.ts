@@ -566,7 +566,19 @@ export async function runSteps(
               const raw = await page.evaluate(PAGE_AUDIT_SCRIPT);
               const audit = raw as Omit<
                 PageAuditData,
-                "robotsTxt" | "sitemap" | "flags" | "url" | "sections" | "trustSignals" | "trustSummary"
+                | "robotsTxt"
+                | "sitemap"
+                | "flags"
+                | "url"
+                | "sections"
+                | "sectionOrder"
+                | "trustSignals"
+                | "trustSummary"
+                | "ctas"
+                | "forms"
+                | "navigation"
+                | "visualHierarchy"
+                | "pageSummary"
               > & { url: string };
 
               // Fetch robots.txt + sitemap.xml from inside the page context (avoids Stagehand type gap on page.request).
@@ -598,9 +610,55 @@ export async function runSteps(
                 sitemap.urlCount = (fetched.sitemap.match(/<loc>/g) ?? []).length;
               }
 
-              // Deterministic structural + trust signal extraction.
+              // Deterministic v2 extraction — sections, trust, ctas, forms, nav, hierarchy.
               const sections = (await page.evaluate(SECTIONS_SCRIPT)) as PageSection[];
               const trustSignals = (await page.evaluate(TRUST_SIGNALS_SCRIPT)) as TrustSignal[];
+              const ctas = (await page.evaluate(CTAS_SCRIPT)) as CTAEntity[];
+              const forms = (await page.evaluate(FORMS_SCRIPT)) as FormEntity[];
+              const navigation = (await page.evaluate(NAVIGATION_SCRIPT)) as NavigationData;
+              const visualHierarchy = (await page.evaluate(VISUAL_HIERARCHY_SCRIPT)) as VisualHierarchyEntry[];
+              const dims = (await page.evaluate(
+                "({ pageHeightPx: document.documentElement.scrollHeight, foldHeightPx: window.innerHeight })",
+              )) as { pageHeightPx: number; foldHeightPx: number };
+
+              // Enrich sections with containsX flags (computed in Node from collected entities).
+              for (const s of sections) {
+                const within = (rect: { x: number; y: number; w: number; h: number }) => {
+                  const cy = rect.y + rect.h / 2;
+                  return cy >= s.rect.y && cy <= s.rect.y + s.rect.h;
+                };
+                s.containsPrimaryCTA = ctas.some((c) => c.category === "cta_primary" && within(c.rect));
+                s.containsTrustSignals = trustSignals.some(
+                  (t) => t.rect && within(t.rect as { x: number; y: number; w: number; h: number }),
+                );
+                s.containsForm = forms.some((f) => within(f.rect));
+                // type refinement based on contents + heading text.
+                const h = (s.heading || "").toLowerCase();
+                if (s.type === "content" || s.type === "cards") {
+                  if (s.containsForm) s.type = "form";
+                  else if (/pric|plan|kostnad|prenum|abonnemang/.test(h)) s.type = "pricing";
+                  else if (/faq|frågor|questions|hjälp/.test(h)) s.type = "faq";
+                  else if (/testimonial|kund|customer|review|omdöme|recension/.test(h)) s.type = "testimonials";
+                  else if (/feature|funktion|so funkar|how it works|capabilit/.test(h)) s.type = "features";
+                  else if (/benefit|fördel|varför|why /.test(h)) s.type = "benefits";
+                  else if (
+                    s.type === "cards" &&
+                    trustSignals.some(
+                      (t) =>
+                        t.type === "customer_logos" &&
+                        t.rect &&
+                        within(t.rect as { x: number; y: number; w: number; h: number }),
+                    )
+                  )
+                    s.type = "logos";
+                }
+                s.containsPricing = s.type === "pricing" || /\$|€|kr\b|\/mo\b|\/mån/.test(s.heading + " " + s.subheading);
+                s.containsNavigation = s.type === "nav" || s.type === "header" || s.type === "footer";
+                s.kind = s.type; // keep alias in sync after refinement
+              }
+
+              const sectionOrder = sections.map((s) => s.type);
+
               const trustSummary = {
                 total: trustSignals.length,
                 aboveFold: trustSignals.filter((t) => t.aboveFold).length,
@@ -608,6 +666,37 @@ export async function runSteps(
                   acc[t.type] = (acc[t.type] ?? 0) + 1;
                   return acc;
                 }, {}),
+              };
+
+              // Reviews: extract aggregate values when present.
+              let reviewCountSum = 0;
+              let ratingSum = 0;
+              let ratingN = 0;
+              for (const t of trustSignals) {
+                if (typeof t.reviewCount === "number") reviewCountSum += t.reviewCount;
+                if (typeof t.rating === "number") {
+                  ratingSum += t.rating;
+                  ratingN++;
+                }
+              }
+
+              const pageSummary: PageSummary = {
+                primaryCtaCount: ctas.filter((c) => c.category === "cta_primary").length,
+                secondaryCtaCount: ctas.filter((c) => c.category === "cta_secondary").length,
+                aboveFoldCtaCount: ctas.filter((c) => c.aboveFold).length,
+                aboveFoldTrustCount: trustSummary.aboveFold,
+                trustSignalCount: trustSignals.length,
+                testimonialCount: trustSignals.filter((t) => t.type === "testimonial").length,
+                logoCount: trustSignals
+                  .filter((t) => t.type === "customer_logos")
+                  .reduce((s, t) => s + (t.logoCount ?? 1), 0),
+                reviewCount: reviewCountSum,
+                averageRating: ratingN > 0 ? Math.round((ratingSum / ratingN) * 10) / 10 : 0,
+                formCount: forms.length,
+                navigationLinks: navigation.topNavCount + navigation.footerNavCount,
+                sectionCount: sections.length,
+                pageHeightPx: dims.pageHeightPx,
+                foldHeightPx: dims.foldHeightPx,
               };
 
               const flags: string[] = [];
@@ -629,20 +718,36 @@ export async function runSteps(
               if (!sitemap.exists) flags.push("no_sitemap");
               if (trustSignals.length === 0) flags.push("no_trust_signals");
               else if (trustSummary.aboveFold === 0) flags.push("no_trust_above_fold");
+              // New v2 flags.
+              const pricingIdx = sectionOrder.indexOf("pricing");
+              const socialIdx = sectionOrder.findIndex(
+                (t) => t === "testimonials" || t === "reviews" || t === "logos",
+              );
+              if (pricingIdx >= 0 && socialIdx >= 0 && pricingIdx < socialIdx) flags.push("wrong_section_order");
+              if (ctas.some((c) => c.category === "cta_primary" && c.nearestTrustSignalDistance > 400)) {
+                flags.push("cta_no_trust_nearby");
+              }
+              if (forms.some((f) => f.requiredFields >= 6)) flags.push("form_high_friction");
 
               const full: PageAuditData = {
                 ...audit,
                 robotsTxt,
                 sitemap,
                 sections,
+                sectionOrder,
                 trustSignals,
                 trustSummary,
+                ctas,
+                forms,
+                navigation,
+                visualHierarchy,
+                pageSummary,
                 flags,
               };
               data = full;
               onEvent({
                 type: "log",
-                message: `pageAudit: ${flags.length} flag(s) · h1=${audit.headings.h1Count} · alt missing ${audit.images.missingAlt}/${audit.images.total} · ${audit.content.wordCount} words · sections ${sections.length} · trust ${trustSignals.length} (${trustSummary.aboveFold} above fold)`,
+                message: `pageAudit: ${flags.length} flag(s) · sections ${sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${trustSignals.length} (${trustSummary.aboveFold} af) · ctas ${ctas.length} (${pageSummary.primaryCtaCount} primary) · forms ${forms.length} · nav ${navigation.topNavCount}/${navigation.footerNavCount}`,
               });
             } catch (e) {
               throw new Error(`pageAudit failed: ${e instanceof Error ? e.message : String(e)}`);
