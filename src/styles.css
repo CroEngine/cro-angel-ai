@@ -133,6 +133,11 @@
 }
 
 @layer base {
+  :root {
+    --font-heading: "Sora", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  }
+
   * {
     border-color: var(--color-border);
   }
@@ -140,5 +145,11 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-body);
   }
 }
+
+@utility font-heading {
+  font-family: var(--font-heading);
+}
+
