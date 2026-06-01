@@ -13,7 +13,7 @@ export type Step =
   | { kind: "observe"; instruction: string }
   | { kind: "collect"; target: CollectTarget };
 
-export type CollectTarget = "buttons";
+export type CollectTarget = "clickables" | "buttons";
 
 export type ElementCategory =
   | "cta_primary"
@@ -226,6 +226,7 @@ export async function runSteps(
 
 function filterCollected(all: CollectedElement[], target: CollectTarget): CollectedElement[] {
   if (target === "buttons") {
+    // Strict: real <button>, <input type=submit|button>, role=button only.
     return all.filter((el) =>
       el.tagName === "button" ||
       el.tagName === "input[type=submit]" ||
@@ -233,8 +234,10 @@ function filterCollected(all: CollectedElement[], target: CollectTarget): Collec
       el.tagName === "[role=button]"
     );
   }
+  // "clickables" → everything we collected.
   return all;
 }
+
 
 // Runs in the browser via page.evaluate — must be self-contained string.
 const COLLECT_SCRIPT = `(() => {
