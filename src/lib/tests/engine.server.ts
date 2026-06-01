@@ -395,27 +395,36 @@ export async function runSteps(
               const raw = await page.evaluate(PAGE_AUDIT_SCRIPT);
               const audit = raw as Omit<PageAuditData, "robotsTxt" | "sitemap" | "flags" | "url"> & { url: string };
 
-              // Fetch robots.txt + sitemap.xml from the page's origin via Playwright's request context.
-              const origin = await page.evaluate<string>("location.origin");
+              // Fetch robots.txt + sitemap.xml from inside the page context (avoids Stagehand type gap on page.request).
+              const fetched = await page.evaluate(`
+                (async () => {
+                  const origin = location.origin;
+                  const out = { robots: null, sitemap: null };
+                  try {
+                    const r = await fetch(origin + '/robots.txt', { credentials: 'omit' });
+                    if (r.ok) out.robots = await r.text();
+                  } catch (e) {}
+                  try {
+                    const r = await fetch(origin + '/sitemap.xml', { credentials: 'omit' });
+                    if (r.ok) out.sitemap = await r.text();
+                  } catch (e) {}
+                  return out;
+                })()
+              `) as { robots: string | null; sitemap: string | null };
+
               const robotsTxt = { exists: false, blocksAll: false, hasSitemap: false };
               const sitemap = { exists: false, urlCount: 0 };
-              try {
-                const r = await page.request.get(`${origin}/robots.txt`, { timeout: 5000 });
-                if (r.ok()) {
-                  const body = await r.text();
-                  robotsTxt.exists = true;
-                  robotsTxt.blocksAll = /User-agent:\s*\*[\s\S]*?Disallow:\s*\/\s*$/im.test(body);
-                  robotsTxt.hasSitemap = /^Sitemap:\s*\S+/im.test(body);
-                }
-              } catch { /* ignore */ }
-              try {
-                const r = await page.request.get(`${origin}/sitemap.xml`, { timeout: 5000 });
-                if (r.ok()) {
-                  const body = await r.text();
-                  sitemap.exists = true;
-                  sitemap.urlCount = (body.match(/<loc>/g) ?? []).length;
-                }
-              } catch { /* ignore */ }
+              if (fetched.robots) {
+                robotsTxt.exists = true;
+                robotsTxt.blocksAll = /User-agent:\s*\*[\s\S]*?Disallow:\s*\/\s*$/im.test(fetched.robots);
+                robotsTxt.hasSitemap = /^Sitemap:\s*\S+/im.test(fetched.robots);
+              }
+              if (fetched.sitemap) {
+                sitemap.exists = true;
+                sitemap.urlCount = (fetched.sitemap.match(/<loc>/g) ?? []).length;
+              }
+
+
 
               const flags: string[] = [];
               if (!audit.head.title) flags.push("missing_title");
