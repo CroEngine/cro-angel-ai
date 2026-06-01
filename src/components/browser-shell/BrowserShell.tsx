@@ -11,7 +11,6 @@ const DEFAULT_URL = "https://glutenforum.se/";
 
 export function BrowserShell() {
   const [url, setUrl] = useState(DEFAULT_URL);
-  const [reloadKey, setReloadKey] = useState(0);
 
   const [runId, setRunId] = useState<string | null>(null);
   const [liveUrl, setLiveUrl] = useState<string | null>(null);
@@ -23,7 +22,7 @@ export function BrowserShell() {
 
   const { events, status: streamStatus } = useTestStream(runId);
   const idleAfterLoad = useMemo(
-    () => events.some((e) => e.type === "log" && typeof e.data.message === "string" && (e.data.message as string).startsWith("navigation complete")),
+    () => events.some((e) => e.type === "state" && e.data.phase === "idle"),
     [events],
   );
 
@@ -34,11 +33,13 @@ export function BrowserShell() {
       if (e.type === "done") {
         setRunState("done");
         setStatusMessage(e.data.aborted ? "done · aborted" : "done");
+        setLiveUrl(null);
         return;
       }
       if (e.type === "error") {
         setRunState("error");
         setStatusMessage(`error · ${String(e.data.message ?? "")}`);
+        setLiveUrl(null);
         return;
       }
     }
@@ -86,19 +87,11 @@ export function BrowserShell() {
         runState={runState}
         statusMessage={statusMessage}
         idleAfterLoad={idleAfterLoad}
-        onSubmit={(next) => {
-          setUrl(next);
-          setReloadKey((k) => k + 1);
-          // When user just edits URL while idle, clear any stale live session.
-          if (runState !== "running" && runState !== "connecting") {
-            setLiveUrl(null);
-          }
-        }}
-        onReload={() => setReloadKey((k) => k + 1)}
+        onSubmit={(next) => setUrl(next)}
         onRun={handleRun}
         onStop={handleStop}
       />
-      <Viewport url={url} reloadKey={reloadKey} liveUrl={liveUrl} />
+      <Viewport liveUrl={liveUrl} />
       <ConsolePanel events={events} />
     </div>
   );

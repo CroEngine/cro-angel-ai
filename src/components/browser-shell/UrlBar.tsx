@@ -12,7 +12,6 @@ interface UrlBarProps {
   statusMessage?: string;
   idleAfterLoad?: boolean;
   onSubmit: (url: string) => void;
-  onReload: () => void;
   onRun: (url: string) => void;
   onStop: () => void;
 }
@@ -25,7 +24,7 @@ const pillStyles: Record<RunState, string> = {
   error: "bg-destructive/15 text-destructive",
 };
 
-export function UrlBar({ value, runState, statusMessage, idleAfterLoad, onSubmit, onReload, onRun, onStop }: UrlBarProps) {
+export function UrlBar({ value, runState, statusMessage, idleAfterLoad, onSubmit, onRun, onStop }: UrlBarProps) {
   const [draft, setDraft] = useState(value);
   useEffect(() => { setDraft(value); }, [value]);
 
@@ -39,13 +38,13 @@ export function UrlBar({ value, runState, statusMessage, idleAfterLoad, onSubmit
   return (
     <div className="flex items-center gap-2 border-b border-border bg-background px-3 py-2">
       <div className="flex items-center gap-1 text-muted-foreground">
-        <Button variant="ghost" size="icon" className="h-8 w-8" type="button">
+        <Button variant="ghost" size="icon" className="h-8 w-8" type="button" disabled>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" type="button">
+        <Button variant="ghost" size="icon" className="h-8 w-8" type="button" disabled>
           <ArrowRight className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" type="button" onClick={onReload}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" type="button" disabled>
           <RotateCw className="h-4 w-4" />
         </Button>
       </div>
@@ -79,10 +78,10 @@ export function UrlBar({ value, runState, statusMessage, idleAfterLoad, onSubmit
       )}
 
       <div className="flex items-center gap-1 text-muted-foreground">
-        <Button variant="ghost" size="icon" className="h-8 w-8" type="button">
+        <Button variant="ghost" size="icon" className="h-8 w-8" type="button" disabled>
           <MousePointer2 className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" type="button">
+        <Button variant="ghost" size="icon" className="h-8 w-8" type="button" disabled>
           <Hand className="h-4 w-4" />
         </Button>
       </div>
