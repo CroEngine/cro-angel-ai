@@ -78,6 +78,15 @@ export function BrowserShell() {
     try { await stopFn({ data: { runId } }); } catch { /* ignore */ }
   }, [runId, stopFn]);
 
+  const handleCloseSession = useCallback(async () => {
+    if (runId) {
+      try { await stopFn({ data: { runId } }); } catch { /* ignore */ }
+    }
+    setLiveUrl(null);
+  }, [runId, stopFn]);
+
+  const sessionEnded = runState === "done" || runState === "error";
+
   return (
     <div className="flex h-screen flex-col bg-background">
       <TabStrip title={hostname} />
@@ -90,7 +99,7 @@ export function BrowserShell() {
         onRun={handleRun}
         onStop={handleStop}
       />
-      <Viewport liveUrl={liveUrl} />
+      <Viewport liveUrl={liveUrl} ended={sessionEnded} onClose={handleCloseSession} />
       <ConsolePanel events={events} />
     </div>
   );
