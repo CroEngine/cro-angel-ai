@@ -34,7 +34,8 @@ export type Step =
   | { kind: "act"; instruction: string }
   | { kind: "extract"; instruction: string }
   | { kind: "observe"; instruction: string }
-  | { kind: "collect"; target: CollectTarget };
+  | { kind: "collect"; target: CollectTarget }
+  | { kind: "pageAudit" };
 
 export type CollectTarget = "clickables" | "buttons";
 
@@ -55,7 +56,16 @@ export type ElementIntent =
   | "navigation"
   | "social"
   | "utility"
+  | "engagement"
   | "unknown";
+
+export type SectionKind =
+  | "nav"
+  | "header"
+  | "hero"
+  | "cards"
+  | "content"
+  | "footer";
 
 export type CollectedElement = {
   text: string;
@@ -63,6 +73,7 @@ export type CollectedElement = {
   selector: string;
   category: ElementCategory;
   intent: ElementIntent;
+  section: SectionKind;
   href: string | null;
   disabled: boolean;
   visible: boolean;
@@ -80,6 +91,9 @@ export type CollectedElement = {
     backgroundContrast: number;
     score: number;
   };
+  groupId?: string;
+  groupCount?: number;
+  groupedAway?: boolean;
   attributes: Record<string, string>;
   computedStyles: {
     color: string;
@@ -93,6 +107,40 @@ export type CollectedElement = {
     display: string;
   };
 };
+
+export type PageAuditData = {
+  url: string;
+  head: {
+    title: string;
+    description: string;
+    canonical: string;
+    lang: string;
+    viewport: string;
+    robots: string;
+    ogTitle: string;
+    ogDescription: string;
+    ogImage: string;
+    ogType: string;
+    ogUrl: string;
+    twitterCard: string;
+    twitterTitle: string;
+    twitterImage: string;
+  };
+  headings: {
+    h1Count: number;
+    h2Count: number;
+    h3Count: number;
+    hierarchy: Array<{ level: number; text: string; id: string }>;
+  };
+  images: { total: number; missingAlt: number; missingAltPct: number; missingDims: number; lazy: number };
+  links: { internal: number; external: number; nofollow: number; total: number };
+  schema: { count: number; types: string[] };
+  content: { wordCount: number; sections: number; articles: number };
+  robotsTxt: { exists: boolean; blocksAll: boolean; hasSitemap: boolean };
+  sitemap: { exists: boolean; urlCount: number };
+  flags: string[];
+};
+
 
 
 
