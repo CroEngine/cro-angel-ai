@@ -24,16 +24,39 @@ export type ElementCategory =
   | "link"
   | "other";
 
+export type ViewportZone = "above_fold" | "mid_page" | "below_fold";
+
+export type ElementIntent =
+  | "conversion"
+  | "information"
+  | "navigation"
+  | "social"
+  | "utility"
+  | "unknown";
+
 export type CollectedElement = {
   text: string;
   tagName: string;
   selector: string;
   category: ElementCategory;
+  intent: ElementIntent;
   href: string | null;
   disabled: boolean;
   visible: boolean;
   aboveFold: boolean;
   rect: { x: number; y: number; w: number; h: number };
+  position: {
+    viewportZone: ViewportZone;
+    yPercent: number;
+    xPercent: number;
+  };
+  visualWeight: {
+    area: number;
+    fontSize: number;
+    fontWeight: number;
+    backgroundContrast: number;
+    score: number;
+  };
   attributes: Record<string, string>;
   computedStyles: {
     color: string;
@@ -47,6 +70,7 @@ export type CollectedElement = {
     display: string;
   };
 };
+
 
 
 export type EngineEvent =
