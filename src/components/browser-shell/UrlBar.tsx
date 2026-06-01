@@ -51,8 +51,11 @@ export function UrlBar({ value, sessionState, statusMessage, liveStartedAt, onSu
         const elapsed = liveStartedAt ? formatElapsed(Date.now() - liveStartedAt) : "0m 00s";
         return { icon: <Circle className="h-2.5 w-2.5 fill-current" />, label: `Live · ${elapsed}`, className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" };
       }
-      case "frozen":
-        return { icon: <Snowflake className="h-3 w-3" />, label: "Frozen · click to resume", className: "bg-sky-500/15 text-sky-600 dark:text-sky-400 cursor-pointer hover:bg-sky-500/25" };
+      case "frozen": {
+        const aborted = statusMessage?.includes("aborted");
+        return { icon: <Snowflake className="h-3 w-3" />, label: aborted ? "Frozen · aborted" : "Frozen · click to resume", className: "bg-sky-500/15 text-sky-600 dark:text-sky-400 cursor-pointer hover:bg-sky-500/25" };
+      }
+
       case "error":
         return { icon: <Circle className="h-2.5 w-2.5 fill-current" />, label: statusMessage ?? "error", className: "bg-destructive/15 text-destructive" };
       case "cold":
