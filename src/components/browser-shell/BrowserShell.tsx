@@ -22,6 +22,10 @@ export function BrowserShell() {
   const stopFn = useServerFn(stopTestRun);
 
   const { events, status: streamStatus } = useTestStream(runId);
+  const idleAfterLoad = useMemo(
+    () => events.some((e) => e.type === "log" && typeof e.data.message === "string" && (e.data.message as string).startsWith("navigation complete")),
+    [events],
+  );
 
   // Promote stream terminal events to runState.
   useEffect(() => {
