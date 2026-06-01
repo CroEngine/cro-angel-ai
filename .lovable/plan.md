@@ -1,16 +1,16 @@
-Jag föreslår en liten men mer robust ändring i sessionslivscykeln:
+Mål: när sessionen tar slut ska användaren aldrig se Browserbases råa "debugging connection was closed · reopen devtools"-meddelande. Istället en polerad overlay som signalerar att testet är klart.
 
-1. Ändra Stagehand-städningen i `engine.server.ts`
-   - Sluta anropa `stagehand.close()` efter en lyckad körning.
-   - Låt Stagehand-objektet lämnas ifred under hold-fönstret så live-vyn inte får en CDP/WebSocket-disconnect.
-   - Behåll en kontrollerad cleanup endast om `stagehand.init()` eller själva körningen kraschar innan sessionen går in i hold-läge.
+Ändringar i `src/components/browser-shell/Viewport.tsx`:
+1. När `ended === true`, lägg en heltäckande overlay ovanpå iframen (samma stack, `absolute inset-0`, `backdrop-blur-sm`, mjuk gradient i bakgrunden).
+2. Innehåll i overlayen:
+   - Liten ikon (CheckCircle eller liknande) i en mjuk badge.
+   - Rubrik: "Session ended".
+   - Underrad: kort förtroendebyggande text, t.ex. "Test run completed successfully. The live preview has been closed."
+   - Två knappar: primär "Run again" (kallar samma callback som "Run tests" — behöver en ny prop `onRunAgain`) och sekundär "Close" (befintlig `onClose`).
+3. Behåll status-chippet uppe till vänster men ändra "ended · session paused" → "Completed".
+4. iframen ligger kvar bakom overlayen men görs visuellt nedtonad (`opacity-40`) så Browserbases reconnect-text aldrig syns ren.
 
-2. Behåll Browserbase-sessionens enda riktiga avslut i orchestratorn
-   - `closeSession(sessionId)` ska fortsatt bara köras via `terminate()` i `run.functions.ts` / `orchestrator.server.ts`.
-   - Close-knappen, fel, timeout och 60s hold avslutar sessionen därifrån.
+Ändringar i `src/components/browser-shell/BrowserShell.tsx` (eller där `Viewport` används):
+5. Skicka ned en `onRunAgain`-prop som triggar samma flöde som "Run tests"-knappen.
 
-3. Lägg till tydligare intern loggning
-   - Logga när Stagehand-cleanup hoppas över för att hålla live-vyn aktiv.
-   - Logga när sessionen faktiskt avslutas via orchestratorn.
-
-Tekniskt blir detta fallback-steget vi pratade om: `keepAlive: true` räckte inte helt, så nästa rimliga fix är att inte koppla ner Stagehand-CDP alls efter lyckad run. Det bör minska risken för `debugging connection was closed` medan live-vyn fortfarande ska kunna avslutas korrekt via `closeSession(sessionId)`.
+Inga ändringar i backend/lifecycle — vi täcker bara över det fula meddelandet visuellt. Tokens från `src/styles.css`, ingen hårdkodad färg.
