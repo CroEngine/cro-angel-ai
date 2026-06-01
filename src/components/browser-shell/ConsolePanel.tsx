@@ -336,7 +336,65 @@ function CollectDetails({ data }: { data: CollectData }) {
   );
 }
 
+function PageAuditDetails({ data }: { data: PageAuditData }) {
+  const { head, headings, images, links, schema, content, robotsTxt, sitemap, flags } = data;
+  return (
+    <div className="mt-2 space-y-2 rounded border border-border bg-muted/30 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-muted-foreground">Page audit · {data.url}</span>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-[10px]"
+          onClick={() => downloadJson(`page-audit-${Date.now()}.json`, data)}
+        >
+          Download JSON
+        </Button>
+      </div>
+
+      {flags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {flags.map((f) => (
+            <span
+              key={f}
+              className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+            >
+              ⚠ {f}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 text-[11px]">
+        <div className="rounded border border-border bg-background/50 p-2">
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Head</div>
+          <ul className="space-y-0.5">
+            <li><span className="text-muted-foreground">title:</span> {head.title || <em className="text-muted-foreground">(missing)</em>}</li>
+            <li className="truncate"><span className="text-muted-foreground">desc:</span> {head.description || <em className="text-muted-foreground">(missing)</em>}</li>
+            <li><span className="text-muted-foreground">canonical:</span> {head.canonical || <em className="text-muted-foreground">—</em>}</li>
+            <li><span className="text-muted-foreground">lang:</span> {head.lang || <em className="text-muted-foreground">—</em>}</li>
+            <li><span className="text-muted-foreground">og:image:</span> {head.ogImage ? "✓" : "—"}</li>
+            <li><span className="text-muted-foreground">twitter:</span> {head.twitterCard || "—"}</li>
+          </ul>
+        </div>
+        <div className="rounded border border-border bg-background/50 p-2">
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Structure</div>
+          <ul className="space-y-0.5">
+            <li>h1: {headings.h1Count} · h2: {headings.h2Count} · h3: {headings.h3Count}</li>
+            <li>words: {content.wordCount} · sections: {content.sections}</li>
+            <li>images: {images.total} (missing alt: {images.missingAlt}, {images.missingAltPct}%)</li>
+            <li>links: {links.total} (int {links.internal} / ext {links.external})</li>
+            <li>schema: {schema.count}{schema.types.length > 0 ? ` (${schema.types.join(", ")})` : ""}</li>
+            <li>robots.txt: {robotsTxt.exists ? "✓" : "—"} · sitemap: {sitemap.exists ? `✓ (${sitemap.urlCount})` : "—"}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ConsolePanel({ events }: { events: StreamEvent[] }) {
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col border-t border-border bg-background lg:border-t-0">
       <div className="border-b border-border px-4 py-2">
