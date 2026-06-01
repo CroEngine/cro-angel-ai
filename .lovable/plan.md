@@ -1,49 +1,29 @@
-# Plan: utöka `collect(buttons)` med mer data + live overlay
+# Plan: behåll live-vyn så overlayen syns efter run
 
-## 1. Mer data per element (`engine.server.ts`)
+Två ändringar — UI behåller iframen, backend håller sessionen vid liv en stund efter sista steget.
 
-Utöka `CollectedElement` med:
+## 1. `BrowserShell.tsx` — behåll `liveUrl` efter done
 
-```ts
-attributes: Record<string, string>;
-computedStyles: {
-  color: string;
-  backgroundColor: string;
-  fontSize: string;
-  fontWeight: string;
-  padding: string;
-  borderRadius: string;
-  border: string;
-  cursor: string;
-  display: string;
-};
-```
+Ta bort `setLiveUrl(null)` i `done`/`error`-grenarna (rad 36 + 42). Iframen ska fortsätta visa sidan med overlayen. I `Viewport`-badgen ändrar vi texten från `live · Browserbase` till `ended` när `runState === "done"`, så det är tydligt att sessionen inte längre kör.
 
-Båda plockas i samma `page.evaluate` som redan körs — `el.attributes` och `window.getComputedStyle(el)`.
+`handleRun` nullar redan `liveUrl` i början av nästa run, så vi får inte kvarliggande state-läckage.
 
-## 2. Live overlay i Browserbase-vyn
+Lägg till en liten "Close"-knapp i `Viewport` (eller `UrlBar`) som anropar `stopTestRun` + nullar `liveUrl` lokalt, så användaren kan stänga manuellt när de är klara.
 
-Efter collect, kör en andra `page.evaluate` som injicerar overlay-divs i sidan:
+## 2. `run.functions.ts` — håll Browserbase-sessionen vid liv 60s efter sista steget
 
-- Wrapper `<div id="__lovable_collect_overlay__">` med `pointer-events: none; z-index: 2147483647`.
-- Per element: absolut-positionerad `<div>` med `rect + window.scrollX/Y`-offset, `outline: 2px solid #22d3ee`, fill `rgba(34,211,238,0.08)`, plus en nummer-badge i övre vänstra hörnet.
-- Idempotent: ta bort tidigare `#__lovable_collect_overlay__` först.
+I dag: så fort `runSteps` returnerar utan fel kör vi `terminate(runId, "done", …)` som omedelbart kör `closeSession(sessionId)`. Det stänger Browserbase-sidan, overlayen försvinner.
 
-Eftersom Viewport-komponenten visar Browserbase live-URL i en iframe ser användaren markeringarna direkt.
+Ändring: efter framgångsrik körning, vänta upp till 60 000 ms (med `signal: run.abort.signal` så användarens "Stop"/"Close" avbryter direkt) **innan** vi terminerar. Vid timeout eller abort → kör befintlig `terminate(...)`.
 
-## 3. UI — `ConsolePanel.tsx`
+Lägg till en `log`-event före väntan: `"keeping session open 60s — click Close to end now"` så det syns i konsolen.
 
-`CollectDetails`-listan får per rad:
-- Nummer framför (matchar overlay-badge)
-- Liten färg-swatch (bg + text-färg från `computedStyles`)
-- Badge för "above fold" / "hidden" när relevant
+Vid `result.failed > 0` → terminera direkt som idag (ingen anledning att hålla en trasig session öppen).
 
-JSON-downloaden inkluderar automatiskt de nya fälten.
+## 3. Inget annat behövs
 
-## Utanför scope
-- Toggle av/på för overlay
-- Hover → highlight
-- Screenshot/tabell-view
+`stopTestRun` finns redan och flippar abort-signalen → väntan bryts → session stängs rent. `Viewport`-badgen är en triv ändring.
 
 ## Verifiering
-Kör på glutenforum.se: overlay-rektanglar syns i live-vyn med nummerbadge:r som matchar konsol-listan; JSON innehåller `attributes` + `computedStyles`.
+
+Kör Run på glutenforum.se: efter `collect`-steget passerar ska iframen fortsätta visa sidan med cyan rektanglar + nummerbadge:r i ~60 s, badge byter till "ended", och "Close" stänger sessionen direkt.

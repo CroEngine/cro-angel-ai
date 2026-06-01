@@ -33,13 +33,12 @@ export function BrowserShell() {
       if (e.type === "done") {
         setRunState("done");
         setStatusMessage(e.data.aborted ? "done · aborted" : "done");
-        setLiveUrl(null);
+        // Keep liveUrl mounted so the collect overlay stays visible.
         return;
       }
       if (e.type === "error") {
         setRunState("error");
         setStatusMessage(`error · ${String(e.data.message ?? "")}`);
-        setLiveUrl(null);
         return;
       }
     }
