@@ -226,13 +226,17 @@ export async function runSteps(
               const vp = (await page.evaluate<{ w: number; h: number }>(
                 "({ w: window.innerWidth, h: window.innerHeight })",
               )) ?? { w: 1280, h: 720 };
-              const buf = await page.screenshot({ type: "jpeg", quality: 60, fullPage: false });
+              const rawFullH = (await page.evaluate<number>(
+                "document.documentElement.scrollHeight",
+              )) ?? vp.h;
+              const fullH = Math.min(Math.max(rawFullH, vp.h), 8000);
+              const buf = await page.screenshot({ type: "jpeg", quality: 50, fullPage: true });
               const b64 = Buffer.from(buf).toString("base64");
               screenshot = {
                 dataUrl: `data:image/jpeg;base64,${b64}`,
-                viewport: { w: vp.w, h: vp.h },
+                viewport: { w: vp.w, h: fullH },
               };
-              onEvent({ type: "log", message: `screenshot captured (${Math.round(buf.length / 1024)}kb)` });
+              onEvent({ type: "log", message: `screenshot captured (${Math.round(buf.length / 1024)}kb, fullPage ${vp.w}×${fullH})` });
             } catch (e) {
               onEvent({ type: "log", message: `screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
             }
