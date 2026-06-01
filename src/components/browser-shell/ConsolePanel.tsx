@@ -17,16 +17,22 @@ type ElementCategory =
   | "link"
   | "other";
 
+type ElementIntent = "conversion" | "information" | "navigation" | "social" | "utility" | "unknown";
+type ViewportZone = "above_fold" | "mid_page" | "below_fold";
+
 type CollectedElement = {
   text: string;
   tagName: string;
   selector: string;
   category?: ElementCategory;
+  intent?: ElementIntent;
   href: string | null;
   disabled: boolean;
   visible: boolean;
   aboveFold: boolean;
   rect: { x: number; y: number; w: number; h: number };
+  position?: { viewportZone: ViewportZone; yPercent: number; xPercent: number };
+  visualWeight?: { area: number; fontSize: number; fontWeight: number; backgroundContrast: number; score: number };
   attributes?: Record<string, string>;
   computedStyles?: {
     color?: string;
@@ -41,10 +47,20 @@ type CollectedElement = {
   };
 };
 
+type CollectSummary = {
+  total: number;
+  aboveFold: number;
+  primaryCtaCount: number;
+  competingAboveFold: number;
+  topVisualWeight: Array<{ selector: string; text: string; score: number }>;
+  intentBreakdown: Partial<Record<ElementIntent, number>>;
+};
+
 type CollectData = {
   target: string;
   count: number;
   byCategory?: Partial<Record<ElementCategory, number>>;
+  summary?: CollectSummary;
   elements: CollectedElement[];
 };
 
@@ -53,6 +69,7 @@ function isCollectData(v: unknown): v is CollectData {
   const o = v as Record<string, unknown>;
   return typeof o.target === "string" && typeof o.count === "number" && Array.isArray(o.elements);
 }
+
 
 const CATEGORY_COLORS: Record<ElementCategory, string> = {
   cta_primary: "#10b981",
