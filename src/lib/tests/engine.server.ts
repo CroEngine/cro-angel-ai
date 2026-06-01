@@ -84,9 +84,12 @@ export async function runSteps(
   let passed = 0;
   let failed = 0;
   let aborted = false;
+  let initialized = false;
+  let crashed = false;
 
   try {
     await stagehand.init();
+    initialized = true;
 
     for (let i = 0; i < steps.length; i++) {
       if (signal?.aborted) { aborted = true; break; }
@@ -171,12 +174,25 @@ export async function runSteps(
         break; // stop on first failure
       }
     }
+  } catch (err) {
+    crashed = true;
+    throw err;
   } finally {
-    try { await stagehand.close(); } catch { /* ignore */ }
+    // Only disconnect Stagehand if init failed or the run crashed before the
+    // orchestrator's hold/close window. Otherwise leave Stagehand attached so
+    // the live-view CDP/WebSocket isn't torn down — closeSession(sessionId)
+    // in the orchestrator is the single source of truth for ending the session.
+    if (!initialized || crashed) {
+      try { await stagehand.close(); } catch { /* ignore */ }
+      onEvent({ type: "log", message: "stagehand closed (init/crash cleanup)" });
+    } else {
+      onEvent({ type: "log", message: "stagehand left attached — session ends via closeSession()" });
+    }
   }
 
   return { passed, failed, aborted };
 }
+
 
 function filterCollected(all: CollectedElement[], target: CollectTarget): CollectedElement[] {
   if (target === "buttons") {
