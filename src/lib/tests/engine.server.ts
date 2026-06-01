@@ -161,7 +161,9 @@ function summarize(step: Step): string {
     case "extract": return `extract "${step.instruction}"`;
     case "observe": return `observe "${step.instruction}"`;
     case "collect": return `collect ${step.target}`;
+    case "pageAudit": return "pageAudit";
   }
+
 }
 
 export async function runSteps(
