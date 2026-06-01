@@ -142,6 +142,13 @@ export async function runSteps(
             const elements = await page.evaluate(COLLECT_SCRIPT);
             const all = elements as CollectedElement[];
             const filtered = filterCollected(all, step.target);
+            // Draw overlay rectangles in the live page so the user sees what was collected.
+            try {
+              const selectors = filtered.map((el) => el.selector);
+              await page.evaluate(`(${OVERLAY_FN.toString()})(${JSON.stringify(selectors)})`);
+            } catch (e) {
+              onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
+            }
             data = { target: step.target, count: filtered.length, elements: filtered };
             onEvent({ type: "log", message: `collect ${step.target}: ${filtered.length} element(s)` });
             break;
