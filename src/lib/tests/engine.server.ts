@@ -126,6 +126,14 @@ export async function runSteps(
           case "observe":
             data = await stagehand.observe(step.instruction);
             break;
+          case "collect": {
+            const elements = await page.evaluate(COLLECT_SCRIPT);
+            const all = elements as CollectedElement[];
+            const filtered = filterCollected(all, step.target);
+            data = { target: step.target, count: filtered.length, elements: filtered };
+            onEvent({ type: "log", message: `collect ${step.target}: ${filtered.length} element(s)` });
+            break;
+          }
         }
 
         void page;
