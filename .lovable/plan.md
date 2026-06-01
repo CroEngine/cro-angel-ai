@@ -1,24 +1,20 @@
-## Mål
+## Ändringar i `src/components/browser-shell/FindingsView.tsx`
 
-Ta bort oanvända kontroller i `UrlBar` — de tar plats utan att göra något.
+Översätt tom-läget till engelska och centrera vertikalt så den hamnar i höjd med viewportens "Enter a URL and click Run"-placeholder.
 
-## Ändringar (`src/components/browser-shell/UrlBar.tsx`)
+```tsx
+if (reports.length === 0) {
+  return (
+    <div className="flex h-full items-center justify-center px-4 text-xs text-muted-foreground">
+      <p className="text-center">
+        No pages analyzed yet. Data appears once the first{" "}
+        <span className="font-medium text-foreground">goto</span> runs.
+      </p>
+    </div>
+  );
+}
+```
 
-1. **Ta bort vänster ikon-grupp**: `ArrowLeft`, `ArrowRight`, `RotateCw` — alla `disabled`, har aldrig handlers.
-2. **Ta bort "Frozen · click to resume"-pillen**: den klickbara chip-knappen är redundant — `Resume`-knappen till höger gör redan exakt samma sak. Behåll ändå statusvisning för `live`/`error`/`cold` genom att rendera chipen som en passiv `<span>` (ingen `onClick`, ingen hover-state).
-   - Alternativ: ta bort chipen helt. Frågan nedan.
-3. **Ta bort höger ikon-grupp**: `MousePointer2`, `Hand` — också `disabled` och oanvända (samma "inget av det används"-kategori).
-4. **Städa imports**: ta bort `ArrowLeft`, `ArrowRight`, `RotateCw` (om inte används i Resume-knappen — den använder `RotateCw`, så behåll den), `MousePointer2`, `Hand`, `Snowflake` (om chipen tas bort helt).
+För att `h-full` ska fungera behöver `ScrollArea`-wrappern i `ConsolePanel.tsx` (rad 286–288) inte ändras — `ScrollArea` har redan `h-full`, och dess viewport-child sträcker sig fullt. Om det visar sig att höjden inte propagerar lägger jag till `min-h-full` på en inre wrapper.
 
-## Inga andra filer rörs
-
-`BrowserShell.tsx` skickar fortfarande samma props; vi tar bara bort renderingen.
-
-## En fråga
-
-För `frozen`-statusen: vill du
-
-- **(a)** ta bort pillen helt (Resume-knappen visar redan tillståndet), eller
-- **(b)** behålla en icke-klickbar status-pill ("Frozen") så man ser tillståndet även när Resume-knappen inte är i fokus?
-
-Jag lutar åt **(a)** — minst kod, ingen dubblering.
+Inga andra filer ändras.

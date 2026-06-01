@@ -134,9 +134,11 @@ export function FindingsView({ events }: { events: StreamEvent[] }) {
 
   if (reports.length === 0) {
     return (
-      <div className="px-4 py-3 text-xs text-muted-foreground">
-        Inga sidor analyserade än. Data dyker upp när första{" "}
-        <span className="font-medium text-foreground">goto</span> körts.
+      <div className="flex min-h-full items-center justify-center px-4 py-3 text-xs text-muted-foreground">
+        <p className="text-center">
+          No pages analyzed yet. Data appears once the first{" "}
+          <span className="font-medium text-foreground">goto</span> runs.
+        </p>
       </div>
     );
   }
