@@ -1,5 +1,7 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { FindingsView } from "./FindingsView";
 import type { StreamEvent } from "./hooks/useTestStream";
 
 function fmtTime(ts: unknown) {
