@@ -323,6 +323,24 @@ function structureFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
+function heroFindings(a: PageAuditLike): Finding[] {
+  const h = a.hero;
+  if (!h) return [];
+  const out: Finding[] = [];
+  if (h.headline) out.push(f("cro", "Hero headline", `"${h.headline}"`));
+  if (h.subheadline) out.push(f("cro", "Hero subheadline", `"${h.subheadline}"`));
+  if (h.primaryCtaText) {
+    out.push(
+      f(
+        "cro",
+        "Hero primary CTA",
+        `"${h.primaryCtaText}"${h.primaryCtaIntent ? " · " + h.primaryCtaIntent : ""}${h.aboveFold ? " · above fold" : ""}`,
+      ),
+    );
+  }
+  return out;
+}
+
 function trustFindings(a: PageAuditLike): Finding[] {
   const out: Finding[] = [];
   const sum = a.trustSummary;
