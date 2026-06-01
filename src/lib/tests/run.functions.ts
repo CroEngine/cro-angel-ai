@@ -106,22 +106,17 @@ export const startTestRun = createServerFn({ method: "POST" })
             failed: result.failed,
           });
         } else {
-          // Hold the Browserbase session open so the collect overlay stays visible.
-          // User can hit "Close" to abort the wait early.
-          const HOLD_MS = 15 * 60_000;
-          emit(runId, "log", { level: "info", message: `keeping session open ${HOLD_MS / 60_000} min — click Close to end now` });
-          await new Promise<void>((resolve) => {
-            if (run.abort.signal.aborted) return resolve();
-            const t = setTimeout(resolve, HOLD_MS);
-            run.abort.signal.addEventListener("abort", () => { clearTimeout(t); resolve(); }, { once: true });
-          });
-          if (isTerminated(runId)) return;
+          // Close the Browserbase session immediately after steps complete.
+          // The client transitions to the "Frozen" view using the screenshot
+          // captured during the collect step, so the user keeps seeing the page
+          // without us paying for an idle session.
           await terminate(runId, "done", {
             aborted: result.aborted,
             passed: result.passed,
             failed: result.failed,
           });
         }
+
       } catch (err) {
         if (isTerminated(runId)) return;
         const message = err instanceof Error ? err.message : String(err);

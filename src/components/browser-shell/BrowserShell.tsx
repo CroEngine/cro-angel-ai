@@ -1,55 +1,95 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { TabStrip } from "./TabStrip";
-import { UrlBar, type RunState } from "./UrlBar";
-import { Viewport } from "./Viewport";
+import { UrlBar } from "./UrlBar";
+import { Viewport, type FrozenSnapshot, type OverlayElement, type SessionState } from "./Viewport";
 import { ConsolePanel } from "./ConsolePanel";
 import { useTestStream } from "./hooks/useTestStream";
 import { startTestRun, stopTestRun } from "@/lib/tests/run.functions";
 
 const DEFAULT_URL = "https://glutenforum.se/";
+const HIDDEN_FREEZE_MS = 15_000;
 
 export function BrowserShell() {
   const [url, setUrl] = useState(DEFAULT_URL);
 
   const [runId, setRunId] = useState<string | null>(null);
   const [liveUrl, setLiveUrl] = useState<string | null>(null);
-  const [runState, setRunState] = useState<RunState>("idle");
+  const [sessionState, setSessionState] = useState<SessionState>("cold");
   const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
+  const [liveStartedAt, setLiveStartedAt] = useState<number | null>(null);
+  const [frozen, setFrozen] = useState<FrozenSnapshot | null>(null);
 
   const startFn = useServerFn(startTestRun);
   const stopFn = useServerFn(stopTestRun);
 
-  const { events, status: streamStatus } = useTestStream(runId);
-  const idleAfterLoad = useMemo(
-    () => events.some((e) => e.type === "state" && e.data.phase === "idle"),
-    [events],
-  );
+  const { events } = useTestStream(runId);
 
-  // Promote stream terminal events to runState.
+  // Pull the latest collect's screenshot + overlay out of the stream and
+  // stash it so we can show the Frozen viewport after the session closes.
+  useEffect(() => {
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (e.type !== "step_passed") continue;
+      if (e.data.kind !== "collect") continue;
+      const d = e.data.data as
+        | { screenshot?: { dataUrl: string; viewport: { w: number; h: number } }; overlayElements?: OverlayElement[] }
+        | undefined;
+      if (d?.screenshot) {
+        setFrozen({
+          screenshotUrl: d.screenshot.dataUrl,
+          viewport: d.screenshot.viewport,
+          overlayElements: d.overlayElements ?? [],
+        });
+      }
+      return;
+    }
+  }, [events]);
+
+  // Promote terminal events to sessionState.
   useEffect(() => {
     for (let i = events.length - 1; i >= 0; i--) {
       const e = events[i];
       if (e.type === "done") {
-        setRunState("done");
+        setSessionState((prev) => (prev === "error" ? prev : "frozen"));
         setStatusMessage(e.data.aborted ? "done · aborted" : "done");
-        // Keep liveUrl mounted so the collect overlay stays visible.
         return;
       }
       if (e.type === "error") {
-        setRunState("error");
+        setSessionState("error");
         setStatusMessage(`error · ${String(e.data.message ?? "")}`);
         return;
       }
     }
   }, [events]);
 
+  // 15s hidden-tab freeze trigger: while Live and tab hidden, schedule a stop.
+  const hiddenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (streamStatus === "error") {
-      setRunState((s) => (s === "running" ? "error" : s));
-      setStatusMessage((m) => m ?? "stream lost");
-    }
-  }, [streamStatus]);
+    if (sessionState !== "live") return;
+    const onChange = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenTimer.current = setTimeout(() => {
+          if (runId) {
+            void stopFn({ data: { runId } });
+          }
+        }, HIDDEN_FREEZE_MS);
+      } else {
+        if (hiddenTimer.current) {
+          clearTimeout(hiddenTimer.current);
+          hiddenTimer.current = null;
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onChange);
+      if (hiddenTimer.current) {
+        clearTimeout(hiddenTimer.current);
+        hiddenTimer.current = null;
+      }
+    };
+  }, [sessionState, runId, stopFn]);
 
   const hostname = useMemo(() => {
     try { return new URL(url).hostname; } catch { return url; }
@@ -57,7 +97,8 @@ export function BrowserShell() {
 
   const handleRun = useCallback(async (nextUrl: string) => {
     setUrl(nextUrl);
-    setRunState("connecting");
+    setSessionState("live");
+    setLiveStartedAt(Date.now());
     setStatusMessage(undefined);
     setLiveUrl(null);
     setRunId(null);
@@ -65,11 +106,11 @@ export function BrowserShell() {
       const res = await startFn({ data: { url: nextUrl } });
       setRunId(res.runId);
       setLiveUrl(res.liveUrl);
-      setRunState("running");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setRunState("error");
+      setSessionState("error");
       setStatusMessage(message);
+      setLiveStartedAt(null);
     }
   }, [startFn]);
 
@@ -78,36 +119,31 @@ export function BrowserShell() {
     try { await stopFn({ data: { runId } }); } catch { /* ignore */ }
   }, [runId, stopFn]);
 
-  const handleCloseSession = useCallback(async () => {
-    if (runId) {
-      try { await stopFn({ data: { runId } }); } catch { /* ignore */ }
-    }
-    setLiveUrl(null);
-  }, [runId, stopFn]);
-
-  const sessionEnded = runState === "done" || runState === "error";
+  const handleResume = useCallback(() => {
+    void handleRun(url);
+  }, [handleRun, url]);
 
   return (
     <div className="flex h-screen flex-col bg-background">
       <TabStrip title={hostname} />
       <UrlBar
         value={url}
-        runState={runState}
+        sessionState={sessionState}
         statusMessage={statusMessage}
-        idleAfterLoad={idleAfterLoad}
+        liveStartedAt={liveStartedAt}
         onSubmit={(next) => setUrl(next)}
         onRun={handleRun}
         onStop={handleStop}
+        onResume={handleResume}
       />
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="flex min-h-0 flex-1 lg:w-1/2 lg:border-r lg:border-border">
           <Viewport
+            sessionState={sessionState}
             liveUrl={liveUrl}
-            ended={sessionEnded}
-            onClose={handleCloseSession}
-            onRunAgain={() => handleRun(url)}
+            frozen={frozen}
+            onResume={handleResume}
           />
-
         </div>
         <div className="flex min-h-0 flex-1 lg:w-1/2">
           <ConsolePanel events={events} />
