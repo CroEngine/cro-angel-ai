@@ -24,6 +24,18 @@ export type CollectedElement = {
   visible: boolean;
   aboveFold: boolean;
   rect: { x: number; y: number; w: number; h: number };
+  attributes: Record<string, string>;
+  computedStyles: {
+    color: string;
+    backgroundColor: string;
+    fontSize: string;
+    fontWeight: string;
+    padding: string;
+    borderRadius: string;
+    border: string;
+    cursor: string;
+    display: string;
+  };
 };
 
 export type EngineEvent =
@@ -130,6 +142,13 @@ export async function runSteps(
             const elements = await page.evaluate(COLLECT_SCRIPT);
             const all = elements as CollectedElement[];
             const filtered = filterCollected(all, step.target);
+            // Draw overlay rectangles in the live page so the user sees what was collected.
+            try {
+              const selectors = filtered.map((el) => el.selector);
+              await page.evaluate(`(${OVERLAY_FN.toString()})(${JSON.stringify(selectors)})`);
+            } catch (e) {
+              onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
+            }
             data = { target: step.target, count: filtered.length, elements: filtered };
             onEvent({ type: "log", message: `collect ${step.target}: ${filtered.length} element(s)` });
             break;
@@ -202,6 +221,11 @@ const COLLECT_SCRIPT = `(() => {
   for (const el of nodes) {
     const rect = el.getBoundingClientRect();
     const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 120);
+    const attrs = {};
+    for (const a of Array.from(el.attributes)) {
+      attrs[a.name] = (a.value || '').slice(0, 200);
+    }
+    const cs = window.getComputedStyle(el);
     out.push({
       text,
       tagName: classify(el),
@@ -211,7 +235,75 @@ const COLLECT_SCRIPT = `(() => {
       visible: rect.width > 0 && rect.height > 0,
       aboveFold: rect.top < window.innerHeight,
       rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
+      attributes: attrs,
+      computedStyles: {
+        color: cs.color,
+        backgroundColor: cs.backgroundColor,
+        fontSize: cs.fontSize,
+        fontWeight: cs.fontWeight,
+        padding: cs.padding,
+        borderRadius: cs.borderRadius,
+        border: cs.border,
+        cursor: cs.cursor,
+        display: cs.display,
+      },
     });
   }
   return out;
 })()`;
+
+// Injected into the live Browserbase page to draw highlight rectangles over collected elements.
+// Written as a real function so we can stringify + call with arguments via page.evaluate.
+function OVERLAY_FN(selectors: string[]) {
+  const OVERLAY_ID = "__lovable_collect_overlay__";
+  const existing = document.getElementById(OVERLAY_ID);
+  if (existing) existing.remove();
+
+  const wrap = document.createElement("div");
+  wrap.id = OVERLAY_ID;
+  wrap.style.cssText =
+    "position:absolute;top:0;left:0;width:0;height:0;pointer-events:none;z-index:2147483647;";
+  document.body.appendChild(wrap);
+
+  selectors.forEach((sel, i) => {
+    let el: Element | null = null;
+    try { el = document.querySelector(sel); } catch { el = null; }
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return;
+
+    const box = document.createElement("div");
+    box.style.cssText = [
+      "position:absolute",
+      `top:${Math.round(r.top + window.scrollY)}px`,
+      `left:${Math.round(r.left + window.scrollX)}px`,
+      `width:${Math.round(r.width)}px`,
+      `height:${Math.round(r.height)}px`,
+      "outline:2px solid #22d3ee",
+      "background:rgba(34,211,238,0.08)",
+      "box-sizing:border-box",
+      "pointer-events:none",
+    ].join(";");
+
+    const badge = document.createElement("div");
+    badge.textContent = String(i + 1);
+    badge.style.cssText = [
+      "position:absolute",
+      "top:-10px",
+      "left:-10px",
+      "min-width:20px",
+      "height:20px",
+      "padding:0 6px",
+      "border-radius:10px",
+      "background:#0891b2",
+      "color:#fff",
+      "font:bold 11px system-ui,sans-serif",
+      "line-height:20px",
+      "text-align:center",
+      "box-shadow:0 1px 3px rgba(0,0,0,0.3)",
+    ].join(";");
+
+    box.appendChild(badge);
+    wrap.appendChild(box);
+  });
+}
