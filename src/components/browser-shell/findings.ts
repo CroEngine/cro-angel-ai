@@ -1,4 +1,5 @@
 import type { StreamEvent } from "./hooks/useTestStream";
+import type { CollectData, PageAuditData } from "@/lib/tests/schema";
 
 export type FindingCategory = "seo" | "cro" | "ux" | "interaction";
 
@@ -16,178 +17,13 @@ export interface PageReport {
   rawCollect?: unknown;
 }
 
-type ElementCategory =
-  | "cta_primary"
-  | "cta_secondary"
-  | "form_submit"
-  | "icon_button"
-  | "nav_item"
-  | "link"
-  | "other";
-
-type SectionKind = "nav" | "header" | "hero" | "cards" | "content" | "footer";
-
-interface PageSectionLike {
-  id?: string;
-  type?: string;
-  kind?: string;
-  position?: number;
-  heading?: string;
-  subheading?: string;
-  aboveFold?: boolean;
-  heightPx?: number;
-  visualWeight?: number;
-  elementCount?: number;
-  childCount?: number;
-  repeatedChildren?: number;
-  headingText?: string;
-  containsPrimaryCTA?: boolean;
-  containsTrustSignals?: boolean;
-  containsForm?: boolean;
-  containsPricing?: boolean;
-  containsNavigation?: boolean;
-  selector?: string;
-}
-
-interface TrustSignalLike {
-  type: string;
-  text: string;
-  section: string;
-  aboveFold: boolean;
-  selector: string;
-  rating?: number;
-  reviewCount?: number;
-  reviewSource?: string;
-  logoCount?: number;
-  recognizedBrands?: string[];
-  personName?: string;
-  company?: string;
-}
-
-interface CTALike {
-  text: string;
-  intent: string;
-  category: string;
-  section: string;
-  aboveFold: boolean;
-  competingActions: number;
-  nearestTrustSignalDistance: number;
-  nearestFormDistance: number;
-}
-
-interface FormLike {
-  section: string;
-  aboveFold: boolean;
-  fieldCount: number;
-  requiredFields: number;
-  containsEmail: boolean;
-  containsPhone: boolean;
-  containsCompany: boolean;
-  containsPassword: boolean;
-  containsCreditCard: boolean;
-  multiStep: boolean;
-  submitText: string;
-}
-
-interface NavigationLike {
-  topNavCount: number;
-  footerNavCount: number;
-  loginPresent: boolean;
-  pricingPresent: boolean;
-  contactPresent: boolean;
-  blogPresent: boolean;
-  docsPresent: boolean;
-}
-
-interface VisualHierarchyLike {
-  selector: string;
-  text: string;
-  role: string;
-  visualWeight: number;
-  section: string;
-  aboveFold: boolean;
-}
-
-interface PageSummaryLike {
-  primaryCtaCount: number;
-  secondaryCtaCount: number;
-  aboveFoldCtaCount: number;
-  aboveFoldTrustCount: number;
-  trustSignalCount: number;
-  testimonialCount: number;
-  logoCount: number;
-  reviewCount: number;
-  averageRating: number;
-  formCount: number;
-  navigationLinks: number;
-  sectionCount: number;
-}
-
-interface PageAuditLike {
-  url: string;
-  head: {
-    title: string;
-    description: string;
-    canonical: string;
-    lang: string;
-    ogImage: string;
-    ogTitle: string;
-    twitterCard: string;
-  };
-  headings: { h1Count: number; h2Count: number; h3Count: number };
-  images: { total: number; missingAlt: number; missingAltPct: number };
-  links: { internal: number; external: number; total: number };
-  schema: { count: number; types: string[] };
-  content: { wordCount: number; sections: number };
-  robotsTxt: { exists: boolean; hasSitemap: boolean };
-  sitemap: { exists: boolean; urlCount: number };
-  sections?: PageSectionLike[];
-  sectionOrder?: string[];
-  trustSignals?: TrustSignalLike[];
-  trustSummary?: {
-    total: number;
-    aboveFold: number;
-    byType: Record<string, number>;
-  };
-  ctas?: CTALike[];
-  forms?: FormLike[];
-  navigation?: NavigationLike;
-  visualHierarchy?: VisualHierarchyLike[];
-  pageSummary?: PageSummaryLike;
-  hero?: {
-    headline: string;
-    subheadline: string;
-    primaryCtaText: string;
-    primaryCtaIntent: string;
-    sectionId: string;
-    aboveFold: boolean;
-  };
-  flags: string[];
-}
-
-interface CollectLike {
-  target: string;
-  count: number;
-  byCategory?: Partial<Record<ElementCategory, number>>;
-  summary?: {
-    total: number;
-    aboveFold: number;
-    primaryCtaCount: number;
-    competingAboveFold: number;
-    topVisualWeight: Array<{ selector: string; text: string; score: number }>;
-    bySection?: Partial<Record<SectionKind, number>>;
-    groups?: Array<{ label: string; count: number; section: SectionKind; intent: string }>;
-  };
-  elements: Array<{ visible: boolean; aboveFold: boolean }>;
-}
-
-function isPageAudit(v: unknown): v is PageAuditLike {
+function isPageAudit(v: unknown): v is PageAuditData {
   if (!v || typeof v !== "object") return false;
   const o = v as Record<string, unknown>;
   return typeof o.url === "string" && !!o.head && !!o.headings && Array.isArray(o.flags);
 }
 
-function isCollect(v: unknown): v is CollectLike {
+function isCollect(v: unknown): v is CollectData {
   if (!v || typeof v !== "object") return false;
   const o = v as Record<string, unknown>;
   return typeof o.target === "string" && typeof o.count === "number" && Array.isArray(o.elements);
@@ -205,7 +41,7 @@ const f = (category: FindingCategory, label: string, detail?: string): Finding =
   detail,
 });
 
-function seoFindings(a: PageAuditLike): Finding[] {
+function seoFindings(a: PageAuditData): Finding[] {
   return [
     f("seo", "Title", a.head.title ? `"${a.head.title}" (${a.head.title.length} chars)` : "not set"),
     f("seo", "Meta description", a.head.description ? `${a.head.description.length} chars` : "not set"),
@@ -222,7 +58,7 @@ function seoFindings(a: PageAuditLike): Finding[] {
   ];
 }
 
-function croFindings(c: CollectLike): Finding[] {
+function croFindings(c: CollectData): Finding[] {
   const out: Finding[] = [];
   const s = c.summary;
   if (!s) return out;
@@ -244,7 +80,7 @@ function croFindings(c: CollectLike): Finding[] {
   return out;
 }
 
-function uxFindings(c: CollectLike): Finding[] {
+function uxFindings(c: CollectData): Finding[] {
   const out: Finding[] = [];
   const s = c.summary;
   if (s?.bySection) {
@@ -267,7 +103,7 @@ function uxFindings(c: CollectLike): Finding[] {
   return out;
 }
 
-function interactionFindings(c: CollectLike): Finding[] {
+function interactionFindings(c: CollectData): Finding[] {
   const out: Finding[] = [];
   out.push(f("interaction", `${c.count} ${c.target}`, "captured"));
   if (c.byCategory) {
@@ -285,7 +121,7 @@ function interactionFindings(c: CollectLike): Finding[] {
   return out;
 }
 
-function structureFindings(a: PageAuditLike): Finding[] {
+function structureFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const sections = a.sections ?? [];
   if (sections.length === 0) return out;
@@ -309,7 +145,7 @@ function structureFindings(a: PageAuditLike): Finding[] {
 
   for (const s of sections.slice(0, 12)) {
     const t = s.type || s.kind || "?";
-    const bits = [t];
+    const bits: string[] = [t];
     if (s.aboveFold) bits.push("above fold");
     if (s.heightPx) bits.push(`${s.heightPx}px`);
     if (s.containsPrimaryCTA) bits.push("CTA");
@@ -323,7 +159,7 @@ function structureFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function heroFindings(a: PageAuditLike): Finding[] {
+function heroFindings(a: PageAuditData): Finding[] {
   const h = a.hero;
   if (!h) return [];
   const out: Finding[] = [];
@@ -341,7 +177,7 @@ function heroFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function trustFindings(a: PageAuditLike): Finding[] {
+function trustFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const sum = a.trustSummary;
   const signals = a.trustSignals ?? [];
@@ -395,7 +231,7 @@ function trustFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function ctaFindings(a: PageAuditLike): Finding[] {
+function ctaFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const ctas = a.ctas ?? [];
   if (ctas.length === 0) return out;
@@ -421,7 +257,7 @@ function ctaFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function formFindings(a: PageAuditLike): Finding[] {
+function formFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const forms = a.forms ?? [];
   if (forms.length === 0) return out;
@@ -440,7 +276,7 @@ function formFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function navigationFindings(a: PageAuditLike): Finding[] {
+function navigationFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const n = a.navigation;
   if (!n) return out;
@@ -463,7 +299,7 @@ function navigationFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function hierarchyFindings(a: PageAuditLike): Finding[] {
+function hierarchyFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const hier = a.visualHierarchy ?? [];
   if (hier.length === 0) return out;
@@ -480,7 +316,7 @@ function hierarchyFindings(a: PageAuditLike): Finding[] {
   return out;
 }
 
-function pageSummaryFindings(a: PageAuditLike): Finding[] {
+function pageSummaryFindings(a: PageAuditData): Finding[] {
   const ps = a.pageSummary;
   if (!ps) return [];
   return [

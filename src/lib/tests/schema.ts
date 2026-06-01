@@ -1,0 +1,340 @@
+// Shared schema for the audit engine. Browser-safe — no server imports.
+// Single source of truth for both the engine and the UI.
+
+export type Step =
+  | { kind: "goto"; url: string }
+  | { kind: "wait"; ms: number }
+  | { kind: "assertText"; text: string }
+  | { kind: "click"; selector: string }
+  | { kind: "fill"; selector: string; value: string }
+  | { kind: "act"; instruction: string }
+  | { kind: "extract"; instruction: string }
+  | { kind: "observe"; instruction: string }
+  | { kind: "collect"; target: CollectTarget }
+  | { kind: "pageAudit" };
+
+export type CollectTarget = "clickables" | "buttons";
+
+export type Rect = { x: number; y: number; w: number; h: number };
+
+export type ElementCategory =
+  | "cta_primary"
+  | "cta_secondary"
+  | "form_submit"
+  | "icon_button"
+  | "nav_item"
+  | "link"
+  | "other";
+
+export type ViewportZone = "above_fold" | "mid_page" | "below_fold";
+
+export type ElementIntent =
+  | "conversion"
+  | "information"
+  | "navigation"
+  | "social"
+  | "utility"
+  | "engagement"
+  | "unknown";
+
+export type SectionKind =
+  | "nav"
+  | "header"
+  | "hero"
+  | "cards"
+  | "content"
+  | "footer";
+
+export type CollectedElement = {
+  text: string;
+  tagName: string;
+  selector: string;
+  category: ElementCategory;
+  intent: ElementIntent;
+  section: SectionKind;
+  href: string | null;
+  disabled: boolean;
+  visible: boolean;
+  aboveFold: boolean;
+  rect: Rect;
+  position: {
+    viewportZone: ViewportZone;
+    yPercent: number;
+    xPercent: number;
+  };
+  visualWeight: {
+    area: number;
+    fontSize: number;
+    fontWeight: number;
+    backgroundContrast: number;
+    score: number;
+  };
+  groupId?: string;
+  groupCount?: number;
+  groupedAway?: boolean;
+  attributes: Record<string, string>;
+  computedStyles: {
+    color: string;
+    backgroundColor: string;
+    fontSize: string;
+    fontWeight: string;
+    padding: string;
+    borderRadius: string;
+    border: string;
+    cursor: string;
+    display: string;
+  };
+};
+
+export type RepeatedGroup = {
+  label: string;
+  count: number;
+  category: ElementCategory;
+  intent: ElementIntent;
+  section: SectionKind;
+  exampleSelector: string;
+};
+
+export type SectionType =
+  | "nav"
+  | "header"
+  | "hero"
+  | "logos"
+  | "benefits"
+  | "features"
+  | "testimonials"
+  | "reviews"
+  | "pricing"
+  | "faq"
+  | "cta"
+  | "form"
+  | "cards"
+  | "content"
+  | "footer"
+  | "aside";
+
+export type PageSection = {
+  id: string;
+  type: SectionType;
+  kind: SectionType; // legacy alias for back-compat
+  position: number;
+  heading: string;
+  subheading: string;
+  selector: string;
+  rect: Rect;
+  aboveFold: boolean;
+  heightPx: number;
+  visualWeight: number; // 0–100 normalized
+  elementCount: number;
+  childCount: number;
+  repeatedChildren: number;
+  headingText: string; // alias of heading
+  containsPrimaryCTA: boolean;
+  containsTrustSignals: boolean;
+  containsForm: boolean;
+  containsPricing: boolean;
+  containsNavigation: boolean;
+};
+
+export type HeroContent = {
+  headline: string;
+  subheadline: string;
+  primaryCtaText: string;
+  primaryCtaIntent: string;
+  sectionId: string;
+  aboveFold: boolean;
+};
+
+export type TrustSignalType =
+  | "testimonial"
+  | "review_rating"
+  | "stars"
+  | "trusted_by"
+  | "customer_logos"
+  | "certification"
+  | "guarantee"
+  | "secure_payment"
+  | "contact_info"
+  | "org_number"
+  | "press_mention"
+  | "social_proof_count";
+
+export type TrustSignal = {
+  type: TrustSignalType;
+  text: string;
+  section: SectionKind;
+  aboveFold: boolean;
+  selector: string;
+  visualWeight: number;
+  source: "text" | "attr" | "schema" | "img_alt";
+  rect?: Rect;
+  personName?: string;
+  company?: string;
+  hasImage?: boolean;
+  rating?: number;
+  reviewCount?: number;
+  reviewSource?: string;
+  logoCount?: number;
+  recognizedBrands?: string[];
+};
+
+export type CTAEntity = {
+  text: string;
+  intent: ElementIntent;
+  category: ElementCategory;
+  section: SectionKind;
+  aboveFold: boolean;
+  visualWeight: number;
+  competingActions: number;
+  nearestTrustSignalDistance: number;
+  nearestFormDistance: number;
+  selector: string;
+  rect: Rect;
+};
+
+export type FormField = {
+  name: string;
+  type: string;
+  required: boolean;
+  label: string;
+};
+
+export type FormEntity = {
+  section: SectionKind;
+  aboveFold: boolean;
+  selector: string;
+  fieldCount: number;
+  requiredFields: number;
+  containsEmail: boolean;
+  containsPhone: boolean;
+  containsCompany: boolean;
+  containsPassword: boolean;
+  containsCreditCard: boolean;
+  multiStep: boolean;
+  submitText: string;
+  fields: FormField[];
+  rect: Rect;
+};
+
+export type NavigationData = {
+  topNavCount: number;
+  footerNavCount: number;
+  topNavLinks: string[];
+  footerNavLinks: string[];
+  loginPresent: boolean;
+  signupPresent: boolean;
+  pricingPresent: boolean;
+  contactPresent: boolean;
+  blogPresent: boolean;
+  docsPresent: boolean;
+  languageSwitcherPresent: boolean;
+  cartPresent: boolean;
+};
+
+export type VisualHierarchyEntry = {
+  selector: string;
+  text: string;
+  role: string;
+  visualWeight: number;
+  area: number;
+  fontSize: number;
+  fontWeight: number;
+  contrast: number;
+  position: { xPct: number; yPct: number };
+  aboveFold: boolean;
+  section: SectionKind;
+};
+
+export type PageSummary = {
+  primaryCtaCount: number;
+  secondaryCtaCount: number;
+  aboveFoldCtaCount: number;
+  aboveFoldTrustCount: number;
+  trustSignalCount: number;
+  testimonialCount: number;
+  logoCount: number;
+  reviewCount: number;
+  averageRating: number;
+  formCount: number;
+  navigationLinks: number;
+  sectionCount: number;
+  pageHeightPx: number;
+  foldHeightPx: number;
+};
+
+export type TrustSummary = {
+  total: number;
+  aboveFold: number;
+  byType: Record<string, number>;
+};
+
+export type PageAuditData = {
+  url: string;
+  head: {
+    title: string;
+    description: string;
+    canonical: string;
+    lang: string;
+    viewport: string;
+    robots: string;
+    ogTitle: string;
+    ogDescription: string;
+    ogImage: string;
+    ogType: string;
+    ogUrl: string;
+    twitterCard: string;
+    twitterTitle: string;
+    twitterImage: string;
+  };
+  headings: {
+    h1Count: number;
+    h2Count: number;
+    h3Count: number;
+    hierarchy: Array<{ level: number; text: string; id: string }>;
+  };
+  images: { total: number; missingAlt: number; missingAltPct: number; missingDims: number; lazy: number };
+  links: { internal: number; external: number; nofollow: number; total: number };
+  schema: { count: number; types: string[] };
+  content: { wordCount: number; sections: number; articles: number };
+  robotsTxt: { exists: boolean; blocksAll: boolean; hasSitemap: boolean };
+  sitemap: { exists: boolean; urlCount: number };
+  sections: PageSection[];
+  sectionOrder: SectionType[];
+  trustSignals: TrustSignal[];
+  trustSummary: TrustSummary;
+  ctas: CTAEntity[];
+  forms: FormEntity[];
+  navigation: NavigationData;
+  visualHierarchy: VisualHierarchyEntry[];
+  pageSummary: PageSummary;
+  hero?: HeroContent;
+  flags: string[];
+};
+
+export type CollectSummary = {
+  total: number;
+  aboveFold: number;
+  primaryCtaCount: number;
+  competingAboveFold: number;
+  topVisualWeight: Array<{ selector: string; text: string; score: number }>;
+  intentBreakdown: Partial<Record<ElementIntent, number>>;
+  bySection?: Partial<Record<SectionKind, number>>;
+  groups?: RepeatedGroup[];
+};
+
+export type CollectData = {
+  target: CollectTarget;
+  count: number;
+  totalCount?: number;
+  byCategory?: Partial<Record<ElementCategory, number>>;
+  summary?: CollectSummary;
+  elements: CollectedElement[];
+  overlayElements?: Array<{ selector: string; category: ElementCategory; rect: Rect }>;
+  screenshot?: { dataUrl: string; viewport: { w: number; h: number } };
+};
+
+export type EngineEvent =
+  | { type: "step_started"; index: number; kind: Step["kind"]; summary: string }
+  | { type: "step_passed"; index: number; kind: Step["kind"]; summary: string; durationMs: number; data?: unknown }
+  | { type: "step_failed"; index: number; kind: Step["kind"]; summary: string; durationMs: number; error: string }
+  | { type: "log"; message: string };
