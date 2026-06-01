@@ -505,6 +505,60 @@ function filterCollected(all: CollectedElement[], target: CollectTarget): Collec
 }
 
 
+export type RepeatedGroup = {
+  label: string;
+  count: number;
+  category: ElementCategory;
+  intent: ElementIntent;
+  section: SectionKind;
+  exampleSelector: string;
+};
+
+// Detect repeated controls (vote/save/share rows in feed cards, "Read more"
+// links repeating per article, etc.) and mark all but the first occurrence
+// as groupedAway so aggregates aren't dominated by them. Mutates `elements`.
+function groupRepeatedControls(elements: CollectedElement[]): RepeatedGroup[] {
+  const buckets = new Map<string, CollectedElement[]>();
+  for (const el of elements) {
+    const label = (el.text || el.attributes["aria-label"] || el.attributes["title"] || "").trim().toLowerCase();
+    if (!label) continue; // skip text-less elements (icon-only repeats often differ by attrs)
+    if (label.length > 60) continue; // long labels are unique enough
+    // Size bucket: nearest 10px to allow minor jitter.
+    const wB = Math.round(el.rect.w / 10) * 10;
+    const hB = Math.round(el.rect.h / 10) * 10;
+    const key = `${el.category}|${el.intent}|${label}|${wB}x${hB}`;
+    const arr = buckets.get(key) ?? [];
+    arr.push(el);
+    buckets.set(key, arr);
+  }
+
+  const groups: RepeatedGroup[] = [];
+  for (const [key, arr] of buckets) {
+    if (arr.length < 3) continue;
+    const groupId = `g_${groups.length + 1}`;
+    arr.forEach((el, i) => {
+      el.groupId = groupId;
+      el.groupCount = arr.length;
+      if (i > 0) el.groupedAway = true;
+    });
+    const head = arr[0];
+    groups.push({
+      label: (head.text || head.attributes["aria-label"] || head.attributes["title"] || "(no label)").trim(),
+      count: arr.length,
+      category: head.category,
+      intent: head.intent,
+      section: head.section,
+      exampleSelector: head.selector,
+    });
+    void key;
+  }
+  groups.sort((a, b) => b.count - a.count);
+  return groups;
+}
+
+
+
+
 // Runs in the browser via page.evaluate — must be self-contained string.
 const COLLECT_SCRIPT = `(() => {
   const SEMANTIC_SEL =
