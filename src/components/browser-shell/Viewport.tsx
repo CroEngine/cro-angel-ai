@@ -89,14 +89,10 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
   const { screenshotUrl, viewport, overlayElements } = frozen;
 
   return (
-    <div className="relative flex h-full w-full flex-1 items-center justify-center overflow-hidden bg-muted/20">
+    <div className="relative flex-1 overflow-y-auto overflow-x-hidden bg-muted/20">
       <div
-        className="relative max-h-full max-w-full"
-        style={{
-          aspectRatio: `${viewport.w} / ${viewport.h}`,
-          width: "100%",
-          height: "auto",
-        }}
+        className="relative w-full"
+        style={{ aspectRatio: `${viewport.w} / ${viewport.h}` }}
       >
         <img
           src={screenshotUrl}
@@ -133,13 +129,13 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
           })}
       </div>
 
-      <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-md bg-sky-500/15 px-2 py-1 text-xs font-medium text-sky-600 dark:text-sky-400">
+      <div className="pointer-events-none sticky top-3 z-10 ml-3 inline-flex w-fit items-center gap-1.5 rounded-md bg-sky-500/15 px-2 py-1 text-xs font-medium text-sky-600 dark:text-sky-400" style={{ marginTop: -"0".length }}>
         <Snowflake className="h-3 w-3" />
         Frozen · Browserbase off
       </div>
 
       {onResume && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center opacity-0 transition-opacity hover:opacity-100">
+        <div className="pointer-events-none sticky bottom-3 z-10 flex justify-center opacity-0 transition-opacity hover:opacity-100">
           <Button size="sm" onClick={onResume} className="pointer-events-auto gap-1.5 shadow-lg">
             <RotateCw className="h-3.5 w-3.5" />
             Resume session
