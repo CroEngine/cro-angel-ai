@@ -52,8 +52,8 @@ export const spikeStagehand = createServerFn({ method: "POST" }).handler(
         browserbaseSessionID: session.id,
       });
       await stagehand.init();
-      await stagehand.page.goto("https://glutenforum.se", { waitUntil: "load", timeout: 30_000 });
-      const title = await stagehand.page.title();
+      const page = await stagehand.context.newPage("https://glutenforum.se");
+      const title = await page.title();
       await stagehand.close().catch(() => {});
       return { ok: true, durationMs: Date.now() - t0, title };
     } catch (err) {
