@@ -197,7 +197,7 @@ function CategorySection({
             <ChevronDown
               className={cn("h-3.5 w-3.5 transition-transform", winsOpen ? "rotate-0" : "-rotate-90")}
             />
-            {wins.length} passed check{wins.length === 1 ? "" : "s"}
+            {wins.length} passed
           </button>
           {winsOpen && (
             <ul className="mt-2 space-y-1 pl-5">

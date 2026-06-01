@@ -39,7 +39,8 @@ interface Rule {
   category: Category;
   severity: Severity;
   weight?: number; // defaults to SEVERITY_WEIGHT[severity]
-  title: string;
+  title: string;      // shown when the rule triggers (issue)
+  passTitle: string;  // shown when the rule passes (win)
   evaluate: (audit: PageAuditData) => null | { evidence: string };
 }
 
@@ -49,6 +50,7 @@ const SEO_RULES: Rule[] = [
     category: "seo",
     severity: "high",
     title: "Page title missing",
+    passTitle: "Page title set",
     evaluate: (a) => (a.head.title.trim() === "" ? { evidence: "<title> is empty" } : null),
   },
   {
@@ -56,6 +58,7 @@ const SEO_RULES: Rule[] = [
     category: "seo",
     severity: "medium",
     title: "Meta description missing",
+    passTitle: "Meta description set",
     evaluate: (a) =>
       a.head.description.trim() === "" ? { evidence: 'meta[name="description"] is empty' } : null,
   },
@@ -64,6 +67,7 @@ const SEO_RULES: Rule[] = [
     category: "seo",
     severity: "medium",
     title: "Page should have exactly one H1",
+    passTitle: "Exactly one H1 present",
     evaluate: (a) =>
       a.headings.h1Count !== 1 ? { evidence: `h1Count = ${a.headings.h1Count}` } : null,
   },
@@ -75,6 +79,7 @@ const CRO_RULES: Rule[] = [
     category: "cro",
     severity: "high",
     title: "No primary CTA detected",
+    passTitle: "Primary CTA detected",
     evaluate: (a) =>
       a.pageSummary.primaryCtaCount === 0 ? { evidence: "primaryCtaCount = 0" } : null,
   },
@@ -83,6 +88,7 @@ const CRO_RULES: Rule[] = [
     category: "cro",
     severity: "high",
     title: "Hero headline missing",
+    passTitle: "Hero headline present",
     evaluate: (a) => {
       if (!a.hero) return { evidence: "no hero section detected" };
       if (a.hero.headline.trim() === "") return { evidence: "hero headline is empty" };
@@ -94,6 +100,7 @@ const CRO_RULES: Rule[] = [
     category: "cro",
     severity: "medium",
     title: "Too many competing actions above the fold",
+    passTitle: "CTA competition within limits",
     evaluate: (a) => {
       const n = (a.pageSummary as { competingAboveFold?: number }).competingAboveFold ?? 0;
       return n > 3 ? { evidence: `${n} competing actions above fold` } : null;
@@ -107,6 +114,7 @@ const UX_RULES: Rule[] = [
     category: "ux",
     severity: "high",
     title: "Hidden interactive elements detected",
+    passTitle: "No hidden interactive elements",
     evaluate: (a) => {
       const n = (a.pageSummary as { hiddenInteractive?: number }).hiddenInteractive;
       if (typeof n !== "number") return null; // field unavailable → skip
@@ -118,6 +126,7 @@ const UX_RULES: Rule[] = [
     category: "ux",
     severity: "medium",
     title: "Fold occupies a small share of the page",
+    passTitle: "Fold/page ratio within threshold",
     evaluate: (a) => {
       const { foldHeightPx, pageHeightPx } = a.pageSummary;
       if (!pageHeightPx || !foldHeightPx) return null;
@@ -135,6 +144,7 @@ const TRUST_RULES: Rule[] = [
     category: "trust",
     severity: "high",
     title: "No trust signals on the page",
+    passTitle: "Trust signals present",
     evaluate: (a) =>
       a.trustSummary.total === 0 ? { evidence: "trustSummary.total = 0" } : null,
   },
@@ -143,12 +153,14 @@ const TRUST_RULES: Rule[] = [
     category: "trust",
     severity: "medium",
     title: "No trust signals above the fold",
+    passTitle: "Trust signals above the fold",
     evaluate: (a) =>
       a.trustSummary.total > 0 && a.trustSummary.aboveFold === 0
         ? { evidence: `${a.trustSummary.total} trust signals, 0 above fold` }
         : null,
   },
 ];
+
 
 const ALL_RULES: Rule[] = [...SEO_RULES, ...CRO_RULES, ...UX_RULES, ...TRUST_RULES];
 
@@ -190,7 +202,7 @@ function interpretOne(report: PageReport): PageInterpretation | null {
   for (const rule of ALL_RULES) {
     const result = rule.evaluate(audit);
     if (result === null) {
-      wins.push({ ruleId: rule.id, category: rule.category, title: rule.title });
+      wins.push({ ruleId: rule.id, category: rule.category, title: rule.passTitle });
     } else {
       findings.push({
         ruleId: rule.id,
