@@ -1,80 +1,33 @@
+## Fix: live-iframen droppar efter sidladdning
 
-## Slice 2.1 — Session + Live View + SSE
+### Problem
+Sessionen stängs så fort `Page.loadEventFired` fyrar → live-vyn visar "WebSocket disconnected". Watchdog (15s) skulle stänga den ändå strax efter.
 
-Bygg endast Slice 2.1. Implementera **inte** inventory, Tests-tabell, passive checks, safe clicks, screenshots, scoring, AI-analys eller persistens ännu. Målet är bara att bevisa Browserbase session-lifecycle + live iframe + SSE + stop/close end-to-end.
+### Ändringar
 
-### Flöde
+**`src/lib/tests/run.functions.ts`**
+- Efter lyckad `navigateViaCDP`: ta bort `terminate(runId, "done", ...)`.
+- Ersätt med `emit(runId, "log", { level: "info", message: "navigation complete — session idle, click Stop to end" })`.
+- Felväg (`error`) och abort-väg oförändrade.
 
-```text
-Click "Run tests"
-  → POST /api/tests/start { url }
-      → createSession (synkront tillräckligt för att returnera liveUrl)
-      → respond { runId, liveUrl }       ← returneras DIREKT
-      → async i bakgrunden:
-           emit('session_started', { runId, liveUrl, sessionId })
-           page.goto(url)  // får ta tid, loggas via SSE
-           emit('log', ...)
-  → Frontend byter Viewport-iframe till liveUrl direkt
-  → ConsolePanel prenumererar på /api/tests/:runId/stream
+**`src/lib/tests/orchestrator.server.ts`**
+- Höj `HARD_TIMEOUT_MS` från 60_000 → 300_000 (5 min).
+- Ta bort `WATCHDOG_MS` och hela watchdog-`tick`-loopen i `createRun`.
+- `terminate()` rör inte längre `watchdog`-timern (finns inte).
 
-Click "Stop"  → POST /api/tests/:runId/stop → abort + closeSession
-Timeout 60s   → abort + closeSession
-Watchdog 15s  → abort + closeSession
-finally       → closeSession körs ALLTID
-```
+**`src/components/browser-shell/UrlBar.tsx`**
+- Lägg till `"idle-loaded"` läge i `RunState`-pill (eller återanvänd `running` med dynamisk label). Enklast: skicka in en `idleAfterLoad`-flagga från `BrowserShell` baserad på om vi sett `navigation complete`-log, och visa label `"idle"` istället för `"running"`.
 
-### Run-states (tydliga, inga otydliga lägen)
+**`src/components/browser-shell/BrowserShell.tsx`**
+- Detektera `log`-event med `message === "navigation complete — session idle, click Stop to end"` → uppdatera en lokal `idleAfterLoad`-state → skickas vidare till `UrlBar`.
+- Stop-knappen visas fortfarande (isActive = true).
 
-| Utfall | SSE-events |
-|---|---|
-| Success | `session_started` → `log*` → **`done`** `{ aborted: false }` |
-| Failure | `session_started?` → `log*` → **`error`** `{ message }` (terminal) |
-| Abort (stop / watchdog / timeout) | `log*` → **`done`** `{ aborted: true }` |
+### Verifiering
+1. Run på en sajt → iframen laddar och **stannar uppe**.
+2. Pill: `connecting` → `running` → `idle` efter load.
+3. Stop → `done · aborted`, session försvinner i Browserbase-dashboarden.
+4. 5 min utan input → hard timeout fyrar `done · hard_timeout`.
+5. Ogiltig URL → `error` röd pill.
 
-Frontend behandlar både `done` och `error` som terminala — UI kan aldrig fastna i `running` om SSE stängs.
-
-### Frontend-states
-
-`runState: 'idle' | 'connecting' | 'running' | 'done' | 'error'`
-
-- `connecting`: efter klick, innan `{ runId, liveUrl }` returneras.
-- `running`: efter respons + SSE öppen, fram till `done`/`error`.
-- `done`: pill visar `done` eller `done · aborted`.
-- `error`: pill visar `error` (röd) + meddelande från event.
-
-### Filer
-
-**Frontend** (`src/components/browser-shell/`)
-- `UrlBar.tsx` — **Run tests** (play) + **Stop** (square, syns under run). Status-pill.
-- `Viewport.tsx` — visar `liveUrl` när run aktiv, annars default-iframe.
-- `ConsolePanel.tsx` — byter seed mot `useTestStream(runId)`.
-- `BrowserShell.tsx` — håller `runState`, `runId`, `liveUrl`, startar/stoppar.
-- `hooks/useTestStream.ts` — `EventSource` wrapper; behandlar `done` och `error` som terminala, stänger streamen.
-
-**Backend** (allt utanför `src/server/`)
-- `src/lib/tests/browserbase.server.ts` — `createSession()`, `connect()`, `closeSession()` via `@browserbasehq/sdk` + `playwright-core`.
-- `src/lib/tests/orchestrator.server.ts` — `Map<runId, EventBus>` (in-memory), `AbortController` per run, watchdog (15s) + hård timeout (60s), `try/finally` runt allt så `closeSession` alltid körs.
-- `src/lib/tests/run.functions.ts` — `startTestRun({ url })`: skapar session synkront, returnerar `{ runId, liveUrl }`, kickar igång `page.goto` async.
-- `src/routes/api/tests/$runId.stream.ts` — SSE-server-route, headers korrekta för EventSource, skickar `event:` + `data:` per emit.
-- `src/routes/api/tests/$runId.stop.ts` — POST → orchestrator.abort(runId).
-
-### Events i 2.1
-
-Endast: `session_started`, `log`, `done`, `error`. Inga `inventory`, `element_found`, `test_result`, `screenshot` än.
-
-### Secrets (begärs direkt när build startar)
-
-- `BROWSERBASE_API_KEY`
-- `BROWSERBASE_PROJECT_ID`
-
-### Packages
-
-`@browserbasehq/sdk`, `playwright-core`.
-
-### Verifiering innan vi stänger sliceen
-
-1. Klicka Run tests → liveUrl syns i iframen inom någon sekund, även om sajten är långsam.
-2. Console-fliken visar `session_started` + minst en `log` + `done` när allt går bra.
-3. Stop mitt i run → SSE skickar `done { aborted: true }`, session stängs (verifieras i Browserbase-dashboarden).
-4. Stäng fliken mitt i run → watchdog stänger session inom 15s.
-5. Felaktig URL → `error`-event terminerar streamen, pill blir röd.
+### Utanför scope
+Inventory, scans, screenshots, persistens. Fortfarande bara Slice 2.1.
