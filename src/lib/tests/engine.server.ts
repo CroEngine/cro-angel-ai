@@ -74,6 +74,11 @@ export async function runSteps(
     apiKey,
     projectId,
     browserbaseSessionID: sessionId,
+    // keepAlive: stagehand.close() should disconnect Stagehand only,
+    // not terminate the Browserbase session — the session lives on so the
+    // live iframe can keep showing the collect overlay until closeSession()
+    // in the orchestrator's terminate() callback runs.
+    keepAlive: true,
   });
 
   let passed = 0;
