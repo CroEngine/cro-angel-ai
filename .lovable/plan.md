@@ -1,33 +1,16 @@
-## Förslag: dela skärmen i två kolumner
+Jag föreslår en liten men mer robust ändring i sessionslivscykeln:
 
-Just nu ligger `Viewport` (live-iframen) ovanför `ConsolePanel` i en vertikal stack. Det betyder att man måste scrolla — och när konsolen fylls av events trycks sidan undan. Att lägga dem sida vid sida löser båda problemen och låter dig se vad som händer i sidan samtidigt som loggen rullar.
+1. Ändra Stagehand-städningen i `engine.server.ts`
+   - Sluta anropa `stagehand.close()` efter en lyckad körning.
+   - Låt Stagehand-objektet lämnas ifred under hold-fönstret så live-vyn inte får en CDP/WebSocket-disconnect.
+   - Behåll en kontrollerad cleanup endast om `stagehand.init()` eller själva körningen kraschar innan sessionen går in i hold-läge.
 
-### Ny layout
+2. Behåll Browserbase-sessionens enda riktiga avslut i orchestratorn
+   - `closeSession(sessionId)` ska fortsatt bara köras via `terminate()` i `run.functions.ts` / `orchestrator.server.ts`.
+   - Close-knappen, fel, timeout och 60s hold avslutar sessionen därifrån.
 
-```text
-┌─────────────────────────────────────────────┐
-│ TabStrip                                    │
-├─────────────────────────────────────────────┤
-│ UrlBar                                      │
-├──────────────────────┬──────────────────────┤
-│                      │                      │
-│      Viewport        │     ConsolePanel     │
-│      (live iframe)   │     (events)         │
-│                      │                      │
-└──────────────────────┴──────────────────────┘
-```
+3. Lägg till tydligare intern loggning
+   - Logga när Stagehand-cleanup hoppas över för att hålla live-vyn aktiv.
+   - Logga när sessionen faktiskt avslutas via orchestratorn.
 
-### Ändringar
-
-- `src/components/browser-shell/BrowserShell.tsx`
-  - Wrappa `<Viewport />` och `<ConsolePanel />` i en `flex-1 flex min-h-0` container med två `flex-1` barn och en tunn skiljare emellan.
-  - Default 50/50. Konsolen får `overflow` internt så events inte trycker layouten.
-- `src/components/browser-shell/Viewport.tsx` och `ConsolePanel.tsx`
-  - Säkerställ att rooten är `h-full w-full` så de fyller sin halva (inte fasta höjder).
-
-### Valfritt (kan vänta)
-
-- Dra-bar skiljare för att justera bredden.
-- På smala viewports (<900px) faller layouten tillbaka till vertikal stack via `lg:flex-row`.
-
-Vill du att jag kör med 50/50 fast split, eller lägger in en dragbar skiljare direkt?
+Tekniskt blir detta fallback-steget vi pratade om: `keepAlive: true` räckte inte helt, så nästa rimliga fix är att inte koppla ner Stagehand-CDP alls efter lyckad run. Det bör minska risken för `debugging connection was closed` medan live-vyn fortfarande ska kunna avslutas korrekt via `closeSession(sessionId)`.
