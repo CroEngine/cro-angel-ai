@@ -94,6 +94,92 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     articles: document.querySelectorAll('article').length,
   };
 
+  // --- indexability ---
+  const robotsContent = (meta('robots') || '').toLowerCase();
+  const canonicalUrl = canonicalEl ? (canonicalEl.getAttribute('href') || '') : '';
+  function normalizeUrl(u) {
+    try {
+      const parsed = new URL(u, location.href);
+      let p = parsed.pathname.replace(/\\/+$/, '') || '/';
+      return parsed.origin + p;
+    } catch (e) { return ''; }
+  }
+  const canonicalNorm = canonicalUrl ? normalizeUrl(canonicalUrl) : '';
+  const selfNorm = normalizeUrl(location.href);
+  const indexability = {
+    indexable: true, // recomputed server-side after robotsTxt is fetched
+    noindex: /\\bnoindex\\b/.test(robotsContent),
+    nofollow: /\\bnofollow\\b/.test(robotsContent),
+    canonicalUrl: canonicalUrl || null,
+    canonicalMatchesSelf: canonicalNorm !== '' && canonicalNorm === selfNorm,
+    canonicalIsAbsolute: /^https?:\\/\\//i.test(canonicalUrl),
+    robotsTxtAllows: true, // set server-side
+  };
+
+  // --- contentMetrics ---
+  const paragraphCount = document.querySelectorAll('p').length;
+  const listCount = document.querySelectorAll('ul,ol').length;
+  const listItemCount = document.querySelectorAll('li').length;
+  const blockquoteCount = document.querySelectorAll('blockquote').length;
+  const detailsCount = document.querySelectorAll('details').length;
+  const headingsQuestionCount = hs.filter((h) => (h.textContent || '').trim().endsWith('?')).length;
+  let headingDepth = 0;
+  for (const h of hs) {
+    const lvl = parseInt(h.tagName.substring(1), 10);
+    if (lvl > headingDepth) headingDepth = lvl;
+  }
+  const contentMetrics = {
+    readingTimeMinutes: Math.max(1, Math.round(wordCount / 220)),
+    paragraphCount,
+    listCount,
+    listItemCount,
+    faqCount: detailsCount + headingsQuestionCount,
+    blockquoteCount,
+    headingDepth,
+  };
+
+  // --- performanceProxy ---
+  const viewportH = window.innerHeight || 720;
+  const domNodes = document.querySelectorAll('*').length;
+  let aboveFoldElements = 0;
+  const allEls = document.querySelectorAll('*');
+  for (let i = 0; i < allEls.length; i++) {
+    const r = allEls[i].getBoundingClientRect();
+    if (r.top < viewportH && r.bottom > 0 && r.width > 0 && r.height > 0) aboveFoldElements++;
+  }
+  let largestImagePx = 0;
+  let aboveFoldImageCount = 0;
+  let lazyLoadedImages = 0;
+  let eagerImagesAboveFold = 0;
+  for (const im of imgs) {
+    const nw = im.naturalWidth || 0;
+    const nh = im.naturalHeight || 0;
+    let area = nw * nh;
+    if (!area) {
+      const r = im.getBoundingClientRect();
+      area = Math.round(r.width * r.height);
+    }
+    if (area > largestImagePx) largestImagePx = area;
+    const loading = (im.getAttribute('loading') || '').toLowerCase();
+    if (loading === 'lazy') lazyLoadedImages++;
+    const r = im.getBoundingClientRect();
+    const isAF = r.top < viewportH && r.bottom > 0;
+    if (isAF) {
+      aboveFoldImageCount++;
+      if (loading !== 'lazy') eagerImagesAboveFold++;
+    }
+  }
+  const performanceProxy = {
+    domNodes,
+    aboveFoldElements,
+    aboveFoldImageCount,
+    largestImagePx,
+    lazyLoadedImages,
+    eagerImagesAboveFold,
+    stylesheetCount: document.querySelectorAll('link[rel="stylesheet"]').length,
+    scriptCount: document.querySelectorAll('script').length,
+  };
+
   return {
     url: location.href,
     head,
@@ -102,7 +188,11 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     links,
     schema,
     content,
+    indexability,
+    contentMetrics,
+    performanceProxy,
   };
 })()`;
+
 
 
