@@ -1,4 +1,5 @@
-import { Play, Snowflake } from "lucide-react";
+import { Play, RotateCw, Snowflake } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export type SessionState = "cold" | "live" | "frozen" | "error";
 
@@ -28,9 +29,10 @@ interface ViewportProps {
   sessionState: SessionState;
   liveUrl: string | null;
   frozen: FrozenSnapshot | null;
+  onResume?: () => void;
 }
 
-export function Viewport({ sessionState, liveUrl, frozen }: ViewportProps) {
+export function Viewport({ sessionState, liveUrl, frozen, onResume }: ViewportProps) {
   if (sessionState === "live" && liveUrl) {
     return (
       <div className="relative flex-1 overflow-hidden bg-muted/20">
@@ -47,7 +49,7 @@ export function Viewport({ sessionState, liveUrl, frozen }: ViewportProps) {
 
   if (sessionState === "frozen") {
     if (frozen) {
-      return <FrozenViewport frozen={frozen} />;
+      return <FrozenViewport frozen={frozen} onResume={onResume} />;
     }
     // Session ended but no snapshot was captured (e.g. collect failed).
     return (
@@ -56,6 +58,12 @@ export function Viewport({ sessionState, liveUrl, frozen }: ViewportProps) {
           <Snowflake className="h-5 w-5" />
         </div>
         <p className="text-sm">Session ended · no snapshot captured.</p>
+        {onResume && (
+          <Button size="sm" onClick={onResume} className="gap-1.5">
+            <RotateCw className="h-3.5 w-3.5" />
+            Resume session
+          </Button>
+        )}
       </div>
     );
   }
@@ -74,11 +82,12 @@ export function Viewport({ sessionState, liveUrl, frozen }: ViewportProps) {
 }
 
 
-function FrozenViewport({ frozen }: { frozen: FrozenSnapshot }) {
+function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume?: () => void }) {
   const { screenshotUrl, viewport, overlayElements } = frozen;
 
   return (
     <div className="relative flex-1 overflow-y-auto overflow-x-hidden bg-muted/20">
+
       <div
         className="relative w-full"
         style={{ aspectRatio: `${viewport.w} / ${viewport.h}` }}
@@ -117,6 +126,15 @@ function FrozenViewport({ frozen }: { frozen: FrozenSnapshot }) {
             );
           })}
       </div>
+
+      {onResume && (
+        <div className="pointer-events-none sticky bottom-3 z-20 mt-[-50px] flex justify-center opacity-0 transition-opacity hover:opacity-100">
+          <Button size="sm" onClick={onResume} className="pointer-events-auto gap-1.5 shadow-lg">
+            <RotateCw className="h-3.5 w-3.5" />
+            Resume session
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
