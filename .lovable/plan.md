@@ -1,15 +1,9 @@
+Nej, du ska inte behöva gå tillbaka till en gammal variation. Jag föreslår en minimal riktad fix i den frysta viewporten istället.
+
 Plan:
+1. Ta bort den responsiva nedskalningen som gör fullpage-bilden pytteliten i halva browserpanelen.
+2. Visa screenshoten i faktisk DOM-/screenshot-storlek som en scrollbar yta, så både vertikal och horisontell scroll fungerar när sidan är större än panelen.
+3. Låt overlay-markeringarna ligga i samma koordinatsystem som fullpage-screenshoten, så de fortsätter matcha elementen.
+4. Behåll `fullPage: true` och JPEG-dimensionsläsningen, eftersom problemet nu verkar sitta i presentationen, inte i själva screenshot-capturen.
 
-1. Gör screenshoten fullpage igen i `engine.server.ts`, men behåll korrekt metadata från själva JPEG-bilden så frozen-vyn vet exakt bildens bredd och höjd.
-
-2. Ändra frozen-vyn i `Viewport.tsx` så den inte pressar ner fullpage-bilden till panelens bredd på ett sätt som gör den mindre än Browserbase-vyn. Den ska visas i faktisk screenshot-bredd upp till tillgänglig yta, och panelen ska få scrollbar när bilden är högre än viewporten.
-
-3. Justera overlay-markeringarna så de använder samma fullpage-koordinater som screenshoten. Det innebär att collect-data ska använda dokumentposition (`docTop`/`docLeft`) för overlayn, inte bara viewport-relative `getBoundingClientRect()`.
-
-4. Behåll Browserbase-sessionens viewport oförändrad. Ingen ändring av Browserbase-sessionstorlek eller debugger/live-vy.
-
-Tekniskt:
-- `page.screenshot({ fullPage: true })` återinförs.
-- Frozen-containern blir `overflow-auto` med en bild-wrapper som har `width: viewport.w`, `height: viewport.h`, `maxWidth: 100%` och inte en låg aspect-ratio-box som krymper hela sidan.
-- Overlay-filter återgår till fullpage-bounds: `rect.y + rect.h > 0 && rect.y < viewport.h`.
-- `collect.ts` ändras för `rect.y = docTop` och `rect.x = docLeft`, så markeringar hamnar rätt även under första viewporten.
+Tekniskt ändras främst `src/components/browser-shell/Viewport.tsx`: `maxWidth: "100%"` och centrering tas bort/ersätts med en scroll-container som inte krymper innehållet. Om nödvändigt justerar jag även wrapperns `minWidth`/`width` så bilden alltid renderas i samma pixelstorlek som screenshotens metadata.

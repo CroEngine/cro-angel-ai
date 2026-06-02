@@ -86,13 +86,13 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
   const { screenshotUrl, viewport, overlayElements } = frozen;
 
   return (
-    <div className="relative flex-1 overflow-auto bg-muted/20 flex items-start justify-center">
+    <div className="relative flex-1 overflow-auto bg-muted/20">
       <div
-        className="relative"
+        className="relative shrink-0"
         style={{
           width: viewport.w,
           height: viewport.h,
-          maxWidth: "100%",
+          minWidth: viewport.w,
           aspectRatio: `${viewport.w} / ${viewport.h}`,
         }}
       >
@@ -132,7 +132,7 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
       </div>
 
       {onResume && (
-        <div className="pointer-events-none sticky bottom-3 z-20 mt-[-50px] flex justify-center opacity-0 transition-opacity hover:opacity-100">
+        <div className="pointer-events-none sticky bottom-3 left-0 z-20 mt-[-50px] flex w-full justify-center opacity-0 transition-opacity hover:opacity-100">
           <Button size="sm" onClick={onResume} className="pointer-events-auto gap-1.5 shadow-lg">
             <RotateCw className="h-3.5 w-3.5" />
             Resume session
