@@ -7,17 +7,42 @@ import {
   buildPageReports,
   type Finding,
   type FindingCategory,
+  type FindingGroup,
   type PageReport,
 } from "./findings";
 
 const CATEGORY_LABELS: Record<FindingCategory, string> = {
   seo: "SEO Analysis",
   cro: "Conversion (CRO)",
+  trust: "Trust",
   ux: "UX & Structure",
-  interaction: "Interactions",
 };
 
-const CATEGORY_ORDER: FindingCategory[] = ["seo", "cro", "ux", "interaction"];
+const CATEGORY_ORDER: FindingCategory[] = ["seo", "cro", "trust", "ux"];
+
+const GROUP_LABELS: Record<FindingGroup, string> = {
+  meta: "Meta",
+  structure: "Structure",
+  indexing: "Indexing",
+  links: "Links",
+  hero: "Hero",
+  ctas: "CTAs",
+  forms: "Forms",
+  summary: "Summary",
+  byType: "By type",
+  signals: "Signals",
+  navigation: "Navigation",
+  sections: "Sections",
+  hierarchy: "Visual hierarchy",
+  page: "Page summary",
+};
+
+const GROUP_ORDER: Record<FindingCategory, FindingGroup[]> = {
+  seo: ["meta", "structure", "indexing", "links"],
+  cro: ["hero", "ctas", "forms"],
+  trust: ["summary", "byType", "signals"],
+  ux: ["navigation", "sections", "hierarchy", "page"],
+};
 
 const ACCENT = "#3b82f6";
 
@@ -38,8 +63,7 @@ function hostnameOf(url: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Heuristics for classifying a finding into a card variant.
-// All purely presentational — finding data itself is unchanged.
+// Parsing
 // ---------------------------------------------------------------------------
 
 type Kind = "status" | "metric" | "quote" | "stats" | "text";
@@ -47,7 +71,7 @@ type Kind = "status" | "metric" | "quote" | "stats" | "text";
 interface Parsed {
   kind: Kind;
   value: string;
-  meta?: string; // small mono chip, e.g. "56 chars" or "908 urls"
+  meta?: string;
 }
 
 const STATUS_RE = /^(found|not found|set|not set|none|present|absent|missing)$/i;
@@ -57,7 +81,6 @@ function parseFinding(f: Finding): Parsed {
   const raw = (f.detail ?? "").trim();
   if (!raw) return { kind: "text", value: "" };
 
-  // Extract trailing "(NN unit)" as a meta chip when the prefix is meaningful.
   let value = raw;
   let meta: string | undefined;
   const m = raw.match(TRAILING_META_RE);
@@ -73,17 +96,15 @@ function parseFinding(f: Finding): Parsed {
   return { kind: "text", value, meta };
 }
 
-// ---------------------------------------------------------------------------
-// Variant components
-// ---------------------------------------------------------------------------
-
-function CardLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <label className="mb-2 block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-      {children}
-    </label>
-  );
+function isCompact(p: Parsed): boolean {
+  if (p.kind === "status" || p.kind === "metric") return true;
+  if (p.kind === "text" && p.value.length <= 50) return true;
+  return false;
 }
+
+// ---------------------------------------------------------------------------
+// Atoms
+// ---------------------------------------------------------------------------
 
 function MetaChip({ children }: { children: React.ReactNode }) {
   return (
@@ -105,12 +126,33 @@ function StatusBadge({ value }: { value: string }) {
       ? "bg-amber-100 text-amber-700"
       : "bg-slate-100 text-slate-600";
   return (
-    <div className={cn("inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", tone)}>
+    <span className={cn("inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide", tone)}>
       {value}
+    </span>
+  );
+}
+
+// Compact key/value row — used inside a stacked list for short findings.
+function CompactRow({ f }: { f: Finding }) {
+  const { kind, value, meta } = parseFinding(f);
+  return (
+    <div className="flex items-center gap-3 py-1.5 px-3 text-xs border-b border-border/40 last:border-b-0">
+      <span className="text-muted-foreground shrink-0 min-w-[120px]">{f.label}</span>
+      <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end text-right">
+        {kind === "status" ? (
+          <StatusBadge value={value} />
+        ) : kind === "metric" ? (
+          <span className="font-mono font-semibold text-foreground">{value}</span>
+        ) : (
+          <span className="truncate text-foreground font-medium">{value || "—"}</span>
+        )}
+        {meta && <MetaChip>{meta}</MetaChip>}
+      </div>
     </div>
   );
 }
 
+// Card variant for narrative / wide findings.
 function FindingCard({ f }: { f: Finding }) {
   const { kind, value, meta } = parseFinding(f);
   const wide = kind === "quote" || kind === "stats";
@@ -118,45 +160,28 @@ function FindingCard({ f }: { f: Finding }) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:border-primary/40",
+        "rounded-lg border border-border bg-muted/30 p-3 transition-colors hover:border-primary/40",
         wide && "col-span-2",
       )}
     >
-      <CardLabel>{f.label}</CardLabel>
+      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        {f.label}
+      </label>
 
-      {kind === "status" && (
-        <div className="flex items-center gap-2">
-          <StatusBadge value={value} />
-          {meta && <span className="text-[10px] font-medium italic text-muted-foreground">{meta}</span>}
-        </div>
-      )}
-
-      {kind === "metric" && (
-        <div className="flex items-baseline gap-1">
-          <span className="font-heading text-xl font-bold text-foreground">{value}</span>
-          {meta && <span className="text-[10px] font-medium text-muted-foreground">{meta}</span>}
-        </div>
-      )}
-
-      {kind === "quote" && (
-        <div className="flex items-start gap-3">
-          <div
-            className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full"
-            style={{ backgroundColor: ACCENT }}
-          />
+      {kind === "quote" ? (
+        <div className="flex items-start gap-2">
+          <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ backgroundColor: ACCENT }} />
           <div className="min-w-0 flex-1">
             <p className="text-sm italic leading-relaxed text-foreground/80">{value}</p>
-            {meta && <div className="mt-2"><MetaChip>{meta}</MetaChip></div>}
+            {meta && <div className="mt-1.5"><MetaChip>{meta}</MetaChip></div>}
           </div>
         </div>
-      )}
-
-      {kind === "stats" && <StatsRow value={value} />}
-
-      {kind === "text" && (
+      ) : kind === "stats" ? (
+        <StatsRow value={value} />
+      ) : (
         <>
           <p className="text-sm font-medium leading-snug text-foreground">{value || "—"}</p>
-          {meta && <div className="mt-2"><MetaChip>{meta}</MetaChip></div>}
+          {meta && <div className="mt-1.5"><MetaChip>{meta}</MetaChip></div>}
         </>
       )}
     </div>
@@ -170,7 +195,7 @@ function StatsRow({ value }: { value: string }) {
       {parts.map((p, i) => (
         <span
           key={i}
-          className="rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-foreground/80"
+          className="rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground/80"
         >
           {p}
         </span>
@@ -180,8 +205,47 @@ function StatsRow({ value }: { value: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Category + Page card
+// Subgroup + Category
 // ---------------------------------------------------------------------------
+
+function GroupBlock({ group, findings }: { group: FindingGroup; findings: Finding[] }) {
+  if (findings.length === 0) return null;
+
+  // Split into compact rows vs card-worthy findings.
+  const compact: Finding[] = [];
+  const cards: Finding[] = [];
+  for (const f of findings) {
+    (isCompact(parseFinding(f)) ? compact : cards).push(f);
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          {GROUP_LABELS[group]}
+        </h3>
+        <span className="text-[10px] text-muted-foreground/60">·</span>
+        <span className="text-[10px] text-muted-foreground/60">{findings.length}</span>
+      </div>
+
+      {compact.length > 0 && (
+        <div className="rounded-lg border border-border bg-muted/20 mb-2">
+          {compact.map((f, i) => (
+            <CompactRow key={i} f={f} />
+          ))}
+        </div>
+      )}
+
+      {cards.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {cards.map((f, i) => (
+            <FindingCard key={i} f={f} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CategorySection({
   category,
@@ -192,18 +256,22 @@ function CategorySection({
 }) {
   const [open, setOpen] = useState(true);
   if (findings.length === 0) return null;
+
+  const grouped = useMemo(() => {
+    const g: Partial<Record<FindingGroup, Finding[]>> = {};
+    for (const f of findings) (g[f.group] ??= []).push(f);
+    return g;
+  }, [findings]);
+
   return (
     <section>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="group mb-4 flex w-full items-center gap-3"
+        className="group mb-3 flex w-full items-center gap-3"
         type="button"
       >
         <ChevronDown
-          className={cn(
-            "h-3 w-3 text-muted-foreground transition-transform",
-            open ? "" : "-rotate-90",
-          )}
+          className={cn("h-3 w-3 text-muted-foreground transition-transform", open ? "" : "-rotate-90")}
         />
         <h2 className="font-heading text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground group-hover:text-foreground">
           {CATEGORY_LABELS[category]}
@@ -215,9 +283,9 @@ function CategorySection({
       </button>
 
       {open && (
-        <div className="grid grid-cols-2 gap-3">
-          {findings.map((f, i) => (
-            <FindingCard key={i} f={f} />
+        <div className="space-y-4">
+          {GROUP_ORDER[category].map((g) => (
+            <GroupBlock key={g} group={g} findings={grouped[g] ?? []} />
           ))}
         </div>
       )}
@@ -269,7 +337,7 @@ function PageCard({ report }: { report: PageReport }) {
         )}
       </header>
 
-      <div className="space-y-8 p-5">
+      <div className="space-y-6 p-5">
         {CATEGORY_ORDER.map((cat) => (
           <CategorySection key={cat} category={cat} findings={grouped[cat] ?? []} />
         ))}
