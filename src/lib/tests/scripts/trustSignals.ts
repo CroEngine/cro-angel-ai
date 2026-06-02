@@ -97,6 +97,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   function push(type, text, el, source, extras) {
     const block = nearestBlock(el);
     if (!isVisible(block)) return;
+    if (type === 'stars') {
+      const raw = block.getBoundingClientRect();
+      const viewportW = window.innerWidth || 1280;
+      if (raw.left >= viewportW || raw.right <= 0) return;
+    }
     const cleanText = (text || '').trim().replace(/\\s+/g, ' ').slice(0, 200);
     const dedupeKey = type + '|' + cleanText.slice(0, 80) + '|' + buildSelector(block);
     if (seen.has(dedupeKey)) return;
