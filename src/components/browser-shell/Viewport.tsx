@@ -22,6 +22,10 @@ const CATEGORY_COLORS: Record<string, string> = {
   icon_button: "#a78bfa",
   nav_item: "#64748b",
   link: "#60a5fa",
+  // Trust signals (match scripts/overlay.ts OVERLAY_FN colors)
+  testimonial: "#f97316",
+  review_badges: "#a855f7",
+  social_proof_count: "#f43f5e",
   other: "#f472b6",
 };
 

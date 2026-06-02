@@ -365,6 +365,13 @@ export async function runSteps(
               } catch (e) {
                 onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
               }
+              // Emit overlay rects for the frozen viewport (scoped to the three
+              // trust types the user requested to see marked on the screenshot).
+              const trustOverlay = full.trustSignals
+                .filter((t) => !!t.selector && !!t.rect &&
+                  (t.type === "testimonial" || t.type === "review_badges" || t.type === "social_proof_count"))
+                .map((t) => ({ selector: t.selector!, category: t.type, rect: t.rect! }));
+              data = { ...full, overlayElements: trustOverlay };
               onEvent({
                 type: "log",
                 message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryCtaCount} primary) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,
