@@ -117,33 +117,31 @@ export const SECTIONS_SCRIPT = `(() => {
 
   const out = raw.map((r, i) => {
     const area = r.rect.width * r.rect.height;
-    return {
+    const heading = r.heading;
+    const sub = r.subheading && r.subheading !== heading ? r.subheading : '';
+    const entry = {
       id: 'section_' + (i + 1),
       type: r.type,
-      kind: r.type,
       position: i + 1,
-      heading: r.heading,
-      subheading: r.subheading,
+      heading,
       selector: buildSelector(r.el),
       rect: {
-        x: Math.round(r.rect.left + window.scrollX),
         y: Math.round(r.rect.top + window.scrollY),
         w: Math.round(r.rect.width),
         h: Math.round(r.rect.height),
       },
       aboveFold: r.rect.top < viewportH,
-      heightPx: Math.round(r.rect.height),
       visualWeight: Math.round((area / maxArea) * 100),
       elementCount: countElements(r.el),
       childCount: r.el.children ? r.el.children.length : 0,
-      repeatedChildren: r.repeated,
-      headingText: r.heading,
       containsPrimaryCTA: false,
       containsTrustSignals: false,
       containsForm: !!r.el.querySelector('form'),
       containsPricing: false,
       containsNavigation: r.type === 'nav' || r.type === 'header' || r.type === 'footer',
     };
+    if (sub) entry.subheading = sub;
+    return entry;
   });
   return out;
 })()`;

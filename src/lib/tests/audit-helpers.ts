@@ -9,11 +9,12 @@ import type {
   PageSection,
   PageSummary,
   Rect,
+  SectionRect,
   TrustSignal,
   TrustSummary,
 } from "./schema";
 
-function rectCenterInside(rect: Rect, container: Rect): boolean {
+function rectCenterInside(rect: Rect, container: SectionRect): boolean {
   const cy = rect.y + rect.h / 2;
   return cy >= container.y && cy <= container.y + container.h;
 }
@@ -55,9 +56,8 @@ export function enrichSections(
       }
     }
     s.containsPricing =
-      s.type === "pricing" || /\$|€|kr\b|\/mo\b|\/mån/.test(s.heading + " " + s.subheading);
+      s.type === "pricing" || /\$|€|kr\b|\/mo\b|\/mån/.test(s.heading + " " + (s.subheading ?? ""));
     s.containsNavigation = s.type === "nav" || s.type === "header" || s.type === "footer";
-    s.kind = s.type; // keep alias in sync
   }
 }
 
