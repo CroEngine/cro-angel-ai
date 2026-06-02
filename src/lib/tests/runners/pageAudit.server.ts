@@ -148,7 +148,9 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     visualHierarchy: hierarchyTyped,
     pageSummary,
     hero,
+    // TODO badge-debug — remove after teamtailor verification
+    _badgeDebug: trustResult._badgeDebug,
     // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
     flags: [],
-  };
+  } as PageAuditData & { _badgeDebug?: unknown };
 }
