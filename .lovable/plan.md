@@ -1,93 +1,98 @@
-# Markera trust signals i overlay + lätt code-cleanup
+# Fix: bara 1 av 3 testimonials markeras + stats/badges syns inte
 
-## Del 1 — Overlay för trust signals
+## Rotorsak (DOM-verifierat på teamtailor.com/sv)
 
-Idag används `OVERLAY_FN` bara av `collect`-steget. `pageAudit` lägger ingen overlay alls. Varje trust signal har redan `selector` + `rect` + `type`, så det är trivialt att rita.
-
-### Ändringar
-
-**`src/lib/tests/scripts/overlay.ts`** — utöka `COLORS` med trust-typer (samma `Record<string,string>`-form, så vi kan återanvända samma funktion). Förslag:
-
-```ts
-testimonial:        "#f97316",  // orange
-review_rating:      "#eab308",  // amber
-stars:              "#facc15",  // gul
-trusted_by:         "#0ea5e9",  // sky
-customer_logos:     "#06b6d4",  // cyan
-review_badges:      "#a855f7",  // violet
-certification:     "#84cc16",  // lime
-guarantee:          "#22c55e",  // grön
-secure_payment:     "#14b8a6",  // teal
-contact_info:       "#94a3b8",  // slate
-org_number:         "#475569",  // mörk slate
-press_mention:      "#ec4899",  // rosa
-social_proof_count: "#f43f5e",  // röd
-```
-
-Badge-text ändras till första 2 bokstäverna av typen (`TE`, `RB`, `LO`) istället för index — då blir det självförklarande i screenshot.
-
-Liten justering: lägg till en optional tredje del i `pairs` för badge-text:
-```ts
-export function OVERLAY_FN(pairs: Array<[string, string, string?]>) {
-  // ...
-  badge.textContent = pairs[i][2] ?? String(i + 1);
+### Bug 1 — `buildSelector` är inte unik (huvudfelet)
+Nuvarande implementation:
+```js
+function buildSelector(el) {
+  if (el.id && …) return '#' + el.id;
+  const parent = el.parentElement;
+  if (parent) {
+    const same = […].filter(c => c.tagName === el.tagName);
+    return el.tagName.toLowerCase() + ':nth-of-type(' + (idx) + ')';
+  }
 }
 ```
 
-Bakåtkompat: `collect`-anroparen skickar fortfarande 2-tuples och får index som badge.
+Teamtailor har 3 `<figure>` med var sin `<blockquote>`. `nearestBlock(blockquote)` = blockquote. `buildSelector` returnerar `blockquote:nth-of-type(1)` för **alla tre** (varje blockquote är enda blockquote i sin figure). Alla 3 trust signals pushas korrekt i JSON, men overlay-funktionen kör `document.querySelector(sel)` som bara hittar **första** matchen i hela dokumentet → bara 1 box renderas.
 
-**`src/lib/tests/engine.server.ts`** — i `pageAudit`-caset (rad 339-352), efter `runPageAudit(page)`, rita overlay:
+Samma bug påverkar review_badges-blocket (`ul:nth-of-type(1)`-liknande selectors) — därför syns inga badges i overlayen.
 
-```ts
-const trustPairs: Array<[string, string, string]> = full.trustSignals
-  .filter((t) => !!t.selector && !!t.rect)
-  .map((t) => [t.selector, t.type, badgeLabel(t.type)]);
-try {
-  await page.evaluate(`(${OVERLAY_FN.toString()})(${JSON.stringify(trustPairs)})`);
-} catch (e) {
-  onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
+**Fix:** bygg full path upp till `<body>` eller närmaste `id`, med `:nth-of-type(N)` på varje nivå där det finns syskon med samma tagg:
+
+```js
+function buildSelector(el) {
+  if (el.id && /^[A-Za-z][\w-]*$/.test(el.id)) return '#' + el.id;
+  const parts = [];
+  let cur = el;
+  while (cur && cur !== document.body && cur.nodeType === 1) {
+    let part = cur.tagName.toLowerCase();
+    if (cur.id && /^[A-Za-z][\w-]*$/.test(cur.id)) {
+      parts.unshift('#' + cur.id);
+      break;
+    }
+    const parent = cur.parentElement;
+    if (parent) {
+      const same = Array.from(parent.children).filter(c => c.tagName === cur.tagName);
+      if (same.length > 1) part += ':nth-of-type(' + (same.indexOf(cur) + 1) + ')';
+    }
+    parts.unshift(part);
+    cur = cur.parentElement;
+  }
+  return parts.join('>');
 }
 ```
 
-`badgeLabel` är en liten lookup: `testimonial → TE, trusted_by → TB, customer_logos → LO, review_badges → RB, stars → ★, …`.
+Producerar `div:nth-of-type(7)>section>div>figure:nth-of-type(2)>blockquote` etc. Garanterat unik (eller åtminstone träffar rätt element vid querySelector).
 
-Overlay läggs på sidan i Browserbase-sessionen — användaren ser den i live-iframen och i ev. screenshot som tas efter `pageAudit`-steget. Screenshot capture (om det finns) sker redan i sandbox-flödet; vi behöver inte rendera om.
+### Bug 2 — Statistik 845 000 / 200 000 / 10 000 missas
 
-### Frågor till dig
+DOM: `<dl>` med separata `<dt>Mer än</dt><dd>845 000</dd><dt>Rekryteringar</dt>` (uppdelat). Tre problem:
 
-- Vill du även ha en overlay för CTAs i `pageAudit`-steget, eller bara trust? CTAs har redan stöd i `OVERLAY_FN` (`cta_primary` etc.) — då kan vi rita både i samma pass.
+a) Regex kräver att tal + nyckelord (`customers|users|kunder|användare|...`) står i **samma textnod**. Här är de syskon.
+b) Svenska affärsord saknas: `rekryteringar|rekryterare|företag|kunder|användare|medlemmar|projekt|ordrar|leveranser|jobb|tj[äa]nster`.
+c) Inga `<dl>`/`<dt>`/`<dd>` i `blocks`-iterationen.
 
-## Del 2 — Code cleanup (lätt)
+**Fix:** lägg till en separat scanner-pass efter text-loopen:
 
-Efter shape-fallback och debug-blocken togs bort:
+```js
+// Big-number stat blocks (dl/dt/dd eller div-grupper med stort tal + label)
+const STAT_KEYWORDS = /\b(customers|users|members|downloads|reviews|recensioner|kunder|användare|anvandare|medlemmar|nedladdningar|rekryteringar|rekryterare|företag|foretag|projekt|jobb|tjänster|tjanster)\b/i;
+const NUM_RX = /^\s*\d{1,3}(?:[ ,.]\d{3})+\+?\s*$|^\s*\d{4,}\+?\s*$/;
 
-| Plats | Status |
-|---|---|
-| `nearestHeadingText` helper | ✅ borttagen |
-| `_badgeDebug` block i `trustSignals.ts` + runner | ✅ borttagen |
-| `// TODO badge-debug`-markörer | ✅ inga kvar (rg-resultat tomt) |
-| `dedupeSameBlock` / `dropWrappers` | Behåll — används av `trusted_by` |
-| `aboveFoldLogoCount` på `TrustSignal` | Behåll — designbeslut för framtida LLM |
+document.querySelectorAll('dl, [class*="stat" i], [class*="metric" i], [class*="counter" i]').forEach((container) => {
+  // Find children that are large numbers; check if a sibling/neighbor has stat keyword
+  const numEls = Array.from(container.querySelectorAll('dd, span, strong, p, div, h1, h2, h3'))
+    .filter(e => NUM_RX.test((e.innerText || '').trim()));
+  for (const numEl of numEls) {
+    const txt = (container.innerText || '').toLowerCase();
+    if (!STAT_KEYWORDS.test(txt)) continue;
+    const numText = (numEl.innerText || '').trim();
+    push('social_proof_count', numText + ' (' + container.innerText.replace(/\s+/g,' ').slice(0,80) + ')',
+         numEl, 'text', { reviewCount: safeInt(numText) });
+  }
+});
+```
 
-**Enda riktiga skräpet:**
+Anchor på själva nummer-elementet ger 1 box per nummer.
 
-- `detectionMethod?: "keyword" \| "shape"` i `src/lib/tests/schema.ts` — `"shape"` används aldrig längre. Trimma unionen till `"keyword"`:
-  ```ts
-  detectionMethod?: "keyword";
-  ```
-  Alternativt: ta bort fältet helt eftersom det idag bara har ett möjligt värde. Förslag: behåll fältet (självdokumenterande att det är keyword-baserat) men trimma unionen.
-
-- `src/lib/tests/scripts/trustSignals.ts` rad 611-612: två sekventiella `let filtered = …` följt av `filtered = …` på `trusted_by` ser ut som de kunde slås ihop, men de gör olika saker (dedupe sedan wrapper-drop) — låt dem vara.
-
-Inget annat skräp upptäckt.
+### Bug 3 — Testimonial-quote-detektorns selector
+Inte ett detektionsfel — bara konsekvens av Bug 1. När buildSelector är fixad markeras alla 3 blockquote-element.
 
 ## Filer som ändras
+- `src/lib/tests/scripts/trustSignals.ts`
+  - Skriv om `buildSelector` (unik path)
+  - Lägg till stat-scanner-pass efter text-loopen
+  - Lägg till `safeInt`-användning i nya scannern (redan definierad)
 
-- `src/lib/tests/scripts/overlay.ts` — fler färger + valfri 3:e badge-text
-- `src/lib/tests/engine.server.ts` — rita overlay i `pageAudit`-caset
-- `src/lib/tests/schema.ts` — trimma `detectionMethod` till `"keyword"`
+## Verifiering
+Köra audit mot teamtailor.com/sv. Förväntat efter fix:
+- 3 testimonial-boxar (TE) över alla tre figure-kort
+- 3 social_proof_count-boxar (SC) över 845 000 / 200 000 / 10 000
+- 1 review_badges-box (RB) över G2-badge-raden
 
 ## Inte i scope
-
-- Ny separat overlay-komponent (UI-rendering).
-- Screenshot-export från sandbox — sker via befintligt flöde.
+- Inga nya badge-mönster
+- Inga ändringar av PATTERNS.social_proof_count (den får ligga kvar för fall där tal+label står i samma textnod)
+- Ingen overlay-omskrivning på klienten — fixen är i `buildSelector`, overlay-funktionen behöver inte röras

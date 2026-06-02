@@ -45,13 +45,23 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
-    const parent = el.parentElement;
-    if (parent) {
-      const same = Array.from(parent.children).filter((c) => c.tagName === el.tagName);
-      const idx = same.indexOf(el) + 1;
-      return el.tagName.toLowerCase() + ':nth-of-type(' + idx + ')';
+    const parts = [];
+    let cur = el;
+    while (cur && cur !== document.body && cur.nodeType === 1) {
+      let part = cur.tagName.toLowerCase();
+      if (cur.id && /^[A-Za-z][\\w-]*$/.test(cur.id)) {
+        parts.unshift('#' + cur.id);
+        break;
+      }
+      const parent = cur.parentElement;
+      if (parent) {
+        const same = Array.from(parent.children).filter((c) => c.tagName === cur.tagName);
+        if (same.length > 1) part += ':nth-of-type(' + (same.indexOf(cur) + 1) + ')';
+      }
+      parts.unshift(part);
+      cur = cur.parentElement;
     }
-    return el.tagName.toLowerCase();
+    return parts.join('>');
   }
 
   function isVisible(el) {
@@ -205,6 +215,27 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const text = (el.innerText || el.textContent || '').trim();
     if (text.length < 40 || text.length > 600) return;
     push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
+  });
+
+  // Big-number stat blocks (dl/dt/dd or stat/metric/counter containers where
+  // the number and label live in separate sibling elements).
+  const STAT_KEYWORDS = /\\b(customers|users|members|downloads|reviews|recensioner|kunder|anv[äa]ndare|medlemmar|nedladdningar|rekryteringar|rekryterare|f[öo]retag|projekt|jobb|tj[äa]nster|ordrar|leveranser)\\b/i;
+  const NUM_RX = /^\\s*\\d{1,3}(?:[ ,.\\u00a0]\\d{3})+\\+?\\s*$|^\\s*\\d{4,}\\+?\\s*$/;
+  const statSeen = new Set();
+  document.querySelectorAll('dl, [class*="stat" i], [class*="metric" i], [class*="counter" i]').forEach((container) => {
+    const containerText = (container.innerText || '').toLowerCase();
+    if (!STAT_KEYWORDS.test(containerText)) return;
+    const numEls = Array.from(container.querySelectorAll('dd, span, strong, p, div, h1, h2, h3, h4'))
+      .filter((e) => NUM_RX.test((e.innerText || '').trim()));
+    for (const numEl of numEls) {
+      if (statSeen.has(numEl)) continue;
+      statSeen.add(numEl);
+      const numText = (numEl.innerText || '').trim();
+      const label = (container.innerText || '').replace(/\\s+/g, ' ').slice(0, 100);
+      push('social_proof_count', numText + ' — ' + label, numEl, 'text', {
+        reviewCount: safeInt(numText),
+      });
+    }
   });
 
   function neighborText(el) {
