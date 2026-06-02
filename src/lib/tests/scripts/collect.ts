@@ -367,7 +367,7 @@ export const COLLECT_SCRIPT = `(() => {
       visible: true,
       aboveFold: r.viewportZone === 'above_fold',
 
-      rect: { x: Math.round(r.rect.x), y: Math.round(r.rect.y), w: Math.round(r.rect.width), h: Math.round(r.rect.height) },
+      rect: { x: Math.round(r.docLeft), y: Math.round(r.docTop), w: Math.round(r.rect.width), h: Math.round(r.rect.height) },
       position: {
         viewportZone: r.viewportZone,
         yPercent: Math.round(r.yPercent * 10) / 10,
