@@ -104,7 +104,7 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
     const text = ((s.el.innerText || s.el.getAttribute('alt') || s.el.getAttribute('aria-label') || '') + '')
       .trim().replace(/\\s+/g, ' ').slice(0, 100);
     if (!text) continue;
-    const key = text + '|' + s.el.tagName.toLowerCase() + '|' + Math.round(s.fontSize) + '|' + Math.round(s.area / 1000);
+    const key = text + '|' + Math.round(s.fontSize) + '|' + Math.round(s.area / 1000);
     if (seenKeys.has(key)) continue;
     seenKeys.add(key);
     deduped.push({ ...s, text });
