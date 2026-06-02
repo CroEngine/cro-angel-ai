@@ -49,13 +49,24 @@ const ACCENT = "#3b82f6";
 function downloadJson(filename: string, payload: unknown) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+
+  // Try opening in a new tab first — works inside Lovable's sandboxed preview
+  // iframe where programmatic <a download> clicks are silently blocked.
+  const win = window.open(url, "_blank", "noopener");
+
+  if (!win) {
+    // Fallback: classic anchor-download (works outside the sandboxed iframe).
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  // Give the new tab time to load before revoking.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 function hostnameOf(url: string): string {
