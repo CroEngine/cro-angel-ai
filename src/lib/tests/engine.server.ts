@@ -4,21 +4,10 @@ import { Stagehand } from "@browserbasehq/stagehand";
 
 import { COLLECT_SCRIPT } from "./scripts/collect";
 import { OVERLAY_FN } from "./scripts/overlay";
-import { PAGE_AUDIT_SCRIPT } from "./scripts/pageAudit";
-import { SECTIONS_SCRIPT } from "./scripts/sections";
-import { TRUST_SIGNALS_SCRIPT } from "./scripts/trustSignals";
-import { CTAS_SCRIPT } from "./scripts/ctas";
-import { FORMS_SCRIPT } from "./scripts/forms";
-import { NAVIGATION_SCRIPT } from "./scripts/navigation";
-import { VISUAL_HIERARCHY_SCRIPT } from "./scripts/visualHierarchy";
+import { runPageAudit } from "./runners/pageAudit.server";
 
-import {
-  buildPageSummary,
-  buildTrustSummary,
-  deriveHero,
-  enrichSections,
-  groupRepeatedControls,
-} from "./audit-helpers";
+import { groupRepeatedControls } from "./audit-helpers";
+
 
 import type {
   CollectedElement,
@@ -349,128 +338,12 @@ export async function runSteps(
 
           case "pageAudit": {
             try {
-              // Run base audit + all v2 extractors in PARALLEL.
-              // They are independent read-only DOM scans → big speedup over the previous serial chain.
-              const [
-                rawAudit,
-                fetched,
-                sections,
-                trustSignals,
-                ctas,
-                forms,
-                navigation,
-                visualHierarchy,
-                dims,
-              ] = await Promise.all([
-                page.evaluate(PAGE_AUDIT_SCRIPT),
-                page.evaluate(`
-                  (async () => {
-                    const origin = location.origin;
-                    const out = { robots: null, sitemap: null };
-                    try {
-                      const r = await fetch(origin + '/robots.txt', { credentials: 'omit' });
-                      if (r.ok) out.robots = await r.text();
-                    } catch (e) {}
-                    try {
-                      const r = await fetch(origin + '/sitemap.xml', { credentials: 'omit' });
-                      if (r.ok) out.sitemap = await r.text();
-                    } catch (e) {}
-                    return out;
-                  })()
-                `),
-                page.evaluate(SECTIONS_SCRIPT),
-                page.evaluate(TRUST_SIGNALS_SCRIPT),
-                page.evaluate(CTAS_SCRIPT),
-                page.evaluate(FORMS_SCRIPT),
-                page.evaluate(NAVIGATION_SCRIPT),
-                page.evaluate(VISUAL_HIERARCHY_SCRIPT),
-                page.evaluate(
-                  "({ pageHeightPx: document.documentElement.scrollHeight, foldHeightPx: window.innerHeight })",
-                ),
-              ]);
-
-              const audit = rawAudit as Omit<
-                PageAuditData,
-                | "robotsTxt"
-                | "sitemap"
-                | "flags"
-                | "url"
-                | "sections"
-                | "sectionOrder"
-                | "trustSignals"
-                | "trustSummary"
-                | "ctas"
-                | "forms"
-                | "navigation"
-                | "visualHierarchy"
-                | "pageSummary"
-                | "hero"
-              > & { url: string };
-
-              const robotsSitemap = fetched as { robots: string | null; sitemap: string | null };
-              const robotsTxt = { exists: false, blocksAll: false, hasSitemap: false };
-              const sitemap = { exists: false, urlCount: 0 };
-              if (robotsSitemap.robots) {
-                robotsTxt.exists = true;
-                robotsTxt.blocksAll = /User-agent:\s*\*[\s\S]*?Disallow:\s*\/\s*$/im.test(robotsSitemap.robots);
-                robotsTxt.hasSitemap = /^Sitemap:\s*\S+/im.test(robotsSitemap.robots);
-              }
-              if (robotsSitemap.sitemap) {
-                sitemap.exists = true;
-                sitemap.urlCount = (robotsSitemap.sitemap.match(/<loc>/g) ?? []).length;
-              }
-
-              // Set robotsTxtAllows + final indexable now that we know robots.txt
-              if (audit.indexability) {
-                audit.indexability.robotsTxtAllows = !robotsTxt.blocksAll;
-                audit.indexability.indexable =
-                  !audit.indexability.noindex && audit.indexability.robotsTxtAllows;
-              }
-
-
-              const sectionsTyped = sections as PageSection[];
-              const trustTyped = trustSignals as TrustSignal[];
-              const ctasTyped = ctas as CTAEntity[];
-              const formsTyped = forms as FormEntity[];
-              const navTyped = navigation as NavigationData;
-              const hierarchyTyped = visualHierarchy as VisualHierarchyEntry[];
-              const dimsTyped = dims as { pageHeightPx: number; foldHeightPx: number };
-
-              enrichSections(sectionsTyped, ctasTyped, trustTyped, formsTyped);
-              const sectionOrder = sectionsTyped.map((s) => s.type);
-              const trustSummary = buildTrustSummary(trustTyped);
-              const pageSummary = buildPageSummary({
-                ctas: ctasTyped,
-                trustSignals: trustTyped,
-                trustSummary,
-                forms: formsTyped,
-                navigation: navTyped,
-                sections: sectionsTyped,
-                dims: dimsTyped,
-              });
-              const hero = deriveHero(sectionsTyped, ctasTyped);
-
-              const full: PageAuditData = {
-                ...audit,
-                robotsTxt,
-                sitemap,
-                sections: sectionsTyped,
-                sectionOrder,
-                trustSignals: trustTyped,
-                trustSummary,
-                ctas: ctasTyped,
-                forms: formsTyped,
-                navigation: navTyped,
-                visualHierarchy: hierarchyTyped,
-                pageSummary,
-                hero,
-                // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
-                flags: [],
-              };
+              const full = await runPageAudit(page);
               data = full;
+              const sectionOrder = full.sectionOrder;
               onEvent({
                 type: "log",
-                message: `pageAudit: sections ${sectionsTyped.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${trustTyped.length} (${trustSummary.aboveFold} af) · ctas ${ctasTyped.length} (${pageSummary.primaryCtaCount} primary) · forms ${formsTyped.length} · nav ${navTyped.topNavCount}/${navTyped.footerNavCount}`,
+                message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryCtaCount} primary) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,
               });
             } catch (e) {
               throw new Error(`pageAudit failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -478,6 +351,7 @@ export async function runSteps(
             break;
           }
         }
+
 
         void page;
 
