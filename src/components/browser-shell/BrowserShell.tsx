@@ -27,7 +27,10 @@ export function BrowserShell() {
 
   // Pull the latest collect's screenshot + overlay out of the stream and
   // stash it so we can show the Frozen viewport after the session closes.
+  // Then merge in trust-signal overlays from the latest pageAudit step
+  // (collect provides the screenshot; pageAudit just contributes extra rects).
   useEffect(() => {
+    let next: FrozenSnapshot | null = null;
     for (let i = events.length - 1; i >= 0; i--) {
       const e = events[i];
       if (e.type !== "step_passed") continue;
@@ -36,16 +39,29 @@ export function BrowserShell() {
         | { screenshot?: { dataUrl: string; viewport: { w: number; h: number } }; overlayElements?: OverlayElement[] }
         | undefined;
       if (d?.screenshot) {
-        setFrozen({
+        next = {
           screenshotUrl: d.screenshot.dataUrl,
           viewport: d.screenshot.viewport,
           overlayElements: d.overlayElements ?? [],
-        });
+        };
       } else {
         console.warn("[BrowserShell] collect step passed but no screenshot in payload");
       }
-      return;
+      break;
     }
+    if (!next) return;
+    // Merge in trust-signal overlays from the latest pageAudit step (if any).
+    for (let i = events.length - 1; i >= 0; i--) {
+      const e = events[i];
+      if (e.type !== "step_passed") continue;
+      if (e.data.kind !== "pageAudit") continue;
+      const d = e.data.data as { overlayElements?: OverlayElement[] } | undefined;
+      if (d?.overlayElements?.length) {
+        next = { ...next, overlayElements: [...next.overlayElements, ...d.overlayElements] };
+      }
+      break;
+    }
+    setFrozen(next);
   }, [events]);
 
   // Start the live counter only when Browserbase actually confirms the session
