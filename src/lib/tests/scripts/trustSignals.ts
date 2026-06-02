@@ -274,16 +274,14 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     return extras;
   }
 
-  function extractStarRating(parent) {
+  function extractStarRating(parent, group) {
     const fromAttrs = extractRatingFromAttrs(parent);
     if (fromAttrs.rating !== undefined) return fromAttrs;
     const fromText = extractRatingMeta(neighborText(parent));
     if (fromText.rating !== undefined) {
-      // merge reviewCount from attrs if available
       if (fromAttrs.reviewCount !== undefined && fromText.reviewCount === undefined) fromText.reviewCount = fromAttrs.reviewCount;
       return fromText;
     }
-    // Also try plain "4.7" near stars (without /5 suffix)
     const t = neighborText(parent);
     const m = t.match(/\\b([1-5][.,]\\d)\\b/);
     if (m) {
@@ -301,7 +299,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       if (fromAttrs.reviewCount !== undefined) o.reviewCount = fromAttrs.reviewCount;
       return o;
     };
-    const allStars = parent.querySelectorAll('[class*="star" i]');
+    // Prefer the actual star group passed in (handles sites where star elements
+    // don't have "star" in classname but match via aria-label/rating selectors).
+    const allStars = (group && group.length)
+      ? group
+      : Array.from(parent.querySelectorAll('[class*="star" i]'));
 
     // (1) Empty stars present → rating = total - empty
     const empty = parent.querySelectorAll(
@@ -319,7 +321,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       return withReviewCount(filled.length);
     }
 
-    // (3) SVG inline fill attribute (no computed style — avoid false positives from CSS inheritance)
+    // (3) SVG inline fill attribute only (no computed style)
     if (allStars.length >= 3 && allStars.length <= 5) {
       let fillCount = 0;
       for (const s of allStars) {
@@ -330,7 +332,10 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       if (fillCount >= 1 && fillCount <= 5) return withReviewCount(fillCount);
     }
 
-    // (4) All visible stars filled — only inside testimonial-like context
+    // (4) All visible stars filled — only inside testimonial-like context.
+    // Look up to 5 ancestor levels but early-exit at BODY/MAIN/HTML so a
+    // <section class="testimonials"> high in the tree doesn't classify the
+    // whole page as testimonial context.
     if (allStars.length >= 3 && allStars.length <= 5 && empty.length === 0) {
       const allVisible = Array.from(allStars).filter((s) => {
         const r = s.getBoundingClientRect();
@@ -340,8 +345,9 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         const ctxRx = /testimonial|review|quote|kund|card|feedback/i;
         let ctx = false;
         let node = parent;
-        for (let i = 0; i < 3 && node; i++) {
+        for (let i = 0; i < 5 && node; i++) {
           const tag = node.tagName;
+          if (tag === 'BODY' || tag === 'MAIN' || tag === 'HTML') break;
           const cls = (node.className && node.className.toString()) || '';
           if (tag === 'BLOCKQUOTE' || tag === 'FIGURE' || ctxRx.test(cls)) { ctx = true; break; }
           node = node.parentElement;
@@ -368,7 +374,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   }
   for (const [parent, group] of byParent) {
     if (group.length < 3) continue;
-    push('stars', String(group.length) + ' stars', parent, 'attr', extractStarRating(parent));
+    push('stars', String(group.length) + ' stars', parent, 'attr', extractStarRating(parent, group));
   }
   document.querySelectorAll('p, span, div').forEach((el) => {
     if (el.children.length > 0) return;
