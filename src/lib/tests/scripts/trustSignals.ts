@@ -685,7 +685,21 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   for (const e of filtered) {
     if (e.source === 'schema') { delete e.rect; delete e.selector; }
   }
+
+  // Dedup carousel-cloned testimonials by text (Swiper/Slick/Embla loop modes
+  // create duplicate DOM nodes; selector-based dedupe doesn't catch them).
+  const seenTestimonialText = new Set();
+  filtered = filtered.filter((e) => {
+    if (e.type !== 'testimonial') return true;
+    const key = (e.text || '').slice(0, 80);
+    if (!key) return true;
+    if (seenTestimonialText.has(key)) return false;
+    seenTestimonialText.add(key);
+    return true;
+  });
+
   return filtered;
+
 
 
 
