@@ -236,8 +236,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       if (statSeen.has(numEl)) continue;
       statSeen.add(numEl);
       const numText = (numEl.innerText || '').trim();
-      const label = (container.innerText || '').replace(/\\s+/g, ' ').slice(0, 100);
-      push('social_proof_count', numText + ' — ' + label, numEl, 'text', {
+      const containerText = (container.innerText || '').replace(/\\s+/g, ' ');
+      const km = containerText.match(STAT_KEYWORDS);
+      const label = km ? km[0] : '';
+      const display = label ? numText + ' — ' + label : numText;
+      push('social_proof_count', display, numEl, 'text', {
         reviewCount: safeInt(numText),
       });
     }
