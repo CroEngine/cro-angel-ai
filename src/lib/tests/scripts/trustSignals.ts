@@ -567,13 +567,23 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     });
   }
 
-  // Pass B: drop wrapper-block som innehåller ett annat innermost block av samma typ.
+  // Pass B: släpp wrapper-block bara om dess logoCount i huvudsak förklaras
+  // av inner-siblings (alla descendants av samma typ). Wrappers med oberoende
+  // logos utöver inner-innehållet behålls.
   function dropWrappers(arr, targetType) {
+    const COVERAGE_SLACK = 3;
     return arr.filter((a) => {
       if (a.type !== targetType) return true;
-      return !arr.some((b) =>
-        b !== a && b.type === targetType && a._block && b._block && a._block !== b._block && a._block.contains(b._block)
+      if (!a._block) return true;
+      const innerSiblings = arr.filter((b) =>
+        b !== a && b.type === targetType && b._block &&
+        a._block !== b._block && a._block.contains(b._block)
       );
+      if (innerSiblings.length === 0) return true;
+      const innerSum = innerSiblings.reduce((s, b) => s + (b.logoCount || 0), 0);
+      const aCount = a.logoCount || 0;
+      // Behåll wrappern om den har oberoende logos utöver sina inner-siblings.
+      return (aCount - innerSum) > COVERAGE_SLACK;
     });
   }
 
@@ -581,29 +591,6 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   filtered = dropWrappers(filtered, 'trusted_by');
   filtered = dedupeSameBlock(filtered, 'customer_logos');
   filtered = dropWrappers(filtered, 'customer_logos');
-
-  // TEMP DEBUG: containment-matris för customer_logos
-  const allCl = out.filter((e) => e.type === 'customer_logos');
-  const survivingCl = filtered.filter((e) => e.type === 'customer_logos');
-  for (const e of survivingCl) {
-    e._debug = {
-      blockTag: e._block && e._block.tagName,
-      blockCls: (e._block && e._block.className && String(e._block.className).slice(0, 80)) || '',
-      isBody: e._block === document.body,
-      isMain: e._block === document.querySelector('main'),
-      droppedSiblings: allCl
-        .filter((o) => o !== e && !survivingCl.includes(o))
-        .map((o) => ({
-          tag: o._block && o._block.tagName,
-          cls: (o._block && o._block.className && String(o._block.className).slice(0, 60)) || '',
-          logoCount: o.logoCount,
-          section: o.section,
-          containsSelf: !!(o._block && e._block && o._block.contains(e._block)),
-          containedBySelf: !!(o._block && e._block && e._block.contains(o._block)),
-          sameBlock: o._block === e._block,
-        })),
-    };
-  }
 
   for (const e of filtered) delete e._block;
   return filtered;
