@@ -408,7 +408,12 @@ function hierarchyFindings(a: PageAuditData): Finding[] {
         "ux",
         "hierarchy",
         `#${i + 1} ${h.role}`,
-        `weight ${h.visualWeight} · ${h.section}${h.aboveFold ? " · af" : ""} · "${h.text.slice(0, 60)}"`,
+        joinBits(
+          `weight ${h.visualWeight}`,
+          formatSection(h.section),
+          formatAboveFold(h.aboveFold),
+          `"${h.text.slice(0, 60)}"`,
+        ),
       ),
     );
   }
