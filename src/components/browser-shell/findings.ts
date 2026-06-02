@@ -298,8 +298,13 @@ function trustFindings(a: PageAuditData): Finding[] {
       f(
         "trust",
         "signals",
-        s.type.replace(/_/g, " "),
-        `${s.section}${s.aboveFold ? " · above fold" : ""}${extras.length ? " · " + extras.join(" / ") : ""} · "${s.text.slice(0, 60)}"`,
+        formatTrustType(s.type),
+        joinBits(
+          formatSection(s.section),
+          formatAboveFold(s.aboveFold),
+          extras.length ? extras.join(" / ") : undefined,
+          `"${s.text.slice(0, 60)}"`,
+        ),
       ),
     );
   }
