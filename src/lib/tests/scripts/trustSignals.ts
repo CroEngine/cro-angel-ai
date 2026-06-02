@@ -97,6 +97,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   function push(type, text, el, source, extras) {
     const block = nearestBlock(el);
     if (!isVisible(block)) return;
+    if (type === 'stars') {
+      const raw = block.getBoundingClientRect();
+      const viewportW = window.innerWidth || 1280;
+      if (raw.left >= viewportW || raw.right <= 0) return;
+    }
     const cleanText = (text || '').trim().replace(/\\s+/g, ' ').slice(0, 200);
     const dedupeKey = type + '|' + cleanText.slice(0, 80) + '|' + buildSelector(block);
     if (seen.has(dedupeKey)) return;
@@ -231,8 +236,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       if (statSeen.has(numEl)) continue;
       statSeen.add(numEl);
       const numText = (numEl.innerText || '').trim();
-      const label = (container.innerText || '').replace(/\\s+/g, ' ').slice(0, 100);
-      push('social_proof_count', numText + ' — ' + label, numEl, 'text', {
+      const containerText = (container.innerText || '').replace(/\\s+/g, ' ');
+      const km = containerText.match(STAT_KEYWORDS);
+      const label = km ? km[0] : '';
+      const display = label ? numText + ' — ' + label : numText;
+      push('social_proof_count', display, numEl, 'text', {
         reviewCount: safeInt(numText),
       });
     }
@@ -643,6 +651,9 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   filtered = dropWrappers(filtered, 'trusted_by');
 
   for (const e of filtered) delete e._block;
+  for (const e of filtered) {
+    if (e.source === 'schema') { delete e.rect; delete e.selector; }
+  }
   return filtered;
 
 

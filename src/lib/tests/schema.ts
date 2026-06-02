@@ -164,7 +164,7 @@ export type TrustSignal = {
   text: string;
   section: SectionKind;
   aboveFold: boolean;
-  selector: string;
+  selector?: string;
   visualWeight: number;
   source: "text" | "attr" | "schema" | "img_alt";
   rect?: Rect;
