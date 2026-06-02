@@ -374,7 +374,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   }
   for (const [parent, group] of byParent) {
     if (group.length < 3) continue;
-    push('stars', String(group.length) + ' stars', parent, 'attr', extractStarRating(parent));
+    push('stars', String(group.length) + ' stars', parent, 'attr', extractStarRating(parent, group));
   }
   document.querySelectorAll('p, span, div').forEach((el) => {
     if (el.children.length > 0) return;
