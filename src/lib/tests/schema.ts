@@ -113,22 +113,20 @@ export type SectionType =
   | "footer"
   | "aside";
 
+export type SectionRect = { y: number; w: number; h: number };
+
 export type PageSection = {
   id: string;
   type: SectionType;
-  kind: SectionType; // legacy alias for back-compat
   position: number;
   heading: string;
-  subheading: string;
+  subheading?: string;
   selector: string;
-  rect: Rect;
+  rect: SectionRect;
   aboveFold: boolean;
-  heightPx: number;
   visualWeight: number; // 0–100 normalized
   elementCount: number;
   childCount: number;
-  repeatedChildren: number;
-  headingText: string; // alias of heading
   containsPrimaryCTA: boolean;
   containsTrustSignals: boolean;
   containsForm: boolean;
