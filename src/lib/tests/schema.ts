@@ -164,6 +164,8 @@ export type TrustSignal = {
   text: string;
   section: SectionKind;
   aboveFold: boolean;
+  inCarousel?: boolean;
+
   selector?: string;
   visualWeight: number;
   source: "text" | "attr" | "schema" | "img_alt";
@@ -273,7 +275,7 @@ export type PageSummary = {
   testimonialCount: number;
   logoCount: number;
   reviewCount: number;
-  averageRating: number;
+  // averageRating removed — use individual TrustSignal.rating values instead
   formCount: number;
   navigationLinks: number;
   sectionCount: number;

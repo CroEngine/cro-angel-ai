@@ -194,13 +194,21 @@ function trustFindings(a: PageAuditData): Finding[] {
     );
   }
 
-  const ps = a.pageSummary;
-  if (ps && (ps.averageRating > 0 || ps.reviewCount > 0)) {
-    const bits: string[] = [];
-    if (ps.averageRating > 0) bits.push(`★ ${ps.averageRating}/5`);
-    if (ps.reviewCount > 0) bits.push(`${ps.reviewCount} reviews`);
-    out.push(f("cro", "Aggregate rating", bits.join(" · ")));
+  const ratings = signals
+    .filter((s) => typeof s.rating === "number")
+    .map((s) => s.rating as number);
+  if (ratings.length > 0) {
+    out.push(
+      f("cro", "Individual ratings", `${ratings.length} testimonials: ${ratings.join(", ")}`),
+    );
   }
+  const totalReviewCount = signals
+    .filter((s) => s.type === "review_rating" || s.type === "stars")
+    .reduce((sum, s) => sum + (s.reviewCount ?? 0), 0);
+  if (totalReviewCount > 0) {
+    out.push(f("cro", "Total review count", String(totalReviewCount)));
+  }
+
 
   const brands = new Set<string>();
   for (const s of signals) {
