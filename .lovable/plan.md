@@ -1,70 +1,126 @@
-## Implementera vald riktning: Structured metric cards
+## Väg A: Minimal rådata-utvidgning (1–2 dagar)
 
-Fyra arbetsfiler. Innehållet komprimeras nedan.
+Lägg till 4 rådata-bitar. Inga scores, flags, quick wins eller UI-ändringar. Alla nya fält är optional. Efter bygget kör du scannern mot 10 siter, läser JSON-output, och vi designar scoring/flags-lagret (Väg B) baserat på faktiska mönster.
 
-### 1. Fonts + tokens (`src/styles.css`, `src/routes/__root.tsx`)
+---
 
-- Lägg till Google Fonts-länk för **Sora** (400/600/700) och **Manrope** (400/500/600) i `__root.tsx` `<head>`.
-- I `styles.css`: lägg `--font-heading: 'Sora'` och `--font-body: 'Manrope'` på `:root`, sätt `body { font-family: var(--font-body) }`, och skapa en utility-klass `.font-heading { font-family: var(--font-heading) }` (eller mappa via Tailwind v4 `@theme`).
-- Palett-tokens redan semantiska — inget byte krävs (prototypens `#fafbfc / #e8ecf1 / #94a3b8 / #3b82f6` matchar `background / border / muted-foreground / primary` i Cloud White-temat tillräckligt nära).
+### 1. Schema — `src/lib/tests/schema.ts`
 
-### 2. `findings.ts` — lägg till en lätt typ-tagg per Finding (valfritt fält)
+Lägg till 4 optional-fält på `PageAuditData`:
 
-Lägg till `kind?: "status" | "metric" | "quote" | "stats" | "text"` i `Finding`-typen. Sätt det på rätt ställe där finding skapas (snabb pass per kategori), så `FindingsView` kan välja kort-variant utan att gissa via regex.
+```ts
+indexability?: {
+  indexable: boolean;
+  noindex: boolean;
+  nofollow: boolean;
+  canonicalUrl: string | null;        // råvärdet, för felsökning
+  canonicalMatchesSelf: boolean;
+  canonicalIsAbsolute: boolean;
+  robotsTxtAllows: boolean;
+};
 
-### 3. `FindingsView.tsx` — rewrite enligt prototyp
+contentMetrics?: {
+  readingTimeMinutes: number;         // max(1, round(wordCount/220))
+  paragraphCount: number;
+  listCount: number;                  // ul + ol
+  listItemCount: number;
+  faqCount: number;                   // <details> + headings som slutar med "?"
+  blockquoteCount: number;
+  headingDepth: number;               // djupaste h-nivå som faktiskt används
+};
 
-**`PageCard` header (sticky):**
-```tsx
-<header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-5 py-4 rounded-t-xl">
-  <div className="flex flex-col gap-0.5">
-    <h1 className="font-heading text-sm font-bold text-foreground">{hostname}</h1>
-    <div className="flex items-center gap-2">
-      <span className="h-2 w-2 rounded-full bg-emerald-500" />
-      <p className="text-xs text-muted-foreground">{count} datapoints analyzed</p>
-    </div>
-  </div>
-  <Button variant="outline" size="sm" className="...">Download JSON</Button>
-</header>
+performanceProxy?: {
+  domNodes: number;
+  aboveFoldElements: number;
+  aboveFoldImageCount: number;
+  largestImagePx: number;             // max(naturalWidth*naturalHeight)
+  lazyLoadedImages: number;
+  eagerImagesAboveFold: number;
+  stylesheetCount: number;
+  scriptCount: number;
+};
 ```
 
-**Body:** `p-5 space-y-8`.
-
-**`CategorySection` header:**
-```tsx
-<div className="mb-4 flex items-center gap-3">
-  <h2 className="font-heading text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{label}</h2>
-  <div className="h-px flex-1 bg-border" />
-  <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">{n}</span>
-</div>
+Utöka `FormEntity`:
+```ts
+socialLogin: boolean;
+socialProviders: string[];   // "google" | "apple" | "facebook" | "github" | "microsoft"
 ```
-Klick på rubriken växlar öppet/stängt (samma som idag, men hela headern är toggle-zon).
 
-**Grid:** `grid grid-cols-2 gap-3`. Vissa kort spänner 2 kolumner när värdet är långt (citat / sektionsordning) — använd `col-span-2`.
+---
 
-**Kort-varianter (en liten `<FindingCard>` med switch på `kind`):**
+### 2. Browser-skript — `src/lib/tests/scripts/pageAudit.ts`
 
-- `status` — pill (`Found` grön, `Missing` amber, `Set` blå) + valfri italic detalj.
-- `metric` — stort tal (`font-heading text-xl font-bold`) + liten enhet under.
-- `quote` — italic text + liten blå punkt vänster, `col-span-2`.
-- `stats` — header-rad: label vänster + huvudsiffra blå höger, divider, 3-kol mini-stats (Primary/Secondary/Above fold etc.).
-- `text` (default) — label + värde + ev. liten mono-chip (t.ex. `56 chars`).
+Lägg till 3 nya block i den befintliga IIFE:
 
-Wrap: `rounded-xl border border-border bg-muted/30 p-4`. Hover: `hover:border-primary/40 transition-colors`.
+- **`indexability`**: parsa `<meta name="robots">` content för `noindex`/`nofollow`. `canonicalUrl = canonicalEl?.getAttribute('href') ?? null`. Normalisera canonical mot `location.href` (strip trailing slash + query + fragment) → `canonicalMatchesSelf`. `canonicalIsAbsolute = /^https?:\/\//.test(canonicalUrl)`. `robotsTxtAllows` lämnas `true` här, sätts korrekt server-side.
 
-**Tom-läge:** behåll `min-h-full items-center justify-center` med engelska texten.
+- **`contentMetrics`**: `paragraphCount = querySelectorAll('p').length`. `listCount = querySelectorAll('ul,ol').length`. `listItemCount = querySelectorAll('li').length`. `blockquoteCount = querySelectorAll('blockquote').length`. `faqCount = querySelectorAll('details').length + headings vars text slutar med '?'`. `readingTimeMinutes = max(1, round(wordCount/220))`. `headingDepth = max h-nivå (1–6) som faktiskt finns på sidan`.
 
-### 4. Engelska kategori-namn
+- **`performanceProxy`**: `domNodes = querySelectorAll('*').length`. `aboveFoldElements`: element vars `bbox.top < viewportH`. `aboveFoldImageCount`: `<img>` ovan fold. `largestImagePx`: loopa `<img>`, max `naturalWidth*naturalHeight` (fallback bbox). `lazyLoadedImages = imgs där loading==="lazy"`. `eagerImagesAboveFold = imgs ovan fold där loading !== "lazy"`. `stylesheetCount = querySelectorAll('link[rel="stylesheet"]').length`. `scriptCount = querySelectorAll('script').length`.
 
-`CATEGORY_LABELS` byts till: `SEO Analysis · Conversion (CRO) · UX & Structure · Interactions`.
+Returnera som top-level-fält i samma objekt som resten av `pageAudit`-output.
 
-## Vad jag INTE gör
+---
 
-- Ingen ny data/sökning/filter — bara presentation.
-- Ingen footer-rad ("scan v2.4.1 / 1.2s") — fabricerar inte data som inte finns.
-- `findings.ts`-utdata för värden är oförändrad (bara `kind`-tagg läggs till).
-- Inga ändringar i `engine.server.ts`, ConsolePanel-shell, Viewport.
+### 3. Browser-skript — `src/lib/tests/scripts/forms.ts`
+
+Per form, sök knappar/länkar inom `form` eller direkt syskon vars text/aria-label matchar `/google|apple|facebook|github|microsoft|sso|single sign/i`. Bygg `socialProviders: string[]` (lowercased, deduped). `socialLogin = socialProviders.length > 0`.
+
+GlutenForum har 0 forms, så denna kod aktiveras inte där — men är redo för siter med inloggning.
+
+---
+
+### 4. Server-side — `src/lib/tests/engine.server.ts`
+
+Efter att `pageAudit`-skriptet returnerat:
+
+```ts
+if (audit.indexability) {
+  audit.indexability.robotsTxtAllows = !audit.robotsTxt.blocksAll;
+  audit.indexability.indexable =
+    !audit.indexability.noindex && audit.indexability.robotsTxtAllows;
+}
+```
+
+Inga andra ändringar i engine.
+
+---
+
+### 5. Vad som INTE ändras
+
+- ❌ `findings.ts` — inga nya kort
+- ❌ `FindingsView.tsx` — ingen ny kategori
+- ❌ Inga scores, flags, quick wins, confidence, evidence, bucketing
+- ❌ Inga nya filer
+- ❌ Ingen multi-page crawl
+- ❌ Ingen Lighthouse / extern data
+
+Användaren ser ny data via **Download JSON**-knappen som redan finns.
+
+---
+
+## Filer som ändras (3 totalt)
+
+- `src/lib/tests/schema.ts` — 4 optional-fält + `FormEntity`-utökning.
+- `src/lib/tests/scripts/pageAudit.ts` — 3 nya block i IIFE.
+- `src/lib/tests/scripts/forms.ts` — social-login-detektion.
+- `src/lib/tests/engine.server.ts` — 3-radig härledning av `indexable`.
+
+Totalt ~75 rader kod.
+
+---
+
+## Efter bygget — din testprocess
+
+1. Kör scannern mot 10 siter (mix: SaaS, e-handel, blogg, community, B2B, lokal-tjänst).
+2. Ladda ner JSON för varje.
+3. Notera mönster: vilka fältkombinationer ropar "insikt" åt dig som människa?
+4. Skriv ner empiriska tröskelvärden ("competing CTAs känns problematiskt > 6, inte > 4").
+5. Det blir spec för Väg B — scoring + flags + insights med riktiga tal istället för gissningar.
+
+---
 
 ## Resultat
 
-Findings ser ut som prototypen: ren vit panel, kategori-band med uppercase-label + divider + count-pill, 2-kols kort-grid med varianter för status/metric/quote/stats/text. Sticky header med URL + grön ready-dot + Download JSON-knapp behålls.
+JSON-export per sida innehåller nu `indexability` (med rå canonicalUrl), `contentMetrics` (inkl. headingDepth), `performanceProxy` (inkl. aboveFoldImageCount), och `socialLogin` på forms. UI:t är oförändrat. Du har rådata att fatta empiriska beslut på inför Väg B.

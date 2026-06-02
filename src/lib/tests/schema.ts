@@ -211,10 +211,13 @@ export type FormEntity = {
   containsPassword: boolean;
   containsCreditCard: boolean;
   multiStep: boolean;
+  socialLogin: boolean;
+  socialProviders: string[];
   submitText: string;
   fields: FormField[];
   rect: Rect;
 };
+
 
 export type NavigationData = {
   topNavCount: number;
@@ -309,7 +312,36 @@ export type PageAuditData = {
   pageSummary: PageSummary;
   hero?: HeroContent;
   flags: string[];
+  indexability?: {
+    indexable: boolean;
+    noindex: boolean;
+    nofollow: boolean;
+    canonicalUrl: string | null;
+    canonicalMatchesSelf: boolean;
+    canonicalIsAbsolute: boolean;
+    robotsTxtAllows: boolean;
+  };
+  contentMetrics?: {
+    readingTimeMinutes: number;
+    paragraphCount: number;
+    listCount: number;
+    listItemCount: number;
+    faqCount: number;
+    blockquoteCount: number;
+    headingDepth: number;
+  };
+  performanceProxy?: {
+    domNodes: number;
+    aboveFoldElements: number;
+    aboveFoldImageCount: number;
+    largestImagePx: number;
+    lazyLoadedImages: number;
+    eagerImagesAboveFold: number;
+    stylesheetCount: number;
+    scriptCount: number;
+  };
 };
+
 
 export type CollectSummary = {
   total: number;
