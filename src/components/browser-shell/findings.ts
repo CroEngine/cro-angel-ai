@@ -64,6 +64,66 @@ const f = (
 ): Finding => ({ category, group, label, detail });
 
 // ---------------------------------------------------------------------------
+// Human-readable formatters (presentation only)
+// ---------------------------------------------------------------------------
+
+const SECTION_LABEL: Record<string, string> = {
+  header: "in header",
+  hero: "in hero",
+  nav: "in navigation",
+  navigation: "in navigation",
+  footer: "in footer",
+  content: "in content",
+};
+
+const INTENT_LABEL: Record<string, string> = {
+  conversion: "Conversion intent",
+  navigation: "Navigation intent",
+  utility: "Utility",
+  social: "Social",
+};
+
+const TRUST_TYPE_LABEL: Record<string, string> = {
+  customer_review: "Customer review",
+  trust_badge: "Trust badge",
+  aggregate_rating: "Aggregate rating",
+  contact_info: "Contact info",
+  certification: "Certification",
+  press_mention: "Press mention",
+  client_logo: "Client logo",
+};
+
+const formatSection = (s?: string): string | undefined =>
+  s ? SECTION_LABEL[s] ?? `in ${s}` : undefined;
+
+const formatIntent = (i?: string): string | undefined =>
+  i ? INTENT_LABEL[i] : undefined;
+
+const formatAboveFold = (af?: boolean): string | undefined =>
+  af ? "above the fold" : undefined;
+
+const formatCompetingCTAs = (n: number): string =>
+  n === 0 ? "no competing CTAs" : n === 1 ? "1 competing CTA" : `${n} competing CTAs`;
+
+function formatTrustDistance(px?: number): string {
+  if (px == null || px >= 1500 || px === 9999) return "no trust signal nearby";
+  if (px <= 200) return `trust signal nearby (${px}px)`;
+  return `trust signal ${px}px away`;
+}
+
+function formatFormDistance(px?: number): string {
+  if (px === 0) return "inside a form";
+  if (px == null || px >= 9999) return "not near a form";
+  return `form ${px}px away`;
+}
+
+const formatTrustType = (t: string): string =>
+  TRUST_TYPE_LABEL[t] ?? t.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+const joinBits = (...bits: Array<string | undefined | false | null>): string =>
+  bits.filter((b): b is string => Boolean(b)).join(" · ");
+
+// ---------------------------------------------------------------------------
 // SEO
 // ---------------------------------------------------------------------------
 
@@ -104,7 +164,11 @@ function heroFindings(a: PageAuditData): Finding[] {
         "cro",
         "hero",
         "Hero primary CTA",
-        `"${h.primaryCtaText}"${h.primaryCtaIntent ? " · " + h.primaryCtaIntent : ""}${h.aboveFold ? " · above fold" : ""}`,
+        joinBits(
+          `"${h.primaryCtaText}"`,
+          formatIntent(h.primaryCtaIntent),
+          formatAboveFold(h.aboveFold),
+        ),
       ),
     );
   }
@@ -121,13 +185,22 @@ function ctaFindings(a: PageAuditData, c?: CollectData): Finding[] {
         "cro",
         "ctas",
         "CTAs total",
-        `${ctas.length} · primary ${ps.primaryCtaCount} · secondary ${ps.secondaryCtaCount} · ${ps.aboveFoldCtaCount} above fold`,
+        `${ctas.length} CTAs · ${ps.primaryCtaCount} primary · ${ps.secondaryCtaCount} secondary · ${ps.aboveFoldCtaCount} above the fold`,
       ),
     );
   }
   const s = c?.summary;
   if (s) {
-    out.push(f("cro", "ctas", "Competing CTAs above fold", String(s.competingAboveFold)));
+    out.push(
+      f(
+        "cro",
+        "ctas",
+        "Competing CTAs above the fold",
+        s.competingAboveFold === 0
+          ? "None"
+          : `${s.competingAboveFold} CTAs compete above the fold`,
+      ),
+    );
     const top = s.topVisualWeight[0];
     if (top) {
       out.push(f("cro", "ctas", "Top visual weight", `"${top.text || top.selector}" (${top.score})`));
@@ -139,7 +212,14 @@ function ctaFindings(a: PageAuditData, c?: CollectData): Finding[] {
         "cro",
         "ctas",
         `"${c2.text || "(no text)"}"`,
-        `${c2.section}${c2.aboveFold ? " · af" : ""} · ${c2.intent} · competing ${c2.competingActions} · trust ${c2.nearestTrustSignalDistance}px · form ${c2.nearestFormDistance === 0 ? "in" : c2.nearestFormDistance + "px"}`,
+        joinBits(
+          formatSection(c2.section),
+          formatAboveFold(c2.aboveFold),
+          formatIntent(c2.intent),
+          formatCompetingCTAs(c2.competingActions),
+          formatTrustDistance(c2.nearestTrustSignalDistance),
+          formatFormDistance(c2.nearestFormDistance),
+        ),
       ),
     );
   }
@@ -160,7 +240,8 @@ function formFindings(a: PageAuditData): Finding[] {
     if (fm.containsPassword) bits.push("password");
     if (fm.containsCreditCard) bits.push("card");
     if (fm.submitText) bits.push(`"${fm.submitText}"`);
-    out.push(f("cro", "forms", `Form (${fm.section}${fm.aboveFold ? " · af" : ""})`, bits.join(" · ")));
+    const label = `Form ${formatSection(fm.section) ?? ""}${fm.aboveFold ? " (above the fold)" : ""}`.trim();
+    out.push(f("cro", "forms", label, bits.join(" · ")));
   }
   return out;
 }
@@ -193,7 +274,7 @@ function trustFindings(a: PageAuditData): Finding[] {
         "trust",
         "byType",
         "By type",
-        byType.map(([k, v]) => `${k.replace(/_/g, " ")} ×${v}`).join(" · "),
+        byType.map(([k, v]) => `${formatTrustType(k)} ×${v}`).join(" · "),
       ),
     );
   }
@@ -217,8 +298,13 @@ function trustFindings(a: PageAuditData): Finding[] {
       f(
         "trust",
         "signals",
-        s.type.replace(/_/g, " "),
-        `${s.section}${s.aboveFold ? " · above fold" : ""}${extras.length ? " · " + extras.join(" / ") : ""} · "${s.text.slice(0, 60)}"`,
+        formatTrustType(s.type),
+        joinBits(
+          formatSection(s.section),
+          formatAboveFold(s.aboveFold),
+          extras.length ? extras.join(" / ") : undefined,
+          `"${s.text.slice(0, 60)}"`,
+        ),
       ),
     );
   }
@@ -279,7 +365,7 @@ function structureFindings(a: PageAuditData, c?: CollectData): Finding[] {
   }
 
   if (s) {
-    out.push(f("ux", "sections", "Above fold", `${s.aboveFold} / ${s.total} elements`));
+    out.push(f("ux", "sections", "Above the fold", `${s.aboveFold} / ${s.total} elements`));
     if (s.bySection) {
       out.push(
         f(
@@ -298,12 +384,12 @@ function structureFindings(a: PageAuditData, c?: CollectData): Finding[] {
   for (const s2 of sections.slice(0, 12)) {
     const t = s2.type || s2.kind || "?";
     const bits: string[] = [t];
-    if (s2.aboveFold) bits.push("above fold");
+    if (s2.aboveFold) bits.push("above the fold");
     if (s2.heightPx) bits.push(`${s2.heightPx}px`);
-    if (s2.containsPrimaryCTA) bits.push("CTA");
-    if (s2.containsForm) bits.push("form");
-    if (s2.containsTrustSignals) bits.push("trust");
-    if (s2.repeatedChildren && s2.repeatedChildren >= 3) bits.push(`×${s2.repeatedChildren} repeated`);
+    if (s2.containsPrimaryCTA) bits.push("has primary CTA");
+    if (s2.containsForm) bits.push("has form");
+    if (s2.containsTrustSignals) bits.push("has trust signal");
+    if (s2.repeatedChildren && s2.repeatedChildren >= 3) bits.push(`${s2.repeatedChildren} repeated items`);
     const heading = s2.heading || s2.headingText;
     if (heading) bits.push(`"${heading.slice(0, 50)}"`);
     out.push(f("ux", "sections", s2.id || s2.selector || t, bits.join(" · ")));
@@ -322,7 +408,12 @@ function hierarchyFindings(a: PageAuditData): Finding[] {
         "ux",
         "hierarchy",
         `#${i + 1} ${h.role}`,
-        `weight ${h.visualWeight} · ${h.section}${h.aboveFold ? " · af" : ""} · "${h.text.slice(0, 60)}"`,
+        joinBits(
+          `weight ${h.visualWeight}`,
+          formatSection(h.section),
+          formatAboveFold(h.aboveFold),
+          `"${h.text.slice(0, 60)}"`,
+        ),
       ),
     );
   }
