@@ -1,40 +1,41 @@
-DOM-containment-dedup för `customer_logos` i `src/lib/tests/scripts/trustSignals.ts`.
+## Mål
 
-## Ändringar
+Aktivera Browserbase residential proxies så att fler sites (t.ex. personio.com med Cloudflare-challenge) kan auditeras.
 
-### 1. `push()` rad 111
+## Ändring
 
-```js
-if (type === 'trusted_by' || type === 'customer_logos') entry._block = block;
+En rad i `src/lib/tests/browserbase.server.ts`, rad 22:
+
+```ts
+const session = await client.sessions.create({
+  projectId,
+  keepAlive: true,
+  timeout: 16 * 60,
+  proxies: true,  // ← residential proxies, hjälper mot Cloudflare/anti-bot
+});
 ```
 
-### 2. Generalisera filter (rad 561–568)
+Inget annat ändras. SDK-typerna i `@browserbasehq/sdk` stöder fältet direkt.
 
-```js
-function dropWrappers(arr, targetType) {
-  return arr.filter((a) => {
-    if (a.type !== targetType) return true;
-    const hasInner = arr.some((b) =>
-      b !== a && b.type === targetType && a._block && b._block && a._block !== b._block && a._block.contains(b._block)
-    );
-    return !hasInner;
-  });
-}
+## Konsekvenser
 
-let filtered = dropWrappers(out, 'trusted_by');
-filtered = dropWrappers(filtered, 'customer_logos');
-for (const e of filtered) delete e._block;
-return filtered;
-```
-
-`_block` finns kvar på entries genom hela kedjan — `delete` körs sist, efter båda `dropWrappers`-anropen. Inga mellanliggande operationer rör arrayen.
-
-## Förväntat på teamtailor
-
-- 6 → 3 `customer_logos` (11, 8, 4)
-- `pageSummary.logoCount` 46 → 23
-- `trusted_by` oförändrad
+- **Kostnad:** Proxies debiteras per GB bandbredd (utöver session-minuter). För audit-runs är payload liten (~några MB per sida) så marginell kostnad per run, men det är inte gratis.
+- **Latens:** Residential proxies adderar ~200–1000 ms per request. Audits blir lite långsammare.
+- **Geografi:** Default är US residential exit. Om vi vill ha specifik geo (EU för GDPR-sites) kan det konfigureras senare via `proxies: [{ type: 'browserbase', geolocation: { country: 'SE' } }]`.
 
 ## Inte i scope
 
-Stars rating, org_number postnummer-FP, badge/logo-dubbelräkning.
+- Advanced Stealth (kräver Scale plan, separat beslut)
+- Per-run opt-in flagga för proxies (kan läggas till senare om kostnaden blir ett problem)
+- Geo-targeting
+
+## Verifiering
+
+Kör test mot:
+1. `talentium.io` — ska fortsätta funka (baseline)
+2. `teamtailor.com/sv` — ska fortsätta visa customer_logos-regressionen (oförändrat beteende vad gäller dedup-buggen)
+3. `personio.com` — förhoppningsvis tar sig förbi Cloudflare nu; annars rapporterar vi att stealth också behövs
+
+## Filer som ändras
+
+- `src/lib/tests/browserbase.server.ts` (en rad)
