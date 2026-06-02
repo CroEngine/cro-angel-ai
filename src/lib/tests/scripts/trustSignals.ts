@@ -567,23 +567,24 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     });
   }
 
-  // Pass B: släpp wrapper-block bara om dess logoCount i huvudsak förklaras
-  // av inner-siblings (alla descendants av samma typ). Wrappers med oberoende
-  // logos utöver inner-innehållet behålls.
+  // Pass B: släpp wrapper-block bara om dess logoCount förklaras av top-level
+  // inner-siblings (descendants av samma typ som INTE själva ligger inuti en
+  // annan inner — undviker dubbelräkning vid överlappande wrappers).
   function dropWrappers(arr, targetType) {
-    const COVERAGE_SLACK = 3;
+    const COVERAGE_SLACK = 2;
     return arr.filter((a) => {
       if (a.type !== targetType) return true;
       if (!a._block) return true;
-      const innerSiblings = arr.filter((b) =>
+      const allInner = arr.filter((b) =>
         b !== a && b.type === targetType && b._block &&
         a._block !== b._block && a._block.contains(b._block)
       );
-      if (innerSiblings.length === 0) return true;
-      const innerSum = innerSiblings.reduce((s, b) => s + (b.logoCount || 0), 0);
-      const aCount = a.logoCount || 0;
-      // Behåll wrappern om den har oberoende logos utöver sina inner-siblings.
-      return (aCount - innerSum) > COVERAGE_SLACK;
+      const topLevelInner = allInner.filter((b) =>
+        !allInner.some((c) => c !== b && c._block.contains(b._block))
+      );
+      if (topLevelInner.length === 0) return true;
+      const innerSum = topLevelInner.reduce((s, b) => s + (b.logoCount || 0), 0);
+      return ((a.logoCount || 0) - innerSum) >= COVERAGE_SLACK;
     });
   }
 
@@ -591,6 +592,42 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   filtered = dropWrappers(filtered, 'trusted_by');
   filtered = dedupeSameBlock(filtered, 'customer_logos');
   filtered = dropWrappers(filtered, 'customer_logos');
+
+  // TEMP DEBUG: top-level coverage + containment-matris för customer_logos.
+  // Tas bort i separat commit efter verifiering.
+  const allCl = out.filter((e) => e.type === 'customer_logos');
+  const survivingCl = filtered.filter((e) => e.type === 'customer_logos');
+  for (const e of survivingCl) {
+    const allInner = allCl.filter((b) =>
+      b !== e && b._block && e._block && e._block !== b._block && e._block.contains(b._block)
+    );
+    const topLevelInner = allInner.filter((b) =>
+      !allInner.some((c) => c !== b && c._block.contains(b._block))
+    );
+    const innerSum = topLevelInner.reduce((s, b) => s + (b.logoCount || 0), 0);
+    e._debug = {
+      blockTag: e._block && e._block.tagName,
+      blockCls: (e._block && e._block.className && String(e._block.className).slice(0, 80)) || '',
+      isBody: e._block === document.body,
+      isMain: e._block === document.querySelector('main'),
+      logoCount: e.logoCount,
+      topLevelInnerCounts: topLevelInner.map((b) => b.logoCount || 0),
+      innerSiblingsSum: innerSum,
+      diff: (e.logoCount || 0) - innerSum,
+      hasInnerSiblings: topLevelInner.length > 0,
+      droppedSiblings: allCl
+        .filter((o) => o !== e && !survivingCl.includes(o))
+        .map((o) => ({
+          tag: o._block && o._block.tagName,
+          cls: (o._block && o._block.className && String(o._block.className).slice(0, 60)) || '',
+          logoCount: o.logoCount,
+          section: o.section,
+          containsSelf: !!(o._block && e._block && o._block.contains(e._block)),
+          containedBySelf: !!(o._block && e._block && e._block.contains(o._block)),
+          sameBlock: o._block === e._block,
+        })),
+    };
+  }
 
   for (const e of filtered) delete e._block;
   return filtered;
