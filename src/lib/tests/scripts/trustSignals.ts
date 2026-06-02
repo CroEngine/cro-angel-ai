@@ -217,6 +217,27 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
   });
 
+  // Big-number stat blocks (dl/dt/dd or stat/metric/counter containers where
+  // the number and label live in separate sibling elements).
+  const STAT_KEYWORDS = /\\b(customers|users|members|downloads|reviews|recensioner|kunder|anv[äa]ndare|medlemmar|nedladdningar|rekryteringar|rekryterare|f[öo]retag|projekt|jobb|tj[äa]nster|ordrar|leveranser)\\b/i;
+  const NUM_RX = /^\\s*\\d{1,3}(?:[ ,.\\u00a0]\\d{3})+\\+?\\s*$|^\\s*\\d{4,}\\+?\\s*$/;
+  const statSeen = new Set();
+  document.querySelectorAll('dl, [class*="stat" i], [class*="metric" i], [class*="counter" i]').forEach((container) => {
+    const containerText = (container.innerText || '').toLowerCase();
+    if (!STAT_KEYWORDS.test(containerText)) return;
+    const numEls = Array.from(container.querySelectorAll('dd, span, strong, p, div, h1, h2, h3, h4'))
+      .filter((e) => NUM_RX.test((e.innerText || '').trim()));
+    for (const numEl of numEls) {
+      if (statSeen.has(numEl)) continue;
+      statSeen.add(numEl);
+      const numText = (numEl.innerText || '').trim();
+      const label = (container.innerText || '').replace(/\\s+/g, ' ').slice(0, 100);
+      push('social_proof_count', numText + ' — ' + label, numEl, 'text', {
+        reviewCount: safeInt(numText),
+      });
+    }
+  });
+
   function neighborText(el) {
     if (!el) return '';
     const bits = [];
