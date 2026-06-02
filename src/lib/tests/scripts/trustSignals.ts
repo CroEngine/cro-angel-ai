@@ -237,7 +237,15 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       statSeen.add(numEl);
       const numText = (numEl.innerText || '').trim();
       const containerText = (container.innerText || '').replace(/\\s+/g, ' ');
-      const km = containerText.match(STAT_KEYWORDS);
+      // Pick the STAT_KEYWORD closest to numEl in the DOM (parent → grandparent →
+      // container fallback). Container-wide match grabs the first hit, which is
+      // wrong when multiple stat cards share one container with different labels.
+      const p1 = numEl.parentElement;
+      const p2 = p1 && p1.parentElement;
+      const m1 = p1 && (p1.innerText || '').match(STAT_KEYWORDS);
+      const m2 = !m1 && p2 ? (p2.innerText || '').match(STAT_KEYWORDS) : null;
+      const m3 = (!m1 && !m2) ? containerText.match(STAT_KEYWORDS) : null;
+      const km = m1 || m2 || m3;
       const label = km ? km[0] : '';
       const display = label ? numText + ' — ' + label : numText;
       push('social_proof_count', display, numEl, 'text', {
@@ -393,15 +401,20 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       return withReviewCount(rating);
     }
 
-    // (4) All visible stars filled — only inside testimonial-like context.
-    // Look up to 5 ancestor levels but early-exit at BODY/MAIN/HTML so a
-    // <section class="testimonials"> high in the tree doesn't classify the
-    // whole page as testimonial context.
+    // (4) All visible stars filled.
+    // For exactly 5 stars: if we reached this step, steps (1)–(3b) found no
+    // empty/filled/half/fill signals, so a fully-visible 5-star cluster picked
+    // up by the star-class selector is the canonical "5/5 in a testimonial
+    // card" pattern. Hero decorations are almost always one icon + number,
+    // not 5 separate star nodes — safe to skip context check.
+    // For 3–4 stars: keep the testimonial-context guard to avoid false hits
+    // on empty rating widgets with placeholder stars.
     const allVisible = Array.from(allStars).filter((s) => {
       const r = s.getBoundingClientRect();
       return r.width > 0 && r.height > 0;
     });
     if (allVisible.length === allStars.length) {
+      if (allStars.length === 5) return withReviewCount(5);
       const ctxRx = /testimonial|review|quote|kund|card|feedback/i;
       let ctx = false;
       let node = parent;
