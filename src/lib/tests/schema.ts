@@ -177,6 +177,7 @@ export type TrustSignal = {
   reviewCount?: number;
   reviewSource?: string;
   logoCount?: number;
+  aboveFoldLogoCount?: number;
   recognizedBrands?: string[];
   badgeCount?: number;
   badgeTitles?: string[];
