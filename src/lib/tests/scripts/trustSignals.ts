@@ -497,7 +497,15 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     } catch (e) {}
   }
 
-  return out;
+  // Parent-dedup for trusted_by: when the same text appears multiple times,
+  // keep only the smallest (innermost) block — drops section/wrapper duplicates.
+  const filtered = out.filter((a, i) => {
+    if (a.type !== 'trusted_by') return true;
+    return !out.some((b, j) =>
+      j !== i && b.type === 'trusted_by' && b.text === a.text && b.visualWeight < a.visualWeight
+    );
+  });
+  return filtered;
 })()`;
 
 
