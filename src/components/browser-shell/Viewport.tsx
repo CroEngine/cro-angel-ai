@@ -86,16 +86,19 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
   const { screenshotUrl, viewport, overlayElements } = frozen;
 
   return (
-    <div className="relative flex-1 overflow-auto bg-muted/20">
-      <div className="relative w-full" style={{ aspectRatio: `${viewport.w} / ${viewport.h}` }}>
+    <div className="relative flex-1 overflow-auto bg-muted/20 flex items-start justify-center p-4">
+      <div
+        className="relative w-full max-w-full"
+        style={{ aspectRatio: `${viewport.w} / ${viewport.h}` }}
+      >
         <img
           src={screenshotUrl}
           alt="Frozen page snapshot"
-          className="block w-full h-auto"
+          className="absolute inset-0 h-full w-full object-contain"
           draggable={false}
         />
         {overlayElements
-          .filter((el) => el.rect.w > 0 && el.rect.h > 0)
+          .filter((el) => el.rect.y + el.rect.h > 0 && el.rect.y < viewport.h && el.rect.w > 0 && el.rect.h > 0)
           .map((el, i) => {
             const color = CATEGORY_COLORS[el.category] ?? CATEGORY_COLORS.other;
             return (

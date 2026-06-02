@@ -1,25 +1,26 @@
 ## Plan
 
-Jag ska fixa screenshot-flödet så att den frysta vyn visar sidan i korrekt skala och inte tappas bort när bilden blir stor.
+Du har rätt — innan vi började mecka med vad som skulle markeras i DOM:en funkade frozen-screenshoten. Det vi ändrade på vägen var två saker som tillsammans gör att bilden nu hamnar som en smal remsa "i hörnet":
 
-### Vad som verkar vara fel
-- Servern tar en `fullPage`-screenshot och skickar hela bilden som en base64-data-URL i eventströmmen.
-- Vyn renderar bilden med `aspect-ratio` baserat på hela sidans höjd och `object-contain`, vilket gör långa sidor extremt nedskalade.
-- För stora sidor kan eventpayloaden bli så stor att screenshoten inte når klienten stabilt.
+1. **`engine.server.ts`** — `page.screenshot({ fullPage: true })` ersatte den tidigare viewport-screenshoten. Browserbase-sessionen körs i en relativt smal default-viewport, så när vi tar `fullPage` får vi en bild som är ~1024 bred och flera tusen pixlar hög = en lång tunn remsa.
+2. **`Viewport.tsx` (FrozenViewport)** — layouten byttes från `absolute inset-0 object-contain` (bilden fittades centrerat i panelen) till `w-full h-auto` i en `aspectRatio`-container. Det förstärker problemet: containern blir extremt hög och bilden renderas som en smal kolumn.
 
-### Ändringar
-1. **Ta viewport-screenshot istället för fullPage**
-   - Ändra screenshot-capture till normal viewport-höjd, så bilden motsvarar det användaren faktiskt ser.
-   - Behåll overlay-koordinater filtrerade till synlig viewport så markeringarna hamnar rätt.
+### Återställning
 
-2. **Fixa Frozen viewport-renderingen**
-   - Visa screenshoten med fast viewport-aspekt och `object-cover`/naturlig fyllning i stället för att trycka ihop hela sidan.
-   - Ta bort layouten som gör att långa screenshots krymper till en tunn remsa.
+**`src/lib/tests/engine.server.ts`**
+- Byt `page.screenshot({ type: "jpeg", quality: 60, fullPage: true })` tillbaka till `fullPage: false` (viewport-screenshot, som det var innan).
+- Behåll JPEG-dimensionsläsningen — den fungerar lika bra för viewport-bilder och fallback-grenen täcker resten.
+- `scrollWarmup` + scroll-tillbaka-till-toppen behålls så lazy-content hinner laddas innan vi mäter rects och tar bilden.
 
-3. **Gör sparandet robustare**
-   - Minska payloadstorleken genom att bara skicka viewport-bilden.
-   - Behåll loggning när screenshot misslyckas, så UI kan visa tydligare “no snapshot captured” om det händer igen.
+**`src/components/browser-shell/Viewport.tsx` (FrozenViewport)**
+- Återställ container till `flex items-start justify-center p-4` runt en `relative w-full max-w-full` med `aspectRatio: viewport.w / viewport.h`.
+- Återställ `<img>` till `absolute inset-0 h-full w-full object-contain` så bilden fittas i panelen oavsett storlek.
+- Återställ overlay-filtret till `rect.y + rect.h > 0 && rect.y < viewport.h && rect.w > 0 && rect.h > 0` så markörer som ligger utanför viewport-bilden inte ritas.
 
-4. **Verifiering**
-   - Köra flödet i preview med Teamtailor-URL:en.
-   - Kontrollera att screenshoten syns i normal storlek efter körning och att den inte försvinner i den frysta vyn.
+### Vad jag *inte* gör
+- Rör inte Browserbase-sessionens viewport-storlek (förra planen om 1440×900) — du sa att det inte var ett problem innan, så den ändringen behövs inte.
+- Rör inte collect/pageAudit-skripten eller overlay-logiken på live-sidan.
+
+### Verifiering
+- Kör flödet mot Teamtailor-URL:en i preview.
+- Bekräfta att den frusna bilden fyller panelen (som den gjorde tidigare) och att de numrerade markörerna ligger rätt på det som syns i viewporten.
