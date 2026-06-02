@@ -277,12 +277,12 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   function extractStarRating(parent, group) {
     const fromAttrs = extractRatingFromAttrs(parent);
     if (fromAttrs.rating !== undefined) return fromAttrs;
-    const fromText = extractRatingMeta(neighborText(parent));
+    const t = neighborText(parent);
+    const fromText = extractRatingMeta(t);
     if (fromText.rating !== undefined) {
       if (fromAttrs.reviewCount !== undefined && fromText.reviewCount === undefined) fromText.reviewCount = fromAttrs.reviewCount;
       return fromText;
     }
-    const t = neighborText(parent);
     const m = t.match(/\\b([1-5][.,]\\d)\\b/);
     if (m) {
       const r = safeFloat(m[1]);
@@ -292,7 +292,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         return out;
       }
     }
-    // Fallback chain: empty → filled → inline-fill → testimonial-context all-visible
+    // Fallback chain: empty → filled → inline-fill → half-star → testimonial-context all-visible
     const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const withReviewCount = (rating) => {
       const o = { rating: clamp(rating, 0, 5) };
@@ -305,11 +305,14 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       ? group
       : Array.from(parent.querySelectorAll('[class*="star" i]'));
 
+    // Single length guard for all fallback steps below.
+    if (allStars.length < 3 || allStars.length > 5) return fromAttrs;
+
     // (1) Empty stars present → rating = total - empty
     const empty = parent.querySelectorAll(
       '[class*="empty" i], [class*="outline" i], [class*="inactive" i], [class*="off" i], [aria-checked="false"]'
     );
-    if (empty.length > 0 && allStars.length >= 3 && allStars.length <= 5) {
+    if (empty.length > 0) {
       return withReviewCount(allStars.length - empty.length);
     }
 
@@ -317,68 +320,63 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const filled = parent.querySelectorAll(
       '[class*="filled" i], [class*="active" i], [class*="full" i], [aria-checked="true"]'
     );
-    if (allStars.length >= 4 && allStars.length <= 5 && filled.length >= 1 && filled.length <= allStars.length) {
+    if (filled.length >= 1 && filled.length <= allStars.length) {
       return withReviewCount(filled.length);
     }
 
     // (3) SVG inline fill attribute only (no computed style)
-    if (allStars.length >= 3 && allStars.length <= 5) {
-      let fillCount = 0;
-      for (const s of allStars) {
-        const f = (s.getAttribute && s.getAttribute('fill')) || '';
-        const v = f.trim().toLowerCase();
-        if (v && v !== 'none' && v !== 'transparent' && v !== 'rgba(0,0,0,0)') fillCount++;
-      }
-      if (fillCount >= 1 && fillCount <= 5) return withReviewCount(fillCount);
+    let fillCount = 0;
+    for (const s of allStars) {
+      const f = (s.getAttribute && s.getAttribute('fill')) || '';
+      const v = f.trim().toLowerCase();
+      if (v && v !== 'none' && v !== 'transparent' && v !== 'rgba(0,0,0,0)') fillCount++;
     }
+    if (fillCount >= 1 && fillCount <= 5) return withReviewCount(fillCount);
 
     // (3b) Half-star detection — class-based, then inline width:50% overlay.
-    if (allStars.length >= 3 && allStars.length <= 5) {
-      const halfNodes = parent.querySelectorAll(
-        '[class*="half" i], [class*="fractional" i], [class*="partial" i]'
-      );
-      let halfCount = halfNodes.length;
-      if (halfCount === 0) {
-        for (const s of allStars) {
-          const st = (s.getAttribute && s.getAttribute('style')) || '';
-          if (/width:\\s*50%/i.test(st)) halfCount++;
-        }
+    const halfNodes = parent.querySelectorAll(
+      '[class*="half" i], [class*="fractional" i], [class*="partial" i]'
+    );
+    let halfCount = halfNodes.length;
+    if (halfCount === 0) {
+      for (const s of allStars) {
+        const st = (s.getAttribute && s.getAttribute('style')) || '';
+        if (/width:\\s*50%/i.test(st)) halfCount++;
       }
-      if (halfCount >= 1 && halfCount <= allStars.length) {
-        const fullCount = filled.length > 0 && filled.length <= allStars.length
-          ? filled.length
-          : (allStars.length - halfCount);
-        const rating = Math.round((fullCount + halfCount * 0.5) * 10) / 10;
-        return withReviewCount(rating);
-      }
+    }
+    if (halfCount >= 1 && halfCount <= allStars.length) {
+      const fullCount = filled.length > 0 && filled.length <= allStars.length
+        ? filled.length
+        : (allStars.length - halfCount);
+      const rating = Math.round((fullCount + halfCount * 0.5) * 10) / 10;
+      return withReviewCount(rating);
     }
 
     // (4) All visible stars filled — only inside testimonial-like context.
     // Look up to 5 ancestor levels but early-exit at BODY/MAIN/HTML so a
     // <section class="testimonials"> high in the tree doesn't classify the
     // whole page as testimonial context.
-    if (allStars.length >= 3 && allStars.length <= 5 && empty.length === 0) {
-      const allVisible = Array.from(allStars).filter((s) => {
-        const r = s.getBoundingClientRect();
-        return r.width > 0 && r.height > 0;
-      });
-      if (allVisible.length === allStars.length) {
-        const ctxRx = /testimonial|review|quote|kund|card|feedback/i;
-        let ctx = false;
-        let node = parent;
-        for (let i = 0; i < 5 && node; i++) {
-          const tag = node.tagName;
-          if (tag === 'BODY' || tag === 'MAIN' || tag === 'HTML') break;
-          const cls = (node.className && node.className.toString()) || '';
-          if (tag === 'BLOCKQUOTE' || tag === 'FIGURE' || ctxRx.test(cls)) { ctx = true; break; }
-          node = node.parentElement;
-        }
-        if (ctx) return withReviewCount(allVisible.length);
+    const allVisible = Array.from(allStars).filter((s) => {
+      const r = s.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    });
+    if (allVisible.length === allStars.length) {
+      const ctxRx = /testimonial|review|quote|kund|card|feedback/i;
+      let ctx = false;
+      let node = parent;
+      for (let i = 0; i < 5 && node; i++) {
+        const tag = node.tagName;
+        if (tag === 'BODY' || tag === 'MAIN' || tag === 'HTML') break;
+        const cls = (node.className && node.className.toString()) || '';
+        if (tag === 'BLOCKQUOTE' || tag === 'FIGURE' || ctxRx.test(cls)) { ctx = true; break; }
+        node = node.parentElement;
       }
+      if (ctx) return withReviewCount(allVisible.length);
     }
 
     return fromAttrs;
   }
+
 
 
   // 2) Star icons clusters
