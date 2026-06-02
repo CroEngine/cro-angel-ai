@@ -407,12 +407,14 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         const types = Array.isArray(type) ? type : [type];
         for (const t of types) {
           if (t === 'Review' || t === 'AggregateRating') {
-            const rating = it.ratingValue || (it.reviewRating && it.reviewRating.ratingValue);
-            const reviewCount = it.reviewCount || it.ratingCount;
-            push('review_rating', rating ? 'Schema rating ' + rating : 'Schema review', document.body, 'schema', {
-              rating: rating ? parseFloat(String(rating)) : undefined,
-              reviewCount: reviewCount ? parseInt(String(reviewCount), 10) : undefined,
-            });
+            const ratingRaw = it.ratingValue || (it.reviewRating && it.reviewRating.ratingValue);
+            const reviewCountRaw = it.reviewCount || it.ratingCount;
+            const extras = {};
+            const r = safeFloat(ratingRaw);
+            if (r !== undefined) extras.rating = r;
+            const c = safeInt(reviewCountRaw);
+            if (c !== undefined) extras.reviewCount = c;
+            push('review_rating', extras.rating !== undefined ? 'Schema rating ' + extras.rating : 'Schema review', document.body, 'schema', extras);
           }
           if (t === 'Organization' && (it.address || it.telephone || it.email)) {
             push('contact_info', 'Schema Organization contact', document.body, 'schema');
