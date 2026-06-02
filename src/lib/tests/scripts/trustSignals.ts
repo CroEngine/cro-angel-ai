@@ -103,10 +103,15 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       const cls = (p.className && typeof p.className === 'string') ? p.className.toLowerCase() : '';
       if (/(^|\\s|-)(swiper|slick|embla|keen-slider|glide|splide|carousel|slider-track|flickity)(\\s|-|$)/.test(cls)) return true;
       if (p.hasAttribute && (p.hasAttribute('data-carousel') || p.hasAttribute('data-slider'))) return true;
+      const cs = window.getComputedStyle(p);
+      if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && p.children && p.children.length >= 3) return true;
+      const scrollSnap = cs.scrollSnapType || '';
+      if (scrollSnap && scrollSnap !== 'none') return true;
       p = p.parentElement;
     }
     return false;
   }
+
 
   function push(type, text, el, source, extras) {
     const block = nearestBlock(el);
