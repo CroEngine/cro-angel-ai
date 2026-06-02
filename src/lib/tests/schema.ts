@@ -178,7 +178,10 @@ export type TrustSignal = {
   reviewSource?: string;
   logoCount?: number;
   recognizedBrands?: string[];
+  badgeCount?: number;
+  badgeTitles?: string[];
 };
+
 
 export type CTAEntity = {
   text: string;
