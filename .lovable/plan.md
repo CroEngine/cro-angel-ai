@@ -1,25 +1,13 @@
 ## Status
 
-Top-level coverage-fix implementerad. `_debug` återinfört temporärt. Cleanup i separat commit efter verifiering.
-
-## Lösning
-
-`dropWrappers` använder nu **top-level inner-siblings** (inner-block som inte själva ligger inuti ett annat inner-block) och `>= COVERAGE_SLACK` med tröskel 2 för stabilitet mot lazy-load.
-
-Effekt:
-- Teamtailor hero(11): top-level=[yttre 8] → diff 3 >= 2 → **keep**.
-- Teamtailor footer-yttre(8): top-level=[4a, 4b] → diff 0 → drop.
-- Personio: oförändrat (inga inner-siblings för hero).
+Implementerat: src-baserad dedup för `customer_logos`. Container-dedup-passet körs nu bara för `trusted_by`. `_debug`-blocket borttaget.
 
 ## Verifiering
 
-Kör teamtailor / personio / talentium och läs `_debug.diff` + `topLevelInnerCounts`.
-
-## Nästa steg
-
-Efter bekräftad fix: separat commit som tar bort `_debug`-blocket.
+Kör Personio / Teamtailor / Talentium och bekräfta:
+- Exakt **1** `customer_logos`-entry per sida.
+- `logoCount` = unika srcs, `aboveFoldLogoCount` separat fält.
 
 ## Inte i scope
 
-- Personio carousel-dubbletter (`animate-scroll-left/right` 66+60)
-- Stars, `org_number` FP, badge/logo cross-type dedup, geo-proxies
+`trusted_by` text-entries, stars, org_number FP, badge dedup, geo-proxies, carousel-uppdelning hero/footer.

@@ -108,7 +108,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       },
     };
     if (extras) Object.assign(entry, extras);
-    if (type === 'trusted_by' || type === 'customer_logos') entry._block = block;
+    if (type === 'trusted_by') entry._block = block;
     out.push(entry);
   }
 
@@ -436,23 +436,39 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     }
   });
 
-  // 3) Customer logos — row/grid of ≥4 small <img>
-  document.querySelectorAll('ul, ol, div, section').forEach((el) => {
-    const imgs = Array.from(el.querySelectorAll(':scope > * img, :scope > img'));
-    if (imgs.length < 4) return;
-    const small = imgs.filter((i) => {
+  // 3) Customer logos — globally dedupe by normalized src
+  const allLogoImgs = Array.from(document.querySelectorAll('img'));
+  const seenSrcs = new Set();
+  const uniqueLogos = [];
+  for (const img of allLogoImgs) {
+    const r = img.getBoundingClientRect();
+    if (r.width < 40 || r.width > 240 || r.height < 20 || r.height > 120) continue;
+    const raw = img.getAttribute('src') || img.currentSrc || '';
+    if (!raw) continue;
+    const key = raw.split('?')[0];
+    if (seenSrcs.has(key)) continue;
+    seenSrcs.add(key);
+    uniqueLogos.push(img);
+  }
+
+  if (uniqueLogos.length >= 4) {
+    const vh = window.innerHeight;
+    const aboveFoldLogoCount = uniqueLogos.filter((i) => {
       const r = i.getBoundingClientRect();
-      return r.width > 40 && r.width < 240 && r.height > 20 && r.height < 120;
-    });
-    if (small.length < 4) return;
-    const altText = small.map((i) => (i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || '')).join(' ').toLowerCase();
+      return r.top < vh && r.bottom > 0;
+    }).length;
+    const altText = uniqueLogos
+      .map((i) => (i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || ''))
+      .join(' ').toLowerCase();
     const recognized = [];
     for (const b of RECOGNIZED_BRANDS) if (altText.indexOf(b) >= 0) recognized.push(b);
-    push('customer_logos', String(small.length) + ' logo images', el, 'img_alt', {
-      logoCount: small.length,
+    const anchor = uniqueLogos[0];
+    push('customer_logos', String(uniqueLogos.length) + ' logo images', anchor, 'img_alt', {
+      logoCount: uniqueLogos.length,
+      aboveFoldLogoCount: aboveFoldLogoCount,
       recognizedBrands: Array.from(new Set(recognized)).slice(0, 20),
     });
-  });
+  }
 
   // 3b) Third-party review/award badges (G2, Capterra, Trustpilot, etc.)
   const BADGE_BRANDS = /\bg2\b|g2crowd|g2\.com|capterra|trustradius|trustpilot|software ?advice|getapp|gartner peer insights|sourceforge|product hunt|crozdesk|finances ?online|tekpon/i;
@@ -590,44 +606,6 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   let filtered = dedupeSameBlock(out, 'trusted_by');
   filtered = dropWrappers(filtered, 'trusted_by');
-  filtered = dedupeSameBlock(filtered, 'customer_logos');
-  filtered = dropWrappers(filtered, 'customer_logos');
-
-  // TEMP DEBUG: top-level coverage + containment-matris för customer_logos.
-  // Tas bort i separat commit efter verifiering.
-  const allCl = out.filter((e) => e.type === 'customer_logos');
-  const survivingCl = filtered.filter((e) => e.type === 'customer_logos');
-  for (const e of survivingCl) {
-    const allInner = allCl.filter((b) =>
-      b !== e && b._block && e._block && e._block !== b._block && e._block.contains(b._block)
-    );
-    const topLevelInner = allInner.filter((b) =>
-      !allInner.some((c) => c !== b && c._block.contains(b._block))
-    );
-    const innerSum = topLevelInner.reduce((s, b) => s + (b.logoCount || 0), 0);
-    e._debug = {
-      blockTag: e._block && e._block.tagName,
-      blockCls: (e._block && e._block.className && String(e._block.className).slice(0, 80)) || '',
-      isBody: e._block === document.body,
-      isMain: e._block === document.querySelector('main'),
-      logoCount: e.logoCount,
-      topLevelInnerCounts: topLevelInner.map((b) => b.logoCount || 0),
-      innerSiblingsSum: innerSum,
-      diff: (e.logoCount || 0) - innerSum,
-      hasInnerSiblings: topLevelInner.length > 0,
-      droppedSiblings: allCl
-        .filter((o) => o !== e && !survivingCl.includes(o))
-        .map((o) => ({
-          tag: o._block && o._block.tagName,
-          cls: (o._block && o._block.className && String(o._block.className).slice(0, 60)) || '',
-          logoCount: o.logoCount,
-          section: o.section,
-          containsSelf: !!(o._block && e._block && o._block.contains(e._block)),
-          containedBySelf: !!(o._block && e._block && e._block.contains(o._block)),
-          sameBlock: o._block === e._block,
-        })),
-    };
-  }
 
   for (const e of filtered) delete e._block;
   return filtered;
