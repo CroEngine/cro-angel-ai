@@ -185,13 +185,22 @@ function ctaFindings(a: PageAuditData, c?: CollectData): Finding[] {
         "cro",
         "ctas",
         "CTAs total",
-        `${ctas.length} · primary ${ps.primaryCtaCount} · secondary ${ps.secondaryCtaCount} · ${ps.aboveFoldCtaCount} above fold`,
+        `${ctas.length} CTAs · ${ps.primaryCtaCount} primary · ${ps.secondaryCtaCount} secondary · ${ps.aboveFoldCtaCount} above the fold`,
       ),
     );
   }
   const s = c?.summary;
   if (s) {
-    out.push(f("cro", "ctas", "Competing CTAs above fold", String(s.competingAboveFold)));
+    out.push(
+      f(
+        "cro",
+        "ctas",
+        "Competing CTAs above the fold",
+        s.competingAboveFold === 0
+          ? "None"
+          : `${s.competingAboveFold} CTAs compete above the fold`,
+      ),
+    );
     const top = s.topVisualWeight[0];
     if (top) {
       out.push(f("cro", "ctas", "Top visual weight", `"${top.text || top.selector}" (${top.score})`));
@@ -203,7 +212,14 @@ function ctaFindings(a: PageAuditData, c?: CollectData): Finding[] {
         "cro",
         "ctas",
         `"${c2.text || "(no text)"}"`,
-        `${c2.section}${c2.aboveFold ? " · af" : ""} · ${c2.intent} · competing ${c2.competingActions} · trust ${c2.nearestTrustSignalDistance}px · form ${c2.nearestFormDistance === 0 ? "in" : c2.nearestFormDistance + "px"}`,
+        joinBits(
+          formatSection(c2.section),
+          formatAboveFold(c2.aboveFold),
+          formatIntent(c2.intent),
+          formatCompetingCTAs(c2.competingActions),
+          formatTrustDistance(c2.nearestTrustSignalDistance),
+          formatFormDistance(c2.nearestFormDistance),
+        ),
       ),
     );
   }
@@ -224,7 +240,8 @@ function formFindings(a: PageAuditData): Finding[] {
     if (fm.containsPassword) bits.push("password");
     if (fm.containsCreditCard) bits.push("card");
     if (fm.submitText) bits.push(`"${fm.submitText}"`);
-    out.push(f("cro", "forms", `Form (${fm.section}${fm.aboveFold ? " · af" : ""})`, bits.join(" · ")));
+    const label = `Form ${formatSection(fm.section) ?? ""}${fm.aboveFold ? " (above the fold)" : ""}`.trim();
+    out.push(f("cro", "forms", label, bits.join(" · ")));
   }
   return out;
 }
