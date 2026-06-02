@@ -651,6 +651,9 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   filtered = dropWrappers(filtered, 'trusted_by');
 
   for (const e of filtered) delete e._block;
+  for (const e of filtered) {
+    if (e.source === 'schema') { delete e.rect; delete e.selector; }
+  }
   return filtered;
 
 
