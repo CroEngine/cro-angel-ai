@@ -58,7 +58,7 @@ export function enrichSections(
     s.containsPricing =
       s.type === "pricing" || /\$|€|kr\b|\/mo\b|\/mån/.test(s.heading + " " + s.subheading);
     s.containsNavigation = s.type === "nav" || s.type === "header" || s.type === "footer";
-    s.kind = s.type; // keep alias in sync
+    }
   }
 }
 
