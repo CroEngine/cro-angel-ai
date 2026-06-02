@@ -420,6 +420,14 @@ export async function runSteps(
                 sitemap.urlCount = (robotsSitemap.sitemap.match(/<loc>/g) ?? []).length;
               }
 
+              // Set robotsTxtAllows + final indexable now that we know robots.txt
+              if (audit.indexability) {
+                audit.indexability.robotsTxtAllows = !robotsTxt.blocksAll;
+                audit.indexability.indexable =
+                  !audit.indexability.noindex && audit.indexability.robotsTxtAllows;
+              }
+
+
               const sectionsTyped = sections as PageSection[];
               const trustTyped = trustSignals as TrustSignal[];
               const ctasTyped = ctas as CTAEntity[];
