@@ -234,10 +234,21 @@ export type NavigationData = {
   cartPresent: boolean;
 };
 
+export type VisualHierarchyRole =
+  | "hero_headline"
+  | "hero_cta"
+  | "nav_item"
+  | "footer_link"
+  | "heading"
+  | "image"
+  | "paragraph"
+  | "other";
+
 export type VisualHierarchyEntry = {
   selector: string;
   text: string;
-  role: string;
+  role: VisualHierarchyRole;
+  tagName: string;
   visualWeight: number;
   area: number;
   fontSize: number;

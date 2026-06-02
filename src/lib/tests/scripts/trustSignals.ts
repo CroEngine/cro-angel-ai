@@ -177,6 +177,29 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
   });
 
+  function neighborText(el) {
+    const bits = [];
+    if (el && el.innerText) bits.push(el.innerText);
+    const parent = el && el.parentElement;
+    if (parent && parent.innerText) bits.push(parent.innerText);
+    const grand = parent && parent.parentElement;
+    if (grand && grand.innerText) bits.push(grand.innerText);
+    if (el && el.nextElementSibling && el.nextElementSibling.innerText) bits.push(el.nextElementSibling.innerText);
+    if (el && el.previousElementSibling && el.previousElementSibling.innerText) bits.push(el.previousElementSibling.innerText);
+    return bits.join(' ').slice(0, 1000);
+  }
+
+  function extractStarRating(el) {
+    const t = neighborText(el);
+    const extras = extractRatingMeta(t);
+    // Also try plain "4.7" near stars (without /5 suffix)
+    if (extras.rating === undefined) {
+      const m = t.match(/\\b([1-5][.,]\\d)\\b/);
+      if (m) extras.rating = parseFloat(m[1].replace(',', '.'));
+    }
+    return extras;
+  }
+
   // 2) Star icons clusters
   const starNodes = Array.from(document.querySelectorAll(
     '[class*="star" i], [class*="rating" i], svg[aria-label*="star" i], i[class*="fa-star"]'
@@ -191,12 +214,12 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   }
   for (const [parent, group] of byParent) {
     if (group.length < 3) continue;
-    push('stars', String(group.length) + ' stars', parent, 'attr');
+    push('stars', String(group.length) + ' stars', parent, 'attr', extractStarRating(parent));
   }
   document.querySelectorAll('p, span, div').forEach((el) => {
     if (el.children.length > 0) return;
     const t = el.textContent || '';
-    if ((t.match(/[★⭐✦]/g) || []).length >= 3) push('stars', t.trim().slice(0, 60), el, 'text');
+    if ((t.match(/[★⭐✦]/g) || []).length >= 3) push('stars', t.trim().slice(0, 60), el, 'text', extractStarRating(el));
   });
 
   // 3) Customer logos — row/grid of ≥4 small <img>
