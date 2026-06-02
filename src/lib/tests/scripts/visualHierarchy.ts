@@ -55,14 +55,25 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
     return 'content';
   }
 
-  function role(el) {
+  function role(el, sectionKind) {
     const tag = el.tagName;
-    if (/^H[1-6]$/.test(tag)) return tag.toLowerCase();
-    if (tag === 'BUTTON') return 'button';
-    if (tag === 'A') return 'link';
+    const attrRole = (el.getAttribute && el.getAttribute('role') || '').toLowerCase();
+    const isButtonLike = tag === 'BUTTON' || attrRole === 'button' ||
+      (tag === 'A' && !!el.getAttribute('href'));
+    if (sectionKind === 'hero') {
+      if (/^H[1-3]$/.test(tag)) return 'hero_headline';
+      if (isButtonLike) return 'hero_cta';
+    }
+    if (sectionKind === 'nav' || sectionKind === 'header') {
+      if (isButtonLike) return 'nav_item';
+    }
+    if (sectionKind === 'footer') {
+      if (isButtonLike) return 'footer_link';
+    }
+    if (/^H[1-6]$/.test(tag)) return 'heading';
     if (tag === 'IMG') return 'image';
     if (tag === 'P') return 'paragraph';
-    return tag.toLowerCase();
+    return 'other';
   }
 
   const SEL = 'h1, h2, h3, button, a[href], img, p, [role="button"]';
@@ -87,22 +98,26 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
   const top = scored.slice(0, 20);
   const maxScore = top[0] ? top[0].score : 1;
 
-  return top.map((s) => ({
-    selector: buildSelector(s.el),
-    text: ((s.el.innerText || s.el.getAttribute('alt') || s.el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 100),
-    role: role(s.el),
-    visualWeight: Math.round((s.score / maxScore) * 100),
-    area: Math.round(s.area),
-    fontSize: Math.round(s.fontSize),
-    fontWeight: s.fontWeight,
-    contrast: Math.round(s.con * 10) / 10,
-    position: {
-      xPct: Math.round(((s.rect.left + s.rect.width / 2) / docW) * 100),
-      yPct: Math.round(((s.rect.top + window.scrollY) / docH) * 100),
-    },
-    aboveFold: s.rect.top < viewportH,
-    section: sectionKind(s.el, s.rect),
-  }));
+  return top.map((s) => {
+    const sk = sectionKind(s.el, s.rect);
+    return {
+      selector: buildSelector(s.el),
+      text: ((s.el.innerText || s.el.getAttribute('alt') || s.el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 100),
+      role: role(s.el, sk),
+      tagName: s.el.tagName.toLowerCase(),
+      visualWeight: Math.round((s.score / maxScore) * 100),
+      area: Math.round(s.area),
+      fontSize: Math.round(s.fontSize),
+      fontWeight: s.fontWeight,
+      contrast: Math.round(s.con * 10) / 10,
+      position: {
+        xPct: Math.round(((s.rect.left + s.rect.width / 2) / docW) * 100),
+        yPct: Math.round(((s.rect.top + window.scrollY) / docH) * 100),
+      },
+      aboveFold: s.rect.top < viewportH,
+      section: sk,
+    };
+  });
 })()`;
 
 
