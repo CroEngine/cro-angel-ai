@@ -165,6 +165,8 @@ export type TrustSignal = {
   section: SectionKind;
   aboveFold: boolean;
   inCarousel?: boolean;
+  derivedFromStars?: boolean;
+
 
   selector?: string;
   visualWeight: number;
