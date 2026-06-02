@@ -95,14 +95,28 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
     scored.push({ el, rect, fontSize, fontWeight, con, area, score });
   }
   scored.sort((a, b) => b.score - a.score);
-  const top = scored.slice(0, 20);
-  const maxScore = top[0] ? top[0].score : 1;
 
-  return top.map((s) => {
+  // Dedupe near-identical entries (e.g. h1 + p with same text/styling) and
+  // drop entries with empty text — they carry no signal for LLM analysis.
+  const seenKeys = new Set();
+  const deduped = [];
+  for (const s of scored) {
+    const text = ((s.el.innerText || s.el.getAttribute('alt') || s.el.getAttribute('aria-label') || '') + '')
+      .trim().replace(/\\s+/g, ' ').slice(0, 100);
+    if (!text) continue;
+    const key = text + '|' + s.el.tagName.toLowerCase() + '|' + Math.round(s.fontSize) + '|' + Math.round(s.area / 1000);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    deduped.push({ ...s, text });
+    if (deduped.length >= 20) break;
+  }
+  const maxScore = deduped[0] ? deduped[0].score : 1;
+
+  return deduped.map((s) => {
     const sk = sectionKind(s.el, s.rect);
     return {
       selector: buildSelector(s.el),
-      text: ((s.el.innerText || s.el.getAttribute('alt') || s.el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 100),
+      text: s.text,
       role: role(s.el, sk),
       tagName: s.el.tagName.toLowerCase(),
       visualWeight: Math.round((s.score / maxScore) * 100),
