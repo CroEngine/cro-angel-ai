@@ -164,7 +164,11 @@ function heroFindings(a: PageAuditData): Finding[] {
         "cro",
         "hero",
         "Hero primary CTA",
-        `"${h.primaryCtaText}"${h.primaryCtaIntent ? " · " + h.primaryCtaIntent : ""}${h.aboveFold ? " · above fold" : ""}`,
+        joinBits(
+          `"${h.primaryCtaText}"`,
+          formatIntent(h.primaryCtaIntent),
+          formatAboveFold(h.aboveFold),
+        ),
       ),
     );
   }
