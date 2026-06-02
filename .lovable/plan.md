@@ -1,51 +1,93 @@
-# Fix: matcha G2-badges via src-path
+# Markera trust signals i overlay + lätt code-cleanup
 
-## Vad debug-datan visade
+## Del 1 — Overlay för trust signals
 
-Teamtailors badges är `<img>` på `top: 1774`:
-- `src` = `/assets/api/badges/file/RecruitmentPlatforms_Leader_…svg`
-- `alt = ""`, `w = 288, h = 128` (landscape ~2.25:1)
-- parent `<li class="basis-1/2-gap-4 lg:basis-1/5-gap-4 …">` (5 i rad)
+Idag används `OVERLAY_FN` bara av `collect`-steget. `pageAudit` lägger ingen overlay alls. Varje trust signal har redan `selector` + `rect` + `type`, så det är trivialt att rita.
 
-Befintliga detektorer missar pga: BADGE_TITLES söks bara i `alt` (tomt), och shape-fallbacken kräver portrait (badges är landscape).
+### Ändringar
 
-## Lösning
+**`src/lib/tests/scripts/overlay.ts`** — utöka `COLORS` med trust-typer (samma `Record<string,string>`-form, så vi kan återanvända samma funktion). Förslag:
 
-### 1) Lägg till path-baserad badge-signal
-
-I `src/lib/tests/scripts/trustSignals.ts` runt rad 474:
 ```ts
-const BADGE_PATH = /\/badges?\/(file\/)?/i;
+testimonial:        "#f97316",  // orange
+review_rating:      "#eab308",  // amber
+stars:              "#facc15",  // gul
+trusted_by:         "#0ea5e9",  // sky
+customer_logos:     "#06b6d4",  // cyan
+review_badges:      "#a855f7",  // violet
+certification:     "#84cc16",  // lime
+guarantee:          "#22c55e",  // grön
+secure_payment:     "#14b8a6",  // teal
+contact_info:       "#94a3b8",  // slate
+org_number:         "#475569",  // mörk slate
+press_mention:      "#ec4899",  // rosa
+social_proof_count: "#f43f5e",  // röd
 ```
 
-I `badgeImgs.filter()` (~rad 481-493), lägg till en gren efter `BADGE_BRANDS`:
+Badge-text ändras till första 2 bokstäverna av typen (`TE`, `RB`, `LO`) istället för index — då blir det självförklarande i screenshot.
+
+Liten justering: lägg till en optional tredje del i `pairs` för badge-text:
 ```ts
-if (BADGE_PATH.test(src)) return true;
+export function OVERLAY_FN(pairs: Array<[string, string, string?]>) {
+  // ...
+  badge.textContent = pairs[i][2] ?? String(i + 1);
+}
 ```
 
-URL-segmentet `/badges/` är konventionen för G2/Capterra/Trustradius self-hosted badges. Snävt och säkert — inga fria ord i regexen.
+Bakåtkompat: `collect`-anroparen skickar fortfarande 2-tuples och får index som badge.
 
-### 3) Ta bort shape-fallbacken (block 3c)
+**`src/lib/tests/engine.server.ts`** — i `pageAudit`-caset (rad 339-352), efter `runPageAudit(page)`, rita overlay:
 
-Path-grenen täcker Teamtailor utan shape-heuristik. Shape-fallbacken hade portrait-bias och var en gissningsstrategi som inte triggade i praktiken. Ta bort hela block 3c plus `nearestHeadingText`-hjälparen.
+```ts
+const trustPairs: Array<[string, string, string]> = full.trustSignals
+  .filter((t) => !!t.selector && !!t.rect)
+  .map((t) => [t.selector, t.type, badgeLabel(t.type)]);
+try {
+  await page.evaluate(`(${OVERLAY_FN.toString()})(${JSON.stringify(trustPairs)})`);
+} catch (e) {
+  onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
+}
+```
 
-Om vi senare ser sajter där varken keyword eller path triggar — bygg tillbaka shape-fallbacken då, utan portrait-krav.
+`badgeLabel` är en liten lookup: `testimonial → TE, trusted_by → TB, customer_logos → LO, review_badges → RB, stars → ★, …`.
 
-### 4) Rensa debug-koden
+Overlay läggs på sidan i Browserbase-sessionen — användaren ser den i live-iframen och i ev. screenshot som tas efter `pageAudit`-steget. Screenshot capture (om det finns) sker redan i sandbox-flödet; vi behöver inte rendera om.
 
-- `src/lib/tests/scripts/trustSignals.ts`: ta bort `// TODO badge-debug`-blocket före `return`, återställ till `return filtered;`.
-- `src/lib/tests/runners/pageAudit.server.ts`: återställ `trustTyped = trustSignals as TrustSignal[];` och ta bort `_badgeDebug` från return.
+### Frågor till dig
 
-## Inte i scope (medvetet skippat)
+- Vill du även ha en overlay för CTAs i `pageAudit`-steget, eller bara trust? CTAs har redan stöd i `OVERLAY_FN` (`cta_primary` etc.) — då kan vi rita både i samma pass.
 
-- Utvidga `BADGE_TITLES` till att söka i `src` — risk för false positives (`leader`, `best`, `top rated` är vanliga ord i bild-URL:er av andra anledningar). Om path-fixen inte räcker för någon sajt → bygg ett snävt regex mot kända G2/Capterra filnamnsmönster, inte fria ord.
+## Del 2 — Code cleanup (lätt)
+
+Efter shape-fallback och debug-blocken togs bort:
+
+| Plats | Status |
+|---|---|
+| `nearestHeadingText` helper | ✅ borttagen |
+| `_badgeDebug` block i `trustSignals.ts` + runner | ✅ borttagen |
+| `// TODO badge-debug`-markörer | ✅ inga kvar (rg-resultat tomt) |
+| `dedupeSameBlock` / `dropWrappers` | Behåll — används av `trusted_by` |
+| `aboveFoldLogoCount` på `TrustSignal` | Behåll — designbeslut för framtida LLM |
+
+**Enda riktiga skräpet:**
+
+- `detectionMethod?: "keyword" \| "shape"` i `src/lib/tests/schema.ts` — `"shape"` används aldrig längre. Trimma unionen till `"keyword"`:
+  ```ts
+  detectionMethod?: "keyword";
+  ```
+  Alternativt: ta bort fältet helt eftersom det idag bara har ett möjligt värde. Förslag: behåll fältet (självdokumenterande att det är keyword-baserat) men trimma unionen.
+
+- `src/lib/tests/scripts/trustSignals.ts` rad 611-612: två sekventiella `let filtered = …` följt av `filtered = …` på `trusted_by` ser ut som de kunde slås ihop, men de gör olika saker (dedupe sedan wrapper-drop) — låt dem vara.
+
+Inget annat skräp upptäckt.
 
 ## Filer som ändras
 
-- `src/lib/tests/scripts/trustSignals.ts`
-- `src/lib/tests/runners/pageAudit.server.ts`
+- `src/lib/tests/scripts/overlay.ts` — fler färger + valfri 3:e badge-text
+- `src/lib/tests/engine.server.ts` — rita overlay i `pageAudit`-caset
+- `src/lib/tests/schema.ts` — trimma `detectionMethod` till `"keyword"`
 
-## Verifiering
+## Inte i scope
 
-Teamtailor: 1 `review_badges`-entry med `badgeCount: 5`, `detectionMethod: 'keyword'`.
-Personio / Talentium: ingen regression.
+- Ny separat overlay-komponent (UI-rendering).
+- Screenshot-export från sandbox — sker via befintligt flöde.

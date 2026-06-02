@@ -1,18 +1,33 @@
 // Auto-extracted from engine.server.ts — runs inside the browser via page.evaluate.
 // Keep self-contained: no imports, no closures over server state.
 
-export function OVERLAY_FN(pairs: Array<[string, string]>) {
+export function OVERLAY_FN(pairs: Array<[string, string, string?]>) {
   const OVERLAY_ID = "__lovable_collect_overlay__";
   const existing = document.getElementById(OVERLAY_ID);
   if (existing) existing.remove();
 
   const COLORS: Record<string, string> = {
+    // CTA / element categories (collect step)
     cta_primary: "#10b981",
     cta_secondary: "#22d3ee",
     form_submit: "#f59e0b",
     icon_button: "#a78bfa",
     nav_item: "#64748b",
     link: "#60a5fa",
+    // Trust signal types (pageAudit step)
+    testimonial: "#f97316",
+    review_rating: "#eab308",
+    stars: "#facc15",
+    trusted_by: "#0ea5e9",
+    customer_logos: "#06b6d4",
+    review_badges: "#a855f7",
+    certification: "#84cc16",
+    guarantee: "#22c55e",
+    secure_payment: "#14b8a6",
+    contact_info: "#94a3b8",
+    org_number: "#475569",
+    press_mention: "#ec4899",
+    social_proof_count: "#f43f5e",
     other: "#f472b6",
   };
 
@@ -22,7 +37,8 @@ export function OVERLAY_FN(pairs: Array<[string, string]>) {
     "position:absolute;top:0;left:0;width:0;height:0;pointer-events:none;z-index:2147483647;";
   document.body.appendChild(wrap);
 
-  pairs.forEach(([sel, category], i) => {
+  pairs.forEach((pair, i) => {
+    const [sel, category, labelOverride] = pair;
     let el: Element | null = null;
     try { el = document.querySelector(sel); } catch { el = null; }
     if (!el) return;
@@ -45,7 +61,7 @@ export function OVERLAY_FN(pairs: Array<[string, string]>) {
     ].join(";");
 
     const badge = document.createElement("div");
-    badge.textContent = String(i + 1);
+    badge.textContent = labelOverride ?? String(i + 1);
     badge.style.cssText = [
       "position:absolute",
       "top:-10px",
@@ -66,5 +82,3 @@ export function OVERLAY_FN(pairs: Array<[string, string]>) {
     wrap.appendChild(box);
   });
 }
-
-

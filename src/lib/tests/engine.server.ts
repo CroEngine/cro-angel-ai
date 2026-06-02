@@ -341,6 +341,30 @@ export async function runSteps(
               const full = await runPageAudit(page);
               data = full;
               const sectionOrder = full.sectionOrder;
+              // Overlay trust signals on the live page so the user sees what was detected.
+              const TRUST_LABELS: Record<string, string> = {
+                testimonial: "TE",
+                review_rating: "RR",
+                stars: "★",
+                trusted_by: "TB",
+                customer_logos: "LO",
+                review_badges: "RB",
+                certification: "CE",
+                guarantee: "GU",
+                secure_payment: "SP",
+                contact_info: "CI",
+                org_number: "OR",
+                press_mention: "PR",
+                social_proof_count: "SC",
+              };
+              const trustPairs: Array<[string, string, string]> = full.trustSignals
+                .filter((t) => !!t.selector && !!t.rect)
+                .map((t) => [t.selector!, t.type, TRUST_LABELS[t.type] ?? "?"]);
+              try {
+                await page.evaluate(`(${OVERLAY_FN.toString()})(${JSON.stringify(trustPairs)})`);
+              } catch (e) {
+                onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
+              }
               onEvent({
                 type: "log",
                 message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryCtaCount} primary) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,
@@ -350,6 +374,7 @@ export async function runSteps(
             }
             break;
           }
+
         }
 
 

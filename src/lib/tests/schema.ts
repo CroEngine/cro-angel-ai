@@ -181,7 +181,7 @@ export type TrustSignal = {
   recognizedBrands?: string[];
   badgeCount?: number;
   badgeTitles?: string[];
-  detectionMethod?: "keyword" | "shape";
+  detectionMethod?: "keyword";
 };
 
 
