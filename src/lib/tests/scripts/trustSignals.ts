@@ -294,18 +294,65 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         return out;
       }
     }
-    // Fallback: count filled stars — only when it looks like a rating widget
+    // Fallback chain: empty → filled → inline-fill → testimonial-context all-visible
+    const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+    const withReviewCount = (rating) => {
+      const o = { rating: clamp(rating, 0, 5) };
+      if (fromAttrs.reviewCount !== undefined) o.reviewCount = fromAttrs.reviewCount;
+      return o;
+    };
     const allStars = parent.querySelectorAll('[class*="star" i]');
+
+    // (1) Empty stars present → rating = total - empty
+    const empty = parent.querySelectorAll(
+      '[class*="empty" i], [class*="outline" i], [class*="inactive" i], [class*="off" i], [aria-checked="false"]'
+    );
+    if (empty.length > 0 && allStars.length >= 3 && allStars.length <= 5) {
+      return withReviewCount(allStars.length - empty.length);
+    }
+
+    // (2) Filled variant
     const filled = parent.querySelectorAll(
       '[class*="filled" i], [class*="active" i], [class*="full" i], [aria-checked="true"]'
     );
     if (allStars.length >= 4 && allStars.length <= 5 && filled.length >= 1 && filled.length <= allStars.length) {
-      const out = { rating: filled.length };
-      if (fromAttrs.reviewCount !== undefined) out.reviewCount = fromAttrs.reviewCount;
-      return out;
+      return withReviewCount(filled.length);
     }
+
+    // (3) SVG inline fill attribute (no computed style — avoid false positives from CSS inheritance)
+    if (allStars.length >= 3 && allStars.length <= 5) {
+      let fillCount = 0;
+      for (const s of allStars) {
+        const f = (s.getAttribute && s.getAttribute('fill')) || '';
+        const v = f.trim().toLowerCase();
+        if (v && v !== 'none' && v !== 'transparent' && v !== 'rgba(0,0,0,0)') fillCount++;
+      }
+      if (fillCount >= 1 && fillCount <= 5) return withReviewCount(fillCount);
+    }
+
+    // (4) All visible stars filled — only inside testimonial-like context
+    if (allStars.length >= 3 && allStars.length <= 5 && empty.length === 0) {
+      const allVisible = Array.from(allStars).filter((s) => {
+        const r = s.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      });
+      if (allVisible.length === allStars.length) {
+        const ctxRx = /testimonial|review|quote|kund|card|feedback/i;
+        let ctx = false;
+        let node = parent;
+        for (let i = 0; i < 3 && node; i++) {
+          const tag = node.tagName;
+          const cls = (node.className && node.className.toString()) || '';
+          if (tag === 'BLOCKQUOTE' || tag === 'FIGURE' || ctxRx.test(cls)) { ctx = true; break; }
+          node = node.parentElement;
+        }
+        if (ctx) return withReviewCount(allVisible.length);
+      }
+    }
+
     return fromAttrs;
   }
+
 
   // 2) Star icons clusters
   const starNodes = Array.from(document.querySelectorAll(
