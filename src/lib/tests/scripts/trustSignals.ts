@@ -332,6 +332,27 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       if (fillCount >= 1 && fillCount <= 5) return withReviewCount(fillCount);
     }
 
+    // (3b) Half-star detection — class-based, then inline width:50% overlay.
+    if (allStars.length >= 3 && allStars.length <= 5) {
+      const halfNodes = parent.querySelectorAll(
+        '[class*="half" i], [class*="fractional" i], [class*="partial" i]'
+      );
+      let halfCount = halfNodes.length;
+      if (halfCount === 0) {
+        for (const s of allStars) {
+          const st = (s.getAttribute && s.getAttribute('style')) || '';
+          if (/width:\\s*50%/i.test(st)) halfCount++;
+        }
+      }
+      if (halfCount >= 1 && halfCount <= allStars.length) {
+        const fullCount = filled.length > 0 && filled.length <= allStars.length
+          ? filled.length
+          : (allStars.length - halfCount);
+        const rating = Math.round((fullCount + halfCount * 0.5) * 10) / 10;
+        return withReviewCount(rating);
+      }
+    }
+
     // (4) All visible stars filled — only inside testimonial-like context.
     // Look up to 5 ancestor levels but early-exit at BODY/MAIN/HTML so a
     // <section class="testimonials"> high in the tree doesn't classify the
