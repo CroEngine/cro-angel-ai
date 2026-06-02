@@ -1,13 +1,16 @@
 ## Status
 
-Implementerat: src-baserad dedup för `customer_logos`. Container-dedup-passet körs nu bara för `trusted_by`. `_debug`-blocket borttaget.
+Implementerat:
+- src-baserad dedup för `customer_logos` (container-dedup-pass körs nu bara för `trusted_by`).
+- Shape-fallback för `review_badges` med hård heading-filter (`team|people|om oss|about us|meet|who we are`), portrait `≥ 1.05`, homogen storlek inom ±20% av medianen (kopia-sort), keyword-block vinner vid overlap.
+- `detectionMethod: 'keyword' | 'shape'` på `TrustSignal`.
 
 ## Verifiering
 
-Kör Personio / Teamtailor / Talentium och bekräfta:
-- Exakt **1** `customer_logos`-entry per sida.
-- `logoCount` = unika srcs, `aboveFoldLogoCount` separat fält.
+- **Teamtailor**: 1 `review_badges`-entry med `badgeCount ≥ 3`, `detectionMethod: 'shape'`.
+- **Personio / Talentium**: ingen regression i `customer_logos` eller `review_badges`.
+- **Team-grids**: exkluderas via heading-filter + portrait-strikt.
 
 ## Inte i scope
 
-`trusted_by` text-entries, stars, org_number FP, badge dedup, geo-proxies, carousel-uppdelning hero/footer.
+`trusted_by` text-entries, stars, org_number FP, geo-proxies, carousel-uppdelning hero/footer, scoring, CSS background-image / `<svg>` badges.
