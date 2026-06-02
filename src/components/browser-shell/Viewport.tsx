@@ -86,13 +86,12 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
   const { screenshotUrl, viewport, overlayElements } = frozen;
 
   return (
-    <div className="relative flex-1 overflow-auto bg-muted/20">
+    <div className="relative flex-1 overflow-y-auto overflow-x-hidden bg-muted/20">
       <div
-        className="relative shrink-0"
+        className="relative mx-auto"
         style={{
-          width: viewport.w,
-          height: viewport.h,
-          minWidth: viewport.w,
+          width: "100%",
+          maxWidth: viewport.w,
           aspectRatio: `${viewport.w} / ${viewport.h}`,
         }}
       >
