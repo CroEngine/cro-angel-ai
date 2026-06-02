@@ -1,69 +1,101 @@
-
 ## Mål
 
-Fixa två datafel som scoring-validering avslöjade. Inga UI-/DB-ändringar. När detta är inne kör vi en ny analys mot Loopia/Teamtailor/Semrush för att verifiera datan, sedan bygger vi scoring-motorn i nästa steg.
+Få `pageSummary.averageRating` och `pageSummary.reviewCount` att populeras korrekt även när rating inte står som synlig text bredvid stars (Trustpilot-widget, schema.org, aria-label, eller "alla 5 stjärnor fyllda utan siffra").
 
-## Bugg 1: `pageSummary.averageRating` / `reviewCount` alltid 0
+## Bakgrund
 
-### Rot
+Validering mot ny Teamtailor-körning: stars hittas (`"5 stars"` i content), men `extractStarRating()` returnerar `{}`. Semrush samma. Detta blockerar Trust-checken i scoring-motorn.
 
-`audit-helpers.ts → buildPageSummary` summerar redan korrekt från `trustSignal.rating` / `trustSignal.reviewCount` — problemet är **uppströms**:
+## Ändringar — endast `src/lib/tests/scripts/trustSignals.ts`
 
-- `trustSignals.ts` har en `extractRatingMeta()` som plockar rating/reviewCount ur text, MEN den körs bara när PATTERNS.`review_rating` matchar (kräver `"X.Y/5"`-format i texten).
-- Stjärn-blocket (rad 180–200) pushar `'stars'`-signaler **utan extras** — så även när "★★★★★ 4.7 (2,143 reviews)" finns nära stjärnorna, plockas talen aldrig.
-- Resultat: Teamtailor (1 `stars`), Semrush (1 `stars`) — båda ger 0 rating/reviewCount. Loopia har varken stjärnor eller rating-text → 0 är korrekt där.
+### 1. Utöka `neighborText(el)`
 
-### Fix
+Lägg till `parent.parentElement.parentElement` (3 nivåer upp) och alla syskon till parent — annars missar vi Trustpilot-widgetar där rating-texten sitter i en separat div utanför star-containern.
 
-I `src/lib/tests/scripts/trustSignals.ts`, i stjärn-blocket:
+### 2. Utöka `extractRatingMeta(text)` med fler format
 
-1. När en stjärn-kluster (≥3 stjärnnoder med samma parent) hittas, leta rating/reviewCount i **parent + grandparent + nästa syskon** via `extractRatingMeta()` på deras `innerText`.
-2. Lika för Unicode-stjärn-blocket (★⭐✦ ≥3 i text).
-3. Pusha `'stars'` med dessa extras (rating/reviewCount/reviewSource).
+Nya regex utöver befintliga:
+- `TrustScore\s+(\d[.,]\d)`
+- `Rated\s+(\d[.,]\d)\s*(out of|\/)\s*5`
+- `(\d[.,]\d)\s*stars?\b`
+- ReviewCount: `based on\s+(\d{1,3}(?:[ ,.]\d{3})*|\d+)\s*(reviews|recensioner|ratings)`
 
-Ingen schema-ändring. `buildPageSummary` plockar upp värdena automatiskt.
+Kör regex mot `el.innerText` (inte `textContent`) för korrekt whitespace-hantering.
 
-## Bugg 2: `visualHierarchy[0].role` = HTML-tag, inte semantisk
+### 3. Ny helper `extractRatingFromAttrs(el)` — attrs/schema först
 
-### Rot
+För `el` + 2 förfäder + descendants (cap 50), läs:
+- `aria-label` / `title` mot regex `/(\d[.,]?\d?)\s*(out of|av|\/)\s*5/i` och `/Rated\s+(\d[.,]\d)/i`
+- `[itemprop="ratingValue"]` → `content`-attr eller textContent
+- `[itemprop="reviewCount"]` / `[itemprop="ratingCount"]` → samma
+- `[data-rating]`, `[data-score]`, `[data-stars]` numeriskt
 
-`visualHierarchy.ts → role()` returnerar bara `tag.toLowerCase()` (`'h2'`, `'button'`, `'link'`, `'image'`). Scoring-checken "top är hero CTA/headline" behöver semantik (`hero_headline` / `hero_cta` / `nav_item` / `heading` / `image` / `other`).
+Returnera `{}` om inget hittas. Alla parseFloat/parseInt-resultat **isNaN-guard:as** innan de inkluderas — så pageSummary aldrig blir NaN.
 
-### Fix
+### 4. Uppdatera `extractStarRating(parent)` — prioritetsordning
 
-1. I `src/lib/tests/scripts/visualHierarchy.ts`:
-   - Byt `role()` så den tar `(el, sectionKind)` och returnerar semantisk roll:
-     - h1–h3 i `hero` → `hero_headline`
-     - button/a/[role=button] i `hero` → `hero_cta`
-     - a/button i `nav` → `nav_item`
-     - a/button i `footer` → `footer_link`
-     - h1–h6 utanför hero → `heading`
-     - img → `image`
-     - p → `paragraph`
-     - annars → `other`
-   - Lägg till nytt fält `tagName` (oförändrad HTML-tag) så vi inte tappar info.
-2. I `src/lib/tests/schema.ts`:
-   - `VisualHierarchyEntry.role` → snäv union `'hero_headline' | 'hero_cta' | 'nav_item' | 'footer_link' | 'heading' | 'image' | 'paragraph' | 'other'`.
-   - Lägg till `tagName: string`.
-3. Kontrollera `src/components/browser-shell/findings.ts → hierarchyFindings()` — den läser `h.role` och visar som text. Fortfarande OK eftersom union-värdena är läsbara strängar.
+```text
+function extractStarRating(parent) {
+  const fromAttrs = extractRatingFromAttrs(parent);
+  if (fromAttrs.rating !== undefined) return fromAttrs;
+  const fromText = extractRatingMeta(neighborText(parent));
+  if (fromText.rating !== undefined) return fromText;
+  // Fallback: count filled stars — endast om det ser ut som rating-widget
+  const allStars = parent.querySelectorAll('[class*="star" i]');
+  const filled = parent.querySelectorAll(
+    '[class*="filled" i], [class*="active" i], [class*="full" i], [aria-checked="true"]'
+  );
+  if (allStars.length >= 4 && allStars.length <= 5 && filled.length >= 1 && filled.length <= allStars.length) {
+    return { rating: filled.length };
+  }
+  return {};
+}
+```
+
+Tighter än första utkastet: kräver `filled.length >= 1` och `<= allStars.length` så vi inte plockar dekorativa stars utan fyllnadsindikator.
+
+### 5. Ny standalone-sweep för schema.org aggregateRating
+
+Efter befintliga sweeps:
+```text
+document.querySelectorAll('[itemtype*="AggregateRating" i], [itemprop="aggregateRating"]').forEach(el => {
+  const ratingEl = el.querySelector('[itemprop="ratingValue"]');
+  const countEl = el.querySelector('[itemprop="reviewCount"], [itemprop="ratingCount"]');
+  const ratingRaw = ratingEl && (ratingEl.getAttribute('content') || ratingEl.textContent || '').trim();
+  const countRaw = countEl && (countEl.getAttribute('content') || countEl.textContent || '').trim();
+  const rating = ratingRaw ? parseFloat(ratingRaw.replace(',', '.')) : undefined;
+  const count = countRaw ? parseInt(countRaw.replace(/\D/g, ''), 10) : undefined;
+  const extras = {};
+  if (rating !== undefined && !isNaN(rating)) extras.rating = rating;
+  if (count !== undefined && !isNaN(count)) extras.reviewCount = count;
+  if (Object.keys(extras).length) push('review_rating', `Aggregate rating ${extras.rating ?? ''}`.trim(), el, 'schema', extras);
+});
+```
+
+### 6. Sweep för Trustpilot/G2-widget-containrar
+
+`[class*="trustpilot" i], [class*="trustbox" i], [data-businessunit-id], [class*="g2-" i]`:
+- Läs `data-stars`, `data-rating`, `data-score` (isNaN-guard).
+- Fallback: kör `extractRatingMeta` på `el.innerText` (whitespace-medveten).
+- Pusha `review_rating` med `reviewSource` satt utifrån klassnamnet.
+
+### 7. Dedupe-skydd
+
+Star-count-fallbacken (4) och schema-sweepen (5) får inte dubbel-pusha samma rating. Använd befintlig `seen`-set i `push()` — den dedupar redan på `type + text + selector`, vilket räcker när vi inkluderar `el` korrekt.
+
+## Verifiering
+
+Köra om Teamtailor och Semrush via `/api/tests/.../stream`:
+
+- Teamtailor: `averageRating ≥ 4.0` och `reviewCount > 0`.
+- Semrush: `averageRating > 0` eller dokumentera "ingen aggregate rating i DOM" (acceptabelt).
+- Loopia: fortfarande 0/0 (ingen regression — sajten har ingen rating).
+- Inga `NaN`-värden någonstans i `pageSummary` eller `trustSignals[].rating`.
+
+## Ej i scope
+
+Scoring-motorn, DB-tabell, UI. Endast trustSignals.ts.
 
 ## Filer som ändras
 
-- `src/lib/tests/scripts/trustSignals.ts` — utöka stjärn-blocket med rating-extraktion från närliggande noder
-- `src/lib/tests/scripts/visualHierarchy.ts` — semantisk `role()` + nytt `tagName`-fält
-- `src/lib/tests/schema.ts` — uppdatera `VisualHierarchyEntry`-typen
-
-## Validering
-
-Efter fix kör vi om en analys av Teamtailor (har stjärnor + reviews i text) och Semrush, och kontrollerar:
-- `pageSummary.averageRating > 0` för båda
-- `pageSummary.reviewCount > 0` för båda
-- `visualHierarchy[0].role` är `hero_headline` eller `hero_cta` för minst en av sajterna med tydlig hero (Teamtailor)
-
-Om något inte stämmer justerar vi reglerna innan vi går vidare till scoring-motorn.
-
-## Inte i scope nu
-
-- Scoring-motorn (`src/lib/tests/scoring/*`)
-- DB-tabell / `saveRun`
-- UI-ändringar i `FindingsView`
+- `src/lib/tests/scripts/trustSignals.ts`
