@@ -111,9 +111,7 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   }
 
   const sectionsTyped = sections as PageSection[];
-  // TODO badge-debug — remove after teamtailor verification
-  const trustResult = trustSignals as { signals: TrustSignal[]; _badgeDebug?: unknown };
-  const trustTyped = trustResult.signals;
+  const trustTyped = trustSignals as TrustSignal[];
   const ctasTyped = ctas as CTAEntity[];
   const formsTyped = forms as FormEntity[];
   const navTyped = navigation as NavigationData;
