@@ -35,21 +35,18 @@ const TT_FIXTURE = `<!doctype html><html><body>
     </div>
   </section>
 </main>
-<script>
-  window.__TS_BODY__ = ${JSON.stringify(body)};
-  Element.prototype.getBoundingClientRect = function () {
-    return { x: 0, y: 100, width: 16, height: 16, top: 100, left: 0, right: 16, bottom: 116 };
-  };
-  try {
-    window.__RESULT__ = (new Function("return (" + window.__TS_BODY__ + ")"))();
-  } catch (e) {
-    window.__ERROR__ = String(e);
-  }
-</script>
 </body></html>`;
 
 const dom = new JSDOM(TT_FIXTURE, { runScripts: "dangerously", pretendToBeVisual: true });
 const w = dom.window;
+w.Element.prototype.getBoundingClientRect = function () {
+  return { x: 0, y: 100, width: 16, height: 16, top: 100, left: 0, right: 16, bottom: 116 };
+};
+w.__TS_BODY__ = body;
+const script = w.document.createElement("script");
+script.textContent = `try { window.__RESULT__ = (new Function("return (" + window.__TS_BODY__ + ")"))(); } catch (e) { window.__ERROR__ = String(e) + "\\n" + (e.stack||""); }`;
+w.document.body.appendChild(script);
+
 if (w.__ERROR__) { console.log("SCRIPT ERROR:", w.__ERROR__); process.exit(1); }
 const result = w.__RESULT__;
 console.log("total signals:", result.length);
