@@ -94,13 +94,29 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   const seen = new Set();
   const out = [];
 
+  function isInsideCarousel(el) {
+    let p = el;
+    let hops = 0;
+    while (p && p !== document.body && hops++ < 8) {
+      const role = ((p.getAttribute && p.getAttribute('aria-roledescription')) || '').toLowerCase();
+      if (role.indexOf('carousel') !== -1 || role.indexOf('slider') !== -1) return true;
+      const cls = (p.className && typeof p.className === 'string') ? p.className.toLowerCase() : '';
+      if (/(^|\\s|-)(swiper|slick|embla|keen-slider|glide|splide|carousel|slider-track|flickity)(\\s|-|$)/.test(cls)) return true;
+      if (p.hasAttribute && (p.hasAttribute('data-carousel') || p.hasAttribute('data-slider'))) return true;
+      p = p.parentElement;
+    }
+    return false;
+  }
+
   function push(type, text, el, source, extras) {
     const block = nearestBlock(el);
-    if (!isVisible(block)) return;
+    const inCarousel = isInsideCarousel(block);
+    const visibleEnough = isVisible(block) || (inCarousel && block.getBoundingClientRect().width > 0);
+    if (!visibleEnough) return;
     if (type === 'stars') {
       const raw = block.getBoundingClientRect();
       const viewportW = window.innerWidth || 1280;
-      if (raw.left >= viewportW || raw.right <= 0) return;
+      if (!inCarousel && (raw.left >= viewportW || raw.right <= 0)) return;
     }
     const cleanText = (text || '').trim().replace(/\\s+/g, ' ').slice(0, 200);
     const dedupeKey = type + '|' + cleanText.slice(0, 80) + '|' + buildSelector(block);
@@ -123,9 +139,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       },
     };
     if (extras) Object.assign(entry, extras);
+    if (inCarousel) entry.inCarousel = true;
     if (type === 'trusted_by') entry._block = block;
     out.push(entry);
   }
+
 
   // Testimonial enrichment helpers
   function extractTestimonialMeta(el, text) {
