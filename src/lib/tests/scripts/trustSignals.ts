@@ -7,7 +7,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   const PATTERNS = {
     testimonial:        /testimonial|kundr[öo]st|kundcitat|customer story|case study/i,
     review_rating:      /\\b(\\d[.,]\\d)\\s*\\/\\s*5\\b|\\b(\\d[.,]\\d)\\s*av\\s*5\\b|\\b(\\d[.,]\\d)\\s*out of\\s*5\\b/i,
-    trusted_by:         /trusted by|used by|anv[äa]nds av|v[åa]ra kunder|featured in|som setts i|our clients/i,
+    trusted_by:         /\\b(trusted by|used by|anv[äa]nds av|joined by|loved by|trusted globally by)\\s+[\\d\\w]|featured in|som setts i|as seen in/i,
     certification:      /\\bISO\\s?\\d{4,5}\\b|\\bGDPR\\b|\\bHIPAA\\b|\\bSOC ?2\\b|\\bPCI[- ]?DSS\\b|certifierad|certified/i,
     guarantee:          /(\\d+)[- ]?(day|dagars?)\\s+(money[- ]back|n[öo]jd[- ]?kund|garanti|guarantee)|return policy|[öo]ppet k[öo]p|money[- ]back guarantee/i,
     secure_payment:     /secure (checkout|payment)|s[äa]ker betalning|ssl secured|256[- ]bit/i,
@@ -182,13 +182,14 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     let leaf = true;
     for (const c of el.children) {
       const tag = c.tagName;
-      if (tag === 'P' || tag === 'LI' || tag === 'BLOCKQUOTE' || tag === 'H1' || tag === 'H2' || tag === 'H3') { leaf = false; break; }
+      if (tag === 'P' || tag === 'LI' || tag === 'BLOCKQUOTE' || tag === 'H1' || tag === 'H2' || tag === 'H3' || tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE') { leaf = false; break; }
     }
     if (!leaf) continue;
     const text = (el.innerText || el.textContent || '').trim();
     if (!text || text.length > 600) continue;
     for (const type in PATTERNS) {
       if (PATTERNS[type].test(text)) {
+        if (type === 'trusted_by' && text.length > 160) continue;
         let extras;
         if (type === 'testimonial') extras = extractTestimonialMeta(el, text);
         else if (type === 'review_rating') extras = extractRatingMeta(text);
@@ -496,7 +497,15 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     } catch (e) {}
   }
 
-  return out;
+  // Parent-dedup for trusted_by: when the same text appears multiple times,
+  // keep only the smallest (innermost) block — drops section/wrapper duplicates.
+  const filtered = out.filter((a, i) => {
+    if (a.type !== 'trusted_by') return true;
+    return !out.some((b, j) =>
+      j !== i && b.type === 'trusted_by' && b.text === a.text && b.visualWeight < a.visualWeight
+    );
+  });
+  return filtered;
 })()`;
 
 
