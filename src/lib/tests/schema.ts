@@ -273,7 +273,7 @@ export type PageSummary = {
   testimonialCount: number;
   logoCount: number;
   reviewCount: number;
-  averageRating: number;
+  // averageRating removed — use individual TrustSignal.rating values instead
   formCount: number;
   navigationLinks: number;
   sectionCount: number;
