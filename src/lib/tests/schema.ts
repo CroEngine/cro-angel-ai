@@ -211,10 +211,13 @@ export type FormEntity = {
   containsPassword: boolean;
   containsCreditCard: boolean;
   multiStep: boolean;
+  socialLogin: boolean;
+  socialProviders: string[];
   submitText: string;
   fields: FormField[];
   rect: Rect;
 };
+
 
 export type NavigationData = {
   topNavCount: number;
