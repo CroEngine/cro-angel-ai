@@ -11,11 +11,11 @@ const FIXTURE = `<!doctype html><html><body>
 <main>
   <section class="testimonials-section">
     <article class="testimonial-card t-full">
-      <div class="rating-row">${starSvgs(5)}</div>
+      <div id="r-full" class="rating-row">${starSvgs(5)}</div>
       <blockquote>Five stars</blockquote>
     </article>
     <article class="testimonial-card t-half">
-      <div class="rating-row">
+      <div id="r-half" class="rating-row">
         <svg aria-label="star"><path/></svg>
         <svg aria-label="star"><path/></svg>
         <svg aria-label="star"><path/></svg>
@@ -25,7 +25,7 @@ const FIXTURE = `<!doctype html><html><body>
       <blockquote>Four and a half</blockquote>
     </article>
     <article class="testimonial-card t-style-half">
-      <div class="rating-row">
+      <div id="r-style" class="rating-row">
         <svg aria-label="star"><path/></svg>
         <svg aria-label="star"><path/></svg>
         <svg aria-label="star"><path/></svg>
@@ -35,8 +35,8 @@ const FIXTURE = `<!doctype html><html><body>
       <blockquote>Width 50%</blockquote>
     </article>
   </section>
-  <section class="hero h-deco">
-    <div class="rating">${starSvgs(5)}</div>
+  <section class="hero">
+    <div id="r-hero" class="rating">${starSvgs(5)}</div>
   </section>
 </main>
 </body></html>`;
