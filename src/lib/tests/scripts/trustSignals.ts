@@ -454,6 +454,64 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     });
   });
 
+  // 3b) Third-party review/award badges (G2, Capterra, Trustpilot, etc.)
+  const BADGE_BRANDS = /\bg2\b|g2crowd|g2\.com|capterra|trustradius|trustpilot|software ?advice|getapp|gartner peer insights|sourceforge|product hunt|crozdesk|finances ?online|tekpon/i;
+  const BADGE_TITLES = /\b(leader|high performer|momentum leader|easiest to do business with|best (value|support|relationship|usability|est\.? roi)|top rated|best of \d{4}|users love us|fastest implementation|rising star|category leader|customers' choice|editors' choice)\b/i;
+
+  const allBadgeImgs = Array.from(document.querySelectorAll('img[alt], img[src]'));
+  const badgeRects = new Map();
+  for (const img of allBadgeImgs) badgeRects.set(img, img.getBoundingClientRect());
+
+  const badgeImgs = allBadgeImgs.filter((i) => {
+    const r = badgeRects.get(i);
+    if (!r || r.width < 30 || r.height < 30 || r.width > 300 || r.height > 300) return false;
+    const alt = i.getAttribute('alt') || '';
+    const src = i.getAttribute('src') || '';
+    const hay = (alt + ' ' + src).toLowerCase();
+    if (BADGE_BRANDS.test(hay)) return true;
+    if (BADGE_TITLES.test(alt) && r.height >= r.width * 0.8) {
+      const wordCount = alt.trim().split(/\s+/).length;
+      if (alt.length <= 60 && wordCount <= 6 && !/\.$/.test(alt.trim())) return true;
+    }
+    return false;
+  });
+
+  if (badgeImgs.length > 0) {
+    const badgeGroups = new Map();
+    for (const img of badgeImgs) {
+      const block = img.closest('ul, ol, section, div, footer') || img.parentElement;
+      if (!block) continue;
+      const arr = badgeGroups.get(block) || [];
+      arr.push(img);
+      badgeGroups.set(block, arr);
+    }
+    // Dedupe wrapper-containers: drop a block if any OTHER block in the set is its descendant.
+    // (a.contains(b) => a is the wrapper => drop a, keep innermost b.)
+    const badgeBlocks = Array.from(badgeGroups.keys());
+    const innermostBadgeBlocks = badgeBlocks.filter(
+      (a) => !badgeBlocks.some((b) => b !== a && a.contains(b)),
+    );
+    for (const block of innermostBadgeBlocks) {
+      const imgs = badgeGroups.get(block);
+      const brandsFound = new Set();
+      const titlesFound = new Set();
+      for (const img of imgs) {
+        const alt = img.getAttribute('alt') || '';
+        const src = img.getAttribute('src') || '';
+        const hay = (alt + ' ' + src).toLowerCase();
+        const mb = hay.match(BADGE_BRANDS); if (mb) brandsFound.add(mb[0]);
+        const mt = alt.match(BADGE_TITLES); if (mt) titlesFound.add(mt[0].toLowerCase());
+      }
+      push('review_badges', imgs.length + ' badge images', block, 'img_alt', {
+        badgeCount: imgs.length,
+        recognizedBrands: Array.from(brandsFound).slice(0, 10),
+        badgeTitles: Array.from(titlesFound).slice(0, 10),
+      });
+    }
+  }
+
+
+
   // 4) Payment logos
   const paymentRx = /(visa|mastercard|amex|american express|paypal|stripe|klarna|swish|apple pay|google pay)/i;
   const paymentImgs = Array.from(document.querySelectorAll('img[alt], img[src]')).filter((i) => {

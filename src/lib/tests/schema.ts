@@ -151,6 +151,7 @@ export type TrustSignalType =
   | "stars"
   | "trusted_by"
   | "customer_logos"
+  | "review_badges"
   | "certification"
   | "guarantee"
   | "secure_payment"
@@ -158,6 +159,7 @@ export type TrustSignalType =
   | "org_number"
   | "press_mention"
   | "social_proof_count";
+
 
 export type TrustSignal = {
   type: TrustSignalType;
@@ -176,7 +178,10 @@ export type TrustSignal = {
   reviewSource?: string;
   logoCount?: number;
   recognizedBrands?: string[];
+  badgeCount?: number;
+  badgeTitles?: string[];
 };
+
 
 export type CTAEntity = {
   text: string;
