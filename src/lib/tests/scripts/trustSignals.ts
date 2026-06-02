@@ -471,8 +471,9 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   }
 
   // 3b) Third-party review/award badges (G2, Capterra, Trustpilot, etc.)
-  const BADGE_BRANDS = /\bg2\b|g2crowd|g2\.com|capterra|trustradius|trustpilot|software ?advice|getapp|gartner peer insights|sourceforge|product hunt|crozdesk|finances ?online|tekpon/i;
-  const BADGE_TITLES = /\b(leader|high performer|momentum leader|easiest to do business with|best (value|support|relationship|usability|est\.? roi)|top rated|best of \d{4}|users love us|fastest implementation|rising star|category leader|customers' choice|editors' choice)\b/i;
+  const BADGE_BRANDS = /\\bg2\\b|g2crowd|g2\\.com|capterra|trustradius|trustpilot|software ?advice|getapp|gartner peer insights|sourceforge|product hunt|crozdesk|finances ?online|tekpon/i;
+  const BADGE_TITLES = /\\b(leader|high performer|momentum leader|easiest to do business with|best (value|support|relationship|usability|est\\.? roi)|top rated|best of \\d{4}|users love us|fastest implementation|rising star|category leader|customers' choice|editors' choice)\\b/i;
+  const BADGE_PATH = /\\/badges?\\/(file\\/)?/i;
 
   const allBadgeImgs = Array.from(document.querySelectorAll('img[alt], img[src]'));
   const badgeRects = new Map();
@@ -480,14 +481,15 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   const badgeImgs = allBadgeImgs.filter((i) => {
     const r = badgeRects.get(i);
-    if (!r || r.width < 30 || r.height < 30 || r.width > 300 || r.height > 300) return false;
+    if (!r || r.width < 30 || r.height < 30 || r.width > 320 || r.height > 320) return false;
     const alt = i.getAttribute('alt') || '';
     const src = i.getAttribute('src') || '';
     const hay = (alt + ' ' + src).toLowerCase();
     if (BADGE_BRANDS.test(hay)) return true;
+    if (BADGE_PATH.test(src)) return true;
     if (BADGE_TITLES.test(alt) && r.height >= r.width * 0.8) {
-      const wordCount = alt.trim().split(/\s+/).length;
-      if (alt.length <= 60 && wordCount <= 6 && !/\.$/.test(alt.trim())) return true;
+      const wordCount = alt.trim().split(/\\s+/).length;
+      if (alt.length <= 60 && wordCount <= 6 && !/\\.$/.test(alt.trim())) return true;
     }
     return false;
   });
@@ -502,7 +504,6 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       badgeGroups.set(block, arr);
     }
     // Dedupe wrapper-containers: drop a block if any OTHER block in the set is its descendant.
-    // (a.contains(b) => a is the wrapper => drop a, keep innermost b.)
     const badgeBlocks = Array.from(badgeGroups.keys());
     const innermostBadgeBlocks = badgeBlocks.filter(
       (a) => !badgeBlocks.some((b) => b !== a && a.contains(b)),
@@ -527,86 +528,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     }
   }
 
-  // 3c) Shape-based badge fallback (G2-style badges with empty alt + self-hosted src).
-  // Triggers only when keyword-grenen missar. Hårt heading-filter mot team-grids.
-  const TEAM_HEADING_RX = /team|people|om oss|about us|meet|who we are/i;
-  const matchedBadgeSet = new Set(badgeImgs);
 
-  function nearestHeadingText(block) {
-    const inside = block.querySelector && block.querySelector('h1,h2,h3,h4');
-    if (inside) return inside.textContent || '';
-    let el = block;
-    for (let depth = 0; depth < 5 && el; depth++) {
-      let sib = el.previousElementSibling;
-      while (sib) {
-        if (/^H[1-4]$/.test(sib.tagName)) return sib.textContent || '';
-        const h = sib.querySelector && sib.querySelector('h1,h2,h3,h4');
-        if (h) return h.textContent || '';
-        sib = sib.previousElementSibling;
-      }
-      el = el.parentElement;
-    }
-    return '';
-  }
-
-  const shapeCandidates = allBadgeImgs.filter((i) => {
-    if (matchedBadgeSet.has(i)) return false;
-    const r = badgeRects.get(i);
-    if (!r) return false;
-    if (r.width < 60 || r.width > 220) return false;
-    if (r.height < 60 || r.height > 260) return false;
-    if (r.height < r.width * 1.05) return false;
-    return true;
-  });
-
-  if (shapeCandidates.length >= 3) {
-    const shapeGroups = new Map();
-    for (const img of shapeCandidates) {
-      const block = img.closest('ul, ol, section, div, footer') || img.parentElement;
-      if (!block) continue;
-      const arr = shapeGroups.get(block) || [];
-      arr.push(img);
-      shapeGroups.set(block, arr);
-    }
-    const shapeBlocks = Array.from(shapeGroups.keys());
-    const innermostShape = shapeBlocks.filter(
-      (a) => !shapeBlocks.some((b) => b !== a && a.contains(b)),
-    );
-    // Keyword-grenen vinner: skippa shape-block som överlappar med ett keyword-block.
-    const keywordBlocks = badgeImgs.length > 0
-      ? Array.from(new Set(badgeImgs.map((i) => i.closest('ul, ol, section, div, footer') || i.parentElement).filter(Boolean)))
-      : [];
-
-    for (const block of innermostShape) {
-      const imgs = shapeGroups.get(block);
-      if (!imgs || imgs.length < 3) continue;
-
-      // Skip if a keyword-detected block is inside or equals this block.
-      if (keywordBlocks.some((kb) => block === kb || block.contains(kb) || kb.contains(block))) continue;
-
-      // Regel 4: homogen storlek inom ±20% av medianen.
-      const widths = imgs.map((i) => badgeRects.get(i).width);
-      const heights = imgs.map((i) => badgeRects.get(i).height);
-      const sortedW = [...widths].sort((a, b) => a - b);
-      const sortedH = [...heights].sort((a, b) => a - b);
-      const medW = sortedW[Math.floor(sortedW.length / 2)];
-      const medH = sortedH[Math.floor(sortedH.length / 2)];
-      const homogenous = widths.every((w) => Math.abs(w - medW) <= medW * 0.2)
-        && heights.every((h) => Math.abs(h - medH) <= medH * 0.2);
-      if (!homogenous) continue;
-
-      // Regel 4b: hårt heading-filter mot team-grids.
-      const heading = nearestHeadingText(block);
-      if (heading && TEAM_HEADING_RX.test(heading)) continue;
-
-      push('review_badges', imgs.length + ' badge images (shape-fallback)', block, 'img_alt', {
-        badgeCount: imgs.length,
-        recognizedBrands: [],
-        badgeTitles: [],
-        detectionMethod: 'shape',
-      });
-    }
-  }
 
 
 
