@@ -146,21 +146,29 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
   const viewportH = window.innerHeight || 720;
   const domNodes = document.querySelectorAll('*').length;
   const sampleRoots = new Set();
-  const seedSelectors = ['main', 'header', 'nav', 'aside', 'footer', 'body > section', 'main > *', 'header > *', 'section > *'];
+  const seedSelectors = ['main > *', 'header > *', 'nav > *', 'aside > *', 'footer > *', 'body > section', 'body > section > *'];
   for (const sel of seedSelectors) {
     try {
       const list = document.querySelectorAll(sel);
       for (const n of list) sampleRoots.add(n);
     } catch (e) {}
   }
-  let aboveFoldElements = 0;
+  // Drop any node whose ancestor is also in the set so subtrees don't double-count.
+  const topRoots = [];
   for (const node of sampleRoots) {
+    let p = node.parentElement;
+    let nested = false;
+    while (p) { if (sampleRoots.has(p)) { nested = true; break; } p = p.parentElement; }
+    if (!nested) topRoots.push(node);
+  }
+  let aboveFoldElements = 0;
+  for (const node of topRoots) {
     const r = node.getBoundingClientRect();
     if (r.top < viewportH && r.bottom > 0 && r.width > 0 && r.height > 0) {
-      // Count this node + its subtree once. Cheap (no per-descendant bbox).
       aboveFoldElements += 1 + node.querySelectorAll('*').length;
     }
   }
+
 
   let largestImagePx = 0;
   let aboveFoldImageCount = 0;
