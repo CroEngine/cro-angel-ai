@@ -129,12 +129,37 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     return extras;
   }
 
+  function safeFloat(s) {
+    if (s === undefined || s === null) return undefined;
+    const n = parseFloat(String(s).replace(',', '.'));
+    return isNaN(n) ? undefined : n;
+  }
+  function safeInt(s) {
+    if (s === undefined || s === null) return undefined;
+    const n = parseInt(String(s).replace(/[^0-9]/g, ''), 10);
+    return isNaN(n) ? undefined : n;
+  }
+
   function extractRatingMeta(text) {
     const extras = {};
-    const m = text.match(/(\\d[.,]\\d)\\s*(?:\\/|av|out of)\\s*5/i);
-    if (m) extras.rating = parseFloat(m[1].replace(',', '.'));
-    const rc = text.match(/\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d{2,})\\s*(reviews|recensioner|omd[öo]men|ratings)\\b/i);
-    if (rc) extras.reviewCount = parseInt(rc[1].replace(/[ ,.]/g, ''), 10);
+    if (!text) return extras;
+    let m =
+      text.match(/(\\d[.,]\\d)\\s*(?:\\/|av|out of)\\s*5/i) ||
+      text.match(/TrustScore\\s+(\\d[.,]\\d)/i) ||
+      text.match(/Rated\\s+(\\d[.,]\\d)\\s*(?:out of|\\/)\\s*5/i) ||
+      text.match(/Rated\\s+(\\d[.,]\\d)/i) ||
+      text.match(/(\\d[.,]\\d)\\s*stars?\\b/i);
+    if (m) {
+      const r = safeFloat(m[1]);
+      if (r !== undefined) extras.rating = r;
+    }
+    let rc =
+      text.match(/\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d{2,})\\s*(?:reviews|recensioner|omd[öo]men|ratings)\\b/i) ||
+      text.match(/based on\\s+(\\d{1,3}(?:[ ,.]\\d{3})*|\\d+)\\s*(?:reviews|recensioner|ratings)/i);
+    if (rc) {
+      const c = safeInt(rc[1]);
+      if (c !== undefined) extras.reviewCount = c;
+    }
     if (/trustpilot/i.test(text)) extras.reviewSource = 'Trustpilot';
     else if (/google/i.test(text)) extras.reviewSource = 'Google';
     else if (/g2\\b/i.test(text)) extras.reviewSource = 'G2';
@@ -144,7 +169,10 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   function extractSocialProofCount(text) {
     const m = text.match(/\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d{4,})/);
-    if (m) return { reviewCount: parseInt(m[1].replace(/[ ,.]/g, ''), 10) };
+    if (m) {
+      const c = safeInt(m[1]);
+      if (c !== undefined) return { reviewCount: c };
+    }
     return undefined;
   }
 
@@ -178,26 +206,105 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   });
 
   function neighborText(el) {
+    if (!el) return '';
     const bits = [];
-    if (el && el.innerText) bits.push(el.innerText);
-    const parent = el && el.parentElement;
+    if (el.innerText) bits.push(el.innerText);
+    const parent = el.parentElement;
     if (parent && parent.innerText) bits.push(parent.innerText);
     const grand = parent && parent.parentElement;
     if (grand && grand.innerText) bits.push(grand.innerText);
-    if (el && el.nextElementSibling && el.nextElementSibling.innerText) bits.push(el.nextElementSibling.innerText);
-    if (el && el.previousElementSibling && el.previousElementSibling.innerText) bits.push(el.previousElementSibling.innerText);
-    return bits.join(' ').slice(0, 1000);
+    const greatGrand = grand && grand.parentElement;
+    if (greatGrand && greatGrand.innerText) bits.push(greatGrand.innerText);
+    // siblings of parent (catches widget layouts where rating-text is in a separate div)
+    if (parent && parent.parentElement) {
+      for (const sib of parent.parentElement.children) {
+        if (sib !== parent && sib.innerText) bits.push(sib.innerText);
+      }
+    }
+    if (el.nextElementSibling && el.nextElementSibling.innerText) bits.push(el.nextElementSibling.innerText);
+    if (el.previousElementSibling && el.previousElementSibling.innerText) bits.push(el.previousElementSibling.innerText);
+    return bits.join(' ').slice(0, 2000);
   }
 
-  function extractStarRating(el) {
-    const t = neighborText(el);
-    const extras = extractRatingMeta(t);
-    // Also try plain "4.7" near stars (without /5 suffix)
+  function extractRatingFromAttrs(el) {
+    if (!el) return {};
+    const extras = {};
+    const ratingRx = /(\\d[.,]?\\d?)\\s*(?:out of|av|\\/)\\s*5/i;
+    const ratedRx = /Rated\\s+(\\d[.,]\\d)/i;
+    const scope = [el];
+    if (el.parentElement) scope.push(el.parentElement);
+    if (el.parentElement && el.parentElement.parentElement) scope.push(el.parentElement.parentElement);
+    let descCount = 0;
+    el.querySelectorAll('*').forEach((d) => { if (descCount++ < 50) scope.push(d); });
+    for (const node of scope) {
+      if (extras.rating === undefined) {
+        const aria = (node.getAttribute && node.getAttribute('aria-label')) || '';
+        const title = (node.getAttribute && node.getAttribute('title')) || '';
+        for (const t of [aria, title]) {
+          const m = t.match(ratingRx) || t.match(ratedRx);
+          if (m) { const r = safeFloat(m[1]); if (r !== undefined) { extras.rating = r; break; } }
+        }
+      }
+      if (extras.rating === undefined && node.matches && (node.matches('[itemprop="ratingValue"]') || node.matches('[data-rating]') || node.matches('[data-score]') || node.matches('[data-stars]'))) {
+        const raw = (node.getAttribute('content') || node.getAttribute('data-rating') || node.getAttribute('data-score') || node.getAttribute('data-stars') || node.textContent || '').trim();
+        const r = safeFloat(raw);
+        if (r !== undefined) extras.rating = r;
+      }
+      if (extras.reviewCount === undefined && node.matches && (node.matches('[itemprop="reviewCount"]') || node.matches('[itemprop="ratingCount"]'))) {
+        const raw = (node.getAttribute('content') || node.textContent || '').trim();
+        const c = safeInt(raw);
+        if (c !== undefined) extras.reviewCount = c;
+      }
+    }
+    // Look for ratingValue/reviewCount inside descendants by selector if not found yet
     if (extras.rating === undefined) {
-      const m = t.match(/\\b([1-5][.,]\\d)\\b/);
-      if (m) extras.rating = parseFloat(m[1].replace(',', '.'));
+      const r = el.querySelector && el.querySelector('[itemprop="ratingValue"]');
+      if (r) {
+        const v = safeFloat((r.getAttribute('content') || r.textContent || '').trim());
+        if (v !== undefined) extras.rating = v;
+      }
+    }
+    if (extras.reviewCount === undefined) {
+      const c = el.querySelector && el.querySelector('[itemprop="reviewCount"], [itemprop="ratingCount"]');
+      if (c) {
+        const v = safeInt((c.getAttribute('content') || c.textContent || '').trim());
+        if (v !== undefined) extras.reviewCount = v;
+      }
     }
     return extras;
+  }
+
+  function extractStarRating(parent) {
+    const fromAttrs = extractRatingFromAttrs(parent);
+    if (fromAttrs.rating !== undefined) return fromAttrs;
+    const fromText = extractRatingMeta(neighborText(parent));
+    if (fromText.rating !== undefined) {
+      // merge reviewCount from attrs if available
+      if (fromAttrs.reviewCount !== undefined && fromText.reviewCount === undefined) fromText.reviewCount = fromAttrs.reviewCount;
+      return fromText;
+    }
+    // Also try plain "4.7" near stars (without /5 suffix)
+    const t = neighborText(parent);
+    const m = t.match(/\\b([1-5][.,]\\d)\\b/);
+    if (m) {
+      const r = safeFloat(m[1]);
+      if (r !== undefined) {
+        const out = { rating: r };
+        if (fromAttrs.reviewCount !== undefined) out.reviewCount = fromAttrs.reviewCount;
+        return out;
+      }
+    }
+    // Fallback: count filled stars — only when it looks like a rating widget
+    const allStars = parent.querySelectorAll('[class*="star" i]');
+    const filled = parent.querySelectorAll(
+      '[class*="filled" i], [class*="active" i], [class*="full" i], [aria-checked="true"]'
+    );
+    if (allStars.length >= 4 && allStars.length <= 5 && filled.length >= 1 && filled.length <= allStars.length) {
+      const out = { rating: filled.length };
+      if (fromAttrs.reviewCount !== undefined) out.reviewCount = fromAttrs.reviewCount;
+      return out;
+    }
+    return fromAttrs;
   }
 
   // 2) Star icons clusters
@@ -220,6 +327,39 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     if (el.children.length > 0) return;
     const t = el.textContent || '';
     if ((t.match(/[★⭐✦]/g) || []).length >= 3) push('stars', t.trim().slice(0, 60), el, 'text', extractStarRating(el));
+  });
+
+  // 2b) Schema.org AggregateRating microdata in DOM
+  document.querySelectorAll('[itemtype*="AggregateRating" i], [itemprop="aggregateRating"]').forEach((el) => {
+    const ratingEl = el.querySelector('[itemprop="ratingValue"]');
+    const countEl = el.querySelector('[itemprop="reviewCount"], [itemprop="ratingCount"]');
+    const ratingRaw = ratingEl ? (ratingEl.getAttribute('content') || ratingEl.textContent || '').trim() : '';
+    const countRaw = countEl ? (countEl.getAttribute('content') || countEl.textContent || '').trim() : '';
+    const rating = safeFloat(ratingRaw);
+    const count = safeInt(countRaw);
+    const extras = {};
+    if (rating !== undefined) extras.rating = rating;
+    if (count !== undefined) extras.reviewCount = count;
+    if (Object.keys(extras).length) {
+      push('review_rating', ('Aggregate rating ' + (extras.rating !== undefined ? extras.rating : '')).trim(), el, 'schema', extras);
+    }
+  });
+
+  // 2c) Trustpilot / G2 widget containers
+  document.querySelectorAll('[class*="trustpilot" i], [class*="trustbox" i], [data-businessunit-id], [class*="g2-" i], [class*="g2crowd" i]').forEach((el) => {
+    const extras = {};
+    const dataRating = el.getAttribute('data-rating') || el.getAttribute('data-score') || el.getAttribute('data-stars');
+    const r = safeFloat(dataRating);
+    if (r !== undefined) extras.rating = r;
+    const fromText = extractRatingMeta(el.innerText || el.textContent || '');
+    if (extras.rating === undefined && fromText.rating !== undefined) extras.rating = fromText.rating;
+    if (fromText.reviewCount !== undefined) extras.reviewCount = fromText.reviewCount;
+    const cls = (el.className && el.className.toString()) || '';
+    if (/trustpilot|trustbox/i.test(cls) || el.hasAttribute('data-businessunit-id')) extras.reviewSource = 'Trustpilot';
+    else if (/g2/i.test(cls)) extras.reviewSource = 'G2';
+    if (Object.keys(extras).length) {
+      push('review_rating', ('Widget rating ' + (extras.rating !== undefined ? extras.rating : '')).trim(), el, 'attr', extras);
+    }
   });
 
   // 3) Customer logos — row/grid of ≥4 small <img>
@@ -267,12 +407,14 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         const types = Array.isArray(type) ? type : [type];
         for (const t of types) {
           if (t === 'Review' || t === 'AggregateRating') {
-            const rating = it.ratingValue || (it.reviewRating && it.reviewRating.ratingValue);
-            const reviewCount = it.reviewCount || it.ratingCount;
-            push('review_rating', rating ? 'Schema rating ' + rating : 'Schema review', document.body, 'schema', {
-              rating: rating ? parseFloat(String(rating)) : undefined,
-              reviewCount: reviewCount ? parseInt(String(reviewCount), 10) : undefined,
-            });
+            const ratingRaw = it.ratingValue || (it.reviewRating && it.reviewRating.ratingValue);
+            const reviewCountRaw = it.reviewCount || it.ratingCount;
+            const extras = {};
+            const r = safeFloat(ratingRaw);
+            if (r !== undefined) extras.rating = r;
+            const c = safeInt(reviewCountRaw);
+            if (c !== undefined) extras.reviewCount = c;
+            push('review_rating', extras.rating !== undefined ? 'Schema rating ' + extras.rating : 'Schema review', document.body, 'schema', extras);
           }
           if (t === 'Organization' && (it.address || it.telephone || it.email)) {
             push('contact_info', 'Schema Organization contact', document.body, 'schema');
