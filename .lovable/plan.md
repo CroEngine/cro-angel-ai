@@ -1,20 +1,25 @@
 ## Status
 
-Coverage-baserad `dropWrappers` implementerad. Debug-block borttaget. Väntar på verifieringskörning av teamtailor / personio / talentium.
+Top-level coverage-fix implementerad. `_debug` återinfört temporärt. Cleanup i separat commit efter verifiering.
 
 ## Lösning
 
-`dropWrappers` släpper en wrapper bara om dess `logoCount` förklaras av summan av inner-siblings (`a._block.contains(b._block)`). Tröskel `COVERAGE_SLACK = 3` — wrappers med fler oberoende logos behålls.
+`dropWrappers` använder nu **top-level inner-siblings** (inner-block som inte själva ligger inuti ett annat inner-block) och `>= COVERAGE_SLACK` med tröskel 2 för stabilitet mot lazy-load.
 
 Effekt:
-- Teamtailor hero-wrapper (11 logos, inner 4) → diff 7 > 3 → **keep** (hero räddas).
-- Teamtailor footer-yttre (8 logos, inner 4+4) → diff 0 → drop.
-- Personio: hero `containsSelf:false` mot footer → inga inner-siblings → keep.
+- Teamtailor hero(11): top-level=[yttre 8] → diff 3 >= 2 → **keep**.
+- Teamtailor footer-yttre(8): top-level=[4a, 4b] → diff 0 → drop.
+- Personio: oförändrat (inga inner-siblings för hero).
 
-## Kvarstår (inte i scope)
+## Verifiering
 
-- Personio carousel-dubbletter (`animate-scroll-left/right` ger 66+60 duplicerade logos för infinite scroll). Lösning: ta `max(logoCount)` av parallella scroll-block istället för att summera.
-- Stars rating exposure
-- `org_number` postal code FP
-- Badge/logo cross-type dedup
-- Geo-targeting för proxies
+Kör teamtailor / personio / talentium och läs `_debug.diff` + `topLevelInnerCounts`.
+
+## Nästa steg
+
+Efter bekräftad fix: separat commit som tar bort `_debug`-blocket.
+
+## Inte i scope
+
+- Personio carousel-dubbletter (`animate-scroll-left/right` 66+60)
+- Stars, `org_number` FP, badge/logo cross-type dedup, geo-proxies
