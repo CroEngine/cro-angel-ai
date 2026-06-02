@@ -255,13 +255,12 @@ function CategorySection({
   findings: Finding[];
 }) {
   const [open, setOpen] = useState(true);
-  if (findings.length === 0) return null;
-
   const grouped = useMemo(() => {
     const g: Partial<Record<FindingGroup, Finding[]>> = {};
     for (const f of findings) (g[f.group] ??= []).push(f);
     return g;
   }, [findings]);
+  if (findings.length === 0) return null;
 
   return (
     <section>
