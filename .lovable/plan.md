@@ -1,93 +1,96 @@
-# Interpret v2 — 20 nya regler + dynamisk severity
+# Findings-tabben: tätare och bättre grupperad
 
-Bygger ovanpå nuvarande `interpret.ts`. Inga ändringar i collectors, `findings.ts`, `InterpretView.tsx`, `schema.ts` eller score-formel.
+Mål: mindre rörigt utan att tappa data. Relaterade findings ska ligga visuellt nära. Endast UI/presentation — `findings.ts` datastruktur ändras minimalt (lägger till `group`-fält), ingen ny data, ingen ny collector.
 
-## Beslut (efter avstämning)
+## Ändringar
 
-1. **`ux.abovefold.ratio` tas bort.** Svag signal, fold-kvalitet täcks bättre av nya UX-regler.
-2. **`cro.cta.trust.distance`**: filtrera `audit.ctas` på `category === "cta_primary"`. Triggar om `min(nearestTrustSignalDistance) > 600` över alla primära CTA:n (eller `=== 9999` = ingen trust alls). En finding per sida. Evidence visar den värsta: `primary CTA "<text>" är <Npx> från närmaste trust signal`.
-
-## Arkitekturändringar i `interpret.ts`
+### 1. `findings.ts` — lägg till `group` på Finding
 
 ```ts
-interface RuleCtx { audit: PageAuditData; collect?: CollectData }
+export type FindingCategory = "seo" | "cro" | "trust" | "ux";
 
-interface Rule {
-  id: string;
-  category: Category;
-  severity: Severity;          // default-severity
-  weight?: number;
-  title: string;
-  passTitle: string;
-  evaluate: (ctx: RuleCtx) => null | { evidence: string; severity?: Severity };
+export type FindingGroup =
+  | "meta" | "structure" | "indexing" | "links"        // seo
+  | "hero" | "ctas" | "forms"                          // cro
+  | "summary" | "byType" | "signals"                   // trust
+  | "navigation" | "sections" | "hierarchy" | "page";  // ux
+
+export interface Finding {
+  category: FindingCategory;
+  group: FindingGroup;
+  label: string;
+  detail?: string;
 }
 ```
 
-- `interpretOne()` plockar `audit` + ev. `collect` (typeguard `isCollect` på `report.rawCollect`) och bygger `ctx`.
-- Regler som kräver `collect` men saknar det → returnera `null` (skip), samma mönster som dagens `hiddenInteractive`.
-- Score använder `SEVERITY_WEIGHT[result.severity ?? rule.severity]`. Sortering i findings använder effective severity.
+Mappning (omfördelning från dagens kod):
 
-## Regler
+- **seo / meta**: Title, Meta description, Canonical, lang, OG image, Schema.org
+- **seo / structure**: Headings, Word count
+- **seo / indexing**: robots.txt, sitemap.xml
+- **seo / links**: Links, Images alt
+- **cro / hero**: Hero headline/sub/CTA
+- **cro / ctas**: CTAs total + per primary CTA (flyttas från dagens "CRO"-bulkar)
+- **cro / forms**: Forms total + per form
+- **trust / summary**: Trust signals total/above fold, Aggregate rating
+- **trust / byType**: By type, Recognized brands, Contact info signals
+- **trust / signals**: per signal-rad
+- **ux / navigation**: Top/Footer nav links, Nav entries
+- **ux / sections**: Section order, Sections detected, per section
+- **ux / hierarchy**: #1..#5 hierarki
+- **ux / page**: Page summary (flyttas från borttagna "interaction"-kategorin)
 
-Behålls oförändrade (v1): `seo.title.missing`, `seo.meta.description.missing`, `seo.h1.count`.
+Kategorin `interaction` tas bort — "X buttons captured / By category" är redan synlig i Activity-tabben och tillför inget i Findings.
 
-Tas bort: `ux.abovefold.ratio`.
+### 2. `FindingsView.tsx` — två renderingslägen + subsektioner
 
-### SEO (6 nya)
+Ny layout per `PageCard`:
 
-| id | Trigger | Severity | passTitle |
-|---|---|---|---|
-| `seo.canonical.missing` | `!head.canonical` | medium | Canonical tag present |
-| `seo.schema.missing` | `schema.count === 0` | medium | Structured data present |
-| `seo.images.alt.coverage` | `images.missingAltPct > 10` | medium, **high om >25** | Image alt coverage acceptable |
-| `seo.images.dimensions.missing` | `images.missingDims > 0` | low, **medium om >10% av total** | Image dimensions set |
-| `seo.content.thin` | `content.wordCount < 300` | medium, **high om <150** | Content length sufficient |
-| `seo.h2.missing` | `headings.h2Count === 0` | low | H2 headings present |
+```
+[Page header]
+  SEO ─────────────────────  6 findings
+    Meta            (compact rows: Title, Description, Canonical, Lang, OG, Schema)
+    Structure       (compact rows: Headings, Word count)
+    Indexing        (compact rows: robots, sitemap)
+    Links           (compact rows: Links, Images alt)
 
-### CRO (6 nya — ersätter/utökar)
+  Conversion (CRO) ────────  N findings
+    Hero            (cards: headline/sub/CTA — narrative)
+    CTAs            (compact rows + per-CTA cards)
+    Forms           (compact rows + per-form cards)
 
-Behåller: `cro.primaryCta.missing`, `cro.hero.headline.missing`, `cro.cta.competition`.
+  Trust ───────────────────  N findings
+    Summary
+    By type
+    Signals         (per-signal cards)
 
-| id | Trigger | Severity | passTitle |
-|---|---|---|---|
-| `cro.hero.cta.missing` | `hero && hero.primaryCtaText.trim() === ""` | high | Hero CTA present |
-| `cro.cta.aboveFold.missing` | `pageSummary.aboveFoldCtaCount === 0` | high | CTA above the fold |
-| `cro.primaryCta.multipleAboveFold` | antal `ctas` med `category==="cta_primary" && aboveFold` > 1 | medium | Single primary CTA above fold |
-| `cro.cta.trust.distance` | se beslut ovan | medium | Primary CTA near trust signal |
-| `cro.form.aboveFold.missing` | `pageSummary.formCount > 0 && forms.every(f => !f.aboveFold)` | low | Form reachable above fold |
-| `cro.pricing.missing` | `!sectionOrder.includes("pricing") && navigation.pricingPresent` | low | Pricing section present |
+  UX & Structure ──────────  N findings
+    Navigation
+    Sections
+    Hierarchy
+    Page
+```
 
-### UX (5 nya)
+Två rendringslägen styrt av `parseFinding(f).kind`:
 
-Behåller: `ux.hidden.interactive`.
+- `status` / `metric` / `text`-utan-meta → **kompakt rad** `label …………… value` (key/value-lista, en per rad, ingen kortram). Flera kompakta rader staplas direkt under subgrupp-rubriken.
+- `quote` / `stats` / långa `text` → behåll dagens `FindingCard` (kortram, kan ta `col-span-2`).
 
-| id | Trigger | Severity | passTitle |
-|---|---|---|---|
-| `ux.navigation.overload` | `navigation.topNavCount > 10` | medium, **high om >20** | Top nav within limits |
-| `ux.footer.navigation.overload` | `navigation.footerNavCount > 40` | low, **medium om >60** | Footer nav within limits |
-| `ux.interactive.aboveFold.density` | (kräver `collect`) `summary.aboveFold > 25` | medium | Above-fold interactive density OK |
-| `ux.unknown.intent.ratio` | (kräver `collect`) `unknownPct = unknown/total > 0.3` | low, **medium om >0.5** | Element intent largely classified |
-| `ux.lang.missing` | `head.lang.trim() === ""` | low | `<html lang>` set |
+Subgrupp-rubriken är liten (10px uppercase muted) + räknare. Ingen toggling på subgrupp; kategorin behåller dagens collapse.
 
-### Trust (3 nya)
+### 3. `InterpretView` — oförändrat
 
-Behåller: `trust.signals.none`, `trust.abovefold.missing`.
+Berörs ej. Findings-flikens nya `trust`-kategori råkar matcha Interprets `trust` redan.
 
-| id | Trigger | Severity | passTitle |
-|---|---|---|---|
-| `trust.diversity.low` | `trustSummary.total > 0 && Object.keys(trustSummary.byType).length < 2` | low | Trust signal diversity present |
+## Effekt
 
-(Plus ev. övriga från listan som passar — anpassas till exakt fältnamn i `schema.ts`.)
-
-## Implementationsordning
-
-1. Arkitektur: `RuleCtx`, dynamisk severity, `isCollect` guard.
-2. Ta bort `ux.abovefold.ratio`.
-3. Lägg till regler: SEO 1–6 → CRO 7–12 → UX 13–17 → Trust 18–20.
-4. Manuell smoketest mot befintlig rapport: bekräfta att inga existerande findings/wins försvinner eller dubbelräknas.
+- SEO-blocket går från 12 lika stora kort → 4 grupper med ~10 kompakta rader totalt.
+- CRO-blocket renodlas till hero/ctas/forms; alla 8+ trust-findings flyttas till egen kategori.
+- Trust-findings (idag spridda under CRO) hamnar samlat.
+- "Interaction"-kategorin försvinner; page summary läggs under ux/page.
+- Total höjd ungefär halveras utan att någon datapunkt tappas.
 
 ## Inte i scope
 
-- `findings.ts`, `InterpretView.tsx`, `schema.ts`, collectors.
-- Score-formel oförändrad (poäng = 100 − Σ vikter per kategori).
-- Ingen recommend, ingen AI.
+- `interpret.ts`, `InterpretView.tsx`, schema, collectors, scoring, rekommendationer.
+- Filtrering / search / sort — endast gruppering och tätare layout.
