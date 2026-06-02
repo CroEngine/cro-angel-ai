@@ -436,23 +436,39 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     }
   });
 
-  // 3) Customer logos — row/grid of ≥4 small <img>
-  document.querySelectorAll('ul, ol, div, section').forEach((el) => {
-    const imgs = Array.from(el.querySelectorAll(':scope > * img, :scope > img'));
-    if (imgs.length < 4) return;
-    const small = imgs.filter((i) => {
+  // 3) Customer logos — globally dedupe by normalized src
+  const allLogoImgs = Array.from(document.querySelectorAll('img'));
+  const seenSrcs = new Set();
+  const uniqueLogos = [];
+  for (const img of allLogoImgs) {
+    const r = img.getBoundingClientRect();
+    if (r.width < 40 || r.width > 240 || r.height < 20 || r.height > 120) continue;
+    const raw = img.getAttribute('src') || img.currentSrc || '';
+    if (!raw) continue;
+    const key = raw.split('?')[0];
+    if (seenSrcs.has(key)) continue;
+    seenSrcs.add(key);
+    uniqueLogos.push(img);
+  }
+
+  if (uniqueLogos.length >= 4) {
+    const vh = window.innerHeight;
+    const aboveFoldLogoCount = uniqueLogos.filter((i) => {
       const r = i.getBoundingClientRect();
-      return r.width > 40 && r.width < 240 && r.height > 20 && r.height < 120;
-    });
-    if (small.length < 4) return;
-    const altText = small.map((i) => (i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || '')).join(' ').toLowerCase();
+      return r.top < vh && r.bottom > 0;
+    }).length;
+    const altText = uniqueLogos
+      .map((i) => (i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || ''))
+      .join(' ').toLowerCase();
     const recognized = [];
     for (const b of RECOGNIZED_BRANDS) if (altText.indexOf(b) >= 0) recognized.push(b);
-    push('customer_logos', String(small.length) + ' logo images', el, 'img_alt', {
-      logoCount: small.length,
+    const anchor = uniqueLogos[0];
+    push('customer_logos', String(uniqueLogos.length) + ' logo images', anchor, 'img_alt', {
+      logoCount: uniqueLogos.length,
+      aboveFoldLogoCount: aboveFoldLogoCount,
       recognizedBrands: Array.from(new Set(recognized)).slice(0, 20),
     });
-  });
+  }
 
   // 3b) Third-party review/award badges (G2, Capterra, Trustpilot, etc.)
   const BADGE_BRANDS = /\bg2\b|g2crowd|g2\.com|capterra|trustradius|trustpilot|software ?advice|getapp|gartner peer insights|sourceforge|product hunt|crozdesk|finances ?online|tekpon/i;
