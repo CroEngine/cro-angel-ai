@@ -1,4 +1,4 @@
-import { JSDOM, VirtualConsole } from "jsdom";
+import { JSDOM } from "jsdom";
 import { readFileSync } from "fs";
 
 const src = readFileSync("src/lib/tests/scripts/trustSignals.ts", "utf8");
