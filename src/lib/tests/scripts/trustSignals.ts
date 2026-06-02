@@ -7,7 +7,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   const PATTERNS = {
     testimonial:        /testimonial|kundr[öo]st|kundcitat|customer story|case study/i,
     review_rating:      /\\b(\\d[.,]\\d)\\s*\\/\\s*5\\b|\\b(\\d[.,]\\d)\\s*av\\s*5\\b|\\b(\\d[.,]\\d)\\s*out of\\s*5\\b/i,
-    trusted_by:         /trusted by|used by|anv[äa]nds av|v[åa]ra kunder|featured in|som setts i|our clients/i,
+    trusted_by:         /\\b(trusted by|used by|anv[äa]nds av|joined by|loved by|trusted globally by)\\s+[\\d\\w]|featured in|som setts i|as seen in/i,
     certification:      /\\bISO\\s?\\d{4,5}\\b|\\bGDPR\\b|\\bHIPAA\\b|\\bSOC ?2\\b|\\bPCI[- ]?DSS\\b|certifierad|certified/i,
     guarantee:          /(\\d+)[- ]?(day|dagars?)\\s+(money[- ]back|n[öo]jd[- ]?kund|garanti|guarantee)|return policy|[öo]ppet k[öo]p|money[- ]back guarantee/i,
     secure_payment:     /secure (checkout|payment)|s[äa]ker betalning|ssl secured|256[- ]bit/i,
