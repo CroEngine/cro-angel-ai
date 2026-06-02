@@ -255,13 +255,20 @@ function PageCard({ report }: { report: PageReport }) {
             variant="outline"
             size="sm"
             className="h-8 shrink-0 gap-1.5 px-3 text-xs font-semibold"
-            onClick={() =>
+            onClick={() => {
+              let collectForExport: unknown = report.rawCollect;
+              if (report.rawCollect && typeof report.rawCollect === "object") {
+                const { screenshot: _s, overlayElements: _o, ...rest } =
+                  report.rawCollect as Record<string, unknown>;
+                void _s; void _o;
+                collectForExport = rest;
+              }
               downloadJson(`page-${Date.now()}.json`, {
                 url: report.url,
                 pageAudit: report.rawPageAudit,
-                collect: report.rawCollect,
-              })
-            }
+                collect: collectForExport,
+              });
+            }}
           >
             <Download className="h-3.5 w-3.5" />
             Download JSON
