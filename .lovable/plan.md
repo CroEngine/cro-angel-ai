@@ -1,55 +1,66 @@
-Två lager, två separata ändringar. Scoring fortsätter att läsa `PageAuditData` (maskinläsbar); LLM-prompten får en ny komprimerad vy.
 
-## Fas 1 — Städa rå-auditen
+## Mål
 
-**`src/lib/tests/scripts/sections.ts`** (browser-script, källan):
-- Sluta emitta: `kind`, `headingText`, `heightPx`, `repeatedChildren`.
-- Sluta emitta `rect.x` (behåll y/w/h i sektions-rect).
-- `subheading`: emitta bara om icke-tom och ≠ `heading`.
+Skär bort karussel-bruset i `trustSignals` och städa de tre småfelen som blev kvar i audit-JSON:en. Inga ändringar i scoring-motorn — bara i de browser-scripts som producerar rådata, samt VH-dedupen.
 
-**`src/lib/tests/schema.ts`**:
-- Behåll global `Rect` orörd — CTA/trust-proximity använder `rect.x`.
-- Ny `SectionRect = { y: number; w: number; h: number }` för `PageSection.rect`.
-- Ta bort `kind`, `headingText`, `heightPx`, `repeatedChildren` från `PageSection`. Gör `subheading` valfri.
+## Ändringar
 
-**`src/lib/tests/scripts/visualHierarchy.ts`**:
-- Filtrera bort entries där `text === ""` innan top-20 trunkering.
-- Dedupa på nyckel `text + tagName + Math.round(fontSize) + Math.round(area/1000)` så h1/p-dubbletten försvinner.
+### 1. `src/lib/tests/scripts/trustSignals.ts` — filtrera offscreen stars
 
-**`src/components/browser-shell/findings.ts`** — sök på sträng, inte radnummer:
-- Raden som läser `s.heightPx` → läs `s.rect.h` istället.
-- Raden som läser `s.repeatedChildren` → ta bort helt.
-- Raden `s.heading || s.headingText` → bara `s.heading`.
+Inuti `push()`, INNAN `getBoundingClientRect()`-värdena konverteras till `{ x, y, w, h }`-rect, läs raw-recten från elementet och droppa stars som ligger utanför viewporten horisontellt:
 
-## Fas 2 — Ny LLM-kontextbyggare
+```js
+if (type === 'stars') {
+  const raw = block.getBoundingClientRect();
+  const viewportW = window.innerWidth || 1280;
+  if (raw.left >= viewportW || raw.right <= 0) return;
+}
+```
 
-**Ny fil `src/lib/tests/llmContext.ts`** (pure, ingen IO):
-- Exporterar `buildLlmContext(audit: PageAuditData, url: string): LlmAuditContext`.
-- Returnerar strukturen i ditt exempel: `{ url, seo, cro, trust, ux }`.
-- Härleder:
-  - `seo.altTextCoverage` från `images.missingAltPct` → `"30% (70% of images missing alt)"`.
-  - `cro.hero` från `audit.hero`.
-  - `cro.ctas`: mappa till `{ text, intent, aboveFold }`. **Tak**: alla `aboveFold: true`, plus max 3 below-fold med högst `visualWeight`. Hard cap totalt 8.
-  - `cro.aboveFoldCtaCount` / `secondaryCtaCount` från `pageSummary`.
-  - `trust.trustStatements`: **explicit** `trustSignals.filter(s => s.type === 'trusted_by').map(s => s.text)` — inte testimonials.
-  - `trust.reviewBadges/customerLogos/testimonials/certifications`: från `trustSummary.byType`.
-  - `ux.sectionFlow` = `audit.sectionOrder`.
-  - `ux.navigation.has*` från `navigation`.
-  - `ux.performance` direkt från `performanceProxy`.
-- Definiera `LlmAuditContext`-typ i samma fil och exportera.
+Viktigt: använd `raw.left` / `raw.right` från `getBoundingClientRect()`, inte den konverterade `rect.x` (som är scrollX-justerad och inte längre har `.left`/`.right`). Påverkar bara `type === 'stars'`, andra typer behåller nuvarande beteende.
 
-**Wire-up**: ingen ändring i `pageAudit.server.ts` eller event-streamen. `buildLlmContext` anropas senare där findings-prompten byggs. Just nu räcker att funktionen + typen finns och är enhetstesterbar.
+### 2. `src/lib/tests/scripts/trustSignals.ts` — trimma `social_proof_count`-text
 
-## Vad som inte ändras
+I stat-blocket (raden `push('social_proof_count', numText + ' — ' + label, ...)`):
 
-- Scoring-/findings-motorn konsumerar fortfarande `PageAuditData`.
-- Global `Rect` (CTA/trust använder `rect.x` för proximity).
-- `collect`-pipeline, overlay, screenshot.
+- Bygg en kort label genom att leta första matchningen av `STAT_KEYWORDS` i container-texten och plocka 2–3 ord runt den, istället för hela `container.innerText`.
+- Fallback: bara `numText` om ingen keyword hittas.
+
+Resultat: `"845 000 — Rekryteringar"` i stället för hela wrapper-texten.
+
+### 3. `src/lib/tests/scripts/trustSignals.ts` — tunnare schema-entries
+
+I de två schema-pushes (raderna `push('review_rating', ..., document.body, 'schema', ...)` och `push('contact_info', 'Schema Organization contact', document.body, 'schema')`), samt AggregateRating-microdata-pushen där `source === 'schema'`:
+
+Lägg en post-process precis innan `return filtered`:
+
+```js
+for (const e of filtered) {
+  if (e.source === 'schema') { delete e.rect; delete e.selector; }
+}
+```
+
+Schema-entries är fakta, inte DOM-element — rect (0,0,docW,docH) och tom selector är brus.
+
+### 4. `src/lib/tests/scripts/visualHierarchy.ts` — fixa dedupe på h1/p-dubbletter
+
+Nuvarande nyckel innehåller `tagName`, så `<h1>X</h1>` och `<p>X</p>` med samma text aldrig kolliderar. Ta bort tagName ur nyckeln:
+
+```js
+const key = text + '|' + Math.round(s.fontSize) + '|' + Math.round(s.area / 1000);
+```
+
+Två element med samma text, fontSize och area-bucket räknas nu som en.
+
+### 5. `src/lib/tests/schema.ts` — gör `rect` och `selector` valfria på `TrustSignal`
+
+Eftersom schema-entries nu kan sakna båda fälten. Markera dem som `?:` på `TrustSignal`. Verifiera snabbt i `audit-helpers.ts` att inga `t.rect.x`-läsningar antar närvaro utan guard (proximity-koden använder typiskt bara CTA/trust där source !== 'schema').
 
 ## Filer
 
-- `src/lib/tests/scripts/sections.ts`
-- `src/lib/tests/scripts/visualHierarchy.ts`
-- `src/lib/tests/schema.ts`
-- `src/components/browser-shell/findings.ts`
-- `src/lib/tests/llmContext.ts` (ny)
+- `src/lib/tests/scripts/trustSignals.ts` (filter + label-trim + schema-strip)
+- `src/lib/tests/scripts/visualHierarchy.ts` (dedupe-nyckel)
+- `src/lib/tests/schema.ts` (`rect?`/`selector?` på TrustSignal)
+- `src/lib/tests/audit-helpers.ts` (verifiera guards på rect-läsning)
+
+Scoring/llmContext oförändrade.
