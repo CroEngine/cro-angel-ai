@@ -45,13 +45,23 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
-    const parent = el.parentElement;
-    if (parent) {
-      const same = Array.from(parent.children).filter((c) => c.tagName === el.tagName);
-      const idx = same.indexOf(el) + 1;
-      return el.tagName.toLowerCase() + ':nth-of-type(' + idx + ')';
+    const parts = [];
+    let cur = el;
+    while (cur && cur !== document.body && cur.nodeType === 1) {
+      let part = cur.tagName.toLowerCase();
+      if (cur.id && /^[A-Za-z][\\w-]*$/.test(cur.id)) {
+        parts.unshift('#' + cur.id);
+        break;
+      }
+      const parent = cur.parentElement;
+      if (parent) {
+        const same = Array.from(parent.children).filter((c) => c.tagName === cur.tagName);
+        if (same.length > 1) part += ':nth-of-type(' + (same.indexOf(cur) + 1) + ')';
+      }
+      parts.unshift(part);
+      cur = cur.parentElement;
     }
-    return el.tagName.toLowerCase();
+    return parts.join('>');
   }
 
   function isVisible(el) {
