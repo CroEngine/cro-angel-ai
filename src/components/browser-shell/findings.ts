@@ -132,7 +132,7 @@ function structureFindings(a: PageAuditData): Finding[] {
 
   const typeCounts: Record<string, number> = {};
   for (const s of sections) {
-    const t = s.type || s.kind || "content";
+    const t = s.type || "content";
     typeCounts[t] = (typeCounts[t] ?? 0) + 1;
   }
   out.push(
@@ -144,16 +144,14 @@ function structureFindings(a: PageAuditData): Finding[] {
   );
 
   for (const s of sections.slice(0, 12)) {
-    const t = s.type || s.kind || "?";
+    const t = s.type || "?";
     const bits: string[] = [t];
     if (s.aboveFold) bits.push("above fold");
-    if (s.heightPx) bits.push(`${s.heightPx}px`);
+    if (s.rect?.h) bits.push(`${s.rect.h}px`);
     if (s.containsPrimaryCTA) bits.push("CTA");
     if (s.containsForm) bits.push("form");
     if (s.containsTrustSignals) bits.push("trust");
-    if (s.repeatedChildren && s.repeatedChildren >= 3) bits.push(`×${s.repeatedChildren} repeated`);
-    const heading = s.heading || s.headingText;
-    if (heading) bits.push(`"${heading.slice(0, 50)}"`);
+    if (s.heading) bits.push(`"${s.heading.slice(0, 50)}"`);
     out.push(f("ux", s.id || s.selector || t, bits.join(" · ")));
   }
   return out;
