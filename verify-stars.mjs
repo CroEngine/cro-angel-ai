@@ -35,9 +35,7 @@ const TT_FIXTURE = `<!doctype html><html><body>
 </main>
 </body></html>`;
 
-const vc = new VirtualConsole();
-vc.sendTo(console);
-const dom = new JSDOM(TT_FIXTURE, { runScripts: "outside-only", pretendToBeVisual: true, virtualConsole: vc });
+const dom = new JSDOM(TT_FIXTURE, { runScripts: "outside-only", pretendToBeVisual: true });
 const { window } = dom;
 window.Element.prototype.getBoundingClientRect = function () {
   return { x: 0, y: 100, width: 16, height: 16, top: 100, left: 0, right: 16, bottom: 116 };
