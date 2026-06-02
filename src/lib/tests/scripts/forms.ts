@@ -52,6 +52,35 @@ export const FORMS_SCRIPT = `(() => {
     const submit = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
     const submitText = submit ? ((submit.innerText || submit.value || '') + '').trim().slice(0, 60) : '';
     const multiStep = !!form.querySelector('[aria-current="step"], .step, [class*="step" i], progress, fieldset legend');
+
+    // social-login detection: scan buttons/links inside form + immediate sibling containers
+    const PROVIDERS = [
+      { id: 'google', rx: /google/i },
+      { id: 'apple', rx: /apple/i },
+      { id: 'facebook', rx: /facebook|\\bfb\\b/i },
+      { id: 'github', rx: /github/i },
+      { id: 'microsoft', rx: /microsoft|\\bms\\b/i },
+    ];
+    const SSO_RX = /sso|single sign/i;
+    const scanScope = [form];
+    if (form.parentElement) {
+      Array.from(form.parentElement.children).forEach((c) => { if (c !== form) scanScope.push(c); });
+    }
+    const socialProvidersSet = new Set();
+    let ssoSeen = false;
+    for (const scope of scanScope) {
+      const candidates = scope.querySelectorAll('button, a, [role="button"]');
+      for (const c of candidates) {
+        const txt = ((c.innerText || c.getAttribute('aria-label') || c.getAttribute('title') || '') + '').toLowerCase();
+        if (!txt) continue;
+        for (const p of PROVIDERS) { if (p.rx.test(txt)) socialProvidersSet.add(p.id); }
+        if (SSO_RX.test(txt)) ssoSeen = true;
+      }
+    }
+    const socialProviders = Array.from(socialProvidersSet);
+    if (ssoSeen && socialProviders.length === 0) socialProviders.push('sso');
+    const socialLogin = socialProviders.length > 0;
+
     out.push({
       section: sectionKind(form, rect),
       aboveFold: rect.top < viewportH,
@@ -64,6 +93,8 @@ export const FORMS_SCRIPT = `(() => {
       containsPassword: fields.some((f) => f.type === 'password'),
       containsCreditCard: /card|kort|cvc|cvv|expir/.test(allText),
       multiStep,
+      socialLogin,
+      socialProviders,
       submitText,
       fields,
       rect: {
@@ -76,5 +107,6 @@ export const FORMS_SCRIPT = `(() => {
   }
   return out;
 })()`;
+
 
 
