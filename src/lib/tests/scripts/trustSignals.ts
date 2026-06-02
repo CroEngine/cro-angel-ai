@@ -401,15 +401,20 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       return withReviewCount(rating);
     }
 
-    // (4) All visible stars filled — only inside testimonial-like context.
-    // Look up to 5 ancestor levels but early-exit at BODY/MAIN/HTML so a
-    // <section class="testimonials"> high in the tree doesn't classify the
-    // whole page as testimonial context.
+    // (4) All visible stars filled.
+    // For exactly 5 stars: if we reached this step, steps (1)–(3b) found no
+    // empty/filled/half/fill signals, so a fully-visible 5-star cluster picked
+    // up by the star-class selector is the canonical "5/5 in a testimonial
+    // card" pattern. Hero decorations are almost always one icon + number,
+    // not 5 separate star nodes — safe to skip context check.
+    // For 3–4 stars: keep the testimonial-context guard to avoid false hits
+    // on empty rating widgets with placeholder stars.
     const allVisible = Array.from(allStars).filter((s) => {
       const r = s.getBoundingClientRect();
       return r.width > 0 && r.height > 0;
     });
     if (allVisible.length === allStars.length) {
+      if (allStars.length === 5) return withReviewCount(5);
       const ctxRx = /testimonial|review|quote|kund|card|feedback/i;
       let ctx = false;
       let node = parent;
