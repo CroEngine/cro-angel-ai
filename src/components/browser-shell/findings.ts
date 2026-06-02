@@ -274,7 +274,7 @@ function trustFindings(a: PageAuditData): Finding[] {
         "trust",
         "byType",
         "By type",
-        byType.map(([k, v]) => `${k.replace(/_/g, " ")} ×${v}`).join(" · "),
+        byType.map(([k, v]) => `${formatTrustType(k)} ×${v}`).join(" · "),
       ),
     );
   }
