@@ -384,12 +384,12 @@ function structureFindings(a: PageAuditData, c?: CollectData): Finding[] {
   for (const s2 of sections.slice(0, 12)) {
     const t = s2.type || s2.kind || "?";
     const bits: string[] = [t];
-    if (s2.aboveFold) bits.push("above fold");
+    if (s2.aboveFold) bits.push("above the fold");
     if (s2.heightPx) bits.push(`${s2.heightPx}px`);
-    if (s2.containsPrimaryCTA) bits.push("CTA");
-    if (s2.containsForm) bits.push("form");
-    if (s2.containsTrustSignals) bits.push("trust");
-    if (s2.repeatedChildren && s2.repeatedChildren >= 3) bits.push(`×${s2.repeatedChildren} repeated`);
+    if (s2.containsPrimaryCTA) bits.push("has primary CTA");
+    if (s2.containsForm) bits.push("has form");
+    if (s2.containsTrustSignals) bits.push("has trust signal");
+    if (s2.repeatedChildren && s2.repeatedChildren >= 3) bits.push(`${s2.repeatedChildren} repeated items`);
     const heading = s2.heading || s2.headingText;
     if (heading) bits.push(`"${heading.slice(0, 50)}"`);
     out.push(f("ux", "sections", s2.id || s2.selector || t, bits.join(" · ")));
