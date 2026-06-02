@@ -111,9 +111,7 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   }
 
   const sectionsTyped = sections as PageSection[];
-  // TODO badge-debug — remove after teamtailor verification
-  const trustResult = trustSignals as { signals: TrustSignal[]; _badgeDebug?: unknown };
-  const trustTyped = trustResult.signals;
+  const trustTyped = trustSignals as TrustSignal[];
   const ctasTyped = ctas as CTAEntity[];
   const formsTyped = forms as FormEntity[];
   const navTyped = navigation as NavigationData;
@@ -148,9 +146,7 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     visualHierarchy: hierarchyTyped,
     pageSummary,
     hero,
-    // TODO badge-debug — remove after teamtailor verification
-    _badgeDebug: trustResult._badgeDebug,
     // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
     flags: [],
-  } as PageAuditData & { _badgeDebug?: unknown };
+  };
 }

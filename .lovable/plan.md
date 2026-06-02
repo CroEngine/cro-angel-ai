@@ -1,88 +1,51 @@
-# Debug: identifiera hur G2-badges renderas — via return-värde
+# Fix: matcha G2-badges via src-path
 
-## Mål
+## Vad debug-datan visade
 
-Hitta hur "Leader" / "G2" / "Momentum" badges renderas på Teamtailor: `<img>`, `<svg>`, eller CSS `background-image`. Resultatet styr nästa fix av shape-fallbacken.
+Teamtailors badges är `<img>` på `top: 1774`:
+- `src` = `/assets/api/badges/file/RecruitmentPlatforms_Leader_…svg`
+- `alt = ""`, `w = 288, h = 128` (landscape ~2.25:1)
+- parent `<li class="basis-1/2-gap-4 lg:basis-1/5-gap-4 …">` (5 i rad)
 
-## Strategi: returnera debug-data i evaluate-resultatet
+Befintliga detektorer missar pga: BADGE_TITLES söks bara i `alt` (tomt), och shape-fallbacken kräver portrait (badges är landscape).
 
-Idag returnerar `TRUST_SIGNALS_SCRIPT` en array `out`. Vi ändrar tillfälligt formen till `{ signals: out, _badgeDebug: {...} }` och packar upp den i runnern. Inget beroende av `page.on('console')`.
+## Lösning
 
-### 1) Ändringar i `src/lib/tests/scripts/trustSignals.ts`
+### 1) Lägg till path-baserad badge-signal
 
-Precis innan nuvarande `return out` (rad 294), bygg `badgeDebug`:
-
+I `src/lib/tests/scripts/trustSignals.ts` runt rad 474:
 ```ts
-const KEYWORD_RX = /\bg2\b|leader|momentum|capterra|trustpilot|trustradius|software ?advice|getapp|sourceforge/i;
-const badgeDebug = {
-  textMatches: [],   // element vars text/aria matchar KEYWORD_RX
-  imgCandidates: [], // alla <img> med portrait-ish rect i KEYWORD-nära sektioner
-  svgCandidates: [], // alla <svg> 40–260px portrait
-  bgCandidates: [],  // element med backgroundImage !== 'none', portrait 40–260px
-};
+const BADGE_PATH = /\/badges?\/(file\/)?/i;
 ```
 
-**a) textMatches (max 30)** — Iterera `document.querySelectorAll('*')`, för element vars direkta textContent (utan barn-text) eller `aria-label` matchar `KEYWORD_RX`:
-```
-{ tag, className: cn.slice(0,120), text: text.slice(0,80),
-  rect: {w,h,top}, bgImage, hasImgChild, hasSvgChild,
-  imgChildSrcs: [...].slice(0,3), ariaLabel, role,
-  parentChain: 3 ancestors med {tag, className.slice(0,80)} }
-```
-
-**b) imgCandidates (max 30)** — Alla `<img>` med `20 ≤ width ≤ 300`, `20 ≤ height ≤ 300`. Logga `{src, alt, w, h, top, parentTag, parentClass.slice(0,80)}`. Detta avslöjar om badges är `<img>` som föll utanför 60–220-fönstret.
-
-**c) svgCandidates (max 30)** — Alla `<svg>` med `40 ≤ width ≤ 260`, `height >= width * 0.9`. Logga `{w, h, top, titleText: first <title>, ariaLabel, parentTag, parentClass.slice(0,80)}`.
-
-**d) bgCandidates (max 30)** — Iterera `document.querySelectorAll('div, span, a, li, figure')`, kolla `getComputedStyle(el).backgroundImage`. Om `!== 'none'` och rect är `40–260px` portrait, logga `{bgImage, tag, className.slice(0,80), w, h, top, ariaLabel}`. (Skippa hero-bilder via `w > 600` filter.)
-
-Hårdtak 30 rader per kategori (`if (arr.length >= 30) break/continue`).
-
-Ändra retursignatur:
+I `badgeImgs.filter()` (~rad 481-493), lägg till en gren efter `BADGE_BRANDS`:
 ```ts
-return { signals: out, _badgeDebug: badgeDebug };
+if (BADGE_PATH.test(src)) return true;
 ```
 
-### 2) Ändringar i `src/lib/tests/runners/pageAudit.server.ts`
+URL-segmentet `/badges/` är konventionen för G2/Capterra/Trustradius self-hosted badges. Snävt och säkert — inga fria ord i regexen.
 
-Vid destrukturering av evaluate-resultaten (rad 81), packa upp:
-```ts
-const trustResult = trustSignals as { signals: TrustSignal[]; _badgeDebug?: unknown };
-const trustTyped = trustResult.signals;
-```
+### 3) Ta bort shape-fallbacken (block 3c)
 
-Och lägg `_badgeDebug` i runnerns return-objekt så det syns i audit-JSON:en:
-```ts
-return {
-  ...audit,
-  // ...
-  trustSignals: trustTyped,
-  _badgeDebug: trustResult._badgeDebug, // TODO badge-debug — remove after teamtailor verification
-  // ...
-};
-```
+Path-grenen täcker Teamtailor utan shape-heuristik. Shape-fallbacken hade portrait-bias och var en gissningsstrategi som inte triggade i praktiken. Ta bort hela block 3c plus `nearestHeadingText`-hjälparen.
 
-Detta lägger fältet i den JSON som strömmas tillbaka. Användaren kan inspektera `_badgeDebug` direkt i audit-output utan extra logghantering.
+Om vi senare ser sajter där varken keyword eller path triggar — bygg tillbaka shape-fallbacken då, utan portrait-krav.
 
-### 3) Markering för rivning
+### 4) Rensa debug-koden
 
-Alla nya block markeras med `// TODO badge-debug — remove after teamtailor verification`. Schema rörs inte — `_badgeDebug` är ett optional fält som existerar utanför `TrustSignal[]`.
+- `src/lib/tests/scripts/trustSignals.ts`: ta bort `// TODO badge-debug`-blocket före `return`, återställ till `return filtered;`.
+- `src/lib/tests/runners/pageAudit.server.ts`: återställ `trustTyped = trustSignals as TrustSignal[];` och ta bort `_badgeDebug` från return.
 
-## Beslut efter debug
+## Inte i scope (medvetet skippat)
 
-| Fynd i `_badgeDebug` | Åtgärd |
-|---|---|
-| `imgCandidates` innehåller G2-badges < 60px bredd | Sänk shape-fallback min-bredd till 40 |
-| `imgCandidates` innehåller G2-badges men inget triggade — kolla parentChain mot heading | Justera heading-regex eller sök-djup |
-| `svgCandidates` innehåller `<svg>` med G2-titel | Utöka shape-fallback till att iterera `img, svg` |
-| `bgCandidates` innehåller `background-image` med G2-URL | Lägg `getComputedStyle`-scan i shape-fallback |
-| `textMatches` har element men inga img/svg/bg → text-noder eller `<i>`-ikoner | Ovanligt; bygg text-baserad badge-detektor |
+- Utvidga `BADGE_TITLES` till att söka i `src` — risk för false positives (`leader`, `best`, `top rated` är vanliga ord i bild-URL:er av andra anledningar). Om path-fixen inte räcker för någon sajt → bygg ett snävt regex mot kända G2/Capterra filnamnsmönster, inte fria ord.
 
 ## Filer som ändras
 
-- `src/lib/tests/scripts/trustSignals.ts` — bygg `badgeDebug`, ändra return till `{ signals, _badgeDebug }`.
-- `src/lib/tests/runners/pageAudit.server.ts` — packa upp `.signals`, exponera `_badgeDebug` i audit-resultatet.
+- `src/lib/tests/scripts/trustSignals.ts`
+- `src/lib/tests/runners/pageAudit.server.ts`
 
-## Inte i scope
+## Verifiering
 
-Faktisk fix av detektorn — det kommer i nästa iteration efter att debug-datan visat var badges sitter.
+Teamtailor: 1 `review_badges`-entry med `badgeCount: 5`, `detectionMethod: 'keyword'`.
+Personio / Talentium: ingen regression.
