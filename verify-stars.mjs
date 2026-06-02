@@ -65,8 +65,8 @@ function expect(label, cond) { console.log((cond ? "OK" : "FAIL") + ": " + label
 const ratings = stars.map((s) => s.rating).filter((r) => typeof r === "number");
 expect("got rating 5 (full)", ratings.includes(5));
 expect("got rating 4.5 (class-based half)", ratings.includes(4.5));
-expect("got rating 4.5 (style:50% half)", ratings.filter((r) => r === 4.5).length >= 2);
-expect("hero got no rating", !stars.some((s) => /h-deco/i.test(s.selector) && typeof s.rating === "number"));
+expect("got rating 4.5 (style:50% half) — 2 instances", ratings.filter((r) => r === 4.5).length >= 2);
+expect("hero got no rating", !stars.some((s) => /r-hero/i.test(s.selector) && typeof s.rating === "number"));
 for (const s of result) {
   if (typeof s.rating === "number" && (Number.isNaN(s.rating) || s.rating < 0 || s.rating > 5)) {
     console.log("FAIL invalid rating", s.rating); fail++;
