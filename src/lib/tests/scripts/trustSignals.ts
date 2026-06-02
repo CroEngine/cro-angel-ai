@@ -108,7 +108,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       },
     };
     if (extras) Object.assign(entry, extras);
-    if (type === 'trusted_by') entry._block = block;
+    if (type === 'trusted_by' || type === 'customer_logos') entry._block = block;
     out.push(entry);
   }
 
