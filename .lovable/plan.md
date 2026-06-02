@@ -1,53 +1,31 @@
-## Scope
-Endast `extractStarRating(parent, group)` i `src/lib/tests/scripts/trustSignals.ts`. Lägger till halv-stjärne-detektion så Eugenio D. / Isabella C. (4.5/5) får `rating: 4.5` istället för 5.
+Städa `extractStarRating(parent, group)` i `src/lib/tests/scripts/trustSignals.ts` — fyra kosmetiska förbättringar, noll beteendeförändring.
 
-## Plan
+## Ändringar
 
-### 1. Halv-stjärne-detektion som nytt steg före steg 4
+### 1. Cache `neighborText(parent)`
+- Rad 280 och 285 gör dubbelt: `neighborText(parent)`.
+- Lösning: Flytta upp `const t = neighborText(parent);` ovanför rad 280 och återanvänd `t` på rad 285.
 
-Direkt efter steg 3 (SVG inline-fill), före steg 4 (all-visible + testimonial-context):
+### 2. Extract duplicerad längd-guard
+- `allStars.length >= 3 && allStars.length <= 5` upprepas i steg 1, 3, 3b och 4.
+- Lösning: Efter rad 306 (där `allStars` deklareras), lägg till:
+  ```js
+  if (allStars.length < 3 || allStars.length > 5) return fromAttrs;
+  ```
+- Ta bort guarderna från steg 1, 3, 3b och 4.
 
-```
-const half = parent.querySelectorAll(
-  '[class*="half" i], [class*="fractional" i], [class*="partial" i]'
-);
-```
+### 3. Ta bort död check i steg 4
+- Rad 360: `if (allStars.length >= 3 && allStars.length <= 5 && empty.length === 0)` — `empty.length === 0` är alltid sant eftersom steg 1 redan hanterat tomma stjärnor och returnerat.
+- Lösning: Ta bort `&& empty.length === 0`, samt ta bort den implicita dependency på `empty` i steg 4.
 
-Trigger om:
-- `allStars.length` mellan 3 och 5
-- `half.length >= 1 && half.length <= allStars.length`
-- Räkna `filled` (från steg 2-selektorn) som hela
-- `rating = clamp(filled.length + half.length * 0.5, 0, 5)`
-- Avrunda till 1 decimal: `Math.round(rating * 10) / 10`
+### 4. Harmonisera steg 2:s gräns
+- Rad 320: `allStars.length >= 4` skiljer sig från alla andra steg som använder `>= 3`.
+- Lösning: Ändra till `>= 3` för konsistens.
 
-Om filled-selektorn inte matchar (Teamtailor-fallet med half-stjärnor men inga "filled"-klasser): fallback till `allStars.length - half.length` som hela + `half.length * 0.5`.
-
-### 2. Inline-style halv-stjärne-detektion (sekundär)
-
-Vissa sajter renderar halv-stjärnor som overlay med `style="width: 50%"`. Inom steg ovan, om inga `[class*="half"]`-träffar:
-
-```
-for (const s of allStars) {
-  const w = (s.getAttribute('style') || '').match(/width:\s*50%/i);
-  if (w) halfCount++;
-}
-```
-
-Endast om `halfCount >= 1 && halfCount <= allStars.length` → samma formel.
-
-### 3. Steg 4 lämnas orört
-All-visible-fallbacken körs bara om inga half-träffar — annars hade vi inte hamnat där.
-
-### 4. Verifiering
-
-Utöka jsdom-fixturen tillfälligt med:
-- 5 stjärnor, 4 normala + 1 `class="star-half"` i testimonial-context → förväntat `rating === 4.5`
-- 5 stjärnor, alla normala i testimonial-context → fortfarande `rating === 5` (regression)
-- Hero med 5 stjärnor + ingen half → fortfarande ingen rating (regression)
-- Inga `NaN`, `< 0`, `> 5`
-
-Städa fixturen efter verifiering.
-
-## Inte i scope
-- `style="width: X%"` med andra värden än 50% (kvart-stjärnor är ovanligt och tas senare om behov uppstår)
-- Scoring/pageSummary, testimonial author, `social_proof_count` på `trusted_by`
+## Verifiering
+Kör samma `verify-stars.mjs` som tidigare — alla 4 testfall ska fortsätta passera:
+- Fulla 5 stjärnor → `rating=5`
+- 4.5 via klass → `rating=4.5`
+- 4.5 via inline width:50% → `rating=4.5`
+- Hero utan testimonial-context → inget rating
+- Inga `NaN`, `< 0`, `> 5`.
