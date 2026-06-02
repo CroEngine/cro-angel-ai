@@ -1,9 +1,11 @@
-Nej, du ska inte behöva gå tillbaka till en gammal variation. Jag föreslår en minimal riktad fix i den frysta viewporten istället.
+Jag hittade en trolig orsak: standardsekvensen kör `pageAudit` före `collect`, men screenshot tas bara i `collect`. Efter trust-signal-ändringarna kan `pageAudit` bli långsammare eller falla, och då nås aldrig screenshot-steget.
 
 Plan:
-1. Ta bort den responsiva nedskalningen som gör fullpage-bilden pytteliten i halva browserpanelen.
-2. Visa screenshoten i faktisk DOM-/screenshot-storlek som en scrollbar yta, så både vertikal och horisontell scroll fungerar när sidan är större än panelen.
-3. Låt overlay-markeringarna ligga i samma koordinatsystem som fullpage-screenshoten, så de fortsätter matcha elementen.
-4. Behåll `fullPage: true` och JPEG-dimensionsläsningen, eftersom problemet nu verkar sitta i presentationen, inte i själva screenshot-capturen.
+1. Ändra standardsekvensen så `collect` körs direkt efter `goto/wait`, före `pageAudit`.
+2. Behåll screenshot-capture inne i `collect`, så viewporten kan frysa även om `pageAudit` senare failar.
+3. Lägg till tydligare logg/terminalstatus när körningen avslutas utan snapshot, så vi kan skilja mellan “collect kördes inte” och “screenshot failed”.
+4. Om screenshot fortfarande saknas efter det: nästa steg blir att flytta stora screenshots ur SSE-payloaden till separat lagring/URL, eftersom data-URL i event stream kan bli för stor på långa sidor.
 
-Tekniskt ändras främst `src/components/browser-shell/Viewport.tsx`: `maxWidth: "100%"` och centrering tas bort/ersätts med en scroll-container som inte krymper innehållet. Om nödvändigt justerar jag även wrapperns `minWidth`/`width` så bilden alltid renderas i samma pixelstorlek som screenshotens metadata.
+Tekniskt ändras sannolikt bara:
+- `src/lib/tests/run.functions.ts` för step-ordningen
+- event/logik i `src/components/browser-shell/BrowserShell.tsx` eller `Viewport.tsx` för bättre feedback om snapshot saknas

@@ -27,11 +27,13 @@ const inputSchema = z.object({
 });
 
 function defaultSteps(url: string): Step[] {
+  // collect runs BEFORE pageAudit so the screenshot is captured even if
+  // pageAudit later fails or times out.
   return [
     { kind: "goto", url },
     { kind: "wait", ms: 500 },
-    { kind: "pageAudit" },
     { kind: "collect", target: "clickables" },
+    { kind: "pageAudit" },
   ];
 }
 

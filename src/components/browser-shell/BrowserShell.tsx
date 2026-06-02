@@ -41,6 +41,8 @@ export function BrowserShell() {
           viewport: d.screenshot.viewport,
           overlayElements: d.overlayElements ?? [],
         });
+      } else {
+        console.warn("[BrowserShell] collect step passed but no screenshot in payload");
       }
       return;
     }
