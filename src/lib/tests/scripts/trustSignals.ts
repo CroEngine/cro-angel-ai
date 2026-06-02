@@ -182,13 +182,14 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     let leaf = true;
     for (const c of el.children) {
       const tag = c.tagName;
-      if (tag === 'P' || tag === 'LI' || tag === 'BLOCKQUOTE' || tag === 'H1' || tag === 'H2' || tag === 'H3') { leaf = false; break; }
+      if (tag === 'P' || tag === 'LI' || tag === 'BLOCKQUOTE' || tag === 'H1' || tag === 'H2' || tag === 'H3' || tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE') { leaf = false; break; }
     }
     if (!leaf) continue;
     const text = (el.innerText || el.textContent || '').trim();
     if (!text || text.length > 600) continue;
     for (const type in PATTERNS) {
       if (PATTERNS[type].test(text)) {
+        if (type === 'trusted_by' && text.length > 160) continue;
         let extras;
         if (type === 'testimonial') extras = extractTestimonialMeta(el, text);
         else if (type === 'review_rating') extras = extractRatingMeta(text);
