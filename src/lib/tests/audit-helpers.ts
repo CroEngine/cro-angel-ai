@@ -105,7 +105,7 @@ export function buildPageSummary(input: {
       .filter((t) => t.type === "customer_logos")
       .reduce((s, t) => s + (t.logoCount ?? 1), 0),
     reviewCount: reviewCountSum,
-    averageRating: ratingN > 0 ? Math.round((ratingSum / ratingN) * 10) / 10 : 0,
+
     formCount: forms.length,
     navigationLinks: navigation.topNavCount + navigation.footerNavCount,
     sectionCount: sections.length,
