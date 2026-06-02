@@ -365,7 +365,7 @@ function structureFindings(a: PageAuditData, c?: CollectData): Finding[] {
   }
 
   if (s) {
-    out.push(f("ux", "sections", "Above fold", `${s.aboveFold} / ${s.total} elements`));
+    out.push(f("ux", "sections", "Above the fold", `${s.aboveFold} / ${s.total} elements`));
     if (s.bySection) {
       out.push(
         f(
