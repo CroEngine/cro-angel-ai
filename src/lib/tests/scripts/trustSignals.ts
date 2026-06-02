@@ -683,8 +683,69 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     });
   }
 
+
+  // Stars-anchor pass: for each stars-entry inside a carousel, find the
+  // enclosing card and push a testimonial-entry with text, author and the
+  // rating copied from the stars-entry.
+  const starsInCarousel = out.filter((e) => e.type === 'stars' && e.inCarousel);
+  for (const starEntry of starsInCarousel) {
+    let starEl = null;
+    try { starEl = document.querySelector(starEntry.selector); } catch (_e) { starEl = null; }
+    if (!starEl) continue;
+
+    let cardEl = null;
+    let p = starEl.parentElement;
+    let hops = 0;
+    while (p && p !== document.body && hops++ < 6) {
+      const r = p.getBoundingClientRect();
+      if (r.width >= 200 && r.width <= 700 && r.height >= 150) {
+        const txt = (p.innerText || '').trim();
+        if (txt.length >= 40 && txt.length <= 800) { cardEl = p; break; }
+      }
+      p = p.parentElement;
+    }
+    if (!cardEl) continue;
+
+    const fullCardText = (cardEl.innerText || '').trim().replace(/\\s+/g, ' ');
+    if (fullCardText.length < 40 || fullCardText.length > 600) continue;
+
+    const meta = extractTestimonialMeta(cardEl, fullCardText);
+
+    if (!meta.personName) {
+      const rawLines = (cardEl.innerText || '')
+        .split(/\\n+/)
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0 && l.length <= 80);
+      const candidateLines = rawLines.filter((l) => {
+        if (/^[★⭐\\s\\d.,/]+$/.test(l)) return false;
+        if (/^(g2|trustpilot|capterra|google)\\b/i.test(l)) return false;
+        if (l.length < 3) return false;
+        return true;
+      });
+      const lastLine = candidateLines[candidateLines.length - 1];
+      if (lastLine && fullCardText.indexOf(lastLine) > 0) {
+        const m = lastLine.match(/^([^,—–-]+)[,—–-]\\s*(.+)$/);
+        if (m) { meta.personName = m[1].trim(); meta.company = m[2].trim(); }
+        else { meta.personName = lastLine; }
+      }
+    }
+
+    let cleanedText = fullCardText;
+    if (meta.personName && cleanedText.endsWith(meta.personName)) {
+      cleanedText = cleanedText.slice(0, -meta.personName.length).trim();
+      cleanedText = cleanedText.replace(/[,—–-]\\s*$/, '').trim();
+    }
+    if (cleanedText.length < 20) continue;
+
+    push('testimonial', cleanedText, cardEl, 'text', Object.assign({}, meta, {
+      derivedFromStars: true,
+      rating: starEntry.rating,
+    }));
+  }
+
   let filtered = dedupeSameBlock(out, 'trusted_by');
   filtered = dropWrappers(filtered, 'trusted_by');
+
 
   for (const e of filtered) delete e._block;
   for (const e of filtered) {
