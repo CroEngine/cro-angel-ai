@@ -108,7 +108,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       },
     };
     if (extras) Object.assign(entry, extras);
-    if (type === 'trusted_by') entry._block = block;
+    if (type === 'trusted_by' || type === 'customer_logos') entry._block = block;
     out.push(entry);
   }
 
@@ -556,16 +556,21 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     } catch (e) {}
   }
 
-  // DOM-ancestor dedup for trusted_by: drop wrapper blocks that contain
-  // another trusted_by entry's block — keep only the innermost claims.
-  const filtered = out.filter((a) => {
-    if (a.type !== 'trusted_by') return true;
-    return !out.some((b) =>
-      b !== a && b.type === 'trusted_by' && a._block && b._block && a._block !== b._block && a._block.contains(b._block)
-    );
-  });
+  // DOM-ancestor dedup: drop wrapper blocks that contain another entry's
+  // block of the same type — keep only the innermost claims.
+  function dropWrappers(arr, targetType) {
+    return arr.filter((a) => {
+      if (a.type !== targetType) return true;
+      return !arr.some((b) =>
+        b !== a && b.type === targetType && a._block && b._block && a._block !== b._block && a._block.contains(b._block)
+      );
+    });
+  }
+  let filtered = dropWrappers(out, 'trusted_by');
+  filtered = dropWrappers(filtered, 'customer_logos');
   for (const e of filtered) delete e._block;
   return filtered;
+
 })()`;
 
 
