@@ -237,7 +237,15 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       statSeen.add(numEl);
       const numText = (numEl.innerText || '').trim();
       const containerText = (container.innerText || '').replace(/\\s+/g, ' ');
-      const km = containerText.match(STAT_KEYWORDS);
+      // Pick the STAT_KEYWORD closest to numEl in the DOM (parent → grandparent →
+      // container fallback). Container-wide match grabs the first hit, which is
+      // wrong when multiple stat cards share one container with different labels.
+      const p1 = numEl.parentElement;
+      const p2 = p1 && p1.parentElement;
+      const m1 = p1 && (p1.innerText || '').match(STAT_KEYWORDS);
+      const m2 = !m1 && p2 ? (p2.innerText || '').match(STAT_KEYWORDS) : null;
+      const m3 = (!m1 && !m2) ? containerText.match(STAT_KEYWORDS) : null;
+      const km = m1 || m2 || m3;
       const label = km ? km[0] : '';
       const display = label ? numText + ' — ' + label : numText;
       push('social_proof_count', display, numEl, 'text', {
