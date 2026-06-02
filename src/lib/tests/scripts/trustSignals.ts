@@ -556,8 +556,18 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     } catch (e) {}
   }
 
-  // DOM-ancestor dedup: drop wrapper blocks that contain another entry's
-  // block of the same type — keep only the innermost claims.
+  // Pass A: dedupera entries som råkar peka på exakt samma _block (keep first).
+  function dedupeSameBlock(arr, targetType) {
+    const seen = new Set();
+    return arr.filter((e) => {
+      if (e.type !== targetType || !e._block) return true;
+      if (seen.has(e._block)) return false;
+      seen.add(e._block);
+      return true;
+    });
+  }
+
+  // Pass B: drop wrapper-block som innehåller ett annat innermost block av samma typ.
   function dropWrappers(arr, targetType) {
     return arr.filter((a) => {
       if (a.type !== targetType) return true;
@@ -566,8 +576,35 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       );
     });
   }
-  let filtered = dropWrappers(out, 'trusted_by');
+
+  let filtered = dedupeSameBlock(out, 'trusted_by');
+  filtered = dropWrappers(filtered, 'trusted_by');
+  filtered = dedupeSameBlock(filtered, 'customer_logos');
   filtered = dropWrappers(filtered, 'customer_logos');
+
+  // TEMP DEBUG: containment-matris för customer_logos
+  const allCl = out.filter((e) => e.type === 'customer_logos');
+  const survivingCl = filtered.filter((e) => e.type === 'customer_logos');
+  for (const e of survivingCl) {
+    e._debug = {
+      blockTag: e._block && e._block.tagName,
+      blockCls: (e._block && e._block.className && String(e._block.className).slice(0, 80)) || '',
+      isBody: e._block === document.body,
+      isMain: e._block === document.querySelector('main'),
+      droppedSiblings: allCl
+        .filter((o) => o !== e && !survivingCl.includes(o))
+        .map((o) => ({
+          tag: o._block && o._block.tagName,
+          cls: (o._block && o._block.className && String(o._block.className).slice(0, 60)) || '',
+          logoCount: o.logoCount,
+          section: o.section,
+          containsSelf: !!(o._block && e._block && o._block.contains(e._block)),
+          containedBySelf: !!(o._block && e._block && e._block.contains(o._block)),
+          sameBlock: o._block === e._block,
+        })),
+    };
+  }
+
   for (const e of filtered) delete e._block;
   return filtered;
 
