@@ -690,7 +690,97 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   filtered = dropWrappers(filtered, 'trusted_by');
 
   for (const e of filtered) delete e._block;
-  return filtered;
+
+  // TODO badge-debug — remove after teamtailor verification
+  const KEYWORD_RX = /\\bg2\\b|leader|momentum|capterra|trustpilot|trustradius|software ?advice|getapp|sourceforge/i;
+  const badgeDebug = { textMatches: [], imgCandidates: [], svgCandidates: [], bgCandidates: [] };
+
+  function cn(el) { return ((el.getAttribute && el.getAttribute('class')) || '').slice(0, 120); }
+  function rectOf(el) { const r = el.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top) }; }
+
+  // a) textMatches
+  const allEls = document.querySelectorAll('*');
+  for (let i = 0; i < allEls.length && badgeDebug.textMatches.length < 30; i++) {
+    const el = allEls[i];
+    let directText = '';
+    for (const node of el.childNodes) if (node.nodeType === 3) directText += node.textContent || '';
+    directText = directText.trim();
+    const aria = (el.getAttribute && el.getAttribute('aria-label')) || '';
+    const hay = directText + ' ' + aria;
+    if (!hay || !KEYWORD_RX.test(hay)) continue;
+    const r = rectOf(el);
+    if (r.w === 0 && r.h === 0) continue;
+    const cs = window.getComputedStyle(el);
+    const imgChildren = el.querySelectorAll('img');
+    const imgSrcs = [];
+    for (let j = 0; j < imgChildren.length && j < 3; j++) imgSrcs.push(imgChildren[j].getAttribute('src') || '');
+    const parents = [];
+    let p = el.parentElement;
+    for (let d = 0; d < 3 && p; d++) { parents.push({ tag: p.tagName, className: cn(p).slice(0, 80) }); p = p.parentElement; }
+    badgeDebug.textMatches.push({
+      tag: el.tagName, className: cn(el), text: (directText || aria).slice(0, 80),
+      rect: r, bgImage: cs.backgroundImage,
+      hasImgChild: imgChildren.length > 0, hasSvgChild: !!el.querySelector('svg'),
+      imgChildSrcs: imgSrcs, ariaLabel: aria.slice(0, 80),
+      role: (el.getAttribute && el.getAttribute('role')) || '',
+      parentChain: parents,
+    });
+  }
+
+  // b) imgCandidates
+  const allImgsDbg = document.querySelectorAll('img');
+  for (let i = 0; i < allImgsDbg.length && badgeDebug.imgCandidates.length < 30; i++) {
+    const img = allImgsDbg[i];
+    const r = rectOf(img);
+    if (r.w < 20 || r.w > 300 || r.h < 20 || r.h > 300) continue;
+    const parent = img.parentElement;
+    badgeDebug.imgCandidates.push({
+      src: (img.getAttribute('src') || '').slice(0, 200),
+      alt: (img.getAttribute('alt') || '').slice(0, 80),
+      w: r.w, h: r.h, top: r.top,
+      parentTag: parent ? parent.tagName : '',
+      parentClass: parent ? cn(parent).slice(0, 80) : '',
+    });
+  }
+
+  // c) svgCandidates
+  const allSvgs = document.querySelectorAll('svg');
+  for (let i = 0; i < allSvgs.length && badgeDebug.svgCandidates.length < 30; i++) {
+    const svg = allSvgs[i];
+    const r = rectOf(svg);
+    if (r.w < 40 || r.w > 260) continue;
+    if (r.h < r.w * 0.9) continue;
+    const title = svg.querySelector('title');
+    const parent = svg.parentElement;
+    badgeDebug.svgCandidates.push({
+      w: r.w, h: r.h, top: r.top,
+      titleText: title ? (title.textContent || '').slice(0, 80) : '',
+      ariaLabel: ((svg.getAttribute && svg.getAttribute('aria-label')) || '').slice(0, 80),
+      parentTag: parent ? parent.tagName : '',
+      parentClass: parent ? cn(parent).slice(0, 80) : '',
+    });
+  }
+
+  // d) bgCandidates
+  const bgEls = document.querySelectorAll('div, span, a, li, figure');
+  for (let i = 0; i < bgEls.length && badgeDebug.bgCandidates.length < 30; i++) {
+    const el = bgEls[i];
+    const cs = window.getComputedStyle(el);
+    if (!cs.backgroundImage || cs.backgroundImage === 'none') continue;
+    const r = rectOf(el);
+    if (r.w < 40 || r.w > 260) continue;
+    if (r.h < r.w * 0.9) continue;
+    badgeDebug.bgCandidates.push({
+      bgImage: cs.backgroundImage.slice(0, 200),
+      tag: el.tagName, className: cn(el).slice(0, 80),
+      w: r.w, h: r.h, top: r.top,
+      ariaLabel: ((el.getAttribute && el.getAttribute('aria-label')) || '').slice(0, 80),
+    });
+  }
+
+  return { signals: filtered, _badgeDebug: badgeDebug };
+
+
 
 })()`;
 
