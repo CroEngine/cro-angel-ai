@@ -9,11 +9,12 @@ import type {
   PageSection,
   PageSummary,
   Rect,
+  SectionRect,
   TrustSignal,
   TrustSummary,
 } from "./schema";
 
-function rectCenterInside(rect: Rect, container: Rect): boolean {
+function rectCenterInside(rect: Rect, container: SectionRect): boolean {
   const cy = rect.y + rect.h / 2;
   return cy >= container.y && cy <= container.y + container.h;
 }
