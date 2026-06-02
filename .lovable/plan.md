@@ -1,5 +1,50 @@
 
-## Mål
+## Problem
+
+Trust signals ritas idag bara som overlay på den **live** sidan (via `OVERLAY_FN` i pageAudit-steget). När sessionen fryses visas screenshoten från **collect**-steget med bara CTA-overlays — inga trust-markörer. Användaren ser därför aldrig testimonials, badges eller social proof count i den frusna vyn.
+
+## Lösning
+
+Låt pageAudit-steget exponera trust signals som `overlayElements` (samma form som collect gör för CTAs). `BrowserShell` slår sedan ihop dem med CTA-overlayen och Viewport ritar boxar för båda lagren ovanpå collect-screenshoten.
+
+## Verifierat
+
+- **Rect-format**: `TrustSignal.rect` och `CollectedElement.rect` är båda `Rect = { x, y, w, h }` (schema.ts). Viewport.tsx läser `el.rect.x / .y / .w / .h` — matchar. Inga `left/top/width/height` blandas in.
+- **Immutable merge**: pageAudit-overlays appendas via `setFrozen(prev => prev ? { ...prev, overlayElements: [...prev.overlayElements, ...trustOverlay] } : prev)`. Ingen mutation av arrayen.
+
+## Ändringar
+
+### 1. `src/lib/tests/engine.server.ts` — pageAudit emitterar overlayElements
+
+I `case "pageAudit"`, efter att `trustPairs` byggts, bygg också en `overlayElements`-array och inkludera i `data`:
+
+```ts
+const trustOverlay = full.trustSignals
+  .filter((t) => !!t.selector && !!t.rect &&
+    (t.type === "testimonial" || t.type === "review_badges" || t.type === "social_proof_count"))
+  .map((t) => ({ selector: t.selector!, category: t.type, rect: t.rect! }));
+
+data = { ...full, overlayElements: trustOverlay };
+```
+
+Scope:t till de tre typerna användaren bad om. `!!t.rect`-filtret rensar bort schema-entries automatiskt.
+
+### 2. `src/components/browser-shell/BrowserShell.tsx` — merga in pageAudit-overlay
+
+I `useEffect` som lyssnar på events: behåll collect-loopen för screenshot + CTA-overlay, men lägg till en andra pass som plockar `overlayElements` från senaste `pageAudit`-step och appendar immutabelt till befintlig `frozen.overlayElements`. Behåll collect-screenshoten (pageAudit tar ingen ny).
+
+### 3. `src/components/browser-shell/Viewport.tsx` — färger för trust-typer
+
+Utöka `CATEGORY_COLORS` med entries för `testimonial` (#f97316), `review_badges` (#a855f7), `social_proof_count` (#f43f5e) — samma värden som redan finns i `scripts/overlay.ts` `OVERLAY_FN` så live- och frozen-vyn matchar.
+
+## Filer
+
+- `src/lib/tests/engine.server.ts` (lägg `overlayElements` på pageAudit-data)
+- `src/components/browser-shell/BrowserShell.tsx` (merga pageAudit-overlay in i frozen)
+- `src/components/browser-shell/Viewport.tsx` (lägg trust-färger i `CATEGORY_COLORS`)
+
+Scoring, schema och trustSignals-scriptet är oförändrade.
+
 
 Skär bort karussel-bruset i `trustSignals` och städa de tre småfelen som blev kvar i audit-JSON:en. Inga ändringar i scoring-motorn — bara i de browser-scripts som producerar rådata, samt VH-dedupen.
 
