@@ -133,7 +133,7 @@ async function captureScreenshot(
   onEvent: (e: EngineEvent) => void,
 ): Promise<{ dataUrl: string; viewport: { w: number; h: number } } | undefined> {
   try {
-    const raw = await page.screenshot({ type: "jpeg", quality: 70, fullPage: false });
+    const raw = await page.screenshot({ type: "jpeg", quality: 60, fullPage: true });
     const buf = Buffer.from(raw);
 
     const dims = readJpegDimensions(buf);
