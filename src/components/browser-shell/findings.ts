@@ -64,6 +64,66 @@ const f = (
 ): Finding => ({ category, group, label, detail });
 
 // ---------------------------------------------------------------------------
+// Human-readable formatters (presentation only)
+// ---------------------------------------------------------------------------
+
+const SECTION_LABEL: Record<string, string> = {
+  header: "in header",
+  hero: "in hero",
+  nav: "in navigation",
+  navigation: "in navigation",
+  footer: "in footer",
+  content: "in content",
+};
+
+const INTENT_LABEL: Record<string, string> = {
+  conversion: "Conversion intent",
+  navigation: "Navigation intent",
+  utility: "Utility",
+  social: "Social",
+};
+
+const TRUST_TYPE_LABEL: Record<string, string> = {
+  customer_review: "Customer review",
+  trust_badge: "Trust badge",
+  aggregate_rating: "Aggregate rating",
+  contact_info: "Contact info",
+  certification: "Certification",
+  press_mention: "Press mention",
+  client_logo: "Client logo",
+};
+
+const formatSection = (s?: string): string | undefined =>
+  s ? SECTION_LABEL[s] ?? `in ${s}` : undefined;
+
+const formatIntent = (i?: string): string | undefined =>
+  i ? INTENT_LABEL[i] : undefined;
+
+const formatAboveFold = (af?: boolean): string | undefined =>
+  af ? "above the fold" : undefined;
+
+const formatCompetingCTAs = (n: number): string =>
+  n === 0 ? "no competing CTAs" : n === 1 ? "1 competing CTA" : `${n} competing CTAs`;
+
+function formatTrustDistance(px?: number): string {
+  if (px == null || px >= 1500 || px === 9999) return "no trust signal nearby";
+  if (px <= 200) return `trust signal nearby (${px}px)`;
+  return `trust signal ${px}px away`;
+}
+
+function formatFormDistance(px?: number): string {
+  if (px === 0) return "inside a form";
+  if (px == null || px >= 9999) return "not near a form";
+  return `form ${px}px away`;
+}
+
+const formatTrustType = (t: string): string =>
+  TRUST_TYPE_LABEL[t] ?? t.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+const joinBits = (...bits: Array<string | undefined | false | null>): string =>
+  bits.filter((b): b is string => Boolean(b)).join(" · ");
+
+// ---------------------------------------------------------------------------
 // SEO
 // ---------------------------------------------------------------------------
 
