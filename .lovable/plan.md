@@ -1,47 +1,18 @@
 ## Scope
-Endast `src/lib/tests/scripts/trustSignals.ts`. Fixar att Teamtailors testimonial-stjärnor (5 identiska SVG:er utan filled/active-klasser) ger `rating: null`.
+Endast verifiering — koden för 4-stegs-fallback i `extractStarRating(parent, group)` är redan implementerad i `src/lib/tests/scripts/trustSignals.ts`. Half-star-detektion skjuts upp till nästa iteration.
 
-## Plan
+## Steg
 
-### 1. Smartare fallback i `extractStarRating(parent)`
+1. **Kör testet mot Teamtailor** via befintlig pipeline.
+2. **Verifiera via `jq` på resulterande rapport**:
+   - `stars`-signaler finns och har `rating === 5`
+   - inga `rating < 0`, `rating > 5`, eller `NaN`
+   - Loopia (kontroll) får fortsatt inte falsk 5:a (ingen testimonial-context)
+3. **Rapportera utfall** till användaren med konkreta siffror per signal.
 
-Behåll nuvarande prioritet attrs → text → plain-decimal. Ersätt nuvarande filled-räknare med följande kedja:
+## Inte i scope nu
+- Half-star-detektion (Eugenio D. / Isabella C. 4.5/5 → kommer felaktigt räknas som 5). Tas i separat iteration efter att 5-stjärniga fallet är bekräftat fungera.
+- Scoring/pageSummary, testimonial author, `social_proof_count` på `trusted_by`.
 
-1. **Empty-stjärnor först**
-   ```
-   empty = parent.querySelectorAll(
-     '[class*="empty" i], [class*="outline" i], [class*="inactive" i], [class*="off" i], [aria-checked="false"]'
-   )
-   ```
-   Om `empty.length > 0` och `allStars.length` är 3–5 → `rating = clamp(allStars.length - empty.length, 0, 5)`.
-
-2. **Filled-varianten** (befintlig logik bibehålls)
-   `[class*="filled" i], [class*="active" i], [class*="full" i], [aria-checked="true"]`. Om träff och `filled.length <= allStars.length` → `rating = filled.length`.
-
-3. **SVG inline-fill heuristik** (begränsad enligt feedback)
-   Bara `node.getAttribute('fill')` — **ingen** `getComputedStyle`. Räkna stjärnor vars fill-attribut finns och inte är `none`, `transparent`, eller `rgba(0,0,0,0)`. Om antalet är 1–5 → använd det. Skippa annars.
-
-4. **"Alla synliga stjärnor är fyllda"** (löser Teamtailor)
-   Trigger endast om ALLA villkor håller:
-   - `allStars.length` mellan 3 och 5
-   - Inga träffar i steg 1 (`empty.length === 0`)
-   - **Visibility-skydd**: `allVisible = [...allStars].filter(s => { const r = s.getBoundingClientRect(); return r.width > 0 && r.height > 0; })` och `allVisible.length === allStars.length` (filtrerar bort dolda SVG-sprites).
-   - **Testimonial-context inom 3 nivåer upp**: någon ancestor matchar `blockquote`, `figure`, eller har klassnamn matchande `/testimonial|review|quote|kund|card|feedback/i`.
-   
-   Då: `rating = allVisible.length` (cap 5).
-
-### 2. Robusthet
-
-- `clamp(n,0,5)` helper för rating-värden i alla grenar.
-- Behåll `reviewCount`-merge från attrs i alla return-grenar.
-- Inget `getComputedStyle` introduceras (SVG-heuristiken läser bara inline-attribut).
-
-### 3. Verifiering
-
-- **Teamtailor (uppladdat)**: `stars`-signalen ska få `rating === 5` via steg 4 (testimonial-card-kontext + alla 5 stjärnor synliga + ingen empty-variant).
-- **Loopia**: ska fortsatt inte få falsk 5:a (ingen testimonial-context → steg 4 firar inte).
-- **Hero-CTA med dekorativa stjärnor**: ska inte trigga steg 4 (saknar testimonial-context-klassnamn).
-- Sanity via `jq`: inga rating < 0 eller > 5, inga `NaN`.
-
-### Inte i scope
-Scoring/`pageSummary`, testimonial author-extraktion, `social_proof_count` på `trusted_by`.
+## Nästa iteration (efter approval av 5-star-verifiering)
+Lägg till half-star-detektion: `parent.querySelectorAll('[class*="half" i], [class*="fractional" i]')` → om träff, `rating = filled + (halfCount * 0.5)`. Klampa till en decimal.
