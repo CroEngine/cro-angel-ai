@@ -271,7 +271,7 @@ function PageAuditDetails({ data }: { data: PageAuditData }) {
   );
 }
 
-export function ConsolePanel({ events, url }: { events: StreamEvent[]; url: string }) {
+export function ConsolePanel({ events, url, psiRunKey = 0 }: { events: StreamEvent[]; url: string; psiRunKey?: number }) {
   return (
     <div className="flex h-full min-h-0 w-full flex-col border-t border-border bg-background lg:border-t-0">
       <Tabs defaultValue="findings" className="flex h-full min-h-0 w-full flex-col">
