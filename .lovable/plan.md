@@ -1,23 +1,42 @@
-## Bypass höjdkrav för kända cookie-vendor-id:n
+## Mål
+Lägg till WCAG-kontrast på CTAs och visualHierarchy + aggregat i `pageSummary`. Ingen ny browserdata behövs.
 
-**Rotorsak:** OneTrust renderar `#onetrust-consent-sdk` med h=0 initialt (animeras in via CSS). Tröskeln `h > 30` slår aldrig och `data-lovable-cookie-root` sätts inte → CTA-filtret missar "Accept cookies".
+## Upptäckter
+1. `CTAEntity` har **inte** `computedStyles` idag → vi beräknar kontrast inuti `ctas.ts` browser-scriptet där `cs = getComputedStyle(el)` redan finns.
+2. `VisualHierarchyEntry.contrast` **är redan** WCAG-kontrastkvot (samma formel som planeras). Bara `wcagLevel` ska härledas.
 
-### Ändring
+## Plan
 
-**`src/lib/tests/runners/pageAudit.server.ts`** — i polling-IIFE:n, lägg in en `isKnownVendor`-bypass så att element med känt id (onetrust/cookiebot/usercentrics/didomi/osano) taggas direkt utan storlekskrav:
+### 1. `src/lib/tests/scripts/ctas.ts`
+- Kopiera in `parseRgb`/`relLum`/`contrast`-helpers (self-contained krav).
+- I huvudloopen där `cs` finns: beräkna `contrastRatio` (null om bg är transparent/rgba(…,0)) och härled `wcagLevel` baserat på fontSize/fontWeight (large text = ≥18px eller ≥14px bold).
+- Lägg till `contrastRatio: number | null` och `wcagLevel` i output.
 
-```js
-const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano/i.test(found.id || '');
-if (isKnownVendor || (r.width > 50 && r.height > 30)) {
-  // existerande tag-block: setAttribute, __cookieRootTagged, __cookieWaitMs, break
-}
+### 2. `src/lib/tests/scripts/visualHierarchy.ts`
+- Använd befintliga `s.con`, `s.fontSize`, `s.fontWeight` för att härleda `wcagLevel`. Lägg till i output.
+
+### 3. `src/lib/tests/schema.ts`
+- `CTAEntity`: lägg till `contrastRatio: number | null`, `wcagLevel: 'AAA'|'AA'|'AA-large'|'FAIL'|null`.
+- `VisualHierarchyEntry`: lägg till `wcagLevel: 'AAA'|'AA'|'AA-large'|'FAIL'|null`.
+- `PageSummary`: lägg till `ctaContrastFailCount: number`, `ctaContrastAvg: number | null`.
+
+### 4. `src/lib/tests/audit-helpers.ts` (`buildPageSummary`)
+Aggregat med **null-filtrering** (per användarens not):
+```ts
+const withContrast = ctas.filter(c => c.contrastRatio !== null);
+const ctaContrastAvg = withContrast.length > 0
+  ? Math.round((withContrast.reduce((s, c) => s + (c.contrastRatio as number), 0) / withContrast.length) * 100) / 100
+  : null;
+const ctaContrastFailCount = ctas.filter(c => c.wcagLevel === 'FAIL').length;
 ```
+Notera i kommentar att `ux_multiple_ctas_low_contrast` framöver ska använda `withContrast.length` som nämnare, inte `ctas.length`, så ghost-knappar (null) inte snedvrider procenten.
 
-Övrig polling-logik (selektorlista, STYLE/SCRIPT/LINK-filter, `__cookieFoundEl`, `__cookiePollAttempts`) lämnas orörd.
+## Edge cases
+- Transparent bakgrund (`rgba(0,0,0,0)` / `transparent`) → `contrastRatio = null`, `wcagLevel = null`. Vanligt på sekundära/ghost CTAs.
+- Ikon-knappar utan text: kontrast beräknas men har lägre betydelse — OK att låta värdet finnas.
 
-### Verifiering
-
-Kör Greenhouse igen:
-- `cookieRootTagged` ska bli ifylld trots `cookieFoundEl.h: 0`
-- `ctaCookieFilterHits > 0`
-- `hero.primaryCtaText` ska vara verklig CTA, inte "Accept cookies"
+## Filer
+- `src/lib/tests/schema.ts`
+- `src/lib/tests/scripts/ctas.ts`
+- `src/lib/tests/scripts/visualHierarchy.ts`
+- `src/lib/tests/audit-helpers.ts`

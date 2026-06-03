@@ -192,6 +192,8 @@ export type TrustSignal = {
 };
 
 
+export type WcagLevel = "AAA" | "AA" | "AA-large" | "FAIL";
+
 export type CTAEntity = {
   text: string;
   intent: ElementIntent;
@@ -202,6 +204,8 @@ export type CTAEntity = {
   competingActions: number;
   nearestTrustSignalDistance: number;
   nearestFormDistance: number;
+  contrastRatio: number | null;
+  wcagLevel: WcagLevel | null;
   selector?: string; // transient — present in browser script output, stripped before persistence
   rect: Rect;
 };
@@ -268,6 +272,7 @@ export type VisualHierarchyEntry = {
   fontSize: number;
   fontWeight: number;
   contrast: number;
+  wcagLevel: WcagLevel | null;
   position: { xPct: number; yPct: number };
   aboveFold: boolean;
   section: SectionKind;
@@ -291,6 +296,8 @@ export type PageSummary = {
   sectionCount: number;
   pageHeightPx: number;
   foldHeightPx: number;
+  ctaContrastFailCount: number;
+  ctaContrastAvg: number | null;
 };
 
 export type TrustSummary = {

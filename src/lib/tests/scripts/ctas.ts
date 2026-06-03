@@ -51,6 +51,40 @@ export const CTAS_SCRIPT = `(() => {
     return !!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent';
   }
 
+  function parseRgb(s) {
+    if (!s) return null;
+    const m = s.match(/rgba?\\(([^)]+)\\)/);
+    if (!m) return null;
+    const parts = m[1].split(',').map((v) => parseFloat(v.trim()));
+    if (parts.length < 3) return null;
+    const a = parts.length >= 4 ? parts[3] : 1;
+    if (a === 0) return null;
+    return { r: parts[0], g: parts[1], b: parts[2] };
+  }
+  function relLum(c) {
+    const ch = [c.r, c.g, c.b].map((v) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  }
+  function wcagContrast(fgCss, bgCss) {
+    const fg = parseRgb(fgCss);
+    const bg = parseRgb(bgCss);
+    if (!fg || !bg) return null;
+    const L1 = relLum(fg), L2 = relLum(bg);
+    const hi = Math.max(L1, L2), lo = Math.min(L1, L2);
+    return Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100;
+  }
+  function deriveWcagLevel(ratio, fontSizePx, fontWeight) {
+    if (ratio === null) return null;
+    const isLarge = fontSizePx >= 18 || (fontSizePx >= 14 && fontWeight >= 700);
+    if (ratio >= 7) return 'AAA';
+    if (ratio >= 4.5) return 'AA';
+    if (ratio >= 3 && isLarge) return 'AA-large';
+    return 'FAIL';
+  }
+
   function classifyCategory(el, cs, rect, text) {
     const tag = el.tagName;
     const type = (el.getAttribute('type') || '').toLowerCase();
@@ -160,6 +194,10 @@ export const CTAS_SCRIPT = `(() => {
       if (o.section !== r.section) continue;
       if (o.category === 'cta_primary' || o.category === 'cta_secondary' || o.category === 'form_submit') competing++;
     }
+    const fontSizePx = parseFloat(r.cs.fontSize) || 14;
+    const fontWeightN = parseInt(r.cs.fontWeight, 10) || 400;
+    const contrastRatio = wcagContrast(r.cs.color, r.cs.backgroundColor);
+    const wcagLevel = deriveWcagLevel(contrastRatio, fontSizePx, fontWeightN);
     return {
       text: r.text,
       intent: r.intent,
@@ -170,6 +208,8 @@ export const CTAS_SCRIPT = `(() => {
       competingActions: competing,
       nearestTrustSignalDistance: minDist(cx, cy, trustRects),
       nearestFormDistance: formDistance(r.el, cx, cy),
+      contrastRatio: contrastRatio,
+      wcagLevel: wcagLevel,
       selector: buildSelector(r.el),
       rect: {
         x: Math.round(r.rect.left + window.scrollX),

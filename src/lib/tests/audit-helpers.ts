@@ -117,6 +117,21 @@ export function buildPageSummary(input: {
     .map((c) => c.rect.y);
   const foldDepthFirstCtaPx = eligibleCtaYs.length > 0 ? Math.min(...eligibleCtaYs) : null;
 
+  // Contrast aggregates. Filter out nulls (transparent backgrounds / ghost CTAs)
+  // before averaging — otherwise they'd skew the mean. Future flag
+  // `ux_multiple_ctas_low_contrast` should likewise use `withContrast.length`
+  // as denominator, not `ctas.length`.
+  const withContrast = ctas.filter((c) => c.contrastRatio !== null);
+  const ctaContrastAvg =
+    withContrast.length > 0
+      ? Math.round(
+          (withContrast.reduce((s, c) => s + (c.contrastRatio as number), 0) /
+            withContrast.length) *
+            100,
+        ) / 100
+      : null;
+  const ctaContrastFailCount = ctas.filter((c) => c.wcagLevel === "FAIL").length;
+
   return {
     primaryCtaCount: ctas.filter((c) => c.category === "cta_primary").length,
     secondaryCtaCount: ctas.filter((c) => c.category === "cta_secondary").length,
@@ -138,6 +153,8 @@ export function buildPageSummary(input: {
     sectionCount: sections.length,
     pageHeightPx: dims.pageHeightPx,
     foldHeightPx: dims.foldHeightPx,
+    ctaContrastFailCount,
+    ctaContrastAvg,
   };
 }
 
