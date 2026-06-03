@@ -1,65 +1,41 @@
-# Omgång 2 — HiBob lazy/animated sektioner (tvåstegs-fallback)
+# Omgång 2b — Recurse into wrapper children
 
-Mål: HiBob ska få fler `PageSection`-entries än 5; sektioner som Framer Motion håller på `opacity:0 / transform:translateY` ska inte filtreras bort av nollhöjd-checken.
+Tidigare hypotes (Framer Motion + nollhöjd) bekräftades fel av `lazyDebug` (nästan tom). Verklig orsak: HiBob är WordPress, `wp-site-blocks`-wrappern (90% av DOM) skippas korrekt av wrapper-filtret, men `return` kastar hela subtreet — så de verkliga sektionerna inuti hittas aldrig.
 
 ## Ändring
 
-`src/lib/tests/scripts/sections.ts`, addNode(), tidiga return-villkoret för små rektanglar:
+`src/lib/tests/scripts/sections.ts`, addNode() — wrapper-skip-grenen:
 
-Idag:
-```js
-const rect = el.getBoundingClientRect();
-if (rect.width < 40 || rect.height < 80) return;
-```
-
-Nytt — tvåstegs-fallback. Bredd-check behålls hård (sektioner är aldrig <40px breda); höjd-check försöker först `offsetHeight`/`scrollHeight`, och faller sen tillbaka på off-screen-klon endast om det behövs:
+Istället för att `return` när ratio/höjd-tröskel slår till, traversera wrapperns direkta barn innan vi lämnar:
 
 ```js
-const rect = el.getBoundingClientRect();
-if (rect.width < 40) return;
-let effectiveH = rect.height;
-if (effectiveH < 80) {
-  // Steg 1: layout-höjd som ignorerar CSS transform.
-  effectiveH = Math.max(el.offsetHeight || 0, el.scrollHeight || 0);
-}
-if (effectiveH < 80) {
-  // Steg 2: klona av-skärm utan transform/overflow för att få naturlig höjd.
+if (tooBig || tooTall) {
+  // Skip the wrapper itself but recurse into its direct children so we
+  // don't lose real sections nested inside a page-wrapping <div>/<form>.
   try {
-    const clone = el.cloneNode(true);
-    clone.style.cssText =
-      'position:fixed;left:-9999px;top:0;visibility:hidden;opacity:0;' +
-      'transform:none;height:auto;max-height:none;overflow:visible;';
-    document.body.appendChild(clone);
-    effectiveH = clone.getBoundingClientRect().height;
-    document.body.removeChild(clone);
+    const kids = el.children;
+    for (let i = 0; i < kids.length; i++) addNode(kids[i]);
   } catch (_) {}
-}
-if (effectiveH < 80) return;
-// Patch rect.height för downstream-klassificering (visualWeight, hero-check).
-if (effectiveH !== rect.height) {
-  rect = { top: rect.top, left: rect.left, right: rect.right, bottom: rect.top + effectiveH, width: rect.width, height: effectiveH, x: rect.left, y: rect.top };
+  return;
 }
 ```
 
-Två viktiga detaljer:
-- `rect` från `getBoundingClientRect()` är inte alltid skrivbart (DOMRectReadOnly i vissa browsers). Därför ersätter vi `rect` med ett plain object när vi måste skriva. Variabeln måste då deklareras med `let`, inte `const`.
-- Klon-fallback körs **bara** när både rect och offsetHeight/scrollHeight är < 80 — dvs i praktiken endast på Framer Motion-element med `overflow:hidden` förälder. På Workable/Teamtailor/Ashby kostar det 0 extra ms.
+`seen`-setet förhindrar dubbletter mot landmark-skanningen, och varje barn går igenom samma storleks-/cookie-/wrapper-filter rekursivt — så en wrapper-i-wrapper (t.ex. `wp-site-blocks > .entry-content`) hanteras naturligt.
 
-## Diagnostik
+## Övriga noter
 
-För att verifiera vilken nivå som räddade varje nod, utöka `window.__wrapperDebug` är fel ställe (det handlar om wrapper-skip, inte fallback). Lägg till en separat `window.__lazyDebug = []` som pushar `{ tag, id, cls, rectH, offsetH, scrollH, cloneH, accepted }` för varje nod där `rect.height < 80`. Exponera den via samma read-pattern i runnern + `lazyDebug?: ...` i `schema.ts`.
+- `lazyDebug` och fallback-koden för nollhöjd behålls — den gör ingen skada och vi vet nu att det inte var problemet, men den kan rädda framtida Framer Motion-fall.
+- Inga schemaändringar.
+- `wrapperDebug` fortsätter logga som tidigare och visar nu om rekursionen körs på rätt wrappers.
 
 ## Verifiering
 
-Kör HiBob efter implementation:
-- Räkna `sections[].length` — ska gå upp från 5.
-- Inspektera `lazyDebug[]` för att se vilka noder som räddades och av vilket steg (offsetHeight vs cloneHeight).
-- Bekräfta att Workable/Teamtailor/Ashby-körningar inte regredierar (samma section-count som tidigare).
+Kör HiBob igen:
+- `sections[].length` ska öka markant (förväntar minst 8–12 istället för 5).
+- `wrapperDebug` ska fortfarande visa `wp-site-blocks` som `skipped: true`.
+- Nya sektioner i `sections[]` ska ha headings från innehållet inuti wrappern.
+- Workable/Teamtailor/Ashby ska inte regredera — vi lägger bara till barn-traversering på noder som ändå skulle skippats.
 
-## Filer som ändras
+## Fil
 
-- `src/lib/tests/scripts/sections.ts` — addNode() height-check + push till `window.__lazyDebug`.
-- `src/lib/tests/runners/pageAudit.server.ts` — läs `window.__lazyDebug` efter Promise.all, returnera som toppnivåfält.
-- `src/lib/tests/schema.ts` — `lazyDebug?: Array<...>` på `PageAuditData`.
-
-Inga ändringar i pageAudit.ts, schema-fält för content.sections (det är `<section>`-räkning, separat metric), eller scroll-warmup-loopen.
+- `src/lib/tests/scripts/sections.ts` — addNode() wrapper-grenen.

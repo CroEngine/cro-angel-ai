@@ -189,8 +189,15 @@ export const SECTIONS_SCRIPT = `(() => {
           skipped: tooBig || tooTall,
         });
       } catch (_) {}
-      if (tooBig || tooTall) return;
-    }
+      if (tooBig || tooTall) {
+        // Skip this wrapper as a section, but recurse into its direct
+        // children so nested real sections aren't lost with the subtree.
+        try {
+          const kids = el.children;
+          for (let i = 0; i < kids.length; i++) addNode(kids[i]);
+        } catch (_) {}
+        return;
+      }
     seen.add(el);
     const repeated = repeatedChildrenCount(el);
     const hh = headings(el);
