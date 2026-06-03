@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { runPageSpeedInsights } from "@/lib/tests/pagespeed.functions";
-import type { PsiResult, PsiStrategyResult } from "@/lib/tests/pagespeed.functions";
+import { runPsiMobile, runPsiDesktop } from "@/lib/tests/pagespeed.functions";
+import type { PsiStrategyResult } from "@/lib/tests/pagespeed.functions";
 
 function downloadJson(filename: string, payload: unknown) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -239,29 +239,77 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
   );
 }
 
-export function PageInsightsView({ url }: { url: string }) {
-  const psi = useServerFn(runPageSpeedInsights);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<PsiResult | null>(null);
+export function PageInsightsView({ url, runKey = 0 }: { url: string; runKey?: number }) {
+  const psiMobile = useServerFn(runPsiMobile);
+  const psiDesktop = useServerFn(runPsiDesktop);
+  const [mobile, setMobile] = useState<PsiStrategyResult | null>(null);
+  const [desktop, setDesktop] = useState<PsiStrategyResult | null>(null);
+  const [mobileLoading, setMobileLoading] = useState(false);
+  const [desktopLoading, setDesktopLoading] = useState(false);
   const [strategy, setStrategy] = useState<"mobile" | "desktop">("mobile");
-  const [error, setError] = useState<string | null>(null);
 
-  const handleRun = async () => {
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    try {
-      const r = await psi({ data: { url } });
-      setResult(r);
-      if (r.error) setError(r.error);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
+  const runBoth = () => {
+    setMobile(null);
+    setDesktop(null);
+    setMobileLoading(true);
+    setDesktopLoading(true);
+    psiMobile({ data: { url } })
+      .then((r) => setMobile(r))
+      .catch((e) =>
+        setMobile({
+          strategy: "mobile",
+          fetchedAt: new Date().toISOString(),
+          scores: { performance: null, accessibility: null, bestPractices: null, seo: null },
+          vitals: {
+            lcpMs: null, fcpMs: null, tbtMs: null, cls: null, speedIndexMs: null, ttiMs: null,
+            fieldLcpMs: null, fieldFcpMs: null, fieldClsP75: null, fieldInpMs: null, hasFieldData: false,
+          },
+          audits: { opportunities: [], diagnostics: [] },
+          resourceSummary: {
+            totalKib: null, scriptKib: null, imageKib: null, stylesheetKib: null,
+            fontKib: null, documentKib: null, mediaKib: null, otherKib: null,
+            thirdPartyKib: null, totalRequests: null,
+          },
+          renderBlockingResources: [],
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      )
+      .finally(() => setMobileLoading(false));
+    psiDesktop({ data: { url } })
+      .then((r) => setDesktop(r))
+      .catch((e) =>
+        setDesktop({
+          strategy: "desktop",
+          fetchedAt: new Date().toISOString(),
+          scores: { performance: null, accessibility: null, bestPractices: null, seo: null },
+          vitals: {
+            lcpMs: null, fcpMs: null, tbtMs: null, cls: null, speedIndexMs: null, ttiMs: null,
+            fieldLcpMs: null, fieldFcpMs: null, fieldClsP75: null, fieldInpMs: null, hasFieldData: false,
+          },
+          audits: { opportunities: [], diagnostics: [] },
+          resourceSummary: {
+            totalKib: null, scriptKib: null, imageKib: null, stylesheetKib: null,
+            fontKib: null, documentKib: null, mediaKib: null, otherKib: null,
+            thirdPartyKib: null, totalRequests: null,
+          },
+          renderBlockingResources: [],
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      )
+      .finally(() => setDesktopLoading(false));
   };
 
-  const active = result ? (strategy === "mobile" ? result.mobile : result.desktop) : null;
+  // Auto-trigger when BrowserShell signals a new Run. Skip mount (runKey === 0).
+  useEffect(() => {
+    if (runKey === 0) return;
+    runBoth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, runKey]);
+
+  const loading = mobileLoading || desktopLoading;
+  const hasAny = mobile !== null || desktop !== null;
+  const active = strategy === "mobile" ? mobile : desktop;
+  const activeLoading = strategy === "mobile" ? mobileLoading : desktopLoading;
 
   return (
     <div className="space-y-3 p-4">
@@ -271,60 +319,60 @@ export function PageInsightsView({ url }: { url: string }) {
           <div className="truncate text-xs text-muted-foreground">{url}</div>
         </div>
         <div className="flex items-center gap-2">
-          {result && (
+          {hasAny && (
             <Button
               size="sm"
               variant="outline"
               className="h-7 px-2 text-[11px]"
-              onClick={() => downloadJson(`psi-${Date.now()}.json`, result)}
+              onClick={() => downloadJson(`psi-${Date.now()}.json`, { url, mobile, desktop })}
             >
               Download JSON
             </Button>
           )}
-          <Button size="sm" className="h-7 px-3 text-[11px]" disabled={loading} onClick={handleRun}>
-            {loading ? "Running…" : result ? "Re-run" : "Run PSI"}
+          <Button size="sm" className="h-7 px-3 text-[11px]" disabled={loading} onClick={runBoth}>
+            {loading ? "Running…" : hasAny ? "Re-run" : "Run PSI"}
           </Button>
         </div>
       </div>
 
-      {loading && (
-        <div className="rounded border border-border bg-muted/30 p-4 text-xs text-muted-foreground">
-          Fetching Lighthouse audits for mobile + desktop… this typically takes 15–30 seconds.
-        </div>
-      )}
-
-      {error && !loading && (
-        <div className="rounded border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-          {error}
-        </div>
-      )}
-
-      {result && !loading && (
-        <>
-          <div className="flex gap-1 rounded-lg border border-border bg-muted/30 p-1">
-            {(["mobile", "desktop"] as const).map((s) => (
+      {(hasAny || loading) && (
+        <div className="flex gap-1 rounded-lg border border-border bg-muted/30 p-1">
+          {(["mobile", "desktop"] as const).map((s) => {
+            const isLoading = s === "mobile" ? mobileLoading : desktopLoading;
+            return (
               <button
                 key={s}
                 onClick={() => setStrategy(s)}
                 className={cn(
-                  "flex-1 rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                  "flex-1 rounded-md px-3 py-1 text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5",
                   strategy === s
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {s === "mobile" ? "Mobile" : "Desktop"}
+                {isLoading && (
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+                )}
               </button>
-            ))}
-          </div>
-          {active && <StrategyPanel result={active} />}
-        </>
+            );
+          })}
+        </div>
       )}
 
-      {!result && !loading && !error && (
+      {activeLoading && !active && (
+        <div className="rounded border border-border bg-muted/30 p-4 text-xs text-muted-foreground">
+          Fetching Lighthouse audit for {strategy}… typically 15–30s.
+        </div>
+      )}
+
+      {active && <StrategyPanel result={active} />}
+
+      {!hasAny && !loading && (
         <div className="rounded border border-dashed border-border bg-muted/20 p-6 text-center text-xs text-muted-foreground">
-          Click <span className="font-medium text-foreground">Run PSI</span> to fetch Lighthouse scores,
-          Core Web Vitals, and optimization opportunities for this URL.
+          Klistra in en URL och klicka <span className="font-medium text-foreground">Run</span> — PSI startar
+          automatiskt parallellt med Browserbase. Du kan också köra manuellt via{" "}
+          <span className="font-medium text-foreground">Run PSI</span>.
         </div>
       )}
     </div>

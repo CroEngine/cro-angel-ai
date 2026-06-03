@@ -19,6 +19,7 @@ export function BrowserShell() {
   const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
   const [liveStartedAt, setLiveStartedAt] = useState<number | null>(null);
   const [frozen, setFrozen] = useState<FrozenSnapshot | null>(null);
+  const [psiRunKey, setPsiRunKey] = useState(0);
 
   const startFn = useServerFn(startTestRun);
   const stopFn = useServerFn(stopTestRun);
@@ -137,6 +138,9 @@ export function BrowserShell() {
       const res = await startFn({ data: { url: nextUrl } });
       setRunId(res.runId);
       setLiveUrl(res.liveUrl);
+      // Trigger PSI in parallel AFTER Browserbase started, so page audit data
+      // never lags behind PSI results in the UI.
+      setPsiRunKey((k) => k + 1);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setSessionState("error");
@@ -178,7 +182,7 @@ export function BrowserShell() {
           />
         </div>
         <div className="flex min-h-0 flex-1 lg:w-1/2">
-          <ConsolePanel events={events} url={url} />
+          <ConsolePanel events={events} url={url} psiRunKey={psiRunKey} />
         </div>
       </div>
     </div>
