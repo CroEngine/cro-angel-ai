@@ -198,6 +198,7 @@ export const SECTIONS_SCRIPT = `(() => {
         } catch (_) {}
         return;
       }
+    }
     seen.add(el);
     const repeated = repeatedChildrenCount(el);
     const hh = headings(el);
