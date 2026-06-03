@@ -272,6 +272,7 @@ export type VisualHierarchyEntry = {
   fontSize: number;
   fontWeight: number;
   contrast: number;
+  wcagLevel: WcagLevel | null;
   position: { xPct: number; yPct: number };
   aboveFold: boolean;
   section: SectionKind;
