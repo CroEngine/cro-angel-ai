@@ -54,9 +54,28 @@ function ScoreCard({ label, score }: { label: string; score: number | null }) {
 
 function StrategyPanel({ result }: { result: PsiStrategyResult }) {
   if (result.error) {
+    const raw = result.error;
+    const retried = raw.startsWith("[retried] ");
+    const msg = raw.replace(/^\[retried\] /, "");
+    const isTimeout = /AbortError|aborted/i.test(msg);
+    const isFailedDoc = /FAILED_DOCUMENT_REQUEST|ERRORED_DOCUMENT_REQUEST|NO_FCP/.test(msg);
+    const friendly = isTimeout
+      ? `Lighthouse hann inte ladda sidan inom 25s${retried ? " (även efter ett omförsök)" : ""}. Sidan är troligen för långsam — testa den andra fliken eller kör om.`
+      : isFailedDoc
+        ? `Lighthouse kunde inte ladda sidan på ${result.strategy}${retried ? " (även efter ett omförsök)" : ""}. Sidan svarar för långsamt — testa den andra fliken eller kör om.`
+        : msg;
     return (
-      <div className="rounded border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-        {result.error}
+      <div className="space-y-2 rounded border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+        <div className="font-medium text-amber-700 dark:text-amber-400">
+          PSI misslyckades för {result.strategy}
+        </div>
+        <div className="text-foreground/80">{friendly}</div>
+        {friendly !== msg && (
+          <details className="text-[10px] text-muted-foreground">
+            <summary className="cursor-pointer">Visa rått fel</summary>
+            <pre className="mt-1 whitespace-pre-wrap break-all">{msg}</pre>
+          </details>
+        )}
       </div>
     );
   }

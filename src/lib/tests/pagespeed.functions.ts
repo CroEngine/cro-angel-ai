@@ -136,39 +136,69 @@ function parsePsi(json: unknown, strategy: Strategy): PsiStrategyResult {
   };
 }
 
-async function fetchStrategy(url: string, strategy: Strategy, apiKey: string): Promise<PsiStrategyResult> {
+const FETCH_TIMEOUT_MS = 25_000;
+const RETRY_DELAY_MS = 2_000;
+const RETRYABLE_LIGHTHOUSE_ERRORS = [
+  "FAILED_DOCUMENT_REQUEST",
+  "ERRORED_DOCUMENT_REQUEST",
+  "NO_FCP",
+  "INSECURE_DOCUMENT_REQUEST",
+];
+
+function isRetryableError(error: string): boolean {
+  if (error.includes("AbortError") || error.includes("aborted")) return true;
+  return RETRYABLE_LIGHTHOUSE_ERRORS.some((e) => error.includes(e));
+}
+
+function emptyStrategyResult(strategy: Strategy, error: string): PsiStrategyResult {
+  return {
+    strategy,
+    fetchedAt: new Date().toISOString(),
+    scores: { performance: null, accessibility: null, bestPractices: null, seo: null },
+    vitals: {
+      lcpMs: null, fcpMs: null, tbtMs: null, cls: null, speedIndexMs: null, ttiMs: null,
+      fieldLcpMs: null, fieldFcpMs: null, fieldClsP75: null, fieldInpMs: null, hasFieldData: false,
+    },
+    audits: { opportunities: [], diagnostics: [] },
+    error,
+  };
+}
+
+async function fetchStrategyOnce(
+  url: string,
+  strategy: Strategy,
+  apiKey: string,
+): Promise<PsiStrategyResult> {
   const params = new URLSearchParams({ url, strategy, key: apiKey });
   for (const c of CATEGORIES) params.append("category", c);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(`${PSI_ENDPOINT}?${params.toString()}`);
+    const res = await fetch(`${PSI_ENDPOINT}?${params.toString()}`, { signal: controller.signal });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      return {
-        strategy,
-        fetchedAt: new Date().toISOString(),
-        scores: { performance: null, accessibility: null, bestPractices: null, seo: null },
-        vitals: {
-          lcpMs: null, fcpMs: null, tbtMs: null, cls: null, speedIndexMs: null, ttiMs: null,
-          fieldLcpMs: null, fieldFcpMs: null, fieldClsP75: null, fieldInpMs: null, hasFieldData: false,
-        },
-        audits: { opportunities: [], diagnostics: [] },
-        error: `PSI ${strategy} ${res.status}: ${body.slice(0, 200)}`,
-      };
+      return emptyStrategyResult(strategy, `PSI ${strategy} ${res.status}: ${body.slice(0, 300)}`);
     }
     return parsePsi(await res.json(), strategy);
   } catch (e) {
-    return {
-      strategy,
-      fetchedAt: new Date().toISOString(),
-      scores: { performance: null, accessibility: null, bestPractices: null, seo: null },
-      vitals: {
-        lcpMs: null, fcpMs: null, tbtMs: null, cls: null, speedIndexMs: null, ttiMs: null,
-        fieldLcpMs: null, fieldFcpMs: null, fieldClsP75: null, fieldInpMs: null, hasFieldData: false,
-      },
-      audits: { opportunities: [], diagnostics: [] },
-      error: e instanceof Error ? e.message : String(e),
-    };
+    const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    return emptyStrategyResult(strategy, msg);
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+async function fetchStrategy(
+  url: string,
+  strategy: Strategy,
+  apiKey: string,
+): Promise<PsiStrategyResult> {
+  const first = await fetchStrategyOnce(url, strategy, apiKey);
+  if (!first.error || !isRetryableError(first.error)) return first;
+  await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+  const second = await fetchStrategyOnce(url, strategy, apiKey);
+  if (second.error) return { ...second, error: `[retried] ${second.error}` };
+  return second;
 }
 
 export const runPageSpeedInsights = createServerFn({ method: "POST" })
@@ -184,10 +214,9 @@ export const runPageSpeedInsights = createServerFn({ method: "POST" })
       };
     }
 
-    const [mobile, desktop] = await Promise.all([
-      fetchStrategy(data.url, "mobile", apiKey),
-      fetchStrategy(data.url, "desktop", apiKey),
-    ]);
+    // Sequential to stay under proxy timeout and avoid doubling PSI load
+    const mobile = await fetchStrategy(data.url, "mobile", apiKey);
+    const desktop = await fetchStrategy(data.url, "desktop", apiKey);
 
     return {
       url: data.url,
