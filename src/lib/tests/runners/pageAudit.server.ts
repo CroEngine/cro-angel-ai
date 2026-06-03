@@ -209,6 +209,21 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   const cookieDebug = (await page.evaluate(
     "window.__cookieDebug || []",
   )) as PageAuditData["cookieDebug"];
+  const cookiePollAttempts = (await page.evaluate(
+    "window.__cookiePollAttempts ?? null",
+  )) as number | null;
+  const cookieFoundEl = (await page.evaluate(
+    "window.__cookieFoundEl ?? null",
+  )) as PageAuditData["cookieFoundEl"];
+  const cookieRootTagged = (await page.evaluate(
+    "window.__cookieRootTagged ?? null",
+  )) as PageAuditData["cookieRootTagged"];
+  const cookieWaitMs = (await page.evaluate(
+    "window.__cookieWaitMs ?? null",
+  )) as number | null;
+  const ctaCookieFilterHits = (await page.evaluate(
+    "window.__ctaCookieFilterHits ?? null",
+  )) as number | null;
 
   const audit = rawAudit as RawPageAudit;
   const robotsSitemap = fetched as RobotsSitemapFetch;
