@@ -72,6 +72,8 @@ export type PsiStrategyResult = {
   renderBlockingResources: RenderBlockingResource[];
   thirdPartyEntities: ThirdPartyEntity[];
   thirdPartyBlockingTotalMs: number;
+  /** True om varken `third-party-summary` eller `third-party-facades` hade items. Skiljer "inga tredjeparter" från "PSI gav oss inte data". */
+  thirdPartyAuditMissing: boolean;
   error: string | null;
 };
 
