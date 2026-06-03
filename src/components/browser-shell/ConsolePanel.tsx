@@ -292,7 +292,7 @@ export function ConsolePanel({ events, url, psiRunKey = 0 }: { events: StreamEve
 
         <TabsContent value="pageinsight" className="m-0 flex-1 min-h-0">
           <ScrollArea className="h-full">
-            <PageInsightsView url={url} />
+            <PageInsightsView url={url} runKey={psiRunKey} />
           </ScrollArea>
         </TabsContent>
 
