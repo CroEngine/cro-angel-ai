@@ -53,6 +53,12 @@ export const SECTIONS_SCRIPT = `(() => {
     if (tag === 'FOOTER' || role === 'contentinfo') return 'footer';
     if (tag === 'HEADER' || role === 'banner') return 'header';
     if (tag === 'ASIDE' || role === 'complementary') return 'aside';
+    // Belt-and-suspenders: backstop hero/header misclassification if a
+    // cookie-banner residue slips past addNode()'s isCookieBanner filter.
+    const cookieTxt = (el.innerText || '').toLowerCase().slice(0, 600);
+    if (/accept (all )?cookies?|godk[äa]nn (alla )?cookies|we use cookies|vi anv[äa]nder cookies/.test(cookieTxt)) {
+      return 'content';
+    }
     // Only classify as 'form' when a contained form actually fills a sane
     // portion of the section — guards against entire-page <form> wrappers
     // (common on Ashby-style SPAs) that would otherwise mark the whole
