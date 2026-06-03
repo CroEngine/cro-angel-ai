@@ -305,5 +305,10 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     wrapperDebug,
     lazyDebug,
     cookieDebug,
+    cookiePollAttempts,
+    cookieFoundEl,
+    cookieRootTagged,
+    cookieWaitMs,
+    ctaCookieFilterHits,
   };
 }
