@@ -291,6 +291,7 @@ function emptyStrategyResult(strategy: Strategy, error: string): PsiStrategyResu
     renderBlockingResources: [],
     thirdPartyEntities: [],
     thirdPartyBlockingTotalMs: 0,
+    thirdPartyAuditMissing: true,
     error,
   };
 }
