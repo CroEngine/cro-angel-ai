@@ -33,17 +33,36 @@ export type CoreWebVitals = {
   hasFieldData: boolean;
 };
 
+export type ResourceSummary = {
+  totalKib: number | null;
+  scriptKib: number | null;
+  imageKib: number | null;
+  stylesheetKib: number | null;
+  fontKib: number | null;
+  documentKib: number | null;
+  mediaKib: number | null;
+  otherKib: number | null;
+  thirdPartyKib: number | null;
+  totalRequests: number | null;
+};
+
+export type RenderBlockingResource = {
+  url: string;
+  totalBytes: number;
+  wastedMs: number;
+};
+
 export type PsiStrategyResult = {
   strategy: Strategy;
   fetchedAt: string;
   scores: CategoryScores;
   vitals: CoreWebVitals;
   audits: {
-    // Top opportunities sorted by potential savings (ms)
     opportunities: Array<{ id: string; title: string; savingsMs: number; displayValue: string | null }>;
-    // Failed diagnostics worth surfacing
     diagnostics: Array<{ id: string; title: string; displayValue: string | null; score: number | null }>;
   };
+  resourceSummary: ResourceSummary;
+  renderBlockingResources: RenderBlockingResource[];
   error: string | null;
 };
 
@@ -63,14 +82,65 @@ function scoreToPct(v: unknown): number | null {
   return n === null ? null : Math.round(n * 100);
 }
 
+type LighthouseAuditItem = {
+  resourceType?: string;
+  transferSize?: number;
+  requestCount?: number;
+  url?: string;
+  totalBytes?: number;
+  wastedMs?: number;
+};
+
 type LighthouseAudit = {
   id?: string;
   title?: string;
   displayValue?: string;
   score?: number | null;
   numericValue?: number;
-  details?: { overallSavingsMs?: number };
+  details?: { overallSavingsMs?: number; items?: LighthouseAuditItem[] };
 };
+
+const EMPTY_RESOURCE_SUMMARY: ResourceSummary = {
+  totalKib: null, scriptKib: null, imageKib: null, stylesheetKib: null,
+  fontKib: null, documentKib: null, mediaKib: null, otherKib: null,
+  thirdPartyKib: null, totalRequests: null,
+};
+
+function bytesToKib(b: number | undefined): number | null {
+  return typeof b === "number" && Number.isFinite(b) ? Math.round(b / 1024) : null;
+}
+
+function parseResourceSummary(audit: LighthouseAudit | undefined): ResourceSummary {
+  const items = audit?.details?.items;
+  if (!Array.isArray(items) || items.length === 0) return EMPTY_RESOURCE_SUMMARY;
+  const byType = (t: string) => items.find((i) => i.resourceType === t);
+  const total = byType("total");
+  return {
+    totalKib: bytesToKib(total?.transferSize),
+    scriptKib: bytesToKib(byType("script")?.transferSize),
+    imageKib: bytesToKib(byType("image")?.transferSize),
+    stylesheetKib: bytesToKib(byType("stylesheet")?.transferSize),
+    fontKib: bytesToKib(byType("font")?.transferSize),
+    documentKib: bytesToKib(byType("document")?.transferSize),
+    mediaKib: bytesToKib(byType("media")?.transferSize),
+    otherKib: bytesToKib(byType("other")?.transferSize),
+    thirdPartyKib: bytesToKib(byType("third-party")?.transferSize),
+    totalRequests: typeof total?.requestCount === "number" ? total.requestCount : null,
+  };
+}
+
+function parseRenderBlocking(audit: LighthouseAudit | undefined): RenderBlockingResource[] {
+  const items = audit?.details?.items;
+  if (!Array.isArray(items)) return [];
+  return items
+    .filter((i): i is LighthouseAuditItem & { url: string } => typeof i.url === "string")
+    .map((i) => ({
+      url: i.url,
+      totalBytes: typeof i.totalBytes === "number" ? i.totalBytes : 0,
+      wastedMs: typeof i.wastedMs === "number" ? i.wastedMs : 0,
+    }))
+    .sort((a, b) => b.wastedMs - a.wastedMs);
+}
 
 function parsePsi(json: unknown, strategy: Strategy): PsiStrategyResult {
   const lhr = (json as { lighthouseResult?: Record<string, unknown> })?.lighthouseResult ?? {};
@@ -132,6 +202,8 @@ function parsePsi(json: unknown, strategy: Strategy): PsiStrategyResult {
       opportunities: opportunities.slice(0, 10),
       diagnostics: diagnostics.slice(0, 10),
     },
+    resourceSummary: parseResourceSummary(audits["resource-summary"]),
+    renderBlockingResources: parseRenderBlocking(audits["render-blocking-resources"]),
     error: null,
   };
 }
@@ -160,6 +232,8 @@ function emptyStrategyResult(strategy: Strategy, error: string): PsiStrategyResu
       fieldLcpMs: null, fieldFcpMs: null, fieldClsP75: null, fieldInpMs: null, hasFieldData: false,
     },
     audits: { opportunities: [], diagnostics: [] },
+    resourceSummary: EMPTY_RESOURCE_SUMMARY,
+    renderBlockingResources: [],
     error,
   };
 }
