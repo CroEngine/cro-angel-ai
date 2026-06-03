@@ -55,10 +55,10 @@ export const SECTIONS_SCRIPT = `(() => {
     if (tag === 'ASIDE' || role === 'complementary') return 'aside';
     if (el.querySelector('form')) return 'form';
     const docTop = rect.top + window.scrollY;
-    // Hero only if it actually fits hero proportions — page-wrapper divs
-    // (height ≈ full page) are NOT hero sections, they would otherwise
-    // skew visualWeight and rect.h.
-    if (docTop < viewportH * 0.4 && rect.height > 200 && rect.height < viewportH * 1.5) return 'hero';
+    // Hero: above-fold, taller than a thin strip, but not a full-page wrapper.
+    // Wrapper-DIV protection lives in addNode() (own elementCount > 80% of total),
+    // so this cap can be generous to allow rich hero sections with media/video.
+    if (docTop < viewportH * 0.4 && rect.height > 200 && rect.height < viewportH * 2.5) return 'hero';
     const h = (heading || '').toLowerCase();
     if (/pric|plan|kostnad|prenum|abonnemang/.test(h)) return 'pricing';
     if (/faq|fr[åa]gor|questions|hj[äa]lp/.test(h)) return 'faq';
