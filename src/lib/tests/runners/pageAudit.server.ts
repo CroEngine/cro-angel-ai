@@ -297,13 +297,41 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     }
   }
 
-  // Derive final indexability now that robots.txt is known.
+  // Read HTTP response stashed by the `goto` step in engine.server.ts.
+  const stashed = (page as unknown as {
+    __lovableLastResponse?: { status: number; headers: Record<string, string>; url: string };
+  }).__lovableLastResponse;
+  const h = (key: string): string | null =>
+    stashed?.headers ? (stashed.headers[key.toLowerCase()] ?? null) : null;
+  const contentLengthRaw = h("content-length");
+  const httpHeaders: NonNullable<PageAuditData["httpHeaders"]> = {
+    status: stashed?.status ?? null,
+    finalUrl: stashed?.url ?? null,
+    cacheControl: h("cache-control"),
+    lastModified: h("last-modified"),
+    etag: h("etag"),
+    xRobotsTag: h("x-robots-tag"),
+    contentType: h("content-type"),
+    contentEncoding: h("content-encoding"),
+    contentLength: contentLengthRaw && /^\d+$/.test(contentLengthRaw) ? parseInt(contentLengthRaw, 10) : null,
+    server: h("server"),
+    poweredBy: h("x-powered-by"),
+    strictTransportSecurity: h("strict-transport-security"),
+    contentSecurityPolicy: h("content-security-policy"),
+    link: h("link"),
+  };
+
+  // Derive final indexability now that robots.txt + HTTP headers are known.
   if (audit.indexability) {
     audit.indexability.robotsTxtAllows = !robotsTxt.blocksAll;
+    const noindexViaHeader = /noindex/i.test(httpHeaders.xRobotsTag ?? "");
+    audit.indexability.noindexViaHeader = noindexViaHeader;
+    audit.indexability.noindexEffective = audit.indexability.noindex || noindexViaHeader;
     audit.indexability.indexable =
-      !audit.indexability.noindex && audit.indexability.robotsTxtAllows;
+      !audit.indexability.noindexEffective && audit.indexability.robotsTxtAllows;
     audit.indexability.canonicalHttp = null;
   }
+
 
   // Network validation: canonical + sitemap HEAD checks under a shared 5s budget.
   const canonicalAbs =
