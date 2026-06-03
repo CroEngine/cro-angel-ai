@@ -202,7 +202,7 @@ export type CTAEntity = {
   competingActions: number;
   nearestTrustSignalDistance: number;
   nearestFormDistance: number;
-  selector: string;
+  selector?: string; // transient — present in browser script output, stripped before persistence
   rect: Rect;
 };
 
