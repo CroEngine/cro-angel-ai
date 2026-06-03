@@ -55,6 +55,74 @@ type RobotsSitemapFetch = {
   sitemapChildCount: number;
 };
 
+type HeadCheckResult = { status: number | null; reachable: boolean; redirectsTo: string | null };
+
+function parseRobotsTxt(body: string): {
+  errors: string[];
+  sitemapUrls: string[];
+  hasUserAgent: boolean;
+} {
+  const lines = body.split(/\r?\n/);
+  const errors: string[] = [];
+  const sitemapUrls: string[] = [];
+  let currentUA: string | null = null;
+  let sawUA = false;
+  lines.forEach((raw, i) => {
+    const line = raw.replace(/#.*$/, "").trim();
+    if (!line) return;
+    const m = line.match(/^([A-Za-z-]+)\s*:\s*(.*)$/);
+    if (!m) {
+      errors.push(`Line ${i + 1}: invalid syntax "${raw.trim()}"`);
+      return;
+    }
+    const key = m[1];
+    const val = m[2].trim();
+    const k = key.toLowerCase();
+    if (k === "user-agent") {
+      currentUA = val;
+      sawUA = true;
+      return;
+    }
+    if (k === "allow" || k === "disallow" || k === "crawl-delay") {
+      if (!currentUA) errors.push(`Line ${i + 1}: "${key}" before any User-agent`);
+      // Empty path = "allow all" (valid). "*" accepted by some crawlers.
+      if (k !== "crawl-delay" && val !== "" && val !== "*" && !val.startsWith("/")) {
+        errors.push(`Line ${i + 1}: "${key}" path must start with /`);
+      }
+      return;
+    }
+    if (k === "sitemap") {
+      if (!/^https?:\/\//i.test(val)) {
+        errors.push(`Line ${i + 1}: Sitemap must be absolute URL`);
+      } else {
+        sitemapUrls.push(val);
+      }
+      return;
+    }
+    if (k !== "host" && k !== "cleanparam" && k !== "clean-param" && k !== "noindex") {
+      errors.push(`Line ${i + 1}: unknown directive "${key}"`);
+    }
+  });
+  return { errors, sitemapUrls, hasUserAgent: sawUA };
+}
+
+async function headCheck(url: string, signal: AbortSignal): Promise<HeadCheckResult> {
+  try {
+    let res = await fetch(url, { method: "HEAD", signal, redirect: "manual" });
+    if (res.status === 405 || res.status === 501) {
+      res = await fetch(url, { method: "GET", signal, redirect: "manual" });
+    }
+    const loc = res.headers.get("location");
+    return {
+      status: res.status,
+      reachable: res.status >= 200 && res.status < 400,
+      redirectsTo: res.status >= 300 && res.status < 400 ? loc : null,
+    };
+  } catch {
+    return { status: null, reachable: false, redirectsTo: null };
+  }
+}
+
 export async function runPageAudit(page: Page): Promise<PageAuditData> {
   // Scroll warmup: triggers IntersectionObserver-based animations so lazy
   // sections promote from opacity:0 to opacity:1 before DOM traversal.
@@ -188,16 +256,35 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   const audit = rawAudit as RawPageAudit;
   const robotsSitemap = fetched as RobotsSitemapFetch;
 
-  const robotsTxt = { exists: false, blocksAll: false, hasSitemap: false };
+  const robotsTxt: {
+    exists: boolean;
+    blocksAll: boolean;
+    hasSitemap: boolean;
+    syntaxErrors: string[];
+    hasUserAgent: boolean;
+    sitemapDirectives: Array<{ url: string; status: number | null; reachable: boolean }>;
+  } = {
+    exists: false,
+    blocksAll: false,
+    hasSitemap: false,
+    syntaxErrors: [],
+    hasUserAgent: false,
+    sitemapDirectives: [],
+  };
   const sitemap: { exists: boolean; urlCount: number; url: string | null; isIndex?: boolean } = {
     exists: false,
     urlCount: 0,
     url: null,
   };
+  let parsedSitemapUrls: string[] = [];
   if (robotsSitemap.robots) {
     robotsTxt.exists = true;
     robotsTxt.blocksAll = /User-agent:\s*\*[\s\S]*?Disallow:\s*\/\s*$/im.test(robotsSitemap.robots);
     robotsTxt.hasSitemap = /^Sitemap:\s*\S+/im.test(robotsSitemap.robots);
+    const parsed = parseRobotsTxt(robotsSitemap.robots);
+    robotsTxt.syntaxErrors = parsed.errors;
+    robotsTxt.hasUserAgent = parsed.hasUserAgent;
+    parsedSitemapUrls = parsed.sitemapUrls;
   }
   if (robotsSitemap.sitemap) {
     sitemap.exists = true;
@@ -215,6 +302,40 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     audit.indexability.robotsTxtAllows = !robotsTxt.blocksAll;
     audit.indexability.indexable =
       !audit.indexability.noindex && audit.indexability.robotsTxtAllows;
+    audit.indexability.canonicalHttp = null;
+  }
+
+  // Network validation: canonical + sitemap HEAD checks under a shared 5s budget.
+  const canonicalAbs =
+    audit.indexability?.canonicalUrl && /^https?:\/\//i.test(audit.indexability.canonicalUrl)
+      ? audit.indexability.canonicalUrl
+      : null;
+  const sitemapTargets = parsedSitemapUrls.slice(0, 3);
+  if (canonicalAbs || sitemapTargets.length > 0) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+      const results = await Promise.allSettled([
+        canonicalAbs ? headCheck(canonicalAbs, controller.signal) : Promise.resolve(null),
+        ...sitemapTargets.map((u) => headCheck(u, controller.signal)),
+      ]);
+      const [canonRes, ...sitemapRes] = results;
+      if (canonicalAbs && audit.indexability && canonRes.status === "fulfilled" && canonRes.value) {
+        audit.indexability.canonicalHttp = canonRes.value;
+      } else if (canonicalAbs && audit.indexability) {
+        audit.indexability.canonicalHttp = { status: null, reachable: false, redirectsTo: null };
+      }
+      sitemapRes.forEach((r, i) => {
+        const url = sitemapTargets[i];
+        if (r.status === "fulfilled" && r.value) {
+          robotsTxt.sitemapDirectives.push({ url, status: r.value.status, reachable: r.value.reachable });
+        } else {
+          robotsTxt.sitemapDirectives.push({ url, status: null, reachable: false });
+        }
+      });
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   const sectionsTyped = sections as PageSection[];

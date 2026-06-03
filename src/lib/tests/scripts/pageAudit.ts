@@ -71,20 +71,56 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
   const links = { internal, external, nofollow, total: internal + external };
 
   const ldNodes = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+  const REQUIRED = {
+    Organization: ['name', 'url'],
+    WebSite: ['name', 'url'],
+    Article: ['headline', 'author', 'datePublished'],
+    NewsArticle: ['headline', 'author', 'datePublished'],
+    BlogPosting: ['headline', 'author', 'datePublished'],
+    Product: ['name', 'image', 'offers'],
+    BreadcrumbList: ['itemListElement'],
+    FAQPage: ['mainEntity'],
+    LocalBusiness: ['name', 'address'],
+    Person: ['name'],
+    Event: ['name', 'startDate', 'location'],
+  };
   const ldTypes = new Set();
+  const ldBlocks = [];
+  function checkBlock(it) {
+    let type = it && it['@type'];
+    if (Array.isArray(type)) type = type[0];
+    if (typeof type !== 'string') type = null;
+    if (type) ldTypes.add(type);
+    const req = type && REQUIRED[type];
+    const missing = [];
+    if (req) {
+      for (const f of req) {
+        const v = it[f];
+        if (v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0)) {
+          missing.push(f);
+        }
+      }
+    }
+    ldBlocks.push({ type: type || null, missingRequired: missing, parseError: null });
+  }
   for (const n of ldNodes) {
     try {
       const parsed = JSON.parse(n.textContent || '');
       const arr = Array.isArray(parsed) ? parsed : [parsed];
       for (const it of arr) {
-        if (it && it['@type']) {
-          if (Array.isArray(it['@type'])) it['@type'].forEach((t) => ldTypes.add(t));
-          else ldTypes.add(it['@type']);
+        if (!it || typeof it !== 'object') continue;
+        // Handle @graph wrappers
+        if (Array.isArray(it['@graph'])) {
+          for (const g of it['@graph']) if (g && typeof g === 'object') checkBlock(g);
+        } else {
+          checkBlock(it);
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      ldBlocks.push({ type: null, missingRequired: [], parseError: String((e && e.message) || e) });
+    }
   }
-  const schema = { count: ldNodes.length, types: Array.from(ldTypes) };
+  const schema = { count: ldNodes.length, types: Array.from(ldTypes), blocks: ldBlocks };
 
   const main = document.querySelector('main') || document.body;
   const wordCount = ((main && main.innerText) || '').trim().split(/\\s+/).filter(Boolean).length;
