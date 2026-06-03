@@ -72,11 +72,13 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     await sleep(200);
   })()`);
 
-  // Active poll for late-injected cookie banners (OneTrust, Cookiebot, etc.)
-  // Breaks as soon as a visible banner appears; max ~2.5s on truly bannerless sites.
+  // Active poll for late-injected cookie banners (OneTrust, Cookiebot, etc.).
+  // When found, mark the outermost cookie container with data-lovable-cookie-root
+  // so downstream scripts (sections, ctas) can filter via a single ancestor check.
   await page.evaluate(`(async () => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const SEL = [
+      '#onetrust-consent-sdk', '#onetrust-banner-sdk', '#onetrust-accept-btn-handler',
       '[id*="onetrust" i]', '[class*="onetrust" i]',
       '#osano-cm-window', '[class*="osano-cm" i]',
       '[id*="cookiebot" i]', '[id^="CybotCookiebot" i]',
@@ -86,6 +88,7 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
       '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
       '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
     ].join(',');
+    const ROOT_SEL = '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i]';
     const start = Date.now();
     const deadline = start + 2500;
     while (Date.now() < deadline) {
@@ -93,6 +96,8 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
       if (found) {
         const r = found.getBoundingClientRect();
         if (r.width > 50 && r.height > 30) {
+          const root = (found.closest && found.closest(ROOT_SEL)) || found;
+          try { root.setAttribute('data-lovable-cookie-root', '1'); } catch (_) {}
           window.__cookieWaitMs = Date.now() - start;
           return;
         }

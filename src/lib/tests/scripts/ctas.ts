@@ -101,6 +101,7 @@ export const CTAS_SCRIPT = `(() => {
   const raw = [];
   for (const el of nodes) {
     if (!isVisible(el)) continue;
+    if (el.closest && el.closest('[data-lovable-cookie-root="1"]')) continue;
     const rect = el.getBoundingClientRect();
     const cs = window.getComputedStyle(el);
     const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 80);
