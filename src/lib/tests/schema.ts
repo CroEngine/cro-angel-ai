@@ -121,7 +121,7 @@ export type PageSection = {
   position: number;
   heading: string;
   subheading?: string;
-  selector: string;
+  selector?: string; // transient — present in browser script output, stripped before persistence
   rect: SectionRect;
   aboveFold: boolean;
   visualWeight: number; // 0–100 normalized
@@ -147,6 +147,7 @@ export type TrustSignalType =
   | "testimonial"
   | "review_rating"
   | "stars"
+  | "stars_aggregate"
   | "trusted_by"
   | "customer_logos"
   | "review_badges"
@@ -184,6 +185,10 @@ export type TrustSignal = {
   badgeCount?: number;
   badgeTitles?: string[];
   detectionMethod?: "keyword";
+  // stars_aggregate-only fields
+  averageRating?: number | null;
+  count?: number;
+  aboveFoldCount?: number;
 };
 
 
@@ -271,13 +276,16 @@ export type VisualHierarchyEntry = {
 export type PageSummary = {
   primaryCtaCount: number;
   secondaryCtaCount: number;
+  ctaTotalCount: number;
   aboveFoldCtaCount: number;
+  foldDepthFirstCtaPx: number | null;
   aboveFoldTrustCount: number;
   trustSignalCount: number;
   testimonialCount: number;
   logoCount: number;
   reviewCount: number;
-  // averageRating removed — use individual TrustSignal.rating values instead
+  avgRating?: number | null;
+  ratingCount?: number;
   formCount: number;
   navigationLinks: number;
   sectionCount: number;
@@ -291,36 +299,40 @@ export type TrustSummary = {
   byType: Record<string, number>;
 };
 
+// Note: `auditedAt` is optional for backwards compatibility with snapshots
+// persisted before this field was introduced. Consumers should fall back to
+// the database row's `created_at` when this field is missing.
 export type PageAuditData = {
   url: string;
+  auditedAt?: string;
   head: {
     title: string;
     description: string;
-    canonical: string;
+    canonical: string | null;
     lang: string;
-    viewport: string;
-    robots: string;
+    viewport: string | null;
+    robots: string | null;
     ogTitle: string;
     ogDescription: string;
-    ogImage: string;
-    ogType: string;
-    ogUrl: string;
-    twitterCard: string;
-    twitterTitle: string;
-    twitterImage: string;
+    ogImage: string | null;
+    ogType: string | null;
+    ogUrl: string | null;
+    twitterCard: string | null;
+    twitterTitle: string | null;
+    twitterImage: string | null;
   };
   headings: {
     h1Count: number;
     h2Count: number;
     h3Count: number;
-    hierarchy: Array<{ level: number; text: string; id: string }>;
+    h1Texts: string[];
   };
   images: { total: number; missingAlt: number; missingAltPct: number; missingDims: number; lazy: number };
   links: { internal: number; external: number; nofollow: number; total: number };
   schema: { count: number; types: string[] };
   content: { wordCount: number; sections: number; articles: number };
   robotsTxt: { exists: boolean; blocksAll: boolean; hasSitemap: boolean };
-  sitemap: { exists: boolean; urlCount: number };
+  sitemap: { exists: boolean; urlCount: number; url: string | null; isIndex?: boolean };
   sections: PageSection[];
   sectionOrder: SectionType[];
   trustSignals: TrustSignal[];
