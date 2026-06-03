@@ -365,6 +365,14 @@ export type PageAuditData = {
     cloneH: number;
     accepted: boolean;
   }>;
+  cookieDebug?: Array<{
+    tag: string;
+    id: string | null;
+    cls: string;
+    rectH: number;
+    matchedBy: "regex" | "role" | "ancestor" | "text";
+    sample: string;
+  }>;
   indexability?: {
     indexable: boolean;
     noindex: boolean;

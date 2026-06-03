@@ -153,6 +153,9 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   const lazyDebug = (await page.evaluate(
     "window.__lazyDebug || []",
   )) as PageAuditData["lazyDebug"];
+  const cookieDebug = (await page.evaluate(
+    "window.__cookieDebug || []",
+  )) as PageAuditData["cookieDebug"];
 
   const audit = rawAudit as RawPageAudit;
   const robotsSitemap = fetched as RobotsSitemapFetch;
@@ -233,5 +236,6 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     flags: [],
     wrapperDebug,
     lazyDebug,
+    cookieDebug,
   };
 }
