@@ -41,18 +41,65 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     h1Texts,
   };
 
+  // hreflang — internationella sajter (alternate language links i <head>).
+  const hreflangNodes = Array.from(document.querySelectorAll('link[rel="alternate"][hreflang]'));
+  const hreflangEntries = hreflangNodes.map((n) => ({
+    lang: (n.getAttribute('hreflang') || '').trim(),
+    href: (n.getAttribute('href') || '').trim(),
+  }));
+  const hreflang = {
+    count: hreflangEntries.length,
+    hasXDefault: hreflangEntries.some((h) => h.lang.toLowerCase() === 'x-default'),
+    // Relativa hreflang-URLs är ogiltiga enligt Google. true = alla absoluta.
+    hasAbsoluteUrls: hreflangEntries.length > 0 && hreflangEntries.every(
+      (h) => h.href.startsWith('http://') || h.href.startsWith('https://')
+    ),
+    entries: hreflangEntries,
+  };
+
   const imgs = Array.from(document.querySelectorAll('img'));
   const imgTotal = imgs.length;
   const imgMissingAlt = imgs.filter((i) => !i.hasAttribute('alt') || (i.getAttribute('alt') || '').trim() === '').length;
   const imgMissingDims = imgs.filter((i) => !i.hasAttribute('width') || !i.hasAttribute('height')).length;
   const imgLazy = imgs.filter((i) => (i.getAttribute('loading') || '').toLowerCase() === 'lazy').length;
+
+  // Bildformat — klassificerar per filändelse på currentSrc (eller src fallback).
+  // OBS: Många CDN:er (Cloudinary, ImageKit, Imgix) serverar WebP/AVIF via
+  // content negotiation utan att URL:en ändras (t.ex. hero.jpg?format=auto).
+  // Sådana bilder hamnar i jpg/png/legacyCount trots att browsern fick WebP.
+  // Använd inte legacyCount som ensam källa för "behöver moderniseras"-flaggor.
+  function extOf(src) {
+    try {
+      const u = new URL(src, location.href);
+      const m = u.pathname.toLowerCase().match(/\\.([a-z0-9]+)$/);
+      return m ? m[1] : '';
+    } catch (e) { return ''; }
+  }
+  const formats = { webp: 0, avif: 0, jpg: 0, png: 0, gif: 0, svg: 0, other: 0, unknown: 0 };
+  for (const im of imgs) {
+    const src = im.currentSrc || im.getAttribute('src') || '';
+    if (!src) { formats.unknown++; continue; }
+    const e = extOf(src);
+    if (e === 'webp') formats.webp++;
+    else if (e === 'avif') formats.avif++;
+    else if (e === 'jpg' || e === 'jpeg') formats.jpg++;
+    else if (e === 'png') formats.png++;
+    else if (e === 'gif') formats.gif++;
+    else if (e === 'svg') formats.svg++;
+    else if (e === '') formats.unknown++;
+    else formats.other++;
+  }
   const images = {
     total: imgTotal,
     missingAlt: imgMissingAlt,
     missingAltPct: imgTotal > 0 ? Math.round((imgMissingAlt / imgTotal) * 1000) / 10 : 0,
     missingDims: imgMissingDims,
     lazy: imgLazy,
+    formats,
+    modernCount: formats.webp + formats.avif,
+    legacyCount: formats.jpg + formats.png + formats.gif,
   };
+
 
   const origin = location.origin;
   const anchors = Array.from(document.querySelectorAll('a[href]'));
