@@ -55,7 +55,10 @@ export const SECTIONS_SCRIPT = `(() => {
     if (tag === 'ASIDE' || role === 'complementary') return 'aside';
     if (el.querySelector('form')) return 'form';
     const docTop = rect.top + window.scrollY;
-    if (docTop < viewportH * 0.4 && rect.height > 200) return 'hero';
+    // Hero only if it actually fits hero proportions — page-wrapper divs
+    // (height ≈ full page) are NOT hero sections, they would otherwise
+    // skew visualWeight and rect.h.
+    if (docTop < viewportH * 0.4 && rect.height > 200 && rect.height < viewportH * 1.5) return 'hero';
     const h = (heading || '').toLowerCase();
     if (/pric|plan|kostnad|prenum|abonnemang/.test(h)) return 'pricing';
     if (/faq|fr[åa]gor|questions|hj[äa]lp/.test(h)) return 'faq';
@@ -73,10 +76,19 @@ export const SECTIONS_SCRIPT = `(() => {
   const seen = new Set();
   const raw = [];
 
+  // Cache total element count once for wrapper-detection below.
+  const totalElements = document.body.querySelectorAll('*').length;
+
   function addNode(el) {
     if (!el || seen.has(el)) return;
     const rect = el.getBoundingClientRect();
     if (rect.width < 40 || rect.height < 80) return;
+    // Skip page-wrapper DIVs that span almost the entire document — they
+    // produce bogus "hero" sections with rect.h ≈ document height.
+    if (rect.height > viewportH * 1.5 && el.tagName === 'DIV') {
+      const ownCount = el.querySelectorAll('*').length;
+      if (ownCount > totalElements * 0.8) return;
+    }
     seen.add(el);
     const repeated = repeatedChildrenCount(el);
     const hh = headings(el);

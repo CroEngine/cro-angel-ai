@@ -84,20 +84,45 @@ export function buildPageSummary(input: {
   const { ctas, trustSignals, trustSummary, forms, navigation, sections, dims } = input;
 
   let reviewCountSum = 0;
-  let ratingSum = 0;
-  let ratingN = 0;
-  for (const t of trustSignals) {
-    if (typeof t.reviewCount === "number") reviewCountSum += t.reviewCount;
-    if (typeof t.rating === "number") {
-      ratingSum += t.rating;
-      ratingN++;
+  // Pull rating from stars_aggregate when available; fall back to mean of
+  // individual rating fields for review_rating/etc.
+  const aggregate = trustSignals.find((t) => t.type === "stars_aggregate");
+  let avgRating: number | null = null;
+  let ratingCount = 0;
+  if (aggregate) {
+    avgRating = aggregate.averageRating ?? null;
+    ratingCount = aggregate.count ?? 0;
+  } else {
+    let ratingSum = 0;
+    let ratingN = 0;
+    for (const t of trustSignals) {
+      if (typeof t.rating === "number") {
+        ratingSum += t.rating;
+        ratingN++;
+      }
+    }
+    if (ratingN > 0) {
+      avgRating = Math.round((ratingSum / ratingN) * 100) / 100;
+      ratingCount = ratingN;
     }
   }
+  for (const t of trustSignals) {
+    if (typeof t.reviewCount === "number") reviewCountSum += t.reviewCount;
+  }
+
+  // foldDepth: first CTA outside nav/header (the "real" page CTA),
+  // measured in document px from the top.
+  const eligibleCtaYs = ctas
+    .filter((c) => c.section !== "nav" && c.section !== "header")
+    .map((c) => c.rect.y);
+  const foldDepthFirstCtaPx = eligibleCtaYs.length > 0 ? Math.min(...eligibleCtaYs) : null;
 
   return {
     primaryCtaCount: ctas.filter((c) => c.category === "cta_primary").length,
     secondaryCtaCount: ctas.filter((c) => c.category === "cta_secondary").length,
+    ctaTotalCount: ctas.length,
     aboveFoldCtaCount: ctas.filter((c) => c.aboveFold).length,
+    foldDepthFirstCtaPx,
     aboveFoldTrustCount: trustSummary.aboveFold,
     trustSignalCount: trustSignals.length,
     testimonialCount: trustSignals.filter((t) => t.type === "testimonial").length,
@@ -105,6 +130,8 @@ export function buildPageSummary(input: {
       .filter((t) => t.type === "customer_logos")
       .reduce((s, t) => s + (t.logoCount ?? 1), 0),
     reviewCount: reviewCountSum,
+    avgRating,
+    ratingCount,
 
     formCount: forms.length,
     navigationLinks: navigation.topNavCount + navigation.footerNavCount,

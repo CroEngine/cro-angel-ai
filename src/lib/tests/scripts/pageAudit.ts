@@ -2,6 +2,7 @@
 // Keep self-contained: no imports, no closures over server state.
 
 export const PAGE_AUDIT_SCRIPT = `(() => {
+  function nullIfEmpty(s) { const v = (s || '').trim(); return v === '' ? null : v; }
   function meta(name) {
     const el = document.querySelector('meta[name="' + name + '"]');
     return el ? (el.getAttribute('content') || '').trim() : '';
@@ -14,31 +15,30 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
   const head = {
     title: (document.title || '').trim(),
     description: meta('description'),
-    canonical: canonicalEl ? (canonicalEl.getAttribute('href') || '') : '',
+    canonical: nullIfEmpty(canonicalEl ? (canonicalEl.getAttribute('href') || '') : ''),
     lang: (document.documentElement.getAttribute('lang') || '').trim(),
-    viewport: meta('viewport'),
-    robots: meta('robots'),
+    viewport: nullIfEmpty(meta('viewport')),
+    robots: nullIfEmpty(meta('robots')),
     ogTitle: og('og:title'),
     ogDescription: og('og:description'),
-    ogImage: og('og:image'),
-    ogType: og('og:type'),
-    ogUrl: og('og:url'),
-    twitterCard: meta('twitter:card'),
-    twitterTitle: meta('twitter:title'),
-    twitterImage: meta('twitter:image'),
+    ogImage: nullIfEmpty(og('og:image')),
+    ogType: nullIfEmpty(og('og:type')),
+    ogUrl: nullIfEmpty(og('og:url')),
+    twitterCard: nullIfEmpty(meta('twitter:card')),
+    twitterTitle: nullIfEmpty(meta('twitter:title')),
+    twitterImage: nullIfEmpty(meta('twitter:image')),
   };
 
   const hs = Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6'));
-  const hierarchy = hs.slice(0, 50).map((h) => ({
-    level: parseInt(h.tagName.substring(1), 10),
-    text: (h.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 120),
-    id: h.id || '',
-  }));
+  const h1Texts = hs
+    .filter((h) => h.tagName === 'H1')
+    .slice(0, 2)
+    .map((h) => (h.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 120));
   const headings = {
     h1Count: hs.filter((h) => h.tagName === 'H1').length,
     h2Count: hs.filter((h) => h.tagName === 'H2').length,
     h3Count: hs.filter((h) => h.tagName === 'H3').length,
-    hierarchy,
+    h1Texts,
   };
 
   const imgs = Array.from(document.querySelectorAll('img'));

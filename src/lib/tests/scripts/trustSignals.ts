@@ -764,6 +764,30 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     return true;
   });
 
+  // Stars aggregation: collapse all individual 'stars' entries into one
+  // 'stars_aggregate' summary. Must run AFTER the stars-anchor pass above
+  // (which iterates individual stars to derive testimonials).
+  const starsEntries = filtered.filter((e) => e.type === 'stars');
+  if (starsEntries.length > 0) {
+    const withRating = starsEntries.filter((e) => typeof e.rating === 'number');
+    const avg = withRating.length > 0
+      ? withRating.reduce((s, e) => s + e.rating, 0) / withRating.length
+      : null;
+    const aboveFoldCount = starsEntries.filter((e) => e.aboveFold).length;
+    filtered = filtered.filter((e) => e.type !== 'stars');
+    filtered.push({
+      type: 'stars_aggregate',
+      text: starsEntries.length + ' star ratings' + (avg !== null ? ' (avg ' + (Math.round(avg * 100) / 100) + ')' : ''),
+      section: starsEntries[0].section,
+      aboveFold: aboveFoldCount > 0,
+      visualWeight: 0,
+      source: 'text',
+      averageRating: avg !== null ? Math.round(avg * 100) / 100 : null,
+      count: starsEntries.length,
+      aboveFoldCount,
+    });
+  }
+
   return filtered;
 
 
