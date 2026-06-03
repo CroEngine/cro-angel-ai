@@ -182,7 +182,7 @@ export function BrowserShell() {
           />
         </div>
         <div className="flex min-h-0 flex-1 lg:w-1/2">
-          <ConsolePanel events={events} url={url} />
+          <ConsolePanel events={events} url={url} psiRunKey={psiRunKey} />
         </div>
       </div>
     </div>
