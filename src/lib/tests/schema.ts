@@ -355,6 +355,16 @@ export type PageAuditData = {
     viewportH: number;
     skipped: boolean;
   }>;
+  lazyDebug?: Array<{
+    tag: string;
+    id: string | null;
+    cls: string;
+    rectH: number;
+    offsetH: number;
+    scrollH: number;
+    cloneH: number;
+    accepted: boolean;
+  }>;
   indexability?: {
     indexable: boolean;
     noindex: boolean;
