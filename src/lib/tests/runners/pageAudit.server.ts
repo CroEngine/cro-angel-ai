@@ -56,6 +56,22 @@ type RobotsSitemapFetch = {
 };
 
 export async function runPageAudit(page: Page): Promise<PageAuditData> {
+  // Scroll warmup: triggers IntersectionObserver-based animations so lazy
+  // sections promote from opacity:0 to opacity:1 before DOM traversal.
+  // 8-step sweep + bottom pause keeps total cost ~1.5s regardless of page height.
+  await page.evaluate(`(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const h = document.documentElement.scrollHeight;
+    const steps = 8;
+    for (let i = 0; i <= steps; i++) {
+      window.scrollTo({ top: (h / steps) * i, behavior: 'instant' });
+      await sleep(80);
+    }
+    await sleep(600);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    await sleep(200);
+  })()`);
+
   const [
     rawAudit,
     fetched,
@@ -67,6 +83,7 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     visualHierarchy,
     dims,
   ] = await Promise.all([
+
     page.evaluate(PAGE_AUDIT_SCRIPT),
     page.evaluate(`
       (async () => {
