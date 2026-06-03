@@ -238,10 +238,30 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     }
   }
 
-  // Quote-based testimonial detection (long quoted text)
-  document.querySelectorAll('blockquote, [class*="testimonial" i], [class*="quote" i]').forEach((el) => {
+  // Quote-based testimonial detection (long quoted text).
+  // Includes carousel slide containers so testimonials rendered as
+  // slides (Embla/Swiper/Slick/etc.) are picked up even when the slide
+  // itself lacks a "testimonial"/"quote" class.
+  document.querySelectorAll(
+    'blockquote, [class*="testimonial" i], [class*="quote" i], ' +
+    '[class*="swiper-slide" i], [class*="slick-slide" i], [class*="embla__slide" i], ' +
+    '[class*="keen-slider__slide" i], [class*="glide__slide" i], [class*="splide__slide" i], ' +
+    '[role="group"][aria-roledescription~="slide" i], [data-slide], [data-carousel-item]'
+  ).forEach((el) => {
     const text = (el.innerText || el.textContent || '').trim();
     if (text.length < 40 || text.length > 600) return;
+    // For carousel slides, require some signal that it's actually a testimonial:
+    // a quote mark, an author-ish child element, or wording hints. Otherwise
+    // every product/feature slide would be misclassified as a testimonial.
+    const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
+    const isSlide = /slide|swiper|slick|embla|keen-slider|glide|splide/.test(cls)
+      || (el.getAttribute && (el.getAttribute('aria-roledescription') || '').toLowerCase().indexOf('slide') !== -1);
+    if (isSlide) {
+      const hasQuote = /[“"„«»]/.test(text) || /[—–-]\\s*[A-ZÅÄÖ]/.test(text);
+      const hasAuthor = !!el.querySelector('cite, figcaption, [class*="author" i], [class*="name" i], [class*="role" i], [class*="title" i]');
+      const hasTestimonialClass = /testimonial|quote|review/.test(cls);
+      if (!hasQuote && !hasAuthor && !hasTestimonialClass) return;
+    }
     push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
   });
 

@@ -53,7 +53,15 @@ export const SECTIONS_SCRIPT = `(() => {
     if (tag === 'FOOTER' || role === 'contentinfo') return 'footer';
     if (tag === 'HEADER' || role === 'banner') return 'header';
     if (tag === 'ASIDE' || role === 'complementary') return 'aside';
-    if (el.querySelector('form')) return 'form';
+    // Only classify as 'form' when a contained form actually fills a sane
+    // portion of the section — guards against entire-page <form> wrappers
+    // (common on Ashby-style SPAs) that would otherwise mark the whole
+    // page as a single form section.
+    const innerForm = el.querySelector('form');
+    if (innerForm) {
+      const fr = innerForm.getBoundingClientRect();
+      if (fr.height > 40 && fr.height < viewportH * 1.5 && fr.height <= rect.height * 0.9) return 'form';
+    }
     const docTop = rect.top + window.scrollY;
     // Hero: above-fold, taller than a thin strip, but not a full-page wrapper.
     // Wrapper-DIV protection lives in addNode() (own elementCount > 80% of total),
@@ -79,13 +87,40 @@ export const SECTIONS_SCRIPT = `(() => {
   // Cache total element count once for wrapper-detection below.
   const totalElements = document.body.querySelectorAll('*').length;
 
+  function isCookieBanner(el) {
+    const id = (el.id || '').toLowerCase();
+    const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
+    const aria = ((el.getAttribute && el.getAttribute('aria-label')) || '').toLowerCase();
+    const role = ((el.getAttribute && el.getAttribute('role')) || '').toLowerCase();
+    const COOKIE_RX = /(cookie|consent|gdpr|ccpa|onetrust|cookiebot|trustarc|usercentrics|didomi|osano|klaro)/;
+    if (COOKIE_RX.test(id) || COOKIE_RX.test(cls) || COOKIE_RX.test(aria)) return true;
+    if (role === 'dialog' || role === 'alertdialog') {
+      const txt = (el.innerText || '').toLowerCase().slice(0, 400);
+      if (/cookie|consent|gdpr|samtycke/.test(txt)) return true;
+    }
+    // Inspect a couple of close ancestors so deeply-nested banner inner divs
+    // are also filtered.
+    let p = el.parentElement;
+    let hops = 0;
+    while (p && hops++ < 3) {
+      const pid = (p.id || '').toLowerCase();
+      const pcls = (p.className && typeof p.className === 'string') ? p.className.toLowerCase() : '';
+      if (COOKIE_RX.test(pid) || COOKIE_RX.test(pcls)) return true;
+      p = p.parentElement;
+    }
+    return false;
+  }
+
   function addNode(el) {
     if (!el || seen.has(el)) return;
     const rect = el.getBoundingClientRect();
     if (rect.width < 40 || rect.height < 80) return;
-    // Skip page-wrapper DIVs that span almost the entire document — they
-    // produce bogus "hero" sections with rect.h ≈ document height.
-    if (rect.height > viewportH * 1.5 && el.tagName === 'DIV') {
+    if (isCookieBanner(el)) return;
+    // Skip page-wrapper elements that span almost the entire document — they
+    // produce bogus "hero" / "form" sections with rect.h ≈ document height.
+    // Applies to any tag (DIV, FORM, SECTION, MAIN, …) since SPAs sometimes
+    // wrap the whole page in <form>.
+    if (rect.height > viewportH * 1.5) {
       const ownCount = el.querySelectorAll('*').length;
       if (ownCount > totalElements * 0.8) return;
     }
