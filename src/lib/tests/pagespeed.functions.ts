@@ -52,6 +52,13 @@ export type RenderBlockingResource = {
   wastedMs: number;
 };
 
+export type ThirdPartyEntity = {
+  entity: string;
+  transferKib: number;
+  blockingTimeMs: number;
+  mainThreadTimeMs: number;
+};
+
 export type PsiStrategyResult = {
   strategy: Strategy;
   fetchedAt: string;
@@ -63,6 +70,8 @@ export type PsiStrategyResult = {
   };
   resourceSummary: ResourceSummary;
   renderBlockingResources: RenderBlockingResource[];
+  thirdPartyEntities: ThirdPartyEntity[];
+  thirdPartyBlockingTotalMs: number;
   error: string | null;
 };
 
