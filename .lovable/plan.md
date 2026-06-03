@@ -1,22 +1,36 @@
-## Två småfixar
+## Buggen
 
-### 1. Hero-detektion för aggressiv
-I `src/lib/tests/scripts/sections.ts` → `classifyType()`: höj hero-cap från `viewportH * 1.5` till `viewportH * 2.5` (golv `> 200` kvar). Wrapper-filtret i `addNode()` skyddar redan mot full-page DIVs, så denna inre cap kan vara generös.
-
-### 2. Selector-strip för trustSignals + ctas
-I `src/lib/tests/runners/pageAudit.server.ts`, efter att helpers (`buildTrustSummary`, `pageSummary`, `deriveHero`) körts:
+I förra fixen flyttade vi `selector`-strip för `trustSignals` + `ctas` in i `runPageAudit()`. Men `engine.server.ts` (rad 360–377) bygger sin overlay genom att filtrera på `!!t.selector`:
 
 ```ts
-const sectionsForSnapshot = sectionsTyped.map(({ selector: _s, ...rest }) => rest);
-const ctasForSnapshot = ctasTyped.map(({ selector: _s, ...rest }) => rest);
-const trustForSnapshot = trustTyped.map((t) => {
-  const { selector: _s, _block, ...rest } = t as TrustSignal & { _block?: unknown };
-  return rest;
-});
+const trustOverlay = full.trustSignals
+  .filter((t) => !!t.selector && !!t.rect && (...))
+  .map((t) => ({ selector: t.selector!, category: t.type, rect: t.rect! }));
 ```
 
-Använd `*ForSnapshot` i return-objektet.
+När selector strippas innan return blir filtret tomt → inga trustSignals ritas ut på den frusna screenshoten. Samma sak gäller live-overlayet på `page.evaluate(OVERLAY_FN, trustPairs)` (rad 364).
 
-**Om `_block`:** kollar först schema. `_block` läggs på dynamiskt i browser-scriptet (`trustSignals.ts` rad 148: `if (type === 'trusted_by') entry._block = block;`) och är en DOM-Element-referens. Vid `JSON.stringify` av en DOM-node returneras `{}` (eller kastar i vissa fall), så det är värt att strippa explicit. Cast via `as TrustSignal & { _block?: unknown }` undviker `any` och TS-fel om fältet inte finns i typen.
+## Fix
 
-Båda ändringarna är oberoende, inga schema-ändringar.
+Flytta strippen ett steg senare: ut ur `runPageAudit` och in i `engine.server.ts` `pageAudit`-casen, EFTER att overlayet byggts.
+
+### `src/lib/tests/runners/pageAudit.server.ts`
+Ta bort `ctasForSnapshot` och `trustForSnapshot`. Behåll `sectionsForSnapshot` (sections-overlay finns inte). Returnera `trustSignals: trustTyped` och `ctas: ctasTyped` med selector intakt. `_block` kan strippas här fortfarande (eller låt det vara — det är inte serialiserbart oavsett).
+
+### `src/lib/tests/engine.server.ts` (pageAudit-case, runt rad 378)
+Efter att `trustOverlay` byggts:
+
+```ts
+const trustForSnapshot = full.trustSignals.map(({ selector: _s, ...rest }) => rest);
+const ctasForSnapshot = full.ctas.map(({ selector: _s, ...rest }) => rest);
+data = {
+  ...full,
+  trustSignals: trustForSnapshot,
+  ctas: ctasForSnapshot,
+  overlayElements: trustOverlay,
+};
+```
+
+Då behåller overlayet sina selectors (för rendering och DOM-lookup), medan snapshot-arrayerna som strömmas till UI och visas i JSON-vyn är rena.
+
+Inga schema-ändringar (selector är redan optional på båda typerna sedan förra rundan).

@@ -375,7 +375,18 @@ export async function runSteps(
                    t.type === "trusted_by" ||
                    t.type === "customer_logos"))
                 .map((t) => ({ selector: t.selector!, category: t.type, rect: t.rect! }));
-              data = { ...full, overlayElements: trustOverlay };
+              // Strip selector from snapshot arrays now that overlay is built.
+              const trustForSnapshot = full.trustSignals.map((t) => {
+                const { selector: _s, _block, ...rest } = t as typeof t & { _block?: unknown };
+                return rest;
+              });
+              const ctasForSnapshot = full.ctas.map(({ selector: _s, ...rest }) => rest);
+              data = {
+                ...full,
+                trustSignals: trustForSnapshot,
+                ctas: ctasForSnapshot,
+                overlayElements: trustOverlay,
+              };
               onEvent({
                 type: "log",
                 message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryCtaCount} primary) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,

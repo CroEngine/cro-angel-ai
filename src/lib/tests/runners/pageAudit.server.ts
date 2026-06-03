@@ -184,15 +184,11 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   });
   const hero = deriveHero(sectionsTyped, ctasTyped);
 
-  // Strip transient DOM-lookup helpers from snapshot arrays — `selector` is a
-  // browser-side helper, and `_block` on trust signals is a DOM-node ref that
-  // doesn't survive JSON serialization cleanly.
+  // Strip transient `selector` from sections before persistence — it's a
+  // DOM lookup helper for the browser-side scripts, not analytics data.
+  // NOTE: trustSignals + ctas keep selector here because engine.server.ts
+  // needs it to build the overlay; it's stripped downstream after overlay.
   const sectionsForSnapshot = sectionsTyped.map(({ selector: _s, ...rest }) => rest);
-  const ctasForSnapshot = ctasTyped.map(({ selector: _s, ...rest }) => rest);
-  const trustForSnapshot = trustTyped.map((t) => {
-    const { selector: _s, _block, ...rest } = t as TrustSignal & { _block?: unknown };
-    return rest;
-  });
 
   return {
     ...audit,
@@ -201,9 +197,9 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     sitemap,
     sections: sectionsForSnapshot,
     sectionOrder,
-    trustSignals: trustForSnapshot,
+    trustSignals: trustTyped,
     trustSummary,
-    ctas: ctasForSnapshot,
+    ctas: ctasTyped,
     forms: formsTyped,
     navigation: navTyped,
     visualHierarchy: hierarchyTyped,
