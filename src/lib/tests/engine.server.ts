@@ -369,7 +369,11 @@ export async function runSteps(
               // trust types the user requested to see marked on the screenshot).
               const trustOverlay = full.trustSignals
                 .filter((t) => !!t.selector && !!t.rect &&
-                  (t.type === "testimonial" || t.type === "review_badges" || t.type === "social_proof_count"))
+                  (t.type === "testimonial" ||
+                   t.type === "review_badges" ||
+                   t.type === "social_proof_count" ||
+                   t.type === "trusted_by" ||
+                   t.type === "customer_logos"))
                 .map((t) => ({ selector: t.selector!, category: t.type, rect: t.rect! }));
               data = { ...full, overlayElements: trustOverlay };
               onEvent({
