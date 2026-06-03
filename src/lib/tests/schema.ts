@@ -479,7 +479,7 @@ export type PageAuditData = {
     items: Array<{
       tech: string;
       category: string;
-      source: "script" | "dom" | "meta";
+      source: "script" | "resource_timing" | "dom" | "meta";
       evidence: string;
     }>;
   };
