@@ -147,7 +147,8 @@ export function deriveHero(
 ): HeroContent | undefined {
   const heroSection =
     sections.find((s) => s.type === "hero") ??
-    sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading);
+    sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading) ??
+    sections.find((s) => s.type === "form" && s.aboveFold && s.heading);
   if (!heroSection) return undefined;
 
   const heroCta =
