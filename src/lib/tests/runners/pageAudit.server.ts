@@ -55,6 +55,74 @@ type RobotsSitemapFetch = {
   sitemapChildCount: number;
 };
 
+type HeadCheckResult = { status: number | null; reachable: boolean; redirectsTo: string | null };
+
+function parseRobotsTxt(body: string): {
+  errors: string[];
+  sitemapUrls: string[];
+  hasUserAgent: boolean;
+} {
+  const lines = body.split(/\r?\n/);
+  const errors: string[] = [];
+  const sitemapUrls: string[] = [];
+  let currentUA: string | null = null;
+  let sawUA = false;
+  lines.forEach((raw, i) => {
+    const line = raw.replace(/#.*$/, "").trim();
+    if (!line) return;
+    const m = line.match(/^([A-Za-z-]+)\s*:\s*(.*)$/);
+    if (!m) {
+      errors.push(`Line ${i + 1}: invalid syntax "${raw.trim()}"`);
+      return;
+    }
+    const key = m[1];
+    const val = m[2].trim();
+    const k = key.toLowerCase();
+    if (k === "user-agent") {
+      currentUA = val;
+      sawUA = true;
+      return;
+    }
+    if (k === "allow" || k === "disallow" || k === "crawl-delay") {
+      if (!currentUA) errors.push(`Line ${i + 1}: "${key}" before any User-agent`);
+      // Empty path = "allow all" (valid). "*" accepted by some crawlers.
+      if (k !== "crawl-delay" && val !== "" && val !== "*" && !val.startsWith("/")) {
+        errors.push(`Line ${i + 1}: "${key}" path must start with /`);
+      }
+      return;
+    }
+    if (k === "sitemap") {
+      if (!/^https?:\/\//i.test(val)) {
+        errors.push(`Line ${i + 1}: Sitemap must be absolute URL`);
+      } else {
+        sitemapUrls.push(val);
+      }
+      return;
+    }
+    if (k !== "host" && k !== "cleanparam" && k !== "clean-param" && k !== "noindex") {
+      errors.push(`Line ${i + 1}: unknown directive "${key}"`);
+    }
+  });
+  return { errors, sitemapUrls, hasUserAgent: sawUA };
+}
+
+async function headCheck(url: string, signal: AbortSignal): Promise<HeadCheckResult> {
+  try {
+    let res = await fetch(url, { method: "HEAD", signal, redirect: "manual" });
+    if (res.status === 405 || res.status === 501) {
+      res = await fetch(url, { method: "GET", signal, redirect: "manual" });
+    }
+    const loc = res.headers.get("location");
+    return {
+      status: res.status,
+      reachable: res.status >= 200 && res.status < 400,
+      redirectsTo: res.status >= 300 && res.status < 400 ? loc : null,
+    };
+  } catch {
+    return { status: null, reachable: false, redirectsTo: null };
+  }
+}
+
 export async function runPageAudit(page: Page): Promise<PageAuditData> {
   // Scroll warmup: triggers IntersectionObserver-based animations so lazy
   // sections promote from opacity:0 to opacity:1 before DOM traversal.
