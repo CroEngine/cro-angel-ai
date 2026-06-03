@@ -275,23 +275,29 @@ async function fetchStrategy(
   return second;
 }
 
+async function runStrategyServer(url: string, strategy: Strategy): Promise<PsiStrategyResult> {
+  const apiKey = process.env.GOOGLE_PAGESPEED_API_KEY;
+  if (!apiKey) {
+    return emptyStrategyResult(strategy, "GOOGLE_PAGESPEED_API_KEY is not configured");
+  }
+  return fetchStrategy(url, strategy, apiKey);
+}
+
+export const runPsiMobile = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ url: z.string().url() }).parse(input))
+  .handler(async ({ data }): Promise<PsiStrategyResult> => runStrategyServer(data.url, "mobile"));
+
+export const runPsiDesktop = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ url: z.string().url() }).parse(input))
+  .handler(async ({ data }): Promise<PsiStrategyResult> => runStrategyServer(data.url, "desktop"));
+
 export const runPageSpeedInsights = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ url: z.string().url() }).parse(input))
   .handler(async ({ data }): Promise<PsiResult> => {
-    const apiKey = process.env.GOOGLE_PAGESPEED_API_KEY;
-    if (!apiKey) {
-      return {
-        url: data.url,
-        mobile: null,
-        desktop: null,
-        error: "GOOGLE_PAGESPEED_API_KEY is not configured",
-      };
-    }
-
-    // Sequential to stay under proxy timeout and avoid doubling PSI load
-    const mobile = await fetchStrategy(data.url, "mobile", apiKey);
-    const desktop = await fetchStrategy(data.url, "desktop", apiKey);
-
+    const [mobile, desktop] = await Promise.all([
+      runStrategyServer(data.url, "mobile"),
+      runStrategyServer(data.url, "desktop"),
+    ]);
     return {
       url: data.url,
       mobile,
