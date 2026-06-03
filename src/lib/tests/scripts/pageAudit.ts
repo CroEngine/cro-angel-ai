@@ -295,19 +295,75 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     scriptCount: document.querySelectorAll('script').length,
   };
 
+  // Videos — placerat EFTER viewportH-definitionen ovan så aboveFold-check fungerar.
+  const videoNodes = Array.from(document.querySelectorAll('video'));
+  const videoItems = videoNodes.map((v) => {
+    const r = v.getBoundingClientRect();
+    const srcAttr = v.getAttribute('src');
+    const sourceEl = v.querySelector('source');
+    return {
+      autoplay: v.hasAttribute('autoplay'),
+      muted: v.hasAttribute('muted') || v.muted === true,
+      loop: v.hasAttribute('loop'),
+      controls: v.hasAttribute('controls'),
+      preload: ((v.getAttribute('preload') || '').toLowerCase()) || null,
+      poster: v.getAttribute('poster') || null,
+      src: v.currentSrc || srcAttr || (sourceEl && sourceEl.getAttribute('src')) || null,
+      aboveFold: r.top < viewportH && r.bottom > 0,
+      widthPx: Math.round(r.width),
+      heightPx: Math.round(r.height),
+    };
+  });
+  const videos = {
+    count: videoItems.length,
+    autoplayCount: videoItems.filter((v) => v.autoplay).length,
+    autoplayAboveFold: videoItems.filter((v) => v.autoplay && v.aboveFold).length,
+    unmutedAutoplay: videoItems.filter((v) => v.autoplay && !v.muted).length,
+    items: videoItems,
+  };
+
+  // Resource hints — preconnect/dns-prefetch/preload/prefetch/modulepreload.
+  const hintNodes = Array.from(document.querySelectorAll('link[rel]'));
+  const hintCounts = { preconnect: 0, 'dns-prefetch': 0, preload: 0, prefetch: 0, modulepreload: 0 };
+  const hintItems = [];
+  for (const l of hintNodes) {
+    const rel = (l.getAttribute('rel') || '').toLowerCase().trim();
+    if (!(rel in hintCounts)) continue;
+    hintCounts[rel]++;
+    hintItems.push({
+      rel,
+      href: l.getAttribute('href') || '',
+      as: l.getAttribute('as') || null,
+      crossorigin: l.hasAttribute('crossorigin'),
+    });
+  }
+  const resourceHints = {
+    preconnectCount: hintCounts.preconnect,
+    dnsPrefetchCount: hintCounts['dns-prefetch'],
+    preloadCount: hintCounts.preload,
+    prefetchCount: hintCounts.prefetch,
+    modulePreloadCount: hintCounts.modulepreload,
+    total: hintCounts.preconnect + hintCounts['dns-prefetch'] + hintCounts.preload + hintCounts.prefetch + hintCounts.modulepreload,
+    items: hintItems,
+  };
+
   return {
     url: location.href,
     head,
+    hreflang,
     headings,
     images,
+    videos,
     links,
     schema,
     content,
     indexability,
     contentMetrics,
     performanceProxy,
+    resourceHints,
   };
 })()`;
+
 
 
 
