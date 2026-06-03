@@ -392,18 +392,38 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     if (techByCategory[category]) techByCategory[category].add(tech);
     techItems.push({ tech, category, source, evidence });
   }
+  // Samla script-URLs från både statisk DOM och Performance Resource Timing.
+  // Resource Timing fångar dynamiskt injicerade scripts (t.ex. via GTM) som
+  // aldrig ligger som <script>-element i DOM:en.
+  const scriptUrlMap = new Map(); // url -> 'script' | 'resource_timing'
   const scriptNodes = Array.from(document.querySelectorAll('script[src]'));
+  for (const s of scriptNodes) {
+    const src = s.getAttribute('src') || '';
+    if (!src) continue;
+    try {
+      const abs = new URL(src, location.href).href;
+      scriptUrlMap.set(abs, 'script');
+    } catch (e) {}
+  }
+  try {
+    const rtEntries = performance.getEntriesByType('resource');
+    for (const e of rtEntries) {
+      if (e.initiatorType === 'script' && e.name && !scriptUrlMap.has(e.name)) {
+        scriptUrlMap.set(e.name, 'resource_timing');
+      }
+    }
+  } catch (e) {}
+
   let firstPartyScriptCount = 0;
   let thirdPartyScriptCount = 0;
   const pageHost = location.hostname;
-  for (const s of scriptNodes) {
-    const src = s.getAttribute('src') || '';
+  for (const [url, srcType] of scriptUrlMap.entries()) {
     let host = '';
-    try { host = new URL(src, location.href).hostname; } catch (e) {}
+    try { host = new URL(url).hostname; } catch (e) {}
     if (host && host === pageHost) firstPartyScriptCount++;
     else if (host) thirdPartyScriptCount++;
     for (const rule of TECH_RULES) {
-      if (src.indexOf(rule.match) !== -1) addTech(rule.tech, rule.category, 'script', src);
+      if (url.indexOf(rule.match) !== -1) addTech(rule.tech, rule.category, srcType, url);
     }
   }
   if (document.querySelector('form[data-hsfc]') || document.querySelector('script[src*="hsforms.net"]')) {
