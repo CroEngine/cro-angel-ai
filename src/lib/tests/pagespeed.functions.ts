@@ -33,17 +33,36 @@ export type CoreWebVitals = {
   hasFieldData: boolean;
 };
 
+export type ResourceSummary = {
+  totalKib: number | null;
+  scriptKib: number | null;
+  imageKib: number | null;
+  stylesheetKib: number | null;
+  fontKib: number | null;
+  documentKib: number | null;
+  mediaKib: number | null;
+  otherKib: number | null;
+  thirdPartyKib: number | null;
+  totalRequests: number | null;
+};
+
+export type RenderBlockingResource = {
+  url: string;
+  totalBytes: number;
+  wastedMs: number;
+};
+
 export type PsiStrategyResult = {
   strategy: Strategy;
   fetchedAt: string;
   scores: CategoryScores;
   vitals: CoreWebVitals;
   audits: {
-    // Top opportunities sorted by potential savings (ms)
     opportunities: Array<{ id: string; title: string; savingsMs: number; displayValue: string | null }>;
-    // Failed diagnostics worth surfacing
     diagnostics: Array<{ id: string; title: string; displayValue: string | null; score: number | null }>;
   };
+  resourceSummary: ResourceSummary;
+  renderBlockingResources: RenderBlockingResource[];
   error: string | null;
 };
 
