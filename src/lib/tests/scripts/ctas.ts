@@ -194,6 +194,10 @@ export const CTAS_SCRIPT = `(() => {
       if (o.section !== r.section) continue;
       if (o.category === 'cta_primary' || o.category === 'cta_secondary' || o.category === 'form_submit') competing++;
     }
+    const fontSizePx = parseFloat(r.cs.fontSize) || 14;
+    const fontWeightN = parseInt(r.cs.fontWeight, 10) || 400;
+    const contrastRatio = wcagContrast(r.cs.color, r.cs.backgroundColor);
+    const wcagLevel = deriveWcagLevel(contrastRatio, fontSizePx, fontWeightN);
     return {
       text: r.text,
       intent: r.intent,
@@ -204,6 +208,8 @@ export const CTAS_SCRIPT = `(() => {
       competingActions: competing,
       nearestTrustSignalDistance: minDist(cx, cy, trustRects),
       nearestFormDistance: formDistance(r.el, cx, cy),
+      contrastRatio: contrastRatio,
+      wcagLevel: wcagLevel,
       selector: buildSelector(r.el),
       rect: {
         x: Math.round(r.rect.left + window.scrollX),
