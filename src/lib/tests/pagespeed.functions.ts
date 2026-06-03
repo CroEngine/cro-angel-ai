@@ -249,8 +249,15 @@ function parsePsi(json: unknown, strategy: Strategy): PsiStrategyResult {
     resourceSummary: parseResourceSummary(audits["resource-summary"]),
     renderBlockingResources: parseRenderBlocking(audits["render-blocking-resources"]),
     ...(() => {
-      const tp = parseThirdPartyEntities(audits["third-party-summary"]);
-      return { thirdPartyEntities: tp.entities, thirdPartyBlockingTotalMs: tp.totalBlockingMs };
+      // Försök canonical audit-ID först, fall tillbaka på facades-varianten
+      // som finns i nyare Lighthouse-versioner.
+      const tpAudit = audits["third-party-summary"] ?? audits["third-party-facades"];
+      const tp = parseThirdPartyEntities(tpAudit);
+      return {
+        thirdPartyEntities: tp.entities,
+        thirdPartyBlockingTotalMs: tp.totalBlockingMs,
+        thirdPartyAuditMissing: tp.entities.length === 0,
+      };
     })(),
     error: null,
   };
