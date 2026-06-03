@@ -296,6 +296,8 @@ export type PageSummary = {
   sectionCount: number;
   pageHeightPx: number;
   foldHeightPx: number;
+  ctaContrastFailCount: number;
+  ctaContrastAvg: number | null;
 };
 
 export type TrustSummary = {
