@@ -399,6 +399,7 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     auditedAt: new Date().toISOString(),
     robotsTxt,
     sitemap,
+    httpHeaders,
     sections: sectionsForSnapshot,
     sectionOrder,
     trustSignals: trustTyped,
