@@ -1,78 +1,113 @@
-## Greenhouse: två separata bugs, två oberoende fixar
+## Problem
 
-### Bug 1 — Cookie-banner: timing, inte detection
-Bannern (OneTrust) finns **inte i statisk HTML** — den injiceras av ett 3rd-party-script som laddas asynkront. När `SECTIONS_SCRIPT` körs efter scroll-warmupens 1.5s är banner-elementet ofta inte i DOM:en än. Resultat: `cookieDebug: []`, bannern hinner sedan dyka upp och klassas som hero. Detection-koden (`isCookieBanner`) är inte problemet — den körs bara på saker som finns när den körs.
+`hero.primaryCtaText` är fortfarande `"Accept all cookies"` på Greenhouse. Förra fixen (polling + `data-lovable-cookie-root` + filter i `ctas.ts`) verkar inte slå igenom, men vi har ingen signal som visar **var** det går fel:
 
-**Lösning: aktiv polling efter cookie-banner före script-batchen.** Efter scroll-warmup, polla upp till ~2.5s efter known cookie-selectors. Bryt så fort en hittas (vanligt fall ~200–500ms efter scroll). Detta ger inga falska väntningar på rena sajter.
+- Körs polling-blocket alls?
+- Hittar `document.querySelector(SEL)` bannern inom 2.5s?
+- Sätts `data-lovable-cookie-root="1"` på rätt förälder?
+- Och i så fall — varför filtreras inte CTA-knappen bort i `ctas.ts`?
 
-```ts
-// pageAudit.server.ts — efter scroll-warmup, före Promise.all
-await page.evaluate(`(async () => {
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const SEL = [
-    '[id*="onetrust" i]', '[class*="onetrust" i]',
-    '#osano-cm-window', '[class*="osano-cm" i]',
-    '[id*="cookiebot" i]', '[id^="CybotCookiebot" i]',
-    '[id*="cookie-banner" i]', '[id*="cookie-consent" i]',
-    '[class*="cookie-banner" i]', '[class*="cookie-consent" i]',
-    '[id*="truste" i]', '[class*="truste" i]',
-    '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
-    '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
-  ].join(',');
-  const deadline = Date.now() + 2500;
-  while (Date.now() < deadline) {
-    const found = document.querySelector(SEL);
-    if (found) {
-      const r = found.getBoundingClientRect();
-      if (r.width > 50 && r.height > 30) { window.__cookieWaitMs = Date.now(); break; }
-    }
-    await sleep(150);
-  }
-})()`);
-```
+Just nu sätter polling-blocket bara `window.__cookieWaitMs` men inget av detta läses tillbaka till `PageAuditData`. Vi flyger blint.
 
-Inget tvingande timeout-vänta — så fort bannern är synlig (`width>50 && height>30`) går vi vidare. Tillägg `window.__cookieWaitMs` för diagnostik (kan exponeras i `cookieDebug` senare om vi vill).
+## Lösning: exponera full diagnostik i en runda
 
-### Bug 2 — Multipla H1 i samma sektion
-Greenhouse splittar rubriken över två `<h1>`:
-```html
-<h1>The only hiring platform you'll </h1>
-<h1>ever need</h1>
-```
-`headings()` i `sections.ts` gör `querySelector('h1,...')` → plockar bara första. Resultat: `headline = "The only hiring platform you'll"`.
+### 1. Utöka polling-blocket i `pageAudit.server.ts`
 
-**Lösning: när flera `<h1>` finns i samma sektion, sammanfoga dem.** Behåll nuvarande beteende för h2/h3/h4 (alltid första).
+Lägg till räknare + info om hittat element och taggad rot:
 
 ```js
-function headings(el) {
-  const h1s = Array.from(el.querySelectorAll('h1'));
-  let heading = '';
-  if (h1s.length > 0) {
-    heading = h1s.map(h => (h.textContent || '').trim()).filter(Boolean).join(' ');
-  } else {
-    const h = el.querySelector('h2,h3,h4');
-    heading = h ? (h.textContent || '').trim() : '';
+window.__cookiePollAttempts = 0;
+window.__cookieFoundEl = null;
+window.__cookieRootTagged = null;
+window.__cookieWaitMs = null;
+
+const start = Date.now();
+const deadline = start + 2500;
+while (Date.now() < deadline) {
+  window.__cookiePollAttempts++;
+  const found = document.querySelector(SEL);
+  if (found) {
+    const r = found.getBoundingClientRect();
+    window.__cookieFoundEl = {
+      tag: found.tagName, id: found.id || null,
+      cls: (found.className || '').toString().slice(0, 120),
+      w: Math.round(r.width), h: Math.round(r.height),
+    };
+    if (r.width > 50 && r.height > 30) {
+      const root = (found.closest && found.closest(ROOT_SEL)) || found;
+      try { root.setAttribute('data-lovable-cookie-root', '1'); } catch (_) {}
+      window.__cookieRootTagged = {
+        tag: root.tagName, id: root.id || null,
+        cls: (root.className || '').toString().slice(0, 120),
+      };
+      window.__cookieWaitMs = Date.now() - start;
+      return;
+    }
   }
-  heading = heading.replace(/\\s+/g, ' ').slice(0, 200);
-  // subheading: oförändrat
-  const sub = el.querySelector('h2,h3,p');
-  let subheading = '';
-  if (sub && (h1s.length === 0 || !h1s.includes(sub))) {
-    subheading = (sub.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 200);
-  }
-  return { heading, subheading };
+  await sleep(150);
+}
+window.__cookieWaitMs = Date.now() - start;
+```
+
+### 2. Läs tillbaka i `runPageAudit`
+
+Efter `cookieDebug`-läsningen, lägg till:
+
+```ts
+const cookiePollAttempts = await page.evaluate("window.__cookiePollAttempts ?? null");
+const cookieFoundEl      = await page.evaluate("window.__cookieFoundEl ?? null");
+const cookieRootTagged   = await page.evaluate("window.__cookieRootTagged ?? null");
+const cookieWaitMs       = await page.evaluate("window.__cookieWaitMs ?? null");
+```
+
+Och inkludera dem i returobjektet.
+
+### 3. Lägg till fält i `PageAuditData` (`schema.ts`)
+
+```ts
+cookiePollAttempts?: number | null;
+cookieFoundEl?: { tag: string; id: string | null; cls: string; w: number; h: number } | null;
+cookieRootTagged?: { tag: string; id: string | null; cls: string } | null;
+cookieWaitMs?: number | null;
+```
+
+Alla optional + nullable så befintliga snapshots inte breakar.
+
+### 4. Lägg till en motsvarande diagnostik i `ctas.ts`
+
+Räkna hur många CTA-element som **filtrerades bort** av cookie-root-checken, så vi ser om guarden träffade alls:
+
+```js
+window.__ctaCookieFilterHits = 0;
+// inuti loopen:
+if (el.closest && el.closest('[data-lovable-cookie-root="1"]')) {
+  window.__ctaCookieFilterHits++;
+  continue;
 }
 ```
 
-Slice höjs från 160 → 200 så längre sammanfogade rubriker inte trunkeras. Subheading: skippas om den sammanfaller med någon h1.
+Och läs tillbaka som `ctaCookieFilterHits?: number | null` i `pageAudit.server.ts` → schema.
 
-### Filer
-- `src/lib/tests/runners/pageAudit.server.ts` — cookie-banner-polling efter scroll-warmup
-- `src/lib/tests/scripts/sections.ts` — multi-H1 concat i `headings()`
+## Vad diagnostiken kommer berätta
 
-### Verifiering
-- **Greenhouse**: `hero.headline = "The only hiring platform you'll ever need"`, `hero.primaryCtaText` ≠ "Accept all cookies", `cookieDebug` har minst en träff
-- **Rippling**: ingen regression — H1 är ett element, cookie-polling lägger till max ~200ms
-- **Personio/HiBob/Workable/Teamtailor**: cookie-polling bryts tidigt om ingen banner finns (lägger ~150ms worst case), H1-logik oförändrad
+| Värden i utfallet                                                  | Diagnos                                                                       |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `cookiePollAttempts: null`                                         | Polling-blocket körs inte → evaluate-strängen är trasig eller scopet är fel  |
+| `cookiePollAttempts > 0`, `cookieFoundEl: null`                    | Polling kör men inga selektorer matchar → bannern har annan struktur          |
+| `cookieFoundEl` satt, `cookieRootTagged: null`                     | Hittade element men det var för litet (`w<50 ‖ h<30`) → tröskeln för hård    |
+| `cookieRootTagged` satt, `ctaCookieFilterHits: 0`                  | Taggning sker, men `#onetrust-accept-btn-handler` ligger utanför taggad rot → `closest()` missar och vi måste flytta taggen uppåt eller tagga knappen direkt |
+| `cookieRootTagged` satt, `ctaCookieFilterHits > 0`, CTA ändå läckt | Något annat skript väljer CTA innan filtret → leta i `deriveHero` / sectionsCTA pipeline |
 
-Inga ändringar i klassificering, deriveHero eller CTA-matchning denna omgång.
+## Filer
+
+- `src/lib/tests/runners/pageAudit.server.ts` — utöka polling + 4 nya `page.evaluate`-läsningar + spread i return
+- `src/lib/tests/scripts/ctas.ts` — räkna filter-träffar
+- `src/lib/tests/schema.ts` — 5 nya optional/nullable fält på `PageAuditData`
+
+## Verifiering
+
+Kör Greenhouse igen. Förvänta: ett av scenarierna i tabellen ovan blir tydligt sann och pekar exakt på nästa fix. Inga andra sajter ska påverkas (alla fält är optional).
+
+## Ej i scope
+
+Ingen ändring i klassificering, `deriveHero`, `isCookieBanner`-text-detektion eller H1-logiken denna runda. Vi samlar bara signal.
