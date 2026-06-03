@@ -76,10 +76,19 @@ export const SECTIONS_SCRIPT = `(() => {
   const seen = new Set();
   const raw = [];
 
+  // Cache total element count once for wrapper-detection below.
+  const totalElements = document.body.querySelectorAll('*').length;
+
   function addNode(el) {
     if (!el || seen.has(el)) return;
     const rect = el.getBoundingClientRect();
     if (rect.width < 40 || rect.height < 80) return;
+    // Skip page-wrapper DIVs that span almost the entire document — they
+    // produce bogus "hero" sections with rect.h ≈ document height.
+    if (rect.height > viewportH * 1.5 && el.tagName === 'DIV') {
+      const ownCount = el.querySelectorAll('*').length;
+      if (ownCount > totalElements * 0.8) return;
+    }
     seen.add(el);
     const repeated = repeatedChildrenCount(el);
     const hh = headings(el);
