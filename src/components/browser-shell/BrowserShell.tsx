@@ -138,6 +138,9 @@ export function BrowserShell() {
       const res = await startFn({ data: { url: nextUrl } });
       setRunId(res.runId);
       setLiveUrl(res.liveUrl);
+      // Trigger PSI in parallel AFTER Browserbase started, so page audit data
+      // never lags behind PSI results in the UI.
+      setPsiRunKey((k) => k + 1);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setSessionState("error");
