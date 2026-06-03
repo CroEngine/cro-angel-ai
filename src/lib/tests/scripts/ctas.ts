@@ -99,9 +99,13 @@ export const CTAS_SCRIPT = `(() => {
   const SEL = 'button, a[href], input[type=submit], input[type=button], [role="button"]';
   const nodes = Array.from(document.querySelectorAll(SEL));
   const raw = [];
+  window.__ctaCookieFilterHits = 0;
   for (const el of nodes) {
     if (!isVisible(el)) continue;
-    if (el.closest && el.closest('[data-lovable-cookie-root="1"]')) continue;
+    if (el.closest && el.closest('[data-lovable-cookie-root="1"]')) {
+      window.__ctaCookieFilterHits++;
+      continue;
+    }
     const rect = el.getBoundingClientRect();
     const cs = window.getComputedStyle(el);
     const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 80);
