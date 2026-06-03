@@ -271,7 +271,7 @@ function PageAuditDetails({ data }: { data: PageAuditData }) {
   );
 }
 
-export function ConsolePanel({ events }: { events: StreamEvent[] }) {
+export function ConsolePanel({ events, url }: { events: StreamEvent[]; url: string }) {
   return (
     <div className="flex h-full min-h-0 w-full flex-col border-t border-border bg-background lg:border-t-0">
       <Tabs defaultValue="findings" className="flex h-full min-h-0 w-full flex-col">
@@ -279,6 +279,7 @@ export function ConsolePanel({ events }: { events: StreamEvent[] }) {
           <h2 className="text-base font-semibold text-foreground">Console</h2>
           <TabsList className="h-8">
             <TabsTrigger value="findings" className="text-xs">Findings</TabsTrigger>
+            <TabsTrigger value="pageinsight" className="text-xs">PageInsight</TabsTrigger>
             <TabsTrigger value="activity" className="text-xs">Activity</TabsTrigger>
           </TabsList>
         </div>
@@ -286,6 +287,12 @@ export function ConsolePanel({ events }: { events: StreamEvent[] }) {
         <TabsContent value="findings" className="m-0 flex-1 min-h-0">
           <ScrollArea className="h-full">
             <FindingsView events={events} />
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="pageinsight" className="m-0 flex-1 min-h-0">
+          <ScrollArea className="h-full">
+            <PageInsightsView url={url} />
           </ScrollArea>
         </TabsContent>
 
