@@ -334,7 +334,55 @@ export type PageAuditData = {
     h3Count: number;
     h1Texts: string[];
   };
-  images: { total: number; missingAlt: number; missingAltPct: number; missingDims: number; lazy: number };
+  hreflang: {
+    count: number;
+    hasXDefault: boolean;
+    /** false om någon entry använder relativ URL (ogiltigt enligt Google). */
+    hasAbsoluteUrls: boolean;
+    entries: Array<{ lang: string; href: string }>;
+  };
+  images: {
+    total: number;
+    missingAlt: number;
+    missingAltPct: number;
+    missingDims: number;
+    lazy: number;
+    /** Räknat på filändelsen i currentSrc/src. OBS: CDN:er som serverar WebP via
+     *  content negotiation utan att ändra URL:en (?format=auto) räknas som jpg/png. */
+    formats: {
+      webp: number; avif: number; jpg: number; png: number;
+      gif: number; svg: number; other: number; unknown: number;
+    };
+    modernCount: number;
+    legacyCount: number;
+  };
+  videos: {
+    count: number;
+    autoplayCount: number;
+    autoplayAboveFold: number;
+    unmutedAutoplay: number;
+    items: Array<{
+      autoplay: boolean;
+      muted: boolean;
+      loop: boolean;
+      controls: boolean;
+      preload: string | null;
+      poster: string | null;
+      src: string | null;
+      aboveFold: boolean;
+      widthPx: number;
+      heightPx: number;
+    }>;
+  };
+  resourceHints: {
+    preconnectCount: number;
+    dnsPrefetchCount: number;
+    preloadCount: number;
+    prefetchCount: number;
+    modulePreloadCount: number;
+    total: number;
+    items: Array<{ rel: string; href: string; as: string | null; crossorigin: boolean }>;
+  };
   links: { internal: number; external: number; nofollow: number; total: number };
   schema: {
     /** Antal `<script type="application/ld+json">`-element på sidan. */
