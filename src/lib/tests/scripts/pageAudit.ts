@@ -421,10 +421,17 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
   let firstPartyScriptCount = 0;
   let thirdPartyScriptCount = 0;
   const pageHost = location.hostname;
+  // First-party-jämförelse på basdomän så att subdomäner (new.hibob.com,
+  // cdn.hibob.com etc.) räknas som first-party mot www.hibob.com.
+  // Naiv split på sista två segment — felmarginal på ccTLD-suffix som
+  // .co.uk / .com.au (överskattar first-party där). Byt till tldts om
+  // det blir ett problem.
+  const baseDomain = (h) => h.split('.').slice(-2).join('.');
+  const pageBase = baseDomain(pageHost);
   for (const [url, srcType] of scriptUrlMap.entries()) {
     let host = '';
     try { host = new URL(url).hostname; } catch (e) {}
-    if (host && host === pageHost) firstPartyScriptCount++;
+    if (host && baseDomain(host) === pageBase) firstPartyScriptCount++;
     else if (host) thirdPartyScriptCount++;
     for (const rule of TECH_RULES) {
       if (url.indexOf(rule.match) !== -1) addTech(rule.tech, rule.category, srcType, url);
