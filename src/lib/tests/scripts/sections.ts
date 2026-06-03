@@ -82,7 +82,7 @@ export const SECTIONS_SCRIPT = `(() => {
   }
 
   const seen = new Set();
-  const raw = [];
+  let raw = [];
 
   // Cache total element count once for wrapper-detection below.
   const totalElements = document.body.querySelectorAll('*').length;
@@ -229,6 +229,38 @@ export const SECTIONS_SCRIPT = `(() => {
 
   // Sort by docY
   raw.sort((a, b) => (a.rect.top + window.scrollY) - (b.rect.top + window.scrollY));
+
+  // Dedup: drop entries fully contained inside another entry that shares the
+  // same heading (or has no distinct heading of its own). Preserves sibling
+  // cards with unique headings; drops structural duplicates like a <header>
+  // nested inside a hero <div> that share the page's h1.
+  function isContained(inner, outer) {
+    const sy = document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const ir = inner.rect, or = outer.rect;
+    const iTop = ir.top + sy;
+    const iBot = iTop + ir.height;
+    const oTop = or.top + sy;
+    const oBot = oTop + or.height;
+    return iTop >= oTop - 4 && iBot <= oBot + 4
+        && ir.left >= or.left - 4 && (ir.left + ir.width) <= (or.left + or.width) + 4;
+  }
+  function normHeading(h) {
+    return (h || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+  const deduped = [];
+  for (const cand of raw) {
+    let drop = false;
+    for (const kept of deduped) {
+      if (!isContained(cand, kept)) continue;
+      const ch = normHeading(cand.heading);
+      const kh = normHeading(kept.heading);
+      if (ch === '' || ch === kh) { drop = true; break; }
+    }
+    if (!drop) deduped.push(cand);
+  }
+  raw = deduped;
+
+
 
   // Compute max area for visualWeight normalization
   let maxArea = 1;
