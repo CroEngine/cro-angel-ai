@@ -373,6 +373,21 @@ export type PageAuditData = {
     matchedBy: "regex" | "role" | "ancestor" | "text";
     sample: string;
   }>;
+  cookiePollAttempts?: number | null;
+  cookieFoundEl?: {
+    tag: string;
+    id: string | null;
+    cls: string;
+    w: number;
+    h: number;
+  } | null;
+  cookieRootTagged?: {
+    tag: string;
+    id: string | null;
+    cls: string;
+  } | null;
+  cookieWaitMs?: number | null;
+  ctaCookieFilterHits?: number | null;
   indexability?: {
     indexable: boolean;
     noindex: boolean;
