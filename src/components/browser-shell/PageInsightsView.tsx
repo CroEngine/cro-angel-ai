@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { runPageSpeedInsights } from "@/lib/tests/pagespeed.functions";
-import type { PsiResult, PsiStrategyResult } from "@/lib/tests/pagespeed.functions";
+import { runPsiMobile, runPsiDesktop } from "@/lib/tests/pagespeed.functions";
+import type { PsiStrategyResult } from "@/lib/tests/pagespeed.functions";
 
 function downloadJson(filename: string, payload: unknown) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
