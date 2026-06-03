@@ -1,4 +1,4 @@
-## Mål
+## Mål (uppdaterad efter feedback)
 Lägg till `ogUrl` och `canonicalMatchesOgUrl` i `indexability`. Själva flaggan `canonical_og_url_mismatch` byggs i `flag-rules.ts` senare (tillsammans med WCAG-flaggorna) — runnerns `flags: []` förblir tom enligt befintlig "collect-only" arkitektur.
 
 ## Filer & ändringar
