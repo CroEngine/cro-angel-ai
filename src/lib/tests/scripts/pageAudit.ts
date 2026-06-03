@@ -375,6 +375,7 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     { tech: 'onetrust', category: 'consent', match: 'cdn.cookielaw.org' },
     { tech: 'onetrust', category: 'consent', match: 'otSDKStub' },
     { tech: 'cloudflare', category: 'cdn', match: 'static.cloudflareinsights.com' },
+    { tech: 'cloudinary', category: 'cdn', match: 'res.cloudinary.com' },
     { tech: 'shopify', category: 'cms', match: 'cdn.shopify.com' },
   ];
   const techItems = [];
