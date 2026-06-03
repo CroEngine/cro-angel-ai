@@ -228,5 +228,6 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     hero,
     // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
     flags: [],
+    wrapperDebug,
   };
 }
