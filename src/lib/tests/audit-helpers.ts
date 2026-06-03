@@ -153,7 +153,9 @@ export function deriveHero(
 
   const heroCta =
     ctas.find((c) => c.category === "cta_primary" && c.section === "hero") ??
-    ctas.find((c) => c.category === "cta_primary" && c.aboveFold);
+    ctas.find((c) => c.category === "cta_primary" && c.aboveFold) ??
+    ctas.find((c) => c.category === "form_submit" && c.section === "hero") ??
+    ctas.find((c) => c.category === "form_submit" && c.aboveFold);
 
   return {
     headline: heroSection.heading || "",
