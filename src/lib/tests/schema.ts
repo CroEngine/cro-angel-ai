@@ -337,8 +337,16 @@ export type PageAuditData = {
   images: { total: number; missingAlt: number; missingAltPct: number; missingDims: number; lazy: number };
   links: { internal: number; external: number; nofollow: number; total: number };
   schema: {
+    /** Antal `<script type="application/ld+json">`-element på sidan. */
     count: number;
+    /** Unika `@type`-värden som hittats över alla block (inkl. @graph-utpackning). */
     types: string[];
+    /**
+     * Ett entry per individuellt JSON-LD-objekt. Ett enda `<script>`-block med
+     * `@graph: [...]` packas upp till flera blocks här, så `blocks.length` kan
+     * vara större än `count`. Använd `blocks.length` för per-typ-analys och
+     * `count` för att räkna script-taggar.
+     */
     blocks: Array<{
       type: string | null;
       missingRequired: string[];
