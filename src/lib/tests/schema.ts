@@ -336,9 +336,24 @@ export type PageAuditData = {
   };
   images: { total: number; missingAlt: number; missingAltPct: number; missingDims: number; lazy: number };
   links: { internal: number; external: number; nofollow: number; total: number };
-  schema: { count: number; types: string[] };
+  schema: {
+    count: number;
+    types: string[];
+    blocks: Array<{
+      type: string | null;
+      missingRequired: string[];
+      parseError: string | null;
+    }>;
+  };
   content: { wordCount: number; sections: number; articles: number };
-  robotsTxt: { exists: boolean; blocksAll: boolean; hasSitemap: boolean };
+  robotsTxt: {
+    exists: boolean;
+    blocksAll: boolean;
+    hasSitemap: boolean;
+    syntaxErrors: string[];
+    hasUserAgent: boolean;
+    sitemapDirectives: Array<{ url: string; status: number | null; reachable: boolean }>;
+  };
   sitemap: { exists: boolean; urlCount: number; url: string | null; isIndex?: boolean };
   sections: PageSection[];
   sectionOrder: SectionType[];
@@ -363,6 +378,11 @@ export type PageAuditData = {
     ogUrl: string | null;
     canonicalMatchesOgUrl: boolean;
     robotsTxtAllows: boolean;
+    canonicalHttp: {
+      status: number | null;
+      reachable: boolean;
+      redirectsTo: string | null;
+    } | null;
   };
   contentMetrics?: {
     readingTimeMinutes: number;
