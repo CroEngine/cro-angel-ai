@@ -454,6 +454,18 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
   if (document.querySelector('script[src*="cdn.shopify.com"]') || ('Shopify' in window)) {
     addTech('shopify', 'cms', 'dom', 'Shopify global / cdn.shopify.com');
   }
+  // DEBUG — ta bort när detektionen är stabil
+  const _debug = {
+    allScriptUrls: Array.from(scriptUrlMap.keys()),
+    domScriptCount: 0,
+    resourceTimingCount: 0,
+    locationHostname: location.hostname,
+    locationBaseDomain: pageBase,
+  };
+  for (const srcType of scriptUrlMap.values()) {
+    if (srcType === 'script') _debug.domScriptCount++;
+    else if (srcType === 'resource_timing') _debug.resourceTimingCount++;
+  }
   const techStack = {
     detected: Array.from(new Set(techItems.map((t) => t.tech))).sort(),
     byCategory: {
@@ -469,7 +481,9 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     thirdPartyScriptCount,
     firstPartyScriptCount,
     items: techItems,
+    _debug,
   };
+
 
   return {
     url: location.href,
