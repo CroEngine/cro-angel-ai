@@ -113,8 +113,57 @@ export const SECTIONS_SCRIPT = `(() => {
 
   function addNode(el) {
     if (!el || seen.has(el)) return;
-    const rect = el.getBoundingClientRect();
-    if (rect.width < 40 || rect.height < 80) return;
+    let rect = el.getBoundingClientRect();
+    if (rect.width < 40) return;
+    const rawH = rect.height;
+    let effectiveH = rawH;
+    let offsetH = 0, scrollH = 0, cloneH = 0;
+    if (effectiveH < 80) {
+      offsetH = el.offsetHeight || 0;
+      scrollH = el.scrollHeight || 0;
+      effectiveH = Math.max(offsetH, scrollH);
+    }
+    if (effectiveH < 80) {
+      // Last resort: clone off-screen without transform/overflow to read natural height.
+      try {
+        const clone = el.cloneNode(true);
+        clone.style.cssText =
+          'position:fixed;left:-9999px;top:0;visibility:hidden;opacity:0;' +
+          'transform:none;height:auto;max-height:none;overflow:visible;';
+        document.body.appendChild(clone);
+        cloneH = clone.getBoundingClientRect().height;
+        document.body.removeChild(clone);
+        if (cloneH > effectiveH) effectiveH = cloneH;
+      } catch (_) {}
+    }
+    if (rawH < 80) {
+      try {
+        window.__lazyDebug = window.__lazyDebug || [];
+        window.__lazyDebug.push({
+          tag: el.tagName,
+          id: el.id || null,
+          cls: (typeof el.className === 'string' ? el.className : '').slice(0, 80),
+          rectH: Math.round(rawH),
+          offsetH: Math.round(offsetH),
+          scrollH: Math.round(scrollH),
+          cloneH: Math.round(cloneH),
+          accepted: effectiveH >= 80,
+        });
+      } catch (_) {}
+    }
+    if (effectiveH < 80) return;
+    if (effectiveH !== rawH) {
+      rect = {
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        bottom: rect.top + effectiveH,
+        width: rect.width,
+        height: effectiveH,
+        x: rect.left,
+        y: rect.top,
+      };
+    }
     if (isCookieBanner(el)) return;
     // Skip page-wrapper elements that span almost the entire document — they
     // produce bogus "hero" / "form" sections with rect.h ≈ document height.
