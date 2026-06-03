@@ -246,6 +246,10 @@ function parsePsi(json: unknown, strategy: Strategy): PsiStrategyResult {
     },
     resourceSummary: parseResourceSummary(audits["resource-summary"]),
     renderBlockingResources: parseRenderBlocking(audits["render-blocking-resources"]),
+    ...(() => {
+      const tp = parseThirdPartyEntities(audits["third-party-summary"]);
+      return { thirdPartyEntities: tp.entities, thirdPartyBlockingTotalMs: tp.totalBlockingMs };
+    })(),
     error: null,
   };
 }
