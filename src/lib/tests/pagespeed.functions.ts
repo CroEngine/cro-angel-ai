@@ -232,6 +232,8 @@ function emptyStrategyResult(strategy: Strategy, error: string): PsiStrategyResu
       fieldLcpMs: null, fieldFcpMs: null, fieldClsP75: null, fieldInpMs: null, hasFieldData: false,
     },
     audits: { opportunities: [], diagnostics: [] },
+    resourceSummary: EMPTY_RESOURCE_SUMMARY,
+    renderBlockingResources: [],
     error,
   };
 }
