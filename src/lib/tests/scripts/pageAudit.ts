@@ -86,6 +86,9 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
   };
   const ldTypes = new Set();
   const ldBlocks = [];
+  // Ett script-block kan innehålla ett @graph-array med flera @type-objekt.
+  // Vi packar upp @graph och pushar ett entry per inre objekt till ldBlocks,
+  // så schema.blocks.length kan vara > schema.count (antal script-taggar).
   function checkBlock(it) {
     let type = it && it['@type'];
     if (Array.isArray(type)) type = type[0];
