@@ -344,6 +344,17 @@ export type PageAuditData = {
   pageSummary: PageSummary;
   hero?: HeroContent;
   flags: string[];
+  wrapperDebug?: Array<{
+    tag: string;
+    id: string | null;
+    cls: string;
+    ownCount: number;
+    totalElements: number;
+    ratio: number;
+    rectH: number;
+    viewportH: number;
+    skipped: boolean;
+  }>;
   indexability?: {
     indexable: boolean;
     noindex: boolean;

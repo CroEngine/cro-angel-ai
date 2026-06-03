@@ -147,6 +147,10 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     ),
   ]);
 
+  const wrapperDebug = (await page.evaluate(
+    "window.__wrapperDebug || []",
+  )) as PageAuditData["wrapperDebug"];
+
   const audit = rawAudit as RawPageAudit;
   const robotsSitemap = fetched as RobotsSitemapFetch;
 
@@ -224,5 +228,6 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     hero,
     // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
     flags: [],
+    wrapperDebug,
   };
 }

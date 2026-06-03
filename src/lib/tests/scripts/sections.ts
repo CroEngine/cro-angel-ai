@@ -119,10 +119,28 @@ export const SECTIONS_SCRIPT = `(() => {
     // Skip page-wrapper elements that span almost the entire document — they
     // produce bogus "hero" / "form" sections with rect.h ≈ document height.
     // Applies to any tag (DIV, FORM, SECTION, MAIN, …) since SPAs sometimes
-    // wrap the whole page in <form>.
+    // wrap the whole page in <form> or a React-root <div>.
     if (rect.height > viewportH * 1.5) {
       const ownCount = el.querySelectorAll('*').length;
-      if (ownCount > totalElements * 0.8) return;
+      const ratio = totalElements > 0 ? ownCount / totalElements : 0;
+      const tooTall = rect.height > viewportH * 10;
+      const tooBig = ratio > 0.6;
+      // Diagnostic: record every candidate that crossed the height threshold.
+      try {
+        window.__wrapperDebug = window.__wrapperDebug || [];
+        window.__wrapperDebug.push({
+          tag: el.tagName,
+          id: el.id || null,
+          cls: (typeof el.className === 'string' ? el.className : '').slice(0, 80),
+          ownCount,
+          totalElements,
+          ratio: Math.round(ratio * 1000) / 1000,
+          rectH: Math.round(rect.height),
+          viewportH,
+          skipped: tooBig || tooTall,
+        });
+      } catch (_) {}
+      if (tooBig || tooTall) return;
     }
     seen.add(el);
     const repeated = repeatedChildrenCount(el);
