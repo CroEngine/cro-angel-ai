@@ -72,6 +72,36 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     await sleep(200);
   })()`);
 
+  // Active poll for late-injected cookie banners (OneTrust, Cookiebot, etc.)
+  // Breaks as soon as a visible banner appears; max ~2.5s on truly bannerless sites.
+  await page.evaluate(`(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const SEL = [
+      '[id*="onetrust" i]', '[class*="onetrust" i]',
+      '#osano-cm-window', '[class*="osano-cm" i]',
+      '[id*="cookiebot" i]', '[id^="CybotCookiebot" i]',
+      '[id*="cookie-banner" i]', '[id*="cookie-consent" i]',
+      '[class*="cookie-banner" i]', '[class*="cookie-consent" i]',
+      '[id*="truste" i]', '[class*="truste" i]',
+      '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
+      '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
+    ].join(',');
+    const start = Date.now();
+    const deadline = start + 2500;
+    while (Date.now() < deadline) {
+      const found = document.querySelector(SEL);
+      if (found) {
+        const r = found.getBoundingClientRect();
+        if (r.width > 50 && r.height > 30) {
+          window.__cookieWaitMs = Date.now() - start;
+          return;
+        }
+      }
+      await sleep(150);
+    }
+    window.__cookieWaitMs = Date.now() - start;
+  })()`);
+
   const [
     rawAudit,
     fetched,
