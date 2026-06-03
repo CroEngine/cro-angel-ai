@@ -47,7 +47,13 @@ type RawPageAudit = Omit<
   | "hero"
 > & { url: string };
 
-type RobotsSitemapFetch = { robots: string | null; sitemap: string | null };
+type RobotsSitemapFetch = {
+  robots: string | null;
+  sitemap: string | null;
+  sitemapUrl: string | null;
+  sitemapIsIndex: boolean;
+  sitemapChildCount: number;
+};
 
 export async function runPageAudit(page: Page): Promise<PageAuditData> {
   const [
@@ -65,15 +71,51 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     page.evaluate(`
       (async () => {
         const origin = location.origin;
-        const out = { robots: null, sitemap: null };
-        try {
-          const r = await fetch(origin + '/robots.txt', { credentials: 'omit' });
-          if (r.ok) out.robots = await r.text();
-        } catch (e) {}
-        try {
-          const r = await fetch(origin + '/sitemap.xml', { credentials: 'omit' });
-          if (r.ok) out.sitemap = await r.text();
-        } catch (e) {}
+        const out = { robots: null, sitemap: null, sitemapUrl: null, sitemapIsIndex: false, sitemapChildCount: 0 };
+        async function tryFetch(u) {
+          try {
+            const r = await fetch(u, { credentials: 'omit' });
+            if (r.ok) return await r.text();
+          } catch (e) {}
+          return null;
+        }
+        out.robots = await tryFetch(origin + '/robots.txt');
+
+        // Build sitemap candidate list: Sitemap: lines from robots.txt first,
+        // then well-known fallbacks.
+        const candidates = [];
+        if (out.robots) {
+          const re = /^Sitemap:\\s*(\\S+)/gim;
+          let m;
+          while ((m = re.exec(out.robots)) !== null) candidates.push(m[1]);
+        }
+        for (const p of ['/sitemap.xml', '/sitemap_index.xml', '/sitemap-index.xml', '/wp-sitemap.xml']) {
+          candidates.push(origin + p);
+        }
+
+        for (const url of candidates) {
+          const body = await tryFetch(url);
+          if (!body) continue;
+          out.sitemap = body;
+          out.sitemapUrl = url;
+          if (/<sitemapindex[\\s>]/i.test(body)) {
+            out.sitemapIsIndex = true;
+            // Follow up to 5 child sitemaps and sum their <url> counts
+            const childUrls = [];
+            const locRe = /<loc>\\s*([^<]+?)\\s*<\\/loc>/gi;
+            let cm;
+            while ((cm = locRe.exec(body)) !== null && childUrls.length < 5) {
+              childUrls.push(cm[1].trim());
+            }
+            let total = 0;
+            for (const childUrl of childUrls) {
+              const childBody = await tryFetch(childUrl);
+              if (childBody) total += (childBody.match(/<url[\\s>]/gi) || []).length;
+            }
+            out.sitemapChildCount = total;
+          }
+          break;
+        }
         return out;
       })()
     `),
@@ -92,7 +134,11 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   const robotsSitemap = fetched as RobotsSitemapFetch;
 
   const robotsTxt = { exists: false, blocksAll: false, hasSitemap: false };
-  const sitemap = { exists: false, urlCount: 0 };
+  const sitemap: { exists: boolean; urlCount: number; url: string | null; isIndex?: boolean } = {
+    exists: false,
+    urlCount: 0,
+    url: null,
+  };
   if (robotsSitemap.robots) {
     robotsTxt.exists = true;
     robotsTxt.blocksAll = /User-agent:\s*\*[\s\S]*?Disallow:\s*\/\s*$/im.test(robotsSitemap.robots);
@@ -100,7 +146,13 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   }
   if (robotsSitemap.sitemap) {
     sitemap.exists = true;
-    sitemap.urlCount = (robotsSitemap.sitemap.match(/<loc>/g) ?? []).length;
+    sitemap.url = robotsSitemap.sitemapUrl;
+    if (robotsSitemap.sitemapIsIndex) {
+      sitemap.isIndex = true;
+      sitemap.urlCount = robotsSitemap.sitemapChildCount;
+    } else {
+      sitemap.urlCount = (robotsSitemap.sitemap.match(/<url[\s>]/gi) ?? []).length;
+    }
   }
 
   // Derive final indexability now that robots.txt is known.
@@ -132,11 +184,16 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   });
   const hero = deriveHero(sectionsTyped, ctasTyped);
 
+  // Strip transient `selector` from sections before persistence — it's a
+  // DOM lookup helper for the browser-side scripts, not analytics data.
+  const sectionsForSnapshot = sectionsTyped.map(({ selector: _ignored, ...rest }) => rest);
+
   return {
     ...audit,
+    auditedAt: new Date().toISOString(),
     robotsTxt,
     sitemap,
-    sections: sectionsTyped,
+    sections: sectionsForSnapshot,
     sectionOrder,
     trustSignals: trustTyped,
     trustSummary,

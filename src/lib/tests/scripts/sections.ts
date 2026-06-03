@@ -55,7 +55,10 @@ export const SECTIONS_SCRIPT = `(() => {
     if (tag === 'ASIDE' || role === 'complementary') return 'aside';
     if (el.querySelector('form')) return 'form';
     const docTop = rect.top + window.scrollY;
-    if (docTop < viewportH * 0.4 && rect.height > 200) return 'hero';
+    // Hero only if it actually fits hero proportions — page-wrapper divs
+    // (height ≈ full page) are NOT hero sections, they would otherwise
+    // skew visualWeight and rect.h.
+    if (docTop < viewportH * 0.4 && rect.height > 200 && rect.height < viewportH * 1.5) return 'hero';
     const h = (heading || '').toLowerCase();
     if (/pric|plan|kostnad|prenum|abonnemang/.test(h)) return 'pricing';
     if (/faq|fr[åa]gor|questions|hj[äa]lp/.test(h)) return 'faq';
