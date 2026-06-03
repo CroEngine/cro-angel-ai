@@ -53,7 +53,15 @@ export const SECTIONS_SCRIPT = `(() => {
     if (tag === 'FOOTER' || role === 'contentinfo') return 'footer';
     if (tag === 'HEADER' || role === 'banner') return 'header';
     if (tag === 'ASIDE' || role === 'complementary') return 'aside';
-    if (el.querySelector('form')) return 'form';
+    // Only classify as 'form' when a contained form actually fills a sane
+    // portion of the section — guards against entire-page <form> wrappers
+    // (common on Ashby-style SPAs) that would otherwise mark the whole
+    // page as a single form section.
+    const innerForm = el.querySelector('form');
+    if (innerForm) {
+      const fr = innerForm.getBoundingClientRect();
+      if (fr.height > 40 && fr.height < viewportH * 1.5 && fr.height <= rect.height * 0.9) return 'form';
+    }
     const docTop = rect.top + window.scrollY;
     // Hero: above-fold, taller than a thin strip, but not a full-page wrapper.
     // Wrapper-DIV protection lives in addNode() (own elementCount > 80% of total),
