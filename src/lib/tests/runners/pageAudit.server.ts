@@ -107,7 +107,8 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
           w: Math.round(r.width),
           h: Math.round(r.height),
         };
-        if (r.width > 50 && r.height > 30) {
+        const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano/i.test(found.id || '');
+        if (isKnownVendor || (r.width > 50 && r.height > 30)) {
           const root = (found.closest && found.closest(ROOT_SEL)) || found;
           try { root.setAttribute('data-lovable-cookie-root', '1'); } catch (_) {}
           window.__cookieRootTagged = {
