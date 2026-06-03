@@ -202,6 +202,8 @@ function parsePsi(json: unknown, strategy: Strategy): PsiStrategyResult {
       opportunities: opportunities.slice(0, 10),
       diagnostics: diagnostics.slice(0, 10),
     },
+    resourceSummary: parseResourceSummary(audits["resource-summary"]),
+    renderBlockingResources: parseRenderBlocking(audits["render-blocking-resources"]),
     error: null,
   };
 }
