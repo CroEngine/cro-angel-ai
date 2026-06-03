@@ -112,8 +112,18 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
   }
   const maxScore = deduped[0] ? deduped[0].score : 1;
 
+  function deriveWcagLevel(ratio, fontSizePx, fontWeight) {
+    if (ratio === null || !isFinite(ratio)) return null;
+    const isLarge = fontSizePx >= 18 || (fontSizePx >= 14 && fontWeight >= 700);
+    if (ratio >= 7) return 'AAA';
+    if (ratio >= 4.5) return 'AA';
+    if (ratio >= 3 && isLarge) return 'AA-large';
+    return 'FAIL';
+  }
+
   return deduped.map((s) => {
     const sk = sectionKind(s.el, s.rect);
+    const contrastRatio = Math.round(s.con * 10) / 10;
     return {
       selector: buildSelector(s.el),
       text: s.text,
@@ -123,7 +133,8 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
       area: Math.round(s.area),
       fontSize: Math.round(s.fontSize),
       fontWeight: s.fontWeight,
-      contrast: Math.round(s.con * 10) / 10,
+      contrast: contrastRatio,
+      wcagLevel: deriveWcagLevel(contrastRatio, s.fontSize, s.fontWeight),
       position: {
         xPct: Math.round(((s.rect.left + s.rect.width / 2) / docW) * 100),
         yPct: Math.round(((s.rect.top + window.scrollY) / docH) * 100),
