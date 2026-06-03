@@ -184,9 +184,15 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   });
   const hero = deriveHero(sectionsTyped, ctasTyped);
 
-  // Strip transient `selector` from sections before persistence — it's a
-  // DOM lookup helper for the browser-side scripts, not analytics data.
-  const sectionsForSnapshot = sectionsTyped.map(({ selector: _ignored, ...rest }) => rest);
+  // Strip transient DOM-lookup helpers from snapshot arrays — `selector` is a
+  // browser-side helper, and `_block` on trust signals is a DOM-node ref that
+  // doesn't survive JSON serialization cleanly.
+  const sectionsForSnapshot = sectionsTyped.map(({ selector: _s, ...rest }) => rest);
+  const ctasForSnapshot = ctasTyped.map(({ selector: _s, ...rest }) => rest);
+  const trustForSnapshot = trustTyped.map((t) => {
+    const { selector: _s, _block, ...rest } = t as TrustSignal & { _block?: unknown };
+    return rest;
+  });
 
   return {
     ...audit,
