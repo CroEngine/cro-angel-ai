@@ -298,6 +298,7 @@ export function PageInsightsView({ url, runKey = 0 }: { url: string; runKey?: nu
           renderBlockingResources: [],
           thirdPartyEntities: [],
           thirdPartyBlockingTotalMs: 0,
+          thirdPartyAuditMissing: true,
           error: e instanceof Error ? e.message : String(e),
         }),
       )
