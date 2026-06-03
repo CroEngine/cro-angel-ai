@@ -349,9 +349,11 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
 
   // Tech stack-detektion — script[src] hostname-matchning + DOM-/meta-attribut.
   const TECH_RULES = [
-    { tech: 'gtm', category: 'analytics', match: 'googletagmanager.com/gtm.js' },
-    { tech: 'ga4', category: 'analytics', match: 'googletagmanager.com/gtag/js' },
+    // GTM-container — bredare matchning eftersom GTM injicerar subresurser
+    // (gtag/js?id=G-XXX m.fl.) som inte matchar den smala gtm.js-pathen.
+    { tech: 'gtm', category: 'analytics', match: 'googletagmanager.com' },
     { tech: 'ga4', category: 'analytics', match: 'google-analytics.com' },
+    { tech: 'ga4', category: 'analytics', match: 'googletagmanager.com/gtag' },
     { tech: 'intercom', category: 'chat', match: 'widget.intercom.io' },
     { tech: 'intercom', category: 'chat', match: 'js.intercomcdn.com' },
     { tech: 'hubspot', category: 'marketing', match: 'js.hs-scripts.com' },
@@ -375,7 +377,9 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     { tech: 'onetrust', category: 'consent', match: 'cdn.cookielaw.org' },
     { tech: 'onetrust', category: 'consent', match: 'otSDKStub' },
     { tech: 'cloudflare', category: 'cdn', match: 'static.cloudflareinsights.com' },
-    { tech: 'cloudinary', category: 'cdn', match: 'res.cloudinary.com' },
+    // Cloudinary servar både via res.cloudinary.com och kundspecifika subdomäner
+    // (t.ex. media.cloudinary.com). Bred matchning på 'cloudinary.com'.
+    { tech: 'cloudinary', category: 'cdn', match: 'cloudinary.com' },
     { tech: 'shopify', category: 'cms', match: 'cdn.shopify.com' },
   ];
   const techItems = [];
