@@ -97,7 +97,7 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     const deadline = start + 2500;
     while (Date.now() < deadline) {
       window.__cookiePollAttempts++;
-      const found = document.querySelector(SEL);
+      const found = Array.from(document.querySelectorAll(SEL)).find(el => el.tagName !== 'STYLE' && el.tagName !== 'SCRIPT' && el.tagName !== 'LINK');
       if (found) {
         const r = found.getBoundingClientRect();
         window.__cookieFoundEl = {
