@@ -2,6 +2,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FindingsView } from "./FindingsView";
+import { PageInsightsView } from "./PageInsightsView";
 import type { StreamEvent } from "./hooks/useTestStream";
 import type {
   CollectData,
