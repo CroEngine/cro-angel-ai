@@ -1,42 +1,48 @@
 ## Mål
-Lägg till WCAG-kontrast på CTAs och visualHierarchy + aggregat i `pageSummary`. Ingen ny browserdata behövs.
+Lägg till `ogUrl` och `canonicalMatchesOgUrl` i `indexability`. Själva flaggan `canonical_og_url_mismatch` byggs i `flag-rules.ts` senare (tillsammans med WCAG-flaggorna) — runnerns `flags: []` förblir tom enligt befintlig "collect-only" arkitektur.
 
-## Upptäckter
-1. `CTAEntity` har **inte** `computedStyles` idag → vi beräknar kontrast inuti `ctas.ts` browser-scriptet där `cs = getComputedStyle(el)` redan finns.
-2. `VisualHierarchyEntry.contrast` **är redan** WCAG-kontrastkvot (samma formel som planeras). Bara `wcagLevel` ska härledas.
+## Filer & ändringar
 
-## Plan
+### 1. `src/lib/tests/scripts/pageAudit.ts` (browser-script)
+I indexability-blocket (rad 97–117), efter `selfNorm`:
 
-### 1. `src/lib/tests/scripts/ctas.ts`
-- Kopiera in `parseRgb`/`relLum`/`contrast`-helpers (self-contained krav).
-- I huvudloopen där `cs` finns: beräkna `contrastRatio` (null om bg är transparent/rgba(…,0)) och härled `wcagLevel` baserat på fontSize/fontWeight (large text = ≥18px eller ≥14px bold).
-- Lägg till `contrastRatio: number | null` och `wcagLevel` i output.
-
-### 2. `src/lib/tests/scripts/visualHierarchy.ts`
-- Använd befintliga `s.con`, `s.fontSize`, `s.fontWeight` för att härleda `wcagLevel`. Lägg till i output.
-
-### 3. `src/lib/tests/schema.ts`
-- `CTAEntity`: lägg till `contrastRatio: number | null`, `wcagLevel: 'AAA'|'AA'|'AA-large'|'FAIL'|null`.
-- `VisualHierarchyEntry`: lägg till `wcagLevel: 'AAA'|'AA'|'AA-large'|'FAIL'|null`.
-- `PageSummary`: lägg till `ctaContrastFailCount: number`, `ctaContrastAvg: number | null`.
-
-### 4. `src/lib/tests/audit-helpers.ts` (`buildPageSummary`)
-Aggregat med **null-filtrering** (per användarens not):
-```ts
-const withContrast = ctas.filter(c => c.contrastRatio !== null);
-const ctaContrastAvg = withContrast.length > 0
-  ? Math.round((withContrast.reduce((s, c) => s + (c.contrastRatio as number), 0) / withContrast.length) * 100) / 100
-  : null;
-const ctaContrastFailCount = ctas.filter(c => c.wcagLevel === 'FAIL').length;
+```js
+const ogUrlRaw = og('og:url') || '';
+const ogUrlNorm = ogUrlRaw ? normalizeUrl(ogUrlRaw) : '';
 ```
-Notera i kommentar att `ux_multiple_ctas_low_contrast` framöver ska använda `withContrast.length` som nämnare, inte `ctas.length`, så ghost-knappar (null) inte snedvrider procenten.
 
-## Edge cases
-- Transparent bakgrund (`rgba(0,0,0,0)` / `transparent`) → `contrastRatio = null`, `wcagLevel = null`. Vanligt på sekundära/ghost CTAs.
-- Ikon-knappar utan text: kontrast beräknas men har lägre betydelse — OK att låta värdet finnas.
+Lägg till två fält i `indexability`-objektet:
+```js
+ogUrl: ogUrlRaw || null,
+canonicalMatchesOgUrl:
+  (canonicalNorm === '' || ogUrlNorm === '') ? true :
+  canonicalNorm === ogUrlNorm,
+```
+
+Sant-default när någondera saknas → flaggan i flag-rules.ts gate:as ändå på att båda finns, så det är säkert.
+
+### 2. `src/lib/tests/schema.ts`
+Utöka `indexability`-typen (rad 356–364) med:
+```ts
+ogUrl: string | null;
+canonicalMatchesOgUrl: boolean;
+```
+(Inte optional — scriptet sätter alltid värden.)
+
+### 3. `src/lib/tests/runners/pageAudit.server.ts`
+**Ingen ändring.** `flags: []` förblir tom. Flaggan `canonical_og_url_mismatch` implementeras i `flag-rules.ts` (kommande PR) med villkoret:
+```
+indexability.ogUrl && indexability.canonicalUrl && indexability.canonicalMatchesOgUrl === false
+```
+
+## Verifiering
+Kör audit mot HiBob. Förväntat i JSON:
+- `indexability.ogUrl`: någon hibob.com-URL
+- `indexability.canonicalUrl`: en annan URL
+- `indexability.canonicalMatchesOgUrl: false`
+
+Flaggan dyker upp först när flag-rules.ts är på plats.
 
 ## Filer
+- `src/lib/tests/scripts/pageAudit.ts`
 - `src/lib/tests/schema.ts`
-- `src/lib/tests/scripts/ctas.ts`
-- `src/lib/tests/scripts/visualHierarchy.ts`
-- `src/lib/tests/audit-helpers.ts`

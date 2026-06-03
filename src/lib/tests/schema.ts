@@ -360,6 +360,8 @@ export type PageAuditData = {
     canonicalUrl: string | null;
     canonicalMatchesSelf: boolean;
     canonicalIsAbsolute: boolean;
+    ogUrl: string | null;
+    canonicalMatchesOgUrl: boolean;
     robotsTxtAllows: boolean;
   };
   contentMetrics?: {

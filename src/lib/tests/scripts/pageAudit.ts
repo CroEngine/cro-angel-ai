@@ -106,6 +106,8 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
   }
   const canonicalNorm = canonicalUrl ? normalizeUrl(canonicalUrl) : '';
   const selfNorm = normalizeUrl(location.href);
+  const ogUrlRaw = og('og:url') || '';
+  const ogUrlNorm = ogUrlRaw ? normalizeUrl(ogUrlRaw) : '';
   const indexability = {
     indexable: true, // recomputed server-side after robotsTxt is fetched
     noindex: /\\bnoindex\\b/.test(robotsContent),
@@ -113,6 +115,10 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     canonicalUrl: canonicalUrl || null,
     canonicalMatchesSelf: canonicalNorm !== '' && canonicalNorm === selfNorm,
     canonicalIsAbsolute: /^https?:\\/\\//i.test(canonicalUrl),
+    ogUrl: ogUrlRaw || null,
+    canonicalMatchesOgUrl:
+      (canonicalNorm === '' || ogUrlNorm === '') ? true :
+      canonicalNorm === ogUrlNorm,
     robotsTxtAllows: true, // set server-side
   };
 
