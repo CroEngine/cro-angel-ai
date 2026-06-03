@@ -151,6 +151,39 @@ function parseRenderBlocking(audit: LighthouseAudit | undefined): RenderBlocking
     .sort((a, b) => b.wastedMs - a.wastedMs);
 }
 
+type ThirdPartyAuditItem = {
+  entity?: string | { text?: string };
+  transferSize?: number;
+  blockingTime?: number;
+  mainThreadTime?: number;
+};
+
+function parseThirdPartyEntities(
+  audit: LighthouseAudit | undefined,
+): { entities: ThirdPartyEntity[]; totalBlockingMs: number } {
+  const items = (audit?.details?.items as ThirdPartyAuditItem[] | undefined) ?? [];
+  if (!Array.isArray(items) || items.length === 0) {
+    return { entities: [], totalBlockingMs: 0 };
+  }
+  const mapped: ThirdPartyEntity[] = items.map((item) => {
+    // entity-fältet kan vara antingen { text } (objekt) eller en rak sträng
+    // beroende på Lighthouse-version.
+    const name =
+      typeof item.entity === "string"
+        ? item.entity
+        : item.entity?.text ?? "Unknown";
+    return {
+      entity: name,
+      transferKib: bytesToKib(item.transferSize) ?? 0,
+      blockingTimeMs: typeof item.blockingTime === "number" ? Math.round(item.blockingTime) : 0,
+      mainThreadTimeMs: typeof item.mainThreadTime === "number" ? Math.round(item.mainThreadTime) : 0,
+    };
+  });
+  const totalBlockingMs = mapped.reduce((acc, e) => acc + e.blockingTimeMs, 0);
+  mapped.sort((a, b) => b.blockingTimeMs - a.blockingTimeMs);
+  return { entities: mapped.slice(0, 10), totalBlockingMs };
+}
+
 function parsePsi(json: unknown, strategy: Strategy): PsiStrategyResult {
   const lhr = (json as { lighthouseResult?: Record<string, unknown> })?.lighthouseResult ?? {};
   const cats = (lhr.categories as Record<string, { score?: number }> | undefined) ?? {};
