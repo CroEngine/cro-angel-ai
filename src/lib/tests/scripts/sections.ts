@@ -100,20 +100,6 @@ export const SECTIONS_SCRIPT = `(() => {
   // Cache total element count once for wrapper-detection below.
   const totalElements = document.body.querySelectorAll('*').length;
 
-  function pushCookieDebug(el, matchedBy, rectH, sample) {
-    try {
-      window.__cookieDebug = window.__cookieDebug || [];
-      window.__cookieDebug.push({
-        tag: el.tagName,
-        id: el.id || null,
-        cls: (typeof el.className === 'string' ? el.className : '').slice(0, 80),
-        rectH: Math.round(rectH || 0),
-        matchedBy,
-        sample: (sample || '').slice(0, 120),
-      });
-    } catch (_) {}
-  }
-
   function isCookieBanner(el) {
     const id = (el.id || '').toLowerCase();
     const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
@@ -121,13 +107,11 @@ export const SECTIONS_SCRIPT = `(() => {
     const role = ((el.getAttribute && el.getAttribute('role')) || '').toLowerCase();
     const COOKIE_RX = /(cookie|consent|gdpr|ccpa|onetrust|cookiebot|trustarc|usercentrics|didomi|osano|klaro|truste|quantcast|iubenda|secureprivacy|termly|cookieyes|cookiehub|ketch|tealium|sourcepoint)/;
     if (COOKIE_RX.test(id) || COOKIE_RX.test(cls) || COOKIE_RX.test(aria)) {
-      pushCookieDebug(el, 'regex', el.getBoundingClientRect().height, id + ' ' + cls);
       return true;
     }
     if (role === 'dialog' || role === 'alertdialog') {
       const txt = (el.innerText || '').toLowerCase().slice(0, 400);
       if (/cookie|consent|gdpr|samtycke/.test(txt)) {
-        pushCookieDebug(el, 'role', el.getBoundingClientRect().height, txt);
         return true;
       }
     }
@@ -139,7 +123,6 @@ export const SECTIONS_SCRIPT = `(() => {
       const pid = (p.id || '').toLowerCase();
       const pcls = (p.className && typeof p.className === 'string') ? p.className.toLowerCase() : '';
       if (COOKIE_RX.test(pid) || COOKIE_RX.test(pcls)) {
-        pushCookieDebug(el, 'ancestor', el.getBoundingClientRect().height, pid + ' ' + pcls);
         return true;
       }
       p = p.parentElement;
@@ -155,12 +138,12 @@ export const SECTIONS_SCRIPT = `(() => {
       const BANNER_PHRASES = /(we use cookies|this (site|website) uses cookies|cookie (preferences|settings|policy)|by clicking ["“']?accept|manage (your )?cookies|your privacy choices|tracking technologies|essential cookies|f[öo]r att f[öo]rb[äa]ttra din upplevelse|vi anv[äa]nder cookies|samtycke till cookies)/;
       const ACCEPT_CTA = /(accept (all )?cookies?|allow all|godk[äa]nn (alla )?cookies|till[åa]t alla|acceptera alla|reject (all )?cookies?|avvisa alla|neka alla)/;
       if (BANNER_PHRASES.test(text) || ACCEPT_CTA.test(text)) {
-        pushCookieDebug(el, 'text', rect.height, text);
         return true;
       }
     }
     return false;
   }
+
 
   function addNode(el) {
     if (!el || seen.has(el)) return;
@@ -187,22 +170,8 @@ export const SECTIONS_SCRIPT = `(() => {
         if (cloneH > effectiveH) effectiveH = cloneH;
       } catch (_) {}
     }
-    if (rawH < 80) {
-      try {
-        window.__lazyDebug = window.__lazyDebug || [];
-        window.__lazyDebug.push({
-          tag: el.tagName,
-          id: el.id || null,
-          cls: (typeof el.className === 'string' ? el.className : '').slice(0, 80),
-          rectH: Math.round(rawH),
-          offsetH: Math.round(offsetH),
-          scrollH: Math.round(scrollH),
-          cloneH: Math.round(cloneH),
-          accepted: effectiveH >= 80,
-        });
-      } catch (_) {}
-    }
     if (effectiveH < 80) return;
+
     if (effectiveH !== rawH) {
       rect = {
         top: rect.top,
@@ -225,21 +194,7 @@ export const SECTIONS_SCRIPT = `(() => {
       const ratio = totalElements > 0 ? ownCount / totalElements : 0;
       const tooTall = rect.height > viewportH * 10;
       const tooBig = ratio > 0.6;
-      // Diagnostic: record every candidate that crossed the height threshold.
-      try {
-        window.__wrapperDebug = window.__wrapperDebug || [];
-        window.__wrapperDebug.push({
-          tag: el.tagName,
-          id: el.id || null,
-          cls: (typeof el.className === 'string' ? el.className : '').slice(0, 80),
-          ownCount,
-          totalElements,
-          ratio: Math.round(ratio * 1000) / 1000,
-          rectH: Math.round(rect.height),
-          viewportH,
-          skipped: tooBig || tooTall,
-        });
-      } catch (_) {}
+
       if (tooBig || tooTall) {
         // Skip this wrapper as a section, but recurse into its direct
         // children so nested real sections aren't lost with the subtree.

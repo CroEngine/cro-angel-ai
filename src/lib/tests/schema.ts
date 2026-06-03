@@ -344,50 +344,8 @@ export type PageAuditData = {
   pageSummary: PageSummary;
   hero?: HeroContent;
   flags: string[];
-  wrapperDebug?: Array<{
-    tag: string;
-    id: string | null;
-    cls: string;
-    ownCount: number;
-    totalElements: number;
-    ratio: number;
-    rectH: number;
-    viewportH: number;
-    skipped: boolean;
-  }>;
-  lazyDebug?: Array<{
-    tag: string;
-    id: string | null;
-    cls: string;
-    rectH: number;
-    offsetH: number;
-    scrollH: number;
-    cloneH: number;
-    accepted: boolean;
-  }>;
-  cookieDebug?: Array<{
-    tag: string;
-    id: string | null;
-    cls: string;
-    rectH: number;
-    matchedBy: "regex" | "role" | "ancestor" | "text";
-    sample: string;
-  }>;
-  cookiePollAttempts?: number | null;
-  cookieFoundEl?: {
-    tag: string;
-    id: string | null;
-    cls: string;
-    w: number;
-    h: number;
-  } | null;
-  cookieRootTagged?: {
-    tag: string;
-    id: string | null;
-    cls: string;
-  } | null;
-  cookieWaitMs?: number | null;
-  ctaCookieFilterHits?: number | null;
+
+
   indexability?: {
     indexable: boolean;
     noindex: boolean;
