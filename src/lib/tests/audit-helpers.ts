@@ -158,14 +158,6 @@ export function buildPageSummary(input: {
   };
 }
 
-    formCount: forms.length,
-    navigationLinks: navigation.topNavCount + navigation.footerNavCount,
-    sectionCount: sections.length,
-    pageHeightPx: dims.pageHeightPx,
-    foldHeightPx: dims.foldHeightPx,
-  };
-}
-
 export function deriveHero(
   sections: PageSection[],
   ctas: CTAEntity[],
