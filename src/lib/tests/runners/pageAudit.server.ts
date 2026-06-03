@@ -89,15 +89,32 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
       '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
     ].join(',');
     const ROOT_SEL = '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i]';
+    window.__cookiePollAttempts = 0;
+    window.__cookieFoundEl = null;
+    window.__cookieRootTagged = null;
+    window.__cookieWaitMs = null;
     const start = Date.now();
     const deadline = start + 2500;
     while (Date.now() < deadline) {
+      window.__cookiePollAttempts++;
       const found = document.querySelector(SEL);
       if (found) {
         const r = found.getBoundingClientRect();
+        window.__cookieFoundEl = {
+          tag: found.tagName,
+          id: found.id || null,
+          cls: (found.className || '').toString().slice(0, 120),
+          w: Math.round(r.width),
+          h: Math.round(r.height),
+        };
         if (r.width > 50 && r.height > 30) {
           const root = (found.closest && found.closest(ROOT_SEL)) || found;
           try { root.setAttribute('data-lovable-cookie-root', '1'); } catch (_) {}
+          window.__cookieRootTagged = {
+            tag: root.tagName,
+            id: root.id || null,
+            cls: (root.className || '').toString().slice(0, 120),
+          };
           window.__cookieWaitMs = Date.now() - start;
           return;
         }
@@ -106,6 +123,7 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     }
     window.__cookieWaitMs = Date.now() - start;
   })()`);
+
 
   const [
     rawAudit,
