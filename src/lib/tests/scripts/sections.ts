@@ -93,16 +93,36 @@ export const SECTIONS_SCRIPT = `(() => {
   // Cache total element count once for wrapper-detection below.
   const totalElements = document.body.querySelectorAll('*').length;
 
+  function pushCookieDebug(el, matchedBy, rectH, sample) {
+    try {
+      window.__cookieDebug = window.__cookieDebug || [];
+      window.__cookieDebug.push({
+        tag: el.tagName,
+        id: el.id || null,
+        cls: (typeof el.className === 'string' ? el.className : '').slice(0, 80),
+        rectH: Math.round(rectH || 0),
+        matchedBy,
+        sample: (sample || '').slice(0, 120),
+      });
+    } catch (_) {}
+  }
+
   function isCookieBanner(el) {
     const id = (el.id || '').toLowerCase();
     const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
     const aria = ((el.getAttribute && el.getAttribute('aria-label')) || '').toLowerCase();
     const role = ((el.getAttribute && el.getAttribute('role')) || '').toLowerCase();
-    const COOKIE_RX = /(cookie|consent|gdpr|ccpa|onetrust|cookiebot|trustarc|usercentrics|didomi|osano|klaro)/;
-    if (COOKIE_RX.test(id) || COOKIE_RX.test(cls) || COOKIE_RX.test(aria)) return true;
+    const COOKIE_RX = /(cookie|consent|gdpr|ccpa|onetrust|cookiebot|trustarc|usercentrics|didomi|osano|klaro|truste|quantcast|iubenda|secureprivacy|termly|cookieyes|cookiehub|ketch|tealium|sourcepoint)/;
+    if (COOKIE_RX.test(id) || COOKIE_RX.test(cls) || COOKIE_RX.test(aria)) {
+      pushCookieDebug(el, 'regex', el.getBoundingClientRect().height, id + ' ' + cls);
+      return true;
+    }
     if (role === 'dialog' || role === 'alertdialog') {
       const txt = (el.innerText || '').toLowerCase().slice(0, 400);
-      if (/cookie|consent|gdpr|samtycke/.test(txt)) return true;
+      if (/cookie|consent|gdpr|samtycke/.test(txt)) {
+        pushCookieDebug(el, 'role', el.getBoundingClientRect().height, txt);
+        return true;
+      }
     }
     // Inspect a couple of close ancestors so deeply-nested banner inner divs
     // are also filtered.
@@ -111,8 +131,26 @@ export const SECTIONS_SCRIPT = `(() => {
     while (p && hops++ < 3) {
       const pid = (p.id || '').toLowerCase();
       const pcls = (p.className && typeof p.className === 'string') ? p.className.toLowerCase() : '';
-      if (COOKIE_RX.test(pid) || COOKIE_RX.test(pcls)) return true;
+      if (COOKIE_RX.test(pid) || COOKIE_RX.test(pcls)) {
+        pushCookieDebug(el, 'ancestor', el.getBoundingClientRect().height, pid + ' ' + pcls);
+        return true;
+      }
       p = p.parentElement;
+    }
+    // Pure content signal: short, banner-shaped text + cookie CTA wording.
+    // Triggers oavsett klass/id/role så portal-rendered banners fångas
+    // (Greenhouse/Rippling-mönster). Nav-guard hindrar mega-menyer med
+    // "Cookie policy"-länkar från att matcha (Personio/HiBob-mönster).
+    const isNav = el.tagName === 'NAV' || (el.closest && el.closest('nav, header') !== null);
+    const rect = el.getBoundingClientRect();
+    const text = (el.innerText || '').toLowerCase();
+    if (!isNav && rect.height > 0 && rect.height < viewportH * 0.9 && text.length > 0 && text.length < 1500) {
+      const BANNER_PHRASES = /(we use cookies|this (site|website) uses cookies|cookie (preferences|settings|policy)|by clicking ["“']?accept|manage (your )?cookies|your privacy choices|tracking technologies|essential cookies|f[öo]r att f[öo]rb[äa]ttra din upplevelse|vi anv[äa]nder cookies|samtycke till cookies)/;
+      const ACCEPT_CTA = /(accept (all )?cookies?|allow all|godk[äa]nn (alla )?cookies|till[åa]t alla|acceptera alla|reject (all )?cookies?|avvisa alla|neka alla)/;
+      if (BANNER_PHRASES.test(text) || ACCEPT_CTA.test(text)) {
+        pushCookieDebug(el, 'text', rect.height, text);
+        return true;
+      }
     }
     return false;
   }
