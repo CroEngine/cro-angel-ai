@@ -178,7 +178,7 @@ export function BrowserShell() {
           />
         </div>
         <div className="flex min-h-0 flex-1 lg:w-1/2">
-          <ConsolePanel events={events} />
+          <ConsolePanel events={events} url={url} />
         </div>
       </div>
     </div>
