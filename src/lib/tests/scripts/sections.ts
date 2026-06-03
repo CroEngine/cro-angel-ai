@@ -36,11 +36,18 @@ export const SECTIONS_SCRIPT = `(() => {
   }
 
   function headings(el) {
-    const h = el.querySelector('h1,h2,h3,h4');
+    const h1s = Array.from(el.querySelectorAll('h1'));
+    let heading = '';
+    if (h1s.length > 0) {
+      heading = h1s.map((h) => (h.textContent || '').trim()).filter(Boolean).join(' ');
+    } else {
+      const h = el.querySelector('h2,h3,h4');
+      heading = h ? (h.textContent || '').trim() : '';
+    }
+    heading = heading.replace(/\\s+/g, ' ').slice(0, 200);
     const sub = el.querySelector('h2,h3,p');
-    const heading = h ? (h.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 160) : '';
     let subheading = '';
-    if (sub && sub !== h) {
+    if (sub && (h1s.length === 0 || h1s.indexOf(sub) === -1)) {
       subheading = (sub.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 200);
     }
     return { heading, subheading };
