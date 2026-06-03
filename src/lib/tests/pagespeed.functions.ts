@@ -280,6 +280,8 @@ function emptyStrategyResult(strategy: Strategy, error: string): PsiStrategyResu
     audits: { opportunities: [], diagnostics: [] },
     resourceSummary: EMPTY_RESOURCE_SUMMARY,
     renderBlockingResources: [],
+    thirdPartyEntities: [],
+    thirdPartyBlockingTotalMs: 0,
     error,
   };
 }
