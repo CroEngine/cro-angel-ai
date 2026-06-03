@@ -381,6 +381,13 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     // (t.ex. media.cloudinary.com). Bred matchning på 'cloudinary.com'.
     { tech: 'cloudinary', category: 'cdn', match: 'cloudinary.com' },
     { tech: 'shopify', category: 'cms', match: 'cdn.shopify.com' },
+    // Tealium Tag Manager — alternativ till GTM (laddar ofta GA4 m.fl. internt).
+    { tech: 'tealium', category: 'analytics', match: 'tiqcdn.com' },
+    // WordPress — matchar typiska WP-sökvägar i scriptens URL.
+    { tech: 'wordpress', category: 'cms', match: '/wp-content/' },
+    { tech: 'wordpress', category: 'cms', match: '/wp-includes/' },
+    { tech: 'wordpress', category: 'cms', match: '/wp/wp-includes/' },
+    { tech: 'wordpress', category: 'cms', match: '/wp/wp-content/' },
   ];
   const techItems = [];
   const techDedupe = new Set();
@@ -454,18 +461,6 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
   if (document.querySelector('script[src*="cdn.shopify.com"]') || ('Shopify' in window)) {
     addTech('shopify', 'cms', 'dom', 'Shopify global / cdn.shopify.com');
   }
-  // DEBUG — ta bort när detektionen är stabil
-  const _debug = {
-    allScriptUrls: Array.from(scriptUrlMap.keys()),
-    domScriptCount: 0,
-    resourceTimingCount: 0,
-    locationHostname: location.hostname,
-    locationBaseDomain: pageBase,
-  };
-  for (const srcType of scriptUrlMap.values()) {
-    if (srcType === 'script') _debug.domScriptCount++;
-    else if (srcType === 'resource_timing') _debug.resourceTimingCount++;
-  }
   const techStack = {
     detected: Array.from(new Set(techItems.map((t) => t.tech))).sort(),
     byCategory: {
@@ -481,7 +476,6 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     thirdPartyScriptCount,
     firstPartyScriptCount,
     items: techItems,
-    _debug,
   };
 
 

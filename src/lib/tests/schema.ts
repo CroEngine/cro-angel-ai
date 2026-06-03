@@ -482,14 +482,6 @@ export type PageAuditData = {
       source: "script" | "resource_timing" | "dom" | "meta";
       evidence: string;
     }>;
-    /** DEBUG — temporärt fält för att verifiera detektion. Ta bort när stabil. */
-    _debug?: {
-      allScriptUrls: string[];
-      domScriptCount: number;
-      resourceTimingCount: number;
-      locationHostname: string;
-      locationBaseDomain: string;
-    };
   };
   contentMetrics?: {
     readingTimeMinutes: number;
