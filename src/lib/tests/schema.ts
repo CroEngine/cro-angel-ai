@@ -439,6 +439,49 @@ export type PageAuditData = {
       reachable: boolean;
       redirectsTo: string | null;
     } | null;
+    /** True om X-Robots-Tag-headern matchar /noindex/i. Separat från meta-baserad `noindex`. */
+    noindexViaHeader?: boolean;
+    /** `noindex || noindexViaHeader` — använd för effektiv indexerbarhet. */
+    noindexEffective?: boolean;
+  };
+  httpHeaders?: {
+    status: number | null;
+    finalUrl: string | null;
+    cacheControl: string | null;
+    lastModified: string | null;
+    etag: string | null;
+    /** Kan sätta noindex utan att det syns i <meta>. */
+    xRobotsTag: string | null;
+    contentType: string | null;
+    contentEncoding: string | null;
+    contentLength: number | null;
+    server: string | null;
+    poweredBy: string | null;
+    strictTransportSecurity: string | null;
+    contentSecurityPolicy: string | null;
+    /** Kan innehålla hreflang/preload via HTTP-header istället för <link>. */
+    link: string | null;
+  };
+  techStack?: {
+    detected: string[];
+    byCategory: {
+      analytics: string[];
+      chat: string[];
+      marketing: string[];
+      advertising: string[];
+      consent: string[];
+      cms: string[];
+      cdn: string[];
+      experimentation: string[];
+    };
+    thirdPartyScriptCount: number;
+    firstPartyScriptCount: number;
+    items: Array<{
+      tech: string;
+      category: string;
+      source: "script" | "dom" | "meta";
+      evidence: string;
+    }>;
   };
   contentMetrics?: {
     readingTimeMinutes: number;

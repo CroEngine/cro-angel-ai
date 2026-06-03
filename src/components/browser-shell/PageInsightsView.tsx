@@ -271,6 +271,8 @@ export function PageInsightsView({ url, runKey = 0 }: { url: string; runKey?: nu
             thirdPartyKib: null, totalRequests: null,
           },
           renderBlockingResources: [],
+          thirdPartyEntities: [],
+          thirdPartyBlockingTotalMs: 0,
           error: e instanceof Error ? e.message : String(e),
         }),
       )
@@ -293,6 +295,8 @@ export function PageInsightsView({ url, runKey = 0 }: { url: string; runKey?: nu
             thirdPartyKib: null, totalRequests: null,
           },
           renderBlockingResources: [],
+          thirdPartyEntities: [],
+          thirdPartyBlockingTotalMs: 0,
           error: e instanceof Error ? e.message : String(e),
         }),
       )

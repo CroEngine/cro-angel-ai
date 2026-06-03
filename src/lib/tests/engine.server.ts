@@ -210,8 +210,20 @@ export async function runSteps(
         switch (step.kind) {
           case "goto": {
             const existing = stagehand.context.pages()[0];
-            if (existing) await existing.goto(step.url);
-            else await stagehand.context.newPage(step.url);
+            if (existing) {
+              const response = await existing.goto(step.url);
+              if (response) {
+                // Stash:a response-metadata på page-objektet så pageAudit-steget
+                // kan plocka upp HTTP-headers (X-Robots-Tag, Cache-Control, etc.).
+                (existing as unknown as { __lovableLastResponse?: unknown }).__lovableLastResponse = {
+                  status: response.status(),
+                  headers: response.headers(), // Playwright lowercase:ar nycklar
+                  url: response.url(),
+                };
+              }
+            } else {
+              await stagehand.context.newPage(step.url);
+            }
             break;
           }
           case "wait":

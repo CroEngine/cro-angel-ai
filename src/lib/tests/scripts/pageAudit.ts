@@ -347,6 +347,98 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     items: hintItems,
   };
 
+  // Tech stack-detektion — script[src] hostname-matchning + DOM-/meta-attribut.
+  const TECH_RULES = [
+    { tech: 'gtm', category: 'analytics', match: 'googletagmanager.com/gtm.js' },
+    { tech: 'ga4', category: 'analytics', match: 'googletagmanager.com/gtag/js' },
+    { tech: 'ga4', category: 'analytics', match: 'google-analytics.com' },
+    { tech: 'intercom', category: 'chat', match: 'widget.intercom.io' },
+    { tech: 'intercom', category: 'chat', match: 'js.intercomcdn.com' },
+    { tech: 'hubspot', category: 'marketing', match: 'js.hs-scripts.com' },
+    { tech: 'hubspot', category: 'marketing', match: 'js.hsforms.net' },
+    { tech: 'hubspot', category: 'marketing', match: 'hubspot.com' },
+    { tech: 'hotjar', category: 'analytics', match: 'static.hotjar.com' },
+    { tech: 'optimizely', category: 'experimentation', match: 'cdn.optimizely.com' },
+    { tech: 'vwo', category: 'experimentation', match: 'visualwebsiteoptimizer.com' },
+    { tech: 'segment', category: 'analytics', match: 'cdn.segment.com' },
+    { tech: 'mixpanel', category: 'analytics', match: 'cdn.mxpnl.com' },
+    { tech: 'amplitude', category: 'analytics', match: 'cdn.amplitude.com' },
+    { tech: 'fullstory', category: 'analytics', match: 'fullstory.com' },
+    { tech: 'drift', category: 'chat', match: 'js.driftt.com' },
+    { tech: 'zendesk', category: 'chat', match: 'static.zdassets.com' },
+    { tech: 'salesforce_pardot', category: 'marketing', match: 'pi.pardot.com' },
+    { tech: 'marketo', category: 'marketing', match: 'marketo.com' },
+    { tech: 'facebook_pixel', category: 'advertising', match: 'connect.facebook.net' },
+    { tech: 'linkedin_insight', category: 'advertising', match: 'snap.licdn.com' },
+    { tech: 'tiktok_pixel', category: 'advertising', match: 'analytics.tiktok.com' },
+    { tech: 'cookiebot', category: 'consent', match: 'consent.cookiebot.com' },
+    { tech: 'onetrust', category: 'consent', match: 'cdn.cookielaw.org' },
+    { tech: 'onetrust', category: 'consent', match: 'otSDKStub' },
+    { tech: 'cloudflare', category: 'cdn', match: 'static.cloudflareinsights.com' },
+    { tech: 'shopify', category: 'cms', match: 'cdn.shopify.com' },
+  ];
+  const techItems = [];
+  const techDedupe = new Set();
+  const techByCategory = {
+    analytics: new Set(), chat: new Set(), marketing: new Set(),
+    advertising: new Set(), consent: new Set(), cms: new Set(),
+    cdn: new Set(), experimentation: new Set(),
+  };
+  function addTech(tech, category, source, evidence) {
+    const key = tech + '|' + source + '|' + evidence;
+    if (techDedupe.has(key)) return;
+    techDedupe.add(key);
+    if (techByCategory[category]) techByCategory[category].add(tech);
+    techItems.push({ tech, category, source, evidence });
+  }
+  const scriptNodes = Array.from(document.querySelectorAll('script[src]'));
+  let firstPartyScriptCount = 0;
+  let thirdPartyScriptCount = 0;
+  const pageHost = location.hostname;
+  for (const s of scriptNodes) {
+    const src = s.getAttribute('src') || '';
+    let host = '';
+    try { host = new URL(src, location.href).hostname; } catch (e) {}
+    if (host && host === pageHost) firstPartyScriptCount++;
+    else if (host) thirdPartyScriptCount++;
+    for (const rule of TECH_RULES) {
+      if (src.indexOf(rule.match) !== -1) addTech(rule.tech, rule.category, 'script', src);
+    }
+  }
+  if (document.querySelector('form[data-hsfc]') || document.querySelector('script[src*="hsforms.net"]')) {
+    addTech('hubspot_forms', 'marketing', 'dom', 'form[data-hsfc] | hsforms.net');
+  }
+  if (document.querySelector('#intercom-container')) {
+    addTech('intercom_messenger', 'chat', 'dom', '#intercom-container');
+  }
+  if (document.documentElement.hasAttribute('data-wf-page')) {
+    addTech('webflow', 'cms', 'dom', 'html[data-wf-page]');
+  }
+  const genEl = document.querySelector('meta[name="generator"]');
+  const genContent = genEl ? (genEl.getAttribute('content') || '') : '';
+  if (/wordpress/i.test(genContent)) {
+    addTech('wordpress', 'cms', 'meta', 'generator=' + genContent);
+  }
+  if (document.querySelector('script[src*="cdn.shopify.com"]') || ('Shopify' in window)) {
+    addTech('shopify', 'cms', 'dom', 'Shopify global / cdn.shopify.com');
+  }
+  const techStack = {
+    detected: Array.from(new Set(techItems.map((t) => t.tech))).sort(),
+    byCategory: {
+      analytics: Array.from(techByCategory.analytics).sort(),
+      chat: Array.from(techByCategory.chat).sort(),
+      marketing: Array.from(techByCategory.marketing).sort(),
+      advertising: Array.from(techByCategory.advertising).sort(),
+      consent: Array.from(techByCategory.consent).sort(),
+      cms: Array.from(techByCategory.cms).sort(),
+      cdn: Array.from(techByCategory.cdn).sort(),
+      experimentation: Array.from(techByCategory.experimentation).sort(),
+    },
+    thirdPartyScriptCount,
+    firstPartyScriptCount,
+    items: techItems,
+  };
+
   return {
     url: location.href,
     head,
@@ -361,6 +453,7 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     contentMetrics,
     performanceProxy,
     resourceHints,
+    techStack,
   };
 })()`;
 

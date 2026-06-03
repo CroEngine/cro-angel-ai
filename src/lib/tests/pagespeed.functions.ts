@@ -52,6 +52,13 @@ export type RenderBlockingResource = {
   wastedMs: number;
 };
 
+export type ThirdPartyEntity = {
+  entity: string;
+  transferKib: number;
+  blockingTimeMs: number;
+  mainThreadTimeMs: number;
+};
+
 export type PsiStrategyResult = {
   strategy: Strategy;
   fetchedAt: string;
@@ -63,6 +70,8 @@ export type PsiStrategyResult = {
   };
   resourceSummary: ResourceSummary;
   renderBlockingResources: RenderBlockingResource[];
+  thirdPartyEntities: ThirdPartyEntity[];
+  thirdPartyBlockingTotalMs: number;
   error: string | null;
 };
 
@@ -142,6 +151,39 @@ function parseRenderBlocking(audit: LighthouseAudit | undefined): RenderBlocking
     .sort((a, b) => b.wastedMs - a.wastedMs);
 }
 
+type ThirdPartyAuditItem = {
+  entity?: string | { text?: string };
+  transferSize?: number;
+  blockingTime?: number;
+  mainThreadTime?: number;
+};
+
+function parseThirdPartyEntities(
+  audit: LighthouseAudit | undefined,
+): { entities: ThirdPartyEntity[]; totalBlockingMs: number } {
+  const items = (audit?.details?.items as ThirdPartyAuditItem[] | undefined) ?? [];
+  if (!Array.isArray(items) || items.length === 0) {
+    return { entities: [], totalBlockingMs: 0 };
+  }
+  const mapped: ThirdPartyEntity[] = items.map((item) => {
+    // entity-fältet kan vara antingen { text } (objekt) eller en rak sträng
+    // beroende på Lighthouse-version.
+    const name =
+      typeof item.entity === "string"
+        ? item.entity
+        : item.entity?.text ?? "Unknown";
+    return {
+      entity: name,
+      transferKib: bytesToKib(item.transferSize) ?? 0,
+      blockingTimeMs: typeof item.blockingTime === "number" ? Math.round(item.blockingTime) : 0,
+      mainThreadTimeMs: typeof item.mainThreadTime === "number" ? Math.round(item.mainThreadTime) : 0,
+    };
+  });
+  const totalBlockingMs = mapped.reduce((acc, e) => acc + e.blockingTimeMs, 0);
+  mapped.sort((a, b) => b.blockingTimeMs - a.blockingTimeMs);
+  return { entities: mapped.slice(0, 10), totalBlockingMs };
+}
+
 function parsePsi(json: unknown, strategy: Strategy): PsiStrategyResult {
   const lhr = (json as { lighthouseResult?: Record<string, unknown> })?.lighthouseResult ?? {};
   const cats = (lhr.categories as Record<string, { score?: number }> | undefined) ?? {};
@@ -204,6 +246,10 @@ function parsePsi(json: unknown, strategy: Strategy): PsiStrategyResult {
     },
     resourceSummary: parseResourceSummary(audits["resource-summary"]),
     renderBlockingResources: parseRenderBlocking(audits["render-blocking-resources"]),
+    ...(() => {
+      const tp = parseThirdPartyEntities(audits["third-party-summary"]);
+      return { thirdPartyEntities: tp.entities, thirdPartyBlockingTotalMs: tp.totalBlockingMs };
+    })(),
     error: null,
   };
 }
@@ -234,6 +280,8 @@ function emptyStrategyResult(strategy: Strategy, error: string): PsiStrategyResu
     audits: { opportunities: [], diagnostics: [] },
     resourceSummary: EMPTY_RESOURCE_SUMMARY,
     renderBlockingResources: [],
+    thirdPartyEntities: [],
+    thirdPartyBlockingTotalMs: 0,
     error,
   };
 }
