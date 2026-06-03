@@ -1,50 +1,25 @@
 ## Mål
-
-Lägg till `techStack._debug` med rådata så vi i nästa körning kan se exakt vad evaluate-scopet samlade in — utan att gissa varför detektion eller first-party-räkning ser fel ut.
+Stabilisera tech stack-detektionen med två nya detektorer (WordPress, Tealium) och ta bort temporär debug-utdata. Kör sista verifiering på HiBob — sen är tech stack klar.
 
 ## Ändringar
 
-**`src/lib/tests/scripts/pageAudit.ts`** (enda filen som rörs)
+### 1. Lägg till WordPress- och Tealium-detektorer (`src/lib/tests/scripts/pageAudit.ts`)
+- **WordPress**: matcha `/wp/wp-includes/` eller `/wp-content/` i URL-sökvägen (kategori: `cms`).
+  - Exempel: `new.hibob.com/wp/wp-includes/js/dist/...`, `new.hibob.com/wp/wp-plugins/debloat/...`
+- **Tealium**: matcha `tiqcdn.com` (kategori: `analytics`).
+  - Exempel: `tags.tiqcdn.com/utag/hibob/hibob/prod/utag.js`
+- Båda läggs till i `TECH_RULES`-arrayen.
 
-I evaluate-scopet, efter att `scriptUrlMap` är fylld och `baseDomain` är definierad — bygg ett `_debug`-objekt och inkludera det i `techStack`:
+### 2. Ta bort `_debug`-fältet (`src/lib/tests/scripts/pageAudit.ts` + `src/lib/tests/schema.ts`)
+- `_debug` var temporärt och behövs inte längre — detektionen är verifierad.
+- Ta bort `_debug`-bygget från `pageAudit.ts`.
+- Ta bort `_debug`-typen från `PageAuditData.techStack` i `schema.ts`.
 
-```js
-const _debug = {
-  allScriptUrls: Array.from(scriptUrlMap.keys()),
-  domScriptCount: 0,
-  resourceTimingCount: 0,
-  locationHostname: location.hostname,
-  locationBaseDomain: pageBase,
-};
-for (const srcType of scriptUrlMap.values()) {
-  if (srcType === 'script') _debug.domScriptCount++;
-  else if (srcType === 'resource_timing') _debug.resourceTimingCount++;
-}
-```
+### 3. Sista verifiering på HiBob
+- Kör page audit mot `https://www.hibob.com/se/`.
+- Bekräfta att `techStack.detected` innehåller: `wordpress`, `tealium`, `onetrust`, `vwo`.
+- Bekräfta att `firstPartyScriptCount > 0` och `thirdPartyScriptCount` stämmer.
 
-Lägg `_debug` sist i `techStack`-objektet med en kommentar `// DEBUG — ta bort när detektionen är stabil`.
-
-**`src/lib/tests/schema.ts`**
-
-Utöka `techStack` i `PageAuditData` med ett optional fält:
-
-```ts
-_debug?: {
-  allScriptUrls: string[];
-  domScriptCount: number;
-  resourceTimingCount: number;
-  locationHostname: string;
-  locationBaseDomain: string;
-};
-```
-
-Optional så det enkelt kan tas bort senare utan att bryta gamla rapporter.
-
-## Inte i denna PR
-
-- Inga ändringar i flag-rules, UI, runners eller PSI.
-- `_debug` används inte i någon downstream-logik — bara observerbart i JSON-output.
-
-## Verifiering
-
-Efter körning på HiBob ska `techStack._debug` finnas i JSON med icke-tom `allScriptUrls`, och `domScriptCount + resourceTimingCount` ska motsvara `allScriptUrls.length`.
+## Efter verifiering
+- Tech stack anses klar.
+- Nästa steg: `flag-rules.ts` (enligt användarens riktning).
