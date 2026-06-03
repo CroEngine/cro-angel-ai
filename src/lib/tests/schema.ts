@@ -192,6 +192,8 @@ export type TrustSignal = {
 };
 
 
+export type WcagLevel = "AAA" | "AA" | "AA-large" | "FAIL";
+
 export type CTAEntity = {
   text: string;
   intent: ElementIntent;
@@ -202,6 +204,8 @@ export type CTAEntity = {
   competingActions: number;
   nearestTrustSignalDistance: number;
   nearestFormDistance: number;
+  contrastRatio: number | null;
+  wcagLevel: WcagLevel | null;
   selector?: string; // transient — present in browser script output, stripped before persistence
   rect: Rect;
 };
