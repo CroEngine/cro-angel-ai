@@ -236,5 +236,6 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     flags: [],
     wrapperDebug,
     lazyDebug,
+    cookieDebug,
   };
 }
