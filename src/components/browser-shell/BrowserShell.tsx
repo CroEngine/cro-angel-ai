@@ -19,6 +19,7 @@ export function BrowserShell() {
   const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
   const [liveStartedAt, setLiveStartedAt] = useState<number | null>(null);
   const [frozen, setFrozen] = useState<FrozenSnapshot | null>(null);
+  const [psiRunKey, setPsiRunKey] = useState(0);
 
   const startFn = useServerFn(startTestRun);
   const stopFn = useServerFn(stopTestRun);
