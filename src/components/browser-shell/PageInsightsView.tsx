@@ -174,6 +174,67 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
           </ul>
         </div>
       )}
+
+      {(() => {
+        const rs = result.resourceSummary;
+        const parts: Array<[string, number | null]> = [
+          ["JS", rs.scriptKib], ["CSS", rs.stylesheetKib], ["IMG", rs.imageKib],
+          ["Font", rs.fontKib], ["Doc", rs.documentKib], ["Media", rs.mediaKib],
+          ["3rd-party", rs.thirdPartyKib], ["Other", rs.otherKib],
+        ];
+        const shown = parts.filter(([, v]) => v !== null && v > 0);
+        if (shown.length === 0 && rs.totalKib === null) return null;
+        return (
+          <div className="rounded border border-border bg-muted/30 p-3">
+            <div className="mb-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+              Resource breakdown
+              {rs.totalKib !== null && (
+                <span className="ml-2 font-mono normal-case tracking-normal text-foreground">
+                  {rs.totalKib.toLocaleString()} KiB
+                  {rs.totalRequests !== null && ` · ${rs.totalRequests} requests`}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              {shown.map(([label, kib]) => (
+                <span key={label} className="rounded border border-border bg-background/50 px-2 py-0.5 font-mono tabular-nums">
+                  <span className="text-muted-foreground">{label}</span>{" "}
+                  <span className="text-foreground">{kib!.toLocaleString()} KiB</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {result.renderBlockingResources.length > 0 && (
+        <div className="rounded border border-border bg-muted/30 p-3">
+          <div className="mb-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+            Render-blocking resources
+          </div>
+          <ul className="space-y-1">
+            {result.renderBlockingResources.map((r) => {
+              const filename = (() => {
+                try { return new URL(r.url).pathname.split("/").pop() || r.url; }
+                catch { return r.url; }
+              })();
+              return (
+                <li key={r.url} className="flex items-center gap-2 text-xs">
+                  <span className="inline-flex h-5 min-w-12 shrink-0 items-center justify-center rounded bg-red-500/20 px-1 text-[10px] font-bold tabular-nums text-red-600">
+                    -{Math.round(r.wastedMs)}ms
+                  </span>
+                  <span className="flex-1 truncate font-mono text-[11px] text-foreground" title={r.url}>
+                    {filename}
+                  </span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                    {Math.round(r.totalBytes / 1024)} KiB
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
