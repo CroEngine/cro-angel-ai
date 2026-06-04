@@ -406,6 +406,7 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     sectionOrder,
     trustSignals: trustTyped,
     trustSummary,
+    trustDebug,
     ctas: ctasTyped,
     forms: formsTyped,
     navigation: navTyped,
