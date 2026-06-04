@@ -280,15 +280,17 @@ export type VisualHierarchyEntry = {
 
 export type PageSummary = {
   /**
-   * Count of CTAs with category 'cta_primary' AND intent 'conversion'.
-   * Renamed from `primaryCtaCount` to clarify semantics — a "primary" CTA in
-   * the nav (e.g. login link styled like a primary button) was previously
-   * counted here but is not a conversion CTA.
+   * Count of CTAs with category 'cta_primary' as classified by the
+   * CTAS_SCRIPT in pageAudit. NOT intent-grided — a nav "primary" CTA
+   * (e.g. a login link styled as a primary button) is included here.
+   * For the intent-grided number (cta_primary AND intent==='conversion'),
+   * see `CollectSummary.primaryConversionCtaCount` produced by the
+   * `collect` step.
    */
-  primaryConversionCtaCount: number;
+  ctasScriptPrimaryCount: number;
   secondaryCtaCount: number;
   iconButtonCount: number;
-  /** CTAs not in primaryConversion/secondary/iconButton. Reconciles total. */
+  /** CTAs not in ctasScriptPrimary/secondary/iconButton. Reconciles total. */
   otherCtaCount: number;
   ctaTotalCount: number;
   aboveFoldCtaCount: number;
