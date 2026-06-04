@@ -415,6 +415,13 @@ export type PageAuditData = {
   sectionOrder: SectionType[];
   trustSignals: TrustSignal[];
   trustSummary: TrustSummary;
+  /**
+   * Per-decision log for testimonial classifier. Temporary — remove once
+   * the classifier is stable across multiple sites. Each entry: stage,
+   * decision ('accepted'|'rejected'), reason, selector, text snippet, and
+   * attribution flags (hasQuote/hasAuthor/personName/company/...).
+   */
+  trustDebug?: Array<Record<string, unknown>>;
   ctas: CTAEntity[];
   forms: FormEntity[];
   navigation: NavigationData;
