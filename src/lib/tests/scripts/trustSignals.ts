@@ -814,7 +814,10 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     if (e.type !== 'testimonial') return true;
     const key = (e.text || '').slice(0, 80);
     if (!key) return true;
-    if (seenTestimonialText.has(key)) return false;
+    if (seenTestimonialText.has(key)) {
+      logDecision('dedup-text', 'rejected', 'duplicate testimonial text', null, e.text);
+      return false;
+    }
     seenTestimonialText.add(key);
     return true;
   });
