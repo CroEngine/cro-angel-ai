@@ -1,43 +1,58 @@
-# Reviderad rollout: Fix 0 → 4 → 2 → 3
+# Fix settle-helpern: bättre signal, lägre budget, snabbare bailout
 
-Fix 1 är landad och intern­konsistent. Rerun-analysen visade att sidan vandrar mellan körningar (ctaTotalCount 15→18, pageAudit-rects drev 130–220px) medan collect är byte-identisk — alltså snapshottar de två extraktorerna olika DOM-ögonblick. Innan vi rör Fix 2/3/4 måste vi etablera ett stabilt mättillfälle, annars testar vi mot ett rörligt mål.
+Settle gör rätt sak men på fel sätt — den mäter brus istället för struktur, och tar +12s per körning vilket gör live-DOM-vyn dödfryst. Den arkitektoniska idén (global settle före extraktion) står kvar; ändringarna är finjustering av helperns interna logik.
 
-## Fix 0a — Global settle före extraktion
+## Ändringar i `src/lib/tests/runners/settle.server.ts`
 
-**Mål:** Båda extraktorerna (`collect` och `pageAudit`) ska snapshotta samma stabiliserade DOM.
+**1. Byt stabilitetssignatur.**
 
-**Var:** Ny helper `waitForSettled(page, opts)` i `src/lib/tests/runners/settle.server.ts`. Anropas i `engine.server.ts` precis efter `scrollWarmup` i `collect`-grenen, och i början av `runPageAudit` (samt i `runMobilePass` efter reload).
+Nuvarande: `document.body.children.length + ':' + document.querySelectorAll('*').length`.
+Ny: `document.body.scrollHeight + ':' + document.body.children.length + ':' + document.querySelectorAll('main, section, header, footer, [data-section], [role="main"]').length`.
 
-**Vad helpern gör — viktigt: inte naivt networkidle:**
+Rationale: vi bryr oss om att layouten har slutat växa (`scrollHeight`) och att top-level sektioner är mountade (`body.children.length` + strukturella element). Vi bryr oss INTE om att analytics-skript injicerar `<script>`-noder djupt i DOM:en, eller att en autoplay-video swappar `<source>`-element. Den nya signalen ignorerar exakt den klass av mutationer som blockerade oss på HiBob.
 
-Befintlig kod i `pageAudit.server.ts:509-511` undviker uttryckligen `networkidle` eftersom autoplay-video + 3p-script håller nätet evigt vaket på t.ex. HiBob. Helpern måste därför vara budgeterad och tolerera "alltid-busy"-sidor:
+**2. Sänk total budget 6000ms → 3000ms.**
 
-1. `waitForLoadState('domcontentloaded')` (cheap, ofta redan klart).
-2. Försök `waitForLoadState('networkidle', { timeout: 3000 })` — om det timeoutar, fortsätt utan att kasta. Logga `settle: networkidle skipped (busy)`.
-3. Pollar `document.readyState === 'complete'` upp till 2s.
-4. DOM-stabilitetscheck: mät `document.body.children.length` + `document.querySelectorAll('*').length` två gånger med 500ms mellanrum; om värdena är identiska, klar. Annars vänta ytterligare 500ms (max 2 iterationer).
-5. Hård takbudget: 6s total. Returnera `{ settled: boolean, reason: string, durationMs: number }` så vi kan logga.
+Det räcker för 95% av sidor i praktiken. Om någon sida behöver mer löser vi det situations-specifikt senare (t.ex. Fix 4-fixturen).
 
-**Borttag ur FORMS_SCRIPT:** Den planerade `waitForLoadState`-delen av Fix 4 flyttas hit — Fix 4 fokuserar då rent på iframe/embed-logik och slipper dubbel-vänta.
+**3. Sänk networkidle-budget 3000ms → 1200ms.**
 
-## Fix 0b — Brusgolv: mät vad som fortfarande vandrar
+Vi vet redan att autoplay-sites aldrig blir networkidle. Slösa inte 3s på att hoppas.
 
-**Inget kodändring i extraktorerna.** Lägg till ett dev-script `src/lib/tests/scripts/noise-floor.server.ts` (manuellt kört, inte i CI) som kör samma URL N gånger via befintlig `runSteps` och diffar JSON-output fält för fält. Output: en lista över fält som varierar ≥1 gång över 5 körningar.
+**4. Bail-fast på första matchande signatur.**
 
-**Kör mot hibob.com/se/ × 5 efter Fix 0a.** Förväntat resultat: rects stabiliseras inom ±5px, ctaTotalCount blir konstant. Allt som fortfarande driftar (A/B-test, cookie-gate, geo-rotation) dokumenteras i `.lovable/plan.md` som "ej regressions­signal" — och Fix 2:s selector-rebaseline måste explicit ignorera de fälten.
+Idag kräver `i > 0`-villkoret minst två iterationer (1500ms minimum för en stilla sida). Ny logik: mät direkt + igen efter 350ms; om identiska, returnera. Stilla sidor settlear då på ~400ms istället för 1500ms.
 
-**Acceptkriterium för att gå vidare:** ctaTotalCount, count, totalCount, intentBreakdown identiska över 5 körningar. Rects får drifta ≤5px. Om något viktigt fortfarande vandrar — stopp, diagnostisera innan Fix 2.
+**5. Skippa readyState-pollen om networkidle redan lyckades.**
 
-## Sedan: Fix 4 → Fix 2 → Fix 3 (oförändrad logik)
+Redundant — networkidle implicerar readyState=complete.
 
-- **Fix 4 (forms i iframes):** Nu utan settle-koden — bara iframe-provider­detektering (HubSpot/Marketo/Calendly), same-origin introspection, unwrapped input-cluster, `kind: 'native'|'embedded'|'unwrapped'`. Kräver fixture­sida med känd embed innan verifiering.
-- **Fix 2 (selectors):** Goal B (walk `buildSelector` upp till ~4 ancestors för adresserbarhet). Goal A (sänk `groupRepeatedControls` tröskel från ≥3 till ≥2) — explicit beslut före implementation. Re-baseline snapshots i lugn och ro.
-- **Fix 3 (intent):** Gated på `rg -n "intentBreakdown" src/`. Skippa om ingen consumer läser det.
+## Förväntad effekt på HiBob /sv
 
-## Out of scope (oförändrat)
+Före: `budget exhausted in 6843ms`.
+Efter: ~1200ms networkidle-timeout (skippas), ~350ms stability check (passar pga ny signal), total ~1500ms. Cirka **4× snabbare**.
 
-Reconciling `collect` vs `pageAudit` (arkitektur­skulden), interaction-baserad form-detektering via Stagehand `act`, LLM-baserad intent-klassificering.
+På stilla sidor (de flesta SaaS-landningar utan video): total ~400ms.
+
+## Vad jag INTE ändrar
+
+- Anropsplatser i `engine.server.ts` och `pageAudit.server.ts` — de står still.
+- Returshape (`{ settled, reason, durationMs }`).
+- Cookie-banner-pollen i pageAudit (oberoende, redan budgeterad).
+- Mobile-passet — använder samma helper, får samma vinst automatiskt.
 
 ## Verifiering
 
-Efter Fix 0a: kör Fix 0b mot hibob.com/se/ × 5. Visa diff-rapporten innan vi går vidare till Fix 4.
+1. Kör hibob.com/se/ en gång. Förvänta: `settle: dom-stable (net busy) in ~1500ms` i loggarna istället för 6843ms.
+2. Live-DOM-vyn bör inte längre kännas frusen.
+3. ctaTotalCount och övriga datapoints ska komma fram som vanligt.
+4. Om datapoints fortfarande är 0 — då är problemet *inte* settle, och vi måste titta på faktiska `step_failed`-events från SSE-strömmen.
+
+## Öppen fråga (vill svaras innan brusgolv-körningen)
+
+Brusgolv-scriptet (Fix 0b) är skrivet men inte wired in. Vill du:
+- **A:** Att jag wirear en `/api/dev/noise-floor`-endpoint som returnerar JSON-rapporten? (kräver att jag exponerar en route med session-create-callback.)
+- **B:** Att jag bakar in det i ett befintligt test-flöde (t.ex. som ett N=5-läge på run.functions.ts)?
+- **C:** Skippa wiring nu — settle-fixen verifieras manuellt genom att köra hibob.com/se/ ett par gånger och jämföra `settle: <reason> in <ms>`-loggarna.
+
+Default om du inte säger något: **C** (snabbast, minst yta).
