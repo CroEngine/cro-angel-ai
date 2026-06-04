@@ -783,8 +783,15 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       cleanedText = cleanedText.slice(0, -meta.personName.length).trim();
       cleanedText = cleanedText.replace(/[,—–-]\\s*$/, '').trim();
     }
-    if (cleanedText.length < 20) continue;
+    if (cleanedText.length < 20) {
+      logDecision('stars-anchor', 'rejected', 'cleanedText < 20', cardEl, cleanedText);
+      continue;
+    }
 
+    logDecision('stars-anchor', 'accepted', 'stars in carousel card', cardEl, cleanedText, {
+      personName: meta.personName, company: meta.company, hasImage: meta.hasImage,
+      rating: starEntry.rating,
+    });
     push('testimonial', cleanedText, cardEl, 'text', Object.assign({}, meta, {
       derivedFromStars: true,
       rating: starEntry.rating,
