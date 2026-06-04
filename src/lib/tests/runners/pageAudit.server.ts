@@ -240,7 +240,13 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
       })()
     `),
     page.evaluate(SECTIONS_SCRIPT),
-    page.evaluate(TRUST_SIGNALS_SCRIPT),
+    page.evaluate(TRUST_SIGNALS_SCRIPT).then(async (r) => {
+      try {
+        const dbg = await page.evaluate("window.__trustDebug__ || []");
+        (r as unknown as { __debug?: unknown[] }).__debug = dbg as unknown[];
+      } catch { /* ignore */ }
+      return r;
+    }),
     page.evaluate(CTAS_SCRIPT),
     page.evaluate(FORMS_SCRIPT),
     page.evaluate(NAVIGATION_SCRIPT),
