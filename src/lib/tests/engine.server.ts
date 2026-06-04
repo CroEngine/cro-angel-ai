@@ -5,6 +5,7 @@ import { Stagehand } from "@browserbasehq/stagehand";
 import { COLLECT_SCRIPT } from "./scripts/collect";
 import { OVERLAY_FN } from "./scripts/overlay";
 import { runPageAudit, runMobilePass } from "./runners/pageAudit.server";
+import { waitForSettled } from "./runners/settle.server";
 
 import { groupRepeatedControls } from "./audit-helpers";
 
