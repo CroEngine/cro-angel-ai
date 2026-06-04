@@ -132,10 +132,32 @@ export function buildPageSummary(input: {
       : null;
   const ctaContrastFailCount = ctas.filter((c) => c.wcagLevel === "FAIL").length;
 
+  const primaryConversionCtaCount = ctas.filter(
+    (c) => c.category === "cta_primary" && c.intent === "conversion",
+  ).length;
+  const secondaryCtaCount = ctas.filter((c) => c.category === "cta_secondary").length;
+  const iconButtonCount = ctas.filter((c) => c.category === "icon_button").length;
+  const ctaTotalCount = ctas.length;
+  const otherCtaCount =
+    ctaTotalCount - primaryConversionCtaCount - secondaryCtaCount - iconButtonCount;
+
+  // Reconcile assertion (dev-only warn): the four count buckets must sum to total.
+  if (
+    primaryConversionCtaCount + secondaryCtaCount + iconButtonCount + otherCtaCount !==
+    ctaTotalCount
+  ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[buildPageSummary] CTA reconcile failed: ${primaryConversionCtaCount}+${secondaryCtaCount}+${iconButtonCount}+${otherCtaCount} !== ${ctaTotalCount}`,
+    );
+  }
+
   return {
-    primaryCtaCount: ctas.filter((c) => c.category === "cta_primary").length,
-    secondaryCtaCount: ctas.filter((c) => c.category === "cta_secondary").length,
-    ctaTotalCount: ctas.length,
+    primaryConversionCtaCount,
+    secondaryCtaCount,
+    iconButtonCount,
+    otherCtaCount,
+    ctaTotalCount,
     aboveFoldCtaCount: ctas.filter((c) => c.aboveFold).length,
     foldDepthFirstCtaPx,
     aboveFoldTrustCount: trustSummary.aboveFold,

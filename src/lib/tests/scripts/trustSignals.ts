@@ -93,6 +93,19 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   const seen = new Set();
   const out = [];
+  // _debug: per-decision log for testimonial classification. Each entry records
+  // selector, snippet, decision (accepted/rejected) and reason. Temporary —
+  // remove once classifier is stable across multiple sites.
+  const debug = [];
+  function logDecision(stage, decision, reason, el, text, extras) {
+    try {
+      const snip = (text || '').replace(/\\s+/g, ' ').trim().slice(0, 120);
+      const sel = el ? buildSelector(el) : null;
+      const entry = { stage: stage, decision: decision, reason: reason, selector: sel, text: snip };
+      if (extras) Object.assign(entry, extras);
+      debug.push(entry);
+    } catch (_e) { /* never throw from debug */ }
+  }
 
   function isInsideCarousel(el) {
     let p = el;
@@ -233,6 +246,12 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         if (type === 'testimonial') extras = extractTestimonialMeta(el, text);
         else if (type === 'review_rating') extras = extractRatingMeta(text);
         else if (type === 'social_proof_count') extras = extractSocialProofCount(text);
+        if (type === 'testimonial') {
+          logDecision('text-pattern', 'accepted', 'PATTERN matched', el, text, {
+            personName: extras && extras.personName, company: extras && extras.company,
+            hasImage: extras && extras.hasImage,
+          });
+        }
         push(type, text, el, 'text', extras);
       }
     }
@@ -249,21 +268,58 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     '[role="group"][aria-roledescription~="slide" i], [data-slide], [data-carousel-item]'
   ).forEach((el) => {
     const text = (el.innerText || el.textContent || '').trim();
-    if (text.length < 40 || text.length > 600) return;
-    // For carousel slides, require some signal that it's actually a testimonial:
-    // a quote mark, an author-ish child element, or wording hints. Otherwise
-    // every product/feature slide would be misclassified as a testimonial.
+    if (text.length < 40 || text.length > 600) {
+      if (text.length >= 20) logDecision('quote-block', 'rejected', 'text length ' + text.length, el, text);
+      return;
+    }
     const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
     const isSlide = /slide|swiper|slick|embla|keen-slider|glide|splide/.test(cls)
       || (el.getAttribute && (el.getAttribute('aria-roledescription') || '').toLowerCase().indexOf('slide') !== -1);
-    if (isSlide) {
-      const hasQuote = /[“"„«»]/.test(text) || /[—–-]\\s*[A-ZÅÄÖ]/.test(text);
-      const hasAuthor = !!el.querySelector('cite, figcaption, [class*="author" i], [class*="name" i], [class*="role" i], [class*="title" i]');
-      const hasTestimonialClass = /testimonial|quote|review/.test(cls);
-      if (!hasQuote && !hasAuthor && !hasTestimonialClass) return;
+    const hasQuote = /[“"„«»]/.test(text) || /[—–-]\\s*[A-ZÅÄÖ]/.test(text);
+    const hasTestimonialClass = /testimonial|quote|review/.test(cls);
+    // Strong author signal: an explicit <cite>/<figcaption> element with text,
+    // OR a customer logo near the card. The previous broad selector
+    // ([class*="title" i], [class*="name" i], [class*="role" i]) matched
+    // section titles and product feature labels, so it has been removed.
+    const strongAuthorEl = el.querySelector('cite, figcaption');
+    const strongAuthorText = strongAuthorEl ? (strongAuthorEl.textContent || '').trim() : '';
+    const hasStrongAuthor = strongAuthorText.length >= 3 && strongAuthorText.length <= 120;
+    const hasLogoImg = !!el.querySelector('img[alt*="logo" i], img[class*="logo" i], [class*="logo" i] img');
+
+    const meta = extractTestimonialMeta(el, text);
+    // Attribution: a real testimonial needs at least one strong attribution
+    // signal — a quote-mark, an explicit cite/figcaption, a customer logo, or
+    // a name+company extracted from the text (e.g. "— Jane Doe, Acme Corp").
+    const hasAttribution =
+      hasQuote ||
+      hasStrongAuthor ||
+      hasLogoImg ||
+      (!!meta.personName && !!meta.company) ||
+      hasTestimonialClass;
+
+    // Apply the attribution gate to BOTH slides and explicit testimonial/quote
+    // containers (CMS authors sometimes reuse those class names for product
+    // cards). Blockquotes still get through on their own merit — the
+    // <blockquote> tag itself is the attribution signal.
+    const isBlockquote = el.tagName === 'BLOCKQUOTE';
+    if (!isBlockquote && !hasAttribution) {
+      logDecision('quote-block', 'rejected', 'no attribution signal', el, text, {
+        isSlide: isSlide, hasQuote: hasQuote, hasStrongAuthor: hasStrongAuthor,
+        hasLogoImg: hasLogoImg, hasTestimonialClass: hasTestimonialClass,
+        personName: meta.personName, company: meta.company,
+      });
+      return;
     }
-    push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
+    logDecision('quote-block', 'accepted',
+      isBlockquote ? 'blockquote tag' : (isSlide ? 'slide with attribution' : 'container with attribution'),
+      el, text, {
+        isSlide: isSlide, hasQuote: hasQuote, hasStrongAuthor: hasStrongAuthor,
+        hasLogoImg: hasLogoImg, hasTestimonialClass: hasTestimonialClass,
+        personName: meta.personName, company: meta.company, hasImage: meta.hasImage,
+      });
+    push('testimonial', text, el, 'text', meta);
   });
+
 
   // Big-number stat blocks (dl/dt/dd or stat/metric/counter containers where
   // the number and label live in separate sibling elements).
@@ -755,8 +811,15 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       cleanedText = cleanedText.slice(0, -meta.personName.length).trim();
       cleanedText = cleanedText.replace(/[,—–-]\\s*$/, '').trim();
     }
-    if (cleanedText.length < 20) continue;
+    if (cleanedText.length < 20) {
+      logDecision('stars-anchor', 'rejected', 'cleanedText < 20', cardEl, cleanedText);
+      continue;
+    }
 
+    logDecision('stars-anchor', 'accepted', 'stars in carousel card', cardEl, cleanedText, {
+      personName: meta.personName, company: meta.company, hasImage: meta.hasImage,
+      rating: starEntry.rating,
+    });
     push('testimonial', cleanedText, cardEl, 'text', Object.assign({}, meta, {
       derivedFromStars: true,
       rating: starEntry.rating,
@@ -779,7 +842,10 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     if (e.type !== 'testimonial') return true;
     const key = (e.text || '').slice(0, 80);
     if (!key) return true;
-    if (seenTestimonialText.has(key)) return false;
+    if (seenTestimonialText.has(key)) {
+      logDecision('dedup-text', 'rejected', 'duplicate testimonial text', null, e.text);
+      return false;
+    }
     seenTestimonialText.add(key);
     return true;
   });
@@ -808,7 +874,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     });
   }
 
-  return filtered;
+  return { signals: filtered, _debug: debug };
 
 
 

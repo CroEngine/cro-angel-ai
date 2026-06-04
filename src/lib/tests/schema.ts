@@ -279,8 +279,17 @@ export type VisualHierarchyEntry = {
 };
 
 export type PageSummary = {
-  primaryCtaCount: number;
+  /**
+   * Count of CTAs with category 'cta_primary' AND intent 'conversion'.
+   * Renamed from `primaryCtaCount` to clarify semantics — a "primary" CTA in
+   * the nav (e.g. login link styled like a primary button) was previously
+   * counted here but is not a conversion CTA.
+   */
+  primaryConversionCtaCount: number;
   secondaryCtaCount: number;
+  iconButtonCount: number;
+  /** CTAs not in primaryConversion/secondary/iconButton. Reconciles total. */
+  otherCtaCount: number;
   ctaTotalCount: number;
   aboveFoldCtaCount: number;
   foldDepthFirstCtaPx: number | null;
@@ -415,6 +424,13 @@ export type PageAuditData = {
   sectionOrder: SectionType[];
   trustSignals: TrustSignal[];
   trustSummary: TrustSummary;
+  /**
+   * Per-decision log for testimonial classifier. Temporary — remove once
+   * the classifier is stable across multiple sites. Each entry: stage,
+   * decision ('accepted'|'rejected'), reason, selector, text snippet, and
+   * attribution flags (hasQuote/hasAuthor/personName/company/...).
+   */
+  trustDebug?: Array<Record<string, unknown>>;
   ctas: CTAEntity[];
   forms: FormEntity[];
   navigation: NavigationData;
