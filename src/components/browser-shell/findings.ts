@@ -247,7 +247,7 @@ function ctaFindings(a: PageAuditData): Finding[] {
       f(
         "cro",
         "CTAs total",
-        `${ctas.length} · primary ${ps.primaryCtaCount} · secondary ${ps.secondaryCtaCount} · ${ps.aboveFoldCtaCount} above fold`,
+        `${ctas.length} · primary-conversion ${ps.primaryConversionCtaCount} · secondary ${ps.secondaryCtaCount} · icon ${ps.iconButtonCount} · other ${ps.otherCtaCount} · ${ps.aboveFoldCtaCount} above fold`,
       ),
     );
   }
