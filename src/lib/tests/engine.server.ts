@@ -401,7 +401,7 @@ export async function runSteps(
               };
               onEvent({
                 type: "log",
-                message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryCtaCount} primary) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,
+                message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryConversionCtaCount} primary-conv) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,
               });
             } catch (e) {
               throw new Error(`pageAudit failed: ${e instanceof Error ? e.message : String(e)}`);
