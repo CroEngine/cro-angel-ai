@@ -279,8 +279,14 @@ export type VisualHierarchyEntry = {
 };
 
 export type PageSummary = {
+  // Canonical CTA counts. Source: CTAS_SCRIPT via deriveSummary in audit-helpers.ts.
+  // Invariant: primaryCtaCount + secondaryCtaCount + iconButtonCount + otherCtaCount === ctaTotalCount.
+  // The `collect` extractor produces its own CTA counts under different names
+  // (see CollectSummary.primaryConversionCtaCount) — they are not interchangeable.
   primaryCtaCount: number;
   secondaryCtaCount: number;
+  iconButtonCount: number;
+  otherCtaCount: number;
   ctaTotalCount: number;
   aboveFoldCtaCount: number;
   foldDepthFirstCtaPx: number | null;
@@ -299,6 +305,7 @@ export type PageSummary = {
   ctaContrastFailCount: number;
   ctaContrastAvg: number | null;
 };
+
 
 export type TrustSummary = {
   total: number;
@@ -537,13 +544,17 @@ export type PageAuditData = {
 export type CollectSummary = {
   total: number;
   aboveFold: number;
-  primaryCtaCount: number;
+  // cta_primary AND intent === "conversion" (collect heuristic, see scripts/collect.ts).
+  // NOT the same as PageSummary.primaryCtaCount (which is sourced from CTAS_SCRIPT
+  // and is a pure category count). The two extractors will disagree; that's expected.
+  primaryConversionCtaCount: number;
   competingAboveFold: number;
   topVisualWeight: Array<{ selector: string; text: string; score: number }>;
   intentBreakdown: Partial<Record<ElementIntent, number>>;
   bySection?: Partial<Record<SectionKind, number>>;
   groups?: RepeatedGroup[];
 };
+
 
 export type CollectData = {
   target: CollectTarget;

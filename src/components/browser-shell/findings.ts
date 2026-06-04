@@ -62,7 +62,7 @@ function croFindings(c: CollectData): Finding[] {
   const out: Finding[] = [];
   const s = c.summary;
   if (!s) return out;
-  out.push(f("cro", "Primary CTAs above fold", String(s.primaryCtaCount)));
+  out.push(f("cro", "Primary-conversion CTAs (collect)", String(s.primaryConversionCtaCount)));
   out.push(f("cro", "Competing CTAs above fold", String(s.competingAboveFold)));
   const top = s.topVisualWeight[0];
   if (top) {
