@@ -427,7 +427,8 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     viewportDelta: null,
     // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
     flags: [],
-  };
+    trustDebug,
+  } as unknown as PageAuditData;
 }
 
 // ---------------------------------------------------------------------------
