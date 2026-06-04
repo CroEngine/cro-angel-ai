@@ -1,89 +1,43 @@
-Revised ordering. Same four fixes, but sequenced by **verifiability in the same sitting**, not blast radius. One fix → one commit → one regression run between.
+# Reviderad rollout: Fix 0 → 4 → 2 → 3
 
-## Order: 1 → 4 → 2 → 3
+Fix 1 är landad och intern­konsistent. Rerun-analysen visade att sidan vandrar mellan körningar (ctaTotalCount 15→18, pageAudit-rects drev 130–220px) medan collect är byte-identisk — alltså snapshottar de två extraktorerna olika DOM-ögonblick. Innan vi rör Fix 2/3/4 måste vi etablera ett stabilt mättillfälle, annars testar vi mot ett rörligt mål.
 
-Rationale: a solo builder can't tell which fix moved a number if they ship a block. And the value of doing a fix first depends on whether you can confirm it worked in the same session — not just on its blast radius.
+## Fix 0a — Global settle före extraktion
 
----
+**Mål:** Båda extraktorerna (`collect` och `pageAudit`) ska snapshotta samma stabiliserade DOM.
 
-### Fix 1 first — rename + internal reconciliation (safe, mechanical, snapshot-verifiable)
+**Var:** Ny helper `waitForSettled(page, opts)` i `src/lib/tests/runners/settle.server.ts`. Anropas i `engine.server.ts` precis efter `scrollWarmup` i `collect`-grenen, och i början av `runPageAudit` (samt i `runMobilePass` efter reload).
 
-Builds momentum and clears terminology before any behavior change. Touches many files but each change is mechanical.
+**Vad helpern gör — viktigt: inte naivt networkidle:**
 
-- Rename `collect.summary.primaryCtaCount` → `primaryConversionCtaCount` (category=primary AND intent=conversion).
-- Declare `CTAS_SCRIPT` canonical for `pageSummary` and document in `audit-helpers.ts`. Keep `pageSummary.primaryCtaCount` only under that declaration; otherwise rename.
-- **Close the within-object gap** in `pageSummary`: `primary(3) + secondary(11) = 14` but `ctaTotalCount = 15`. The missing one is `icon_button`. Either:
-  - add `iconButtonCount` / `otherCtaCount` so `primary + secondary + iconButton + other === total`, or
-  - exclude `icon_button` from `ctaTotalCount` and document.
-- Sweep consumers: `findings.ts`, `engine.server.ts:346`, `:404`, `schema.ts:282`, `:540`.
+Befintlig kod i `pageAudit.server.ts:509-511` undviker uttryckligen `networkidle` eftersom autoplay-video + 3p-script håller nätet evigt vaket på t.ex. HiBob. Helpern måste därför vara budgeterad och tolerera "alltid-busy"-sidor:
 
-**Verify:** snapshot diff is small, surgical, and limited to field names + the chosen icon_button decision. Commit. Run regression — if numbers shift, it's not this fix.
+1. `waitForLoadState('domcontentloaded')` (cheap, ofta redan klart).
+2. Försök `waitForLoadState('networkidle', { timeout: 3000 })` — om det timeoutar, fortsätt utan att kasta. Logga `settle: networkidle skipped (busy)`.
+3. Pollar `document.readyState === 'complete'` upp till 2s.
+4. DOM-stabilitetscheck: mät `document.body.children.length` + `document.querySelectorAll('*').length` två gånger med 500ms mellanrum; om värdena är identiska, klar. Annars vänta ytterligare 500ms (max 2 iterationer).
+5. Hård takbudget: 6s total. Returnera `{ settled: boolean, reason: string, durationMs: number }` så vi kan logga.
 
----
+**Borttag ur FORMS_SCRIPT:** Den planerade `waitForLoadState`-delen av Fix 4 flyttas hit — Fix 4 fokuserar då rent på iframe/embed-logik och slipper dubbel-vänta.
 
-### Fix 4 second — only after a test page with a real embed exists
+## Fix 0b — Brusgolv: mät vad som fortfarande vandrar
 
-The fix has the highest behavioral value, but it's also the only one you can't confirm without a known-good page. HiBob /sv has no form on the landing page (it's behind the CTA), so shipping Fix 4 against it returns 0 with a logged reason whether the logic works or not. **Shipping unverifiable code is the worst first step.**
+**Inget kodändring i extraktorerna.** Lägg till ett dev-script `src/lib/tests/scripts/noise-floor.server.ts` (manuellt kört, inte i CI) som kör samma URL N gånger via befintlig `runSteps` och diffar JSON-output fält för fält. Output: en lista över fält som varierar ≥1 gång över 5 körningar.
 
-Prerequisite (do this before coding):
+**Kör mot hibob.com/se/ × 5 efter Fix 0a.** Förväntat resultat: rects stabiliseras inom ±5px, ctaTotalCount blir konstant. Allt som fortfarande driftar (A/B-test, cookie-gate, geo-rotation) dokumenteras i `.lovable/plan.md` som "ej regressions­signal" — och Fix 2:s selector-rebaseline måste explicit ignorera de fälten.
 
-- Pick a fixture page with a known HubSpot/Calendly/Marketo embed visible on the landing route. Add it to the regression set.
+**Acceptkriterium för att gå vidare:** ctaTotalCount, count, totalCount, intentBreakdown identiska över 5 körningar. Rects får drifta ≤5px. Om något viktigt fortfarande vandrar — stopp, diagnostisera innan Fix 2.
 
-Then implement:
+## Sedan: Fix 4 → Fix 2 → Fix 3 (oförändrad logik)
 
-- **Settle before scanning.** `waitForLoadState('networkidle')` + 500–1000ms grace before `FORMS_SCRIPT`. Without this the iframe heuristic sees an empty DOM.
-- **Iframe provider detection.** Match `iframe[src]` host against `hsforms|hubspot|marketo|calendly|typeform|cognitoforms|jotform|gohighlevel|tally|fillout|paperform`. Emit `{ kind: 'embedded', provider, src, rect, fieldCount: null }`.
-- **Same-origin iframe introspection.** Try `iframe.contentDocument` in try/catch; on success, run the existing scan against that document and merge.
-- **Unwrapped input clusters.** ≥ 3 inputs sharing a common ancestor that isn't a `<form>` → `kind: 'unwrapped'`.
-- **Schema.** Add `kind: 'native' | 'embedded' | 'unwrapped'` to the form entity and update `findings.ts`.
+- **Fix 4 (forms i iframes):** Nu utan settle-koden — bara iframe-provider­detektering (HubSpot/Marketo/Calendly), same-origin introspection, unwrapped input-cluster, `kind: 'native'|'embedded'|'unwrapped'`. Kräver fixture­sida med känd embed innan verifiering.
+- **Fix 2 (selectors):** Goal B (walk `buildSelector` upp till ~4 ancestors för adresserbarhet). Goal A (sänk `groupRepeatedControls` tröskel från ≥3 till ≥2) — explicit beslut före implementation. Re-baseline snapshots i lugn och ro.
+- **Fix 3 (intent):** Gated på `rg -n "intentBreakdown" src/`. Skippa om ingen consumer läser det.
 
-**Flag, don't build:** the actual ceiling on gated demo pages is interaction-based — click the primary CTA via Stagehand `act`, observe the result. The static heuristic above is the approximation. Leave a TODO in `forms.ts` pointing at the interactive path.
+## Out of scope (oförändrat)
 
-**Verify:** the fixture returns ≥ 1 `embedded` entry. HiBob /sv still returns 0 (expected). Commit. Run regression.
+Reconciling `collect` vs `pageAudit` (arkitektur­skulden), interaction-baserad form-detektering via Stagehand `act`, LLM-baserad intent-klassificering.
 
----
+## Verifiering
 
-### Fix 2 third — schedule when snapshots can be re-baselined
-
-**Corrected diagnosis (carried from previous revision).** The two "Play video" rows aren't a double-count: identical selector/w/h/score but `rect.y` differs (5228 vs 5574) — two real buttons in stacked cards collapsing to `button:nth-of-type(1)`.
-
-**Why this fix needs a quiet window:** the `buildSelector` change rewrites *every* selector in the output. If the regression compares full JSON snapshots, the diff becomes noisy (all selectors change at once) and you can't eyeball whether anything else moved. Don't sandwich this between two other fixes.
-
-Two distinct goals — decide before coding:
-
-- **Goal A — "stop one repeated control eating two top-5 slots."** Lever is `groupRepeatedControls` (`audit-helpers.ts:225`): drop the `arr.length >= 3` threshold to `>= 2` for `topVisualWeight` only; keep `>= 3` for the global `repeatedGroups` report.
-- **Goal B — addressable selectors.** Walk `buildSelector` up to ~4 ancestors until the path is unique in the document. Needed before Stagehand `act()` can target these. Does **not** remove the duplicate from `topVisualWeight`; it gives the two real entries distinct selectors.
-
-Recommendation: ship both. Goal A removes the visible duplicate; Goal B is prerequisite for interaction. Drop the previous "dedupe on `selector + rect.x + rect.y`" idea — it wouldn't fire and conflates the goals.
-
-**Verify:** re-baseline snapshots in the same commit. Confirm `topVisualWeight` shows only one "Play video" row, and that no two collected elements share a selector across the page.
-
----
-
-### Fix 3 last — gated on a consumer grep, may be zero work
-
-Footer math holds (37 of 61 elements are footer). But **do the grep first**:
-
-```
-rg -n "intentBreakdown" src/
-```
-
-- If nothing scores or branches on `intentBreakdown` → the fix is cosmetic. **Skip it.** Tidier numbers, zero finding change.
-- If a finding penalizes unclassified action density → implement, with both caveats:
-  - **`unknown` also lives in `pageAudit.ctas`** (6 of 15) from a different extractor. Patch both `collect.classifyIntent` and the pageAudit-side classifier, or it's a new drift case.
-  - Section-aware fallback: after all `INTENT_RX` tries, if `section ∈ {footer, nav, header}` and the element is a link / `nav_item`, return `navigation`.
-  - Modest vocab additions to `INTENT_RX.navigation` en+sv: `press|career|careers|blog|news|integritet|villkor|terms|privacy|cookie|sitemap|kontakt|contact|about|om oss|support|status|partners|legal`.
-
-**Verify:** if implemented, `intentBreakdown.unknown` drops on HiBob /sv; English SaaS regression doesn't shift. If skipped, document the consumer-grep result so this doesn't get re-raised.
-
----
-
-## Cross-cutting (unchanged)
-
-Fixes 1 and 3 are both symptoms of one architectural debt: `pageAudit` and `collect` are two independent extractors. Renames and fallbacks buy clarity now; reconciliation remains out of scope and the actual fix.
-
-## Out of scope
-
-- Reconciling `collect` vs `pageAudit` extractors.
-- Interaction-based form detection via Stagehand `act` (flagged in Fix 4).
-- LLM-based intent classification.
+Efter Fix 0a: kör Fix 0b mot hibob.com/se/ × 5. Visa diff-rapporten innan vi går vidare till Fix 4.
