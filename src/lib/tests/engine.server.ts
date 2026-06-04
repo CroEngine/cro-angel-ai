@@ -285,7 +285,7 @@ export async function runSteps(
             const intentBreakdown: Record<string, number> = {};
             const bySection: Record<string, number> = {};
             let aboveFold = 0;
-            let primaryCtaCount = 0;
+            let primaryConversionCtaCount = 0;
             let competingAboveFold = 0;
             for (const el of filtered) {
               if (el.groupedAway) continue; // dedupe from aggregates
@@ -293,7 +293,7 @@ export async function runSteps(
               intentBreakdown[el.intent] = (intentBreakdown[el.intent] ?? 0) + 1;
               bySection[el.section] = (bySection[el.section] ?? 0) + 1;
               if (el.position.viewportZone === "above_fold") aboveFold++;
-              if (el.category === "cta_primary" && el.intent === "conversion") primaryCtaCount++;
+              if (el.category === "cta_primary" && el.intent === "conversion") primaryConversionCtaCount++;
               if (
                 (el.category === "cta_primary" ||
                   el.category === "cta_secondary" ||
@@ -330,7 +330,7 @@ export async function runSteps(
               summary: {
                 total: uniqueCount,
                 aboveFold,
-                primaryCtaCount,
+                primaryConversionCtaCount,
                 competingAboveFold,
                 topVisualWeight,
                 intentBreakdown,
@@ -343,7 +343,7 @@ export async function runSteps(
             };
             onEvent({
               type: "log",
-              message: `collect ${step.target}: ${uniqueCount} unique (${filtered.length} total) · ${aboveFold} above fold · ${primaryCtaCount} primary CTA · competing: ${competingAboveFold} · groups: ${groups.length}`,
+              message: `collect ${step.target}: ${uniqueCount} unique (${filtered.length} total) · ${aboveFold} above fold · ${primaryConversionCtaCount} primary-conversion CTA · competing: ${competingAboveFold} · groups: ${groups.length}`,
             });
             break;
           }
@@ -401,7 +401,7 @@ export async function runSteps(
               };
               onEvent({
                 type: "log",
-                message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryConversionCtaCount} primary-conv) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,
+                message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.ctasScriptPrimaryCount} primary-script) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,
               });
             } catch (e) {
               throw new Error(`pageAudit failed: ${e instanceof Error ? e.message : String(e)}`);
