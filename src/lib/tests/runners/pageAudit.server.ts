@@ -4,6 +4,8 @@
 
 import type { Page } from "@browserbasehq/stagehand";
 
+import { waitForSettled } from "./settle.server";
+
 import { PAGE_AUDIT_SCRIPT } from "../scripts/pageAudit";
 import { SECTIONS_SCRIPT } from "../scripts/sections";
 import { TRUST_SIGNALS_SCRIPT } from "../scripts/trustSignals";
