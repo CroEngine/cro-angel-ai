@@ -246,6 +246,12 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         if (type === 'testimonial') extras = extractTestimonialMeta(el, text);
         else if (type === 'review_rating') extras = extractRatingMeta(text);
         else if (type === 'social_proof_count') extras = extractSocialProofCount(text);
+        if (type === 'testimonial') {
+          logDecision('text-pattern', 'accepted', 'PATTERN matched', el, text, {
+            personName: extras && extras.personName, company: extras && extras.company,
+            hasImage: extras && extras.hasImage,
+          });
+        }
         push(type, text, el, 'text', extras);
       }
     }
@@ -262,21 +268,30 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     '[role="group"][aria-roledescription~="slide" i], [data-slide], [data-carousel-item]'
   ).forEach((el) => {
     const text = (el.innerText || el.textContent || '').trim();
-    if (text.length < 40 || text.length > 600) return;
-    // For carousel slides, require some signal that it's actually a testimonial:
-    // a quote mark, an author-ish child element, or wording hints. Otherwise
-    // every product/feature slide would be misclassified as a testimonial.
+    if (text.length < 40 || text.length > 600) {
+      if (text.length >= 20) logDecision('quote-block', 'rejected', 'text length ' + text.length, el, text);
+      return;
+    }
     const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
     const isSlide = /slide|swiper|slick|embla|keen-slider|glide|splide/.test(cls)
       || (el.getAttribute && (el.getAttribute('aria-roledescription') || '').toLowerCase().indexOf('slide') !== -1);
-    if (isSlide) {
-      const hasQuote = /[“"„«»]/.test(text) || /[—–-]\\s*[A-ZÅÄÖ]/.test(text);
-      const hasAuthor = !!el.querySelector('cite, figcaption, [class*="author" i], [class*="name" i], [class*="role" i], [class*="title" i]');
-      const hasTestimonialClass = /testimonial|quote|review/.test(cls);
-      if (!hasQuote && !hasAuthor && !hasTestimonialClass) return;
+    const hasQuote = /[“"„«»]/.test(text) || /[—–-]\\s*[A-ZÅÄÖ]/.test(text);
+    const hasAuthor = !!el.querySelector('cite, figcaption, [class*="author" i], [class*="name" i], [class*="role" i], [class*="title" i]');
+    const hasTestimonialClass = /testimonial|quote|review/.test(cls);
+    if (isSlide && !hasQuote && !hasAuthor && !hasTestimonialClass) {
+      logDecision('quote-block', 'rejected', 'slide without testimonial signal', el, text, {
+        isSlide: true, hasQuote: false, hasAuthor: false, hasTestimonialClass: false,
+      });
+      return;
     }
-    push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
+    const meta = extractTestimonialMeta(el, text);
+    logDecision('quote-block', 'accepted', isSlide ? 'slide with signal' : 'blockquote/quote class', el, text, {
+      isSlide: isSlide, hasQuote: hasQuote, hasAuthor: hasAuthor, hasTestimonialClass: hasTestimonialClass,
+      personName: meta.personName, company: meta.company, hasImage: meta.hasImage,
+    });
+    push('testimonial', text, el, 'text', meta);
   });
+
 
   // Big-number stat blocks (dl/dt/dd or stat/metric/counter containers where
   // the number and label live in separate sibling elements).
