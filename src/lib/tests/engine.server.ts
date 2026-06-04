@@ -408,7 +408,7 @@ export async function runSteps(
               // emulation gives mobile-rendered DOM (hamburger menu, real mobile
               // layout). Failure leaves layout.mobile/viewportDelta as null.
               if (full.layout) {
-                const mobilePass = await runMobilePass(page, full.navigation, full.layout.desktop);
+                const mobilePass = await runMobilePass(page, stagehand.context as unknown as Parameters<typeof runMobilePass>[1], full.navigation, full.layout.desktop);
                 if (mobilePass.mobile && mobilePass.viewportDelta) {
                   data = {
                     ...(data as typeof full & { overlayElements?: unknown }),

@@ -471,6 +471,10 @@ export type MobilePassResult = {
  */
 export async function runMobilePass(
   page: Page,
+  context: {
+    pages: () => Page[];
+    newCDPSession: (p: Page) => Promise<{ send: (m: string, p?: unknown) => Promise<unknown> }>;
+  },
   navigation: NavigationData,
   desktop: NonNullable<PageAuditData["layout"]>["desktop"],
 ): Promise<MobilePassResult> {
@@ -478,12 +482,13 @@ export async function runMobilePass(
   let stage: string = "init";
   try {
     stage = "cdp-create";
-    cdp = await (
-      page as unknown as { context: () => { newCDPSession: (p: Page) => Promise<typeof cdp> } }
-    )
-      .context()
-      .newCDPSession(page);
+    // Stagehand wrapper forwards .evaluate()/.reload() but not .context(); use the
+    // raw Playwright BrowserContext threaded in from the engine. newCDPSession
+    // wants a real Playwright Page target, so pull it from context.pages().
+    const pwPage = context.pages()[0] ?? page;
+    cdp = await context.newCDPSession(pwPage);
     if (!cdp) throw new Error("CDP session unavailable");
+
 
     stage = "cdp-metrics";
     await cdp.send("Emulation.setDeviceMetricsOverride", {
