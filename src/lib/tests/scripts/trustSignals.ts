@@ -175,7 +175,9 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     };
     if (extras) Object.assign(entry, extras);
     if (inCarousel) entry.inCarousel = true;
-    if (type === 'trusted_by') entry._block = block;
+    // Stash the source block on every entry so the post-collection hierarchy
+    // dedup can walk ancestor/descendant relationships. Stripped before return.
+    entry._block = block;
     out.push(entry);
   }
 
@@ -251,26 +253,50 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     let leaf = true;
     for (const c of el.children) {
       const tag = c.tagName;
-      if (tag === 'P' || tag === 'LI' || tag === 'BLOCKQUOTE' || tag === 'H1' || tag === 'H2' || tag === 'H3' || tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE') { leaf = false; break; }
+      if (
+        tag === 'P' || tag === 'LI' || tag === 'BLOCKQUOTE' ||
+        tag === 'H1' || tag === 'H2' || tag === 'H3' ||
+        tag === 'H4' || tag === 'H5' || tag === 'H6' ||
+        tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE' ||
+        tag === 'FIGCAPTION' || tag === 'UL' || tag === 'OL'
+      ) { leaf = false; break; }
     }
     if (!leaf) continue;
     const text = (el.innerText || el.textContent || '').trim();
     if (!text || text.length > 600) continue;
     for (const type in PATTERNS) {
-      if (PATTERNS[type].test(text)) {
-        if (type === 'trusted_by' && text.length > 160) continue;
-        let extras;
-        if (type === 'testimonial') extras = extractTestimonialMeta(el, text);
-        else if (type === 'review_rating') extras = extractRatingMeta(text);
-        else if (type === 'social_proof_count') extras = extractSocialProofCount(text);
-        if (type === 'testimonial') {
-          logDecision('text-pattern', 'accepted', 'PATTERN matched', el, text, {
-            personName: extras && extras.personName, company: extras && extras.company,
-            hasImage: extras && extras.hasImage,
-          });
-        }
-        push(type, text, el, 'text', extras);
+      const rx = PATTERNS[type];
+      rx.lastIndex = 0;
+      const m = rx.exec(text);
+      if (!m) continue;
+      // Sentence-boundary anchor: the match must start at text[0] (or after
+      // [.!?]\\s) and end at [.!?] (with optional trailing whitespace) or at
+      // block-end. Rejects mid-sentence substring matches like
+      // "months for the pipeline to grow ..." extracted from a longer block.
+      const start = m.index;
+      const end = start + m[0].length;
+      const before2 = start >= 2 ? text.slice(start - 2, start) : '';
+      const startOk = start === 0 || /[.!?]\\s/.test(before2);
+      const after = text.slice(end);
+      const endOk = /^\\s*$/.test(after) || /^[.!?](\\s|$)/.test(after);
+      if (!startOk || !endOk) {
+        logDecision('text-pattern', 'rejected', 'substring-fragment-mid-sentence', el, text, {
+          matchedText: m[0], startOk: startOk, endOk: endOk,
+        });
+        continue;
       }
+      if (type === 'trusted_by' && text.length > 160) continue;
+      let extras;
+      if (type === 'testimonial') extras = extractTestimonialMeta(el, text);
+      else if (type === 'review_rating') extras = extractRatingMeta(text);
+      else if (type === 'social_proof_count') extras = extractSocialProofCount(text);
+      if (type === 'testimonial') {
+        logDecision('text-pattern', 'accepted', 'PATTERN matched', el, text, {
+          personName: extras && extras.personName, company: extras && extras.company,
+          hasImage: extras && extras.hasImage,
+        });
+      }
+      push(type, text, el, 'text', extras);
     }
   }
 
@@ -842,6 +868,52 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       rating: starEntry.rating,
     }));
   }
+
+  // Hierarchy dedup: within each type, drop entries whose _block is a
+  // descendant of another kept entry's _block. Keep root-most (outermost)
+  // so the entry preserves attribution context (name + company + logo on
+  // the testimonial card, label on the stat card) that inner leaves lack.
+  // Sort primary key is DOM depth ascending — the direct structural signal
+  // for "container vs leaf". Tiebreak on bounding-box area descending.
+  (function hierarchyDedup() {
+    const depthCache = new Map();
+    function depth(el) {
+      if (depthCache.has(el)) return depthCache.get(el);
+      let d = 0; let p = el;
+      while (p && p !== document.body) { d++; p = p.parentElement; }
+      depthCache.set(el, d);
+      return d;
+    }
+    function area(el) {
+      const r = el.getBoundingClientRect();
+      return r.width * r.height;
+    }
+    const byType = new Map();
+    for (const e of out) {
+      if (!e._block) continue;
+      const arr = byType.get(e.type) || [];
+      arr.push(e);
+      byType.set(e.type, arr);
+    }
+    const dropSet = new Set();
+    for (const group of byType.values()) {
+      if (group.length < 2) continue;
+      group.sort((a, b) => depth(a._block) - depth(b._block) || area(b._block) - area(a._block));
+      const kept = [];
+      for (const e of group) {
+        const dominator = kept.find((k) => k._block !== e._block && k._block.contains(e._block));
+        if (dominator) {
+          dropSet.add(e);
+          logDecision('hierarchy-dedup', 'rejected', 'descendant of kept entry', e._block, e.text, {
+            dominatorSelector: dominator.selector,
+          });
+        } else {
+          kept.push(e);
+        }
+      }
+    }
+    for (let i = out.length - 1; i >= 0; i--) if (dropSet.has(out[i])) out.splice(i, 1);
+  })();
 
   let filtered = dedupeSameBlock(out, 'trusted_by');
   filtered = dropWrappers(filtered, 'trusted_by');
