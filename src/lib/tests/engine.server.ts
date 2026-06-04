@@ -412,7 +412,12 @@ export async function runSteps(
                 if (mobilePass.mobile && mobilePass.viewportDelta) {
                   data = {
                     ...(data as typeof full & { overlayElements?: unknown }),
-                    layout: { ...full.layout, mobile: mobilePass.mobile },
+                    layout: {
+                      ...full.layout,
+                      mobile: mobilePass.mobile,
+                      mobileError: null,
+                      mobileStage: null,
+                    },
                     viewportDelta: mobilePass.viewportDelta,
                   };
                   const vd = mobilePass.viewportDelta;
@@ -421,9 +426,20 @@ export async function runSteps(
                     message: `pageAudit/mobile: af cta ${vd.aboveFoldCtaCount.desktop}→${vd.aboveFoldCtaCount.mobile} · foldDepth ${vd.foldDepthFirstCtaPx.desktop}→${vd.foldDepthFirstCtaPx.mobile}px · af trust ${vd.aboveFoldTrustCount.desktop}→${vd.aboveFoldTrustCount.mobile} · heroVisible ${vd.heroVisibleMobile}`,
                   });
                 } else {
+                  const err = mobilePass.error ?? "unknown error";
+                  data = {
+                    ...(data as typeof full & { overlayElements?: unknown }),
+                    layout: {
+                      ...full.layout,
+                      mobile: null,
+                      mobileError: err,
+                      mobileStage: mobilePass.stage ?? null,
+                    },
+                    viewportDelta: null,
+                  };
                   onEvent({
                     type: "log",
-                    message: `pageAudit/mobile: skipped (${mobilePass.error ?? "unknown error"})`,
+                    message: `pageAudit/mobile: skipped (${err})`,
                   });
                 }
               }

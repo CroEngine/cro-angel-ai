@@ -457,6 +457,7 @@ export type MobilePassResult = {
   mobile: NonNullable<NonNullable<PageAuditData["layout"]>["mobile"]> | null;
   viewportDelta: PageAuditData["viewportDelta"] | null;
   error?: string;
+  stage?: string;
 };
 
 /**
@@ -474,27 +475,39 @@ export async function runMobilePass(
   desktop: NonNullable<PageAuditData["layout"]>["desktop"],
 ): Promise<MobilePassResult> {
   let cdp: { send: (m: string, p?: unknown) => Promise<unknown> } | null = null;
+  let stage: string = "init";
   try {
+    stage = "cdp-create";
     cdp = await (
       page as unknown as { context: () => { newCDPSession: (p: Page) => Promise<typeof cdp> } }
     )
       .context()
       .newCDPSession(page);
     if (!cdp) throw new Error("CDP session unavailable");
+
+    stage = "cdp-metrics";
     await cdp.send("Emulation.setDeviceMetricsOverride", {
       width: 390,
       height: 844,
       deviceScaleFactor: 3,
       mobile: true,
     });
+
+    stage = "cdp-touch";
     await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+
+    stage = "cdp-ua";
     await cdp.send("Emulation.setUserAgentOverride", {
       userAgent:
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     });
 
-    await page.reload({ waitUntil: "networkidle", timeoutMs: 30_000 });
+    stage = "reload";
+    // domcontentloaded + warmup-loop, inte networkidle — autoplay-video + 3p-script
+    // håller nätet aktivt på t.ex. HiBob och får networkidle att timeouta tyst.
+    await page.reload({ waitUntil: "domcontentloaded", timeoutMs: 30_000 });
 
+    stage = "warmup";
     // Re-warm lazy content + return to top before measurement.
     await page.evaluate(`(async () => {
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -508,8 +521,10 @@ export async function runMobilePass(
       await sleep(250);
     })()`);
 
+    stage = "collect";
     const raw = await collectLayoutPass(page);
 
+    stage = "build";
     // Mobile pass intentionally re-uses desktop navigation/forms — those are
     // viewport-independent and not re-collected here.
     enrichSections(raw.sections, raw.ctas, raw.trustSignals, []);
@@ -566,10 +581,12 @@ export async function runMobilePass(
 
     return { mobile, viewportDelta };
   } catch (e) {
+    const msg = e instanceof Error ? (e.stack ?? e.message) : String(e);
     return {
       mobile: null,
       viewportDelta: null,
-      error: e instanceof Error ? e.message : String(e),
+      error: `[${stage}] ${msg}`,
+      stage,
     };
   } finally {
     // Restore desktop state regardless of outcome. Clear ALL three overrides —

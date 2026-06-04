@@ -443,6 +443,10 @@ export type PageAuditData = {
       primaryCtas: Array<{ text: string; intent: ElementIntent; aboveFold: boolean; foldDepthPx: number }>;
       aboveFoldTrust: Array<{ type: TrustSignalType; text: string }>;
     } | null;
+    /** Fel-meddelande (med stage-prefix) om mobil-passet misslyckades. Null vid success eller om passet inte kördes. */
+    mobileError?: string | null;
+    /** Vilket stadie i mobil-passet som brast. Null vid success. */
+    mobileStage?: string | null;
   };
   /** Desktop-vs-mobil delta. Null om mobil-passet saknas. */
   viewportDelta?: {
