@@ -533,6 +533,10 @@ export async function runMobilePass(
       await sleep(250);
     })()`);
 
+    const settleMobile = await waitForSettled(page);
+    // eslint-disable-next-line no-console
+    console.log(`[pageAudit/mobile] settle: ${settleMobile.reason} in ${settleMobile.durationMs}ms`);
+
     const raw2 = await collectLayoutPass(page);
 
     // Mobile pass intentionally re-uses desktop navigation/forms — those are
