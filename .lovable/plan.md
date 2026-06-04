@@ -1,61 +1,44 @@
-## Mål
-Höj output-kvaliteten på f3 genom att inkrementellt porta de fyra förbättringar som fanns i f2-grenen — utan att återinföra det som tvingade fram reverten. Verifiering körs på samma sida (HiBob) efter varje steg.
+## Status: Steg 0-3 klara
 
-## Bakgrund
-f3 (nuvarande) och f2 (övergiven) renderar identisk sida. Skillnaderna är ren kod:
-- **Trust:** f3 = 15 (varav ~10 falska positiva), f2 = 3 (för strikt — tappar Elation Health & TourRadar). Mål: 3 äkta case.
-- **CTA-räkning:** f3 har inkonsistenta fält (3+14≠18); f2 har `iconButtonCount` + `otherCtaCount` + reconcile.
-- **Namngivning:** f2 har `primaryConversionCtaCount`; f3 har gamla tvetydiga `primaryCtaCount`.
-- **Diagnostik:** f2 har `trustDebug`, `layout`, `viewportDelta`; f3 saknar.
+### Steg 0 — f2-revert orsak
+- Sökt chathistorik (733 msg) på `revert`, `övergav`, `trasig`, `crashed`, `f2 branch failure`. Inga träffar tidigare än msg #731 där användaren först nämner f2-grenen.
+- Slutsats: orsaken till f2-reverten finns inte dokumenterad i chatten. Hypotesen "layout/viewportDelta eller wiring" kvarstår men kan inte bekräftas.
+- Riskreducering: portade INTE `layout`/`viewportDelta` (Steg 4 hoppas över). De tre låg-risk-ändringarna (trustDebug, testimonial-strikthet, CTA-rename) hölls isär så de kan revertas individuellt vid behov.
 
-Innan något portas: identifiera vad i f2 som kraschade. De fyra ändringarna nedan är lågrisk — orsaken låg sannolikt i `layout`/`viewportDelta`-features eller runtime-wiring. Step 0 säkerställer att vi inte drar tillbaka samma trasighet.
+### Steg 1 — `trustDebug` (klar)
+- Lade till `debug`-array och `logDecision(stage, decision, reason, el, text, extras)`-helper i `TRUST_SIGNALS_SCRIPT` (`src/lib/tests/scripts/trustSignals.ts`).
+- Loggar accept/reject för: text-pattern testimonial-träffar, quote-block scan (med isSlide/hasQuote/hasStrongAuthor/hasLogoImg/hasTestimonialClass + meta), stars-anchor pass, text-dedup.
+- Skriptet returnerar nu `{ signals, _debug }` istället för bara `signals`.
+- Konsumenten i `pageAudit.server.ts` destruktureras och `trustDebug` exponeras på `PageAuditData.trustDebug` (optional, `Array<Record<string, unknown>>`).
 
-## Steg
+### Steg 2 — Strikt testimonial-attribution (klar)
+- I quote-block scan ersattes den breda `hasAuthor`-selektorn (`[class*="title" i]`, `[class*="name" i]`, `[class*="role" i]`) — den matchade sektionsrubriker och produktkort.
+- Ny attribution-gate kräver minst ett av:
+  - `hasQuote` (typografiska citattecken eller "— Namn"-mönster)
+  - `hasStrongAuthor` (explicit `<cite>`/`<figcaption>` med text 3–120 tecken)
+  - `hasLogoImg` (kundlogga i kortet)
+  - `meta.personName && meta.company` (namn+företag extraherat ur text)
+  - `hasTestimonialClass` (class innehåller `testimonial|quote|review`)
+- Gäller både slides OCH `[class*="testimonial"]`/`[class*="quote"]`-containers (CMS-författare återanvänder ofta dessa class-namn för produktkort).
+- `<blockquote>`-taggar släpps fortfarande igenom oberoende — taggen i sig är attribution.
 
-### Steg 0 — Hitta orsaken till f2-reverten (innan något portas)
-- Läs chat-historik / git-historik runt reverten för att hitta felmeddelandet eller symptomet.
-- Hypotes: `layout`/`viewportDelta` (DOM-mätningar) eller en wiring-ändring, inte trust/CTA-koden.
-- Dokumentera orsaken i `.lovable/plan.md` som "undvik X vid portning".
-- **Inga kodändringar i detta steg.**
+### Steg 3 — Fix 1 portad (klar)
+- `PageSummary.primaryCtaCount` → **`primaryConversionCtaCount`** (filter: `category==='cta_primary' && intent==='conversion'`).
+- Nya fält: **`iconButtonCount`** (`category==='icon_button'`) och **`otherCtaCount`** (rest).
+- Reconcile-assertion i `buildPageSummary` (warn till konsol om summan inte = `ctaTotalCount`).
+- Uppdaterade konsumenter: `audit-helpers.ts`, `findings.ts:250`, `engine.server.ts:404`.
+- `CollectSummary.primaryCtaCount` (separat typ i `schema.ts:518`) lämnades orörd — den används av `collect`-steget, inte `pageAudit`.
 
-### Steg 1 — Porta `trustDebug` först (diagnostik före logikändring)
-- Lägg till `trustDebug`-fält i `techStack` eller `trustSummary` (där f2 hade det).
-- Innehåll: för varje element som utvärderades — varför det blev/inte blev testimonial (matched keywords, attribution found, source).
-- Uppdatera `PageAuditData` i `src/lib/tests/schema.ts` (optional fält).
-- Kör HiBob, ladda upp JSON. **Verifiera:** vi ser nu *varför* de 10 falska positiva klassas som testimonials.
+### Steg 4 — Hoppad
+`layout`/`viewportDelta` portas inte (orsak till f2-revert okänd; ingen nedströmskonsument behöver dem just nu).
 
-### Steg 2 — Strama åt testimonial-klassificeraren
-- Filen: `src/lib/tests/scripts/trustSignals.ts`.
-- Ny regel för `testimonial`: kräv **attribution** — minst ett av:
-  - företagsnamn i närheten (känd brand eller `<cite>`/`data-company`)
-  - personnamn (För- + efternamn-mönster)
-  - synlig logga inom samma kort/sektion
-  - citattecken runt huvudtexten (`"..."`, `«...»`, `„..."`)
-- Avvisa rena produktblurbar ("Bob hjälper till att…", "Ekonomi Planera…", sektionsrubriker utan citat/attribution).
-- **Mål:** Uala + Elation Health + TourRadar = 3 träffar. De 10 produkt-blurbarna = 0.
-- Använd `trustDebug` från Steg 1 för att verifiera klassificering element-för-element.
-- Ta INTE bort `trustDebug` ännu — behåll tills detektionen är stabil över flera sidor.
+## Verifiering att köra
+Kör page audit mot `https://www.hibob.com/se/` och kontrollera JSON:
+- `trustDebug` finns och innehåller per-element-beslut (stage, decision, reason, selector, attribution-flags).
+- `testimonialCount === 3` — Uala, Elation Health, TourRadar. Produktblurbarna ("Bob hjälper…", "Personalansvariga Led…", etc.) ska INTE räknas som testimonials.
+- `pageSummary.primaryConversionCtaCount` finns; `primaryCtaCount` är borta. `iconButtonCount` + `otherCtaCount` finns. Summan = `ctaTotalCount`.
+- Inga konsolfel/-varningar (utöver reconcile-warn om mismatch).
 
-### Steg 3 — Porta Fix 1 (CTA-räkning + namngivning)
-- Byt fältnamn: `primaryCtaCount` → `primaryConversionCtaCount` i `PageSummary` (`schema.ts`) + alla call sites.
-- Lägg till `iconButtonCount` och `otherCtaCount` i `PageSummary`.
-- Lägg till reconcile-assertion: `primaryConversionCtaCount + secondaryCtaCount + iconButtonCount + otherCtaCount === ctaTotalCount` (warn till console om mismatch).
-- Filer: `src/lib/tests/schema.ts`, `src/lib/tests/audit-helpers.ts` (`buildPageSummary`), eventuella konsumenter i `src/components/browser-shell/`.
-
-### Steg 4 (villkorat) — `layout` / `viewportDelta`
-- Endast om Steg 0 visar att dessa **inte** var orsaken till reverten, **och** vi faktiskt använder dem nedströms i flag-rules.
-- Annars: hoppa över — `flag-rules.ts` är nästa steg och behöver inte detta.
-
-## Verifieringsprotokoll (efter varje steg)
-1. Kör page audit mot `https://www.hibob.com/se/`.
-2. Ladda upp JSON.
-3. Bekräfta:
-   - Inga nya runtime-fel.
-   - Steg 1: `trustDebug` finns och förklarar 15 nuvarande klassningar.
-   - Steg 2: `testimonialCount === 3`, namn på företagen Uala/Elation/TourRadar dyker upp i `personName`/`company`.
-   - Steg 3: CTA-fälten summerar korrekt; `primaryConversionCtaCount` finns; gamla namnet borta.
-
-## Efter alla steg
-- Ta bort `trustDebug` när detektionen är stabil över ≥2 sidor.
-- Tech stack + trust = klar.
+## Efter verifiering
+- När detektionen verifierats på ≥2 sidor: ta bort `_debug`-array och `trustDebug`-fält.
 - Nästa: `flag-rules.ts`.
