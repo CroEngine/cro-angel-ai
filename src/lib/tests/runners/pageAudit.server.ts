@@ -473,9 +473,7 @@ export async function runMobilePass(
   desktop: NonNullable<PageAuditData["layout"]>["desktop"],
 ): Promise<MobilePassResult> {
   let sendCDP: ((m: string, p?: unknown) => Promise<unknown>) | null = null;
-  let stage: string = "init";
   try {
-    stage = "cdp-bind";
     // Stagehand v3 (understudy) — no Playwright underneath. V3Page exposes
     // sendCDP(method, params) against its main CDP session. That's the only
     // public CDP surface; newCDPSession does not exist.
@@ -487,7 +485,6 @@ export async function runMobilePass(
     }
     sendCDP = raw.bind(page) as (m: string, p?: unknown) => Promise<unknown>;
 
-    stage = "cdp-metrics";
     await sendCDP("Emulation.setDeviceMetricsOverride", {
       width: 390,
       height: 844,
@@ -495,21 +492,17 @@ export async function runMobilePass(
       mobile: true,
     });
 
-    stage = "cdp-touch";
     await sendCDP("Emulation.setTouchEmulationEnabled", { enabled: true });
 
-    stage = "cdp-ua";
     await sendCDP("Emulation.setUserAgentOverride", {
       userAgent:
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     });
 
-    stage = "reload";
     // domcontentloaded + warmup-loop, inte networkidle — autoplay-video + 3p-script
     // håller nätet aktivt på t.ex. HiBob och får networkidle att timeouta tyst.
     await page.reload({ waitUntil: "domcontentloaded", timeoutMs: 30_000 });
 
-    stage = "warmup";
     // Re-warm lazy content + return to top before measurement.
     await page.evaluate(`(async () => {
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -523,10 +516,8 @@ export async function runMobilePass(
       await sleep(250);
     })()`);
 
-    stage = "collect";
     const raw2 = await collectLayoutPass(page);
 
-    stage = "build";
     // Mobile pass intentionally re-uses desktop navigation/forms — those are
     // viewport-independent and not re-collected here.
     enrichSections(raw2.sections, raw2.ctas, raw2.trustSignals, []);
@@ -583,13 +574,8 @@ export async function runMobilePass(
 
     return { mobile, viewportDelta };
   } catch (e) {
-    const msg = e instanceof Error ? (e.stack ?? e.message) : String(e);
-    return {
-      mobile: null,
-      viewportDelta: null,
-      error: `[${stage}] ${msg}`,
-      stage,
-    };
+    console.warn("[mobile-pass] failed:", e instanceof Error ? e.message : e);
+    return { mobile: null, viewportDelta: null };
   } finally {
     // Restore desktop state regardless of outcome. Clear ALL three overrides —
     // a lingering mobile UA would make any subsequent navigation serve mobile HTML.
