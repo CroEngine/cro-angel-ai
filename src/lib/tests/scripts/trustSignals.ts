@@ -93,6 +93,8 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   const seen = new Set();
   const out = [];
+  const trustDebug = [];
+  window.__trustDebug__ = trustDebug;
 
   function isInsideCarousel(el) {
     let p = el;
