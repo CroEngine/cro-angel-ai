@@ -250,17 +250,32 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   ).forEach((el) => {
     const text = (el.innerText || el.textContent || '').trim();
     if (text.length < 40 || text.length > 600) return;
-    // For carousel slides, require some signal that it's actually a testimonial:
-    // a quote mark, an author-ish child element, or wording hints. Otherwise
-    // every product/feature slide would be misclassified as a testimonial.
     const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
+    const tag = el.tagName;
     const isSlide = /slide|swiper|slick|embla|keen-slider|glide|splide/.test(cls)
       || (el.getAttribute && (el.getAttribute('aria-roledescription') || '').toLowerCase().indexOf('slide') !== -1);
-    if (isSlide) {
-      const hasQuote = /[“"„«»]/.test(text) || /[—–-]\\s*[A-ZÅÄÖ]/.test(text);
-      const hasAuthor = !!el.querySelector('cite, figcaption, [class*="author" i], [class*="name" i], [class*="role" i], [class*="title" i]');
-      const hasTestimonialClass = /testimonial|quote|review/.test(cls);
-      if (!hasQuote && !hasAuthor && !hasTestimonialClass) return;
+    const hasExplicitTestimonialClass = /\\b(testimonial|quote|review)\\b/.test(cls);
+    const headingCount = el.querySelectorAll('h1, h2, h3, h4').length;
+    const isLargeContainer = headingCount >= 2 || text.length > 300;
+
+    // Product/feature-card disqualifiers — match the slide subtree.
+    const subtreeText = text;
+    const ctaRx = /(läs mer|read more|boka demo|book a demo|try (it|now|free)|prova|get started|learn more|kom ig[åa]ng)/i;
+    const featureHeadingRx = /(produkt|feature|funktion|avdelning|department|\\bAI\\b|assistent|coach|analyserare|navigator|h[öo]jare)/i;
+    const hasCtaButton = Array.from(el.querySelectorAll('button, a')).some((c) => ctaRx.test(((c).innerText || (c).textContent || '').trim()));
+    const headingTextHits = Array.from(el.querySelectorAll('h2, h3, h4')).some((h) => featureHeadingRx.test(((h).innerText || (h).textContent || '').trim()));
+    // Card-link wrapper: the slide itself is wrapped in <a href> (or contains a single a[href] wrapping the bulk of content).
+    const isWrappedLink = tag === 'A' || (el.children.length === 1 && el.children[0].tagName === 'A' && (el.children[0]).hasAttribute && (el.children[0]).hasAttribute('href'));
+    const isLikelyFeatureCard = hasCtaButton || headingTextHits || isWrappedLink;
+
+    // Stricter guard for slides AND for large non-slide containers (the [class*="testimonial" i]
+    // selector also matches headings/sections that merely contain "testimonial" in a class).
+    if (isSlide || isLargeContainer) {
+      if (isLikelyFeatureCard) return;
+      const hasQuoteGlyph = /[“"„«»]/.test(subtreeText);
+      const hasAuthor = !!el.querySelector('cite, figcaption, [class*="author" i], [class*="byline" i], [itemprop="author"]');
+      // Require BOTH author AND quote glyph, OR an explicit testimonial/quote/review class on the container.
+      if (!hasExplicitTestimonialClass && !(hasQuoteGlyph && hasAuthor)) return;
     }
     push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
   });
