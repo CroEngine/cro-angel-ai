@@ -4,7 +4,7 @@ import { Stagehand } from "@browserbasehq/stagehand";
 
 import { COLLECT_SCRIPT } from "./scripts/collect";
 import { OVERLAY_FN } from "./scripts/overlay";
-import { runPageAudit } from "./runners/pageAudit.server";
+import { runPageAudit, runMobilePass } from "./runners/pageAudit.server";
 
 import { groupRepeatedControls } from "./audit-helpers";
 
@@ -403,6 +403,30 @@ export async function runSteps(
                 type: "log",
                 message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryCtaCount} primary) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,
               });
+
+              // Mobile viewport pass — last DOM-dependent step. Reload in mobile
+              // emulation gives mobile-rendered DOM (hamburger menu, real mobile
+              // layout). Failure leaves layout.mobile/viewportDelta as null.
+              if (full.layout) {
+                const mobilePass = await runMobilePass(page, full.navigation, full.layout.desktop);
+                if (mobilePass.mobile && mobilePass.viewportDelta) {
+                  data = {
+                    ...(data as typeof full & { overlayElements?: unknown }),
+                    layout: { ...full.layout, mobile: mobilePass.mobile },
+                    viewportDelta: mobilePass.viewportDelta,
+                  };
+                  const vd = mobilePass.viewportDelta;
+                  onEvent({
+                    type: "log",
+                    message: `pageAudit/mobile: af cta ${vd.aboveFoldCtaCount.desktop}→${vd.aboveFoldCtaCount.mobile} · foldDepth ${vd.foldDepthFirstCtaPx.desktop}→${vd.foldDepthFirstCtaPx.mobile}px · af trust ${vd.aboveFoldTrustCount.desktop}→${vd.aboveFoldTrustCount.mobile} · heroVisible ${vd.heroVisibleMobile}`,
+                  });
+                } else {
+                  onEvent({
+                    type: "log",
+                    message: `pageAudit/mobile: skipped (${mobilePass.error ?? "unknown error"})`,
+                  });
+                }
+              }
             } catch (e) {
               throw new Error(`pageAudit failed: ${e instanceof Error ? e.message : String(e)}`);
             }

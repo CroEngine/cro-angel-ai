@@ -1,25 +1,16 @@
-## Mål
-Stabilisera tech stack-detektionen med två nya detektorer (WordPress, Tealium) och ta bort temporär debug-utdata. Kör sista verifiering på HiBob — sen är tech stack klar.
+## Status
 
-## Ändringar
+### Klart
+- Tech stack-detektion: wordpress, tealium, onetrust, vwo, etc. + förfinade scriptklassificering (first/third party).
+- Favicon-extraktion i `head`-blocket.
+- Mobil-viewport-pass: `layout.desktop` + `layout.mobile` + `viewportDelta` via CDP-emulering (390×844, iPhone UA, touch) + full reload, körs som sista DOM-beroende steg. Mobil-passet återställer alla overrides i `finally`-block; misslyckas tyst med `mobile: null` om CDP inte är tillgängligt.
 
-### 1. Lägg till WordPress- och Tealium-detektorer (`src/lib/tests/scripts/pageAudit.ts`)
-- **WordPress**: matcha `/wp/wp-includes/` eller `/wp-content/` i URL-sökvägen (kategori: `cms`).
-  - Exempel: `new.hibob.com/wp/wp-includes/js/dist/...`, `new.hibob.com/wp/wp-plugins/debloat/...`
-- **Tealium**: matcha `tiqcdn.com` (kategori: `analytics`).
-  - Exempel: `tags.tiqcdn.com/utag/hibob/hibob/prod/utag.js`
-- Båda läggs till i `TECH_RULES`-arrayen.
+### Nästa steg
+`flag-rules.ts` — flag-motor som läser collected data och producerar `{ id, category, severity, evidence, confidence, recommendation }`.
 
-### 2. Ta bort `_debug`-fältet (`src/lib/tests/scripts/pageAudit.ts` + `src/lib/tests/schema.ts`)
-- `_debug` var temporärt och behövs inte längre — detektionen är verifierad.
-- Ta bort `_debug`-bygget från `pageAudit.ts`.
-- Ta bort `_debug`-typen från `PageAuditData.techStack` i `schema.ts`.
+Första kategorin: **Mobile Experience**, drivs av `viewportDelta` + `layout.mobile`:
+- `cta_below_fold_mobile` — `viewportDelta.aboveFoldCtaCount.mobile === 0 && .desktop > 0`. Evidence pekar på `layout.mobile.primaryCtas[0].text` + `.foldDepthPx`.
+- `hero_pushed_down_mobile` — `viewportDelta.heroVisibleMobile === false && layout.desktop.heroAboveFold === true`.
+- `no_trust_above_fold_mobile` — `viewportDelta.aboveFoldTrustCount.mobile === 0 && .desktop > 0`.
 
-### 3. Sista verifiering på HiBob
-- Kör page audit mot `https://www.hibob.com/se/`.
-- Bekräfta att `techStack.detected` innehåller: `wordpress`, `tealium`, `onetrust`, `vwo`.
-- Bekräfta att `firstPartyScriptCount > 0` och `thirdPartyScriptCount` stämmer.
-
-## Efter verifiering
-- Tech stack anses klar.
-- Nästa steg: `flag-rules.ts` (enligt användarens riktning).
+Evidence-pekare ska stödja både `layout.desktop.*` och `layout.mobile.*` så desktop-flaggor (ex. `cta_low_contrast`) kan landa i samma motor utan ändring.

@@ -424,6 +424,34 @@ export type PageAuditData = {
   hero?: HeroContent;
   flags: string[];
 
+  /**
+   * Två-viewport-layoutdata. `desktop` är samma data som top-level pageSummary/trustSummary
+   * fast lyft för symmetri med `mobile`. `mobile` är null om mobil-passet hoppades över eller
+   * misslyckades (t.ex. CDP-emulering inte tillgänglig på äldre Browserbase-image).
+   */
+  layout?: {
+    desktop: {
+      pageSummary: PageSummary;
+      trustSummary: TrustSummary;
+      heroAboveFold: boolean;
+    };
+    mobile: {
+      pageSummary: PageSummary;
+      trustSummary: TrustSummary;
+      heroAboveFold: boolean;
+      /** Bevarad flag-specificitet — räcker för "BOKA EN DEMO hamnar under fold på mobil". */
+      primaryCtas: Array<{ text: string; intent: ElementIntent; aboveFold: boolean; foldDepthPx: number }>;
+      aboveFoldTrust: Array<{ type: TrustSignalType; text: string }>;
+    } | null;
+  };
+  /** Desktop-vs-mobil delta. Null om mobil-passet saknas. */
+  viewportDelta?: {
+    aboveFoldCtaCount: { desktop: number; mobile: number };
+    foldDepthFirstCtaPx: { desktop: number | null; mobile: number | null };
+    aboveFoldTrustCount: { desktop: number; mobile: number };
+    heroVisibleMobile: boolean;
+  } | null;
+
 
   indexability?: {
     indexable: boolean;
