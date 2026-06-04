@@ -456,8 +456,6 @@ async function collectLayoutPass(page: Page): Promise<{
 export type MobilePassResult = {
   mobile: NonNullable<NonNullable<PageAuditData["layout"]>["mobile"]> | null;
   viewportDelta: PageAuditData["viewportDelta"] | null;
-  error?: string;
-  stage?: string;
 };
 
 /**
