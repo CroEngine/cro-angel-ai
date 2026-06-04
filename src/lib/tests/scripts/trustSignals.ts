@@ -258,24 +258,50 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const headingCount = el.querySelectorAll('h1, h2, h3, h4').length;
     const isLargeContainer = headingCount >= 2 || text.length > 300;
 
-    // Product/feature-card disqualifiers — match the slide subtree.
-    const subtreeText = text;
-    const ctaRx = /(läs mer|read more|boka demo|book a demo|try (it|now|free)|prova|get started|learn more|kom ig[åa]ng)/i;
-    const featureHeadingRx = /(produkt|feature|funktion|avdelning|department|\\bAI\\b|assistent|coach|analyserare|navigator|h[öo]jare)/i;
-    const hasCtaButton = Array.from(el.querySelectorAll('button, a')).some((c) => ctaRx.test(((c).innerText || (c).textContent || '').trim()));
-    const headingTextHits = Array.from(el.querySelectorAll('h2, h3, h4')).some((h) => featureHeadingRx.test(((h).innerText || (h).textContent || '').trim()));
-    // Card-link wrapper: the slide itself is wrapped in <a href> (or contains a single a[href] wrapping the bulk of content).
-    const isWrappedLink = tag === 'A' || (el.children.length === 1 && el.children[0].tagName === 'A' && (el.children[0]).hasAttribute && (el.children[0]).hasAttribute('href'));
-    const isLikelyFeatureCard = hasCtaButton || headingTextHits || isWrappedLink;
-
-    // Stricter guard for slides AND for large non-slide containers (the [class*="testimonial" i]
+    // Structural guard for slides AND large non-slide containers (the [class*="testimonial" i]
     // selector also matches headings/sections that merely contain "testimonial" in a class).
+    //
+    // Order: positive gate → subject disqualifiers → emit.
+    // hasAuthor is intentionally NOT a gate signal — [class*="name" i] / [class*="author" i]
+    // matches department/persona cards (e.g. "HR", "Ekonomi") whose h3/h4 carry a "title" class.
     if (isSlide || isLargeContainer) {
-      if (isLikelyFeatureCard) return;
+      const subtreeText = text;
       const hasQuoteGlyph = /[“"„«»]/.test(subtreeText);
-      const hasAuthor = !!el.querySelector('cite, figcaption, [class*="author" i], [class*="byline" i], [itemprop="author"]');
-      // Require BOTH author AND quote glyph, OR an explicit testimonial/quote/review class on the container.
-      if (!hasExplicitTestimonialClass && !(hasQuoteGlyph && hasAuthor)) return;
+
+      // hasNamedCustomer — structural patterns, NOT a hardcoded customer-name list.
+      // 1) Story-heading anchored on verb, not the customer name.
+      const storyHeadingRx = /^(s[åa] h[äa]r gjorde\\s+\\S+|hur\\s+\\S+\\s+(v[äa]xte|byggde|skalade|valde|gick|lyckades|fick))|^how\\s+\\S+\\s+(grew|built|scaled|chose|went|saved|cut|boosted|improved)/i;
+      const hasStoryHeading = Array.from(el.querySelectorAll('h1, h2, h3, h4')).some((h) => storyHeadingRx.test(((h).innerText || (h).textContent || '').trim()));
+      // 2) Customer logo: short, specific alt text (not generic icon/illustration).
+      const genericAltRx = /^(icon|logo|illustration|photo|image|bild|ikon|avatar|placeholder)$/i;
+      const hasCustomerLogo = Array.from(el.querySelectorAll('img[alt]')).some((img) => {
+        const alt = ((img).getAttribute('alt') || '').trim();
+        if (!alt || alt.length > 40) return false;
+        const words = alt.split(/\\s+/);
+        if (words.length > 3) return false;
+        if (genericAltRx.test(alt)) return false;
+        return true;
+      });
+      // 3) Byline with role/title after a comma — signals a real person, not a product/persona label.
+      const bylineRx = /,\\s*(VD|CEO|CTO|CFO|COO|CMO|VP|Head of|Chef|Director|Manager|Founder|Co-?founder|Grundare|Medgrundare|President|Owner|Ägare|Lead|Engineer|Designer)\\b/i;
+      const hasByline = Array.from(el.querySelectorAll('cite, figcaption, [class*="author" i], [class*="byline" i], [itemprop="author"]')).some((c) => bylineRx.test(((c).textContent || '').trim()));
+      const hasNamedCustomer = hasStoryHeading || hasCustomerLogo || hasByline;
+
+      // Positive gate: must pass at least one strong signal.
+      const passesGate =
+        hasExplicitTestimonialClass ||
+        hasNamedCustomer ||
+        (hasQuoteGlyph && subtreeText.length >= 60);
+      if (!passesGate) return;
+
+      // Subject-based disqualifiers as structural backstop. Do NOT add language-specific
+      // department vocabulary here — that's the per-language regex trap. The gate above
+      // is the primary filter; these only catch edge cases where the gate gives a false positive.
+      const ctaRx = /(l[äa]s mer|read more|boka demo|book a demo|try (it|now|free)|prova|get started|learn more|kom ig[åa]ng)/i;
+      const featureHeadingRx = /(produkt|feature|funktion|avdelning|department|\\bAI\\b|assistent|coach|analyserare|navigator|h[öo]jare)/i;
+      const hasCtaButton = Array.from(el.querySelectorAll('button, a')).some((c) => ctaRx.test(((c).innerText || (c).textContent || '').trim()));
+      const headingTextHits = Array.from(el.querySelectorAll('h2, h3, h4')).some((h) => featureHeadingRx.test(((h).innerText || (h).textContent || '').trim()));
+      if ((hasCtaButton || headingTextHits) && !hasExplicitTestimonialClass && !hasNamedCustomer) return;
     }
     push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
   });
