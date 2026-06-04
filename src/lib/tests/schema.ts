@@ -526,7 +526,7 @@ export type PageAuditData = {
 export type CollectSummary = {
   total: number;
   aboveFold: number;
-  primaryCtaCount: number;
+  primaryConversionCtaCount: number;
   competingAboveFold: number;
   topVisualWeight: Array<{ selector: string; text: string; score: number }>;
   intentBreakdown: Partial<Record<ElementIntent, number>>;
