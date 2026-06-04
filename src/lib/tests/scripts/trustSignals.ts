@@ -251,7 +251,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     '[role="group"][aria-roledescription~="slide" i], [data-slide], [data-carousel-item]'
   ).forEach((el) => {
     const text = (el.innerText || el.textContent || '').trim();
-    if (text.length < 40 || text.length > 600) return;
+    const textPreview = text.slice(0, 160);
     const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
     const tag = el.tagName;
     const isSlide = /slide|swiper|slick|embla|keen-slider|glide|splide/.test(cls)
@@ -260,21 +260,34 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const headingCount = el.querySelectorAll('h1, h2, h3, h4').length;
     const isLargeContainer = headingCount >= 2 || text.length > 300;
 
-    // Structural guard for slides AND large non-slide containers (the [class*="testimonial" i]
-    // selector also matches headings/sections that merely contain "testimonial" in a class).
-    //
-    // Order: positive gate → subject disqualifiers → emit.
-    // hasAuthor is intentionally NOT a gate signal — [class*="name" i] / [class*="author" i]
-    // matches department/persona cards (e.g. "HR", "Ekonomi") whose h3/h4 carry a "title" class.
+    // Debug helper: capture every candidate (even early rejects) so we can
+    // compare Ualá vs Elation vs TourRadar deterministically.
+    const dbg = {
+      selector: buildSelector(el),
+      tag: tag,
+      cls: cls.slice(0, 200),
+      textLen: text.length,
+      textPreview: textPreview,
+      headings: Array.from(el.querySelectorAll('h1, h2, h3, h4')).slice(0, 6).map((h) => (h.innerText || h.textContent || '').trim().slice(0, 120)),
+      imageAlts: Array.from(el.querySelectorAll('img[alt]')).slice(0, 6).map((i) => (i.getAttribute('alt') || '').slice(0, 120)),
+      linkButtonTexts: Array.from(el.querySelectorAll('a, button')).slice(0, 8).map((c) => (c.innerText || c.textContent || '').trim().slice(0, 80)),
+      isSlide: isSlide,
+      isLargeContainer: isLargeContainer,
+      hasExplicitTestimonialClass: hasExplicitTestimonialClass,
+    };
+
+    if (text.length < 40 || text.length > 600) {
+      dbg.reason = 'reject:textLength';
+      trustDebug.push(dbg);
+      return;
+    }
+
     if (isSlide || isLargeContainer) {
       const subtreeText = text;
       const hasQuoteGlyph = /[“"„«»]/.test(subtreeText);
 
-      // hasNamedCustomer — structural patterns, NOT a hardcoded customer-name list.
-      // 1) Story-heading anchored on verb, not the customer name.
       const storyHeadingRx = /^(s[åa] h[äa]r gjorde\\s+\\S+|hur\\s+\\S+\\s+(v[äa]xte|byggde|skalade|valde|gick|lyckades|fick))|^how\\s+\\S+\\s+(grew|built|scaled|chose|went|saved|cut|boosted|improved)/i;
       const hasStoryHeading = Array.from(el.querySelectorAll('h1, h2, h3, h4')).some((h) => storyHeadingRx.test(((h).innerText || (h).textContent || '').trim()));
-      // 2) Customer logo: short, specific alt text (not generic icon/illustration).
       const genericAltRx = /^(icon|logo|illustration|photo|image|bild|ikon|avatar|placeholder)$/i;
       const hasCustomerLogo = Array.from(el.querySelectorAll('img[alt]')).some((img) => {
         const alt = ((img).getAttribute('alt') || '').trim();
@@ -284,26 +297,44 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         if (genericAltRx.test(alt)) return false;
         return true;
       });
-      // 3) Byline with role/title after a comma — signals a real person, not a product/persona label.
       const bylineRx = /,\\s*(VD|CEO|CTO|CFO|COO|CMO|VP|Head of|Chef|Director|Manager|Founder|Co-?founder|Grundare|Medgrundare|President|Owner|Ägare|Lead|Engineer|Designer)\\b/i;
       const hasByline = Array.from(el.querySelectorAll('cite, figcaption, [class*="author" i], [class*="byline" i], [itemprop="author"]')).some((c) => bylineRx.test(((c).textContent || '').trim()));
       const hasNamedCustomer = hasStoryHeading || hasCustomerLogo || hasByline;
 
-      // Positive gate: must pass at least one strong signal.
       const passesGate =
         hasExplicitTestimonialClass ||
         hasNamedCustomer ||
         (hasQuoteGlyph && subtreeText.length >= 60);
-      if (!passesGate) return;
 
-      // Subject-based disqualifiers as structural backstop. Do NOT add language-specific
-      // department vocabulary here — that's the per-language regex trap. The gate above
-      // is the primary filter; these only catch edge cases where the gate gives a false positive.
       const ctaRx = /(l[äa]s mer|read more|boka demo|book a demo|try (it|now|free)|prova|get started|learn more|kom ig[åa]ng)/i;
       const featureHeadingRx = /(produkt|feature|funktion|avdelning|department|\\bAI\\b|assistent|coach|analyserare|navigator|h[öo]jare)/i;
       const hasCtaButton = Array.from(el.querySelectorAll('button, a')).some((c) => ctaRx.test(((c).innerText || (c).textContent || '').trim()));
       const headingTextHits = Array.from(el.querySelectorAll('h2, h3, h4')).some((h) => featureHeadingRx.test(((h).innerText || (h).textContent || '').trim()));
-      if ((hasCtaButton || headingTextHits) && !hasExplicitTestimonialClass && !hasNamedCustomer) return;
+
+      dbg.hasQuoteGlyph = hasQuoteGlyph;
+      dbg.hasStoryHeading = hasStoryHeading;
+      dbg.hasCustomerLogo = hasCustomerLogo;
+      dbg.hasByline = hasByline;
+      dbg.hasNamedCustomer = hasNamedCustomer;
+      dbg.hasCtaButton = hasCtaButton;
+      dbg.headingTextHits = headingTextHits;
+      dbg.passesGate = passesGate;
+
+      if (!passesGate) {
+        dbg.reason = 'reject:gate';
+        trustDebug.push(dbg);
+        return;
+      }
+      if ((hasCtaButton || headingTextHits) && !hasExplicitTestimonialClass && !hasNamedCustomer) {
+        dbg.reason = 'reject:disqualifier';
+        trustDebug.push(dbg);
+        return;
+      }
+      dbg.reason = 'accept:gated';
+      trustDebug.push(dbg);
+    } else {
+      dbg.reason = 'accept:smallNonSlide';
+      trustDebug.push(dbg);
     }
     push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
   });
