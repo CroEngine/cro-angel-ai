@@ -493,7 +493,7 @@ export async function runMobilePass(
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     });
 
-    await page.reload({ waitUntil: "networkidle", timeout: 30_000 });
+    await page.reload({ waitUntil: "networkidle", timeoutMs: 30_000 });
 
     // Re-warm lazy content + return to top before measurement.
     await page.evaluate(`(async () => {
