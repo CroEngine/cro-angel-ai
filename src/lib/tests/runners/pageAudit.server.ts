@@ -4,8 +4,6 @@
 
 import type { Page } from "@browserbasehq/stagehand";
 
-import { waitForSettled } from "./settle.server";
-
 import { PAGE_AUDIT_SCRIPT } from "../scripts/pageAudit";
 import { SECTIONS_SCRIPT } from "../scripts/sections";
 import { TRUST_SIGNALS_SCRIPT } from "../scripts/trustSignals";
@@ -174,14 +172,6 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
       await sleep(150);
     }
   })()`);
-
-  // Global settle — both extractors (collect upstream + pageAudit here) must
-  // snapshot the same stabilized DOM. See .lovable/plan.md Fix 0a.
-  const settle = await waitForSettled(page);
-  // eslint-disable-next-line no-console
-  console.log(`[pageAudit] settle: ${settle.reason} in ${settle.durationMs}ms`);
-
-
 
 
 
@@ -404,12 +394,6 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   // needs it to build the overlay; it's stripped downstream after overlay.
   const sectionsForSnapshot = sectionsTyped.map(({ selector: _s, ...rest }) => rest);
 
-  let trustDebug: unknown[] = [];
-  try {
-    trustDebug = (await page.evaluate("window.__trustDebug__ || []")) as unknown[];
-  } catch { /* ignore */ }
-
-
   return {
     ...audit,
     auditedAt: new Date().toISOString(),
@@ -426,198 +410,8 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     visualHierarchy: hierarchyTyped,
     pageSummary,
     hero,
-    layout: {
-      desktop: {
-        pageSummary,
-        trustSummary,
-        heroAboveFold: !!hero?.aboveFold,
-      },
-      mobile: null,
-    },
-    viewportDelta: null,
     // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
     flags: [],
-    trustDebug,
-  } as unknown as PageAuditData;
-}
-
-// ---------------------------------------------------------------------------
-// Mobile viewport pass
-// ---------------------------------------------------------------------------
-
-async function collectLayoutPass(page: Page): Promise<{
-  sections: PageSection[];
-  trustSignals: TrustSignal[];
-  ctas: CTAEntity[];
-  visualHierarchy: VisualHierarchyEntry[];
-  dims: { pageHeightPx: number; foldHeightPx: number };
-}> {
-  const [sections, trustSignals, ctas, visualHierarchy, dims] = await Promise.all([
-    page.evaluate(SECTIONS_SCRIPT),
-    page.evaluate(TRUST_SIGNALS_SCRIPT),
-    page.evaluate(CTAS_SCRIPT),
-    page.evaluate(VISUAL_HIERARCHY_SCRIPT),
-    page.evaluate(
-      "({ pageHeightPx: document.documentElement.scrollHeight, foldHeightPx: window.innerHeight })",
-    ),
-  ]);
-  return {
-    sections: sections as PageSection[],
-    trustSignals: trustSignals as TrustSignal[],
-    ctas: ctas as CTAEntity[],
-    visualHierarchy: visualHierarchy as VisualHierarchyEntry[],
-    dims: dims as { pageHeightPx: number; foldHeightPx: number },
   };
 }
-
-export type MobilePassResult = {
-  mobile: NonNullable<NonNullable<PageAuditData["layout"]>["mobile"]> | null;
-  viewportDelta: PageAuditData["viewportDelta"] | null;
-};
-
-/**
- * Re-collect viewport-sensitive data in a mobile emulation (390x844, iPhone UA, touch).
- * Uses CDP override + full reload — flip-only leaves desktop JS state (e.g. hamburger
- * menus initialised once via matchMedia) intact, which corrupts mobile counts.
- *
- * Order matters: this MUST run as the last DOM-dependent step in the pipeline.
- * `clearDeviceMetricsOverride` resets metrics but not the mobile-rendered DOM that
- * the server delivered under the iPhone UA.
- */
-export async function runMobilePass(
-  page: Page,
-  navigation: NavigationData,
-  desktop: NonNullable<PageAuditData["layout"]>["desktop"],
-): Promise<MobilePassResult> {
-  let sendCDP: ((m: string, p?: unknown) => Promise<unknown>) | null = null;
-  try {
-    // Stagehand v3 (understudy) — no Playwright underneath. V3Page exposes
-    // sendCDP(method, params) against its main CDP session. That's the only
-    // public CDP surface; newCDPSession does not exist.
-    const raw = (page as unknown as {
-      sendCDP?: (m: string, p?: unknown) => Promise<unknown>;
-    }).sendCDP;
-    if (typeof raw !== "function") {
-      throw new Error("page.sendCDP unavailable (Stagehand v3 expected)");
-    }
-    sendCDP = raw.bind(page) as (m: string, p?: unknown) => Promise<unknown>;
-
-    await sendCDP("Emulation.setDeviceMetricsOverride", {
-      width: 390,
-      height: 844,
-      deviceScaleFactor: 3,
-      mobile: true,
-    });
-
-    await sendCDP("Emulation.setTouchEmulationEnabled", { enabled: true });
-
-    await sendCDP("Emulation.setUserAgentOverride", {
-      userAgent:
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-    });
-
-    // domcontentloaded + warmup-loop, inte networkidle — autoplay-video + 3p-script
-    // håller nätet aktivt på t.ex. HiBob och får networkidle att timeouta tyst.
-    await page.reload({ waitUntil: "domcontentloaded", timeoutMs: 30_000 });
-
-    // Re-warm lazy content + return to top before measurement.
-    await page.evaluate(`(async () => {
-      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-      const h = document.documentElement.scrollHeight;
-      for (let i = 0; i <= 8; i++) {
-        window.scrollTo({ top: (h / 8) * i, behavior: 'instant' });
-        await sleep(80);
-      }
-      await sleep(400);
-      window.scrollTo({ top: 0, behavior: 'instant' });
-      await sleep(250);
-    })()`);
-
-    const settleMobile = await waitForSettled(page);
-    // eslint-disable-next-line no-console
-    console.log(`[pageAudit/mobile] settle: ${settleMobile.reason} in ${settleMobile.durationMs}ms`);
-
-    const raw2 = await collectLayoutPass(page);
-
-    // Mobile pass intentionally re-uses desktop navigation/forms — those are
-    // viewport-independent and not re-collected here.
-    enrichSections(raw2.sections, raw2.ctas, raw2.trustSignals, []);
-    const trustSummaryMobile = buildTrustSummary(raw2.trustSignals);
-    const pageSummaryMobile = buildPageSummary({
-      ctas: raw2.ctas,
-      trustSignals: raw2.trustSignals,
-      trustSummary: trustSummaryMobile,
-      forms: [],
-      navigation,
-      sections: raw2.sections,
-      dims: raw2.dims,
-    });
-    const heroMobile = deriveHero(raw2.sections, raw2.ctas);
-    const heroAboveFoldMobile = !!heroMobile?.aboveFold;
-
-    const primaryCtas = raw2.ctas
-      .filter((c) => c.category === "cta_primary")
-      .slice(0, 5)
-      .map((c) => ({
-        text: c.text,
-        intent: c.intent,
-        aboveFold: c.aboveFold,
-        foldDepthPx: c.rect.y,
-      }));
-    const aboveFoldTrust = raw2.trustSignals
-      .filter((t) => t.aboveFold)
-      .slice(0, 5)
-      .map((t) => ({ type: t.type, text: t.text }));
-
-    const mobile = {
-      pageSummary: pageSummaryMobile,
-      trustSummary: trustSummaryMobile,
-      heroAboveFold: heroAboveFoldMobile,
-      primaryCtas,
-      aboveFoldTrust,
-    };
-
-    const viewportDelta = {
-      aboveFoldCtaCount: {
-        desktop: desktop.pageSummary.aboveFoldCtaCount,
-        mobile: pageSummaryMobile.aboveFoldCtaCount,
-      },
-      foldDepthFirstCtaPx: {
-        desktop: desktop.pageSummary.foldDepthFirstCtaPx,
-        mobile: pageSummaryMobile.foldDepthFirstCtaPx,
-      },
-      aboveFoldTrustCount: {
-        desktop: desktop.trustSummary.aboveFold,
-        mobile: trustSummaryMobile.aboveFold,
-      },
-      heroVisibleMobile: heroAboveFoldMobile,
-    };
-
-    return { mobile, viewportDelta };
-  } catch (e) {
-    console.warn("[mobile-pass] failed:", e instanceof Error ? e.message : e);
-    return { mobile: null, viewportDelta: null };
-  } finally {
-    // Restore desktop state regardless of outcome. Clear ALL three overrides —
-    // a lingering mobile UA would make any subsequent navigation serve mobile HTML.
-    if (typeof sendCDP === "function") {
-      try {
-        await sendCDP("Emulation.clearDeviceMetricsOverride");
-      } catch {
-        /* ignore */
-      }
-      try {
-        await sendCDP("Emulation.setTouchEmulationEnabled", { enabled: false });
-      } catch {
-        /* ignore */
-      }
-      try {
-        await sendCDP("Emulation.setUserAgentOverride", { userAgent: "" });
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-}
-
 

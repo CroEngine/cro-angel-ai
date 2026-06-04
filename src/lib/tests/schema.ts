@@ -279,14 +279,8 @@ export type VisualHierarchyEntry = {
 };
 
 export type PageSummary = {
-  // Canonical CTA counts. Source: CTAS_SCRIPT via deriveSummary in audit-helpers.ts.
-  // Invariant: primaryCtaCount + secondaryCtaCount + iconButtonCount + otherCtaCount === ctaTotalCount.
-  // The `collect` extractor produces its own CTA counts under different names
-  // (see CollectSummary.primaryConversionCtaCount) — they are not interchangeable.
   primaryCtaCount: number;
   secondaryCtaCount: number;
-  iconButtonCount: number;
-  otherCtaCount: number;
   ctaTotalCount: number;
   aboveFoldCtaCount: number;
   foldDepthFirstCtaPx: number | null;
@@ -305,7 +299,6 @@ export type PageSummary = {
   ctaContrastFailCount: number;
   ctaContrastAvg: number | null;
 };
-
 
 export type TrustSummary = {
   total: number;
@@ -334,7 +327,6 @@ export type PageAuditData = {
     twitterCard: string | null;
     twitterTitle: string | null;
     twitterImage: string | null;
-    favicon: string | null;
   };
   headings: {
     h1Count: number;
@@ -431,34 +423,6 @@ export type PageAuditData = {
   hero?: HeroContent;
   flags: string[];
 
-  /**
-   * Två-viewport-layoutdata. `desktop` är samma data som top-level pageSummary/trustSummary
-   * fast lyft för symmetri med `mobile`. `mobile` är null om mobil-passet hoppades över eller
-   * misslyckades (t.ex. CDP-emulering inte tillgänglig på äldre Browserbase-image).
-   */
-  layout?: {
-    desktop: {
-      pageSummary: PageSummary;
-      trustSummary: TrustSummary;
-      heroAboveFold: boolean;
-    };
-    mobile: {
-      pageSummary: PageSummary;
-      trustSummary: TrustSummary;
-      heroAboveFold: boolean;
-      /** Bevarad flag-specificitet — räcker för "BOKA EN DEMO hamnar under fold på mobil". */
-      primaryCtas: Array<{ text: string; intent: ElementIntent; aboveFold: boolean; foldDepthPx: number }>;
-      aboveFoldTrust: Array<{ type: TrustSignalType; text: string }>;
-    } | null;
-  };
-  /** Desktop-vs-mobil delta. Null om mobil-passet saknas. */
-  viewportDelta?: {
-    aboveFoldCtaCount: { desktop: number; mobile: number };
-    foldDepthFirstCtaPx: { desktop: number | null; mobile: number | null };
-    aboveFoldTrustCount: { desktop: number; mobile: number };
-    heroVisibleMobile: boolean;
-  } | null;
-
 
   indexability?: {
     indexable: boolean;
@@ -544,17 +508,13 @@ export type PageAuditData = {
 export type CollectSummary = {
   total: number;
   aboveFold: number;
-  // cta_primary AND intent === "conversion" (collect heuristic, see scripts/collect.ts).
-  // NOT the same as PageSummary.primaryCtaCount (which is sourced from CTAS_SCRIPT
-  // and is a pure category count). The two extractors will disagree; that's expected.
-  primaryConversionCtaCount: number;
+  primaryCtaCount: number;
   competingAboveFold: number;
   topVisualWeight: Array<{ selector: string; text: string; score: number }>;
   intentBreakdown: Partial<Record<ElementIntent, number>>;
   bySection?: Partial<Record<SectionKind, number>>;
   groups?: RepeatedGroup[];
 };
-
 
 export type CollectData = {
   target: CollectTarget;

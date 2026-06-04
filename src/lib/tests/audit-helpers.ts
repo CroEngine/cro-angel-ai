@@ -132,19 +132,9 @@ export function buildPageSummary(input: {
       : null;
   const ctaContrastFailCount = ctas.filter((c) => c.wcagLevel === "FAIL").length;
 
-  // CTAS_SCRIPT is the canonical source for PageSummary CTA counts.
-  // Invariant: primary + secondary + iconButton + other === ctaTotalCount.
-  const primaryCtaCount = ctas.filter((c) => c.category === "cta_primary").length;
-  const secondaryCtaCount = ctas.filter((c) => c.category === "cta_secondary").length;
-  const iconButtonCount = ctas.filter((c) => c.category === "icon_button").length;
-  const otherCtaCount =
-    ctas.length - primaryCtaCount - secondaryCtaCount - iconButtonCount;
-
   return {
-    primaryCtaCount,
-    secondaryCtaCount,
-    iconButtonCount,
-    otherCtaCount,
+    primaryCtaCount: ctas.filter((c) => c.category === "cta_primary").length,
+    secondaryCtaCount: ctas.filter((c) => c.category === "cta_secondary").length,
     ctaTotalCount: ctas.length,
     aboveFoldCtaCount: ctas.filter((c) => c.aboveFold).length,
     foldDepthFirstCtaPx,
@@ -167,7 +157,6 @@ export function buildPageSummary(input: {
     ctaContrastAvg,
   };
 }
-
 
 export function deriveHero(
   sections: PageSection[],

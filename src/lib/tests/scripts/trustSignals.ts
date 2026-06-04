@@ -93,8 +93,6 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   const seen = new Set();
   const out = [];
-  const trustDebug = [];
-  window.__trustDebug__ = trustDebug;
 
   function isInsideCarousel(el) {
     let p = el;
@@ -251,90 +249,18 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     '[role="group"][aria-roledescription~="slide" i], [data-slide], [data-carousel-item]'
   ).forEach((el) => {
     const text = (el.innerText || el.textContent || '').trim();
-    const textPreview = text.slice(0, 160);
+    if (text.length < 40 || text.length > 600) return;
+    // For carousel slides, require some signal that it's actually a testimonial:
+    // a quote mark, an author-ish child element, or wording hints. Otherwise
+    // every product/feature slide would be misclassified as a testimonial.
     const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
-    const tag = el.tagName;
     const isSlide = /slide|swiper|slick|embla|keen-slider|glide|splide/.test(cls)
       || (el.getAttribute && (el.getAttribute('aria-roledescription') || '').toLowerCase().indexOf('slide') !== -1);
-    const hasExplicitTestimonialClass = /\\b(testimonial|quote|review)\\b/.test(cls);
-    const headingCount = el.querySelectorAll('h1, h2, h3, h4').length;
-    const isLargeContainer = headingCount >= 2 || text.length > 300;
-
-    // Debug helper: capture every candidate (even early rejects) so we can
-    // compare Ualá vs Elation vs TourRadar deterministically.
-    const dbg = {
-      selector: buildSelector(el),
-      tag: tag,
-      cls: cls.slice(0, 200),
-      textLen: text.length,
-      textPreview: textPreview,
-      headings: Array.from(el.querySelectorAll('h1, h2, h3, h4')).slice(0, 6).map((h) => (h.innerText || h.textContent || '').trim().slice(0, 120)),
-      imageAlts: Array.from(el.querySelectorAll('img[alt]')).slice(0, 6).map((i) => (i.getAttribute('alt') || '').slice(0, 120)),
-      linkButtonTexts: Array.from(el.querySelectorAll('a, button')).slice(0, 8).map((c) => (c.innerText || c.textContent || '').trim().slice(0, 80)),
-      isSlide: isSlide,
-      isLargeContainer: isLargeContainer,
-      hasExplicitTestimonialClass: hasExplicitTestimonialClass,
-    };
-
-    if (text.length < 40 || text.length > 600) {
-      dbg.reason = 'reject:textLength';
-      trustDebug.push(dbg);
-      return;
-    }
-
-    if (isSlide || isLargeContainer) {
-      const subtreeText = text;
-      const hasQuoteGlyph = /[“"„«»]/.test(subtreeText);
-
-      const storyHeadingRx = /^(s[åa] h[äa]r gjorde\\s+\\S+|hur\\s+\\S+\\s+(v[äa]xte|byggde|skalade|valde|gick|lyckades|fick))|^how\\s+\\S+\\s+(grew|built|scaled|chose|went|saved|cut|boosted|improved)/i;
-      const hasStoryHeading = Array.from(el.querySelectorAll('h1, h2, h3, h4')).some((h) => storyHeadingRx.test(((h).innerText || (h).textContent || '').trim()));
-      const genericAltRx = /^(icon|logo|illustration|photo|image|bild|ikon|avatar|placeholder)$/i;
-      const hasCustomerLogo = Array.from(el.querySelectorAll('img[alt]')).some((img) => {
-        const alt = ((img).getAttribute('alt') || '').trim();
-        if (!alt || alt.length > 40) return false;
-        const words = alt.split(/\\s+/);
-        if (words.length > 3) return false;
-        if (genericAltRx.test(alt)) return false;
-        return true;
-      });
-      const bylineRx = /,\\s*(VD|CEO|CTO|CFO|COO|CMO|VP|Head of|Chef|Director|Manager|Founder|Co-?founder|Grundare|Medgrundare|President|Owner|Ägare|Lead|Engineer|Designer)\\b/i;
-      const hasByline = Array.from(el.querySelectorAll('cite, figcaption, [class*="author" i], [class*="byline" i], [itemprop="author"]')).some((c) => bylineRx.test(((c).textContent || '').trim()));
-      const hasNamedCustomer = hasStoryHeading || hasCustomerLogo || hasByline;
-
-      const passesGate =
-        hasExplicitTestimonialClass ||
-        hasNamedCustomer ||
-        (hasQuoteGlyph && subtreeText.length >= 60);
-
-      const ctaRx = /(l[äa]s mer|read more|boka demo|book a demo|try (it|now|free)|prova|get started|learn more|kom ig[åa]ng)/i;
-      const featureHeadingRx = /(produkt|feature|funktion|avdelning|department|\\bAI\\b|assistent|coach|analyserare|navigator|h[öo]jare)/i;
-      const hasCtaButton = Array.from(el.querySelectorAll('button, a')).some((c) => ctaRx.test(((c).innerText || (c).textContent || '').trim()));
-      const headingTextHits = Array.from(el.querySelectorAll('h2, h3, h4')).some((h) => featureHeadingRx.test(((h).innerText || (h).textContent || '').trim()));
-
-      dbg.hasQuoteGlyph = hasQuoteGlyph;
-      dbg.hasStoryHeading = hasStoryHeading;
-      dbg.hasCustomerLogo = hasCustomerLogo;
-      dbg.hasByline = hasByline;
-      dbg.hasNamedCustomer = hasNamedCustomer;
-      dbg.hasCtaButton = hasCtaButton;
-      dbg.headingTextHits = headingTextHits;
-      dbg.passesGate = passesGate;
-
-      if (!passesGate) {
-        dbg.reason = 'reject:gate';
-        trustDebug.push(dbg);
-        return;
-      }
-      if ((hasCtaButton || headingTextHits) && !hasExplicitTestimonialClass && !hasNamedCustomer) {
-        dbg.reason = 'reject:disqualifier';
-        trustDebug.push(dbg);
-        return;
-      }
-      dbg.reason = 'accept:gated';
-      trustDebug.push(dbg);
-    } else {
-      dbg.reason = 'accept:smallNonSlide';
-      trustDebug.push(dbg);
+    if (isSlide) {
+      const hasQuote = /[“"„«»]/.test(text) || /[—–-]\\s*[A-ZÅÄÖ]/.test(text);
+      const hasAuthor = !!el.querySelector('cite, figcaption, [class*="author" i], [class*="name" i], [class*="role" i], [class*="title" i]');
+      const hasTestimonialClass = /testimonial|quote|review/.test(cls);
+      if (!hasQuote && !hasAuthor && !hasTestimonialClass) return;
     }
     push('testimonial', text, el, 'text', extractTestimonialMeta(el, text));
   });

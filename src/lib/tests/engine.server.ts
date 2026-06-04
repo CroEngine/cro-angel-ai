@@ -4,8 +4,7 @@ import { Stagehand } from "@browserbasehq/stagehand";
 
 import { COLLECT_SCRIPT } from "./scripts/collect";
 import { OVERLAY_FN } from "./scripts/overlay";
-import { runPageAudit, runMobilePass } from "./runners/pageAudit.server";
-import { waitForSettled } from "./runners/settle.server";
+import { runPageAudit } from "./runners/pageAudit.server";
 
 import { groupRepeatedControls } from "./audit-helpers";
 
@@ -264,8 +263,6 @@ export async function runSteps(
             break;
           case "collect": {
             await scrollWarmup(page, onEvent);
-            const settle = await waitForSettled(page);
-            onEvent({ type: "log", message: `settle (collect): ${settle.reason} in ${settle.durationMs}ms` });
 
             // Screenshot FIRST — Playwright's fullPage scroll may trigger more
             // lazy content; we want rects measured against the same final height.
@@ -288,7 +285,7 @@ export async function runSteps(
             const intentBreakdown: Record<string, number> = {};
             const bySection: Record<string, number> = {};
             let aboveFold = 0;
-            let primaryConversionCtaCount = 0;
+            let primaryCtaCount = 0;
             let competingAboveFold = 0;
             for (const el of filtered) {
               if (el.groupedAway) continue; // dedupe from aggregates
@@ -296,7 +293,7 @@ export async function runSteps(
               intentBreakdown[el.intent] = (intentBreakdown[el.intent] ?? 0) + 1;
               bySection[el.section] = (bySection[el.section] ?? 0) + 1;
               if (el.position.viewportZone === "above_fold") aboveFold++;
-              if (el.category === "cta_primary" && el.intent === "conversion") primaryConversionCtaCount++;
+              if (el.category === "cta_primary" && el.intent === "conversion") primaryCtaCount++;
               if (
                 (el.category === "cta_primary" ||
                   el.category === "cta_secondary" ||
@@ -333,7 +330,7 @@ export async function runSteps(
               summary: {
                 total: uniqueCount,
                 aboveFold,
-                primaryConversionCtaCount,
+                primaryCtaCount,
                 competingAboveFold,
                 topVisualWeight,
                 intentBreakdown,
@@ -346,11 +343,10 @@ export async function runSteps(
             };
             onEvent({
               type: "log",
-              message: `collect ${step.target}: ${uniqueCount} unique (${filtered.length} total) · ${aboveFold} above fold · ${primaryConversionCtaCount} primary-conversion CTA · competing: ${competingAboveFold} · groups: ${groups.length}`,
+              message: `collect ${step.target}: ${uniqueCount} unique (${filtered.length} total) · ${aboveFold} above fold · ${primaryCtaCount} primary CTA · competing: ${competingAboveFold} · groups: ${groups.length}`,
             });
             break;
           }
-
 
           case "pageAudit": {
             try {
@@ -405,40 +401,8 @@ export async function runSteps(
               };
               onEvent({
                 type: "log",
-                message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryCtaCount} primary) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount} · trustDebug ${((full as unknown as { trustDebug?: unknown[] }).trustDebug || []).length}`,
+                message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryCtaCount} primary) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,
               });
-
-              // Mobile viewport pass — last DOM-dependent step. Reload in mobile
-              // emulation gives mobile-rendered DOM (hamburger menu, real mobile
-              // layout). Failure leaves layout.mobile/viewportDelta as null.
-              if (full.layout) {
-                const mobilePass = await runMobilePass(page, full.navigation, full.layout.desktop);
-                if (mobilePass.mobile && mobilePass.viewportDelta) {
-                  data = {
-                    ...(data as typeof full & { overlayElements?: unknown }),
-                    layout: {
-                      ...full.layout,
-                      mobile: mobilePass.mobile,
-                    },
-                    viewportDelta: mobilePass.viewportDelta,
-                  };
-                  const vd = mobilePass.viewportDelta;
-                  onEvent({
-                    type: "log",
-                    message: `pageAudit/mobile: af cta ${vd.aboveFoldCtaCount.desktop}→${vd.aboveFoldCtaCount.mobile} · foldDepth ${vd.foldDepthFirstCtaPx.desktop}→${vd.foldDepthFirstCtaPx.mobile}px · af trust ${vd.aboveFoldTrustCount.desktop}→${vd.aboveFoldTrustCount.mobile} · heroVisible ${vd.heroVisibleMobile}`,
-                  });
-                } else {
-                  data = {
-                    ...(data as typeof full & { overlayElements?: unknown }),
-                    layout: {
-                      ...full.layout,
-                      mobile: null,
-                    },
-                    viewportDelta: null,
-                  };
-                  onEvent({ type: "log", message: `pageAudit/mobile: skipped` });
-                }
-              }
             } catch (e) {
               throw new Error(`pageAudit failed: ${e instanceof Error ? e.message : String(e)}`);
             }

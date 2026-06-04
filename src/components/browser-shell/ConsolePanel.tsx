@@ -133,7 +133,7 @@ function CollectDetails({ data }: { data: CollectData }) {
             ↑ {data.summary.aboveFold} above fold
           </span>
           <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-foreground">
-            ★ {data.summary.primaryConversionCtaCount} primary-conversion CTA
+            ★ {data.summary.primaryCtaCount} primary CTA
           </span>
           <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-medium text-foreground">
             ⚔ Competing above fold: {data.summary.competingAboveFold}

@@ -27,7 +27,6 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
     twitterCard: nullIfEmpty(meta('twitter:card')),
     twitterTitle: nullIfEmpty(meta('twitter:title')),
     twitterImage: nullIfEmpty(meta('twitter:image')),
-    favicon: nullIfEmpty(document.querySelector('link[rel~="icon"]')?.getAttribute('href') || ''),
   };
 
   const hs = Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6'));
