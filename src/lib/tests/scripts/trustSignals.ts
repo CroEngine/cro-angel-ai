@@ -846,7 +846,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     });
   }
 
-  return filtered;
+  return { signals: filtered, _debug: debug };
 
 
 
