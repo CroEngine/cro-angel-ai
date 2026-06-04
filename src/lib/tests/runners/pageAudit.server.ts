@@ -394,6 +394,12 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   // needs it to build the overlay; it's stripped downstream after overlay.
   const sectionsForSnapshot = sectionsTyped.map(({ selector: _s, ...rest }) => rest);
 
+  let trustDebug: unknown[] = [];
+  try {
+    trustDebug = (await page.evaluate("window.__trustDebug__ || []")) as unknown[];
+  } catch { /* ignore */ }
+
+
   return {
     ...audit,
     auditedAt: new Date().toISOString(),
