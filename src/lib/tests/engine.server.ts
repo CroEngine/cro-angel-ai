@@ -401,7 +401,7 @@ export async function runSteps(
               };
               onEvent({
                 type: "log",
-                message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryCtaCount} primary) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount}`,
+                message: `pageAudit: sections ${full.sections.length} [${sectionOrder.slice(0, 6).join("→")}${sectionOrder.length > 6 ? "→…" : ""}] · trust ${full.trustSignals.length} (${full.trustSummary.aboveFold} af) · ctas ${full.ctas.length} (${full.pageSummary.primaryCtaCount} primary) · forms ${full.forms.length} · nav ${full.navigation.topNavCount}/${full.navigation.footerNavCount} · trustDebug ${((full as unknown as { trustDebug?: unknown[] }).trustDebug || []).length}`,
               });
 
               // Mobile viewport pass — last DOM-dependent step. Reload in mobile

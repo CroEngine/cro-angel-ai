@@ -394,6 +394,12 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   // needs it to build the overlay; it's stripped downstream after overlay.
   const sectionsForSnapshot = sectionsTyped.map(({ selector: _s, ...rest }) => rest);
 
+  let trustDebug: unknown[] = [];
+  try {
+    trustDebug = (await page.evaluate("window.__trustDebug__ || []")) as unknown[];
+  } catch { /* ignore */ }
+
+
   return {
     ...audit,
     auditedAt: new Date().toISOString(),
@@ -421,7 +427,8 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     viewportDelta: null,
     // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
     flags: [],
-  };
+    trustDebug,
+  } as unknown as PageAuditData;
 }
 
 // ---------------------------------------------------------------------------
