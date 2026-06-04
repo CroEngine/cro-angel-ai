@@ -327,6 +327,7 @@ export type PageAuditData = {
     twitterCard: string | null;
     twitterTitle: string | null;
     twitterImage: string | null;
+    favicon: string | null;
   };
   headings: {
     h1Count: number;
