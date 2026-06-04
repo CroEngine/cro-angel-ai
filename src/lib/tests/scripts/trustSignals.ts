@@ -93,6 +93,19 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   const seen = new Set();
   const out = [];
+  // _debug: per-decision log for testimonial classification. Each entry records
+  // selector, snippet, decision (accepted/rejected) and reason. Temporary —
+  // remove once classifier is stable across multiple sites.
+  const debug = [];
+  function logDecision(stage, decision, reason, el, text, extras) {
+    try {
+      const snip = (text || '').replace(/\\s+/g, ' ').trim().slice(0, 120);
+      const sel = el ? buildSelector(el) : null;
+      const entry = { stage: stage, decision: decision, reason: reason, selector: sel, text: snip };
+      if (extras) Object.assign(entry, extras);
+      debug.push(entry);
+    } catch (_e) { /* never throw from debug */ }
+  }
 
   function isInsideCarousel(el) {
     let p = el;
