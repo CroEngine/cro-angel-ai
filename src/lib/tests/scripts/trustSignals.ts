@@ -45,12 +45,26 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
+    const testId = el.getAttribute('data-testid') || el.getAttribute('data-test') || el.getAttribute('data-cy');
+    if (testId) {
+      const sel = el.tagName.toLowerCase() + '[data-testid="' + testId.replace(/"/g, '\\\\"') + '"]';
+      try { if (document.querySelectorAll(sel).length === 1) return sel; } catch (e) {}
+    }
+    for (const a of Array.from(el.attributes)) {
+      if (a.name.startsWith('data-') && a.value && a.value.length < 64) {
+        const sel = el.tagName.toLowerCase() + '[' + a.name + '="' + a.value.replace(/"/g, '\\\\"') + '"]';
+        try { if (document.querySelectorAll(sel).length === 1) return sel; } catch (e) {}
+      }
+    }
     const parts = [];
     let cur = el;
-    while (cur && cur !== document.body && cur.nodeType === 1) {
+    let depth = 0;
+    while (cur && cur !== document.body && cur.nodeType === 1 && depth < 10) {
       let part = cur.tagName.toLowerCase();
       if (cur.id && /^[A-Za-z][\\w-]*$/.test(cur.id)) {
         parts.unshift('#' + cur.id);
+        const candidate = parts.join(' > ');
+        try { if (document.querySelectorAll(candidate).length === 1) return candidate; } catch (e) {}
         break;
       }
       const parent = cur.parentElement;
@@ -59,9 +73,12 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         if (same.length > 1) part += ':nth-of-type(' + (same.indexOf(cur) + 1) + ')';
       }
       parts.unshift(part);
+      const candidate = parts.join(' > ');
+      try { if (document.querySelectorAll(candidate).length === 1) return candidate; } catch (e) {}
       cur = cur.parentElement;
+      depth++;
     }
-    return parts.join('>');
+    return parts.join(' > ') || el.tagName.toLowerCase();
   }
 
   function isVisible(el) {
