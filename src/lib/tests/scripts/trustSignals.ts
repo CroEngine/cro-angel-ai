@@ -869,6 +869,52 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     }));
   }
 
+  // Hierarchy dedup: within each type, drop entries whose _block is a
+  // descendant of another kept entry's _block. Keep root-most (outermost)
+  // so the entry preserves attribution context (name + company + logo on
+  // the testimonial card, label on the stat card) that inner leaves lack.
+  // Sort primary key is DOM depth ascending — the direct structural signal
+  // for "container vs leaf". Tiebreak on bounding-box area descending.
+  (function hierarchyDedup() {
+    const depthCache = new Map();
+    function depth(el) {
+      if (depthCache.has(el)) return depthCache.get(el);
+      let d = 0; let p = el;
+      while (p && p !== document.body) { d++; p = p.parentElement; }
+      depthCache.set(el, d);
+      return d;
+    }
+    function area(el) {
+      const r = el.getBoundingClientRect();
+      return r.width * r.height;
+    }
+    const byType = new Map();
+    for (const e of out) {
+      if (!e._block) continue;
+      const arr = byType.get(e.type) || [];
+      arr.push(e);
+      byType.set(e.type, arr);
+    }
+    const dropSet = new Set();
+    for (const group of byType.values()) {
+      if (group.length < 2) continue;
+      group.sort((a, b) => depth(a._block) - depth(b._block) || area(b._block) - area(a._block));
+      const kept = [];
+      for (const e of group) {
+        const dominator = kept.find((k) => k._block !== e._block && k._block.contains(e._block));
+        if (dominator) {
+          dropSet.add(e);
+          logDecision('hierarchy-dedup', 'rejected', 'descendant of kept entry', e._block, e.text, {
+            dominatorSelector: dominator.selector,
+          });
+        } else {
+          kept.push(e);
+        }
+      }
+    }
+    for (let i = out.length - 1; i >= 0; i--) if (dropSet.has(out[i])) out.splice(i, 1);
+  })();
+
   let filtered = dedupeSameBlock(out, 'trusted_by');
   filtered = dropWrappers(filtered, 'trusted_by');
 
