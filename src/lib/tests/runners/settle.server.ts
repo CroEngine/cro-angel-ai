@@ -32,8 +32,9 @@ export async function waitForSettled(
   const remaining = () => totalBudget - (Date.now() - t0);
 
   // 1. domcontentloaded — usually instant on a warmed page.
+  // Stagehand's signature is waitForLoadState(state, timeoutMs).
   try {
-    await page.waitForLoadState("domcontentloaded", { timeout: Math.min(2000, remaining()) });
+    await page.waitForLoadState("domcontentloaded", Math.min(2000, remaining()));
   } catch {
     /* swallow — page already past dcl is fine */
   }
@@ -42,9 +43,7 @@ export async function waitForSettled(
   let networkidleOk = false;
   if (remaining() > 200) {
     try {
-      await page.waitForLoadState("networkidle", {
-        timeout: Math.min(networkidleBudget, remaining()),
-      });
+      await page.waitForLoadState("networkidle", Math.min(networkidleBudget, remaining()));
       networkidleOk = true;
     } catch {
       // Expected on autoplay-video / heavy 3p sites — fall through.
