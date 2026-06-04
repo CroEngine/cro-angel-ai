@@ -21,7 +21,7 @@ export const NAVIGATION_SCRIPT = `(() => {
     footerNavLinks: footerNavLinks.slice(0, 60),
     loginPresent: /\\blog[ -]?in\\b|\\bsign[ -]?in\\b|logga in|mina sidor/.test(all),
     signupPresent: /sign[ -]?up|register|skapa konto|registrera/.test(all),
-    pricingPresent: /pricing|prices|priser|kostnad|plans/.test(all),
+    pricingPresent: /pricing|prices|priser|kostnad|plans|priss[äa]ttning|abonnemang/.test(all),
     contactPresent: /contact|kontakt/.test(all),
     blogPresent: /\\bblog\\b|nyheter/.test(all),
     docsPresent: /\\bdocs?\\b|documentation|dokumentation/.test(all),
