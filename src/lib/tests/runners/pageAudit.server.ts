@@ -4,6 +4,8 @@
 
 import type { Page } from "@browserbasehq/stagehand";
 
+import { waitForSettled } from "./settle.server";
+
 import { PAGE_AUDIT_SCRIPT } from "../scripts/pageAudit";
 import { SECTIONS_SCRIPT } from "../scripts/sections";
 import { TRUST_SIGNALS_SCRIPT } from "../scripts/trustSignals";
@@ -172,6 +174,14 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
       await sleep(150);
     }
   })()`);
+
+  // Global settle — both extractors (collect upstream + pageAudit here) must
+  // snapshot the same stabilized DOM. See .lovable/plan.md Fix 0a.
+  const settle = await waitForSettled(page);
+  // eslint-disable-next-line no-console
+  console.log(`[pageAudit] settle: ${settle.reason} in ${settle.durationMs}ms`);
+
+
 
 
 
@@ -522,6 +532,10 @@ export async function runMobilePass(
       window.scrollTo({ top: 0, behavior: 'instant' });
       await sleep(250);
     })()`);
+
+    const settleMobile = await waitForSettled(page);
+    // eslint-disable-next-line no-console
+    console.log(`[pageAudit/mobile] settle: ${settleMobile.reason} in ${settleMobile.durationMs}ms`);
 
     const raw2 = await collectLayoutPass(page);
 

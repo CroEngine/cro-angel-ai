@@ -5,6 +5,7 @@ import { Stagehand } from "@browserbasehq/stagehand";
 import { COLLECT_SCRIPT } from "./scripts/collect";
 import { OVERLAY_FN } from "./scripts/overlay";
 import { runPageAudit, runMobilePass } from "./runners/pageAudit.server";
+import { waitForSettled } from "./runners/settle.server";
 
 import { groupRepeatedControls } from "./audit-helpers";
 
@@ -263,6 +264,8 @@ export async function runSteps(
             break;
           case "collect": {
             await scrollWarmup(page, onEvent);
+            const settle = await waitForSettled(page);
+            onEvent({ type: "log", message: `settle (collect): ${settle.reason} in ${settle.durationMs}ms` });
 
             // Screenshot FIRST — Playwright's fullPage scroll may trigger more
             // lazy content; we want rects measured against the same final height.
