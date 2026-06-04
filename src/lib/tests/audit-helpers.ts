@@ -132,28 +132,28 @@ export function buildPageSummary(input: {
       : null;
   const ctaContrastFailCount = ctas.filter((c) => c.wcagLevel === "FAIL").length;
 
-  const primaryConversionCtaCount = ctas.filter(
+  const ctasScriptPrimaryCount = ctas.filter(
     (c) => c.category === "cta_primary" && c.intent === "conversion",
   ).length;
   const secondaryCtaCount = ctas.filter((c) => c.category === "cta_secondary").length;
   const iconButtonCount = ctas.filter((c) => c.category === "icon_button").length;
   const ctaTotalCount = ctas.length;
   const otherCtaCount =
-    ctaTotalCount - primaryConversionCtaCount - secondaryCtaCount - iconButtonCount;
+    ctaTotalCount - ctasScriptPrimaryCount - secondaryCtaCount - iconButtonCount;
 
   // Reconcile assertion (dev-only warn): the four count buckets must sum to total.
   if (
-    primaryConversionCtaCount + secondaryCtaCount + iconButtonCount + otherCtaCount !==
+    ctasScriptPrimaryCount + secondaryCtaCount + iconButtonCount + otherCtaCount !==
     ctaTotalCount
   ) {
     // eslint-disable-next-line no-console
     console.warn(
-      `[buildPageSummary] CTA reconcile failed: ${primaryConversionCtaCount}+${secondaryCtaCount}+${iconButtonCount}+${otherCtaCount} !== ${ctaTotalCount}`,
+      `[buildPageSummary] CTA reconcile failed: ${ctasScriptPrimaryCount}+${secondaryCtaCount}+${iconButtonCount}+${otherCtaCount} !== ${ctaTotalCount}`,
     );
   }
 
   return {
-    primaryConversionCtaCount,
+    ctasScriptPrimaryCount,
     secondaryCtaCount,
     iconButtonCount,
     otherCtaCount,
