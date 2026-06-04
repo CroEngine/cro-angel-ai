@@ -253,26 +253,50 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     let leaf = true;
     for (const c of el.children) {
       const tag = c.tagName;
-      if (tag === 'P' || tag === 'LI' || tag === 'BLOCKQUOTE' || tag === 'H1' || tag === 'H2' || tag === 'H3' || tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE') { leaf = false; break; }
+      if (
+        tag === 'P' || tag === 'LI' || tag === 'BLOCKQUOTE' ||
+        tag === 'H1' || tag === 'H2' || tag === 'H3' ||
+        tag === 'H4' || tag === 'H5' || tag === 'H6' ||
+        tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE' ||
+        tag === 'FIGCAPTION' || tag === 'UL' || tag === 'OL'
+      ) { leaf = false; break; }
     }
     if (!leaf) continue;
     const text = (el.innerText || el.textContent || '').trim();
     if (!text || text.length > 600) continue;
     for (const type in PATTERNS) {
-      if (PATTERNS[type].test(text)) {
-        if (type === 'trusted_by' && text.length > 160) continue;
-        let extras;
-        if (type === 'testimonial') extras = extractTestimonialMeta(el, text);
-        else if (type === 'review_rating') extras = extractRatingMeta(text);
-        else if (type === 'social_proof_count') extras = extractSocialProofCount(text);
-        if (type === 'testimonial') {
-          logDecision('text-pattern', 'accepted', 'PATTERN matched', el, text, {
-            personName: extras && extras.personName, company: extras && extras.company,
-            hasImage: extras && extras.hasImage,
-          });
-        }
-        push(type, text, el, 'text', extras);
+      const rx = PATTERNS[type];
+      rx.lastIndex = 0;
+      const m = rx.exec(text);
+      if (!m) continue;
+      // Sentence-boundary anchor: the match must start at text[0] (or after
+      // [.!?]\\s) and end at [.!?] (with optional trailing whitespace) or at
+      // block-end. Rejects mid-sentence substring matches like
+      // "months for the pipeline to grow ..." extracted from a longer block.
+      const start = m.index;
+      const end = start + m[0].length;
+      const before2 = start >= 2 ? text.slice(start - 2, start) : '';
+      const startOk = start === 0 || /[.!?]\\s/.test(before2);
+      const after = text.slice(end);
+      const endOk = /^\\s*$/.test(after) || /^[.!?](\\s|$)/.test(after);
+      if (!startOk || !endOk) {
+        logDecision('text-pattern', 'rejected', 'substring-fragment-mid-sentence', el, text, {
+          matchedText: m[0], startOk: startOk, endOk: endOk,
+        });
+        continue;
       }
+      if (type === 'trusted_by' && text.length > 160) continue;
+      let extras;
+      if (type === 'testimonial') extras = extractTestimonialMeta(el, text);
+      else if (type === 'review_rating') extras = extractRatingMeta(text);
+      else if (type === 'social_proof_count') extras = extractSocialProofCount(text);
+      if (type === 'testimonial') {
+        logDecision('text-pattern', 'accepted', 'PATTERN matched', el, text, {
+          personName: extras && extras.personName, company: extras && extras.company,
+          hasImage: extras && extras.hasImage,
+        });
+      }
+      push(type, text, el, 'text', extras);
     }
   }
 
