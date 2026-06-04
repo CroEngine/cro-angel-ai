@@ -367,7 +367,7 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
   }
 
   const sectionsTyped = sections as PageSection[];
-  const trustResult = trustSignals as { signals: TrustSignal[]; _debug?: unknown[] };
+  const trustResult = trustSignals as { signals: TrustSignal[]; _debug?: Array<Record<string, unknown>> };
   const trustTyped = trustResult.signals;
   const trustDebug = trustResult._debug ?? [];
   const ctasTyped = ctas as CTAEntity[];
