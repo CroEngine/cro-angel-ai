@@ -276,19 +276,47 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const isSlide = /slide|swiper|slick|embla|keen-slider|glide|splide/.test(cls)
       || (el.getAttribute && (el.getAttribute('aria-roledescription') || '').toLowerCase().indexOf('slide') !== -1);
     const hasQuote = /[“"„«»]/.test(text) || /[—–-]\\s*[A-ZÅÄÖ]/.test(text);
-    const hasAuthor = !!el.querySelector('cite, figcaption, [class*="author" i], [class*="name" i], [class*="role" i], [class*="title" i]');
     const hasTestimonialClass = /testimonial|quote|review/.test(cls);
-    if (isSlide && !hasQuote && !hasAuthor && !hasTestimonialClass) {
-      logDecision('quote-block', 'rejected', 'slide without testimonial signal', el, text, {
-        isSlide: true, hasQuote: false, hasAuthor: false, hasTestimonialClass: false,
+    // Strong author signal: an explicit <cite>/<figcaption> element with text,
+    // OR a customer logo near the card. The previous broad selector
+    // ([class*="title" i], [class*="name" i], [class*="role" i]) matched
+    // section titles and product feature labels, so it has been removed.
+    const strongAuthorEl = el.querySelector('cite, figcaption');
+    const strongAuthorText = strongAuthorEl ? (strongAuthorEl.textContent || '').trim() : '';
+    const hasStrongAuthor = strongAuthorText.length >= 3 && strongAuthorText.length <= 120;
+    const hasLogoImg = !!el.querySelector('img[alt*="logo" i], img[class*="logo" i], [class*="logo" i] img');
+
+    const meta = extractTestimonialMeta(el, text);
+    // Attribution: a real testimonial needs at least one strong attribution
+    // signal — a quote-mark, an explicit cite/figcaption, a customer logo, or
+    // a name+company extracted from the text (e.g. "— Jane Doe, Acme Corp").
+    const hasAttribution =
+      hasQuote ||
+      hasStrongAuthor ||
+      hasLogoImg ||
+      (!!meta.personName && !!meta.company) ||
+      hasTestimonialClass;
+
+    // Apply the attribution gate to BOTH slides and explicit testimonial/quote
+    // containers (CMS authors sometimes reuse those class names for product
+    // cards). Blockquotes still get through on their own merit — the
+    // <blockquote> tag itself is the attribution signal.
+    const isBlockquote = el.tagName === 'BLOCKQUOTE';
+    if (!isBlockquote && !hasAttribution) {
+      logDecision('quote-block', 'rejected', 'no attribution signal', el, text, {
+        isSlide: isSlide, hasQuote: hasQuote, hasStrongAuthor: hasStrongAuthor,
+        hasLogoImg: hasLogoImg, hasTestimonialClass: hasTestimonialClass,
+        personName: meta.personName, company: meta.company,
       });
       return;
     }
-    const meta = extractTestimonialMeta(el, text);
-    logDecision('quote-block', 'accepted', isSlide ? 'slide with signal' : 'blockquote/quote class', el, text, {
-      isSlide: isSlide, hasQuote: hasQuote, hasAuthor: hasAuthor, hasTestimonialClass: hasTestimonialClass,
-      personName: meta.personName, company: meta.company, hasImage: meta.hasImage,
-    });
+    logDecision('quote-block', 'accepted',
+      isBlockquote ? 'blockquote tag' : (isSlide ? 'slide with attribution' : 'container with attribution'),
+      el, text, {
+        isSlide: isSlide, hasQuote: hasQuote, hasStrongAuthor: hasStrongAuthor,
+        hasLogoImg: hasLogoImg, hasTestimonialClass: hasTestimonialClass,
+        personName: meta.personName, company: meta.company, hasImage: meta.hasImage,
+      });
     push('testimonial', text, el, 'text', meta);
   });
 
