@@ -175,7 +175,9 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     };
     if (extras) Object.assign(entry, extras);
     if (inCarousel) entry.inCarousel = true;
-    if (type === 'trusted_by') entry._block = block;
+    // Stash the source block on every entry so the post-collection hierarchy
+    // dedup can walk ancestor/descendant relationships. Stripped before return.
+    entry._block = block;
     out.push(entry);
   }
 
