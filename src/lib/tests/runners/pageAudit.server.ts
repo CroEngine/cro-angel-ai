@@ -471,27 +471,26 @@ export type MobilePassResult = {
  */
 export async function runMobilePass(
   page: Page,
-  context: {
-    pages: () => Page[];
-    newCDPSession: (p: Page) => Promise<{ send: (m: string, p?: unknown) => Promise<unknown> }>;
-  },
   navigation: NavigationData,
   desktop: NonNullable<PageAuditData["layout"]>["desktop"],
 ): Promise<MobilePassResult> {
-  let cdp: { send: (m: string, p?: unknown) => Promise<unknown> } | null = null;
+  let sendCDP: ((m: string, p?: unknown) => Promise<unknown>) | null = null;
   let stage: string = "init";
   try {
-    stage = "cdp-create";
-    // Stagehand wrapper forwards .evaluate()/.reload() but not .context(); use the
-    // raw Playwright BrowserContext threaded in from the engine. newCDPSession
-    // wants a real Playwright Page target, so pull it from context.pages().
-    const pwPage = context.pages()[0] ?? page;
-    cdp = await context.newCDPSession(pwPage);
-    if (!cdp) throw new Error("CDP session unavailable");
-
+    stage = "cdp-bind";
+    // Stagehand v3 (understudy) — no Playwright underneath. V3Page exposes
+    // sendCDP(method, params) against its main CDP session. That's the only
+    // public CDP surface; newCDPSession does not exist.
+    const raw = (page as unknown as {
+      sendCDP?: (m: string, p?: unknown) => Promise<unknown>;
+    }).sendCDP;
+    if (typeof raw !== "function") {
+      throw new Error("page.sendCDP unavailable (Stagehand v3 expected)");
+    }
+    sendCDP = raw.bind(page) as (m: string, p?: unknown) => Promise<unknown>;
 
     stage = "cdp-metrics";
-    await cdp.send("Emulation.setDeviceMetricsOverride", {
+    await sendCDP("Emulation.setDeviceMetricsOverride", {
       width: 390,
       height: 844,
       deviceScaleFactor: 3,
@@ -499,10 +498,10 @@ export async function runMobilePass(
     });
 
     stage = "cdp-touch";
-    await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+    await sendCDP("Emulation.setTouchEmulationEnabled", { enabled: true });
 
     stage = "cdp-ua";
-    await cdp.send("Emulation.setUserAgentOverride", {
+    await sendCDP("Emulation.setUserAgentOverride", {
       userAgent:
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     });
@@ -527,26 +526,26 @@ export async function runMobilePass(
     })()`);
 
     stage = "collect";
-    const raw = await collectLayoutPass(page);
+    const raw2 = await collectLayoutPass(page);
 
     stage = "build";
     // Mobile pass intentionally re-uses desktop navigation/forms — those are
     // viewport-independent and not re-collected here.
-    enrichSections(raw.sections, raw.ctas, raw.trustSignals, []);
-    const trustSummaryMobile = buildTrustSummary(raw.trustSignals);
+    enrichSections(raw2.sections, raw2.ctas, raw2.trustSignals, []);
+    const trustSummaryMobile = buildTrustSummary(raw2.trustSignals);
     const pageSummaryMobile = buildPageSummary({
-      ctas: raw.ctas,
-      trustSignals: raw.trustSignals,
+      ctas: raw2.ctas,
+      trustSignals: raw2.trustSignals,
       trustSummary: trustSummaryMobile,
       forms: [],
       navigation,
-      sections: raw.sections,
-      dims: raw.dims,
+      sections: raw2.sections,
+      dims: raw2.dims,
     });
-    const heroMobile = deriveHero(raw.sections, raw.ctas);
+    const heroMobile = deriveHero(raw2.sections, raw2.ctas);
     const heroAboveFoldMobile = !!heroMobile?.aboveFold;
 
-    const primaryCtas = raw.ctas
+    const primaryCtas = raw2.ctas
       .filter((c) => c.category === "cta_primary")
       .slice(0, 5)
       .map((c) => ({
@@ -555,7 +554,7 @@ export async function runMobilePass(
         aboveFold: c.aboveFold,
         foldDepthPx: c.rect.y,
       }));
-    const aboveFoldTrust = raw.trustSignals
+    const aboveFoldTrust = raw2.trustSignals
       .filter((t) => t.aboveFold)
       .slice(0, 5)
       .map((t) => ({ type: t.type, text: t.text }));
@@ -596,23 +595,24 @@ export async function runMobilePass(
   } finally {
     // Restore desktop state regardless of outcome. Clear ALL three overrides —
     // a lingering mobile UA would make any subsequent navigation serve mobile HTML.
-    if (cdp) {
+    if (typeof sendCDP === "function") {
       try {
-        await cdp.send("Emulation.clearDeviceMetricsOverride");
+        await sendCDP("Emulation.clearDeviceMetricsOverride");
       } catch {
         /* ignore */
       }
       try {
-        await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: false });
+        await sendCDP("Emulation.setTouchEmulationEnabled", { enabled: false });
       } catch {
         /* ignore */
       }
       try {
-        await cdp.send("Emulation.setUserAgentOverride", { userAgent: "" });
+        await sendCDP("Emulation.setUserAgentOverride", { userAgent: "" });
       } catch {
         /* ignore */
       }
     }
   }
 }
+
 
