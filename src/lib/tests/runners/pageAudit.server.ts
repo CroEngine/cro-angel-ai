@@ -505,7 +505,7 @@ export async function runMobilePass(
     stage = "reload";
     // domcontentloaded + warmup-loop, inte networkidle — autoplay-video + 3p-script
     // håller nätet aktivt på t.ex. HiBob och får networkidle att timeouta tyst.
-    await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
+    await page.reload({ waitUntil: "domcontentloaded", timeoutMs: 30_000 });
 
     stage = "warmup";
     // Re-warm lazy content + return to top before measurement.
