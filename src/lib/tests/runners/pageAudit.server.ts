@@ -175,6 +175,14 @@ export async function runPageAudit(page: Page): Promise<PageAuditData> {
     }
   })()`);
 
+  // Global settle — both extractors (collect upstream + pageAudit here) must
+  // snapshot the same stabilized DOM. See .lovable/plan.md Fix 0a.
+  const settle = await waitForSettled(page);
+  // eslint-disable-next-line no-console
+  console.log(`[pageAudit] settle: ${settle.reason} in ${settle.durationMs}ms`);
+
+
+
 
 
   const [
