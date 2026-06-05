@@ -58,9 +58,16 @@ async function loadMhtml(
   // Main-frame CDP session — page.sendCDP is send-only and cannot subscribe.
   const cdp = page.getSessionForFrame(page.mainFrameId());
 
+  let pausedCount = 0;
+  let fulfilledMain = false;
+  const seenUrls: string[] = [];
+
   const onPaused = async (params: { requestId: string; request: { url: string } }) => {
+    pausedCount++;
+    if (seenUrls.length < 10) seenUrls.push(params.request.url);
     try {
       if (params.request.url.startsWith(FAKE_HOST)) {
+        fulfilledMain = true;
         await cdp.send("Fetch.fulfillRequest", {
           requestId: params.requestId,
           responseCode: 200,
@@ -71,12 +78,11 @@ async function loadMhtml(
           body: bodyB64,
         });
       } else {
-        // MHTML should be self-contained, but if something escapes the archive
-        // we let it through rather than deadlock the page.
         await cdp.send("Fetch.continueRequest", { requestId: params.requestId });
       }
-    } catch {
-      /* request may have been cancelled — ignore */
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("[loadMhtml] fulfill error:", e instanceof Error ? e.message : e);
     }
   };
 
@@ -98,6 +104,20 @@ async function loadMhtml(
       await new Promise((r) => setTimeout(r, 200));
     }
     await new Promise((r) => setTimeout(r, 600));
+
+    // Diagnostics so we can see what actually happened.
+    try {
+      const probe = await page.evaluate(
+        "JSON.stringify({ url: location.href, title: document.title, bodyLen: (document.body && document.body.innerHTML.length) || 0, h1s: document.querySelectorAll('h1').length })",
+      );
+      // eslint-disable-next-line no-console
+      console.log(
+        `[loadMhtml] pausedCount=${pausedCount} fulfilledMain=${fulfilledMain} probe=${probe} seen=${JSON.stringify(seenUrls)}`,
+      );
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("[loadMhtml] probe failed:", e instanceof Error ? e.message : e);
+    }
   } finally {
     try {
       await cdp.send("Fetch.disable");
