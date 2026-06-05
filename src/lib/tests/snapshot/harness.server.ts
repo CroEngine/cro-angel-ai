@@ -25,15 +25,24 @@ export interface ReplayResult {
 }
 
 async function loadMhtml(page: import("@browserbasehq/stagehand").Page, mhtml: string) {
-  // Chromium accepts MHTML via a data: URL with multipart/related, OR via
-  // Page.navigate to a file:// URL. data: URLs cap at ~2MB on some builds
-  // so we use base64 + multipart/related; for larger pages we'll need to
-  // upload via Browserbase uploads and serve via a worker route.
+  // Chromium accepts MHTML via a data:multipart/related URL. We must go via
+  // raw CDP Page.navigate (WebSocket) — page.goto() routes through Stagehand's
+  // HTTP API which 413s anything over ~1 MB body, and MHTML for real sites is
+  // routinely 1–5 MB.
   const b64 = Buffer.from(mhtml, "utf8").toString("base64");
   const dataUrl = `data:multipart/related;base64,${b64}`;
-  await page.goto(dataUrl, { waitUntil: "load", timeoutMs: 30_000 });
-  // Give layout a beat after CSSOM settles.
-  await new Promise((r) => setTimeout(r, 400));
+  await page.sendCDP("Page.enable", {});
+  await page.sendCDP("Page.navigate", { url: dataUrl });
+  // Wait for the document to settle. CDP load events are noisy for data: URLs,
+  // so we poll document.readyState.
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    const ready = await page.evaluate("document.readyState");
+    if (ready === "complete") break;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  // Give layout + CSSOM a beat after ready.
+  await new Promise((r) => setTimeout(r, 600));
 }
 
 export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise<ReplayResult> {
