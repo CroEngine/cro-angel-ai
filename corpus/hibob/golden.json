@@ -1,0 +1,57 @@
+{
+  "collect": {
+    "target": "clickables",
+    "count": 0,
+    "summary": {
+      "topVisualWeight": []
+    },
+    "elements": []
+  },
+  "pageAudit": {
+    "head": {
+      "title": "",
+      "hasDescription": false,
+      "canonical": null,
+      "lang": ""
+    },
+    "headings": {
+      "h1Count": 0,
+      "h1": []
+    },
+    "hero": {
+      "headline": "",
+      "primaryCtaText": "",
+      "aboveFold": false
+    },
+    "images": {
+      "total": 0,
+      "missingAlt": 0,
+      "modernCount": 0,
+      "legacyCount": 0,
+      "formats": {
+        "avif": 0,
+        "gif": 0,
+        "jpg": 0,
+        "other": 0,
+        "png": 0,
+        "svg": 0,
+        "unknown": 0,
+        "webp": 0
+      }
+    },
+    "trustSummary": {
+      "total": 0,
+      "aboveFold": 0,
+      "byType": {}
+    },
+    "trustEvidence": {
+      "rollup": {}
+    },
+    "ctaSummary": {
+      "total": 0,
+      "primary": 0,
+      "aboveFold": 0
+    },
+    "sectionOrder": []
+  }
+}
