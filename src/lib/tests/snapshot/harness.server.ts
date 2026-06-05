@@ -62,7 +62,7 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
   try {
     await stagehand.init();
     const page = stagehand.context.pages()[0] ?? (await stagehand.context.newPage());
-    await page.setViewportSize(FREEZE_VIEWPORT);
+    await page.setViewportSize(FREEZE_VIEWPORT.width, FREEZE_VIEWPORT.height);
 
     await loadMhtml(page, mhtml);
 

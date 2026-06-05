@@ -76,7 +76,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     // Consent: try CSS selector first (deterministic), Stagehand as fallback.
     if (opts.consentSelector) {
       try {
-        await page.locator(opts.consentSelector).click({ timeoutMs: 4000 });
+        await page.locator(opts.consentSelector).click();
         await new Promise((r) => setTimeout(r, 800));
       } catch {
         /* maybe already dismissed */
