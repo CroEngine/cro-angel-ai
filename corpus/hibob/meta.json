@@ -1,0 +1,12 @@
+{
+  "url": "https://www.hibob.com",
+  "name": "hibob",
+  "captured_at": "2026-06-05T18:37:10.779Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": "#onetrust-accept-btn-handler",
+  "consentInstruction": null,
+  "notes": null
+}
