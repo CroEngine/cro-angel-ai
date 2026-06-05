@@ -1,60 +1,60 @@
-## Diagnos vi accepterar
+## Mål
 
-Asymmetrin (COLLECT lyckas, scroll dör) förklaras av evaluate-livslängd, inte två separata buggar. Den långlivade async-IIFE:n i `runPageAudit` ligger pending när MHTML:ens fördröjda commit förstör execution-contexten.
+Verifiera att replay-pipelinen (lokal Playwright + context-stabilitets-gate + Node-loop-scroll + Node-loop-cookie-stämpling) producerar **deterministiska OCH korrekta** goldens — först hibob (känd baseline: 103 element), sen hubspot (ny).
 
-Hårdnad insikt: bara Node-loop-scroll räcker inte. Den skyddar scrollen men flyttar COLLECT senare i tiden — rakt in i samma fönster (~1.5–4s) där commiten slår. Om commiten är dokument-ersättande nollställs scroll-position + `data-lovable-cookie-root`-stämpeln, och tysta try/catch-svalg ger flaky diff.
+## Steg
 
-Lösning: en **context-stabilitets-gate** före allt sidpåverkande. Gaten kräver att `page.evaluate(() => location.href)` lyckas N gånger i rad med stabil URL innan vi scrollar, stämplar eller kör COLLECT.
-
-## Ändringar
-
-### 1. `src/lib/tests/runners/pageAudit.server.ts`
-- Lägg till `runPageAudit(page, opts?: { skipScrollWarmup?: boolean; skipCookiePoll?: boolean })`.
-- När flaggorna är satta hoppas respektive in-page-IIFE över. Default oförändrat — engine.server.ts rör vi inte.
-
-### 2. `src/lib/tests/snapshot/harness.server.ts`
-
-Ny ordning efter `goto` + `waitForReady`:
-
-```text
-URL-stabilization (befintlig)
-  ↓
-waitForStableContext()   ← NY: evaluate måste överleva N=2 ggr i rad
-  ↓
-Node-loop scroll
-  ↓
-Node-loop cookie-root-stämpling
-  ↓
-runPageAudit(page, { skipScrollWarmup: true, skipCookiePoll: true })
+### 1. Generera goldens
+```bash
+SNAPSHOT_UPDATE=1 bun run vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts
 ```
+Förväntat: båda corpora replayar utan "Execution context was destroyed". `navHistory=[]` är **inte** ett framgångskriterium — om commit skedde och gaten höll så att diff är tom, gjorde gaten exakt sitt jobb. Döm på diff, inte på commit-frånvaro.
 
-**`waitForStableContext`** (ny helper i harnessen):
-- Loop tries=20, gap=150ms, kräver streak=2 av samma `location.href` där `evaluate` inte kastat.
-- Vid kastat fel (context destroyed): nollställ streak och fortsätt poll.
-- Kastar om kontexten aldrig stabiliseras — då vill vi inte fortsätta, då är MHTML:en trasig.
+### 2. Korrekthets-anchor mot baseline (hibob)
+```bash
+jq '.collect.count' corpus/hibob/golden.json
+jq '.pageAudit.ctas | length, .pageAudit.sections | length' corpus/hibob/golden.json
+```
+- `collect.count` ska ligga kring **103** (kända baseline). Avvikelse > ±10% = restruktureringen ändrade vad som samlas, även om det är stabilt. Stoppa och utred innan determinism-check.
+- CTAs/sections rimliga (> 0, samma storleksordning som tidigare).
 
-**Scroll** (efter gate):
-- Läs `scrollHeight` **direkt före** varje steg, inte en gång uppifrån — lazy-load via IntersectionObserver kan expandera dokumentet under loopen.
-- 8 steg, **150ms paus** mellan steg (inte 80ms — diff-stabilitet vinner över hastighet).
-- Varje `page.evaluate(...scrollTo...)` är trivialt kort. Wrappas i try/catch + en `waitForStableContext`-runda vid fel, så att vi inte sväljer ett tappat steg utan rekonvalescens.
-- Sluttsteg: scrolla till botten, paus 600ms, tillbaka till topp, paus 200ms — separata Node-steg.
+### 3. Determinism — 5 körningar, jämför actuals mot varandra
+```bash
+for i in 1 2 3 4 5; do
+  bun run vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts || echo "RUN $i RÖD"
+  cp corpus/hibob/actual.json /tmp/hibob.$i.json 2>/dev/null
+  cp corpus/hubspot/actual.json /tmp/hubspot.$i.json 2>/dev/null
+done
+for site in hibob hubspot; do
+  for i in 2 3 4 5; do
+    diff <(jq -S . /tmp/$site.1.json 2>/dev/null) <(jq -S . /tmp/$site.$i.json 2>/dev/null) > /dev/null \
+      && echo "$site run $i == run 1" || echo "$site run $i DIFFERS"
+  done
+done
+```
+Två gröna räcker inte för en commit-timing-flake (kan vara 1-på-5). Vi jämför körningar mot varandra, inte bara mot golden — annars kan vi inte skilja "golden är outliern" från "körningarna är inbördes inkonsekventa".
 
-**Cookie-root-stämpling** (efter gate, efter scroll):
-- Loop upp till ~2.5s, korta `page.evaluate`-anrop som letar selektorn och sätter `data-lovable-cookie-root` på outer container. Ingen långlivad in-page IIFE.
+Notera: om `actual.json` inte skapas är diff tom (testet skriver bara `actual.json` vid icke-tom diff). Det betyder grön körning — `cp ... 2>/dev/null` swallowar saknad fil.
 
-**Diagnostik kvar**: `framenavigated`-listener + `console.log(page.url(), seenUrls)` — om commit ändå sker syns det utan att testet kraschar.
+### 4. Sanity-check hubspot-golden
+```bash
+jq '.collect.count, .pageAudit.ctas | length, .pageAudit.sections | length, .pageAudit.trustSignals | length' corpus/hubspot/golden.json
+```
+Hubspot saknar baseline — rimlighetscheck: collect.count i hundratals, CTAs > 5, sections > 5. Om "Accept All"/"Decline All" syns som CTAs → notera för separat consentSelector-PR.
 
-### 3. Ingen ändring i `engine.server.ts` eller `freeze.server.ts`.
+## Beslutspunkter — koppla symptom till rätt spak
 
-### 4. `waitForLoadState('networkidle')` används inte (file:// → resolvar tomt).
+| Symptom | Spak | Inte spaken |
+|---|---|---|
+| Replay kraschar | Läs felet, rapportera. Ingen patch utan diagnos. | — |
+| collect.count på hibob ≠ ~103 | Stoppa, jämför vilka element-typer som saknas/lagts till. | Determinism-checken |
+| Inbördes diff mellan körningar, `seenUrls` visar commit | Hårdna gaten: höj `need` (2→3), längre `gapMs`, eller längre post-gate settle. | Scroll-parametrar |
+| Inbördes diff, `seenUrls=[]`, diff sitter i sections/visualHierarchy | Scroll-täckning instabil: öka scroll-gap (150→250ms) eller fler steg. | Gaten |
+| Inbördes diff i timing-känsliga fält (auditedAt, dynamiska IDs) | Normalize-bug: lägg till stripp i `normalize.ts`. | Replay-koden |
+| Cookie-bannerns knappar syns som CTAs i hubspot-golden | Notera. Separat PR med consentSelector vid freeze. | Denna körning |
 
-## Verifiering
+## Vad denna körning inte gör
 
-1. `bun run snapshot` på hibob → ska gå igenom utan "Execution context was destroyed".
-2. Loggen visar `url=file://...` + tom/stabil `seenUrls`. Faktisk commit ⇒ separat åtgärd, inte denna PR.
-3. **Determinism**: kör snapshot 3× i rad utan `SNAPSHOT_UPDATE`. Tom diff varje gång. Diff mellan körningar = scroll/stamp inte deterministisk → öka gap eller streak.
-
-## Vad denna PR inte gör
-
-- Ingen single-file-HTML-fallback.
-- Inga ändringar i `freeze.server.ts`, `classifiers.ts`, CI eller live engine-flödet.
+- Ingen kod-ändring om inget kraschar.
+- Inga nya corpora.
+- Ingen commit av golden.json — du granskar manuellt efter steg 3 är grönt.
