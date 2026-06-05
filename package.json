@@ -9,7 +9,10 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "freeze": "bun run scripts/freeze-site.ts",
+    "snapshot": "vitest run src/lib/tests/snapshot",
+    "snapshot:update": "SNAPSHOT_UPDATE=1 vitest run src/lib/tests/snapshot"
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.12.0",
