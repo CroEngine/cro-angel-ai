@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "freeze": "bun run scripts/freeze-site.ts",
     "snapshot": "vitest run src/lib/tests/snapshot",
-    "snapshot:update": "SNAPSHOT_UPDATE=1 vitest run src/lib/tests/snapshot"
+    "snapshot:update": "SNAPSHOT_UPDATE=1 vitest run src/lib/tests/snapshot",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.12.0",
