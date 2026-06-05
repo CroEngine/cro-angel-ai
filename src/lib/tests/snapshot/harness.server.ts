@@ -80,11 +80,32 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     });
     const page = await context.newPage();
 
-    // Track navigations: when Chromium opens a .mhtml from file://, it first
-    // loads the wrapper then "unwraps" to the embedded document URL (e.g.
-    // https://www.hibob.com/). That second navigation destroys evaluate
-    // contexts mid-test, so we wait for the URL to stop moving before doing
-    // anything else.
+    // Frozen pages often contain SPA code that reads location and forces a
+    // redirect back to the canonical https:// origin ("if location.hostname
+    // !== 'foo.com' location.replace(...)"). That redirect destroys evaluate
+    // contexts mid-test. Block both vectors:
+    //   1) network — any outbound request from the frozen page is aborted.
+    //   2) navigation API — neutralize location.assign/replace/href setter,
+    //      history.pushState/replaceState. The page's own scripts still run
+    //      (animations, IntersectionObservers), but can't move us off the doc.
+    await context.route("**/*", (route) => {
+      const url = route.request().url();
+      if (url.startsWith("file://")) return route.continue();
+      return route.abort();
+    });
+    await context.addInitScript(() => {
+      try {
+        const noop = () => {};
+        history.pushState = noop as typeof history.pushState;
+        history.replaceState = noop as typeof history.replaceState;
+        // Best-effort: location is non-configurable, but assign/replace are
+        // overridable.
+        (window.location as unknown as { assign: () => void }).assign = noop;
+        (window.location as unknown as { replace: () => void }).replace = noop;
+      } catch {
+        /* ignore */
+      }
+    });
     const seenUrls: string[] = [];
     page.on("framenavigated", (f) => {
       if (f === page.mainFrame()) seenUrls.push(f.url());
