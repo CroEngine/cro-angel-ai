@@ -1,49 +1,72 @@
-# Rökprov: HiBob som första frysta sajt
+# Lokal MHTML-replay via pinnad Playwright
 
-Målet är att verifiera att hela kedjan (freeze → MHTML → replay → normalize → golden) fungerar end-to-end på en riktig sajt innan vi fryser resten av korpusen.
+Replay lämnar Browserbase och kör mot lokal headless Chromium med `file:///tmp/.../page.mhtml`. Capture stannar på Browserbase per default (anti-bot), men capture-transport blir ett per-sajt-val.
 
-## Steg
+## Beslut som låses
 
-1. **Kör freeze mot HiBob**
-   ```
-   bun run freeze --url=https://www.hibob.com --name=hibob \
-     --consent="#onetrust-accept-btn-handler"
-   ```
-   Producerar:
-   - `corpus/hibob/page.mhtml`
-   - `corpus/hibob/screenshot.jpg`
-   - `corpus/hibob/meta.json`
+| Område | Val |
+|---|---|
+| Capture (default) | Browserbase MHTML (oförändrat) |
+| Capture (fallback) | Lokal single-file HTML — endast för sajter där MHTML-shadow-DOM-trohet fallerar |
+| Replay | Lokal Playwright Chromium, `file://`, ingen nätverkstrafik |
+| Viewport vid replay | Läses från `meta.json`, pinnad till capture-värdet |
+| Golden | **Genereras under lokal replay**, inte under capture |
+| Test-runner | Vitest (oförändrat) — `playwright` är bibliotek, inte runner |
+| Playwright-version | `playwright@1.60.0` exakt (matchar `playwright-core` 1.60.0 som Stagehand redan löst) |
 
-2. **Sanity-check artefakterna**
-   - MHTML > 200 KB och < ~5 MB (annars måste vi byta från data-URL till uppladdning).
-   - Screenshot visar dismissad cookie-banner och full sida.
-   - `meta.json` har viewport 1280×720.
+`@playwright/test` adderas INTE. Capture-koden i `freeze.server.ts` rörs INTE förrän vi behöver lokal single-file-fallback (Salesforce).
 
-3. **Generera golden från replay**
-   ```
-   bun run snapshot:update
-   ```
-   Detta startar en Browserbase-session, laddar MHTML, kör `COLLECT_SCRIPT` + `runPageAudit`, normaliserar och skriver `corpus/hibob/golden.json`.
+## Filer som ändras / skapas
 
-4. **Verifiera determinism**
-   ```
-   bun run snapshot
-   ```
-   Diffen mot nyss skrivna golden ska vara tom. Om det dyker upp diff på andra körningen → någon volatil signal slank förbi `normalize.ts` och måste fångas in innan vi fryser fler sajter.
+### Ändras
+- `package.json` — `"playwright": "1.60.0"` som devDep, ny `postinstall` (eller manuell instruktion) `playwright install chromium`. Inget annat skript-namn ändras.
+- `src/lib/tests/snapshot/harness.server.ts` — riven Browserbase-implementation, ersätts av lokal Playwright.
 
-5. **Inspektera golden manuellt**
-   - `hero.headline` och `hero.primaryCtaText` stämmer med skärmdumpen.
-   - `summary.primaryConversionCtaCount`, `summary.competingAboveFold`, `trustEvidence.rollup` ser rimliga ut.
-   - Om något ser fel ut → det är en collector-bugg som golden nu låser fast. Bra — då har harnessen redan börjat tjäna sitt syfte.
+### Skapas
+- `.gitignore` — lägg till `/test-results/` om vi behöver tmp-katalog (ev. inte nödvändigt; vi använder `os.tmpdir()`).
 
-## Vad jag INTE gör i detta steg
+### Oförändrat
+- `freeze.server.ts`, `scripts/freeze-site.ts` — MHTML-capture på Browserbase fortsätter exakt som idag.
+- `normalize.ts`, `snapshot.test.ts` — kontraktet `replayCorpus(name) → { collect, pageAudit }` är identiskt, harness-bytet är dolt för testet.
+- `corpus/<name>/{page.mhtml, screenshot.jpg, meta.json}` — samma format.
 
-- Inte fryser de andra sajterna ännu (väntar tills HiBob-loopen är grön två gånger i rad).
-- Inte rör `classifiers.ts` eller `COLLECT_SCRIPT` (det är Fas 4).
-- Inte sätter upp CI (Fas 3).
+## Replay-flödet (ny `harness.server.ts`)
 
-## Beslutspunkter under körning
+```text
+replayCorpus(name)
+ ├─ läs corpus/<name>/page.mhtml + meta.json
+ ├─ kopiera page.mhtml till os.tmpdir() (file:// kräver disk-fil, inte Buffer)
+ ├─ chromium.launch({ headless: true })          // bundlad Chromium @ 1.60.0
+ ├─ context med viewport = meta.json.viewport     // pinnad från capture
+ ├─ page.goto("file:///" + tmpPath)               // Chromium parsar MHTML nativt
+ ├─ vänta document.readyState === "complete" + 600ms (CSSOM-settle)
+ ├─ page.evaluate(COLLECT_SCRIPT)
+ ├─ runPageAudit(page)
+ └─ cleanup (close page/context/browser, rm tmpfil)
+```
 
-- **Om MHTML > ~2 MB:** data-URL i `harness.server.ts` kan tryckas, vi byter till Browserbase upload + worker-route i samma PR.
-- **Om consent-selektorn ändrats:** byter till `--consent-instruction="click Accept all cookies"` (Stagehand-fallback).
-- **Om andra körningens diff inte är tom:** vi pausar, jag analyserar diffen, och lägger till normalisering — innan vi fryser fler sajter.
+Inga `--allow-file-access-from-files` eller liknande flaggor i v1 — om Chromium klagar lägger vi till `--enable-features=MHTMLFormatRegistryRendererStreaming` eller flaggar headed under xvfb. Det är en run-the-test-and-see-fix, inte ett designbeslut.
+
+## Viktig anpassning: `runPageAudit` + `COLLECT_SCRIPT` signatur
+
+Båda tar idag en **Stagehand**-page. Lokal `playwright`-page har samma `evaluate`/`goto`/`setViewportSize`-API men typerna skiljer. Vi importerar `Page` från `playwright` i harnessen och låter `runPageAudit` ta en strukturell typ (det den faktiskt använder är bara `evaluate`). Ingen körtidsändring, bara typ-justering om TS klagar.
+
+## Verifieringssteg (det här är poängen)
+
+1. **Rökprov HiBob:** `bun run snapshot:update` ska producera `golden.json` med `hero.headline`, `h1Count > 0`, och CTA-räkning som matchar screenshotsen.
+2. **Determinismsteg:** kör `bun run snapshot` direkt efter — tom diff.
+3. **Shadow-DOM-prov på Salesforce:** frys salesforce.com, replaya, kolla att collectorn hittar shadow-DOM-CTAs. Om count är dramatiskt lägre än prod-live → MHTML round-trippar inte öppen shadow DOM → flagga den sajten för single-file-fallback (separat patch, inte i denna).
+4. **Frys övriga korpus-sajter** efter att HiBob är grön två gånger.
+
+## Beslutspunkter under bygget
+
+- **Chromium vägrar rendera MHTML från `file://` i headless:** prova `chromium.launch({ headless: 'new' })` (eller `channel: 'chromium'`), sedan headed under xvfb. Sista utvägen: single-file-HTML-capture i fallback-spåret, INTE A2 (inline computed styles).
+- **MHTML förlorar shadow DOM på Salesforce:** lägg in `transport: "single-file"` som per-sajt-flag i `meta.json` och en parallell capture-väg. Den biten skjuts till nästa PR.
+- **Lokala fonts skiljer från Browserbase:** OK by design — golden genereras lokalt, så lokal vs lokal matchar. Diff mot live skiljer sig, men det dyker inte upp förrän labeling i Fas 3.
+
+## Vad jag INTE gör i denna PR
+
+- Single-file-HTML-fallback (separat per-sajt-spår, byggs när Salesforce-mätningen kräver det).
+- CI-uppsättning (Fas 3).
+- Refaktor av `classifiers.ts` (Fas 4).
+- Ändringar i `freeze.server.ts` — capture är redan grön.
