@@ -71,7 +71,11 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     const page = stagehand.context.pages()[0] ?? (await stagehand.context.newPage());
 
     await page.setViewportSize(FREEZE_VIEWPORT.width, FREEZE_VIEWPORT.height);
-    await page.goto(opts.url, { waitUntil: "networkidle", timeoutMs: 45_000 });
+    // "load" istället för "networkidle": sajter med långlivade trackers
+    // (chat widgets, marketo, segment) blir aldrig idle och timear ut capturen.
+    // En kort settle efteråt täcker post-load-hydrering.
+    await page.goto(opts.url, { waitUntil: "load", timeoutMs: 60_000 });
+    await new Promise((r) => setTimeout(r, 1500));
 
     // Consent: try CSS selector first (deterministic), Stagehand as fallback.
     if (opts.consentSelector) {
