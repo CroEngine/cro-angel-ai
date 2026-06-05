@@ -2,10 +2,16 @@
 // the same shape the live engine produces — so normalize.ts can diff it
 // against corpus/<name>/golden.json.
 //
-// Replay uses Browserbase so the runtime exactly matches live test runs
-// (same Chromium build, same headless config). MHTML is uploaded to the
-// session by navigating to a data: URL that triggers a load of the inlined
-// document. Because the MHTML embeds all CSS/images, no live network is hit.
+// Replay uses Browserbase so the runtime exactly matches live test runs.
+// Loading strategy: CDP Fetch domain intercepts a fake URL and returns the
+// MHTML bytes with `Content-Type: multipart/related; boundary=...`. That is
+// the response shape Chromium needs to actually parse MHTML — a
+// data:multipart/related URL does NOT trigger MHTML parsing (Chromium loads
+// it as opaque text, document.body ends up empty), and `page.goto` with a
+// base64 data URL also hits Stagehand's HTTP-API 1 MB cap (413).
+//
+// Because the MHTML embeds all CSS/images/fonts, no live network is hit
+// during replay.
 
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -19,30 +25,87 @@ import { FREEZE_VIEWPORT } from "./freeze.server";
 
 import type { CollectedElement } from "../schema";
 
+const FAKE_HOST = "https://snapshot.local";
+const FAKE_URL = `${FAKE_HOST}/page.mhtml`;
+
 export interface ReplayResult {
   collect: unknown;
   pageAudit: unknown;
 }
 
-async function loadMhtml(page: import("@browserbasehq/stagehand").Page, mhtml: string) {
-  // Chromium accepts MHTML via a data:multipart/related URL. We must go via
-  // raw CDP Page.navigate (WebSocket) — page.goto() routes through Stagehand's
-  // HTTP API which 413s anything over ~1 MB body, and MHTML for real sites is
-  // routinely 1–5 MB.
-  const b64 = Buffer.from(mhtml, "utf8").toString("base64");
-  const dataUrl = `data:multipart/related;base64,${b64}`;
-  await page.sendCDP("Page.enable", {});
-  await page.sendCDP("Page.navigate", { url: dataUrl });
-  // Wait for the document to settle. CDP load events are noisy for data: URLs,
-  // so we poll document.readyState.
-  const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline) {
-    const ready = await page.evaluate("document.readyState");
-    if (ready === "complete") break;
-    await new Promise((r) => setTimeout(r, 200));
+// Extract the multipart boundary string from MHTML headers. The boundary is
+// declared in the top-level Content-Type header and may span continuation lines.
+function parseBoundary(mhtml: string): string {
+  const headerEnd = mhtml.indexOf("\r\n\r\n");
+  const head = headerEnd > 0 ? mhtml.slice(0, headerEnd) : mhtml.slice(0, 4000);
+  // Collapse header continuations: CRLF + whitespace -> single space.
+  const flat = head.replace(/\r\n[\t ]+/g, " ");
+  const m = flat.match(/boundary\s*=\s*"?([^";\r\n]+)"?/i);
+  if (!m) throw new Error("MHTML: could not parse multipart boundary from headers");
+  return m[1];
+}
+
+async function loadMhtml(
+  page: import("@browserbasehq/stagehand").Page,
+  mhtml: string,
+) {
+  const boundary = parseBoundary(mhtml);
+  // Fetch.fulfillRequest expects base64 body. Fine for 1–5 MB MHTML since
+  // CDP rides the persistent WebSocket (no HTTP body cap).
+  const bodyB64 = Buffer.from(mhtml, "utf8").toString("base64");
+  const contentType = `multipart/related; boundary="${boundary}"`;
+
+  // Main-frame CDP session — page.sendCDP is send-only and cannot subscribe.
+  const cdp = page.getSessionForFrame(page.mainFrameId());
+
+  const onPaused = async (params: { requestId: string; request: { url: string } }) => {
+    try {
+      if (params.request.url.startsWith(FAKE_HOST)) {
+        await cdp.send("Fetch.fulfillRequest", {
+          requestId: params.requestId,
+          responseCode: 200,
+          responseHeaders: [
+            { name: "Content-Type", value: contentType },
+            { name: "Cache-Control", value: "no-store" },
+          ],
+          body: bodyB64,
+        });
+      } else {
+        // MHTML should be self-contained, but if something escapes the archive
+        // we let it through rather than deadlock the page.
+        await cdp.send("Fetch.continueRequest", { requestId: params.requestId });
+      }
+    } catch {
+      /* request may have been cancelled — ignore */
+    }
+  };
+
+  cdp.on("Fetch.requestPaused", onPaused);
+
+  try {
+    await cdp.send("Fetch.enable", { patterns: [{ urlPattern: "*" }] });
+    await page.sendCDP("Page.enable", {});
+    await page.sendCDP("Page.navigate", { url: FAKE_URL });
+
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+      try {
+        const ready = await page.evaluate("document.readyState");
+        if (ready === "complete") break;
+      } catch {
+        /* navigation in flight */
+      }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    await new Promise((r) => setTimeout(r, 600));
+  } finally {
+    try {
+      await cdp.send("Fetch.disable");
+    } catch {
+      /* ignore */
+    }
+    cdp.off("Fetch.requestPaused", onPaused);
   }
-  // Give layout + CSSOM a beat after ready.
-  await new Promise((r) => setTimeout(r, 600));
 }
 
 export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise<ReplayResult> {
