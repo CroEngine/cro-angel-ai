@@ -123,55 +123,78 @@ async function headCheck(url: string, signal: AbortSignal): Promise<HeadCheckRes
   }
 }
 
-export async function runPageAudit(page: Page): Promise<PageAuditData> {
-  // Scroll warmup: triggers IntersectionObserver-based animations so lazy
-  // sections promote from opacity:0 to opacity:1 before DOM traversal.
-  // 8-step sweep + bottom pause keeps total cost ~1.5s regardless of page height.
-  await page.evaluate(`(async () => {
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    const h = document.documentElement.scrollHeight;
-    const steps = 8;
-    for (let i = 0; i <= steps; i++) {
-      window.scrollTo({ top: (h / steps) * i, behavior: 'instant' });
-      await sleep(80);
-    }
-    await sleep(600);
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    await sleep(200);
-  })()`);
+export interface RunPageAuditOptions {
+  /**
+   * Skip the long-lived in-page async scroll-warmup IIFE. Set this when the
+   * caller (e.g. the snapshot replay harness) has already driven scrolling
+   * from Node, so we avoid leaving a pending evaluate that can be killed by
+   * a delayed MHTML commit.
+   */
+  skipScrollWarmup?: boolean;
+  /**
+   * Skip the long-lived in-page cookie-banner poll. Same rationale as
+   * skipScrollWarmup — the caller has already stamped data-lovable-cookie-root
+   * via short Node-driven evaluates.
+   */
+  skipCookiePoll?: boolean;
+}
 
-  // Active poll for late-injected cookie banners (OneTrust, Cookiebot, etc.).
-  // When found, mark the outermost cookie container with data-lovable-cookie-root
-  // so downstream scripts (sections, ctas) can filter via a single ancestor check.
-  await page.evaluate(`(async () => {
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    const SEL = [
-      '#onetrust-consent-sdk', '#onetrust-banner-sdk', '#onetrust-accept-btn-handler',
-      '[id*="onetrust" i]', '[class*="onetrust" i]',
-      '#osano-cm-window', '[class*="osano-cm" i]',
-      '[id*="cookiebot" i]', '[id^="CybotCookiebot" i]',
-      '[id*="cookie-banner" i]', '[id*="cookie-consent" i]',
-      '[class*="cookie-banner" i]', '[class*="cookie-consent" i]',
-      '[id*="truste" i]', '[class*="truste" i]',
-      '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
-      '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
-    ].join(',');
-    const ROOT_SEL = '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i]';
-    const deadline = Date.now() + 2500;
-    while (Date.now() < deadline) {
-      const found = Array.from(document.querySelectorAll(SEL)).find(el => el.tagName !== 'STYLE' && el.tagName !== 'SCRIPT' && el.tagName !== 'LINK');
-      if (found) {
-        const r = found.getBoundingClientRect();
-        const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano/i.test(found.id || '');
-        if (isKnownVendor || (r.width > 50 && r.height > 30)) {
-          const root = (found.closest && found.closest(ROOT_SEL)) || found;
-          try { root.setAttribute('data-lovable-cookie-root', '1'); } catch (_) {}
-          return;
-        }
+export async function runPageAudit(
+  page: Page,
+  opts: RunPageAuditOptions = {},
+): Promise<PageAuditData> {
+  if (!opts.skipScrollWarmup) {
+    // Scroll warmup: triggers IntersectionObserver-based animations so lazy
+    // sections promote from opacity:0 to opacity:1 before DOM traversal.
+    // 8-step sweep + bottom pause keeps total cost ~1.5s regardless of page height.
+    await page.evaluate(`(async () => {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const h = document.documentElement.scrollHeight;
+      const steps = 8;
+      for (let i = 0; i <= steps; i++) {
+        window.scrollTo({ top: (h / steps) * i, behavior: 'instant' });
+        await sleep(80);
       }
-      await sleep(150);
-    }
-  })()`);
+      await sleep(600);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      await sleep(200);
+    })()`);
+  }
+
+  if (!opts.skipCookiePoll) {
+    // Active poll for late-injected cookie banners (OneTrust, Cookiebot, etc.).
+    // When found, mark the outermost cookie container with data-lovable-cookie-root
+    // so downstream scripts (sections, ctas) can filter via a single ancestor check.
+    await page.evaluate(`(async () => {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const SEL = [
+        '#onetrust-consent-sdk', '#onetrust-banner-sdk', '#onetrust-accept-btn-handler',
+        '[id*="onetrust" i]', '[class*="onetrust" i]',
+        '#osano-cm-window', '[class*="osano-cm" i]',
+        '[id*="cookiebot" i]', '[id^="CybotCookiebot" i]',
+        '[id*="cookie-banner" i]', '[id*="cookie-consent" i]',
+        '[class*="cookie-banner" i]', '[class*="cookie-consent" i]',
+        '[id*="truste" i]', '[class*="truste" i]',
+        '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
+        '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
+      ].join(',');
+      const ROOT_SEL = '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i]';
+      const deadline = Date.now() + 2500;
+      while (Date.now() < deadline) {
+        const found = Array.from(document.querySelectorAll(SEL)).find(el => el.tagName !== 'STYLE' && el.tagName !== 'SCRIPT' && el.tagName !== 'LINK');
+        if (found) {
+          const r = found.getBoundingClientRect();
+          const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano/i.test(found.id || '');
+          if (isKnownVendor || (r.width > 50 && r.height > 30)) {
+            const root = (found.closest && found.closest(ROOT_SEL)) || found;
+            try { root.setAttribute('data-lovable-cookie-root', '1'); } catch (_) {}
+            return;
+          }
+        }
+        await sleep(150);
+      }
+    })()`);
+  }
 
 
 
