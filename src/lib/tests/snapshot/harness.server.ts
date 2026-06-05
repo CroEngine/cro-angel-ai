@@ -24,13 +24,14 @@ export interface ReplayResult {
   pageAudit: unknown;
 }
 
-async function loadMhtml(page: any, mhtml: string) {
-  // Chromium accepts MHTML via Page.navigate to a file:// or via a CDP
-  // Page.setDocumentContent-like trick. The simplest cross-env approach:
-  // base64-encode and navigate to a data: URL with message/rfc822.
+async function loadMhtml(page: import("@browserbasehq/stagehand").Page, mhtml: string) {
+  // Chromium accepts MHTML via a data: URL with multipart/related, OR via
+  // Page.navigate to a file:// URL. data: URLs cap at ~2MB on some builds
+  // so we use base64 + multipart/related; for larger pages we'll need to
+  // upload via Browserbase uploads and serve via a worker route.
   const b64 = Buffer.from(mhtml, "utf8").toString("base64");
   const dataUrl = `data:multipart/related;base64,${b64}`;
-  await page.goto(dataUrl, { waitUntil: "load", timeout: 30_000 });
+  await page.goto(dataUrl, { waitUntil: "load", timeoutMs: 30_000 });
   // Give layout a beat after CSSOM settles.
   await new Promise((r) => setTimeout(r, 400));
 }

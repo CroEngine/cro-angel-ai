@@ -36,7 +36,7 @@ export interface FreezeResult {
   screenshotBytes: number;
 }
 
-async function lazyScroll(page: any) {
+async function lazyScroll(page: import("@browserbasehq/stagehand").Page) {
   for (const pct of [0, 25, 50, 75, 100]) {
     await page.evaluate(
       `window.scrollTo({ top: document.documentElement.scrollHeight * ${pct / 100}, behavior: 'instant' })`,
@@ -70,13 +70,13 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     await stagehand.init();
     const page = stagehand.context.pages()[0] ?? (await stagehand.context.newPage());
 
-    await page.setViewportSize(FREEZE_VIEWPORT);
-    await page.goto(opts.url, { waitUntil: "networkidle", timeout: 45_000 });
+    await page.setViewportSize(FREEZE_VIEWPORT.width, FREEZE_VIEWPORT.height);
+    await page.goto(opts.url, { waitUntil: "networkidle", timeoutMs: 45_000 });
 
     // Consent: try CSS selector first (deterministic), Stagehand as fallback.
     if (opts.consentSelector) {
       try {
-        await page.click(opts.consentSelector, { timeout: 4000 });
+        await page.locator(opts.consentSelector).click({ timeoutMs: 4000 });
         await new Promise((r) => setTimeout(r, 800));
       } catch {
         /* maybe already dismissed */
@@ -93,10 +93,9 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     await lazyScroll(page);
 
     // CDP MHTML capture — inlines CSS/images/fonts.
-    const cdp = await page.context().newCDPSession(page);
-    const snap = (await cdp.send("Page.captureSnapshot", { format: "mhtml" })) as {
-      data: string;
-    };
+    const snap = await page.sendCDP<{ data: string }>("Page.captureSnapshot", {
+      format: "mhtml",
+    });
     const mhtmlPath = join(dir, "page.mhtml");
     writeFileSync(mhtmlPath, snap.data, "utf8");
 
@@ -120,7 +119,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     return {
       dir,
       mhtmlBytes: Buffer.byteLength(snap.data, "utf8"),
-      screenshotBytes: shot.byteLength ?? (shot as Buffer).length,
+      screenshotBytes: shot.byteLength,
     };
   } finally {
     try {
