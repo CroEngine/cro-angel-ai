@@ -147,13 +147,15 @@ describe("freeze visibility — agreement with collector", () => {
   ];
 
   for (const c of cases) {
-    test(`agreement: ${c.name}`, async () => {
+    test(`agreement: ${c.name}`, async (ctx) => {
+      if (!chromiumAvailable) ctx.skip();
       const { fromFreeze, fromCollector } = await runBoth(c.html, c.needles);
       expect(fromFreeze).toEqual(fromCollector);
     });
   }
 
-  test("agreement: shadow DOM (imperativt skapad) — båda traverserar", async () => {
+  test("agreement: shadow DOM (imperativt skapad) — båda traverserar", async (ctx) => {
+    if (!chromiumAvailable) ctx.skip();
     await page.setContent(`<body></body>`);
     await page.evaluate(() => {
       const host = document.createElement("div");
@@ -174,7 +176,8 @@ describe("freeze visibility — agreement with collector", () => {
 });
 
 describe("freeze visibility — needle-kontrakt", () => {
-  test("needles måste vara lowercase — mixed-case needle missar", async () => {
+  test("needles måste vara lowercase — mixed-case needle missar", async (ctx) => {
+    if (!chromiumAvailable) ctx.skip();
     await page.setContent(`<div>Accept All</div>`);
     const r = (await page.evaluate(
       `(${POST_DISMISS_HITS_FN})(${JSON.stringify(["Accept All"])})`,
