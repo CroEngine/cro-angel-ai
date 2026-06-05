@@ -92,45 +92,61 @@ async function lazyScroll(page: import("@browserbasehq/stagehand").Page) {
 // (bbox > 0, computed display/visibility/opacity, traversar shadow roots) men
 // är medvetet lokal — receiptet ska vara stabilt även om COLLECT_SCRIPT refactoras.
 // Returnerar { hit-keys: count } för varje nyckel som hittades i synlig text.
+// SYNK-KONTRAKT: synlighetsreglerna nedan MÅSTE matcha
+// src/lib/tests/scripts/collect.ts::isVisible. Receiptets prediktiva kraft
+// mot golden bygger på den överenskommelsen — om reglerna divergerar kan
+// receiptet säga 0 medan collectorn plockar upp elementet (falskt självförtroende).
+// Tester i __tests__/freeze-visibility.test.ts låser kontraktet och blir röda
+// vid drift. Ändra båda samtidigt eller ändra ingen.
+//
+// Needle-kontrakt: needles MÅSTE vara lowercase. Haystacken lowercases:as före
+// substring-match; needles görs INTE. Skickar du "Accept All" matchar inget.
+export const POST_DISMISS_HITS_FN = `(needles) => {
+  const hits = Object.fromEntries(needles.map(n => [n, 0]));
+  const seen = new Set();
+  function isVisible(el) {
+    if (!(el instanceof Element)) return false;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    if (parseFloat(cs.opacity || '1') === 0) return false;
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return false;
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    return true;
+  }
+  function walk(root) {
+    const nodes = root.querySelectorAll('*');
+    for (const el of nodes) {
+      if (seen.has(el)) continue;
+      seen.add(el);
+      if (el.shadowRoot) walk(el.shadowRoot);
+      if (!isVisible(el)) continue;
+      // Leaf-text only — undvik dubbelräkning från parent.
+      let text = '';
+      for (const child of el.childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) text += ' ' + (child.nodeValue || '');
+      }
+      if (!text.trim()) continue;
+      const hay = text.toLowerCase();
+      for (const n of needles) if (hay.includes(n)) hits[n] += 1;
+    }
+  }
+  walk(document);
+  return hits;
+}`;
+
 async function measurePostDismissDomHits(
   page: import("@browserbasehq/stagehand").Page,
   needles: readonly string[],
 ): Promise<Record<string, number>> {
-  const result = (await page.evaluate(`(() => {
-    const needles = ${JSON.stringify(needles)};
-    const hits = Object.fromEntries(needles.map(n => [n, 0]));
-    const seen = new Set();
-    function isVisible(el) {
-      if (!(el instanceof Element)) return false;
-      const r = el.getBoundingClientRect();
-      if (r.width <= 0 || r.height <= 0) return false;
-      const cs = getComputedStyle(el);
-      if (cs.display === 'none' || cs.visibility === 'hidden' || cs.visibility === 'collapse') return false;
-      if (parseFloat(cs.opacity || '1') === 0) return false;
-      return true;
-    }
-    function walk(root) {
-      const nodes = root.querySelectorAll('*');
-      for (const el of nodes) {
-        if (seen.has(el)) continue;
-        seen.add(el);
-        if (el.shadowRoot) walk(el.shadowRoot);
-        if (!isVisible(el)) continue;
-        // Only collect leaf-ish text to avoid double-counting parent text.
-        let text = '';
-        for (const child of el.childNodes) {
-          if (child.nodeType === Node.TEXT_NODE) text += ' ' + (child.nodeValue || '');
-        }
-        if (!text.trim()) continue;
-        const hay = text.toLowerCase();
-        for (const n of needles) if (hay.includes(n)) hits[n] += 1;
-      }
-    }
-    walk(document);
-    return hits;
-  })()`)) as Record<string, number>;
-  return result;
+  // Stagehand's page.evaluate tar bara en string (ingen arg-overload som Playwright),
+  // så vi inlinear argumentet via JSON.stringify och kallar den exporterade funktionen.
+  // Samma POST_DISMISS_HITS_FN-källa körs i testen — det är hela poängen med
+  // konstanten: bara en kod-sanning.
+  const script = `(${POST_DISMISS_HITS_FN})(${JSON.stringify(needles)})`;
+  return (await page.evaluate(script)) as Record<string, number>;
 }
+
 
 export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
   const dir = opts.outDir ?? join("corpus", opts.name);
