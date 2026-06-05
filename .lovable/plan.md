@@ -1,101 +1,189 @@
-# Freeze-receipt + dry-run + before-screenshot
+# Plan v2: statisk + lokal-Playwright-smoke (med korrigeringar)
+
+## Roten i punkt 1 — verifierad
+
+Läste `src/lib/tests/scripts/collect.ts` rad 22–28. Collectorns synlighetsregler:
+
+```
+display !== 'none'
+visibility !== 'hidden'
+opacity > 0
+rect.width >= 1 && rect.height >= 1
+aria-hidden !== 'true'
++ traversering av shadowRoot via querySelectorAll-rekursion
+```
+
+Min nuvarande `measurePostDismissDomHits` har **två divergenser**:
+- Lagt till `visibility === 'collapse'` (collectorn har inte → ofarligt, men onödigt)
+- **Saknar `aria-hidden="true"`-checken** (collectorn har den → farligt: en banner med `aria-hidden` skulle smita förbi receiptet men plockas av collectorn, falskt självförtroende)
+- Bbox: jag har `<= 0`, collectorn `< 1` (jag är 1px mer permissiv — ofarligt i praktiken, men avvikelse)
 
 ## Scope
 
-Lägg till per-freeze auditerbar receipt + två debug-flaggor. Rör bara `freeze.server.ts` och `scripts/freeze-site.ts`. Inga deps, ingen viewer, ingen replay-påverkan.
+Två saker före testet:
+1. **Aligna `freeze.server.ts` med collectorn exakt.** Drop `collapse`, lägg till `aria-hidden`, byt bbox till `< 1`. Detta är den faktiska bug-fixen — testet bara låser den.
+2. Kommentar i båda filer som pekar på varandra som kontrakt ("om du ändrar synlighetsreglerna här, ändra också i …, annars förlorar freeze-receipten sin prediktiva kraft mot golden").
 
-## 1. `corpus/<name>/freeze-report.json` — alltid skriven
+Sen testet — som asserterar **överenskommelsen** mellan de två, inte en spec jag hittade på.
 
-Mätt löpande in i ett `report`-objekt, **flushad i `finally`** så receiptet finns även när hard-gaten throwar. Detta är fixen för den blinda felmoden: stale selektor → assertion throw → utan finally får du ingen rapport och kan inte se att `matchCountBeforeClick` var 0.
+## Steg
 
-```jsonc
-{
-  "ok": true,                      // false om assertion throwade
-  "error": null,                   // felmeddelande om ok=false
-  "consent": {
-    "selector": "#hs-eu-confirmation-button",
-    "matchCountBeforeClick": 1,    // mätt EFTER waitForSelector(visible), inte vid rå load
-    "visibleBeforeClick": true,
-    "dismissCheck": "detached",
-    "dismissedAfterMs": 412,       // null om assertion throwade
-    "postDismissDomHits": {        // mätt via in-page evaluate, synlig text, lowercase
-      "accept all": 0,
-      "decline all": 0,
-      "reject all": 0,
-      "cookie": 3                  // OBSERVATION-only — footer-policy-länkar är legitima
-    }
-  },
-  "capture": {
-    "mhtmlKb": 2840,
-    "screenshotKb": 312
-  },
-  "timing": { "gotoMs": 4210, "consentMs": 1320, "scrollMs": 3800, "captureMs": 890 }
+### 1. Fixa divergenserna i `freeze.server.ts`
+
+I `POST_DISMISS_HITS_EVALUATE` (efter att jag lyft ut den, se steg 2):
+```js
+function isVisible(el) {
+  const cs = getComputedStyle(el);
+  if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+  if (parseFloat(cs.opacity || '1') === 0) return false;
+  const r = el.getBoundingClientRect();
+  if (r.width < 1 || r.height < 1) return false;
+  if (el.getAttribute('aria-hidden') === 'true') return false;
+  return true;
 }
 ```
 
-### Två mätnings-detaljer som avgör om receiptet förutsäger golden
+Cross-reference-kommentar i båda filer:
+```ts
+// SYNK-KONTRAKT: Synlighetsreglerna här MÅSTE matcha
+// src/lib/tests/scripts/collect.ts::isVisible. Receiptets prediktiva kraft mot
+// golden bygger på överenskommelsen. Tester i __tests__/freeze-visibility.test.ts
+// låser den. Ändra båda samtidigt eller ändra ingen.
+```
 
-**a. `postDismissDomHits` mäts som collectorn mäter — synlig text, inte rå `page.content()`.**
-
-Substring mot `content()` har båda felriktningarna:
-- Banner med `display:none` ligger kvar i HTML → falskt >0
-- Banner i shadow DOM eller iframe → osynlig i `content()` → falskt 0
-
-Lösning: in-page `evaluate` som plockar synlig text via samma synlighetslogik collectorn använder (lånas från `COLLECT_SCRIPT` eller spegelimplementation: bbox > 0, computed `visibility !== hidden`, `display !== none`, opacity > 0, traversar `shadowRoot`). Haystack lowercase:as innan substring-match — `content()` bevarar "Accept All" men nycklarna är gemener.
-
-**b. `matchCountBeforeClick` mäts efter settle, inte vid rå load.**
-
-Consent-banners injiceras ofta async (OneTrust laddas via tagghanterare flera sekunder efter `load`). Mätning vid rå load ger spöke-nollor och feltolkas som "stale selektor". Mät efter samma `waitForSelector(state: "visible", timeout: 5000)` vi redan gör före klicket. Om den waiten i sig timear ut → då vet vi det är stale selektor (eller banner laddade aldrig), och det loggas explicit i `error`.
-
-### Struktur
+### 2. Lyft ut evaluaten till exporterad konstant
 
 ```ts
-const report: FreezeReport = {
-  ok: false, error: null,
-  consent: { selector: opts.consentSelector ?? null, /* ... defaults */ },
-  capture: { mhtmlKb: 0, screenshotKb: 0 },
-  timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
-};
-try {
-  // goto → mät gotoMs
-  // waitForSelector(visible) → mät matchCountBeforeClick, visibleBeforeClick
-  // click → waitForSelector(detached|hidden) → mät dismissedAfterMs
-  // in-page evaluate för postDismissDomHits
-  // scroll → mät scrollMs
-  // captureSnapshot + screenshot + meta → mät captureMs, mhtmlKb, screenshotKb
-  report.ok = true;
-} catch (e) {
-  report.error = e instanceof Error ? e.message : String(e);
-  throw e;
-} finally {
-  writeFileSync(join(dir, "freeze-report.json"), JSON.stringify(report, null, 2));
+// freeze.server.ts
+export const POST_DISMISS_HITS_EVALUATE = `(needles) => { /* ...isVisible + walk... */ }`;
+
+async function measurePostDismissDomHits(page, needles) {
+  return await page.evaluate(POST_DISMISS_HITS_EVALUATE, needles);
 }
 ```
 
-Receipt skrivs alltid. Throw bubblar upp efteråt. CLI catch:en visar felet som idag.
+Pure refactor + bugg-alignment i samma diff. Runtime ändras (collapse bort, aria-hidden in) men det är avsiktlig korrigering.
 
-## 2. `--dry-run` (på `scripts/freeze-site.ts`)
+### 3. Ny testfil — `src/lib/tests/snapshot/__tests__/freeze-visibility.test.ts`
 
-Kör hela pipelinen utom de fyra `writeFileSync` som rör `corpus/` (`page.mhtml`, `screenshot.jpg`, `meta.json`, `freeze-report.json`). Skriv istället bara `freeze-report.json` till `/tmp/freeze-<name>-<ts>.json` och printa sökvägen.
+Delad browser/context via `beforeAll`/`afterAll` (annars 30s overhead för 9 fall). `hits()`-helpern tar `page` från fixturen, inte en ny browser per anrop. Mönster lånat från `harness.server.ts`.
 
-Användbart för 6-site-utrullningen: hitta rätt selektor + `detached`-vs-`hidden`-val utan att röra `corpus/`. Default off.
+```ts
+let browser: Browser, page: Page;
+beforeAll(async () => {
+  browser = await chromium.launch({ headless: true });
+  const ctx = await browser.newContext();
+  page = await ctx.newPage();
+});
+afterAll(async () => { await browser.close(); });
 
-Implementation: passa `dryRun: boolean` ner i `FreezeOptions`. Gate de fyra write-anropen. Receipten skrivs alltid (samma `finally`), bara annan path i dry-run.
+async function hits(html: string, needles: string[]) {
+  await page.setContent(html);
+  return await page.evaluate(POST_DISMISS_HITS_EVALUATE, needles);
+}
+```
 
-## 3. `--screenshot-before-dismiss`
+### 4. Fixturer som testar **överenskommelsen med collectorn**
 
-Extra screenshot **före** consent-klicket, sparad som `corpus/<name>/screenshot.before-dismiss.jpg` (eller `/tmp/...` i dry-run). Visuell bekräftelse att bannern verkligen fanns vid frystidpunkten — annars är "matchCountBeforeClick=1, visibleBeforeClick=true" bara siffror.
+Varje fall asserterar samma resultat som collectorn skulle ge. För att göra det inte spekulativt: två tester per regel — ett som körs mot `POST_DISMISS_HITS_EVALUATE`, ett som körs mot en mini-extraktor som bara inlinear collectorns `isVisible`-rader rakt av. Båda måste enas. Om någon framtida edit av endera sidan tappar synk → testet blir rött.
 
-Default off, opt-in per körning. Inte tänkt att committas till `corpus/` — lägg till i `.gitignore` så den inte slinker in i baseline-committen.
+Implementations-skiss:
+```ts
+const COLLECTOR_RULES_EVALUATE = `
+  (needles) => {
+    // Inlinead spegling av collect.ts::isVisible. Om denna divergerar från
+    // collect.ts::isVisible är det BUGGEN — fixa collect.ts först, sen denna.
+    function isVisible(el) {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+      if (parseFloat(cs.opacity || '1') === 0) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) return false;
+      if (el.getAttribute('aria-hidden') === 'true') return false;
+      return true;
+    }
+    // ... samma walk-logik ...
+  }
+`;
+
+test.each(fixtures)("freeze and collector agree on %s", async ({ html, needles }) => {
+  await page.setContent(html);
+  const a = await page.evaluate(POST_DISMISS_HITS_EVALUATE, needles);
+  const b = await page.evaluate(COLLECTOR_RULES_EVALUATE, needles);
+  expect(a).toEqual(b);
+});
+```
+
+Detta är hela poängen: testet säger *"de håller med varandra"*, inte *"opacity:0 → 0"*. Om collectorn ändras till att tillåta opacity:0 (av nån anledning) blir det här testet rött → påminnelse att uppdatera freeze också.
+
+Fixturer:
+| Fall | HTML |
+|---|---|
+| Synlig | `<div>Accept All</div>` |
+| display:none | `<div style="display:none">Accept All</div>` |
+| visibility:hidden | `<div style="visibility:hidden">Accept All</div>` |
+| opacity:0 | `<div style="opacity:0">Accept All</div>` |
+| Noll bbox | `<div style="width:0;height:0;overflow:hidden">Accept All</div>` |
+| **aria-hidden** | `<div aria-hidden="true">Accept All</div>` (denna fångar div-buggen jag fixar i steg 1) |
+| Shadow DOM (**imperativt skapad**, inte template-syntax) | se nedan |
+| Footer-länk | `<a href="/cookies">Cookie Policy</a>` + needle `"cookie"` |
+| Multi-hit | två synliga "Accept All" → count 2 |
+| Same-origin iframe | dokumenterar nuvarande (sannolikt missar — låser beteendet, inte spekulativ fix) |
+
+Shadow-DOM-fixturen byggs imperativt — som du påpekade, `setContent` aktiverar inte deklarativ shadow DOM pålitligt:
+```ts
+test("shadow DOM is traversed", async () => {
+  await page.setContent("<body></body>");
+  await page.evaluate(() => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    host.attachShadow({ mode: "open" }).innerHTML = "<span>Accept All</span>";
+  });
+  const a = await page.evaluate(POST_DISMISS_HITS_EVALUATE, ["accept all"]);
+  expect(a["accept all"]).toBe(1);
+});
+```
+
+### 5. Needle-kontrakt — explicit
+
+Funktionen lowercasar **haystack**, inte needles. Lägg ett test som dokumenterar det:
+```ts
+test("needles måste vara lowercase — blandad case matchar inte", async () => {
+  const r = await hits(`<div>Accept All</div>`, ["Accept All"]); // STORE bokstäver
+  expect(r["Accept All"]).toBe(0); // miss — kontraktet är "needles ska vara lc"
+});
+```
+Plus motsvarande kommentar ovanför `POST_DISMISS_NEEDLES` i `freeze.server.ts`.
+
+### 6. Importgraf-smoke — **med env-tömning**
+
+```ts
+test("freeze.server.ts läser inte env på modulnivå", async () => {
+  const saved = process.env.BROWSERBASE_API_KEY;
+  delete process.env.BROWSERBASE_API_KEY;
+  try {
+    // Bust ESM-cachen, annars är detta no-op om någon test tidigare importerade.
+    await import(`../freeze.server?bust=${Date.now()}`);
+  } finally {
+    if (saved !== undefined) process.env.BROWSERBASE_API_KEY = saved;
+  }
+});
+```
+
+Cache-bust:en behövs annars är testet trivialt på en utvecklarmaskin där modulen redan importerats av annan test i samma vitest-process.
+
+### 7. `tsc --noEmit` som explicit kommando
+
+I `package.json`-scripts om det inte redan finns: `"typecheck": "tsc --noEmit"`. Kör det manuellt efter steg 1–6. Sandbox-bygget gör det redan, men explicit körning ger ren signal isolerat från snapshot-testet.
 
 ## Vad denna plan inte gör
 
-- Ingen viewer-UI. `cat freeze-report.json | jq` räcker.
-- Inga hårda gates på `postDismissDomHits` — bara observation. När vi har baseline från 3–4 siter kan vi promovera till gate, men då bara på `"accept all"`/`"decline all"`/`"reject all"`. **Aldrig** `"cookie"` — den matchar legitima footer-policy-länkar och skulle blockera giltiga frysningar.
-- Ingen ändring i `meta.json`-formatet (snapshot-testet läser det, vi vill inte röra kontraktet).
-- Hjälper inte replay-debug. Separat problem, replay funkar 5/5.
+- Testar inte `finally`-flushen — kräver mycket Stagehand-mock för låg signal, hör hemma i #2.
+- Testar inte `waitForSelector`-timeouts — verklig banner-injektion, #2.
+- Fixar inte iframe-traversering — låser nuvarande beteende (sannolikt miss). Spekulativ fix nu = scope creep.
+- Refaktorerar inte `COLLECT_SCRIPT` för att dela `isVisible` som verklig konstant. Den är en stringified IIFE i `collect.ts`; att bryta ut betyder att linka två stringified-fragment, och risken att jag bryter collectorn är högre än värdet. Cross-reference-kommentar + test-as-contract är den pragmatiska kompromissen.
 
-## Beslutspunkter
+## Decision points
 
-- **Var bor synlighets-helpern för `postDismissDomHits`?** Två alternativ: (a) liten lokal in-page evaluate i `freeze.server.ts` som speglar collectorns regler (duplicering, men isolerar freeze från collector-refactors), (b) importera och återanvänd `COLLECT_SCRIPT`-helpern direkt (DRY, men kopplar freeze till collectorns interna API). Förslag **(a)** — receiptet ska vara stabilt även om collectorn refactoras, och reglerna är 4–5 rader.
-- **Throwar dry-run på consent-fail?** Förslag **ja, samma som riktig freeze.** Annars förlorar dry-run sitt värde som "selektor-prober" — vi vill se det röda felet, inte en grön körning med tom rapport.
+- **Om collectorn någon gång divergerar från freeze (medvetet eller olyckligt):** testet blir rött. Default-läsning bör vara "collectorn är sanningen, fixa freeze". Skrivs som kommentar i testfilen så framtida läsare vet riktningen att fixa.
+- **Aria-hidden-fixen i `freeze.server.ts` är runtime-beteendeändring, inte bara refactor.** Värt att nämna i commit-meddelandet. Konsekvens: någon site med `aria-hidden="true"` på banner-text efter dismiss skulle tidigare gett `postDismissDomHits["accept all"] > 0` (falskt positivt i receiptet) — nu ger den 0, vilket matchar att collectorn också skulle ignorera det. Förändringen gör receiptet mer korrekt, inte mindre.
