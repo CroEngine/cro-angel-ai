@@ -148,14 +148,14 @@ describe("freeze visibility — agreement with collector", () => {
 
   for (const c of cases) {
     test(`agreement: ${c.name}`, async (ctx) => {
-      if (!chromiumAvailable) ctx.skip();
+      if (!chromiumAvailable) return ctx.skip();
       const { fromFreeze, fromCollector } = await runBoth(c.html, c.needles);
       expect(fromFreeze).toEqual(fromCollector);
     });
   }
 
   test("agreement: shadow DOM (imperativt skapad) — båda traverserar", async (ctx) => {
-    if (!chromiumAvailable) ctx.skip();
+    if (!chromiumAvailable) return ctx.skip();
     await page.setContent(`<body></body>`);
     await page.evaluate(() => {
       const host = document.createElement("div");
@@ -177,7 +177,7 @@ describe("freeze visibility — agreement with collector", () => {
 
 describe("freeze visibility — needle-kontrakt", () => {
   test("needles måste vara lowercase — mixed-case needle missar", async (ctx) => {
-    if (!chromiumAvailable) ctx.skip();
+    if (!chromiumAvailable) return ctx.skip();
     await page.setContent(`<div>Accept All</div>`);
     const r = (await page.evaluate(
       `(${POST_DISMISS_HITS_FN})(${JSON.stringify(["Accept All"])})`,
@@ -191,10 +191,14 @@ describe("freeze.server.ts module hygien", () => {
     const saved = process.env.BROWSERBASE_API_KEY;
     delete process.env.BROWSERBASE_API_KEY;
     try {
-      // Cache-bust så testet inte är trivialt om en annan test redan importerat.
-      await import(`../freeze.server?bust=${Date.now()}`);
+      // vi.resetModules() + statisk import-sträng — Vite's dynamic-import-helper
+      // tillåter inte template-string-imports, så vi tvättar ESM-cachen istället.
+      const { default: vi } = await import("vitest").then((m) => ({ default: m.vi }));
+      vi.resetModules();
+      await import("../freeze.server");
     } finally {
       if (saved !== undefined) process.env.BROWSERBASE_API_KEY = saved;
     }
   });
 });
+
