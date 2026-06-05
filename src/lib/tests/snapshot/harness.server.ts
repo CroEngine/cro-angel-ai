@@ -71,13 +71,12 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
   const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
   const browser = await chromium.launch({ headless: true, executablePath });
   try {
-    // javaScriptEnabled: false stops the frozen page from running its own JS
-    // (analytics, SPA hydration, location reassignment) which otherwise tears
-    // down evaluate contexts mid-test. page.evaluate itself runs in an
-    // isolated world and is unaffected.
+    // Keep JS enabled — MHTML loaded from file:// does NOT auto-navigate to
+    // the embedded URL (we verified URL stays on file://...), and disabling JS
+    // breaks async evaluate IIFEs in some Playwright builds. Page scripts that
+    // try to fetch live mostly fail silently since their network is gone.
     const context = await browser.newContext({
       viewport: meta.viewport,
-      javaScriptEnabled: false,
     });
     const page = await context.newPage();
 
