@@ -71,7 +71,14 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
   const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
   const browser = await chromium.launch({ headless: true, executablePath });
   try {
-    const context = await browser.newContext({ viewport: meta.viewport });
+    // javaScriptEnabled: false stops the frozen page from running its own JS
+    // (analytics, SPA hydration, location reassignment) which otherwise tears
+    // down evaluate contexts mid-test. page.evaluate itself runs in an
+    // isolated world and is unaffected.
+    const context = await browser.newContext({
+      viewport: meta.viewport,
+      javaScriptEnabled: false,
+    });
     const page = await context.newPage();
 
     await page.goto(fileUrl, { waitUntil: "load", timeout: 30_000 });
