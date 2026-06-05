@@ -1,134 +1,101 @@
-# Slutför datafrysningen (v2 — med hård consent-assertion)
+# Freeze-receipt + dry-run + before-screenshot
 
-## Avstämning mot disk
+## Scope
 
-| Bit | Status |
-|---|---|
-| MHTML-capture, replay, normalize | ✓ klart |
-| Consent-**mekanism** i `freeze.server.ts` | ✓ finns redan (rad 80–95) |
-| `scripts/freeze-site.ts` | ✓ finns |
-| Hubspot frystes med `consentSelector: null` → banner infrusen | ✗ rot till "Accept All"/"Decline All" i golden |
-| SSOT för selektorer per site | ✗ saknas |
-| Hård fail om consent inte tog | ✗ saknas (tyst try/catch) |
-| Git LFS för `corpus/` | ✗ inte uppsatt |
-| 6/8 siter ofrysta | deferrade till separat runda |
+Lägg till per-freeze auditerbar receipt + två debug-flaggor. Rör bara `freeze.server.ts` och `scripts/freeze-site.ts`. Inga deps, ingen viewer, ingen replay-påverkan.
 
-Rot: två felvägar — (a) glömd selektor, (b) selektor satt men klicket träffar inte. `sites.ts` stänger (a). Hård post-klick-assertion stänger (b). Båda krävs.
+## 1. `corpus/<name>/freeze-report.json` — alltid skriven
 
-## Steg
+Mätt löpande in i ett `report`-objekt, **flushad i `finally`** så receiptet finns även när hard-gaten throwar. Detta är fixen för den blinda felmoden: stale selektor → assertion throw → utan finally får du ingen rapport och kan inte se att `matchCountBeforeClick` var 0.
 
-### 1. `corpus/sites.ts` — SSOT
-
-```ts
-export interface SiteSpec {
-  name: string;
-  url: string;
-  consentSelector?: string;
-  consentDismissCheck?: "detached" | "hidden"; // hur vi verifierar att klicket tog
-  consentInstruction?: string; // Stagehand-fallback
-  notes?: string;
-}
-
-// Policy: Accept All på alla siter. Inte för att det är "realistiskt" — utan
-// för att blanda Accept/Decline över corpusen inför en icke-jämförbar axel
-// i goldens. Konsistens > realism. hibob är redan Accept.
-export const SITES: SiteSpec[] = [
-  { name: "hibob", url: "https://www.hibob.com",
-    consentSelector: "#onetrust-accept-btn-handler",
-    consentDismissCheck: "detached" },
-  { name: "hubspot", url: "https://www.hubspot.com/",
-    consentSelector: "#hs-eu-confirmation-button",
-    consentDismissCheck: "detached", // verifieras i steg 2; byt till "hidden" om HubSpot bara döljer
-    notes: "HubSpot's hs-eu-cookie-confirmation, inte OneTrust" },
-  // 6 andra siter: separat runda
-];
-```
-
-`scripts/freeze-site.ts` slår upp i `SITES` via `--name`. CLI-flaggor blir override, inte enda källa.
-
-### 2. Hårdna `freeze.server.ts` — assertera att bannern är borta
-
-Idag (rad 81–87): klicket är inlindat i tyst try/catch. Det betyder att en stale selektor, A/B-variant eller sent-laddad banner ger `consentSelector: "..."` i meta.json medan bannern fortfarande är frusen i MHTML:en. Falskt självförtroende — exakt buggen vi vill stänga systemiskt.
-
-Ändring:
-
-```ts
-if (opts.consentSelector) {
-  await page.locator(opts.consentSelector).click(); // INGEN try/catch — vill veta om den misslyckas
-  await page
-    .waitForSelector(opts.consentSelector, {
-      state: opts.consentDismissCheck ?? "detached",
-      timeout: 5000,
-    })
-    .catch(() => {
-      throw new Error(
-        `[freeze] consent kvar efter klick: ${opts.name} — capture avbruten`,
-      );
-    });
-  await new Promise((r) => setTimeout(r, 800));
+```jsonc
+{
+  "ok": true,                      // false om assertion throwade
+  "error": null,                   // felmeddelande om ok=false
+  "consent": {
+    "selector": "#hs-eu-confirmation-button",
+    "matchCountBeforeClick": 1,    // mätt EFTER waitForSelector(visible), inte vid rå load
+    "visibleBeforeClick": true,
+    "dismissCheck": "detached",
+    "dismissedAfterMs": 412,       // null om assertion throwade
+    "postDismissDomHits": {        // mätt via in-page evaluate, synlig text, lowercase
+      "accept all": 0,
+      "decline all": 0,
+      "reject all": 0,
+      "cookie": 3                  // OBSERVATION-only — footer-policy-länkar är legitima
+    }
+  },
+  "capture": {
+    "mhtmlKb": 2840,
+    "screenshotKb": 312
+  },
+  "timing": { "gotoMs": 4210, "consentMs": 1320, "scrollMs": 3800, "captureMs": 890 }
 }
 ```
 
-Beteende: ingen MHTML, ingen screenshot, ingen golden skrivs om bannern står kvar. Vi cementerar inget brus tyst.
+### Två mätnings-detaljer som avgör om receiptet förutsäger golden
 
-Konsekvens för Stagehand-fallback: samma assertion krävs där också. Annars är `consentInstruction` ett bakdörrshål till exakt samma bugg.
+**a. `postDismissDomHits` mäts som collectorn mäter — synlig text, inte rå `page.content()`.**
 
-### 3. Re-freeze hubspot
+Substring mot `content()` har båda felriktningarna:
+- Banner med `display:none` ligger kvar i HTML → falskt >0
+- Banner i shadow DOM eller iframe → osynlig i `content()` → falskt 0
 
-```bash
-bun run scripts/freeze-site.ts --name=hubspot
+Lösning: in-page `evaluate` som plockar synlig text via samma synlighetslogik collectorn använder (lånas från `COLLECT_SCRIPT` eller spegelimplementation: bbox > 0, computed `visibility !== hidden`, `display !== none`, opacity > 0, traversar `shadowRoot`). Haystack lowercase:as innan substring-match — `content()` bevarar "Accept All" men nycklarna är gemener.
+
+**b. `matchCountBeforeClick` mäts efter settle, inte vid rå load.**
+
+Consent-banners injiceras ofta async (OneTrust laddas via tagghanterare flera sekunder efter `load`). Mätning vid rå load ger spöke-nollor och feltolkas som "stale selektor". Mät efter samma `waitForSelector(state: "visible", timeout: 5000)` vi redan gör före klicket. Om den waiten i sig timear ut → då vet vi det är stale selektor (eller banner laddade aldrig), och det loggas explicit i `error`.
+
+### Struktur
+
+```ts
+const report: FreezeReport = {
+  ok: false, error: null,
+  consent: { selector: opts.consentSelector ?? null, /* ... defaults */ },
+  capture: { mhtmlKb: 0, screenshotKb: 0 },
+  timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
+};
+try {
+  // goto → mät gotoMs
+  // waitForSelector(visible) → mät matchCountBeforeClick, visibleBeforeClick
+  // click → waitForSelector(detached|hidden) → mät dismissedAfterMs
+  // in-page evaluate för postDismissDomHits
+  // scroll → mät scrollMs
+  // captureSnapshot + screenshot + meta → mät captureMs, mhtmlKb, screenshotKb
+  report.ok = true;
+} catch (e) {
+  report.error = e instanceof Error ? e.message : String(e);
+  throw e;
+} finally {
+  writeFileSync(join(dir, "freeze-report.json"), JSON.stringify(report, null, 2));
+}
 ```
 
-Vid första försöket: om assertion throwar med `state: "detached"` → HubSpot döljer istället för att ta bort. Byt `consentDismissCheck` till `"hidden"` i `sites.ts` och kör om. Beslutet dokumenteras i `sites.ts`, inte i runbook-minne.
+Receipt skrivs alltid. Throw bubblar upp efteråt. CLI catch:en visar felet som idag.
 
-### 4. Verifiering (pålitliga signaler, inte rg mot MHTML)
+## 2. `--dry-run` (på `scripts/freeze-site.ts`)
 
-`rg` mot rå `page.mhtml` är opålitlig — MHTML är quoted-printable, så `hs-eu-cookie-confirmation` kan bli `hs-eu-cookie-confirmati=\nontion` och teckenkodning gör att `=3D` ersätter `=`. 0 träffar bevisar ingenting.
+Kör hela pipelinen utom de fyra `writeFileSync` som rör `corpus/` (`page.mhtml`, `screenshot.jpg`, `meta.json`, `freeze-report.json`). Skriv istället bara `freeze-report.json` till `/tmp/freeze-<name>-<ts>.json` och printa sökvägen.
 
-Pålitliga checks efter re-freeze:
-1. `jq '.consentSelector' corpus/hubspot/meta.json` ≠ null
-2. Freeze körde grönt → assertion bekräftar att banner är borta i live-DOM före capture
-3. `SNAPSHOT_UPDATE=1` på snapshot-testet, sen:
-   ```bash
-   jq '.collect.elements[].text' corpus/hubspot/golden.json | rg -i "accept all|decline all|reject all"
-   ```
-   Måste ge 0 träffar. Detta är checken som faktiskt mäter det vi bryr oss om: vad collectorn såg, inte vad som finns i den kodade filen.
-4. `jq '.pageAudit.ctaSummary.total' corpus/hubspot/golden.json` — sjunker från 15. Hur mycket är inte en gate (se nedan).
+Användbart för 6-site-utrullningen: hitta rätt selektor + `detached`-vs-`hidden`-val utan att röra `corpus/`. Default off.
 
-### 5. Determinism — 5 körningar på re-frysta hubspot
+Implementation: passa `dryRun: boolean` ner i `FreezeOptions`. Gate de fyra write-anropen. Receipten skrivs alltid (samma `finally`), bara annan path i dry-run.
 
-Återanvänd loopen från förra runbooken. Måste vara 5/5 innan vidare. Behåll samma diff-mot-körning-1-pattern — golden kan vara outliern.
+## 3. `--screenshot-before-dismiss`
 
-### 6. Git LFS
+Extra screenshot **före** consent-klicket, sparad som `corpus/<name>/screenshot.before-dismiss.jpg` (eller `/tmp/...` i dry-run). Visuell bekräftelse att bannern verkligen fanns vid frystidpunkten — annars är "matchCountBeforeClick=1, visibleBeforeClick=true" bara siffror.
 
-```bash
-git lfs install
-cat >> .gitattributes <<'EOF'
-corpus/**/page.mhtml filter=lfs diff=lfs merge=lfs -text
-corpus/**/screenshot.jpg filter=lfs diff=lfs merge=lfs -text
-EOF
-```
-
-`golden.json` + `meta.json` utanför LFS (små, ska diffas i PR).
-
-**Villkorad:** om `corpus/hibob/` eller `corpus/hubspot/` redan är committade som vanliga blobbar, flyttar `.gitattributes` dem inte retroaktivt. Då krävs:
-```bash
-git lfs migrate import --include="corpus/**/page.mhtml,corpus/**/screenshot.jpg"
-```
-Kolla först: `git log -- corpus/hibob/page.mhtml`. Tom output → aldrig committat → migrate är no-op och kan hoppas.
-
-### 7. Commit baseline
-
-hibob + hubspot till LFS som första infrysta corpus. De 6 andra siterna är **separat runda** — varje site kan ha sin egen consent-quirk (`detached` vs `hidden`, eller en banner som behöver scroll först), och vi vill inte upptäcka det efter commit.
+Default off, opt-in per körning. Inte tänkt att committas till `corpus/` — lägg till i `.gitignore` så den inte slinker in i baseline-committen.
 
 ## Vad denna plan inte gör
 
-- Lägger inte till nya siter.
-- Rör inte normalize.ts eller replay-pipelinen.
-- Kör inte artifacts-exporten (väntar tills commit).
+- Ingen viewer-UI. `cat freeze-report.json | jq` räcker.
+- Inga hårda gates på `postDismissDomHits` — bara observation. När vi har baseline från 3–4 siter kan vi promovera till gate, men då bara på `"accept all"`/`"decline all"`/`"reject all"`. **Aldrig** `"cookie"` — den matchar legitima footer-policy-länkar och skulle blockera giltiga frysningar.
+- Ingen ändring i `meta.json`-formatet (snapshot-testet läser det, vi vill inte röra kontraktet).
+- Hjälper inte replay-debug. Separat problem, replay funkar 5/5.
 
-## Decision points
+## Beslutspunkter
 
-- **`detached` vs `hidden` för hubspot:** vet vi inte än. Plan: starta med `detached`, byt till `hidden` om freeze throwar. Inte värt att kolla manuellt i förväg.
-- **Om freeze-assertion fortsätter throw efter `hidden`-byte:** stoppa, debugga selektorn (kanske HubSpot bytt till nytt ID). Fixa i `sites.ts`, inte i `freeze.server.ts`.
-- **Drift i `collect.count`:** ingen hård tröskel — banner-borttagning sänker count i sig (container + 2–3 knappar + paragraftext kan vara 10+ element). Granska diffen mot baseline manuellt: är minskningen i `text` som matchar "cookie/consent/accept" → väntat. Andra fält → utred.
+- **Var bor synlighets-helpern för `postDismissDomHits`?** Två alternativ: (a) liten lokal in-page evaluate i `freeze.server.ts` som speglar collectorns regler (duplicering, men isolerar freeze från collector-refactors), (b) importera och återanvänd `COLLECT_SCRIPT`-helpern direkt (DRY, men kopplar freeze till collectorns interna API). Förslag **(a)** — receiptet ska vara stabilt även om collectorn refactoras, och reglerna är 4–5 rader.
+- **Throwar dry-run på consent-fail?** Förslag **ja, samma som riktig freeze.** Annars förlorar dry-run sitt värde som "selektor-prober" — vi vill se det röda felet, inte en grön körning med tom rapport.
