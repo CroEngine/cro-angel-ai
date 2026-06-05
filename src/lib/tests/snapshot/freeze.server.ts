@@ -88,7 +88,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       await page
         .waitForSelector(opts.consentSelector, {
           state: dismissState,
-          timeoutMs: 5000,
+          timeout: 5000,
         })
         .catch(() => {
           throw new Error(
