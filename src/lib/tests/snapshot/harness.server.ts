@@ -50,6 +50,115 @@ async function waitForReady(page: Page) {
   }
 }
 
+// Probe page.evaluate until it survives `need` consecutive ticks against the
+// same URL. A delayed MHTML commit tears the execution context down mid-call,
+// so evaluate throws — reset streak and keep going. Throws if the context
+// never stabilizes, since downstream work would be unreliable.
+async function waitForStableContext(
+  page: Page,
+  { tries = 20, gapMs = 150, need = 2 }: { tries?: number; gapMs?: number; need?: number } = {},
+): Promise<string> {
+  let streak = 0;
+  let lastUrl = "";
+  for (let i = 0; i < tries; i++) {
+    try {
+      const url = await page.evaluate(() => location.href);
+      streak = url === lastUrl ? streak + 1 : 1;
+      lastUrl = url;
+      if (streak >= need) return url;
+    } catch {
+      streak = 0;
+    }
+    await new Promise((r) => setTimeout(r, gapMs));
+  }
+  throw new Error(`[replay] context never stabilized after ${tries} tries`);
+}
+
+// Node-driven scroll loop. Re-reads scrollHeight before each step so lazy-load
+// expansion is not missed. Each evaluate is short; on failure we re-gate and
+// retry the step once so a transient context tear-down doesn't silently
+// shrink scroll coverage (which would make the diff flaky).
+async function nodeLoopScroll(page: Page, steps = 8, gapMs = 150): Promise<void> {
+  const safeStep = async (fn: () => Promise<unknown>) => {
+    try {
+      await fn();
+    } catch {
+      await waitForStableContext(page);
+      await fn().catch(() => {
+        /* one retry; if it still fails, fall through */
+      });
+    }
+  };
+
+  for (let i = 1; i <= steps; i++) {
+    await safeStep(async () => {
+      await page.evaluate(
+        ({ idx, total }) => {
+          const h = document.documentElement.scrollHeight;
+          window.scrollTo(0, (h / total) * idx);
+        },
+        { idx: i, total: steps },
+      );
+    });
+    await new Promise((r) => setTimeout(r, gapMs));
+  }
+
+  // Final bottom pin (re-read scrollHeight one more time) + settle + return to top.
+  await safeStep(async () => {
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  });
+  await new Promise((r) => setTimeout(r, 600));
+  await safeStep(async () => {
+    await page.evaluate(() => window.scrollTo(0, 0));
+  });
+  await new Promise((r) => setTimeout(r, 200));
+}
+
+// Node-driven cookie-banner stamping. Mirrors the in-page poll from
+// runPageAudit but as short Node-driven evaluates so a pending IIFE can never
+// outlive an MHTML commit.
+async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150): Promise<void> {
+  const deadline = Date.now() + budgetMs;
+  while (Date.now() < deadline) {
+    let done = false;
+    try {
+      done = (await page.evaluate(() => {
+        const SEL = [
+          '#onetrust-consent-sdk', '#onetrust-banner-sdk', '#onetrust-accept-btn-handler',
+          '[id*="onetrust" i]', '[class*="onetrust" i]',
+          '#osano-cm-window', '[class*="osano-cm" i]',
+          '[id*="cookiebot" i]', '[id^="CybotCookiebot" i]',
+          '[id*="cookie-banner" i]', '[id*="cookie-consent" i]',
+          '[class*="cookie-banner" i]', '[class*="cookie-consent" i]',
+          '[id*="truste" i]', '[class*="truste" i]',
+          '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
+          '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
+        ].join(",");
+        const ROOT_SEL =
+          '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i]';
+        const found = Array.from(document.querySelectorAll(SEL)).find(
+          (el) => el.tagName !== "STYLE" && el.tagName !== "SCRIPT" && el.tagName !== "LINK",
+        );
+        if (!found) return false;
+        const r = found.getBoundingClientRect();
+        const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano/i.test(found.id || "");
+        if (!(isKnownVendor || (r.width > 50 && r.height > 30))) return false;
+        const root = (found.closest && found.closest(ROOT_SEL)) || found;
+        try {
+          root.setAttribute("data-lovable-cookie-root", "1");
+        } catch {
+          /* ignore */
+        }
+        return true;
+      })) as boolean;
+    } catch {
+      await waitForStableContext(page);
+    }
+    if (done) return;
+    await new Promise((r) => setTimeout(r, gapMs));
+  }
+}
+
 export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise<ReplayResult> {
   const dir = join(corpusRoot, name);
   const mhtmlPath = join(dir, "page.mhtml");
