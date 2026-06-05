@@ -1,12 +1,19 @@
 #!/usr/bin/env bun
 // CLI wrapper for snapshot/freeze.server.ts
 //
-// Usage:
-//   bun run scripts/freeze-site.ts --url=https://hibob.com --name=hibob
-//   bun run scripts/freeze-site.ts --url=... --name=... --consent='#onetrust-accept-btn-handler'
-//   bun run scripts/freeze-site.ts --url=... --name=... --consent-act='click Accept all cookies'
+// Preferred (SSOT-baserat — slår upp i corpus/sites.ts):
+//   bun run scripts/freeze-site.ts --name=hibob
+//   bun run scripts/freeze-site.ts --name=hubspot
+//
+// Override (one-off, kringgår SSOT — använd sparsamt, t.ex. för smoketests):
+//   bun run scripts/freeze-site.ts --name=foo --url=https://foo.com \
+//        --consent='#accept' --consent-check=detached
+//
+// CLI-flaggor är override, inte enda källa. Det vanliga flödet är att lägga
+// till en site i corpus/sites.ts och köra bara --name=<name>.
 
 import { freezeSite } from "../src/lib/tests/snapshot/freeze.server";
+import { getSite } from "../corpus/sites";
 
 function arg(name: string): string | undefined {
   const prefix = `--${name}=`;
@@ -14,21 +21,40 @@ function arg(name: string): string | undefined {
   return found ? found.slice(prefix.length) : undefined;
 }
 
-const url = arg("url");
 const name = arg("name");
-const consentSelector = arg("consent");
-const consentInstruction = arg("consent-act");
-const notes = arg("notes");
-
-if (!url || !name) {
+if (!name) {
   console.error(
-    "Usage: bun run scripts/freeze-site.ts --url=<url> --name=<name> [--consent='<css>'] [--consent-act='<instruction>'] [--notes='...']",
+    "Usage: bun run scripts/freeze-site.ts --name=<name> [--url=...] [--consent='<css>'] [--consent-check=detached|hidden] [--consent-act='...'] [--notes='...']",
   );
   process.exit(1);
 }
 
-console.log(`Freezing ${url} -> corpus/${name}/ ...`);
-freezeSite({ url, name, consentSelector, consentInstruction, notes })
+const spec = getSite(name);
+const url = arg("url") ?? spec?.url;
+const consentSelector = arg("consent") ?? spec?.consentSelector;
+const consentCheckArg = arg("consent-check") as "detached" | "hidden" | undefined;
+const consentDismissCheck = consentCheckArg ?? spec?.consentDismissCheck;
+const consentInstruction = arg("consent-act") ?? spec?.consentInstruction;
+const notes = arg("notes") ?? spec?.notes ?? undefined;
+
+if (!url) {
+  console.error(
+    `[freeze] ingen url för name="${name}". Lägg till i corpus/sites.ts eller skicka --url=.`,
+  );
+  process.exit(1);
+}
+
+if (!spec && !consentSelector && !consentInstruction) {
+  console.error(
+    `[freeze] name="${name}" saknas i corpus/sites.ts och ingen --consent angavs. ` +
+      `Vi vägrar freeza utan att ha tagit ställning till consent. ` +
+      `Lägg till en SiteSpec i corpus/sites.ts eller skicka --consent='<css>'.`,
+  );
+  process.exit(1);
+}
+
+console.log(`Freezing ${url} -> corpus/${name}/ (consent=${consentSelector ?? "(act)"} check=${consentDismissCheck ?? "detached"})`);
+freezeSite({ url, name, consentSelector, consentDismissCheck, consentInstruction, notes })
   .then((r) => {
     console.log(
       `OK · ${r.dir} · mhtml ${Math.round(r.mhtmlBytes / 1024)}kb · screenshot ${Math.round(r.screenshotBytes / 1024)}kb`,

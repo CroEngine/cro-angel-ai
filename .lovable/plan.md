@@ -1,60 +1,134 @@
-## Mål
+# Slutför datafrysningen (v2 — med hård consent-assertion)
 
-Verifiera att replay-pipelinen (lokal Playwright + context-stabilitets-gate + Node-loop-scroll + Node-loop-cookie-stämpling) producerar **deterministiska OCH korrekta** goldens — först hibob (känd baseline: 103 element), sen hubspot (ny).
+## Avstämning mot disk
+
+| Bit | Status |
+|---|---|
+| MHTML-capture, replay, normalize | ✓ klart |
+| Consent-**mekanism** i `freeze.server.ts` | ✓ finns redan (rad 80–95) |
+| `scripts/freeze-site.ts` | ✓ finns |
+| Hubspot frystes med `consentSelector: null` → banner infrusen | ✗ rot till "Accept All"/"Decline All" i golden |
+| SSOT för selektorer per site | ✗ saknas |
+| Hård fail om consent inte tog | ✗ saknas (tyst try/catch) |
+| Git LFS för `corpus/` | ✗ inte uppsatt |
+| 6/8 siter ofrysta | deferrade till separat runda |
+
+Rot: två felvägar — (a) glömd selektor, (b) selektor satt men klicket träffar inte. `sites.ts` stänger (a). Hård post-klick-assertion stänger (b). Båda krävs.
 
 ## Steg
 
-### 1. Generera goldens
-```bash
-SNAPSHOT_UPDATE=1 bun run vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts
+### 1. `corpus/sites.ts` — SSOT
+
+```ts
+export interface SiteSpec {
+  name: string;
+  url: string;
+  consentSelector?: string;
+  consentDismissCheck?: "detached" | "hidden"; // hur vi verifierar att klicket tog
+  consentInstruction?: string; // Stagehand-fallback
+  notes?: string;
+}
+
+// Policy: Accept All på alla siter. Inte för att det är "realistiskt" — utan
+// för att blanda Accept/Decline över corpusen inför en icke-jämförbar axel
+// i goldens. Konsistens > realism. hibob är redan Accept.
+export const SITES: SiteSpec[] = [
+  { name: "hibob", url: "https://www.hibob.com",
+    consentSelector: "#onetrust-accept-btn-handler",
+    consentDismissCheck: "detached" },
+  { name: "hubspot", url: "https://www.hubspot.com/",
+    consentSelector: "#hs-eu-confirmation-button",
+    consentDismissCheck: "detached", // verifieras i steg 2; byt till "hidden" om HubSpot bara döljer
+    notes: "HubSpot's hs-eu-cookie-confirmation, inte OneTrust" },
+  // 6 andra siter: separat runda
+];
 ```
-Förväntat: båda corpora replayar utan "Execution context was destroyed". `navHistory=[]` är **inte** ett framgångskriterium — om commit skedde och gaten höll så att diff är tom, gjorde gaten exakt sitt jobb. Döm på diff, inte på commit-frånvaro.
 
-### 2. Korrekthets-anchor mot baseline (hibob)
-```bash
-jq '.collect.count' corpus/hibob/golden.json
-jq '.pageAudit.ctas | length, .pageAudit.sections | length' corpus/hibob/golden.json
+`scripts/freeze-site.ts` slår upp i `SITES` via `--name`. CLI-flaggor blir override, inte enda källa.
+
+### 2. Hårdna `freeze.server.ts` — assertera att bannern är borta
+
+Idag (rad 81–87): klicket är inlindat i tyst try/catch. Det betyder att en stale selektor, A/B-variant eller sent-laddad banner ger `consentSelector: "..."` i meta.json medan bannern fortfarande är frusen i MHTML:en. Falskt självförtroende — exakt buggen vi vill stänga systemiskt.
+
+Ändring:
+
+```ts
+if (opts.consentSelector) {
+  await page.locator(opts.consentSelector).click(); // INGEN try/catch — vill veta om den misslyckas
+  await page
+    .waitForSelector(opts.consentSelector, {
+      state: opts.consentDismissCheck ?? "detached",
+      timeout: 5000,
+    })
+    .catch(() => {
+      throw new Error(
+        `[freeze] consent kvar efter klick: ${opts.name} — capture avbruten`,
+      );
+    });
+  await new Promise((r) => setTimeout(r, 800));
+}
 ```
-- `collect.count` ska ligga kring **103** (kända baseline). Avvikelse > ±10% = restruktureringen ändrade vad som samlas, även om det är stabilt. Stoppa och utred innan determinism-check.
-- CTAs/sections rimliga (> 0, samma storleksordning som tidigare).
 
-### 3. Determinism — 5 körningar, jämför actuals mot varandra
+Beteende: ingen MHTML, ingen screenshot, ingen golden skrivs om bannern står kvar. Vi cementerar inget brus tyst.
+
+Konsekvens för Stagehand-fallback: samma assertion krävs där också. Annars är `consentInstruction` ett bakdörrshål till exakt samma bugg.
+
+### 3. Re-freeze hubspot
+
 ```bash
-for i in 1 2 3 4 5; do
-  bun run vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts || echo "RUN $i RÖD"
-  cp corpus/hibob/actual.json /tmp/hibob.$i.json 2>/dev/null
-  cp corpus/hubspot/actual.json /tmp/hubspot.$i.json 2>/dev/null
-done
-for site in hibob hubspot; do
-  for i in 2 3 4 5; do
-    diff <(jq -S . /tmp/$site.1.json 2>/dev/null) <(jq -S . /tmp/$site.$i.json 2>/dev/null) > /dev/null \
-      && echo "$site run $i == run 1" || echo "$site run $i DIFFERS"
-  done
-done
+bun run scripts/freeze-site.ts --name=hubspot
 ```
-Två gröna räcker inte för en commit-timing-flake (kan vara 1-på-5). Vi jämför körningar mot varandra, inte bara mot golden — annars kan vi inte skilja "golden är outliern" från "körningarna är inbördes inkonsekventa".
 
-Notera: om `actual.json` inte skapas är diff tom (testet skriver bara `actual.json` vid icke-tom diff). Det betyder grön körning — `cp ... 2>/dev/null` swallowar saknad fil.
+Vid första försöket: om assertion throwar med `state: "detached"` → HubSpot döljer istället för att ta bort. Byt `consentDismissCheck` till `"hidden"` i `sites.ts` och kör om. Beslutet dokumenteras i `sites.ts`, inte i runbook-minne.
 
-### 4. Sanity-check hubspot-golden
+### 4. Verifiering (pålitliga signaler, inte rg mot MHTML)
+
+`rg` mot rå `page.mhtml` är opålitlig — MHTML är quoted-printable, så `hs-eu-cookie-confirmation` kan bli `hs-eu-cookie-confirmati=\nontion` och teckenkodning gör att `=3D` ersätter `=`. 0 träffar bevisar ingenting.
+
+Pålitliga checks efter re-freeze:
+1. `jq '.consentSelector' corpus/hubspot/meta.json` ≠ null
+2. Freeze körde grönt → assertion bekräftar att banner är borta i live-DOM före capture
+3. `SNAPSHOT_UPDATE=1` på snapshot-testet, sen:
+   ```bash
+   jq '.collect.elements[].text' corpus/hubspot/golden.json | rg -i "accept all|decline all|reject all"
+   ```
+   Måste ge 0 träffar. Detta är checken som faktiskt mäter det vi bryr oss om: vad collectorn såg, inte vad som finns i den kodade filen.
+4. `jq '.pageAudit.ctaSummary.total' corpus/hubspot/golden.json` — sjunker från 15. Hur mycket är inte en gate (se nedan).
+
+### 5. Determinism — 5 körningar på re-frysta hubspot
+
+Återanvänd loopen från förra runbooken. Måste vara 5/5 innan vidare. Behåll samma diff-mot-körning-1-pattern — golden kan vara outliern.
+
+### 6. Git LFS
+
 ```bash
-jq '.collect.count, .pageAudit.ctas | length, .pageAudit.sections | length, .pageAudit.trustSignals | length' corpus/hubspot/golden.json
+git lfs install
+cat >> .gitattributes <<'EOF'
+corpus/**/page.mhtml filter=lfs diff=lfs merge=lfs -text
+corpus/**/screenshot.jpg filter=lfs diff=lfs merge=lfs -text
+EOF
 ```
-Hubspot saknar baseline — rimlighetscheck: collect.count i hundratals, CTAs > 5, sections > 5. Om "Accept All"/"Decline All" syns som CTAs → notera för separat consentSelector-PR.
 
-## Beslutspunkter — koppla symptom till rätt spak
+`golden.json` + `meta.json` utanför LFS (små, ska diffas i PR).
 
-| Symptom | Spak | Inte spaken |
-|---|---|---|
-| Replay kraschar | Läs felet, rapportera. Ingen patch utan diagnos. | — |
-| collect.count på hibob ≠ ~103 | Stoppa, jämför vilka element-typer som saknas/lagts till. | Determinism-checken |
-| Inbördes diff mellan körningar, `seenUrls` visar commit | Hårdna gaten: höj `need` (2→3), längre `gapMs`, eller längre post-gate settle. | Scroll-parametrar |
-| Inbördes diff, `seenUrls=[]`, diff sitter i sections/visualHierarchy | Scroll-täckning instabil: öka scroll-gap (150→250ms) eller fler steg. | Gaten |
-| Inbördes diff i timing-känsliga fält (auditedAt, dynamiska IDs) | Normalize-bug: lägg till stripp i `normalize.ts`. | Replay-koden |
-| Cookie-bannerns knappar syns som CTAs i hubspot-golden | Notera. Separat PR med consentSelector vid freeze. | Denna körning |
+**Villkorad:** om `corpus/hibob/` eller `corpus/hubspot/` redan är committade som vanliga blobbar, flyttar `.gitattributes` dem inte retroaktivt. Då krävs:
+```bash
+git lfs migrate import --include="corpus/**/page.mhtml,corpus/**/screenshot.jpg"
+```
+Kolla först: `git log -- corpus/hibob/page.mhtml`. Tom output → aldrig committat → migrate är no-op och kan hoppas.
 
-## Vad denna körning inte gör
+### 7. Commit baseline
 
-- Ingen kod-ändring om inget kraschar.
-- Inga nya corpora.
-- Ingen commit av golden.json — du granskar manuellt efter steg 3 är grönt.
+hibob + hubspot till LFS som första infrysta corpus. De 6 andra siterna är **separat runda** — varje site kan ha sin egen consent-quirk (`detached` vs `hidden`, eller en banner som behöver scroll först), och vi vill inte upptäcka det efter commit.
+
+## Vad denna plan inte gör
+
+- Lägger inte till nya siter.
+- Rör inte normalize.ts eller replay-pipelinen.
+- Kör inte artifacts-exporten (väntar tills commit).
+
+## Decision points
+
+- **`detached` vs `hidden` för hubspot:** vet vi inte än. Plan: starta med `detached`, byt till `hidden` om freeze throwar. Inte värt att kolla manuellt i förväg.
+- **Om freeze-assertion fortsätter throw efter `hidden`-byte:** stoppa, debugga selektorn (kanske HubSpot bytt till nytt ID). Fixa i `sites.ts`, inte i `freeze.server.ts`.
+- **Drift i `collect.count`:** ingen hård tröskel — banner-borttagning sänker count i sig (container + 2–3 knappar + paragraftext kan vara 10+ element). Granska diffen mot baseline manuellt: är minskningen i `text` som matchar "cookie/consent/accept" → väntat. Andra fält → utred.
