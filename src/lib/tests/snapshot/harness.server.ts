@@ -125,13 +125,30 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     // CSSOM / layout settle.
     await new Promise((r) => setTimeout(r, 600));
 
+    // Context-stabilitets-gate: a pending evaluate is what kills us, so before
+    // running anything page-affecting we require that page.evaluate survives
+    // N consecutive ticks against the same URL. If it throws (context torn down
+    // mid-evaluate by a delayed MHTML commit), reset streak and keep polling.
+    await waitForStableContext(page);
+
     // eslint-disable-next-line no-console
     console.log(`[replay] url=${page.url()} navHistory=${JSON.stringify(seenUrls)}`);
+
+    // Node-driven scroll. Each step is a trivially short evaluate, so a torn
+    // context costs one step (caught + recovered via the gate) instead of a
+    // long pending IIFE crashing the whole audit.
+    await nodeLoopScroll(page);
+
+    // Node-driven cookie-root stamping. Same principle: short evaluates only.
+    await nodeLoopStampCookieRoot(page);
 
     const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
     // eslint-disable-next-line no-console
     console.log(`[replay] collected ${elements.length} elements`);
-    const pageAudit = await runPageAudit(page as unknown as Parameters<typeof runPageAudit>[0]);
+    const pageAudit = await runPageAudit(
+      page as unknown as Parameters<typeof runPageAudit>[0],
+      { skipScrollWarmup: true, skipCookiePoll: true },
+    );
 
     return {
       collect: { target: "clickables", elements, count: elements.length },
