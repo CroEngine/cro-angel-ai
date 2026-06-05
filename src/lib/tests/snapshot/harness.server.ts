@@ -65,7 +65,11 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
   copyFileSync(mhtmlPath, tmpFile);
   const fileUrl = `file://${tmpFile}`;
 
-  const browser = await chromium.launch({ headless: true });
+  // Default: Playwright's pinned bundled Chromium (deterministic across machines).
+  // Override only when running in an env that can't install Playwright's system
+  // deps (e.g. some sandboxes); the user-visible flow uses the pinned binary.
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+  const browser = await chromium.launch({ headless: true, executablePath });
   try {
     const context = await browser.newContext({ viewport: meta.viewport });
     const page = await context.newPage();
