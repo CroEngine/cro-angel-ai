@@ -2,129 +2,51 @@
 // the same shape the live engine produces — so normalize.ts can diff it
 // against corpus/<name>/golden.json.
 //
-// Replay uses Browserbase so the runtime exactly matches live test runs.
-// Loading strategy: CDP Fetch domain intercepts a fake URL and returns the
-// MHTML bytes with `Content-Type: multipart/related; boundary=...`. That is
-// the response shape Chromium needs to actually parse MHTML — a
-// data:multipart/related URL does NOT trigger MHTML parsing (Chromium loads
-// it as opaque text, document.body ends up empty), and `page.goto` with a
-// base64 data URL also hits Stagehand's HTTP-API 1 MB cap (413).
+// Replay runs in **local Playwright** (pinned chromium), not Browserbase:
+//   - file:// MHTML is the only Chromium-supported MHTML transport. data: URLs
+//     and Fetch-intercepted https:// responses are silently rejected.
+//   - Browserbase adds zero value at replay (residential proxy is irrelevant
+//     when loading a frozen file with no network).
+//   - A pinned `playwright` version pins the Chromium build, so golden vs
+//     fresh always share the exact same browser. A playwright upgrade is a
+//     deliberate "re-bless goldens" event.
 //
-// Because the MHTML embeds all CSS/images/fonts, no live network is hit
-// during replay.
+// Capture still runs on Browserbase (anti-bot); see freeze.server.ts.
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 
-import { Stagehand } from "@browserbasehq/stagehand";
+import { chromium, type Page } from "playwright";
 
-import { createSession, closeSession } from "../browserbase.server";
 import { COLLECT_SCRIPT } from "../scripts/collect";
 import { runPageAudit } from "../runners/pageAudit.server";
-import { FREEZE_VIEWPORT } from "./freeze.server";
 
 import type { CollectedElement } from "../schema";
-
-const FAKE_HOST = "https://snapshot.local";
-const FAKE_URL = `${FAKE_HOST}/page.mhtml`;
 
 export interface ReplayResult {
   collect: unknown;
   pageAudit: unknown;
 }
 
-// Extract the multipart boundary string from MHTML headers. The boundary is
-// declared in the top-level Content-Type header and may span continuation lines.
-function parseBoundary(mhtml: string): string {
-  const headerEnd = mhtml.indexOf("\r\n\r\n");
-  const head = headerEnd > 0 ? mhtml.slice(0, headerEnd) : mhtml.slice(0, 4000);
-  // Collapse header continuations: CRLF + whitespace -> single space.
-  const flat = head.replace(/\r\n[\t ]+/g, " ");
-  const m = flat.match(/boundary\s*=\s*"?([^";\r\n]+)"?/i);
-  if (!m) throw new Error("MHTML: could not parse multipart boundary from headers");
-  return m[1];
+interface Meta {
+  viewport: { width: number; height: number };
 }
 
-async function loadMhtml(
-  page: import("@browserbasehq/stagehand").Page,
-  mhtml: string,
-) {
-  const boundary = parseBoundary(mhtml);
-  // Fetch.fulfillRequest expects base64 body. Fine for 1–5 MB MHTML since
-  // CDP rides the persistent WebSocket (no HTTP body cap).
-  const bodyB64 = Buffer.from(mhtml, "utf8").toString("base64");
-  const contentType = `multipart/related; boundary="${boundary}"`;
+function readMeta(dir: string): Meta {
+  const raw = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8"));
+  if (!raw?.viewport?.width || !raw?.viewport?.height) {
+    throw new Error(`corpus meta.json missing viewport: ${dir}`);
+  }
+  return { viewport: raw.viewport };
+}
 
-  // Main-frame CDP session — page.sendCDP is send-only and cannot subscribe.
-  const cdp = page.getSessionForFrame(page.mainFrameId());
-
-  let pausedCount = 0;
-  let fulfilledMain = false;
-  const seenUrls: string[] = [];
-
-  const onPaused = async (params: { requestId: string; request: { url: string } }) => {
-    pausedCount++;
-    if (seenUrls.length < 10) seenUrls.push(params.request.url);
-    try {
-      if (params.request.url.startsWith(FAKE_HOST)) {
-        fulfilledMain = true;
-        await cdp.send("Fetch.fulfillRequest", {
-          requestId: params.requestId,
-          responseCode: 200,
-          responseHeaders: [
-            { name: "Content-Type", value: contentType },
-            { name: "Cache-Control", value: "no-store" },
-          ],
-          body: bodyB64,
-        });
-      } else {
-        await cdp.send("Fetch.continueRequest", { requestId: params.requestId });
-      }
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error("[loadMhtml] fulfill error:", e instanceof Error ? e.message : e);
-    }
-  };
-
-  cdp.on("Fetch.requestPaused", onPaused);
-
-  try {
-    await cdp.send("Fetch.enable", { patterns: [{ urlPattern: "*" }] });
-    await page.sendCDP("Page.enable", {});
-    await page.sendCDP("Page.navigate", { url: FAKE_URL });
-
-    const deadline = Date.now() + 30_000;
-    while (Date.now() < deadline) {
-      try {
-        const ready = await page.evaluate("document.readyState");
-        if (ready === "complete") break;
-      } catch {
-        /* navigation in flight */
-      }
-      await new Promise((r) => setTimeout(r, 200));
-    }
-    await new Promise((r) => setTimeout(r, 600));
-
-    // Diagnostics so we can see what actually happened.
-    try {
-      const probe = await page.evaluate(
-        "JSON.stringify({ url: location.href, title: document.title, bodyLen: (document.body && document.body.innerHTML.length) || 0, h1s: document.querySelectorAll('h1').length })",
-      );
-      // eslint-disable-next-line no-console
-      console.log(
-        `[loadMhtml] pausedCount=${pausedCount} fulfilledMain=${fulfilledMain} probe=${probe} seen=${JSON.stringify(seenUrls)}`,
-      );
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error("[loadMhtml] probe failed:", e instanceof Error ? e.message : e);
-    }
-  } finally {
-    try {
-      await cdp.send("Fetch.disable");
-    } catch {
-      /* ignore */
-    }
-    cdp.off("Fetch.requestPaused", onPaused);
+async function waitForReady(page: Page) {
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    const ready = await page.evaluate(() => document.readyState).catch(() => null);
+    if (ready === "complete") return;
+    await new Promise((r) => setTimeout(r, 150));
   }
 }
 
@@ -134,32 +56,82 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
   if (!existsSync(mhtmlPath)) {
     throw new Error(`corpus/${name}/page.mhtml not found — run freeze-site first`);
   }
-  const mhtml = readFileSync(mhtmlPath, "utf8");
+  const meta = readMeta(dir);
 
-  const apiKey = process.env.BROWSERBASE_API_KEY;
-  const projectId = process.env.BROWSERBASE_PROJECT_ID;
-  if (!apiKey || !projectId) {
-    throw new Error("BROWSERBASE_API_KEY / BROWSERBASE_PROJECT_ID required for replay");
-  }
+  // MHTML must live on disk so Chromium can render it via file://; copying to
+  // tmp keeps the corpus path clean and lets us nuke our scratch on cleanup.
+  const tmpDir = mkdtempSync(join(tmpdir(), "snapshot-replay-"));
+  const tmpFile = join(tmpDir, "page.mhtml");
+  copyFileSync(mhtmlPath, tmpFile);
+  const fileUrl = `file://${tmpFile}`;
 
-  const session = await createSession();
-  const stagehand = new Stagehand({
-    env: "BROWSERBASE",
-    apiKey,
-    projectId,
-    browserbaseSessionID: session.id,
-    keepAlive: false,
-  });
-
+  // Default: Playwright's pinned bundled Chromium (deterministic across machines).
+  // Override only when running in an env that can't install Playwright's system
+  // deps (e.g. some sandboxes); the user-visible flow uses the pinned binary.
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+  const browser = await chromium.launch({ headless: true, executablePath });
   try {
-    await stagehand.init();
-    const page = stagehand.context.pages()[0] ?? (await stagehand.context.newPage());
-    await page.setViewportSize(FREEZE_VIEWPORT.width, FREEZE_VIEWPORT.height);
+    // Keep JS enabled — MHTML loaded from file:// does NOT auto-navigate to
+    // the embedded URL (we verified URL stays on file://...), and disabling JS
+    // breaks async evaluate IIFEs in some Playwright builds. Page scripts that
+    // try to fetch live mostly fail silently since their network is gone.
+    const context = await browser.newContext({
+      viewport: meta.viewport,
+    });
+    const page = await context.newPage();
 
-    await loadMhtml(page, mhtml);
+    // Frozen pages often contain SPA code that reads location and forces a
+    // redirect back to the canonical https:// origin ("if location.hostname
+    // !== 'foo.com' location.replace(...)"). That redirect destroys evaluate
+    // contexts mid-test. Block both vectors:
+    //   1) network — any outbound request from the frozen page is aborted.
+    //   2) navigation API — neutralize location.assign/replace/href setter,
+    //      history.pushState/replaceState. The page's own scripts still run
+    //      (animations, IntersectionObservers), but can't move us off the doc.
+    await context.route("**/*", (route) => {
+      const url = route.request().url();
+      if (url.startsWith("file://")) return route.continue();
+      return route.abort();
+    });
+    await context.addInitScript(() => {
+      try {
+        const noop = () => {};
+        history.pushState = noop as typeof history.pushState;
+        history.replaceState = noop as typeof history.replaceState;
+        // Best-effort: location is non-configurable, but assign/replace are
+        // overridable.
+        (window.location as unknown as { assign: () => void }).assign = noop;
+        (window.location as unknown as { replace: () => void }).replace = noop;
+      } catch {
+        /* ignore */
+      }
+    });
+    const seenUrls: string[] = [];
+    page.on("framenavigated", (f) => {
+      if (f === page.mainFrame()) seenUrls.push(f.url());
+    });
+
+    await page.goto(fileUrl, { waitUntil: "load", timeout: 30_000 });
+    await waitForReady(page);
+
+    // URL-stabilization: poll until two consecutive 250ms ticks see the same URL.
+    let lastUrl = page.url();
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 250));
+      const now = page.url();
+      if (now === lastUrl && i > 1) break;
+      lastUrl = now;
+    }
+    // CSSOM / layout settle.
+    await new Promise((r) => setTimeout(r, 600));
+
+    // eslint-disable-next-line no-console
+    console.log(`[replay] url=${page.url()} navHistory=${JSON.stringify(seenUrls)}`);
 
     const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
-    const pageAudit = await runPageAudit(page);
+    // eslint-disable-next-line no-console
+    console.log(`[replay] collected ${elements.length} elements`);
+    const pageAudit = await runPageAudit(page as unknown as Parameters<typeof runPageAudit>[0]);
 
     return {
       collect: { target: "clickables", elements, count: elements.length },
@@ -167,10 +139,14 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     };
   } finally {
     try {
-      await stagehand.close();
+      await browser.close();
     } catch {
       /* ignore */
     }
-    await closeSession(session.id);
+    try {
+      rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
   }
 }
