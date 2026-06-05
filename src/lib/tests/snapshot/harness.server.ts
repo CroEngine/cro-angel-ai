@@ -81,14 +81,36 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     });
     const page = await context.newPage();
 
+    // Track navigations: when Chromium opens a .mhtml from file://, it first
+    // loads the wrapper then "unwraps" to the embedded document URL (e.g.
+    // https://www.hibob.com/). That second navigation destroys evaluate
+    // contexts mid-test, so we wait for the URL to stop moving before doing
+    // anything else.
+    const seenUrls: string[] = [];
+    page.on("framenavigated", (f) => {
+      if (f === page.mainFrame()) seenUrls.push(f.url());
+    });
+
     await page.goto(fileUrl, { waitUntil: "load", timeout: 30_000 });
     await waitForReady(page);
+
+    // URL-stabilization: poll until two consecutive 250ms ticks see the same URL.
+    let lastUrl = page.url();
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 250));
+      const now = page.url();
+      if (now === lastUrl && i > 1) break;
+      lastUrl = now;
+    }
     // CSSOM / layout settle.
     await new Promise((r) => setTimeout(r, 600));
 
+    // eslint-disable-next-line no-console
+    console.log(`[replay] url=${page.url()} navHistory=${JSON.stringify(seenUrls)}`);
+
     const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
-    // runPageAudit only uses page.evaluate — Playwright's Page is structurally
-    // compatible with what it needs.
+    // eslint-disable-next-line no-console
+    console.log(`[replay] collected ${elements.length} elements`);
     const pageAudit = await runPageAudit(page as unknown as Parameters<typeof runPageAudit>[0]);
 
     return {
