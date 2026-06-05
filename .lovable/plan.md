@@ -1,72 +1,60 @@
-# Lokal MHTML-replay via pinnad Playwright
+## Diagnos vi accepterar
 
-Replay lämnar Browserbase och kör mot lokal headless Chromium med `file:///tmp/.../page.mhtml`. Capture stannar på Browserbase per default (anti-bot), men capture-transport blir ett per-sajt-val.
+Asymmetrin (COLLECT lyckas, scroll dör) förklaras av evaluate-livslängd, inte två separata buggar. Den långlivade async-IIFE:n i `runPageAudit` ligger pending när MHTML:ens fördröjda commit förstör execution-contexten.
 
-## Beslut som låses
+Hårdnad insikt: bara Node-loop-scroll räcker inte. Den skyddar scrollen men flyttar COLLECT senare i tiden — rakt in i samma fönster (~1.5–4s) där commiten slår. Om commiten är dokument-ersättande nollställs scroll-position + `data-lovable-cookie-root`-stämpeln, och tysta try/catch-svalg ger flaky diff.
 
-| Område | Val |
-|---|---|
-| Capture (default) | Browserbase MHTML (oförändrat) |
-| Capture (fallback) | Lokal single-file HTML — endast för sajter där MHTML-shadow-DOM-trohet fallerar |
-| Replay | Lokal Playwright Chromium, `file://`, ingen nätverkstrafik |
-| Viewport vid replay | Läses från `meta.json`, pinnad till capture-värdet |
-| Golden | **Genereras under lokal replay**, inte under capture |
-| Test-runner | Vitest (oförändrat) — `playwright` är bibliotek, inte runner |
-| Playwright-version | `playwright@1.60.0` exakt (matchar `playwright-core` 1.60.0 som Stagehand redan löst) |
+Lösning: en **context-stabilitets-gate** före allt sidpåverkande. Gaten kräver att `page.evaluate(() => location.href)` lyckas N gånger i rad med stabil URL innan vi scrollar, stämplar eller kör COLLECT.
 
-`@playwright/test` adderas INTE. Capture-koden i `freeze.server.ts` rörs INTE förrän vi behöver lokal single-file-fallback (Salesforce).
+## Ändringar
 
-## Filer som ändras / skapas
+### 1. `src/lib/tests/runners/pageAudit.server.ts`
+- Lägg till `runPageAudit(page, opts?: { skipScrollWarmup?: boolean; skipCookiePoll?: boolean })`.
+- När flaggorna är satta hoppas respektive in-page-IIFE över. Default oförändrat — engine.server.ts rör vi inte.
 
-### Ändras
-- `package.json` — `"playwright": "1.60.0"` som devDep, ny `postinstall` (eller manuell instruktion) `playwright install chromium`. Inget annat skript-namn ändras.
-- `src/lib/tests/snapshot/harness.server.ts` — riven Browserbase-implementation, ersätts av lokal Playwright.
+### 2. `src/lib/tests/snapshot/harness.server.ts`
 
-### Skapas
-- `.gitignore` — lägg till `/test-results/` om vi behöver tmp-katalog (ev. inte nödvändigt; vi använder `os.tmpdir()`).
-
-### Oförändrat
-- `freeze.server.ts`, `scripts/freeze-site.ts` — MHTML-capture på Browserbase fortsätter exakt som idag.
-- `normalize.ts`, `snapshot.test.ts` — kontraktet `replayCorpus(name) → { collect, pageAudit }` är identiskt, harness-bytet är dolt för testet.
-- `corpus/<name>/{page.mhtml, screenshot.jpg, meta.json}` — samma format.
-
-## Replay-flödet (ny `harness.server.ts`)
+Ny ordning efter `goto` + `waitForReady`:
 
 ```text
-replayCorpus(name)
- ├─ läs corpus/<name>/page.mhtml + meta.json
- ├─ kopiera page.mhtml till os.tmpdir() (file:// kräver disk-fil, inte Buffer)
- ├─ chromium.launch({ headless: true })          // bundlad Chromium @ 1.60.0
- ├─ context med viewport = meta.json.viewport     // pinnad från capture
- ├─ page.goto("file:///" + tmpPath)               // Chromium parsar MHTML nativt
- ├─ vänta document.readyState === "complete" + 600ms (CSSOM-settle)
- ├─ page.evaluate(COLLECT_SCRIPT)
- ├─ runPageAudit(page)
- └─ cleanup (close page/context/browser, rm tmpfil)
+URL-stabilization (befintlig)
+  ↓
+waitForStableContext()   ← NY: evaluate måste överleva N=2 ggr i rad
+  ↓
+Node-loop scroll
+  ↓
+Node-loop cookie-root-stämpling
+  ↓
+runPageAudit(page, { skipScrollWarmup: true, skipCookiePoll: true })
 ```
 
-Inga `--allow-file-access-from-files` eller liknande flaggor i v1 — om Chromium klagar lägger vi till `--enable-features=MHTMLFormatRegistryRendererStreaming` eller flaggar headed under xvfb. Det är en run-the-test-and-see-fix, inte ett designbeslut.
+**`waitForStableContext`** (ny helper i harnessen):
+- Loop tries=20, gap=150ms, kräver streak=2 av samma `location.href` där `evaluate` inte kastat.
+- Vid kastat fel (context destroyed): nollställ streak och fortsätt poll.
+- Kastar om kontexten aldrig stabiliseras — då vill vi inte fortsätta, då är MHTML:en trasig.
 
-## Viktig anpassning: `runPageAudit` + `COLLECT_SCRIPT` signatur
+**Scroll** (efter gate):
+- Läs `scrollHeight` **direkt före** varje steg, inte en gång uppifrån — lazy-load via IntersectionObserver kan expandera dokumentet under loopen.
+- 8 steg, **150ms paus** mellan steg (inte 80ms — diff-stabilitet vinner över hastighet).
+- Varje `page.evaluate(...scrollTo...)` är trivialt kort. Wrappas i try/catch + en `waitForStableContext`-runda vid fel, så att vi inte sväljer ett tappat steg utan rekonvalescens.
+- Sluttsteg: scrolla till botten, paus 600ms, tillbaka till topp, paus 200ms — separata Node-steg.
 
-Båda tar idag en **Stagehand**-page. Lokal `playwright`-page har samma `evaluate`/`goto`/`setViewportSize`-API men typerna skiljer. Vi importerar `Page` från `playwright` i harnessen och låter `runPageAudit` ta en strukturell typ (det den faktiskt använder är bara `evaluate`). Ingen körtidsändring, bara typ-justering om TS klagar.
+**Cookie-root-stämpling** (efter gate, efter scroll):
+- Loop upp till ~2.5s, korta `page.evaluate`-anrop som letar selektorn och sätter `data-lovable-cookie-root` på outer container. Ingen långlivad in-page IIFE.
 
-## Verifieringssteg (det här är poängen)
+**Diagnostik kvar**: `framenavigated`-listener + `console.log(page.url(), seenUrls)` — om commit ändå sker syns det utan att testet kraschar.
 
-1. **Rökprov HiBob:** `bun run snapshot:update` ska producera `golden.json` med `hero.headline`, `h1Count > 0`, och CTA-räkning som matchar screenshotsen.
-2. **Determinismsteg:** kör `bun run snapshot` direkt efter — tom diff.
-3. **Shadow-DOM-prov på Salesforce:** frys salesforce.com, replaya, kolla att collectorn hittar shadow-DOM-CTAs. Om count är dramatiskt lägre än prod-live → MHTML round-trippar inte öppen shadow DOM → flagga den sajten för single-file-fallback (separat patch, inte i denna).
-4. **Frys övriga korpus-sajter** efter att HiBob är grön två gånger.
+### 3. Ingen ändring i `engine.server.ts` eller `freeze.server.ts`.
 
-## Beslutspunkter under bygget
+### 4. `waitForLoadState('networkidle')` används inte (file:// → resolvar tomt).
 
-- **Chromium vägrar rendera MHTML från `file://` i headless:** prova `chromium.launch({ headless: 'new' })` (eller `channel: 'chromium'`), sedan headed under xvfb. Sista utvägen: single-file-HTML-capture i fallback-spåret, INTE A2 (inline computed styles).
-- **MHTML förlorar shadow DOM på Salesforce:** lägg in `transport: "single-file"` som per-sajt-flag i `meta.json` och en parallell capture-väg. Den biten skjuts till nästa PR.
-- **Lokala fonts skiljer från Browserbase:** OK by design — golden genereras lokalt, så lokal vs lokal matchar. Diff mot live skiljer sig, men det dyker inte upp förrän labeling i Fas 3.
+## Verifiering
 
-## Vad jag INTE gör i denna PR
+1. `bun run snapshot` på hibob → ska gå igenom utan "Execution context was destroyed".
+2. Loggen visar `url=file://...` + tom/stabil `seenUrls`. Faktisk commit ⇒ separat åtgärd, inte denna PR.
+3. **Determinism**: kör snapshot 3× i rad utan `SNAPSHOT_UPDATE`. Tom diff varje gång. Diff mellan körningar = scroll/stamp inte deterministisk → öka gap eller streak.
 
-- Single-file-HTML-fallback (separat per-sajt-spår, byggs när Salesforce-mätningen kräver det).
-- CI-uppsättning (Fas 3).
-- Refaktor av `classifiers.ts` (Fas 4).
-- Ändringar i `freeze.server.ts` — capture är redan grön.
+## Vad denna PR inte gör
+
+- Ingen single-file-HTML-fallback.
+- Inga ändringar i `freeze.server.ts`, `classifiers.ts`, CI eller live engine-flödet.
