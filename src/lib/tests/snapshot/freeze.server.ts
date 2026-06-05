@@ -25,6 +25,7 @@ export interface FreezeOptions {
   url: string;
   name: string;
   consentSelector?: string; // CSS for cookie-banner dismiss button
+  consentDismissCheck?: "detached" | "hidden"; // how we verify the click took
   consentInstruction?: string; // Stagehand fallback ("click the Accept all button")
   outDir?: string; // defaults to corpus/<name>
   notes?: string;
@@ -77,21 +78,32 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     await page.goto(opts.url, { waitUntil: "load", timeoutMs: 60_000 });
     await new Promise((r) => setTimeout(r, 1500));
 
-    // Consent: try CSS selector first (deterministic), Stagehand as fallback.
+    // Consent: hård assertion. Vi vill hellre avbryta capturen än fryser in
+    // en banner tyst. Stale selektor, A/B-variant eller sent-laddad banner ska
+    // alla bli synliga som freeze-fel — inte som "Accept All"/"Decline All" i
+    // golden veckor senare.
+    const dismissState = opts.consentDismissCheck ?? "detached";
     if (opts.consentSelector) {
-      try {
-        await page.locator(opts.consentSelector).click();
-        await new Promise((r) => setTimeout(r, 800));
-      } catch {
-        /* maybe already dismissed */
-      }
+      await page.locator(opts.consentSelector).click(); // INGEN try/catch
+      await page
+        .waitForSelector(opts.consentSelector, {
+          state: dismissState,
+          timeoutMs: 5000,
+        })
+        .catch(() => {
+          throw new Error(
+            `[freeze] consent kvar efter klick (state=${dismissState}): ${opts.name} — capture avbruten. ` +
+              `Byt consentDismissCheck i corpus/sites.ts (detached↔hidden) eller uppdatera selektorn.`,
+          );
+        });
+      await new Promise((r) => setTimeout(r, 800));
     } else if (opts.consentInstruction) {
-      try {
-        await stagehand.act(opts.consentInstruction);
-        await new Promise((r) => setTimeout(r, 800));
-      } catch {
-        /* no banner */
-      }
+      // Stagehand-fallback har ingen selektor att assertera mot. Kräv att
+      // caller ändå anger consentSelector för verifiering — annars vägrar vi.
+      throw new Error(
+        `[freeze] consentInstruction utan consentSelector för verifiering: ${opts.name}. ` +
+          `Lägg till consentSelector i corpus/sites.ts så vi kan assertera att klicket tog.`,
+      );
     }
 
     await lazyScroll(page);
