@@ -1,0 +1,24 @@
+{
+  "ok": false,
+  "error": "[freeze] consent kvar efter klick (state=detached): hubspot — capture avbruten. Byt consentDismissCheck i corpus/sites.ts (detached↔hidden) eller uppdatera selektorn.",
+  "dryRun": false,
+  "consent": {
+    "selector": "#hs-eu-confirmation-button",
+    "dismissCheck": "detached",
+    "matchCountBeforeClick": 1,
+    "visibleBeforeClick": true,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 0,
+    "screenshotKb": 0,
+    "beforeDismissScreenshotPath": "corpus/hubspot/screenshot.before-dismiss.jpg"
+  },
+  "timing": {
+    "gotoMs": 10240,
+    "consentMs": 0,
+    "scrollMs": 0,
+    "captureMs": 0
+  }
+}
