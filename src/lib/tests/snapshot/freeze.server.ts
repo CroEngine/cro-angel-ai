@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { Stagehand } from "@browserbasehq/stagehand";
 
 import { createSession, closeSession } from "../browserbase.server";
+import { embedMhtmlFonts } from "./mhtml-fonts.server";
 
 // Must match the viewport Browserbase uses for live test runs so aboveFold /
 // section bucketing in golden.json matches what the live engine produces.
