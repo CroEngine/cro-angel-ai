@@ -186,7 +186,15 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       dismissedAfterMs: null,
       postDismissDomHits: null,
     },
-    capture: { mhtmlKb: 0, screenshotKb: 0, beforeDismissScreenshotPath: null },
+    capture: {
+      mhtmlKb: 0,
+      screenshotKb: 0,
+      beforeDismissScreenshotPath: null,
+      externalFontSrcCount: null,
+      embeddedFontCount: null,
+      mhtmlKbBeforeFontEmbed: null,
+      fontFetchFailures: null,
+    },
     timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
   };
 
