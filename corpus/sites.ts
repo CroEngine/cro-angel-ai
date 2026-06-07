@@ -37,11 +37,11 @@ export const SITES: SiteSpec[] = [
     name: "hubspot",
     url: "https://www.hubspot.com/",
     consentSelector: "#hs-eu-confirmation-button",
-    // Startvärde — om freeze throwar med "detached" så döljer HubSpot istället
-    // för att ta bort. Byt då till "hidden" och kör om. Beslutet hör hemma här,
-    // inte i runbook-minne.
-    consentDismissCheck: "detached",
-    notes: "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust)",
+    // Verifierat 2026-06-07 via freeze-report: detached gav "consent kvar
+    // efter klick" trots matchCountBeforeClick=1 + visibleBeforeClick=true.
+    // HubSpot döljer bannern istället för att ta bort den ur DOM.
+    consentDismissCheck: "hidden",
+    notes: "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort.",
   },
   // De 6 övriga siterna läggs till i separat runda — varje site kan ha
   // egen consent-quirk som vi inte vill upptäcka efter commit.

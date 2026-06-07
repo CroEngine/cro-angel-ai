@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": "#hs-eu-confirmation-button",
+    "dismissCheck": "hidden",
+    "matchCountBeforeClick": 1,
+    "visibleBeforeClick": true,
+    "dismissedAfterMs": 1908,
+    "postDismissDomHits": {
+      "accept all": 0,
+      "decline all": 0,
+      "reject all": 0,
+      "cookie": 1
+    }
+  },
+  "capture": {
+    "mhtmlKb": 1878,
+    "screenshotKb": 546,
+    "beforeDismissScreenshotPath": "corpus/hubspot/screenshot.before-dismiss.jpg"
+  },
+  "timing": {
+    "gotoMs": 7581,
+    "consentMs": 7395,
+    "scrollMs": 4546,
+    "captureMs": 1904
+  }
+}
