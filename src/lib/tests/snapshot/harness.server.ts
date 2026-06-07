@@ -240,6 +240,26 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     // mid-evaluate by a delayed MHTML commit), reset streak and keep polling.
     await waitForStableContext(page);
 
+    // B — replay-side font probe (defense in depth for A2). Logs whether the
+    // embedded cid: fonts actually resolved at replay. `families` lets us
+    // discover the exact declared family name per corpus; once stable we can
+    // hardcode 1-2 representative checks per site here. `check(family, text)`
+    // takes a representative text arg so the right unicode-range subset is
+    // exercised — `check()` without text can answer about the wrong subset.
+    await page.evaluate(() => document.fonts.ready.then(() => true)).catch(() => {});
+    const fontStatus = await page
+      .evaluate(() => {
+        const all = Array.from(document.fonts as unknown as Iterable<FontFace>);
+        return {
+          size: document.fonts.size,
+          loaded: all.filter((f) => f.status === "loaded").length,
+          families: Array.from(new Set(all.map((f) => f.family))),
+        };
+      })
+      .catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
+    // eslint-disable-next-line no-console
+    console.log(`[replay] fonts:`, JSON.stringify(fontStatus));
+
     // eslint-disable-next-line no-console
     console.log(`[replay] url=${page.url()} navHistory=${JSON.stringify(seenUrls)}`);
 
