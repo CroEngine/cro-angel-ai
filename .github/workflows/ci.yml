@@ -28,3 +28,6 @@ jobs:
 
       - name: Run freeze-visibility test
         run: bunx vitest run src/lib/tests/snapshot/__tests__/freeze-visibility.test.ts
+
+      - name: Run snapshot diff tests
+        run: bunx vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts

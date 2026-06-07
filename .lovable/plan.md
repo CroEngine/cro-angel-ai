@@ -1,40 +1,38 @@
-# Frys om hubspot
+# Installera Playwright Chromium + utöka CI snapshot-coverage
 
-Hubspot frystes innan `consentSelector` lades till i `corpus/sites.ts` (meta.json visar `consentSelector: null`). Cookie-bannern ligger troligen kvar i nuvarande golden. Vi kör om freezen och verifierar via receipt att consent faktiskt dismissades.
+Två saker som hänger ihop:
+
+1. **Lokalt i Lovable-sandboxen** — Playwright Chromium saknas, så jag kan inte köra `snapshot.test.ts` här efter en omfrys.
+2. **CI** — installerar Chromium men kör bara `freeze-visibility.test.ts`. Snapshot-diffen mot hibob/hubspot golden körs **inte i CI heller**. Ny hubspot-baseline är därför ovaliderad efter push.
 
 ## Steg
 
-1. Kör freeze mot SSOT i `corpus/sites.ts`:
+1. **Installera Chromium lokalt:**
    ```bash
-   bun run scripts/freeze-site.ts --name=hubspot --screenshot-before-dismiss
+   bunx playwright install chromium
    ```
-   - `--screenshot-before-dismiss` ger en visuell sanity-check att bannern verkligen var där innan klicket.
 
-2. **Läs `corpus/hubspot/freeze-report.json`** och verifiera:
-   - `ok: true`
-   - `consent.matchCountBeforeClick >= 1`
-   - `consent.visibleBeforeClick: true`
-   - `consent.dismissedAfterMs` är ett tal (inte null)
-   - `consent.postDismissDomHits["accept all"] === 0` och `["decline all"] === 0` — bannern är borta ur synlig DOM
-
-3. **Om `dismissedAfterMs` är null / assertion throwar med "consent kvar efter klick"**:
-   - HubSpot döljer istället för att ta bort. Byt `consentDismissCheck: "detached"` → `"hidden"` i `corpus/sites.ts` och kör om.
-
-4. **Om det funkar** (steg 2 grön):
-   - Verifiera att `corpus/hubspot/meta.json` nu har `consentSelector: "#hs-eu-confirmation-button"` (skrivs automatiskt från SiteSpec).
-   - Diffa nya `corpus/hubspot/golden.json` mot den gamla för att se vad consent-städningen ändrade — typiskt: above-fold trust signals, hero-salience, första sektionens innehåll.
-
-5. **Kör snapshot-testen** för att se att hubspot fortfarande är grön mot sin nya golden:
+2. **Verifiera lokalt** att snapshot-testen nu går igenom mot ny hubspot-baseline:
    ```bash
    bunx vitest run src/lib/tests/snapshot
    ```
+   - hibob ska vara grön (orörd)
+   - hubspot ska vara grön mot ny golden
+
+3. **Utöka CI** så snapshot-diffen körs vid varje push — annars upptäcker vi en trasig baseline först när någon manuellt kör testen lokalt. Ändring i `.github/workflows/ci.yml`:
+   ```yaml
+   - name: Run snapshot tests
+     run: bunx vitest run src/lib/tests/snapshot
+   ```
+   Lägg som separat steg efter `freeze-visibility` (så vi ser vilket av dem som failar).
+
+## Frågor
+
+- **Räknar vi om hubspots golden.json** om snapshot-diffen failar i steg 2? Bannern var ju i gamla golden — fält som `aboveFold trust signals`, hero salience osv. har troligen ändrats. Det är förväntat och korrekt, men vi måste aktivt godkänna den nya goldenen (commit:a den).
+- Eller vill du **se diffen först** innan vi commit:ar ny golden, för att verifiera att förändringarna är "consent-relaterade" och inte något annat?
 
 ## Vad vi INTE rör
 
-- `corpus/hibob/*` — hibob har redan consentSelector i meta.json, lämnas orört.
-- UI / jämförelse-vy — kommer i nästa runda när alla 10 sites är frysta.
-- `corpus/sites.ts` ändras bara om steg 3 triggas (detached → hidden).
-
-## Receipt-driven
-
-Hela poängen med freeze-systemet är att `freeze-report.json` säger oss om capturen blev ren — vi behöver inte öppna MHTML:en och leta. Om receipten är grön i steg 2 är hubspot 100%.
+- `corpus/sites.ts` — redan uppdaterad till `hidden`, ingen ny ändring.
+- `corpus/hibob/*` — orört.
+- Övriga 8 sites — separat runda när detta är grönt.
