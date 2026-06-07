@@ -1,29 +1,28 @@
 {
-  "ok": true,
-  "error": null,
+  "ok": false,
+  "error": "Error: waitForMainLoadState(load) timed out after 60000ms",
   "dryRun": false,
   "consent": {
     "selector": "#hs-eu-confirmation-button",
     "dismissCheck": "hidden",
-    "matchCountBeforeClick": 1,
-    "visibleBeforeClick": true,
-    "dismissedAfterMs": 1908,
-    "postDismissDomHits": {
-      "accept all": 0,
-      "decline all": 0,
-      "reject all": 0,
-      "cookie": 1
-    }
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 1878,
-    "screenshotKb": 546,
-    "beforeDismissScreenshotPath": "corpus/hubspot/screenshot.before-dismiss.jpg"
+    "mhtmlKb": 0,
+    "screenshotKb": 0,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": null,
+    "embeddedFontCount": null,
+    "mhtmlKbBeforeFontEmbed": null,
+    "fontFetchFailures": null
   },
   "timing": {
-    "gotoMs": 7581,
-    "consentMs": 7395,
-    "scrollMs": 4546,
-    "captureMs": 1904
+    "gotoMs": 0,
+    "consentMs": 0,
+    "scrollMs": 0,
+    "captureMs": 0
   }
 }
