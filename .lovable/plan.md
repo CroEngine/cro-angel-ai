@@ -97,18 +97,43 @@ Tolkning:
 - `size > 0, loaded === 0` → embedding ok, replay-rendering fallerar (osannolikt efter Steg 0)
 - `checks[*] === false` med `loaded > 0` → unicode-range-subset matchar inte, lazy/dold-restrisken
 
-## C — Verifiering: run-to-run-determinism, INTE match mot gammal golden
+## C — Verifiering: cross-env-determinism (inte run-to-run, inte mot gammal golden)
 
-Gammal golden = `normalize(replay(gammal_mhtml))` med fallback-layout. A2 producerar `normalize(replay(ny_mhtml))` med riktig layout. De **ska** skilja sig på area/yBand överallt — det är inte fel, det är att fixen fungerar.
+Gammal golden = `normalize(replay(gammal_mhtml))` med fallback-layout. A2 producerar `normalize(replay(ny_mhtml))` med riktig layout. De **ska** skilja sig på area/yBand — det är inte fel, det är fixen.
 
-1. Frys om hibob + hubspot lokalt med A2 (verifiera `externalFontSrcCount === 0`)
-2. Generera kastbar golden: `SNAPSHOT_UPDATE=1 bunx vitest run snapshot.test.ts` (lokalt, committas INTE)
-3. Kör snapshot-testen 3-5× mot den kastbara goldenen
-4. **Pass-kriterium:** noll diff mellan replay-körningar
-5. Om grönt → committa nya goldenen (inkluderar hubspots äkta content-ändring som bonus)
-6. Om rött → läs diffen, gå till D/E
+**Lokal run-to-run räcker inte.** Det ursprungliga felet var aldrig att MHTML:en replayade inkonsekvent på en maskin — den var deterministisk inom en miljö. Driften var **mellan** miljöer: macOS-replay av fontlös MHTML (macOS-fallback) vs Linux-CI-replay av samma MHTML (Linux-fallback) → andra glyf-metrics → drift. Lokal-mot-lokal bevisar bara att en maskin är konsekvent med sig själv.
 
-Committed regen via CI ligger kvar i G, men *blockerar inte* lokal verifiering av A2.
+**Korollarium efter A2:** capture-miljö är irrelevant (självbärande MHTML), bara replay-env spänner båda. Frys lokalt — ingen CI-freeze-infra behövs.
+
+### C1 — Smoke (lokal, 5 min, grindvakt)
+
+1. Frys lokalt med A2 (`bun run scripts/freeze-site.ts --name=hibob`, sen hubspot)
+2. Verifiera gate i freeze-report: `externalFontSrcCount === 0`
+3. Generera kastbar golden: `bun run snapshot:update`
+4. Kör snapshot 3-5× lokalt → noll diff mellan körningar
+
+Grön = capture är ok, replay-deterministisk lokalt. **Inte** det riktiga passet — bara skydd mot att slösa CI-cykel på trasig capture.
+
+### C2 — Cross-env (det riktiga passet)
+
+1. Pusha branch med inbäddad MHTML + lokalt genererad golden (**inte main**)
+2. CI kör `snapshot.test.ts` → Linux-replay av samma MHTML mot macOS-golden
+3. **Pass-kriterium:** noll diff
+4. Grönt = embedding neutraliserade substitutionen, tesen bevisad → merge
+5. Rött = någon font faller fortfarande tillbaka (kolla B-probens `loaded`/`families` i CI-loggen), **eller** icke-font-källa (default line-height, zoom, DPR) — flytta till D/E
+
+### Första-körnings-readouts (tre saker, en gång)
+
+Smoke-testet täckte bara hibob mot befintlig MHTML. Vid första riktiga freeze, läs av:
+
+- **B-probe families/loaded:** gaten bevisar inlining vid capture; B-proben bevisar **rendering** vid replay. Läs av exakta brand-family-namn (gissning: `Gotham SSm` för hibob, `Lato` för hubspot) i `families`-listan, hårdkoda `document.fonts.check('12px "<exact>"', '<text>')` i harness för framtida körningar.
+- **fontFetchFailures-pathen:** otestad (smoke hade 0 failures). Bekräfta att en misslyckad fetch ger `externalFontSrcCount > 0` → freeze abortar hårt. Inte tyst → fallback → silent drift. Realistisk failure-mode vid live-freeze.
+- **Hubspots topologi:** 23 deklarationer, mix av gstatic + hubspot CDN. Första gången hubspots fonter körs genom rewritern — `externalFontSrcCount === 0` bevisar host-agnostisk harvest.
+
+### Spårad metrik
+
+`mhtmlKbBeforeFontEmbed` vs `mhtmlKb` per corpus i `freeze-report.json`. Mät, optimera inte. Vi embeddar alla harvested subsets (inte bara `status === "loaded"`) — bloaten är priset för att slippa subset-matchning och lazy/dold-restrisken. Blir delta absurd är bara-laddade-subsets då värd det; tills dess är hela-harvested neutral skuld.
+
 
 ## D — Tiebreak: `domIndex` (oberoende av A2 för det den löser)
 
