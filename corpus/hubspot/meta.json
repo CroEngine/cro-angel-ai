@@ -1,12 +1,12 @@
 {
   "url": "https://www.hubspot.com/",
   "name": "hubspot",
-  "captured_at": "2026-06-05T19:33:03.700Z",
+  "captured_at": "2026-06-07T12:39:12.558Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
-  "consentSelector": null,
+  "consentSelector": "#hs-eu-confirmation-button",
   "consentInstruction": null,
-  "notes": null
+  "notes": "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort."
 }
