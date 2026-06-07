@@ -69,6 +69,15 @@ interface FreezeReport {
     mhtmlKb: number;
     screenshotKb: number;
     beforeDismissScreenshotPath: string | null;
+    // A2 — font-embedding (post-capture rewrite, see mhtml-fonts.server.ts).
+    // externalFontSrcCount is the form-agnostic success gate per plan
+    // beslutspunkt 3: must be 0 after rewrite. embeddedFontCount and
+    // fetchFailures are diagnostics; mhtmlKbBeforeFontEmbed lets us see
+    // the size delta the embedding added.
+    externalFontSrcCount: number | null;
+    embeddedFontCount: number | null;
+    mhtmlKbBeforeFontEmbed: number | null;
+    fontFetchFailures: { url: string; error: string }[] | null;
   };
   timing: {
     gotoMs: number;
