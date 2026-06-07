@@ -7,7 +7,7 @@
     "dismissCheck": "hidden",
     "matchCountBeforeClick": 1,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 1908,
+    "dismissedAfterMs": 1858,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,14 +16,18 @@
     }
   },
   "capture": {
-    "mhtmlKb": 1878,
+    "mhtmlKb": 6804,
     "screenshotKb": 546,
-    "beforeDismissScreenshotPath": "corpus/hubspot/screenshot.before-dismiss.jpg"
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 31,
+    "mhtmlKbBeforeFontEmbed": 1878,
+    "fontFetchFailures": []
   },
   "timing": {
-    "gotoMs": 7581,
-    "consentMs": 7395,
-    "scrollMs": 4546,
-    "captureMs": 1904
+    "gotoMs": 9636,
+    "consentMs": 3772,
+    "scrollMs": 4570,
+    "captureMs": 2257
   }
 }

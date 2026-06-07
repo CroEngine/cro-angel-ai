@@ -1,185 +1,41 @@
-# Snapshot-stabilitet: A2 font-embedding (post-capture rewrite), sen tiebreak/diff, buckets sist
+# C2: Hubspot-only cross-env-determinism
 
-Steg 0 körd. **A1 är död, A2 är vägen.** Diagnos uppdaterad med fyra beslutspunkter som annars hade återupptäckts mitt i implementationen.
+Mekanismen är site-oberoende. Hubspot räcker som bevis för A2; hibob läggs till senare som starkare stresstest, inte som blockerare. Consent-fixen är en separat utredning (geo-hypotes först) och hålls utanför denna körning.
 
-## Steg 0 — Resultat
+## Steg
 
-1. **`cid:`-gaten i `harness.server.ts:200-204`** — `context.route()` ser aldrig MHTML-interna parts (Chromium löser dem internt). Ingen undantagsregel behövs.
-2. **`corpus/hibob/screenshot.jpg`** renderar HiBobs äkta slab-serif brand-font ("Loved by people. Built for growth."), inte fallback. Capture-screenshoten visar att fonterna **laddade** vid capture — men `mhtmlFontParts: 0` betyder att MHTML-savet inte bär binärerna. `document.fonts.ready` kan inte fixa ett embedding-problem.
+1. **Riktig hubspot-freeze (macOS, lokalt)**
+   - Inte dry-run. Skriv faktiskt till `corpus/hubspot/page.mhtml` + `meta.json`.
+   - Verifiera gate-readouts från rapporten:
+     - `externalFontSrcCount === 0`
+     - `embeddedFontCount` (förväntat ~31)
+     - `fontFetchFailures: []`
+     - `mhtmlKbBeforeFontEmbed` vs `mhtmlKb` (förväntat ~1878 → ~6804, ≈3.6×)
 
-**Konsekvens:** A1 stryks. A2 (inline-fonter vid capture) är default. A3 (pinnad container) kvarstår som dokumenterad fallback.
+2. **Läs B-proben vid lokal replay**
+   - Kör replay mot den nya frysta MHTML:en på macOS.
+   - Fånga `families` + `loaded` från font-proben — detta är render-beviset (gaten bevisar embedding, proben bevisar att de cid:-refererade fonterna faktiskt löser och renderar).
+   - Spara readouten; använd för att hårdkoda exakta family-namn i framtida assertions.
 
-## Bevis
+3. **Generera lokal golden**
+   - Kör snapshot-pipelinen end-to-end mot frysta corpus/hubspot.
+   - Commit corpus/hubspot/page.mhtml + golden artifacts till branchen.
 
-- `corpus/hibob/page.mhtml`: 36 `@font-face`-deklarationer, **0** font Content-Type-parts. Capture-screenshot i äkta brand-font.
-- `corpus/hubspot/page.mhtml`: 23 deklarationer, **0** font-parts, 3 externa `fonts.gstatic.com`-URLs. Area-driften (`2200 → 2100`, ~5%) syns även på element utan text-ändring → hubspot drabbas av samma font-substitution som hibob.
-- Area-histogram 250-700 är kontinuerlig (260, 290, 310, 320, 360, 380, 420, 440, 530, 570, 580, 590, 630, 660, 680, 700) — **inga dalar** att placera bucket-gränser i.
-- Diff-kollision bekräftad: `jq` visar 3× `"Learn more about content agent"` i hubspots golden → `(tagName, text)` är inte unik.
+4. **Pusha branch → CI**
+   - CI kör replay på Linux mot macOS-genererad golden.
+   - Diff-resultat = A2-domen:
+     - **Noll diff** → embedding neutraliserade substitution. A2 bevisad.
+     - **Residual drift** → antingen en font som fortfarande faller tillbaka (B-proben på CI avslöjar vilken family), eller icke-font-källa (line-height-default, DPR, zoom). Diagnostiseras från B-probe-diff Linux vs macOS.
 
-## A2 — Inline-fonter vid capture (root cause-fix)
+5. **Rapportera CI-diff**
+   - Readouts att fånga: gate-counts, B-probe families/loaded (båda env), area/yBand-diff per element.
 
-### Beslutspunkt 1: Post-capture-rewrite i Node, inte in-page DOM-mutation
+## Vad som *inte* ingår
 
-In-page rewrite kan inte fungera: gstatic-CSS:n laddas cross-origin från `fonts.googleapis.com`, och `.cssRules` på en cross-origin-sheet utan CORS kastar `SecurityError` — inte åtkomst för att redigera `src`.
+- Hibob-consent-fix. Separat spår; geo-hypotes (Browserbase US-egress → ingen OneTrust för hibob) testas innan timeout/selektor rörs. Pinnad egress-region + villkorlig dismissal är troliga åtgärder, men det är en egen liten utredning som inte ska konflateras med "funkar A2".
+- Subset-optimering (only-loaded-fonts). Vi mäter `mhtmlKbBeforeFontEmbed` per corpus och optimerar bara om siffran blir absurd.
 
-Men: efter `captureSnapshot` ligger `@font-face`-CSS:n inlinad som **textpart** i MHTML:en med upplösta gstatic-URL:erna (det är därför vi ser 36 deklarationer). Där är den ren text.
+## Beslutsträd efter CI
 
-**Hybrid:**
-- **In-page (vid capture, före `captureSnapshot`):** kör `document.fonts.entries()` *efter full scroll* för att bestämma vilken subset som faktiskt används. Filtrera `status === "loaded"`. Exportera lista `[{family, weight, style, unicodeRange, src}]`.
-- **Node (post-capture):** parse MHTML-text, fetcha varje `src`-URL från subset-listan, embedda, skriv om `@font-face`-CSS:ns `src` till `url(cid:...)`.
-
-### Beslutspunkt 2: cid: > data: (QP-fällan)
-
-MHTML-textparten är nästan säkert `Content-Transfer-Encoding: quoted-printable`. En stor base64-`data:`-blob i en QP-part måste QP-re-encoda korrekt (`=` → `=3D`, soft line breaks, 76-tecken radlängd) annars korrumperas arkivet.
-
-**cid: undviker det helt:** font-binären hamnar i egen ren `base64`-part med eget `Content-Location: cid:font-XYZ@snapshot`, CSS:n får bara `url(cid:font-XYZ@snapshot)`, och Steg 0 bekräftade att Chromium löser `cid:` internt vid replay utan att gå via `context.route()`.
-
-Välj `data:` bara om vi vill bygga en korrekt QP-encoder — inte värt det.
-
-### Beslutspunkt 3: Form-agnostisk success-metrik
-
-`mhtmlFontParts > 0` funkar bara för `cid:` (data:-varianten har 0 parts men ÄR inbäddade). Använd istället:
-
-```ts
-capture.externalFontSrcCount: number  // antal @font-face src som fortfarande pekar på http(s):// efter rewrite
-```
-
-**Hård assertion:** `externalFontSrcCount === 0` efter A2. Det är invarianten som faktiskt ska vara sann oavsett embedding-form.
-
-Behåll också `mhtmlFontParts` som diagnostik (per cid:-implementation > 0), men den är inte success-gaten.
-
-### Beslutspunkt 4: Fetcha woff2-filerna, inte css-endpointen
-
-Hämta `fonts.gstatic.com/s/...woff2`-URL:erna **direkt**. De är content-hashade → immutabla och byte-stabila → reproducerbar capture, UA-oberoende.
-
-Rör **inte** `fonts.googleapis.com/css2?...`-endpointen; den UA-sniffar och returnerar olika `src`-format per browser. Vi har redan den upplösta gstatic-URL:en i MHTML-textparten — använd den.
-
-### Restrisk: lazy/dolda subsets
-
-`status === "loaded"`-filtret missar text som är lazy renderad eller dold (hidden tabs, below-the-fold collapsed sections) och aldrig triggade unicode-range-subset-fetchen under capture-scrollen. Den subseten inlineas inte → faller tillbaka vid replay → lokal drift just där.
-
-Troligen försumbart efter full scroll, men dokumenterat. Om E (residual) visar drift koncentrerad till specifika sektioner — kolla detta först.
-
-## A3 — Pinnad replay-container (dokumenterad fallback)
-
-Pinna Chromium + OS-font-paket via Docker image i CI **och** lokal replay. Garanterar samma fallback-font överallt. Lägre audit-fidelity (fontmetrics styr CRO-layouten), används bara om A2 visar sig icke-trivialt.
-
-## B — Font-verifiering vid replay (defense in depth)
-
-`src/lib/tests/snapshot/harness.server.ts`, efter `waitForStableContext`:
-
-```ts
-await page.evaluate(() => document.fonts.ready.then(() => true)).catch(() => {});
-
-const fontStatus = await page.evaluate(() => {
-  // Passa representativt text-arg + exakt deklarerat family-namn,
-  // annars triggas inte nödvändigtvis den unicode-range-subset som
-  // faktiskt används, och check() utan text svarar på fel subset.
-  // Hårdkoda 1-2 kanoniska familjer per corpus efter att vi sett
-  // CSS:n vid första A2-körningen.
-  const checks = {
-    // hibob (slab brand-font), hubspot (Lato)
-    "hibob-brand": document.fonts.check('12px "Recoleta"', "Loved by people"),
-    "hubspot-lato": document.fonts.check('12px "Lato"', "Learn more"),
-  };
-  return {
-    size: document.fonts.size,
-    loaded: Array.from(document.fonts).filter((f) => f.status === "loaded").length,
-    families: Array.from(new Set(Array.from(document.fonts).map((f) => f.family))),
-    checks,
-  };
-});
-console.log(`[replay] fonts:`, fontStatus);
-```
-
-Tolkning:
-- `size === 0` → A2 misslyckades, fonterna är inte i MHTML
-- `size > 0, loaded === 0` → embedding ok, replay-rendering fallerar (osannolikt efter Steg 0)
-- `checks[*] === false` med `loaded > 0` → unicode-range-subset matchar inte, lazy/dold-restrisken
-
-## C — Verifiering: cross-env-determinism (inte run-to-run, inte mot gammal golden)
-
-Gammal golden = `normalize(replay(gammal_mhtml))` med fallback-layout. A2 producerar `normalize(replay(ny_mhtml))` med riktig layout. De **ska** skilja sig på area/yBand — det är inte fel, det är fixen.
-
-**Lokal run-to-run räcker inte.** Det ursprungliga felet var aldrig att MHTML:en replayade inkonsekvent på en maskin — den var deterministisk inom en miljö. Driften var **mellan** miljöer: macOS-replay av fontlös MHTML (macOS-fallback) vs Linux-CI-replay av samma MHTML (Linux-fallback) → andra glyf-metrics → drift. Lokal-mot-lokal bevisar bara att en maskin är konsekvent med sig själv.
-
-**Korollarium efter A2:** capture-miljö är irrelevant (självbärande MHTML), bara replay-env spänner båda. Frys lokalt — ingen CI-freeze-infra behövs.
-
-### C1 — Smoke (lokal, 5 min, grindvakt)
-
-1. Frys lokalt med A2 (`bun run scripts/freeze-site.ts --name=hibob`, sen hubspot)
-2. Verifiera gate i freeze-report: `externalFontSrcCount === 0`
-3. Generera kastbar golden: `bun run snapshot:update`
-4. Kör snapshot 3-5× lokalt → noll diff mellan körningar
-
-Grön = capture är ok, replay-deterministisk lokalt. **Inte** det riktiga passet — bara skydd mot att slösa CI-cykel på trasig capture.
-
-### C2 — Cross-env (det riktiga passet)
-
-1. Pusha branch med inbäddad MHTML + lokalt genererad golden (**inte main**)
-2. CI kör `snapshot.test.ts` → Linux-replay av samma MHTML mot macOS-golden
-3. **Pass-kriterium:** noll diff
-4. Grönt = embedding neutraliserade substitutionen, tesen bevisad → merge
-5. Rött = någon font faller fortfarande tillbaka (kolla B-probens `loaded`/`families` i CI-loggen), **eller** icke-font-källa (default line-height, zoom, DPR) — flytta till D/E
-
-### Första-körnings-readouts (tre saker, en gång)
-
-Smoke-testet täckte bara hibob mot befintlig MHTML. Vid första riktiga freeze, läs av:
-
-- **B-probe families/loaded:** gaten bevisar inlining vid capture; B-proben bevisar **rendering** vid replay. Läs av exakta brand-family-namn (gissning: `Gotham SSm` för hibob, `Lato` för hubspot) i `families`-listan, hårdkoda `document.fonts.check('12px "<exact>"', '<text>')` i harness för framtida körningar.
-- **fontFetchFailures-pathen:** otestad (smoke hade 0 failures). Bekräfta att en misslyckad fetch ger `externalFontSrcCount > 0` → freeze abortar hårt. Inte tyst → fallback → silent drift. Realistisk failure-mode vid live-freeze.
-- **Hubspots topologi:** 23 deklarationer, mix av gstatic + hubspot CDN. Första gången hubspots fonter körs genom rewritern — `externalFontSrcCount === 0` bevisar host-agnostisk harvest.
-
-### Spårad metrik
-
-`mhtmlKbBeforeFontEmbed` vs `mhtmlKb` per corpus i `freeze-report.json`. Mät, optimera inte. Vi embeddar alla harvested subsets (inte bara `status === "loaded"`) — bloaten är priset för att slippa subset-matchning och lazy/dold-restrisken. Blir delta absurd är bara-laddade-subsets då värd det; tills dess är hela-harvested neutral skuld.
-
-
-## D — Tiebreak: `domIndex` (oberoende av A2 för det den löser)
-
-`src/lib/tests/scripts/collect.ts`: lägg till `domIndex: number` per element via DOM-walk-counter.
-
-Sorteringsnyckel i `normalize.ts elementKey`: `(section, category, intent, yBand, text, domIndex)`. Total-ordning, garanterar deterministisk sortering vid identiska primärnycklar (footer-länkar var ursprungsfallet).
-
-**Notera:** `yBand_q`-stabilitet beror på A2. Om residual-yBand-jitter kvarstår efter A2 flippar element över bandgränser → primärnyckeln ändras → `domIndex`-tiebreak räddar inte. D fungerar fullt ut först när A2 är grön.
-
-## E — Buckets/tolerans: bara om residual finns efter A2+D
-
-Mät residual-drift efter A2+D (run-to-run i C). Tre delbeslut:
-
-- **Area:** bucket-gränser sätts empiriskt från residual-histogrammet, **inte** från nuvarande golden-histogrammet (fallback-renderad, ej representativt).
-- **yBand:** demotera från hård assert. `section` + `aboveFold` bär redan vertikal semantik. Antingen ±1-band-tolerans eller demotera helt till receipt.
-- **Score:** bucketisering **i normalize, inte i collectorn**. Bucket-i-collector ändrar produktbeteende (CTA-rankning, UI) — tyst produktbeslut. Test-only stabilisering bor i test-lagret.
-
-## F — Key-baserad diff (läsbarhet)
-
-`normalize.ts diffNormalized`: matcha på `(tagName, text, href, domIndex)` istället för array-index. `domIndex` **obligatorisk** sista nyckel — bevisat av `jq`-kollen (3× duplicates i hubspot).
-
-Algoritm: bygg `Map<key, element>` per sida, iterera union av nycklar, emit `[added]`/`[removed]`/`[changed]`-rader. En insertion → 1 diff-rad, inte kaskad.
-
-## G — `update-goldens.yml` workflow_dispatch
-
-Sist. När A2-F är gröna är CI-regen mekanisk: `SNAPSHOT_UPDATE=1`, committa `corpus/*/golden.json` tillbaka via `github-actions[bot]`.
-
-## Ordning
-
-1. **A2** (post-capture Node-rewrite, cid:-embedding, `externalFontSrcCount === 0` som gate) — för **både hibob och hubspot** (hubspots area-drift bevisar att även den fångar fallback-layout)
-2. **B** (replay-probe med exakt family + text-arg) — implementeras tillsammans med A2
-3. **C** lokal verifiering: run-to-run-determinism, 3-5× mot kastbar golden
-4. **D** + **F** (tiebreak + key-diff, kan göras parallellt med A2, oberoende fixar)
-5. **E** bara om residual kvarstår
-6. **G** sist
-
-## Vad vi INTE rör
-
-- `corpus/sites.ts` — orört
-- 8 nya sites — separat runda när A2-F är gröna
-- Score-beräkning i `collect.ts`/`visualHierarchy.ts` — produktkod, inte test-stabilitetsmål
-- `cid:`-gaten i `harness.server.ts` — Steg 0 bekräftade att den inte rör MHTML-interna parts
-
-## Vad som ändrades från förra plan-versionen
-
-- **A1 struken** (Steg 0 bevisade att fonter ladade vid capture, det är embedding som saknas)
-- **A2 omspecad:** hybrid in-page/Node, cid: framför data: (QP-fällan), `externalFontSrcCount === 0` som form-agnostisk gate, fetcha woff2-filer direkt (inte css-endpoint)
-- **B uppdaterad:** `document.fonts.check()` tar text-arg + exakt family-namn för korrekt unicode-range-träff
-- **Restrisk dokumenterad:** lazy/dolda subsets missas av `status === "loaded"`-filtret
+- Noll diff på hubspot → A2 bevisad generellt. Gå vidare till hibob-consent-utredning (geo först), sen freeza hibob som täcknings- + stresstest.
+- Residual drift → diagnostisera via B-probe-diff innan vidare arbete. Hubspot är då den site som visar exakt vad som återstår, vilket är hela poängen med att köra den först.
