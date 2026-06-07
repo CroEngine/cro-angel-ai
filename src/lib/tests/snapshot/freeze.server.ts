@@ -295,8 +295,28 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     const snap = await page.sendCDP<{ data: string }>("Page.captureSnapshot", {
       format: "mhtml",
     });
-    mhtmlBytes = Buffer.byteLength(snap.data, "utf8");
+    const rawMhtmlBytes = Buffer.byteLength(snap.data, "utf8");
+    report.capture.mhtmlKbBeforeFontEmbed = Math.round(rawMhtmlBytes / 1024);
+
+    // A2 — embed external font binaries as cid: parts so replay doesn't fall
+    // back to OS fonts. The hard-assert below (externalFontSrcCount === 0) is
+    // the form-agnostic success gate per plan beslutspunkt 3.
+    const embedded = await embedMhtmlFonts(snap.data);
+    const finalMhtml = embedded.mhtml;
+    mhtmlBytes = Buffer.byteLength(finalMhtml, "utf8");
     report.capture.mhtmlKb = Math.round(mhtmlBytes / 1024);
+    report.capture.externalFontSrcCount = embedded.externalFontSrcCount;
+    report.capture.embeddedFontCount = embedded.embeddedFontCount;
+    report.capture.fontFetchFailures = embedded.fetchFailures;
+
+    if (embedded.externalFontSrcCount > 0) {
+      throw new Error(
+        `[freeze] A2 gate: externalFontSrcCount=${embedded.externalFontSrcCount} after rewrite ` +
+          `(embedded=${embedded.embeddedFontCount}, failures=${embedded.fetchFailures.length}). ` +
+          `Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. ` +
+          `Inspect freeze-report.json fontFetchFailures.`,
+      );
+    }
 
     const shot = await page.screenshot({ type: "jpeg", quality: 70, fullPage: true });
     screenshotBytes = shot.byteLength;
@@ -304,7 +324,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     report.timing.captureMs = Date.now() - tCapture;
 
     if (!opts.dryRun) {
-      writeFileSync(join(dir, "page.mhtml"), snap.data, "utf8");
+      writeFileSync(join(dir, "page.mhtml"), finalMhtml, "utf8");
       writeFileSync(join(dir, "screenshot.jpg"), Buffer.from(shot));
       const meta = {
         url: opts.url,
