@@ -3,7 +3,9 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
+
+const CORPUS_ROOT = resolve(process.cwd(), "corpus");
 
 const ALLOWED_FILES = new Set([
   "golden.json",
@@ -37,7 +39,10 @@ export const Route = createFileRoute("/api/public/corpus/$")({
           return new Response("Not found", { status: 404 });
         }
 
-        const path = join("corpus", name, file);
+        const path = resolve(CORPUS_ROOT, name, file);
+        if (!path.startsWith(CORPUS_ROOT + sep)) {
+          return new Response("Not found", { status: 404 });
+        }
         if (!existsSync(path)) {
           return new Response("Not found", { status: 404 });
         }
