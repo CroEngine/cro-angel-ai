@@ -1,7 +1,7 @@
 {
   "collect": {
     "target": "clickables",
-    "count": 139,
+    "count": 138,
     "summary": {
       "topVisualWeight": []
     },
@@ -18,7 +18,7 @@
         "yBand": 2000,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Learn more about Sales Hub software",
@@ -32,7 +32,7 @@
         "yBand": 2000,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Learn more about Content Hub software",
@@ -43,10 +43,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 2300,
+        "yBand": 2400,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Learn more about Service Hub software",
@@ -57,10 +57,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 2300,
+        "yBand": 2400,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Learn more about Commerce Hub software",
@@ -71,10 +71,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 2700,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Learn more about Data Hub software",
@@ -85,10 +85,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 2700,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Learn more about Breeze, HubSpot's AI tools",
@@ -99,10 +99,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 2900,
+        "yBand": 3000,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Learn more about HubSpot's Smart CRM",
@@ -113,10 +113,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 2900,
+        "yBand": 3000,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Learn more about AEO",
@@ -130,7 +130,7 @@
         "yBand": 3200,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Learn more about the HubSpot Small Business Bundle of tools",
@@ -144,7 +144,7 @@
         "yBand": 3200,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Learn more about content agent",
@@ -155,10 +155,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 4100,
-        "score": 15,
+        "yBand": 4000,
+        "score": 20,
         "bgContrast": 1,
-        "area": 4300
+        "area": 4000
       },
       {
         "text": "Learn more about content agent",
@@ -169,10 +169,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 4100,
-        "score": 15,
+        "yBand": 4000,
+        "score": 20,
         "bgContrast": 1,
-        "area": 4300
+        "area": 4000
       },
       {
         "text": "Learn more about content agent",
@@ -183,10 +183,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 4100,
-        "score": 15,
+        "yBand": 4000,
+        "score": 20,
         "bgContrast": 1,
-        "area": 4300
+        "area": 4000
       },
       {
         "text": "The Starter edition of each product, at one low price.",
@@ -197,10 +197,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 3100,
+        "yBand": 3000,
         "score": 30,
         "bgContrast": 1,
-        "area": 12000
+        "area": 10000
       },
       {
         "text": "Agents & assistants everywhere you need them.",
@@ -214,7 +214,7 @@
         "yBand": 2800,
         "score": 30,
         "bgContrast": 1,
-        "area": 12000
+        "area": 10000
       },
       {
         "text": "®",
@@ -226,7 +226,7 @@
         "href": null,
         "disabled": false,
         "yBand": 1800,
-        "score": 5,
+        "score": 10,
         "bgContrast": 1,
         "area": 200
       },
@@ -240,7 +240,7 @@
         "href": null,
         "disabled": false,
         "yBand": 1800,
-        "score": 5,
+        "score": 10,
         "bgContrast": 1,
         "area": 200
       },
@@ -253,24 +253,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 1900,
-        "score": 15,
+        "yBand": 1800,
+        "score": 20,
         "bgContrast": 1,
-        "area": 6600
-      },
-      {
-        "text": "Automate prospecting, manage pipeline, and accelerate revenue growth.",
-        "tagName": "li",
-        "category": "other",
-        "intent": "unknown",
-        "section": "cards",
-        "aboveFold": false,
-        "href": null,
-        "disabled": false,
-        "yBand": 1900,
-        "score": 40,
-        "bgContrast": 1,
-        "area": 18000
+        "area": 7000
       },
       {
         "text": "Generate quality leads and close deals, faster.",
@@ -281,10 +267,24 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 1900,
+        "yBand": 1800,
         "score": 30,
         "bgContrast": 1,
-        "area": 12000
+        "area": 10000
+      },
+      {
+        "text": "Automate prospecting, manage pipeline, and accelerate revenue growth.",
+        "tagName": "li",
+        "category": "other",
+        "intent": "unknown",
+        "section": "cards",
+        "aboveFold": false,
+        "href": null,
+        "disabled": false,
+        "yBand": 2000,
+        "score": 40,
+        "bgContrast": 1,
+        "area": 20000
       },
       {
         "text": "Run campaigns, personalize content, and track it all.",
@@ -295,10 +295,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 1900,
+        "yBand": 2000,
         "score": 30,
         "bgContrast": 1,
-        "area": 12000
+        "area": 10000
       },
       {
         "text": "®",
@@ -309,24 +309,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 2100,
-        "score": 5,
+        "yBand": 2200,
+        "score": 10,
         "bgContrast": 1,
         "area": 200
-      },
-      {
-        "text": "™",
-        "tagName": "span",
-        "category": "other",
-        "intent": "unknown",
-        "section": "cards",
-        "aboveFold": false,
-        "href": null,
-        "disabled": false,
-        "yBand": 2100,
-        "score": 5,
-        "bgContrast": 1,
-        "area": 290
       },
       {
         "text": "Build pages, publish content across channels, and stay on brand.",
@@ -340,7 +326,7 @@
         "yBand": 2200,
         "score": 30,
         "bgContrast": 1,
-        "area": 12000
+        "area": 10000
       },
       {
         "text": "Create content that clicks with your audience.",
@@ -354,7 +340,7 @@
         "yBand": 2200,
         "score": 30,
         "bgContrast": 1,
-        "area": 12000
+        "area": 10000
       },
       {
         "text": "Drive retention with actionable insights, customer health scores, and real-time usage data.",
@@ -368,7 +354,7 @@
         "yBand": 2200,
         "score": 40,
         "bgContrast": 1,
-        "area": 18000
+        "area": 20000
       },
       {
         "text": "Streamline and scale support to serve customers faster.",
@@ -382,7 +368,21 @@
         "yBand": 2200,
         "score": 30,
         "bgContrast": 1,
-        "area": 12000
+        "area": 10000
+      },
+      {
+        "text": "™",
+        "tagName": "span",
+        "category": "other",
+        "intent": "unknown",
+        "section": "cards",
+        "aboveFold": false,
+        "href": null,
+        "disabled": false,
+        "yBand": 2200,
+        "score": 10,
+        "bgContrast": 1,
+        "area": 300
       },
       {
         "text": "™",
@@ -394,9 +394,9 @@
         "href": null,
         "disabled": false,
         "yBand": 2400,
-        "score": 5,
+        "score": 10,
         "bgContrast": 1,
-        "area": 290
+        "area": 300
       },
       {
         "text": "™",
@@ -408,37 +408,9 @@
         "href": null,
         "disabled": false,
         "yBand": 2400,
-        "score": 5,
+        "score": 10,
         "bgContrast": 1,
-        "area": 290
-      },
-      {
-        "text": "Make it easy for customers to pay you.",
-        "tagName": "li",
-        "category": "other",
-        "intent": "unknown",
-        "section": "cards",
-        "aboveFold": false,
-        "href": null,
-        "disabled": false,
-        "yBand": 2500,
-        "score": 30,
-        "bgContrast": 1,
-        "area": 12000
-      },
-      {
-        "text": "Turn scattered data into unified intelligence.",
-        "tagName": "li",
-        "category": "other",
-        "intent": "unknown",
-        "section": "cards",
-        "aboveFold": false,
-        "href": null,
-        "disabled": false,
-        "yBand": 2500,
-        "score": 30,
-        "bgContrast": 1,
-        "area": 12000
+        "area": 300
       },
       {
         "text": "Combine, clean, and activate your customer data across every team and tool.",
@@ -452,7 +424,21 @@
         "yBand": 2600,
         "score": 40,
         "bgContrast": 1,
-        "area": 18000
+        "area": 20000
+      },
+      {
+        "text": "Make it easy for customers to pay you.",
+        "tagName": "li",
+        "category": "other",
+        "intent": "unknown",
+        "section": "cards",
+        "aboveFold": false,
+        "href": null,
+        "disabled": false,
+        "yBand": 2600,
+        "score": 30,
+        "bgContrast": 1,
+        "area": 10000
       },
       {
         "text": "Send quotes, collect payments, and manage subscriptions.",
@@ -466,7 +452,21 @@
         "yBand": 2600,
         "score": 30,
         "bgContrast": 1,
-        "area": 12000
+        "area": 10000
+      },
+      {
+        "text": "Turn scattered data into unified intelligence.",
+        "tagName": "li",
+        "category": "other",
+        "intent": "unknown",
+        "section": "cards",
+        "aboveFold": false,
+        "href": null,
+        "disabled": false,
+        "yBand": 2600,
+        "score": 30,
+        "bgContrast": 1,
+        "area": 10000
       },
       {
         "text": "AI that works with you, and for you.",
@@ -478,9 +478,9 @@
         "href": null,
         "disabled": false,
         "yBand": 2800,
-        "score": 15,
+        "score": 20,
         "bgContrast": 1,
-        "area": 6600
+        "area": 7000
       },
       {
         "text": "All your customer data in one place.",
@@ -492,9 +492,9 @@
         "href": null,
         "disabled": false,
         "yBand": 2800,
-        "score": 15,
+        "score": 20,
         "bgContrast": 1,
-        "area": 6600
+        "area": 7000
       },
       {
         "text": "Keep your data clean, connected, and actionable.",
@@ -508,7 +508,7 @@
         "yBand": 2800,
         "score": 30,
         "bgContrast": 1,
-        "area": 12000
+        "area": 10000
       },
       {
         "text": "™",
@@ -520,9 +520,9 @@
         "href": null,
         "disabled": false,
         "yBand": 2800,
-        "score": 5,
+        "score": 10,
         "bgContrast": 1,
-        "area": 290
+        "area": 300
       },
       {
         "text": "™",
@@ -534,9 +534,9 @@
         "href": null,
         "disabled": false,
         "yBand": 2800,
-        "score": 5,
+        "score": 10,
         "bgContrast": 1,
-        "area": 290
+        "area": 300
       },
       {
         "text": "AEO (Beta)",
@@ -548,9 +548,23 @@
         "href": null,
         "disabled": false,
         "yBand": 3000,
-        "score": 15,
+        "score": 10,
         "bgContrast": 1,
-        "area": 2600
+        "area": 3000
+      },
+      {
+        "text": "See where your brand shows up in AI results.",
+        "tagName": "li",
+        "category": "other",
+        "intent": "unknown",
+        "section": "cards",
+        "aboveFold": false,
+        "href": null,
+        "disabled": false,
+        "yBand": 3000,
+        "score": 30,
+        "bgContrast": 1,
+        "area": 10000
       },
       {
         "text": "Small Business Bundle",
@@ -564,7 +578,7 @@
         "yBand": 3000,
         "score": 20,
         "bgContrast": 1,
-        "area": 5300
+        "area": 5000
       },
       {
         "text": "Get recommendations to improve your visibility.",
@@ -575,24 +589,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 3100,
+        "yBand": 3200,
         "score": 30,
         "bgContrast": 1,
-        "area": 12000
-      },
-      {
-        "text": "See where your brand shows up in AI results.",
-        "tagName": "li",
-        "category": "other",
-        "intent": "unknown",
-        "section": "cards",
-        "aboveFold": false,
-        "href": null,
-        "disabled": false,
-        "yBand": 3100,
-        "score": 30,
-        "bgContrast": 1,
-        "area": 12000
+        "area": 10000
       },
       {
         "text": "Enterprise",
@@ -603,10 +603,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 4900,
+        "yBand": 5000,
         "score": 20,
         "bgContrast": 1,
-        "area": 4900
+        "area": 5000
       },
       {
         "text": "Mid-Sized Business",
@@ -617,10 +617,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 4900,
-        "score": 25,
+        "yBand": 5000,
+        "score": 20,
         "bgContrast": 1,
-        "area": 7800
+        "area": 8000
       },
       {
         "text": "Small Business",
@@ -631,10 +631,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 4900,
+        "yBand": 5000,
         "score": 20,
         "bgContrast": 1,
-        "area": 6400
+        "area": 6000
       },
       {
         "text": "Get a demo of HubSpot's software",
@@ -647,8 +647,8 @@
         "disabled": false,
         "yBand": 2200,
         "score": 30,
-        "bgContrast": 3.5,
-        "area": 7800
+        "bgContrast": 3,
+        "area": 8000
       },
       {
         "text": "Get started free with HubSpot's free tools",
@@ -662,7 +662,7 @@
         "yBand": 2200,
         "score": 30,
         "bgContrast": 1,
-        "area": 9700
+        "area": 10000
       },
       {
         "text": "Get a demo of HubSpot's premium software",
@@ -675,8 +675,8 @@
         "disabled": false,
         "yBand": 6000,
         "score": 30,
-        "bgContrast": 3.5,
-        "area": 7800
+        "bgContrast": 3,
+        "area": 8000
       },
       {
         "text": "Get started free with HubSpot's free tools",
@@ -689,8 +689,8 @@
         "disabled": false,
         "yBand": 6000,
         "score": 60,
-        "bgContrast": 20.5,
-        "area": 9700
+        "bgContrast": 20,
+        "area": 10000
       },
       {
         "text": "Explore Breeze Agents built-in AI that do work for you",
@@ -702,9 +702,9 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 3400,
-        "score": 35,
+        "score": 40,
         "bgContrast": 1,
-        "area": 13000
+        "area": 10000
       },
       {
         "text": "Next",
@@ -717,8 +717,8 @@
         "disabled": false,
         "yBand": 1600,
         "score": 40,
-        "bgContrast": 20.5,
-        "area": 2300
+        "bgContrast": 20,
+        "area": 2000
       },
       {
         "text": "Previous",
@@ -731,8 +731,8 @@
         "disabled": true,
         "yBand": 1600,
         "score": 40,
-        "bgContrast": 20.5,
-        "area": 2300
+        "bgContrast": 20,
+        "area": 2000
       },
       {
         "text": "Next slide",
@@ -743,10 +743,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 3900,
+        "yBand": 3800,
         "score": 40,
-        "bgContrast": 20.5,
-        "area": 2300
+        "bgContrast": 20,
+        "area": 2000
       },
       {
         "text": "Previous slide",
@@ -757,10 +757,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 3900,
+        "yBand": 3800,
         "score": 40,
-        "bgContrast": 20.5,
-        "area": 2300
+        "bgContrast": 20,
+        "area": 2000
       },
       {
         "text": "Pause Carousel",
@@ -772,8 +772,8 @@
         "href": null,
         "disabled": false,
         "yBand": 4200,
-        "score": 35,
-        "bgContrast": 20.5,
+        "score": 40,
+        "bgContrast": 20,
         "area": 1000
       },
       {
@@ -785,10 +785,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 4700,
+        "yBand": 4800,
         "score": 30,
         "bgContrast": 1,
-        "area": 11000
+        "area": 10000
       },
       {
         "text": "Read full case study about Unipart",
@@ -799,10 +799,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 5300,
-        "score": 15,
+        "yBand": 5200,
+        "score": 20,
         "bgContrast": 1,
-        "area": 4600
+        "area": 5000
       },
       {
         "text": "See all app integrations",
@@ -813,7 +813,7 @@
         "aboveFold": false,
         "href": "ecosystem.hubspot.com",
         "disabled": false,
-        "yBand": 4500,
+        "yBand": 4600,
         "score": 20,
         "bgContrast": 1,
         "area": 5000
@@ -827,10 +827,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 6500,
+        "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6500
+        "area": 7000
       },
       {
         "text": "About Us",
@@ -858,7 +858,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1500
+        "area": 1000
       },
       {
         "text": "Instagram",
@@ -872,7 +872,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1500
+        "area": 1000
       },
       {
         "text": "Linkedin",
@@ -886,7 +886,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1500
+        "area": 1000
       },
       {
         "text": "Reddit",
@@ -900,7 +900,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1500
+        "area": 1000
       },
       {
         "text": "Tiktok",
@@ -914,7 +914,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1500
+        "area": 1000
       },
       {
         "text": "Twitter",
@@ -928,7 +928,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1500
+        "area": 1000
       },
       {
         "text": "Youtube",
@@ -942,7 +942,21 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1500
+        "area": 1000
+      },
+      {
+        "text": "AEO Grader",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6200,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
       },
       {
         "text": "AI Prospecting Agent",
@@ -956,7 +970,7 @@
         "yBand": 6200,
         "score": 20,
         "bgContrast": 1,
-        "area": 6300
+        "area": 6000
       },
       {
         "text": "All Products and Features",
@@ -970,7 +984,21 @@
         "yBand": 6200,
         "score": 20,
         "bgContrast": 1,
-        "area": 6300
+        "area": 6000
+      },
+      {
+        "text": "Careers",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6200,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
       },
       {
         "text": "Customer Support",
@@ -984,7 +1012,49 @@
         "yBand": 6200,
         "score": 20,
         "bgContrast": 1,
-        "area": 6500
+        "area": 7000
+      },
+      {
+        "text": "Free Website Builder",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6200,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
+      },
+      {
+        "text": "HubSpot AEO",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6200,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
+      },
+      {
+        "text": "Join a Local User Group",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6200,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 7000
       },
       {
         "text": "See All Free Business Tools",
@@ -1001,20 +1071,6 @@
         "area": 6000
       },
       {
-        "text": "AEO Grader",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6000
-      },
-      {
         "text": "AEO Sensor",
         "tagName": "a",
         "category": "nav_item",
@@ -1023,13 +1079,13 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 6300,
+        "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
         "area": 6000
       },
       {
-        "text": "Board of Directors",
+        "text": "Affiliate Program",
         "tagName": "a",
         "category": "nav_item",
         "intent": "unknown",
@@ -1037,150 +1093,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 6300,
+        "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6000
-      },
-      {
-        "text": "Breeze AI Tools",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
-      },
-      {
-        "text": "Careers",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6000
-      },
-      {
-        "text": "Free Meeting Scheduler App",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
-      },
-      {
-        "text": "Free Online Form Builder",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
-      },
-      {
-        "text": "Free Website Builder",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
-      },
-      {
-        "text": "HubSpot AEO",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
-      },
-      {
-        "text": "Join a Local User Group",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6500
-      },
-      {
-        "text": "Landing Pages",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
-      },
-      {
-        "text": "Make My Persona",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6000
-      },
-      {
-        "text": "Management Team",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6300,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6000
+        "area": 7000
       },
       {
         "text": "AI Content Writer",
@@ -1194,7 +1110,7 @@
         "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6300
+        "area": 6000
       },
       {
         "text": "AI Website Generator",
@@ -1208,7 +1124,7 @@
         "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6300
+        "area": 6000
       },
       {
         "text": "All Partner Programs",
@@ -1222,7 +1138,7 @@
         "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6500
+        "area": 7000
       },
       {
         "text": "Blog",
@@ -1232,6 +1148,48 @@
         "section": "footer",
         "aboveFold": false,
         "href": "blog.hubspot.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
+      },
+      {
+        "text": "Board of Directors",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
+      },
+      {
+        "text": "Breeze AI Tools",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
+      },
+      {
+        "text": "Email Marketing Software",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
         "score": 20,
@@ -1264,7 +1222,7 @@
         "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6300
+        "area": 6000
       },
       {
         "text": "Free Business Templates",
@@ -1292,7 +1250,21 @@
         "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6300
+        "area": 6000
+      },
+      {
+        "text": "Free Landing Page Builder",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
       },
       {
         "text": "Free Live Chat Software",
@@ -1306,7 +1278,35 @@
         "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6300
+        "area": 6000
+      },
+      {
+        "text": "Free Meeting Scheduler App",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
+      },
+      {
+        "text": "Free Online Form Builder",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
       },
       {
         "text": "Investor Relations",
@@ -1316,6 +1316,48 @@
         "section": "footer",
         "aboveFold": false,
         "href": "ir.hubspot.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
+      },
+      {
+        "text": "Landing Pages",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
+      },
+      {
+        "text": "Make My Persona",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
+      },
+      {
+        "text": "Management Team",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
         "score": 20,
@@ -1334,7 +1376,7 @@
         "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6300
+        "area": 6000
       },
       {
         "text": "Software Comparisons Library",
@@ -1362,7 +1404,7 @@
         "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6500
+        "area": 7000
       },
       {
         "text": "Sustainability",
@@ -1390,77 +1432,7 @@
         "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6500
-      },
-      {
-        "text": "Affiliate Program",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6500,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6500
-      },
-      {
-        "text": "Email Marketing Software",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6500,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
-      },
-      {
-        "text": "Free Landing Page Builder",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6500,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
-      },
-      {
-        "text": "Free Web Hosting",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6500,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
-      },
-      {
-        "text": "Lead Management Software",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6500,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
+        "area": 7000
       },
       {
         "text": "Website Templates",
@@ -1471,7 +1443,21 @@
         "aboveFold": false,
         "href": "ecosystem.hubspot.com",
         "disabled": false,
-        "yBand": 6500,
+        "yBand": 6400,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
+      },
+      {
+        "text": "Free Web Hosting",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6600,
         "score": 20,
         "bgContrast": 1,
         "area": 6000
@@ -1485,10 +1471,24 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 6700,
-        "score": 15,
+        "yBand": 6600,
+        "score": 10,
         "bgContrast": 1,
         "area": 3000
+      },
+      {
+        "text": "Lead Management Software",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6600,
+        "score": 20,
+        "bgContrast": 1,
+        "area": 6000
       },
       {
         "text": "Legal Center",
@@ -1499,10 +1499,10 @@
         "aboveFold": false,
         "href": "legal.hubspot.com",
         "disabled": false,
-        "yBand": 6700,
-        "score": 15,
+        "yBand": 6800,
+        "score": 20,
         "bgContrast": 1,
-        "area": 4800
+        "area": 5000
       },
       {
         "text": "Privacy Policy",
@@ -1513,10 +1513,10 @@
         "aboveFold": false,
         "href": "legal.hubspot.com",
         "disabled": false,
-        "yBand": 6700,
-        "score": 15,
+        "yBand": 6800,
+        "score": 20,
         "bgContrast": 1,
-        "area": 5100
+        "area": 5000
       },
       {
         "text": "Security",
@@ -1527,10 +1527,10 @@
         "aboveFold": false,
         "href": "legal.hubspot.com",
         "disabled": false,
-        "yBand": 6700,
-        "score": 15,
+        "yBand": 6800,
+        "score": 10,
         "bgContrast": 1,
-        "area": 3500
+        "area": 4000
       },
       {
         "text": "Website Accessibility",
@@ -1541,10 +1541,10 @@
         "aboveFold": false,
         "href": "legal.hubspot.com",
         "disabled": false,
-        "yBand": 6700,
+        "yBand": 6800,
         "score": 20,
         "bgContrast": 1,
-        "area": 7100
+        "area": 7000
       },
       {
         "text": "Your Privacy Choices",
@@ -1555,10 +1555,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 6700,
-        "score": 25,
+        "yBand": 6800,
+        "score": 30,
         "bgContrast": 1,
-        "area": 8400
+        "area": 8000
       },
       {
         "text": "Contact Us",
@@ -1569,24 +1569,10 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 6500,
+        "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
         "area": 6000
-      },
-      {
-        "text": "Manage Cookies",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "utility",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6700,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 5800
       },
       {
         "text": "Company",
@@ -1600,7 +1586,7 @@
         "yBand": 6200,
         "score": 20,
         "bgContrast": 1,
-        "area": 6400
+        "area": 6000
       },
       {
         "text": "Customers",
@@ -1614,7 +1600,7 @@
         "yBand": 6200,
         "score": 20,
         "bgContrast": 1,
-        "area": 6400
+        "area": 6000
       },
       {
         "text": "Free Tools",
@@ -1628,7 +1614,7 @@
         "yBand": 6200,
         "score": 20,
         "bgContrast": 1,
-        "area": 6400
+        "area": 6000
       },
       {
         "text": "Popular Features",
@@ -1640,9 +1626,9 @@
         "href": null,
         "disabled": true,
         "yBand": 6200,
-        "score": 35,
+        "score": 40,
         "bgContrast": 1,
-        "area": 14000
+        "area": 10000
       },
       {
         "text": "Partners",
@@ -1653,10 +1639,10 @@
         "aboveFold": false,
         "href": null,
         "disabled": true,
-        "yBand": 6300,
+        "yBand": 6400,
         "score": 20,
         "bgContrast": 1,
-        "area": 6400
+        "area": 6000
       },
       {
         "text": "Skip to content",
@@ -1670,7 +1656,7 @@
         "yBand": 0,
         "score": 50,
         "bgContrast": 16,
-        "area": 5900
+        "area": 6000
       },
       {
         "text": "Get a demo of HubSpot's premium software",
@@ -1682,9 +1668,9 @@
         "href": "offers.hubspot.com",
         "disabled": false,
         "yBand": 600,
-        "score": 45,
-        "bgContrast": 3.5,
-        "area": 13000
+        "score": 40,
+        "bgContrast": 3,
+        "area": 10000
       },
       {
         "text": "Get started free with HubSpot's free tools",
@@ -1698,7 +1684,7 @@
         "yBand": 600,
         "score": 40,
         "bgContrast": 1,
-        "area": 15000
+        "area": 10000
       },
       {
         "text": "Get a demo of HubSpot's premium software",
@@ -1709,10 +1695,10 @@
         "aboveFold": true,
         "href": "offers.hubspot.com",
         "disabled": false,
-        "yBand": 100,
-        "score": 25,
-        "bgContrast": 3.5,
-        "area": 4900
+        "yBand": 0,
+        "score": 30,
+        "bgContrast": 3,
+        "area": 5000
       },
       {
         "text": "Get started free with HubSpot's free tools",
@@ -1723,10 +1709,10 @@
         "aboveFold": true,
         "href": "app.hubspot.com",
         "disabled": false,
-        "yBand": 100,
+        "yBand": 0,
         "score": 20,
         "bgContrast": 1,
-        "area": 6100
+        "area": 6000
       },
       {
         "text": "Log in",
@@ -1738,7 +1724,7 @@
         "href": "app.hubspot.com",
         "disabled": false,
         "yBand": 0,
-        "score": 5,
+        "score": 10,
         "bgContrast": 1,
         "area": 700
       },
@@ -1754,7 +1740,7 @@
         "yBand": 0,
         "score": 10,
         "bgContrast": 1,
-        "area": 2500
+        "area": 3000
       },
       {
         "text": "HubSpot",
@@ -1765,8 +1751,8 @@
         "aboveFold": true,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 100,
-        "score": 15,
+        "yBand": 0,
+        "score": 10,
         "bgContrast": 1,
         "area": 3000
       },
@@ -1779,10 +1765,10 @@
         "aboveFold": true,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 100,
+        "yBand": 0,
         "score": 10,
         "bgContrast": 1,
-        "area": 1500
+        "area": 1000
       },
       {
         "text": "Contact Sales",
@@ -1808,9 +1794,9 @@
         "href": null,
         "disabled": false,
         "yBand": 0,
-        "score": 5,
+        "score": 10,
         "bgContrast": 1,
-        "area": 260
+        "area": 300
       },
       {
         "text": "High Contrast",
@@ -1822,9 +1808,9 @@
         "href": null,
         "disabled": false,
         "yBand": 0,
-        "score": 15,
+        "score": 20,
         "bgContrast": 1,
-        "area": 5600
+        "area": 6000
       },
       {
         "text": "Products",
@@ -1835,10 +1821,10 @@
         "aboveFold": true,
         "href": null,
         "disabled": false,
-        "yBand": 100,
-        "score": 5,
+        "yBand": 0,
+        "score": 10,
         "bgContrast": 1,
-        "area": 320
+        "area": 300
       },
       {
         "text": "Products",
@@ -1849,10 +1835,10 @@
         "aboveFold": true,
         "href": null,
         "disabled": false,
-        "yBand": 100,
+        "yBand": 0,
         "score": 10,
         "bgContrast": 1,
-        "area": 1900
+        "area": 2000
       },
       {
         "text": "Resources",
@@ -1863,10 +1849,10 @@
         "aboveFold": true,
         "href": null,
         "disabled": false,
-        "yBand": 100,
-        "score": 5,
+        "yBand": 0,
+        "score": 10,
         "bgContrast": 1,
-        "area": 320
+        "area": 300
       },
       {
         "text": "Resources",
@@ -1877,10 +1863,10 @@
         "aboveFold": true,
         "href": null,
         "disabled": false,
-        "yBand": 100,
+        "yBand": 0,
         "score": 10,
         "bgContrast": 1,
-        "area": 2200
+        "area": 2000
       },
       {
         "text": "Solutions",
@@ -1891,10 +1877,10 @@
         "aboveFold": true,
         "href": null,
         "disabled": false,
-        "yBand": 100,
-        "score": 5,
+        "yBand": 0,
+        "score": 10,
         "bgContrast": 1,
-        "area": 320
+        "area": 300
       },
       {
         "text": "Solutions",
@@ -1905,7 +1891,7 @@
         "aboveFold": true,
         "href": null,
         "disabled": false,
-        "yBand": 100,
+        "yBand": 0,
         "score": 10,
         "bgContrast": 1,
         "area": 2000
@@ -1920,9 +1906,9 @@
         "href": null,
         "disabled": false,
         "yBand": 0,
-        "score": 5,
+        "score": 10,
         "bgContrast": 1,
-        "area": 720
+        "area": 700
       },
       {
         "text": "English",
@@ -1936,7 +1922,7 @@
         "yBand": 0,
         "score": 10,
         "bgContrast": 1,
-        "area": 1200
+        "area": 1000
       },
       {
         "text": "Select a language",
@@ -1948,9 +1934,9 @@
         "href": null,
         "disabled": false,
         "yBand": 0,
-        "score": 5,
+        "score": 10,
         "bgContrast": 1,
-        "area": 260
+        "area": 300
       }
     ]
   },
