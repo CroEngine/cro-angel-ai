@@ -1,41 +1,84 @@
-# C2: Hubspot-only cross-env-determinism
+## Mål
+Lägga till en GitHub Actions-workflow i `cro-angel-ai`-repot som uppdaterar `corpus/hubspot/golden.json` på knapptryck och committar tillbaka. Inget lokalt bun/Node krävs efter setup.
 
-Mekanismen är site-oberoende. Hubspot räcker som bevis för A2; hibob läggs till senare som starkare stresstest, inte som blockerare. Consent-fixen är en separat utredning (geo-hypotes först) och hålls utanför denna körning.
+## Hur det fungerar
+1. Du går till **Actions**-fliken i GitHub
+2. Väljer workflow **"Update snapshot"**
+3. Klickar **Run workflow** → välj branch (`main` eller en feature-branch)
+4. Jobbet kör `SNAPSHOT_UPDATE=1 bun run snapshot`, committar ändringen och pushar tillbaka
+5. CI-jobbet `Frostade hubspot MHTML` blir grönt på nästa körning
 
-## Steg
+## Engångs-setup (du gör i GitHub-webben)
 
-1. **Riktig hubspot-freeze (macOS, lokalt)**
-   - Inte dry-run. Skriv faktiskt till `corpus/hubspot/page.mhtml` + `meta.json`.
-   - Verifiera gate-readouts från rapporten:
-     - `externalFontSrcCount === 0`
-     - `embeddedFontCount` (förväntat ~31)
-     - `fontFetchFailures: []`
-     - `mhtmlKbBeforeFontEmbed` vs `mhtmlKb` (förväntat ~1878 → ~6804, ≈3.6×)
+**Steg 1.** Gå till `cro-angel-ai`-repot på github.com
+**Steg 2.** Klicka **Add file → Create new file**
+**Steg 3.** Skriv som filnamn: `.github/workflows/update-snapshot.yml`
+**Steg 4.** Klistra in följande innehåll:
 
-2. **Läs B-proben vid lokal replay**
-   - Kör replay mot den nya frysta MHTML:en på macOS.
-   - Fånga `families` + `loaded` från font-proben — detta är render-beviset (gaten bevisar embedding, proben bevisar att de cid:-refererade fonterna faktiskt löser och renderar).
-   - Spara readouten; använd för att hårdkoda exakta family-namn i framtida assertions.
+```yaml
+name: Update snapshot
 
-3. **Generera lokal golden**
-   - Kör snapshot-pipelinen end-to-end mot frysta corpus/hubspot.
-   - Commit corpus/hubspot/page.mhtml + golden artifacts till branchen.
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "Commit message"
+        required: false
+        default: "chore: update hubspot snapshot"
 
-4. **Pusha branch → CI**
-   - CI kör replay på Linux mot macOS-genererad golden.
-   - Diff-resultat = A2-domen:
-     - **Noll diff** → embedding neutraliserade substitution. A2 bevisad.
-     - **Residual drift** → antingen en font som fortfarande faller tillbaka (B-proben på CI avslöjar vilken family), eller icke-font-källa (line-height-default, DPR, zoom). Diagnostiseras från B-probe-diff Linux vs macOS.
+permissions:
+  contents: write
 
-5. **Rapportera CI-diff**
-   - Readouts att fånga: gate-counts, B-probe families/loaded (båda env), area/yBand-diff per element.
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-## Vad som *inte* ingår
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
-- Hibob-consent-fix. Separat spår; geo-hypotes (Browserbase US-egress → ingen OneTrust för hibob) testas innan timeout/selektor rörs. Pinnad egress-region + villkorlig dismissal är troliga åtgärder, men det är en egen liten utredning som inte ska konflateras med "funkar A2".
-- Subset-optimering (only-loaded-fonts). Vi mäter `mhtmlKbBeforeFontEmbed` per corpus och optimerar bara om siffran blir absurd.
+      - run: bun install --frozen-lockfile
 
-## Beslutsträd efter CI
+      - name: Regenerate snapshot
+        run: SNAPSHOT_UPDATE=1 bun run snapshot
 
-- Noll diff på hubspot → A2 bevisad generellt. Gå vidare till hibob-consent-utredning (geo först), sen freeza hibob som täcknings- + stresstest.
-- Residual drift → diagnostisera via B-probe-diff innan vidare arbete. Hubspot är då den site som visar exakt vad som återstår, vilket är hela poängen med att köra den först.
+      - name: Commit & push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git add -A
+            git commit -m "${{ inputs.message }}"
+            git push
+          else
+            echo "No snapshot changes."
+          fi
+```
+
+**Steg 5.** Scrolla ner, klicka **Commit new file** direkt på `main`.
+
+## Verifiera att det funkar
+
+1. Gå till **Actions**-fliken
+2. I vänsterspalten ska **Update snapshot** nu finnas
+3. Klicka på den → **Run workflow** (grön knapp till höger) → välj branch → **Run workflow**
+4. Vänta ~1 minut, refresha
+5. Om snapshot ändrats: en ny commit från `github-actions[bot]` dyker upp på branchen
+6. Det ursprungliga CI-jobbet `Frostade hubspot MHTML` ska nu vara grönt
+
+## Om `Run workflow`-knappen är gråad ut
+Settings → Actions → General → "Workflow permissions" → välj **Read and write permissions** → Save.
+
+## Tekniska detaljer
+- `workflow_dispatch` = manuell trigger via knapp
+- `permissions: contents: write` + default `GITHUB_TOKEN` räcker för att pusha till samma repo (inga PATs behövs)
+- `oven-sh/setup-bun@v2` installerar bun i runnern
+- `--frozen-lockfile` säkerställer samma deps som CI använder
+- Om du vill att den ska köra automatiskt vid varje PR istället, lägg till `pull_request:` triggers — säg till så uppdaterar jag
+
+## Begränsning
+Den här Lovable-projektets repo är **inte** `cro-angel-ai`, så jag kan inte committa filen åt dig härifrån. Du måste skapa den manuellt i GitHub-webben enligt steg 1–5 ovan. Det är ett 2-minutersjobb.
