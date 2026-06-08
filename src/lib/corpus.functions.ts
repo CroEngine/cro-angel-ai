@@ -22,8 +22,8 @@ export type ArtifactFile = (typeof ARTIFACT_FILES)[number];
 export interface CorpusSite {
   name: string;
   files: Record<ArtifactFile, { exists: boolean; sizeBytes: number | null }>;
-  meta: unknown | null;
-  freezeReport: unknown | null;
+  meta: any | null;
+  freezeReport: any | null;
   goldenSummary: {
     elementCount: number | null;
     primaryCtaAboveFold: number | null;
@@ -37,7 +37,7 @@ export interface CorpusSite {
   } | null;
 }
 
-function safeReadJson(path: string): unknown | null {
+function safeReadJson(path: string): any | null {
   try {
     if (!existsSync(path)) return null;
     return JSON.parse(readFileSync(path, "utf8"));
