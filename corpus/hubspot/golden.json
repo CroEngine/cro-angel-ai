@@ -1,7 +1,7 @@
 {
   "collect": {
     "target": "clickables",
-    "count": 144,
+    "count": 139,
     "summary": {
       "topVisualWeight": []
     },
@@ -228,7 +228,7 @@
         "yBand": 1800,
         "score": 5,
         "bgContrast": 1,
-        "area": 360
+        "area": 200
       },
       {
         "text": "®",
@@ -242,7 +242,7 @@
         "yBand": 1800,
         "score": 5,
         "bgContrast": 1,
-        "area": 360
+        "area": 200
       },
       {
         "text": "Attract and convert the right leads.",
@@ -312,7 +312,7 @@
         "yBand": 2100,
         "score": 5,
         "bgContrast": 1,
-        "area": 360
+        "area": 200
       },
       {
         "text": "™",
@@ -326,7 +326,7 @@
         "yBand": 2100,
         "score": 5,
         "bgContrast": 1,
-        "area": 310
+        "area": 290
       },
       {
         "text": "Build pages, publish content across channels, and stay on brand.",
@@ -396,7 +396,7 @@
         "yBand": 2400,
         "score": 5,
         "bgContrast": 1,
-        "area": 310
+        "area": 290
       },
       {
         "text": "™",
@@ -410,7 +410,7 @@
         "yBand": 2400,
         "score": 5,
         "bgContrast": 1,
-        "area": 310
+        "area": 290
       },
       {
         "text": "Make it easy for customers to pay you.",
@@ -522,7 +522,7 @@
         "yBand": 2800,
         "score": 5,
         "bgContrast": 1,
-        "area": 310
+        "area": 290
       },
       {
         "text": "™",
@@ -536,7 +536,7 @@
         "yBand": 2800,
         "score": 5,
         "bgContrast": 1,
-        "area": 310
+        "area": 290
       },
       {
         "text": "AEO (Beta)",
@@ -564,7 +564,7 @@
         "yBand": 3000,
         "score": 20,
         "bgContrast": 1,
-        "area": 5400
+        "area": 5300
       },
       {
         "text": "Get recommendations to improve your visibility.",
@@ -634,7 +634,7 @@
         "yBand": 4900,
         "score": 20,
         "bgContrast": 1,
-        "area": 6300
+        "area": 6400
       },
       {
         "text": "Get a demo of HubSpot's software",
@@ -704,7 +704,7 @@
         "yBand": 3400,
         "score": 35,
         "bgContrast": 1,
-        "area": 12000
+        "area": 13000
       },
       {
         "text": "Next",
@@ -802,7 +802,7 @@
         "yBand": 5300,
         "score": 15,
         "bgContrast": 1,
-        "area": 4400
+        "area": 4600
       },
       {
         "text": "See all app integrations",
@@ -858,7 +858,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1400
+        "area": 1500
       },
       {
         "text": "Instagram",
@@ -872,7 +872,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1400
+        "area": 1500
       },
       {
         "text": "Linkedin",
@@ -886,7 +886,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1400
+        "area": 1500
       },
       {
         "text": "Reddit",
@@ -900,7 +900,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1400
+        "area": 1500
       },
       {
         "text": "Tiktok",
@@ -914,7 +914,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1400
+        "area": 1500
       },
       {
         "text": "Twitter",
@@ -928,7 +928,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1400
+        "area": 1500
       },
       {
         "text": "Youtube",
@@ -942,7 +942,7 @@
         "yBand": 6600,
         "score": 10,
         "bgContrast": 1,
-        "area": 1400
+        "area": 1500
       },
       {
         "text": "AI Prospecting Agent",
@@ -1485,7 +1485,7 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 6600,
+        "yBand": 6700,
         "score": 15,
         "bgContrast": 1,
         "area": 3000
@@ -1502,7 +1502,7 @@
         "yBand": 6700,
         "score": 15,
         "bgContrast": 1,
-        "area": 4700
+        "area": 4800
       },
       {
         "text": "Privacy Policy",
@@ -1516,7 +1516,7 @@
         "yBand": 6700,
         "score": 15,
         "bgContrast": 1,
-        "area": 5000
+        "area": 5100
       },
       {
         "text": "Security",
@@ -1544,7 +1544,7 @@
         "yBand": 6700,
         "score": 20,
         "bgContrast": 1,
-        "area": 7000
+        "area": 7100
       },
       {
         "text": "Your Privacy Choices",
@@ -1586,7 +1586,7 @@
         "yBand": 6700,
         "score": 20,
         "bgContrast": 1,
-        "area": 5900
+        "area": 5800
       },
       {
         "text": "Company",
@@ -1670,21 +1670,7 @@
         "yBand": 0,
         "score": 50,
         "bgContrast": 16,
-        "area": 5800
-      },
-      {
-        "text": "Decline All",
-        "tagName": "button",
-        "category": "cta_primary",
-        "intent": "conversion",
-        "section": "hero",
-        "aboveFold": true,
-        "href": null,
-        "disabled": false,
-        "yBand": 100,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 5300
+        "area": 5900
       },
       {
         "text": "Get a demo of HubSpot's premium software",
@@ -1698,7 +1684,7 @@
         "yBand": 600,
         "score": 45,
         "bgContrast": 3.5,
-        "area": 12000
+        "area": 13000
       },
       {
         "text": "Get started free with HubSpot's free tools",
@@ -1715,62 +1701,6 @@
         "area": 15000
       },
       {
-        "text": "Accept All",
-        "tagName": "button",
-        "category": "cta_primary",
-        "intent": "utility",
-        "section": "hero",
-        "aboveFold": true,
-        "href": null,
-        "disabled": false,
-        "yBand": 100,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 5300
-      },
-      {
-        "text": "Manage Cookies",
-        "tagName": "button",
-        "category": "cta_primary",
-        "intent": "utility",
-        "section": "hero",
-        "aboveFold": true,
-        "href": null,
-        "disabled": false,
-        "yBand": 100,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6300
-      },
-      {
-        "text": "Cookie Policy",
-        "tagName": "a",
-        "category": "link",
-        "intent": "utility",
-        "section": "hero",
-        "aboveFold": true,
-        "href": "legal.hubspot.com",
-        "disabled": false,
-        "yBand": 0,
-        "score": 5,
-        "bgContrast": 1,
-        "area": 1400
-      },
-      {
-        "text": "× close",
-        "tagName": "button",
-        "category": "other",
-        "intent": "unknown",
-        "section": "hero",
-        "aboveFold": true,
-        "href": null,
-        "disabled": false,
-        "yBand": 0,
-        "score": 15,
-        "bgContrast": 1,
-        "area": 1500
-      },
-      {
         "text": "Get a demo of HubSpot's premium software",
         "tagName": "a",
         "category": "cta_secondary",
@@ -1782,7 +1712,7 @@
         "yBand": 100,
         "score": 25,
         "bgContrast": 3.5,
-        "area": 4800
+        "area": 4900
       },
       {
         "text": "Get started free with HubSpot's free tools",
@@ -1796,7 +1726,7 @@
         "yBand": 100,
         "score": 20,
         "bgContrast": 1,
-        "area": 6000
+        "area": 6100
       },
       {
         "text": "Log in",
@@ -1810,7 +1740,7 @@
         "yBand": 0,
         "score": 5,
         "bgContrast": 1,
-        "area": 680
+        "area": 700
       },
       {
         "text": "Customer Support",
@@ -1892,9 +1822,9 @@
         "href": null,
         "disabled": false,
         "yBand": 0,
-        "score": 20,
+        "score": 15,
         "bgContrast": 1,
-        "area": 5700
+        "area": 5600
       },
       {
         "text": "Products",
@@ -1992,7 +1922,7 @@
         "yBand": 0,
         "score": 5,
         "bgContrast": 1,
-        "area": 700
+        "area": 720
       },
       {
         "text": "English",
@@ -2039,13 +1969,13 @@
     },
     "hero": {
       "headline": "Marketing",
-      "primaryCtaText": "Accept All",
-      "primaryCtaIntent": "utility",
+      "primaryCtaText": "Skip to content",
+      "primaryCtaIntent": "conversion",
       "aboveFold": true
     },
     "images": {
-      "total": 96,
-      "missingAlt": 39,
+      "total": 99,
+      "missingAlt": 42,
       "modernCount": 12,
       "legacyCount": 24,
       "formats": {
@@ -2055,7 +1985,7 @@
         "other": 0,
         "png": 24,
         "svg": 46,
-        "unknown": 14,
+        "unknown": 17,
         "webp": 12
       }
     },
@@ -2087,9 +2017,9 @@
       }
     },
     "ctaSummary": {
-      "total": 15,
-      "primary": 3,
-      "aboveFold": 7
+      "total": 13,
+      "primary": 1,
+      "aboveFold": 5
     },
     "sectionOrder": [
       "header",
