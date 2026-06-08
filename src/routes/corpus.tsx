@@ -26,6 +26,17 @@ export const Route = createFileRoute("/corpus")({
 
 const JSON_FILES: ArtifactFile[] = ["golden.json", "meta.json", "freeze-report.json"];
 
+// id-preview--<uuid>.lovable.app gatear allt med Lovable-auth — även /api/public/*.
+// Stable preview-hosten project--<uuid>-dev.lovable.app respekterar bypasset,
+// så vi pekar download/img/fetch dit när vi körs i editor-iframen.
+function apiHost(): string {
+  if (typeof window === "undefined") return "";
+  const m = window.location.hostname.match(/^id-preview--([0-9a-f-]+)\.lovable\.app$/i);
+  return m ? `https://project--${m[1]}-dev.lovable.app` : "";
+}
+const apiUrl = (site: string, file: string) =>
+  `${apiHost()}/api/public/corpus/${site}/${file}`;
+
 function formatKb(bytes: number | null): string {
   if (bytes == null) return "—";
   if (bytes < 1024) return `${bytes} B`;
@@ -89,9 +100,9 @@ function SiteCard({ site }: { site: CorpusSite }) {
             </div>
           </div>
           {site.files["screenshot.jpg"].exists && (
-            <a href={`/api/public/corpus/${site.name}/screenshot.jpg`} target="_blank" rel="noopener noreferrer" className="block shrink-0">
+            <a href={apiUrl(site.name, "screenshot.jpg")} target="_blank" rel="noopener noreferrer" className="block shrink-0">
               <img
-                src={`/api/public/corpus/${site.name}/screenshot.jpg`}
+                src={apiUrl(site.name, "screenshot.jpg")}
                 alt={`${site.name} screenshot`}
                 className="h-24 w-40 rounded border border-border object-cover object-top"
               />
@@ -146,7 +157,7 @@ function SiteCard({ site }: { site: CorpusSite }) {
             const info = site.files[f];
             if (!info.exists) return null;
             return (
-              <a key={f} href={`/api/public/corpus/${site.name}/${f}?download=1`} download={`${site.name}-${f}`}>
+              <a key={f} href={`${apiUrl(site.name, f)}?download=1`} download={`${site.name}-${f}`}>
                 <Button variant="outline" size="sm" className="gap-1">
                   <Download className="h-3 w-3" /> {f}
                 </Button>
@@ -204,7 +215,7 @@ function JsonInline({ site, file }: { site: string; file: ArtifactFile }) {
     if (next && content == null) {
       setLoading(true);
       try {
-        const res = await fetch(`/api/public/corpus/${site}/${file}`);
+        const res = await fetch(apiUrl(site, file));
         const text = await res.text();
         try {
           setContent(JSON.stringify(JSON.parse(text), null, 2));
