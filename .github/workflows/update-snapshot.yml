@@ -1,0 +1,39 @@
+name: Update snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "Commit message"
+        required: false
+        default: "chore: update hubspot snapshot"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Regenerate snapshot
+        run: SNAPSHOT_UPDATE=1 bun run snapshot
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git add -A
+            git commit -m "${{ inputs.message }}"
+            git push
+          else
+            echo "No snapshot changes."
+          fi
