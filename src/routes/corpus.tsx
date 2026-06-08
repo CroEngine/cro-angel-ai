@@ -76,9 +76,32 @@ function CorpusPage() {
 }
 
 function SiteCard({ site }: { site: CorpusSite }) {
+  const [downloading, setDownloading] = useState<ArtifactFile | null>(null);
   const meta = site.meta as { url?: string; captured_at?: string; viewport?: { width: number; height: number }; notes?: string } | null;
   const fr = site.freezeReport as any;
   const g = site.goldenSummary;
+
+  const downloadArtifact = async (file: ArtifactFile) => {
+    setDownloading(file);
+    try {
+      const res = await fetch(`${apiUrl(site.name, file)}?download=1`);
+      if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `${site.name}-${file}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (error) {
+      console.error(error);
+      window.alert(`Kunde inte ladda ner ${file}.`);
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   return (
     <Card>
@@ -157,11 +180,17 @@ function SiteCard({ site }: { site: CorpusSite }) {
             const info = site.files[f];
             if (!info.exists) return null;
             return (
-              <a key={f} href={`${apiUrl(site.name, f)}?download=1`} download={`${site.name}-${f}`}>
-                <Button variant="outline" size="sm" className="gap-1">
-                  <Download className="h-3 w-3" /> {f}
-                </Button>
-              </a>
+              <Button
+                key={f}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                disabled={downloading === f}
+                onClick={() => void downloadArtifact(f)}
+              >
+                <Download className="h-3 w-3" /> {downloading === f ? "laddar…" : f}
+              </Button>
             );
           })}
         </div>

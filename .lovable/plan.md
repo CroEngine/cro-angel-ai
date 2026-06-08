@@ -1,37 +1,31 @@
-## Mål
+Problemet är inte att filerna saknas: `/api/public/corpus/...` svarar och screenshots laddas med 200. Det som stoppar dig är Lovable Preview/editorn: en vanlig `<a href="/api/public/..." download>` blir en toppnivå-navigation/download i previewmiljön, och den kan hamna i Lovables preview-auth/proxy i stället för att sparas som fil. Det är därför bilder/inline JSON kan fungera men själva download-knappen ändå skickar dig mot inloggning.
 
-Flytta corpus fil-serving till `/api/public/*` så download-länkar, screenshot `<img>` och JSON-fetch slipper Lovables preview-auth. `listCorpus` (server-fn via intern RPC) rörs inte.
+Do I know what the issue is? Ja.
 
-## Ändringar
+Plan:
 
-### 1. Flytta server-route
-`src/routes/api/corpus.$.ts` → `src/routes/api/public/corpus.$.ts`
+1. Ändra download-knapparna i `src/routes/corpus.tsx`
+   - Byt från `<a href=... download>` till en riktig `button` med `onClick`.
+   - Klicket kör `fetch(apiUrl(...)?download=1)`, läser filen som `Blob`, skapar en temporär `blob:`-URL och triggar en lokal nedladdning.
+   - Då navigerar browsern aldrig till Lovable-route direkt, så preview-authen får inget att kapa.
 
-Behåll redan-fungerande `createFileRoute({ server: { handlers } })`-formen (det är den som byggde rent i förra varvet i den här templaten), men uppdatera path-strängen till `/api/public/corpus/$`. `?download=1` är redan implementerat och sätter `Content-Disposition: attachment` — det är inte inert i nuvarande koden.
+2. Behåll befintlig visning
+   - Screenshot `<img>` och inline JSON kan fortsätta använda `apiUrl(...)`.
+   - `listCorpus` och intern RPC rörs inte.
 
-Säkerhet:
-- Whitelist på filnamn: `golden.json | meta.json | freeze-report.json | page.mhtml | screenshot.jpg`
-- Sajtnamn matchar `^[a-z0-9_-]+$`
-- Lägger till `path.resolve` + `startsWith(CORPUS_ROOT + sep)`-kontroll som extra skydd mot traversal (belt & suspenders ovanpå regex+whitelist)
-- Read-only, ingen PII → uppfyller `/api/public/*`-reglerna
+3. Gör public-routen CORS-säker för fallback-hostar
+   - I `src/routes/api/public/corpus.$.ts`, lägg till `Access-Control-Allow-Origin: *` och relevanta headers på filsvaret.
+   - Lägg till `OPTIONS`-handler, så fetch fungerar även om appen körs från `id-preview--...` och filen hämtas från stabil preview-host.
 
-### 2. Uppdatera klient-URL:er i `src/routes/corpus.tsx`
+4. Verifiering
+   - Öppna `/corpus` i preview.
+   - Klicka `golden.json`, `page.mhtml` och `screenshot.jpg`.
+   - Bekräfta att filerna laddas ner utan att sidan navigerar till Lovable-login.
 
-Inför en helper högst upp:
-```ts
-const apiUrl = (site: string, file: string) => `/api/public/corpus/${site}/${file}`;
-```
-och byt de 3 ställena som hårdkodar `/api/corpus/...`:
-- screenshot `<img src>` + omslutande `<a href>`
-- download-knapparnas `<a href={...?download=1}>`
-- `fetch(...)` i `JsonInline`
+<presentation-actions>
+  <presentation-open-history>View History</presentation-open-history>
+</presentation-actions>
 
-## Anmärkning om API-formen
-
-Du föreslog `createServerFileRoute().methods(...)`. I förra builden använde vi `createFileRoute("/api/...")({ server: { handlers: { GET } } })` och det kompilerade rent mot templaten. Jag behåller den formen (lägre risk) om du inte explicit vill att jag växlar — i så fall säg till så testar jag `createServerFileRoute` också.
-
-## Filer
-
-- ny: `src/routes/api/public/corpus.$.ts` (flyttad)
-- borttagen: `src/routes/api/corpus.$.ts`
-- ändrad: `src/routes/corpus.tsx` (3 URL-byten)
+<presentation-actions>
+<presentation-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</presentation-link>
+</presentation-actions>
