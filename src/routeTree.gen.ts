@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiCorpusSplatRouteImport } from './routes/api/corpus.$'
 import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
 
+const CorpusRoute = CorpusRouteImport.update({
+  id: '/corpus',
+  path: '/corpus',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,36 +37,52 @@ const ApiTestsRunIdStreamRoute = ApiTestsRunIdStreamRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/corpus': typeof CorpusRoute
   '/api/corpus/$': typeof ApiCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/corpus': typeof CorpusRoute
   '/api/corpus/$': typeof ApiCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/corpus': typeof CorpusRoute
   '/api/corpus/$': typeof ApiCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/corpus/$' | '/api/tests/$runId/stream'
+  fullPaths: '/' | '/corpus' | '/api/corpus/$' | '/api/tests/$runId/stream'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/corpus/$' | '/api/tests/$runId/stream'
-  id: '__root__' | '/' | '/api/corpus/$' | '/api/tests/$runId/stream'
+  to: '/' | '/corpus' | '/api/corpus/$' | '/api/tests/$runId/stream'
+  id:
+    | '__root__'
+    | '/'
+    | '/corpus'
+    | '/api/corpus/$'
+    | '/api/tests/$runId/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CorpusRoute: typeof CorpusRoute
   ApiCorpusSplatRoute: typeof ApiCorpusSplatRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/corpus': {
+      id: '/corpus'
+      path: '/corpus'
+      fullPath: '/corpus'
+      preLoaderRoute: typeof CorpusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,9 +109,20 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CorpusRoute: CorpusRoute,
   ApiCorpusSplatRoute: ApiCorpusSplatRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
