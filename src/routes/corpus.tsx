@@ -6,7 +6,7 @@ import { Download, FileJson, ChevronDown, ChevronRight, ExternalLink, Check, X }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { listCorpus, ARTIFACT_FILES, type ArtifactFile } from "@/lib/corpus.functions";
+import { listCorpus, ARTIFACT_FILES, type ArtifactFile, type CorpusSite } from "@/lib/corpus.functions";
 
 const corpusQuery = queryOptions({
   queryKey: ["corpus"],
@@ -64,7 +64,7 @@ function CorpusPage() {
   );
 }
 
-function SiteCard({ site }: { site: ReturnType<typeof useSuspenseQuery<typeof corpusQuery>>["data"]["sites"][number] }) {
+function SiteCard({ site }: { site: CorpusSite }) {
   const meta = site.meta as { url?: string; captured_at?: string; viewport?: { width: number; height: number }; notes?: string } | null;
   const fr = site.freezeReport as any;
   const g = site.goldenSummary;
