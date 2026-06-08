@@ -89,9 +89,9 @@ function SiteCard({ site }: { site: CorpusSite }) {
             </div>
           </div>
           {site.files["screenshot.jpg"].exists && (
-            <a href={`/api/corpus/${site.name}/screenshot.jpg`} target="_blank" rel="noopener noreferrer" className="block shrink-0">
+            <a href={`/api/public/corpus/${site.name}/screenshot.jpg`} target="_blank" rel="noopener noreferrer" className="block shrink-0">
               <img
-                src={`/api/corpus/${site.name}/screenshot.jpg`}
+                src={`/api/public/corpus/${site.name}/screenshot.jpg`}
                 alt={`${site.name} screenshot`}
                 className="h-24 w-40 rounded border border-border object-cover object-top"
               />
@@ -146,7 +146,7 @@ function SiteCard({ site }: { site: CorpusSite }) {
             const info = site.files[f];
             if (!info.exists) return null;
             return (
-              <a key={f} href={`/api/corpus/${site.name}/${f}?download=1`} download={`${site.name}-${f}`}>
+              <a key={f} href={`/api/public/corpus/${site.name}/${f}?download=1`} download={`${site.name}-${f}`}>
                 <Button variant="outline" size="sm" className="gap-1">
                   <Download className="h-3 w-3" /> {f}
                 </Button>
@@ -204,7 +204,7 @@ function JsonInline({ site, file }: { site: string; file: ArtifactFile }) {
     if (next && content == null) {
       setLoading(true);
       try {
-        const res = await fetch(`/api/corpus/${site}/${file}`);
+        const res = await fetch(`/api/public/corpus/${site}/${file}`);
         const text = await res.text();
         try {
           setContent(JSON.stringify(JSON.parse(text), null, 2));
