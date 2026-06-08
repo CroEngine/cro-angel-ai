@@ -1,18 +1,16 @@
-## Problem
-`.github/workflows/update-snapshot.yml` försöker köra snapshot-regenereringen utan att först installera Playwrights Chromium-binär. Resultat: `browserType.launch: Executable doesn't exist`. CI-workflowen har redan rätt steg — Update snapshot-workflowen saknar det bara.
+## Plan
 
-## Fix
-Lägg till ett steg i `.github/workflows/update-snapshot.yml` efter `bun install` och före `Regenerate snapshot`:
+1. **Uppdatera den aktuella HubSpot-snapshoten**
+   - Kör snapshot-update lokalt i projektet så `corpus/hubspot/golden.json` matchar den nuvarande frysta sidan.
+   - Kontrollera att inga oväntade filer utöver snapshot-output behöver ändras.
 
-```yaml
-- name: Install Playwright Chromium
-  run: bunx playwright install chromium
-```
+2. **Gör snapshot-diffen mindre fladdrig**
+   - Justera normaliseringen i `src/lib/tests/snapshot/normalize.ts` så små area/position-variationer inte fäller CI.
+   - Behåll viktiga ändringar som text, länk, kategori, intent, section och ovanför-vik som regressioner.
 
-Det är allt. Ingen annan ändring behövs.
+3. **Städa GitHub Actions-varningen**
+   - Lägg in `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` även i `.github/workflows/update-snapshot.yml`, eftersom CI redan har den.
 
-## Vad du gör efter att jag implementerat
-1. Gå till **Actions → Update snapshot → Run workflow → main**.
-2. Vänta ~1–2 min.
-3. Om grön ✅: en ny commit från `github-actions[bot]` uppdaterar `corpus/hubspot/golden.json`, och nästa CI-körning blir grön.
-4. Om röd ❌: klistra in loggen så fixar vi nästa sak.
+4. **Verifiera**
+   - Kör bara de relevanta snapshot-testerna efter ändringen.
+   - Målet är att `snapshot.test.ts` går grönt på samma commit som CI kör.
