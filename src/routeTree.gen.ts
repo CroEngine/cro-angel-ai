@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiCorpusSplatRouteImport } from './routes/api/corpus.$'
 import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
+import { Route as ApiPublicCorpusSplatRouteImport } from './routes/api/public/corpus.$'
 
 const CorpusRoute = CorpusRouteImport.update({
   id: '/corpus',
@@ -24,53 +24,57 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCorpusSplatRoute = ApiCorpusSplatRouteImport.update({
-  id: '/api/corpus/$',
-  path: '/api/corpus/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiTestsRunIdStreamRoute = ApiTestsRunIdStreamRouteImport.update({
   id: '/api/tests/$runId/stream',
   path: '/api/tests/$runId/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCorpusSplatRoute = ApiPublicCorpusSplatRouteImport.update({
+  id: '/api/public/corpus/$',
+  path: '/api/public/corpus/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
-  '/api/corpus/$': typeof ApiCorpusSplatRoute
+  '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
-  '/api/corpus/$': typeof ApiCorpusSplatRoute
+  '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
-  '/api/corpus/$': typeof ApiCorpusSplatRoute
+  '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/corpus' | '/api/corpus/$' | '/api/tests/$runId/stream'
+  fullPaths:
+    | '/'
+    | '/corpus'
+    | '/api/public/corpus/$'
+    | '/api/tests/$runId/stream'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/corpus' | '/api/corpus/$' | '/api/tests/$runId/stream'
+  to: '/' | '/corpus' | '/api/public/corpus/$' | '/api/tests/$runId/stream'
   id:
     | '__root__'
     | '/'
     | '/corpus'
-    | '/api/corpus/$'
+    | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CorpusRoute: typeof CorpusRoute
-  ApiCorpusSplatRoute: typeof ApiCorpusSplatRoute
+  ApiPublicCorpusSplatRoute: typeof ApiPublicCorpusSplatRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
 }
 
@@ -90,18 +94,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/corpus/$': {
-      id: '/api/corpus/$'
-      path: '/api/corpus/$'
-      fullPath: '/api/corpus/$'
-      preLoaderRoute: typeof ApiCorpusSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/tests/$runId/stream': {
       id: '/api/tests/$runId/stream'
       path: '/api/tests/$runId/stream'
       fullPath: '/api/tests/$runId/stream'
       preLoaderRoute: typeof ApiTestsRunIdStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/corpus/$': {
+      id: '/api/public/corpus/$'
+      path: '/api/public/corpus/$'
+      fullPath: '/api/public/corpus/$'
+      preLoaderRoute: typeof ApiPublicCorpusSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -110,9 +114,19 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CorpusRoute: CorpusRoute,
-  ApiCorpusSplatRoute: ApiCorpusSplatRoute,
+  ApiPublicCorpusSplatRoute: ApiPublicCorpusSplatRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

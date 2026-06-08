@@ -23,7 +23,7 @@ const CONTENT_TYPES: Record<string, string> = {
   "screenshot.jpg": "image/jpeg",
 };
 
-export const Route = createFileRoute("/api/corpus/$")({
+export const Route = createFileRoute("/api/public/corpus/$")({
   server: {
     handlers: {
       GET: async ({ params, request }) => {
