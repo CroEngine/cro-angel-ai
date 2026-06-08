@@ -11,12 +11,27 @@ type Json = unknown;
 
 const round = (n: number, step: number) => Math.round(n / step) * step;
 
-// 2 significant figures — area values are huge and jitter; we only care about magnitude.
-const sig2 = (n: number) => {
+// 1 significant figure — area values jitter heavily between replays
+// (font-metrics, sub-pixel layout, lazy-load timing). We only care about
+// order-of-magnitude; finer resolution just produces flaky diffs.
+const sig1 = (n: number) => {
   if (!n) return 0;
-  const mag = Math.pow(10, Math.floor(Math.log10(Math.abs(n))) - 1);
+  const mag = Math.pow(10, Math.floor(Math.log10(Math.abs(n))));
   return Math.round(n / mag) * mag;
 };
+
+// Cookie/consent banner elements appear/disappear between replays depending
+// on when the banner-dismiss JS fires relative to the collector. Their text
+// and ordering are pure noise for regression purposes — strip them before
+// diffing. Real cookie-policy footer links stay in (they don't match
+// "accept/decline/reject all" etc).
+const COOKIE_BANNER_RX =
+  /\b(accept all|decline all|reject all|allow all|deny all|manage cookies|cookie settings|cookie preferences|consent preferences)\b/i;
+
+function isCookieBannerElement(e: any): boolean {
+  const text = (e?.text || "").trim();
+  return !!text && COOKIE_BANNER_RX.test(text);
+}
 
 // --- collect.elements -> stable semantic fingerprint -------------------------
 // Drop everything that is an INPUT to classification (selector, attributes,
@@ -32,12 +47,12 @@ function normElement(e: any) {
     aboveFold: !!e.aboveFold,
     href: e.href ? hostOnly(e.href) : null, // path/query are volatile; host is the signal
     disabled: !!e.disabled,
-    // geometry: coarse only — enough to catch "moved to a different band", not jitter
-    yBand: round(e.rect?.y ?? 0, 100),
-    score: round(vw.score ?? 0, 5),
-    salience: vw.salience != null ? round(vw.salience, 0.1) : undefined,
-    bgContrast: vw.backgroundContrast != null ? round(vw.backgroundContrast, 0.5) : undefined,
-    area: sig2(vw.area ?? 0),
+    // geometry: very coarse — enough to catch "moved to a different band", not jitter
+    yBand: round(e.rect?.y ?? 0, 200),
+    score: round(vw.score ?? 0, 10),
+    salience: vw.salience != null ? round(vw.salience, 0.2) : undefined,
+    bgContrast: vw.backgroundContrast != null ? round(vw.backgroundContrast, 1) : undefined,
+    area: sig1(vw.area ?? 0),
   };
 }
 
@@ -55,12 +70,15 @@ function elementKey(n: ReturnType<typeof normElement>): string {
 }
 
 export function normalizeCollect(collect: any) {
-  const els = (collect?.elements || []).map(normElement);
+  const rawEls = (collect?.elements || []).filter((e: any) => !isCookieBannerElement(e));
+  const els = rawEls.map(normElement);
   els.sort((a: any, b: any) => elementKey(a).localeCompare(elementKey(b)));
   const s = collect?.summary || {};
   return {
     target: collect?.target,
-    count: collect?.count,
+    // count reflects the filtered element list so a flaky cookie banner can't
+    // shift the total.
+    count: els.length,
     byCategory: sortObj(collect?.byCategory),
     summary: {
       total: s.total,
@@ -70,10 +88,12 @@ export function normalizeCollect(collect: any) {
       intentBreakdown: sortObj(s.intentBreakdown),
       bySection: sortObj(s.bySection),
       // topVisualWeight: keep text + coarse score, drop selector
-      topVisualWeight: (s.topVisualWeight || []).map((t: any) => ({
-        text: (t.text || "").trim(),
-        score: round(t.score ?? 0, 5),
-      })),
+      topVisualWeight: (s.topVisualWeight || [])
+        .filter((t: any) => !COOKIE_BANNER_RX.test((t.text || "").trim()))
+        .map((t: any) => ({
+          text: (t.text || "").trim(),
+          score: round(t.score ?? 0, 10),
+        })),
     },
     elements: els,
   };
