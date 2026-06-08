@@ -25,26 +25,36 @@ const CONTENT_TYPES: Record<string, string> = {
   "screenshot.jpg": "image/jpeg",
 };
 
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
+  "Access-Control-Max-Age": "86400",
+};
+
+const notFound = () => new Response("Not found", { status: 404, headers: CORS_HEADERS });
+
 export const Route = createFileRoute("/api/public/corpus/$")({
   server: {
     handlers: {
+      OPTIONS: async () => new Response(null, { status: 204, headers: CORS_HEADERS }),
       GET: async ({ params, request }) => {
         const splat = params._splat ?? "";
         const parts = splat.split("/").filter(Boolean);
         if (parts.length !== 2) {
-          return new Response("Not found", { status: 404 });
+          return notFound();
         }
         const [name, file] = parts;
         if (!NAME_RX.test(name) || !ALLOWED_FILES.has(file)) {
-          return new Response("Not found", { status: 404 });
+          return notFound();
         }
 
         const path = resolve(CORPUS_ROOT, name, file);
         if (!path.startsWith(CORPUS_ROOT + sep)) {
-          return new Response("Not found", { status: 404 });
+          return notFound();
         }
         if (!existsSync(path)) {
-          return new Response("Not found", { status: 404 });
+          return notFound();
         }
 
         const buf = readFileSync(path);
@@ -54,6 +64,7 @@ export const Route = createFileRoute("/api/public/corpus/$")({
         const headers: Record<string, string> = {
           "Content-Type": CONTENT_TYPES[file] ?? "application/octet-stream",
           "Cache-Control": "no-store",
+          ...CORS_HEADERS,
         };
         if (asDownload) {
           headers["Content-Disposition"] = `attachment; filename="${name}-${file}"`;
