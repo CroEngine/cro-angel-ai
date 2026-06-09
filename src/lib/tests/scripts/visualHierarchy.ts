@@ -136,8 +136,10 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
     const area = rect.width * rect.height;
     const fontSize = parseFloat(cs.fontSize) || 14;
     const fontWeight = parseInt(cs.fontWeight, 10) || 400;
-    const elBg = parseRgb(cs.backgroundColor);
+    const elBg = effectiveBgRgb(el);
     const elFg = parseRgb(cs.color) || { r: 0, g: 0, b: 0 };
+    // bg unmeasurable (image / semi-transparent in stack) → fall back to
+    // fg-vs-bodyBg readability proxy (legacy behaviour for unknown bg).
     const con = elBg ? contrast(elBg, bodyBg) : contrast(elFg, bodyBg);
     const score = area * (fontSize / 16) * (con / 4) * (fontWeight / 400);
     scored.push({ el, rect, fontSize, fontWeight, con, area, score });
