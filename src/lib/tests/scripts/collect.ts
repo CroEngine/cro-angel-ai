@@ -384,8 +384,8 @@ export const COLLECT_SCRIPT = `(() => {
     if (area > maxArea) maxArea = area;
     const fontSize = parseFloat(cs.fontSize) || 14;
     const fontWeight = parseInt(cs.fontWeight, 10) || 400;
-    const elBg = parseRgb(cs.backgroundColor);
-    const backgroundContrast = elBg ? contrastRatio(elBg, bodyBg) : 1;
+    const elBg = effectiveBgRgb(el);
+    const backgroundContrast = elBg ? contrastRatio(elBg, bodyBg) : null;
 
     raw.push({
       el, rect, cs, text, attrs,
@@ -400,7 +400,10 @@ export const COLLECT_SCRIPT = `(() => {
     const areaN = r.area / maxArea;                  // 0–1
     const fontN = norm(r.fontSize, 10, 48);           // 0–1
     const weightN = norm(r.fontWeight, 300, 800);     // 0–1
-    const contrastN = norm(r.backgroundContrast, 1, 10); // 0–1
+    // Unmeasurable contrast → treat as neutral (1) for scoring only; the
+    // emitted value below stays null so it's distinguishable downstream.
+    const contrastForScore = r.backgroundContrast == null ? 1 : r.backgroundContrast;
+    const contrastN = norm(contrastForScore, 1, 10); // 0–1
     const score = Math.round((areaN * 0.40 + fontN * 0.20 + weightN * 0.10 + contrastN * 0.30) * 100);
 
     const cat = classifyCategory(r.el, r.cs, r.rect, r.text);
