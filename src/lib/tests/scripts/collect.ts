@@ -429,7 +429,7 @@ export const COLLECT_SCRIPT = `(() => {
         area: Math.round(r.area),
         fontSize: Math.round(r.fontSize),
         fontWeight: r.fontWeight,
-        backgroundContrast: Math.round(r.backgroundContrast * 10) / 10,
+        backgroundContrast: r.backgroundContrast == null ? null : Math.round(r.backgroundContrast * 10) / 10,
         score,
       },
       attributes: r.attrs,
