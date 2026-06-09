@@ -66,7 +66,7 @@ export type CollectedElement = {
     area: number;
     fontSize: number;
     fontWeight: number;
-    backgroundContrast: number;
+    backgroundContrast: number | null;
     score: number;
   };
   groupId?: string;

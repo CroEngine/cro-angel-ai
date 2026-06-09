@@ -298,16 +298,31 @@ export const COLLECT_SCRIPT = `(() => {
 
 
 
-  // WCAG relative luminance + contrast ratio
-  function parseRgb(s) {
-    if (!s) return null;
+  // WCAG relative luminance + contrast ratio.
+  //
+  // bgContrast = salience signal: element's EFFECTIVE bg (first opaque
+  // ancestor in the stack) vs page bodyBg. Three buckets per backgroundColor:
+  //   opaque (alpha == 1)        → use it
+  //   transparent (alpha == 0)   → walk to parent
+  //   semi-transparent (0<a<1)   → unmeasurable (don't pretend it's opaque)
+  // Background-image on any ancestor in the walk → unmeasurable.
+  // Walk to <html> with nothing opaque → fall back to bodyBg (yields ratio 1,
+  // i.e. "no salience boost" — same as the legacy default).
+  // Reported value: number | null. Null = unmeasurable, NOT collapsed to 1.
+  function bgInfo(s) {
+    if (!s) return { kind: 'transparent' };
     const m = s.match(/rgba?\\(([^)]+)\\)/);
-    if (!m) return null;
+    if (!m) return { kind: 'transparent' };
     const parts = m[1].split(',').map((v) => parseFloat(v.trim()));
-    if (parts.length < 3) return null;
+    if (parts.length < 3) return { kind: 'transparent' };
     const a = parts.length >= 4 ? parts[3] : 1;
-    if (a === 0) return null;
-    return { r: parts[0], g: parts[1], b: parts[2] };
+    if (a === 0) return { kind: 'transparent' };
+    if (a < 1) return { kind: 'semi' };
+    return { kind: 'opaque', rgb: { r: parts[0], g: parts[1], b: parts[2] } };
+  }
+  function parseRgb(s) {
+    const info = bgInfo(s);
+    return info.kind === 'opaque' ? info.rgb : null;
   }
   function relLum(c) {
     const ch = [c.r, c.g, c.b].map((v) => {
@@ -322,6 +337,20 @@ export const COLLECT_SCRIPT = `(() => {
     return (hi + 0.05) / (lo + 0.05);
   }
   const bodyBg = parseRgb(window.getComputedStyle(document.body).backgroundColor) || { r: 255, g: 255, b: 255 };
+
+  // Returns rgb | null. Null = unmeasurable (bg-image or semi-transparent in stack).
+  function effectiveBgRgb(el) {
+    let cur = el;
+    while (cur && cur.nodeType === 1) {
+      const cs = window.getComputedStyle(cur);
+      if (cs.backgroundImage && cs.backgroundImage !== 'none') return null;
+      const info = bgInfo(cs.backgroundColor);
+      if (info.kind === 'opaque') return info.rgb;
+      if (info.kind === 'semi') return null;
+      cur = cur.parentElement;
+    }
+    return bodyBg;
+  }
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function norm(v, lo, hi) { return (clamp(v, lo, hi) - lo) / (hi - lo); }
@@ -355,8 +384,8 @@ export const COLLECT_SCRIPT = `(() => {
     if (area > maxArea) maxArea = area;
     const fontSize = parseFloat(cs.fontSize) || 14;
     const fontWeight = parseInt(cs.fontWeight, 10) || 400;
-    const elBg = parseRgb(cs.backgroundColor);
-    const backgroundContrast = elBg ? contrastRatio(elBg, bodyBg) : 1;
+    const elBg = effectiveBgRgb(el);
+    const backgroundContrast = elBg ? contrastRatio(elBg, bodyBg) : null;
 
     raw.push({
       el, rect, cs, text, attrs,
@@ -371,7 +400,10 @@ export const COLLECT_SCRIPT = `(() => {
     const areaN = r.area / maxArea;                  // 0–1
     const fontN = norm(r.fontSize, 10, 48);           // 0–1
     const weightN = norm(r.fontWeight, 300, 800);     // 0–1
-    const contrastN = norm(r.backgroundContrast, 1, 10); // 0–1
+    // Unmeasurable contrast → treat as neutral (1) for scoring only; the
+    // emitted value below stays null so it's distinguishable downstream.
+    const contrastForScore = r.backgroundContrast == null ? 1 : r.backgroundContrast;
+    const contrastN = norm(contrastForScore, 1, 10); // 0–1
     const score = Math.round((areaN * 0.40 + fontN * 0.20 + weightN * 0.10 + contrastN * 0.30) * 100);
 
     const cat = classifyCategory(r.el, r.cs, r.rect, r.text);
@@ -397,7 +429,7 @@ export const COLLECT_SCRIPT = `(() => {
         area: Math.round(r.area),
         fontSize: Math.round(r.fontSize),
         fontWeight: r.fontWeight,
-        backgroundContrast: Math.round(r.backgroundContrast * 10) / 10,
+        backgroundContrast: r.backgroundContrast == null ? null : Math.round(r.backgroundContrast * 10) / 10,
         score,
       },
       attributes: r.attrs,
