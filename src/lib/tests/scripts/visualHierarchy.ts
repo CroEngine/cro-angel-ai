@@ -6,15 +6,20 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
   const docH = document.documentElement.scrollHeight || viewportH;
   const docW = document.documentElement.scrollWidth || window.innerWidth || 1280;
 
-  function parseRgb(s) {
-    if (!s) return null;
+  function bgInfo(s) {
+    if (!s) return { kind: 'transparent' };
     const m = s.match(/rgba?\\(([^)]+)\\)/);
-    if (!m) return null;
+    if (!m) return { kind: 'transparent' };
     const parts = m[1].split(',').map((v) => parseFloat(v.trim()));
-    if (parts.length < 3) return null;
+    if (parts.length < 3) return { kind: 'transparent' };
     const a = parts.length >= 4 ? parts[3] : 1;
-    if (a === 0) return null;
-    return { r: parts[0], g: parts[1], b: parts[2] };
+    if (a === 0) return { kind: 'transparent' };
+    if (a < 1) return { kind: 'semi' };
+    return { kind: 'opaque', rgb: { r: parts[0], g: parts[1], b: parts[2] } };
+  }
+  function parseRgb(s) {
+    const info = bgInfo(s);
+    return info.kind === 'opaque' ? info.rgb : null;
   }
   function relLum(c) {
     const ch = [c.r, c.g, c.b].map((v) => {
@@ -29,6 +34,22 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
     return (hi + 0.05) / (lo + 0.05);
   }
   const bodyBg = parseRgb(window.getComputedStyle(document.body).backgroundColor) || { r: 255, g: 255, b: 255 };
+
+  // Walks ancestors (incl. self). Returns rgb of first opaque ancestor bg, or
+  // null if any ancestor in the stack has bg-image or alpha<1 (unmeasurable
+  // composite). Reaching root with nothing opaque → bodyBg fallback.
+  function effectiveBgRgb(el) {
+    let cur = el;
+    while (cur && cur.nodeType === 1) {
+      const cs = window.getComputedStyle(cur);
+      if (cs.backgroundImage && cs.backgroundImage !== 'none') return null;
+      const info = bgInfo(cs.backgroundColor);
+      if (info.kind === 'opaque') return info.rgb;
+      if (info.kind === 'semi') return null;
+      cur = cur.parentElement;
+    }
+    return bodyBg;
+  }
 
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
