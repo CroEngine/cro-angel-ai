@@ -30,8 +30,11 @@ export const SITES: SiteSpec[] = [
   {
     name: "hibob",
     url: "https://www.hibob.com",
-    consentSelector: "#onetrust-accept-btn-handler",
-    consentDismissCheck: "detached",
+    // Verifierat 2026-06-09 via --dry-run --screenshot-before-dismiss:
+    // OneTrust serveras inte mot Browserbase-IP (geo-gate). Ingen banner
+    // syns alls → ingen consent att dismissa. Lägg INTE tillbaka selektorn
+    // utan att först verifiera att bannern faktiskt rendras i capture-miljön.
+    notes: "Ingen consent-banner i Browserbase-region (geo-gate). Capture körs utan consent-klick.",
   },
   {
     name: "hubspot",
