@@ -1,0 +1,12 @@
+{
+  "url": "https://www.hibob.com",
+  "name": "hibob",
+  "captured_at": "2026-06-09T13:35:54.196Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "Ingen consent-banner i Browserbase-region (geo-gate). Capture körs utan consent-klick."
+}
