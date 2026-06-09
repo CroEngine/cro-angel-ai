@@ -1,0 +1,28 @@
+{
+  "ok": false,
+  "error": "[freeze] consent-selektor blev aldrig synlig inom 5s: #onetrust-accept-btn-handler (hibob). Stale selektor, A/B-variant, eller banner laddade aldrig. Verifiera i --dry-run med --screenshot-before-dismiss.",
+  "dryRun": false,
+  "consent": {
+    "selector": "#onetrust-accept-btn-handler",
+    "dismissCheck": "detached",
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 0,
+    "screenshotKb": 0,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": null,
+    "embeddedFontCount": null,
+    "mhtmlKbBeforeFontEmbed": null,
+    "fontFetchFailures": null
+  },
+  "timing": {
+    "gotoMs": 5685,
+    "consentMs": 0,
+    "scrollMs": 0,
+    "captureMs": 0
+  }
+}
