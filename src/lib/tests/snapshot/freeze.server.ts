@@ -235,6 +235,19 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
           timeout: 5000,
         });
       } catch {
+        // Spara debug-screenshot om begärt — annars är felet en ren gissning.
+        if (opts.screenshotBeforeDismiss) {
+          try {
+            const failShot = await page.screenshot({ type: "jpeg", quality: 70, fullPage: false });
+            const failPath = opts.dryRun
+              ? join(tmpdir(), `freeze-${opts.name}-${ts}.timeout.jpg`)
+              : join(dir, "screenshot.timeout.jpg");
+            writeFileSync(failPath, Buffer.from(failShot));
+            report.capture.beforeDismissScreenshotPath = failPath;
+          } catch {
+            /* screenshot best-effort */
+          }
+        }
         throw new Error(
           `[freeze] consent-selektor blev aldrig synlig inom 5s: ${opts.consentSelector} (${opts.name}). ` +
             `Stale selektor, A/B-variant, eller banner laddade aldrig. Verifiera i --dry-run med --screenshot-before-dismiss.`,
