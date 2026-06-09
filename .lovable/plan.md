@@ -1,11 +1,22 @@
-## Plan: Radera och kör om HiBob freeze
+Plan to get HiBob frozen cleanly:
 
-### Steg
-1. Radera hela `corpus/hibob/` (freeze-report.json, golden.json, meta.json, page.mhtml, screenshot.jpg).
-2. Kör `bun run scripts/freeze-site.ts --name=hibob` på nytt för en helt färsk run.
-3. Om consent-selektorn (`#onetrust-accept-btn-handler`) timeout-ar igen, fånga en debug-screenshot via `--screenshot-before-dismiss` och rapportera resultatet — inga ändringar i `corpus/sites.ts` utan ditt godkännande.
-4. Visa slutstatus: filer som skapats + ev. fel.
+1. Reproduce the current HiBob failure
+   - Run a fresh HiBob dry-run with `--screenshot-before-dismiss` so the timeout state is captured.
+   - Inspect the generated timeout screenshot and receipt to see whether the cookie banner is absent, delayed, hidden, or using a different variant.
 
-### Vad som INTE ändras
-- `corpus/sites.ts` (selektorer) rörs inte i denna run.
-- Inga app-/route-/UI-ändringar.
+2. Fix the consent handling only if needed
+   - If the banner exists with a different accept button, update only HiBob’s `consentSelector` in `corpus/sites.ts`.
+   - If the banner is present but remains in the DOM after click, switch HiBob’s `consentDismissCheck` from `detached` to `hidden`.
+   - If no banner appears for this environment, change the freeze flow to allow HiBob to proceed without forcing a stale selector, while still recording the consent status in `freeze-report.json`.
+
+3. Delete the failed HiBob artifacts and rerun cleanly
+   - Remove the current `corpus/hibob/` contents.
+   - Run a fresh non-dry HiBob freeze.
+
+4. Verify the final corpus output
+   - Confirm `golden.json`, `meta.json`, `page.mhtml`, `screenshot.jpg`, and `freeze-report.json` exist.
+   - Confirm `freeze-report.json.ok === true` and the `/corpus` page shows HiBob as `freeze ok`.
+
+5. Keep scope limited
+   - Do not change HubSpot or other corpus sites.
+   - Do not change the UI except if needed to display the final existing artifact state correctly.
