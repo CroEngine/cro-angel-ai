@@ -46,7 +46,14 @@ export const SITES: SiteSpec[] = [
     consentDismissCheck: "hidden",
     notes: "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort.",
   },
-  // De 6 övriga siterna läggs till i separat runda — varje site kan ha
+  {
+    name: "salesforce",
+    url: "https://www.salesforce.com",
+    // Best-guess: standard OneTrust. Verifieras via dry-run innan skarp freeze.
+    consentSelector: "#onetrust-accept-btn-handler",
+    notes: "OneTrust (best-guess, verifiera via --dry-run).",
+  },
+  // De 5 övriga siterna läggs till en i taget — varje site kan ha
   // egen consent-quirk som vi inte vill upptäcka efter commit.
 ];
 
