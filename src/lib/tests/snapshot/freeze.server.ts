@@ -83,6 +83,10 @@ interface FreezeReport {
     embeddedFontCount: number | null;
     mhtmlKbBeforeFontEmbed: number | null;
     fontFetchFailures: { url: string; error: string }[] | null;
+    /** Unika @font-face-familjenamn i den slutliga MHTML:en. Render-canary
+     *  i replay läser denna lista för att avgöra vilka familjer som måste
+     *  faktiskt resolva. */
+    embeddedFamilies: string[] | null;
     // Stora MHTML (> MHTML_INLINE_THRESHOLD_BYTES) skickas till CDN via
     // lovable-assets i stället för att skrivas till repo (10 MB-tak). Pekaren
     // hamnar i page.mhtml.asset.json bredvid där page.mhtml hade legat.
@@ -212,6 +216,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       embeddedFontCount: null,
       mhtmlKbBeforeFontEmbed: null,
       fontFetchFailures: null,
+      embeddedFamilies: null,
       externalized: false,
       externalAssetUrl: null,
       externalAssetSha256: null,
@@ -344,6 +349,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     report.capture.externalFontSrcCount = embedded.externalFontSrcCount;
     report.capture.embeddedFontCount = embedded.embeddedFontCount;
     report.capture.fontFetchFailures = embedded.fetchFailures;
+    report.capture.embeddedFamilies = embedded.embeddedFamilies;
 
     if (embedded.externalFontSrcCount > 0) {
       throw new Error(

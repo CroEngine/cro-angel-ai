@@ -31,3 +31,5 @@ dist-ssr
 *.sln
 *.sw?
 corpus/**/screenshot.before-dismiss.jpg
+
+corpus/**/render-canary.json

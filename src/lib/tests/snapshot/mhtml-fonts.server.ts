@@ -219,6 +219,41 @@ export interface FontEmbedResult {
   fetchFailures: { url: string; error: string }[];
   /** Diagnostic: every font URL encountered (deduped). */
   fontUrlsSeen: string[];
+  /** Unique font-family names declared in @font-face rules across all CSS parts.
+   *  Render-canary använder dessa som "förväntade familjer" i replay. */
+  embeddedFamilies: string[];
+}
+
+// Hitta `font-family: <value>;` inuti varje `@font-face { ... }`-block.
+// Hanterar:
+//   - "Quoted Name"  → Quoted Name
+//   - 'Quoted Name'  → Quoted Name
+//   - Unquoted-Name  → Unquoted-Name
+// Returnerar deduplicerade, trimmade namn. Exporteras separat så att
+// freeze.server kan ringa den utan att gå via embedMhtmlFonts om vi vill.
+const FONT_FACE_BLOCK_RE = /@font-face\s*\{([^}]*)\}/gi;
+const FONT_FAMILY_DECL_RE = /font-family\s*:\s*([^;}]+)/i;
+
+export function extractEmbeddedFamilies(mhtmlRaw: string): string[] {
+  const parsed = parseMhtml(mhtmlRaw);
+  const seen = new Set<string>();
+  for (const part of parsed.parts) {
+    const ct = part.headers["content-type"] || "";
+    if (!/^text\/(css|html)/i.test(ct)) continue;
+    const enc = (part.headers["content-transfer-encoding"] || "").toLowerCase();
+    const text = enc === "quoted-printable" ? qpDecode(part.body) : part.body;
+    if (!/@font-face/i.test(text)) continue;
+    for (const block of text.matchAll(FONT_FACE_BLOCK_RE)) {
+      const body = block[1];
+      const m = body.match(FONT_FAMILY_DECL_RE);
+      if (!m) continue;
+      // Värdet kan vara `"Foo", "Foo Fallback"` — ta första token.
+      const first = m[1].split(",")[0].trim();
+      const unquoted = first.replace(/^['"]|['"]$/g, "").trim();
+      if (unquoted) seen.add(unquoted);
+    }
+  }
+  return Array.from(seen).sort();
 }
 
 export async function embedMhtmlFonts(
@@ -345,5 +380,6 @@ export async function embedMhtmlFonts(
     newBytes: Buffer.byteLength(out, "utf8"),
     fetchFailures,
     fontUrlsSeen: Array.from(urlToCid.keys()),
+    embeddedFamilies: extractEmbeddedFamilies(out),
   };
 }
