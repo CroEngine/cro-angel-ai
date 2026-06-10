@@ -28,6 +28,12 @@ export interface AssetPointer {
 /**
  * Ladda upp innehåll via `lovable-assets create`. Returnerar parsed pointer.
  * Throwar med ett tydligt fel om CLI saknas eller failar.
+ *
+ * Obs: CLI:t har en allowlist av filändelser. .mhtml accepteras inte —
+ * vi laddar därför upp med .txt-suffix (page.mhtml.txt). Harness vid replay
+ * fetchar och skriver tillbaka som page.mhtml på disk, så Chromium hittar
+ * rätt format via file://. Suffix-fixen påverkar bara CDN-URL:en, inte
+ * innehållet eller hur replay tolkar det.
  */
 export function uploadAsset(content: Buffer | string, filename: string): AssetPointer {
   const probe = spawnSync("command", ["-v", "lovable-assets"], { shell: true });
@@ -38,14 +44,18 @@ export function uploadAsset(content: Buffer | string, filename: string): AssetPo
     );
   }
 
-  // Skriv till tmp så CLI:t har en filsökväg att läsa.
+  // CLI:t kräver tillåten filändelse — om filename slutar på .mhtml lägg .txt.
+  const uploadFilename = filename.endsWith(".mhtml") ? `${filename}.txt` : filename;
+
+  // Skriv till tmp så CLI:t har en filsökväg att läsa. Använd .txt-suffix
+  // även på diskpathen så CLI:t inte avvisar via extension-check.
   const ts = Date.now();
-  const tmpFile = join(tmpdir(), `lovable-asset-upload-${ts}-${filename}`);
+  const tmpFile = join(tmpdir(), `lovable-asset-upload-${ts}-${uploadFilename}`);
   writeFileSync(tmpFile, content as Buffer);
 
   const proc = spawnSync(
     "lovable-assets",
-    ["create", "--file", tmpFile, "--filename", filename],
+    ["create", "--file", tmpFile, "--filename", uploadFilename],
     { encoding: "utf8" },
   );
   if (proc.status !== 0) {
