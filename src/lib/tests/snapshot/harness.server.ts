@@ -22,6 +22,7 @@ import { chromium, type Page } from "playwright";
 import { COLLECT_SCRIPT } from "../scripts/collect";
 import { runPageAudit } from "../runners/pageAudit.server";
 import { resolveAssetUrl, sha256OfBuffer, type AssetPointer } from "./externalize.server";
+import { runRenderCanary, type RenderCanaryReport } from "./render-canary.server";
 
 import type { CollectedElement } from "../schema";
 
