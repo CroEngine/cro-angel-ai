@@ -1,41 +1,80 @@
+# Render-canary: verifiera att inbäddade cid:-fonter rendrar i replay
+
 ## Mål
+Gate före Fas 2 (subsetting). Innan vi rör en enda glyf måste vi bevisa att de cid:-inbäddade fontfilerna faktiskt:
+1. Resolvar i Chromium under file:// MHTML-replay (inga 0-loaded familjer).
+2. Används av layout (text-bredder ≠ fallback-bredder för representativ text).
 
-Få freezing att klara siter där `page.mhtml` blir > 10 MB (repo-gränsen). Idag dör commit på Salesforce-storlek (60 MB efter font-embed). Lösningen ska vara automatisk — ingen manuell `lovable-assets`-dans per site.
+Annars riskerar Fas 2 timmar på en subsetter vars output replay aldrig renderar — och guldarna ser oförändrade ut för att de redan kör fallback-fonter, inte de inbäddade.
 
-## Lösning: auto-externalisering via lovable-assets CDN
+Det räcker INTE med `document.fonts.size > 0` (loggas redan i harness.server.ts). En FontFace kan vara `loaded` utan att någon faktiskt glyf hämtas, och en familj kan vara registrerad utan att layout använder den. Vi behöver båda signalerna.
 
-`freeze.server.ts` skriver alltid `page.mhtml`. Vi lägger till ett steg efter font-embed:
+## Leverabler
 
-- Om `mhtmlBytes <= THRESHOLD` (sätt 9 MB, marginal under 10 MB-gränsen) → skriv `page.mhtml` som idag (HiBob, HubSpot oförändrade)
-- Om `mhtmlBytes > THRESHOLD` → kör `lovable-assets create --file <tmp/page.mhtml> --filename page.mhtml`, skriv resultatet till `corpus/<name>/page.mhtml.asset.json`. Skriv INTE `page.mhtml` till repo
-- `freeze-report.json` får två nya fält: `externalized: boolean` och `externalAssetUrl: string | null`
+### 1. `src/lib/tests/snapshot/render-canary.server.ts` (ny)
+Ren funktion `runRenderCanary(page, expectedFamilies)` som körs **inne i replayCorpus** efter `document.fonts.ready` men före `nodeLoopScroll`. Returnerar:
 
-## Reader-ändringar
+```ts
+interface RenderCanaryReport {
+  ok: boolean;
+  families: Array<{
+    family: string;          // namn från @font-face declaration
+    registered: boolean;     // finns i document.fonts
+    loadedCount: number;     // FontFace.status === 'loaded' för familjen
+    totalCount: number;
+    fontsCheckPass: boolean; // document.fonts.check('16px "F"', sample)
+    widthVsFallback: {
+      embedded: number;
+      fallback: number;      // samma text i 'monospace' eller 'serif'
+      distinct: boolean;     // |diff| > 0.5 px
+    };
+    sampleText: string;
+  }>;
+  missing: string[];         // familjer vi förväntade men inte hittade
+  unusedRegistered: string[];// registrerade men widthVsFallback.distinct=false
+  failures: string[];        // människo-läsbara orsaker när ok=false
+}
+```
 
-**`harness.server.ts` (replayCorpus)** — där MHTML faktiskt konsumeras:
+Mätmetod per familj (allt körs som ett kort `page.evaluate`):
+- `document.fonts.check('16px "Family"', sample)` — false ⇒ glyfer saknas för texten.
+- Mät bredd: skapa offscreen `<span>` med `font: 16px "Family", monospace` resp. `font: 16px monospace`. Diff > 0.5 px ⇒ familjen påverkar layout. Identisk bredd ⇒ Chromium ramlade tillbaka på monospace tyst.
+- `sample` per familj: ta första synliga textnoden i DOM som faktiskt har den `font-family` på sig (via `getComputedStyle`). Fallback `"The quick brown fox 0123"` om ingen träffas.
 
-- Om `page.mhtml` finns lokalt → använd som idag
-- Annars läs `page.mhtml.asset.json`, hämta `url`, ladda ner till samma `tmpDir/page.mhtml`, fortsätt replay som vanligt
-- Felmeddelandet uppdateras: "varken page.mhtml eller page.mhtml.asset.json finns"
+### 2. `extractEmbeddedFamilies(mhtml)` i `src/lib/tests/snapshot/mhtml-fonts.server.ts`
+Parsea `@font-face { font-family: "X" }` ur de redan-decoded CSS-parts:erna och returnera unika namn. Skrivs till `freeze-report.json::capture.embeddedFamilies` av `freeze.server.ts` så replay vet vad den ska förvänta sig utan att re-parsa MHTML.
 
-**`corpus.functions.ts` (UI inspector)** — lägg till `page.mhtml.asset.json` i `ARTIFACT_FILES` så `/corpus`-sidan visar att den finns. `mhtmlKb`-stat hämtas redan från `freeze-report.json`, så UI-siffran blir rätt utan att läsa själva mhtml-filen.
+### 3. `replayCorpus` integration (`harness.server.ts`)
+Efter font-probe-logget, kör:
+```ts
+const expected = report?.capture?.embeddedFamilies ?? [];
+const canary = await runRenderCanary(page, expected);
+if (!canary.ok) throw new Error(`[replay] render canary failed for ${name}: ${canary.failures.join('; ')}`);
+```
+- Sätt fail-villkor: `missing.length > 0` ELLER någon family där både `fontsCheckPass=false` OCH `widthVsFallback.distinct=false`. Registrerad-men-oanvänd loggas (precis det subsetting ska beskära) men gate:ar inte — annars dödar canary HubSpot/HiBob där över-embed är förväntad.
+- Skriv hela rapporten till `corpus/<name>/render-canary.json` (gitignored — det är diagnostik per replay-körning, inte golden).
 
-## Avgränsningar
+### 4. `scripts/render-canary.ts` (ny CLI)
+`bun run scripts/render-canary.ts [--name=hibob|--all]`. Kör replay för en eller alla siter i `SITES`, skriver en sammanfattnings-tabell till stdout, exit 1 om någon site fail:ar.
 
-- Inga ändringar i font-embed-logik. Vi krymper inte själva MHTML — vi flyttar bara stora till CDN
-- Tröskel 9 MB är hårdkodad i `freeze.server.ts`. Inga env-variabler
-- Ingen retry / fallback om `lovable-assets` saknas i sandbox → freezen failar med tydligt felmeddelande (vi loggar `command -v lovable-assets`-resultat i report)
-- Skärmbild (`screenshot.jpg`) och `golden.json` lämnas oförändrade — de ligger långt under gränsen
-- `.gitignore`: lägg till `corpus/*/page.mhtml` ENDAST om vi också säkrar att små mhtml fortsatt commitas. Enklare: lämna `.gitignore` och förlita oss på att externalized:a siter helt enkelt inte skriver `page.mhtml`
+## Gate-policy
+- **Måste passera** för HiBob och HubSpot (de in-repo siter som faktiskt har embedded fonts) innan Fas 2 startar.
+- Resultatet sparas INTE som golden. Det är en runtime-assert. Goldens berör layoutmetrik som redan beror på fonterna; canary verifierar att den beroendekedjan faktiskt är aktiv.
 
-## Verifiering efter implementation
+## Vad som inte ingår
+- Pixelvis screenshot-diff (overkill för en gate — bredd-diff räcker för "fontens faktiskt levererad").
+- Ändringar i `embedMhtmlFonts` rewrite-logiken.
+- Subsetting-kod (Fas 2).
+- Slack/Kry-aktivering (de väntar tills Fas 2-frågan är avgjord per förra beslutet).
 
-1. **Salesforce** — frys om, bekräfta att `page.mhtml.asset.json` skapas + ingen `page.mhtml` ligger kvar lokalt + commit går igenom + replay funkar
-2. **HiBob** — frys om för sanity, bekräfta att inget förändrats (under tröskel → fortfarande lokal `page.mhtml`)
-3. Lägg sedan till Salesforce-spec i `corpus/sites.ts` och fortsätt med Slack/Monday/Kry enligt tidigare plan
+## Risker / kanter
+- **Samma metrics som golden** — om font-bredd är samma signal som collect/pageAudit redan mäter, så är canary teoretiskt redundant. Skillnaden: golden mäter mot en frusen baseline (kan ha bakats med fel font från start och vara grön ändå); canary mäter mot en *intentional fallback* (monospace) live varje körning. Det fångar precis "vi har tappat alla custom fonter sedan baselinen" som golden inte fångar.
+- **Pinned chromium-bredd-precision**: 0.5 px tröskel valt med marginal mot subpixel-rundning. Höjs/sänks vid behov; loggas alltid i rapporten.
+- **Familjenamn-citering i CSS** (`"Family Name"` vs `Family\ Name` vs okvoterat): parsern måste normalisera. Existerande `@font-face`-regex i `mhtml-fonts.server.ts` är url-fokuserad — behöver en separat familje-parser. Liten yta, testas i en `__tests__/extract-families.test.ts`.
 
-## Tekniska detaljer
-
-- `lovable-assets` CLI ligger på `PATH` i sandboxen (skill bekräftar detta)
-- Anropet sker via `child_process.spawnSync` i `freeze.server.ts` — körs bara från CLI-script (`bun run scripts/freeze-site.ts`), aldrig från app-runtime, så Cloudflare Workers-begränsningarna gäller inte här
-- CDN-URL:en (`/__l5e/assets-v1/...`) är relativ; harness måste prependa en bas-URL för att fetcha vid replay. Använd `process.env.LOVABLE_ASSETS_BASE_URL` om satt, annars läs från `.asset.json`-pekarens egna fält (CLI-output har full URL-info)
+## Ordning
+1. `extractEmbeddedFamilies` + unit-test.
+2. `runRenderCanary` + integration i `replayCorpus`.
+3. `scripts/render-canary.ts`.
+4. Kör mot HiBob + HubSpot. Förväntat: båda passerar (de har redan fungerande embed enligt nuvarande goldens). Om någon fail:ar — det är precis signalen vi byggde verktyget för; fixa innan Fas 2.
+5. Beslut Fas 2 baseras på canary-rapporten: `unusedRegistered` listan är exakt prune-kandidaterna för B1.
