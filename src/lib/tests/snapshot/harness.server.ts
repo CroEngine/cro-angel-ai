@@ -338,25 +338,39 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     // mid-evaluate by a delayed MHTML commit), reset streak and keep polling.
     await waitForStableContext(page);
 
-    // B — replay-side font probe (defense in depth for A2). Logs whether the
-    // embedded cid: fonts actually resolved at replay. `families` lets us
-    // discover the exact declared family name per corpus; once stable we can
-    // hardcode 1-2 representative checks per site here. `check(family, text)`
-    // takes a representative text arg so the right unicode-range subset is
-    // exercised — `check()` without text can answer about the wrong subset.
-    await page.evaluate(() => document.fonts.ready.then(() => true)).catch(() => {});
-    const fontStatus = await page
-      .evaluate(() => {
-        const all = Array.from(document.fonts as unknown as Iterable<FontFace>);
-        return {
-          size: document.fonts.size,
-          loaded: all.filter((f) => f.status === "loaded").length,
-          families: Array.from(new Set(all.map((f) => f.family))),
-        };
-      })
-      .catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
-    // eslint-disable-next-line no-console
-    console.log(`[replay] fonts:`, JSON.stringify(fontStatus));
+    // Render-canary: gate före Fas 2. Verifierar att de cid:-inbäddade
+    // familjerna faktiskt resolvar och påverkar layout (inte bara "registrerade").
+    // Rapporten skrivs till corpus/<name>/render-canary.json (gitignored —
+    // diagnostik per replay-körning, inte en del av golden). Fail throw:ar
+    // hård så CI gate:ar på det.
+    let canary: RenderCanaryReport | null = null;
+    try {
+      canary = await runRenderCanary(page, embeddedFamilies);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[replay] render-canary kraschade (icke-blockerande): ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+    if (canary) {
+      try {
+        writeFileSync(join(dir, "render-canary.json"), JSON.stringify(canary, null, 2));
+      } catch {
+        /* best-effort diagnostik */
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[replay] canary expected=${canary.expected.length} ok=${canary.ok} ` +
+          `missing=${canary.missing.length} unusedRegistered=${canary.unusedRegistered.length} ` +
+          `docFonts=${canary.diagnostics.documentFontsSize}/${canary.diagnostics.documentFontsLoaded}`,
+      );
+      if (!canary.ok) {
+        throw new Error(
+          `[replay] render-canary failed for ${name}: ${canary.failures.join("; ")}. ` +
+            `Se corpus/${name}/render-canary.json för full rapport.`,
+        );
+      }
+    }
 
     // eslint-disable-next-line no-console
     console.log(`[replay] url=${page.url()} navHistory=${JSON.stringify(seenUrls)}`);
