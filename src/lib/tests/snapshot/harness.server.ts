@@ -23,6 +23,7 @@ import { COLLECT_SCRIPT } from "../scripts/collect";
 import { runPageAudit } from "../runners/pageAudit.server";
 import { resolveAssetUrl, sha256OfBuffer, type AssetPointer } from "./externalize.server";
 import { runRenderCanary, type RenderCanaryReport } from "./render-canary.server";
+import { extractEmbeddedFamilies } from "./mhtml-fonts.server";
 
 import type { CollectedElement } from "../schema";
 
@@ -269,6 +270,27 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       );
     }
     writeFileSync(tmpFile, buf);
+  }
+
+  // Backfill: pre-Fas-1-rapporter saknar embeddedFamilies. Parsa MHTML on-disk
+  // så canaryn har något att assertera mot även för gamla goldens utan att
+  // tvinga re-freeze. Re-freeza skriver listan färskt och hoppar över denna.
+  if (embeddedFamilies.length === 0) {
+    try {
+      const mhtmlText = readFileSync(tmpFile, "utf8");
+      embeddedFamilies = extractEmbeddedFamilies(mhtmlText);
+      if (embeddedFamilies.length > 0) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[replay] embeddedFamilies backfill från MHTML: ${embeddedFamilies.length} familjer (rapporten saknade fältet)`,
+        );
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[replay] embeddedFamilies backfill misslyckades: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
   }
   const fileUrl = `file://${tmpFile}`;
 
