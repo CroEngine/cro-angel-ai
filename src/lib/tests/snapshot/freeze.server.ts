@@ -86,8 +86,16 @@ interface FreezeReport {
     // Stora MHTML (> MHTML_INLINE_THRESHOLD_BYTES) skickas till CDN via
     // lovable-assets i stället för att skrivas till repo (10 MB-tak). Pekaren
     // hamnar i page.mhtml.asset.json bredvid där page.mhtml hade legat.
+    // `externalized` är source of truth för replayCorpus (harness läser
+    // freeze-report.json, inte fil-närvaro).
     externalized: boolean;
     externalAssetUrl: string | null;
+    externalAssetSha256: string | null;
+    // True om vi tog bort en stale lokal page.mhtml som en del av write-steget
+    // (site flyttades över tröskeln) eller stale .asset.json (site flyttades
+    // under tröskeln). Loggas så att övergångar är spårbara.
+    removedStaleLocalMhtml: boolean;
+    removedStalePointer: boolean;
   };
   timing: {
     gotoMs: number;
