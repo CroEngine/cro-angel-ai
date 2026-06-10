@@ -56,7 +56,21 @@ export const SITES: SiteSpec[] = [
     // via externalize.server.ts (se freeze.server.ts).
     notes: "Ingen consent-banner i Browserbase-region (geo-gate, samma som HiBob). MHTML externaliseras (stor).",
   },
-  // De 5 övriga siterna läggs till en i taget — varje site kan ha
+  {
+    name: "slack",
+    url: "https://slack.com",
+    // Best-guess: standard OneTrust. Verifiera via dry-run.
+    consentSelector: "#onetrust-accept-btn-handler",
+    notes: "OneTrust (best-guess).",
+  },
+  {
+    name: "kry",
+    url: "https://www.kry.se",
+    // Best-guess: Cookiebot (vanlig i SE). Verifiera via dry-run.
+    consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    notes: "Cookiebot (best-guess).",
+  },
+  // De 3 övriga siterna läggs till en i taget — varje site kan ha
   // egen consent-quirk som vi inte vill upptäcka efter commit.
 ];
 
