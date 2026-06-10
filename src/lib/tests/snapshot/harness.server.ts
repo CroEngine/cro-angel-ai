@@ -179,12 +179,16 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
   // ny pekare och tyst plockas av "finns lokalt → använd"-heuristiken → fel
   // golden. Vi gatar på flaggan och throw:ar på alla inkonsistenta tillstånd.
   let reportExternalized = false;
+  let embeddedFamilies: string[] = [];
   if (existsSync(reportPath)) {
     try {
       const r = JSON.parse(readFileSync(reportPath, "utf8")) as {
-        capture?: { externalized?: boolean };
+        capture?: { externalized?: boolean; embeddedFamilies?: string[] | null };
       };
       reportExternalized = !!r.capture?.externalized;
+      embeddedFamilies = Array.isArray(r.capture?.embeddedFamilies)
+        ? (r.capture!.embeddedFamilies as string[])
+        : [];
     } catch (e) {
       throw new Error(
         `corpus/${name}/freeze-report.json kunde inte läsas: ${e instanceof Error ? e.message : String(e)}`,
