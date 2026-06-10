@@ -46,32 +46,14 @@ export const SITES: SiteSpec[] = [
     consentDismissCheck: "hidden",
     notes: "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort.",
   },
-  {
-    name: "salesforce",
-    url: "https://www.salesforce.com",
-    // Verifierat 2026-06-10 via --dry-run --screenshot-before-dismiss:
-    // Ingen OneTrust-banner renderas mot Browserbase-IP (samma geo-gate som
-    // HiBob). Sidan laddar normalt + Piper-chat-widget men ingen consent.
-    // page.mhtml ~60 MB efter font-embed → externaliseras automatiskt till CDN
-    // via externalize.server.ts (se freeze.server.ts).
-    notes: "Ingen consent-banner i Browserbase-region (geo-gate, samma som HiBob). MHTML externaliseras (stor).",
-  },
-  {
-    name: "slack",
-    url: "https://slack.com",
-    // Best-guess: standard OneTrust. Verifiera via dry-run.
-    consentSelector: "#onetrust-accept-btn-handler",
-    notes: "OneTrust (best-guess).",
-  },
-  {
-    name: "kry",
-    url: "https://www.kry.se",
-    // Best-guess: Cookiebot (vanlig i SE). Verifiera via dry-run.
-    consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
-    notes: "Cookiebot (best-guess).",
-  },
-  // De 3 övriga siterna läggs till en i taget — varje site kan ha
-  // egen consent-quirk som vi inte vill upptäcka efter commit.
+  // Salesforce, Slack, Kry, Monday: ej tillagda än.
+  // Salesforce testad 2026-06-10: ingen consent-banner mot Browserbase-IP
+  // (samma geo-gate som HiBob) men page.mhtml blev 60 MB efter font-embed.
+  // Externalize-pathen finns men är under härdning (Fas 1: sha256 + flagga-
+  // som-source-of-truth + stale-städning). Subsetting (Fas 2) ska köras före
+  // re-freeze, eftersom font-embed över-embeddar by design och troligen
+  // återför Salesforce till in-repo-storlek. Lägg INTE tillbaka som SiteSpec
+  // förrän Fas 1+2 är klara.
 ];
 
 export function getSite(name: string): SiteSpec | undefined {

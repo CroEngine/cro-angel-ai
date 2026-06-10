@@ -11,7 +11,7 @@
 // external <link> references would re-fetch live (or fall back to UA defaults),
 // breaking salience / contrast / visibility checks.
 
-import { writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -86,8 +86,16 @@ interface FreezeReport {
     // Stora MHTML (> MHTML_INLINE_THRESHOLD_BYTES) skickas till CDN via
     // lovable-assets i stället för att skrivas till repo (10 MB-tak). Pekaren
     // hamnar i page.mhtml.asset.json bredvid där page.mhtml hade legat.
+    // `externalized` är source of truth för replayCorpus (harness läser
+    // freeze-report.json, inte fil-närvaro).
     externalized: boolean;
     externalAssetUrl: string | null;
+    externalAssetSha256: string | null;
+    // True om vi tog bort en stale lokal page.mhtml som en del av write-steget
+    // (site flyttades över tröskeln) eller stale .asset.json (site flyttades
+    // under tröskeln). Loggas så att övergångar är spårbara.
+    removedStaleLocalMhtml: boolean;
+    removedStalePointer: boolean;
   };
   timing: {
     gotoMs: number;
@@ -206,6 +214,9 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       fontFetchFailures: null,
       externalized: false,
       externalAssetUrl: null,
+      externalAssetSha256: null,
+      removedStaleLocalMhtml: false,
+      removedStalePointer: false,
     },
     timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
   };
@@ -349,6 +360,9 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     report.timing.captureMs = Date.now() - tCapture;
 
     if (!opts.dryRun) {
+      const localMhtmlPath = join(dir, "page.mhtml");
+      const pointerPath = join(dir, "page.mhtml.asset.json");
+
       // Stora MHTML → CDN, pekare i repo. Liten MHTML → direkt i repo som förr.
       // Tröskel ligger marginal under repo-gränsen 10 MB (se externalize.server.ts).
       if (mhtmlBytes > MHTML_INLINE_THRESHOLD_BYTES) {
@@ -356,19 +370,36 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
           Buffer.from(finalMhtml, "utf8"),
           "page.mhtml",
         );
-        writeFileSync(
-          join(dir, "page.mhtml.asset.json"),
-          JSON.stringify(pointer, null, 2),
-        );
+        writeFileSync(pointerPath, JSON.stringify(pointer, null, 2));
         report.capture.externalized = true;
-        report.capture.externalAssetUrl = pointer.url;
+        report.capture.externalAssetUrl = pointer.resolvedUrl;
+        report.capture.externalAssetSha256 = pointer.sha256;
+        // Stale-städning: om en gammal lokal page.mhtml låg kvar (site flyttades
+        // över tröskeln) skulle replay-readerns "externalized-flagga är source
+        // of truth"-check throw:a på inkonsistens. Vi tar bort den här så att
+        // commit landar redan i konsistent state.
+        if (existsSync(localMhtmlPath)) {
+          unlinkSync(localMhtmlPath);
+          report.capture.removedStaleLocalMhtml = true;
+          // eslint-disable-next-line no-console
+          console.log(`[freeze] tog bort stale lokal ${localMhtmlPath} (flyttad över tröskeln)`);
+        }
         // eslint-disable-next-line no-console
         console.log(
           `[freeze] mhtml ${Math.round(mhtmlBytes / 1024)}kb > ${Math.round(MHTML_INLINE_THRESHOLD_BYTES / 1024)}kb tröskel ` +
-            `— externaliserat till ${pointer.url}`,
+            `— externaliserat sha256=${pointer.sha256.slice(0, 12)}… url=${pointer.resolvedUrl}`,
         );
       } else {
-        writeFileSync(join(dir, "page.mhtml"), finalMhtml, "utf8");
+        writeFileSync(localMhtmlPath, finalMhtml, "utf8");
+        // Stale-städning åt andra hållet: site som tidigare var externaliserad
+        // är nu under tröskeln (t.ex. efter font-subsetting). Ta bort .asset.json
+        // så att inte två "sanningar" lever sida vid sida.
+        if (existsSync(pointerPath)) {
+          unlinkSync(pointerPath);
+          report.capture.removedStalePointer = true;
+          // eslint-disable-next-line no-console
+          console.log(`[freeze] tog bort stale pekare ${pointerPath} (under tröskeln igen)`);
+        }
       }
       writeFileSync(join(dir, "screenshot.jpg"), Buffer.from(shot));
       const meta = {
@@ -382,6 +413,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       };
       writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2));
     }
+
 
 
     report.ok = true;
