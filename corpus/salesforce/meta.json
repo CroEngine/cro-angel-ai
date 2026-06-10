@@ -1,0 +1,12 @@
+{
+  "url": "https://www.salesforce.com",
+  "name": "salesforce",
+  "captured_at": "2026-06-10T21:25:55.057Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "Ingen consent-banner i Browserbase-region (geo-gate, samma som HiBob). MHTML externaliseras (stor)."
+}
