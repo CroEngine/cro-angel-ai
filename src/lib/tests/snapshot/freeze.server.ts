@@ -204,6 +204,8 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       embeddedFontCount: null,
       mhtmlKbBeforeFontEmbed: null,
       fontFetchFailures: null,
+      externalized: false,
+      externalAssetUrl: null,
     },
     timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
   };
