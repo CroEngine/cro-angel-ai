@@ -46,7 +46,13 @@ export const SITES: SiteSpec[] = [
     consentDismissCheck: "hidden",
     notes: "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort.",
   },
-  // De 6 övriga siterna läggs till i separat runda — varje site kan ha
+  // Salesforce testad 2026-06-10: freeze körde ok men page.mhtml blev 60 MB
+  // (10 MB även före font-embed). Över repo-gränsen 10 MB. Inte lagt till
+  // som SiteSpec — kräver beslut om asset-externalisering eller att skippa.
+  // De 5 övriga siterna läggs till en i taget — varje site kan ha
+  // egen consent-quirk som vi inte vill upptäcka efter commit.
+];
+  // De 5 övriga siterna läggs till en i taget — varje site kan ha
   // egen consent-quirk som vi inte vill upptäcka efter commit.
 ];
 
