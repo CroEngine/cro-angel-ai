@@ -83,6 +83,11 @@ interface FreezeReport {
     embeddedFontCount: number | null;
     mhtmlKbBeforeFontEmbed: number | null;
     fontFetchFailures: { url: string; error: string }[] | null;
+    // Stora MHTML (> MHTML_INLINE_THRESHOLD_BYTES) skickas till CDN via
+    // lovable-assets i stället för att skrivas till repo (10 MB-tak). Pekaren
+    // hamnar i page.mhtml.asset.json bredvid där page.mhtml hade legat.
+    externalized: boolean;
+    externalAssetUrl: string | null;
   };
   timing: {
     gotoMs: number;
