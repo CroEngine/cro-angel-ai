@@ -11,7 +11,7 @@
 // external <link> references would re-fetch live (or fall back to UA defaults),
 // breaking salience / contrast / visibility checks.
 
-import { writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
