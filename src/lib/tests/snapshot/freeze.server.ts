@@ -19,6 +19,11 @@ import { Stagehand } from "@browserbasehq/stagehand";
 
 import { createSession, closeSession } from "../browserbase.server";
 import { embedMhtmlFonts } from "./mhtml-fonts.server";
+import {
+  MHTML_INLINE_THRESHOLD_BYTES,
+  uploadAsset,
+  type AssetPointer,
+} from "./externalize.server";
 
 // Must match the viewport Browserbase uses for live test runs so aboveFold /
 // section bucketing in golden.json matches what the live engine produces.
@@ -78,6 +83,11 @@ interface FreezeReport {
     embeddedFontCount: number | null;
     mhtmlKbBeforeFontEmbed: number | null;
     fontFetchFailures: { url: string; error: string }[] | null;
+    // Stora MHTML (> MHTML_INLINE_THRESHOLD_BYTES) skickas till CDN via
+    // lovable-assets i stället för att skrivas till repo (10 MB-tak). Pekaren
+    // hamnar i page.mhtml.asset.json bredvid där page.mhtml hade legat.
+    externalized: boolean;
+    externalAssetUrl: string | null;
   };
   timing: {
     gotoMs: number;
@@ -194,6 +204,8 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       embeddedFontCount: null,
       mhtmlKbBeforeFontEmbed: null,
       fontFetchFailures: null,
+      externalized: false,
+      externalAssetUrl: null,
     },
     timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
   };
@@ -337,7 +349,27 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     report.timing.captureMs = Date.now() - tCapture;
 
     if (!opts.dryRun) {
-      writeFileSync(join(dir, "page.mhtml"), finalMhtml, "utf8");
+      // Stora MHTML → CDN, pekare i repo. Liten MHTML → direkt i repo som förr.
+      // Tröskel ligger marginal under repo-gränsen 10 MB (se externalize.server.ts).
+      if (mhtmlBytes > MHTML_INLINE_THRESHOLD_BYTES) {
+        const pointer: AssetPointer = uploadAsset(
+          Buffer.from(finalMhtml, "utf8"),
+          "page.mhtml",
+        );
+        writeFileSync(
+          join(dir, "page.mhtml.asset.json"),
+          JSON.stringify(pointer, null, 2),
+        );
+        report.capture.externalized = true;
+        report.capture.externalAssetUrl = pointer.url;
+        // eslint-disable-next-line no-console
+        console.log(
+          `[freeze] mhtml ${Math.round(mhtmlBytes / 1024)}kb > ${Math.round(MHTML_INLINE_THRESHOLD_BYTES / 1024)}kb tröskel ` +
+            `— externaliserat till ${pointer.url}`,
+        );
+      } else {
+        writeFileSync(join(dir, "page.mhtml"), finalMhtml, "utf8");
+      }
       writeFileSync(join(dir, "screenshot.jpg"), Buffer.from(shot));
       const meta = {
         url: opts.url,
@@ -350,6 +382,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       };
       writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2));
     }
+
 
     report.ok = true;
     return {

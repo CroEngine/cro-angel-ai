@@ -13,7 +13,7 @@
 //
 // Capture still runs on Browserbase (anti-bot); see freeze.server.ts.
 
-import { readFileSync, existsSync, copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, existsSync, copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -21,6 +21,7 @@ import { chromium, type Page } from "playwright";
 
 import { COLLECT_SCRIPT } from "../scripts/collect";
 import { runPageAudit } from "../runners/pageAudit.server";
+import { resolveAssetUrl, type AssetPointer } from "./externalize.server";
 
 import type { CollectedElement } from "../schema";
 
@@ -162,16 +163,35 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
 export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise<ReplayResult> {
   const dir = join(corpusRoot, name);
   const mhtmlPath = join(dir, "page.mhtml");
-  if (!existsSync(mhtmlPath)) {
-    throw new Error(`corpus/${name}/page.mhtml not found — run freeze-site first`);
+  const pointerPath = join(dir, "page.mhtml.asset.json");
+  const hasLocal = existsSync(mhtmlPath);
+  const hasPointer = existsSync(pointerPath);
+  if (!hasLocal && !hasPointer) {
+    throw new Error(
+      `corpus/${name}/page.mhtml (or page.mhtml.asset.json) not found — run freeze-site first`,
+    );
   }
   const meta = readMeta(dir);
 
   // MHTML must live on disk so Chromium can render it via file://; copying to
   // tmp keeps the corpus path clean and lets us nuke our scratch on cleanup.
+  // För externaliserade siter hämtas mhtml från CDN till samma tmp-fil.
   const tmpDir = mkdtempSync(join(tmpdir(), "snapshot-replay-"));
   const tmpFile = join(tmpDir, "page.mhtml");
-  copyFileSync(mhtmlPath, tmpFile);
+  if (hasLocal) {
+    copyFileSync(mhtmlPath, tmpFile);
+  } else {
+    const pointer = JSON.parse(readFileSync(pointerPath, "utf8")) as AssetPointer;
+    const url = resolveAssetUrl(pointer);
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(
+        `corpus/${name}: failed to fetch external mhtml ${url} (status ${res.status})`,
+      );
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    writeFileSync(tmpFile, buf);
+  }
   const fileUrl = `file://${tmpFile}`;
 
   // Default: Playwright's pinned bundled Chromium (deterministic across machines).

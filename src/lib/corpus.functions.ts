@@ -14,6 +14,7 @@ export const ARTIFACT_FILES = [
   "meta.json",
   "freeze-report.json",
   "page.mhtml",
+  "page.mhtml.asset.json",
   "screenshot.jpg",
 ] as const;
 
