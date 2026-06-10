@@ -216,6 +216,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       embeddedFontCount: null,
       mhtmlKbBeforeFontEmbed: null,
       fontFetchFailures: null,
+      embeddedFamilies: null,
       externalized: false,
       externalAssetUrl: null,
       externalAssetSha256: null,
@@ -348,6 +349,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     report.capture.externalFontSrcCount = embedded.externalFontSrcCount;
     report.capture.embeddedFontCount = embedded.embeddedFontCount;
     report.capture.fontFetchFailures = embedded.fetchFailures;
+    report.capture.embeddedFamilies = embedded.embeddedFamilies;
 
     if (embedded.externalFontSrcCount > 0) {
       throw new Error(
