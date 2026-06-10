@@ -13,7 +13,7 @@
 //
 // Capture still runs on Browserbase (anti-bot); see freeze.server.ts.
 
-import { readFileSync, existsSync, copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, existsSync, copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -21,6 +21,7 @@ import { chromium, type Page } from "playwright";
 
 import { COLLECT_SCRIPT } from "../scripts/collect";
 import { runPageAudit } from "../runners/pageAudit.server";
+import { resolveAssetUrl, type AssetPointer } from "./externalize.server";
 
 import type { CollectedElement } from "../schema";
 
