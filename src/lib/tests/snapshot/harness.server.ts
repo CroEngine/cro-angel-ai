@@ -164,6 +164,7 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
   const dir = join(corpusRoot, name);
   const mhtmlPath = join(dir, "page.mhtml");
   const pointerPath = join(dir, "page.mhtml.asset.json");
+  const reportPath = join(dir, "freeze-report.json");
   const hasLocal = existsSync(mhtmlPath);
   const hasPointer = existsSync(pointerPath);
   if (!hasLocal && !hasPointer) {
@@ -171,14 +172,67 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       `corpus/${name}/page.mhtml (or page.mhtml.asset.json) not found — run freeze-site first`,
     );
   }
+
+  // FAS 1 A2: freeze-report.json::capture.externalized är source of truth, INTE
+  // fil-närvaron. Annars kan en gammal lokal page.mhtml ligga kvar bredvid en
+  // ny pekare och tyst plockas av "finns lokalt → använd"-heuristiken → fel
+  // golden. Vi gatar på flaggan och throw:ar på alla inkonsistenta tillstånd.
+  let reportExternalized = false;
+  if (existsSync(reportPath)) {
+    try {
+      const r = JSON.parse(readFileSync(reportPath, "utf8")) as {
+        capture?: { externalized?: boolean };
+      };
+      reportExternalized = !!r.capture?.externalized;
+    } catch (e) {
+      throw new Error(
+        `corpus/${name}/freeze-report.json kunde inte läsas: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  } else {
+    // Legacy corpus utan freeze-report. Falla tillbaka på fil-närvaron MEN
+    // bara om exakt en av de två finns. Annars throw.
+    if (hasLocal && hasPointer) {
+      throw new Error(
+        `corpus/${name}: både page.mhtml och page.mhtml.asset.json finns men freeze-report.json saknas — kan inte avgöra vilken som är aktuell. Kör freeze-site om.`,
+      );
+    }
+    reportExternalized = hasPointer;
+  }
+
+  // Konsistens-vakter på själva tillståndet.
+  if (reportExternalized && hasLocal) {
+    throw new Error(
+      `corpus/${name}: freeze-report säger externalized=true men page.mhtml finns lokalt. ` +
+        `Ta bort corpus/${name}/page.mhtml eller kör freeze-site om för att städa stale state.`,
+    );
+  }
+  if (!reportExternalized && hasPointer) {
+    throw new Error(
+      `corpus/${name}: freeze-report säger externalized=false men page.mhtml.asset.json finns. ` +
+        `Ta bort corpus/${name}/page.mhtml.asset.json eller kör freeze-site om för att städa stale state.`,
+    );
+  }
+  if (reportExternalized && !hasPointer) {
+    throw new Error(
+      `corpus/${name}: freeze-report säger externalized=true men page.mhtml.asset.json saknas.`,
+    );
+  }
+  if (!reportExternalized && !hasLocal) {
+    throw new Error(
+      `corpus/${name}: freeze-report säger externalized=false men page.mhtml saknas.`,
+    );
+  }
+
   const meta = readMeta(dir);
 
   // MHTML must live on disk so Chromium can render it via file://; copying to
   // tmp keeps the corpus path clean and lets us nuke our scratch on cleanup.
-  // För externaliserade siter hämtas mhtml från CDN till samma tmp-fil.
+  // För externaliserade siter hämtas mhtml från CDN till samma tmp-fil och
+  // sha256 verifieras mot pekarens committade hash (FAS 1 A1).
   const tmpDir = mkdtempSync(join(tmpdir(), "snapshot-replay-"));
   const tmpFile = join(tmpDir, "page.mhtml");
-  if (hasLocal) {
+  if (!reportExternalized) {
     copyFileSync(mhtmlPath, tmpFile);
   } else {
     const pointer = JSON.parse(readFileSync(pointerPath, "utf8")) as AssetPointer;
@@ -190,6 +244,25 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       );
     }
     const buf = Buffer.from(await res.arrayBuffer());
+    // Integritets-gate (A1): mismatch = trunkering, fel innehåll, 404-HTML som
+    // body, eller utbytt CDN-objekt. Replay-render skulle annars producera fel
+    // golden tyst.
+    if (pointer.sha256) {
+      const actual = sha256OfBuffer(buf);
+      if (actual !== pointer.sha256) {
+        throw new Error(
+          `corpus/${name}: sha256 mismatch på extern mhtml från ${url}. ` +
+            `expected=${pointer.sha256} got=${actual} ` +
+            `(expectedSize=${pointer.size} gotSize=${buf.byteLength}). ` +
+            `Asset har bytts ut, trunkerats, eller fetchen returnerade en felsida.`,
+        );
+      }
+    } else {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `corpus/${name}: pekaren saknar sha256 (pre-Fas 1 pekare). Replay fortsätter utan integritets-check.`,
+      );
+    }
     writeFileSync(tmpFile, buf);
   }
   const fileUrl = `file://${tmpFile}`;
