@@ -380,5 +380,6 @@ export async function embedMhtmlFonts(
     newBytes: Buffer.byteLength(out, "utf8"),
     fetchFailures,
     fontUrlsSeen: Array.from(urlToCid.keys()),
+    embeddedFamilies: extractEmbeddedFamilies(out),
   };
 }
