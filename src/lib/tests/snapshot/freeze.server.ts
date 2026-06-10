@@ -214,6 +214,9 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       fontFetchFailures: null,
       externalized: false,
       externalAssetUrl: null,
+      externalAssetSha256: null,
+      removedStaleLocalMhtml: false,
+      removedStalePointer: false,
     },
     timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
   };
