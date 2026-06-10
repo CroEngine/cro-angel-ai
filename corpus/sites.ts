@@ -49,9 +49,10 @@ export const SITES: SiteSpec[] = [
   {
     name: "salesforce",
     url: "https://www.salesforce.com",
-    // Best-guess: standard OneTrust. Verifieras via dry-run innan skarp freeze.
-    consentSelector: "#onetrust-accept-btn-handler",
-    notes: "OneTrust (best-guess, verifiera via --dry-run).",
+    // Verifierat 2026-06-10 via --dry-run --screenshot-before-dismiss:
+    // Ingen OneTrust-banner renderas mot Browserbase-IP (samma geo-gate som
+    // HiBob). Sidan laddar normalt + Piper-chat-widget men ingen consent.
+    notes: "Ingen consent-banner i Browserbase-region (geo-gate, samma som HiBob).",
   },
   // De 5 övriga siterna läggs till en i taget — varje site kan ha
   // egen consent-quirk som vi inte vill upptäcka efter commit.
