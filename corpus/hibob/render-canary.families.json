@@ -1,0 +1,70 @@
+[
+  {
+    "family": "Gotham SSm A",
+    "gate1": {
+      "wWith": 481,
+      "wFallback": 463,
+      "deltaLoad": 18,
+      "fontsCheckPass": true,
+      "pass": true,
+      "reason": "ok"
+    },
+    "gate2": {
+      "wOrig": 0,
+      "deltaSubset": 0,
+      "pass": true,
+      "reason": "skipped"
+    }
+  },
+  {
+    "family": "Gotham SSm B",
+    "gate1": {
+      "wWith": 471,
+      "wFallback": 463,
+      "deltaLoad": 8,
+      "fontsCheckPass": true,
+      "pass": true,
+      "reason": "ok"
+    },
+    "gate2": {
+      "wOrig": 0,
+      "deltaSubset": 0,
+      "pass": true,
+      "reason": "skipped"
+    }
+  },
+  {
+    "family": "Sentinel SSm A",
+    "gate1": {
+      "wWith": 448,
+      "wFallback": 463,
+      "deltaLoad": 15,
+      "fontsCheckPass": true,
+      "pass": true,
+      "reason": "ok"
+    },
+    "gate2": {
+      "wOrig": 0,
+      "deltaSubset": 0,
+      "pass": true,
+      "reason": "skipped"
+    }
+  },
+  {
+    "family": "Sentinel SSm B",
+    "gate1": {
+      "wWith": 445,
+      "wFallback": 463,
+      "deltaLoad": 18,
+      "fontsCheckPass": true,
+      "pass": true,
+      "reason": "ok"
+    },
+    "gate2": {
+      "wOrig": 0,
+      "deltaSubset": 0,
+      "pass": true,
+      "reason": "skipped"
+    }
+  }
+]
