@@ -23,6 +23,7 @@ import { COLLECT_SCRIPT } from "../scripts/collect";
 import { runPageAudit } from "../runners/pageAudit.server";
 import { resolveAssetUrl, sha256OfBuffer, type AssetPointer } from "./externalize.server";
 import { runRenderCanary, type RenderCanaryReport } from "./render-canary.server";
+import { CANARY_VIEWPORT } from "./canary-constants";
 import { extractEmbeddedFamilies } from "./mhtml-fonts.server";
 
 import type { CollectedElement } from "../schema";
@@ -304,8 +305,13 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     // the embedded URL (we verified URL stays on file://...), and disabling JS
     // breaks async evaluate IIFEs in some Playwright builds. Page scripts that
     // try to fetch live mostly fail silently since their network is gone.
+    // CRITICAL: deviceScaleFactor MUST be set at context creation. Setting it
+    // via setViewportSize() after the fact does not retroactively re-render,
+    // so sub-pixel rounding drifts between machines and the canary thresholds
+    // get flaky. Pin to CANARY_VIEWPORT.deviceScaleFactor (= 1) here.
     const context = await browser.newContext({
       viewport: meta.viewport,
+      deviceScaleFactor: CANARY_VIEWPORT.deviceScaleFactor,
     });
     const page = await context.newPage();
 
@@ -380,6 +386,23 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       } catch {
         /* best-effort diagnostik */
       }
+      // Per-family receipt — on Gate-1 `unresolved` this names the family +
+      // the load error string, which IS the cid-resolution diagnostic. Keep
+      // it as a separate file so dashboards can read families without parsing
+      // the aggregate report.
+      try {
+        const familiesReceipt = canary.families.map((f) => ({
+          family: f.family,
+          gate1: f.gate1,
+          ...(f.gate2 ? { gate2: f.gate2 } : {}),
+        }));
+        writeFileSync(
+          join(dir, "render-canary.families.json"),
+          JSON.stringify(familiesReceipt, null, 2),
+        );
+      } catch {
+        /* best-effort */
+      }
       // eslint-disable-next-line no-console
       console.log(
         `[replay] canary expected=${canary.expected.length} ok=${canary.ok} ` +
@@ -389,7 +412,7 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       if (!canary.ok) {
         throw new Error(
           `[replay] render-canary failed for ${name}: ${canary.failures.join("; ")}. ` +
-            `Se corpus/${name}/render-canary.json för full rapport.`,
+            `Se corpus/${name}/render-canary.json + render-canary.families.json för full rapport.`,
         );
       }
     }

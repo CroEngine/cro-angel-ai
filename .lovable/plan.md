@@ -1,74 +1,113 @@
-## Phase 2(a) — Lazy-load Stagehand chain inside `startTestRun` handler
+## Two-part plan: close 2(a) on workerd evidence, then ship Gate-1/Gate-2 canary
 
-### Static-graph trace (the load-bearing claim, now verified, not asserted)
+### Part 1 — Workerd preview verification
 
-You're right that the payoff depends on *every* static path from a Worker route entry being free of the heavy chain — not just `run.functions.ts`. Traced before writing this plan:
+Reason: deferring is unbounded. The canary work is Node-side (`scripts/render-canary.ts` → `harness.server` → playwright on disk MHTML); nothing in Part 2 produces a Worker bundle, so without Part 1 the verification slides until an unrelated deploy.
 
-Worker route entries that exist today: `src/routes/index.tsx`, `src/routes/corpus.tsx`, `src/routes/api/tests/$runId.stream.ts`, `src/routes/api/public/corpus.$.ts`, plus `__root.tsx`. Static reach into Stagehand/Browserbase/MCP/Playwright:
+Protocol:
 
-- `routes/index.tsx` → `BrowserShell.tsx` (client component) → `@/lib/tests/run.functions` → **`./browserbase.server`** (static) and **`./engine.server`** (static, value import) → Stagehand + MCP + pkce-challenge. **This is the only live static path into the heavy chain from any Worker entry today.** This is exactly what 2(a) cuts.
-- `routes/api/tests/$runId.stream.ts` → `@/lib/tests/orchestrator.server`. Verified: `orchestrator.server.ts` has **zero** non-type imports (`rg "^import" src/lib/tests/orchestrator.server.ts` returns nothing). The "pure in-memory pub/sub" claim isn't asserted, it's transitively confirmed.
-- `routes/corpus.tsx` → `@/lib/corpus.functions` → `node:fs`, `node:path`. No edge to the chain.
-- `routes/api/public/corpus.$.ts`, `__root.tsx`: no edge to the chain.
+1. `bun run build:dev` — exit 0.
+2. Start the workerd preview (the wrangler/workerd one `build:dev` produces — **not** the Vite dev server we tested freeze on).
+3. **Cold-load test.** Hit `/`, `/corpus`, and `/api/tests/anything/stream` (404 expected) on a fresh isolate. Watch worker logs for `[unenv] X is not implemented yet!`, any `Stagehand`/`pkce-challenge`/`@modelcontextprotocol` module-init line, any module-scope env-missing throw.
+   - Pass: silent at load. The chain is no longer in isolate-init.
+   - Fail: re-run `rg` for static imports of `engine|browserbase|stagehand` from anything reachable by a route; trace missed edge.
+4. **Run-click test.** Click Run on `/` with default URL. Triage the three possible outcomes:
+   - **Silent on click, no fetch fires** → dynamic-import destructure failed on a named/default export mismatch in `run.functions.ts`. Mechanical fix.
+   - **`startTestRun` throws** (`[unenv]` / `fs` / `ENOENT` / native-binding-class) → **not a name fix**. This is the first time the request-time chain executes under workerd at all; Vite-dev hid it because Vite-dev runs in real Node with a real filesystem. The freeze path (`harness.server` / `freeze.server`) writes to `corpus/<name>/…` from the script side; if any code reachable from `startTestRun` also writes to disk, workerd has no fs and rejects. Remediation is architectural (freeze-to-stream, R2/KV, or "the Worker run path never freezes, only streams events; the script path is the only writer"), not a typo. Out of Part 1's scope — file as a real ticket, do not jam it into 2(a).
+   - **Reaches frozen with overlays + N datapoints** → ticket closes. Confirm separately that the run-click path holds results in-memory and streams to the client only; do not let Vite-dev's success stand in for that confirmation.
+5. Alias stays as known-temporary with a one-line note in `.lovable/plan.md` pointing at Phase 2(b).
 
-Harness / freeze / render-canary / externalize / mhtml-fonts: imported only from `scripts/*.ts` (Node bin) and `src/lib/tests/snapshot/__tests__/*.ts` (vitest). No file under `src/routes` or `src/components` imports them (`rg` confirmed). They are not in the Worker bundle today, and 2(a) doesn't need to touch them. Tracked as a follow-up *invariant*, not a fix: any future static import from a route into `harness.server` / `freeze.server` would re-leak Stagehand and silently defeat 2(a).
+Expected code changes: zero (or the one name-fix in 4-silent).
 
-So the precondition for 2(a) being meaningful is met: `run.functions.ts` is the single static bridge, and cutting it removes the chain from the Worker isolate-init graph.
+### Part 2 — Render-driven canary with explicit Gate 1 and Gate 2
 
-### Change set
+The current `render-canary.server.ts` does most of Gate 1 (fallback width-diff + `document.fonts.check` tie-breaker). Gaps:
 
-Edit `src/lib/tests/run.functions.ts`:
+- **Family identifier is the load-bearing input and isn't pinned.** `document.fonts.load`/`check` key off an exact match to the `@font-face` `font-family` descriptor — quoting, casing, declared-name vs used-name all matter. If `expectedFamilies` comes from CSS `font-family` properties (fallback lists, inconsistent quoting) instead of the descriptor verbatim, every Gate-1 measurement is noise. **This is the analog of "orchestrator.server must be transitively clean": pin the source.**
+- **`timeout` is the wrong name for the failure the canary exists to catch.** An unresolvable `cid:` under `file://` rejects fast — `document.fonts.load` *rejects*, it doesn't hang. A `timeout`-only enum mislabels the headline diagnostic and burns the full timeout in negative Vitest cases.
+- **Gate 2 absent.** Subset-vs-original face comparison doesn't exist.
+- **Gate-2-by-width is blind to outline/hinting drift that preserves advance width.** Catches advance + kerning corruption (`GPOS` drops), misses shape corruption. Naming this boundary is a choice we make explicitly.
+- **Gate-1 logic has a hidden hole.** `delta_load > EPS && fontsCheck === false` (width says loaded, check says no) currently falls through to `ok`, but that combination is usually a `fonts.check` false-negative from the family-string mismatch above. Calling it `ok` hides a misconfiguration; it deserves its own reason.
+- **Determinism knobs not pinned.** DPR must be set at context creation, not after.
+- **No per-family JSON receipt on disk.**
 
-1. Remove the two top-level value imports:
+Concrete change set:
+
+1. **New module `src/lib/tests/snapshot/canary-constants.ts`** — exports:
+   - `CANARY_SAMPLE_TEXT` (40–60 chars, mixed letters + digits)
+   - `EPSILON_LOAD_PX` (Gate 1; default 2px)
+   - `EPSILON_FIDELITY_PX` (Gate 2; default 0.5px)
+   - `CANARY_VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 1 }`
+   - `FONT_LOAD_TIMEOUT_MS` (default 3000) — **overridable per call** via `runRenderCanary` opts so Vitest negative cases don't each wait the full timeout.
+   Imported by `render-canary.server.ts` AND the Vitest path. No literal copies.
+
+2. **Pin family-source contract.** `expectedFamilies` MUST be the verbatim `@font-face` descriptor strings, sourced from the snapshot manifest (the same place the cid: faces are declared), not from any computed `font-family` in the DOM. Helper `extractDeclaredFamilies(mhtml)` in `mhtml-fonts.server.ts` becomes the single producer; `harness.server` consumes it; `render-canary.server.ts` receives them unchanged. Add a Vitest case asserting that a manifest with `"font-family": 'Sentinel A'` (no quotes wrapping the value) and a CSS rule using `font-family: "Sentinel A"` resolve to the same canonical descriptor going into the canary.
+
+3. **Extend `FamilyReport`**:
    ```ts
-   // delete
-   import { createSession, closeSession } from "./browserbase.server";
-   import { runSteps, type Step } from "./engine.server";
+   gate1: {
+     wWith: number; wFallback: number; deltaLoad: number;
+     fontsCheckPass: boolean;
+     pass: boolean;
+     reason: "ok" | "unresolved" | "fallback" | "metric_twin" | "check_mismatch" | "timeout";
+     loadError?: string; // populated when reason === "unresolved"
+   };
+   gate2?: {
+     wOrig: number; deltaSubset: number;
+     pass: boolean;
+     reason: "ok" | "drift" | "skipped";
+   };
    ```
-2. Re-add the `Step` symbol as a pure type import (erased by esbuild — contributes nothing to the runtime graph; keep it literally `import type` so a future refactor can't accidentally promote it back to a value import):
-   ```ts
-   import type { Step } from "./engine.server";
-   ```
-3. Inside `startTestRun.handler()`, dynamic-import both modules just before the first use, in parallel:
-   ```ts
-   const [{ createSession, closeSession }, { runSteps }] = await Promise.all([
-     import("./browserbase.server"),
-     import("./engine.server"),
-   ]);
-   ```
-   Failure mode is a named/default export mismatch — caught the first time Run is clicked in step 5 below.
-4. `stopTestRun` is untouched — orchestrator-only, already clean.
+   Old `widthVsFallback` field retained as deprecated alias one cycle.
 
-That's the whole edit. The `pkce-challenge` alias in `vite.config.ts` stays (Rollup still resolves dynamic import targets at build time — your earlier note is the reason).
+4. **Reason enum semantics** (this is the table consumers will read):
+   - `unresolved` — `document.fonts.load` rejected (the cid:-fast-reject case). Captures `loadError.message`. **Gate-1 fail.** This is the headline diagnostic, not `timeout`.
+   - `timeout` — `Promise.race` against `FONT_LOAD_TIMEOUT_MS` lost. **Gate-1 fail.** Genuinely rare on `file://`; mostly indicates network face that hung.
+   - `fallback` — load resolved, but `delta_load <= EPS` AND `fontsCheckPass === false`. Page is using fallback despite "load success" — silent fall-through. **Gate-1 fail.**
+   - `metric_twin` — load resolved, `fontsCheckPass === true`, but `delta_load <= EPS`. Loaded font is metric-compatible with its fallback. **Gate-1 pass** (closes the hole you flagged), logged.
+   - `check_mismatch` — `delta_load > EPS` (width says loaded) AND `fontsCheckPass === false`. Strongly suggests family-string mismatch between manifest and `@font-face` descriptor. **Gate-1 fail** with explicit "canary of the canary" reason — refuses to silently pass on a misconfiguration.
+   - `ok` — `delta_load > EPS` AND `fontsCheckPass === true`.
 
-### What this buys / does NOT buy
+5. **Page-eval mechanics**:
+   - `Promise.race([document.fonts.load(\`1em "${family}"\`, sample).then(() => "loaded").catch((e) => ({ error: e.message })), timeoutP])` per family. Branch into `ok`/`unresolved`/`timeout` from the race result, then continue to width measurement only when not `unresolved`/`timeout` (we still measure for the receipt, but the reason is already set).
+   - Measuring node is `position:absolute; left:-99999px; visibility:hidden; white-space:pre`, **NOT `display:none`**. A `display:none` node reports 0 width and may skip face load — nulls the measurement.
+   - `family` substituted into the page-eval is quoted exactly once: `\`"${family.replace(/"/g, '\\"')}"\``.
 
-Buys: Stagehand / Browserbase / MCP move out of Worker isolate-init evaluation into a lazy chunk loaded only when `startTestRun` is invoked. A top-level throw inside any of those packages can no longer kill `/corpus` or unrelated pages — it becomes a per-request error on Run-click, with a real stack.
+6. **Gate 2 (optional, flag on opts)**: register a `FontFace` from the *original un-subset* file URL (stored alongside the subset in the snapshot manifest as `originalUrl`), `await face.load()`, append to `document.fonts`, measure `w_orig`, `delta_subset = |w_with - w_orig|`, pass = `delta_subset < EPSILON_FIDELITY_PX`. Reason `drift` vs `ok`. **Documented boundary**: this catches advance/kerning drift only. Outline/hinting drift that preserves advance width is invisible to width-diff — out of scope for v1; raster diff is a future ticket.
 
-Does NOT buy: alias removal. Does NOT change the runtime path of an actual Run — Stagehand still drives Browserbase over CDP/WS at request time, which is fine in workerd (you're right that the earlier "Playwright can't run there" objection was wrong — remote-CDP is HTTP/WS).
+7. **Pin DPR at context creation** in `harness.server`: `browser.newContext({ viewport: CANARY_VIEWPORT, deviceScaleFactor: 1 })`. Setting `deviceScaleFactor` *after* `setViewportSize` does not retroactively re-render — must be at context init.
 
-### Verification — gated on workerd, not Vite dev
+8. **Per-family receipt**: `corpus/<name>/render-canary.families.json` — one row per family with full `gate1` + `gate2` objects. Written by `harness.server` after the canary returns. On `unresolved` the receipt names the family + the load error — that's the cid-resolution diagnostic, surfaced.
 
-Vite dev's module runner loads on demand, so "no Stagehand lines in dev log on `/corpus` load" passes trivially even if the production bundle still evaluates the chain at isolate init. That's a false green. Verification has to run against the workerd preview that `build:dev` produces.
+9. **Vitest coverage** in `src/lib/tests/snapshot/__tests__/`:
+   - Synthetic MHTML fixture, two faces: one cid: that resolves, one cid: that 404s in the MHTML map → assert `gate1.reason === "ok"` and `gate1.reason === "unresolved"` (NOT `timeout`) with a non-empty `loadError`.
+   - Family-descriptor canonicalization test (point 2 above).
+   - Gate 2: same face served twice (original + a deliberately advance-mangled subset variant) → assert `gate2.pass === false, reason === "drift"`. Pass `FONT_LOAD_TIMEOUT_MS: 200` via opts so negative cases don't each wait 3s.
+   - All tests import `CANARY_SAMPLE_TEXT` / `EPSILON_*` from `canary-constants.ts` — drift in the constants breaks tests, not silently weakens production gates.
 
-1. `bun run build:dev` exits 0. (Alias still doing its job.)
-2. **Static-graph re-check** after the edit, before any runtime test:
-   ```
-   rg "from ['\"].*(engine|browserbase|stagehand|harness|freeze|render-canary|externalize|mhtml-fonts)" src/routes src/components src/lib
-   ```
-   Expected: zero matches in `src/routes/**`, `src/components/**`, or `src/lib/**.functions.ts` outside of dynamic `import()` calls and `import type` lines. Any static value import from those paths re-opens the leak.
-3. **Workerd preview load test.** Start the preview (the actual built Worker, not Vite dev), cold-load `/`, `/corpus`, and hit `/api/tests/anything/stream`. Watch the Worker logs for the `[unenv] X is not implemented yet!` class and any Stagehand/MCP module-init line. Expected: silent on load for all three. If anything from the chain shows up here, 2(a) is a no-op and the static trace missed an edge — re-run step 2.
-4. **Workerd Run-click test.** Click Run on `/`. Expected: the same `[unenv] / Stagehand init` lines we want to see at request time, *now* — proving the chain moved from init to per-request, not that it disappeared. (If we see *nothing* at Run-click either, the dynamic import didn't resolve — named/default mismatch in step 3 of the edit.)
-5. Full happy path on Run: `session_started` arrives, live iframe loads, steps execute, terminal event fires. Catches the export-shape failure mode for the lazy-import.
+10. **Run against corpus**: `bun run scripts/render-canary.ts --all`. Acceptance: HiBob + HubSpot all families pass Gate 1 with `reason: "ok"` (no `metric_twin` slips, no `check_mismatch` slips). Gate 2 either all-pass or surfaces specific families — either outcome is real signal.
 
-Done = steps 2, 3, 4 all pass against the workerd preview. Dev-server log alone does not count.
+### Sequencing
 
-### Out of scope (explicitly)
+Part 1 first (5 min pre-flight). Part 2 blocks on Part 1 passing (don't tangle a workerd-leak fix with constants/gates rewrites — that commit can't be bisected). If Part 1 step 4 surfaces a request-time `fs`-class throw, that's a separately scoped ticket, NOT inline remediation here.
 
-- Phase 2(b): moving live-Browserbase orchestration to a separate Node process so the Worker becomes a thin proxy. That's what drops the alias and structurally guarantees the harness/freeze invariant. Separate ticket.
-- Switching alias target between `index.node.js` and `index.browser.js`. Don't conflate.
-- Render-canary, freeze pipeline, externalize, client code, UI.
+### Out of scope
 
-### Risk
+- Phase 2(b) (move orchestration out of Worker).
+- Freeze-to-disk → freeze-to-stream refactor if step 4 surfaces it.
+- Switching alias target.
+- Subset algorithm itself — Gate 2 measures it, doesn't change it.
+- Raster-diff Gate 3 for outline/hinting drift.
+- UI / orchestrator changes.
 
-Low. Mechanical edit, exported names already known, one failure mode (export-shape mismatch) caught immediately by step 4–5. Cold-isolate cost on first Run is module evaluation of the lazy chunk (not a fetch) — once per isolate, on a user click. Acceptable.
+---
+
+## Part 1 outcome (2026-06-15)
+
+- Cold-load on workerd preview (id-preview deploy): silent. No `[unenv]` / Stagehand / pkce-challenge / MCP module-init lines on `/` or `/corpus` loads. Phase 2(a) closed on real workerd evidence.
+- Run-click `_serverFn/startTestRun` POST returns 200 on workerd — chain executes at request time as designed.
+- `pkce-challenge` alias in `vite.config.ts` stays as known-temporary; structural fix is Phase 2(b).
+
+## Open ticket spawned from Part 1 step 4
+
+- **SSE stream cancellation under workerd.** `GET /api/tests/<runId>/stream` returns 0 with "Workers runtime canceled this request because it detected that your Worker's code had hung and would never generate a response", ~2s after the run starts. Reproduced ≥4× in worker logs. Not caused by 2(a) (route only touches `orchestrator.server`, which is unchanged). Likely Worker request-lifetime / CPU-time cap interacting with the long-lived subscription. Out of scope for the canary work; should be triaged before any UI-driven Run is shipped to a public audience.
