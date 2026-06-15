@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createSession, closeSession } from "./browserbase.server";
 import { createRun, emit, terminate, getRun, isTerminated } from "./orchestrator.server";
-import { runSteps, type Step } from "./engine.server";
+// Type-only — erased by esbuild, contributes nothing to the runtime graph.
+// Keep as `import type` so a future refactor can't accidentally promote it
+// to a value import and re-leak Stagehand into Worker isolate-init.
+import type { Step } from "./engine.server";
 
 function newRunId() {
   return `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
