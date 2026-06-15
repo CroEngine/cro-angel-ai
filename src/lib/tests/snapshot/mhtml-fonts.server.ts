@@ -664,42 +664,17 @@ export async function embedMhtmlFonts(
     );
   }
 
-  // Bygg urlToBinary av ok-fetchar för att kunna skriva nya parts.
+  // Bygg urlToBinary av ok-fetchar — body är redan med från classifiedFetch.
   const urlToBinary = new Map<string, Buffer>();
   const fetchFailures: { url: string; error: string }[] = [];
   for (const [url, r] of urlToFetchResult) {
-    if (r.outcome === "ok") {
-      // Vi behöver buffern — gör om fetchen är dyrt; classifiedFetch redan
-      // konsumerade body. Hämta igen för embed (kort path; redan cache:ad av CDN).
-      // För att undvika dubbel-fetch kunde vi spara buffern i ClassifiedFetch,
-      // men det skulle göra tester tyngre. Vi kör om för ok-fallet.
-    } else {
+    if (r.outcome === "ok" && r.body) {
+      urlToBinary.set(url, r.body);
+    } else if (r.outcome !== "ok") {
       fetchFailures.push({ url, error: r.error ?? r.outcome });
     }
   }
-  // Andra-pass-fetch för ok-URL:er — vi behöver bytes för att bygga MHTML-parts.
-  await Promise.all(
-    Array.from(urlToFetchResult.entries())
-      .filter(([, r]) => r.outcome === "ok")
-      .map(async ([url]) => {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), fetchTimeoutMs);
-        try {
-          const res = await fetch(url, {
-            signal: ctrl.signal,
-            headers: { "User-Agent": userAgent, Accept: "*/*" },
-          });
-          if (!res.ok) return;
-          const buf = Buffer.from(await res.arrayBuffer());
-          if (buf.byteLength === 0) return;
-          urlToBinary.set(url, buf);
-        } catch {
-          /* race: var ok i probe-fetch, transient nu — embed skippas, recorden kvar */
-        } finally {
-          clearTimeout(timer);
-        }
-      }),
-  );
+
 
   // Pass 2: rewrite CSS bodies — only for URLs vi faktiskt har binär för.
   for (const css of cssParts) {
