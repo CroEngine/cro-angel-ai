@@ -286,7 +286,10 @@ interface ClassifiedFetch {
   error?: string;
   errorCode?: string;
   proxyDenyReason?: string;
+  /** Populated only on outcome === "ok" — undvik dubbel-fetch i embed-pass. */
+  body?: Buffer;
 }
+
 
 async function classifiedFetch(
   url: string,
