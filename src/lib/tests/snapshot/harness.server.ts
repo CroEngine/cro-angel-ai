@@ -373,7 +373,17 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     // hård så CI gate:ar på det.
     let canary: RenderCanaryReport | null = null;
     try {
-      canary = await runRenderCanary(page, embeddedFamilies);
+      const pinned = !process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+      const chromiumPath = executablePath ?? "<playwright-bundled>";
+      let chromiumVersion = "";
+      try {
+        chromiumVersion = browser.version();
+      } catch {
+        /* best-effort */
+      }
+      canary = await runRenderCanary(page, embeddedFamilies, {
+        env: { chromiumPath, chromiumVersion, pinned },
+      });
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn(
@@ -395,10 +405,15 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
           family: f.family,
           gate1: f.gate1,
           ...(f.gate2 ? { gate2: f.gate2 } : {}),
+          diag: f.diag,
         }));
+        const receipt = {
+          ...(canary.env ? { env: canary.env } : {}),
+          families: familiesReceipt,
+        };
         writeFileSync(
           join(dir, "render-canary.families.json"),
-          JSON.stringify(familiesReceipt, null, 2),
+          JSON.stringify(receipt, null, 2),
         );
       } catch {
         /* best-effort */
