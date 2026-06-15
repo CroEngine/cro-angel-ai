@@ -238,7 +238,6 @@ describe("runRenderCanary — Gate 1 reason taxonomy", () => {
         "url(data:font/woff2;base64,d09GMgABAAAAAAAA)",
         { unicodeRange: "U+0041-005A" },
       );
-      // @ts-expect-error document.fonts.add accepts FontFace
       document.fonts.add(face);
     });
 
@@ -267,7 +266,6 @@ describe("runRenderCanary — Gate 1 reason taxonomy", () => {
         "url(data:font/woff2;base64,d09GMgABAAAAAAAA)",
         { unicodeRange: "U+0041-005A" },
       );
-      // @ts-expect-error document.fonts.add accepts FontFace
       document.fonts.add(face);
     });
 
