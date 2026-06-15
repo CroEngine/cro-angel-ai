@@ -13,6 +13,7 @@ import { replayCorpus } from "../src/lib/tests/snapshot/harness.server";
 import {
   embedMhtmlFonts,
   extractFontFaceDiagnostics,
+  reconcileFontUrlSets,
   type ControlProbeResult,
   type FontFetchRecord,
 } from "../src/lib/tests/snapshot/mhtml-fonts.server";
@@ -43,6 +44,17 @@ interface SiteResult {
   fontFetchFailures?: number;
   faceTotal?: number;
   faceRemote?: number;
+  faceAbsoluteHttp?: number;
+  faceRelativeOnly?: number;
+  b1UniqueAbsUrls?: number;
+  b1AbsUrlSet?: string[];
+  harmonization?: {
+    ok: boolean;
+    p: number;
+    m: number;
+    onlyInP: string[];
+    onlyInM: string[];
+  };
   faceLocalOnly?: number;
   faceWithMetricOverrides?: number;
   replayOk?: boolean;
@@ -206,6 +218,17 @@ for (const site of SMOKE_SITES) {
     }
     console.log(`[${site.name}] B2b: diagnostik-pass på pre-embed-MHTML…`);
     const preEmbedRaw = readFileSync(preEmbedPath, "utf8");
+
+    // B1-oraklet: kör diagnostik på SAMMA MHTML fetchern såg (pre-embed).
+    // Annars jämför vi olika korpus (page.mhtml är post-cid-rewrite).
+    const preDiags = extractFontFaceDiagnostics(preEmbedRaw);
+    r.faceAbsoluteHttp = preDiags.filter((d) => d.hasAbsoluteHttpUrl).length;
+    r.faceRelativeOnly = preDiags.filter((d) => d.hasOnlyRelativeUrl).length;
+    const allAbs = new Set<string>();
+    for (const d of preDiags) for (const u of d.absoluteUrls) allAbs.add(u);
+    r.b1UniqueAbsUrls = allAbs.size;
+    r.b1AbsUrlSet = [...allAbs].sort();
+
     const diag = await embedMhtmlFonts(preEmbedRaw, {
       controlProbes: {}, // använd defaults: gstatic positiv, example.com negativ
     });
@@ -217,6 +240,24 @@ for (const site of SMOKE_SITES) {
     r.b2b.interpretationBlockReason = guard.reason;
     const summary = summarizeRecords(diag.fetchRecords);
     Object.assign(r.b2b, summary);
+
+    // Harmonisering: URL-mot-URL-reconciliation mellan B1-oraklet (P) och
+    // B2b-fetchern (M). MISMATCH = riktig harvest-divergens (inte tautologi).
+    const fetcherUrls = new Set(diag.fetchRecords.map((x) => x.url));
+    const recon = reconcileFontUrlSets(allAbs, fetcherUrls);
+    r.harmonization = {
+      ok: recon.ok,
+      p: allAbs.size,
+      m: fetcherUrls.size,
+      onlyInP: recon.onlyInP,
+      onlyInM: recon.onlyInM,
+    };
+    if (!recon.ok) {
+      writeFileSync(
+        join(dir, "harmonization-diff.json"),
+        JSON.stringify(r.harmonization, null, 2),
+      );
+    }
 
     writeFileSync(
       join(dir, "font-fetch-records.json"),
@@ -241,6 +282,14 @@ for (const site of SMOKE_SITES) {
       `[${site.name}] B2b success: A/attempted=${summary.successRates.perAttempted.toFixed(2)} · ` +
         `A/uniq=${summary.successRates.perUnique.toFixed(2)} · ` +
         `A/occ=${summary.successRates.perOcc.toFixed(2)}`,
+    );
+    console.log(
+      `[${site.name}] Harmonisering: P(b1_unique_abs_urls)=${r.harmonization!.p} · ` +
+        `M(b2_absolute_urls)=${r.harmonization!.m} · ` +
+        `invariant P==M → ${r.harmonization!.ok ? "OK" : "MISMATCH"}` +
+        (!r.harmonization!.ok
+          ? ` (onlyInP=${r.harmonization!.onlyInP.length}, onlyInM=${r.harmonization!.onlyInM.length} → harmonization-diff.json)`
+          : ""),
     );
 
     console.log(`[${site.name}] replaying through canary…`);
@@ -295,6 +344,36 @@ for (const r of results) {
     console.log(
       `  B2-nämnare (familjer med remote-src) = ${r.faceRemote} · embedded=${r.embeddedFontCount}`,
     );
+  }
+  if (r.harmonization) {
+    console.log(
+      `  Harmonisering (B1-orakel vs B2b-fetcher, oberoende impl):`,
+    );
+    console.log(
+      `    b1_faces_w_abs_url     = ${r.faceAbsoluteHttp} (beskrivande)`,
+    );
+    console.log(
+      `    b1_faces_relative_only = ${r.faceRelativeOnly} (→ MHTML-inline)`,
+    );
+    console.log(
+      `    b1_unique_abs_urls (P) = ${r.harmonization.p}   ← diagnostik-orakel (https?:// eller //)`,
+    );
+    console.log(
+      `    b2_absolute_urls   (M) = ${r.harmonization.m}   ← fetcher-harvest (https?:// only)`,
+    );
+    console.log(
+      `    invariant P == M       → ${r.harmonization.ok ? "OK" : "MISMATCH"}`,
+    );
+    if (!r.harmonization.ok) {
+      if (r.harmonization.onlyInP.length > 0) {
+        console.log(`    onlyInP (fetcher missade):`);
+        for (const u of r.harmonization.onlyInP) console.log(`      - ${u}`);
+      }
+      if (r.harmonization.onlyInM.length > 0) {
+        console.log(`    onlyInM (oraklet missade):`);
+        for (const u of r.harmonization.onlyInM) console.log(`      - ${u}`);
+      }
+    }
   }
   if (r.b2b?.controlProbes) {
     console.log(
