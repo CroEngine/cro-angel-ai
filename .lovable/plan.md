@@ -110,4 +110,67 @@ Part 1 first (5 min pre-flight). Part 2 blocks on Part 1 passing (don't tangle a
 
 ## Open ticket spawned from Part 1 step 4
 
-- **SSE stream cancellation under workerd.** `GET /api/tests/<runId>/stream` returns 0 with "Workers runtime canceled this request because it detected that your Worker's code had hung and would never generate a response", ~2s after the run starts. Reproduced ≥4× in worker logs. Not caused by 2(a) (route only touches `orchestrator.server`, which is unchanged). Likely Worker request-lifetime / CPU-time cap interacting with the long-lived subscription. Out of scope for the canary work; should be triaged before any UI-driven Run is shipped to a public audience.
+- **SSE stream cancellation under workerd.** `GET /api/tests/<runId>/stream` returns 0 with "Workers runtime canceled this request because it detected that your Worker's code had hung and would never generate a response", ~2s after the run starts. Reproduced ≥4× in worker logs. Not caused by 2(a) (route only touches `orchestrator.server`, which is unchanged). Likely Worker request-lifetime / CPU-time cap interacting with the long-lived subscription. Out of scope for the canary work; should be triaged before any UI-driven Run is shipped to a public audience. Scoping protocol now lives in "Next round — corpus acceptance + SSE scoping" below.
+
+---
+
+## Next round — corpus acceptance for the canary + SSE ticket scoping (v3)
+
+### Part A — Corpus acceptance
+
+**A1. `metric_twin` is inspect-required, not auto-pass.**
+On distinctive brand faces an observed `metric_twin` is more likely a cid that resolved to a structurally-valid-but-wrong body (parseable face → `fonts.check === true`, glyph metrics collapsed toward fallback) than a genuine width coincidence. Treat as Gate-1 inspect-required.
+**Inspection artifact = side-by-side crop**, family-applied vs forced-system-fallback (inject a stylesheet that drops the declared family and re-render). Family-only crops don't show the delta. Receipt stores both crop paths + verdict (`confirmed-coincidence` | `confirmed-degenerate-cid`). Rule lives in the acceptance protocol; `render-canary.server.ts` does not auto-pass `metric_twin`.
+
+**A2. Page-eval discriminator for `document.fonts.load → []`.**
+Empty result has two distinct causes per the CSS Font Loading spec:
+1. No registered FontFace has a matching family descriptor → genuine name mismatch → `check_mismatch`, fix in `mhtml-fonts.server.ts` canonicalization.
+2. A matching descriptor exists but its `unicode-range` excludes the sample text → face filtered before loading, identical empty array, completely different root cause. Most likely `fallback` cause on real marketing sites (split latin / latin-ext / cyrillic subsets are exactly what HiBob/HubSpot serve).
+
+Discriminator inside the empty branch: iterate `document.fonts` for a FontFace whose family descriptor matches (case/quote-normalized). Match → fall through to normal width+check path (yields `fallback`). No match → `check_mismatch` with `loadError: "no face matched descriptor"`.
+
+**A2 tests run in the Playwright harness, not jsdom.** Behavior under test is CSS Font Loading semantics — unicode-range honored at load time, FontFace registration. jsdom's `document.fonts` is a non-functional stub that won't reproduce empty-on-out-of-range. A jsdom version locks in nothing; keep in-browser or it's decorative. Two cases, both required (or the test locks in the collapse):
+- FontFace `"Brand"` with `unicode-range: U+0041-005A`, sample `"abc"` → empty load, descriptor match found → `fallback` (NOT `check_mismatch`).
+- Same FontFace registered, query family `"Brnad"` → empty load, no descriptor match → `check_mismatch`.
+
+**A3. Receipt language paragraph (verbatim in Part 2 outcome):**
+*Gate 1 certifies a non-system-fallback face took effect for the sample text. It does NOT certify correct glyphs rendered. A structurally-valid-but-wrong face body can slip green through `ok` (advances differ from fallback) or `metric_twin` (they don't); the inspect-required rule on `metric_twin` catches the second case, the first is acceptable v1 because the canary's threat model is resolve-vs-not-resolve under `file://`. Glyph-correctness is Gate 2 (advance/kerning drift) and a future raster check (outline/hinting drift).*
+
+**Steps:**
+1. Vitest green (incl. both A2 cases).
+2. `bun run scripts/render-canary.ts --all`, capture stdout + both `render-canary.families.json` receipts.
+3. Triage by `gate1.reason`:
+   - `ok` → A3 receipt language, proceed.
+   - `metric_twin` → A1 side-by-side inspection. Do not auto-pass.
+   - `fallback` → **unicode-range exclusion is the primary suspected root cause** (now that A2 stops misrouting). Fix in sample text or served face's range.
+   - `check_mismatch` → canonicalization fix in `mhtml-fonts.server.ts`; add the offending family-pair as a Vitest case before fixing.
+   - `unresolved` → cid miss in MHTML extraction (real bug) vs legitimately-declared-but-unserved face (per-corpus known-missing list). `loadError` disambiguates.
+   - `timeout` on `file://` → near-zero expected. If observed, page-eval ordering bug in `render-canary.server.ts`.
+4. Gate 2 opt-in re-run; `drift` is diagnostic only in v1.
+5. Update Part 2 outcome section with per-family counts, `metric_twin` inspection verdicts, Gate-2 drift findings, **plus A3 paragraph verbatim**.
+
+No edits to `canary-constants.ts` in response to corpus results.
+
+### Part B — Scope the workerd SSE-cancellation ticket (read-only)
+
+**B1.** Read `src/routes/api/tests/$runId.stream.ts` end-to-end. Confirm relay-only (no run-driving, no chain, no awaits reaching `harness.server` / `freeze.server`). If GET both starts and drives the run, architecture drifted — file that as the bug and stop. fs-hypothesis from Part 1 does not transfer.
+
+**B2.** Candidate causes, picked by the captured cancel-reason string (`bun run dev:worker` + GET against a known runId):
+- **(a) byte-silent first-event window.** Stream writes nothing until orchestrator emits first event; workerd reads zero-bytes as hung.
+- **(b) detached producer pump.** Async pump not retained relative to returned `Response`; isolate considers producer unreachable.
+- **(c) request-lifetime / streaming-duration exceeded.** Test runs are minutes (Browserbase session + Stagehand + freeze). If SSE response held open for full run, plausible primary cause, not tail risk. Heartbeat does not buy out of a hard duration cap.
+- **(d) CPU time exceeded.** Only if the handler does meaningful per-event sync work.
+
+Disambiguators: "code had hung" → (a) or (b). "exceeded CPU" → (d). 500-class stream error (clean throw) points at producer bug, not runtime cancel. **Clean "Workers runtime canceled this request" is evidence against the fs hypothesis, not for it.**
+
+**B3.** Per-signature remediations named in the ticket (no preselection):
+- (a)+(b) → immediate SSE preamble/heartbeat (`:\n\n` on connect, decouples first-byte from first-event) + retain pump promise on request scope. Two-line-ish change, separate commit.
+- (c) → architectural. **The two options aren't parallel — option 1 collapses into option 2:** resumable SSE via `Last-Event-ID` requires a durable, replayable per-run event log, but the orchestrator is pure in-memory pub/sub by design (the property that makes it leak-free is the same property that makes it non-durable). Worker isolates are ephemeral and non-sticky; a reconnect can land on a fresh isolate with zero memory of the run. So resumable SSE needs the same durable substrate a Durable Object provides natively. The realistic (c) choice is **"DO-backed, with resumable-SSE semantics optionally layered on top,"** not "resumable-SSE vs DO." Record this coupling in the ticket — otherwise the (c) follow-up starts by trying naive `Last-Event-ID` against stateless pub/sub and discovers the dependency three commits in.
+- (d) → identify and remove per-event sync work from the relay handler.
+
+Ticket framing must read **"cheap fix and architectural fix share a symptom; the reason string picks"** so nobody scans it and walks away thinking it's a two-line heartbeat job before the signature is captured.
+
+**Step 4:** Land outcome in "Open ticket" entry above (or new sub-section) with: reproduction command, exact cancel reason string, confirmed architecture, picked cause (a)–(d), matching remediation. No code changes this round.
+
+### Sequencing & out of scope
+Part A first; Part B read-only, parallel. Part B's eventual remediation commit does not inherit Part A's acceptance commit. Out of scope: SSE fix, subset algorithm changes, Phase 2(b) Worker-orchestration move, `canary-constants.ts` default changes, UI changes.

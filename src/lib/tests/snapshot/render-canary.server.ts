@@ -204,19 +204,34 @@ export async function runRenderCanary(
       }
 
       type LoadResult =
-        | { kind: "loaded" }
+        | { kind: "loaded"; faceCount: number }
         | { kind: "rejected"; error: string }
         | { kind: "timeout" };
 
       async function tryLoad(family: string): Promise<LoadResult> {
         const loadPromise = document.fonts
           .load(`1em ${quote(family)}`, sampleText)
-          .then(() => ({ kind: "loaded" as const }))
-          .catch((e) => ({
-            kind: "rejected" as const,
+          .then((faces): LoadResult => ({
+            kind: "loaded",
+            faceCount: Array.isArray(faces) ? faces.length : 0,
+          }))
+          .catch((e): LoadResult => ({
+            kind: "rejected",
             error: e instanceof Error ? e.message : String(e),
           }));
         return Promise.race([loadPromise, timeoutPromise(fontLoadTimeoutMs)]);
+      }
+
+      // A2 discriminator: document.fonts.load(family, text) resolves to []
+      // in TWO distinct cases. Pick by iterating document.fonts for a
+      // descriptor match (case/quote-normalized), NOT by collapsing both
+      // to check_mismatch:
+      //   - no descriptor match     → genuine name mismatch → check_mismatch
+      //   - descriptor match exists → unicode-range excluded the sample →
+      //     fall through to the normal width+check path (yields fallback)
+      function hasDescriptorMatch(family: string): boolean {
+        const target = stripQuotes(family).toLowerCase();
+        return all.some((f) => stripQuotes(f.family).toLowerCase() === target);
       }
 
       const gate2Lookup = new Map(gate2Entries);
@@ -284,6 +299,20 @@ export async function runRenderCanary(
         } else if (loadResult.kind === "timeout") {
           reason = "timeout";
           pass = false;
+        } else if (
+          loadResult.kind === "loaded" &&
+          loadResult.faceCount === 0 &&
+          !hasDescriptorMatch(family)
+        ) {
+          // A2: empty load result AND no FontFace with a matching family
+          // descriptor exists in document.fonts. Genuine name mismatch
+          // between the manifest's expectedFamilies and the @font-face
+          // descriptors. Routed directly so the downstream width path
+          // (which would also land in check_mismatch via distinct + !check)
+          // gets the actionable error message.
+          reason = "check_mismatch";
+          loadError = "no face matched descriptor";
+          pass = false;
         } else if (distinct && fontsCheckPass) {
           reason = "ok";
           pass = true;
@@ -294,6 +323,11 @@ export async function runRenderCanary(
           reason = "metric_twin";
           pass = true;
         } else {
+          // Includes the A2 "descriptor matched but unicode-range excluded
+          // the sample" case: empty load result, distinct=false (face never
+          // rendered the sample), fontsCheckPass=false → fallback. Real fix
+          // is sample text or the served face's unicode-range, NOT
+          // canonicalization in mhtml-fonts.server.ts.
           reason = "fallback";
           pass = false;
         }
