@@ -333,7 +333,8 @@ async function classifiedFetch(
     if (buf.byteLength === 0) {
       return { outcome: "empty_body", bytes: 0, httpStatus: res.status, error: "empty body" };
     }
-    return { outcome: "ok", bytes: buf.byteLength, httpStatus: res.status };
+    return { outcome: "ok", bytes: buf.byteLength, httpStatus: res.status, body: buf };
+
   } catch (e) {
     const err = e as { name?: string; message?: string; code?: string; cause?: { code?: string } };
     const msg = err?.message ?? String(e);
