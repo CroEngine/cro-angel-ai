@@ -52,8 +52,18 @@ export const startTestRun = createServerFn({ method: "POST" })
     }
 
     let session;
+    let runSteps: typeof import("./engine.server").runSteps;
+    let closeSession: typeof import("./browserbase.server").closeSession;
     try {
-      session = await createSession();
+      // Lazy-load the heavy Stagehand/Browserbase chain so it isn't evaluated
+      // at Worker isolate init. See .lovable/plan.md (Phase 2a).
+      const [bb, eng] = await Promise.all([
+        import("./browserbase.server"),
+        import("./engine.server"),
+      ]);
+      closeSession = bb.closeSession;
+      runSteps = eng.runSteps;
+      session = await bb.createSession();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(`Failed to create Browserbase session: ${message}`);
