@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createSession, closeSession } from "./browserbase.server";
 import { createRun, emit, terminate, getRun, isTerminated } from "./orchestrator.server";
-import { runSteps, type Step } from "./engine.server";
+// Type-only — erased by esbuild, contributes nothing to the runtime graph.
+// Keep as `import type` so a future refactor can't accidentally promote it
+// to a value import and re-leak Stagehand into Worker isolate-init.
+import type { Step } from "./engine.server";
 
 function newRunId() {
   return `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -50,8 +52,18 @@ export const startTestRun = createServerFn({ method: "POST" })
     }
 
     let session;
+    let runSteps: typeof import("./engine.server").runSteps;
+    let closeSession: typeof import("./browserbase.server").closeSession;
     try {
-      session = await createSession();
+      // Lazy-load the heavy Stagehand/Browserbase chain so it isn't evaluated
+      // at Worker isolate init. See .lovable/plan.md (Phase 2a).
+      const [bb, eng] = await Promise.all([
+        import("./browserbase.server"),
+        import("./engine.server"),
+      ]);
+      closeSession = bb.closeSession;
+      runSteps = eng.runSteps;
+      session = await bb.createSession();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(`Failed to create Browserbase session: ${message}`);
