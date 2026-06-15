@@ -2,7 +2,11 @@
 // Mockar globalThis.fetch så vi inte är beroende av sandbox-egress.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { embedMhtmlFonts } from "../mhtml-fonts.server";
+import {
+  embedMhtmlFonts,
+  extractFontFaceDiagnostics,
+  reconcileFontUrlSets,
+} from "../mhtml-fonts.server";
 
 function mhtml(cssBody: string): string {
   const boundary = "----TEST";
