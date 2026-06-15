@@ -578,7 +578,7 @@ export async function runRenderCanary(
   for (const f of families) {
     if (!f.gate1.pass) {
       const detail =
-        f.gate1.reason === "unresolved"
+        f.gate1.reason === "unresolved" || f.gate1.reason === "descriptor_missing"
           ? ` loadError=${f.gate1.loadError ?? "?"}`
           : ` wWith=${f.gate1.wWith.toFixed(2)} wFallback=${f.gate1.wFallback.toFixed(2)} ` +
             `delta=${f.gate1.deltaLoad.toFixed(2)} fontsCheck=${f.gate1.fontsCheckPass}`;
