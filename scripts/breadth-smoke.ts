@@ -13,6 +13,7 @@
 
 import { freezeSite } from "../src/lib/tests/snapshot/freeze.server";
 import { replayCorpus } from "../src/lib/tests/snapshot/harness.server";
+import { extractFontFaceDiagnostics } from "../src/lib/tests/snapshot/mhtml-fonts.server";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
