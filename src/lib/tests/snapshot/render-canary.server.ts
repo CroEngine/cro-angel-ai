@@ -51,6 +51,62 @@ export type Gate1Reason =
 
 export type Gate2Reason = "ok" | "drift" | "skipped";
 
+/**
+ * Exhaustive branch enumeration for Gate-1 classification. Diagnostic side
+ * field — DOES NOT change `reason`. Lets us verify reason composition is
+ * internally consistent across the run before any taxonomy change.
+ *
+ *   load-rejected       — loadResult.kind === "rejected"
+ *   load-timeout        — loadResult.kind === "timeout"
+ *   A2-no-descriptor    — loaded, faceCount===0, !hasDescriptorMatch
+ *                         (today routed to reason=check_mismatch)
+ *   coverage-exclusion  — loaded, faceCount===0, hasDescriptorMatch===true
+ *                         (today reason=fallback; unicode-range excluded sample)
+ *   distinct+check      — distinct && fontsCheckPass → reason=ok
+ *   distinct+!check     — distinct && !fontsCheckPass → reason=check_mismatch
+ *   !distinct+check     — !distinct && fontsCheckPass → reason=metric_twin
+ *   !distinct+!check    — !distinct && !fontsCheckPass, faceCount>0 → fallback
+ */
+export type BranchTaken =
+  | "load-rejected"
+  | "load-timeout"
+  | "A2-no-descriptor"
+  | "coverage-exclusion"
+  | "distinct+check"
+  | "distinct+!check"
+  | "!distinct+check"
+  | "!distinct+!check";
+
+export interface Gate1Diag {
+  branchTaken: BranchTaken;
+  loadResultKind: "loaded" | "rejected" | "timeout";
+  faceCount: number;
+  hasDescriptorMatch: boolean;
+  epsilonLoadPx: number;
+  /** Raw strings used at the classification site, for canonicalization audit. */
+  strings: {
+    manifestFamily: string;
+    /** All registered descriptor family strings, post stripQuotes (raw cases). */
+    allDescriptorFamilies: string[];
+    /** Descriptors whose canonical form equals canonical(manifestFamily). */
+    matchedDescriptorFamilies: string[];
+    /** The literal arg to document.fonts.check (font-shorthand). */
+    checkString: string;
+    /** The literal arg to measureWidth (font-shorthand). */
+    widthString: string;
+  };
+  /**
+   * Canonicalization assert. Under Option 1, hasDescriptorMatch becomes the
+   * sole discriminator between descriptor_missing and fallback for empty-load
+   * rows. If canon(manifestFamily) ≠ canon(matched descriptor) we'd misroute a
+   * coverage-exclusion to descriptor_missing. `canonMismatch` is true when any
+   * pair of strings the classifier compares does not canonicalize identically.
+   * Empty mismatches[] = clean.
+   */
+  canonMismatch: boolean;
+  canonMismatchDetail: string[];
+}
+
 export interface Gate1Report {
   wWith: number;
   wFallback: number;
@@ -80,6 +136,8 @@ export interface FamilyReport {
   sampleSource: "dom" | "default";
   gate1: Gate1Report;
   gate2?: Gate2Report;
+  /** Diagnostic side field — see Gate1Diag. Not consulted by reason routing. */
+  diag: Gate1Diag;
 
   /** @deprecated one-cycle alias for gate1.{wWith,wFallback,deltaLoad,...} +
    *  the legacy `distinct` boolean. Will be removed once external readers
