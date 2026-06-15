@@ -1,46 +1,38 @@
-## Mål
+# Kör B2b Rev3
 
-Mät — inte koda. Bekräfta att B1-filtret gör vad det ska, och etablera ren B2-nämnare per sajt innan vi rör embed-loopen.
+Rev3-koden är implementerad. Det här är körnings- och tolkningssteget.
 
 ## Steg
 
-1. **Kör smoke-scriptet på nytt**
-   - `bunx tsx scripts/breadth-smoke.ts` mot stripe.com, intercom.com, vercel.com (samma 3 som förra rundan).
-   - Output till `/tmp/corpus-breadth/` (eller den path scriptet redan använder).
-   - Replay-steget förväntas fortsatt fela (saknar chromium-libs i sandbox) — det är OK, vi mäter bara freeze/extract.
+1. **Kör unit-testerna**
+   - `bunx vitest run src/lib/tests/snapshot/__tests__/fetch-records.test.ts`
+   - Förväntat: 8/8 gröna. Om något fallerar → stopp, fixa innan smoke.
 
-2. **Läs `face-diagnostics.json` per sajt och tabulera**
-   
-   Per sajt rapportera:
-   - `totalFaces` (alla @font-face-block i MHTML)
-   - `localOnlyFiltered` (B1-bortrensade — `hasLocalOnly && !hasRemoteSrc`)
-   - `withMetricOverrides` (size-adjust / ascent-override / descent-override)
-   - `extractedFamilies` (efter filter, vad pipelinen nu räknar)
-   - `embeddedFamilies` (vad embed-loopen lyckades med)
-   - **B2-gap** = `extractedFamilies − embeddedFamilies` (den riktiga nämnaren)
+2. **Kör hela snapshot-test-sviten** (regressionscheck)
+   - `bunx vitest run src/lib/tests/snapshot`
+   - Förväntat: 20/20 (12 gamla + 8 nya). Pre-existing Chromium-fel i `hubspot`-snapshotet ignoreras om det är samma som tidigare.
 
-3. **Bekräfta de tre förväntningarna från B1-hypotesen**
-   - **Intercom:** 26 → 13 (eller nära) efter filter. 13 local-only-faces bortrensade. Inter / next-font-genererade fallbacks ska försvinna.
-   - **Stripe:** `sohne-var` överlever (har `url()` src) — får INTE råka filtreras bort. Embedded fortfarande 0 ⇒ ren B2-signal.
-   - **Vercel:** 21 → ~2 (de riktiga remote-familjerna), 19 ska antingen vara local-only ELLER fortfarande extraheras men inte embeddas (ren B2). Skilj på dessa två — det är hela poängen med övningen.
+3. **Kör breadth-smoke**
+   - `bun run scripts/breadth-smoke.ts`
+   - Skriver per site: `font-fetch-records.json`, `control-probes.json`, ev. `B2b-*.md`.
 
-4. **Skriv kort verifieringsrapport** (markdown, inte ny kod)
-   - Tabell: sajt × (total, local-only, metric-overrides, extracted, embedded, B2-gap).
-   - En rad per sajt med tolkning: "B1 fångade X, B2-gap är Y, nästa: …"
-   - Spara i `/tmp/corpus-breadth/B1-verification.md` så vi har den när vi planerar B2b.
+4. **Läs control-probes först** (innan någon fetcher-tolkning)
+   - `positive.outcome !== "ok"` → `blocked_hard` → skriv `B2b-environment-block.md`, stopp.
+   - `negative.outcome === "env_blocked"` → `ok_block_validated` → fortsätt till steg 5.
+   - `negative.outcome ∈ {ok, http_error}` → `ok_open_egress` → fortsätt till steg 5 (ingen block existerar; alla `network_error` är äkta).
+   - `negative.outcome ∈ {network_error, timeout}` → `blocked_detector_inert` → skriv `B2b-detector-inert.md`, stopp.
 
-5. **Sanity-checks innan vi går vidare**
-   - Inga oväntade familjer försvann (t.ex. en cms-font med både `local()` och `url()` får inte droppas).
-   - `withMetricOverrides`-siffran ska korrelera med `localOnlyFiltered` på Next.js-sajterna (samma faces, två signaler).
-   - Om någon sajt visar `localOnlyFiltered === 0` men vi vet att den kör next/font → bugg i diagnostiken, undersök innan B2.
+5. **Tolka fetch-records** (endast om steg 4 säger fortsätt)
+   - Per host: räkna `env_blocked` / `attempted`. Hosts med 100% env_blocked → exkludera från fetcher-tolkning.
+   - Resterande hosts: rapportera `ok/http_error/empty_body/network_error/timeout` i tre baser `A/attempted`, `A/uniq`, `A/occ`.
+   - Completeness-assert verifieras automatiskt (kastar annars).
 
-## Vad detta INTE inkluderar
+6. **Sammanfatta utfall till användaren**
+   - Probe-utfall + guard-beslut.
+   - Per-host env_blocked-karta.
+   - Outcome-fördelning för icke-blockade hosts.
+   - Rekommendation: är B2 en produktbugg (äkta `http_error`/`empty_body`/`network_error` mot öppna hosts) eller miljöartefakt (allt `env_blocked` eller detector-inert)?
 
-- Ingen ändring av `mhtml-fonts.server.ts` eller `breadth-smoke.ts`.
-- Ingen embed-loop-instrumentering (det är B2b, separat runda).
-- Ingen replay-körning.
-- Ingen reklassificering av `descriptor_missing`-räknare i renderprep.
+## Inga kodändringar
 
-## Leverabel
-
-Tabellen + tolkningen i `B1-verification.md`. Den blir input till B2b-planen: om B2-gapet efter filter är 0 på någon sajt är B2-fixen inte nödvändig där; om gapet är stort på alla tre vet vi att tystnaden i `embedMhtmlFonts` är universell och inte sajt-specifik.
+Endast körning + tolkning. Om steg 1–2 visar regressioner fixas de innan smoke körs.
