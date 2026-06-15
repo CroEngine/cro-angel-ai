@@ -86,6 +86,25 @@ for (const site of SMOKE_SITES) {
       `[${site.name}] freeze OK · ${r.mhtmlKb}kb · ${r.embeddedFontCount} fonts · ${r.embeddedFamilies?.length} families`,
     );
 
+    // B1 face-diagnostik (kräver inline page.mhtml; hoppa tyst för pointer-fall).
+    const mhtmlPath = join(dir, "page.mhtml");
+    if (existsSync(mhtmlPath)) {
+      const raw = readFileSync(mhtmlPath, "utf8");
+      const diags = extractFontFaceDiagnostics(raw);
+      r.faceTotal = diags.length;
+      r.faceRemote = diags.filter((d) => d.hasRemoteSrc).length;
+      r.faceLocalOnly = diags.filter((d) => d.hasLocalOnly).length;
+      r.faceWithMetricOverrides = diags.filter((d) => d.hasMetricOverrides).length;
+      writeFileSync(
+        join(dir, "face-diagnostics.json"),
+        JSON.stringify(diags, null, 2),
+      );
+      console.log(
+        `[${site.name}] B1 faces: total=${r.faceTotal} remote=${r.faceRemote} local-only=${r.faceLocalOnly} metric-overrides=${r.faceWithMetricOverrides}`,
+      );
+    }
+
+
     console.log(`[${site.name}] replaying through canary…`);
     try {
       await replayCorpus(site.name, BREADTH_ROOT);
