@@ -1,19 +1,21 @@
 #!/usr/bin/env bun
 // Bredd-validering smoke-test (3 sites, ej committad till corpus/).
-// Skriver allt till /tmp/corpus-breadth/<name>/ och rapporterar klassificering
-// per site: embeddedFamilies (extractor) vs Gate1-reasons (rendering).
+// Skriver allt till /tmp/corpus-breadth/<name>/.
 //
-// Klassificeringsregel (per familj som missar Gate1):
-//   - registered=true                              → OK (ingen miss)
-//   - reason="descriptor_missing"                  → A1 (extractor-spöke) eller
-//                                                    A2 (iframe-only) — kräver
-//                                                    manuell triage per familj
-//   - reason="check_mismatch"                      → A3b-misstanke (canon-fel)
-//   - reason="unexpected_family"                   → ny felmod (CSS-in-JS?)
+// B2b: efter freeze körs ett diagnostik-pass som re-läser page.pre-embed.mhtml
+// (raw, före cid:-rewrite) och kallar embedMhtmlFonts med controlProbes igen
+// för att producera per-URL FontFetchRecord + positive/negative kontrollprober.
+// Den 4-vägs negativ-guarden bestämmer om fetcher-distributionen är tolkningsbar
+// i denna miljö eller om miljö-confound dominerar.
 
 import { freezeSite } from "../src/lib/tests/snapshot/freeze.server";
 import { replayCorpus } from "../src/lib/tests/snapshot/harness.server";
-import { extractFontFaceDiagnostics } from "../src/lib/tests/snapshot/mhtml-fonts.server";
+import {
+  embedMhtmlFonts,
+  extractFontFaceDiagnostics,
+  type ControlProbeResult,
+  type FontFetchRecord,
+} from "../src/lib/tests/snapshot/mhtml-fonts.server";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -24,6 +26,12 @@ const SMOKE_SITES = [
   { name: "vercel", url: "https://vercel.com" },
 ];
 
+type GuardVerdict =
+  | "ok_open_egress"        // negative=ok|http_error  → ideal: ingen miljö-block alls
+  | "ok_block_validated"    // negative=env_blocked    → block existerar men detektorn validerad
+  | "blocked_hard"          // positive≠ok             → miljön når inte ens CDN — stopp
+  | "blocked_detector_inert"; // negative=network_error|timeout → tyst block, tolkning ogiltig
+
 interface SiteResult {
   name: string;
   url: string;
@@ -33,7 +41,6 @@ interface SiteResult {
   embeddedFontCount?: number;
   embeddedFamilies?: string[];
   fontFetchFailures?: number;
-  // B1 diagnostik från extractFontFaceDiagnostics
   faceTotal?: number;
   faceRemote?: number;
   faceLocalOnly?: number;
@@ -45,6 +52,89 @@ interface SiteResult {
   perFamily?: Array<{ family: string; registered: boolean; reason?: string }>;
   classification?: Record<string, number>;
   durationMs?: number;
+  // B2b-fält
+  b2b?: {
+    preEmbedFound: boolean;
+    controlProbes?: { positive: ControlProbeResult; negative: ControlProbeResult };
+    guardVerdict?: GuardVerdict;
+    interpretationBlocked?: boolean;
+    interpretationBlockReason?: string;
+    totalOccurrences?: number;
+    uniqueUrlCount?: number;
+    attemptedCount?: number;
+    outcomeCounts?: Record<string, number>;
+    perHostEnvBlocked?: Record<string, { env_blocked: number; total: number }>;
+    successRates?: { perAttempted: number; perUnique: number; perOcc: number };
+  };
+}
+
+function classifyGuard(
+  probes: { positive: ControlProbeResult; negative: ControlProbeResult },
+): { verdict: GuardVerdict; interpretationBlocked: boolean; reason: string } {
+  if (probes.positive.outcome !== "ok") {
+    return {
+      verdict: "blocked_hard",
+      interpretationBlocked: true,
+      reason: `positive probe outcome=${probes.positive.outcome} — environment cannot reach control CDN`,
+    };
+  }
+  const n = probes.negative.outcome;
+  if (n === "env_blocked") {
+    return {
+      verdict: "ok_block_validated",
+      interpretationBlocked: false,
+      reason: "negative=env_blocked → proxy signals deny, env_blocked bucket trustworthy",
+    };
+  }
+  if (n === "ok" || n === "http_error") {
+    return {
+      verdict: "ok_open_egress",
+      interpretationBlocked: false,
+      reason: `negative=${n} from example.com host → open egress, no env confound`,
+    };
+  }
+  // network_error | timeout | empty_body | skipped_* — alla tysta block-signaler
+  return {
+    verdict: "blocked_detector_inert",
+    interpretationBlocked: true,
+    reason: `negative=${n} → proxy may be blocking silently; env_blocked detector not validated`,
+  };
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "<invalid>";
+  }
+}
+
+function summarizeRecords(records: FontFetchRecord[]) {
+  const outcomeCounts: Record<string, number> = {};
+  const perHost: Record<string, { env_blocked: number; total: number }> = {};
+  for (const r of records) {
+    outcomeCounts[r.outcome] = (outcomeCounts[r.outcome] ?? 0) + 1;
+    const h = hostOf(r.url);
+    if (!perHost[h]) perHost[h] = { env_blocked: 0, total: 0 };
+    perHost[h].total++;
+    if (r.outcome === "env_blocked") perHost[h].env_blocked++;
+  }
+  const totalOccurrences = records.length;
+  const uniqueUrlCount = new Set(records.map((r) => r.url)).size;
+  const attemptedCount = records.filter((r) => r.attempted).length;
+  const okCount = records.filter((r) => r.outcome === "ok").length;
+  return {
+    totalOccurrences,
+    uniqueUrlCount,
+    attemptedCount,
+    outcomeCounts,
+    perHostEnvBlocked: perHost,
+    successRates: {
+      perAttempted: attemptedCount > 0 ? okCount / attemptedCount : 0,
+      perUnique: uniqueUrlCount > 0 ? okCount / uniqueUrlCount : 0,
+      perOcc: totalOccurrences > 0 ? okCount / totalOccurrences : 0,
+    },
+  };
 }
 
 mkdirSync(BREADTH_ROOT, { recursive: true });
@@ -86,7 +176,7 @@ for (const site of SMOKE_SITES) {
       `[${site.name}] freeze OK · ${r.mhtmlKb}kb · ${r.embeddedFontCount} fonts · ${r.embeddedFamilies?.length} families`,
     );
 
-    // B1 face-diagnostik (kräver inline page.mhtml; hoppa tyst för pointer-fall).
+    // B1 face-diagnostik (kräver inline page.mhtml).
     const mhtmlPath = join(dir, "page.mhtml");
     if (existsSync(mhtmlPath)) {
       const raw = readFileSync(mhtmlPath, "utf8");
@@ -104,13 +194,60 @@ for (const site of SMOKE_SITES) {
       );
     }
 
+    // B2b — diagnostik-pass på pre-embed-MHTML. HÅRD-FAIL om filen saknas
+    // (annars mäter vi fel URL-set).
+    const preEmbedPath = join(dir, "page.pre-embed.mhtml");
+    r.b2b = { preEmbedFound: existsSync(preEmbedPath) };
+    if (!r.b2b.preEmbedFound) {
+      throw new Error(
+        `[${site.name}] B2b: page.pre-embed.mhtml saknas — re-freeze krävs ` +
+          `(freeze.server skriver filen sedan B2b §3; gamla freezes har den inte).`,
+      );
+    }
+    console.log(`[${site.name}] B2b: diagnostik-pass på pre-embed-MHTML…`);
+    const preEmbedRaw = readFileSync(preEmbedPath, "utf8");
+    const diag = await embedMhtmlFonts(preEmbedRaw, {
+      controlProbes: {}, // använd defaults: gstatic positiv, example.com negativ
+    });
+    const probes = diag.controlProbes!;
+    r.b2b.controlProbes = probes;
+    const guard = classifyGuard(probes);
+    r.b2b.guardVerdict = guard.verdict;
+    r.b2b.interpretationBlocked = guard.interpretationBlocked;
+    r.b2b.interpretationBlockReason = guard.reason;
+    const summary = summarizeRecords(diag.fetchRecords);
+    Object.assign(r.b2b, summary);
+
+    writeFileSync(
+      join(dir, "font-fetch-records.json"),
+      JSON.stringify(diag.fetchRecords, null, 2),
+    );
+    writeFileSync(
+      join(dir, "control-probes.json"),
+      JSON.stringify({ ...probes, guard }, null, 2),
+    );
+
+    console.log(
+      `[${site.name}] B2b control: positive=${probes.positive.outcome} (${probes.positive.durationMs}ms) · ` +
+        `negative=${probes.negative.outcome} (${probes.negative.durationMs}ms) → ${guard.verdict}`,
+    );
+    console.log(
+      `[${site.name}] B2b records: occ=${summary.totalOccurrences} · uniq=${summary.uniqueUrlCount} · attempted=${summary.attemptedCount}`,
+    );
+    console.log(
+      `[${site.name}] B2b outcomes: ${JSON.stringify(summary.outcomeCounts)}`,
+    );
+    console.log(
+      `[${site.name}] B2b success: A/attempted=${summary.successRates.perAttempted.toFixed(2)} · ` +
+        `A/uniq=${summary.successRates.perUnique.toFixed(2)} · ` +
+        `A/occ=${summary.successRates.perOcc.toFixed(2)}`,
+    );
 
     console.log(`[${site.name}] replaying through canary…`);
     try {
       await replayCorpus(site.name, BREADTH_ROOT);
       r.replayOk = true;
     } catch (e) {
-      // replayCorpus throws on Gate1 misses — that's expected/normal here.
       r.replayOk = false;
       r.replayError = e instanceof Error ? e.message.slice(0, 200) : String(e);
     }
@@ -158,6 +295,26 @@ for (const r of results) {
     console.log(
       `  B2-nämnare (familjer med remote-src) = ${r.faceRemote} · embedded=${r.embeddedFontCount}`,
     );
+  }
+  if (r.b2b?.controlProbes) {
+    console.log(
+      `  B2b guard: ${r.b2b.guardVerdict} · interpretationBlocked=${r.b2b.interpretationBlocked}`,
+    );
+    console.log(`    → ${r.b2b.interpretationBlockReason}`);
+    console.log(
+      `  B2b counts: occ=${r.b2b.totalOccurrences} · uniq=${r.b2b.uniqueUrlCount} · attempted=${r.b2b.attemptedCount}`,
+    );
+    console.log(`  B2b outcomes: ${JSON.stringify(r.b2b.outcomeCounts)}`);
+    if (r.b2b.successRates) {
+      console.log(
+        `  B2b success: A/attempted=${r.b2b.successRates.perAttempted.toFixed(2)} · A/uniq=${r.b2b.successRates.perUnique.toFixed(2)} · A/occ=${r.b2b.successRates.perOcc.toFixed(2)}`,
+      );
+    }
+    const blocked = Object.entries(r.b2b.perHostEnvBlocked ?? {}).filter(([, v]) => v.env_blocked > 0);
+    if (blocked.length > 0) {
+      console.log(`  B2b per-host env_blocked:`);
+      for (const [h, v] of blocked) console.log(`    - ${h}: ${v.env_blocked}/${v.total}`);
+    }
   }
   if (r.gate1Total != null) {
     console.log(

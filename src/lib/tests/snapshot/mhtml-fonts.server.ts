@@ -207,22 +207,199 @@ function serializeMhtml(p: ParsedMhtml): string {
 
 // ------------------------------------------------------------- API ---------
 
+/** Klass per URL-försök. Separat env_blocked-bucket undviker att proxy-deny
+ *  blandas med äkta network-fel. skipped_dedup = förekomst nr ≥2 av samma URL. */
+export type FontFetchOutcome =
+  | "ok"
+  | "http_error"
+  | "empty_body"
+  | "network_error"
+  | "env_blocked"
+  | "timeout"
+  | "skipped_ext"
+  | "skipped_dedup";
+
+export interface FontFetchRecord {
+  url: string;
+  ext: string | null;
+  occurrenceIndex: number;
+  attempted: boolean;
+  outcome: FontFetchOutcome;
+  bytes: number;
+  httpStatus?: number;
+  error?: string;
+  errorCode?: string;
+  proxyDenyReason?: string;
+  durationMs: number;
+}
+
+export interface ControlProbeResult {
+  url: string;
+  kind: "positive" | "negative";
+  outcome: FontFetchOutcome;
+  httpStatus?: number;
+  bytes: number;
+  error?: string;
+  errorCode?: string;
+  proxyDenyReason?: string;
+  durationMs: number;
+}
+
 export interface FontEmbedResult {
   mhtml: string;
-  /** Count of http(s):// font URLs still present in any CSS part AFTER rewrite.
-   *  This is the hard-assertion gate per plan.md beslutspunkt 3. */
+  /** Count of http(s):// font URLs still present in any CSS part AFTER rewrite. */
   externalFontSrcCount: number;
-  /** Number of unique font binaries embedded as new MHTML parts. */
   embeddedFontCount: number;
-  /** New MHTML byte size (post-rewrite). */
   newBytes: number;
   fetchFailures: { url: string; error: string }[];
-  /** Diagnostic: every font URL encountered (deduped). */
   fontUrlsSeen: string[];
-  /** Unique font-family names declared in @font-face rules across all CSS parts.
-   *  Render-canary använder dessa som "förväntade familjer" i replay. */
   embeddedFamilies: string[];
+  /** B2b: en record per harvest-förekomst. fetchRecords.length === totalHarvestedOccurrences. */
+  fetchRecords: FontFetchRecord[];
+  totalHarvestedOccurrences: number;
+  controlProbes?: { positive: ControlProbeResult; negative: ControlProbeResult };
 }
+
+// Hostar som ALDRIG får användas som negativ kontrollprobe — de är diagnostik-mål
+// eller del av font-CDN-allowlistor, vilket gör utfallet cirkulärt.
+const NEGATIVE_PROBE_DENYLIST = [
+  /(^|\.)fonts\.gstatic\.com$/i,
+  /(^|\.)fonts\.googleapis\.com$/i,
+  /(^|\.)intercomcdn\.com$/i,
+  /(^|\.)intercomassets\.com$/i,
+  /(^|\.)stripe\.com$/i,
+  /(^|\.)stripecdn\.com$/i,
+  /(^|\.)vercel\.com$/i,
+  /(^|\.)vercel-scripts\.com$/i,
+  /(^|\.)typekit\.net$/i,
+  /(^|\.)use\.typekit\.net$/i,
+];
+
+const PROXY_DENY_HEADERS = ["x-deny-reason", "x-forwarded-deny", "x-proxy-block"] as const;
+const PROXY_ERROR_PATTERNS =
+  /(EPROXYAUTHREQUIRED|tunneling socket could not be established|proxy.*denied|blocked by proxy)/i;
+
+interface ClassifiedFetch {
+  outcome: FontFetchOutcome;
+  bytes: number;
+  httpStatus?: number;
+  error?: string;
+  errorCode?: string;
+  proxyDenyReason?: string;
+  /** Populated only on outcome === "ok" — undvik dubbel-fetch i embed-pass. */
+  body?: Buffer;
+}
+
+
+async function classifiedFetch(
+  url: string,
+  timeoutMs: number,
+  userAgent: string,
+): Promise<ClassifiedFetch> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "User-Agent": userAgent, Accept: "*/*" },
+    });
+    // Proxy-deny via header
+    for (const h of PROXY_DENY_HEADERS) {
+      const v = res.headers.get(h);
+      if (v) {
+        return {
+          outcome: "env_blocked",
+          bytes: 0,
+          httpStatus: res.status,
+          proxyDenyReason: `${h}: ${v}`,
+          error: `proxy denied via header ${h}`,
+        };
+      }
+    }
+    // 403 via en proxy som annars inte skickar deny-header
+    if (res.status === 403 && res.headers.get("via")) {
+      return {
+        outcome: "env_blocked",
+        bytes: 0,
+        httpStatus: 403,
+        proxyDenyReason: `403 via ${res.headers.get("via")}`,
+        error: "403 from proxy",
+      };
+    }
+    if (!res.ok) {
+      return { outcome: "http_error", bytes: 0, httpStatus: res.status, error: `HTTP ${res.status}` };
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.byteLength === 0) {
+      return { outcome: "empty_body", bytes: 0, httpStatus: res.status, error: "empty body" };
+    }
+    return { outcome: "ok", bytes: buf.byteLength, httpStatus: res.status, body: buf };
+
+  } catch (e) {
+    const err = e as { name?: string; message?: string; code?: string; cause?: { code?: string } };
+    const msg = err?.message ?? String(e);
+    const code = err?.code ?? err?.cause?.code;
+    if (err?.name === "AbortError") {
+      return { outcome: "timeout", bytes: 0, error: "timeout", errorCode: code };
+    }
+    if (PROXY_ERROR_PATTERNS.test(msg) || (code && PROXY_ERROR_PATTERNS.test(code))) {
+      return {
+        outcome: "env_blocked",
+        bytes: 0,
+        error: msg,
+        errorCode: code,
+        proxyDenyReason: `error pattern: ${code ?? msg}`,
+      };
+    }
+    return { outcome: "network_error", bytes: 0, error: msg, errorCode: code };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function runControlProbe(
+  url: string,
+  kind: "positive" | "negative",
+  timeoutMs: number,
+  userAgent: string,
+): Promise<ControlProbeResult> {
+  const t0 = performance.now();
+  const r = await classifiedFetch(url, timeoutMs, userAgent);
+  return {
+    url,
+    kind,
+    outcome: r.outcome,
+    httpStatus: r.httpStatus,
+    bytes: r.bytes,
+    error: r.error,
+    errorCode: r.errorCode,
+    proxyDenyReason: r.proxyDenyReason,
+    durationMs: Math.round(performance.now() - t0),
+  };
+}
+
+export const DEFAULT_POSITIVE_PROBE_URL =
+  "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.woff2";
+export const DEFAULT_NEGATIVE_PROBE_URL =
+  "https://example.com/lovable-egress-probe.woff2";
+
+function assertNegativeProbeHostAllowed(url: string): void {
+  let host: string;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    throw new Error(`[mhtml-fonts] negative probe URL is not a valid URL: ${url}`);
+  }
+  for (const re of NEGATIVE_PROBE_DENYLIST) {
+    if (re.test(host)) {
+      throw new Error(
+        `[mhtml-fonts] negative probe host "${host}" matches font-CDN/diagnosed denylist (${re}); ` +
+          `pick a host that's NOT on any allowlist (e.g. example.com).`,
+      );
+    }
+  }
+}
+
 
 // Hitta `font-family: <value>;` inuti varje `@font-face { ... }`-block.
 // Hanterar:
@@ -324,9 +501,23 @@ export function extractFontFaceDiagnostics(
   return out;
 }
 
+// För B2b-harvest behöver vi ALLA url(...) i src-deskriptorer för @font-face,
+// inte bara de med känd font-ext — annars tappar vi URL:er utan extension
+// (CDN:er som serverar woff2 utan filändelse) i tystnad.
+const ANY_HTTP_URL_RE = /url\(\s*(['"]?)(https?:\/\/[^)'"\s]+?)\1\s*\)/gi;
+const SRC_DECL_GLOBAL_RE = /src\s*:\s*([^;}]+)/gi;
+
 export async function embedMhtmlFonts(
   mhtmlRaw: string,
-  opts: { fetchTimeoutMs?: number; userAgent?: string } = {},
+  opts: {
+    fetchTimeoutMs?: number;
+    userAgent?: string;
+    /** Kör positiv + negativ kontrollprobe före URL-loopen. */
+    controlProbes?: {
+      positiveUrl?: string;
+      negativeUrl?: string;
+    };
+  } = {},
 ): Promise<FontEmbedResult> {
   const parsed = parseMhtml(mhtmlRaw);
   const fetchTimeoutMs = opts.fetchTimeoutMs ?? 10_000;
@@ -334,7 +525,21 @@ export async function embedMhtmlFonts(
     opts.userAgent ??
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
-  // Pass 1: identify CSS-ish parts (QP-encoded text), decode bodies, harvest URLs.
+  // Kontrollprober (om begärt) — körs FÖRE URL-fetch-loopen så att tolkningen
+  // av records-distributionen kan guardas mot miljö-confound.
+  let controlProbes: { positive: ControlProbeResult; negative: ControlProbeResult } | undefined;
+  if (opts.controlProbes) {
+    const posUrl = opts.controlProbes.positiveUrl ?? DEFAULT_POSITIVE_PROBE_URL;
+    const negUrl = opts.controlProbes.negativeUrl ?? DEFAULT_NEGATIVE_PROBE_URL;
+    assertNegativeProbeHostAllowed(negUrl);
+    const [positive, negative] = await Promise.all([
+      runControlProbe(posUrl, "positive", fetchTimeoutMs, userAgent),
+      runControlProbe(negUrl, "negative", fetchTimeoutMs, userAgent),
+    ]);
+    controlProbes = { positive, negative };
+  }
+
+  // Pass 1: identify CSS-ish parts (QP-encoded text), decode bodies.
   interface CssPartState {
     idx: number;
     decoded: string;
@@ -345,8 +550,6 @@ export async function embedMhtmlFonts(
     const part = parsed.parts[i];
     const ct = part.headers["content-type"] || "";
     const enc = (part.headers["content-transfer-encoding"] || "").toLowerCase();
-    // Process text/css always; also scan text/html for inline <style> blocks
-    // with @font-face (some sites use that pattern).
     if (!/^text\/(css|html)/i.test(ct)) continue;
     if (!part.body.includes("@font-face") && !part.body.includes("font-face")) continue;
     const decoded = enc === "quoted-printable" ? qpDecode(part.body) : part.body;
@@ -354,45 +557,126 @@ export async function embedMhtmlFonts(
     cssParts.push({ idx: i, decoded, encoding: enc });
   }
 
-  // Harvest unique font URLs across all CSS parts.
+  // Harvest per-occurrence (NOT per-unique). En record per förekomst — duplicates
+  // ger skipped_dedup. URL:er utan font-ext ger skipped_ext. Detta är hela
+  // B2b-poängen: completeness-invariant fetchRecords.length === totalHarvestedOccurrences.
+  interface HarvestEntry {
+    url: string;
+    ext: string | null;
+    occurrenceIndex: number;
+    isFirstOccurrence: boolean;
+    isFontExt: boolean;
+  }
+  const harvest: HarvestEntry[] = [];
   const urlToCid = new Map<string, string>();
+  const seenUrls = new Set<string>();
+  let occurrenceCounter = 0;
   for (const css of cssParts) {
-    for (const match of css.decoded.matchAll(FONT_URL_RE)) {
-      const url = match[2];
-      if (!FONT_EXT_RE.test(url)) continue;
-      if (!urlToCid.has(url)) {
-        urlToCid.set(url, `font-${randomUUID().replace(/-/g, "").slice(0, 16)}@snapshot`);
+    // Iterera @font-face-block, sen src-deskriptorer i ordning, sen url() i ordning.
+    for (const faceMatch of css.decoded.matchAll(FONT_FACE_BLOCK_RE)) {
+      const faceBody = faceMatch[1];
+      for (const srcMatch of faceBody.matchAll(SRC_DECL_GLOBAL_RE)) {
+        const srcValue = srcMatch[1];
+        for (const urlMatch of srcValue.matchAll(ANY_HTTP_URL_RE)) {
+          const url = urlMatch[2];
+          const extMatch = url.match(FONT_EXT_RE);
+          const ext = extMatch ? extMatch[1].toLowerCase() : null;
+          const isFontExt = !!extMatch;
+          const isFirstOccurrence = !seenUrls.has(url);
+          if (isFirstOccurrence) {
+            seenUrls.add(url);
+            if (isFontExt) {
+              urlToCid.set(
+                url,
+                `font-${randomUUID().replace(/-/g, "").slice(0, 16)}@snapshot`,
+              );
+            }
+          }
+          harvest.push({
+            url,
+            ext,
+            occurrenceIndex: occurrenceCounter++,
+            isFirstOccurrence,
+            isFontExt,
+          });
+        }
       }
     }
   }
+  const totalHarvestedOccurrences = harvest.length;
 
-  // Fetch each unique URL in parallel.
-  const fetchFailures: { url: string; error: string }[] = [];
-  const urlToBinary = new Map<string, Buffer>();
+  // Fetch unika font-ext-URLer parallellt. classifiedFetch ger oss bucket + timing.
+  const urlToFetchResult = new Map<string, ClassifiedFetch & { durationMs: number }>();
   await Promise.all(
     Array.from(urlToCid.keys()).map(async (url) => {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), fetchTimeoutMs);
-      try {
-        const res = await fetch(url, {
-          signal: ctrl.signal,
-          headers: { "User-Agent": userAgent, Accept: "*/*" },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const buf = Buffer.from(await res.arrayBuffer());
-        if (buf.byteLength === 0) throw new Error("empty body");
-        urlToBinary.set(url, buf);
-      } catch (e) {
-        fetchFailures.push({ url, error: e instanceof Error ? e.message : String(e) });
-      } finally {
-        clearTimeout(timer);
-      }
+      const t0 = performance.now();
+      const r = await classifiedFetch(url, fetchTimeoutMs, userAgent);
+      urlToFetchResult.set(url, { ...r, durationMs: Math.round(performance.now() - t0) });
     }),
   );
 
-  // Pass 2: rewrite CSS bodies — only for URLs we successfully fetched.
-  // Failed fetches leave the original url(...) in place, which will be
-  // counted in externalFontSrcCount and fail the hard-assert in freeze.server.
+  // Bygg fetchRecords i harvest-ordning.
+  const fetchRecords: FontFetchRecord[] = harvest.map((h) => {
+    if (!h.isFirstOccurrence) {
+      return {
+        url: h.url,
+        ext: h.ext,
+        occurrenceIndex: h.occurrenceIndex,
+        attempted: false,
+        outcome: "skipped_dedup",
+        bytes: 0,
+        durationMs: 0,
+      };
+    }
+    if (!h.isFontExt) {
+      return {
+        url: h.url,
+        ext: h.ext,
+        occurrenceIndex: h.occurrenceIndex,
+        attempted: false,
+        outcome: "skipped_ext",
+        bytes: 0,
+        durationMs: 0,
+      };
+    }
+    const fr = urlToFetchResult.get(h.url)!;
+    return {
+      url: h.url,
+      ext: h.ext,
+      occurrenceIndex: h.occurrenceIndex,
+      attempted: true,
+      outcome: fr.outcome,
+      bytes: fr.bytes,
+      httpStatus: fr.httpStatus,
+      error: fr.error,
+      errorCode: fr.errorCode,
+      proxyDenyReason: fr.proxyDenyReason,
+      durationMs: fr.durationMs,
+    };
+  });
+
+  // Completeness-invariant: en record per förekomst. Om denna kastar har en
+  // tyst skip-path smugits in i koden ovan.
+  if (fetchRecords.length !== totalHarvestedOccurrences) {
+    throw new Error(
+      `[mhtml-fonts] completeness-invariant failed: fetchRecords.length=${fetchRecords.length} ` +
+        `!== totalHarvestedOccurrences=${totalHarvestedOccurrences} — silent skip path exists`,
+    );
+  }
+
+  // Bygg urlToBinary av ok-fetchar — body är redan med från classifiedFetch.
+  const urlToBinary = new Map<string, Buffer>();
+  const fetchFailures: { url: string; error: string }[] = [];
+  for (const [url, r] of urlToFetchResult) {
+    if (r.outcome === "ok" && r.body) {
+      urlToBinary.set(url, r.body);
+    } else if (r.outcome !== "ok") {
+      fetchFailures.push({ url, error: r.error ?? r.outcome });
+    }
+  }
+
+
+  // Pass 2: rewrite CSS bodies — only for URLs vi faktiskt har binär för.
   for (const css of cssParts) {
     const rewritten = css.decoded.replace(FONT_URL_RE, (full, _q, url) => {
       if (!urlToBinary.has(url)) return full;
@@ -411,7 +695,6 @@ export async function embedMhtmlFonts(
     const cid = urlToCid.get(url)!;
     const ext = (url.match(FONT_EXT_RE)?.[1] || "woff2").toLowerCase();
     const mime = MIME_BY_EXT[ext] || "application/octet-stream";
-    // Base64 wrapped at 76 chars per RFC 2045.
     const b64 = buf.toString("base64").replace(/(.{76})/g, "$1\r\n");
     const headers = [
       `Content-Type: ${mime}`,
@@ -424,12 +707,7 @@ export async function embedMhtmlFonts(
 
   const out = serializeMhtml(parsed);
 
-  // Final invariant scan: count remaining http(s):// font URLs across the
-  // whole serialized MHTML. This is the form-agnostic gate per plan
-  // beslutspunkt 3. We need to scan the BYTES (not decoded), so soft-break
-  // tolerance matters here — strip them within a sliding window.
   let externalFontSrcCount = 0;
-  // Concatenate every part's decoded text view for the scan.
   for (let i = 0; i < parsed.parts.length; i++) {
     const part = parsed.parts[i];
     const ct = part.headers["content-type"] || "";
@@ -449,5 +727,9 @@ export async function embedMhtmlFonts(
     fetchFailures,
     fontUrlsSeen: Array.from(urlToCid.keys()),
     embeddedFamilies: extractEmbeddedFamilies(out),
+    fetchRecords,
+    totalHarvestedOccurrences,
+    controlProbes,
   };
 }
+

@@ -339,6 +339,13 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     const rawMhtmlBytes = Buffer.byteLength(snap.data, "utf8");
     report.capture.mhtmlKbBeforeFontEmbed = Math.round(rawMhtmlBytes / 1024);
 
+    // B2b §3: skriv pre-embed-MHTML bredvid den slutliga page.mhtml — diagnostik-
+    // passet i breadth-smoke läser detta för att harvest:a samma URL-set som
+    // embedMhtmlFonts såg (inte de redan cid:-rewrittna URL:erna i post-embed).
+    if (!opts.dryRun) {
+      writeFileSync(join(dir, "page.pre-embed.mhtml"), snap.data, "utf8");
+    }
+
     // A2 — embed external font binaries as cid: parts so replay doesn't fall
     // back to OS fonts. The hard-assert below (externalFontSrcCount === 0) is
     // the form-agnostic success gate per plan beslutspunkt 3.
@@ -350,6 +357,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     report.capture.embeddedFontCount = embedded.embeddedFontCount;
     report.capture.fontFetchFailures = embedded.fetchFailures;
     report.capture.embeddedFamilies = embedded.embeddedFamilies;
+
 
     if (embedded.externalFontSrcCount > 0) {
       throw new Error(
