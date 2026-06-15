@@ -283,6 +283,14 @@ for (const site of SMOKE_SITES) {
         `A/uniq=${summary.successRates.perUnique.toFixed(2)} · ` +
         `A/occ=${summary.successRates.perOcc.toFixed(2)}`,
     );
+    console.log(
+      `[${site.name}] Harmonisering: P(b1_unique_abs_urls)=${r.harmonization!.p} · ` +
+        `M(b2_absolute_urls)=${r.harmonization!.m} · ` +
+        `invariant P==M → ${r.harmonization!.ok ? "OK" : "MISMATCH"}` +
+        (!r.harmonization!.ok
+          ? ` (onlyInP=${r.harmonization!.onlyInP.length}, onlyInM=${r.harmonization!.onlyInM.length} → harmonization-diff.json)`
+          : ""),
+    );
 
     console.log(`[${site.name}] replaying through canary…`);
     try {
