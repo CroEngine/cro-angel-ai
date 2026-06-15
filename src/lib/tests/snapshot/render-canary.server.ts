@@ -408,6 +408,93 @@ export async function runRenderCanary(
           pass = false;
         }
 
+        // ---------- Diagnostic side fields (do NOT influence reason) ----------
+        // branchTaken: an exhaustive enumeration of which classifier path fired,
+        // expanded beyond the post-load matrix to surface load-failure paths AND
+        // to split coverage-exclusion (faceCount===0 && hasDescriptorMatch)
+        // out of the fallback bucket. Lets us audit reason composition.
+        const descriptorMatched = hasDescriptorMatch(family);
+        let branchTaken:
+          | "load-rejected"
+          | "load-timeout"
+          | "A2-no-descriptor"
+          | "coverage-exclusion"
+          | "distinct+check"
+          | "distinct+!check"
+          | "!distinct+check"
+          | "!distinct+!check";
+        if (loadResult.kind === "rejected") {
+          branchTaken = "load-rejected";
+        } else if (loadResult.kind === "timeout") {
+          branchTaken = "load-timeout";
+        } else if (loadResult.kind === "loaded" && loadResult.faceCount === 0 && !descriptorMatched) {
+          branchTaken = "A2-no-descriptor";
+        } else if (loadResult.kind === "loaded" && loadResult.faceCount === 0 && descriptorMatched) {
+          branchTaken = "coverage-exclusion";
+        } else if (distinct && fontsCheckPass) {
+          branchTaken = "distinct+check";
+        } else if (distinct && !fontsCheckPass) {
+          branchTaken = "distinct+!check";
+        } else if (!distinct && fontsCheckPass) {
+          branchTaken = "!distinct+check";
+        } else {
+          branchTaken = "!distinct+!check";
+        }
+
+        // Raw strings the classifier actually compared. Persist verbatim so a
+        // canonicalization-quirk that under-matches descriptors (real
+        // descriptor returns hasDescriptorMatch=false) is auditable.
+        const manifestFamily = family;
+        const checkString = `16px ${quote(family)}`;
+        const widthString = `${quote(family)}, monospace`;
+        const allDescriptorFamilies = all.map((f) => stripQuotes(f.family));
+        const targetCanon = stripQuotes(manifestFamily).toLowerCase();
+        const matchedDescriptorFamilies = allDescriptorFamilies.filter(
+          (s) => s.toLowerCase() === targetCanon,
+        );
+
+        // Canon-mismatch assert: under Option 1, hasDescriptorMatch becomes the
+        // sole discriminator between descriptor_missing and fallback for
+        // empty-load rows. Each compared string must canonicalize identically.
+        const canonMismatchDetail: string[] = [];
+        const canon = (s: string): string => stripQuotes(s).toLowerCase();
+        const canonManifest = canon(manifestFamily);
+        // checkString/widthString embed quote(family); after stripping the
+        // shorthand they must canonicalize to canonManifest.
+        const checkFamilyToken = canon(quote(family));
+        const widthFamilyToken = canon(quote(family));
+        if (checkFamilyToken !== canonManifest) {
+          canonMismatchDetail.push(`checkString family !== manifest`);
+        }
+        if (widthFamilyToken !== canonManifest) {
+          canonMismatchDetail.push(`widthString family !== manifest`);
+        }
+        if (descriptorMatched) {
+          for (const d of matchedDescriptorFamilies) {
+            if (canon(d) !== canonManifest) {
+              canonMismatchDetail.push(`descriptor "${d}" canon !== manifest`);
+            }
+          }
+        }
+        const canonMismatch = canonMismatchDetail.length > 0;
+
+        const diag = {
+          branchTaken,
+          loadResultKind: loadResult.kind,
+          faceCount: loadResult.kind === "loaded" ? loadResult.faceCount : 0,
+          hasDescriptorMatch: descriptorMatched,
+          epsilonLoadPx,
+          strings: {
+            manifestFamily,
+            allDescriptorFamilies,
+            matchedDescriptorFamilies,
+            checkString,
+            widthString,
+          },
+          canonMismatch,
+          canonMismatchDetail,
+        };
+
         const gate2 = await runGate2(family);
 
         out.push({
@@ -427,6 +514,7 @@ export async function runRenderCanary(
             ...(loadError ? { loadError } : {}),
           },
           gate2,
+          diag,
           // Deprecated aliases (one migration cycle).
           widthVsFallback: {
             embedded: wWith,
@@ -437,6 +525,7 @@ export async function runRenderCanary(
           fontsCheckPass,
         });
       }
+
 
       return { diagnostics, families: out };
     },
