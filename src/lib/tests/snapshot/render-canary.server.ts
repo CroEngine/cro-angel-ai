@@ -16,21 +16,38 @@
 // Reason taxonomy is the load-bearing diagnostic surface — callers (Vitest,
 // scripts/render-canary, CI dashboards) read these strings, not the booleans:
 //
-//   unresolved    — document.fonts.load REJECTED. The cid:-fast-reject case
-//                   under file:// replay. loadError populated. Gate-1 fail.
-//   timeout       — Promise.race against fontLoadTimeoutMs lost. Rare on
-//                   file:// (rejections are fast); mostly network-face hangs.
-//   fallback      — load resolved but width identical to fallback AND
-//                   fonts.check === false. Silent fall-through. Gate-1 fail.
-//   metric_twin   — load resolved, fonts.check === true, width identical to
-//                   fallback. The loaded face is metric-compatible with its
-//                   fallback. Gate-1 PASS (logged) — width-diff alone can't
-//                   distinguish this from "never loaded".
-//   check_mismatch— width says loaded (>EPS), fonts.check === false. Almost
-//                   always a family-string mismatch between the @font-face
-//                   descriptor and what was passed to the canary. Gate-1 FAIL
-//                   — refuses to silently pass on a misconfiguration.
-//   ok            — width > EPS AND fonts.check === true.
+//   unresolved        — document.fonts.load REJECTED. The cid:-fast-reject case
+//                       under file:// replay. loadError populated. Gate-1 fail.
+//   timeout           — Promise.race against fontLoadTimeoutMs lost. Rare on
+//                       file:// (rejections are fast); mostly network hangs.
+//   fallback          — load resolved, faceCount>0, width identical to fallback
+//                       AND fonts.check === false. Silent fall-through.
+//                       Gate-1 fail. (Also: load resolved with faceCount===0
+//                       AND descriptor exists in document.fonts — the
+//                       unicode-range-excluded-sample case; fix is sample/range,
+//                       not extraction.)
+//   metric_twin       — load resolved, fonts.check === true, width identical to
+//                       fallback. Loaded face is metric-compatible with its
+//                       fallback. Gate-1 PASS (logged) — width-diff alone can't
+//                       distinguish this from "never loaded".
+//   descriptor_missing— load resolved with faceCount===0 AND NO descriptor for
+//                       the family exists in document.fonts. The manifest's
+//                       expectedFamilies names a family no @font-face declares.
+//                       Fix lives in extractDeclaredFamilies (mhtml-fonts.server),
+//                       NOT in canonicalization of the check string. Gate-1 fail.
+//   check_mismatch    — width says loaded (>EPS) AND fonts.check === false.
+//                       DEFENSIVE branch, near-unreachable by construction:
+//                       w_with measures `family, <fallback>` and w_fallback
+//                       measures `<fallback>` alone with the same stack, so
+//                       delta>EPS requires `family` actually rendered — which
+//                       requires it loaded — which makes check(family)=true.
+//                       distinct ⟹ check. The branch fires only if timing
+//                       slips (we await fonts.ready), the check string is
+//                       non-canonical relative to the rendering path (audited
+//                       by Gate1Diag.canonMismatch), or subpixel noise pushes
+//                       a non-distinct row above EPS. Kept as a fail-safe so
+//                       the canary refuses to silently pass on the impossible.
+//   ok                — width > EPS AND fonts.check === true.
 
 import type { Page } from "playwright";
 
@@ -47,6 +64,7 @@ export type Gate1Reason =
   | "fallback"
   | "metric_twin"
   | "check_mismatch"
+  | "descriptor_missing"
   | "timeout";
 
 export type Gate2Reason = "ok" | "drift" | "skipped";
