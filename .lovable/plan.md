@@ -99,3 +99,15 @@ Part 1 first (5 min pre-flight). Part 2 blocks on Part 1 passing (don't tangle a
 - Subset algorithm itself — Gate 2 measures it, doesn't change it.
 - Raster-diff Gate 3 for outline/hinting drift.
 - UI / orchestrator changes.
+
+---
+
+## Part 1 outcome (2026-06-15)
+
+- Cold-load on workerd preview (id-preview deploy): silent. No `[unenv]` / Stagehand / pkce-challenge / MCP module-init lines on `/` or `/corpus` loads. Phase 2(a) closed on real workerd evidence.
+- Run-click `_serverFn/startTestRun` POST returns 200 on workerd — chain executes at request time as designed.
+- `pkce-challenge` alias in `vite.config.ts` stays as known-temporary; structural fix is Phase 2(b).
+
+## Open ticket spawned from Part 1 step 4
+
+- **SSE stream cancellation under workerd.** `GET /api/tests/<runId>/stream` returns 0 with "Workers runtime canceled this request because it detected that your Worker's code had hung and would never generate a response", ~2s after the run starts. Reproduced ≥4× in worker logs. Not caused by 2(a) (route only touches `orchestrator.server`, which is unchanged). Likely Worker request-lifetime / CPU-time cap interacting with the long-lived subscription. Out of scope for the canary work; should be triaged before any UI-driven Run is shipped to a public audience.
