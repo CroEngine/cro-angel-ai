@@ -33,6 +33,11 @@ interface SiteResult {
   embeddedFontCount?: number;
   embeddedFamilies?: string[];
   fontFetchFailures?: number;
+  // B1 diagnostik från extractFontFaceDiagnostics
+  faceTotal?: number;
+  faceRemote?: number;
+  faceLocalOnly?: number;
+  faceWithMetricOverrides?: number;
   replayOk?: boolean;
   replayError?: string;
   gate1Total?: number;
