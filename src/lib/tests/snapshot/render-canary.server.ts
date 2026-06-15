@@ -152,6 +152,20 @@ export interface FamilyReport {
   fontsCheckPass: boolean;
 }
 
+export interface RenderCanaryEnv {
+  /** Path to the chromium binary actually used. */
+  chromiumPath: string;
+  /** Result of browser.version() (e.g. "HeadlessChrome/138.0.0.0"). */
+  chromiumVersion: string;
+  /**
+   * true = Playwright's bundled, version-pinned chromium (deterministic).
+   * false = system / sandbox chromium (freetype/harfbuzz/fontconfig stack may
+   * shift width measurements relative to EPSILON; rows DO NOT count toward
+   * acceptance until a pinned run confirms).
+   */
+  pinned: boolean;
+}
+
 export interface RenderCanaryReport {
   ok: boolean;
   expected: string[];
@@ -175,6 +189,8 @@ export interface RenderCanaryReport {
     fontLoadTimeoutMs: number;
     gate2Enabled: boolean;
   };
+  /** Browser environment used for measurements; supplied by the caller. */
+  env?: RenderCanaryEnv;
 }
 
 export interface Gate2Source {
@@ -199,6 +215,8 @@ export interface RunCanaryOpts {
    *  originalUrl as the un-subset reference. Families not in this list get
    *  gate2.reason = "skipped". */
   gate2Sources?: Gate2Source[];
+  /** Browser env recorded verbatim into the report's `env` field. */
+  env?: RenderCanaryEnv;
 }
 
 export async function runRenderCanary(
