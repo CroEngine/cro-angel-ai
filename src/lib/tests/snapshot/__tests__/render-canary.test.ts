@@ -211,6 +211,78 @@ describe("runRenderCanary — Gate 1 reason taxonomy", () => {
     expect(fam.gate1.reason).not.toBe("check_mismatch");
     expect(fam.gate1.reason).not.toBe("timeout");
   });
+
+  // A2 discriminator: document.fonts.load(family, text) resolves to []
+  // in two distinct cases — descriptor-absent vs descriptor-present-but-
+  // unicode-range-excluded. Must split, or unicode-range exclusion (the
+  // most likely fallback cause on real marketing sites with latin /
+  // latin-ext subsets) gets misrouted to canonicalization.
+  //
+  // These tests MUST run in a real browser engine. jsdom's document.fonts
+  // is a non-functional stub that won't reproduce empty-on-out-of-range
+  // or honor unicode-range at load time. A jsdom version locks in the
+  // collapse the discriminator exists to prevent.
+  test("A2: empty load + descriptor match (unicode-range excludes sample) → 'fallback', NOT 'check_mismatch'", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+
+    await page.setContent(`<html><body><p>x</p></body></html>`);
+
+    // Register a FontFace whose unicode-range covers only uppercase A-Z.
+    // The canary sample text contains lowercase letters and digits, so
+    // document.fonts.load("Brand", sample) is spec-required to return []
+    // (faces filtered before loading). The URL is intentionally junk —
+    // load is never attempted because the range filter rejects first.
+    await page.evaluate(() => {
+      const face = new FontFace(
+        "Brand",
+        "url(data:font/woff2;base64,d09GMgABAAAAAAAA)",
+        { unicodeRange: "U+0041-005A" },
+      );
+      // @ts-expect-error document.fonts.add accepts FontFace
+      document.fonts.add(face);
+    });
+
+    const report = await runRenderCanary(page, ["Brand"], {
+      fontLoadTimeoutMs: 1000,
+    });
+    const fam = report.families[0];
+
+    // The headline assertion: NOT check_mismatch. Descriptor IS registered,
+    // it's the range that excluded the sample — that's a fallback condition,
+    // not a name-mismatch condition.
+    expect(fam.gate1.reason).not.toBe("check_mismatch");
+    expect(fam.gate1.reason).toBe("fallback");
+    expect(fam.gate1.pass).toBe(false);
+    expect(fam.registered).toBe(true);
+  });
+
+  test("A2: empty load + NO descriptor match (typo) → 'check_mismatch' with loadError", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+
+    await page.setContent(`<html><body><p>x</p></body></html>`);
+
+    await page.evaluate(() => {
+      const face = new FontFace(
+        "Brand",
+        "url(data:font/woff2;base64,d09GMgABAAAAAAAA)",
+        { unicodeRange: "U+0041-005A" },
+      );
+      // @ts-expect-error document.fonts.add accepts FontFace
+      document.fonts.add(face);
+    });
+
+    // Query for "Brnad" (typo): no FontFace has this descriptor → genuine
+    // name mismatch → check_mismatch with the actionable error message.
+    const report = await runRenderCanary(page, ["Brnad"], {
+      fontLoadTimeoutMs: 1000,
+    });
+    const fam = report.families[0];
+
+    expect(fam.gate1.reason).toBe("check_mismatch");
+    expect(fam.gate1.pass).toBe(false);
+    expect(fam.gate1.loadError).toBe("no face matched descriptor");
+    expect(fam.registered).toBe(false);
+  });
 });
 
 describe("runRenderCanary — settings round-trip in report", () => {
