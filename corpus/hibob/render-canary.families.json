@@ -1,70 +1,329 @@
-[
-  {
-    "family": "Gotham SSm A",
-    "gate1": {
-      "wWith": 481,
-      "wFallback": 463,
-      "deltaLoad": 18,
-      "fontsCheckPass": true,
-      "pass": true,
-      "reason": "ok"
-    },
-    "gate2": {
-      "wOrig": 0,
-      "deltaSubset": 0,
-      "pass": true,
-      "reason": "skipped"
-    }
+{
+  "env": {
+    "chromiumPath": "/bin/chromium-browser",
+    "chromiumVersion": "146.0.7680.80",
+    "pinned": false
   },
-  {
-    "family": "Gotham SSm B",
-    "gate1": {
-      "wWith": 471,
-      "wFallback": 463,
-      "deltaLoad": 8,
-      "fontsCheckPass": true,
-      "pass": true,
-      "reason": "ok"
+  "families": [
+    {
+      "family": "Gotham SSm A",
+      "gate1": {
+        "wWith": 481,
+        "wFallback": 463,
+        "deltaLoad": 18,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Gotham SSm A",
+          "allDescriptorFamilies": [
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm A"
+          ],
+          "matchedDescriptorFamilies": [
+            "Gotham SSm A",
+            "Gotham SSm A",
+            "Gotham SSm A",
+            "Gotham SSm A",
+            "Gotham SSm A",
+            "Gotham SSm A"
+          ],
+          "checkString": "16px \"Gotham SSm A\"",
+          "widthString": "\"Gotham SSm A\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
     },
-    "gate2": {
-      "wOrig": 0,
-      "deltaSubset": 0,
-      "pass": true,
-      "reason": "skipped"
-    }
-  },
-  {
-    "family": "Sentinel SSm A",
-    "gate1": {
-      "wWith": 448,
-      "wFallback": 463,
-      "deltaLoad": 15,
-      "fontsCheckPass": true,
-      "pass": true,
-      "reason": "ok"
+    {
+      "family": "Gotham SSm B",
+      "gate1": {
+        "wWith": 471,
+        "wFallback": 463,
+        "deltaLoad": 8,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Gotham SSm B",
+          "allDescriptorFamilies": [
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm A"
+          ],
+          "matchedDescriptorFamilies": [
+            "Gotham SSm B",
+            "Gotham SSm B",
+            "Gotham SSm B",
+            "Gotham SSm B",
+            "Gotham SSm B",
+            "Gotham SSm B"
+          ],
+          "checkString": "16px \"Gotham SSm B\"",
+          "widthString": "\"Gotham SSm B\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
     },
-    "gate2": {
-      "wOrig": 0,
-      "deltaSubset": 0,
-      "pass": true,
-      "reason": "skipped"
-    }
-  },
-  {
-    "family": "Sentinel SSm B",
-    "gate1": {
-      "wWith": 445,
-      "wFallback": 463,
-      "deltaLoad": 18,
-      "fontsCheckPass": true,
-      "pass": true,
-      "reason": "ok"
+    {
+      "family": "Sentinel SSm A",
+      "gate1": {
+        "wWith": 448,
+        "wFallback": 463,
+        "deltaLoad": 15,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Sentinel SSm A",
+          "allDescriptorFamilies": [
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm A"
+          ],
+          "matchedDescriptorFamilies": [
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A",
+            "Sentinel SSm A"
+          ],
+          "checkString": "16px \"Sentinel SSm A\"",
+          "widthString": "\"Sentinel SSm A\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
     },
-    "gate2": {
-      "wOrig": 0,
-      "deltaSubset": 0,
-      "pass": true,
-      "reason": "skipped"
+    {
+      "family": "Sentinel SSm B",
+      "gate1": {
+        "wWith": 445,
+        "wFallback": 463,
+        "deltaLoad": 18,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Sentinel SSm B",
+          "allDescriptorFamilies": [
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Gotham SSm A",
+            "Gotham SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm B",
+            "Sentinel SSm A",
+            "Sentinel SSm A"
+          ],
+          "matchedDescriptorFamilies": [
+            "Sentinel SSm B",
+            "Sentinel SSm B",
+            "Sentinel SSm B",
+            "Sentinel SSm B",
+            "Sentinel SSm B",
+            "Sentinel SSm B",
+            "Sentinel SSm B",
+            "Sentinel SSm B",
+            "Sentinel SSm B",
+            "Sentinel SSm B",
+            "Sentinel SSm B"
+          ],
+          "checkString": "16px \"Sentinel SSm B\"",
+          "widthString": "\"Sentinel SSm B\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
     }
-  }
-]
+  ]
+}

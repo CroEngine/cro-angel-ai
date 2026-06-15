@@ -51,6 +51,62 @@ export type Gate1Reason =
 
 export type Gate2Reason = "ok" | "drift" | "skipped";
 
+/**
+ * Exhaustive branch enumeration for Gate-1 classification. Diagnostic side
+ * field — DOES NOT change `reason`. Lets us verify reason composition is
+ * internally consistent across the run before any taxonomy change.
+ *
+ *   load-rejected       — loadResult.kind === "rejected"
+ *   load-timeout        — loadResult.kind === "timeout"
+ *   A2-no-descriptor    — loaded, faceCount===0, !hasDescriptorMatch
+ *                         (today routed to reason=check_mismatch)
+ *   coverage-exclusion  — loaded, faceCount===0, hasDescriptorMatch===true
+ *                         (today reason=fallback; unicode-range excluded sample)
+ *   distinct+check      — distinct && fontsCheckPass → reason=ok
+ *   distinct+!check     — distinct && !fontsCheckPass → reason=check_mismatch
+ *   !distinct+check     — !distinct && fontsCheckPass → reason=metric_twin
+ *   !distinct+!check    — !distinct && !fontsCheckPass, faceCount>0 → fallback
+ */
+export type BranchTaken =
+  | "load-rejected"
+  | "load-timeout"
+  | "A2-no-descriptor"
+  | "coverage-exclusion"
+  | "distinct+check"
+  | "distinct+!check"
+  | "!distinct+check"
+  | "!distinct+!check";
+
+export interface Gate1Diag {
+  branchTaken: BranchTaken;
+  loadResultKind: "loaded" | "rejected" | "timeout";
+  faceCount: number;
+  hasDescriptorMatch: boolean;
+  epsilonLoadPx: number;
+  /** Raw strings used at the classification site, for canonicalization audit. */
+  strings: {
+    manifestFamily: string;
+    /** All registered descriptor family strings, post stripQuotes (raw cases). */
+    allDescriptorFamilies: string[];
+    /** Descriptors whose canonical form equals canonical(manifestFamily). */
+    matchedDescriptorFamilies: string[];
+    /** The literal arg to document.fonts.check (font-shorthand). */
+    checkString: string;
+    /** The literal arg to measureWidth (font-shorthand). */
+    widthString: string;
+  };
+  /**
+   * Canonicalization assert. Under Option 1, hasDescriptorMatch becomes the
+   * sole discriminator between descriptor_missing and fallback for empty-load
+   * rows. If canon(manifestFamily) ≠ canon(matched descriptor) we'd misroute a
+   * coverage-exclusion to descriptor_missing. `canonMismatch` is true when any
+   * pair of strings the classifier compares does not canonicalize identically.
+   * Empty mismatches[] = clean.
+   */
+  canonMismatch: boolean;
+  canonMismatchDetail: string[];
+}
+
 export interface Gate1Report {
   wWith: number;
   wFallback: number;
@@ -80,6 +136,8 @@ export interface FamilyReport {
   sampleSource: "dom" | "default";
   gate1: Gate1Report;
   gate2?: Gate2Report;
+  /** Diagnostic side field — see Gate1Diag. Not consulted by reason routing. */
+  diag: Gate1Diag;
 
   /** @deprecated one-cycle alias for gate1.{wWith,wFallback,deltaLoad,...} +
    *  the legacy `distinct` boolean. Will be removed once external readers
@@ -92,6 +150,20 @@ export interface FamilyReport {
   };
   /** @deprecated alias for gate1.fontsCheckPass. */
   fontsCheckPass: boolean;
+}
+
+export interface RenderCanaryEnv {
+  /** Path to the chromium binary actually used. */
+  chromiumPath: string;
+  /** Result of browser.version() (e.g. "HeadlessChrome/138.0.0.0"). */
+  chromiumVersion: string;
+  /**
+   * true = Playwright's bundled, version-pinned chromium (deterministic).
+   * false = system / sandbox chromium (freetype/harfbuzz/fontconfig stack may
+   * shift width measurements relative to EPSILON; rows DO NOT count toward
+   * acceptance until a pinned run confirms).
+   */
+  pinned: boolean;
 }
 
 export interface RenderCanaryReport {
@@ -117,6 +189,8 @@ export interface RenderCanaryReport {
     fontLoadTimeoutMs: number;
     gate2Enabled: boolean;
   };
+  /** Browser environment used for measurements; supplied by the caller. */
+  env?: RenderCanaryEnv;
 }
 
 export interface Gate2Source {
@@ -141,6 +215,8 @@ export interface RunCanaryOpts {
    *  originalUrl as the un-subset reference. Families not in this list get
    *  gate2.reason = "skipped". */
   gate2Sources?: Gate2Source[];
+  /** Browser env recorded verbatim into the report's `env` field. */
+  env?: RenderCanaryEnv;
 }
 
 export async function runRenderCanary(
@@ -332,6 +408,93 @@ export async function runRenderCanary(
           pass = false;
         }
 
+        // ---------- Diagnostic side fields (do NOT influence reason) ----------
+        // branchTaken: an exhaustive enumeration of which classifier path fired,
+        // expanded beyond the post-load matrix to surface load-failure paths AND
+        // to split coverage-exclusion (faceCount===0 && hasDescriptorMatch)
+        // out of the fallback bucket. Lets us audit reason composition.
+        const descriptorMatched = hasDescriptorMatch(family);
+        let branchTaken:
+          | "load-rejected"
+          | "load-timeout"
+          | "A2-no-descriptor"
+          | "coverage-exclusion"
+          | "distinct+check"
+          | "distinct+!check"
+          | "!distinct+check"
+          | "!distinct+!check";
+        if (loadResult.kind === "rejected") {
+          branchTaken = "load-rejected";
+        } else if (loadResult.kind === "timeout") {
+          branchTaken = "load-timeout";
+        } else if (loadResult.kind === "loaded" && loadResult.faceCount === 0 && !descriptorMatched) {
+          branchTaken = "A2-no-descriptor";
+        } else if (loadResult.kind === "loaded" && loadResult.faceCount === 0 && descriptorMatched) {
+          branchTaken = "coverage-exclusion";
+        } else if (distinct && fontsCheckPass) {
+          branchTaken = "distinct+check";
+        } else if (distinct && !fontsCheckPass) {
+          branchTaken = "distinct+!check";
+        } else if (!distinct && fontsCheckPass) {
+          branchTaken = "!distinct+check";
+        } else {
+          branchTaken = "!distinct+!check";
+        }
+
+        // Raw strings the classifier actually compared. Persist verbatim so a
+        // canonicalization-quirk that under-matches descriptors (real
+        // descriptor returns hasDescriptorMatch=false) is auditable.
+        const manifestFamily = family;
+        const checkString = `16px ${quote(family)}`;
+        const widthString = `${quote(family)}, monospace`;
+        const allDescriptorFamilies = all.map((f) => stripQuotes(f.family));
+        const targetCanon = stripQuotes(manifestFamily).toLowerCase();
+        const matchedDescriptorFamilies = allDescriptorFamilies.filter(
+          (s) => s.toLowerCase() === targetCanon,
+        );
+
+        // Canon-mismatch assert: under Option 1, hasDescriptorMatch becomes the
+        // sole discriminator between descriptor_missing and fallback for
+        // empty-load rows. Each compared string must canonicalize identically.
+        const canonMismatchDetail: string[] = [];
+        const canon = (s: string): string => stripQuotes(s).toLowerCase();
+        const canonManifest = canon(manifestFamily);
+        // checkString/widthString embed quote(family); after stripping the
+        // shorthand they must canonicalize to canonManifest.
+        const checkFamilyToken = canon(quote(family));
+        const widthFamilyToken = canon(quote(family));
+        if (checkFamilyToken !== canonManifest) {
+          canonMismatchDetail.push(`checkString family !== manifest`);
+        }
+        if (widthFamilyToken !== canonManifest) {
+          canonMismatchDetail.push(`widthString family !== manifest`);
+        }
+        if (descriptorMatched) {
+          for (const d of matchedDescriptorFamilies) {
+            if (canon(d) !== canonManifest) {
+              canonMismatchDetail.push(`descriptor "${d}" canon !== manifest`);
+            }
+          }
+        }
+        const canonMismatch = canonMismatchDetail.length > 0;
+
+        const diag = {
+          branchTaken,
+          loadResultKind: loadResult.kind,
+          faceCount: loadResult.kind === "loaded" ? loadResult.faceCount : 0,
+          hasDescriptorMatch: descriptorMatched,
+          epsilonLoadPx,
+          strings: {
+            manifestFamily,
+            allDescriptorFamilies,
+            matchedDescriptorFamilies,
+            checkString,
+            widthString,
+          },
+          canonMismatch,
+          canonMismatchDetail,
+        };
+
         const gate2 = await runGate2(family);
 
         out.push({
@@ -351,6 +514,7 @@ export async function runRenderCanary(
             ...(loadError ? { loadError } : {}),
           },
           gate2,
+          diag,
           // Deprecated aliases (one migration cycle).
           widthVsFallback: {
             embedded: wWith,
@@ -361,6 +525,7 @@ export async function runRenderCanary(
           fontsCheckPass,
         });
       }
+
 
       return { diagnostics, families: out };
     },
@@ -421,5 +586,6 @@ export async function runRenderCanary(
       fontLoadTimeoutMs,
       gate2Enabled: gate2Map.size > 0,
     },
+    ...(opts.env ? { env: opts.env } : {}),
   };
 }
