@@ -586,5 +586,6 @@ export async function runRenderCanary(
       fontLoadTimeoutMs,
       gate2Enabled: gate2Map.size > 0,
     },
+    ...(opts.env ? { env: opts.env } : {}),
   };
 }
