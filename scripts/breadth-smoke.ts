@@ -218,6 +218,17 @@ for (const site of SMOKE_SITES) {
     }
     console.log(`[${site.name}] B2b: diagnostik-pass på pre-embed-MHTML…`);
     const preEmbedRaw = readFileSync(preEmbedPath, "utf8");
+
+    // B1-oraklet: kör diagnostik på SAMMA MHTML fetchern såg (pre-embed).
+    // Annars jämför vi olika korpus (page.mhtml är post-cid-rewrite).
+    const preDiags = extractFontFaceDiagnostics(preEmbedRaw);
+    r.faceAbsoluteHttp = preDiags.filter((d) => d.hasAbsoluteHttpUrl).length;
+    r.faceRelativeOnly = preDiags.filter((d) => d.hasOnlyRelativeUrl).length;
+    const allAbs = new Set<string>();
+    for (const d of preDiags) for (const u of d.absoluteUrls) allAbs.add(u);
+    r.b1UniqueAbsUrls = allAbs.size;
+    r.b1AbsUrlSet = [...allAbs].sort();
+
     const diag = await embedMhtmlFonts(preEmbedRaw, {
       controlProbes: {}, // använd defaults: gstatic positiv, example.com negativ
     });
@@ -229,6 +240,24 @@ for (const site of SMOKE_SITES) {
     r.b2b.interpretationBlockReason = guard.reason;
     const summary = summarizeRecords(diag.fetchRecords);
     Object.assign(r.b2b, summary);
+
+    // Harmonisering: URL-mot-URL-reconciliation mellan B1-oraklet (P) och
+    // B2b-fetchern (M). MISMATCH = riktig harvest-divergens (inte tautologi).
+    const fetcherUrls = new Set(diag.fetchRecords.map((x) => x.url));
+    const recon = reconcileFontUrlSets(allAbs, fetcherUrls);
+    r.harmonization = {
+      ok: recon.ok,
+      p: allAbs.size,
+      m: fetcherUrls.size,
+      onlyInP: recon.onlyInP,
+      onlyInM: recon.onlyInM,
+    };
+    if (!recon.ok) {
+      writeFileSync(
+        join(dir, "harmonization-diff.json"),
+        JSON.stringify(r.harmonization, null, 2),
+      );
+    }
 
     writeFileSync(
       join(dir, "font-fetch-records.json"),
