@@ -44,7 +44,17 @@ interface SiteResult {
   fontFetchFailures?: number;
   faceTotal?: number;
   faceRemote?: number;
-  faceLocalOnly?: number;
+  faceAbsoluteHttp?: number;
+  faceRelativeOnly?: number;
+  b1UniqueAbsUrls?: number;
+  b1AbsUrlSet?: string[];
+  harmonization?: {
+    ok: boolean;
+    p: number;
+    m: number;
+    onlyInP: string[];
+    onlyInM: string[];
+  };
   faceWithMetricOverrides?: number;
   replayOk?: boolean;
   replayError?: string;
