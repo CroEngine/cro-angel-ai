@@ -1,80 +1,70 @@
-## Plan: Gate-1 reason — diagnostikrunda (instrumentering, ingen taxonomi-ändring än)
+## Plan: triagera "Lexend Deca" (reviderad) — A1, A2 eller A3b
 
-Accepterat: Option 1 i nästa runda (`descriptor_missing` som egen reason; `check_mismatch` återinförs som strikt `distinct && !fontsCheckPass`). Splitten är ren by construction — `distinct` kräver `faceCount>0`, A2-grenen kräver `faceCount===0`, så grenarna kan inte fyra samtidigt och prioritetsordningen är irrelevant. De två fallen har olika rotorsaker och olika fixar:
+Diagnostik-runda. Read-only. Trädet är pruned: `descriptor_missing` utesluter A3a (src-fetch-miss) logiskt.
 
-- `distinct && !fontsCheckPass` → fonten renderade (bredden bevisar det), men `fonts.check` säger nej → check-strängen är icke-kanonisk. **Fix: kanonisering av check-strängen.**
-- A2-no-descriptor → ingen face matchar familjen alls → den extraherade familjen är ett spöke. **Fix: `extractDeclaredFamilies`.**
+### Vad signalen redan säger
 
-### Denna runda: diagnostik only
+`reason=descriptor_missing` betyder faceCount=0 **och** ingen matchande descriptor i `document.fonts`. Chromium registrerar en FontFace-descriptor **innan** den hämtar binären — en misslyckad src ger `face.status="error"` men descriptorn finns kvar i `document.fonts`. Det skulle routa till `unresolved`/`fallback`, **inte** `descriptor_missing`. Tomt `fontFetchFailures` bekräftar att inget fetchfel inträffade. Lexend Deca registrerades alltså aldrig som descriptor överhuvudtaget av chromium under replay.
 
-Mål: gör reason-kompositionen bevisbar för hela körningen innan vi rör vare sig taxonomin eller embedding.
+Konsekvens: A3a (din "src pekar på en URL vi aldrig fetchade") nås från `unresolved`, inte härifrån. Stryks från trädet. Fetch-loopen är inte misstänkt för denna signal.
 
-### Branch-enumet (uttömmande, inga blinda fläckar)
+### Reviderat beslutsträd (tre live-utfall)
 
-Persisteras per familj i `render-canary.families.json` som `diag.branchTaken` plus rådata (`loadResult.kind`, `faceCount`, `hasDescriptorMatch`, `deltaLoad`, `fontsCheckPass`, `epsilonLoadPx`). Enumet täcker hela klassificeringsgrafen, inte bara post-load-matrisen:
+| Utfall | Var "Lexend Deca" sitter i MHTML | Fix-kategori (nästa runda) |
+|---|---|---|
+| **A1 — false positive** | Inte i en riktig `@font-face`-CSS-kontext. Regex träffade data: kommentar, JSON-payload, JS-strängliteral, analytics-blob, CSS-in-JS-tema. | Strukturell snävning av extractorn (se notering nedan). |
+| **A2 — oanvänd stylesheet** | Riktig `@font-face` i en `text/css`-part, men parten är inte länkad/`@import`:ad från huvud-HTMLn → chromium parsar den aldrig. | Per-korpus known-list (symptomdämpning; se notering). |
+| **A3b — rewrite-korruption** | Riktig `@font-face` i en parsead stylesheet, men cid:-injectionen skadade just detta block så chromium inte kan registrera regeln. | Diff:a CSS-text för Lexend Deca-blocket pre/post rewrite. |
 
-Load-failure-vägar (early returns idag, måste ytläggas):
-- `load-rejected` (loadResult.kind === "rejected")
-- `load-timeout` (loadResult.kind === "timeout")
+### Diagnos-pass (read-only, denna runda)
 
-Post-load-vägar:
-- `A2-no-descriptor` (loaded, faceCount===0, !hasDescriptorMatch) → reason=check_mismatch idag
-- `coverage-exclusion` (loaded, faceCount===0, **hasDescriptorMatch===true**) → reason=fallback idag, **men måste ytläggas separat** — det är unicode-range-uteslutningsfallet från v3, och dess fix är sample/range, inte extraction. Att klumpa den med `!distinct+!check` döljer exakt den distinktion diagnostiken ska hitta.
-- `distinct+check` → ok
-- `distinct+!check` → check_mismatch (efter Option 1: enda återstående check_mismatch)
-- `!distinct+check` → metric_twin
-- `!distinct+!check` (faceCount>0) → fallback (genuin fallback; skild från coverage-exclusion)
+**Steg 1 — Lokalisera + reconciliera counts samtidigt.**
 
-Branch-fältet skrivs som rent diagnostiskt sidofält denna runda — `reason` rörs inte än.
+- Lista varje träff för "Lexend Deca" i rewritad MHTML: part-idx, Content-Type, Content-Location, omgivande ±200 tecken efter QP-decode. Klassificerar A1 vs A2/A3b på första passet.
+- Samma pass: **räkna distinkta faces bland de 31 embeddade binärerna** (unika cid:-parts av font-mimetype). Billig probe.
+  - **>14 distinkta**: embedded ≠ registered är demonstrerat i denna korpus → A2-priorn höjs konkret → steg 3 (reachability) blir avgöraren, kör det först.
+  - **≤14 distinkta**: gapet 31→14 förklaras av multi-format (woff2+woff per face ≈ 2×14 = 28) — säger inget om A2 → luta åt A1 → steg 2 blir avgöraren.
 
-### Kanoniseringsassert för hasDescriptorMatch
+**Steg 2 — @font-face-blockets struktur.**
 
-Under Option 1 blir `hasDescriptorMatch` enda diskriminatorn mellan `descriptor_missing` och `fallback` för empty-load-rader. Då är dess kanonisering load-bearing — en under-match (returnerar false för en riktig descriptor pga kanoniseringskvirk) felrouter en coverage-exclusion till `descriptor_missing` och skickar nästa runda till `extractDeclaredFamilies` av fel skäl.
+För varje träff: är den inuti `@font-face { ... }` med valid CSS-syntax (klammer, semikolon, `font-family:` på rätt plats)? Har blocket en `src:`-deklaration? `has-src` är en svag adjunkt — en data-blob som råkar innehålla ett komplett face-stycke besegrar den — men frånvaron av `src:` är fortfarande en tydlig A1-signal när den syns.
 
-Den nya konsistenskontrollen Option 1 skapar ligger inte mellan width och fonts.check (de är redan rena, samma family + sampleText, rad 282/287–289). Den ligger mellan `hasDescriptorMatch` och resten av kedjan. Lägg därför in i samma instrumenteringspass:
+**Steg 3 — CSS-partens reachability.**
 
-- Persistera råsträngarna som faktiskt jämförs: `manifestFamily`, `descriptorFamilies[]` (efter samma `stripQuotes`/lowercase som rad 271–273), `checkString` (det `quote(family)` som går in i `document.fonts.check`), `widthString` (det `quote(family)` som går in i `measureWidth`).
-- Assert: alla fyra ska kanonisera identiskt under den kanoniseringsfunktion som används för match-jämförelsen. Avvikelse loggas som `diag.canonMismatch` med vilket par som diffar. Detta är den check som faktiskt validerar Option 1:s splitt.
+För text/css-träffar: är Content-Location refererad från huvud-HTML-partens `<link rel="stylesheet">` eller `@import` (transitivt över andra CSS-parts)? Bygg en enkel reachability-graf från huvud-HTML → CSS-parts via Content-Location matchning. Oåtkomliga parts → A2.
 
-### Browser-pinning i kvittot
+**Steg 4 — Rewrite-korruption (bara om steg 1–3 säger "riktig, parsead").**
 
-Per determinismkravet, persistera i `diag.env`:
-- `chromium.path` (`/bin/chromium-browser` vs Playwright-pinnad)
-- `chromium.version`
-- `pinned: boolean` — false så länge vi kör mot systemets chromium
+Diff:a Lexend Deca-blockets CSS-text pre vs post `embedMhtmlFonts`-rewrite. Förändringar i font-family-raden eller skadad blockstruktur → A3b.
 
-Rader med `pinned: false` räknas inte mot acceptans. Vid `deltaLoad=0.00` på familj där det inte borde inträffa, noteras explicit att utfallet kan vara en freetype/harfbuzz-artefakt och behöver en pinnad körning för att räknas.
+**Steg 5 — Cross-check mot diag-output.**
 
-### Körning
+Vi har redan `allDescriptorFamilies` per familj i `corpus/hubspot/render-canary.families.json`. Bekräfta att Lexend Deca verkligen saknas där (formaliserat via `canonMismatch=false`). Detta är dubbelkontroll av premissen, inte en separat hypotes.
 
-1. Patcha instrumenteringen i `render-canary.server.ts` (diagnostiska sidofält + kanoniseringsassert + env-block; ingen ändring av reason-grenarna).
-2. Re-run hubspot + hibob i sandboxen med `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/bin/chromium-browser`.
-3. Rapportera per familj:
-   - branchTaken vs reason — konsistent eller inkonsistent
-   - canonMismatch ja/nej
-   - env.chromium + pinned
+### Förhandsnoteringar om fixarna (för nästa runda, planeras inte byggas nu)
 
-### Beslutsgrind för nästa runda
+**A1-fix — föredra strukturell snävning över "kräv src:":**
+Den rena fixen är att bara läsa `text/css`-parts och `<style>`-elementinnehåll (via HTML-parser, inte regex över rå HTML-body). CSS-in-JS-teman och analytics-payloads inlinar ibland kompletta face-strängar i HTML-body — `has-src` stoppar dem inte. `has-src` kan finnas som svag adjunkt, men disease-fixen är strukturell scope-begränsning av vad extractorn ens tittar i.
 
-Gå vidare till Option 1-implementation först om:
-- Lexend Deca verifieras ha `branchTaken=A2-no-descriptor` med `fontsCheckPass=true` och `deltaLoad=0` (bekräftar diagnosen i koden).
-- `canonMismatch=false` för alla rader (annars måste kanoniseringen fixas innan splitt, annars routas coverage-exclusion fel).
-- Inga andra rader visar `branchTaken` ↔ `reason`-inkonsistens utöver de två kända Option 1 löser.
+**A2-fix — known-list är symptomdämpning, namnge valet:**
+Den rena fixen vore att vid extraction-tid följa `<link>`/`@import`-kedjor mot Content-Locations och bara extrahera från nåbara stylesheets. Men reachability utan browser är skörare än att låta chromium avgöra. Known-list i `corpus/<name>/meta.json` med `expectedFamiliesIgnore: ["Lexend Deca"]` är pragmatiskt rätt — men meta.json-kommentaren ska säga rent ut att detta är symptom-vs-disease-valet och att disease-fixen (extraction-tid-reachability) valdes bort medvetet, så nästa person vet att alternativet finns.
 
-### Nedströms-edits Option 1 tvingar fram (planeras nu, görs i nästa runda)
+**A3b-fix:** rewrite-loopens hantering av just det skadade blocket. Inte värt att förhandsplanera — beror på exakt korruptionstyp.
 
-- v3:s Vitest-case i `src/lib/tests/snapshot/__tests__/render-canary.test.ts` som asserterar `check_mismatch` för typo-familjen ("Brnad") måste flippas till `descriptor_missing`. Test-first-disciplinen kräver att testet uppdateras i samma commit som taxonomi-ändringen.
-- Part-A steg-3-triagetabellen behöver en `descriptor_missing`-rad med åtgärd "fixa `extractDeclaredFamilies`".
-- Existerande `check_mismatch`-rader i triagedokument får ny implicit semantik (kanonisera check-strängen) och bör läsas igenom.
+### Förbehåll
+
+`pinned=false` påverkar inte denna runda. `faceCount=0` + ingen descriptor är absolut, inte EPSILON-känsligt. Diagnosen står sig under båda chromium-stackar.
 
 ### Inte i denna runda
 
-- Ingen ändring i `mhtml-fonts.server.ts`.
-- Ingen taxonomi-fix (`descriptor_missing` införs i nästa plan, efter att diagnostiken bekräftat splitten).
-- Ingen Lexend Deca-embedding-undersökning förrän klassificeraren är verifierad och raden har sin korrekta etikett.
+- Ingen kodändring i `extractEmbeddedFamilies`, `embedMhtmlFonts`, `harness.server.ts` eller `meta.json`-läsning.
+- Ingen known-list införd.
+- Ingen pinnad Playwright-re-run.
 
 ### Leverabler
 
-- Patchad `render-canary.server.ts` (diagnostiska sidofält + kanoniseringsassert + env-block, reason-grenar orörda).
-- Uppdaterade `corpus/hubspot/render-canary.families.json` och `corpus/hibob/render-canary.families.json` med `diag`-block.
-- Rapport: tabell över alla familjer med (reason, branchTaken, canonMismatch, env.pinned) + explicit go/no-go för Option 1.
+- Rapport per "Lexend Deca"-träff i MHTML (part-idx, Content-Type, kontext-utdrag).
+- Distinkt-face-count bland 31 embeddade binärer.
+- Reachability-utfall för varje träffs CSS-part (om träffarna är CSS).
+- A1 / A2 / A3b utpekad med data.
+- Fix-plan för utpekad rot designas i nästa plan.
