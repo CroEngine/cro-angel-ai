@@ -345,6 +345,36 @@ for (const r of results) {
       `  B2-nämnare (familjer med remote-src) = ${r.faceRemote} · embedded=${r.embeddedFontCount}`,
     );
   }
+  if (r.harmonization) {
+    console.log(
+      `  Harmonisering (B1-orakel vs B2b-fetcher, oberoende impl):`,
+    );
+    console.log(
+      `    b1_faces_w_abs_url     = ${r.faceAbsoluteHttp} (beskrivande)`,
+    );
+    console.log(
+      `    b1_faces_relative_only = ${r.faceRelativeOnly} (→ MHTML-inline)`,
+    );
+    console.log(
+      `    b1_unique_abs_urls (P) = ${r.harmonization.p}   ← diagnostik-orakel (https?:// eller //)`,
+    );
+    console.log(
+      `    b2_absolute_urls   (M) = ${r.harmonization.m}   ← fetcher-harvest (https?:// only)`,
+    );
+    console.log(
+      `    invariant P == M       → ${r.harmonization.ok ? "OK" : "MISMATCH"}`,
+    );
+    if (!r.harmonization.ok) {
+      if (r.harmonization.onlyInP.length > 0) {
+        console.log(`    onlyInP (fetcher missade):`);
+        for (const u of r.harmonization.onlyInP) console.log(`      - ${u}`);
+      }
+      if (r.harmonization.onlyInM.length > 0) {
+        console.log(`    onlyInM (oraklet missade):`);
+        for (const u of r.harmonization.onlyInM) console.log(`      - ${u}`);
+      }
+    }
+  }
   if (r.b2b?.controlProbes) {
     console.log(
       `  B2b guard: ${r.b2b.guardVerdict} · interpretationBlocked=${r.b2b.interpretationBlocked}`,
