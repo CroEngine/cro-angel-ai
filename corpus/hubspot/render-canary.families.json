@@ -220,7 +220,7 @@
         "deltaLoad": 0,
         "fontsCheckPass": true,
         "pass": false,
-        "reason": "check_mismatch",
+        "reason": "descriptor_missing",
         "loadError": "no face matched descriptor"
       },
       "gate2": {
