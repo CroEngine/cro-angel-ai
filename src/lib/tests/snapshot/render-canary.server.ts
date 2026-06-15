@@ -383,7 +383,7 @@ export async function runRenderCanary(
         const deltaLoad = Math.abs(wWith - wFallback);
         const distinct = deltaLoad > epsilonLoadPx;
 
-        let reason: "ok" | "unresolved" | "fallback" | "metric_twin" | "check_mismatch" | "timeout";
+        let reason: Gate1Reason;
         let loadError: string | undefined;
         let pass: boolean;
         if (loadResult.kind === "rejected") {
@@ -398,13 +398,16 @@ export async function runRenderCanary(
           loadResult.faceCount === 0 &&
           !hasDescriptorMatch(family)
         ) {
-          // A2: empty load result AND no FontFace with a matching family
-          // descriptor exists in document.fonts. Genuine name mismatch
-          // between the manifest's expectedFamilies and the @font-face
-          // descriptors. Routed directly so the downstream width path
-          // (which would also land in check_mismatch via distinct + !check)
-          // gets the actionable error message.
-          reason = "check_mismatch";
+          // A2-no-descriptor: empty load result AND no FontFace with a matching
+          // family descriptor exists in document.fonts. The manifest names a
+          // family no @font-face declares. Fix lives in extractDeclaredFamilies
+          // (mhtml-fonts.server), NOT in check-string canonicalization — that's
+          // why this is a distinct reason from check_mismatch.
+          //
+          // pass=false is provisional: a CSS-hopeful family (referenced but
+          // never embedded) belongs on a per-corpus known-list as a soft
+          // signal; an extraction ghost is a hard bug. Triage decides which.
+          reason = "descriptor_missing";
           loadError = "no face matched descriptor";
           pass = false;
         } else if (distinct && fontsCheckPass) {
