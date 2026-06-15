@@ -207,22 +207,195 @@ function serializeMhtml(p: ParsedMhtml): string {
 
 // ------------------------------------------------------------- API ---------
 
+/** Klass per URL-försök. Separat env_blocked-bucket undviker att proxy-deny
+ *  blandas med äkta network-fel. skipped_dedup = förekomst nr ≥2 av samma URL. */
+export type FontFetchOutcome =
+  | "ok"
+  | "http_error"
+  | "empty_body"
+  | "network_error"
+  | "env_blocked"
+  | "timeout"
+  | "skipped_ext"
+  | "skipped_dedup";
+
+export interface FontFetchRecord {
+  url: string;
+  ext: string | null;
+  occurrenceIndex: number;
+  attempted: boolean;
+  outcome: FontFetchOutcome;
+  bytes: number;
+  httpStatus?: number;
+  error?: string;
+  errorCode?: string;
+  proxyDenyReason?: string;
+  durationMs: number;
+}
+
+export interface ControlProbeResult {
+  url: string;
+  kind: "positive" | "negative";
+  outcome: FontFetchOutcome;
+  httpStatus?: number;
+  bytes: number;
+  error?: string;
+  errorCode?: string;
+  proxyDenyReason?: string;
+  durationMs: number;
+}
+
 export interface FontEmbedResult {
   mhtml: string;
-  /** Count of http(s):// font URLs still present in any CSS part AFTER rewrite.
-   *  This is the hard-assertion gate per plan.md beslutspunkt 3. */
+  /** Count of http(s):// font URLs still present in any CSS part AFTER rewrite. */
   externalFontSrcCount: number;
-  /** Number of unique font binaries embedded as new MHTML parts. */
   embeddedFontCount: number;
-  /** New MHTML byte size (post-rewrite). */
   newBytes: number;
   fetchFailures: { url: string; error: string }[];
-  /** Diagnostic: every font URL encountered (deduped). */
   fontUrlsSeen: string[];
-  /** Unique font-family names declared in @font-face rules across all CSS parts.
-   *  Render-canary använder dessa som "förväntade familjer" i replay. */
   embeddedFamilies: string[];
+  /** B2b: en record per harvest-förekomst. fetchRecords.length === totalHarvestedOccurrences. */
+  fetchRecords: FontFetchRecord[];
+  totalHarvestedOccurrences: number;
+  controlProbes?: { positive: ControlProbeResult; negative: ControlProbeResult };
 }
+
+// Hostar som ALDRIG får användas som negativ kontrollprobe — de är diagnostik-mål
+// eller del av font-CDN-allowlistor, vilket gör utfallet cirkulärt.
+const NEGATIVE_PROBE_DENYLIST = [
+  /(^|\.)fonts\.gstatic\.com$/i,
+  /(^|\.)fonts\.googleapis\.com$/i,
+  /(^|\.)intercomcdn\.com$/i,
+  /(^|\.)intercomassets\.com$/i,
+  /(^|\.)stripe\.com$/i,
+  /(^|\.)stripecdn\.com$/i,
+  /(^|\.)vercel\.com$/i,
+  /(^|\.)vercel-scripts\.com$/i,
+  /(^|\.)typekit\.net$/i,
+  /(^|\.)use\.typekit\.net$/i,
+];
+
+const PROXY_DENY_HEADERS = ["x-deny-reason", "x-forwarded-deny", "x-proxy-block"] as const;
+const PROXY_ERROR_PATTERNS =
+  /(EPROXYAUTHREQUIRED|tunneling socket could not be established|proxy.*denied|blocked by proxy)/i;
+
+interface ClassifiedFetch {
+  outcome: FontFetchOutcome;
+  bytes: number;
+  httpStatus?: number;
+  error?: string;
+  errorCode?: string;
+  proxyDenyReason?: string;
+}
+
+async function classifiedFetch(
+  url: string,
+  timeoutMs: number,
+  userAgent: string,
+): Promise<ClassifiedFetch> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "User-Agent": userAgent, Accept: "*/*" },
+    });
+    // Proxy-deny via header
+    for (const h of PROXY_DENY_HEADERS) {
+      const v = res.headers.get(h);
+      if (v) {
+        return {
+          outcome: "env_blocked",
+          bytes: 0,
+          httpStatus: res.status,
+          proxyDenyReason: `${h}: ${v}`,
+          error: `proxy denied via header ${h}`,
+        };
+      }
+    }
+    // 403 via en proxy som annars inte skickar deny-header
+    if (res.status === 403 && res.headers.get("via")) {
+      return {
+        outcome: "env_blocked",
+        bytes: 0,
+        httpStatus: 403,
+        proxyDenyReason: `403 via ${res.headers.get("via")}`,
+        error: "403 from proxy",
+      };
+    }
+    if (!res.ok) {
+      return { outcome: "http_error", bytes: 0, httpStatus: res.status, error: `HTTP ${res.status}` };
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.byteLength === 0) {
+      return { outcome: "empty_body", bytes: 0, httpStatus: res.status, error: "empty body" };
+    }
+    return { outcome: "ok", bytes: buf.byteLength, httpStatus: res.status };
+  } catch (e) {
+    const err = e as { name?: string; message?: string; code?: string; cause?: { code?: string } };
+    const msg = err?.message ?? String(e);
+    const code = err?.code ?? err?.cause?.code;
+    if (err?.name === "AbortError") {
+      return { outcome: "timeout", bytes: 0, error: "timeout", errorCode: code };
+    }
+    if (PROXY_ERROR_PATTERNS.test(msg) || (code && PROXY_ERROR_PATTERNS.test(code))) {
+      return {
+        outcome: "env_blocked",
+        bytes: 0,
+        error: msg,
+        errorCode: code,
+        proxyDenyReason: `error pattern: ${code ?? msg}`,
+      };
+    }
+    return { outcome: "network_error", bytes: 0, error: msg, errorCode: code };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function runControlProbe(
+  url: string,
+  kind: "positive" | "negative",
+  timeoutMs: number,
+  userAgent: string,
+): Promise<ControlProbeResult> {
+  const t0 = performance.now();
+  const r = await classifiedFetch(url, timeoutMs, userAgent);
+  return {
+    url,
+    kind,
+    outcome: r.outcome,
+    httpStatus: r.httpStatus,
+    bytes: r.bytes,
+    error: r.error,
+    errorCode: r.errorCode,
+    proxyDenyReason: r.proxyDenyReason,
+    durationMs: Math.round(performance.now() - t0),
+  };
+}
+
+export const DEFAULT_POSITIVE_PROBE_URL =
+  "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.woff2";
+export const DEFAULT_NEGATIVE_PROBE_URL =
+  "https://example.com/lovable-egress-probe.woff2";
+
+function assertNegativeProbeHostAllowed(url: string): void {
+  let host: string;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    throw new Error(`[mhtml-fonts] negative probe URL is not a valid URL: ${url}`);
+  }
+  for (const re of NEGATIVE_PROBE_DENYLIST) {
+    if (re.test(host)) {
+      throw new Error(
+        `[mhtml-fonts] negative probe host "${host}" matches font-CDN/diagnosed denylist (${re}); ` +
+          `pick a host that's NOT on any allowlist (e.g. example.com).`,
+      );
+    }
+  }
+}
+
 
 // Hitta `font-family: <value>;` inuti varje `@font-face { ... }`-block.
 // Hanterar:
