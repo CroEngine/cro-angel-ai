@@ -13,6 +13,7 @@ import { replayCorpus } from "../src/lib/tests/snapshot/harness.server";
 import {
   embedMhtmlFonts,
   extractFontFaceDiagnostics,
+  reconcileFontUrlSets,
   type ControlProbeResult,
   type FontFetchRecord,
 } from "../src/lib/tests/snapshot/mhtml-fonts.server";
