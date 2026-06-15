@@ -55,6 +55,7 @@ interface SiteResult {
     onlyInP: string[];
     onlyInM: string[];
   };
+  faceLocalOnly?: number;
   faceWithMetricOverrides?: number;
   replayOk?: boolean;
   replayError?: string;
