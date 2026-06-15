@@ -1,64 +1,46 @@
-# B1: Filtrera local()-only @font-face strukturellt
+## Mål
 
-**Mål:** Rensa `embeddedFamilies` från `@font-face`-block som aldrig var avsedda att fetchas (Next.js `size-adjust`-fallbacks och liknande system-font-alias), så att B2-nämnaren blir "familjer med faktisk remote-`src`".
+Mät — inte koda. Bekräfta att B1-filtret gör vad det ska, och etablera ren B2-nämnare per sajt innan vi rör embed-loopen.
 
-**Princip:** strukturellt filter, inte namn-regex. Vi nyckelar på vad faces *är* (ingen remote `url()`), inte vad de heter (`__Inter_Fallback_<hash>` kontra " Fallback"-suffix). Samma signal förklarar varför de inte fetchas — ett filter förenar B1-rensningen och B2-nämnaren.
+## Steg
 
-**Bekräftat vs hypotes (hålls åtskilda i kommentarer/test):**
-- *Bekräftat från smoke-data:* Intercom listar 26 familjer, ≥13 har `Fallback`-mönster; dessa har `src: local(...)` utan `url()`.
-- *Hypotes (ej mätt utan replay):* Dessa familjer registreras ändå i `document.fonts` vid replay → är *inte* `descriptor_missing`. Gate1-impact kvantifieras först när replay kör. Filtret är ändå rätt: extractorn ska inte rapportera faces utan remote-src som "embeddable".
+1. **Kör smoke-scriptet på nytt**
+   - `bunx tsx scripts/breadth-smoke.ts` mot stripe.com, intercom.com, vercel.com (samma 3 som förra rundan).
+   - Output till `/tmp/corpus-breadth/` (eller den path scriptet redan använder).
+   - Replay-steget förväntas fortsatt fela (saknar chromium-libs i sandbox) — det är OK, vi mäter bara freeze/extract.
 
-## Ändringar
+2. **Läs `face-diagnostics.json` per sajt och tabulera**
+   
+   Per sajt rapportera:
+   - `totalFaces` (alla @font-face-block i MHTML)
+   - `localOnlyFiltered` (B1-bortrensade — `hasLocalOnly && !hasRemoteSrc`)
+   - `withMetricOverrides` (size-adjust / ascent-override / descent-override)
+   - `extractedFamilies` (efter filter, vad pipelinen nu räknar)
+   - `embeddedFamilies` (vad embed-loopen lyckades med)
+   - **B2-gap** = `extractedFamilies − embeddedFamilies` (den riktiga nämnaren)
 
-### 1. `src/lib/tests/snapshot/mhtml-fonts.server.ts`
+3. **Bekräfta de tre förväntningarna från B1-hypotesen**
+   - **Intercom:** 26 → 13 (eller nära) efter filter. 13 local-only-faces bortrensade. Inter / next-font-genererade fallbacks ska försvinna.
+   - **Stripe:** `sohne-var` överlever (har `url()` src) — får INTE råka filtreras bort. Embedded fortfarande 0 ⇒ ren B2-signal.
+   - **Vercel:** 21 → ~2 (de riktiga remote-familjerna), 19 ska antingen vara local-only ELLER fortfarande extraheras men inte embeddas (ren B2). Skilj på dessa två — det är hela poängen med övningen.
 
-Uppdatera `extractEmbeddedFamilies` så att ett `@font-face`-block bara räknas om body har minst en `url(...)`-källa som *inte* är `local(...)`. Behåll också en flagga för metric-override-deskriptorer som diagnostisk signal men använd den inte ensam som filter (en face med `url()` + `size-adjust` är fortfarande en riktig remote-font).
+4. **Skriv kort verifieringsrapport** (markdown, inte ny kod)
+   - Tabell: sajt × (total, local-only, metric-overrides, extracted, embedded, B2-gap).
+   - En rad per sajt med tolkning: "B1 fångade X, B2-gap är Y, nästa: …"
+   - Spara i `/tmp/corpus-breadth/B1-verification.md` så vi har den när vi planerar B2b.
 
-Skiss (final form skrivs i build-läge):
+5. **Sanity-checks innan vi går vidare**
+   - Inga oväntade familjer försvann (t.ex. en cms-font med både `local()` och `url()` får inte droppas).
+   - `withMetricOverrides`-siffran ska korrelera med `localOnlyFiltered` på Next.js-sajterna (samma faces, två signaler).
+   - Om någon sajt visar `localOnlyFiltered === 0` men vi vet att den kör next/font → bugg i diagnostiken, undersök innan B2.
 
-```ts
-const SRC_DECL_RE = /src\s*:\s*([^;}]+)/i;
-const URL_TOKEN_RE = /\burl\s*\(/i;
+## Vad detta INTE inkluderar
 
-function hasRemoteSrc(faceBody: string): boolean {
-  const m = faceBody.match(SRC_DECL_RE);
-  if (!m) return false;
-  // url(...) räknas; local(...) ensamt räknas inte.
-  return URL_TOKEN_RE.test(m[1]);
-}
-```
+- Ingen ändring av `mhtml-fonts.server.ts` eller `breadth-smoke.ts`.
+- Ingen embed-loop-instrumentering (det är B2b, separat runda).
+- Ingen replay-körning.
+- Ingen reklassificering av `descriptor_missing`-räknare i renderprep.
 
-…och i loopen: `if (!hasRemoteSrc(body)) continue;` före `seen.add`.
+## Leverabel
 
-### 2. Diagnostik (utan att ändra returtypen)
-
-Lägg till en ny export `extractFontFaceDiagnostics(mhtmlRaw)` som returnerar per face:
-`{ family, hasRemoteSrc, hasLocalOnly, hasMetricOverrides }`. Används av `scripts/breadth-smoke.ts` för att skriva en `face-diagnostics.json` per sajt — så vi kan kvantifiera B1-andelen per corpus utan att blanda in fixen i hot-path-koden.
-
-Påverkar inte `embedMhtmlFonts` eller `FontEmbedResult`-formen. `freeze.server.ts` fortsätter använda `extractEmbeddedFamilies` oförändrat.
-
-### 3. Tester — `src/lib/tests/snapshot/__tests__/extract-families.test.ts`
-
-Lägg till fall som låser strukturen, inte namn:
-- `src: local("Arial")` ensam → familj filtreras bort.
-- `src: local("Arial"), local("Helvetica")` → filtreras bort.
-- `src: local("Arial"), url("cid:x")` → behålls (mixed src, är fortfarande remote).
-- `src: url("cid:x"); size-adjust: 100.06%;` → behålls (override på remote = riktig font).
-- `@font-face { font-family: "__Inter_Fallback_abc"; src: local("Arial"); size-adjust: 107%; ascent-override: 90% }` → filtreras bort (täcker Next.js-mönstret strukturellt).
-
-### 4. Smoke-script — `scripts/breadth-smoke.ts`
-
-Skriv ut två tal per sajt i sammanfattningen:
-- `extractedFamilies` (efter filter)
-- `localOnlyFiltered` (antal faces filtret strök)
-
-Detta är B2-nämnaren vi behöver för nästa runda.
-
-## Bekräftat efteråt
-- Vitest grön (befintliga + nya fall).
-- Smoke-körning på intercom + stripe + vercel: `localOnlyFiltered` > 0 för intercom; `extractedFamilies` för stripe oförändrad (sohne-var har `url()`).
-
-## Medvetet *inte* i denna runda
-- Ingen replay, ingen `descriptor_missing`-omklassificering — kräver chromium-libs i sandboxen, och Gate1-impact är hypotes tills dess.
-- Ingen B2-fix. B2-instrumenteringen (per-URL `{matchad-extension, fetch-försökt, utfall, bytes}`) är nästa plan, körs efter att B1-talen är rena.
-- Inget namnbaserat `/ Fallback$/`-filter. Skört, fångar inte `__Inter_Fallback_<hash>`, blandar ihop "vad är detta" med "vad heter detta".
+Tabellen + tolkningen i `B1-verification.md`. Den blir input till B2b-planen: om B2-gapet efter filter är 0 på någon sajt är B2-fixen inte nödvändig där; om gapet är stort på alla tre vet vi att tystnaden i `embedMhtmlFonts` är universell och inte sajt-specifik.
