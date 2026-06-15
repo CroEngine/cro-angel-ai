@@ -1,0 +1,105 @@
+[
+  {
+    "family": "HubSpot Sans",
+    "gate1": {
+      "wWith": 427,
+      "wFallback": 463,
+      "deltaLoad": 36,
+      "fontsCheckPass": true,
+      "pass": true,
+      "reason": "ok"
+    },
+    "gate2": {
+      "wOrig": 0,
+      "deltaSubset": 0,
+      "pass": true,
+      "reason": "skipped"
+    }
+  },
+  {
+    "family": "HubSpot Serif",
+    "gate1": {
+      "wWith": 434,
+      "wFallback": 463,
+      "deltaLoad": 29,
+      "fontsCheckPass": true,
+      "pass": true,
+      "reason": "ok"
+    },
+    "gate2": {
+      "wOrig": 0,
+      "deltaSubset": 0,
+      "pass": true,
+      "reason": "skipped"
+    }
+  },
+  {
+    "family": "HubSpot Serif Page Header Human",
+    "gate1": {
+      "wWith": 421,
+      "wFallback": 463,
+      "deltaLoad": 42,
+      "fontsCheckPass": true,
+      "pass": true,
+      "reason": "ok"
+    },
+    "gate2": {
+      "wOrig": 0,
+      "deltaSubset": 0,
+      "pass": true,
+      "reason": "skipped"
+    }
+  },
+  {
+    "family": "Lato",
+    "gate1": {
+      "wWith": 396,
+      "wFallback": 463,
+      "deltaLoad": 67,
+      "fontsCheckPass": true,
+      "pass": true,
+      "reason": "ok"
+    },
+    "gate2": {
+      "wOrig": 0,
+      "deltaSubset": 0,
+      "pass": true,
+      "reason": "skipped"
+    }
+  },
+  {
+    "family": "Lexend Deca",
+    "gate1": {
+      "wWith": 463,
+      "wFallback": 463,
+      "deltaLoad": 0,
+      "fontsCheckPass": true,
+      "pass": false,
+      "reason": "check_mismatch",
+      "loadError": "no face matched descriptor"
+    },
+    "gate2": {
+      "wOrig": 0,
+      "deltaSubset": 0,
+      "pass": true,
+      "reason": "skipped"
+    }
+  },
+  {
+    "family": "Zen Kaku Gothic New",
+    "gate1": {
+      "wWith": 388,
+      "wFallback": 463,
+      "deltaLoad": 75,
+      "fontsCheckPass": true,
+      "pass": true,
+      "reason": "ok"
+    },
+    "gate2": {
+      "wOrig": 0,
+      "deltaSubset": 0,
+      "pass": true,
+      "reason": "skipped"
+    }
+  }
+]
