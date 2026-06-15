@@ -461,15 +461,31 @@ export function extractEmbeddedFamilies(mhtmlRaw: string): string[] {
 export interface FontFaceDiagnostic {
   family: string;
   hasRemoteSrc: boolean;
+  /** Face har minst en url() som matchar ^(https?:)?// (inkluderar protocol-relative). */
+  hasAbsoluteHttpUrl: boolean;
+  /** Face har url() men ingen av dem är absolut per def ovan. */
+  hasOnlyRelativeUrl: boolean;
   hasLocalOnly: boolean;
   hasMetricOverrides: boolean;
+  /** Råa absoluta url()-värden i denna face. Diagnostik-oraklet för B2b-reconciliation;
+   *  detta är medvetet en SEPARAT implementation från fetcherns FONT_URL_RE — de två
+   *  kodvägarna måste få vara oense, annars är invariant P==M tautologisk. Inkluderar
+   *  protocol-relative `//host/...` (fetcherns regex missar dem; det är hela poängen). */
+  absoluteUrls: string[];
 }
+
+// Diagnostik-oraklets EGNA url()-extraktor. Avsiktligt parallell till
+// FONT_URL_RE / ANY_HTTP_URL_RE — dela inte. Tar alla url()-token,
+// klassificering sker sen via DIAG_IS_ABSOLUTE_RE.
+const DIAG_URL_TOKEN_RE = /url\(\s*(['"]?)([^)'"\s]+)\1\s*\)/gi;
+// "Absolut" för B1-oraklet = scheme-relative ELLER http(s). Inkluderar `//cdn/x`.
+const DIAG_IS_ABSOLUTE_RE = /^(?:https?:)?\/\//i;
 
 /**
  * Diagnostisk: returnerar per @font-face-block om det har remote-src,
- * är local()-only, och om metric-override-deskriptorer finns. Används av
- * breadth-smoke för att kvantifiera B1-andel per corpus utan att blanda in
- * filtret i hot-path-koden. Påverkar inte extractEmbeddedFamilies-returen.
+ * är local()-only, om metric-override-deskriptorer finns, samt absoluta
+ * URLer enligt B1-oraklets egen definition. Används av breadth-smoke för
+ * URL-mot-URL-reconciliation mot fetcherns harvest.
  */
 export function extractFontFaceDiagnostics(
   mhtmlRaw: string,
@@ -490,15 +506,49 @@ export function extractFontFaceDiagnostics(
       const srcValue = srcMatch ? srcMatch[1] : "";
       const hasRemote = URL_TOKEN_RE.test(srcValue);
       const hasLocal = /\blocal\s*\(/i.test(srcValue);
+      // Egen url()-extraktion — INTE fetcherns regex.
+      const absoluteUrls: string[] = [];
+      let hasAnyUrl = false;
+      for (const m of srcValue.matchAll(DIAG_URL_TOKEN_RE)) {
+        hasAnyUrl = true;
+        const u = m[2];
+        if (DIAG_IS_ABSOLUTE_RE.test(u)) absoluteUrls.push(u);
+      }
       out.push({
         family,
         hasRemoteSrc: hasRemote,
+        hasAbsoluteHttpUrl: absoluteUrls.length > 0,
+        hasOnlyRelativeUrl: hasAnyUrl && absoluteUrls.length === 0,
         hasLocalOnly: hasLocal && !hasRemote,
         hasMetricOverrides: METRIC_OVERRIDE_RE.test(body),
+        absoluteUrls,
       });
     }
   }
   return out;
+}
+
+/**
+ * URL-mot-URL-reconciliation mellan B1-oraklet (diagnostik-extraherade
+ * absoluta url()-värden, P) och B2b-fetchern (FONT_URL_RE-harvestade URLer, M).
+ * Två oberoende implementationer → mismatch == riktig harvest-divergens,
+ * inte tautologi.
+ */
+export interface ReconcileResult {
+  ok: boolean;
+  onlyInP: string[]; // diagnostik hittade, fetcher missade (typiskt: //-URLer)
+  onlyInM: string[]; // fetcher hittade, diagnostik missade (skulle indikera bug i oraklet)
+}
+
+export function reconcileFontUrlSets(
+  diagnosticAbsUrls: Iterable<string>,
+  fetcherHarvestedUrls: Iterable<string>,
+): ReconcileResult {
+  const P = new Set(diagnosticAbsUrls);
+  const M = new Set(fetcherHarvestedUrls);
+  const onlyInP = [...P].filter((u) => !M.has(u)).sort();
+  const onlyInM = [...M].filter((u) => !P.has(u)).sort();
+  return { ok: onlyInP.length === 0 && onlyInM.length === 0, onlyInP, onlyInM };
 }
 
 // För B2b-harvest behöver vi ALLA url(...) i src-deskriptorer för @font-face,
