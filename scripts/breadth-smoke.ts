@@ -13,6 +13,7 @@
 
 import { freezeSite } from "../src/lib/tests/snapshot/freeze.server";
 import { replayCorpus } from "../src/lib/tests/snapshot/harness.server";
+import { extractFontFaceDiagnostics } from "../src/lib/tests/snapshot/mhtml-fonts.server";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -32,6 +33,11 @@ interface SiteResult {
   embeddedFontCount?: number;
   embeddedFamilies?: string[];
   fontFetchFailures?: number;
+  // B1 diagnostik från extractFontFaceDiagnostics
+  faceTotal?: number;
+  faceRemote?: number;
+  faceLocalOnly?: number;
+  faceWithMetricOverrides?: number;
   replayOk?: boolean;
   replayError?: string;
   gate1Total?: number;
@@ -80,6 +86,25 @@ for (const site of SMOKE_SITES) {
       `[${site.name}] freeze OK · ${r.mhtmlKb}kb · ${r.embeddedFontCount} fonts · ${r.embeddedFamilies?.length} families`,
     );
 
+    // B1 face-diagnostik (kräver inline page.mhtml; hoppa tyst för pointer-fall).
+    const mhtmlPath = join(dir, "page.mhtml");
+    if (existsSync(mhtmlPath)) {
+      const raw = readFileSync(mhtmlPath, "utf8");
+      const diags = extractFontFaceDiagnostics(raw);
+      r.faceTotal = diags.length;
+      r.faceRemote = diags.filter((d) => d.hasRemoteSrc).length;
+      r.faceLocalOnly = diags.filter((d) => d.hasLocalOnly).length;
+      r.faceWithMetricOverrides = diags.filter((d) => d.hasMetricOverrides).length;
+      writeFileSync(
+        join(dir, "face-diagnostics.json"),
+        JSON.stringify(diags, null, 2),
+      );
+      console.log(
+        `[${site.name}] B1 faces: total=${r.faceTotal} remote=${r.faceRemote} local-only=${r.faceLocalOnly} metric-overrides=${r.faceWithMetricOverrides}`,
+      );
+    }
+
+
     console.log(`[${site.name}] replaying through canary…`);
     try {
       await replayCorpus(site.name, BREADTH_ROOT);
@@ -125,7 +150,15 @@ for (const r of results) {
   console.log(
     `  freeze: OK · ${r.mhtmlKb}kb · ${r.embeddedFontCount} embedded fonts · ${r.embeddedFamilies?.length} extracted families · ${r.fontFetchFailures} fetch failures`,
   );
-  console.log(`  embeddedFamilies: ${(r.embeddedFamilies ?? []).join(", ") || "(none)"}`);
+  console.log(`  embeddedFamilies (post-B1): ${(r.embeddedFamilies ?? []).join(", ") || "(none)"}`);
+  if (r.faceTotal != null) {
+    console.log(
+      `  B1 faces: total=${r.faceTotal} · remote=${r.faceRemote} · local-only=${r.faceLocalOnly} · metric-overrides=${r.faceWithMetricOverrides}`,
+    );
+    console.log(
+      `  B2-nämnare (familjer med remote-src) = ${r.faceRemote} · embedded=${r.embeddedFontCount}`,
+    );
+  }
   if (r.gate1Total != null) {
     console.log(
       `  Gate1: ${r.gate1Registered}/${r.gate1Total} registered · classification: ${JSON.stringify(r.classification)}`,

@@ -233,6 +233,31 @@ export interface FontEmbedResult {
 // freeze.server kan ringa den utan att gå via embedMhtmlFonts om vi vill.
 const FONT_FACE_BLOCK_RE = /@font-face\s*\{([^}]*)\}/gi;
 const FONT_FAMILY_DECL_RE = /font-family\s*:\s*([^;}]+)/i;
+const SRC_DECL_RE = /src\s*:\s*([^;}]+)/i;
+const URL_TOKEN_RE = /\burl\s*\(/i;
+const METRIC_OVERRIDE_RE =
+  /\b(size-adjust|ascent-override|descent-override|line-gap-override)\s*:/i;
+
+// Strukturellt B1-filter: en face räknas som "embeddable remote font" bara om
+// dess src-deskriptor innehåller minst en url(...)-källa. local()-only-faces
+// (Next.js size-adjust-fallbacks, system-font-alias) filtreras strukturellt —
+// inte via namn-regex som /Fallback$/, eftersom Next genererar t.ex.
+// "__Inter_Fallback_<hash>" där suffixet inte är stabilt. Samma signal förklarar
+// varför de inte fetchas, så filtret förenar B1-rensning med B2-nämnaren.
+function hasRemoteSrc(faceBody: string): boolean {
+  const m = faceBody.match(SRC_DECL_RE);
+  if (!m) return false;
+  return URL_TOKEN_RE.test(m[1]);
+}
+
+function familyFromFaceBody(faceBody: string): string | null {
+  const m = faceBody.match(FONT_FAMILY_DECL_RE);
+  if (!m) return null;
+  // Värdet kan vara `"Foo", "Foo Fallback"` — ta första token.
+  const first = m[1].split(",")[0].trim();
+  const unquoted = first.replace(/^['"]|['"]$/g, "").trim();
+  return unquoted || null;
+}
 
 export function extractEmbeddedFamilies(mhtmlRaw: string): string[] {
   const parsed = parseMhtml(mhtmlRaw);
@@ -245,15 +270,58 @@ export function extractEmbeddedFamilies(mhtmlRaw: string): string[] {
     if (!/@font-face/i.test(text)) continue;
     for (const block of text.matchAll(FONT_FACE_BLOCK_RE)) {
       const body = block[1];
-      const m = body.match(FONT_FAMILY_DECL_RE);
-      if (!m) continue;
-      // Värdet kan vara `"Foo", "Foo Fallback"` — ta första token.
-      const first = m[1].split(",")[0].trim();
-      const unquoted = first.replace(/^['"]|['"]$/g, "").trim();
-      if (unquoted) seen.add(unquoted);
+      // B1: hoppa faces utan remote url()-src. Metric-overrides (size-adjust m.m.)
+      // exponeras via extractFontFaceDiagnostics, inte här — en face med
+      // url() + size-adjust är fortfarande en riktig remote-font.
+      if (!hasRemoteSrc(body)) continue;
+      const family = familyFromFaceBody(body);
+      if (family) seen.add(family);
     }
   }
   return Array.from(seen).sort();
+}
+
+export interface FontFaceDiagnostic {
+  family: string;
+  hasRemoteSrc: boolean;
+  hasLocalOnly: boolean;
+  hasMetricOverrides: boolean;
+}
+
+/**
+ * Diagnostisk: returnerar per @font-face-block om det har remote-src,
+ * är local()-only, och om metric-override-deskriptorer finns. Används av
+ * breadth-smoke för att kvantifiera B1-andel per corpus utan att blanda in
+ * filtret i hot-path-koden. Påverkar inte extractEmbeddedFamilies-returen.
+ */
+export function extractFontFaceDiagnostics(
+  mhtmlRaw: string,
+): FontFaceDiagnostic[] {
+  const parsed = parseMhtml(mhtmlRaw);
+  const out: FontFaceDiagnostic[] = [];
+  for (const part of parsed.parts) {
+    const ct = part.headers["content-type"] || "";
+    if (!/^text\/(css|html)/i.test(ct)) continue;
+    const enc = (part.headers["content-transfer-encoding"] || "").toLowerCase();
+    const text = enc === "quoted-printable" ? qpDecode(part.body) : part.body;
+    if (!/@font-face/i.test(text)) continue;
+    for (const block of text.matchAll(FONT_FACE_BLOCK_RE)) {
+      const body = block[1];
+      const family = familyFromFaceBody(body);
+      if (!family) continue;
+      const srcMatch = body.match(SRC_DECL_RE);
+      const srcValue = srcMatch ? srcMatch[1] : "";
+      const hasRemote = URL_TOKEN_RE.test(srcValue);
+      const hasLocal = /\blocal\s*\(/i.test(srcValue);
+      out.push({
+        family,
+        hasRemoteSrc: hasRemote,
+        hasLocalOnly: hasLocal && !hasRemote,
+        hasMetricOverrides: METRIC_OVERRIDE_RE.test(body),
+      });
+    }
+  }
+  return out;
 }
 
 export async function embedMhtmlFonts(

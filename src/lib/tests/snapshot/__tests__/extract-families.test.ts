@@ -3,7 +3,10 @@
 
 import { describe, it, expect } from "vitest";
 
-import { extractEmbeddedFamilies } from "../mhtml-fonts.server";
+import {
+  extractEmbeddedFamilies,
+  extractFontFaceDiagnostics,
+} from "../mhtml-fonts.server";
 
 function mhtml(cssBody: string): string {
   const boundary = "----TEST";
@@ -61,5 +64,51 @@ describe("extractEmbeddedFamilies", () => {
 
   it("returnerar tom array när inga @font-face finns", () => {
     expect(extractEmbeddedFamilies(mhtml(`body { color: red; }`))).toEqual([]);
+  });
+});
+
+describe("extractEmbeddedFamilies — B1 strukturellt local()-filter", () => {
+  it("filtrerar bort enskild local()-only face", () => {
+    const css = `@font-face { font-family: "Arial Fallback"; src: local("Arial"); }`;
+    expect(extractEmbeddedFamilies(mhtml(css))).toEqual([]);
+  });
+
+  it("filtrerar bort multi-local()-only face", () => {
+    const css = `@font-face { font-family: "System Fallback"; src: local("Arial"), local("Helvetica"); }`;
+    expect(extractEmbeddedFamilies(mhtml(css))).toEqual([]);
+  });
+
+  it("behåller mixed src (local + url)", () => {
+    const css = `@font-face { font-family: "Foo"; src: local("Arial"), url("cid:x") format("woff2"); }`;
+    expect(extractEmbeddedFamilies(mhtml(css))).toEqual(["Foo"]);
+  });
+
+  it("behåller url() face med metric-overrides", () => {
+    const css = `@font-face { font-family: "Inter"; src: url("cid:x"); size-adjust: 100.06%; }`;
+    expect(extractEmbeddedFamilies(mhtml(css))).toEqual(["Inter"]);
+  });
+
+  it("fångar Next.js-mönstret strukturellt (oavsett namn-hash)", () => {
+    const css = `
+      @font-face { font-family: "__Inter_Fallback_abc"; src: local("Arial"); size-adjust: 107%; ascent-override: 90%; }
+      @font-face { font-family: "__Inter_abc"; src: url("cid:real") format("woff2"); }
+    `;
+    expect(extractEmbeddedFamilies(mhtml(css))).toEqual(["__Inter_abc"]);
+  });
+});
+
+describe("extractFontFaceDiagnostics", () => {
+  it("flaggar local-only, remote, och metric-overrides separat", () => {
+    const css = `
+      @font-face { font-family: "Real"; src: url("cid:a") format("woff2"); }
+      @font-face { font-family: "Fallback"; src: local("Arial"); size-adjust: 107%; ascent-override: 90%; }
+      @font-face { font-family: "Mixed"; src: local("Arial"), url("cid:b"); }
+    `;
+    const d = extractFontFaceDiagnostics(mhtml(css));
+    expect(d).toEqual([
+      { family: "Real", hasRemoteSrc: true, hasLocalOnly: false, hasMetricOverrides: false },
+      { family: "Fallback", hasRemoteSrc: false, hasLocalOnly: true, hasMetricOverrides: true },
+      { family: "Mixed", hasRemoteSrc: true, hasLocalOnly: false, hasMetricOverrides: false },
+    ]);
   });
 });
