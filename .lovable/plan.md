@@ -1,79 +1,80 @@
-# Plan: Kör Part A i GitHub Codespaces
+## Plan: Gate-1 reason — diagnostikrunda (instrumentering, ingen taxonomi-ändring än)
 
-Codespaces ersätter den "dev-maskin" som Part A:s hand-off-kommando kräver. Sandboxen kan inte köra `playwright install-deps` (ingen root/apt), men en Codespace-container kan — den har sudo och full Ubuntu-bas. Part B påverkas inte; SSE-reproduktionen sker fortsatt mot workerd-previewen.
+Accepterat: Option 1 i nästa runda (`descriptor_missing` som egen reason; `check_mismatch` återinförs som strikt `distinct && !fontsCheckPass`). Splitten är ren by construction — `distinct` kräver `faceCount>0`, A2-grenen kräver `faceCount===0`, så grenarna kan inte fyra samtidigt och prioritetsordningen är irrelevant. De två fallen har olika rotorsaker och olika fixar:
 
-## Förutsättning: koppla till GitHub
+- `distinct && !fontsCheckPass` → fonten renderade (bredden bevisar det), men `fonts.check` säger nej → check-strängen är icke-kanonisk. **Fix: kanonisering av check-strängen.**
+- A2-no-descriptor → ingen face matchar familjen alls → den extraherade familjen är ett spöke. **Fix: `extractDeclaredFamilies`.**
 
-Projektet är på `tanstack_start_ts_2026-05-29`-mallen och har CI-workflows (`ci.yml`, `update-snapshot.yml`) men ingen synlig GitHub-remote-koppling från Lovable-sidan. Du kopplar via Plus-menyn (+) i chatten → **GitHub** → **Connect project** → välj konto/org → **Create Repository**. Efter det får repot Lovables två-vägs-sync, och Codespaces-knappen blir tillgänglig på GitHub-sidan (Code → Codespaces → Create codespace on main).
+### Denna runda: diagnostik only
 
-Inga code-ändringar i detta steg, bara integration.
+Mål: gör reason-kompositionen bevisbar för hela körningen innan vi rör vare sig taxonomin eller embedding.
 
-## Steg 1 — Ad-hoc-körning (omedelbar, inget incheckat)
+### Branch-enumet (uttömmande, inga blinda fläckar)
 
-När repot finns på GitHub: öppna en Codespace på `main` och kör, i terminalen i Codespacen:
+Persisteras per familj i `render-canary.families.json` som `diag.branchTaken` plus rådata (`loadResult.kind`, `faceCount`, `hasDescriptorMatch`, `deltaLoad`, `fontsCheckPass`, `epsilonLoadPx`). Enumet täcker hela klassificeringsgrafen, inte bara post-load-matrisen:
 
-```bash
-curl -fsSL https://bun.sh/install | bash
-export PATH="$HOME/.bun/bin:$PATH"
-bun install
-npx playwright install --with-deps chromium
-bun run scripts/render-canary.ts --all
-```
+Load-failure-vägar (early returns idag, måste ytläggas):
+- `load-rejected` (loadResult.kind === "rejected")
+- `load-timeout` (loadResult.kind === "timeout")
 
-Förväntade artefakter:
-- stdout med per-site / per-family rader
-- `corpus/<site>/render-canary.families.json` per körd corpus-site (`hibob`, `hubspot`)
+Post-load-vägar:
+- `A2-no-descriptor` (loaded, faceCount===0, !hasDescriptorMatch) → reason=check_mismatch idag
+- `coverage-exclusion` (loaded, faceCount===0, **hasDescriptorMatch===true**) → reason=fallback idag, **men måste ytläggas separat** — det är unicode-range-uteslutningsfallet från v3, och dess fix är sample/range, inte extraction. Att klumpa den med `!distinct+!check` döljer exakt den distinktion diagnostiken ska hitta.
+- `distinct+check` → ok
+- `distinct+!check` → check_mismatch (efter Option 1: enda återstående check_mismatch)
+- `!distinct+check` → metric_twin
+- `!distinct+!check` (faceCount>0) → fallback (genuin fallback; skild från coverage-exclusion)
 
-Klistra in stdout + receipts hit för Part A:s triage enligt v3-planen (`gate1.reason` → en av `ok` / `metric_twin` / `fallback` / `check_mismatch` / `unresolved` / `timeout`). A1, A2, A3 utförs sedan här i Lovable, inte i Codespacen.
+Branch-fältet skrivs som rent diagnostiskt sidofält denna runda — `reason` rörs inte än.
 
-Inga incheckade filändringar i detta steg.
+### Kanoniseringsassert för hasDescriptorMatch
 
-## Steg 2 — Incheckad `.devcontainer/` (reproducerbar)
+Under Option 1 blir `hasDescriptorMatch` enda diskriminatorn mellan `descriptor_missing` och `fallback` för empty-load-rader. Då är dess kanonisering load-bearing — en under-match (returnerar false för en riktig descriptor pga kanoniseringskvirk) felrouter en coverage-exclusion till `descriptor_missing` och skickar nästa runda till `extractDeclaredFamilies` av fel skäl.
 
-Skapa två filer så att framtida Codespaces (och alla i teamet) får en redo-att-köra miljö utan manuella installationssteg.
+Den nya konsistenskontrollen Option 1 skapar ligger inte mellan width och fonts.check (de är redan rena, samma family + sampleText, rad 282/287–289). Den ligger mellan `hasDescriptorMatch` och resten av kedjan. Lägg därför in i samma instrumenteringspass:
 
-### `.devcontainer/devcontainer.json`
+- Persistera råsträngarna som faktiskt jämförs: `manifestFamily`, `descriptorFamilies[]` (efter samma `stripQuotes`/lowercase som rad 271–273), `checkString` (det `quote(family)` som går in i `document.fonts.check`), `widthString` (det `quote(family)` som går in i `measureWidth`).
+- Assert: alla fyra ska kanonisera identiskt under den kanoniseringsfunktion som används för match-jämförelsen. Avvikelse loggas som `diag.canonMismatch` med vilket par som diffar. Detta är den check som faktiskt validerar Option 1:s splitt.
 
-- Bas: `mcr.microsoft.com/playwright:v1.60.0-jammy` (matchar `playwright` 1.60.0 i `devDependencies`; ger Chromium + alla systemberoenden förinstallerade, ingen `install-deps` behövs).
-- Feature: `ghcr.io/shyim/devcontainers-features/bun:0` för Bun.
-- `postCreateCommand`: `bun install`
-- `forwardPorts`: `[3000]` för Lovable-previewen om man vill öppna `bun run dev` i Codespacen.
-- VS Code-extensions: `dbaeumer.vscode-eslint`, `esbenp.prettier-vscode`, `biomejs.biome` (valfritt — låt vara om teamet inte använder dem).
+### Browser-pinning i kvittot
 
-### `.devcontainer/README.md` (kort)
+Per determinismkravet, persistera i `diag.env`:
+- `chromium.path` (`/bin/chromium-browser` vs Playwright-pinnad)
+- `chromium.version`
+- `pinned: boolean` — false så länge vi kör mot systemets chromium
 
-En paragraf som dokumenterar enstegsflödet efter Create codespace:
+Rader med `pinned: false` räknas inte mot acceptans. Vid `deltaLoad=0.00` på familj där det inte borde inträffa, noteras explicit att utfallet kan vara en freetype/harfbuzz-artefakt och behöver en pinnad körning för att räknas.
 
-```
-bun run scripts/render-canary.ts --all
-```
+### Körning
 
-…och påminner om att Chromium redan finns i image:t, så `playwright install` inte ska köras (det skulle ladda om browsern i onödan).
+1. Patcha instrumenteringen i `render-canary.server.ts` (diagnostiska sidofält + kanoniseringsassert + env-block; ingen ändring av reason-grenarna).
+2. Re-run hubspot + hibob i sandboxen med `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/bin/chromium-browser`.
+3. Rapportera per familj:
+   - branchTaken vs reason — konsistent eller inkonsistent
+   - canonMismatch ja/nej
+   - env.chromium + pinned
 
-### Vad som inte ändras
+### Beslutsgrind för nästa runda
 
-- Inga app- eller server-filer rörs.
-- `canary-constants.ts` förblir orörd (samma princip som v3-planen).
-- `scripts/render-canary.ts` förblir orörd — devcontainern är bara en miljö-wrapper.
-- `package.json` förblir orörd; ingen ny `scripts`-post behövs eftersom hand-off-kommandot redan är ett enradigt `bun run`.
+Gå vidare till Option 1-implementation först om:
+- Lexend Deca verifieras ha `branchTaken=A2-no-descriptor` med `fontsCheckPass=true` och `deltaLoad=0` (bekräftar diagnosen i koden).
+- `canonMismatch=false` för alla rader (annars måste kanoniseringen fixas innan splitt, annars routas coverage-exclusion fel).
+- Inga andra rader visar `branchTaken` ↔ `reason`-inkonsistens utöver de två kända Option 1 löser.
 
-## Steg 3 — Uppdatera `.lovable/plan.md`
+### Nedströms-edits Option 1 tvingar fram (planeras nu, görs i nästa runda)
 
-Lägg till en kort sektion under Part A som dokumenterar hand-off-vägen: "Part A acceptance körs i GitHub Codespaces (devcontainer förinstallerar Chromium via Playwright-image). Sandboxen kan inte köra `playwright install-deps`; Codespaces kan. Part B opåverkad."
+- v3:s Vitest-case i `src/lib/tests/snapshot/__tests__/render-canary.test.ts` som asserterar `check_mismatch` för typo-familjen ("Brnad") måste flippas till `descriptor_missing`. Test-first-disciplinen kräver att testet uppdateras i samma commit som taxonomi-ändringen.
+- Part-A steg-3-triagetabellen behöver en `descriptor_missing`-rad med åtgärd "fixa `extractDeclaredFamilies`".
+- Existerande `check_mismatch`-rader i triagedokument får ny implicit semantik (kanonisera check-strängen) och bör läsas igenom.
 
-Inga andra ändringar i plan.md.
+### Inte i denna runda
 
-## Vad detta inte gör (medvetet)
+- Ingen ändring i `mhtml-fonts.server.ts`.
+- Ingen taxonomi-fix (`descriptor_missing` införs i nästa plan, efter att diagnostiken bekräftat splitten).
+- Ingen Lexend Deca-embedding-undersökning förrän klassificeraren är verifierad och raden har sin korrekta etikett.
 
-- **Löser inte Part B.** Codespaces är en Node/Linux-miljö, inte workerd. Cancel-reason-strängen måste fortfarande fångas från Lovable-previewen eller `wrangler dev`. Part B förblir read-only-utredning tills den strängen finns.
-- **Lägger inte till CI-jobb** för render-canary. Acceptance är manuell/triage-driven enligt v3; om vi senare vill köra den i GitHub Actions blir det en separat ändring (workflow + secret för corpus-källor om relevant).
-- **Ändrar inte Worker-runtime, SSE eller subset-algoritm.** Allt utanför Part A scope.
+### Leverabler
 
-## Sekvensering
-
-1. Du kopplar GitHub via Plus-menyn (manuellt steg i Lovable UI:t).
-2. Jag skriver in `.devcontainer/devcontainer.json` + README och uppdaterar `.lovable/plan.md` (en commit, bisectable).
-3. Du öppnar Codespace på `main` och kör hand-off-kommandot. (Eller, om du vill komma igång direkt: kör ad-hoc-flödet från Steg 1 innan devcontainern landat — det fungerar parallellt.)
-4. Klistra in stdout + `render-canary.families.json` hit; jag kör triage per `gate1.reason`.
-
-Två separata commits hålls åtskilda: Part A devcontainer (det här) och eventuell Part B SSE-fix (senare, signaturdriven).
+- Patchad `render-canary.server.ts` (diagnostiska sidofält + kanoniseringsassert + env-block, reason-grenar orörda).
+- Uppdaterade `corpus/hubspot/render-canary.families.json` och `corpus/hibob/render-canary.families.json` med `diag`-block.
+- Rapport: tabell över alla familjer med (reason, branchTaken, canonMismatch, env.pinned) + explicit go/no-go för Option 1.
