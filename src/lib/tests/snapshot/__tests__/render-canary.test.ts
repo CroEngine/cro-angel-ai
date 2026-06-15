@@ -255,7 +255,7 @@ describe("runRenderCanary — Gate 1 reason taxonomy", () => {
     expect(fam.registered).toBe(true);
   });
 
-  test("A2: empty load + NO descriptor match (typo) → 'check_mismatch' with loadError", async (ctx) => {
+  test("A2: empty load + NO descriptor match (typo) → 'descriptor_missing' with loadError", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
 
     await page.setContent(`<html><body><p>x</p></body></html>`);
@@ -269,18 +269,40 @@ describe("runRenderCanary — Gate 1 reason taxonomy", () => {
       document.fonts.add(face);
     });
 
-    // Query for "Brnad" (typo): no FontFace has this descriptor → genuine
-    // name mismatch → check_mismatch with the actionable error message.
+    // Query for "Brnad" (typo): no FontFace has this descriptor → manifest
+    // names a family no @font-face declares → descriptor_missing with the
+    // actionable error message. Fix lives in extractDeclaredFamilies, NOT in
+    // check-string canonicalization — which is why this is a distinct reason
+    // from check_mismatch.
     const report = await runRenderCanary(page, ["Brnad"], {
       fontLoadTimeoutMs: 1000,
     });
     const fam = report.families[0];
 
-    expect(fam.gate1.reason).toBe("check_mismatch");
+    expect(fam.gate1.reason).toBe("descriptor_missing");
     expect(fam.gate1.pass).toBe(false);
     expect(fam.gate1.loadError).toBe("no face matched descriptor");
     expect(fam.registered).toBe(false);
   });
+
+  // check_mismatch is the (distinct && !fontsCheckPass) defensive branch.
+  // No deterministic fixture: distinct⟹check by construction. w_with measures
+  // `family, <fallback>` and w_fallback measures `<fallback>` alone with the
+  // same stack — everything but the family's contribution cancels, so
+  // delta>EPS requires the family actually rendered, which requires it loaded,
+  // which makes check(family)=true. Add canonMismatch=false (asserted by the
+  // Gate1Diag side field) and the historical "non-canonical check string"
+  // path is also closed. The only residual ways to fire are timing slips
+  // (we await fonts.ready), subpixel noise pushing a non-distinct row above
+  // EPS, or a regression. None reproduce deterministically across machines,
+  // so we skip rather than ship a flaky fixture. The branch's value is as
+  // a fail-safe at runtime, not as a tested code path.
+  test.skip(
+    "check_mismatch (distinct && !fontsCheckPass): defensive branch, distinct⟹check by construction, no deterministic fixture",
+    () => {
+      /* intentionally unreachable — see comment above */
+    },
+  );
 });
 
 describe("runRenderCanary — settings round-trip in report", () => {
