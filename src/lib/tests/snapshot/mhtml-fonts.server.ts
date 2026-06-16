@@ -823,6 +823,7 @@ export async function embedMhtmlFonts(
     fetchRecords,
     totalHarvestedOccurrences,
     controlProbes,
+    unresolvableRelativeUrls,
   };
 }
 
