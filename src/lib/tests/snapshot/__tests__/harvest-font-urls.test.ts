@@ -5,8 +5,9 @@
 // Identitetstestet (normalize(abs)===abs) är en sekundär sanity-check.
 
 import { describe, it, expect } from "vitest";
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   iterateCssParts,
   harvestFontUrls,
@@ -476,5 +477,91 @@ describe("consumption-equality P==M (icke-tautologisk)", () => {
   // Differential-testet ovan ("real corpus: hubspot/page.mhtml — gamla
   // regex-mängden bevaras exakt") fortsätter att skydda mot regression i
   // den befintliga (post-embed) HubSpot-fixturens behandling.
+});
+
+// =========================================================================
+// Test 3 — real-corpus P==M consumption-equality
+// =========================================================================
+//
+// Vaktar harvest/projektions-invarianten på `corpus/<name>/page.pre-embed.mhtml`
+// (rå captureSnapshot, externa font-URLer kvar — inte post-embed cid:-output).
+// Deterministisk, Playwright-fri, auto-curating: ny fixture committas →
+// suiten plockar upp den. Ingen golden-fil, ingen per-sajt-konstant att
+// uppdatera vid CSS-churn.
+//
+// Tre design-låsningar:
+//   1. Repo-rotsankrad sökväg (fileURLToPath), inte process.cwd() — fel
+//      CWD ska inte tyst skip:a sviten.
+//   2. KNOWN_REMOTE_FONT_CORPORA-allowlist gata icke-vakuiteten (>0).
+//      Legitimt font-lösa sajter (system-stack / pure local()) ska kunna
+//      committas utan att tvingas in i allowlisten.
+//   3. Skip→fail-flip: så fort ≥1 allowlistad pre-embed är committad får
+//      en framtida radering INTE tyst återgå till skip-grön.
+
+const __filenameLocal = fileURLToPath(import.meta.url);
+// __tests__ → snapshot → tests → lib → src → repo-root
+const CORPUS_ROOT = join(dirname(__filenameLocal), "..", "..", "..", "..", "..", "corpus");
+
+// Korpora där vi vet att harvesten ska producera externa URLer (innan
+// A2-embedding). Lägg till sajter när de re-freezas med pre-embed-skrivning.
+// Font-lösa sajter (system-stack / pure local()) hör INTE hit.
+const KNOWN_REMOTE_FONT_CORPORA = new Set<string>([
+  "hubspot",
+  "hibob",
+  // "vercel", "intercom", ... lägg till efter re-freeze
+]);
+
+describe("real-corpus P==M (page.pre-embed.mhtml)", () => {
+  const allCorpora = existsSync(CORPUS_ROOT)
+    ? readdirSync(CORPUS_ROOT, { withFileTypes: true })
+        .filter((d) => d.isDirectory())
+        .map((d) => d.name)
+    : [];
+  const discovered = allCorpora.filter((name) =>
+    existsSync(join(CORPUS_ROOT, name, "page.pre-embed.mhtml")),
+  );
+  const allowlistedDiscovered = discovered.filter((n) =>
+    KNOWN_REMOTE_FONT_CORPORA.has(n),
+  );
+
+  if (discovered.length === 0) {
+    it.skip("ingen page.pre-embed.mhtml committad än — re-freeze krävs", () => {});
+    return;
+  }
+
+  // Skip→fail-flip: så fort minst en allowlistad pre-embed finns kräver vi
+  // att hela allowlisten är committad. Under övergången (innan första
+  // re-freeze av en allowlistad sajt) är allowlistedDiscovered tom och
+  // testet passerar tyst.
+  it("allowlistade KNOWN_REMOTE_FONT_CORPORA har sina pre-embed-fixturer committade", () => {
+    if (allowlistedDiscovered.length === 0) return;
+    const missing = [...KNOWN_REMOTE_FONT_CORPORA].filter(
+      (n) => !existsSync(join(CORPUS_ROOT, n, "page.pre-embed.mhtml")),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  for (const name of discovered) {
+    it(`${name}: extractFontFaceDiagnostics.flatMap(replayUrls) ≡ collectEmbedTargets(resolved)`, () => {
+      const raw = readFileSync(
+        join(CORPUS_ROOT, name, "page.pre-embed.mhtml"),
+        "utf8",
+      );
+      const pReplay = new Set(
+        extractFontFaceDiagnostics(raw).flatMap((f) => f.replayUrls),
+      );
+      const mTargets = new Set(
+        collectEmbedTargets(raw).map((u) => u.resolved),
+      );
+      // Invarianten — alltid.
+      expect(mTargets).toEqual(pReplay);
+      // Icke-vakuitet — bara där vi vet att externa URLer ska finnas.
+      // Fångar per-sajt tyst-harvest-död (harvest dör på just denna CSS →
+      // båda tomma → toEqual passerar trivialt).
+      if (KNOWN_REMOTE_FONT_CORPORA.has(name)) {
+        expect(mTargets.size).toBeGreaterThan(0);
+      }
+    });
+  }
 });
 

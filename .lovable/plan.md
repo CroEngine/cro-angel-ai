@@ -1,57 +1,105 @@
-# Commit 3 + 4 — slutligt, bekräftat och redo att landa
+# Commit 5 — pre-embed.mhtml som korpus-input + real-corpus P==M (v2)
 
-## Bekräftelser
+Två delar. Vaktar harvest/projektions-invarianten på real corpus, deterministiskt och Playwright-fritt.
 
-**(1) HubSpot-fixturen är pre-embed raw.** Verifierat: `corpus/hubspot/page.mhtml` är Chromiums råa `captureSnapshot`-output. CSS-parts (`cid:css-...@mhtml.blink`) är Chromiums *native* MHTML-format för stylesheets, inte vår post-embed-rewrite. Inuti dem ligger fortfarande externa `https://...woff2`-URLer (Chromium inlinear inte font-binärer). Test 2:s HubSpot-gren har äkta hink 2/3-innehåll — den är inte dekoration.
+## Bakgrund (verifierat)
 
-**(2) `embedMhtmlFonts` kastar INTE på hink 4.** Verifierat i `mhtml-fonts.server.ts:585-828`: hink-4-grenen pushar till `unresolvableRelativeUrls` och fortsätter (rad 655-661). Den enda `throw` är completeness-invarianten på rad 743 (`fetchRecords.length !== totalHarvestedOccurrences`) — strukturellt onåbar givet att varje harvest-entry mappar till exakt en record. Funktionen returnerar **alltid** `FontEmbedResult` med hink-4-detaljer på lyckad och misslyckad fetch-grena lika. Inget `try/finally` behövs; 4b kan läsa `embedded.fontUrlSummary` rakt av.
+`freeze.server.ts` skriver redan `page.pre-embed.mhtml` till `dir` (= `corpus/<name>/` när inte dryRun) **före** `embedMhtmlFonts`-anropet. Receipt-före-throw är alltså redan uppfyllt för pre-embed-fixturen. Commit 5a är därför dokumentation + README — ingen logikändring.
 
-## Sekvens
+Att existerande korpora (`corpus/hubspot/`, `corpus/hibob/`) saknar `page.pre-embed.mhtml` beror på att de frystes innan den raden landade. Re-freeze kräver Browserbase och är **explicit out-of-scope för denna commit** (se nedan).
 
-### Commit 3 — Strukturell input-equality
+## Commit 5a — Dokumentera pre-embed som första-klass artefakt
 
-1. **`src/lib/tests/snapshot/harvest-font-urls.ts`** — lägg till `harvestAllFontUrls(mhtml): HarvestedFontUrl[]` (publik). Använder existerande `iterateCssParts` + `harvestFontUrls`; `partIndex` kommer från `CssPart.partIndex` (inte lokal räknare).
+**Ändring 1: `freeze.server.ts`** — uppdatera kommentaren ovanför pre-embed-skrivningen (samma rad som idag, ankrad mot `report.capture.mhtmlKbBeforeFontEmbed = ...` och raden direkt före `embedMhtmlFonts(`-anropet). Ny kommentar:
 
-2. **`mhtml-fonts.server.ts`**:
-   - Lägg till `export function collectEmbedTargets(mhtml)` = `harvestAllFontUrls(mhtml).filter(u => u.kind === "absolute" || u.kind === "relative-resolved")`.
-   - `embedMhtmlFonts`: byt nuvarande `for (const css of cssParts) { for (const u of harvestFontUrls(...))` mot **en** `harvestAllFontUrls(mhtmlRaw)`-pass + lokal partitionering till embed-targets / unresolvable. `partOriginalToResolved` byggs från samma pass. Beteendet identiskt.
-   - `extractFontFaceDiagnostics`: oförändrad public shape; intern URL-klassificering går redan via `harvestFontUrls` per part (rad 506-549), så ingen ändring krävs — `replayUrls`-projektionen är redan i drift.
+> "Skriv page.pre-embed.mhtml FÖRE embedMhtmlFonts och FÖRE A2-gaten (samma receipt-före-throw-princip som report.capture.fontUrls). Korpusen blir då self-contained: input + post-embed-output båda frusna, re-embed är en deterministisk diff istället för ett live-re-capture."
 
-3. **Syntetisk fixture** — `src/lib/tests/snapshot/__fixtures__/synthetic-fonts.mhtml` + `synthetic-fonts.expected.ts` med `SYNTHETIC_FIXTURE_EXPECTED` (hink 2: 2, hink 3: 5, hink 4: 2 [no-base, invalid-base], embedded: 2, exakt resolved-map per original inkl. `multi.woff2` + `multi.woff`).
+**Ändring 2: `corpus/README.md`** — dokumentera att varje `corpus/<name>/` ska innehålla både `page.pre-embed.mhtml` (rå captureSnapshot, externa font-URLer kvar) och `page.mhtml` (post-embed, cid:-rewriten).
 
-4. **`__tests__/harvest-font-urls.test.ts`** — två tester:
-   - **Test 1 (producent-korrekthet):** `harvestAllFontUrls(syntheticRaw)` pinnad mot `SYNTHETIC_FIXTURE_EXPECTED` — hink-räkning, exakt `resolved` per `original`, hink 4 `reason` per `original`. Multiplicitet (multi.woff2 + multi.woff = 2 distinkta tokens) pinnas här.
-   - **Test 2 (consumption-equality, icke-tautologisk):** på syntetisk fixture *och* `corpus/hubspot/page.mhtml`:
-     ```ts
-     const pReplay = new Set(extractFontFaceDiagnostics(raw).flatMap(f => f.replayUrls));
-     const mTargets = new Set(collectEmbedTargets(raw).map(u => u.resolved!));
-     expect(mTargets).toEqual(pReplay);
-     ```
-     P:s grupperings-/projektionsväg (per `(partIndex, faceIndex)` → `FontFaceDiagnostic`) vs M:s platta filter — två genuint olika kodvägar.
+## Commit 5b — Real-corpus P==M test med allowlist-gata
 
-### Commit 4 — Receipt-observability
+I `src/lib/tests/snapshot/__tests__/harvest-font-urls.test.ts`, lägg till ny test-suite. Tre design-låsningar baserat på review-feedback:
 
-5. **`FontEmbedResult.fontUrlSummary`** — populeras från samma `allHarvested`-pass i steg 2. JSDoc anmärker att räknarna är **token-occurrences, inte distinkta-på-resolved**:
-   ```ts
-   /** Token-occurrences per hink (INTE distinkta-på-resolved — replayUrls/urlToCid
-    *  dedupar, dessa inte). För antal-familjer/fetcher-mål: embeddedFontCount
-    *  resp. fetchRecords. */
-   fontUrlSummary: { embedded: number; absolute: number; relativeResolved: number;
-     unresolvable: Array<{original: string; reason: "no-base"|"invalid-base"; partIndex: number}> };
-   ```
+### Låsning 1: Repo-rotsankrad sökväg
 
-6. **`FreezeReport.capture.fontUrls`** i `freeze.server.ts` — populeras direkt efter `embedMhtmlFonts`-anropet (rad ~352) från `embedded.fontUrlSummary`. Säker: `embedMhtmlFonts` kastar inte på hink-4-grenen, så receipt-skrivningen är garanterat nådd när URLer är oresolverbara (bekräftelse 2).
+Härled corpus-rot från testfilens egen plats (`fileURLToPath(import.meta.url)` → `../../../../../corpus`), **inte** `process.cwd()`. En testkörning från fel CWD ska inte tyst kunna skip:a sviten.
 
-7. **`scripts/breadth-smoke.ts`** — `SiteResult.fontUrlSummary` + logg med kommentaren "token-occurrences, inte distinkta familjer".
+### Låsning 2: Allowlist för icke-vakuitet, inte blank toBeGreaterThan(0)
 
-### Verifiering
+```ts
+// Korpora där vi vet att harvesten ska producera externa URLer
+// (innan A2-embedding). Lägg till sajter när de re-freezas.
+// Font-lösa sajter (system-stack / pure local()) hör INTE hit.
+const KNOWN_REMOTE_FONT_CORPORA = new Set<string>([
+  "hubspot",
+  "hibob",
+  // "vercel", "intercom", ... lägg till efter re-freeze
+]);
+```
 
-- `bun vitest run src/lib/tests/snapshot/__tests__/harvest-font-urls.test.ts` — Test 1 + 2 gröna.
-- `bun vitest run` — existerande tester orörda.
-- `bun scripts/breadth-smoke.ts` — kör **en gång** för att uppmäta HubSpots faktiska `fontUrlSummary`. Pinna värdena som named constants i ett `EXPECTED_HUBSPOT_FONT_URL_SUMMARY`-block i Test 2 (eller egen test); sanity-asserten jämför mot uppmätt värde, **inte mot antagen nolla**. Vercel/Intercom har icke-noll `relativeResolved`.
+För varje upptäckt `corpus/<name>/page.pre-embed.mhtml`:
+- Asserten `toEqual(pReplay)` körs alltid (invarianten).
+- Asserten `mTargets.size > 0` körs **endast** om `name ∈ KNOWN_REMOTE_FONT_CORPORA`. Det fångar per-sajt tyst-harvest-död utan att straffa legitimt font-lösa sajter.
 
-## Vad detta INTE gör
+### Låsning 3: Skip→fail-flip så fort ≥1 allowlistad fixture finns
 
-- Ingen ändring av `render-canary.server.ts`, MHTML-format, embedding-logik eller `FontFaceDiagnostic`-shape.
-- Ingen fetch / Playwright i något commit-3-test.
-- Ingen `try/finally`-omstrukturering av `embedMhtmlFonts` — onödig (se bekräftelse 2).
+```ts
+const discovered = corpora.filter(name =>
+  existsSync(join(CORPUS_ROOT, name, "page.pre-embed.mhtml"))
+);
+const expectedFromAllowlist = corpora
+  .filter(n => KNOWN_REMOTE_FONT_CORPORA.has(n))
+  .filter(n => existsSync(join(CORPUS_ROOT, n, "page.pre-embed.mhtml")));
+
+if (discovered.length === 0) {
+  it.skip("ingen page.pre-embed.mhtml committad än — re-freeze krävs", () => {});
+  return;
+}
+
+// Så fort minst en allowlistad pre-embed finns: en framtida radering
+// får INTE tyst återgå till skip-grön.
+it("allowlistade KNOWN_REMOTE_FONT_CORPORA har sina pre-embed-fixturer committade", () => {
+  const missing = [...KNOWN_REMOTE_FONT_CORPORA].filter(
+    n => !existsSync(join(CORPUS_ROOT, n, "page.pre-embed.mhtml"))
+  );
+  // Under övergången (innan första re-freeze) är listan tom → testet passerar.
+  // Efter första re-freeze: radering av en allowlistad fixture failar.
+  if (expectedFromAllowlist.length > 0) {
+    expect(missing).toEqual([]);
+  }
+});
+```
+
+### Testkroppen (per korpus)
+
+```ts
+for (const name of discovered) {
+  it(`${name}: extractFontFaceDiagnostics.flatMap(replayUrls) ≡ collectEmbedTargets(resolved)`, () => {
+    const raw = readFileSync(join(CORPUS_ROOT, name, "page.pre-embed.mhtml"), "utf8");
+    const pReplay = new Set(extractFontFaceDiagnostics(raw).flatMap(f => f.replayUrls));
+    const mTargets = new Set(collectEmbedTargets(raw).map(u => u.resolved));
+    expect(mTargets).toEqual(pReplay); // invarianten — alltid
+    if (KNOWN_REMOTE_FONT_CORPORA.has(name)) {
+      expect(mTargets.size).toBeGreaterThan(0); // icke-vakuitet — bara där vi vet
+    }
+  });
+}
+```
+
+## Explicit out-of-scope för denna commit
+
+Implementera **inte** något av nedanstående — det är användarens nästa steg, separat från denna agentkörning:
+
+- Re-freeze av befintliga korpora. Kör inte `scripts/freeze-site.ts`. Anropa inte Browserbase. Hitta inte på `BROWSERBASE_*`-secrets.
+- Ändringar i embedding-/rewrite-logiken (`mhtml-fonts.server.ts` — embedMhtmlFonts-kroppen, cid:-genereringen, A2-gaten).
+- Ändringar i MHTML-format eller `FontEmbedResult`-shape.
+- Ändringar i Test 1 (syntetisk, pinnad) eller Test 2 (consumption-equality på syntetisk).
+- Nya CLI-flaggor, nya skript, ändringar i `breadth-smoke.ts`.
+
+## Acceptanskriterier
+
+- `bun vitest run src/lib/tests/snapshot/__tests__/harvest-font-urls.test.ts` kör grönt i nuvarande repo-state. Den nya suiten antingen skip:as (om ingen `page.pre-embed.mhtml` finns committad än) eller passerar (om någon committats utanför denna commit).
+- Test 1 och Test 2 är oförändrade och passerar.
+- Inga ändringar i exporter från `harvest-font-urls.ts`, `mhtml-fonts.server.ts`, `freeze.server.ts` utöver kommentaren i 5a.
+- Inga andra testfiler ändrade.
+- `freeze.server.ts`-diff är enbart kommentar; ingen kodrad flyttad eller logik ändrad.

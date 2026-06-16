@@ -7,12 +7,20 @@ input for the snapshot harness (`src/lib/tests/snapshot/`).
 
 ```
 corpus/<name>/
-  page.mhtml        # CDP Page.captureSnapshot — inlines all CSS/images/fonts
-  screenshot.jpg    # full-page visual reference
-  meta.json         # url, captured_at, viewport, consent selector, notes
-  consent.json      # (optional) extra consent steps if a CSS selector isn't enough
-  golden.json       # normalized expected output of collect + pageAudit
+  page.pre-embed.mhtml  # raw captureSnapshot — externa font-URLer kvar (input)
+  page.mhtml            # post-embed — A2 har rewrittat externa fonter till cid: (output)
+  screenshot.jpg        # full-page visual reference
+  meta.json             # url, captured_at, viewport, consent selector, notes
+  consent.json          # (optional) extra consent steps if a CSS selector isn't enough
+  golden.json           # normalized expected output of collect + pageAudit
 ```
+
+Båda MHTML-filerna committas. `page.pre-embed.mhtml` är källan för
+harvest/projektions-invarianten (Test 3 i `harvest-font-urls.test.ts`):
+post-embed kan inte användas eftersom alla externa URLer redan är `cid:`,
+vilket gör P==M-equality tautologiskt grön. Pre-embed skrivs av
+`freeze.server.ts` före `embedMhtmlFonts` och före A2-gaten — samma
+receipt-före-throw-princip som `report.capture.fontUrls`.
 
 ## Freezing a site
 
