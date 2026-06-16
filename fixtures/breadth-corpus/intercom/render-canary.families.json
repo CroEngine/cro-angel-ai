@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "env": {
     "chromiumPath": "/bin/chromium",
     "chromiumVersion": "146.0.7680.80",

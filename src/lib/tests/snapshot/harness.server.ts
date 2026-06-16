@@ -23,6 +23,7 @@ import { COLLECT_SCRIPT } from "../scripts/collect";
 import { runPageAudit } from "../runners/pageAudit.server";
 import { resolveAssetUrl, sha256OfBuffer, type AssetPointer } from "./externalize.server";
 import { runRenderCanary, type RenderCanaryReport } from "./render-canary.server";
+import { FamiliesReceiptFileSchema, type FamiliesReceiptFile } from "./render-canary-receipt";
 import { CANARY_VIEWPORT } from "./canary-constants";
 import { extractEmbeddedFamilies } from "./mhtml-fonts.server";
 
@@ -401,19 +402,24 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       // it as a separate file so dashboards can read families without parsing
       // the aggregate report.
       try {
-        const familiesReceipt = canary.families.map((f) => ({
-          family: f.family,
-          gate1: f.gate1,
-          ...(f.gate2 ? { gate2: f.gate2 } : {}),
-          diag: f.diag,
-        }));
-        const receipt = {
+        const receipt: FamiliesReceiptFile = {
+          schemaVersion: 1,
           ...(canary.env ? { env: canary.env } : {}),
-          families: familiesReceipt,
+          families: canary.families.map((f) => ({
+            family: f.family,
+            gate1: f.gate1,
+            ...(f.gate2 ? { gate2: f.gate2 } : {}),
+            diag: f.diag,
+          })),
         };
+        // Runtime-validera FÖRE writeFileSync: en silent-fail map (t.ex. f.gate1
+        // === undefined) skulle annars producera en trasig durabel artefakt.
+        // .parse strippar dessutom okända nycklar → on-disk-formen blir exakt
+        // schemat oavsett in-memory-extras på FamilyReport.
+        const validated = FamiliesReceiptFileSchema.parse(receipt);
         writeFileSync(
           join(dir, "render-canary.families.json"),
-          JSON.stringify(receipt, null, 2),
+          JSON.stringify(validated, null, 2),
         );
       } catch {
         /* best-effort */
