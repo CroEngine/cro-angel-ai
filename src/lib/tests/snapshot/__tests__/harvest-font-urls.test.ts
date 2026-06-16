@@ -359,3 +359,122 @@ describe("harvestFontUrls — differential vs ANY_HTTP_URL_RE (huvudvakten)", ()
     expect([...newHttp].sort()).toEqual([...oldSet].sort());
   });
 });
+
+// =========================================================================
+// Commit 3 — strukturell input-equality
+// =========================================================================
+//
+// Test 1: producent-korrekthet — `harvestAllFontUrls` på syntetisk fixture
+//         pinnad mot named constants (hink-räkning, resolved per original,
+//         unresolvable reasons). Multiplicitet (multi.woff2 + multi.woff =
+//         två distinkta tokens) pinnas här.
+//
+// Test 2: consumption-equality P==M (icke-tautologisk) — på syntetisk
+//         fixture + hubspot/page.mhtml: P:s grupperings-/projektionsväg
+//         (extractFontFaceDiagnostics → flatMap(f.replayUrls)) mot M:s
+//         platta filter (collectEmbedTargets → resolved). Två genuint
+//         olika kodvägar — en trasig projektion bryter setet.
+
+import {
+  harvestAllFontUrls,
+  type HarvestedFontUrl,
+} from "../harvest-font-urls";
+import {
+  collectEmbedTargets,
+  extractFontFaceDiagnostics,
+} from "../mhtml-fonts.server";
+import { SYNTHETIC_FIXTURE_EXPECTED } from "../__fixtures__/synthetic-fonts.expected";
+
+const SYNTHETIC_FIXTURE_PATH = join(
+  process.cwd(),
+  "src/lib/tests/snapshot/__fixtures__/synthetic-fonts.mhtml",
+);
+
+describe("harvestAllFontUrls — producent-korrekthet (syntetisk fixture)", () => {
+  const raw = readFileSync(SYNTHETIC_FIXTURE_PATH, "utf8");
+  const all = harvestAllFontUrls(raw);
+
+  it("hink-räkning pinnad mot SYNTHETIC_FIXTURE_EXPECTED.counts", () => {
+    const counts = {
+      embedded: all.filter((u) => u.kind === "embedded").length,
+      absolute: all.filter((u) => u.kind === "absolute").length,
+      relativeResolved: all.filter((u) => u.kind === "relative-resolved")
+        .length,
+    };
+    expect(counts).toEqual(SYNTHETIC_FIXTURE_EXPECTED.counts);
+  });
+
+  it("varje original → exakt resolved enligt named constants", () => {
+    const map: Record<string, string> = {};
+    for (const u of all) {
+      if (u.kind === "absolute" || u.kind === "relative-resolved") {
+        map[u.original] = u.resolved;
+      }
+    }
+    expect(map).toEqual(SYNTHETIC_FIXTURE_EXPECTED.resolved);
+  });
+
+  it("hink 4 — original + reason pinnad", () => {
+    const unresolvable = all
+      .filter(
+        (u): u is Extract<HarvestedFontUrl, { kind: "relative-unresolvable" }> =>
+          u.kind === "relative-unresolvable",
+      )
+      .map((u) => ({ original: u.original, reason: u.reason }))
+      .sort((a, b) => a.original.localeCompare(b.original));
+    const expected = [...SYNTHETIC_FIXTURE_EXPECTED.unresolvable].sort(
+      (a, b) => a.original.localeCompare(b.original),
+    );
+    expect(unresolvable).toEqual(expected);
+  });
+
+  it("multi-token i samma face räknas som 2 distinkta tokens", () => {
+    const multi = all.filter(
+      (u) =>
+        (u.kind === "absolute" || u.kind === "relative-resolved") &&
+        u.original.startsWith("/fonts/multi."),
+    );
+    expect(multi).toHaveLength(2);
+    // delar samma face (samma faceIndex i samma part)
+    expect(multi[0].partIndex).toBe(multi[1].partIndex);
+    expect(multi[0].faceIndex).toBe(multi[1].faceIndex);
+  });
+
+  it("embedded originals pinnade", () => {
+    const embedded = all
+      .filter((u) => u.kind === "embedded")
+      .map((u) => u.original)
+      .sort();
+    expect(embedded).toEqual(
+      [...SYNTHETIC_FIXTURE_EXPECTED.embeddedOriginals].sort(),
+    );
+  });
+});
+
+describe("consumption-equality P==M (icke-tautologisk)", () => {
+  it("syntetisk: extractFontFaceDiagnostics.flatMap(replayUrls) ≡ collectEmbedTargets(resolved)", () => {
+    const raw = readFileSync(SYNTHETIC_FIXTURE_PATH, "utf8");
+    const pReplay = new Set(
+      extractFontFaceDiagnostics(raw).flatMap((f) => f.replayUrls),
+    );
+    const mTargets = new Set(collectEmbedTargets(raw).map((u) => u.resolved));
+    expect(mTargets).toEqual(pReplay);
+    // Sanity: setet är icke-tomt — annars vore equality trivialt grön.
+    expect(mTargets.size).toBeGreaterThan(0);
+  });
+
+  it("hubspot/page.mhtml (pre-embed raw): P:s projektion ≡ M:s embed-targets", () => {
+    const fixture = join(process.cwd(), "corpus/hubspot/page.mhtml");
+    if (!existsSync(fixture)) return;
+    const raw = readFileSync(fixture, "utf8");
+    const pReplay = new Set(
+      extractFontFaceDiagnostics(raw).flatMap((f) => f.replayUrls),
+    );
+    const mTargets = new Set(collectEmbedTargets(raw).map((u) => u.resolved));
+    // Icke-tomhetskrav: HubSpot:s CSS innehåller externa font-URLer i
+    // pre-embed-MHTML. Om setet är tomt har fixturen blivit post-embed
+    // (alla url() är cid:/data:) och hela testet vore tautologi.
+    expect(mTargets.size).toBeGreaterThan(0);
+    expect(mTargets).toEqual(pReplay);
+  });
+});
