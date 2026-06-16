@@ -487,6 +487,7 @@ export const COLLECT_SCRIPT = `(() => {
         cursor: r.cs.cursor,
         display: r.cs.display,
       },
+      ...(r.suspectOffFlow && { suspectOffFlow: true }),
     });
   }
   return out;
