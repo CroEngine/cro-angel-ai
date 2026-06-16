@@ -1,0 +1,600 @@
+[
+  {
+    "family": "MediumLL",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-89fbe813ce034f3b@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "MediumLL",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-0576d7a9f5364103@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "MediumLL",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-cffc6faedded4183@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "MediumLL",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-d02220a7891845da@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "MediumLL",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-bc86add0383b485d@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "MediumLL",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-19ec7d0467a34943@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "MediumLL Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "IvoryLL",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-b4d6251f4cb14153@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "IvoryLL Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "DmMono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-3d1cb3410f4b46fe@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "DmMono Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Maxi",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-a0a4eab09b874756@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Maxi Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Ozik",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-613f8d90a3db444f@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Ozik Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Planar",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-81feddb1d93a49da@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Planar Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Raster",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-8881ef4a376844bd@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Raster Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Honey",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-e81c6c3ed629432f@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Honey Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Beretta",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-7d46f49029b14ef2@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Beretta Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Saans",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-2a0d8cc420a546bc@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Saans",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-dce40e9b53e24432@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Saans Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "SaansMono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-497bd658d10e42b0@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "SaansMono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-dea2ec36044e4474@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "SaansMono Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Serrif",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-97ba931e263b47b7@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Serrif",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-c36e6bc8edf84f24@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Serrif Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Inter",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-cd604548972c4ecd@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Inter",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-4682cad50e674830@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Inter",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-7a63139c0ac646d8@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Inter",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-43c000a75b244c85@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Inter",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-aa21bc75008544df@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Inter",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-069984eb51fd4c95@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Inter",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-a55eb321e9104f3c@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Inter Fallback",
+    "hasRemoteSrc": false,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": true,
+    "hasMetricOverrides": true,
+    "replayUrls": [],
+    "embeddedUrls": [],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "intercom-font",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-35778126d62849c1@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "intercom-font",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-f36192e5eebf4706@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "intercom-font",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-e7b2303ed6674d8a@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "intercom-font",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-9eef41b8a89f444e@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "intercom-font",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-35778126d62849c1@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "intercom-font",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-f36192e5eebf4706@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "intercom-font",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-e7b2303ed6674d8a@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "intercom-font",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-9eef41b8a89f444e@snapshot"
+    ],
+    "unresolvableUrls": []
+  }
+]

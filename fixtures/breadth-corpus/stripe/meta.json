@@ -1,0 +1,12 @@
+{
+  "url": "https://stripe.com",
+  "name": "stripe",
+  "captured_at": "2026-06-16T18:39:27.714Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth smoke-test, no consent dismissal"
+}

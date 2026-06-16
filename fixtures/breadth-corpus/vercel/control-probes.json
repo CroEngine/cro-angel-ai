@@ -1,0 +1,24 @@
+{
+  "positive": {
+    "url": "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.woff2",
+    "kind": "positive",
+    "outcome": "ok",
+    "httpStatus": 200,
+    "bytes": 11028,
+    "durationMs": 2
+  },
+  "negative": {
+    "url": "https://example.com/lovable-egress-probe.woff2",
+    "kind": "negative",
+    "outcome": "http_error",
+    "httpStatus": 404,
+    "bytes": 0,
+    "error": "HTTP 404",
+    "durationMs": 14
+  },
+  "guard": {
+    "verdict": "ok_open_egress",
+    "interpretationBlocked": false,
+    "reason": "negative=http_error from example.com host → open egress, no env confound"
+  }
+}

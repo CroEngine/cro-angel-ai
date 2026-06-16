@@ -1,0 +1,12 @@
+{
+  "url": "https://www.intercom.com",
+  "name": "intercom",
+  "captured_at": "2026-06-16T18:40:34.964Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth smoke-test, no consent dismissal"
+}

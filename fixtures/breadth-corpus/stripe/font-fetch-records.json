@@ -1,0 +1,31 @@
+[
+  {
+    "url": "https://b.stripecdn.com/mkt-ssr-statics/assets/_next/static/media/Sohne.cb178166.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 0,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 58852,
+    "httpStatus": 200,
+    "durationMs": 8
+  },
+  {
+    "url": "https://b.stripecdn.com/mkt-ssr-statics/assets/_next/static/media/Sohne.cb178166.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 1,
+    "attempted": false,
+    "outcome": "skipped_dedup",
+    "bytes": 0,
+    "durationMs": 0
+  },
+  {
+    "url": "https://b.stripecdn.com/mkt-ssr-statics/assets/_next/static/media/SourceCodePro-Medium.f5ba3e6a.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 2,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 11880,
+    "httpStatus": 200,
+    "durationMs": 7
+  }
+]

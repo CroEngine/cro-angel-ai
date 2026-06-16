@@ -1,0 +1,562 @@
+[
+  {
+    "family": "KaTeX_AMS",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-21d12894a1ff42d0@snapshot",
+      "cid:font-9623f0b1e4ee4dbc@snapshot",
+      "cid:font-ef523d67395f494f@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Caligraphic",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-6bb588d4a32547d9@snapshot",
+      "cid:font-9f5a886874114496@snapshot",
+      "cid:font-6009507bf92444c3@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Caligraphic",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-94d4c458dacb4ae2@snapshot",
+      "cid:font-065fddcce8a6404f@snapshot",
+      "cid:font-65ffa54fd9b44488@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Fraktur",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-c4d6b656b83d463f@snapshot",
+      "cid:font-4df9d02080644218@snapshot",
+      "cid:font-1610301e722e4b2e@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Fraktur",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-0c0fc0329ae84538@snapshot",
+      "cid:font-79777ec516c3435c@snapshot",
+      "cid:font-2dfecadc5f274e26@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Main",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-9972b38f370c4922@snapshot",
+      "cid:font-e817acc09964444a@snapshot",
+      "cid:font-e21ec07c2c4d466c@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Main",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-d1ea9842081a45ae@snapshot",
+      "cid:font-f4d41bebf606400e@snapshot",
+      "cid:font-2724ce40abe1473d@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Main",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-9fd3dfa143e6444f@snapshot",
+      "cid:font-d75de8c6f6c9462f@snapshot",
+      "cid:font-4d61be53e46246b5@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Main",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-3aea48329bfc4670@snapshot",
+      "cid:font-9993e63beb6c4899@snapshot",
+      "cid:font-23be574c9a4b4bf5@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Math",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-14c918f7ba744300@snapshot",
+      "cid:font-944b92679a0f4256@snapshot",
+      "cid:font-6c34e4f296a74f68@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Math",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-a0dd4ea3fcc34ace@snapshot",
+      "cid:font-0095ad0705624f72@snapshot",
+      "cid:font-46b3a98b4f544b29@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_SansSerif",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-c1b92110bdeb4e0f@snapshot",
+      "cid:font-c92f791741f64072@snapshot",
+      "cid:font-7601f0e7e8e14150@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_SansSerif",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-ea59403dc78d4cda@snapshot",
+      "cid:font-b3f39de8c2794abf@snapshot",
+      "cid:font-e76983e49b844080@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_SansSerif",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-198749bf043e42c5@snapshot",
+      "cid:font-3d1732eafb3e4f63@snapshot",
+      "cid:font-3371b7938a694a4f@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Script",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-e8016b60bfd649af@snapshot",
+      "cid:font-cd0d813e33564bde@snapshot",
+      "cid:font-b57680d713574a14@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Size1",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-dae37a90e9804d27@snapshot",
+      "cid:font-ec808af1240f4442@snapshot",
+      "cid:font-bce18b5c0c11476b@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Size2",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-a30931920c1e47c2@snapshot",
+      "cid:font-2114d096ba364884@snapshot",
+      "cid:font-14566178f154462a@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Size3",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-f89393d2521e4223@snapshot",
+      "cid:font-e6ed302192d84b04@snapshot",
+      "cid:font-139b9692e8c24a22@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Size4",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-b6a612cb0be74988@snapshot",
+      "cid:font-3bc5cba85cae4707@snapshot",
+      "cid:font-25cf27f3708d4136@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "KaTeX_Typewriter",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-b7bee66ebd4a4550@snapshot",
+      "cid:font-24f129e3a51e4c24@snapshot",
+      "cid:font-7d8bdc24b9354127@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "GeistPixelSquare",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-f3a24341d59f4357@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "GeistPixelGrid",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-cdaa5c88a9864335@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "GeistPixelCircle",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-d9d5973c726e465d@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "GeistPixelTriangle",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-1fa825cd81a54462@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "GeistPixelLine",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-27538767aaa14669@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "DSEG7 Classic",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-f155e0f11afa47ba@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-6d6d86d4e0d842f8@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-5124aff970444fb0@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-49d7b4ed44084d21@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-9d89cad9e3ae426c@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-1d0bca249afe4a11@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist Mono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-f2c0b196599e4375@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist Mono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-5b907f7407bb45c9@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist Mono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-3f47e7485c564371@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist Mono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-afbcecc3671e4ebc@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist Mono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-8ec736b062cd49d5@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Geist Mono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-75fe1055278648b0@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Roboto Mono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-2c119472538c4c1a@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Roboto Mono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-2c119472538c4c1a@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "Roboto Mono",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-2c119472538c4c1a@snapshot"
+    ],
+    "unresolvableUrls": []
+  }
+]
