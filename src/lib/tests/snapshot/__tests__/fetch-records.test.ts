@@ -169,51 +169,52 @@ describe("embedMhtmlFonts controlProbes", () => {
   });
 });
 
-describe("extractFontFaceDiagnostics absolute-url oracle", () => {
-  it("face med endast relativ url() → hasOnlyRelativeUrl, inga absoluteUrls", () => {
+describe("extractFontFaceDiagnostics replay-url oracle", () => {
+  it("face med endast relativ url() utan base → hasUnresolvableRelativeUrl, inga replayUrls", () => {
     const css = `@font-face { font-family: "Rel"; src: url("/fonts/x.woff2"); }`;
     const diags = extractFontFaceDiagnostics(mhtml(css));
     expect(diags).toHaveLength(1);
-    expect(diags[0].hasOnlyRelativeUrl).toBe(true);
+    expect(diags[0].hasUnresolvableRelativeUrl).toBe(true);
     expect(diags[0].hasAbsoluteHttpUrl).toBe(false);
-    expect(diags[0].absoluteUrls).toEqual([]);
+    expect(diags[0].replayUrls).toEqual([]);
+    expect(diags[0].unresolvableUrls).toHaveLength(1);
   });
 
-  it("face med https url() → hasAbsoluteHttpUrl, absoluteUrls bevarad", () => {
+  it("face med https url() → hasAbsoluteHttpUrl, replayUrls bevarad", () => {
     const css = `@font-face { font-family: "Abs"; src: url("https://cdn.example/x.woff2"); }`;
     const diags = extractFontFaceDiagnostics(mhtml(css));
     expect(diags).toHaveLength(1);
     expect(diags[0].hasAbsoluteHttpUrl).toBe(true);
-    expect(diags[0].hasOnlyRelativeUrl).toBe(false);
-    expect(diags[0].absoluteUrls).toEqual(["https://cdn.example/x.woff2"]);
+    expect(diags[0].hasUnresolvableRelativeUrl).toBe(false);
+    expect(diags[0].replayUrls).toEqual(["https://cdn.example/x.woff2"]);
   });
 
-  it("MISMATCH-fixture: protocol-relative //-url → orakel P=1, fetcher M=0, reconcile flaggar onlyInP", async () => {
-    // Negativt fall som detektorn är byggd att fånga. Diagnostik-oraklet
-    // räknar // som absolut (korrekt per CSS-spec); fetcherns FONT_URL_RE
-    // kräver https?:// och missar den. Mismatch = riktig harvest-divergens.
-    globalThis.fetch = vi.fn(async () =>
-      new Response(fontBuf(), { status: 200, headers: new Headers() }),
-    ) as typeof fetch;
+  it("protokoll-relativ //-url utan Content-Location → hink 4 unresolvable på BÅDA sidor (P==M trivialt)", async () => {
+    // Post-unifiering: båda P och M klassificerar //cdn/x utan base som
+    // hink 4 (no-base). Replay-mängden är tom på båda sidor → invarianten
+    // är trivialt OK; receipt fångar problemet via unresolvableRelativeUrls.
     const css = `@font-face { font-family: "Proto"; src: url(//cdn.example/proto-rel.woff2); }`;
     const fixture = mhtml(css);
 
-    // Orakel-sidan
     const diags = extractFontFaceDiagnostics(fixture);
-    const oracleUrls = new Set<string>();
-    for (const d of diags) for (const u of d.absoluteUrls) oracleUrls.add(u);
-    expect(oracleUrls.size).toBe(1);
-    expect([...oracleUrls][0]).toBe("//cdn.example/proto-rel.woff2");
+    const oracleReplay = new Set<string>();
+    for (const d of diags) for (const u of d.replayUrls) oracleReplay.add(u);
+    expect(oracleReplay.size).toBe(0);
+    expect(diags[0].unresolvableUrls).toEqual([
+      { original: "//cdn.example/proto-rel.woff2", reason: "no-base" },
+    ]);
 
-    // Fetcher-sidan
     const r = await embedMhtmlFonts(fixture);
     const fetcherUrls = new Set(r.fetchRecords.map((x) => x.url));
-    expect(fetcherUrls.size).toBe(0); // FONT_URL_RE missar //...
+    expect(fetcherUrls.size).toBe(0);
+    expect(r.unresolvableRelativeUrls).toHaveLength(1);
+    expect(r.unresolvableRelativeUrls[0]).toMatchObject({
+      original: "//cdn.example/proto-rel.woff2",
+      reason: "no-base",
+    });
 
-    // Reconciliation fyrar
-    const recon = reconcileFontUrlSets(oracleUrls, fetcherUrls);
-    expect(recon.ok).toBe(false);
-    expect(recon.onlyInP).toEqual(["//cdn.example/proto-rel.woff2"]);
-    expect(recon.onlyInM).toEqual([]);
+    // Invarianten är grön över hink 2 ∪ 3; hink 4 fångas av receipten.
+    const recon = reconcileFontUrlSets(oracleReplay, fetcherUrls);
+    expect(recon.ok).toBe(true);
   });
 });
