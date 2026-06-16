@@ -11,18 +11,35 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 1890,
-    "screenshotKb": 616,
+    "mhtmlKb": 2009,
+    "screenshotKb": 605,
     "beforeDismissScreenshotPath": null,
     "externalFontSrcCount": 0,
     "embeddedFontCount": 36,
-    "mhtmlKbBeforeFontEmbed": 1175,
-    "fontFetchFailures": []
+    "mhtmlKbBeforeFontEmbed": 1293,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Gotham SSm A",
+      "Gotham SSm B",
+      "Sentinel SSm A",
+      "Sentinel SSm B"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 36,
+      "relativeResolved": 0,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
   },
   "timing": {
-    "gotoMs": 6145,
+    "gotoMs": 7195,
     "consentMs": 0,
-    "scrollMs": 5011,
-    "captureMs": 3220
+    "scrollMs": 4559,
+    "captureMs": 2440
   }
 }
