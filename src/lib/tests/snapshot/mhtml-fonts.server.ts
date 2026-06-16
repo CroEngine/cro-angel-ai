@@ -258,6 +258,15 @@ export interface FontEmbedResult {
   fetchRecords: FontFetchRecord[];
   totalHarvestedOccurrences: number;
   controlProbes?: { positive: ControlProbeResult; negative: ControlProbeResult };
+  /** Hink 4 — @font-face/src-relativa URLer som inte gick att resolvera mot
+   *  partens Content-Location. Tom array = friskt; icke-tom = sajten har
+   *  CSS-parts utan giltig base, och Chromium kommer fail-fetcha dem vid replay.
+   *  Caller (t.ex. breadth-smoke) avgör om detta ska fälla sajtens test. */
+  unresolvableRelativeUrls: Array<{
+    original: string;
+    reason: "no-base" | "invalid-base";
+    partIndex: number;
+  }>;
 }
 
 // Hostar som ALDRIG får användas som negativ kontrollprobe — de är diagnostik-mål
