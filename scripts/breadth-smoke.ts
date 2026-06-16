@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // Bredd-validering smoke-test (3 sites, ej committad till corpus/).
-// Skriver allt till /tmp/corpus-breadth/<name>/.
+// Skriver allt till $BREADTH_ROOT/<name>/ (default fixtures/breadth-corpus/).
 //
 // B2b: efter freeze körs ett diagnostik-pass som re-läser page.pre-embed.mhtml
 // (raw, före cid:-rewrite) och kallar embedMhtmlFonts med controlProbes igen
@@ -20,7 +20,7 @@ import {
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const BREADTH_ROOT = "/tmp/corpus-breadth";
+const BREADTH_ROOT = process.env.BREADTH_ROOT ?? "fixtures/breadth-corpus";
 const SMOKE_SITES = [
   { name: "stripe", url: "https://stripe.com" },
   { name: "intercom", url: "https://www.intercom.com" },
