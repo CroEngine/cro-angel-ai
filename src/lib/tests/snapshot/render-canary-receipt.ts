@@ -90,6 +90,11 @@ export const FamiliesReceiptFileSchema = z.object({
   schemaVersion: z.literal(1),
   env: RenderCanaryEnvSchema.optional(),
   families: z.array(FamilyReceiptSchema),
+  /** Familjer som klassificerats som freeze-time-ghosts vid replay:
+   *  manifestet (freeze-report.embeddedFamilies) namnger familjen, men MHTML
+   *  saknar @font-face-deklaration för den. Bakåtkompatibelt optional för
+   *  äldre receipts skrivna före gate-split. */
+  ghosts: z.array(z.string()).optional(),
 });
 
 export type Gate1Reason = z.infer<typeof Gate1ReasonSchema>;

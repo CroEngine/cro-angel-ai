@@ -123,6 +123,11 @@ export interface RenderCanaryReport {
   missing: string[];
   /** Families that registered but render identically to fallback — informational. */
   unusedRegistered: string[];
+  /** Familjer som klassats som freeze-time-ghosts: gate1 sa
+   *  `descriptor_missing`, OCH familjen finns INTE i `declaredFamilies`
+   *  (MHTML har ingen @font-face för den). Dessa hamnar inte i `failures`.
+   *  Tom array när `declaredFamilies` inte angetts (fail-closed). */
+  ghosts: string[];
   failures: string[];
   thresholdPx: number;
   /** Per-call settings for reproducibility. */
@@ -161,6 +166,12 @@ export interface RunCanaryOpts {
   gate2Sources?: Gate2Source[];
   /** Browser env recorded verbatim into the report's `env` field. */
   env?: RenderCanaryEnv;
+  /** Familjer med faktisk @font-face-deklaration i MHTML (från
+   *  extractEmbeddedFamilies). Används som ghost-diskriminator: en familj som
+   *  failar gate1 `descriptor_missing` OCH inte finns i denna lista
+   *  klassificeras som ghost (freeze över-recordade) och tas ur `failures`.
+   *  Lämnas odefinierat → fail-closed: alla `descriptor_missing` blockerar. */
+  declaredFamilies?: string[];
 }
 
 export async function runRenderCanary(
@@ -489,18 +500,38 @@ export async function runRenderCanary(
     .filter((f) => f.registered && !f.widthVsFallback.distinct)
     .map((f) => f.family);
 
+  // Ghost-diskriminator. Fail-closed: utan declaredFamilies blockerar alla
+  // descriptor_missing som tidigare. Med listan klassificeras en
+  // descriptor_missing-familj som ghost om MHTML saknar @font-face för den
+  // (canon-jämförelse identisk med klassificerarens hasDescriptorMatch).
+  const canonName = (s: string): string =>
+    s.replace(/^['"]|['"]$/g, "").trim().toLowerCase();
+  const declaredProvided = Array.isArray(opts.declaredFamilies);
+  const declaredSet = new Set(
+    (opts.declaredFamilies ?? []).map(canonName).filter((s) => s.length > 0),
+  );
+  const ghosts: string[] = [];
+
   const failures: string[] = [];
   if (missing.length > 0) {
     failures.push(`missing families: ${missing.join(", ")}`);
   }
   for (const f of families) {
     if (!f.gate1.pass) {
-      const detail =
-        f.gate1.reason === "unresolved" || f.gate1.reason === "descriptor_missing"
-          ? ` loadError=${f.gate1.loadError ?? "?"}`
-          : ` wWith=${f.gate1.wWith.toFixed(2)} wFallback=${f.gate1.wFallback.toFixed(2)} ` +
-            `delta=${f.gate1.deltaLoad.toFixed(2)} fontsCheck=${f.gate1.fontsCheckPass}`;
-      failures.push(`gate1 ${f.gate1.reason}: "${f.family}"${detail}`);
+      const isGhostCandidate =
+        f.gate1.reason === "descriptor_missing" &&
+        declaredProvided &&
+        !declaredSet.has(canonName(f.family));
+      if (isGhostCandidate) {
+        ghosts.push(f.family);
+      } else {
+        const detail =
+          f.gate1.reason === "unresolved" || f.gate1.reason === "descriptor_missing"
+            ? ` loadError=${f.gate1.loadError ?? "?"}`
+            : ` wWith=${f.gate1.wWith.toFixed(2)} wFallback=${f.gate1.wFallback.toFixed(2)} ` +
+              `delta=${f.gate1.deltaLoad.toFixed(2)} fontsCheck=${f.gate1.fontsCheckPass}`;
+        failures.push(`gate1 ${f.gate1.reason}: "${f.family}"${detail}`);
+      }
     }
     if (f.gate2 && !f.gate2.pass) {
       failures.push(
@@ -516,6 +547,7 @@ export async function runRenderCanary(
     families,
     missing,
     unusedRegistered,
+    ghosts,
     failures,
     thresholdPx: epsilonLoadPx,
     settings: {

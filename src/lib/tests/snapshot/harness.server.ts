@@ -382,8 +382,19 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       } catch {
         /* best-effort */
       }
+      // Ghost-diskriminator: hämta @font-face-deklarerade familjer direkt
+      // från MHTML (source of truth, oberoende av freeze-time-manifestet).
+      // Familjer i `embeddedFamilies` (manifestet) som saknas här klassas
+      // som ghosts av canaryn när gate1=descriptor_missing.
+      let declaredFamilies: string[] = [];
+      try {
+        declaredFamilies = extractEmbeddedFamilies(readFileSync(tmpFile, "utf8"));
+      } catch {
+        /* fail-closed: canaryn behåller descriptor_missing som blockerande */
+      }
       canary = await runRenderCanary(page, embeddedFamilies, {
         env: { chromiumPath, chromiumVersion, pinned },
+        declaredFamilies,
       });
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -411,6 +422,7 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
             ...(f.gate2 ? { gate2: f.gate2 } : {}),
             diag: f.diag,
           })),
+          ...(canary.ghosts.length > 0 ? { ghosts: canary.ghosts } : {}),
         };
         // Runtime-validera FÖRE writeFileSync: en silent-fail map (t.ex. f.gate1
         // === undefined) skulle annars producera en trasig durabel artefakt.
@@ -428,8 +440,15 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       console.log(
         `[replay] canary expected=${canary.expected.length} ok=${canary.ok} ` +
           `missing=${canary.missing.length} unusedRegistered=${canary.unusedRegistered.length} ` +
+          `ghosts=${canary.ghosts.length} ` +
           `docFonts=${canary.diagnostics.documentFontsSize}/${canary.diagnostics.documentFontsLoaded}`,
       );
+      if (canary.ghosts.length > 0) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[replay] canary ghosts (non-blocking): ${canary.ghosts.join(", ")}`,
+        );
+      }
       if (!canary.ok) {
         throw new Error(
           `[replay] render-canary failed for ${name}: ${canary.failures.join("; ")}. ` +
