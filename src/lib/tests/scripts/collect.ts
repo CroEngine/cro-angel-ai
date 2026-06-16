@@ -1,7 +1,40 @@
 // Auto-extracted from engine.server.ts — runs inside the browser via page.evaluate.
 // Keep self-contained: no imports, no closures over server state.
 
+// Exporterad så att (a) testet importerar exakt samma predikat och
+// (b) den kan inlinas i COLLECT_SCRIPT via ${isVisible.toString()}.
+// Får därför bara referera page-globaler (window/document) + argumenten.
+export function isVisible(
+  el: Element,
+  cs: CSSStyleDeclaration,
+  rect: DOMRect,
+): boolean {
+  if (cs.display === "none" || cs.visibility === "hidden") return false;
+  if (parseFloat(cs.opacity || "1") === 0) return false;
+  if (rect.width < 1 || rect.height < 1) return false;
+  if (el.getAttribute("aria-hidden") === "true") return false;
+
+  // Off-flow elements: skip-links (left:-9999px), sr-only (clip-rect/inset),
+  // off-screen transforms (reflekteras i rect via getBoundingClientRect).
+  // Begränsat till absolute/fixed för att inte ge falska negativ för
+  // normalpositionerade element med negativa scroll-offsets.
+  if (cs.position === "absolute" || cs.position === "fixed") {
+    const docW = window.innerWidth || document.documentElement.clientWidth;
+    const docH = window.innerHeight || document.documentElement.clientHeight;
+    if (rect.right <= 0) return false;
+    if (rect.bottom <= 0) return false;
+    if (rect.left >= docW) return false;
+    if (rect.top >= docH) return false;
+    if (cs.clip === "rect(0px, 0px, 0px, 0px)") return false;
+    if (cs.clipPath === "inset(50%)" || cs.clipPath === "inset(100%)") return false;
+  }
+
+  return true;
+}
+
 export const COLLECT_SCRIPT = `(() => {
+  ${isVisible.toString()}
+
   const SEMANTIC_SEL =
     'button, a[href], input[type=submit], input[type=button], ' +
     '[role="button"], [role="link"], [role="menuitem"], [role="tab"], [role="switch"], ' +
@@ -17,14 +50,6 @@ export const COLLECT_SCRIPT = `(() => {
     if (el.hasAttribute('onclick')) return 4;
     if (el.hasAttribute('tabindex') && el.getAttribute('tabindex') !== '-1') return 5;
     return 6; // cursor:pointer sweep
-  }
-
-  function isVisible(el, cs, rect) {
-    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
-    if (parseFloat(cs.opacity || '1') === 0) return false;
-    if (rect.width < 1 || rect.height < 1) return false;
-    if (el.getAttribute('aria-hidden') === 'true') return false;
-    return true;
   }
 
   // Walk light + shadow DOM, collect all matching nodes.
