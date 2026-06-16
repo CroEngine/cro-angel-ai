@@ -593,6 +593,24 @@ export function reconcileFontUrlSets(
   return { ok: onlyInP.length === 0 && onlyInM.length === 0, onlyInP, onlyInM };
 }
 
+/**
+ * Commit 3 — Publik M-yta för embed-targets. Filtrerar `harvestAllFontUrls`
+ * till hink 2 ∪ 3 (URLer Chromium kommer försöka fetcha vid replay, alla
+ * med ett `resolved`-fält). Tester använder denna mot P:s `replayUrls` för
+ * att verifiera consumption-equality utan att gå via fetch eller embedding.
+ */
+export type EmbedTarget = HarvestedFontUrl & {
+  kind: "absolute" | "relative-resolved";
+  resolved: string;
+};
+
+export function collectEmbedTargets(mhtml: string): EmbedTarget[] {
+  return harvestAllFontUrls(mhtml).filter(
+    (u): u is EmbedTarget =>
+      u.kind === "absolute" || u.kind === "relative-resolved",
+  );
+}
+
 // Note: tidigare `ANY_HTTP_URL_RE` / `SRC_DECL_GLOBAL_RE` är borttagna.
 // Harvest sker nu via delade `iterateCssParts` + `harvestFontUrls` från
 // harvest-font-urls.ts — input-equality med extractFontFaceDiagnostics (P)
