@@ -30,7 +30,7 @@ import { extractEmbeddedFamilies } from "./mhtml-fonts.server";
 import type { CollectedElement } from "../schema";
 
 export interface ReplayResult {
-  collect: unknown;
+  collect: { target: string; elements: CollectedElement[]; count: number };
   pageAudit: unknown;
 }
 

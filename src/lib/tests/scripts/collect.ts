@@ -32,8 +32,24 @@ export function isVisible(
   return true;
 }
 
+// Diagnostik: körs ENDAST på element som redan passerat isVisible.
+// Refererar bara cs/rect → säker att .toString()-inlina i page-context.
+export function isSuspectOffFlow(
+  cs: CSSStyleDeclaration,
+  rect: DOMRect,
+): boolean {
+  if (cs.position !== "absolute" && cs.position !== "fixed") return false;
+  return (
+    rect.left < 0 ||
+    rect.top < 0 ||
+    (rect.width <= 1 && rect.height <= 1) ||
+    parseFloat(cs.textIndent) <= -100
+  );
+}
+
 export const COLLECT_SCRIPT = `(() => {
   ${isVisible.toString()}
+  ${isSuspectOffFlow.toString()}
 
   const SEMANTIC_SEL =
     'button, a[href], input[type=submit], input[type=button], ' +
@@ -412,10 +428,12 @@ export const COLLECT_SCRIPT = `(() => {
     const elBg = effectiveBgRgb(el);
     const backgroundContrast = elBg ? contrastRatio(elBg, bodyBg) : null;
 
+    const suspectOffFlow = isSuspectOffFlow(cs, rect);
     raw.push({
       el, rect, cs, text, attrs,
       docTop, docLeft, yPercent, xPercent, viewportZone,
       area, fontSize, fontWeight, backgroundContrast,
+      suspectOffFlow,
     });
   }
 
@@ -469,6 +487,7 @@ export const COLLECT_SCRIPT = `(() => {
         cursor: r.cs.cursor,
         display: r.cs.display,
       },
+      ...(r.suspectOffFlow && { suspectOffFlow: true }),
     });
   }
   return out;

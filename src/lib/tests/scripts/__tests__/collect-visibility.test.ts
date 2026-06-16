@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isVisible } from "../collect";
+import { isVisible, isSuspectOffFlow } from "../collect";
 
 // JSDOM gör ingen layout → getBoundingClientRect ger nollor och
 // getComputedStyle löser inte left:-9999px till en rekt. Vi driver
@@ -18,6 +18,7 @@ const cs = (o: CS = {}): CSSStyleDeclaration =>
     position: "static",
     clip: "auto",
     clipPath: "none",
+    textIndent: "0px",
     ...o,
   }) as CSSStyleDeclaration;
 
@@ -83,5 +84,25 @@ describe("isVisible — skip-link / sr-only", () => {
         rect({ left: 0, right: 140 }),
       ),
     ).toBe(true);
+});
+
+describe("isSuspectOffFlow — diagnostik", () => {
+  it("flaggar off-flow mikro-rekt (position:absolute; 1×1)", () => {
+    expect(
+      isSuspectOffFlow(
+        cs({ position: "absolute" }),
+        rect({ width: 1, height: 1, right: 1, bottom: 1 }),
+      ),
+    ).toBe(true);
   });
+
+  it("flaggar inte normal flytande modal (position:fixed mitt på sidan)", () => {
+    expect(
+      isSuspectOffFlow(
+        cs({ position: "fixed" }),
+        rect({ left: 400, top: 200, right: 800, bottom: 600, width: 400, height: 400 }),
+      ),
+    ).toBe(false);
+  });
+});
 });

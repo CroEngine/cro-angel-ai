@@ -38,6 +38,22 @@ describe.skipIf(sites.length === 0)("snapshot diff", () => {
       name,
       async () => {
         const fresh = await replayCorpus(name, CORPUS_ROOT);
+
+        // Skip-link suspect-räknare: observation, ej gate. När korpus
+        // expanderar ser vi per-sajt-läckage direkt i CI-loggen.
+        const suspects = (fresh.collect.elements ?? []).filter(
+          (e) => e.suspectOffFlow,
+        );
+        // eslint-disable-next-line no-console
+        console.log(`[snapshot] ${name}: ${suspects.length} off-flow suspects`);
+        if (suspects.length > 0) {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[snapshot] ${name} suspect selectors:`,
+            suspects.slice(0, 5).map((e) => e.selector),
+          );
+        }
+
         const normalized = {
           collect: normalizeCollect(fresh.collect),
           pageAudit: normalizePageAudit(fresh.pageAudit),
