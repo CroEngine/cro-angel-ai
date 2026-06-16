@@ -74,6 +74,8 @@ export type {
 } from "./render-canary-receipt";
 
 import type {
+  Gate1Reason,
+  RenderCanaryEnv,
   Gate1Report as _Gate1Report,
   Gate2Report as _Gate2Report,
   Gate1Diag as _Gate1Diag,
