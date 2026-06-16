@@ -29,7 +29,12 @@
 // 36 woff2 files for hibob ≈ 200-500 KB, acceptable; correctness > size.
 
 import { randomUUID } from "node:crypto";
-import { iterateCssParts, harvestFontUrls } from "./harvest-font-urls";
+import {
+  iterateCssParts,
+  harvestFontUrls,
+  harvestAllFontUrls,
+  type HarvestedFontUrl,
+} from "./harvest-font-urls";
 
 const FONT_EXT_RE = /\.(woff2|woff|ttf|otf|eot)(?:\?[^)'"\s]*)?$/i;
 
@@ -268,6 +273,21 @@ export interface FontEmbedResult {
     reason: "no-base" | "invalid-base";
     partIndex: number;
   }>;
+  /** Commit 4 — Per-hink token-occurrence-räknare. OBS: dessa är
+   *  *token-occurrences*, INTE distinkta-på-resolved (replayUrls / urlToCid
+   *  dedupar, dessa inte). För antal-familjer/fetcher-mål använd
+   *  `embeddedFontCount` resp. `fetchRecords`/`fontUrlsSeen`. Här finns
+   *  observability per hink: hur ofta varje klass uppträder i den råa CSS:en. */
+  fontUrlSummary: {
+    embedded: number;
+    absolute: number;
+    relativeResolved: number;
+    unresolvable: Array<{
+      original: string;
+      reason: "no-base" | "invalid-base";
+      partIndex: number;
+    }>;
+  };
 }
 
 // Hostar som ALDRIG får användas som negativ kontrollprobe — de är diagnostik-mål
@@ -573,6 +593,24 @@ export function reconcileFontUrlSets(
   return { ok: onlyInP.length === 0 && onlyInM.length === 0, onlyInP, onlyInM };
 }
 
+/**
+ * Commit 3 — Publik M-yta för embed-targets. Filtrerar `harvestAllFontUrls`
+ * till hink 2 ∪ 3 (URLer Chromium kommer försöka fetcha vid replay, alla
+ * med ett `resolved`-fält). Tester använder denna mot P:s `replayUrls` för
+ * att verifiera consumption-equality utan att gå via fetch eller embedding.
+ */
+export type EmbedTarget = HarvestedFontUrl & {
+  kind: "absolute" | "relative-resolved";
+  resolved: string;
+};
+
+export function collectEmbedTargets(mhtml: string): EmbedTarget[] {
+  return harvestAllFontUrls(mhtml).filter(
+    (u): u is EmbedTarget =>
+      u.kind === "absolute" || u.kind === "relative-resolved",
+  );
+}
+
 // Note: tidigare `ANY_HTTP_URL_RE` / `SRC_DECL_GLOBAL_RE` är borttagna.
 // Harvest sker nu via delade `iterateCssParts` + `harvestFontUrls` från
 // harvest-font-urls.ts — input-equality med extractFontFaceDiagnostics (P)
@@ -614,17 +652,16 @@ export async function embedMhtmlFonts(
     controlProbes = { positive, negative };
   }
 
-  // Pass 1: identify CSS-ish parts via DELAD `iterateCssParts`. Detta är
-  // SAMMA primitiv som extractFontFaceDiagnostics (P) använder — input-equality
-  // by construction. För rewrite-pass behöver vi tillbaka-pekaren till
-  // parsed.parts (partIndex) och original encoding för re-encode.
-  const cssParts = iterateCssParts(mhtmlRaw);
+  // (Pass 1 nedan)
 
-  // Harvest per-occurrence via DELAD `harvestFontUrls`. Klassificering
-  // (hink 1-4) görs i chokepointen, här filtrerar vi:
-  //   - hink 1 (embedded): hoppa, redan inlinead
-  //   - hink 2/3 (absolute/relative-resolved): fetch + cid-mapping på `resolved`
-  //   - hink 4 (unresolvable): skriv till receipt-fält, sajten kan fälla testet
+
+
+  // Pass 1: ETT producent-anrop till `harvestAllFontUrls` är källan både för
+  // partitionering till embed-targets (hink 2 ∪ 3) och för
+  // unresolvableRelativeUrls (hink 4) + fontUrlSummary. `iterateCssParts`
+  // körs separat för rewrite-passet (Pass 2) eftersom det behöver CssPart-
+  // objekten (css, encoding, partIndex) för re-encode. Det är samma rena
+  // primitiv — en re-parse, inte en re-derivation av URL-mängden.
   //
   // En record per förekomst — duplicates ger skipped_dedup. URL:er utan
   // font-ext ger skipped_ext. Completeness-invariant:
@@ -645,48 +682,67 @@ export async function embedMhtmlFonts(
   // Per-part map så vi inte kollapsar olika baser.
   const partOriginalToResolved = new Map<number, Map<string, string>>();
   const unresolvableRelativeUrls: FontEmbedResult["unresolvableRelativeUrls"] = [];
+  const fontUrlSummary: FontEmbedResult["fontUrlSummary"] = {
+    embedded: 0,
+    absolute: 0,
+    relativeResolved: 0,
+    unresolvable: [],
+  };
   let occurrenceCounter = 0;
 
-  for (const css of cssParts) {
-    const localMap = new Map<string, string>();
-    partOriginalToResolved.set(css.partIndex, localMap);
-    for (const u of harvestFontUrls(css.css, css.contentLocation)) {
-      if (u.kind === "embedded") continue;
-      if (u.kind === "relative-unresolvable") {
-        unresolvableRelativeUrls.push({
-          original: u.original,
-          reason: u.reason,
-          partIndex: css.partIndex,
-        });
-        continue;
-      }
-      // hink 2 | 3
-      const resolved = u.resolved;
-      localMap.set(u.original, resolved);
-      const extMatch = resolved.match(FONT_EXT_RE);
-      const ext = extMatch ? extMatch[1].toLowerCase() : null;
-      const isFontExt = !!extMatch;
-      const isFirst = !seenResolved.has(resolved);
-      if (isFirst) {
-        seenResolved.add(resolved);
-        if (isFontExt) {
-          urlToCid.set(
-            resolved,
-            `font-${randomUUID().replace(/-/g, "").slice(0, 16)}@snapshot`,
-          );
-        }
-      }
-      harvest.push({
-        original: u.original,
-        resolved,
-        ext,
-        occurrenceIndex: occurrenceCounter++,
-        isFirstOccurrence: isFirst,
-        isFontExt,
-      });
+  const allHarvested: HarvestedFontUrl[] = harvestAllFontUrls(mhtmlRaw);
+  for (const u of allHarvested) {
+    if (u.kind === "embedded") {
+      fontUrlSummary.embedded++;
+      continue;
     }
+    if (u.kind === "relative-unresolvable") {
+      const entry = {
+        original: u.original,
+        reason: u.reason,
+        partIndex: u.partIndex,
+      };
+      unresolvableRelativeUrls.push(entry);
+      fontUrlSummary.unresolvable.push(entry);
+      continue;
+    }
+    // hink 2 | 3
+    if (u.kind === "absolute") fontUrlSummary.absolute++;
+    else fontUrlSummary.relativeResolved++;
+    const resolved = u.resolved;
+    let localMap = partOriginalToResolved.get(u.partIndex);
+    if (!localMap) {
+      localMap = new Map<string, string>();
+      partOriginalToResolved.set(u.partIndex, localMap);
+    }
+    localMap.set(u.original, resolved);
+    const extMatch = resolved.match(FONT_EXT_RE);
+    const ext = extMatch ? extMatch[1].toLowerCase() : null;
+    const isFontExt = !!extMatch;
+    const isFirst = !seenResolved.has(resolved);
+    if (isFirst) {
+      seenResolved.add(resolved);
+      if (isFontExt) {
+        urlToCid.set(
+          resolved,
+          `font-${randomUUID().replace(/-/g, "").slice(0, 16)}@snapshot`,
+        );
+      }
+    }
+    harvest.push({
+      original: u.original,
+      resolved,
+      ext,
+      occurrenceIndex: occurrenceCounter++,
+      isFirstOccurrence: isFirst,
+      isFontExt,
+    });
   }
   const totalHarvestedOccurrences = harvest.length;
+
+  // Pass 2 behöver CssPart-objekten (css, encoding, partIndex) för re-encode.
+  const cssParts = iterateCssParts(mhtmlRaw);
+
 
   // Fetch unika font-ext-URLer parallellt. classifiedFetch ger oss bucket + timing.
   const urlToFetchResult = new Map<string, ClassifiedFetch & { durationMs: number }>();
@@ -824,6 +880,8 @@ export async function embedMhtmlFonts(
     totalHarvestedOccurrences,
     controlProbes,
     unresolvableRelativeUrls,
+    fontUrlSummary,
   };
 }
+
 

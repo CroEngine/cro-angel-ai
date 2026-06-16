@@ -49,6 +49,15 @@ interface SiteResult {
   b1ReplayUrls?: number;
   b1ReplayUrlSet?: string[];
   unresolvableRelativeUrls?: Array<{ original: string; reason: string; partIndex: number }>;
+  /** Commit 4 — token-occurrence-räknare per hink. INTE distinkta familjer
+   *  (replayUrls dedupar, dessa inte). Använd för korpus-grep, inte för
+   *  antals-jämförelser mot embeddedFamilies. */
+  fontUrlSummary?: {
+    embedded: number;
+    absolute: number;
+    relativeResolved: number;
+    unresolvable: Array<{ original: string; reason: string; partIndex: number }>;
+  };
   harmonization?: {
     ok: boolean;
     p: number;
@@ -261,6 +270,7 @@ for (const site of SMOKE_SITES) {
     }
     // Hink 4 receipt — sajten flaggas men korpus-loopen fortsätter.
     r.unresolvableRelativeUrls = diag.unresolvableRelativeUrls;
+    r.fontUrlSummary = diag.fontUrlSummary;
     if (diag.unresolvableRelativeUrls.length > 0) {
       writeFileSync(
         join(dir, "unresolvable-font-urls.json"),
@@ -387,6 +397,13 @@ for (const r of results) {
     if (r.unresolvableRelativeUrls && r.unresolvableRelativeUrls.length > 0) {
       console.log(
         `    hink 4 unresolvable    = ${r.unresolvableRelativeUrls.length} → unresolvable-font-urls.json`,
+      );
+    }
+    if (r.fontUrlSummary) {
+      const s = r.fontUrlSummary;
+      console.log(
+        `    fontUrlSummary         = embedded:${s.embedded} absolute:${s.absolute} relativeResolved:${s.relativeResolved} unresolvable:${s.unresolvable.length}  ` +
+          `(token-occurrences, INTE distinkta familjer)`,
       );
     }
     if (!r.harmonization.ok) {

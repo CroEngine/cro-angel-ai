@@ -87,6 +87,20 @@ interface FreezeReport {
      *  i replay läser denna lista för att avgöra vilka familjer som måste
      *  faktiskt resolva. */
     embeddedFamilies: string[] | null;
+    /** Commit 4 — Per-hink token-occurrence-räknare (INTE distinkta-på-resolved).
+     *  Speglar embedded.fontUrlSummary. För korpus-grep: "har sajten relativa
+     *  font-URLer alls" / "hur många oresolverbara". Skriven även när sajter
+     *  har hink 4 — embedMhtmlFonts kastar inte på hink-4-grenen. */
+    fontUrls: {
+      embedded: number;
+      absolute: number;
+      relativeResolved: number;
+      unresolvable: Array<{
+        original: string;
+        reason: "no-base" | "invalid-base";
+        partIndex: number;
+      }>;
+    } | null;
     // Stora MHTML (> MHTML_INLINE_THRESHOLD_BYTES) skickas till CDN via
     // lovable-assets i stället för att skrivas till repo (10 MB-tak). Pekaren
     // hamnar i page.mhtml.asset.json bredvid där page.mhtml hade legat.
@@ -217,6 +231,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       mhtmlKbBeforeFontEmbed: null,
       fontFetchFailures: null,
       embeddedFamilies: null,
+      fontUrls: null,
       externalized: false,
       externalAssetUrl: null,
       externalAssetSha256: null,
@@ -357,6 +372,9 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     report.capture.embeddedFontCount = embedded.embeddedFontCount;
     report.capture.fontFetchFailures = embedded.fetchFailures;
     report.capture.embeddedFamilies = embedded.embeddedFamilies;
+    // Commit 4 — receipt populeras INNAN A2-gaten kan throwa, så hink-4-
+    // observability överlever även när externalFontSrcCount > 0.
+    report.capture.fontUrls = embedded.fontUrlSummary;
 
 
     if (embedded.externalFontSrcCount > 0) {
