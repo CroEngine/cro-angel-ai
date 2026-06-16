@@ -382,8 +382,19 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       } catch {
         /* best-effort */
       }
+      // Ghost-diskriminator: hämta @font-face-deklarerade familjer direkt
+      // från MHTML (source of truth, oberoende av freeze-time-manifestet).
+      // Familjer i `embeddedFamilies` (manifestet) som saknas här klassas
+      // som ghosts av canaryn när gate1=descriptor_missing.
+      let declaredFamilies: string[] = [];
+      try {
+        declaredFamilies = extractEmbeddedFamilies(readFileSync(tmpFile, "utf8"));
+      } catch {
+        /* fail-closed: canaryn behåller descriptor_missing som blockerande */
+      }
       canary = await runRenderCanary(page, embeddedFamilies, {
         env: { chromiumPath, chromiumVersion, pinned },
+        declaredFamilies,
       });
     } catch (e) {
       // eslint-disable-next-line no-console
