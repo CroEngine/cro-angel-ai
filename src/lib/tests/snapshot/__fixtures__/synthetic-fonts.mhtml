@@ -1,0 +1,46 @@
+From: <Synthetic Fixture>
+Subject: Synthetic font URL fixture
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="----SyntheticBoundary"
+
+------SyntheticBoundary
+Content-Type: text/html
+Content-Transfer-Encoding: 8bit
+Content-Location: https://synthetic.test/
+
+<html><head></head><body></body></html>
+------SyntheticBoundary
+Content-Type: text/css
+Content-Transfer-Encoding: 8bit
+Content-Location: https://synthetic.test/main.css
+
+@font-face{font-family:"F_a";src:url(/fonts/a.woff2) format("woff2")}
+@font-face{font-family:"F_e1";src:url(https://synthetic.test/e1.woff2) format("woff2")}
+@font-face{font-family:"F_data";src:url(data:font/woff2;base64,AAAA) format("woff2")}
+------SyntheticBoundary
+Content-Type: text/css
+Content-Transfer-Encoding: 8bit
+Content-Location: https://synthetic.test/assets/style.css
+
+@font-face{font-family:"F_b";src:url(b.woff2) format("woff2")}
+@font-face{font-family:"F_c";src:url(../shared/c.woff2) format("woff2")}
+@font-face{font-family:"F_cid";src:url(cid:font-synth-cid@snapshot) format("woff2")}
+------SyntheticBoundary
+Content-Type: text/css
+Content-Transfer-Encoding: 8bit
+Content-Location: https://synthetic.test/multi.css
+
+@font-face{font-family:"F_multi";src:url(/fonts/multi.woff2) format("woff2"),url(/fonts/multi.woff) format("woff")}
+@font-face{font-family:"F_e2";src:url(https://synthetic.test/e2.woff2) format("woff2")}
+------SyntheticBoundary
+Content-Type: text/css
+Content-Transfer-Encoding: 8bit
+
+@font-face{font-family:"F_nb";src:url(nobase.woff2) format("woff2")}
+------SyntheticBoundary
+Content-Type: text/css
+Content-Transfer-Encoding: 8bit
+Content-Location: not a url
+
+@font-face{font-family:"F_ib";src:url(invalid.woff2) format("woff2")}
+------SyntheticBoundary--
