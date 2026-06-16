@@ -123,6 +123,11 @@ export interface RenderCanaryReport {
   missing: string[];
   /** Families that registered but render identically to fallback — informational. */
   unusedRegistered: string[];
+  /** Familjer som klassats som freeze-time-ghosts: gate1 sa
+   *  `descriptor_missing`, OCH familjen finns INTE i `declaredFamilies`
+   *  (MHTML har ingen @font-face för den). Dessa hamnar inte i `failures`.
+   *  Tom array när `declaredFamilies` inte angetts (fail-closed). */
+  ghosts: string[];
   failures: string[];
   thresholdPx: number;
   /** Per-call settings for reproducibility. */
