@@ -75,6 +75,7 @@ export type {
 
 import type {
   Gate1Reason,
+  BranchTaken,
   RenderCanaryEnv,
   Gate1Report as _Gate1Report,
   Gate2Report as _Gate2Report,
