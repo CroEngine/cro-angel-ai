@@ -1,0 +1,85 @@
+{
+  "env": {
+    "chromiumPath": "/bin/chromium",
+    "chromiumVersion": "146.0.7680.80",
+    "pinned": false
+  },
+  "families": [
+    {
+      "family": "SourceCodePro",
+      "gate1": {
+        "wWith": 540,
+        "wFallback": 463,
+        "deltaLoad": 77,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "SourceCodePro",
+          "allDescriptorFamilies": [
+            "sohne-var",
+            "SourceCodePro"
+          ],
+          "matchedDescriptorFamilies": [
+            "SourceCodePro"
+          ],
+          "checkString": "16px \"SourceCodePro\"",
+          "widthString": "\"SourceCodePro\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "sohne-var",
+      "gate1": {
+        "wWith": 427,
+        "wFallback": 463,
+        "deltaLoad": 36,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "sohne-var",
+          "allDescriptorFamilies": [
+            "sohne-var",
+            "SourceCodePro"
+          ],
+          "matchedDescriptorFamilies": [
+            "sohne-var"
+          ],
+          "checkString": "16px \"sohne-var\"",
+          "widthString": "\"sohne-var\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    }
+  ]
+}

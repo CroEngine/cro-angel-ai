@@ -1,0 +1,133 @@
+{
+  "ok": true,
+  "expected": [
+    "SourceCodePro",
+    "sohne-var"
+  ],
+  "diagnostics": {
+    "documentFontsSize": 2,
+    "documentFontsLoaded": 2,
+    "documentFontsFamilies": [
+      "sohne-var",
+      "SourceCodePro"
+    ]
+  },
+  "families": [
+    {
+      "family": "SourceCodePro",
+      "registered": true,
+      "loadedCount": 1,
+      "totalCount": 1,
+      "sampleText": "The quick brown fox jumps over the lazy dog 0123456789",
+      "sampleSource": "default",
+      "gate1": {
+        "wWith": 540,
+        "wFallback": 463,
+        "deltaLoad": 77,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "SourceCodePro",
+          "allDescriptorFamilies": [
+            "sohne-var",
+            "SourceCodePro"
+          ],
+          "matchedDescriptorFamilies": [
+            "SourceCodePro"
+          ],
+          "checkString": "16px \"SourceCodePro\"",
+          "widthString": "\"SourceCodePro\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      },
+      "widthVsFallback": {
+        "embedded": 540,
+        "fallback": 463,
+        "diff": 77,
+        "distinct": true
+      },
+      "fontsCheckPass": true
+    },
+    {
+      "family": "sohne-var",
+      "registered": true,
+      "loadedCount": 1,
+      "totalCount": 1,
+      "sampleText": "The quick brown fox jumps over the lazy dog 0123456789",
+      "sampleSource": "default",
+      "gate1": {
+        "wWith": 427,
+        "wFallback": 463,
+        "deltaLoad": 36,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "sohne-var",
+          "allDescriptorFamilies": [
+            "sohne-var",
+            "SourceCodePro"
+          ],
+          "matchedDescriptorFamilies": [
+            "sohne-var"
+          ],
+          "checkString": "16px \"sohne-var\"",
+          "widthString": "\"sohne-var\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      },
+      "widthVsFallback": {
+        "embedded": 427,
+        "fallback": 463,
+        "diff": 36,
+        "distinct": true
+      },
+      "fontsCheckPass": true
+    }
+  ],
+  "missing": [],
+  "unusedRegistered": [],
+  "failures": [],
+  "thresholdPx": 2,
+  "settings": {
+    "sampleText": "The quick brown fox jumps over the lazy dog 0123456789",
+    "epsilonLoadPx": 2,
+    "epsilonFidelityPx": 0.5,
+    "fontLoadTimeoutMs": 3000,
+    "gate2Enabled": false
+  },
+  "env": {
+    "chromiumPath": "/bin/chromium",
+    "chromiumVersion": "146.0.7680.80",
+    "pinned": false
+  }
+}
