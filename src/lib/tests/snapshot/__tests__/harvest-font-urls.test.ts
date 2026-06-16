@@ -463,18 +463,18 @@ describe("consumption-equality P==M (icke-tautologisk)", () => {
     expect(mTargets.size).toBeGreaterThan(0);
   });
 
-  it("hubspot/page.mhtml (pre-embed raw): P:s projektion ≡ M:s embed-targets", () => {
-    const fixture = join(process.cwd(), "corpus/hubspot/page.mhtml");
-    if (!existsSync(fixture)) return;
-    const raw = readFileSync(fixture, "utf8");
-    const pReplay = new Set(
-      extractFontFaceDiagnostics(raw).flatMap((f) => f.replayUrls),
-    );
-    const mTargets = new Set(collectEmbedTargets(raw).map((u) => u.resolved));
-    // Icke-tomhetskrav: HubSpot:s CSS innehåller externa font-URLer i
-    // pre-embed-MHTML. Om setet är tomt har fixturen blivit post-embed
-    // (alla url() är cid:/data:) och hela testet vore tautologi.
-    expect(mTargets.size).toBeGreaterThan(0);
-    expect(mTargets).toEqual(pReplay);
-  });
+  // NOT: `corpus/hubspot/page.mhtml` är POST-embed (alla 32 font-URLer är
+  // redan `cid:`-rewrittna av A2-passet i freezen). Pre-embed-MHTML skrivs
+  // bara till `/tmp/corpus-breadth/<name>/page.pre-embed.mhtml` av
+  // breadth-smoke, inte committad. På post-embed-input blir både pReplay
+  // och mTargets tomma → equality vore tautologiskt grön och vaktar
+  // ingenting. Tills en pre-embed-fixture finns i repo bär den syntetiska
+  // fixturen ovan hela Test 2-lasten. Det räcker — den exerverar P:s
+  // grupperings-/projektionsväg mot M:s platta filter på en input som
+  // genuint innehåller hink 2 ∪ 3.
+  //
+  // Differential-testet ovan ("real corpus: hubspot/page.mhtml — gamla
+  // regex-mängden bevaras exakt") fortsätter att skydda mot regression i
+  // den befintliga (post-embed) HubSpot-fixturens behandling.
 });
+
