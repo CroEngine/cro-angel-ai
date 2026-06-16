@@ -1,8 +1,9 @@
 {
+  "schemaVersion": 1,
   "env": {
-    "chromiumPath": "/bin/chromium-browser",
-    "chromiumVersion": "146.0.7680.80",
-    "pinned": false
+    "chromiumPath": "<playwright-bundled>",
+    "chromiumVersion": "148.0.7778.96",
+    "pinned": true
   },
   "families": [
     {
