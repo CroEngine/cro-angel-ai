@@ -470,67 +470,79 @@ export function extractEmbeddedFamilies(mhtmlRaw: string): string[] {
 export interface FontFaceDiagnostic {
   family: string;
   hasRemoteSrc: boolean;
-  /** Face har minst en url() som matchar ^(https?:)?// (inkluderar protocol-relative). */
+  /** Face har minst en url()-token som Chromium kommer försöka fetcha vid
+   *  replay (hink 2 ∪ hink 3 från harvest-font-urls). Tidigare bara hink 2;
+   *  protokoll-relativa och path-relativa räknas nu in via samma chokepoint. */
   hasAbsoluteHttpUrl: boolean;
-  /** Face har url() men ingen av dem är absolut per def ovan. */
-  hasOnlyRelativeUrl: boolean;
+  /** Face har url()-tokens men ingen av dem kunde resolveras (hink 4 > 0 OCH
+   *  inga hink 2/3). Tidigare hette detta `hasOnlyRelativeUrl` med en
+   *  syntaktisk definition; nu semantisk (URL Chromium INTE kan fetcha). */
+  hasUnresolvableRelativeUrl: boolean;
   hasLocalOnly: boolean;
   hasMetricOverrides: boolean;
-  /** Råa absoluta url()-värden i denna face. Diagnostik-oraklet för B2b-reconciliation;
-   *  detta är medvetet en SEPARAT implementation från fetcherns FONT_URL_RE — de två
-   *  kodvägarna måste få vara oense, annars är invariant P==M tautologisk. Inkluderar
-   *  protocol-relative `//host/...` (fetcherns regex missar dem; det är hela poängen). */
-  absoluteUrls: string[];
+  /** Hink 2 ∪ hink 3 — dedupade `resolved` URLer som Chromium kommer fetcha.
+   *  Renamed från `absoluteUrls`; semantiken är inte längre "syntaktiskt absolut"
+   *  utan "resolverbar absolut" (inkluderar path-relativa lösta mot Content-Location). */
+  replayUrls: string[];
+  /** Hink 1 — originals för redan inlinade fonter (data:/cid:). */
+  embeddedUrls: string[];
+  /** Hink 4 — relativa URLer utan giltig base. Tom = friskt. */
+  unresolvableUrls: Array<{
+    original: string;
+    reason: "no-base" | "invalid-base";
+  }>;
 }
-
-// Diagnostik-oraklets EGNA url()-extraktor. Avsiktligt parallell till
-// FONT_URL_RE / ANY_HTTP_URL_RE — dela inte. Tar alla url()-token,
-// klassificering sker sen via DIAG_IS_ABSOLUTE_RE.
-const DIAG_URL_TOKEN_RE = /url\(\s*(['"]?)([^)'"\s]+)\1\s*\)/gi;
-// "Absolut" för B1-oraklet = scheme-relative ELLER http(s). Inkluderar `//cdn/x`.
-const DIAG_IS_ABSOLUTE_RE = /^(?:https?:)?\/\//i;
 
 /**
  * Diagnostisk: returnerar per @font-face-block om det har remote-src,
- * är local()-only, om metric-override-deskriptorer finns, samt absoluta
- * URLer enligt B1-oraklets egen definition. Används av breadth-smoke för
- * URL-mot-URL-reconciliation mot fetcherns harvest.
+ * är local()-only, om metric-override-deskriptorer finns, samt klassificerade
+ * URLer per hink. Adopterar `iterateCssParts` + `harvestFontUrls` som chokepoint
+ * — input-equality med embedMhtmlFonts (M-sidan) hålls by construction.
  */
 export function extractFontFaceDiagnostics(
   mhtmlRaw: string,
 ): FontFaceDiagnostic[] {
-  const parsed = parseMhtml(mhtmlRaw);
+  const parts = iterateCssParts(mhtmlRaw);
   const out: FontFaceDiagnostic[] = [];
-  for (const part of parsed.parts) {
-    const ct = part.headers["content-type"] || "";
-    if (!/^text\/(css|html)/i.test(ct)) continue;
-    const enc = (part.headers["content-transfer-encoding"] || "").toLowerCase();
-    const text = enc === "quoted-printable" ? qpDecode(part.body) : part.body;
-    if (!/@font-face/i.test(text)) continue;
-    for (const block of text.matchAll(FONT_FACE_BLOCK_RE)) {
-      const body = block[1];
-      const family = familyFromFaceBody(body);
-      if (!family) continue;
-      const srcMatch = body.match(SRC_DECL_RE);
-      const srcValue = srcMatch ? srcMatch[1] : "";
-      const hasRemote = URL_TOKEN_RE.test(srcValue);
-      const hasLocal = /\blocal\s*\(/i.test(srcValue);
-      // Egen url()-extraktion — INTE fetcherns regex.
-      const absoluteUrls: string[] = [];
-      let hasAnyUrl = false;
-      for (const m of srcValue.matchAll(DIAG_URL_TOKEN_RE)) {
-        hasAnyUrl = true;
-        const u = m[2];
-        if (DIAG_IS_ABSOLUTE_RE.test(u)) absoluteUrls.push(u);
+  for (const part of parts) {
+    // Per-face metadata (family, local-only, metric-overrides) — kräver
+    // face-bodyn i klartext, inte URL-mängden. Re-scan av samma css är OK:
+    // det är diagnostik, inte invariant-input. URL-klassificeringen kommer
+    // strikt från harvestFontUrls.
+    const faceBodies: Array<{ family: string | null; body: string }> = [];
+    for (const m of part.css.matchAll(FONT_FACE_BLOCK_RE)) {
+      faceBodies.push({ family: familyFromFaceBody(m[1]), body: m[1] });
+    }
+    const urls = harvestFontUrls(part.css, part.contentLocation);
+
+    for (let i = 0; i < faceBodies.length; i++) {
+      const fb = faceBodies[i];
+      if (!fb.family) continue;
+      const faceUrls = urls.filter((u) => u.faceIndex === i);
+      const replay: string[] = [];
+      const embedded: string[] = [];
+      const unresolvable: FontFaceDiagnostic["unresolvableUrls"] = [];
+      for (const u of faceUrls) {
+        if (u.kind === "absolute" || u.kind === "relative-resolved") {
+          replay.push(u.resolved);
+        } else if (u.kind === "embedded") {
+          embedded.push(u.original);
+        } else {
+          unresolvable.push({ original: u.original, reason: u.reason });
+        }
       }
+      const hasRemote = faceUrls.length > 0;
+      const hasLocal = /\blocal\s*\(/i.test(fb.body);
       out.push({
-        family,
+        family: fb.family,
         hasRemoteSrc: hasRemote,
-        hasAbsoluteHttpUrl: absoluteUrls.length > 0,
-        hasOnlyRelativeUrl: hasAnyUrl && absoluteUrls.length === 0,
+        hasAbsoluteHttpUrl: replay.length > 0,
+        hasUnresolvableRelativeUrl: replay.length === 0 && unresolvable.length > 0,
         hasLocalOnly: hasLocal && !hasRemote,
-        hasMetricOverrides: METRIC_OVERRIDE_RE.test(body),
-        absoluteUrls,
+        hasMetricOverrides: METRIC_OVERRIDE_RE.test(fb.body),
+        replayUrls: replay,
+        embeddedUrls: embedded,
+        unresolvableUrls: unresolvable,
       });
     }
   }
