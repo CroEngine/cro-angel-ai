@@ -105,10 +105,9 @@ describe("extractFontFaceDiagnostics", () => {
       @font-face { font-family: "Mixed"; src: local("Arial"), url("cid:b"); }
     `;
     const d = extractFontFaceDiagnostics(mhtml(css));
-    expect(d).toEqual([
-      { family: "Real", hasRemoteSrc: true, hasLocalOnly: false, hasMetricOverrides: false },
-      { family: "Fallback", hasRemoteSrc: false, hasLocalOnly: true, hasMetricOverrides: true },
-      { family: "Mixed", hasRemoteSrc: true, hasLocalOnly: false, hasMetricOverrides: false },
-    ]);
+    expect(d).toHaveLength(3);
+    expect(d[0]).toMatchObject({ family: "Real", hasRemoteSrc: true, hasLocalOnly: false, hasMetricOverrides: false });
+    expect(d[1]).toMatchObject({ family: "Fallback", hasRemoteSrc: false, hasLocalOnly: true, hasMetricOverrides: true });
+    expect(d[2]).toMatchObject({ family: "Mixed", hasRemoteSrc: true, hasLocalOnly: false, hasMetricOverrides: false });
   });
 });

@@ -45,9 +45,10 @@ interface SiteResult {
   faceTotal?: number;
   faceRemote?: number;
   faceAbsoluteHttp?: number;
-  faceRelativeOnly?: number;
-  b1UniqueAbsUrls?: number;
-  b1AbsUrlSet?: string[];
+  faceUnresolvable?: number;
+  b1ReplayUrls?: number;
+  b1ReplayUrlSet?: string[];
+  unresolvableRelativeUrls?: Array<{ original: string; reason: string; partIndex: number }>;
   harmonization?: {
     ok: boolean;
     p: number;
@@ -223,11 +224,11 @@ for (const site of SMOKE_SITES) {
     // Annars jämför vi olika korpus (page.mhtml är post-cid-rewrite).
     const preDiags = extractFontFaceDiagnostics(preEmbedRaw);
     r.faceAbsoluteHttp = preDiags.filter((d) => d.hasAbsoluteHttpUrl).length;
-    r.faceRelativeOnly = preDiags.filter((d) => d.hasOnlyRelativeUrl).length;
-    const allAbs = new Set<string>();
-    for (const d of preDiags) for (const u of d.absoluteUrls) allAbs.add(u);
-    r.b1UniqueAbsUrls = allAbs.size;
-    r.b1AbsUrlSet = [...allAbs].sort();
+    r.faceUnresolvable = preDiags.filter((d) => d.hasUnresolvableRelativeUrl).length;
+    const allReplay = new Set<string>();
+    for (const d of preDiags) for (const u of d.replayUrls) allReplay.add(u);
+    r.b1ReplayUrls = allReplay.size;
+    r.b1ReplayUrlSet = [...allReplay].sort();
 
     const diag = await embedMhtmlFonts(preEmbedRaw, {
       controlProbes: {}, // använd defaults: gstatic positiv, example.com negativ
@@ -244,10 +245,10 @@ for (const site of SMOKE_SITES) {
     // Harmonisering: URL-mot-URL-reconciliation mellan B1-oraklet (P) och
     // B2b-fetchern (M). MISMATCH = riktig harvest-divergens (inte tautologi).
     const fetcherUrls = new Set(diag.fetchRecords.map((x) => x.url));
-    const recon = reconcileFontUrlSets(allAbs, fetcherUrls);
+    const recon = reconcileFontUrlSets(allReplay, fetcherUrls);
     r.harmonization = {
       ok: recon.ok,
-      p: allAbs.size,
+      p: allReplay.size,
       m: fetcherUrls.size,
       onlyInP: recon.onlyInP,
       onlyInM: recon.onlyInM,
@@ -256,6 +257,14 @@ for (const site of SMOKE_SITES) {
       writeFileSync(
         join(dir, "harmonization-diff.json"),
         JSON.stringify(r.harmonization, null, 2),
+      );
+    }
+    // Hink 4 receipt — sajten flaggas men korpus-loopen fortsätter.
+    r.unresolvableRelativeUrls = diag.unresolvableRelativeUrls;
+    if (diag.unresolvableRelativeUrls.length > 0) {
+      writeFileSync(
+        join(dir, "unresolvable-font-urls.json"),
+        JSON.stringify(diag.unresolvableRelativeUrls, null, 2),
       );
     }
 
@@ -364,17 +373,22 @@ for (const r of results) {
       `    b1_faces_w_abs_url     = ${r.faceAbsoluteHttp} (beskrivande)`,
     );
     console.log(
-      `    b1_faces_relative_only = ${r.faceRelativeOnly} (→ MHTML-inline)`,
+      `    b1_faces_unresolvable  = ${r.faceUnresolvable} (hink 4 — relativ utan giltig base)`,
     );
     console.log(
-      `    b1_unique_abs_urls (P) = ${r.harmonization.p}   ← diagnostik-orakel (https?:// eller //)`,
+      `    b1_replay_urls (P)     = ${r.harmonization.p}   ← hink 2 ∪ 3, dedupad på resolved`,
     );
     console.log(
-      `    b2_absolute_urls   (M) = ${r.harmonization.m}   ← fetcher-harvest (https?:// only)`,
+      `    b2_replay_urls (M)     = ${r.harmonization.m}   ← fetcher-harvest via samma chokepoint`,
     );
     console.log(
       `    invariant P == M       → ${r.harmonization.ok ? "OK" : "MISMATCH"}`,
     );
+    if (r.unresolvableRelativeUrls && r.unresolvableRelativeUrls.length > 0) {
+      console.log(
+        `    hink 4 unresolvable    = ${r.unresolvableRelativeUrls.length} → unresolvable-font-urls.json`,
+      );
+    }
     if (!r.harmonization.ok) {
       if (r.harmonization.onlyInP.length > 0) {
         console.log(`    onlyInP (fetcher missade):`);
