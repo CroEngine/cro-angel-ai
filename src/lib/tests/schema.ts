@@ -84,6 +84,10 @@ export type CollectedElement = {
     cursor: string;
     display: string;
   };
+  /** Set when off-flow + partially off-screen / micro-rect / text-indent
+   *  hack — element som passerade isVisible men ser ut som dold a11y-
+   *  mekanism. Diagnostik, inte filter. Endast satt när true. */
+  suspectOffFlow?: true;
 };
 
 export type RepeatedGroup = {
