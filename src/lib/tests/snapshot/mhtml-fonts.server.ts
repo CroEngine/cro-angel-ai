@@ -640,11 +640,12 @@ export async function embedMhtmlFonts(
   // parsed.parts (partIndex) och original encoding för re-encode.
   const cssParts = iterateCssParts(mhtmlRaw);
 
-  // Harvest per-occurrence via DELAD `harvestFontUrls`. Klassificering
-  // (hink 1-4) görs i chokepointen, här filtrerar vi:
-  //   - hink 1 (embedded): hoppa, redan inlinead
-  //   - hink 2/3 (absolute/relative-resolved): fetch + cid-mapping på `resolved`
-  //   - hink 4 (unresolvable): skriv till receipt-fält, sajten kan fälla testet
+  // Pass 1: ETT producent-anrop till `harvestAllFontUrls` är källan både för
+  // partitionering till embed-targets (hink 2 ∪ 3) och för
+  // unresolvableRelativeUrls (hink 4) + fontUrlSummary. `iterateCssParts`
+  // körs separat för rewrite-passet (Pass 2) eftersom det behöver CssPart-
+  // objekten (css, encoding, partIndex) för re-encode. Det är samma rena
+  // primitiv — en re-parse, inte en re-derivation av URL-mängden.
   //
   // En record per förekomst — duplicates ger skipped_dedup. URL:er utan
   // font-ext ger skipped_ext. Completeness-invariant:
@@ -665,48 +666,67 @@ export async function embedMhtmlFonts(
   // Per-part map så vi inte kollapsar olika baser.
   const partOriginalToResolved = new Map<number, Map<string, string>>();
   const unresolvableRelativeUrls: FontEmbedResult["unresolvableRelativeUrls"] = [];
+  const fontUrlSummary: FontEmbedResult["fontUrlSummary"] = {
+    embedded: 0,
+    absolute: 0,
+    relativeResolved: 0,
+    unresolvable: [],
+  };
   let occurrenceCounter = 0;
 
-  for (const css of cssParts) {
-    const localMap = new Map<string, string>();
-    partOriginalToResolved.set(css.partIndex, localMap);
-    for (const u of harvestFontUrls(css.css, css.contentLocation)) {
-      if (u.kind === "embedded") continue;
-      if (u.kind === "relative-unresolvable") {
-        unresolvableRelativeUrls.push({
-          original: u.original,
-          reason: u.reason,
-          partIndex: css.partIndex,
-        });
-        continue;
-      }
-      // hink 2 | 3
-      const resolved = u.resolved;
-      localMap.set(u.original, resolved);
-      const extMatch = resolved.match(FONT_EXT_RE);
-      const ext = extMatch ? extMatch[1].toLowerCase() : null;
-      const isFontExt = !!extMatch;
-      const isFirst = !seenResolved.has(resolved);
-      if (isFirst) {
-        seenResolved.add(resolved);
-        if (isFontExt) {
-          urlToCid.set(
-            resolved,
-            `font-${randomUUID().replace(/-/g, "").slice(0, 16)}@snapshot`,
-          );
-        }
-      }
-      harvest.push({
-        original: u.original,
-        resolved,
-        ext,
-        occurrenceIndex: occurrenceCounter++,
-        isFirstOccurrence: isFirst,
-        isFontExt,
-      });
+  const allHarvested: HarvestedFontUrl[] = harvestAllFontUrls(mhtmlRaw);
+  for (const u of allHarvested) {
+    if (u.kind === "embedded") {
+      fontUrlSummary.embedded++;
+      continue;
     }
+    if (u.kind === "relative-unresolvable") {
+      const entry = {
+        original: u.original,
+        reason: u.reason,
+        partIndex: u.partIndex,
+      };
+      unresolvableRelativeUrls.push(entry);
+      fontUrlSummary.unresolvable.push(entry);
+      continue;
+    }
+    // hink 2 | 3
+    if (u.kind === "absolute") fontUrlSummary.absolute++;
+    else fontUrlSummary.relativeResolved++;
+    const resolved = u.resolved;
+    let localMap = partOriginalToResolved.get(u.partIndex);
+    if (!localMap) {
+      localMap = new Map<string, string>();
+      partOriginalToResolved.set(u.partIndex, localMap);
+    }
+    localMap.set(u.original, resolved);
+    const extMatch = resolved.match(FONT_EXT_RE);
+    const ext = extMatch ? extMatch[1].toLowerCase() : null;
+    const isFontExt = !!extMatch;
+    const isFirst = !seenResolved.has(resolved);
+    if (isFirst) {
+      seenResolved.add(resolved);
+      if (isFontExt) {
+        urlToCid.set(
+          resolved,
+          `font-${randomUUID().replace(/-/g, "").slice(0, 16)}@snapshot`,
+        );
+      }
+    }
+    harvest.push({
+      original: u.original,
+      resolved,
+      ext,
+      occurrenceIndex: occurrenceCounter++,
+      isFirstOccurrence: isFirst,
+      isFontExt,
+    });
   }
   const totalHarvestedOccurrences = harvest.length;
+
+  // Pass 2 behöver CssPart-objekten (css, encoding, partIndex) för re-encode.
+  const cssParts = iterateCssParts(mhtmlRaw);
+
 
   // Fetch unika font-ext-URLer parallellt. classifiedFetch ger oss bucket + timing.
   const urlToFetchResult = new Map<string, ClassifiedFetch & { durationMs: number }>();
