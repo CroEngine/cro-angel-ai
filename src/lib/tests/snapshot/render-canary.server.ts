@@ -75,6 +75,7 @@ export type {
 
 import type {
   Gate1Reason,
+  BranchTaken,
   RenderCanaryEnv,
   Gate1Report as _Gate1Report,
   Gate2Report as _Gate2Report,
@@ -360,15 +361,7 @@ export async function runRenderCanary(
         // to split coverage-exclusion (faceCount===0 && hasDescriptorMatch)
         // out of the fallback bucket. Lets us audit reason composition.
         const descriptorMatched = hasDescriptorMatch(family);
-        let branchTaken:
-          | "load-rejected"
-          | "load-timeout"
-          | "A2-no-descriptor"
-          | "coverage-exclusion"
-          | "distinct+check"
-          | "distinct+!check"
-          | "!distinct+check"
-          | "!distinct+!check";
+        let branchTaken: BranchTaken;
         if (loadResult.kind === "rejected") {
           branchTaken = "load-rejected";
         } else if (loadResult.kind === "timeout") {
