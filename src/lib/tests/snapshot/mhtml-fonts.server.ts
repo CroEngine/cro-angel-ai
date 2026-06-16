@@ -47,7 +47,7 @@ const MIME_BY_EXT: Record<string, string> = {
 
 // ---------------------------------------------------------------- QP codec --
 
-function qpDecode(input: string): string {
+export function qpDecode(input: string): string {
   // 1) soft line breaks: `=\r?\n` -> ``
   const noSoft = input.replace(/=\r?\n/g, "");
   // 2) `=XX` hex escapes -> byte
@@ -136,7 +136,7 @@ function parseHeaders(raw: string): Record<string, string> {
   return out;
 }
 
-function parseMhtml(mhtml: string): ParsedMhtml {
+export function parseMhtml(mhtml: string): ParsedMhtml {
   // Find top headers / first boundary delimiter.
   const headerEnd = mhtml.search(/\r?\n\r?\n/);
   if (headerEnd < 0) throw new Error("[mhtml-fonts] no top header block");
