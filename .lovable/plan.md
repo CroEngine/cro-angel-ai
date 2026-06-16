@@ -1,32 +1,47 @@
-## Verifierat
-- `/bin/chromium` → Chromium 146.0.7680.80 (Nix-store). Ingen `bunx playwright install` behövs.
-- `~/.cache/ms-playwright/` saknas (förväntat — vi använder system-binären istället).
-- Korpora finns i `/tmp/corpus-breadth/` (stripe, intercom, vercel) från tidigare freeze.
+## Mål
 
-## Plan
+Eliminera `/tmp`-avdunstningen. Frys stripe/intercom/vercel till en durabel plats med content-addressed manifest, så `breadth-replay` blir reproducerbar mellan sessioner.
 
-1. **Ad-hoc replay-runner** `/tmp/replay-runner.ts` (skapas, körs, raderas — ingen commit):
-   - Sätter `process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = "/bin/chromium"` innan import av harness.
-   - Loopar `replayCorpus(name, "/tmp/corpus-breadth")` för stripe/intercom/vercel.
-   - För varje site läser:
-     - `render-canary.families.json` → `gate1Registered/Total`, `classification`, per-family `registered`-flagga.
-     - `freeze-report.json` → `capture.fontUrls[]`.
+## Reality-check som styr planen
 
-2. **Hink-attribution per miss**:
-   - För varje family där `registered === false`, korsreferera mot `capture.fontUrls`:
-     - URL embeddad i MHTML (cid: finns) men binder inte → **hink 3** (replay/descriptor).
-     - URL saknas helt i `fontUrls` → **hink 4** (harvest-hål).
-   - Skriver ut tabell per site: `Gate1 X/Y | classification | miss → family (hink N, url)`.
+- **Browserbase**: `BROWSERBASE_API_KEY` + `BROWSERBASE_PROJECT_ID` båda satta. Path 1 viabel.
+- **Git LFS**: ej installerat i sandboxen, och sandboxen får inte köra `git add/commit/push`. Det betyder: **jag kan inte själv pusha korpusen till LFS** — det steget måste du göra lokalt efter att filerna ligger i repot.
+- **R2/S3**: bara `LOVABLE_ASSETS_*` finns (Lovables interna assets-bucket, inte din egen R2). Olämplig som auditbar fixture-store. Egen R2 kräver att du lägger in credentials.
 
-3. **Avbryter och rapporterar om**:
-   - `/bin/chromium` ger launch-fel (t.ex. saknade .so-libs i Nix-sandbox).
-   - `replayCorpus` saknar export eller kastar annat fel.
-   - I så fall: ingen retry, rå felutskrift, stannar.
+Givet detta: frys till **`fixtures/breadth-corpus/<site>/`** i repot. Det är den enda platsen som överlever sandbox-sessioner utan extra infra, och det är rätt nivå för en 3-sajters smoke. LFS/R2-beslutet tas efter att vi sett faktiska storlekar.
 
-## Tekniska detaljer
-- Inga filer i repo ändras. Inga npm-installer. Ingen Browserbase-session.
-- Runner använder repo-källan direkt (`import { replayCorpus } from "@/..."` via bun) — kräver att `replayCorpus` är exporterad. Verifieras innan körning.
-- Output: ren text i chatten + ev. `/tmp/replay-out.json` om utskriften blir lång.
+## Steg
 
-## Acceptanskriterium
-Tabell tillbaka per site med Gate1, classification och per-miss hink-attribution (3 vs 4). Inga skrivningar i repo.
+1. **Patcha sökväg**. Byt `BREADTH_ROOT = "/tmp/corpus-breadth"` → konstant som läser `process.env.BREADTH_ROOT ?? "fixtures/breadth-corpus"` i:
+   - `scripts/breadth-smoke.ts`
+   - `scripts/breadth-replay.ts`
+   - `scripts/cid-probe.ts` (kommentar + default-arg)
+   Testkommentar i `harvest-font-urls.test.ts` uppdateras också.
+
+2. **Frys** via `bun run scripts/breadth-smoke.ts` mot Browserbase → skriver `fixtures/breadth-corpus/{stripe,intercom,vercel}/{page.mhtml,freeze-report.json,face-diagnostics.json,font-fetch-records.json}`.
+   Aborterar vid första fel, ingen retry-loop.
+
+3. **Manifest**. Litet inline-skript som walkar `fixtures/breadth-corpus/`, beräknar `sha256` per fil + storlek, skriver `fixtures/breadth-corpus/MANIFEST.json` (`{ site, file, bytes, sha256, frozenAt }[]`). Detta är audit-kvittot — `freeze-report.json` per sajt finns kvar oförändrad.
+
+4. **Replay**. `bun run scripts/breadth-replay.ts` med `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/bin/chromium`. Rapporterar tillbaka per sajt: `Gate1 X/Y | classification | miss → family (hink 3 vs 4, url)`.
+
+5. **Rapport till dig**: total korpus-storlek + per-fils-storlek. Då bestämmer du:
+   - liten (<~10 MB total) → committa direkt utan LFS
+   - medel → Git LFS (du kör `git lfs install && git lfs track 'fixtures/breadth-corpus/**/*.mhtml'` lokalt)
+   - stor / växande → R2 (du lägger in credentials, jag skriver push-script i nästa runda)
+
+   Inget i `fixtures/breadth-corpus/` committas av mig i denna runda — beslutet är ditt efter att ha sett siffrorna.
+
+6. **Replay-fallback**, framåt (out of scope för denna runda, men flaggat): `breadth-replay` ska läsa från durable store (LFS/R2) och bara frysa om vid cache-miss mot MANIFEST sha. Implementeras när du valt store i steg 5.
+
+## Vad som **inte** händer
+
+- Ingen `git add/commit` (sandbox-restriktion + ditt beslut behövs).
+- Ingen push till R2/LOVABLE_ASSETS (fel bucket).
+- Ingen `playwright install` (system-Chromium 146 räcker).
+- Ingen ändring av render-canary-logik eller per-fix golden-korpus — de är separata artefakter.
+
+## Avbrottskriterier
+
+- Browserbase-frys ger fel → stoppa, raw error tillbaka.
+- `/bin/chromium`-launch i replay misslyckas (Nix .so-missar) → stoppa, raw error tillbaka. Ingen automagisk `playwright install`-fallback.
