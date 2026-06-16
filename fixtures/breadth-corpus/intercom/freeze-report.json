@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 5272,
+    "screenshotKb": 1174,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 31,
+    "mhtmlKbBeforeFontEmbed": 3536,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Beretta",
+      "DmMono",
+      "Honey",
+      "Inter",
+      "IvoryLL",
+      "Maxi",
+      "MediumLL",
+      "Ozik",
+      "Planar",
+      "Raster",
+      "Saans",
+      "SaansMono",
+      "Serrif",
+      "intercom-font"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 8,
+      "relativeResolved": 27,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "timing": {
+    "gotoMs": 5283,
+    "consentMs": 0,
+    "scrollMs": 12279,
+    "captureMs": 45629
+  }
+}

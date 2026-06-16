@@ -1,0 +1,41 @@
+[
+  {
+    "family": "sohne-var",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-c71bea49f9174498@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "sohne-var",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-c71bea49f9174498@snapshot"
+    ],
+    "unresolvableUrls": []
+  },
+  {
+    "family": "SourceCodePro",
+    "hasRemoteSrc": true,
+    "hasAbsoluteHttpUrl": false,
+    "hasUnresolvableRelativeUrl": false,
+    "hasLocalOnly": false,
+    "hasMetricOverrides": false,
+    "replayUrls": [],
+    "embeddedUrls": [
+      "cid:font-9d2b9c0c14054477@snapshot"
+    ],
+    "unresolvableUrls": []
+  }
+]

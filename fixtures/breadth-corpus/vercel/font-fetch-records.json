@@ -1,0 +1,800 @@
+[
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_AMS-Regular.25ieegmnh38ts.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 0,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 28076,
+    "httpStatus": 200,
+    "durationMs": 18
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_AMS-Regular.10y3kupq4t663.woff",
+    "ext": "woff",
+    "occurrenceIndex": 1,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 33516,
+    "httpStatus": 200,
+    "durationMs": 17
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_AMS-Regular.418dr7cz3fo2x.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 2,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 63632,
+    "httpStatus": 200,
+    "durationMs": 39
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Caligraphic-Bold.06b-ya9t43ioz.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 3,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 6912,
+    "httpStatus": 200,
+    "durationMs": 33
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Caligraphic-Bold.2vmk2hva4ctha.woff",
+    "ext": "woff",
+    "occurrenceIndex": 4,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 7716,
+    "httpStatus": 200,
+    "durationMs": 37
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Caligraphic-Bold.40ltxhe834pns.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 5,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 12368,
+    "httpStatus": 200,
+    "durationMs": 30
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Caligraphic-Regular.2eph4dlhid_m9.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 6,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 6908,
+    "httpStatus": 200,
+    "durationMs": 108
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Caligraphic-Regular.3gxeetazf831f.woff",
+    "ext": "woff",
+    "occurrenceIndex": 7,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 7656,
+    "httpStatus": 200,
+    "durationMs": 23
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Caligraphic-Regular.07-7u27-nhn_r.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 8,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 12344,
+    "httpStatus": 200,
+    "durationMs": 42
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Fraktur-Bold.2sasz-d-jtw8y.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 9,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 11348,
+    "httpStatus": 200,
+    "durationMs": 20
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Fraktur-Bold.1alcy76__wdj2.woff",
+    "ext": "woff",
+    "occurrenceIndex": 10,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 13296,
+    "httpStatus": 200,
+    "durationMs": 19
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Fraktur-Bold.19yqa_tc9d_gx.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 11,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 19584,
+    "httpStatus": 200,
+    "durationMs": 35
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Fraktur-Regular.2d10y4xmjvzlf.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 12,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 11316,
+    "httpStatus": 200,
+    "durationMs": 220
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Fraktur-Regular.110oo81prr9n5.woff",
+    "ext": "woff",
+    "occurrenceIndex": 13,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 13208,
+    "httpStatus": 200,
+    "durationMs": 33
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Fraktur-Regular.2qhy34r6a05dn.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 14,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 19572,
+    "httpStatus": 200,
+    "durationMs": 33
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-Bold.3-rowy8o6_4ky.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 15,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 25324,
+    "httpStatus": 200,
+    "durationMs": 30
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-Bold.0v1esh257kqpe.woff",
+    "ext": "woff",
+    "occurrenceIndex": 16,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 29912,
+    "httpStatus": 200,
+    "durationMs": 52
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-Bold.0us_n0tnxlxu7.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 17,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 51336,
+    "httpStatus": 200,
+    "durationMs": 30
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-BoldItalic.14r2naom8mrec.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 18,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 16780,
+    "httpStatus": 200,
+    "durationMs": 27
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-BoldItalic.13355ck5zr48q.woff",
+    "ext": "woff",
+    "occurrenceIndex": 19,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 19412,
+    "httpStatus": 200,
+    "durationMs": 35
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-BoldItalic.3x_u9cepaced0.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 20,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 32968,
+    "httpStatus": 200,
+    "durationMs": 62
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-Italic.0lig0v9j0700p.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 21,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 16988,
+    "httpStatus": 200,
+    "durationMs": 27
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-Italic.0afv392dj4w59.woff",
+    "ext": "woff",
+    "occurrenceIndex": 22,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 19676,
+    "httpStatus": 200,
+    "durationMs": 19
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-Italic.2hkw3230mfwcv.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 23,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 33580,
+    "httpStatus": 200,
+    "durationMs": 45
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-Regular.1ryvsdzh2w1_e.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 24,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 26272,
+    "httpStatus": 200,
+    "durationMs": 20
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-Regular.15u8r3b2y7fv4.woff",
+    "ext": "woff",
+    "occurrenceIndex": 25,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 30772,
+    "httpStatus": 200,
+    "durationMs": 30
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Main-Regular.0symfa7dqj6jd.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 26,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 53580,
+    "httpStatus": 200,
+    "durationMs": 59
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Math-BoldItalic.1oopuu636h4il.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 27,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 16400,
+    "httpStatus": 200,
+    "durationMs": 52
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Math-BoldItalic.12pl58orkw9rg.woff",
+    "ext": "woff",
+    "occurrenceIndex": 28,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 18668,
+    "httpStatus": 200,
+    "durationMs": 94
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Math-BoldItalic.0y5w36a5aq__2.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 29,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 31196,
+    "httpStatus": 200,
+    "durationMs": 55
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Math-Italic.32405s1aq8vas.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 30,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 16440,
+    "httpStatus": 200,
+    "durationMs": 55
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Math-Italic.0w0b1ugh62cfr.woff",
+    "ext": "woff",
+    "occurrenceIndex": 31,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 18748,
+    "httpStatus": 200,
+    "durationMs": 64
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Math-Italic.2vkekfblmz5nb.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 32,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 31308,
+    "httpStatus": 200,
+    "durationMs": 58
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_SansSerif-Bold.0h3wi2z_eouyg.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 33,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 12216,
+    "httpStatus": 200,
+    "durationMs": 55
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_SansSerif-Bold.1ovw5p-yjp56g.woff",
+    "ext": "woff",
+    "occurrenceIndex": 34,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 14408,
+    "httpStatus": 200,
+    "durationMs": 62
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_SansSerif-Bold.2d03q85pwxpti.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 35,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 24504,
+    "httpStatus": 200,
+    "durationMs": 52
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_SansSerif-Italic.0wkjc4dm2kcit.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 36,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 12028,
+    "httpStatus": 200,
+    "durationMs": 63
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_SansSerif-Italic.1qavw__2zz8gk.woff",
+    "ext": "woff",
+    "occurrenceIndex": 37,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 14112,
+    "httpStatus": 200,
+    "durationMs": 52
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_SansSerif-Italic.3i-q087b23-m8.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 38,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 22364,
+    "httpStatus": 200,
+    "durationMs": 58
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_SansSerif-Regular.2peiewu59z3d-.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 39,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 10344,
+    "httpStatus": 200,
+    "durationMs": 60
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_SansSerif-Regular.1i4afx8nk8n4r.woff",
+    "ext": "woff",
+    "occurrenceIndex": 40,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 12316,
+    "httpStatus": 200,
+    "durationMs": 55
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_SansSerif-Regular.31pbu25feko_c.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 41,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 19436,
+    "httpStatus": 200,
+    "durationMs": 62
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Script-Regular.11h14300o9pd0.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 42,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 9644,
+    "httpStatus": 200,
+    "durationMs": 62
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Script-Regular.3110jb9c-bxna.woff",
+    "ext": "woff",
+    "occurrenceIndex": 43,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 10588,
+    "httpStatus": 200,
+    "durationMs": 199
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Script-Regular.28p_x7iz71ofe.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 44,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 16648,
+    "httpStatus": 200,
+    "durationMs": 52
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size1-Regular.03lhvx36ekcou.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 45,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 5468,
+    "httpStatus": 200,
+    "durationMs": 94
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size1-Regular.1slf4bh0hc6vm.woff",
+    "ext": "woff",
+    "occurrenceIndex": 46,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 6496,
+    "httpStatus": 200,
+    "durationMs": 63
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size1-Regular.1y57-ck23ey8c.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 47,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 12228,
+    "httpStatus": 200,
+    "durationMs": 61
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size2-Regular.14s5gg-puz6h-.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 48,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 5208,
+    "httpStatus": 200,
+    "durationMs": 67
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size2-Regular.0-kwyvx03omo8.woff",
+    "ext": "woff",
+    "occurrenceIndex": 49,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 6188,
+    "httpStatus": 200,
+    "durationMs": 85
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size2-Regular.2u0s-b07k2o9m.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 50,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 11508,
+    "httpStatus": 200,
+    "durationMs": 44
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size3-Regular.1n1rgzz84z8r9.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 51,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 3624,
+    "httpStatus": 200,
+    "durationMs": 62
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size3-Regular.04o9a_02gu_e8.woff",
+    "ext": "woff",
+    "occurrenceIndex": 52,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 4420,
+    "httpStatus": 200,
+    "durationMs": 86
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size3-Regular.1pkn-dge4q0fv.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 53,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 7588,
+    "httpStatus": 200,
+    "durationMs": 72
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size4-Regular.2sgotkdv3dcyv.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 54,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 4928,
+    "httpStatus": 200,
+    "durationMs": 44
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size4-Regular.3p2r1l7xmebxv.woff",
+    "ext": "woff",
+    "occurrenceIndex": 55,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 5980,
+    "httpStatus": 200,
+    "durationMs": 44
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Size4-Regular.2uelkfk2yna5e.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 56,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 10364,
+    "httpStatus": 200,
+    "durationMs": 111
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Typewriter-Regular.11gr2d2wuwz77.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 57,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 13568,
+    "httpStatus": 200,
+    "durationMs": 43
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Typewriter-Regular.12f8myjij3617.woff",
+    "ext": "woff",
+    "occurrenceIndex": 58,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 16028,
+    "httpStatus": 200,
+    "durationMs": 46
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/KaTeX_Typewriter-Regular.3nee9kjfy6nm8.ttf",
+    "ext": "ttf",
+    "occurrenceIndex": 59,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 27556,
+    "httpStatus": 200,
+    "durationMs": 43
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/GeistPixel_Square.p.38oedokznorgu.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 60,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 28636,
+    "httpStatus": 200,
+    "durationMs": 41
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/GeistPixel_Grid.p.23_kge_jbw9fs.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 61,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 28572,
+    "httpStatus": 200,
+    "durationMs": 76
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/GeistPixel_Circle.p.3zurfnrwei_77.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 62,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 28144,
+    "httpStatus": 200,
+    "durationMs": 38
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/GeistPixel_Triangle.p.3auwpiv0e9k4p.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 63,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 28888,
+    "httpStatus": 200,
+    "durationMs": 67
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/GeistPixel_Line.p.1sx0k6cigp9d4.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 64,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 18080,
+    "httpStatus": 200,
+    "durationMs": 46
+  },
+  {
+    "url": "https://lishhsx6kmthaacj.public.blob.vercel-storage.com/fonts/dseg7classic-bold.counter.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 65,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 712,
+    "httpStatus": 200,
+    "durationMs": 30
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/fef07dbb0973bf53.3p2_lha1f2xer.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 66,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 7252,
+    "httpStatus": 200,
+    "durationMs": 79
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/8a480f0b521d4e75.1qq4vpdcun5oj.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 67,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 14900,
+    "httpStatus": 200,
+    "durationMs": 220
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/53b9e256198e5412.390ncx5urfkfu.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 68,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 7968,
+    "httpStatus": 200,
+    "durationMs": 51
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/7178b3e590c64307.21jp631_3pja2.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 69,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 16540,
+    "httpStatus": 200,
+    "durationMs": 76
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/caa3a2e1cccd8315.p.0wgildi0cnwt9.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 70,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 29288,
+    "httpStatus": 200,
+    "durationMs": 56
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/5ce348bf30bf5439.31988l_ccedte.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 71,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 6204,
+    "httpStatus": 200,
+    "durationMs": 43
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/4fa387ec64143e14.2tuy5pz7dlieh.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 72,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 12872,
+    "httpStatus": 200,
+    "durationMs": 71
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/6306c77e7c8268e4.2dbetqa9o8jxf.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 73,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 5892,
+    "httpStatus": 200,
+    "durationMs": 102
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/7d817b4c03b0c5f1.1uyisp29ctx0d.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 74,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 7728,
+    "httpStatus": 200,
+    "durationMs": 53
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/bbc41e54d2fcbd21.1rgnod-3esatf.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 75,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 14712,
+    "httpStatus": 200,
+    "durationMs": 51
+  },
+  {
+    "url": "https://vercel.com/vc-ap-vercel-marketing/_next/static/immutable/media/797e433ab948586e.p.0r6juujl39pe6.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 76,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 23108,
+    "httpStatus": 200,
+    "durationMs": 55
+  },
+  {
+    "url": "https://fonts.gstatic.com/s/robotomono/v22/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 77,
+    "attempted": true,
+    "outcome": "ok",
+    "bytes": 22140,
+    "httpStatus": 200,
+    "durationMs": 4
+  },
+  {
+    "url": "https://fonts.gstatic.com/s/robotomono/v22/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 78,
+    "attempted": false,
+    "outcome": "skipped_dedup",
+    "bytes": 0,
+    "durationMs": 0
+  },
+  {
+    "url": "https://fonts.gstatic.com/s/robotomono/v22/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2",
+    "ext": "woff2",
+    "occurrenceIndex": 79,
+    "attempted": false,
+    "outcome": "skipped_dedup",
+    "bytes": 0,
+    "durationMs": 0
+  }
+]

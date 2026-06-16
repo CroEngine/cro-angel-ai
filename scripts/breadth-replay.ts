@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
-// Re-run only the replay step against already-frozen /tmp/corpus-breadth/<name>/
+// Re-run only the replay step against already-frozen $BREADTH_ROOT/<name>/ (default fixtures/breadth-corpus/).
 import { replayCorpus } from "../src/lib/tests/snapshot/harness.server";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const BREADTH_ROOT = "/tmp/corpus-breadth";
+const BREADTH_ROOT = process.env.BREADTH_ROOT ?? "fixtures/breadth-corpus";
 const SITES = ["stripe", "intercom", "vercel"];
 
 interface Out {

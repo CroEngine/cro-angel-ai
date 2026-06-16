@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 2331,
+    "screenshotKb": 1060,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 2,
+    "mhtmlKbBeforeFontEmbed": 2236,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "SourceCodePro",
+      "sohne-var"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 0,
+      "relativeResolved": 3,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "timing": {
+    "gotoMs": 11518,
+    "consentMs": 0,
+    "scrollMs": 6955,
+    "captureMs": 9567
+  }
+}

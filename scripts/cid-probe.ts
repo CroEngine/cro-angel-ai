@@ -1,7 +1,7 @@
 /**
  * cid-probe: bevisar varför FontFace.load() rejectar i file://-MHTML.
  *
- * Öppnar /tmp/corpus-breadth/intercom/page.mhtml i pinnad Chromium och loggar:
+ * Öppnar $BREADTH_ROOT/intercom/page.mhtml (default fixtures/breadth-corpus/) i pinnad Chromium och loggar:
  *   - document.fonts.size + descriptor-familjenamn
  *   - första cid:-URL ur @font-face src
  *   - fetch(cidUrl) status / error
@@ -11,7 +11,7 @@
 import { chromium } from "playwright";
 import { writeFileSync, existsSync } from "node:fs";
 
-const MHTML = process.argv[2] || "/tmp/corpus-breadth/intercom/page.mhtml";
+const MHTML = process.argv[2] || `${process.env.BREADTH_ROOT ?? "fixtures/breadth-corpus"}/intercom/page.mhtml`;
 if (!existsSync(MHTML)) {
   console.error(`MHTML missing: ${MHTML}`);
   process.exit(1);

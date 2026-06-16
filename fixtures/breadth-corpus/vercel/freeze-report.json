@@ -1,0 +1,62 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 3511,
+    "screenshotKb": 396,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 78,
+    "mhtmlKbBeforeFontEmbed": 1656,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "DSEG7 Classic",
+      "Geist",
+      "Geist Mono",
+      "GeistPixelCircle",
+      "GeistPixelGrid",
+      "GeistPixelLine",
+      "GeistPixelSquare",
+      "GeistPixelTriangle",
+      "KaTeX_AMS",
+      "KaTeX_Caligraphic",
+      "KaTeX_Fraktur",
+      "KaTeX_Main",
+      "KaTeX_Math",
+      "KaTeX_SansSerif",
+      "KaTeX_Script",
+      "KaTeX_Size1",
+      "KaTeX_Size2",
+      "KaTeX_Size3",
+      "KaTeX_Size4",
+      "KaTeX_Typewriter",
+      "Roboto Mono"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 4,
+      "relativeResolved": 76,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "timing": {
+    "gotoMs": 5187,
+    "consentMs": 0,
+    "scrollMs": 8939,
+    "captureMs": 10588
+  }
+}
