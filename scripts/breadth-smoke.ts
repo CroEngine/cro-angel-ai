@@ -304,14 +304,25 @@ for (const site of SMOKE_SITES) {
     const famPath = join(dir, "render-canary.families.json");
     if (existsSync(famPath)) {
       const fam = JSON.parse(readFileSync(famPath, "utf8")) as {
-        families: Array<{ family: string; registered: boolean; reason?: string }>;
+        families: Array<{
+          family: string;
+          gate1: { pass: boolean; reason: string; loadError?: string };
+        }>;
       };
-      r.perFamily = fam.families;
+      // Bridge schema: render-canary.families.json carries the authoritative
+      // signal in `gate1` (pass + reason). The top-level `registered`/`reason`
+      // fields are stripped by the receipt writer in harness.server.ts; reading
+      // them here yields `null` and collapses every family to "unknown".
+      r.perFamily = fam.families.map((f) => ({
+        family: f.family,
+        registered: f.gate1.pass,
+        reason: f.gate1.reason,
+      }));
       r.gate1Total = fam.families.length;
-      r.gate1Registered = fam.families.filter((f) => f.registered).length;
+      r.gate1Registered = fam.families.filter((f) => f.gate1.pass).length;
       const cls: Record<string, number> = {};
       for (const f of fam.families) {
-        const k = f.registered ? "OK" : (f.reason ?? "unknown");
+        const k = f.gate1.pass ? "OK" : (f.gate1.reason ?? "unknown");
         cls[k] = (cls[k] ?? 0) + 1;
       }
       r.classification = cls;
