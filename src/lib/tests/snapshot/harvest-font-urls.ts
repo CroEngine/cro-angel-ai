@@ -162,3 +162,30 @@ export function harvestFontUrls(
   }
   return out;
 }
+
+// ---------------- harvestAllFontUrls (commit 3) --------------------------
+//
+// EN producent. Både P (extractFontFaceDiagnostics) och M (collectEmbedTargets
+// + embedMhtmlFonts) ska konsumera output härifrån. Decorerar varje URL med
+// partens partIndex (från CssPart.partIndex — INTE en lokal räknare) och
+// partens contentLocation, vilket M behöver för CSS-rewrite-bokföring och
+// receipt-observability per part.
+
+export type HarvestedFontUrl = NormalizedFontUrl & {
+  partIndex: number;
+  contentLocation: string | undefined;
+};
+
+export function harvestAllFontUrls(mhtml: string): HarvestedFontUrl[] {
+  const out: HarvestedFontUrl[] = [];
+  for (const part of iterateCssParts(mhtml)) {
+    for (const u of harvestFontUrls(part.css, part.contentLocation)) {
+      out.push({
+        ...u,
+        partIndex: part.partIndex,
+        contentLocation: part.contentLocation,
+      } as HarvestedFontUrl);
+    }
+  }
+  return out;
+}
