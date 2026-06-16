@@ -23,6 +23,7 @@ import { COLLECT_SCRIPT } from "../scripts/collect";
 import { runPageAudit } from "../runners/pageAudit.server";
 import { resolveAssetUrl, sha256OfBuffer, type AssetPointer } from "./externalize.server";
 import { runRenderCanary, type RenderCanaryReport } from "./render-canary.server";
+import { FamiliesReceiptFileSchema, type FamiliesReceiptFile } from "./render-canary-receipt";
 import { CANARY_VIEWPORT } from "./canary-constants";
 import { extractEmbeddedFamilies } from "./mhtml-fonts.server";
 
