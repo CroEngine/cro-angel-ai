@@ -1,139 +1,136 @@
-## Regen-modell (blockerande klargörande)
+# Skip-link suspect-räknare (reviderad)
 
-**Flow A bekräftad.** `scripts/breadth-replay.ts` rad 26 anropar `replayCorpus(name, BREADTH_ROOT)` **före** rad 31 läser `render-canary.families.json`. `replayCorpus` öppnar lokal `page.mhtml`, kör render-canary, och skriver om `render-canary.families.json` med den nya skrivar-koden. Läsaren ser alltid en receipt producerad av den nuvarande harness-versionen.
+## Mål
 
-Konsekvens för `schemaVersion: z.literal(1)` (required):
-- Befintliga v0-receipts på disk (stripe/intercom/vercel) saknar fältet, men de **läses aldrig** i sin v0-form — replay-steget skriver om dem till v1 först.
-- Regressionsförväntan **2/2, 14/14, 21/21** håller på första körningen utan engångs-migration.
-- `STALE_RECEIPT`-grenen är **försäkring**, inte normalväg. Den biter i två framtida scenarier: (a) en fast-path eller test som läser receipt utan att köra replay först, (b) schema-bump till v2 där en gammal v1-receipt läses innan replay hunnit regenerera. Den är billig (~10 rader) och ska etiketteras i koden:
+Mät hur ofta off-flow-element passerar `isVisible` på en sajt utan att
+filtreras. Datadrivet underlag för om predikatet behöver utökas när
+korpus expanderar — observation, inte filtrering.
 
-```ts
-// STALE-gren: försäkring mot skip-regen / framtida schema-bumps.
-// Normal replay-väg regenererar receipt via replayCorpus() före läsning,
-// så v0→v1-uppgradering sker automatiskt på första körningen.
-```
+## Definition av "suspect"
 
-Summary-loopen aggregerar `gate1Total` endast när `!r.staleReceipt`; stale räknas i en egen hink. Ingen `total += undefined` → ingen NaN, ingen tyst under-räkning.
+Ett element är suspect om **alla** följande gäller efter att isVisible
+returnerat `true`:
+
+1. `cs.position` ∈ {`absolute`, `fixed`}
+2. Minst ett av:
+   - `rect.left < 0` (delvis utanför vänster)
+   - `rect.top < 0` (delvis utanför ovan)
+   - `rect.width <= 1 && rect.height <= 1` (mikro-rekt / sr-only utan clip)
+   - `parseFloat(cs.textIndent) <= -100` (text-indent-hack)
+
+Off-flow + någon av ovan = sannolik dold a11y-mekanism vi missade.
+Inga falska positiv för flytande UI (modals, dropdowns) — de bryter
+mot villkor 2.
 
 ## Filer
 
-### Ny: `src/lib/tests/snapshot/render-canary-receipt.ts`
+### 1. `src/lib/tests/schema.ts`
 
-Sanningskälla. Ren typ + Zod, inga browser-globals, inga server-only-imports → säker att importera från `*.server.ts` (skrivare) **och** `scripts/*.ts` (läsare).
-
-- `schemaVersion: z.literal(1)` på filnivå (required).
-- `Gate1ReasonSchema = z.enum([...])` — alla 7 reasons från `render-canary.server.ts`.
-- `Gate2ReasonSchema = z.enum(["ok","drift","skipped"])`.
-- `BranchTakenSchema = z.enum([...8 branches])`.
-- `Gate1DiagSchema` — fullt utfyllt, inkl. nested `strings: { manifestFamily, allDescriptorFamilies, matchedDescriptorFamilies, checkString, widthString }`, `canonMismatch`, `canonMismatchDetail`. **Inte** `z.unknown()`.
-- `Gate1ReportSchema` — `{ wWith, wFallback, deltaLoad, fontsCheckPass, pass, reason, loadError? }`.
-- `Gate2ReportSchema` — `{ wOrig, deltaSubset, pass, reason }`.
-- `FamilyReceiptSchema = z.object({ family, gate1: Gate1ReportSchema, gate2: Gate2ReportSchema.optional(), diag: Gate1DiagSchema })`.
-- `RenderCanaryEnvSchema = z.object({ chromiumPath, chromiumVersion, pinned })`.
-- `FamiliesReceiptFileSchema = z.object({ schemaVersion: z.literal(1), env: RenderCanaryEnvSchema.optional(), families: z.array(FamilyReceiptSchema) })`.
-- **Ingen `.strict()`** på fil-schemat → default-strip ger forward-compat när skrivaren adderar fält.
-- Re-exporterar TS-typer via `z.infer<>`.
-- Disciplin för framtida bumps: nya fält adderas `.optional()`; vid breaking change höjs `schemaVersion` och hela korpusen omfryses (replay räcker eftersom MHTML är intakt).
-
-### Refaktor: `src/lib/tests/snapshot/render-canary.server.ts`
-
-Ersätt de fyra hand-skrivna interfacen (`Gate1Report`, `Gate2Report`, `Gate1Diag`, `RenderCanaryEnv`) med `z.infer`-re-exporter från receipt-modulen. Det är det som gör schemat till sanningskälla — annars driftar interface och Zod osynligt isär. `FamilyReport` (in-memory) behåller sina extras (`registered, loadedCount, totalCount, sampleText, sampleSource, widthVsFallback, fontsCheckPass`) ovanpå de delade typerna; de skrivs aldrig till disk.
-
-### Skrivare: `src/lib/tests/snapshot/harness.server.ts`
-
-Annotera + **runtime-validera** vid receipt-konstruktionen (rad ~410):
+Lägg till valfritt sparse-fält på `CollectedElement`:
 
 ```ts
-import { FamiliesReceiptFileSchema, type FamiliesReceiptFile } from "./render-canary-receipt";
-
-const receipt: FamiliesReceiptFile = {
-  schemaVersion: 1,
-  ...(canary.env ? { env: canary.env } : {}),
-  families: canary.families.map((f) => ({
-    family: f.family,
-    gate1: f.gate1,
-    ...(f.gate2 ? { gate2: f.gate2 } : {}),
-    diag: f.diag,
-  })),
-};
-const validated = FamiliesReceiptFileSchema.parse(receipt); // strippar in-memory-extras
-writeFileSync(join(dir, "render-canary.families.json"), JSON.stringify(validated, null, 2));
+/** Set when off-flow + partially off-screen / micro-rect / text-indent
+ *  hack — element som passerade isVisible men ser ut som dold a11y-
+ *  mekanism. Diagnostik, inte filter. Endast satt när true. */
+suspectOffFlow?: true;
 ```
 
-Compile-time-annotering ensam fångar inte runtime-formdrift (t.ex. en family där `gate1` blir `undefined` via en silent-fail map). `.parse(receipt)` före `writeFileSync` säkerställer att en dålig artefakt **aldrig** blir durabel — Browserbase-frysning är dyr.
+### 2. `src/lib/tests/scripts/collect.ts`
 
-### Läsare: `scripts/breadth-replay.ts`
+Exporterad helper (samma `export + ${...toString()}`-mönster som
+`isVisible` — *en* produktionsfunktion på *en* kodväg):
 
 ```ts
-import { FamiliesReceiptFileSchema } from "../src/lib/tests/snapshot/render-canary-receipt";
-import { ZodError } from "zod";
-
-interface Out {
-  // ...befintliga fält...
-  staleReceipt?: string; // försäkring mot skip-regen / framtida schema-bump
-}
-
-// ...
-if (existsSync(famPath)) {
-  let fam;
-  try {
-    const raw = JSON.parse(readFileSync(famPath, "utf8"));
-    fam = FamiliesReceiptFileSchema.parse(raw);
-  } catch (e) {
-    if (e instanceof ZodError) {
-      const issue = e.issues[0];
-      r.staleReceipt = `${issue?.path.join(".") ?? "?"}: ${issue?.message ?? "drift"}`;
-      results.push(r);
-      continue;
-    }
-    throw e; // FS/JSON-parse-fel är riktiga fel
-  }
-  r.perFamily = fam.families.map((f) => ({
-    family: f.family,
-    registered: f.gate1.pass,
-    reason: f.gate1.reason,
-  }));
-  r.gate1Total = fam.families.length;
-  r.gate1Registered = r.perFamily.filter((x) => x.registered).length;
-  // ...classification oförändrat...
+export function isSuspectOffFlow(
+  cs: CSSStyleDeclaration,
+  rect: DOMRect,
+): boolean {
+  if (cs.position !== "absolute" && cs.position !== "fixed") return false;
+  return (
+    rect.left < 0 ||
+    rect.top < 0 ||
+    (rect.width <= 1 && rect.height <= 1) ||
+    parseFloat(cs.textIndent) <= -100
+  );
 }
 ```
 
-Summary-loopen får en explicit stale-gren **före** aggregering:
+Inlinas i `COLLECT_SCRIPT` via `${isSuspectOffFlow.toString()}` bredvid
+`${isVisible.toString()}`.
+
+I raw-collect-loopen (rad ~389), direkt efter `if (!isVisible(...)) continue`:
+
+```js
+const suspectOffFlow = isSuspectOffFlow(cs, rect);
+raw.push({ /* ...befintliga fält..., */ suspectOffFlow });
+```
+
+I emit-loopen (rad ~435), sparse-spread så fältet utelämnas på rena element:
+
+```js
+...(r.suspectOffFlow && { suspectOffFlow: true }),
+```
+
+### 3. `src/lib/tests/scripts/__tests__/collect-visibility.test.ts`
+
+Utöka importen och `cs()`-defaulten med `textIndent: "0px"` (deterministisk
+nolla, inte NaN). Lägg till två tester:
 
 ```ts
-for (const r of results) {
-  console.log(`\n--- ${r.name} ---`);
-  if (r.staleReceipt) {
-    console.log(`  STALE: ${r.staleReceipt} — kör replay för att regenerera`);
-    continue;
-  }
-  if (r.gate1Total == null) { /* befintlig no-families-gren */ continue; }
-  // ...befintlig Gate1-rapport oförändrad...
+describe("isSuspectOffFlow — diagnostik", () => {
+  it("flaggar off-flow mikro-rekt (position:absolute; 1×1)", () => {
+    expect(isSuspectOffFlow(
+      cs({ position: "absolute" }),
+      rect({ width: 1, height: 1, right: 1, bottom: 1 }),
+    )).toBe(true);
+  });
+
+  it("flaggar inte normal flytande modal (position:fixed mitt på sidan)", () => {
+    expect(isSuspectOffFlow(
+      cs({ position: "fixed" }),
+      rect({ left: 400, top: 200, right: 800, bottom: 600, width: 400, height: 400 }),
+    )).toBe(false);
+  });
+});
+```
+
+Regression-vakten är gratis: mikro-rekt-fallet passerar `isVisible`
+(1 är inte < 1) men flaggas av räknaren — exakt det läckage räknaren
+ska mäta.
+
+### 4. `src/lib/tests/snapshot/__tests__/snapshot.test.ts`
+
+**Rätt plats**, inte breadth-smoke — här finns `elements` redan i minnet
+efter replay. I loopen där varje sajt processas, efter `normalized` är
+beräknad och innan diff/golden-skrivning, lägg till:
+
+```ts
+const suspectCount = (elements ?? [])
+  .filter((e) => e.suspectOffFlow).length;
+// eslint-disable-next-line no-console
+console.log(`[snapshot] ${name}: ${suspectCount} off-flow suspects`);
+if (suspectCount > 0) {
+  const sel = elements.filter((e) => e.suspectOffFlow)
+    .slice(0, 5).map((e) => e.selector);
+  // eslint-disable-next-line no-console
+  console.log(`[snapshot] ${name} suspect selectors:`, sel);
 }
 ```
 
-Eventuella aggregat över alla sajter (om de tillkommer) hoppar `r.staleReceipt`-rader. Just nu finns ingen sådan totalsumma — bara per-sajt — så NaN-risken är hypotetisk men grenen är på plats för framtida summering.
+Inget gate failar — ren stdout-observation. När korpus expanderar
+(15–30 sajter) ser vi siffrorna direkt i CI-loggen per körning.
 
-## Verifiering (fyra drift-riktningar)
+## Inte i scope
 
-1. **Happy path / regression**: `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/bin/chromium bun run scripts/breadth-replay.ts` mot befintlig v0-korpus → replay regenererar varje `render-canary.families.json` till v1 före läsning → `Gate1 2/2`, `14/14`, `21/21`. Efter körningen innehåller disk-receipten `"schemaVersion": 1`.
+- Ingen ändring av `isVisible` — räknaren observerar, filtrerar inte.
+- Ingen ändring av render-canary-receipt — `suspectOffFlow` lever på
+  `CollectedElement`, inte i font-receiptet.
+- `breadth-smoke.ts` rörs inte (har inte elements i scope, fel placering).
 
-2. **Disk-drift biter (runtime-skydd, originalbuggens klass)**: kopiera vercel:s nyligen v1-stämplade receipt till `/tmp/drifted.json`, patcha `families[0].gate1.reason` → `42`, peka läsaren temporärt mot den → `STALE: families.0.gate1.reason: Invalid input...` + ingen `gate1Total`. Ej committad. Bevisar att false-floor från tyst `undefined` är död.
+## Risk
 
-3. **Reader-drift omöjlig (compile-skydd)**: temporärt lägg `const _wrong: boolean = fam.families[0].registered;` i `breadth-replay.ts` → `tsc --noEmit` (harness kör det åt oss) kastar `Property 'registered' does not exist on type 'FamilyReceipt'`. Rad tas bort efter bevisning. Visar att originalbuggen (top-level `registered`/`reason`) är kompilerings-omöjlig nu.
-
-4. **Skrivar-vakt biter**: temporärt mutera receipt-konstruktionen i `harness.server.ts` så `gate1` blir `undefined` på en family → frys/replay kastar `ZodError` **före** `writeFileSync`. Återställs.
-
-## Out of scope
-
-- Auto-regen-loop vid `STALE_RECEIPT` (manuell `rm` + replay räcker; replay regenererar redan i normalflödet — STALE-grenen är försäkring).
-- Korpus-expansion 15→30.
-- LFS-setup (sandboxen committar inte; kommandona ligger fast: `git lfs track 'fixtures/breadth-corpus/**/*.mhtml'` + `**/*.pre-embed.mhtml` + `**/*.jpg` **före** första `git add fixtures/breadth-corpus`).
-- Ändringar i freeze/replay-logik utöver typer + Zod.
-- Ändringar i frusna MHTML/JPG-fixtures.
-
-## Avbrottskriterier
-
-- `zod` ej installerad → `bun add zod` först, verifiera.
-- Receipt-modulen kan inte importeras från `scripts/` (osannolikt: ren typ + Zod) → stoppa, byt inte filnamn till `.server`.
+- **Hubspot golden:** sparse-fältet dyker upp i `golden.json` endast om
+  hubspot har en off-flow-suspect. Vid första körning: om diff syns
+  → vi har en konkret läckage-datapunkt och `bun run snapshot:update`
+  rebaselinear intentionellt. Om ingen diff → 0 suspects bekräftat.
+- **Inga andra snapshot-effekter** — fältet är sparse + optional.
