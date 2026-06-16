@@ -29,6 +29,7 @@
 // 36 woff2 files for hibob ≈ 200-500 KB, acceptable; correctness > size.
 
 import { randomUUID } from "node:crypto";
+import { iterateCssParts, harvestFontUrls } from "./harvest-font-urls";
 
 const FONT_EXT_RE = /\.(woff2|woff|ttf|otf|eot)(?:\?[^)'"\s]*)?$/i;
 
