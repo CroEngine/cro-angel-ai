@@ -44,17 +44,25 @@ export interface CssPart {
    *  relative URLs against the stylesheet's own URL — i MHTML-replay är
    *  det partens Content-Location. */
   contentLocation: string | undefined;
+  /** Index in the parsed MHTML's parts array — back-pointer för M-sidans
+   *  CSS-rewrite, exponerat så M kan iterera via SAMMA primitiv som P
+   *  utan att shadowa parts-loopen. */
+  partIndex: number;
+  /** Original Content-Transfer-Encoding för part-body (krävs vid re-encode
+   *  efter CSS-rewrite). */
+  encoding: string;
 }
 
 /**
  * Enda källan till MHTML → CSS-part-partitionering. Returnerar varje text/css
- * eller text/html-part som innehåller @font-face, med QP-avkodad body och
- * partens Content-Location.
+ * eller text/html-part som innehåller @font-face, med QP-avkodad body,
+ * partens Content-Location, samt partens index/encoding (för M-rewrite).
  */
 export function iterateCssParts(mhtml: string): CssPart[] {
   const parsed = parseMhtml(mhtml);
   const out: CssPart[] = [];
-  for (const part of parsed.parts) {
+  for (let i = 0; i < parsed.parts.length; i++) {
+    const part = parsed.parts[i];
     const ct = part.headers["content-type"] || "";
     if (!/^text\/(css|html)/i.test(ct)) continue;
     const enc = (part.headers["content-transfer-encoding"] || "").toLowerCase();
@@ -63,6 +71,8 @@ export function iterateCssParts(mhtml: string): CssPart[] {
     out.push({
       css: decoded,
       contentLocation: part.headers["content-location"] || undefined,
+      partIndex: i,
+      encoding: enc,
     });
   }
   return out;
