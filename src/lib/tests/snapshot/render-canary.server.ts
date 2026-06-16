@@ -166,6 +166,12 @@ export interface RunCanaryOpts {
   gate2Sources?: Gate2Source[];
   /** Browser env recorded verbatim into the report's `env` field. */
   env?: RenderCanaryEnv;
+  /** Familjer med faktisk @font-face-deklaration i MHTML (från
+   *  extractEmbeddedFamilies). Används som ghost-diskriminator: en familj som
+   *  failar gate1 `descriptor_missing` OCH inte finns i denna lista
+   *  klassificeras som ghost (freeze över-recordade) och tas ur `failures`.
+   *  Lämnas odefinierat → fail-closed: alla `descriptor_missing` blockerar. */
+  declaredFamilies?: string[];
 }
 
 export async function runRenderCanary(
