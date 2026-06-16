@@ -204,6 +204,17 @@ describe("harvestFontUrls — tokeniserings-grammatik", () => {
     expect((r[1] as { resolved: string }).resolved).toBe("https://cdn/b.woff");
   });
 
+  it("faceIndex spårar @font-face-blockets ordningsposition", () => {
+    const css = `
+      @font-face{font-family:"A";src:url(https://cdn/a.woff2)}
+      @font-face{font-family:"B";src:url(https://cdn/b.woff2), url(https://cdn/b2.woff2)}
+      @font-face{font-family:"C";src:url(https://cdn/c.woff2)}
+    `;
+    const r = harvestOf(css);
+    expect(r).toHaveLength(4);
+    expect(r.map((u) => u.faceIndex)).toEqual([0, 1, 1, 2]);
+  });
+
   it("format() / tech() argument exkluderas från token", () => {
     const r = harvestOf(
       `@font-face{font-family:"F";src:url(https://cdn/x.woff2) format("woff2") tech("variations")}`,
