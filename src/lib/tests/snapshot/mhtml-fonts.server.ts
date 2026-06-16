@@ -29,7 +29,12 @@
 // 36 woff2 files for hibob ≈ 200-500 KB, acceptable; correctness > size.
 
 import { randomUUID } from "node:crypto";
-import { iterateCssParts, harvestFontUrls } from "./harvest-font-urls";
+import {
+  iterateCssParts,
+  harvestFontUrls,
+  harvestAllFontUrls,
+  type HarvestedFontUrl,
+} from "./harvest-font-urls";
 
 const FONT_EXT_RE = /\.(woff2|woff|ttf|otf|eot)(?:\?[^)'"\s]*)?$/i;
 
@@ -268,6 +273,21 @@ export interface FontEmbedResult {
     reason: "no-base" | "invalid-base";
     partIndex: number;
   }>;
+  /** Commit 4 — Per-hink token-occurrence-räknare. OBS: dessa är
+   *  *token-occurrences*, INTE distinkta-på-resolved (replayUrls / urlToCid
+   *  dedupar, dessa inte). För antal-familjer/fetcher-mål använd
+   *  `embeddedFontCount` resp. `fetchRecords`/`fontUrlsSeen`. Här finns
+   *  observability per hink: hur ofta varje klass uppträder i den råa CSS:en. */
+  fontUrlSummary: {
+    embedded: number;
+    absolute: number;
+    relativeResolved: number;
+    unresolvable: Array<{
+      original: string;
+      reason: "no-base" | "invalid-base";
+      partIndex: number;
+    }>;
+  };
 }
 
 // Hostar som ALDRIG får användas som negativ kontrollprobe — de är diagnostik-mål
