@@ -399,6 +399,13 @@ for (const r of results) {
         `    hink 4 unresolvable    = ${r.unresolvableRelativeUrls.length} → unresolvable-font-urls.json`,
       );
     }
+    if (r.fontUrlSummary) {
+      const s = r.fontUrlSummary;
+      console.log(
+        `    fontUrlSummary         = embedded:${s.embedded} absolute:${s.absolute} relativeResolved:${s.relativeResolved} unresolvable:${s.unresolvable.length}  ` +
+          `(token-occurrences, INTE distinkta familjer)`,
+      );
+    }
     if (!r.harmonization.ok) {
       if (r.harmonization.onlyInP.length > 0) {
         console.log(`    onlyInP (fetcher missade):`);
