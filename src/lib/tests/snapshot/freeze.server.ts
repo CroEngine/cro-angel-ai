@@ -354,9 +354,13 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     const rawMhtmlBytes = Buffer.byteLength(snap.data, "utf8");
     report.capture.mhtmlKbBeforeFontEmbed = Math.round(rawMhtmlBytes / 1024);
 
-    // B2b §3: skriv pre-embed-MHTML bredvid den slutliga page.mhtml — diagnostik-
-    // passet i breadth-smoke läser detta för att harvest:a samma URL-set som
-    // embedMhtmlFonts såg (inte de redan cid:-rewrittna URL:erna i post-embed).
+    // Skriv page.pre-embed.mhtml FÖRE embedMhtmlFonts och FÖRE A2-gaten
+    // (samma receipt-före-throw-princip som report.capture.fontUrls). Korpusen
+    // blir då self-contained: input (pre-embed, externa font-URLer kvar) +
+    // output (post-embed, cid:-rewrittna) båda frusna. Re-embed är en
+    // deterministisk diff istället för ett live-re-capture, och Test 3 i
+    // harvest-font-urls.test.ts kan köra P==M consumption-equality på
+    // riktig korpus utan Playwright/Browserbase.
     if (!opts.dryRun) {
       writeFileSync(join(dir, "page.pre-embed.mhtml"), snap.data, "utf8");
     }
