@@ -69,7 +69,6 @@ export function iterateCssParts(mhtml: string): CssPart[] {
 // ---------------- @font-face-scopad URL-tokenizer ------------------------
 
 const FONT_FACE_BLOCK_RE = /@font-face\s*\{([^}]*)\}/gi;
-const SRC_DECL_GLOBAL_RE = /src\s*:\s*([^;}]+)/gi;
 
 // url(...) tokens, three accepted forms:
 //   url("...")     double-quoted; content = [^"]*
@@ -136,11 +135,12 @@ export function harvestFontUrls(
   const out: NormalizedFontUrl[] = [];
   for (const faceMatch of css.matchAll(FONT_FACE_BLOCK_RE)) {
     const faceBody = faceMatch[1];
-    for (const srcMatch of faceBody.matchAll(SRC_DECL_GLOBAL_RE)) {
-      const srcValue = srcMatch[1];
-      for (const token of tokensFromSrcValue(srcValue)) {
-        out.push(classify(token, contentLocation));
-      }
+    // @font-face descriptors per spec endast har url() inuti src: — så
+    // tokenisera direkt på face-body. Att gå via en separat
+    // `src: ([^;}]+)`-extraktion bryter på data:-URLs som innehåller `;`
+    // (t.ex. `data:font/woff2;base64,...`).
+    for (const token of tokensFromSrcValue(faceBody)) {
+      out.push(classify(token, contentLocation));
     }
   }
   return out;
