@@ -1,19 +1,27 @@
-# Kör testsviten och rapportera räknar-output
+## Plan: Verifiera Chromium-install i denna sandbox
 
-Kör i ordning, rapportera resultat:
+Claudes svar gäller hans container, inte min. Här finns repo + bun. Enda frågan: är `cdn.playwright.dev` blockerad också här, och finns systemlibs?
 
-1. **`bun tsc --noEmit`** — sanity (vi vet redan att det är rent, men billig dubbelkoll efter mode-switch).
+### Steg
 
-2. **`bunx vitest run src/lib/tests/scripts/__tests__/collect-visibility.test.ts`** — 6 tester ska passera (4 isVisible + 2 isSuspectOffFlow).
+1. **Försök installera Chromium**
+   ```
+   bunx playwright install chromium 2>&1 | tail -40
+   ```
+   - Om 403/host_not_allowed → samma blockad som Claude såg → hoppa till steg 3
+   - Om missing shared libs → försök `bunx playwright install-deps chromium` (kräver troligen sudo)
+   - Om OK → fortsätt steg 2
 
-3. **`bunx vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts`** — kör hubspot-replayen. Två observationer att rapportera:
-   - `[snapshot] hubspot: N off-flow suspects`-raden (förväntat N=0)
-   - Om diff: är det `suspectOffFlow`-fältet som dykt upp i golden? Om ja, lista selektorerna; annars är det en orelaterad regression och vi stannar för att utreda.
+2. **Kör snapshot.test.ts** (endast om steg 1 lyckas)
+   ```
+   bunx vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts 2>&1 | tail -60
+   ```
+   Rapportera `[snapshot] hubspot: N off-flow suspects`. Om N>0 → top-5 selektorer + fråga om `SNAPSHOT_UPDATE=1`.
 
-4. **Om suspects > 0:** logga selektorerna och låt användaren bestämma om vi ska
-   (a) rebaselina golden med `SNAPSHOT_UPDATE=1` (intentionellt — vi har första datapunkten), eller
-   (b) inspektera DOM:en för att avgöra om predikatet ska skärpas innan baseline frusas.
+3. **Om CDN/libs blockerar:** leverera konkret CI-patch
+   - Läs `.github/workflows/ci.yml`
+   - Föreslå konkret diff: lägg till `- run: bunx playwright install --with-deps chromium` efter bun-setup, före vitest-steget
+   - Bekräfta att lokal körning är snabbaste vägen för första datapunkten
 
-5. **Om suspects = 0 och ingen diff:** klart, vi har bekräftat att räknaren ger rätt signal på en ren sajt och är redo för korpus-expansion.
-
-Inga kodändringar i detta steg — endast körning + rapportering.
+### Inga kodändringar i steg 1–2
+CI-patch i steg 3 endast om du säger ja efter att jag visat förslaget.
