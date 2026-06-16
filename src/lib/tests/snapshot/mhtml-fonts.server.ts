@@ -573,11 +573,14 @@ export function reconcileFontUrlSets(
   return { ok: onlyInP.length === 0 && onlyInM.length === 0, onlyInP, onlyInM };
 }
 
-// För B2b-harvest behöver vi ALLA url(...) i src-deskriptorer för @font-face,
-// inte bara de med känd font-ext — annars tappar vi URL:er utan extension
-// (CDN:er som serverar woff2 utan filändelse) i tystnad.
-const ANY_HTTP_URL_RE = /url\(\s*(['"]?)(https?:\/\/[^)'"\s]+?)\1\s*\)/gi;
-const SRC_DECL_GLOBAL_RE = /src\s*:\s*([^;}]+)/gi;
+// Note: tidigare `ANY_HTTP_URL_RE` / `SRC_DECL_GLOBAL_RE` är borttagna.
+// Harvest sker nu via delade `iterateCssParts` + `harvestFontUrls` från
+// harvest-font-urls.ts — input-equality med extractFontFaceDiagnostics (P)
+// hålls by construction. CSS-rewrite efter fetch använder en lokal token-regex
+// som matchar samtliga url()-former (kvoterad/okvoterad) och slår upp på det
+// resolverade värdet i originalToResolved → urlToCid.
+const REWRITE_URL_TOKEN_RE =
+  /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s]+))\s*\)/gi;
 
 export async function embedMhtmlFonts(
   mhtmlRaw: string,
