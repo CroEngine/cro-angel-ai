@@ -21,18 +21,20 @@
 import { parseMhtml, qpDecode } from "./mhtml-fonts.server";
 
 export type NormalizedFontUrl =
-  | { kind: "embedded"; original: string }
-  | { kind: "absolute"; original: string; resolved: string }
+  | { kind: "embedded"; original: string; faceIndex: number }
+  | { kind: "absolute"; original: string; resolved: string; faceIndex: number }
   | {
       kind: "relative-resolved";
       original: string;
       resolved: string;
       base: string;
+      faceIndex: number;
     }
   | {
       kind: "relative-unresolvable";
       original: string;
       reason: "no-base" | "invalid-base";
+      faceIndex: number;
     };
 
 export interface CssPart {
@@ -91,14 +93,15 @@ function tokensFromSrcValue(srcValue: string): string[] {
 function classify(
   original: string,
   base: string | undefined,
+  faceIndex: number,
 ): NormalizedFontUrl {
   // Hink 1 — redan inlinead / cid-rewriten.
   if (/^data:/i.test(original) || /^cid:/i.test(original)) {
-    return { kind: "embedded", original };
+    return { kind: "embedded", original, faceIndex };
   }
   // Hink 2 — http(s)-absolut, ingen base behövs.
   if (/^https?:\/\//i.test(original)) {
-    return { kind: "absolute", original, resolved: original };
+    return { kind: "absolute", original, resolved: original, faceIndex };
   }
   // Hink 3 (eller 4 om base saknas) — protokoll-relativ + path-relativ.
   if (!base) {
@@ -106,6 +109,7 @@ function classify(
       kind: "relative-unresolvable",
       original,
       reason: "no-base",
+      faceIndex,
     };
   }
   let resolved: string;
@@ -116,9 +120,10 @@ function classify(
       kind: "relative-unresolvable",
       original,
       reason: "invalid-base",
+      faceIndex,
     };
   }
-  return { kind: "relative-resolved", original, resolved, base };
+  return { kind: "relative-resolved", original, resolved, base, faceIndex };
 }
 
 /**
@@ -133,6 +138,7 @@ export function harvestFontUrls(
   contentLocation: string | undefined,
 ): NormalizedFontUrl[] {
   const out: NormalizedFontUrl[] = [];
+  let faceIndex = 0;
   for (const faceMatch of css.matchAll(FONT_FACE_BLOCK_RE)) {
     const faceBody = faceMatch[1];
     // @font-face descriptors per spec endast har url() inuti src: — så
@@ -140,8 +146,9 @@ export function harvestFontUrls(
     // `src: ([^;}]+)`-extraktion bryter på data:-URLs som innehåller `;`
     // (t.ex. `data:font/woff2;base64,...`).
     for (const token of tokensFromSrcValue(faceBody)) {
-      out.push(classify(token, contentLocation));
+      out.push(classify(token, contentLocation, faceIndex));
     }
+    faceIndex++;
   }
   return out;
 }
