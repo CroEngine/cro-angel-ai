@@ -422,6 +422,7 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
             ...(f.gate2 ? { gate2: f.gate2 } : {}),
             diag: f.diag,
           })),
+          ...(canary.ghosts.length > 0 ? { ghosts: canary.ghosts } : {}),
         };
         // Runtime-validera FÖRE writeFileSync: en silent-fail map (t.ex. f.gate1
         // === undefined) skulle annars producera en trasig durabel artefakt.
@@ -439,8 +440,15 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       console.log(
         `[replay] canary expected=${canary.expected.length} ok=${canary.ok} ` +
           `missing=${canary.missing.length} unusedRegistered=${canary.unusedRegistered.length} ` +
+          `ghosts=${canary.ghosts.length} ` +
           `docFonts=${canary.diagnostics.documentFontsSize}/${canary.diagnostics.documentFontsLoaded}`,
       );
+      if (canary.ghosts.length > 0) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[replay] canary ghosts (non-blocking): ${canary.ghosts.join(", ")}`,
+        );
+      }
       if (!canary.ok) {
         throw new Error(
           `[replay] render-canary failed for ${name}: ${canary.failures.join("; ")}. ` +
