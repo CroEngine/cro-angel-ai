@@ -123,6 +123,7 @@ describe("harvestFontUrls — klassificering per hink", () => {
       original: "//cdn/x.woff2",
       resolved: "https://cdn/x.woff2",
       base: "https://example.com/main.css",
+      faceIndex: 0,
     });
   });
 
@@ -165,6 +166,7 @@ describe("harvestFontUrls — klassificering per hink", () => {
       kind: "relative-unresolvable",
       original: "/fonts/x.woff2",
       reason: "no-base",
+      faceIndex: 0,
     });
   });
 
@@ -177,6 +179,7 @@ describe("harvestFontUrls — klassificering per hink", () => {
       kind: "relative-unresolvable",
       original: "/fonts/x.woff2",
       reason: "invalid-base",
+      faceIndex: 0,
     });
   });
 });
