@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isVisible } from "../collect";
+import { isVisible, isSuspectOffFlow } from "../collect";
 
 // JSDOM gör ingen layout → getBoundingClientRect ger nollor och
 // getComputedStyle löser inte left:-9999px till en rekt. Vi driver
@@ -18,6 +18,7 @@ const cs = (o: CS = {}): CSSStyleDeclaration =>
     position: "static",
     clip: "auto",
     clipPath: "none",
+    textIndent: "0px",
     ...o,
   }) as CSSStyleDeclaration;
 
