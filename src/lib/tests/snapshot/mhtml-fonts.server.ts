@@ -634,11 +634,9 @@ export async function embedMhtmlFonts(
     controlProbes = { positive, negative };
   }
 
-  // Pass 1: identify CSS-ish parts via DELAD `iterateCssParts`. Detta är
-  // SAMMA primitiv som extractFontFaceDiagnostics (P) använder — input-equality
-  // by construction. För rewrite-pass behöver vi tillbaka-pekaren till
-  // parsed.parts (partIndex) och original encoding för re-encode.
-  const cssParts = iterateCssParts(mhtmlRaw);
+  // (Pass 1 nedan)
+
+
 
   // Pass 1: ETT producent-anrop till `harvestAllFontUrls` är källan både för
   // partitionering till embed-targets (hink 2 ∪ 3) och för
@@ -864,6 +862,8 @@ export async function embedMhtmlFonts(
     totalHarvestedOccurrences,
     controlProbes,
     unresolvableRelativeUrls,
+    fontUrlSummary,
   };
 }
+
 
