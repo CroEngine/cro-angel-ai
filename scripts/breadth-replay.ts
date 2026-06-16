@@ -31,13 +31,20 @@ for (const name of SITES) {
   const famPath = join(BREADTH_ROOT, name, "render-canary.families.json");
   if (existsSync(famPath)) {
     const fam = JSON.parse(readFileSync(famPath, "utf8")) as {
-      families: Array<{ family: string; registered: boolean; reason?: string }>;
+      families: Array<{
+        family: string;
+        gate1?: { pass: boolean; reason?: string };
+      }>;
     };
-    r.perFamily = fam.families;
+    r.perFamily = fam.families.map((f) => ({
+      family: f.family,
+      registered: f.gate1?.pass ?? false,
+      reason: f.gate1?.reason,
+    }));
     r.gate1Total = fam.families.length;
-    r.gate1Registered = fam.families.filter((f) => f.registered).length;
+    r.gate1Registered = r.perFamily.filter((f) => f.registered).length;
     const cls: Record<string, number> = {};
-    for (const f of fam.families) {
+    for (const f of r.perFamily) {
       const k = f.registered ? "OK" : (f.reason ?? "unknown");
       cls[k] = (cls[k] ?? 0) + 1;
     }
