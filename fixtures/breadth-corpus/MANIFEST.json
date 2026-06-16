@@ -1,0 +1,199 @@
+{
+  "frozenAt": "2026-06-16T18:41:54.925Z",
+  "totalBytes": 22012699,
+  "fileCount": 32,
+  "entries": [
+    {
+      "site": "intercom",
+      "file": "control-probes.json",
+      "bytes": 615,
+      "sha256": "f1709838082f330dade8c444f1df91cd35eace91b949eda5a590ca1a2b0ac8c0"
+    },
+    {
+      "site": "intercom",
+      "file": "face-diagnostics.json",
+      "bytes": 14616,
+      "sha256": "af45df5928f6314c4287931c112fb78d5391ce251d57f4a5a5a95373d5563309"
+    },
+    {
+      "site": "intercom",
+      "file": "font-fetch-records.json",
+      "bytes": 10122,
+      "sha256": "2fa984ea5173ca3adf8bed6be95b6da6bd5147e59522aad49e27428cda6c24db"
+    },
+    {
+      "site": "intercom",
+      "file": "freeze-report.json",
+      "bytes": 1131,
+      "sha256": "25996b33ad73c715449eaf6101cdccda5f93c32590359af2e51dfe4f1680e635"
+    },
+    {
+      "site": "intercom",
+      "file": "meta.json",
+      "bytes": 276,
+      "sha256": "1804dff4a2410bd9a4d8ec8a2e2ba8212d2a15a4b7670d971dde3b72c7b84b9f"
+    },
+    {
+      "site": "intercom",
+      "file": "page.mhtml",
+      "bytes": 5398151,
+      "sha256": "ddcd72e00948caee6cec3af37aa68c071cfde9ba89107ee8585855d8f23075f3"
+    },
+    {
+      "site": "intercom",
+      "file": "page.pre-embed.mhtml",
+      "bytes": 3620827,
+      "sha256": "9545024dcef9e28c085d5a3be1a700aa7bf74e6b1349f7931fe16523fac2c000"
+    },
+    {
+      "site": "intercom",
+      "file": "render-canary.families.json",
+      "bytes": 28545,
+      "sha256": "4f7a8989bc11620f141170e60d3580b4423d9779d0838b4b879d72b972a6c40d"
+    },
+    {
+      "site": "intercom",
+      "file": "render-canary.json",
+      "bytes": 34578,
+      "sha256": "cc495d055a91983a050d378a40d5404792bc01fd5f68482510340ac094242bf9"
+    },
+    {
+      "site": "intercom",
+      "file": "screenshot.jpg",
+      "bytes": 1202028,
+      "sha256": "2da8fe015a9f2b10504e2e2e2b7ead17d86fe4eb17d498b5bae21eaa2d45942a"
+    },
+    {
+      "site": null,
+      "file": "smoke-replay-results.json",
+      "bytes": 79141,
+      "sha256": "0a2080bf6821bfe19d86882fd66a975eea742ec5840d209cabe5762b47a83aa7"
+    },
+    {
+      "site": null,
+      "file": "smoke-results.json",
+      "bytes": 21446,
+      "sha256": "30ad6c4fcf37f306fb35cff2db6086253cd65088fe81dca37eba242de0d0b502"
+    },
+    {
+      "site": "stripe",
+      "file": "control-probes.json",
+      "bytes": 616,
+      "sha256": "7258b351d91a04329cb7a5bb26c99308362b4ef6d7bc009b6de8e9f866e26e67"
+    },
+    {
+      "site": "stripe",
+      "file": "face-diagnostics.json",
+      "bytes": 957,
+      "sha256": "cd47873326b4d2fec3b6e12efaed15737533e7095c80a403064497f5d401731d"
+    },
+    {
+      "site": "stripe",
+      "file": "font-fetch-records.json",
+      "bytes": 791,
+      "sha256": "c5b141c00bd6f2229759de84324d9d515dabff75fc90b182ef36dbe515e8262e"
+    },
+    {
+      "site": "stripe",
+      "file": "freeze-report.json",
+      "bytes": 939,
+      "sha256": "27c23947b0886465da4553c6e044f36e8d5e6804416f50beebfa4e7e446da2c9"
+    },
+    {
+      "site": "stripe",
+      "file": "meta.json",
+      "bytes": 268,
+      "sha256": "69851b87416bbfae3916f2c37f70b399feaa3e8eb9a8b770362e2a8cc900ec86"
+    },
+    {
+      "site": "stripe",
+      "file": "page.mhtml",
+      "bytes": 2386634,
+      "sha256": "4fae1f47f4fda1513554faa8e73d3b53573112568908d63e1c3ad597857efa8d"
+    },
+    {
+      "site": "stripe",
+      "file": "page.pre-embed.mhtml",
+      "bytes": 2289562,
+      "sha256": "644c16dc75ccf5cf151c5d707da603ec9cd45bfb60c2cdda72fb94dc018e6499"
+    },
+    {
+      "site": "stripe",
+      "file": "render-canary.families.json",
+      "bytes": 2051,
+      "sha256": "d8288ee6c0c0a9408d4d18a45710d9fe745fdb8461b031016a07ce6270046a3a"
+    },
+    {
+      "site": "stripe",
+      "file": "render-canary.json",
+      "bytes": 3262,
+      "sha256": "dbf6e9a1fda12e4cce34e666785d25c8f252e5a62f8a33620231e2084dd03d83"
+    },
+    {
+      "site": "stripe",
+      "file": "screenshot.jpg",
+      "bytes": 1085652,
+      "sha256": "00f20a5e9f277eba3939ab77e9d0b65333fec3d7145fc16a050b67e0409c171a"
+    },
+    {
+      "site": "vercel",
+      "file": "control-probes.json",
+      "bytes": 615,
+      "sha256": "41d9604ad06279adf66eacbf5e02791c1958bed3472ad2c190a9151408cf201f"
+    },
+    {
+      "site": "vercel",
+      "file": "face-diagnostics.json",
+      "bytes": 14537,
+      "sha256": "17338b41c67f60ee54f855b86c06ecb9e0b61647f8be4b85b00222150ca0ab43"
+    },
+    {
+      "site": "vercel",
+      "file": "font-fetch-records.json",
+      "bytes": 22965,
+      "sha256": "1060751ed5a3b05dc4459bdf068b92ace2b249a3b1fd2ca1b133e9259c9d3354"
+    },
+    {
+      "site": "vercel",
+      "file": "freeze-report.json",
+      "bytes": 1371,
+      "sha256": "20ef0a6dd0f5510c2176b5b2c19c1831f23d474d79e78ccdb62b054fe65a5c99"
+    },
+    {
+      "site": "vercel",
+      "file": "meta.json",
+      "bytes": 268,
+      "sha256": "dce68a5bdb4f255a8f7864346cf76b5563deddc457512940152c60fd82765913"
+    },
+    {
+      "site": "vercel",
+      "file": "page.mhtml",
+      "bytes": 3595174,
+      "sha256": "d7f31f0c5e6203de792de2011963b82118d90aac17dbb8658046afc8b63015a4"
+    },
+    {
+      "site": "vercel",
+      "file": "page.pre-embed.mhtml",
+      "bytes": 1695818,
+      "sha256": "6ac2b6a60f9a0eb92be96a33d9af45d08a8f97f8b908568a2ca2b29d7e664030"
+    },
+    {
+      "site": "vercel",
+      "file": "render-canary.families.json",
+      "bytes": 42764,
+      "sha256": "23adb0674c74c9bbdcec2db50d54d49cdb6dc9b18e39d645917371a2a3de6fa1"
+    },
+    {
+      "site": "vercel",
+      "file": "render-canary.json",
+      "bytes": 51350,
+      "sha256": "c264dfdb6abac808dd52f402de4ea89122cd9609ab5e433d8223a47b24607662"
+    },
+    {
+      "site": "vercel",
+      "file": "screenshot.jpg",
+      "bytes": 405629,
+      "sha256": "9cb1fbe7aa12edd5789450ec5159ec5f31389851bd1e1f1c582fc8df25cfa042"
+    }
+  ]
+}
