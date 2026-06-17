@@ -43,9 +43,13 @@ The determinism-check is the oracle that promotes
 | mechanism | presence-evidence | score-impact | confidence |
 |---|---|---|---|
 | Top-level `Date:` header | Chromium MHTML serializer, RFC 2557 | neutral | confirmed-by-design |
-| `boundary=` parameter in `Content-Type: multipart/related` | RFC 2557, per-snapshot random token | neutral | confirmed-by-design |
-| `Content-ID:` per part (e.g. `<frame-...@mhtml.blink>`) | Chromium synthesized per-part ID | neutral | confirmed-by-design |
+| `boundary=` parameter in `Content-Type: multipart/related` header | RFC 2557, per-snapshot random token | neutral | confirmed-by-design |
+| Body separator lines matching `^------MultipartBoundary--[A-Za-z0-9]+----$` | Body-side complement of the boundary= header param — same random token, repeated between parts | neutral | confirmed-drift (hubspot 2026-06-17) |
+| Inline body occurrences of `boundary="----MultipartBoundary--…----"` | Re-quoted boundary token inside body | neutral | confirmed-drift (hubspot 2026-06-17) |
+| `Content-ID:` header per part (e.g. `<frame-…@mhtml.blink>`) | Chromium synthesized per-part ID, per-snapshot random | neutral | confirmed-by-design |
+| `cid:<type>-<uuid>@mhtml.blink` references in body href/src | Body-side complement of the `Content-ID:` header — UUIDs rotate per snapshot. Extractor-neutral: cares about the referenced part's CONTENT, not its synthesized ID. | neutral | confirmed-drift (hubspot 2026-06-17 — widened from header-only to body references after observed AMBER/RED pair-diff) |
 | `Content-Location:` query params matching `/[?&](t\|ts\|cb\|v\|_\|cache\|version\|build)=[a-z0-9.-]+/i` | CDN cache-busting; see inventory `cdn-bust:hash-query` | neutral | confirmed-by-design |
+
 
 ### HTML body — per-session / per-request server output
 
