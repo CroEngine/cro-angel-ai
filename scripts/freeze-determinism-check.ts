@@ -21,6 +21,7 @@ import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 
 import { freezeSite } from "../src/lib/tests/snapshot/freeze.server";
+import { normalizeMhtml } from "../src/lib/tests/snapshot/mhtml-normalize";
 import { getSite } from "../corpus/sites";
 
 function arg(name: string): string | undefined {
@@ -44,41 +45,14 @@ if (!spec) {
 const outDir = join("fixtures", "determinism", name);
 mkdirSync(outDir, { recursive: true });
 
-// === A-priori whitelist (speglar fixtures/determinism/WHITELIST.md) ===
-// Om du ändrar något här MÅSTE du också uppdatera WHITELIST.md och vice versa.
-const MHTML_WHITELIST_LINE_PATTERNS: RegExp[] = [
-  /^Date:\s/i,
-  /^Content-Type: multipart\/related;\s*boundary=/i,
-  /^Content-ID:\s</i,
-  /^Content-Location:.*[?&](t|ts|cb|v|_|cache|version|build|hash)=/i,
-  // Body separator lines emitted by Chromium MHTML serializer between parts.
-  // Same RFC 2557 per-snapshot random mechanism as the boundary= header param.
-  /^------MultipartBoundary--[A-Za-z0-9]+----\s*$/,
-];
-// Strip-or-mask patterns applied per-line BEFORE diff. The cid:-reference
-// rewrite is the body-side complement of the Content-ID: header strip —
-// Chromium synthesizes a fresh UUID per part per snapshot, and any href/src
-// inside the body that points to a part rotates with it. Score-impact: neutral
-// (extractor doesn't care which cid a css/img part has, only its content).
-const HTML_ATTR_WHITELIST_PATTERNS: RegExp[] = [
-  /\bnonce="[^"]*"/g,
-  /\bdata-[a-z-]+-nonce="[^"]*"/g,
-  /<meta name="csrf-token" content="[^"]*">/gi,
-  /[?&](t|ts|cb|v|_|cache|version|build|hash)=[a-z0-9.-]+/gi,
-  // cid: references inside body — UUIDs rotate per snapshot with Content-ID headers.
-  /cid:[a-z0-9-]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@mhtml\.blink/gi,
-  // Boundary tokens that appear inline (e.g. inside Content-Type headers re-quoted in body).
-  /boundary="----MultipartBoundary--[A-Za-z0-9]+----"/g,
-  // HubSpot Laboratory experiment ID — envelope: meta-attr value only.
-  // Body-structure variance (tarpit-anchor at L213) is NOT masked — must surface as RED.
-  /<meta name="laboratory-identifier-[a-z]+" content="anon[0-9a-f]{32}">/gi,
-];
-
-
 // Mekanism-hints för diff-klassificering i AMBER/RED-utskriften. Hint-träff
 // betyder INTE auto-promotion till whitelist — det är en pekare för
 // reviewern: "denna line ser ut att komma från mekanism X, kolla om X
 // finns i WHITELIST.md eller borde läggas till".
+//
+// Whitelist-patterns och normalizeMhtml() lever nu i
+// src/lib/tests/snapshot/mhtml-normalize.ts (enhetstestat efter Block A:s
+// QP-encoding-fix; tidigare no-op'ade attribut-maskerna mot wire-shapen).
 const MECHANISM_HINTS: Array<{ name: string; re: RegExp }> = [
   { name: "session-token:hubspot-laboratory", re: /laboratory-identifier-/i },
   { name: "consent-cmp:onetrust", re: /optanon|data-domain-script|onetrust/i },
@@ -93,6 +67,9 @@ const MECHANISM_HINTS: Array<{ name: string; re: RegExp }> = [
   { name: "cdn-bust:filename-hash", re: /\.[a-f0-9]{8,}\.(js|css|woff2?|png|jpe?g|svg)/i },
   { name: "ads:googletag", re: /googletag|googlesyndication|pubads|prebid/i },
   { name: "session-recording", re: /_uxa|usabilla|fullstory|_hjSettings|hotjar|mouseflow|clarity/i },
+  // D1: animation:mid-frame-transform — capture-time variance, NOT a content/session driver.
+  // Hint only (no whitelist row); policy avvaktar Block B/C i plan v2.
+  { name: "animation:mid-frame-transform", re: /transform:\s*translate[XY]?\([^)]*-?\d+(\.\d+)?(px|%)\)/i },
 ];
 
 function classifyLine(line: string): string {
@@ -100,22 +77,7 @@ function classifyLine(line: string): string {
   return hits.length > 0 ? hits.join(",") : "unclassified";
 }
 
-function normalizeMhtml(raw: string): string {
-  // QP soft-line-break decode FIRST so multi-line wrapped attributes
-  // (e.g. cid:css-<UUID>@mhtml.blink split across 76-char QP rows) match the
-  // body patterns. Without this, the cid: regex only catches occurrences that
-  // happen to fall entirely within one QP row.
-  const joined = raw.replace(/=\r?\n/g, "");
-  return joined
-    .split(/\r?\n/)
-    .filter((line) => !MHTML_WHITELIST_LINE_PATTERNS.some((re) => re.test(line)))
-    .map((line) => {
-      let out = line;
-      for (const re of HTML_ATTR_WHITELIST_PATTERNS) out = out.replace(re, "<WHITELISTED>");
-      return out;
-    })
-    .join("\n");
-}
+
 
 
 interface DriftRow {
