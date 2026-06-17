@@ -1,8 +1,23 @@
+// PROVENIENS, EJ SCORE.
+// =====================================================================
+// PageSpeed Insights är capture-tidsmätt och render-beroende. Resultatet
+// FÅR renderas i UI som "observerat vid snapshot-tillfället" (proveniens),
+// men det FÅR ALDRIG viktas in i en jämförbar score-siffra. Annars dras
+// hela Chromium-pinning-treadmillen tillbaka via mät-miljön och A+C-kontraktet
+// (se src/lib/tests/extractor-version.ts) bryts.
+//
+// Reglerna:
+//   - Visa: ja, som metadata bredvid score.
+//   - Trenda: ja, för enskild URL över tid (med stora felmarginaler).
+//   - Aggregera in i score: ALDRIG.
+//   - Jämföra mellan sajter: ALDRIG (olika serverlast, region, nät, etc).
+
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 // Google PageSpeed Insights v5
 // Docs: https://developers.google.com/speed/docs/insights/v5/get-started
+
 
 const PSI_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed";
 const CATEGORIES = ["performance", "accessibility", "best-practices", "seo"] as const;
