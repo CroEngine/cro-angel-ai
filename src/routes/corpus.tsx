@@ -1,12 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
 import { useState } from "react";
 import { Download, FileJson, ChevronDown, ChevronRight, ExternalLink, Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { listCorpus, ARTIFACT_FILES, type ArtifactFile, type CorpusSite } from "@/lib/corpus.functions";
+import {
+  listCorpus,
+  getGoldenSummary,
+  ARTIFACT_FILES,
+  type ArtifactFile,
+  type CorpusSite,
+} from "@/lib/corpus.functions";
 
 const corpusQuery = queryOptions({
   queryKey: ["corpus"],
@@ -26,16 +32,12 @@ export const Route = createFileRoute("/corpus")({
 
 const JSON_FILES: ArtifactFile[] = ["golden.json", "meta.json", "freeze-report.json"];
 
-// id-preview--<uuid>.lovable.app gatear allt med Lovable-auth — även /api/public/*.
-// Stable preview-hosten project--<uuid>-dev.lovable.app respekterar bypasset,
-// så vi pekar download/img/fetch dit när vi körs i editor-iframen.
-function apiHost(): string {
-  if (typeof window === "undefined") return "";
-  const m = window.location.hostname.match(/^id-preview--([0-9a-f-]+)\.lovable\.app$/i);
-  return m ? `https://project--${m[1]}-dev.lovable.app` : "";
-}
-const apiUrl = (site: string, file: string) =>
-  `${apiHost()}/api/public/corpus/${site}/${file}`;
+// Binärer ligger under public/corpus/<site>/ — same-origin static asset.
+const binaryUrl = (site: string, file: "page.mhtml" | "screenshot.jpg") =>
+  `/corpus/${site}/${file}`;
+
+// JSON-artefakter går via worker-routen (läser ur build-time bundle).
+const jsonUrl = (site: string, file: ArtifactFile) => `/api/public/corpus/${site}/${file}`;
 
 function formatKb(bytes: number | null): string {
   if (bytes == null) return "—";
@@ -79,12 +81,24 @@ function SiteCard({ site }: { site: CorpusSite }) {
   const [downloading, setDownloading] = useState<ArtifactFile | null>(null);
   const meta = site.meta as { url?: string; captured_at?: string; viewport?: { width: number; height: number }; notes?: string } | null;
   const fr = site.freezeReport as any;
-  const g = site.goldenSummary;
+
+  const goldenExists = site.files["golden.json"].exists;
+  const summaryQuery = useQuery({
+    queryKey: ["corpus", site.name, "goldenSummary"],
+    queryFn: () => getGoldenSummary({ data: { name: site.name } }),
+    enabled: goldenExists,
+    staleTime: 5 * 60 * 1000,
+  });
+  const g = summaryQuery.data ?? null;
 
   const downloadArtifact = async (file: ArtifactFile) => {
     setDownloading(file);
     try {
-      const res = await fetch(`${apiUrl(site.name, file)}?download=1`);
+      const isBinary = file === "page.mhtml" || file === "screenshot.jpg";
+      const url = isBinary
+        ? binaryUrl(site.name, file)
+        : `${jsonUrl(site.name, file)}?download=1`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`Download failed: ${res.status}`);
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -123,9 +137,9 @@ function SiteCard({ site }: { site: CorpusSite }) {
             </div>
           </div>
           {site.files["screenshot.jpg"].exists && (
-            <a href={apiUrl(site.name, "screenshot.jpg")} target="_blank" rel="noopener noreferrer" className="block shrink-0">
+            <a href={binaryUrl(site.name, "screenshot.jpg")} target="_blank" rel="noopener noreferrer" className="block shrink-0">
               <img
-                src={apiUrl(site.name, "screenshot.jpg")}
+                src={binaryUrl(site.name, "screenshot.jpg")}
                 alt={`${site.name} screenshot`}
                 className="h-24 w-40 rounded border border-border object-cover object-top"
               />
@@ -148,18 +162,26 @@ function SiteCard({ site }: { site: CorpusSite }) {
           })}
         </div>
 
-        {/* Snabbsiffror */}
-        {g && (
+        {/* Snabbsiffror (lazy) */}
+        {goldenExists && (
           <div className="grid grid-cols-2 gap-3 rounded-md border border-border bg-muted/30 p-3 text-sm sm:grid-cols-3">
-            <Stat label="elements" value={g.elementCount} />
-            <Stat label="primary CTA (AF)" value={g.primaryCtaAboveFold} />
-            <Stat label="competing (AF)" value={g.competingAboveFold} />
-            <Stat label="H1" value={g.h1[0] ?? "—"} mono />
-            <Stat label="hero headline" value={g.heroHeadline ?? "—"} mono />
-            <Stat label="hero CTA" value={g.heroCtaText ? `${g.heroCtaText} (${g.heroCtaIntent ?? "?"})` : "—"} mono />
-            {g.title && <Stat label="<title>" value={g.title} mono className="sm:col-span-3" />}
-            {g.sectionOrder && g.sectionOrder.length > 0 && (
-              <Stat label="sectionOrder" value={g.sectionOrder.join(" → ")} mono className="sm:col-span-3" />
+            {summaryQuery.isLoading || !g ? (
+              <div className="sm:col-span-3 text-xs text-muted-foreground">
+                {summaryQuery.isLoading ? "laddar snabbsiffror…" : "—"}
+              </div>
+            ) : (
+              <>
+                <Stat label="elements" value={g.elementCount} />
+                <Stat label="primary CTA (AF)" value={g.primaryCtaAboveFold} />
+                <Stat label="competing (AF)" value={g.competingAboveFold} />
+                <Stat label="H1" value={g.h1[0] ?? "—"} mono />
+                <Stat label="hero headline" value={g.heroHeadline ?? "—"} mono />
+                <Stat label="hero CTA" value={g.heroCtaText ? `${g.heroCtaText} (${g.heroCtaIntent ?? "?"})` : "—"} mono />
+                {g.title && <Stat label="<title>" value={g.title} mono className="sm:col-span-3" />}
+                {g.sectionOrder && g.sectionOrder.length > 0 && (
+                  <Stat label="sectionOrder" value={g.sectionOrder.join(" → ")} mono className="sm:col-span-3" />
+                )}
+              </>
             )}
           </div>
         )}
@@ -244,7 +266,7 @@ function JsonInline({ site, file }: { site: string; file: ArtifactFile }) {
     if (next && content == null) {
       setLoading(true);
       try {
-        const res = await fetch(apiUrl(site, file));
+        const res = await fetch(jsonUrl(site, file));
         const text = await res.text();
         try {
           setContent(JSON.stringify(JSON.parse(text), null, 2));
