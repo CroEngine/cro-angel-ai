@@ -1,7 +1,7 @@
 # Mechanism Inventory — Auto-Generated
 
 > Source: `scripts/mechanism-inventory.ts` over `fixtures/drift-survey/**/page.mhtml`.
-> Generated: 2026-06-17T21:02:57.684Z
+> Generated: 2026-06-17T21:07:14.084Z
 > Scanned: 33 MHTML files. Skipped: 12.
 
 **This is a presence inventory, not drift evidence.** Two-freeze drift is only observed by `scripts/freeze-determinism-check.ts` (Grind 1).
@@ -22,6 +22,7 @@
 
 | Mechanism | score-impact | sites (n) | sample fragment |
 |---|---|---|---|
+| `ab:hubspot-laboratory` | sample-defining | 0 | — |
 | `ab:optimizely` | sample-defining | 1 | `optimizely` |
 | `ab:vwo` | sample-defining | 0 | — |
 | `ab:adobe-target` | sample-defining | 0 | — |
