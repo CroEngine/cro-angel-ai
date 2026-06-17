@@ -28,6 +28,8 @@ import type {
   TrustSignal,
   VisualHierarchyEntry,
 } from "../schema";
+import { EXTRACTOR_VERSION } from "../extractor-version";
+
 
 type RawPageAudit = Omit<
   PageAuditData,
