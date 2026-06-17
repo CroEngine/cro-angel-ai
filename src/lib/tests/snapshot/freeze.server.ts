@@ -150,8 +150,10 @@ interface FreezeReport {
     | "auth-gate"
     | "geo-gate"
     | "mhtml-too-large"
+    | "mhtml-capture-failed"
     | "font-embed-failed"
     | "unknown";
+
   /** Detaljer om varför assertCaptureValid failed. null när den inte körts eller passerade. */
   captureValidity: {
     ok: boolean;
