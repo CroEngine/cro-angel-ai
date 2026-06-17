@@ -37,6 +37,14 @@ const MECHANISMS: Mechanism[] = [
     note: "OneTrust CMP. Session-ID surfaces in attributes (optanon-*, data-domain-script). Extractor-neutral.",
   },
   {
+    id: "ab:hubspot-laboratory",
+    category: "A/B experimentation",
+    scoreImpact: "sample-defining",
+    patterns: [/laboratory-identifier|hs-laboratory|window\.hsLaboratory/i],
+    note: "HubSpot Laboratory framework. Per-session bucket ID in <meta name=laboratory-identifier-*>. Confirmed-drift via Grind 1 hubspot determinism-check (drives body structure variance at <body> open).",
+  },
+
+  {
     id: "consent-cmp:other",
     category: "consent / CMP",
     scoreImpact: "neutral",
