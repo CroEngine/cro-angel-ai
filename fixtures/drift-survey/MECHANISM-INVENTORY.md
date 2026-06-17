@@ -1,7 +1,7 @@
 # Mechanism Inventory — Auto-Generated
 
 > Source: `scripts/mechanism-inventory.ts` over `fixtures/drift-survey/**/page.mhtml`.
-> Generated: 2026-06-17T21:07:14.084Z
+> Generated: 2026-06-17T21:30:26.768Z
 > Scanned: 33 MHTML files. Skipped: 12.
 
 **This is a presence inventory, not drift evidence.** Two-freeze drift is only observed by `scripts/freeze-determinism-check.ts` (Grind 1).
@@ -18,11 +18,19 @@
 - **consent-cmp:other** (neutral) — Other CMPs (Usercentrics, Didomi, CookieYes, CookieLaw). Same shape as OneTrust.
   - Sites: cookie-wall-eu/dn, ecommerce/glossier, ecommerce/ikea-se, ecommerce/patagonia, ecommerce/rei, ecommerce/shopify-store-gymshark, i18n-routing/booking, i18n-routing/klarna, i18n-routing/spotify-se, i18n-routing/tradera, media/verge, saas-landing/loom, spa/spotify, spa/trello
 
+## session / security tokens
+
+| Mechanism | score-impact | sites (n) | sample fragment |
+|---|---|---|---|
+| `session-token:hubspot-laboratory` | neutral | 0 | — |
+| `session-token:csrf` | neutral | 0 | — |
+| `session-token:nonce` | neutral | 0 | — |
+
+
 ## A/B experimentation
 
 | Mechanism | score-impact | sites (n) | sample fragment |
 |---|---|---|---|
-| `ab:hubspot-laboratory` | sample-defining | 0 | — |
 | `ab:optimizely` | sample-defining | 1 | `optimizely` |
 | `ab:vwo` | sample-defining | 0 | — |
 | `ab:adobe-target` | sample-defining | 0 | — |
@@ -46,14 +54,6 @@
 
 - **ads:googletag** (sample-defining) — Google Ad Manager / Prebid / Amazon APS. Auction outcome varies per request.
   - Sites: i18n-routing/booking, i18n-routing/klarna, i18n-routing/tradera, media/verge
-
-## session / security tokens
-
-| Mechanism | score-impact | sites (n) | sample fragment |
-|---|---|---|---|
-| `session-token:csrf` | neutral | 0 | — |
-| `session-token:nonce` | neutral | 0 | — |
-
 
 ## CDN / build-hash artifacts
 
