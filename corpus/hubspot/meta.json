@@ -8,5 +8,7 @@
   },
   "consentSelector": "#hs-eu-confirmation-button",
   "consentInstruction": null,
-  "notes": "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort."
+  "notes": "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort.",
+  "pending-determinism": true,
+  "pending-reason": "Fails promotion criterion #3 (capture-determinism N>=3, 0 unexpected drift). Body-structure drift surfaces as RED post-Laboratory-row-narrowing — bot-tarpit anchor injection at L213 is heuristic/bot-score-driven, NOT in any whitelisted personalization slot. See fixtures/determinism/hubspot/diff.json round3 for full evidence. Files retained on disk as pre-promotion baseline for the future score-impact measurement workstream; NOT counted as a promoted corpus member."
 }

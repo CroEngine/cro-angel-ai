@@ -18,6 +18,7 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
 
 import { freezeSite } from "../src/lib/tests/snapshot/freeze.server";
 import { getSite } from "../corpus/sites";
@@ -68,6 +69,9 @@ const HTML_ATTR_WHITELIST_PATTERNS: RegExp[] = [
   /cid:[a-z0-9-]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@mhtml\.blink/gi,
   // Boundary tokens that appear inline (e.g. inside Content-Type headers re-quoted in body).
   /boundary="----MultipartBoundary--[A-Za-z0-9]+----"/g,
+  // HubSpot Laboratory experiment ID — envelope: meta-attr value only.
+  // Body-structure variance (tarpit-anchor at L213) is NOT masked — must surface as RED.
+  /<meta name="laboratory-identifier-[a-z]+" content="anon[0-9a-f]{32}">/gi,
 ];
 
 
@@ -76,6 +80,7 @@ const HTML_ATTR_WHITELIST_PATTERNS: RegExp[] = [
 // reviewern: "denna line ser ut att komma från mekanism X, kolla om X
 // finns i WHITELIST.md eller borde läggas till".
 const MECHANISM_HINTS: Array<{ name: string; re: RegExp }> = [
+  { name: "ab:hubspot-laboratory", re: /laboratory-identifier-/i },
   { name: "consent-cmp:onetrust", re: /optanon|data-domain-script|onetrust/i },
   { name: "consent-cmp:other", re: /usercentrics|didomi|cookieyes|cookielaw/i },
   { name: "ab:optimizely", re: /optimizely|optly/i },
@@ -188,12 +193,18 @@ const verdict =
       ? "AMBER: drift in 1 pair — READ DIFF BELOW before re-running with larger N (drift in known whitelist mechanism → widen whitelist; new field → RED)"
       : "RED: drift in >=2 pairs — whitelist incomplete or genuine non-determinism (read diff below; new whitelist row or real instability)";
 
+const whitelistPath = join("fixtures", "determinism", "WHITELIST.md");
+const whitelistSha = existsSync(whitelistPath)
+  ? createHash("sha256").update(readFileSync(whitelistPath)).digest("hex")
+  : "missing";
+
 const diff = {
   site: name,
   url: spec.url,
   ranAt: new Date().toISOString(),
   N,
-  whitelistVersion: "fixtures/determinism/WHITELIST.md (in-tree)",
+  whitelistVersion: `sha256:${whitelistSha}`,
+  whitelistPath,
   pairs,
   driftedPairCount: driftedPairs,
   verdict,

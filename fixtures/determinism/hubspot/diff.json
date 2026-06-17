@@ -3,26 +3,39 @@
   "url": "https://www.hubspot.com",
   "ranAt": "2026-06-17T21:05Z",
   "N": 3,
-  "whitelistVersion": "fixtures/determinism/WHITELIST.md (pre-Laboratory-row)",
+  "whitelistPath": "fixtures/determinism/WHITELIST.md",
   "round1": {
+    "whitelistVersion": "sha256:pre-cid-widening (pre-existing tree state, no recorded hash)",
     "driftedPairCount": 3,
     "driftCounts": [38427, 98325, 86300],
     "verdict": "RED",
     "rootCause": "MHTML body-side cid:<UUID>@mhtml.blink references + ------MultipartBoundary--…---- separators not whitelisted (only the Content-ID: header line and Content-Type header boundary= param were). Same RFC 2557 per-snapshot-random mechanism as the already-whitelisted header. Widened in commit: HTML_ATTR_WHITELIST_PATTERNS now masks cid:-refs and inline boundary=, MHTML_WHITELIST_LINE_PATTERNS now drops body separator lines; normalize step now joins QP soft-line-breaks first so wrapped UUIDs match."
   },
   "round2_reEval_without_refreeze": {
+    "whitelistVersion": "sha256:pre-Laboratory-row (pre-existing tree state, no recorded hash)",
     "driftedPairCount": 3,
     "driftCounts": [74355, 74356, 63734],
     "verdict": "RED",
     "rootCause": "Residual drift dominated by HubSpot Laboratory experiment ID — <meta name=\"laboratory-identifier-other\" content=\"anon<32hex>\"> rotates per session (L212), driving body-structure variance at L213 (one freeze starts <body> with <div id=hs-web-interactives-…>; another inserts a hidden bot-tarpit <a tabindex=-1 aria-hidden=true>). The line-shift cascade after L213 explains the inflated drift count — most lines past L213 differ only by index shift, not content. The hint regex correctly flagged 'unclassified' because Laboratory was not in MECHANISM_HINTS."
   },
-  "verdict": "RED (read evidence-driven)",
-  "interpretation": "Hubspot has a confirmed sample-defining mechanism: HubSpot Laboratory (epistemic class: A/B-bucket per session, similar to Optimizely). This was NOT in the mechanism inventory because the survey was a single-capture-per-site presence scan and per-session anonymous IDs are only visible across captures. The user pre-warned this would happen and the right read is 'known axis we should have listed' (now listed in fixtures/determinism/WHITELIST.md as confirmed-drift), NOT 'hubspot is non-deterministic'.",
+  "round3_post_narrowing": {
+    "whitelistVersion": "sha256:52f1bc3b77525477514c8007f4294b01fb351cab7a427185ddb29c2b57bab975",
+    "whitelistRowsChanged": [
+      "Laboratory row narrowed: envelope is now <meta name=\"laboratory-identifier-*\" content=\"anon<32hex>\"> attribute value ONLY. Body-structure clause removed.",
+      "scripts/freeze-determinism-check.ts: HTML_ATTR_WHITELIST_PATTERNS gained a laboratory-identifier meta-attr mask; MECHANISM_HINTS gained ab:hubspot-laboratory so future runs classify L212/L213 explicitly."
+    ],
+    "evaluationMode": "logical re-evaluation against round2's recorded line-level diff (only run-0 MHTML is stashed; round3 cannot do a full pairwise re-freeze without a fresh N=3 Browserbase capture).",
+    "verdict": "RED (expected)",
+    "rootCause": "Laboratory-meta-attr drift at L212 is now masked → does not contribute. Body-structure drift at L213 (presence/absence of <a tabindex=-1 aria-hidden=true opacity:0.01> bot-tarpit anchor as direct child of <body>) is NOT whitelisted by the narrowed row and is NOT inside any identified personalization slot, so it surfaces as RED per the 'What is NOT whitelisted' rule. The L213+ line-shift cascade remains. Hint output for L213 will classify as 'unclassified' (no MECHANISM_HINTS entry for bot-tarpit injection — by design; injection is heuristic/bot-score-driven, not a documented mechanism).",
+    "consequence": "Hubspot fails capture-determinism (promotion criterion #3 in corpus/README.md). corpus/hubspot/ MUST be flagged pending-determinism. Re-promotion requires either (a) a fresh N=3 freeze where the bot-tarpit anchor is absent across all runs, or (b) a separate workstream that measures whether the score consumes body-structure variance — if score is invariant under the tarpit-anchor toggle, the variance is sample-defining-but-score-neutral and can be re-whitelisted with explicit envelope + evidence."
+  },
+  "verdict": "RED (read evidence-driven; body-structure drift remains unwhitelisted post-narrowing)",
+  "interpretation": "Hubspot has TWO distinct sources of session-variance: (1) HubSpot Laboratory experiment ID — a-priori benign session token, now narrowly whitelisted by attribute-value envelope; (2) bot-tarpit anchor injection — heuristic/bot-score-driven, NOT bucket-deterministic for the same client, categorically distinct from Optimizely-style A/B and NOT a personalization slot. Source (2) keeps hubspot in RED until either source (2) stops varying across captures or score-impact is measured to be zero.",
   "implications": [
-    "MHTML transport-layer whitelist widened in scripts/freeze-determinism-check.ts and locked in WHITELIST.md.",
-    "HubSpot Laboratory added to WHITELIST.md as confirmed-drift, sample-defining.",
-    "scripts/mechanism-inventory.ts gains a 'ab:hubspot-laboratory' row so a fresh survey re-scan would catch it.",
-    "Hubspot may not be a clean golden-bearing corpus member if the scored extractor consumes body structure variance from the laboratory bucket. Determining that requires running the extractor on the 3 stashed MHTMLs and comparing field-level — separate workstream, beyond Grind 0 closeout."
+    "MHTML transport-layer whitelist widened in scripts/freeze-determinism-check.ts and locked in WHITELIST.md (rounds 1-2).",
+    "HubSpot Laboratory row narrowed in WHITELIST.md (round 3) — attribute-value envelope only, body-structure clause removed.",
+    "corpus/hubspot/ flagged pending-determinism in meta.json with pointer to this diff as evidence.",
+    "Score-impact measurement of bot-tarpit anchor on the 3 stashed MHTMLs remains a separate workstream — prerequisite for any re-promotion of hubspot to a clean golden-bearing corpus member."
   ],
   "stashed": "fixtures/determinism/hubspot/run-0.mhtml (one of the 3 freezes preserved for offline re-evaluation)"
 }
