@@ -276,6 +276,24 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
 
     await page.setViewportSize(FREEZE_VIEWPORT.width, FREEZE_VIEWPORT.height);
 
+    // A+C proveniens: stämpla capture-env. Best-effort — om browser.version()
+    // inte är tillgänglig hamnar null där, vilket också är information ("vi
+    // visste inte vid frystidpunkten").
+    let chromiumVersion: string | null = null;
+    try {
+      const browser = stagehand.context.browser();
+      if (browser) chromiumVersion = browser.version();
+    } catch {
+      /* best-effort proveniens */
+    }
+    report.env = {
+      source: "browserbase",
+      chromiumVersion,
+      viewport: { width: FREEZE_VIEWPORT.width, height: FREEZE_VIEWPORT.height },
+      frozenAt: new Date().toISOString(),
+    };
+
+
     const tGoto = Date.now();
     await page.goto(opts.url, { waitUntil: "load", timeoutMs: 60_000 });
     await new Promise((r) => setTimeout(r, 1500));
