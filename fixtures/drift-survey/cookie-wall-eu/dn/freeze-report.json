@@ -1,0 +1,80 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 6371,
+    "screenshotKb": 2321,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 44,
+    "mhtmlKbBeforeFontEmbed": 1923,
+    "fontFetchFailures": [
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSansItalic-1-500-BoldItalic.woff2",
+        "error": "HTTP 404"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSansItalic-1-500-RegularItalic.woff2",
+        "error": "HTTP 404"
+      }
+    ],
+    "embeddedFamilies": [
+      "BNSans",
+      "DNSans",
+      "DNSansVF",
+      "DNSerif",
+      "DNSerifVF",
+      "DNSerifVf",
+      "Inter",
+      "KrakenOverrides",
+      "PublicoBanner",
+      "PublicoText",
+      "Siri",
+      "VideoJS"
+    ],
+    "fontUrls": {
+      "embedded": 2,
+      "absolute": 4,
+      "relativeResolved": 49,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:31:21.250Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 18936,
+    "interactiveCount": 316,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 7568,
+    "consentMs": 0,
+    "scrollMs": 4982,
+    "captureMs": 4443
+  }
+}

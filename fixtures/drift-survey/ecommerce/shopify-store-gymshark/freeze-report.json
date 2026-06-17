@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 6147,
+    "screenshotKb": 779,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 28,
+    "mhtmlKbBeforeFontEmbed": 5299,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Anton",
+      "Bebas Neue",
+      "Druk Condensed Super",
+      "Montserrat",
+      "Roboto",
+      "gymshark-icons",
+      "slick"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 24,
+      "relativeResolved": 4,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:27:59.828Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 7672,
+    "interactiveCount": 438,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 19686,
+    "consentMs": 0,
+    "scrollMs": 4846,
+    "captureMs": 3350
+  }
+}

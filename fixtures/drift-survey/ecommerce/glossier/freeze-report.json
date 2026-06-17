@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 4419,
+    "screenshotKb": 512,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 107,
+    "mhtmlKbBeforeFontEmbed": 1963,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Apercu",
+      "Apercu Mono",
+      "Apercu Pro",
+      "Inter",
+      "Kanit",
+      "Kanit-Klaviyo-Hosted",
+      "Nunito Sans",
+      "Poppins",
+      "Poppins-Klaviyo-Hosted"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 147,
+      "relativeResolved": 18,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:28:32.594Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 4889,
+    "interactiveCount": 435,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 19614,
+    "consentMs": 0,
+    "scrollMs": 9423,
+    "captureMs": 3270
+  }
+}

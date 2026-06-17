@@ -1,0 +1,16 @@
+{
+  "url": "https://www.ikea.com/se/sv/",
+  "name": "ecommerce__ikea-se",
+  "captured_at": "2026-06-17T20:29:17.963Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "drift-survey 2026-06-17T20:28:47.246Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-17T20:29:17.963Z",
+  "expiresAt": "2026-09-15T20:29:17.963Z",
+  "refreezeReason": "manual"
+}

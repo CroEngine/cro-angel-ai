@@ -1,0 +1,88 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 32079,
+    "screenshotKb": 560,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 123,
+    "mhtmlKbBeforeFontEmbed": 19449,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "8Bit",
+      "ABC Ginto Discord",
+      "ABC Ginto Nord",
+      "ABC Ginto Nord Discord",
+      "ABC Ginto Normal",
+      "ABCGintoNormal-Bold",
+      "Abcgintodiscord",
+      "Abcgintodiscordnord",
+      "Abcgintodiscordnord-italic",
+      "Abcgintonord 800",
+      "Corinthia",
+      "Delicious Handrawn",
+      "Fraunces",
+      "Ggsans",
+      "Ggsansmono",
+      "Jellybean",
+      "Medieval",
+      "Modern",
+      "Munro",
+      "Noto Sans",
+      "Poppins",
+      "Press Start 2P",
+      "Sakura",
+      "Source Code Pro",
+      "Tempo",
+      "Vampyre",
+      "gg mono",
+      "gg sans",
+      "webflow-icons"
+    ],
+    "fontUrls": {
+      "embedded": 1,
+      "absolute": 95,
+      "relativeResolved": 51,
+      "unresolvable": []
+    },
+    "externalized": true,
+    "externalAssetUrl": "https://id-preview--f735eb0f-0dbe-4418-9b92-2027027d131b.lovable.app/__l5e/assets-v1/f7b6ce63-827e-4948-9892-9143e70acf22/page.mhtml.txt",
+    "externalAssetSha256": "6f9385f28c629c50c2e9d3769dec4d5db45c8c290fa6c022c80f2dc58999210f",
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:30:09.344Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 2116,
+    "interactiveCount": 137,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 8651,
+    "consentMs": 0,
+    "scrollMs": 9338,
+    "captureMs": 14131
+  }
+}

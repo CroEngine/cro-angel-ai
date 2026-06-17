@@ -1,0 +1,155 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 16401,
+    "screenshotKb": 643,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 76,
+    "mhtmlKbBeforeFontEmbed": 3022,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Ghost",
+      "Hiragino Kaku Gothic ProN",
+      "Inter",
+      "Inter var",
+      "Roboto",
+      "TWK Lausanne",
+      "asanaIcons",
+      "haptik",
+      "pp-editorial",
+      "proxima-nova"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 38,
+      "relativeResolved": 38,
+      "unresolvable": [
+        {
+          "original": "/fonts/haptik/haptik-regular.woff",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/haptik/haptik-light.woff",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/proxima-nova/proxima-nova-reg.woff",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/proxima-nova/proxima-nova-bold.woff",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/asana-icons/asana-icons.woff",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/pp-editorial-new/PPEditorialNew-Regular.woff",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/roboto/Roboto-Medium.ttf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/ghost/Ghost-Medium.otf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/lausanne/TWKLausanne-250.otf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/lausanne/TWKLausanne-300.otf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/lausanne/TWKLausanne-350.otf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/lausanne/TWKLausanne-400.otf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/lausanne/TWKLausanne-450.otf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/lausanne/TWKLausanne-500.otf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/lausanne/TWKLausanne-550.otf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/hiragino-kaku-gothic-pron/Hiragino-Kaku-Gothic-ProN-W3.ttf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        },
+        {
+          "original": "/fonts/hiragino-kaku-gothic-pron/Hiragino-Kaku-Gothic-ProN-W6.ttf",
+          "reason": "invalid-base",
+          "partIndex": 313
+        }
+      ]
+    },
+    "externalized": true,
+    "externalAssetUrl": "https://id-preview--f735eb0f-0dbe-4418-9b92-2027027d131b.lovable.app/__l5e/assets-v1/39684e66-b336-478f-8d86-233cd065581c/page.mhtml.txt",
+    "externalAssetSha256": "a596e46e79d6c16b141543961e9781220d8ea38b4cdef4d979bb88e8326a3538",
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:29:56.046Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 5487,
+    "interactiveCount": 226,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 20170,
+    "consentMs": 0,
+    "scrollMs": 15995,
+    "captureMs": 23376
+  }
+}

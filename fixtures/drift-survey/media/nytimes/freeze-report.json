@@ -1,0 +1,121 @@
+{
+  "ok": false,
+  "error": "[freeze] A2 gate: externalFontSrcCount=3 after rewrite (embedded=392, failures=3). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Inspect freeze-report.json fontFetchFailures.",
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 165321,
+    "screenshotKb": 0,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 3,
+    "embeddedFontCount": 392,
+    "mhtmlKbBeforeFontEmbed": 11733,
+    "fontFetchFailures": [
+      {
+        "url": "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.ttf",
+        "error": "HTTP 404"
+      },
+      {
+        "url": "https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.8a4b4c857c657c3ca62ebbcdd26d2698.ttf",
+        "error": "HTTP 404"
+      },
+      {
+        "url": "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff",
+        "error": "HTTP 404"
+      }
+    ],
+    "embeddedFamilies": [
+      "&quot",
+      "Archivo",
+      "Bai Jamjuree",
+      "Cormorant",
+      "Figtree",
+      "Fraunces",
+      "Inter",
+      "Montserrat",
+      "Noto Sans",
+      "Poppins",
+      "Roboto",
+      "STIX Two Text",
+      "Sofia Sans Condensed",
+      "Source Sans Pro",
+      "SpecsSans-Medium",
+      "nyt-athletic-slab",
+      "nyt-cheltenham",
+      "nyt-cheltenham-cond",
+      "nyt-cheltenham-scaps",
+      "nyt-cheltenham-small",
+      "nyt-cheltenham-text-cond",
+      "nyt-cheltenham-wide",
+      "nyt-cheltenham-xcond",
+      "nyt-fact",
+      "nyt-fact-deck",
+      "nyt-fact-deck-condensed",
+      "nyt-fact-display",
+      "nyt-fact-display-condensed",
+      "nyt-franklin",
+      "nyt-franklin-condensed",
+      "nyt-franklin-cword",
+      "nyt-franklin-small",
+      "nyt-franklin-tv",
+      "nyt-ibm-plex",
+      "nyt-imperial",
+      "nyt-karnak",
+      "nyt-karnak-cond",
+      "nyt-karnak-small",
+      "nyt-kippenberger",
+      "nyt-kippenberger-condensed",
+      "nyt-kippenberger-poster",
+      "nyt-magsans",
+      "nyt-magserif",
+      "nyt-magslab",
+      "nyt-schnyder-s",
+      "nyt-schnyder-scond",
+      "ta-review",
+      "ta-review-condensed",
+      "ta-review-poster"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 444,
+      "relativeResolved": 260,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:29:22.719Z"
+  },
+  "failureClass": "font-embed-failed",
+  "captureValidity": {
+    "ok": true,
+    "textLen": 21148,
+    "interactiveCount": 1066,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 46613,
+    "consentMs": 0,
+    "scrollMs": 7443,
+    "captureMs": 0
+  }
+}

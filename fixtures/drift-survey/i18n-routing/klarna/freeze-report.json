@@ -1,0 +1,65 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 3184,
+    "screenshotKb": 573,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 39,
+    "mhtmlKbBeforeFontEmbed": 1616,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Barlow",
+      "Klarna Text",
+      "Klarna Title",
+      "Lato",
+      "Roboto Condensed",
+      "Roboto Condensed Title"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 16,
+      "relativeResolved": 23,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:30:29.547Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 11449,
+    "interactiveCount": 193,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 19557,
+    "consentMs": 0,
+    "scrollMs": 4842,
+    "captureMs": 3555
+  }
+}
