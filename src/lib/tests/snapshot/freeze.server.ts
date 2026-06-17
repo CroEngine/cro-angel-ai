@@ -281,11 +281,19 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     // visste inte vid frystidpunkten").
     let chromiumVersion: string | null = null;
     try {
-      const browser = stagehand.context.browser();
-      if (browser) chromiumVersion = browser.version();
+      // Stagehand v3 doesn't expose .browser() on its Context shim; reach via
+      // any-cast since this is best-effort proveniens, not gating.
+      const ctxAny = stagehand.context as unknown as {
+        browser?: () => { version: () => string } | null;
+      };
+      const browser = typeof ctxAny.browser === "function" ? ctxAny.browser() : null;
+      if (browser && typeof browser.version === "function") {
+        chromiumVersion = browser.version();
+      }
     } catch {
       /* best-effort proveniens */
     }
+
     report.env = {
       source: "browserbase",
       chromiumVersion,
