@@ -1,0 +1,16 @@
+{
+  "url": "https://www.patagonia.com",
+  "name": "ecommerce__patagonia",
+  "captured_at": "2026-06-17T20:28:26.698Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "drift-survey 2026-06-17T20:27:59.911Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-17T20:28:26.698Z",
+  "expiresAt": "2026-09-15T20:28:26.698Z",
+  "refreezeReason": "manual"
+}

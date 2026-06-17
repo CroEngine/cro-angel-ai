@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 4688,
+    "screenshotKb": 100,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 48,
+    "mhtmlKbBeforeFontEmbed": 2094,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Ester Blenda",
+      "Forsberg",
+      "NSI",
+      "Schibsted Grotesk",
+      "Sueca Hd",
+      "Sueca Text",
+      "Sueca Tx",
+      "SuecaWeb Hd",
+      "SvD Ester Blenda"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 41,
+      "relativeResolved": 18,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:31:21.150Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 3129,
+    "interactiveCount": 133,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 9024,
+    "consentMs": 0,
+    "scrollMs": 4721,
+    "captureMs": 2606
+  }
+}

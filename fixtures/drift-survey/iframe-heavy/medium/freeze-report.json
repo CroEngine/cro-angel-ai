@@ -1,0 +1,53 @@
+{
+  "ok": false,
+  "error": "[freeze] captured-wrong-page (iframe-heavy__medium): text-too-short. text=229ch interactive=25 heroHeading=true challengeMarkers=[]",
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 0,
+    "screenshotKb": 0,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": null,
+    "embeddedFontCount": null,
+    "mhtmlKbBeforeFontEmbed": null,
+    "fontFetchFailures": null,
+    "embeddedFamilies": null,
+    "fontUrls": null,
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:31:37.124Z"
+  },
+  "failureClass": "captured-wrong-page",
+  "captureValidity": {
+    "ok": false,
+    "textLen": 229,
+    "interactiveCount": 25,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": "text-too-short"
+  },
+  "timing": {
+    "gotoMs": 7244,
+    "consentMs": 0,
+    "scrollMs": 4639,
+    "captureMs": 0
+  }
+}

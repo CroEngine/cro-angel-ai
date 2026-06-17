@@ -33,3 +33,12 @@ dist-ssr
 corpus/**/screenshot.before-dismiss.jpg
 
 corpus/**/render-canary.json
+
+# Grind 0/2 transient survey outputs — research artifacts, not corpus goldens.
+# Re-generera via scripts/drift-survey.ts resp. scripts/freeze-breadth.ts.
+fixtures/drift-survey/**/page.mhtml
+fixtures/drift-survey/**/page.pre-embed.mhtml
+fixtures/drift-survey/**/screenshot.jpg
+fixtures/breadth-50/**/page.mhtml
+fixtures/breadth-50/**/page.pre-embed.mhtml
+fixtures/breadth-50/**/screenshot.jpg

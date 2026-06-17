@@ -45,21 +45,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-17T20:25:33.720Z"
+    "frozenAt": "2026-06-17T20:27:34.258Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 7499,
+    "textLen": 7508,
     "interactiveCount": 285,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 7426,
+    "gotoMs": 12769,
     "consentMs": 0,
-    "scrollMs": 5098,
-    "captureMs": 2678
+    "scrollMs": 4737,
+    "captureMs": 2751
   }
 }

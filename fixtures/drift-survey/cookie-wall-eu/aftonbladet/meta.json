@@ -1,0 +1,16 @@
+{
+  "url": "https://www.aftonbladet.se",
+  "name": "cookie-wall-eu__aftonbladet",
+  "captured_at": "2026-06-17T20:31:43.602Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "drift-survey 2026-06-17T20:31:21.545Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-17T20:31:43.602Z",
+  "expiresAt": "2026-09-15T20:31:43.602Z",
+  "refreezeReason": "manual"
+}

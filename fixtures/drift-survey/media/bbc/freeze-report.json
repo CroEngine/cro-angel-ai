@@ -1,0 +1,53 @@
+{
+  "ok": false,
+  "error": "-32000 Failed to generate MHTML",
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 0,
+    "screenshotKb": 0,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": null,
+    "embeddedFontCount": null,
+    "mhtmlKbBeforeFontEmbed": null,
+    "fontFetchFailures": null,
+    "embeddedFamilies": null,
+    "fontUrls": null,
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:29:14.210Z"
+  },
+  "failureClass": "unknown",
+  "captureValidity": {
+    "ok": true,
+    "textLen": 14045,
+    "interactiveCount": 286,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 10647,
+    "consentMs": 0,
+    "scrollMs": 8506,
+    "captureMs": 0
+  }
+}

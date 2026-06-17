@@ -11,12 +11,12 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 9437,
+    "mhtmlKb": 9344,
     "screenshotKb": 0,
     "beforeDismissScreenshotPath": null,
     "externalFontSrcCount": 2,
     "embeddedFontCount": 72,
-    "mhtmlKbBeforeFontEmbed": 3033,
+    "mhtmlKbBeforeFontEmbed": 2940,
     "fontFetchFailures": [
       {
         "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff",
@@ -61,21 +61,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-17T20:25:49.217Z"
+    "frozenAt": "2026-06-17T20:27:37.707Z"
   },
   "failureClass": "font-embed-failed",
   "captureValidity": {
     "ok": true,
-    "textLen": 3020,
+    "textLen": 3026,
     "interactiveCount": 212,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 5994,
+    "gotoMs": 5505,
     "consentMs": 0,
-    "scrollMs": 6926,
+    "scrollMs": 5887,
     "captureMs": 0
   }
 }

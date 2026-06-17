@@ -1,0 +1,16 @@
+{
+  "url": "https://trello.com",
+  "name": "spa__trello",
+  "captured_at": "2026-06-17T20:30:02.995Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "drift-survey 2026-06-17T20:29:37.633Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-17T20:30:02.995Z",
+  "expiresAt": "2026-09-15T20:30:02.995Z",
+  "refreezeReason": "manual"
+}

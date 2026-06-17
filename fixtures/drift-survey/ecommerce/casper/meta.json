@@ -1,0 +1,16 @@
+{
+  "url": "https://casper.com",
+  "name": "ecommerce__casper",
+  "captured_at": "2026-06-17T20:28:58.542Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "drift-survey 2026-06-17T20:28:21.211Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-17T20:28:58.542Z",
+  "expiresAt": "2026-09-15T20:28:58.542Z",
+  "refreezeReason": "manual"
+}

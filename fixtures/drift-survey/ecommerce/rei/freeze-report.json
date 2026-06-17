@@ -1,0 +1,95 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 6680,
+    "screenshotKb": 889,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 0,
+    "mhtmlKbBeforeFontEmbed": 6680,
+    "fontFetchFailures": [
+      {
+        "url": "https://www.rei.com/satchel/media/font-optimized/Stuart/REIStuart-VF-Web-Subset.woff2",
+        "error": "timeout"
+      },
+      {
+        "url": "https://www.rei.com/satchel/media/font-optimized/Stuart/REIStuartWebItalics-VF-Web-Subset.woff2",
+        "error": "timeout"
+      },
+      {
+        "url": "https://www.rei.com/satchel/media/font-optimized/Graphik/Graphik-VF-Web-Subset.woff2",
+        "error": "timeout"
+      },
+      {
+        "url": "https://www.rei.com/satchel/media/font-optimized/Graphik/GraphikWebItalic-VF-Web-Subset.woff2",
+        "error": "timeout"
+      },
+      {
+        "url": "https://www.rei.com/satchel/media/font-optimized/Pressura/gt-pressura-mono-regular.woff2",
+        "error": "timeout"
+      },
+      {
+        "url": "https://www.rei.com/satchel/media/font-optimized/Pressura/gt-pressura-mono-regular.woff",
+        "error": "timeout"
+      },
+      {
+        "url": "https://www.rei.com/satchel/media/font-optimized/Pressura/gt-pressura-mono-bold.woff2",
+        "error": "timeout"
+      },
+      {
+        "url": "https://www.rei.com/satchel/media/font-optimized/Pressura/gt-pressura-mono-bold.woff",
+        "error": "timeout"
+      }
+    ],
+    "embeddedFamilies": [
+      "Graphik",
+      "Pressura",
+      "Stuart"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 0,
+      "relativeResolved": 60,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:28:43.641Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 7709,
+    "interactiveCount": 1203,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 7536,
+    "consentMs": 0,
+    "scrollMs": 9679,
+    "captureMs": 14436
+  }
+}

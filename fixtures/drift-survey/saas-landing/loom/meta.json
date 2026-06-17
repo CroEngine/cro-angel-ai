@@ -1,16 +1,16 @@
 {
   "url": "https://www.loom.com",
   "name": "saas-landing__loom",
-  "captured_at": "2026-06-17T20:26:17.327Z",
+  "captured_at": "2026-06-17T20:27:59.503Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "drift-survey 2026-06-17T20:25:50.015Z",
+  "notes": "drift-survey 2026-06-17T20:27:37.138Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-17T20:26:17.327Z",
-  "expiresAt": "2026-09-15T20:26:17.327Z",
+  "frozenAt": "2026-06-17T20:27:59.503Z",
+  "expiresAt": "2026-09-15T20:27:59.503Z",
   "refreezeReason": "manual"
 }

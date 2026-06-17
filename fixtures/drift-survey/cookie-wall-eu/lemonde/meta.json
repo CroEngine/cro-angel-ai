@@ -1,0 +1,16 @@
+{
+  "url": "https://www.lemonde.fr",
+  "name": "cookie-wall-eu__lemonde",
+  "captured_at": "2026-06-17T20:31:20.441Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "drift-survey 2026-06-17T20:30:58.949Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-17T20:31:20.441Z",
+  "expiresAt": "2026-09-15T20:31:20.441Z",
+  "refreezeReason": "manual"
+}
