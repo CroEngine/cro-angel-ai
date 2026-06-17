@@ -1,0 +1,132 @@
+{
+  "ranAt": "2026-06-17T20:26:18.454Z",
+  "elapsedMs": 73321,
+  "jobsTotal": 10,
+  "ok": 9,
+  "baselineSuccessRate": 0.9,
+  "byFailureClass": {
+    "unknown": 1
+  },
+  "outcomes": [
+    {
+      "category": "saas-landing",
+      "name": "notion",
+      "url": "https://www.notion.com",
+      "ok": true,
+      "failureClass": null,
+      "captureValidityReason": null,
+      "mhtmlKb": 4849,
+      "textLen": 3599,
+      "reportPath": "fixtures/drift-survey/saas-landing/notion/freeze-report.json",
+      "error": null
+    },
+    {
+      "category": "saas-landing",
+      "name": "linear",
+      "url": "https://linear.app",
+      "ok": true,
+      "failureClass": null,
+      "captureValidityReason": null,
+      "mhtmlKb": 4332,
+      "textLen": 8448,
+      "reportPath": "fixtures/drift-survey/saas-landing/linear/freeze-report.json",
+      "error": null
+    },
+    {
+      "category": "saas-landing",
+      "name": "vercel",
+      "url": "https://vercel.com",
+      "ok": true,
+      "failureClass": null,
+      "captureValidityReason": null,
+      "mhtmlKb": 2007,
+      "textLen": 932,
+      "reportPath": "fixtures/drift-survey/saas-landing/vercel/freeze-report.json",
+      "error": null
+    },
+    {
+      "category": "saas-landing",
+      "name": "stripe",
+      "url": "https://stripe.com",
+      "ok": true,
+      "failureClass": null,
+      "captureValidityReason": null,
+      "mhtmlKb": 2393,
+      "textLen": 14272,
+      "reportPath": "fixtures/drift-survey/saas-landing/stripe/freeze-report.json",
+      "error": null
+    },
+    {
+      "category": "saas-landing",
+      "name": "supabase",
+      "url": "https://supabase.com",
+      "ok": true,
+      "failureClass": null,
+      "captureValidityReason": null,
+      "mhtmlKb": 1658,
+      "textLen": 13452,
+      "reportPath": "fixtures/drift-survey/saas-landing/supabase/freeze-report.json",
+      "error": null
+    },
+    {
+      "category": "saas-landing",
+      "name": "hubspot",
+      "url": "https://www.hubspot.com",
+      "ok": true,
+      "failureClass": null,
+      "captureValidityReason": null,
+      "mhtmlKb": 6854,
+      "textLen": 7499,
+      "reportPath": "fixtures/drift-survey/saas-landing/hubspot/freeze-report.json",
+      "error": null
+    },
+    {
+      "category": "saas-landing",
+      "name": "intercom",
+      "url": "https://www.intercom.com",
+      "ok": true,
+      "failureClass": null,
+      "captureValidityReason": null,
+      "mhtmlKb": 3993,
+      "textLen": 7233,
+      "reportPath": "fixtures/drift-survey/saas-landing/intercom/freeze-report.json",
+      "error": null
+    },
+    {
+      "category": "saas-landing",
+      "name": "hibob",
+      "url": "https://www.hibob.com",
+      "ok": true,
+      "failureClass": null,
+      "captureValidityReason": null,
+      "mhtmlKb": 2010,
+      "textLen": 6642,
+      "reportPath": "fixtures/drift-survey/saas-landing/hibob/freeze-report.json",
+      "error": null
+    },
+    {
+      "category": "saas-landing",
+      "name": "figma",
+      "url": "https://www.figma.com",
+      "ok": false,
+      "failureClass": "unknown",
+      "captureValidityReason": null,
+      "mhtmlKb": 0,
+      "textLen": null,
+      "reportPath": "fixtures/drift-survey/saas-landing/figma/freeze-report.json",
+      "error": "[freeze] A2 gate: externalFontSrcCount=2 after rewrite (embedded=72, failures=2). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Inspect freeze-report.json fontFetchFailures."
+    },
+    {
+      "category": "saas-landing",
+      "name": "loom",
+      "url": "https://www.loom.com",
+      "ok": true,
+      "failureClass": null,
+      "captureValidityReason": null,
+      "mhtmlKb": 8911,
+      "textLen": 5839,
+      "reportPath": "fixtures/drift-survey/saas-landing/loom/freeze-report.json",
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "ok": false,
+  "error": "[freeze] A2 gate: externalFontSrcCount=2 after rewrite (embedded=72, failures=2). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Inspect freeze-report.json fontFetchFailures.",
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 9437,
+    "screenshotKb": 0,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 2,
+    "embeddedFontCount": 72,
+    "mhtmlKbBeforeFontEmbed": 3033,
+    "fontFetchFailures": [
+      {
+        "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff",
+        "error": "403 from proxy"
+      },
+      {
+        "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff",
+        "error": "403 from proxy"
+      }
+    ],
+    "embeddedFamilies": [
+      "Apercu",
+      "Apercu-Mono",
+      "D7CBI",
+      "D7CBIB",
+      "Figma Mono",
+      "Figma Sans",
+      "Inter",
+      "Roboto",
+      "Roboto Mono",
+      "Whyte",
+      "WhyteInktrap",
+      "figmaMono",
+      "figmaSans"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 77,
+      "relativeResolved": 2,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-17T20:25:49.217Z"
+  },
+  "failureClass": "font-embed-failed",
+  "captureValidity": {
+    "ok": true,
+    "textLen": 3020,
+    "interactiveCount": 212,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 5994,
+    "consentMs": 0,
+    "scrollMs": 6926,
+    "captureMs": 0
+  }
+}
