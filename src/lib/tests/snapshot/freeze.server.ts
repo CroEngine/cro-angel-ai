@@ -233,9 +233,9 @@ export const ASSERT_CAPTURE_VALID_FN = `(challengeMarkers, consentPatterns, view
 
 async function assertCaptureValid(
   page: import("@browserbasehq/stagehand").Page,
-): Promise<FreezeReport["captureValidity"]> {
+): Promise<NonNullable<FreezeReport["captureValidity"]>> {
   const script = `(${ASSERT_CAPTURE_VALID_FN})(${JSON.stringify(CHALLENGE_MARKERS)}, ${JSON.stringify(CONSENT_HEADING_PATTERNS)}, ${FREEZE_VIEWPORT.height})`;
-  return (await page.evaluate(script)) as FreezeReport["captureValidity"];
+  return (await page.evaluate(script)) as NonNullable<FreezeReport["captureValidity"]>;
 }
 
 // Klassificera en thrown error mot failure-taxonomin. Heuristik baserad på
