@@ -86,6 +86,8 @@ The determinism-check is the oracle that promotes
 | Dynamic Yield personalization slot IDs (`dy-rec-*`) | Inventory `personalization:dynamic-yield` | sample-defining | potential-presence |
 | Monetate personalization payloads | Inventory `personalization:monetate` | sample-defining | potential-presence |
 | Google Ad Manager / Prebid / APS slot HTML (auction outcome per request) | Inventory `ads:googletag` | sample-defining | potential-presence |
+| HubSpot Laboratory experiment identifier (`<meta name="laboratory-identifier-*" content="anon<32hex>">`) and the body-structure variance it drives (e.g. presence/absence of `<a tabindex="-1" aria-hidden="true" opacity:0.01>` bot-tarpit anchor right inside `<body>`) | Inventory `ab:hubspot-laboratory`. Observed via Grind 1 hubspot determinism-check 2026-06-17: drift at L212 (laboratory-identifier-other rotates per session) and L213 (body opens with different node depending on bucket). | sample-defining | confirmed-drift (hubspot 2026-06-17) |
+
 
 ## What is NOT whitelisted
 
