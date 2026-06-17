@@ -10,9 +10,10 @@
 //   `bun run snapshot` runs the diff. Non-empty diff = a regression OR an
 //   intentional change. If intentional, re-run snapshot:update and commit.
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { chromium, type Browser } from "playwright";
 
 import { replayCorpus } from "../harness.server";
 import { normalizeCollect, normalizePageAudit, diffNormalized } from "../normalize";
