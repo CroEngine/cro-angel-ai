@@ -21,10 +21,19 @@ Every row carries four columns:
 
 | col | meaning |
 |---|---|
-| `mechanism` | The identified non-determinism source. |
+| `mechanism` | The identified non-determinism source. Each row MUST also declare its **envelope** (regex / structural shape) the drift is allowed to take — drift outside that envelope is RED even on a `confirmed-by-design` row. |
 | `presence-evidence` | Where we know it varies (RFC, integration spec, mechanism inventory). |
 | `score-impact` | `neutral` (extractor ignores; two freezes scored identically) or `sample-defining` (content varies; two freezes scored differently is legitimate). |
-| `confidence` | `potential-presence` (pattern matched, no observed drift in scored field) / `confirmed-drift` (determinism-check observed drift in a scored field) / `present-no-observed-impact` (mechanism present, N≥3 freezes showed zero drift in scored fields). |
+| `confidence` | Four-state — see below. |
+
+### Confidence taxonomy (four-state)
+
+| value | meaning | oracle behaviour |
+|---|---|---|
+| `confirmed-by-design` | A-priori benign variance documented by RFC, integration spec, or security standard (MHTML transport, CSRF, nonce, helmet ordering, cache-bust). | Oracle does NOT up/downgrade these. **But:** determinism-check still runs against them — variance **outside the documented envelope** (e.g. nonce-format change: length, alphabet, attribute name) surfaces as RED, not as a silent pass under this label. The label masks the *expected shape* of the drift, not arbitrary drift on the same mechanism. |
+| `potential-presence` | Pattern matched in MHTML, no determinism-check evidence yet. | Promotes to `confirmed-drift` on observed drift; demotes to `present-no-observed-impact` on N≥3 zero-drift. |
+| `confirmed-drift` | Determinism-check observed drift in a scored field attributable to this mechanism. | Stable label — re-validated each run. |
+| `present-no-observed-impact` | Mechanism present, N≥3 determinism-check passes observed zero drift in scored fields. | Can re-promote to `confirmed-drift` if a later run drifts. |
 
 `sample-defining` rows carry an implicit qualifier: *"conservative
 overestimate of variance; actual hero impact unconfirmed until
@@ -32,9 +41,11 @@ determinism-check observes drift there."* Presence on a site does not
 prove the scored surface is affected — the framework may run on checkout
 / account / search rather than the landing hero.
 
-The determinism-check is the oracle that promotes
+The determinism-check is the oracle: it promotes
 `potential-presence → confirmed-drift` OR demotes it to
-`present-no-observed-impact`. Both moves are evidence-driven.
+`present-no-observed-impact`. `confirmed-by-design` is not subject to
+oracle promotion/demotion but IS subject to envelope enforcement —
+otherwise the label is a smuggling vector for ostraffad drift.
 
 ## Whitelisted fields
 
@@ -86,7 +97,7 @@ The determinism-check is the oracle that promotes
 | Dynamic Yield personalization slot IDs (`dy-rec-*`) | Inventory `personalization:dynamic-yield` | sample-defining | potential-presence |
 | Monetate personalization payloads | Inventory `personalization:monetate` | sample-defining | potential-presence |
 | Google Ad Manager / Prebid / APS slot HTML (auction outcome per request) | Inventory `ads:googletag` | sample-defining | potential-presence |
-| HubSpot Laboratory experiment identifier (`<meta name="laboratory-identifier-*" content="anon<32hex>">`) and the body-structure variance it drives (e.g. presence/absence of `<a tabindex="-1" aria-hidden="true" opacity:0.01>` bot-tarpit anchor right inside `<body>`) | Inventory `ab:hubspot-laboratory`. Observed via Grind 1 hubspot determinism-check 2026-06-17: drift at L212 (laboratory-identifier-other rotates per session) and L213 (body opens with different node depending on bucket). | sample-defining | confirmed-drift (hubspot 2026-06-17) |
+| HubSpot Laboratory experiment identifier — envelope: `<meta name="laboratory-identifier-*" content="anon<32hex>">` attribute value only | Inventory `ab:hubspot-laboratory`. Observed via Grind 1 hubspot determinism-check 2026-06-17 round2 (L212). **Narrowed 2026-06-17 round3:** the body-structure variance round2 also attributed to this mechanism (presence/absence of `<a tabindex="-1" aria-hidden="true" opacity:0.01>` bot-tarpit anchor directly inside `<body>` at L213) is **NOT** whitelisted. Bot-tarpit injection is heuristic/bot-score-driven, not bucket-deterministic for the same client → categorically distinct from Optimizely-style bucket DOM and not a personalization slot. Body-structure drift stays RED. | neutral | confirmed-drift (hubspot 2026-06-17 round3, narrowed) |
 
 
 ## What is NOT whitelisted

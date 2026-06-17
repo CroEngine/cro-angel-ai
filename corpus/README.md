@@ -81,9 +81,18 @@ Two things are deliberately scoped narrowly:
    This limitation is acknowledged — extending determinism to breadth is a
    future workstream, not part of the current substrate-hardening.
 
+## Corpus membership states
+
+A `corpus/<name>/` directory is in exactly one of these states:
+
+- **`promoted`** — all four promotion criteria below hold. Counted in the corpus; goldens are authoritative regression baselines.
+- **`pending-determinism`** — files retained on disk as pre-promotion baseline, but `meta.json` carries `"pending-determinism": true` with `pending-reason` and a pointer to the determinism diff. **Not counted** as a promoted member; goldens are NOT authoritative until pending state is cleared.
+
+A site in `pending-determinism` MUST NOT be relied on for regression assertions and MUST NOT be added to any "promoted" enumeration.
+
 ## Promotion criteria (apply to ALL corpus sites)
 
-A site is promoted into `corpus/<name>/` only when ALL of the following hold:
+A site is promoted (state = `promoted`) only when ALL of the following hold:
 
 1. **Capture-validity** — `assertCaptureValid` passes (see Grind 2 section).
 2. **A2 font-embedding** — `externalFontSrcCount === 0` after rewrite, so
@@ -98,8 +107,9 @@ A site is promoted into `corpus/<name>/` only when ALL of the following hold:
 4. **Score determinism** — the goldens produced from the N freezes are
    bytewise equal (after the extractor's documented normalization).
 
-Steps 3–4 are non-negotiable for promotion. Hubspot's determinism-check is
-the canonical example; the same rule applies to any future corpus site.
+Steps 3–4 are non-negotiable for promotion. Hubspot is currently
+`pending-determinism` (see `corpus/hubspot/meta.json`); the same rule
+applies to any future corpus site.
 
 
 
