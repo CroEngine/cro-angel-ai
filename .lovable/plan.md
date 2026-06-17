@@ -1,52 +1,55 @@
-# Freeze-fixar för identifierade motsägelser (reviderad)
+# Städa upp restposter efter Laboratory-narrowing
 
-Fyra fixar, en commit per fix, i fast ordning. Användarens framing antagen: 1a + 2a + 3a är grindade till varandra; whitelistVersion-pinningen är strukturell, inte kosmetisk.
+Granskningen efter de fyra commits avslöjar fem residuala motsägelser/stale-artefakter. Alla är följdverkningar av att Laboratory-raden smalnades från `sample-defining + body-structure` till `neutral + meta-attr envelope only` — flera filer hänvisar fortfarande till den gamla framingen.
 
-## Commit 1 — Utöka confidence-schemat till fyra värden
+## 1. `scripts/mechanism-inventory.ts` — felaktig score-impact för Laboratory
 
-**Filer:** `fixtures/determinism/WHITELIST.md`, `fixtures/drift-survey/SUMMARY.md`.
+Rad 40–44: `ab:hubspot-laboratory` står som `scoreImpact: "sample-defining"` med noten *"drives body structure variance at <body> open"*. Båda direkt motsagda av round3-narrowingen:
+- Score-impact ska vara `neutral` (envelope = meta-attr value).
+- Body-structure-klausulen är explicit borttagen ur WHITELIST.md.
 
-- Lägg till `confirmed-by-design` som fjärde värde i WHITELIST row-schema och i SUMMARY:s "Confidence is tri-state"-tabell (omdöp till fyrtillstånd).
-- Definition: varians är känd a priori benign (RFC, integrationsspec, säkerhetsstandard). Oraklet up/downgraderar inte dessa rader.
-- **Kritiskt:** Oraklet hoppar inte över raderna. Determinism-checken kör fortfarande mot dem; varians **utanför den dokumenterade by-design-enveloppen** ytar fortfarande som RED. Exempel som måste skrivas in: nonce-rotation är by-design, men nonce-format-förändring (längd, alfabet, attributnamn) är riktig drift och får inte maskeras av etiketten. Varje `confirmed-by-design`-rad ska därför ange envelope-formen (regex/struktur), inte bara mekanismnamnet.
-- Inga rader ändrar värde i denna commit — bara schemat utökas och envelope-noter läggs till där de saknas.
+Fix: byt till `scoreImpact: "neutral"`, skriv om noten till envelope-formuleringen och cross-referera WHITELIST.md round3. Behåll `ab:` ID-prefixet eller byt till `session-token:hubspot-laboratory` (`ab:` antyder bucket-DOM-påverkan som nu är frånskild). Förordat: byt prefixet, så taxonomin är konsistent med score-impact.
 
-Fristående. Ingen determinism-körning krävs.
+## 2. `fixtures/drift-survey/MECHANISM-INVENTORY.md` är stale
 
-## Commit 2 — Smalna Laboratory-raden, kör determinism, verifiera RED
+Auto-genererad 2026-06-17T21:07Z innan inventory-skriptet uppdaterats. Tabellraden för `ab:hubspot-laboratory` visar fortfarande `sample-defining`. Den ska antingen:
+- (a) regenereras efter fix #1 (kräver build mode + `bun run scripts/mechanism-inventory.ts`), eller
+- (b) tas bort ur commit och listas i `.gitignore` som ett rent build-artifact (samma klass som de stora drift-survey-MHTML:erna).
 
-**Filer:** `fixtures/determinism/WHITELIST.md`, `scripts/freeze-determinism-check.ts` (om mask-mönstret är hårdkodat där), ny `fixtures/determinism/hubspot/diff.json`-revision.
+Förordat: (a) regenerera. Filen är liten (~kilobytes) och refereras direkt från SUMMARY.md och WHITELIST.md som autoritativ inventory — den ska finnas i tree.
 
-- Smalna raden till **enbart** `<meta name="laboratory-identifier-*" content="anon<32hex>">`-attributvärdet. Score-impact: `neutral` (det är en session-ID, inte sample-defining på egen hand). Confidence: `confirmed-drift`.
-- Ta bort body-strukturklausulen ("presence/absence of tarpit-anchor right inside `<body>`") från raden. Motiv skrivs in i raden: bot-tarpit-injektion är heuristik/bot-score-driven, inte bucket-deterministisk → kategoriskt skild från Optimizely-bucket → inte en personalization-slot.
-- Kör `freeze-determinism-check.ts` på de 3 stashade hubspot-MHTML:erna. Förväntan: RED med tarpit-anchor-närvaron som drift-källa. Verifiera att diff-output namnger L213-skiftet som icke-whitelistat.
-- Skriv ny `diff.json`-rond ("round3_post-narrowing") med utfallet. Behåll round1/round2 oförändrade — de är historisk evidens.
+## 3. `corpus/README.md` rad 70–76 — felaktig påstående om hubspot
 
-Får inte gå vidare till commit 3 om körningen inte ytar RED — då har vi missförstått mekanismen och måste backa.
+Texten lyder: *"Determinism is proven on hubspot only. Hubspot is the representative hard case..."*. Detta är falskt post-round3. Determinism är **inte** proven på hubspot — hubspot är `pending-determinism` (samma fil, rad 90 i nya numreringen, från commit 3).
 
-## Commit 3 — Markera corpus/hubspot/ som pending-determinism
+Fix: skriv om stycket till *"Determinism has been **attempted** on hubspot as the representative hard case. Current status: `pending-determinism` (see corpus/hubspot/meta.json + fixtures/determinism/hubspot/diff.json round3). Proof requires resolving the bot-tarpit body-structure drift surfaced by the narrowed whitelist."* Behåll resten av paragrafens beskrivning av N=3 + pairwise-mekaniken.
 
-**Filer:** `corpus/hubspot/` (ny `PENDING.md` eller flagga i `meta.json`), `corpus/README.md`.
+## 4. `fixtures/determinism/WHITELIST.md` OneTrust-rad — felaktig pre-listings-motivering
 
-- Framtvingat av commit 2. Hubspot uppfyller inte promotion-kriteriet i `corpus/README.md` (N≥3 freezes, 0 unexpected-drift) så länge body-strukturen ytar RED.
-- Lägg `pending-determinism: true` (eller motsvarande explicit fält) i `corpus/hubspot/meta.json` med pekare till `fixtures/determinism/hubspot/diff.json` som evidens.
-- Uppdatera `corpus/README.md`: lista `pending-determinism` som ett distinkt corpus-tillstånd (skild från `promoted`). Promoted-listan får inte inkludera pending-medlemmar.
-- Behåll filerna på disk (`golden.json`, `render-canary.families.json` etc.) — de är pre-promotion baseline för den framtida score-impact-workstreamen som diff.json hänvisar till. Ta inte bort, bara avklassificera.
+Rad 91: *"Pre-listed for the Grind 1 hubspot determinism-check so a RED on it reads as..."*. Men `corpus/hubspot/meta.json` säger explicit *"HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust)"* — hubspot använder inte OneTrust. Pre-listings-motiveringen är felriktad.
 
-Bör falla ut rent från commit 2:s output.
+Fix: ta bort "Pre-listed for the Grind 1 hubspot..."-meningen från OneTrust-raden; behåll bara `Inventory consent-cmp:onetrust`-citationen. Motiveringen var aldrig korrekt för hubspot och bör inte hänga kvar.
 
-## Commit 4 — whitelistVersion pinnas till sha256
+## 5. `fixtures/determinism/WHITELIST.md` "Hubspot-specific notes" — saknar nuvarande status
 
-**Filer:** `scripts/freeze-determinism-check.ts`, eventuellt skrivande av `diff.json`.
+Verdict-logiken (rad ~122ff) listar GREEN/AMBER/RED-flöden men säger ingenstans att **nuvarande** verdict är RED-pending. Läsare som öppnar WHITELIST.md fristående får intrycket att Grind 1 är öppen-och-icke-körd, inte körd-och-RED.
 
-- Ersätt strängen `"fixtures/determinism/WHITELIST.md (pre-Laboratory-row)"` med `sha256:<hex>` av WHITELIST.md vid run-tid.
-- Same fix-klass som breadth-corpus sha256-manifestet. Strängen kan då inte ljuga retroaktivt — samma sträng = samma filinnehåll, alltid.
-- Backfill round1/round2/round3 i `fixtures/determinism/hubspot/diff.json` med korrekta hash-värden (round1 och round2 hashar pre-Laboratory-versionen; round3 hashar post-narrowing-versionen från commit 2).
+Fix: lägg en `**Current status (2026-06-17 round3):** RED — pending-determinism. See fixtures/determinism/hubspot/diff.json round3_post_narrowing for evidence; corpus/hubspot/meta.json carries the pending flag.`-rad ovanför verdict-listan.
 
-Fristående. Kan teoretiskt köras före eller efter, men placeras sist så commit 2 och 3 inte måste sno tid med hash-bokföring.
+## Mindre (inte i scope men noterade)
+
+- `fixtures/determinism/hubspot/diff.json` round1/round2 `whitelistVersion` är beskrivande strängar (`"sha256:pre-cid-widening (pre-existing tree state, no recorded hash)"`), inte riktiga hashar. Den retroaktiva osanning principen i commit 4 var byggd för att utesluta är nu märkt som okänd-hash — vilket är hederligt men förlorar spårbarheten. Inget rent sätt att rekonstruera utan att checka ut äldre tree-tillstånd; lämnas som-är.
+- `scripts/freeze-determinism-check.ts` MECHANISM_HINTS rad ~82 har `ab:hubspot-laboratory`. Om #1 omklassificerar prefixet till `session-token:` ska hint-namnet följa med (annars är hint-output inkonsistent med inventory).
+
+## Commit-ordning
+
+1. Fix #1 (mechanism-inventory.ts) — fristående kodändring.
+2. Fix #2 (regenerera MECHANISM-INVENTORY.md) — kräver `bun run scripts/mechanism-inventory.ts` efter #1.
+3. Fix #3 + #4 + #5 (text-fixar i corpus/README.md + WHITELIST.md) — fristående, kan göras i en commit eftersom det är samma framings-residu.
+4. Fix #1-följdjustering av MECHANISM_HINTS-namn i freeze-determinism-check.ts — fristående cosmetic.
 
 ## Vad denna plan inte gör
 
-- Mäter inte Laboratory-mekanismens score-impact på de 3 stashade MHTML:erna. Det är den separata workstream diff.json hänvisar till; den är förutsättning för att eventuellt återöppna 2b senare, inte för denna freeze.
-- Påstår inte att de identifierade motsägelserna är uttömmande. Tre + en är vad denna granskning ytat; ytterligare kan finnas och kräver separat genomgång.
-- Rör inte hubspot-filerna fysiskt — markering, inte radering.
+- Skapar inget nytt determinism-data (kräver Browserbase-körning som sandbox saknar).
+- Rör inte hubspot-corpus-filerna fysiskt utöver `meta.json`.
+- Försöker inte uttömma fler residualer — granskningen är fokuserad på Laboratory-narrowingens efterskalv.

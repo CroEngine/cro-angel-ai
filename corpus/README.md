@@ -69,11 +69,15 @@ same URL — modulo a documented set of legitimate drift sources.
 
 Two things are deliberately scoped narrowly:
 
-1. **Determinism is proven on hubspot only.** Hubspot is the representative
-   hard case (non-trivial consent flow). `bun run scripts/freeze-determinism-check.ts
+1. **Determinism has been attempted on hubspot only.** Hubspot is the
+   representative hard case (non-trivial consent flow). `bun run scripts/freeze-determinism-check.ts
    --name=hubspot` runs N=3 freezes in independent Browserbase sessions
    (= independent A/B-bucket assignment) and diffs pairwise against the
    a-priori whitelist in `fixtures/determinism/WHITELIST.md`.
+   **Current status: `pending-determinism`** — see
+   `corpus/hubspot/meta.json` and `fixtures/determinism/hubspot/diff.json`
+   `round3_post_narrowing`. Proof requires resolving the bot-tarpit
+   body-structure drift that the narrowed Laboratory row surfaces as RED.
 2. **Breadth-determinism is NOT proven.** Grind 2 measures *capture-correctness*
    over 50 sites (did we capture the right page?), not *determinism* (would a
    second freeze produce the same DOM?). An e-commerce site can freeze valid

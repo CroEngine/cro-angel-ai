@@ -80,7 +80,7 @@ const HTML_ATTR_WHITELIST_PATTERNS: RegExp[] = [
 // reviewern: "denna line ser ut att komma från mekanism X, kolla om X
 // finns i WHITELIST.md eller borde läggas till".
 const MECHANISM_HINTS: Array<{ name: string; re: RegExp }> = [
-  { name: "ab:hubspot-laboratory", re: /laboratory-identifier-/i },
+  { name: "session-token:hubspot-laboratory", re: /laboratory-identifier-/i },
   { name: "consent-cmp:onetrust", re: /optanon|data-domain-script|onetrust/i },
   { name: "consent-cmp:other", re: /usercentrics|didomi|cookieyes|cookielaw/i },
   { name: "ab:optimizely", re: /optimizely|optly/i },
