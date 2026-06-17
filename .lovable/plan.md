@@ -1,43 +1,27 @@
 ## Mål
 
-Få Chromium-beroende canary/snapshot-tester att köra grönt i GitHub Actions (där de hör hemma) och säkerställa att `render-canary.families.json` + ev. ghost-loggar är inspekterbara efter en körning. Ingen ny app-kod — bara CI-konfig.
+Köra hela kedjan — typecheck → freeze-visibility → render-canary → snapshot-diff — och bekräfta att ghost-disambiguatorn klassar HubSpots "Lexend Deca" som **ghost**, inte **failure**.
 
-## Vad som ändras
+## Steg
 
-Enda filen som rörs: `.github/workflows/ci.yml`.
+1. **YAML-sanity på `.github/workflows/ci.yml`** — parse:a med `python -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))"` så GitHub inte avvisar workflowen vid push.
 
-### Konkreta diffar
+2. **Typecheck** — `bun run typecheck`. Säkerställer att inga edits från tidigare turn brutit typerna i `harness.server.ts` / `render-canary.server.ts` / receipt-modulen.
 
-1. **Installera Playwrights systembibliotek**, inte bara browsern.
-   - `bunx playwright install chromium` → `bunx playwright install --with-deps chromium`
-   - Annars saknas libnss/libxss på ubuntu-latest i vissa runners → tester `skip:ar` tyst istället för att verifiera ghost-pathen.
+3. **Försök köra canary lokalt i sandbox** — `bunx vitest run src/lib/tests/snapshot/__tests__/render-canary.test.ts`.  
+   Förväntat utfall: tests **skippas** (sandboxen saknar Chromium-deps). Det är ok — vi vill bara verifiera att testfilen laddas, vitest-konfigen är intakt, och att skip-grenen triggar istället för en module-load-crash. Om något skip:as för fel orsak (t.ex. import error) är det en riktig bug att fixa innan vi förlitar oss på CI.
 
-2. **Kör render-canary-testet explicit** som eget steg, före snapshot-diffen.
-   - Nytt steg: `bunx vitest run src/lib/tests/snapshot/__tests__/render-canary.test.ts`
-   - Skäl: snapshot.test.ts triggar canaryn indirekt, men ett eget steg ger en tydlig grön/röd signal på just disambiguator-logiken och loggar (`[replay] canary ghosts (non-blocking): ...`) hamnar i sitt eget job-steg.
+4. **Snapshot-diff lokalt** — `bunx vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts`. Samma logik: skip förväntat, men vi vill ha bekräftelse att harness-modulerna importerar rent.
 
-3. **Ladda upp artefakter vid fail** så vi kan inspektera `render-canary.families.json` när en kör går rött.
-   - Nytt sista steg med `actions/upload-artifact@v4`, `if: always()`.
-   - Paths: `src/lib/tests/snapshot/__fixtures__/**/render-canary.families.json` (justeras till var harness faktiskt skriver — verifieras i build-läge innan workflow committas).
+5. **Inspektera ev. färska artefakter** — om `corpus/hubspot/render-canary.families.json` finns från en tidigare körning, läsa den och bekräfta att "Lexend Deca" hamnar i `ghosts[]` snarare än `failures[]`. Om filen saknas: notera att sanningen kommer från första gröna CI-körningen efter push.
 
-4. **Behåll allt annat** (typecheck, freeze-visibility, snapshot-diff). Ordning: typecheck → freeze-visibility → render-canary → snapshot-diff → upload-artifact.
+6. **Rapportera** — en kort sammanfattning av varje steg (PASS/SKIP/FAIL) + exakt vad du ska titta efter under Actions-fliken på GitHub efter nästa push:
+   - "Run render-canary" → `[replay] canary ghosts (non-blocking): Lexend Deca`
+   - "Run snapshot diff" → `[snapshot] hubspot: N off-flow suspects`
+   - Artefakt `render-canary-artifacts` → diff:bar `families.json`
 
-### Resultat i CI
+## Vad som INTE görs
 
-- Push/PR triggar jobbet (redan konfigurerat).
-- I "Run render-canary" får du raden  
-  `[replay] canary ghosts (non-blocking): Lexend Deca`  
-  som verifierar att HubSpot-fallet klassas som ghost, inte failure.
-- I "Run snapshot diff" får du  
-  `[snapshot] hubspot: N off-flow suspects`.
-- Om något går rött laddas `render-canary.families.json` upp som artefakt på run-sidan i GitHub → du kan diffa `ghosts[]` vs `failures[]`.
-
-## Vad som INTE ändras
-
-- Ingen app-/runtime-kod, ingen test-kod, inget i `harness.server.ts` eller `render-canary.server.ts`.
-- Sandbox-körningar förblir skippade (de saknar fortfarande Chromium-deps) — sanning kommer från CI.
-- Inget separat workflow-filschema; vi bygger vidare på `ci.yml`.
-
-## Öppen punkt (verifieras i build-läge före commit)
-
-Den exakta output-stigen för `render-canary.families.json`. Jag bekräftar via en snabb `rg "render-canary.families.json"` när vi växlar till build, så artifact-pathen pekar rätt. Om den skrivs till `/tmp` eller annan ej-uppladdbar plats lägger jag in ett env-override (`CANARY_ARTIFACTS_DIR`) i steget istället.
+- Ingen kod ändras. Det här är rena read-only verifierings-körningar.
+- Ingen push, ingen commit — det sköter Lovables sync.
+- Ingen Chromium-install i sandbox — det är CI:s jobb.
