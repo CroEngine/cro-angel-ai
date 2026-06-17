@@ -1,83 +1,92 @@
-# Drift Survey — Grind 0
+# Mechanism Inventory — Non-Determinism Mechanisms Observed Present (Not Drift Evidence)
 
-**Status:** template. Populated by `bun run scripts/drift-survey.ts` over the
-50-site breadth target list. Outputs land here as cumulative categorization;
-the script does **not** overwrite, it appends so we can see the survey grow.
+**Status:** authored 2026-06-17 from the 45-site Grind 0 survey.
+**Source:** `scripts/drift-survey.ts` (capture) + `scripts/mechanism-inventory.ts` (per-MHTML pattern scan).
 
-## Purpose
+## What this file is — and is not
 
-Map the categories of in-DOM non-determinism that exist in the wild **before**
-Grind 1 locks the determinism whitelist. Without this, the whitelist becomes
-hubspot-shaped and Grind 2 punctures it with ten new legitimate drift sources
-that should have been in the whitelist from day one.
+This is a **presence inventory** of non-determinism mechanisms (A/B
+frameworks, CMPs, ad injection, CDN cache-busting, session/security tokens)
+detected in the frozen MHTMLs of the 45-site breadth survey.
 
-Grind 0 has **no pass/fail criterion**. The output is knowledge, not a gate.
+It is **not** drift evidence. The survey captured each site once. Mechanism
+presence is a-priori knowledge that the mechanism CAN drift between captures
+— actual two-freeze drift is observed only by
+`scripts/freeze-determinism-check.ts` (Grind 1, hubspot only).
 
-## How drift is identified (heuristic, not perfect)
+The whitelist in `fixtures/determinism/WHITELIST.md` is motivated by
+"mechanism X varies by design" + presence evidence from this inventory.
+Adding a whitelist row because a field drifted in one calibration run, with
+no a-priori cause, is the vacuous-green failure mode the substrate exists to
+prevent.
 
-For each site, two captures are taken 60s apart (single session each, fresh
-Browserbase session). The two MHTML bodies are diffed at the DOM level:
+## Two success-rate metrics — reported separately
 
-1. Parse both MHTMLs, extract the main HTML part.
-2. Strip already-known transport drift (boundaries, Content-IDs, Date headers).
-3. Tree-diff: enumerate added/removed/changed attribute values + text nodes.
-4. Classify each diff by selector + value pattern (regex over framework
-   signatures: `data-optimizely-*`, `[id^="dy-"]`, `[data-vwo-*]`, etc.).
-5. Aggregate into the categories below.
+These count different things and must never be collapsed into one number.
 
-The script does NOT try to determine "is this drift OK?" — that's Grind 1's
-job. It just enumerates what exists.
-
-## Categories (populated by script — placeholder structure)
-
-### A/B / experimentation frameworks
-
-_Filled by survey. Each row: framework name, selector signature, sites observed on, drift shape._
-
-| Framework | Signature | Sites | Drift shape |
+| Metric | Numerator / Denominator | Value | Definition |
 |---|---|---|---|
-| _(empty until first survey run)_ | | | |
+| Capture-fidelity | 37 / 45 | 82% | Freeze produced a valid MHTML AND `assertCaptureValid` passed AND A2 font-embed gate passed. |
+| Score-validity | 40 / 45 | 89% | Freeze produced a valid MHTML AND `assertCaptureValid` passed. Score is render-free → `font-embed-failed` (3 sites) is no-canary but score-valid. |
 
-### Personalization / recommendations
+The 3-site gap is the `font-embed-failed` class: site froze, MHTML was
+produced, `assertCaptureValid` passed — but A2's font-embedding gate
+rejected the capture because some external font URLs failed to embed
+(replay would fall back to OS fonts → render-canary drift). Score does
+not depend on render → still valid for scoring.
 
-| Framework | Signature | Sites | Drift shape |
-|---|---|---|---|
-| _(empty until first survey run)_ | | | |
+## Failure breakdown (8 of 45)
 
-### Ad injection
+Per-row columns (T = true, F = false):
 
-| Framework | Signature | Sites | Drift shape |
-|---|---|---|---|
-| _(empty until first survey run)_ | | | |
+| Site | scoreValid | canaryValid | failureClass | manual disposition |
+|---|---|---|---|---|
+| saas-landing/figma | T | F | font-embed-failed | 2 unembedded font URLs after rewrite. Score unaffected. |
+| ecommerce/everlane | T | F | font-embed-failed | 9 unembedded font URLs. Score unaffected. |
+| media/nytimes | T | F | font-embed-failed | 3 unembedded font URLs (392 embedded). Score unaffected. |
+| media/guardian | F | F | mhtml-capture-failed | CDP `-32000 Failed to generate MHTML`. Page rendered, MHTML serializer rejected. New class. |
+| media/bbc | F | F | mhtml-capture-failed | Same CDP `-32000`. New class. |
+| media/techcrunch | F | F | timeout | `waitForMainLoadState(load)` >60s. Expected for heavy site; not fixed. |
+| iframe-heavy/medium | F | F | captured-wrong-page → auth-gate (manual) | textLen=229ch, interactive=25, hero heading present, no challenge markers. Pattern matches "promo / log-in-to-read landing". Routed to `auth-gate` manually; no MHTML on disk to confirm via byte-inspection (mhtmlKb=0). |
+| iframe-heavy/stackoverflow | F | F | captured-wrong-page (stays) | textLen=265ch, interactive=2 (very low), hero heading present, no challenge markers. Insufficient evidence to promote to a more specific class without MHTML on disk. |
 
-### Session / security tokens
+The (F,F) cells are disambiguated by `failureClass`; the row is never
+silently collapsed into a single "failed" count.
 
-| Field | Pattern | Sites |
+## Score-impact axis — per mechanism, not per site
+
+| Score-impact | Meaning | Default treatment |
 |---|---|---|
-| _(empty until first survey run)_ | | |
+| `neutral` | Instrumentation the extractor ignores (CSRF, nonce, cache-bust, MHTML `Date:`, session-recording telemetry). Two freezes scored identically. | Whitelisted with `confidence: confirmed-by-design`. |
+| `sample-defining` | Content varies (A/B frameworks, personalization, ad injection). Two freezes scored differently is legitimate. | Whitelisted conservatively on presence. Qualifier: "conservative overestimate of variance; actual hero impact unconfirmed until determinism-check observes drift there." Presence on a site does NOT prove the hero is affected — the framework may run on checkout / account / search, not the scored landing. |
 
-### CDN / build-hash artifacts
+Confidence is tri-state, not binary:
 
-| Pattern | Example | Sites |
-|---|---|---|
-| _(empty until first survey run)_ | | |
+- `potential-presence` — pattern matched in MHTML, no determinism-check evidence.
+- `confirmed-drift` — determinism-check observed drift in a scored field attributable to this mechanism.
+- `present-no-observed-impact` — mechanism present, N≥3 determinism-check passes observed zero drift in scored fields. Determinism-check downgrades.
 
-### Unclassified drift
+The determinism-check is the oracle in both directions: it upgrades
+`potential-presence` to `confirmed-drift`, OR downgrades it to
+`present-no-observed-impact`. Both moves are evidence-driven.
 
-> **This is the important section.** Drift that doesn't fit any known category
-> goes here, with the raw diff fragment. Reviewing this manually is what feeds
-> back into Grind 1's whitelist (with a stated cause per entry).
+## Inventory tables
 
-| Site | Selector path | Diff fragment | Reviewer note |
-|---|---|---|---|
-| _(empty until first survey run)_ | | | |
+Auto-generated by `scripts/mechanism-inventory.ts` to `MECHANISM-INVENTORY.md`.
+Re-run that script after re-capturing the survey. Categories covered:
 
-## Baseline success rate
+- consent / CMP (OneTrust + others)
+- A/B experimentation (Optimizely, VWO, Adobe Target)
+- personalization (Dynamic Yield, Monetate)
+- ad injection (Google Ad Manager, Prebid, Amazon APS)
+- session / security tokens (CSRF, CSP nonce)
+- CDN / build-hash artifacts (query cache-bust, filename hashes)
+- session-recording instrumentation (Contentsquare, Usabilla, FullStory, Hotjar, Mouseflow, MS Clarity) — neutral, easy to mis-classify as A/B.
 
-> Populated by survey: % of 50-site list that produced a non-empty MHTML
-> within the 60s timeout. This is the "honest baseline" that the planning
-> document admitted was a guess at 85%.
+## What we deliberately did not do
 
-| Captured | Total | Rate |
-|---|---|---|
-| _(empty until first survey run)_ | _(50)_ | |
+- Did not promote any `mhtml-capture-failed` site to corpus. Capture-determinism (N≥3 consecutive freezes, 0 unexpected-drift) is a promotion criterion for ALL sites — see `corpus/README.md` "Promotion criteria". The two `mhtml-capture-failed` rows may be intermittent; demonstrating capture-determinism is a separate prerequisite.
+- Did not isolate the `-32000` root cause. Failure is classified, not explained. Re-running the survey will tell us whether it reproduces.
+- Did not fix `font-embed-failed` — reclassified as `valid-score, no-canary` on the fidelity axis.
+- Did not fix `timeout` on TechCrunch. 60s `load`-state is already generous.
+- Did not auto-fill "Unclassified". Mechanism set is closed-list; expanding it is a human decision per row.
