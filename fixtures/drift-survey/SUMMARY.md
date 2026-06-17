@@ -57,18 +57,20 @@ silently collapsed into a single "failed" count.
 
 | Score-impact | Meaning | Default treatment |
 |---|---|---|
-| `neutral` | Instrumentation the extractor ignores (CSRF, nonce, cache-bust, MHTML `Date:`, session-recording telemetry). Two freezes scored identically. | Whitelisted with `confidence: confirmed-by-design`. |
+| `neutral` | Instrumentation the extractor ignores (CSRF, nonce, cache-bust, MHTML `Date:`, session-recording telemetry). Two freezes scored identically. | Whitelisted with `confidence: confirmed-by-design` (a-priori benign) or `potential-presence` (presence-only). |
 | `sample-defining` | Content varies (A/B frameworks, personalization, ad injection). Two freezes scored differently is legitimate. | Whitelisted conservatively on presence. Qualifier: "conservative overestimate of variance; actual hero impact unconfirmed until determinism-check observes drift there." Presence on a site does NOT prove the hero is affected — the framework may run on checkout / account / search, not the scored landing. |
 
-Confidence is tri-state, not binary:
+Confidence is **four-state**:
 
+- `confirmed-by-design` — variance is known a-priori benign (RFC, integration spec, security standard). Oracle does not up/downgrade these. **Envelope enforced:** drift outside the documented shape (e.g. nonce-format change — length, alphabet, attribute name) still surfaces as RED. The label masks the *expected drift shape*, not arbitrary drift on the same mechanism name.
 - `potential-presence` — pattern matched in MHTML, no determinism-check evidence.
 - `confirmed-drift` — determinism-check observed drift in a scored field attributable to this mechanism.
 - `present-no-observed-impact` — mechanism present, N≥3 determinism-check passes observed zero drift in scored fields. Determinism-check downgrades.
 
-The determinism-check is the oracle in both directions: it upgrades
+The determinism-check is the oracle for the latter three: it upgrades
 `potential-presence` to `confirmed-drift`, OR downgrades it to
 `present-no-observed-impact`. Both moves are evidence-driven.
+`confirmed-by-design` is outside oracle motion but inside envelope enforcement.
 
 ## Inventory tables
 
