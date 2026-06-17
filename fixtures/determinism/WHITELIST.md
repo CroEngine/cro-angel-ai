@@ -88,7 +88,7 @@ otherwise the label is a smuggling vector for ostraffad drift.
 
 | mechanism | presence-evidence | score-impact | confidence |
 |---|---|---|---|
-| OneTrust CMP session-ID attrs (`optanon-*`, `data-domain-script`, hidden `OptanonConsent`) | Inventory `consent-cmp:onetrust`. Pre-listed for the Grind 1 hubspot determinism-check so a RED on it reads as "known axis, evidence confirms" not "hubspot is non-deterministic". | neutral | potential-presence |
+| OneTrust CMP session-ID attrs (`optanon-*`, `data-domain-script`, hidden `OptanonConsent`) | Inventory `consent-cmp:onetrust`. | neutral | potential-presence |
 | Other CMP session-ID attrs (Usercentrics, Didomi, CookieYes, CookieLaw) | Inventory `consent-cmp:other` | neutral | potential-presence |
 | Session-recording probe IDs (Contentsquare `_uxa`, Usabilla, FullStory `FS.identify`, Hotjar `_hjSettings`, Mouseflow, MS Clarity) | Inventory `session-recording`. Send-only telemetry — does NOT inject visible variants. Easy to mis-classify as A/B; explicitly neutral. | neutral | potential-presence |
 | Optimizely bucket attrs / experiment payloads | Inventory `ab:optimizely`. Sample-defining: bucket assignment varies content. Conservative — hero impact unconfirmed until determinism-check observes drift there. | sample-defining | potential-presence |
@@ -118,6 +118,11 @@ well-defined.
 Grind 1 runs N=3 freezes of `https://www.hubspot.com/` in separate
 Browserbase sessions (= independent A/B-bucket assignments). The 3-way
 comparison is pairwise (3 pairs).
+
+**Current status (2026-06-17 round3): RED — `pending-determinism`.** See
+`fixtures/determinism/hubspot/diff.json` `round3_post_narrowing` for
+evidence; `corpus/hubspot/meta.json` carries the pending flag. Bot-tarpit
+anchor injection at `<body>` open remains unwhitelisted and unmasked.
 
 Verdict logic (operationalized by `scripts/freeze-determinism-check.ts`):
 

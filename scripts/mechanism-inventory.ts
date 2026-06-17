@@ -37,11 +37,11 @@ const MECHANISMS: Mechanism[] = [
     note: "OneTrust CMP. Session-ID surfaces in attributes (optanon-*, data-domain-script). Extractor-neutral.",
   },
   {
-    id: "ab:hubspot-laboratory",
-    category: "A/B experimentation",
-    scoreImpact: "sample-defining",
+    id: "session-token:hubspot-laboratory",
+    category: "session / security tokens",
+    scoreImpact: "neutral",
     patterns: [/laboratory-identifier|hs-laboratory|window\.hsLaboratory/i],
-    note: "HubSpot Laboratory framework. Per-session bucket ID in <meta name=laboratory-identifier-*>. Confirmed-drift via Grind 1 hubspot determinism-check (drives body structure variance at <body> open).",
+    note: "HubSpot Laboratory framework. Per-session bucket ID surfaces as <meta name=\"laboratory-identifier-*\" content=\"anon<32hex>\">. Whitelist envelope is the meta-attr value only (see fixtures/determinism/WHITELIST.md round3, 2026-06-17). Reclassified from ab:* to session-token:* because the narrowed envelope covers only the session-ID surface — the body-structure variance round2 attributed to it (bot-tarpit anchor at <body> open) is heuristic/bot-score-driven, NOT bucket-deterministic, and is explicitly NOT whitelisted.",
   },
 
   {
