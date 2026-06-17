@@ -50,13 +50,26 @@ const MHTML_WHITELIST_LINE_PATTERNS: RegExp[] = [
   /^Content-Type: multipart\/related;\s*boundary=/i,
   /^Content-ID:\s</i,
   /^Content-Location:.*[?&](t|ts|cb|v|_|cache|version|build|hash)=/i,
+  // Body separator lines emitted by Chromium MHTML serializer between parts.
+  // Same RFC 2557 per-snapshot random mechanism as the boundary= header param.
+  /^------MultipartBoundary--[A-Za-z0-9]+----\s*$/,
 ];
+// Strip-or-mask patterns applied per-line BEFORE diff. The cid:-reference
+// rewrite is the body-side complement of the Content-ID: header strip —
+// Chromium synthesizes a fresh UUID per part per snapshot, and any href/src
+// inside the body that points to a part rotates with it. Score-impact: neutral
+// (extractor doesn't care which cid a css/img part has, only its content).
 const HTML_ATTR_WHITELIST_PATTERNS: RegExp[] = [
   /\bnonce="[^"]*"/g,
   /\bdata-[a-z-]+-nonce="[^"]*"/g,
   /<meta name="csrf-token" content="[^"]*">/gi,
   /[?&](t|ts|cb|v|_|cache|version|build|hash)=[a-z0-9.-]+/gi,
+  // cid: references inside body — UUIDs rotate per snapshot with Content-ID headers.
+  /cid:[a-z0-9-]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@mhtml\.blink/gi,
+  // Boundary tokens that appear inline (e.g. inside Content-Type headers re-quoted in body).
+  /boundary="----MultipartBoundary--[A-Za-z0-9]+----"/g,
 ];
+
 
 // Mekanism-hints för diff-klassificering i AMBER/RED-utskriften. Hint-träff
 // betyder INTE auto-promotion till whitelist — det är en pekare för
