@@ -94,17 +94,29 @@ async function runOne(category: string, site: Site): Promise<SiteOutcome> {
       error: report.error ?? null,
     };
   } catch (e) {
+    // freeze.server.ts skriver receiptet i finally — försök re-läsa innan
+    // vi defaultar till "unknown". Annars förlorar vi failureClass och
+    // captureValidity som klassificeraren redan fångat på disk.
+    const reportPath = join(siteOutDir, "freeze-report.json");
+    let failureClass = "unknown";
+    let captureValidityReason: string | null = null;
+    let mhtmlKb = 0;
+    let textLen: number | null = null;
+    let errMsg: string | null = e instanceof Error ? e.message : String(e);
+    if (existsSync(reportPath)) {
+      try {
+        const r = JSON.parse(readFileSync(reportPath, "utf8"));
+        failureClass = r.failureClass ?? "unknown";
+        captureValidityReason = r.captureValidity?.reason ?? null;
+        mhtmlKb = r.capture?.mhtmlKb ?? 0;
+        textLen = r.captureValidity?.textLen ?? null;
+        errMsg = r.error ?? errMsg;
+      } catch { /* receipt unreadable */ }
+    }
     return {
-      category,
-      name: site.name,
-      url: site.url,
-      ok: false,
-      failureClass: "unknown",
-      captureValidityReason: null,
-      mhtmlKb: 0,
-      textLen: null,
-      reportPath: join(siteOutDir, "freeze-report.json"),
-      error: e instanceof Error ? e.message : String(e),
+      category, name: site.name, url: site.url,
+      ok: false, failureClass, captureValidityReason, mhtmlKb, textLen,
+      reportPath, error: errMsg,
     };
   }
 }
