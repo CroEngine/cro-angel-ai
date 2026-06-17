@@ -129,12 +129,144 @@ interface FreezeReport {
     viewport: { width: number; height: number };
     frozenAt: string; // ISO
   } | null;
+  /**
+   * Grind 2 — Failure-taxonomy. `null` om freezen lyckades OCH assertCaptureValid
+   * passerade. Annars en av de klassificerade strängarna nedan. `"unknown"` är
+   * förbjudet i en grön breadth-rapport — om vi ser den måste klassificeraren
+   * utökas, inte rapporten dölja symptomet.
+   *
+   * "captured-wrong-page" fångas av positiv content-assertion (assertCaptureValid)
+   * INNAN ok=true sätts — det är hela poängen: en freeze som "inte kastade" är
+   * inte samma sak som en freeze som fångade rätt sida. Consent-missed, anti-bot-
+   * frozen-as-200, tomt SPA-skal landar här.
+   */
+  failureClass:
+    | null
+    | "timeout"
+    | "consent-missed"
+    | "anti-bot-blocked"
+    | "captured-wrong-page"
+    | "dynamic-only"
+    | "auth-gate"
+    | "geo-gate"
+    | "mhtml-too-large"
+    | "font-embed-failed"
+    | "unknown";
+  /** Detaljer om varför assertCaptureValid failed. null när den inte körts eller passerade. */
+  captureValidity: {
+    ok: boolean;
+    textLen: number;
+    interactiveCount: number;
+    heroHasMeaningfulHeading: boolean;
+    challengeMarkersFound: string[];
+    reason: string | null;
+  } | null;
   timing: {
     gotoMs: number;
     consentMs: number;
     scrollMs: number;
     captureMs: number;
   };
+}
+
+// Markörer som indikerar att sidan vi fångade är en challenge/cookie-vägg/auth-gate
+// snarare än faktiskt innehåll. Lowercase — matchas mot lowercased body text.
+// Inte gating för consent-flöden där vi avsiktligt dismissar (sker före), utan
+// säkerhetsnät: om consent-klicket inte tog, eller om sajten serverade
+// Cloudflare/PerimeterX/hCaptcha, syns det här.
+const CHALLENGE_MARKERS = [
+  "checking your browser",
+  "please enable javascript",
+  "verify you are human",
+  "cf-challenge",
+  "cf-browser-verification",
+  "hcaptcha",
+  "perimeterx",
+  "px-captcha",
+  "access denied",
+  "are you a robot",
+] as const;
+
+// Consent-vokabulär — om hero-rubriken är en av dessa har vi fångat consent-väggen.
+const CONSENT_HEADING_PATTERNS = [
+  "cookie",
+  "we value your privacy",
+  "your privacy",
+  "privacy preference",
+  "consent",
+] as const;
+
+// Positiv content-assertion. Körs i browser-kontexten EFTER consent + scroll,
+// INNAN captureSnapshot. Failar denna → failureClass="captured-wrong-page".
+//
+// Detta är skillnaden mellan "freezen kastade inte" (known-false-green) och
+// "freezen fångade faktiskt sidan". Tröskelvärdena är medvetet lågt satta —
+// hellre falska positiver (sidor som passerar men har tunn nytta) än falska
+// negativer (kasta bort legitima minimalistiska landing-sidor).
+export const ASSERT_CAPTURE_VALID_FN = `(challengeMarkers, consentPatterns, viewportHeight) => {
+  const body = document.body;
+  if (!body) return { ok: false, textLen: 0, interactiveCount: 0, heroHasMeaningfulHeading: false, challengeMarkersFound: [], reason: "no-body" };
+  const text = (body.innerText || "").trim();
+  const textLen = text.length;
+  const lower = text.toLowerCase();
+  const hits = challengeMarkers.filter((m) => lower.includes(m));
+  const interactive = body.querySelectorAll('a[href]:not([href=""]), button:not([disabled])').length;
+  // Hero = första viewport-höjden. Plocka headings vars top är i [0, viewportHeight].
+  const headings = Array.from(document.querySelectorAll('h1, h2, h3'));
+  let heroHasMeaningfulHeading = false;
+  for (const h of headings) {
+    const r = h.getBoundingClientRect();
+    if (r.top < 0 || r.top > viewportHeight) continue;
+    const t = (h.textContent || "").trim().toLowerCase();
+    if (!t || t.length < 3) continue;
+    if (consentPatterns.some((p) => t.includes(p))) continue;
+    heroHasMeaningfulHeading = true;
+    break;
+  }
+  let reason = null;
+  if (textLen < 500) reason = "text-too-short";
+  else if (hits.length > 0) reason = "challenge-markers:" + hits.join(",");
+  else if (interactive < 10) reason = "too-few-interactive-elements";
+  else if (!heroHasMeaningfulHeading) reason = "no-meaningful-hero-heading";
+  return { ok: reason === null, textLen, interactiveCount: interactive, heroHasMeaningfulHeading, challengeMarkersFound: hits, reason };
+}`;
+
+async function assertCaptureValid(
+  page: import("@browserbasehq/stagehand").Page,
+): Promise<FreezeReport["captureValidity"]> {
+  const script = `(${ASSERT_CAPTURE_VALID_FN})(${JSON.stringify(CHALLENGE_MARKERS)}, ${JSON.stringify(CONSENT_HEADING_PATTERNS)}, ${FREEZE_VIEWPORT.height})`;
+  return (await page.evaluate(script)) as FreezeReport["captureValidity"];
+}
+
+// Klassificera en thrown error mot failure-taxonomin. Heuristik baserad på
+// error-meddelande + redan inmätta receipt-fält. "unknown" är fallback men
+// förbjuden i grön breadth-rapport — om vi ser den måste vi utöka klassificeraren.
+function classifyFailure(
+  err: unknown,
+  report: FreezeReport,
+): FreezeReport["failureClass"] {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  if (msg.includes("timeout") || msg.includes("timed out")) {
+    if (msg.includes("consent-selektor")) return "consent-missed";
+    return "timeout";
+  }
+  if (msg.includes("consent kvar efter klick") || msg.includes("consent-selektor")) {
+    return "consent-missed";
+  }
+  if (msg.includes("a2 gate")) return "font-embed-failed";
+  if (msg.includes("mhtml") && (msg.includes("too large") || msg.includes("10 mb"))) {
+    return "mhtml-too-large";
+  }
+  if (msg.includes("net::err_") || msg.includes("403") || msg.includes("blocked")) {
+    return "anti-bot-blocked";
+  }
+  if (msg.includes("401") || msg.includes("login") || msg.includes("auth required")) {
+    return "auth-gate";
+  }
+  // Capture-validity-fel kommer hit som thrown Error från assertCaptureValid-gate
+  if (msg.includes("captured-wrong-page")) return "captured-wrong-page";
+  if (report.captureValidity && !report.captureValidity.ok) return "captured-wrong-page";
+  return "unknown";
 }
 
 
@@ -254,6 +386,8 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       removedStalePointer: false,
     },
     env: null,
+    failureClass: null,
+    captureValidity: null,
     timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
   };
 
@@ -390,6 +524,20 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     await lazyScroll(page);
     report.timing.scrollMs = Date.now() - tScroll;
 
+    // Positiv content-assertion (Grind 2). Detta är success-kriteriet, inte
+    // "kastade inte". Failar denna är en "captured-wrong-page"-freeze: vi
+    // fångade en consent-vägg, Cloudflare-challenge, tomt SPA-skal, etc.
+    // Receiptet sparas oavsett utfall.
+    report.captureValidity = await assertCaptureValid(page);
+    if (!report.captureValidity.ok) {
+      throw new Error(
+        `[freeze] captured-wrong-page (${opts.name}): ${report.captureValidity.reason}. ` +
+          `text=${report.captureValidity.textLen}ch interactive=${report.captureValidity.interactiveCount} ` +
+          `heroHeading=${report.captureValidity.heroHasMeaningfulHeading} ` +
+          `challengeMarkers=[${report.captureValidity.challengeMarkersFound.join(",")}]`,
+      );
+    }
+
     const tCapture = Date.now();
     const snap = await page.sendCDP<{ data: string }>("Page.captureSnapshot", {
       format: "mhtml",
@@ -481,14 +629,26 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
         }
       }
       writeFileSync(join(dir, "screenshot.jpg"), Buffer.from(shot));
+      // Grind 3 — TTL-fält. ttlDays är per-snapshot (default 90) så per-kategori-
+      // TTL senare blir en data-ändring, inte en kodändring. expiresAt = frozenAt + ttlDays.
+      // refreezeReason är fri text — "manual", "scheduled", "url-changed", etc.
+      const ttlDays = 90;
+      const frozenAtMs = Date.now();
+      const expiresAtMs = frozenAtMs + ttlDays * 24 * 60 * 60 * 1000;
       const meta = {
         url: opts.url,
         name: opts.name,
-        captured_at: new Date().toISOString(),
+        captured_at: new Date(frozenAtMs).toISOString(),
         viewport: FREEZE_VIEWPORT,
         consentSelector: opts.consentSelector ?? null,
         consentInstruction: opts.consentInstruction ?? null,
         notes: opts.notes ?? null,
+        // Grind 3 — TTL-policy. TTL är auktoritativt för staleness; HEAD-diff
+        // är rådgivande (se scripts/freeze-staleness-check.ts).
+        ttlDays,
+        frozenAt: new Date(frozenAtMs).toISOString(),
+        expiresAt: new Date(expiresAtMs).toISOString(),
+        refreezeReason: "manual" as const,
       };
       writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2));
     }
@@ -505,6 +665,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     };
   } catch (e) {
     report.error = e instanceof Error ? e.message : String(e);
+    report.failureClass = classifyFailure(e, report);
     throw e;
   } finally {
     // Receipt flushas ALLTID. Detta är hela poängen — utan finally blir

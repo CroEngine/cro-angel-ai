@@ -1,0 +1,104 @@
+{
+  "$comment": "Grind 2 — 50-site breadth corpus. Sajter med deferred=true exkluderas från addressableSuccessRate men freezas och mäts ändå. Anti-bot är medvetet deferred (kräver residential proxies, separat workstream).",
+  "version": 1,
+  "categories": {
+    "saas-landing": {
+      "description": "Klassiska SaaS-marketing-sidor. Förväntad lågförhandlad fas.",
+      "deferred": false,
+      "sites": [
+        { "name": "stripe", "url": "https://stripe.com" },
+        { "name": "notion", "url": "https://www.notion.com" },
+        { "name": "linear", "url": "https://linear.app" },
+        { "name": "vercel", "url": "https://vercel.com" },
+        { "name": "supabase", "url": "https://supabase.com" },
+        { "name": "intercom", "url": "https://www.intercom.com" },
+        { "name": "hubspot", "url": "https://www.hubspot.com" },
+        { "name": "hibob", "url": "https://www.hibob.com" },
+        { "name": "figma", "url": "https://www.figma.com" },
+        { "name": "loom", "url": "https://www.loom.com" }
+      ]
+    },
+    "ecommerce": {
+      "description": "Produktrekommendationer + carousels => hög icke-determinism.",
+      "deferred": false,
+      "sites": [
+        { "name": "shopify-store-allbirds", "url": "https://www.allbirds.com" },
+        { "name": "shopify-store-gymshark", "url": "https://www.gymshark.com" },
+        { "name": "everlane", "url": "https://www.everlane.com" },
+        { "name": "patagonia", "url": "https://www.patagonia.com" },
+        { "name": "warby-parker", "url": "https://www.warbyparker.com" },
+        { "name": "casper", "url": "https://casper.com" },
+        { "name": "glossier", "url": "https://www.glossier.com" },
+        { "name": "away", "url": "https://www.awaytravel.com" },
+        { "name": "rei", "url": "https://www.rei.com" },
+        { "name": "ikea-se", "url": "https://www.ikea.com/se/sv/" }
+      ]
+    },
+    "media": {
+      "description": "Nyhets-/contentsajter. Ad-injection, A/B-headlines.",
+      "deferred": false,
+      "sites": [
+        { "name": "guardian", "url": "https://www.theguardian.com" },
+        { "name": "bbc", "url": "https://www.bbc.com" },
+        { "name": "verge", "url": "https://www.theverge.com" },
+        { "name": "techcrunch", "url": "https://techcrunch.com" },
+        { "name": "nytimes", "url": "https://www.nytimes.com" }
+      ]
+    },
+    "spa": {
+      "description": "Client-rendered, lazy data fetch — tomt skal är reell risk.",
+      "deferred": false,
+      "sites": [
+        { "name": "airbnb", "url": "https://www.airbnb.com" },
+        { "name": "trello", "url": "https://trello.com" },
+        { "name": "asana", "url": "https://asana.com" },
+        { "name": "discord", "url": "https://discord.com" },
+        { "name": "spotify", "url": "https://www.spotify.com" }
+      ]
+    },
+    "i18n-routing": {
+      "description": "Geo/locale-redirect — fångar vi rätt locale?",
+      "deferred": false,
+      "sites": [
+        { "name": "klarna", "url": "https://www.klarna.com" },
+        { "name": "spotify-se", "url": "https://www.spotify.com/se/" },
+        { "name": "uber", "url": "https://www.uber.com" },
+        { "name": "booking", "url": "https://www.booking.com" },
+        { "name": "tradera", "url": "https://www.tradera.com" }
+      ]
+    },
+    "cookie-wall-eu": {
+      "description": "GDPR-tunga sajter. Stresstestar consent-flödet.",
+      "deferred": false,
+      "sites": [
+        { "name": "lemonde", "url": "https://www.lemonde.fr" },
+        { "name": "spiegel", "url": "https://www.spiegel.de" },
+        { "name": "dn", "url": "https://www.dn.se" },
+        { "name": "svd", "url": "https://www.svd.se" },
+        { "name": "aftonbladet", "url": "https://www.aftonbladet.se" }
+      ]
+    },
+    "anti-bot": {
+      "description": "Cloudflare/PerimeterX/Akamai-skyddade. Förväntade fail utan residential proxy — deferred.",
+      "deferred": true,
+      "sites": [
+        { "name": "ticketmaster", "url": "https://www.ticketmaster.com" },
+        { "name": "nike", "url": "https://www.nike.com" },
+        { "name": "supreme", "url": "https://www.supremenewyork.com" },
+        { "name": "ssense", "url": "https://www.ssense.com" },
+        { "name": "farfetch", "url": "https://www.farfetch.com" }
+      ]
+    },
+    "iframe-heavy": {
+      "description": "Embed-tunga sajter — YouTube, Twitter-cards, etc.",
+      "deferred": false,
+      "sites": [
+        { "name": "medium", "url": "https://medium.com" },
+        { "name": "substack", "url": "https://substack.com" },
+        { "name": "github-blog", "url": "https://github.blog" },
+        { "name": "stackoverflow", "url": "https://stackoverflow.com" },
+        { "name": "dev-to", "url": "https://dev.to" }
+      ]
+    }
+  }
+}
