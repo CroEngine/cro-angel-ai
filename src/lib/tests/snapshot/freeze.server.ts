@@ -528,13 +528,14 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     // "kastade inte". Failar denna är en "captured-wrong-page"-freeze: vi
     // fångade en consent-vägg, Cloudflare-challenge, tomt SPA-skal, etc.
     // Receiptet sparas oavsett utfall.
-    report.captureValidity = await assertCaptureValid(page);
-    if (!report.captureValidity.ok) {
+    const validity = await assertCaptureValid(page);
+    report.captureValidity = validity;
+    if (!validity.ok) {
       throw new Error(
-        `[freeze] captured-wrong-page (${opts.name}): ${report.captureValidity.reason}. ` +
-          `text=${report.captureValidity.textLen}ch interactive=${report.captureValidity.interactiveCount} ` +
-          `heroHeading=${report.captureValidity.heroHasMeaningfulHeading} ` +
-          `challengeMarkers=[${report.captureValidity.challengeMarkersFound.join(",")}]`,
+        `[freeze] captured-wrong-page (${opts.name}): ${validity.reason}. ` +
+          `text=${validity.textLen}ch interactive=${validity.interactiveCount} ` +
+          `heroHeading=${validity.heroHasMeaningfulHeading} ` +
+          `challengeMarkers=[${validity.challengeMarkersFound.join(",")}]`,
       );
     }
 
