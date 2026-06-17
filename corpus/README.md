@@ -81,6 +81,28 @@ Two things are deliberately scoped narrowly:
    This limitation is acknowledged — extending determinism to breadth is a
    future workstream, not part of the current substrate-hardening.
 
+## Promotion criteria (apply to ALL corpus sites)
+
+A site is promoted into `corpus/<name>/` only when ALL of the following hold:
+
+1. **Capture-validity** — `assertCaptureValid` passes (see Grind 2 section).
+2. **A2 font-embedding** — `externalFontSrcCount === 0` after rewrite, so
+   replay's render-canary is meaningful (not OS-font fallback).
+3. **Capture-determinism** — N≥3 consecutive freezes produce 0 unexpected
+   drift (i.e. all drift attributable to the whitelist in
+   `fixtures/determinism/WHITELIST.md`). This is a general corpus invariant,
+   not specific to any failure class. Sites that fail freeze occasionally
+   (e.g. `mhtml-capture-failed` with the CDP `-32000` symptom) MUST
+   demonstrate capture-determinism on the runs that succeed before
+   promotion — flaky capture poisons everything above the substrate.
+4. **Score determinism** — the goldens produced from the N freezes are
+   bytewise equal (after the extractor's documented normalization).
+
+Steps 3–4 are non-negotiable for promotion. Hubspot's determinism-check is
+the canonical example; the same rule applies to any future corpus site.
+
+
+
 ## Capture validity (Grind 2)
 
 A freeze is `ok` only if `assertCaptureValid` passes — text length >= 500ch,

@@ -1,0 +1,28 @@
+{
+  "site": "hubspot",
+  "url": "https://www.hubspot.com",
+  "ranAt": "2026-06-17T21:05Z",
+  "N": 3,
+  "whitelistVersion": "fixtures/determinism/WHITELIST.md (pre-Laboratory-row)",
+  "round1": {
+    "driftedPairCount": 3,
+    "driftCounts": [38427, 98325, 86300],
+    "verdict": "RED",
+    "rootCause": "MHTML body-side cid:<UUID>@mhtml.blink references + ------MultipartBoundary--…---- separators not whitelisted (only the Content-ID: header line and Content-Type header boundary= param were). Same RFC 2557 per-snapshot-random mechanism as the already-whitelisted header. Widened in commit: HTML_ATTR_WHITELIST_PATTERNS now masks cid:-refs and inline boundary=, MHTML_WHITELIST_LINE_PATTERNS now drops body separator lines; normalize step now joins QP soft-line-breaks first so wrapped UUIDs match."
+  },
+  "round2_reEval_without_refreeze": {
+    "driftedPairCount": 3,
+    "driftCounts": [74355, 74356, 63734],
+    "verdict": "RED",
+    "rootCause": "Residual drift dominated by HubSpot Laboratory experiment ID — <meta name=\"laboratory-identifier-other\" content=\"anon<32hex>\"> rotates per session (L212), driving body-structure variance at L213 (one freeze starts <body> with <div id=hs-web-interactives-…>; another inserts a hidden bot-tarpit <a tabindex=-1 aria-hidden=true>). The line-shift cascade after L213 explains the inflated drift count — most lines past L213 differ only by index shift, not content. The hint regex correctly flagged 'unclassified' because Laboratory was not in MECHANISM_HINTS."
+  },
+  "verdict": "RED (read evidence-driven)",
+  "interpretation": "Hubspot has a confirmed sample-defining mechanism: HubSpot Laboratory (epistemic class: A/B-bucket per session, similar to Optimizely). This was NOT in the mechanism inventory because the survey was a single-capture-per-site presence scan and per-session anonymous IDs are only visible across captures. The user pre-warned this would happen and the right read is 'known axis we should have listed' (now listed in fixtures/determinism/WHITELIST.md as confirmed-drift), NOT 'hubspot is non-deterministic'.",
+  "implications": [
+    "MHTML transport-layer whitelist widened in scripts/freeze-determinism-check.ts and locked in WHITELIST.md.",
+    "HubSpot Laboratory added to WHITELIST.md as confirmed-drift, sample-defining.",
+    "scripts/mechanism-inventory.ts gains a 'ab:hubspot-laboratory' row so a fresh survey re-scan would catch it.",
+    "Hubspot may not be a clean golden-bearing corpus member if the scored extractor consumes body structure variance from the laboratory bucket. Determining that requires running the extractor on the 3 stashed MHTMLs and comparing field-level — separate workstream, beyond Grind 0 closeout."
+  ],
+  "stashed": "fixtures/determinism/hubspot/run-0.mhtml (one of the 3 freezes preserved for offline re-evaluation)"
+}

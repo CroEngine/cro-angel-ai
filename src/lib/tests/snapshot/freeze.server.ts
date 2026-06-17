@@ -150,8 +150,10 @@ interface FreezeReport {
     | "auth-gate"
     | "geo-gate"
     | "mhtml-too-large"
+    | "mhtml-capture-failed"
     | "font-embed-failed"
     | "unknown";
+
   /** Detaljer om varför assertCaptureValid failed. null när den inte körts eller passerade. */
   captureValidity: {
     ok: boolean;
@@ -246,6 +248,13 @@ function classifyFailure(
   report: FreezeReport,
 ): FreezeReport["failureClass"] {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  // CDP MHTML serializer failure (observed: "-32000 Failed to generate MHTML").
+  // Root cause not isolated — may be intermittent; see corpus/README.md
+  // "Promotion criteria" for the capture-determinism invariant that applies
+  // to ALL sites, not just this failure class.
+  if (msg.includes("failed to generate mhtml") || msg.includes("-32000")) {
+    return "mhtml-capture-failed";
+  }
   if (msg.includes("timeout") || msg.includes("timed out")) {
     if (msg.includes("consent-selektor")) return "consent-missed";
     return "timeout";
@@ -268,6 +277,7 @@ function classifyFailure(
   if (report.captureValidity && !report.captureValidity.ok) return "captured-wrong-page";
   return "unknown";
 }
+
 
 
 async function lazyScroll(page: import("@browserbasehq/stagehand").Page) {

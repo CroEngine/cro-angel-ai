@@ -9,8 +9,11 @@
  * kodar in DEN whitelist:en som regex-listor nedan — om de divergerar är
  * scriptet fel, inte whitelist:en.
  *
- * Pairwise: med N=3 får vi 3 par. Field flaggas om det driftar i >= 2 par
- * (drift i 1 par kan vara A/B-bucket-sammanträffande).
+ * Pairwise: med N=3 får vi 3 par. AMBER/RED-verdicts SKRIVER UT fält-nivå-diff
+ * (drifting lines med before/after fragment + mekanism-hint) till stdout — så
+ * "läs diff:en först"-regeln i AMBER-handlingen är operationell utan att läsa
+ * diff.json separat. Utan detta defaulter den till "tryck på knappen igen
+ * med större N" — som per design är fel verdict-flöde.
  */
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -47,16 +50,58 @@ const MHTML_WHITELIST_LINE_PATTERNS: RegExp[] = [
   /^Content-Type: multipart\/related;\s*boundary=/i,
   /^Content-ID:\s</i,
   /^Content-Location:.*[?&](t|ts|cb|v|_|cache|version|build|hash)=/i,
+  // Body separator lines emitted by Chromium MHTML serializer between parts.
+  // Same RFC 2557 per-snapshot random mechanism as the boundary= header param.
+  /^------MultipartBoundary--[A-Za-z0-9]+----\s*$/,
 ];
+// Strip-or-mask patterns applied per-line BEFORE diff. The cid:-reference
+// rewrite is the body-side complement of the Content-ID: header strip —
+// Chromium synthesizes a fresh UUID per part per snapshot, and any href/src
+// inside the body that points to a part rotates with it. Score-impact: neutral
+// (extractor doesn't care which cid a css/img part has, only its content).
 const HTML_ATTR_WHITELIST_PATTERNS: RegExp[] = [
   /\bnonce="[^"]*"/g,
   /\bdata-[a-z-]+-nonce="[^"]*"/g,
   /<meta name="csrf-token" content="[^"]*">/gi,
   /[?&](t|ts|cb|v|_|cache|version|build|hash)=[a-z0-9.-]+/gi,
+  // cid: references inside body — UUIDs rotate per snapshot with Content-ID headers.
+  /cid:[a-z0-9-]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@mhtml\.blink/gi,
+  // Boundary tokens that appear inline (e.g. inside Content-Type headers re-quoted in body).
+  /boundary="----MultipartBoundary--[A-Za-z0-9]+----"/g,
 ];
 
+
+// Mekanism-hints för diff-klassificering i AMBER/RED-utskriften. Hint-träff
+// betyder INTE auto-promotion till whitelist — det är en pekare för
+// reviewern: "denna line ser ut att komma från mekanism X, kolla om X
+// finns i WHITELIST.md eller borde läggas till".
+const MECHANISM_HINTS: Array<{ name: string; re: RegExp }> = [
+  { name: "consent-cmp:onetrust", re: /optanon|data-domain-script|onetrust/i },
+  { name: "consent-cmp:other", re: /usercentrics|didomi|cookieyes|cookielaw/i },
+  { name: "ab:optimizely", re: /optimizely|optly/i },
+  { name: "ab:vwo", re: /_vis_opt_|data-vwo|__vwo/i },
+  { name: "ab:adobe-target", re: /adobe-target|mboxdefault/i },
+  { name: "personalization:dynamic-yield", re: /dynamic-yield|\bdy-rec-/i },
+  { name: "session-token:csrf", re: /csrf-token|xsrf|data-csrf/i },
+  { name: "session-token:nonce", re: /\bnonce=/i },
+  { name: "cdn-bust:hash-query", re: /[?&](v|t|ts|cb|cache|version|build|hash)=[a-z0-9.-]+/i },
+  { name: "cdn-bust:filename-hash", re: /\.[a-f0-9]{8,}\.(js|css|woff2?|png|jpe?g|svg)/i },
+  { name: "ads:googletag", re: /googletag|googlesyndication|pubads|prebid/i },
+  { name: "session-recording", re: /_uxa|usabilla|fullstory|_hjSettings|hotjar|mouseflow|clarity/i },
+];
+
+function classifyLine(line: string): string {
+  const hits = MECHANISM_HINTS.filter((h) => h.re.test(line)).map((h) => h.name);
+  return hits.length > 0 ? hits.join(",") : "unclassified";
+}
+
 function normalizeMhtml(raw: string): string {
-  return raw
+  // QP soft-line-break decode FIRST so multi-line wrapped attributes
+  // (e.g. cid:css-<UUID>@mhtml.blink split across 76-char QP rows) match the
+  // body patterns. Without this, the cid: regex only catches occurrences that
+  // happen to fall entirely within one QP row.
+  const joined = raw.replace(/=\r?\n/g, "");
+  return joined
     .split(/\r?\n/)
     .filter((line) => !MHTML_WHITELIST_LINE_PATTERNS.some((re) => re.test(line)))
     .map((line) => {
@@ -67,11 +112,20 @@ function normalizeMhtml(raw: string): string {
     .join("\n");
 }
 
+
+interface DriftRow {
+  line: number;
+  before: string;
+  after: string;
+  hint: string;
+}
+
 interface PairDiff {
   pair: [number, number];
   mhtmlIdentical: boolean;
-  // Lite-fingerprint för rapportering — vi loggar inte hela diff:en till disk.
-  mhtmlSampleDrift: string[];
+  driftCount: number;
+  driftRows: DriftRow[]; // up to 50 — bounded så diff.json inte sväller
+  hintCounts: Record<string, number>;
 }
 
 async function freezeOnce(idx: number) {
@@ -104,14 +158,24 @@ for (let i = 0; i < runs.length; i++) {
     const a = normalizeMhtml(runs[i].mhtml).split("\n");
     const b = normalizeMhtml(runs[j].mhtml).split("\n");
     const max = Math.max(a.length, b.length);
-    const drifts: string[] = [];
-    for (let k = 0; k < max && drifts.length < 20; k++) {
-      if (a[k] !== b[k]) drifts.push(`L${k}: ${(a[k] ?? "<EOF>").slice(0, 120)} | ${(b[k] ?? "<EOF>").slice(0, 120)}`);
+    const driftRows: DriftRow[] = [];
+    const hintCounts: Record<string, number> = {};
+    let total = 0;
+    for (let k = 0; k < max; k++) {
+      if (a[k] === b[k]) continue;
+      total++;
+      const before = (a[k] ?? "<EOF>").slice(0, 200);
+      const after = (b[k] ?? "<EOF>").slice(0, 200);
+      const hint = classifyLine(before + " || " + after);
+      hintCounts[hint] = (hintCounts[hint] ?? 0) + 1;
+      if (driftRows.length < 50) driftRows.push({ line: k, before, after, hint });
     }
     pairs.push({
       pair: [i, j],
-      mhtmlIdentical: drifts.length === 0,
-      mhtmlSampleDrift: drifts,
+      mhtmlIdentical: total === 0,
+      driftCount: total,
+      driftRows,
+      hintCounts,
     });
   }
 }
@@ -121,8 +185,8 @@ const verdict =
   driftedPairs === 0
     ? "GREEN: 0 unexpected-drift across all pairs"
     : driftedPairs === 1
-      ? "AMBER: drift in 1 pair (possible A/B coincidence; re-run with larger N)"
-      : "RED: drift in >=2 pairs — whitelist incomplete or genuine non-determinism";
+      ? "AMBER: drift in 1 pair — READ DIFF BELOW before re-running with larger N (drift in known whitelist mechanism → widen whitelist; new field → RED)"
+      : "RED: drift in >=2 pairs — whitelist incomplete or genuine non-determinism (read diff below; new whitelist row or real instability)";
 
 const diff = {
   site: name,
@@ -136,6 +200,32 @@ const diff = {
 };
 const diffPath = join(outDir, "diff.json");
 writeFileSync(diffPath, JSON.stringify(diff, null, 2));
+
 // eslint-disable-next-line no-console
-console.log(`[determinism] -> ${diffPath}\n[determinism] ${verdict}`);
+console.log(`\n[determinism] -> ${diffPath}`);
+// eslint-disable-next-line no-console
+console.log(`[determinism] ${verdict}\n`);
+
+// Field-level diff to stdout for AMBER/RED. Without this the "read diff first"
+// rule is unenforceable — operator defaults to N=5 retry.
+if (driftedPairs > 0) {
+  for (const p of pairs) {
+    if (p.mhtmlIdentical) continue;
+    // eslint-disable-next-line no-console
+    console.log(`--- pair [${p.pair[0]}, ${p.pair[1]}]  driftCount=${p.driftCount}`);
+    // eslint-disable-next-line no-console
+    console.log(`    hint summary: ${JSON.stringify(p.hintCounts)}`);
+    for (const r of p.driftRows.slice(0, 15)) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `    L${r.line}  [${r.hint}]\n      A: ${r.before}\n      B: ${r.after}`,
+      );
+    }
+    if (p.driftRows.length > 15) {
+      // eslint-disable-next-line no-console
+      console.log(`    ... +${p.driftRows.length - 15} more rows (full diff in diff.json)`);
+    }
+  }
+}
+
 if (driftedPairs >= 2) process.exit(1);
