@@ -124,6 +124,44 @@ comparison is pairwise (3 pairs).
 evidence; `corpus/hubspot/meta.json` carries the pending flag. Bot-tarpit
 anchor injection at `<body>` open remains unwhitelisted and unmasked.
 
+### Known-open mechanisms NOT whitelisted (policy avvaktar plan v2 Block B/C)
+
+The following capture-drivers are documented in the mechanism inventory and
+contribute to the current RED, but have NO whitelist row — we refuse to add
+a row without inkopplad mask after the Block A QP-encoding-bug audit.
+
+- **`session-token:hubspot-laboratory` → bot-tarpit anchor at `<body>` L213.**
+  Heuristic injection, not bucket-deterministic. C1/C2-beslut väntar på
+  Block B (MHTML→golden-extractor) score-impact-mätning.
+- **`animation:mid-frame-transform` → `translateY(-Npx)` på hero
+  `animated-list`.** Capture-time-varians; samma freeze-pipeline samplar
+  CSS-animationen vid olika frame-offset per körning. Observerad i Grind 1
+  hubspot 2026-06-17 round3. C1/C2-beslut väntar på Block B (samma
+  motivering som tarpit: vi behöver veta om drivern faktiskt rör
+  `golden.json` innan vi väljer narrow-vs-eliminate). Block A:s mask-audit
+  bekräftade att ingen befintlig pattern täcker transform-attribut.
+
+### Round-4 (2026-06-17 Block A): QP-encoding-fix i attribut-masker
+
+Pre-fix bug: alla `confirmed-by-design`-rader som matchade på
+attributvärden (`laboratory-identifier-*`, `csrf-token`, `nonce`,
+`cid:...@mhtml.blink`, inline boundary, cache-bust-query) no-op'ade tyst
+mot wire-shapen — Chromium serialiserar MHTML body som
+Content-Transfer-Encoding: quoted-printable, så `content="..."` ligger som
+`content=3D"..."` på disken. Maskerna är skrivna mot dekodad HTML-syntax;
+de matchade aldrig. Apparent green på dessa rader kom av token-stabilitet
+över N=3 captures, inte av maskering.
+
+Fix: `src/lib/tests/snapshot/mhtml-normalize.ts` infogar
+`qpDecodeLine()`-pass före attribut-maskerna körs. Enhetstest:
+`src/lib/tests/snapshot/__tests__/mhtml-normalize.test.ts` pinnar
+QP-decode-then-mask-ordningen.
+
+Konsekvens: tidigare lyfta `confirmed-by-design`-rader kan behöva
+re-validera efter att masken nu faktiskt verkar. Förväntat: reducerad
+diff-noise, samma RED-verdict (tarpit + animation kvarstår).
+
+
 Verdict logic (operationalized by `scripts/freeze-determinism-check.ts`):
 
 - `GREEN` (0 drifted pairs) → Grind 1 closed.

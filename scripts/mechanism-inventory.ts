@@ -128,7 +128,22 @@ const MECHANISMS: Mechanism[] = [
     patterns: [/_uxa|usabilla|fullstory|_hjSettings|hotjar|mouseflow|clarity\.ms/i],
     note: "Session-recording probes (Contentsquare _uxa, Usabilla, FullStory, Hotjar, Mouseflow, MS Clarity). Send-only telemetry; does NOT inject visible variants. Extractor-neutral.",
   },
+  {
+    id: "animation:mid-frame-transform",
+    category: "animation / capture-time",
+    scoreImpact: "neutral",
+    // Static-presence heuristic: detection looks for animated-list class or
+    // @keyframes / animation declarations in inline styles or CSS parts.
+    // The DRIFT itself (mid-frame translate sampled at different offsets per
+    // freeze) is observable ONLY via Grind 1 freeze-determinism-check, not by
+    // this static scan. Presence here is necessary-but-not-sufficient for the
+    // capture-time variance class — many sites have animations that pause
+    // before freeze and never drift.
+    patterns: [/\banimated-list\b|@keyframes\s+\w+|animation(-name)?:\s*[a-z-]+\s+\d/i],
+    note: "Mid-frame capture-time variance: CSS animations on hero containers (e.g. translateY on an animated-list) are sampled at arbitrary frame offsets per freeze. Observed via Grind 1 hubspot 2026-06-17 round3 (translateY(-240px) vs translateY(-480px)). Score-impact tentatively neutral pending Block B (extractor measurement); promote to sample-defining if golden.json output drifts. NOT whitelisted — policy avvaktar Block B/C i plan v2.",
+  },
 ];
+
 
 const ROOT = "fixtures/drift-survey";
 const PRESENCE: Record<string, { sites: string[]; sampleFragments: Record<string, string> }> = {};
