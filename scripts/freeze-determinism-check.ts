@@ -96,7 +96,12 @@ function classifyLine(line: string): string {
 }
 
 function normalizeMhtml(raw: string): string {
-  return raw
+  // QP soft-line-break decode FIRST so multi-line wrapped attributes
+  // (e.g. cid:css-<UUID>@mhtml.blink split across 76-char QP rows) match the
+  // body patterns. Without this, the cid: regex only catches occurrences that
+  // happen to fall entirely within one QP row.
+  const joined = raw.replace(/=\r?\n/g, "");
+  return joined
     .split(/\r?\n/)
     .filter((line) => !MHTML_WHITELIST_LINE_PATTERNS.some((re) => re.test(line)))
     .map((line) => {
@@ -106,6 +111,7 @@ function normalizeMhtml(raw: string): string {
     })
     .join("\n");
 }
+
 
 interface DriftRow {
   line: number;
