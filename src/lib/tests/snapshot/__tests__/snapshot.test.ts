@@ -10,9 +10,10 @@
 //   `bun run snapshot` runs the diff. Non-empty diff = a regression OR an
 //   intentional change. If intentional, re-run snapshot:update and commit.
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { chromium, type Browser } from "playwright";
 
 import { replayCorpus } from "../harness.server";
 import { normalizeCollect, normalizePageAudit, diffNormalized } from "../normalize";
@@ -29,6 +30,38 @@ function listCorpus(): string[] {
 
 const sites = listCorpus();
 
+// Same pattern as render-canary.test.ts: probe chromium, skip suite if the
+// sandbox lacks sysdeps. CI installs --with-deps so probe succeeds and every
+// corpus site runs normally.
+let chromiumAvailable = false;
+let probeBrowser: Browser | undefined;
+
+beforeAll(async () => {
+  try {
+    const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+    probeBrowser = await chromium.launch({ headless: true, executablePath });
+    await probeBrowser.close();
+    probeBrowser = undefined;
+    chromiumAvailable = true;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[snapshot.test] Chromium kunde inte starta — skip:ar suiten. ` +
+        `(${e instanceof Error ? e.message.split("\n")[0] : e})`,
+    );
+  }
+});
+
+afterAll(async () => {
+  if (probeBrowser) {
+    try {
+      await probeBrowser.close();
+    } catch {
+      /* best-effort */
+    }
+  }
+});
+
 describe.skipIf(sites.length === 0)("snapshot diff", () => {
   for (const name of sites) {
     // C2: hibob deferred — consent-blockerare + stale fontlös MHTML.
@@ -36,7 +69,8 @@ describe.skipIf(sites.length === 0)("snapshot diff", () => {
     const run = name === "hibob" ? it.skip : it;
     run(
       name,
-      async () => {
+      async (ctx) => {
+        if (!chromiumAvailable) return ctx.skip();
         const fresh = await replayCorpus(name, CORPUS_ROOT);
 
         // Skip-link suspect-räknare: observation, ej gate. När korpus
