@@ -1,13 +1,18 @@
-// Read-only inspector data for frozen corpus sites under ./corpus/<name>/.
-// Returns, per site, which artefact files exist plus parsed sammanfattningar
-// från meta.json, freeze-report.json och golden.json så UI:t kan visa
-// snabbsiffror utan att ladda hela goldens.
+// Read-only inspector data för frysta corpus-sajter.
+// Läser från build-time bundle (corpus-bundle.ts) istället för disk-FS,
+// eftersom Cloudflare Worker-runtimen inte har repo-filerna.
 
 import { createServerFn } from "@tanstack/react-start";
-import { readdirSync, existsSync, statSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 
-const CORPUS_ROOT = "corpus";
+import {
+  getFreezeReport,
+  getMeta,
+  hasFamilies,
+  hasGolden,
+  jsonByteSize,
+  listSiteNames,
+  loadGolden,
+} from "./corpus-bundle";
 
 export const ARTIFACT_FILES = [
   "golden.json",
@@ -25,38 +30,23 @@ export interface CorpusSite {
   files: Record<ArtifactFile, { exists: boolean; sizeBytes: number | null }>;
   meta: any | null;
   freezeReport: any | null;
-  goldenSummary: {
-    elementCount: number | null;
-    primaryCtaAboveFold: number | null;
-    competingAboveFold: number | null;
-    h1: string[];
-    heroHeadline: string | null;
-    heroCtaText: string | null;
-    heroCtaIntent: string | null;
-    title: string | null;
-    sectionOrder: string[] | null;
-  } | null;
+  // Snabbsiffrorna lazy-laddas via getGoldenSummary i UI:t.
+  goldenSummary: null;
 }
 
-function safeReadJson(path: string): any | null {
-  try {
-    if (!existsSync(path)) return null;
-    return JSON.parse(readFileSync(path, "utf8"));
-  } catch {
-    return null;
-  }
+export interface GoldenSummary {
+  elementCount: number | null;
+  primaryCtaAboveFold: number | null;
+  competingAboveFold: number | null;
+  h1: string[];
+  heroHeadline: string | null;
+  heroCtaText: string | null;
+  heroCtaIntent: string | null;
+  title: string | null;
+  sectionOrder: string[] | null;
 }
 
-function fileStat(path: string): { exists: boolean; sizeBytes: number | null } {
-  try {
-    const s = statSync(path);
-    return { exists: true, sizeBytes: s.size };
-  } catch {
-    return { exists: false, sizeBytes: null };
-  }
-}
-
-function summarizeGolden(golden: any) {
+function summarizeGolden(golden: any): GoldenSummary | null {
   if (!golden || typeof golden !== "object") return null;
   const collect = golden.collect ?? {};
   const audit = golden.pageAudit ?? {};
@@ -75,32 +65,46 @@ function summarizeGolden(golden: any) {
 
 export const listCorpus = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ sites: CorpusSite[]; root: string }> => {
-    if (!existsSync(CORPUS_ROOT)) return { sites: [], root: CORPUS_ROOT };
-
-    const names = readdirSync(CORPUS_ROOT, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name)
-      .sort();
+    const names = listSiteNames();
 
     const sites: CorpusSite[] = names.map((name) => {
-      const dir = join(CORPUS_ROOT, name);
-      const files = Object.fromEntries(
-        ARTIFACT_FILES.map((f) => [f, fileStat(join(dir, f))]),
-      ) as CorpusSite["files"];
+      const meta = getMeta(name);
+      const freezeReport = getFreezeReport(name);
 
-      const meta = safeReadJson(join(dir, "meta.json"));
-      const freezeReport = safeReadJson(join(dir, "freeze-report.json"));
-      const golden = safeReadJson(join(dir, "golden.json"));
+      const files: CorpusSite["files"] = {
+        "golden.json": {
+          exists: hasGolden(name),
+          // Storlek okänd utan att exekvera lazy-loadern — visa null.
+          sizeBytes: null,
+        },
+        "meta.json": { exists: meta != null, sizeBytes: meta ? jsonByteSize(meta) : null },
+        "freeze-report.json": {
+          exists: freezeReport != null,
+          sizeBytes: freezeReport ? jsonByteSize(freezeReport) : null,
+        },
+        // Binärerna ligger i public/corpus/<name>/ — antas finnas om
+        // sajten har en meta.json. Storlek serveras inte (no-op).
+        "page.mhtml": { exists: meta != null, sizeBytes: null },
+        "page.mhtml.asset.json": { exists: false, sizeBytes: null },
+        "screenshot.jpg": { exists: meta != null, sizeBytes: null },
+      };
 
       return {
         name,
         files,
         meta,
         freezeReport,
-        goldenSummary: summarizeGolden(golden),
+        goldenSummary: null,
       };
     });
 
-    return { sites, root: CORPUS_ROOT };
+    return { sites, root: "corpus" };
   },
 );
+
+export const getGoldenSummary = createServerFn({ method: "GET" })
+  .inputValidator((data: { name: string }) => data)
+  .handler(async ({ data }): Promise<GoldenSummary | null> => {
+    const golden = await loadGolden(data.name);
+    return summarizeGolden(golden);
+  });

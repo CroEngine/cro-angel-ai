@@ -15,6 +15,9 @@
 // Det vanliga flödet är att lägga till en site i corpus/sites.ts och köra
 // bara --name=<name>. CLI-flaggor är override, inte enda källa.
 
+import { mkdirSync, copyFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
 import { freezeSite } from "../src/lib/tests/snapshot/freeze.server";
 import { getSite } from "../corpus/sites";
 
@@ -81,6 +84,17 @@ freezeSite({
   screenshotBeforeDismiss,
 })
   .then((r) => {
+    // Spegla binärerna till public/corpus/<name>/ så Cloudflare Worker-builden
+    // kan serva dem same-origin. JSON läses via Vite-bundle vid build.
+    if (!dryRun) {
+      const publicDir = join("public", "corpus", name);
+      mkdirSync(publicDir, { recursive: true });
+      for (const f of ["page.mhtml", "screenshot.jpg"]) {
+        const src = join(r.dir, f);
+        if (existsSync(src)) copyFileSync(src, join(publicDir, f));
+      }
+      console.log(`[freeze] mirrored binaries -> ${publicDir}/`);
+    }
     console.log(
       `OK · ${r.dir} · mhtml ${Math.round(r.mhtmlBytes / 1024)}kb · ` +
         `screenshot ${Math.round(r.screenshotBytes / 1024)}kb · report ${r.reportPath}`,
