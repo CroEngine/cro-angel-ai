@@ -1,7 +1,7 @@
 # Mechanism Inventory — Auto-Generated
 
 > Source: `scripts/mechanism-inventory.ts` over `fixtures/drift-survey/**/page.mhtml`.
-> Generated: 2026-06-17T21:30:26.768Z
+> Generated: 2026-06-17T22:18:37.713Z
 > Scanned: 33 MHTML files. Skipped: 12.
 
 **This is a presence inventory, not drift evidence.** Two-freeze drift is only observed by `scripts/freeze-determinism-check.ts` (Grind 1).
@@ -75,6 +75,15 @@
 
 - **session-recording** (neutral) — Session-recording probes (Contentsquare _uxa, Usabilla, FullStory, Hotjar, Mouseflow, MS Clarity). Send-only telemetry; does NOT inject visible variants. Extractor-neutral.
   - Sites: ecommerce/patagonia, i18n-routing/spotify-se, saas-landing/stripe, spa/spotify
+
+## animation / capture-time
+
+| Mechanism | score-impact | sites (n) | sample fragment |
+|---|---|---|---|
+| `animation:mid-frame-transform` | neutral | 33 | `@keyframes _pulse_1a4lh_1` |
+
+- **animation:mid-frame-transform** (neutral) — Mid-frame capture-time variance: CSS animations on hero containers (e.g. translateY on an animated-list) are sampled at arbitrary frame offsets per freeze. Observed via Grind 1 hubspot 2026-06-17 round3 (translateY(-240px) vs translateY(-480px)). Score-impact tentatively neutral pending Block B (extractor measurement); promote to sample-defining if golden.json output drifts. NOT whitelisted — policy avvaktar Block B/C i plan v2.
+  - Sites: cookie-wall-eu/aftonbladet, cookie-wall-eu/dn, cookie-wall-eu/lemonde, cookie-wall-eu/spiegel, cookie-wall-eu/svd, ecommerce/glossier, ecommerce/ikea-se, ecommerce/patagonia, ecommerce/rei, ecommerce/shopify-store-allbirds, ecommerce/shopify-store-gymshark, ecommerce/warby-parker, i18n-routing/booking, i18n-routing/klarna, i18n-routing/spotify-se, i18n-routing/tradera, i18n-routing/uber, iframe-heavy/dev-to, iframe-heavy/github-blog, iframe-heavy/substack, media/verge, saas-landing/hibob, saas-landing/hubspot, saas-landing/intercom, saas-landing/linear, saas-landing/loom, saas-landing/notion, saas-landing/stripe, saas-landing/supabase, saas-landing/vercel, spa/airbnb, spa/spotify, spa/trello
 
 ## Skipped sites
 
