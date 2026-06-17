@@ -514,6 +514,11 @@ export type PageAuditData = {
     blockquoteCount: number;
     headingDepth: number;
   };
+  /**
+   * @deprecated PROVENIENS, EJ SCORE. Capture-time approximations som inte
+   * får viktas in i jämförbar score. Behålls top-level för bakåtkomp; nya
+   * konsumenter bör läsa `provenance.performanceProxy` istället.
+   */
   performanceProxy?: {
     domNodes: number;
     aboveFoldElements: number;
@@ -524,7 +529,43 @@ export type PageAuditData = {
     stylesheetCount: number;
     scriptCount: number;
   };
+  /**
+   * Extractor-version stämpel. Score = f(frusen DOM, extractor_vN). Två
+   * scores med olika extractorVersion får INTE jämföras direkt — kör
+   * scripts/rescore-corpus.ts för att re-scora under en gemensam version.
+   */
+  extractorVersion?: string;
+  /**
+   * Capture-mätt + render-beroende metadata. Allt här är "observerat vid
+   * snapshot-tillfället", aldrig score-input. UI får visa det som
+   * "observerat vid capture", men aldrig blanda in i jämförbar siffra.
+   */
+  provenance?: {
+    extractorRanAt: string;       // ISO — när extractor körde (replay-tid)
+    capturedAt?: string;           // ISO — när snapshot frystes (freeze-tid)
+    chromiumVersion?: string;      // browser som körde extractor
+    viewport?: { width: number; height: number };
+    nonComparable: true;           // sanity-flagga: hela blocket är icke-jämförbart
+    performanceProxy?: {
+      domNodes: number;
+      aboveFoldElements: number;
+      aboveFoldImageCount: number;
+      largestImagePx: number;
+      lazyLoadedImages: number;
+      eagerImagesAboveFold: number;
+      stylesheetCount: number;
+      scriptCount: number;
+    };
+    pageSpeed?: {
+      strategy: "mobile" | "desktop";
+      performance: number | null;
+      lcpMs: number | null;
+      fcpMs: number | null;
+      cls: number | null;
+    };
+  };
 };
+
 
 
 export type CollectSummary = {

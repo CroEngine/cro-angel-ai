@@ -28,6 +28,8 @@ import type {
   TrustSignal,
   VisualHierarchyEntry,
 } from "../schema";
+import { EXTRACTOR_VERSION } from "../extractor-version";
+
 
 type RawPageAudit = Omit<
   PageAuditData,
@@ -419,9 +421,10 @@ export async function runPageAudit(
   // needs it to build the overlay; it's stripped downstream after overlay.
   const sectionsForSnapshot = sectionsTyped.map(({ selector: _s, ...rest }) => rest);
 
+  const auditedAt = new Date().toISOString();
   return {
     ...audit,
-    auditedAt: new Date().toISOString(),
+    auditedAt,
     robotsTxt,
     sitemap,
     httpHeaders,
@@ -438,6 +441,16 @@ export async function runPageAudit(
     hero,
     // Collect-only: no derived diagnosis flags. Interpretation lives in the AI layer.
     flags: [],
+    // A+C: score-comparability stamp. Required on every audit result.
+    extractorVersion: EXTRACTOR_VERSION,
+    provenance: {
+      extractorRanAt: auditedAt,
+      nonComparable: true as const,
+      // performanceProxy mirrored here so new consumers read the canonical
+      // location; top-level field kept for back-compat (deprecated).
+      ...(audit.performanceProxy ? { performanceProxy: audit.performanceProxy } : {}),
+    },
   };
 }
+
 

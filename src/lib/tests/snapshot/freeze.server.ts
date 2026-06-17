@@ -115,6 +115,20 @@ interface FreezeReport {
     removedStaleLocalMhtml: boolean;
     removedStalePointer: boolean;
   };
+  /**
+   * A+C proveniens: capture-env stämplas in. Detta är OBSERVATION, ingen
+   * enforcement — Chromium-versionen från Browserbase kan drifta över tid,
+   * och det är ok eftersom score = f(frusen DOM, extractor_vN) inte beror
+   * på vilken Chromium som råkade producera DOM:en. Stämpeln finns för att
+   * vi i efterhand ska kunna se VILKEN Chromium en gammal snapshot frystes
+   * under, inte för att tvinga konsistens.
+   */
+  env: {
+    source: "browserbase";
+    chromiumVersion: string | null;
+    viewport: { width: number; height: number };
+    frozenAt: string; // ISO
+  } | null;
   timing: {
     gotoMs: number;
     consentMs: number;
@@ -122,6 +136,7 @@ interface FreezeReport {
     captureMs: number;
   };
 }
+
 
 async function lazyScroll(page: import("@browserbasehq/stagehand").Page) {
   for (const pct of [0, 25, 50, 75, 100]) {
@@ -238,8 +253,10 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       removedStaleLocalMhtml: false,
       removedStalePointer: false,
     },
+    env: null,
     timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
   };
+
 
   let mhtmlBytes = 0;
   let screenshotBytes = 0;
@@ -258,6 +275,32 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     const page = stagehand.context.pages()[0] ?? (await stagehand.context.newPage());
 
     await page.setViewportSize(FREEZE_VIEWPORT.width, FREEZE_VIEWPORT.height);
+
+    // A+C proveniens: stämpla capture-env. Best-effort — om browser.version()
+    // inte är tillgänglig hamnar null där, vilket också är information ("vi
+    // visste inte vid frystidpunkten").
+    let chromiumVersion: string | null = null;
+    try {
+      // Stagehand v3 doesn't expose .browser() on its Context shim; reach via
+      // any-cast since this is best-effort proveniens, not gating.
+      const ctxAny = stagehand.context as unknown as {
+        browser?: () => { version: () => string } | null;
+      };
+      const browser = typeof ctxAny.browser === "function" ? ctxAny.browser() : null;
+      if (browser && typeof browser.version === "function") {
+        chromiumVersion = browser.version();
+      }
+    } catch {
+      /* best-effort proveniens */
+    }
+
+    report.env = {
+      source: "browserbase",
+      chromiumVersion,
+      viewport: { width: FREEZE_VIEWPORT.width, height: FREEZE_VIEWPORT.height },
+      frozenAt: new Date().toISOString(),
+    };
+
 
     const tGoto = Date.now();
     await page.goto(opts.url, { waitUntil: "load", timeoutMs: 60_000 });
