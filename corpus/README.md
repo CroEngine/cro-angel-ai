@@ -60,3 +60,45 @@ E consent above-fold + dark-theme inversion):
 
 Add e-commerce / testimonial-heavy sites only when the trust-signal bugs
 become active again.
+
+## Determinism contract & limitations (Grind 1)
+
+The substrate's promise is `score = f(frozen DOM, extractor_vN)`. For this to
+hold, the **frozen DOM** must itself be deterministic across captures of the
+same URL — modulo a documented set of legitimate drift sources.
+
+Two things are deliberately scoped narrowly:
+
+1. **Determinism is proven on hubspot only.** Hubspot is the representative
+   hard case (non-trivial consent flow). `bun run scripts/freeze-determinism-check.ts
+   --name=hubspot` runs N=3 freezes in independent Browserbase sessions
+   (= independent A/B-bucket assignment) and diffs pairwise against the
+   a-priori whitelist in `fixtures/determinism/WHITELIST.md`.
+2. **Breadth-determinism is NOT proven.** Grind 2 measures *capture-correctness*
+   over 50 sites (did we capture the right page?), not *determinism* (would a
+   second freeze produce the same DOM?). An e-commerce site can freeze valid
+   but non-deterministically (rotating product recs) and that won't be caught.
+   This limitation is acknowledged — extending determinism to breadth is a
+   future workstream, not part of the current substrate-hardening.
+
+## Capture validity (Grind 2)
+
+A freeze is `ok` only if `assertCaptureValid` passes — text length >= 500ch,
+>= 10 interactive elements, hero region has a non-consent heading, no
+dominant Cloudflare/PerimeterX/hCaptcha markers. "Freeze didn't throw" is
+not a success criterion; it's a known-false-green that inflates the rate.
+
+Sites failing this assertion get `failureClass: "captured-wrong-page"` —
+typically consent-missed, anti-bot frozen as 200, or empty SPA shell.
+
+## TTL & staleness (Grind 3)
+
+Each `meta.json` includes `ttlDays` (default 90, per-snapshot data not a
+hardcode), `frozenAt`, `expiresAt`, `refreezeReason`. TTL is **authoritative**
+for staleness — `now > expiresAt` triggers a re-freeze decision. HEAD probe
+diff (etag/last-modified/content-length) is **advisory only**, logged as
+hints in `corpus/STALENESS.json`, not treated as stale (CDN per-request etags
+and SPA shell etags make HEAD too noisy to be authoritative).
+
+A weekly GitHub Action runs `scripts/freeze-staleness-check.ts` and opens
+an issue listing stale snapshots. Human triggers re-freeze; no auto-refreeze.
