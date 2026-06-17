@@ -412,30 +412,46 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       // the load error string, which IS the cid-resolution diagnostic. Keep
       // it as a separate file so dashboards can read families without parsing
       // the aggregate report.
-      try {
-        const receipt: FamiliesReceiptFile = {
-          schemaVersion: 1,
-          ...(canary.env ? { env: canary.env } : {}),
-          families: canary.families.map((f) => ({
-            family: f.family,
-            gate1: f.gate1,
-            ...(f.gate2 ? { gate2: f.gate2 } : {}),
-            diag: f.diag,
-          })),
-          ...(canary.ghosts.length > 0 ? { ghosts: canary.ghosts } : {}),
-        };
-        // Runtime-validera FÖRE writeFileSync: en silent-fail map (t.ex. f.gate1
-        // === undefined) skulle annars producera en trasig durabel artefakt.
-        // .parse strippar dessutom okända nycklar → on-disk-formen blir exakt
-        // schemat oavsett in-memory-extras på FamilyReport.
-        const validated = FamiliesReceiptFileSchema.parse(receipt);
-        writeFileSync(
-          join(dir, "render-canary.families.json"),
-          JSON.stringify(validated, null, 2),
+      //
+      // A+C: render-canary.families.json är kalibrerad mot playwright-bundled
+      // Chromium. När caller överrider till en system-Chromium (pinned=false)
+      // är gate1/gate2-trösklarna inte längre jämförbara — vi skriver då
+      // INTE filen, och loggar varför. Inspector ser "✗ families.json" och
+      // det är en VALID signal: "denna replay går inte att jämföra med övriga".
+      if (canary.env && canary.env.pinned === false) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[replay] render-canary.families.json EJ skriven: pinned=false ` +
+            `(chromiumPath=${canary.env.chromiumPath}). Skippas medvetet — ` +
+            `gate-trösklar är kalibrerade mot playwright-bundled.`,
         );
-      } catch {
-        /* best-effort */
+      } else {
+        try {
+          const receipt: FamiliesReceiptFile = {
+            schemaVersion: 1,
+            ...(canary.env ? { env: canary.env } : {}),
+            families: canary.families.map((f) => ({
+              family: f.family,
+              gate1: f.gate1,
+              ...(f.gate2 ? { gate2: f.gate2 } : {}),
+              diag: f.diag,
+            })),
+            ...(canary.ghosts.length > 0 ? { ghosts: canary.ghosts } : {}),
+          };
+          // Runtime-validera FÖRE writeFileSync: en silent-fail map (t.ex. f.gate1
+          // === undefined) skulle annars producera en trasig durabel artefakt.
+          // .parse strippar dessutom okända nycklar → on-disk-formen blir exakt
+          // schemat oavsett in-memory-extras på FamilyReport.
+          const validated = FamiliesReceiptFileSchema.parse(receipt);
+          writeFileSync(
+            join(dir, "render-canary.families.json"),
+            JSON.stringify(validated, null, 2),
+          );
+        } catch {
+          /* best-effort */
+        }
       }
+
       // eslint-disable-next-line no-console
       console.log(
         `[replay] canary expected=${canary.expected.length} ok=${canary.ok} ` +
