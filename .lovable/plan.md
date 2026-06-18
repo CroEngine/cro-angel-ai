@@ -66,7 +66,20 @@ Detta avgör om B är ett block eller två: ren-DOM kan köras deterministiskt i
    - **Signifikant render-härlett:** B delas i B-DOM (Node) och B-render (Browserbase/headless).
 4. Justera B:s scope i denna plan baserat på utfallet — explicit som leverabel ur B0.
 
-**Exit:** Klassificeringsdokument committat, B:s scope och miljökrav fastställda skriftligt.
+**Exit:** Driver-klassificering av `replayCorpus` committad (vad kräver
+layout/paint vs ren DOM-parse) **och** B-kontraktet skrivet mot SSOT
+(`normalize.ts:72`/`103` + `snapshot.test.ts:91-99`). Den binära
+driver-frågan — headless Chromium eller jsdom — är besvarad skriftligt, inte
+fält-uppdelningen.
+
+> **Levererat 2026-06-18 (pre-B):** projektionssteget lokaliserat — ingen
+> separat `extract-golden`-fil finns; projektionen ÄR `normalizeCollect` +
+> `normalizePageAudit` anropade från `snapshot.test.ts`. Driver-klassificering
+> i `fixtures/determinism/GOLDEN-FIELD-CLASSIFICATION.md` ger binärt svar:
+> hela `replayCorpus` är Chromium-bunden → **B är en headless-driver**, inget
+> jsdom-mellanläge matchar committad golden. Risk-flagga för C noterad: om
+> freeze-pipelinen delar Chromium-driver med B krävs en oberoende
+> DOM-only-referens.
 
 ---
 
