@@ -26,14 +26,8 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
-      - name: Run freeze-visibility test
-        run: bunx vitest run src/lib/tests/snapshot/__tests__/freeze-visibility.test.ts
-
-      - name: Run render-canary test
-        run: bunx vitest run src/lib/tests/snapshot/__tests__/render-canary.test.ts
-
-      - name: Run snapshot diff tests
-        run: bunx vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts
+      - name: Run full test suite
+        run: bun run test
 
       - name: Upload canary artifacts
         if: always()
