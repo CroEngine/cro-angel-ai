@@ -66,7 +66,7 @@ Detta avgör om B är ett block eller två: ren-DOM kan köras deterministiskt i
    - **Signifikant render-härlett:** B delas i B-DOM (Node) och B-render (Browserbase/headless).
 4. Justera B:s scope i denna plan baserat på utfallet — explicit som leverabel ur B0.
 
-**Exit:** Klassificeringsdokument committat, B:s scope och miljökrav fastställda skriftligt.
+**Exit:** Driver-klassificering av `replayCorpus` klar (vilka steg kräver layout/paint vs ren Node) + B-kontrakt skrivet (återanvänd `normalizeCollect`/`normalizePageAudit`/`diffNormalized` oförändrat; `extract-golden.ts` skiljer sig bara på driver + write-gate). B:s scope och miljökrav fastställda skriftligt.
 
 ---
 
@@ -153,9 +153,36 @@ B-DOM kan köras i sandbox; B-render kräver Browserbase. Block C kräver
 B-render output (tarpit och animation slår på render-fält som `section`,
 `score`, `aboveFold`), inte enbart B-DOM.
 
+### B0-omkörning (pre-B) — premiss korrigerad 2026-06-18
+
+Den ursprungliga B0-leveransen byggde på fel premiss (fält-uppdelning
+ren-DOM vs render-härlett). Korrigering:
+
+- **Projektionssteget lokaliserat.** Det "okända projektionssteget" är
+  `normalizeCollect` + `normalizePageAudit` (`src/lib/tests/snapshot/normalize.ts:72`
+  resp. `:103`), anropade från `snapshot.test.ts:91–99`. Slim-shapen är
+  normaliseringens medvetna nedskärning, inte en äldre extractor-version.
+  Ingen ytterligare arkeologi i `corpus*.ts`/`scripts/` behövs.
+- **Hela `golden.json` är post-`replayCorpus`** (headless Chromium). Fält
+  som ser ren-DOM ut emitteras ändå efter layout/paint/JS. Driver-frågan,
+  inte fält-frågan, styr B:s scope.
+- **B är ett block, inte två.** Driver-klassificeringen av `replayCorpus`
+  (i `GOLDEN-FIELD-CLASSIFICATION.md`) visar att inget golden-innehåll
+  produceras utanför Chromium → ingen B-DOM-delmängd finns. **B = en
+  headless-Chromium-driver.** Den tidigare B-DOM + B-render-uppdelningen
+  utgår.
+- **B-kontrakt låst till SSOT:** återanvänd `normalizeCollect`,
+  `normalizePageAudit` och `diffNormalized` oförändrat; `extract-golden.ts`
+  skiljer sig från `snapshot.test.ts` endast på driver (vitest → Node-CLI)
+  och write-gate (alltid skriva).
+- **Risk-flagga för C:** B och freeze-pipelinen delar nu Chromium-drivern,
+  så B kan inte vara ett *oberoende* mätinstrument för C. C behöver ett
+  extra delsteg — en DOM-only-referenssnapshot vid sidan av. C:s scope, ej B:s.
+
 ### Nästa leverans
 
-Block B0:s första uppdrag innan B-implementation: **hitta golden-projektionssteget.**
-Sök i `src/lib/corpus*.ts`, `scripts/` och `corpus/README.md` efter det som
-tar live `PageAuditData` → committad slim `golden.json`. Utan det är B
-oavsett implementation strukturellt fel.
+Block B enligt det låsta kontraktet ovan: bygg `scripts/extract-golden.ts`
+som headless-Chromium-driver (`replayCorpus` → `normalizeCollect`/
+`normalizePageAudit` → alltid skriva), determinism-validera N=3 med
+`diffNormalized`. Miljö: Playwright-bundlad Chromium (CI/Browserbase), inte
+ren sandbox.
