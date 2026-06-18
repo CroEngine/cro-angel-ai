@@ -28,7 +28,7 @@
 // actually used. Trade-off vs the alternative (filter via document.fonts):
 // 36 woff2 files for hibob ≈ 200-500 KB, acceptable; correctness > size.
 
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
   iterateCssParts,
   harvestFontUrls,
@@ -620,6 +620,21 @@ export function collectEmbedTargets(mhtml: string): EmbedTarget[] {
 const REWRITE_URL_TOKEN_RE =
   /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s]+))\s*\)/gi;
 
+// F1 — deterministisk, innehållsadresserad cid per font-URL.
+//
+// Tidigare myntades cid via randomUUID() → varje freeze fick nya
+// `cid:font-…@snapshot`-tokens. normalizeMhtml maskar bara Chromiums
+// `@mhtml.blink`-cids, inte `@snapshot`, så de slumpade tokens:en surfade som
+// capture-determinism-drift (Grind 1) på varje font-rad — oberoende av sajtens
+// egna drivare. sha256 av den *resolverade* URL:en ger samma cid för samma font
+// över oberoende freezes → post-embed-MHTML reproducerbar vid källan.
+// Score-neutralt: Chromium löser cid: internt vid replay; extractorn ser dem aldrig.
+// 16 hex = 64 bitar → försumbar kollisionsrisk över ett dussintal fonter.
+export function cidForFontUrl(resolved: string): string {
+  const hash = createHash("sha256").update(resolved).digest("hex").slice(0, 16);
+  return `font-${hash}@snapshot`;
+}
+
 export async function embedMhtmlFonts(
   mhtmlRaw: string,
   opts: {
@@ -723,10 +738,7 @@ export async function embedMhtmlFonts(
     if (isFirst) {
       seenResolved.add(resolved);
       if (isFontExt) {
-        urlToCid.set(
-          resolved,
-          `font-${randomUUID().replace(/-/g, "").slice(0, 16)}@snapshot`,
-        );
+        urlToCid.set(resolved, cidForFontUrl(resolved));
       }
     }
     harvest.push({
@@ -804,9 +816,17 @@ export async function embedMhtmlFonts(
   }
 
   // Bygg urlToBinary av ok-fetchar — body är redan med från classifiedFetch.
+  // Iterera i HARVEST-ordning (urlToCid.keys()), INTE urlToFetchResult:s
+  // Map-ordning: den senare är fetch-completion-ordning (Promise.all resolver
+  // icke-deterministiskt), vilket annars gör append-ordningen i Pass 3 — och
+  // därmed post-embed-MHTML:ens bytes — beroende av nätverkstiming. Det är andra
+  // halvan av F1: cids är innehållsadresserade OCH parts läggs till i stabil
+  // ordning, annars är "byte-identisk över freezes" inte uppnåeligt.
   const urlToBinary = new Map<string, Buffer>();
   const fetchFailures: { url: string; error: string }[] = [];
-  for (const [url, r] of urlToFetchResult) {
+  for (const url of urlToCid.keys()) {
+    const r = urlToFetchResult.get(url);
+    if (!r) continue;
     if (r.outcome === "ok" && r.body) {
       urlToBinary.set(url, r.body);
     } else if (r.outcome !== "ok") {

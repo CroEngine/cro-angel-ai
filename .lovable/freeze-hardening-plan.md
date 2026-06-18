@@ -60,9 +60,13 @@ replay; extractorn läser computed styles, inte cid-strängar. Rent #3.
    i harvest-loopen (`~723-731`) vid tilldelningstillfället, före fetch — ingen
    omstrukturering krävs. Återanvänd hash-hjälpen (`createHash("sha256")`, jfr
    `externalize.server.ts:66`).
-2. Inget annat rörs: `urlToCid` är redan keyad på `resolved`, så rewrite-passet
-   (`~821-839`) och append-passet (`~841-855`) fungerar oförändrat. Part-ordningen
-   är insertion-order på `urlToBinary` = harvest-order = deterministisk.
+2. **Andra halvan (upptäckt vid implementation):** `urlToBinary` byggdes genom
+   att iterera `urlToFetchResult` (`~809`), vars Map-ordning är *fetch-completion*-
+   ordning (`Promise.all` resolver icke-deterministiskt) → Pass 3:s append-ordning,
+   och därmed post-embed-MHTML:ens bytes, berodde på nätverkstiming. Fix: bygg
+   `urlToBinary` (+ `fetchFailures`) genom att iterera `urlToCid.keys()`
+   (harvest-ordning). Cids OCH part-ordning måste vara deterministiska — annars
+   är "byte-identisk över freezes" inte uppnåeligt.
 3. **Ingen whitelist-rad behövs** — till skillnad från snabbalternativet (maska
    `@snapshot` i `normalizeMhtml`). Innehållsadresserade cids är stabila vid
    källan, vilket är strikt bättre: re-freeze ger minimal diff i stället för 53
