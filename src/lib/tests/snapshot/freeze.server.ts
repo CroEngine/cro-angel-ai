@@ -18,7 +18,7 @@ import { tmpdir } from "node:os";
 import { Stagehand } from "@browserbasehq/stagehand";
 
 import { createSession, closeSession } from "../browserbase.server";
-import { embedMhtmlFonts } from "./mhtml-fonts.server";
+import { embedMhtmlFonts, type ControlProbeResult } from "./mhtml-fonts.server";
 import {
   MHTML_INLINE_THRESHOLD_BYTES,
   uploadAsset,
@@ -101,6 +101,11 @@ interface FreezeReport {
         partIndex: number;
       }>;
     } | null;
+    /** A2-kontrollprober (positiv gstatic-woff2 + negativ example.com) körda
+     *  före URL-loopen i embedMhtmlFonts. Diagnostik: positiv-probe != "ok"
+     *  ⇒ miljön blockar font-egress (proxy), inte sajten — driver
+     *  failureClass font-embed-env-blocked i stället för font-embed-failed. */
+    controlProbes: { positive: ControlProbeResult; negative: ControlProbeResult } | null;
     // Stora MHTML (> MHTML_INLINE_THRESHOLD_BYTES) skickas till CDN via
     // lovable-assets i stället för att skrivas till repo (10 MB-tak). Pekaren
     // hamnar i page.mhtml.asset.json bredvid där page.mhtml hade legat.
@@ -152,6 +157,7 @@ interface FreezeReport {
     | "mhtml-too-large"
     | "mhtml-capture-failed"
     | "font-embed-failed"
+    | "font-embed-env-blocked"
     | "unknown";
 
   /** Detaljer om varför assertCaptureValid failed. null när den inte körts eller passerade. */
@@ -243,7 +249,7 @@ async function assertCaptureValid(
 // Klassificera en thrown error mot failure-taxonomin. Heuristik baserad på
 // error-meddelande + redan inmätta receipt-fält. "unknown" är fallback men
 // förbjuden i grön breadth-rapport — om vi ser den måste vi utöka klassificeraren.
-function classifyFailure(
+export function classifyFailure(
   err: unknown,
   report: FreezeReport,
 ): FreezeReport["failureClass"] {
@@ -262,7 +268,13 @@ function classifyFailure(
   if (msg.includes("consent kvar efter klick") || msg.includes("consent-selektor")) {
     return "consent-missed";
   }
-  if (msg.includes("a2 gate")) return "font-embed-failed";
+  if (msg.includes("a2 gate")) {
+    // Skilj äkta font-embed-fel från miljö-blockerad font-egress: lyckades inte
+    // ens den positiva kontrollproben (gstatic-woff2) blockar proxyn font-CDN:er,
+    // inte sajten.
+    const pos = report.capture.controlProbes?.positive;
+    return pos && pos.outcome !== "ok" ? "font-embed-env-blocked" : "font-embed-failed";
+  }
   if (msg.includes("mhtml") && (msg.includes("too large") || msg.includes("10 mb"))) {
     return "mhtml-too-large";
   }
@@ -389,6 +401,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       fontFetchFailures: null,
       embeddedFamilies: null,
       fontUrls: null,
+      controlProbes: null,
       externalized: false,
       externalAssetUrl: null,
       externalAssetSha256: null,
@@ -570,7 +583,11 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     // A2 — embed external font binaries as cid: parts so replay doesn't fall
     // back to OS fonts. The hard-assert below (externalFontSrcCount === 0) is
     // the form-agnostic success gate per plan beslutspunkt 3.
-    const embedded = await embedMhtmlFonts(snap.data);
+    //
+    // F3: kör kontrollprober (positiv gstatic-woff2 + negativ example.com) före
+    // URL-loopen så ett A2-gate-fel kan skiljas från miljö-blockerad font-egress
+    // (proxy) — se classifyFailure font-embed-env-blocked-grenen.
+    const embedded = await embedMhtmlFonts(snap.data, { controlProbes: {} });
     const finalMhtml = embedded.mhtml;
     mhtmlBytes = Buffer.byteLength(finalMhtml, "utf8");
     report.capture.mhtmlKb = Math.round(mhtmlBytes / 1024);
@@ -581,6 +598,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     // Commit 4 — receipt populeras INNAN A2-gaten kan throwa, så hink-4-
     // observability överlever även när externalFontSrcCount > 0.
     report.capture.fontUrls = embedded.fontUrlSummary;
+    report.capture.controlProbes = embedded.controlProbes ?? null;
 
 
     if (embedded.externalFontSrcCount > 0) {

@@ -22,6 +22,11 @@ import { createHash } from "node:crypto";
 
 import { freezeSite } from "../src/lib/tests/snapshot/freeze.server";
 import { normalizeMhtml } from "../src/lib/tests/snapshot/mhtml-normalize";
+import {
+  resolveAssetUrl,
+  sha256OfBuffer,
+  type AssetPointer,
+} from "../src/lib/tests/snapshot/externalize.server";
 import { getSite } from "../corpus/sites";
 
 function arg(name: string): string | undefined {
@@ -95,6 +100,47 @@ interface PairDiff {
   hintCounts: Record<string, number>;
 }
 
+// Läs den frusna MHTML:en pekare-medvetet. freeze-report.json::capture.externalized
+// är source of truth (samma kontrakt som harness.server.ts), INTE fil-närvaron.
+// Kritiskt: returnera ALDRIG "" tyst — för en externaliserad (>9 MB) site finns
+// ingen lokal page.mhtml, och en tom sträng skulle göra pairwise-diffen falskt
+// GRÖN (normalizeMhtml("") === normalizeMhtml("")). Throwa i stället.
+async function loadFrozenMhtml(dir: string, reportPath: string): Promise<string> {
+  const localPath = join(dir, "page.mhtml");
+  const pointerPath = join(dir, "page.mhtml.asset.json");
+
+  let externalized = false;
+  if (existsSync(reportPath)) {
+    const rep = JSON.parse(readFileSync(reportPath, "utf8"));
+    externalized = !!rep?.capture?.externalized;
+  }
+
+  if (externalized) {
+    if (!existsSync(pointerPath)) {
+      throw new Error(`[determinism] externalized men ingen pekare: ${pointerPath}`);
+    }
+    const pointer = JSON.parse(readFileSync(pointerPath, "utf8")) as AssetPointer;
+    const res = await fetch(resolveAssetUrl(pointer));
+    if (!res.ok) {
+      throw new Error(`[determinism] fetch av extern mhtml misslyckades (${res.status})`);
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (pointer.sha256 && sha256OfBuffer(buf) !== pointer.sha256) {
+      throw new Error(`[determinism] sha256-mismatch på extern mhtml för ${dir}`);
+    }
+    return buf.toString("utf8");
+  }
+
+  // Icke-externaliserad: lokal page.mhtml MÅSTE finnas — annars skrev freezen
+  // inget och en jämförelse vore meningslös. Aldrig en tyst "".
+  if (!existsSync(localPath)) {
+    throw new Error(
+      `[determinism] varken page.mhtml eller externaliserad pekare i ${dir} — freeze skrev inget?`,
+    );
+  }
+  return readFileSync(localPath, "utf8");
+}
+
 async function freezeOnce(idx: number) {
   const tmpOut = join(tmpdir(), `determinism-${name}-${idx}-${Date.now()}`);
   mkdirSync(tmpOut, { recursive: true });
@@ -109,8 +155,7 @@ async function freezeOnce(idx: number) {
     outDir: tmpOut,
     notes: `determinism check pass ${idx + 1}/${N}`,
   });
-  const mhtmlPath = join(tmpOut, "page.mhtml");
-  const mhtml = existsSync(mhtmlPath) ? readFileSync(mhtmlPath, "utf8") : "";
+  const mhtml = await loadFrozenMhtml(tmpOut, result.reportPath);
   return { idx, outDir: tmpOut, reportPath: result.reportPath, mhtml };
 }
 

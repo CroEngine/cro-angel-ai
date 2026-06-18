@@ -1,27 +1,91 @@
 # Golden.json Field Classification — Block B0 (plan v2)
 
-> Spike-leverabel inför Block B (MHTML→golden-extractor-pass). Klassar varje
-> fält i `corpus/hubspot/golden.json` som **ren-DOM** (härledd ur statisk
-> DOM-struktur, byte-troget reproducerbart i Node + jsdom) eller
-> **render-härlett** (kräver layoutmotor: `getBoundingClientRect`,
-> `getComputedStyle`, resolverade `currentSrc`, etc.).
+> Spike-leverabel inför Block B (MHTML→golden-extractor-pass). **Reviderad
+> efter pre-B-lokaliseringen av projektionssteget.** Den ursprungliga
+> fält-uppdelningen (ren-DOM vs render-härlett) byggde på fel premiss: hela
+> `golden.json` är post-`replayCorpus`, dvs producerad efter att headless
+> Chromium kört layout, JS, font-loading och animation på den rehydrerade
+> MHTML:en. Den verkliga B0-frågan är därför inte "vilka fält är ren-DOM"
+> utan **"kan `replayCorpus` köras deterministiskt utan headless Chromium,
+> eller måste B vara en headless-driver?"** — den frågan styr B:s scope
+> binärt, utan mellanläge.
 
-## Sammanfattning
+## Projektionssteget (SSOT för Block B)
 
-| dimension | värde |
-|---|---|
-| Top-level keys | `collect`, `pageAudit` |
-| Totalt klassade fält | ~50 (sammanslaget collect + pageAudit) |
-| Ren-DOM | ~30 (60%) |
-| Render-härlett | ~20 (40%) |
+Det finns **inget** separat `extract-golden`-steg att återanvända.
+Projektionen från rik replay-output till `golden.json` är två rena
+funktioner anropade direkt från vitest:
 
-**Beslut för Block B:** B måste delas i **B-DOM** (Node/jsdom, deterministisk)
-och **B-render** (headless Chromium, deterministisk endast om
-layout-engine-version + viewport + fontuppsättning är pinnade). Andelen
-render-härlett (~40%) inkluderar centrala salience-fält (`score`, `area`,
-`yBand`, `bgContrast`, `aboveFold`, `section`) som inte kan reproduceras
-byte-troget utan en riktig layoutmotor. Score-determinism (kriterium #4) är
-alltså inte uppnåbar med enbart Node-extraktion.
+```text
+corpus/<name>/page.mhtml
+        │
+        ▼
+replayCorpus(name)                    ← src/lib/tests/snapshot/harness.server.ts:167
+  └── Chromium + collect + pageAudit  (rik shape, samma som live-engine)
+        │
+        ▼
+{ collect:   normalizeCollect(fresh.collect),       ← src/lib/tests/snapshot/normalize.ts:72
+  pageAudit: normalizePageAudit(fresh.pageAudit) }  ← src/lib/tests/snapshot/normalize.ts:103
+        │
+        ▼
+JSON.stringify(_, null, 2) → corpus/<name>/golden.json
+        │
+        ▲
+        └── enda anroparen: src/lib/tests/snapshot/__tests__/snapshot.test.ts:91-99
+            (skrivning gated på SNAPSHOT_UPDATE=1 || saknat golden)
+```
+
+Diffning körs av `diffNormalized` i samma fil (`normalize.ts:176`).
+
+**B-kontrakt (låst mot denna SSOT):**
+
+1. Återanvänd `normalizeCollect` + `normalizePageAudit` från `normalize.ts`
+   **oförändrat** — de ÄR projektionen.
+2. `scripts/extract-golden.ts` skiljer sig från `snapshot.test.ts` endast på
+   (a) drivern (vitest+chromium → Node CLI + B0-vald driver) och (b)
+   write-gaten (alltid skriva till angiven path, inte gated på
+   `SNAPSHOT_UPDATE`).
+3. Diff-validering i B:s N=3-loop använder `diffNormalized` oförändrat.
+
+## Driver-stegsklassificering av `replayCorpus`
+
+Steg-för-steg genom `harness.server.ts`. Frågan per steg: **ren DOM-parse
+(Node/jsdom-möjligt) eller kräver layout/paint (headless Chromium)?**
+
+| steg | rad | natur |
+|---|---|---|
+| MHTML-resolution (lokal kopia / extern fetch + sha256-verify) | `~242–274` | **ren I/O** — ingen browser |
+| `embeddedFamilies`-backfill (parsa MHTML-text) | `~280–296` | **ren I/O / textparse** — ingen browser |
+| `chromium.launch` + `newContext` (pinnad viewport, `deviceScaleFactor=1`) | `303–317` | **layout** — DPR måste sättas vid context-skapande, annars driftar sub-pixel-rundning |
+| route-abort + `addInitScript` (neutralisera nav/redirect) | `327–344` | browser-setup |
+| `page.goto(file://)` + `waitForReady` | `350–351` | **render/load** — JS körs, MHTML committas |
+| URL-stabilisering (250 ms-tickar) | `354–360` | render-tid |
+| CSSOM/layout-settle 600 ms | `362` | **layout/paint** |
+| `waitForStableContext` | `368` | render-tid |
+| render-canary (font-resolution påverkar layout) | `375–474` | **paint/font** |
+| `nodeLoopScroll` (triggar lazy-load + IntersectionObserver) | `482` | **render-tid** — ändrar vilka element som finns/syns |
+| `nodeLoopStampCookieRoot` | `485` | DOM-mutation i page-kontext |
+| `page.evaluate(COLLECT_SCRIPT)` → `elements` | `487` | **layout-bunden** — `getBoundingClientRect` / `getComputedStyle` |
+| `runPageAudit(page, …)` → `pageAudit` | `490–493` | **layout-bunden** — kör i page-kontext mot utlayoutad DOM |
+
+**Binär slutsats:** allt från `chromium.launch` (steg 3) och framåt kräver en
+levande browser. De enda Node-rena stegen (MHTML-resolution + family-backfill)
+producerar **inget** golden-data — de förbereder bytes för replay. Både
+`collect` och `pageAudit` emitteras av `page.evaluate` mot en utlayoutad DOM.
+
+→ **`replayCorpus` kan inte köras utan headless Chromium. B måste vara en
+headless-driver.** Det finns inget jsdom-mellanläge som matchar committad
+golden, eftersom committad golden i sin helhet är Chromium-replay-output —
+även nominellt "ren-DOM"-fält (`innerText`-whitespace, `currentSrc`-srcset,
+`document.title` efter JS) skulle divergera från en jsdom-extraktor.
+
+### Risk-flagga för Block C
+
+Om B = headless Chromium och freeze-pipelinen också är headless Chromium,
+kollapsar de till **samma driver**. Då kan B inte användas som *oberoende*
+mätinstrument för C (animation/tarpit) — vi skulle mäta capture-drivers med
+samma capture-driver. C behöver i så fall ett extra delsteg: ett separat
+DOM-only-snapshot vid sidan av som referens.
 
 ## Upptäckt under klassningen — schema-mismatch
 
@@ -38,18 +102,25 @@ slim shape (12 fält) medan live emitterar 14+ fält inklusive
 `computedStyles`, `visualWeight`, `attributes`, `rect`, `position`,
 `selector`.
 
-**Implikation för Block B:** B kan inte bara wrappa live-extraktorn — det
-finns ett "golden-projection"-steg någonstans (filtreringen sker innan
-`golden.json` skrivs, eller golden är från en tidigare extractor-version).
-Hitta projektionssteget innan B implementeras, annars matchar B aldrig
-committad golden oavsett hur deterministisk den är.
-
-`EXTRACTOR_VERSION` är `"1.0.0"` både i koden och har troligen varit det
-hela tiden — versionssträngen bekräftar inte vilken side som projicerar.
+**Förklaring (löst i pre-B):** delmängden är inte en separat
+projektions-fil — det är exakt vad `normalizeCollect` + `normalizePageAudit`
+plockar ut ur den rika replay-shapen (se `normalize.ts:72`/`103`). Den slim
+formen är normaliserings-utdatan, inte en stale extractor-version.
+`EXTRACTOR_VERSION` (`"1.0.0"`) bekräftar inte vilken side som projicerar och
+behövs inte: SSOT är `normalize.ts`.
 
 ---
 
-## `collect.elements[*]` — per-element-fält
+## Appendix — per-fält ren-DOM vs render-härlett (sekundär fråga)
+
+> Behålls som referens, **inte** som B:s scope-drivare. Tabellerna svarar på
+> en annan fråga än driver-frågan ovan: *"om vi någon gång byggde en
+> jsdom-extraktor, vilka fält skulle den i princip kunna reproducera?"* Den
+> render-bundna delmängden är ändå dokumenterad här för Block C:s
+> DOM-only-referensfråga. Eftersom committad golden i sin helhet är
+> Chromium-replay-output styr denna uppdelning **inte** B:s driver-val.
+
+### `collect.elements[*]` — per-element-fält
 
 | fält | klass | källa | not |
 |---|---|---|---|
@@ -73,7 +144,7 @@ hela tiden — versionssträngen bekräftar inte vilken side som projicerar.
 fälten är **scoring-relevanta** (`category`, `section`, `score`,
 `bgContrast`, `area`, `aboveFold`) — inte instrumentation.
 
-## `pageAudit.head` — meta/title/canonical
+### `pageAudit.head` — meta/title/canonical
 
 | fält | klass | källa |
 |---|---|---|
@@ -82,18 +153,17 @@ fälten är **scoring-relevanta** (`category`, `section`, `score`,
 | `canonical` | **ren-DOM** | `link[rel="canonical"]` href |
 | `lang` | **ren-DOM** | `documentElement.lang` |
 
-100% ren-DOM. Säker B-DOM-kandidat.
+100% ren-DOM som *extraktor-logik* — men i praktiken läst efter att Chromium
+kört JS som kan ha muterat `<head>`.
 
-## `pageAudit.headings`
+### `pageAudit.headings`
 
 | fält | klass | källa |
 |---|---|---|
 | `h1Count` | **ren-DOM** | `querySelectorAll('h1').length` |
 | `h1` (text-array) | **ren-DOM** | `h1.textContent` |
 
-100% ren-DOM.
-
-## `pageAudit.hero`
+### `pageAudit.hero`
 
 | fält | klass | källa |
 |---|---|---|
@@ -104,7 +174,7 @@ fälten är **scoring-relevanta** (`category`, `section`, `score`,
 
 Beror via `sections` på `getBoundingClientRect`. Render-bunden.
 
-## `pageAudit.images`
+### `pageAudit.images`
 
 | fält | klass | källa |
 |---|---|---|
@@ -118,7 +188,7 @@ Beror via `sections` på `getBoundingClientRect`. Render-bunden.
 ingen viewport och resolverar inte. Falls back till `src` ger
 annorlunda klassning än Chromium.
 
-## `pageAudit.trustSummary`, `trustEvidence`, `ctaSummary`
+### `pageAudit.trustSummary`, `trustEvidence`, `ctaSummary`
 
 Räknar/sammanställer trust-signals och CTAs. Båda underliggande
 extraktor-pass (`trustSignals.ts`, `ctas.ts`) använder `getBoundingClientRect`
@@ -134,7 +204,7 @@ för above-fold/synlighet → **render-härlett**.
 | `ctaSummary.primary` | render-härlett |
 | `ctaSummary.aboveFold` | render-härlett |
 
-## `pageAudit.sectionOrder`
+### `pageAudit.sectionOrder`
 
 | fält | klass | källa |
 |---|---|---|
@@ -144,33 +214,30 @@ för above-fold/synlighet → **render-härlett**.
 
 ## Rekommendation till Block B
 
-1. **Lokalisera projektionssteget** som producerar slim golden från
-   live-extraktorns rich output (möjligen i `corpus.functions.ts` eller en
-   commit-script). Utan det matchar B aldrig committad golden.
+1. **B är en headless-driver, inte ett jsdom-block.** Driver-klassificeringen
+   ovan visar att hela `replayCorpus` är Chromium-bunden. Den tidigare
+   B-DOM/B-render-uppdelningen är överflödig: det finns ingen meningsfull
+   B-DOM-leverans som matchar committad golden.
 
-2. **Dela B i två leveranser:**
-   - **B-DOM:** Ren-DOM-fält (`head`, `headings.h1Count`/`h1`, `images.total`,
-     `images.missingAlt`, `collect.count`, basic attribute-only collect-fält).
-     Implementera i Node+jsdom; determinism-validera lokalt.
-   - **B-render:** Render-härledda fält. Kräver headless Chromium + pinnad
-     viewport (1440×900?) + pinnad font-uppsättning. Determinism-validering
-     görs i Browserbase med fast Chromium-version.
+2. **`scripts/extract-golden.ts` = `snapshot.test.ts`-flödet minus vitest,
+   plus en alltid-skriv-gate.** Återanvänd `replayCorpus` + `normalizeCollect`
+   + `normalizePageAudit` + `diffNormalized` oförändrat (SSOT).
 
-3. **Score-determinism (kriterium #4) är endast meningsfullt mätbar för
-   B-render-fält som faktiskt rör scoring.** Ren-DOM-fält är trivialt
-   deterministiska. RED-risken sitter i B-render — det är där tarpit och
-   animation faktiskt kan slå igenom.
+3. **Score-determinism (kriterium #4) mäts mot replay-output**, inte mot en
+   Node-extraktion. RED-risken sitter i de render-härledda scoring-fälten
+   (`score`, `bgContrast`, `area`, `section`, `aboveFold`) — det är där
+   tarpit och animation faktiskt kan slå igenom.
 
-4. **Block C (residual capture-drivers) kan inte gå GREEN enbart via B-DOM.**
-   Tarpit och animation slår på render-fält (`section`, `score`,
-   `aboveFold`-räkning, `sectionOrder`). C måste mäta båda drivers mot
-   B-render output, inte B-DOM.
+4. **Block C behöver en oberoende DOM-only-referens** (se risk-flaggan ovan)
+   om freeze-pipelinen delar Chromium-driver med B, annars mäts
+   capture-drivers med sin egen driver.
 
 ## Förbehåll
 
-Den här klassningen är gjord från koden i `src/lib/tests/scripts/collect.ts`,
-`pageAudit.ts` och `runners/pageAudit.server.ts` — inte från det faktiska
-projektionssteget. Om projektionen släpper alla render-härledda fält blir
-B-render onödigt och B reduceras till B-DOM. Det vore förvånande (då skulle
-`score` i golden alltid vara konstant ~10 för alla links, vilket vi ser i
-hubspot golden), men måste verifieras i Block B:s första leverans.
+Driver-klassificeringen är läst ur `harness.server.ts`, `collect.ts`,
+`pageAudit.server.ts` och `normalize.ts`. Den binära slutsatsen (B = headless)
+vilar på att ingen golden-producerande logik körs utanför `page.evaluate`.
+Om en framtida refaktor flyttar någon extraktor till Node-sidan (t.ex. en
+ren MHTML-DOM-parse för `head`/`headings`) öppnas ett B-DOM-mellanläge igen —
+men då måste committad golden re-baselineas mot den nya drivern, för den
+nuvarande golden är Chromium-replay i sin helhet.
