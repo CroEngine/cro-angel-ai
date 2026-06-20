@@ -41,13 +41,31 @@ export const HTML_ATTR_WHITELIST_PATTERNS: RegExp[] = [
   /\bdata-[a-z-]+-nonce="[^"]*"/g,
   /<meta name="csrf-token" content="[^"]*">/gi,
   /[?&](t|ts|cb|v|_|cache|version|build|hash)=[a-z0-9.-]+/gi,
-  // cid: references inside body — UUIDs rotate per snapshot with Content-ID headers.
-  /cid:[a-z0-9-]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@mhtml\.blink/gi,
+  // HubSpot per-session tracking tokens stamped into nav/link hrefs (__hstc,
+  // __hssc, __hsfp, __hssrc, hubspotutk). Score-neutral query-string params the
+  // extractor never reads — proven score-neutral by round6 #4 (byte-identical
+  // goldens across 3 captures). Value runs to the next & " ' or whitespace
+  // (the next param begins with the & of &amp;), so surrounding markup is intact.
+  /\b(?:__hs(?:tc|sc|fp|src)|hubspotutk)=[^&"'\s]*/gi,
+  // cid: references rotate per snapshot — Chromium synthesizes a fresh id per
+  // part. Broadened from the @mhtml.blink-only UUID form to ALL cid: tokens
+  // (font-…@snapshot, frame-…, css-…@mhtml.blink): the extractor only cares
+  // about a part's content, not which cid addresses it. Stops at the closing
+  // quote/paren so surrounding markup is untouched.
+  /cid:[^"')\s]+/g,
+  // Bare per-session UUIDs stamped into signup/CTA hrefs and carousel ids
+  // (e.g. signup-hubspot/crm?...<uuid>..., --cl-carousel ids). Only a UUID that
+  // VARIES between captures affects the diff; a stable one is a no-op here. Round6
+  // #4 (identical goldens) proves all such variance is score-neutral. Standard
+  // 8-4-4-4-12 hex shape; cid:-prefixed UUIDs are already eaten by the cid: mask.
+  /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
   // Boundary tokens that appear inline (e.g. inside Content-Type headers re-quoted in body).
   /boundary="----MultipartBoundary--[A-Za-z0-9]+----"/g,
   // HubSpot Laboratory experiment ID — envelope: meta-attr value only.
-  // Body-structure variance (tarpit-anchor at L213) is NOT masked — must surface as RED.
-  /<meta name="laboratory-identifier-[a-z]+" content="anon[0-9a-f]{32}">/gi,
+  // anon-prefixed hex; length is NOT fixed (observed 28, not 32) so match a hex
+  // run rather than a fixed count (the {32} form silently no-op'd). Body-structure
+  // variance (tarpit anchor) is handled by the cascade-immune diff, not masked here.
+  /<meta name="laboratory-identifier-[a-z]+" content="anon[0-9a-f]+">/gi,
 ];
 
 /**

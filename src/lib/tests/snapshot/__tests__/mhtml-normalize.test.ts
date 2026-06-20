@@ -99,3 +99,47 @@ describe("normalizeMhtml — QP-encoded body masks (round-4 regression)", () => 
     expect(out).not.toContain("abc123defghi456");
   });
 });
+
+describe("round6 masks — score-neutral session noise (proven by #4 identical goldens)", () => {
+  const norm = (s: string) => normalizeMhtml(s);
+
+  it("masks __hstc/__hssc tracking tokens in QP-encoded hrefs", () => {
+    const wire =
+      '<a href=3D"https://www.hubspot.fr/?hubs_content=3Dwww&amp;__hstc=3D20629287.abc.1.2.3.4&amp;x">';
+    const out = norm(wire);
+    expect(out).toContain("<WHITELISTED>");
+    expect(out).not.toContain("20629287.abc");
+  });
+
+  it("two different __hstc values normalize byte-identical", () => {
+    const a = "__hstc=3D20629287.aaaaaa.1.2.3.4&amp;x";
+    const b = "__hstc=3D99999999.bbbbbb.9.8.7.6&amp;x";
+    expect(norm(a)).toBe(norm(b));
+  });
+
+  it("masks ALL cid: formats, not just @mhtml.blink (the prior mask missed @snapshot)", () => {
+    expect(norm('src=3D"cid:font-e1432b2d21a442c4@snapshot"')).toContain("<WHITELISTED>");
+    expect(norm('href=3D"cid:frame-DC2B66B6E895CDED"')).toContain("<WHITELISTED>");
+    // two captures: same part, different synthesized cid -> identical normalized.
+    expect(norm('url(=22cid:font-aaaa@snapshot=22)')).toBe(norm('url(=22cid:font-bbbb@snapshot=22)'));
+  });
+
+  it("masks bare per-session UUIDs in signup/CTA hrefs", () => {
+    // The URL '=' before the value is itself QP-encoded as '=3D' on the wire,
+    // so the id starts cleanly after qpDecodeLine (a literal '=3...' would be
+    // mis-decoded as the QP escape =35='5').
+    const a = 'href=3D"app.hubspot.com/signup-hubspot/crm?x=3D3548e0d0-a233-4a20-a850-072ebf82e1aa"';
+    const b = 'href=3D"app.hubspot.com/signup-hubspot/crm?x=3D2fc762d5-c785-4b5d-826d-7f0ffb5d6699"';
+    expect(norm(a)).toBe(norm(b));
+    expect(norm(a)).toContain("<WHITELISTED>");
+  });
+
+  it("laboratory mask handles the REAL 28-hex length (the hardcoded {32} silently no-op'd)", () => {
+    // Observed live values are 28 hex, not 32 — under the old {32} these two
+    // distinct session IDs stayed distinct (drift). Flexible hex run fixes it.
+    const a = '<meta name=3D"laboratory-identifier-other" content=3D"anonba0f76f519d55bf38c490c87ea04">';
+    const b = '<meta name=3D"laboratory-identifier-other" content=3D"anon97fd89ba23e5675acb2d72ab1088">';
+    expect(norm(a)).toBe(norm(b));
+    expect(norm(a)).not.toContain("ba0f76f519d55bf38c490c87ea04");
+  });
+});

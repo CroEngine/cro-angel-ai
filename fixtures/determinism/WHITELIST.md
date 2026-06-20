@@ -161,6 +161,40 @@ Konsekvens: tidigare lyfta `confirmed-by-design`-rader kan behöva
 re-validera efter att masken nu faktiskt verkar. Förväntat: reducerad
 diff-noise, samma RED-verdict (tarpit + animation kvarstår).
 
+### Round-6 (2026-06-20): #4 score-determinism GREEN + evidence-backed masks
+
+Two substrate fixes landed (animation-determinisering i `freeze.server.ts`
+6eb8599; score-determinism mätbar via `replayCorpus`). Resultat:
+
+- **#4 (score-determinism) GREEN:** N=3 reduced-motion-captures → byte-identiska
+  normaliserade goldens (`diffLines=0`, alla 3 par). Se
+  `REPORT-round6-2026-06-20.md`. Detta är en **starkare oracle** än den
+  a-priori-regeln ovan: om goldens är identiska är all kvarvarande MHTML-drift
+  *bevisat* score-neutral (den ändrar inte extractor-outputen). Round6-maskerna
+  nedan är därför `confirmed-by-design` med #4-bevis, inte gissning.
+- **#3 (capture-determinism) true drift 205 → ~60** efter maskerna; resten är
+  strukturell overlay-widget-injektion (se nedan), inte token-drift.
+
+Nya/breddade masker i `mhtml-normalize.ts` (enhetstestade i
+`__tests__/mhtml-normalize.test.ts` — varje mask har ett "två sessionsvärden →
+byte-identisk output"-test så no-op-regression fångas):
+
+| mechanism | envelope | score-impact | confidence |
+|---|---|---|---|
+| HubSpot per-session tracking-tokens i href | `(__hstc\|__hssc\|__hsfp\|__hssrc\|hubspotutk)=<value>` (value t.o.m. nästa `& " '` / whitespace) | neutral | confirmed-by-design (round6 #4-bevis) |
+| cid:-referenser — **breddad** från `@mhtml.blink`-UUID till ALLA cid: | `cid:<allt t.o.m. " ' ) / whitespace>` (täcker `font-…@snapshot`, `frame-…`, `css-…@mhtml.blink`) | neutral | confirmed-drift (hubspot round6) |
+| Bara per-session-UUID i signup/CTA-href + carousel-id | `<8hex>-<4>-<4>-<4>-<12>` (endast varierande UUID påverkar diffen) | neutral | confirmed-by-design (round6 #4-bevis) |
+| HubSpot Laboratory — **envelope-fix** | `content="anon<hex>"` (längd EJ fast — observerat 28, inte 32; gamla `{32}` no-op:ade) | neutral | confirmed-drift (hubspot round6) |
+
+**Kvarvarande RED-driver (NOT yet whitelisted):** strukturell
+overlay-widget-injektion — HubSpots `#hs-web-interactives-*`,
+`#hs-feedback-fetcher`, chat-iframe-container och bot-tarpit-ankaret injiceras
+inkonsekvent mellan captures (närvarande i en, frånvarande i annan) → ~60
+strukturella drift-rader (cascade i positions-diffen). Score-neutral per #4,
+men en mask kan inte realigna struktur. **Nästa fix:** capture-time-borttagning
+av dessa overlays i `freeze.server.ts` (samma mönster som reduced-motion),
+INTE en whitelist-rad. Tarpit-raden ovan (round3) ersätts av denna när
+borttagningen landar.
 
 Verdict logic (operationalized by `scripts/freeze-determinism-check.ts`):
 
