@@ -1,7 +1,7 @@
 {
   "site": "hubspot",
   "url": "https://www.hubspot.com/",
-  "ranAt": "2026-06-20T14:37:25.511Z",
+  "ranAt": "2026-06-20T15:41:01.734Z",
   "N": 3,
   "whitelistVersion": "sha256:af9bcc0f53c366ad8808120e920f0ba32b008aedc6e1cc211c968dd3a4ecdfac",
   "whitelistPath": "fixtures/determinism/WHITELIST.md",
@@ -12,12 +12,12 @@
         1
       ],
       "mhtmlIdentical": false,
-      "driftCount": 76948,
+      "driftCount": 31331,
       "driftRows": [
         {
           "line": 212,
-          "before": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anonceadead65744e588e19542dc8f5f\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
-          "after": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anond0ecc04ca299f9d21b4d3390991d\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
+          "before": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anonba0f76f519d55bf38c490c87ea04\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
+          "after": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anon97fd89ba23e5675acb2d72ab1088\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
           "hint": "session-token:hubspot-laboratory"
         },
         {
@@ -99,12 +99,6 @@
           "hint": "unclassified"
         },
         {
-          "line": 4885,
-          "before": "              <ul class=\"wf-page-header_heading-animated-list\" style=\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-240px);\"><li class=\"wf-page-header_heading-ani",
-          "after": "              <ul class=\"wf-page-header_heading-animated-list\" style=\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-720px);\"><li class=\"wf-page-header_heading-ani",
-          "hint": "animation:mid-frame-transform"
-        },
-        {
           "line": 4892,
           "before": "            <a class=\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=\"light\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.co",
           "after": "            <a class=\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=\"light\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.co",
@@ -123,66 +117,6 @@
           "hint": "unclassified"
         },
         {
-          "line": 6102,
-          "before": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active -scrolling\" style=\"--cl-carousel-slide-count: 3; --cl-ca",
-          "after": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=\"--cl-carousel-slide-count: 3; --cl-carousel-auto",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6118,
-          "before": "            <ul class=\"cl-carousel-train\" role=\"none\" aria-atomic=\"false\" aria-live=\"off\"><li class=\"cl-carousel-slide -clone -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" iner",
-          "after": "            <ul class=\"cl-carousel-train\" role=\"none\" aria-atomic=\"false\" aria-live=\"off\"><li class=\"cl-carousel-slide -clone -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" inert",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6139,
-          "before": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6160,
-          "before": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6181,
-          "before": "  </div></li><li class=\"cl-carousel-slide -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6202,
-          "before": "  </div></li><li class=\"cl-carousel-slide -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6223,
-          "before": "  </div></li><li class=\"cl-carousel-slide -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6244,
-          "before": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6265,
-          "before": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6286,
-          "before": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "hint": "unclassified"
-        },
-        {
           "line": 6896,
           "before": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
           "after": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
@@ -196,130 +130,196 @@
         },
         {
           "line": 7726,
+          "before": "<img src=\"https://trkn.us/pixel/conv/ppt=23029;g=sitewide;gid=54862;ord=[uniqueid]\" style=\"display:none\"><img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7727,
+          "before": "<div style=\"display: none; visibility: hidden;\">",
+          "after": "<div class=\"go2933276541 go2369186930\" id=\"hs-web-interactives-top-anchor\"><div id=\"hs-interactives-modal-overlay\" class=\"go1632949049\"></div></div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7728,
+          "before": "</div>",
+          "after": "<div class=\"go2933276541 go1348078617\" id=\"hs-web-interactives-bottom-anchor\"></div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7729,
           "before": "",
-          "after": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
+          "after": "<div id=\"hs-web-interactives-floating-container\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7730,
+          "before": " ",
+          "after": "  <div id=\"hs-web-interactives-floating-top-left-anchor\" class=\"go2417249464 go613305155\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7731,
+          "before": "",
+          "after": "  </div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7732,
+          "before": "",
+          "after": "  <div id=\"hs-web-interactives-floating-top-right-anchor\" class=\"go2417249464 go471583506\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7733,
+          "before": "  ",
+          "after": "  </div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7734,
+          "before": "",
+          "after": "  <div id=\"hs-web-interactives-floating-bottom-left-anchor\" class=\"go2417249464 go3921366393\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7735,
+          "before": "",
+          "after": "  </div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7736,
+          "before": "",
+          "after": "  <div id=\"hs-web-interactives-floating-bottom-right-anchor\" class=\"go2417249464 go3967842156\" style=\"margin-bottom: 96px;\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7737,
+          "before": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-heig",
+          "after": "  </div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7738,
+          "before": "<div class=\"go2933276541 go2369186930\" id=\"hs-web-interactives-top-anchor\"><div id=\"hs-interactives-modal-overlay\" class=\"go1632949049\"></div></div>",
+          "after": "</div>",
           "hint": "unclassified"
         },
         {
           "line": 7739,
-          "before": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
-          "after": "<img src=\"https://trkn.us/pixel/conv/ppt=23029;g=sitewide;gid=54862;ord=[uniqueid]\" style=\"display:none\"><img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6",
+          "before": "<div class=\"go2933276541 go1348078617\" id=\"hs-web-interactives-bottom-anchor\"></div>",
+          "after": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7740,
+          "before": "<div id=\"hs-web-interactives-floating-container\">",
+          "after": "<div style=\"display: none; visibility: hidden;\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7741,
+          "before": "  <div id=\"hs-web-interactives-floating-top-left-anchor\" class=\"go2417249464 go613305155\">",
+          "after": "</div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7742,
+          "before": "  </div>",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7743,
+          "before": "  <div id=\"hs-web-interactives-floating-top-right-anchor\" class=\"go2417249464 go471583506\">",
+          "after": " ",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7744,
+          "before": "  </div>",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7745,
+          "before": "  <div id=\"hs-web-interactives-floating-bottom-left-anchor\" class=\"go2417249464 go3921366393\">",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7746,
+          "before": "  </div>",
+          "after": "  ",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7747,
+          "before": "  <div id=\"hs-web-interactives-floating-bottom-right-anchor\" class=\"go2417249464 go3967842156\" style=\"margin-bottom: 96px;\">",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7748,
+          "before": "  </div>",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7749,
+          "before": "</div>",
+          "after": "",
           "hint": "unclassified"
         },
         {
           "line": 7750,
-          "before": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FChicago%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%262",
-          "after": "<img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6-9589-0a5f14faea43\" width=\"1\" height=\"1\" border=\"0\" style=\"display: none;\"><div style=\"display: none; vis",
+          "before": "<iframe height=\"0\" width=\"0\" src=\"cid:frame-31303B7A68E0082B3868E8B3846FF94C@mhtml.blink\" style=\"display: none; visibility: hidden;\"></iframe><iframe height=\"0\" width=\"0\" src=\"cid:frame-001E8186C4C9A5",
+          "after": "<img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FNew_York%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%26255%261288%26711%262%2624%261288%26711%260%26na&amp;eci=3&amp;event=%7B%22%22%3A%",
           "hint": "unclassified"
         },
         {
-          "line": 7753,
-          "before": "</body></html>",
-          "after": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FNew_York%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%26",
+          "line": 16465,
+          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-980c527b4d0640b1@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-4abfe5576c724961@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
           "hint": "unclassified"
         },
         {
-          "line": 7764,
-          "before": "",
-          "after": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
+          "line": 16467,
+          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-dc5b438043024833@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-b2841166233846ba@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
           "hint": "unclassified"
         },
         {
-          "line": 7765,
-          "before": "R0lGODlhAQABAIAAAP///wAAACH5BAkAAAEALAAAAAABAAEAAAICTAEAOw=",
-          "after": "",
+          "line": 16469,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-1a9387e22912434f@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-14608dabedfd4949@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
           "hint": "unclassified"
         },
         {
-          "line": 7766,
-          "before": "Content-Type: image/gif",
-          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=",
+          "line": 16471,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-0baa668b069241f5@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-55daf36178c8408d@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
           "hint": "unclassified"
         },
         {
-          "line": 7767,
-          "before": "Content-Transfer-Encoding: base64",
-          "after": "Content-Type: image/gif",
+          "line": 16473,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-8d8cdce98d3a4472@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-606f658096604253@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
           "hint": "unclassified"
         },
         {
-          "line": 7768,
-          "before": "",
-          "after": "Content-Transfer-Encoding: base64",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7769,
-          "before": "R0lGODlhAQABAIAAAP///wAAACH5BAkAAAEALAAAAAABAAEAAAICTAEAOw=",
-          "after": "Content-Location: https://trkn.us/pixel/conv/ppt#029;g=sitewide;gidT862;ord=[uniqueid]",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7770,
-          "before": "Content-Type: image/png",
-          "after": "",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7771,
-          "before": "Content-Transfer-Encoding: base64",
-          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7772,
-          "before": "Content-Location: https://sca-1113-adswizz.attribution.adswizz.com/fire?pixelId00fe70-c5b5-41f6-adb3-32183985eb54&type=sitevisit&subtype=Sitewide&aw_0_req.gdpr=true",
-          "after": "",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7773,
-          "before": "",
-          "after": "Content-Type: image/webp",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7774,
-          "before": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEUAAACnej3aAAAAAXRSTlMA",
-          "after": "Content-Transfer-Encoding: base64",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7775,
-          "before": "QObYZgAAAApJREFUCNdjYAAAAAIAAeIhvDMAAAAASUVORK5CYII",
-          "after": "Content-Location: https://www.hubspot.com/hs-fs/hubfs/G2%20badges%20all/G2%20badges%20evergreen/badge-best-usability-enterprise.png?width&height&nameºdge-best-usability-enterprise.png",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7776,
-          "before": "Content-Type: image/gif",
-          "after": "",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7777,
-          "before": "Content-Transfer-Encoding: base64",
-          "after": "UklGRqQIAABXRUJQVlA4WAoAAAAQAAAARAAATwAAQUxQSKoAAAABBmi2rR1v7kBi28kQbdvJ5Gxb",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7778,
-          "before": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
-          "after": "bd/37erffk9ETMDt3/9/9fOvQIHBSTgaBCC56SjUkdx46+wehTmSE190dA5CHMiBb9pbe+6oZccP",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7779,
-          "before": "",
-          "after": "Wuo7rqhhwQ+ba1tuqGYGQ1N5w8WmYgJjQ2nNbEMGcKgvrJhQQQ9Otdnlj1FWC47VmeWPUEYDztWp",
+          "line": 16475,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-34f9fa4b2ef84bf0@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-a537150e967f42e1@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
           "hint": "unclassified"
         }
       ],
       "hintCounts": {
         "session-token:hubspot-laboratory": 1,
-        "unclassified": 76855,
-        "animation:mid-frame-transform": 84,
-        "session-token:csrf": 8
+        "unclassified": 31284,
+        "animation:mid-frame-transform": 42,
+        "session-token:csrf": 4
       }
     },
     {
@@ -328,18 +328,18 @@
         2
       ],
       "mhtmlIdentical": false,
-      "driftCount": 77403,
+      "driftCount": 65011,
       "driftRows": [
         {
           "line": 212,
-          "before": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anonceadead65744e588e19542dc8f5f\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
-          "after": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anon8a25829663aaab5248a9268e447a\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
+          "before": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anonba0f76f519d55bf38c490c87ea04\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
+          "after": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anond7076758dd8142e836dfd1a49e83\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
           "hint": "session-token:hubspot-laboratory"
         },
         {
           "line": 213,
           "before": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><a href=\"https://www.hubspot.com/#\" tabindex=\"-1\" aria-hidden=\"true\" rel=\"nofollow\" style=\"opacity: 0.01; position: absolute; z-index: -999; width: 54px; he",
-          "after": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><div id=\"hs-feedback-fetcher\" title=\"submit hubspot feedback\"><iframe frameborder=\"0\" title=\"Submit HubSpot product feedback\" src=\"cid:frame-DC2B66B6E895CDE",
+          "after": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><a href=\"https://www.hubspot.com/#\" tabindex=\"-1\" aria-hidden=\"true\" rel=\"nofollow\" style=\"opacity: 0.01; position: absolute; z-index: -999; width: 54px; he",
           "hint": "unclassified"
         },
         {
@@ -427,12 +427,6 @@
           "hint": "unclassified"
         },
         {
-          "line": 6102,
-          "before": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active -scrolling\" style=\"--cl-carousel-slide-count: 3; --cl-ca",
-          "after": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=\"--cl-carousel-slide-count: 3; --cl-carousel-auto",
-          "hint": "unclassified"
-        },
-        {
           "line": 6896,
           "before": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
           "after": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
@@ -445,197 +439,203 @@
           "hint": "unclassified"
         },
         {
+          "line": 7726,
+          "before": "<img src=\"https://trkn.us/pixel/conv/ppt=23029;g=sitewide;gid=54862;ord=[uniqueid]\" style=\"display:none\"><img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7727,
+          "before": "<div style=\"display: none; visibility: hidden;\">",
+          "after": "<div class=\"go2933276541 go2369186930\" id=\"hs-web-interactives-top-anchor\"><div id=\"hs-interactives-modal-overlay\" class=\"go1632949049\"></div></div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7728,
+          "before": "</div>",
+          "after": "<div class=\"go2933276541 go1348078617\" id=\"hs-web-interactives-bottom-anchor\"></div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7729,
+          "before": "",
+          "after": "<div id=\"hs-web-interactives-floating-container\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7730,
+          "before": " ",
+          "after": "  <div id=\"hs-web-interactives-floating-top-left-anchor\" class=\"go2417249464 go613305155\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7731,
+          "before": "",
+          "after": "  </div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7732,
+          "before": "",
+          "after": "  <div id=\"hs-web-interactives-floating-top-right-anchor\" class=\"go2417249464 go471583506\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7733,
+          "before": "  ",
+          "after": "  </div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7734,
+          "before": "",
+          "after": "  <div id=\"hs-web-interactives-floating-bottom-left-anchor\" class=\"go2417249464 go3921366393\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7735,
+          "before": "",
+          "after": "  </div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7736,
+          "before": "",
+          "after": "  <div id=\"hs-web-interactives-floating-bottom-right-anchor\" class=\"go2417249464 go3967842156\" style=\"margin-bottom: 96px;\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7737,
+          "before": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-heig",
+          "after": "  </div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7738,
+          "before": "<div class=\"go2933276541 go2369186930\" id=\"hs-web-interactives-top-anchor\"><div id=\"hs-interactives-modal-overlay\" class=\"go1632949049\"></div></div>",
+          "after": "</div>",
+          "hint": "unclassified"
+        },
+        {
           "line": 7739,
-          "before": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
-          "after": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
+          "before": "<div class=\"go2933276541 go1348078617\" id=\"hs-web-interactives-bottom-anchor\"></div>",
+          "after": "<img src=\"https://trkn.us/pixel/conv/ppt=23029;g=sitewide;gid=54862;ord=[uniqueid]\" style=\"display:none\"><img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7740,
+          "before": "<div id=\"hs-web-interactives-floating-container\">",
+          "after": "<div style=\"display: none; visibility: hidden;\">",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7741,
+          "before": "  <div id=\"hs-web-interactives-floating-top-left-anchor\" class=\"go2417249464 go613305155\">",
+          "after": "</div>",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7742,
+          "before": "  </div>",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7743,
+          "before": "  <div id=\"hs-web-interactives-floating-top-right-anchor\" class=\"go2417249464 go471583506\">",
+          "after": " ",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7744,
+          "before": "  </div>",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7745,
+          "before": "  <div id=\"hs-web-interactives-floating-bottom-left-anchor\" class=\"go2417249464 go3921366393\">",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7746,
+          "before": "  </div>",
+          "after": "  ",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7747,
+          "before": "  <div id=\"hs-web-interactives-floating-bottom-right-anchor\" class=\"go2417249464 go3967842156\" style=\"margin-bottom: 96px;\">",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7748,
+          "before": "  </div>",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7749,
+          "before": "</div>",
+          "after": "",
           "hint": "unclassified"
         },
         {
           "line": 7750,
-          "before": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FChicago%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%262",
-          "after": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FChicago%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%262",
+          "before": "<iframe height=\"0\" width=\"0\" src=\"cid:frame-31303B7A68E0082B3868E8B3846FF94C@mhtml.blink\" style=\"display: none; visibility: hidden;\"></iframe><iframe height=\"0\" width=\"0\" src=\"cid:frame-001E8186C4C9A5",
+          "after": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-heig",
           "hint": "unclassified"
         },
         {
-          "line": 7753,
-          "before": "</body></html>",
-          "after": "<div id=\"batBeacon602636922663\" style=\"width: 0px; height: 0px; display: none; visibility: hidden;\"><img id=\"batBeacon813445308332\" width=\"0\" height=\"0\" alt=\"\" src=\"https://bat.bing.com/action/0?ti=55",
+          "line": 16465,
+          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-980c527b4d0640b1@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-3245f4fad2314de9@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
           "hint": "unclassified"
         },
         {
-          "line": 7770,
-          "before": "Content-Type: image/png",
-          "after": "Content-Type: image/gif",
+          "line": 16467,
+          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-dc5b438043024833@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-4d4ce0dc19ce4d24@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
           "hint": "unclassified"
         },
         {
-          "line": 7772,
-          "before": "Content-Location: https://sca-1113-adswizz.attribution.adswizz.com/fire?pixelId00fe70-c5b5-41f6-adb3-32183985eb54&type=sitevisit&subtype=Sitewide&aw_0_req.gdpr=true",
-          "after": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
+          "line": 16469,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-1a9387e22912434f@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-d008d796fef74a3d@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
           "hint": "unclassified"
         },
         {
-          "line": 7774,
-          "before": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEUAAACnej3aAAAAAXRSTlMA",
-          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=",
+          "line": 16471,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-0baa668b069241f5@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-f09e1169542e4708@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
           "hint": "unclassified"
         },
         {
-          "line": 7775,
-          "before": "QObYZgAAAApJREFUCNdjYAAAAAIAAeIhvDMAAAAASUVORK5CYII",
-          "after": "Content-Type: image/gif",
+          "line": 16473,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-8d8cdce98d3a4472@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-236351ec47ff4c7c@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
           "hint": "unclassified"
         },
         {
-          "line": 7776,
-          "before": "Content-Type: image/gif",
-          "after": "Content-Transfer-Encoding: base64",
+          "line": 16475,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-34f9fa4b2ef84bf0@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-84902ec28e774db4@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
           "hint": "unclassified"
         },
         {
-          "line": 7777,
-          "before": "Content-Transfer-Encoding: base64",
-          "after": "Content-Location: https://trkn.us/pixel/conv/ppt#029;g=sitewide;gidT862;ord=[uniqueid]",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7778,
-          "before": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
-          "after": "",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7779,
-          "before": "",
-          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7780,
-          "before": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=",
-          "after": "",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7781,
-          "before": "Content-Type: image/gif",
-          "after": "Content-Type: image/webp",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7783,
-          "before": "Content-Location: https://trkn.us/pixel/conv/ppt#029;g=sitewide;gidT862;ord=[uniqueid]",
-          "after": "Content-Location: https://www.hubspot.com/hs-fs/hubfs/G2%20badges%20all/G2%20badges%20evergreen/badge-best-usability-enterprise.png?width&height&nameºdge-best-usability-enterprise.png",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7785,
-          "before": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-          "after": "UklGRqQIAABXRUJQVlA4WAoAAAAQAAAARAAATwAAQUxQSKoAAAABBmi2rR1v7kBi28kQbdvJ5Gxb",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7786,
-          "before": "",
-          "after": "bd/37erffk9ETMDt3/9/9fOvQIHBSTgaBCC56SjUkdx46+wehTmSE190dA5CHMiBb9pbe+6oZccP",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7787,
-          "before": "Content-Type: image/webp",
-          "after": "Wuo7rqhhwQ+ba1tuqGYGQ1N5w8WmYgJjQ2nNbEMGcKgvrJhQQQ9Otdnlj1FWC47VmeWPUEYDztWp",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7788,
-          "before": "Content-Transfer-Encoding: base64",
-          "after": "+bfmpIaAivjsS/O4EoIqYtMPs5gCAsuCw5skDYMEweWFeUEO5lZQOCDUBwAA8CcAnQEqRQBQAD5J",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7789,
-          "before": "Content-Location: https://www.hubspot.com/hs-fs/hubfs/G2%20badges%20all/G2%20badges%20evergreen/badge-best-usability-enterprise.png?width&height&nameºdge-best-usability-enterprise.png",
-          "after": "II1FIqIhEz5lmCgEhLQASoH9V58CpHYuH21079ZP3zl/pvtu7QHidfQB3D/4h6AP4n/Wf137AHoA",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7790,
-          "before": "",
-          "after": "f57qAP1A9gDywP2v+C/9rP2k+AD9as0o/o34QeBP9R/GPrZPD/rpyXXn/sN9t/Jrkl9/H7Z6Bf8L",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7791,
-          "before": "UklGRqQIAABXRUJQVlA4WAoAAAAQAAAARAAATwAAQUxQSKoAAAABBmi2rR1v7kBi28kQbdvJ5Gxb",
-          "after": "/oX5DfmB7Ru0HAB+Kfxr++/k3/hP3A9HT0A7i7+u/kv6u/bV9gP+O/0f/R/3b8lviF/rf8L+UHtN",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7792,
-          "before": "bd/37erffk9ETMDt3/9/9fOvQIHBSTgaBCC56SjUkdx46+wehTmSE190dA5CHMiBb9pbe+6oZccP",
-          "after": "/Lf7b/qf8H+Rn2BfyD+f/4/+8fvP/ef//4af2n9k79hWIQOKJPnOEwVhr4JFu7gPdWGc6tdITeS6",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7793,
-          "before": "Wuo7rqhhwQ+ba1tuqGYGQ1N5w8WmYgJjQ2nNbEMGcKgvrJhQQQ9Otdnlj1FWC47VmeWPUEYDztWp",
-          "after": "kZNsJD0nigGTnelai7eEW5XD8OCpr8R8fPQKqCpUPYzxJ5XFRe1Bjm0Z7rG8d78MOk8XcA7fE/MF",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7794,
-          "before": "+bfmpIaAivjsS/O4EoIqYtMPs5gCAsuCw5skDYMEweWFeUEO5lZQOCDUBwAA8CcAnQEqRQBQAD5J",
-          "after": "gXWAMPbLsROTvgxMe24IVC+FvI6VQqXlPkcTC8y0AAD3xekDIALZ/3uWzsjqlDLliciqh38FWci+",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7795,
-          "before": "II1FIqIhEz5lmCgEhLQASoH9V58CpHYuH21079ZP3zl/pvtu7QHidfQB3D/4h6AP4n/Wf137AHoA",
-          "after": "cTVi9MJk5MyqCppyKAQyNlfuW4igmltHgy6ldfPATSKKxtsq6lqfBSByH+/zgz8FXMkdF9Ope5W8",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7796,
-          "before": "f57qAP1A9gDywP2v+C/9rP2k+AD9as0o/o34QeBP9R/GPrZPD/rpyXXn/sN9t/Jrkl9/H7Z6Bf8L",
-          "after": "6oDHbbcMUNB7dwNug5s08L0/e9r50MAKSQtJW8ExPTZ/oSud7X9qDtFRC7WbWD2R9hgCbeqyb+T6",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7797,
-          "before": "/oX5DfmB7Ru0HAB+Kfxr++/k3/hP3A9HT0A7i7+u/kv6u/bV9gP+O/0f/R/3b8lviF/rf8L+UHtN",
-          "after": "ugcxWy0u3/XV+i/374zjRKyfyHIofM9P+hHz4oDA5hdJ1ctwzW/jJWX07sU586ohcmKoSV70JuO3",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7798,
-          "before": "/Lf7b/qf8H+Rn2BfyD+f/4/+8fvP/ef//4af2n9k79hWIQOKJPnOEwVhr4JFu7gPdWGc6tdITeS6",
-          "after": "A/+gitm4r3UaEeYxD42JlZ3gltyweanjORac/ACiSw8b6pJvsd6Owts+dIMuEQqsuRN918Ja2UeU",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7799,
-          "before": "kZNsJD0nigGTnelai7eEW5XD8OCpr8R8fPQKqCpUPYzxJ5XFRe1Bjm0Z7rG8d78MOk8XcA7fE/MF",
-          "after": "UtH6LXY5lLjJaLTRicnzG5prUKRoRZcxAzVhR2XPbNZxgdq3UlgjSD2VknKPpFBRsdKLzW95Ma6J",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7800,
-          "before": "gXWAMPbLsROTvgxMe24IVC+FvI6VQqXlPkcTC8y0AAD3xekDIALZ/3uWzsjqlDLliciqh38FWci+",
-          "after": "4YtrUwoBOp4VW65i7hqZVcywr9/PKhZWQeUYTdh6Pf+/E7MbT/QK1MKHw24/0dVfE7LZXkqROi5Y",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7801,
-          "before": "cTVi9MJk5MyqCppyKAQyNlfuW4igmltHgy6ldfPATSKKxtsq6lqfBSByH+/zgz8FXMkdF9Ope5W8",
-          "after": "V1mIPTXDqh/43RRmZFG6Zx9hvToi8OmObT7J+daLgLyw2Bret/vst/A4/OX6j9803shc6FSexQHw",
+          "line": 18118,
+          "before": ".go2933276541 { position: fixed; display: block; width: 100%; height: 0px; margin: 0px; padding: 0px; overflow: visible; transform-style: preserve-3d; background: transparent; backface-visibility: hid",
+          "after": "html.hs-messages-widget-open.hs-messages-mobile, html.hs-messages-widget-open.hs-messages-mobile body { overflow: hidden !important; position: relative !important; }",
           "hint": "unclassified"
         }
       ],
       "hintCounts": {
         "session-token:hubspot-laboratory": 1,
-        "unclassified": 77310,
-        "session-token:csrf": 8,
-        "animation:mid-frame-transform": 84
+        "unclassified": 64976,
+        "animation:mid-frame-transform": 28,
+        "session-token:csrf": 6
       }
     },
     {
@@ -644,18 +644,18 @@
         2
       ],
       "mhtmlIdentical": false,
-      "driftCount": 77318,
+      "driftCount": 65519,
       "driftRows": [
         {
           "line": 212,
-          "before": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anond0ecc04ca299f9d21b4d3390991d\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
-          "after": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anon8a25829663aaab5248a9268e447a\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
+          "before": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anon97fd89ba23e5675acb2d72ab1088\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
+          "after": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anond7076758dd8142e836dfd1a49e83\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
           "hint": "session-token:hubspot-laboratory"
         },
         {
           "line": 213,
           "before": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><a href=\"https://www.hubspot.com/#\" tabindex=\"-1\" aria-hidden=\"true\" rel=\"nofollow\" style=\"opacity: 0.01; position: absolute; z-index: -999; width: 54px; he",
-          "after": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><div id=\"hs-feedback-fetcher\" title=\"submit hubspot feedback\"><iframe frameborder=\"0\" title=\"Submit HubSpot product feedback\" src=\"cid:frame-DC2B66B6E895CDE",
+          "after": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><a href=\"https://www.hubspot.com/#\" tabindex=\"-1\" aria-hidden=\"true\" rel=\"nofollow\" style=\"opacity: 0.01; position: absolute; z-index: -999; width: 54px; he",
           "hint": "unclassified"
         },
         {
@@ -731,12 +731,6 @@
           "hint": "unclassified"
         },
         {
-          "line": 4885,
-          "before": "              <ul class=\"wf-page-header_heading-animated-list\" style=\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-720px);\"><li class=\"wf-page-header_heading-ani",
-          "after": "              <ul class=\"wf-page-header_heading-animated-list\" style=\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-240px);\"><li class=\"wf-page-header_heading-ani",
-          "hint": "animation:mid-frame-transform"
-        },
-        {
           "line": 4892,
           "before": "            <a class=\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=\"light\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.co",
           "after": "            <a class=\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=\"light\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.co",
@@ -755,66 +749,6 @@
           "hint": "unclassified"
         },
         {
-          "line": 6102,
-          "before": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=\"--cl-carousel-slide-count: 3; --cl-carousel-auto",
-          "after": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=\"--cl-carousel-slide-count: 3; --cl-carousel-auto",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6118,
-          "before": "            <ul class=\"cl-carousel-train\" role=\"none\" aria-atomic=\"false\" aria-live=\"off\"><li class=\"cl-carousel-slide -clone -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" inert",
-          "after": "            <ul class=\"cl-carousel-train\" role=\"none\" aria-atomic=\"false\" aria-live=\"off\"><li class=\"cl-carousel-slide -clone -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" iner",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6139,
-          "before": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6160,
-          "before": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6181,
-          "before": "  </div></li><li class=\"cl-carousel-slide -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6202,
-          "before": "  </div></li><li class=\"cl-carousel-slide -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6223,
-          "before": "  </div></li><li class=\"cl-carousel-slide -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6244,
-          "before": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6265,
-          "before": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6286,
-          "before": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "after": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
-          "hint": "unclassified"
-        },
-        {
           "line": 6896,
           "before": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
           "after": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
@@ -827,131 +761,197 @@
           "hint": "unclassified"
         },
         {
-          "line": 7726,
-          "before": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
-          "after": "",
-          "hint": "unclassified"
-        },
-        {
           "line": 7739,
-          "before": "<img src=\"https://trkn.us/pixel/conv/ppt=23029;g=sitewide;gid=54862;ord=[uniqueid]\" style=\"display:none\"><img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6",
-          "after": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
+          "before": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
+          "after": "<img src=\"https://trkn.us/pixel/conv/ppt=23029;g=sitewide;gid=54862;ord=[uniqueid]\" style=\"display:none\"><img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6",
           "hint": "unclassified"
         },
         {
           "line": 7750,
-          "before": "<img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6-9589-0a5f14faea43\" width=\"1\" height=\"1\" border=\"0\" style=\"display: none;\"><div style=\"display: none; vis",
-          "after": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FChicago%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%262",
+          "before": "<img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FNew_York%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%26255%261288%26711%262%2624%261288%26711%260%26na&amp;eci=3&amp;event=%7B%22%22%3A%",
+          "after": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-heig",
           "hint": "unclassified"
         },
         {
-          "line": 7753,
-          "before": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FNew_York%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%26",
-          "after": "<div id=\"batBeacon602636922663\" style=\"width: 0px; height: 0px; display: none; visibility: hidden;\"><img id=\"batBeacon813445308332\" width=\"0\" height=\"0\" alt=\"\" src=\"https://bat.bing.com/action/0?ti=55",
+          "line": 16465,
+          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-4abfe5576c724961@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-3245f4fad2314de9@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
           "hint": "unclassified"
         },
         {
-          "line": 7764,
-          "before": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
+          "line": 16467,
+          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-b2841166233846ba@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-4d4ce0dc19ce4d24@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "hint": "unclassified"
+        },
+        {
+          "line": 16469,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-14608dabedfd4949@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-d008d796fef74a3d@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "hint": "unclassified"
+        },
+        {
+          "line": 16471,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-55daf36178c8408d@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-f09e1169542e4708@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "hint": "unclassified"
+        },
+        {
+          "line": 16473,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-606f658096604253@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-236351ec47ff4c7c@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "hint": "unclassified"
+        },
+        {
+          "line": 16475,
+          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-a537150e967f42e1@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-84902ec28e774db4@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "hint": "unclassified"
+        },
+        {
+          "line": 18169,
+          "before": "#hs-feedback-ui { animation-duration: 0.4s; animation-timing-function: ease-out; display: none; height: 0px; overflow: hidden; position: fixed; z-index: 2147483647; max-width: 100%; }",
+          "after": ".go2933276541 { position: fixed; display: block; width: 100%; height: 0px; margin: 0px; padding: 0px; overflow: visible; transform-style: preserve-3d; background: transparent; backface-visibility: hid",
+          "hint": "unclassified"
+        },
+        {
+          "line": 18171,
+          "before": ".hubspot.space-sword #hs-feedback-ui { z-index: 1211; }",
+          "after": ".go2369186930 { top: 0px; z-index: 9999; height: 100%; width: 100%; }",
+          "hint": "unclassified"
+        },
+        {
+          "line": 18173,
+          "before": "#hs-feedback-ui.hs-feedback-shown { display: block; }",
+          "after": ".go1348078617 { bottom: 0px; }",
+          "hint": "unclassified"
+        },
+        {
+          "line": 18175,
+          "before": "#hs-feedback-fetcher { display: none; }",
+          "after": ".go2417249464 { position: fixed; z-index: 9989; }",
+          "hint": "unclassified"
+        },
+        {
+          "line": 18177,
+          "before": "@keyframes feedback-slide-in-hs-feedback-left { ",
+          "after": ".go3921366393 { left: 0px; bottom: 0px; }",
+          "hint": "unclassified"
+        },
+        {
+          "line": 18178,
+          "before": "  0% { transform: translate(0px, 100%); }",
+          "after": "",
+          "hint": "animation:mid-frame-transform"
+        },
+        {
+          "line": 18179,
+          "before": "  100% { transform: translate(0px, 0px); }",
+          "after": ".go3967842156 { right: 0px; bottom: 0px; }",
+          "hint": "animation:mid-frame-transform"
+        },
+        {
+          "line": 18180,
+          "before": "}",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 7765,
+          "line": 18181,
           "before": "",
-          "after": "R0lGODlhAQABAIAAAP///wAAACH5BAkAAAEALAAAAAABAAEAAAICTAEAOw=",
+          "after": ".go613305155 { left: 0px; top: 0px; }",
           "hint": "unclassified"
         },
         {
-          "line": 7766,
-          "before": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=",
-          "after": "Content-Type: image/gif",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7767,
-          "before": "Content-Type: image/gif",
-          "after": "Content-Transfer-Encoding: base64",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7768,
-          "before": "Content-Transfer-Encoding: base64",
+          "line": 18182,
+          "before": "@keyframes feedback-slide-out-hs-feedback-left { ",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 7769,
-          "before": "Content-Location: https://trkn.us/pixel/conv/ppt#029;g=sitewide;gidT862;ord=[uniqueid]",
-          "after": "R0lGODlhAQABAIAAAP///wAAACH5BAkAAAEALAAAAAABAAEAAAICTAEAOw=",
+          "line": 18183,
+          "before": "  0% { transform: translate(0px, 0px); }",
+          "after": ".go471583506 { right: 0px; top: 0px; }",
+          "hint": "animation:mid-frame-transform"
+        },
+        {
+          "line": 18184,
+          "before": "  100% { transform: translate(0px, 100%); }",
+          "after": "",
+          "hint": "animation:mid-frame-transform"
+        },
+        {
+          "line": 18185,
+          "before": "}",
+          "after": ".go3670563033 { position: relative; overflow: hidden; display: none; }",
           "hint": "unclassified"
         },
         {
-          "line": 7770,
-          "before": "",
-          "after": "Content-Type: image/gif",
+          "line": 18187,
+          "before": "#hs-feedback-ui.hs-feedback-left { animation-name: feedback-slide-in-hs-feedback-left; }",
+          "after": ".go1041095097 { display: block; }",
           "hint": "unclassified"
         },
         {
-          "line": 7771,
-          "before": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-          "after": "Content-Transfer-Encoding: base64",
+          "line": 18189,
+          "before": "#hs-feedback-ui.hs-feedback-left.hs-feedback-slid-out { animation-name: feedback-slide-out-hs-feedback-left; animation-fill-mode: forwards; }",
+          "after": ".go1632949049 { position: absolute; pointer-events: none; width: 101vw; height: 101vh; background: rgba(0, 0, 0, 0.7); opacity: 0; z-index: -1; }",
           "hint": "unclassified"
         },
         {
-          "line": 7772,
-          "before": "",
-          "after": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
+          "line": 18191,
+          "before": "@keyframes feedback-slide-in-hs-feedback-right { ",
+          "after": ".go2512015367 { z-index: 99998; opacity: 0.8; visibility: visible; pointer-events: all; cursor: pointer; }",
           "hint": "unclassified"
         },
         {
-          "line": 7773,
-          "before": "Content-Type: image/webp",
+          "line": 18192,
+          "before": "  0% { transform: translate(0px, 100%); }",
+          "after": "",
+          "hint": "animation:mid-frame-transform"
+        },
+        {
+          "line": 18193,
+          "before": "  100% { transform: translate(0px, 0px); }",
+          "after": ".go1432718904 { overflow: hidden; }",
+          "hint": "animation:mid-frame-transform"
+        },
+        {
+          "line": 18194,
+          "before": "}",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 7774,
-          "before": "Content-Transfer-Encoding: base64",
-          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7775,
-          "before": "Content-Location: https://www.hubspot.com/hs-fs/hubfs/G2%20badges%20all/G2%20badges%20evergreen/badge-best-usability-enterprise.png?width&height&nameºdge-best-usability-enterprise.png",
-          "after": "Content-Type: image/gif",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7776,
+          "line": 18195,
           "before": "",
-          "after": "Content-Transfer-Encoding: base64",
+          "after": ".go812842568 { border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; margin: 0px; display: block !important; position: static !important; box-sizing: border-box ",
           "hint": "unclassified"
         },
         {
-          "line": 7777,
-          "before": "UklGRqQIAABXRUJQVlA4WAoAAAAQAAAARAAATwAAQUxQSKoAAAABBmi2rR1v7kBi28kQbdvJ5Gxb",
-          "after": "Content-Location: https://trkn.us/pixel/conv/ppt#029;g=sitewide;gidT862;ord=[uniqueid]",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7778,
-          "before": "bd/37erffk9ETMDt3/9/9fOvQIHBSTgaBCC56SjUkdx46+wehTmSE190dA5CHMiBb9pbe+6oZccP",
+          "line": 18196,
+          "before": "@keyframes feedback-slide-out-hs-feedback-right { ",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 7779,
-          "before": "Wuo7rqhhwQ+ba1tuqGYGQ1N5w8WmYgJjQ2nNbEMGcKgvrJhQQQ9Otdnlj1FWC47VmeWPUEYDztWp",
-          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-          "hint": "unclassified"
+          "line": 18197,
+          "before": "  0% { transform: translate(0px, 0px); }",
+          "after": ".go722322694 { transition: none !important; }",
+          "hint": "animation:mid-frame-transform"
+        },
+        {
+          "line": 18198,
+          "before": "  100% { transform: translate(0px, 100%); }",
+          "after": "",
+          "hint": "animation:mid-frame-transform"
         }
       ],
       "hintCounts": {
         "session-token:hubspot-laboratory": 1,
-        "unclassified": 77228,
-        "animation:mid-frame-transform": 81,
-        "session-token:csrf": 8
+        "unclassified": 65470,
+        "animation:mid-frame-transform": 42,
+        "session-token:csrf": 6
       }
     }
   ],

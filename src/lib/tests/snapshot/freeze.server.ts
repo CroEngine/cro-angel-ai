@@ -420,6 +420,40 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
 
     await page.setViewportSize(FREEZE_VIEWPORT.width, FREEZE_VIEWPORT.height);
 
+    // Determinism: emulate prefers-reduced-motion BEFORE goto so animation
+    // frames don't vary across captures. HubSpot's hero rotating list
+    // (.wf-page-header_heading-animated-list) cycles product names via a
+    // JS-driven `transform: translateY(...)`; without this each capture freezes
+    // a different frame, which the extractor scores as different hero text — the
+    // dominant score-affecting drift in fixtures/determinism/hubspot (round5).
+    // Verified 2026-06-20 via Browserbase probe: under reduced-motion the list's
+    // transform resolves to `none` and stays put across reads. Non-destructive
+    // and general — well-built sites honor it, so it also reduces animation-frame
+    // drift across the breadth corpus. Best-effort: if the CDP call fails the
+    // freeze proceeds with animations live (pre-fix behavior) rather than aborting.
+    try {
+      await page.sendCDP("Emulation.setEmulatedMedia", {
+        features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+      });
+      // Belt to setEmulatedMedia's suspenders. setEmulatedMedia governs CSS
+      // @media; this governs JS `matchMedia`. Both are needed because the hero-
+      // init JS reads matchMedia('prefers-reduced-motion') at load — we observed
+      // an init race where 2/3 captures rendered the static hero but 1/3 caught
+      // the animated rotating list mid-frame (translateY(-240px)). Forcing the
+      // JS answer before any page script runs makes the hero render the SAME
+      // (static) state every capture. Non-reduced-motion queries delegate to the
+      // original so responsive width breakpoints are unaffected.
+      await page.sendCDP("Page.addScriptToEvaluateOnNewDocument", {
+        source:
+          "(() => { const o = window.matchMedia ? window.matchMedia.bind(window) : null; if (!o) return; " +
+          "window.matchMedia = (q) => /prefers-reduced-motion/i.test(String(q)) " +
+          "? { matches: true, media: String(q), onchange: null, addListener(){}, removeListener(){}, " +
+          "addEventListener(){}, removeEventListener(){}, dispatchEvent(){ return false; } } : o(q); })();",
+      });
+    } catch {
+      /* best-effort — capture proceeds with live animations */
+    }
+
     // A+C proveniens: stämpla capture-env. Best-effort — om browser.version()
     // inte är tillgänglig hamnar null där, vilket också är information ("vi
     // visste inte vid frystidpunkten").
