@@ -42,6 +42,13 @@ export interface FreezeOptions {
   consentSelector?: string;
   consentDismissCheck?: "detached" | "hidden";
   consentInstruction?: string;
+  /** iframe-based CMP (e.g. Sourcepoint `sp_message_iframe`): the accept button
+   *  lives inside this iframe, so it's clicked via frameLocator and dismissal is
+   *  verified by the iframe detaching. consentSelector is the button locator
+   *  INSIDE the frame and MUST be an XPath (Stagehand's frame locator resolves
+   *  xpath, not CSS) — e.g. `//button[contains(normalize-space(.),"Godkänn alla")]`.
+   *  Verified 2026-06-20 on aftonbladet (Sourcepoint). */
+  consentFrame?: string;
   outDir?: string;
   notes?: string;
   /** Skip writes to corpus/. Receipt still written to /tmp. */
@@ -526,7 +533,47 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     // receipten är användbar även när vi throwar.
     const tConsent = Date.now();
     const dismissState = opts.consentDismissCheck ?? "detached";
-    if (opts.consentSelector) {
+    if (opts.consentFrame) {
+      // iframe-based CMP (Sourcepoint sp_message_iframe et al). The accept button
+      // lives inside the iframe, so page.locator can't reach it — click via
+      // frameLocator and verify the iframe detaches/hides. consentSelector is the
+      // button locator INSIDE the frame (e.g. button[title="Godkänn alla"]).
+      if (!opts.consentSelector) {
+        throw new Error(
+          `[freeze] consentFrame satt utan consentSelector (knapp-i-iframe): ${opts.name}.`,
+        );
+      }
+      try {
+        await page.waitForSelector(opts.consentFrame, { state: "attached", timeout: 8000 });
+      } catch {
+        throw new Error(
+          `[freeze] consent-iframe blev aldrig attached inom 8s: ${opts.consentFrame} (${opts.name}). ` +
+            `Stale selektor, A/B-variant, eller CMP laddade aldrig.`,
+        );
+      }
+      report.consent.visibleBeforeClick = true;
+      if (opts.screenshotBeforeDismiss) {
+        const beforeShot = await page.screenshot({ type: "jpeg", quality: 70, fullPage: false });
+        const beforePath = opts.dryRun
+          ? join(tmpdir(), `freeze-${opts.name}-${ts}.before-dismiss.jpg`)
+          : join(dir, "screenshot.before-dismiss.jpg");
+        writeFileSync(beforePath, Buffer.from(beforeShot));
+        report.capture.beforeDismissScreenshotPath = beforePath;
+      }
+      const tClick = Date.now();
+      await page.frameLocator(opts.consentFrame).locator(opts.consentSelector).first().click();
+      try {
+        await page.waitForSelector(opts.consentFrame, { state: dismissState, timeout: 8000 });
+      } catch {
+        throw new Error(
+          `[freeze] consent-iframe kvar efter klick (state=${dismissState}, ${opts.consentFrame}): ${opts.name}. ` +
+            `Knapp-selektor i iframe fel, eller CMP döljer istället för att detacha (testa consentDismissCheck=hidden).`,
+        );
+      }
+      report.consent.dismissedAfterMs = Date.now() - tClick;
+      await new Promise((r) => setTimeout(r, 800));
+      report.consent.postDismissDomHits = await measurePostDismissDomHits(page, POST_DISMISS_NEEDLES);
+    } else if (opts.consentSelector) {
       // Vänta in bannern (consent injiceras ofta async via taghanterare).
       // Om DENNA waiten timear ut är det stale selektor / banner laddade aldrig
       // — det är ett legitimt freeze-fel och vi loggar det explicit i error.

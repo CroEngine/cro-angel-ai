@@ -23,6 +23,12 @@ export interface SiteSpec {
   consentDismissCheck?: "detached" | "hidden";
   /** Stagehand-fallback om CSS inte räcker. Samma assertion-krav. */
   consentInstruction?: string;
+  /** iframe-baserad CMP (t.ex. Sourcepoint sp_message_iframe): accept-knappen
+   *  ligger inuti denna iframe. consentSelector blir då en XPath till knappen
+   *  INUTI framen (Stagehands frame-locator resolvar xpath, inte CSS) — t.ex.
+   *  `//button[contains(normalize-space(.),"Godkänn alla")]`. Dismissal verifieras
+   *  genom att iframen detachar/döljs (consentDismissCheck). */
+  consentFrame?: string;
   /**
    * CSS-selektorer för element som tas bort FÖRE captureSnapshot.
    * Determinism: tredjeparts-overlays (chat/feedback/web-interactives/bot-tarpit)
