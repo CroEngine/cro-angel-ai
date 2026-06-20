@@ -1,0 +1,16 @@
+{
+  "url": "https://supabase.com",
+  "name": "saas-landing__supabase",
+  "captured_at": "2026-06-20T19:05:53.741Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-20T19:05:39.410Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-20T19:05:53.741Z",
+  "expiresAt": "2026-09-18T19:05:53.741Z",
+  "refreezeReason": "manual"
+}

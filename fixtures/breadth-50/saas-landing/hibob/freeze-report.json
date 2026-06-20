@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 2013,
+    "screenshotKb": 606,
+    "beforeDismissScreenshotPath": null,
+    "externalFontSrcCount": 0,
+    "embeddedFontCount": 36,
+    "mhtmlKbBeforeFontEmbed": 1297,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Gotham SSm A",
+      "Gotham SSm B",
+      "Sentinel SSm A",
+      "Sentinel SSm B"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 36,
+      "relativeResolved": 0,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T19:06:12.539Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 6636,
+    "interactiveCount": 188,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 6349,
+    "consentMs": 0,
+    "scrollMs": 3692,
+    "captureMs": 2895
+  }
+}

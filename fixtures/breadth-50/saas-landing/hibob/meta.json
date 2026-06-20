@@ -1,0 +1,16 @@
+{
+  "url": "https://www.hibob.com",
+  "name": "saas-landing__hibob",
+  "captured_at": "2026-06-20T19:06:25.604Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-20T19:06:10.385Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-20T19:06:25.604Z",
+  "expiresAt": "2026-09-18T19:06:25.604Z",
+  "refreezeReason": "manual"
+}

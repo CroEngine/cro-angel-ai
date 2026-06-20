@@ -1,0 +1,16 @@
+{
+  "url": "https://www.intercom.com",
+  "name": "saas-landing__intercom",
+  "captured_at": "2026-06-20T19:06:59.407Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-20T19:05:48.087Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-20T19:06:59.407Z",
+  "expiresAt": "2026-09-18T19:06:59.407Z",
+  "refreezeReason": "manual"
+}

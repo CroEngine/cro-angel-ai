@@ -1,0 +1,16 @@
+{
+  "url": "https://www.hubspot.com",
+  "name": "saas-landing__hubspot",
+  "captured_at": "2026-06-20T19:06:09.957Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-20T19:05:54.020Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-20T19:06:09.957Z",
+  "expiresAt": "2026-09-18T19:06:09.957Z",
+  "refreezeReason": "manual"
+}
