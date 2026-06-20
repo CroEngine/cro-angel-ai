@@ -688,9 +688,23 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     }
 
     const tCapture = Date.now();
-    const snap = await page.sendCDP<{ data: string }>("Page.captureSnapshot", {
-      format: "mhtml",
-    });
+    // Page.captureSnapshot intermittently fails with CDP -32000 "Failed to
+    // generate MHTML" (observed: guardian, verge, dn, spiegel). Root cause not
+    // isolated; empirically a settle + retry clears the transient cases. Retry
+    // up to 3x on -32000 only; re-throw any other error immediately.
+    let snap: { data: string } | undefined;
+    let captureErr: unknown;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        snap = await page.sendCDP<{ data: string }>("Page.captureSnapshot", { format: "mhtml" });
+        break;
+      } catch (e) {
+        captureErr = e;
+        if (!/-32000|failed to generate mhtml/i.test(String((e as Error)?.message ?? e))) throw e;
+        await new Promise((r) => setTimeout(r, 1200 * attempt));
+      }
+    }
+    if (!snap) throw captureErr;
     const rawMhtmlBytes = Buffer.byteLength(snap.data, "utf8");
     report.capture.mhtmlKbBeforeFontEmbed = Math.round(rawMhtmlBytes / 1024);
 
