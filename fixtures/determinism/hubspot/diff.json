@@ -1,9 +1,9 @@
 {
   "site": "hubspot",
   "url": "https://www.hubspot.com/",
-  "ranAt": "2026-06-17T21:36:54.623Z",
+  "ranAt": "2026-06-20T14:37:25.511Z",
   "N": 3,
-  "whitelistVersion": "sha256:e0cfa565295030720ac3f9d9de6ff7abece6b4e0eeb2d45d20b6bd9f96e98181",
+  "whitelistVersion": "sha256:af9bcc0f53c366ad8808120e920f0ba32b008aedc6e1cc211c968dd3a4ecdfac",
   "whitelistPath": "fixtures/determinism/WHITELIST.md",
   "pairs": [
     {
@@ -12,313 +12,314 @@
         1
       ],
       "mhtmlIdentical": false,
-      "driftCount": 65920,
+      "driftCount": 76948,
       "driftRows": [
         {
           "line": 212,
-          "before": "<meta name=3D\"generator\" content=3D\"HubSpot\"><meta name=3D\"laboratory-identifier-other\" content=3D\"anon1949273daa716471dd4bd2796334\"><link href=3D\"https://fonts.googleapis.com/css2?family=3DLato:ital,",
-          "after": "<meta name=3D\"generator\" content=3D\"HubSpot\"><meta name=3D\"laboratory-identifier-other\" content=3D\"anon6a8f112087574cc4f36e8edbfc30\"><link href=3D\"https://fonts.googleapis.com/css2?family=3DLato:ital,",
+          "before": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anonceadead65744e588e19542dc8f5f\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
+          "after": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anond0ecc04ca299f9d21b4d3390991d\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
           "hint": "session-token:hubspot-laboratory"
         },
         {
           "line": 213,
-          "before": "<body data-cl-brand=3D\"hubspot-2025\" class=3D\"\"><a href=3D\"https://www.hubspot.com/#\" tabindex=3D\"-1\" aria-hidden=3D\"true\" rel=3D\"nofollow\" style=3D\"opacity: 0.01; position: absolute; z-index: -999; w",
-          "after": "<body data-cl-brand=3D\"hubspot-2025\" class=3D\"\"><a href=3D\"https://www.hubspot.com/#\" tabindex=3D\"-1\" aria-hidden=3D\"true\" rel=3D\"nofollow\" style=3D\"opacity: 0.01; position: absolute; z-index: -999; w",
+          "before": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><a href=\"https://www.hubspot.com/#\" tabindex=\"-1\" aria-hidden=\"true\" rel=\"nofollow\" style=\"opacity: 0.01; position: absolute; z-index: -999; width: 54px; he",
+          "after": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><a href=\"https://www.hubspot.com/#\" tabindex=\"-1\" aria-hidden=\"true\" rel=\"nofollow\" style=\"opacity: 0.01; position: absolute; z-index: -999; width: 54px; he",
+          "hint": "unclassified"
+        },
+        {
+          "line": 220,
+          "before": "    </button></div></div></div></div>",
+          "after": "    </button></div></div></div></div><div id=\"hs-web-interactives-top-push-anchor\" class=\"go3670563033\"></div>",
           "hint": "unclassified"
         },
         {
           "line": 535,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 548,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 574,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 600,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 695,
-          "before": "      <a class=3D\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=3D\"header_nav\" data-ga_nav_tree_text=3D\"Log in\" href=3D\"https://app.hubspot.com/login?hubs_sig",
-          "after": "      <a class=3D\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=3D\"header_nav\" data-ga_nav_tree_text=3D\"Log in\" href=3D\"https://app.hubspot.com/login?hubs_sig",
+          "before": "      <a class=\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=\"header_nav\" data-ga_nav_tree_text=\"Log in\" href=\"https://app.hubspot.com/login?hubs_signup-url=",
+          "after": "      <a class=\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=\"header_nav\" data-ga_nav_tree_text=\"Log in\" href=\"https://app.hubspot.com/login?hubs_signup-url=",
           "hint": "unclassified"
         },
         {
-          "line": 4640,
-          "before": "      <a class=3D\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-cta=3Dhomepa",
-          "after": "      <a class=3D\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-cta=3Dhomepa",
+          "line": 4582,
+          "before": "      <a class=\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepage-hp-na",
+          "after": "      <a class=\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepage-hp-na",
           "hint": "unclassified"
         },
         {
-          "line": 4660,
-          "before": "              <a class=3D\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=3D\"done\" data-logged-in-href=3D\"//app.hubspot.com/home\" href=3D\"https://app.hubspot.com/l",
-          "after": "              <a class=3D\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=3D\"done\" data-logged-in-href=3D\"//app.hubspot.com/home\" href=3D\"https://app.hubspot.com/l",
+          "line": 4602,
+          "before": "              <a class=\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=\"done\" data-logged-in-href=\"//app.hubspot.com/home\" href=\"https://app.hubspot.com/login?hub",
+          "after": "              <a class=\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=\"done\" data-logged-in-href=\"//app.hubspot.com/home\" href=\"https://app.hubspot.com/login?hub",
           "hint": "unclassified"
         },
         {
-          "line": 4700,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4642,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4719,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4661,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4757,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4699,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4795,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4737,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4943,
-          "before": "              <ul class=3D\"wf-page-header_heading-animated-list\" style=3D\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-240px);\"><li class=3D\"wf-page-header_headi",
-          "after": "              <ul class=3D\"wf-page-header_heading-animated-list\" style=3D\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-480px);\"><li class=3D\"wf-page-header_headi",
+          "line": 4885,
+          "before": "              <ul class=\"wf-page-header_heading-animated-list\" style=\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-240px);\"><li class=\"wf-page-header_heading-ani",
+          "after": "              <ul class=\"wf-page-header_heading-animated-list\" style=\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-720px);\"><li class=\"wf-page-header_heading-ani",
+          "hint": "animation:mid-frame-transform"
+        },
+        {
+          "line": 4892,
+          "before": "            <a class=\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=\"light\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.co",
+          "after": "            <a class=\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=\"light\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.co",
           "hint": "unclassified"
         },
         {
-          "line": 4950,
-          "before": "            <a class=3D\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=3D\"light\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hu",
-          "after": "            <a class=3D\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=3D\"light\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hu",
+          "line": 4912,
+          "before": "    <div style=\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carousel",
+          "after": "    <div style=\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carousel",
           "hint": "unclassified"
         },
         {
-          "line": 4970,
-          "before": "    <div style=3D\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carous",
-          "after": "    <div style=3D\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carous",
+          "line": 5350,
+          "before": "              <a class=\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;",
+          "after": "              <a class=\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;",
           "hint": "unclassified"
         },
         {
-          "line": 5408,
-          "before": "              <a class=3D\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2",
-          "after": "              <a class=3D\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2",
+          "line": 6102,
+          "before": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active -scrolling\" style=\"--cl-carousel-slide-count: 3; --cl-ca",
+          "after": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=\"--cl-carousel-slide-count: 3; --cl-carousel-auto",
+          "hint": "unclassified"
+        },
+        {
+          "line": 6118,
+          "before": "            <ul class=\"cl-carousel-train\" role=\"none\" aria-atomic=\"false\" aria-live=\"off\"><li class=\"cl-carousel-slide -clone -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" iner",
+          "after": "            <ul class=\"cl-carousel-train\" role=\"none\" aria-atomic=\"false\" aria-live=\"off\"><li class=\"cl-carousel-slide -clone -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" inert",
+          "hint": "unclassified"
+        },
+        {
+          "line": 6139,
+          "before": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
           "hint": "unclassified"
         },
         {
           "line": 6160,
-          "before": "        <div id=3D\"widget_194002141488_carousel\" class=3D\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=3D\"--cl-carousel-slide-count: 3; --cl-carouse",
-          "after": "        <div id=3D\"widget_194002141488_carousel\" class=3D\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=3D\"--cl-carousel-slide-count: 3; --cl-carouse",
+          "before": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
           "hint": "unclassified"
         },
         {
-          "line": 6176,
-          "before": "            <ul class=3D\"cl-carousel-train\" role=3D\"none\" aria-atomic=3D\"false\" aria-live=3D\"off\"><li class=3D\"cl-carousel-slide -clone -right\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescriptio",
-          "after": "            <ul class=3D\"cl-carousel-train\" role=3D\"none\" aria-atomic=3D\"false\" aria-live=3D\"off\"><li class=3D\"cl-carousel-slide -clone -active\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescripti",
+          "line": 6181,
+          "before": "  </div></li><li class=\"cl-carousel-slide -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
           "hint": "unclassified"
         },
         {
-          "line": 6197,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -clone -left\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" inert=3D\"\" aria-hidden=3D\"true\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -clone -right\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" inert=3D\"\" aria-hidden=3D\"true\">",
+          "line": 6202,
+          "before": "  </div></li><li class=\"cl-carousel-slide -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
           "hint": "unclassified"
         },
         {
-          "line": 6218,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -clone -active\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" inert=3D\"\" aria-hidden=3D\"true\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -clone -left\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" inert=3D\"\" aria-hidden=3D\"true\">",
+          "line": 6223,
+          "before": "  </div></li><li class=\"cl-carousel-slide -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
           "hint": "unclassified"
         },
         {
-          "line": 6239,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -right\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -active\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
+          "line": 6244,
+          "before": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
           "hint": "unclassified"
         },
         {
-          "line": 6260,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -left\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -right\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
+          "line": 6265,
+          "before": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
           "hint": "unclassified"
         },
         {
-          "line": 6281,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -active\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -left\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
+          "line": 6286,
+          "before": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
           "hint": "unclassified"
         },
         {
-          "line": 6302,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -clone -right\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -clone -active\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
+          "line": 6896,
+          "before": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
+          "after": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
           "hint": "unclassified"
         },
         {
-          "line": 6323,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -clone -left\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -clone -right\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
+          "line": 7569,
+          "before": "  </a><a class=\"ga_nav_link hsg-footer__app global-footer__app\" href=\"https://play.google.com/store/apps/details?id=com.hubspot.android&amp;hl=en_US&amp;hubs_content=www.hubspot.com/&amp;hubs_content-",
+          "after": "  </a><a class=\"ga_nav_link hsg-footer__app global-footer__app\" href=\"https://play.google.com/store/apps/details?id=com.hubspot.android&amp;hl=en_US&amp;hubs_content=www.hubspot.com/&amp;hubs_content-",
           "hint": "unclassified"
         },
         {
-          "line": 6344,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -clone -active\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -clone -left\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
-          "hint": "unclassified"
-        },
-        {
-          "line": 6954,
-          "before": "            <a class=3D\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=3D\"dark\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-ct",
-          "after": "            <a class=3D\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=3D\"dark\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-ct",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7627,
-          "before": "  </a><a class=3D\"ga_nav_link hsg-footer__app global-footer__app\" href=3D\"https://play.google.com/store/apps/details?id=3Dcom.hubspot.android&amp;hl=3Den_US&amp;hubs_content=3Dwww.hubspot.com/&amp;hub",
-          "after": "  </a><a class=3D\"ga_nav_link hsg-footer__app global-footer__app\" href=3D\"https://play.google.com/store/apps/details?id=3Dcom.hubspot.android&amp;hl=3Den_US&amp;hubs_content=3Dwww.hubspot.com/&amp;hub",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7797,
-          "before": "<img src=3D\"https://trkn.us/pixel/conv/ppt=3D23029;g=3Dsitewide;gid=3D54862;ord=3D[uniqueid]\" style=3D\"display:none\"><img src=3D\"https://arttrk.com/pixel/?ad_log=3Dreferer&amp;action=3Dlead&amp;pixid=",
-          "after": "<div role=3D\"region\" aria-label=3D\"Chat Widget\" id=3D\"hubspot-messages-iframe-container\" style=3D\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=3D\"widget",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7801,
-          "before": "<div role=3D\"region\" aria-label=3D\"Chat Widget\" id=3D\"hubspot-messages-iframe-container\" style=3D\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=3D\"widget",
-          "after": "=20",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7808,
-          "before": "<iframe height=3D\"0\" width=3D\"0\" style=3D\"display: none; visibility: hidden;\"></iframe><img src=3D\"https://t.co/1/i/adsct?=3D&amp;bci=3D4&amp;dv=3DAmerica%2FNew_York%26en-US%2Cen%26Google%20Inc.%26Lin",
-          "after": "<iframe height=3D\"0\" width=3D\"0\" style=3D\"display: none; visibility: hidden;\"></iframe><img src=3D\"https://t.co/1/i/adsct?=3D&amp;bci=3D4&amp;dv=3DAmerica%2FChicago%26en-US%2Cen%26Google%20Inc.%26Linu",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16510,
-          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-9f5c355e0f8f416e@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-5de1ebe3efe24062@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16512,
-          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-461e0e80795f41cd@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-c140be3ef271412f@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16514,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-ed4824ee54954a2b@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-f1d672ddd9c5482b@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16516,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-cff4c62e802e4634@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-b35290eedab3482c@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16518,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-ad59deb4624d40ee@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-821739ec6bc1418c@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16520,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-abf82c28bca2412b@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-42060b253f6b4b58@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18163,
-          "before": "html.hs-messages-widget-open.hs-messages-mobile, html.hs-messages-widget-open.hs-messages-mobile body { overflow: hidden !important; position: relative !important; }",
-          "after": "#hs-feedback-ui { animation-duration: 0.4s; animation-timing-function: ease-out; display: none; height: 0px; overflow: hidden; position: fixed; z-index: 2147483647; max-width: 100%; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18165,
-          "before": "html.hs-messages-widget-open.hs-messages-mobile body { height: 100% !important; margin: 0px !important; }",
-          "after": ".hubspot.space-sword #hs-feedback-ui { z-index: 1211; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18167,
-          "before": "#hubspot-messages-iframe-container { z-index: 2147483647; display: initial !important; position: fixed !important; bottom: 0px !important; }",
-          "after": "#hs-feedback-ui.hs-feedback-shown { display: block; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18169,
-          "before": "#hubspot-messages-iframe-container:hover .hs-drag-handle--v2--widget-open--left, #hubspot-messages-iframe-container:hover .hs-drag-handle--v2--widget-open--right { display: flex !important; }",
-          "after": "#hs-feedback-fetcher { display: none; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18171,
-          "before": "#hubspot-messages-iframe-container.widget-align-left { left: 0px !important; }",
-          "after": "@keyframes feedback-slide-in-hs-feedback-left {=20",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18172,
+          "line": 7726,
           "before": "",
-          "after": "  0% { transform: translate(0px, 100%); }",
+          "after": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
           "hint": "unclassified"
         },
         {
-          "line": 18173,
-          "before": "#hubspot-messages-iframe-container.widget-align-right { right: 0px !important; }",
-          "after": "  100% { transform: translate(0px, 0px); }",
+          "line": 7739,
+          "before": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
+          "after": "<img src=\"https://trkn.us/pixel/conv/ppt=23029;g=sitewide;gid=54862;ord=[uniqueid]\" style=\"display:none\"><img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6",
           "hint": "unclassified"
         },
         {
-          "line": 18174,
+          "line": 7750,
+          "before": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FChicago%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%262",
+          "after": "<img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6-9589-0a5f14faea43\" width=\"1\" height=\"1\" border=\"0\" style=\"display: none;\"><div style=\"display: none; vis",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7753,
+          "before": "</body></html>",
+          "after": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FNew_York%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%26",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7764,
           "before": "",
-          "after": "}",
+          "after": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
           "hint": "unclassified"
         },
         {
-          "line": 18175,
-          "before": "#hubspot-messages-iframe-container.internal { z-index: 1016; }",
+          "line": 7765,
+          "before": "R0lGODlhAQABAIAAAP///wAAACH5BAkAAAEALAAAAAABAAEAAAICTAEAOw=",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 18176,
-          "before": "",
-          "after": "@keyframes feedback-slide-out-hs-feedback-left {=20",
+          "line": 7766,
+          "before": "Content-Type: image/gif",
+          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=",
           "hint": "unclassified"
         },
         {
-          "line": 18177,
-          "before": "#hubspot-messages-iframe-container.internal iframe { min-width: 108px; }",
-          "after": "  0% { transform: translate(0px, 0px); }",
+          "line": 7767,
+          "before": "Content-Transfer-Encoding: base64",
+          "after": "Content-Type: image/gif",
           "hint": "unclassified"
         },
         {
-          "line": 18178,
+          "line": 7768,
           "before": "",
-          "after": "  100% { transform: translate(0px, 100%); }",
+          "after": "Content-Transfer-Encoding: base64",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7769,
+          "before": "R0lGODlhAQABAIAAAP///wAAACH5BAkAAAEALAAAAAABAAEAAAICTAEAOw=",
+          "after": "Content-Location: https://trkn.us/pixel/conv/ppt#029;g=sitewide;gidT862;ord=[uniqueid]",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7770,
+          "before": "Content-Type: image/png",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7771,
+          "before": "Content-Transfer-Encoding: base64",
+          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7772,
+          "before": "Content-Location: https://sca-1113-adswizz.attribution.adswizz.com/fire?pixelId00fe70-c5b5-41f6-adb3-32183985eb54&type=sitevisit&subtype=Sitewide&aw_0_req.gdpr=true",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7773,
+          "before": "",
+          "after": "Content-Type: image/webp",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7774,
+          "before": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEUAAACnej3aAAAAAXRSTlMA",
+          "after": "Content-Transfer-Encoding: base64",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7775,
+          "before": "QObYZgAAAApJREFUCNdjYAAAAAIAAeIhvDMAAAAASUVORK5CYII",
+          "after": "Content-Location: https://www.hubspot.com/hs-fs/hubfs/G2%20badges%20all/G2%20badges%20evergreen/badge-best-usability-enterprise.png?width&height&nameºdge-best-usability-enterprise.png",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7776,
+          "before": "Content-Type: image/gif",
+          "after": "",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7777,
+          "before": "Content-Transfer-Encoding: base64",
+          "after": "UklGRqQIAABXRUJQVlA4WAoAAAAQAAAARAAATwAAQUxQSKoAAAABBmi2rR1v7kBi28kQbdvJ5Gxb",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7778,
+          "before": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
+          "after": "bd/37erffk9ETMDt3/9/9fOvQIHBSTgaBCC56SjUkdx46+wehTmSE190dA5CHMiBb9pbe+6oZccP",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7779,
+          "before": "",
+          "after": "Wuo7rqhhwQ+ba1tuqGYGQ1N5w8WmYgJjQ2nNbEMGcKgvrJhQQQ9Otdnlj1FWC47VmeWPUEYDztWp",
           "hint": "unclassified"
         }
       ],
       "hintCounts": {
         "session-token:hubspot-laboratory": 1,
-        "unclassified": 65913,
-        "session-token:csrf": 6
+        "unclassified": 76855,
+        "animation:mid-frame-transform": 84,
+        "session-token:csrf": 8
       }
     },
     {
@@ -327,313 +328,314 @@
         2
       ],
       "mhtmlIdentical": false,
-      "driftCount": 65455,
+      "driftCount": 77403,
       "driftRows": [
         {
           "line": 212,
-          "before": "<meta name=3D\"generator\" content=3D\"HubSpot\"><meta name=3D\"laboratory-identifier-other\" content=3D\"anon1949273daa716471dd4bd2796334\"><link href=3D\"https://fonts.googleapis.com/css2?family=3DLato:ital,",
-          "after": "<meta name=3D\"generator\" content=3D\"HubSpot\"><meta name=3D\"laboratory-identifier-other\" content=3D\"anonf789055ac7ee8d3b056f3e6dee70\"><link href=3D\"https://fonts.googleapis.com/css2?family=3DLato:ital,",
+          "before": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anonceadead65744e588e19542dc8f5f\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
+          "after": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anon8a25829663aaab5248a9268e447a\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
           "hint": "session-token:hubspot-laboratory"
         },
         {
           "line": 213,
-          "before": "<body data-cl-brand=3D\"hubspot-2025\" class=3D\"\"><a href=3D\"https://www.hubspot.com/#\" tabindex=3D\"-1\" aria-hidden=3D\"true\" rel=3D\"nofollow\" style=3D\"opacity: 0.01; position: absolute; z-index: -999; w",
-          "after": "<body data-cl-brand=3D\"hubspot-2025\" class=3D\"\"><a href=3D\"https://www.hubspot.com/#\" tabindex=3D\"-1\" aria-hidden=3D\"true\" rel=3D\"nofollow\" style=3D\"opacity: 0.01; position: absolute; z-index: -999; w",
+          "before": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><a href=\"https://www.hubspot.com/#\" tabindex=\"-1\" aria-hidden=\"true\" rel=\"nofollow\" style=\"opacity: 0.01; position: absolute; z-index: -999; width: 54px; he",
+          "after": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><div id=\"hs-feedback-fetcher\" title=\"submit hubspot feedback\"><iframe frameborder=\"0\" title=\"Submit HubSpot product feedback\" src=\"cid:frame-DC2B66B6E895CDE",
           "hint": "unclassified"
         },
         {
           "line": 535,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 548,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 574,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 600,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 695,
-          "before": "      <a class=3D\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=3D\"header_nav\" data-ga_nav_tree_text=3D\"Log in\" href=3D\"https://app.hubspot.com/login?hubs_sig",
-          "after": "      <a class=3D\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=3D\"header_nav\" data-ga_nav_tree_text=3D\"Log in\" href=3D\"https://app.hubspot.com/login?hubs_sig",
+          "before": "      <a class=\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=\"header_nav\" data-ga_nav_tree_text=\"Log in\" href=\"https://app.hubspot.com/login?hubs_signup-url=",
+          "after": "      <a class=\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=\"header_nav\" data-ga_nav_tree_text=\"Log in\" href=\"https://app.hubspot.com/login?hubs_signup-url=",
           "hint": "unclassified"
         },
         {
-          "line": 4640,
-          "before": "      <a class=3D\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-cta=3Dhomepa",
-          "after": "      <a class=3D\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-cta=3Dhomepa",
+          "line": 4582,
+          "before": "      <a class=\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepage-hp-na",
+          "after": "      <a class=\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepage-hp-na",
           "hint": "unclassified"
         },
         {
-          "line": 4660,
-          "before": "              <a class=3D\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=3D\"done\" data-logged-in-href=3D\"//app.hubspot.com/home\" href=3D\"https://app.hubspot.com/l",
-          "after": "              <a class=3D\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=3D\"done\" data-logged-in-href=3D\"//app.hubspot.com/home\" href=3D\"https://app.hubspot.com/l",
+          "line": 4602,
+          "before": "              <a class=\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=\"done\" data-logged-in-href=\"//app.hubspot.com/home\" href=\"https://app.hubspot.com/login?hub",
+          "after": "              <a class=\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=\"done\" data-logged-in-href=\"//app.hubspot.com/home\" href=\"https://app.hubspot.com/login?hub",
           "hint": "unclassified"
         },
         {
-          "line": 4700,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4642,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4719,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4661,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4757,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4699,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4795,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4737,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4943,
-          "before": "              <ul class=3D\"wf-page-header_heading-animated-list\" style=3D\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-240px);\"><li class=3D\"wf-page-header_headi",
-          "after": "              <ul class=3D\"wf-page-header_heading-animated-list\" style=3D\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-480px);\"><li class=3D\"wf-page-header_headi",
+          "line": 4892,
+          "before": "            <a class=\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=\"light\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.co",
+          "after": "            <a class=\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=\"light\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.co",
           "hint": "unclassified"
         },
         {
-          "line": 4950,
-          "before": "            <a class=3D\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=3D\"light\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hu",
-          "after": "            <a class=3D\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=3D\"light\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hu",
+          "line": 4912,
+          "before": "    <div style=\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carousel",
+          "after": "    <div style=\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carousel",
           "hint": "unclassified"
         },
         {
-          "line": 4970,
-          "before": "    <div style=3D\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carous",
-          "after": "    <div style=3D\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carous",
+          "line": 5350,
+          "before": "              <a class=\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;",
+          "after": "              <a class=\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;",
           "hint": "unclassified"
         },
         {
-          "line": 5408,
-          "before": "              <a class=3D\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2",
-          "after": "              <a class=3D\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2",
+          "line": 6102,
+          "before": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active -scrolling\" style=\"--cl-carousel-slide-count: 3; --cl-ca",
+          "after": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=\"--cl-carousel-slide-count: 3; --cl-carousel-auto",
           "hint": "unclassified"
         },
         {
-          "line": 6160,
-          "before": "        <div id=3D\"widget_194002141488_carousel\" class=3D\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=3D\"--cl-carousel-slide-count: 3; --cl-carouse",
-          "after": "        <div id=3D\"widget_194002141488_carousel\" class=3D\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=3D\"--cl-carousel-slide-count: 3; --cl-carouse",
+          "line": 6896,
+          "before": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
+          "after": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
           "hint": "unclassified"
         },
         {
-          "line": 6176,
-          "before": "            <ul class=3D\"cl-carousel-train\" role=3D\"none\" aria-atomic=3D\"false\" aria-live=3D\"off\"><li class=3D\"cl-carousel-slide -clone -right\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescriptio",
-          "after": "            <ul class=3D\"cl-carousel-train\" role=3D\"none\" aria-atomic=3D\"false\" aria-live=3D\"off\"><li class=3D\"cl-carousel-slide -clone -active\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescripti",
+          "line": 7569,
+          "before": "  </a><a class=\"ga_nav_link hsg-footer__app global-footer__app\" href=\"https://play.google.com/store/apps/details?id=com.hubspot.android&amp;hl=en_US&amp;hubs_content=www.hubspot.com/&amp;hubs_content-",
+          "after": "  </a><a class=\"ga_nav_link hsg-footer__app global-footer__app\" href=\"https://play.google.com/store/apps/details?id=com.hubspot.android&amp;hl=en_US&amp;hubs_content=www.hubspot.com/&amp;hubs_content-",
           "hint": "unclassified"
         },
         {
-          "line": 6197,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -clone -left\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" inert=3D\"\" aria-hidden=3D\"true\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -clone -right\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" inert=3D\"\" aria-hidden=3D\"true\">",
+          "line": 7739,
+          "before": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
+          "after": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
           "hint": "unclassified"
         },
         {
-          "line": 6218,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -clone -active\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" inert=3D\"\" aria-hidden=3D\"true\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -clone -left\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" inert=3D\"\" aria-hidden=3D\"true\">",
+          "line": 7750,
+          "before": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FChicago%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%262",
+          "after": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FChicago%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%262",
           "hint": "unclassified"
         },
         {
-          "line": 6239,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -right\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -active\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
+          "line": 7753,
+          "before": "</body></html>",
+          "after": "<div id=\"batBeacon602636922663\" style=\"width: 0px; height: 0px; display: none; visibility: hidden;\"><img id=\"batBeacon813445308332\" width=\"0\" height=\"0\" alt=\"\" src=\"https://bat.bing.com/action/0?ti=55",
           "hint": "unclassified"
         },
         {
-          "line": 6260,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -left\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -right\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
+          "line": 7770,
+          "before": "Content-Type: image/png",
+          "after": "Content-Type: image/gif",
           "hint": "unclassified"
         },
         {
-          "line": 6281,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -active\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -left\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
+          "line": 7772,
+          "before": "Content-Location: https://sca-1113-adswizz.attribution.adswizz.com/fire?pixelId00fe70-c5b5-41f6-adb3-32183985eb54&type=sitevisit&subtype=Sitewide&aw_0_req.gdpr=true",
+          "after": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
           "hint": "unclassified"
         },
         {
-          "line": 6302,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -clone -right\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -clone -active\" aria-label=3D\"1 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
+          "line": 7774,
+          "before": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEUAAACnej3aAAAAAXRSTlMA",
+          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=",
           "hint": "unclassified"
         },
         {
-          "line": 6323,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -clone -left\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -clone -right\" aria-label=3D\"2 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"false\">",
+          "line": 7775,
+          "before": "QObYZgAAAApJREFUCNdjYAAAAAIAAeIhvDMAAAAASUVORK5CYII",
+          "after": "Content-Type: image/gif",
           "hint": "unclassified"
         },
         {
-          "line": 6344,
-          "before": "  </div></li><li class=3D\"cl-carousel-slide -clone -active\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
-          "after": "  </div></li><li class=3D\"cl-carousel-slide -clone -left\" aria-label=3D\"3 of 3\" role=3D\"group\" aria-roledescription=3D\"slide\" aria-hidden=3D\"true\" inert=3D\"\">",
+          "line": 7776,
+          "before": "Content-Type: image/gif",
+          "after": "Content-Transfer-Encoding: base64",
           "hint": "unclassified"
         },
         {
-          "line": 6954,
-          "before": "            <a class=3D\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=3D\"dark\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-ct",
-          "after": "            <a class=3D\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=3D\"dark\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-ct",
+          "line": 7777,
+          "before": "Content-Transfer-Encoding: base64",
+          "after": "Content-Location: https://trkn.us/pixel/conv/ppt#029;g=sitewide;gidT862;ord=[uniqueid]",
           "hint": "unclassified"
         },
         {
-          "line": 7627,
-          "before": "  </a><a class=3D\"ga_nav_link hsg-footer__app global-footer__app\" href=3D\"https://play.google.com/store/apps/details?id=3Dcom.hubspot.android&amp;hl=3Den_US&amp;hubs_content=3Dwww.hubspot.com/&amp;hub",
-          "after": "  </a><a class=3D\"ga_nav_link hsg-footer__app global-footer__app\" href=3D\"https://play.google.com/store/apps/details?id=3Dcom.hubspot.android&amp;hl=3Den_US&amp;hubs_content=3Dwww.hubspot.com/&amp;hub",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7797,
-          "before": "<img src=3D\"https://trkn.us/pixel/conv/ppt=3D23029;g=3Dsitewide;gid=3D54862;ord=3D[uniqueid]\" style=3D\"display:none\"><img src=3D\"https://arttrk.com/pixel/?ad_log=3Dreferer&amp;action=3Dlead&amp;pixid=",
-          "after": "<div role=3D\"region\" aria-label=3D\"Chat Widget\" id=3D\"hubspot-messages-iframe-container\" style=3D\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=3D\"widget",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7801,
-          "before": "<div role=3D\"region\" aria-label=3D\"Chat Widget\" id=3D\"hubspot-messages-iframe-container\" style=3D\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=3D\"widget",
-          "after": "=20",
-          "hint": "unclassified"
-        },
-        {
-          "line": 7808,
-          "before": "<iframe height=3D\"0\" width=3D\"0\" style=3D\"display: none; visibility: hidden;\"></iframe><img src=3D\"https://t.co/1/i/adsct?=3D&amp;bci=3D4&amp;dv=3DAmerica%2FNew_York%26en-US%2Cen%26Google%20Inc.%26Lin",
-          "after": "<iframe height=3D\"0\" width=3D\"0\" style=3D\"display: none; visibility: hidden;\"></iframe><img src=3D\"https://t.co/1/i/adsct?=3D&amp;bci=3D4&amp;dv=3DAmerica%2FNew_York%26en-US%2Cen%26Google%20Inc.%26Lin",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16510,
-          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-9f5c355e0f8f416e@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-5dd5cb701ca14cec@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16512,
-          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-461e0e80795f41cd@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-e3318e90dc374b26@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16514,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-ed4824ee54954a2b@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-38905ad3d1e54bc0@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16516,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-cff4c62e802e4634@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-bd93460b91254460@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16518,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-ad59deb4624d40ee@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-d887255ad9fe4ec0@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "hint": "unclassified"
-        },
-        {
-          "line": 16520,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-abf82c28bca2412b@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-1469fae6296c457a@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18214,
-          "before": ".go2933276541 { position: fixed; display: block; width: 100%; height: 0px; margin: 0px; padding: 0px; overflow: visible; transform-style: preserve-3d; background: transparent; backface-visibility: hid",
-          "after": "#hs-feedback-ui { animation-duration: 0.4s; animation-timing-function: ease-out; display: none; height: 0px; overflow: hidden; position: fixed; z-index: 2147483647; max-width: 100%; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18216,
-          "before": ".go2369186930 { top: 0px; z-index: 9999; height: 100%; width: 100%; }",
-          "after": ".hubspot.space-sword #hs-feedback-ui { z-index: 1211; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18218,
-          "before": ".go1348078617 { bottom: 0px; }",
-          "after": "#hs-feedback-ui.hs-feedback-shown { display: block; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18220,
-          "before": ".go2417249464 { position: fixed; z-index: 9989; }",
-          "after": "#hs-feedback-fetcher { display: none; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18222,
-          "before": ".go3921366393 { left: 0px; bottom: 0px; }",
-          "after": "@keyframes feedback-slide-in-hs-feedback-left {=20",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18223,
-          "before": "",
-          "after": "  0% { transform: translate(0px, 100%); }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18224,
-          "before": ".go3967842156 { right: 0px; bottom: 0px; }",
-          "after": "  100% { transform: translate(0px, 0px); }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18225,
-          "before": "",
-          "after": "}",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18226,
-          "before": ".go613305155 { left: 0px; top: 0px; }",
+          "line": 7778,
+          "before": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 18227,
+          "line": 7779,
           "before": "",
-          "after": "@keyframes feedback-slide-out-hs-feedback-left {=20",
+          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
           "hint": "unclassified"
         },
         {
-          "line": 18228,
-          "before": ".go471583506 { right: 0px; top: 0px; }",
-          "after": "  0% { transform: translate(0px, 0px); }",
+          "line": 7780,
+          "before": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=",
+          "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 18229,
+          "line": 7781,
+          "before": "Content-Type: image/gif",
+          "after": "Content-Type: image/webp",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7783,
+          "before": "Content-Location: https://trkn.us/pixel/conv/ppt#029;g=sitewide;gidT862;ord=[uniqueid]",
+          "after": "Content-Location: https://www.hubspot.com/hs-fs/hubfs/G2%20badges%20all/G2%20badges%20evergreen/badge-best-usability-enterprise.png?width&height&nameºdge-best-usability-enterprise.png",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7785,
+          "before": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+          "after": "UklGRqQIAABXRUJQVlA4WAoAAAAQAAAARAAATwAAQUxQSKoAAAABBmi2rR1v7kBi28kQbdvJ5Gxb",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7786,
           "before": "",
-          "after": "  100% { transform: translate(0px, 100%); }",
+          "after": "bd/37erffk9ETMDt3/9/9fOvQIHBSTgaBCC56SjUkdx46+wehTmSE190dA5CHMiBb9pbe+6oZccP",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7787,
+          "before": "Content-Type: image/webp",
+          "after": "Wuo7rqhhwQ+ba1tuqGYGQ1N5w8WmYgJjQ2nNbEMGcKgvrJhQQQ9Otdnlj1FWC47VmeWPUEYDztWp",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7788,
+          "before": "Content-Transfer-Encoding: base64",
+          "after": "+bfmpIaAivjsS/O4EoIqYtMPs5gCAsuCw5skDYMEweWFeUEO5lZQOCDUBwAA8CcAnQEqRQBQAD5J",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7789,
+          "before": "Content-Location: https://www.hubspot.com/hs-fs/hubfs/G2%20badges%20all/G2%20badges%20evergreen/badge-best-usability-enterprise.png?width&height&nameºdge-best-usability-enterprise.png",
+          "after": "II1FIqIhEz5lmCgEhLQASoH9V58CpHYuH21079ZP3zl/pvtu7QHidfQB3D/4h6AP4n/Wf137AHoA",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7790,
+          "before": "",
+          "after": "f57qAP1A9gDywP2v+C/9rP2k+AD9as0o/o34QeBP9R/GPrZPD/rpyXXn/sN9t/Jrkl9/H7Z6Bf8L",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7791,
+          "before": "UklGRqQIAABXRUJQVlA4WAoAAAAQAAAARAAATwAAQUxQSKoAAAABBmi2rR1v7kBi28kQbdvJ5Gxb",
+          "after": "/oX5DfmB7Ru0HAB+Kfxr++/k3/hP3A9HT0A7i7+u/kv6u/bV9gP+O/0f/R/3b8lviF/rf8L+UHtN",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7792,
+          "before": "bd/37erffk9ETMDt3/9/9fOvQIHBSTgaBCC56SjUkdx46+wehTmSE190dA5CHMiBb9pbe+6oZccP",
+          "after": "/Lf7b/qf8H+Rn2BfyD+f/4/+8fvP/ef//4af2n9k79hWIQOKJPnOEwVhr4JFu7gPdWGc6tdITeS6",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7793,
+          "before": "Wuo7rqhhwQ+ba1tuqGYGQ1N5w8WmYgJjQ2nNbEMGcKgvrJhQQQ9Otdnlj1FWC47VmeWPUEYDztWp",
+          "after": "kZNsJD0nigGTnelai7eEW5XD8OCpr8R8fPQKqCpUPYzxJ5XFRe1Bjm0Z7rG8d78MOk8XcA7fE/MF",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7794,
+          "before": "+bfmpIaAivjsS/O4EoIqYtMPs5gCAsuCw5skDYMEweWFeUEO5lZQOCDUBwAA8CcAnQEqRQBQAD5J",
+          "after": "gXWAMPbLsROTvgxMe24IVC+FvI6VQqXlPkcTC8y0AAD3xekDIALZ/3uWzsjqlDLliciqh38FWci+",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7795,
+          "before": "II1FIqIhEz5lmCgEhLQASoH9V58CpHYuH21079ZP3zl/pvtu7QHidfQB3D/4h6AP4n/Wf137AHoA",
+          "after": "cTVi9MJk5MyqCppyKAQyNlfuW4igmltHgy6ldfPATSKKxtsq6lqfBSByH+/zgz8FXMkdF9Ope5W8",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7796,
+          "before": "f57qAP1A9gDywP2v+C/9rP2k+AD9as0o/o34QeBP9R/GPrZPD/rpyXXn/sN9t/Jrkl9/H7Z6Bf8L",
+          "after": "6oDHbbcMUNB7dwNug5s08L0/e9r50MAKSQtJW8ExPTZ/oSud7X9qDtFRC7WbWD2R9hgCbeqyb+T6",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7797,
+          "before": "/oX5DfmB7Ru0HAB+Kfxr++/k3/hP3A9HT0A7i7+u/kv6u/bV9gP+O/0f/R/3b8lviF/rf8L+UHtN",
+          "after": "ugcxWy0u3/XV+i/374zjRKyfyHIofM9P+hHz4oDA5hdJ1ctwzW/jJWX07sU586ohcmKoSV70JuO3",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7798,
+          "before": "/Lf7b/qf8H+Rn2BfyD+f/4/+8fvP/ef//4af2n9k79hWIQOKJPnOEwVhr4JFu7gPdWGc6tdITeS6",
+          "after": "A/+gitm4r3UaEeYxD42JlZ3gltyweanjORac/ACiSw8b6pJvsd6Owts+dIMuEQqsuRN918Ja2UeU",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7799,
+          "before": "kZNsJD0nigGTnelai7eEW5XD8OCpr8R8fPQKqCpUPYzxJ5XFRe1Bjm0Z7rG8d78MOk8XcA7fE/MF",
+          "after": "UtH6LXY5lLjJaLTRicnzG5prUKRoRZcxAzVhR2XPbNZxgdq3UlgjSD2VknKPpFBRsdKLzW95Ma6J",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7800,
+          "before": "gXWAMPbLsROTvgxMe24IVC+FvI6VQqXlPkcTC8y0AAD3xekDIALZ/3uWzsjqlDLliciqh38FWci+",
+          "after": "4YtrUwoBOp4VW65i7hqZVcywr9/PKhZWQeUYTdh6Pf+/E7MbT/QK1MKHw24/0dVfE7LZXkqROi5Y",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7801,
+          "before": "cTVi9MJk5MyqCppyKAQyNlfuW4igmltHgy6ldfPATSKKxtsq6lqfBSByH+/zgz8FXMkdF9Ope5W8",
+          "after": "V1mIPTXDqh/43RRmZFG6Zx9hvToi8OmObT7J+daLgLyw2Bret/vst/A4/OX6j9803shc6FSexQHw",
           "hint": "unclassified"
         }
       ],
       "hintCounts": {
         "session-token:hubspot-laboratory": 1,
-        "unclassified": 65448,
-        "session-token:csrf": 6
+        "unclassified": 77310,
+        "session-token:csrf": 8,
+        "animation:mid-frame-transform": 84
       }
     },
     {
@@ -642,313 +644,314 @@
         2
       ],
       "mhtmlIdentical": false,
-      "driftCount": 65005,
+      "driftCount": 77318,
       "driftRows": [
         {
           "line": 212,
-          "before": "<meta name=3D\"generator\" content=3D\"HubSpot\"><meta name=3D\"laboratory-identifier-other\" content=3D\"anon6a8f112087574cc4f36e8edbfc30\"><link href=3D\"https://fonts.googleapis.com/css2?family=3DLato:ital,",
-          "after": "<meta name=3D\"generator\" content=3D\"HubSpot\"><meta name=3D\"laboratory-identifier-other\" content=3D\"anonf789055ac7ee8d3b056f3e6dee70\"><link href=3D\"https://fonts.googleapis.com/css2?family=3DLato:ital,",
+          "before": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anond0ecc04ca299f9d21b4d3390991d\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
+          "after": "<meta name=\"generator\" content=\"HubSpot\"><meta name=\"laboratory-identifier-other\" content=\"anon8a25829663aaab5248a9268e447a\"><link href=\"https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0",
           "hint": "session-token:hubspot-laboratory"
         },
         {
           "line": 213,
-          "before": "<body data-cl-brand=3D\"hubspot-2025\" class=3D\"\"><a href=3D\"https://www.hubspot.com/#\" tabindex=3D\"-1\" aria-hidden=3D\"true\" rel=3D\"nofollow\" style=3D\"opacity: 0.01; position: absolute; z-index: -999; w",
-          "after": "<body data-cl-brand=3D\"hubspot-2025\" class=3D\"\"><a href=3D\"https://www.hubspot.com/#\" tabindex=3D\"-1\" aria-hidden=3D\"true\" rel=3D\"nofollow\" style=3D\"opacity: 0.01; position: absolute; z-index: -999; w",
+          "before": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><a href=\"https://www.hubspot.com/#\" tabindex=\"-1\" aria-hidden=\"true\" rel=\"nofollow\" style=\"opacity: 0.01; position: absolute; z-index: -999; width: 54px; he",
+          "after": "<body data-cl-brand=\"hubspot-2025\" class=\"\"><div id=\"hs-feedback-fetcher\" title=\"submit hubspot feedback\"><iframe frameborder=\"0\" title=\"Submit HubSpot product feedback\" src=\"cid:frame-DC2B66B6E895CDE",
+          "hint": "unclassified"
+        },
+        {
+          "line": 220,
+          "before": "    </button></div></div></div></div><div id=\"hs-web-interactives-top-push-anchor\" class=\"go3670563033\"></div>",
+          "after": "    </button></div></div></div></div>",
           "hint": "unclassified"
         },
         {
           "line": 535,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 548,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 574,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 600,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dcl-dropdown-menu-link&amp;__hs",
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link cl-dropdown-menu-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=cl-dropdown-menu-link&amp;__hstc=20629",
           "hint": "unclassified"
         },
         {
           "line": 695,
-          "before": "      <a class=3D\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=3D\"header_nav\" data-ga_nav_tree_text=3D\"Log in\" href=3D\"https://app.hubspot.com/login?hubs_sig",
-          "after": "      <a class=3D\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=3D\"header_nav\" data-ga_nav_tree_text=3D\"Log in\" href=3D\"https://app.hubspot.com/login?hubs_sig",
+          "before": "      <a class=\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=\"header_nav\" data-ga_nav_tree_text=\"Log in\" href=\"https://app.hubspot.com/login?hubs_signup-url=",
+          "after": "      <a class=\"global-nav-utility-link cl-navLink-link ga_nav_link nav-utility-login\" data-ga_nav_type=\"header_nav\" data-ga_nav_tree_text=\"Log in\" href=\"https://app.hubspot.com/login?hubs_signup-url=",
           "hint": "unclassified"
         },
         {
-          "line": 4640,
-          "before": "      <a class=3D\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-cta=3Dhomepa",
-          "after": "      <a class=3D\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-cta=3Dhomepa",
+          "line": 4582,
+          "before": "      <a class=\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepage-hp-na",
+          "after": "      <a class=\"cl-button -secondary -small -light ga_nav_link homepage-hp-nav2 \" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepage-hp-na",
           "hint": "unclassified"
         },
         {
-          "line": 4660,
-          "before": "              <a class=3D\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=3D\"done\" data-logged-in-href=3D\"//app.hubspot.com/home\" href=3D\"https://app.hubspot.com/l",
-          "after": "              <a class=3D\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=3D\"done\" data-logged-in-href=3D\"//app.hubspot.com/home\" href=3D\"https://app.hubspot.com/l",
+          "line": 4602,
+          "before": "              <a class=\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=\"done\" data-logged-in-href=\"//app.hubspot.com/home\" href=\"https://app.hubspot.com/login?hub",
+          "after": "              <a class=\"cl-button -tertiary -small -light ga_nav_link nav-utility-login\" data-logged-in-text=\"done\" data-logged-in-href=\"//app.hubspot.com/home\" href=\"https://app.hubspot.com/login?hub",
           "hint": "unclassified"
         },
         {
-          "line": 4700,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.jp/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4642,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.jp/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4719,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.de/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4661,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.de/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4757,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.es/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4699,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.es/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4795,
-          "before": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
-          "after": "  <a class=3D\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=3D\"https://www.hubspot.fr/?hubs_content=3Dwww.hubspot.com/&amp;hubs_content-cta=3Dglobal-nav-mobile-l",
+          "line": 4737,
+          "before": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
+          "after": "  <a class=\"global-nav-language-switcher-link ga_nav_link global-nav-mobile-list-item-link\" href=\"https://www.hubspot.fr/?hubs_content=www.hubspot.com/&amp;hubs_content-cta=global-nav-mobile-list-item",
           "hint": "unclassified"
         },
         {
-          "line": 4950,
-          "before": "            <a class=3D\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=3D\"light\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hu",
-          "after": "            <a class=3D\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=3D\"light\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hu",
+          "line": 4885,
+          "before": "              <ul class=\"wf-page-header_heading-animated-list\" style=\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-720px);\"><li class=\"wf-page-header_heading-ani",
+          "after": "              <ul class=\"wf-page-header_heading-animated-list\" style=\"transition: transform 1000ms cubic-bezier(0.66, 0, 0.24, 1); transform: translateY(-240px);\"><li class=\"wf-page-header_heading-ani",
+          "hint": "animation:mid-frame-transform"
+        },
+        {
+          "line": 4892,
+          "before": "            <a class=\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=\"light\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.co",
+          "after": "            <a class=\"cl-button -secondary -large wf-page-header_content-ctas-cta homepage-hero2 \" data-cl-theme=\"light\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.co",
           "hint": "unclassified"
         },
         {
-          "line": 4970,
-          "before": "    <div style=3D\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carous",
-          "after": "    <div style=3D\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carous",
+          "line": 4912,
+          "before": "    <div style=\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carousel",
+          "after": "    <div style=\"--cl-carousel-peek: 0; --cl-carousel-slide-count: 5; --cl-carousel-slides-per-view-phone: 2; --cl-carousel-slides-to-scroll-phone: 2; --cl-carousel-slide-gap-phone: 24px; --cl-carousel",
           "hint": "unclassified"
         },
         {
-          "line": 5408,
-          "before": "              <a class=3D\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2",
-          "after": "              <a class=3D\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2",
+          "line": 5350,
+          "before": "              <a class=\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;",
+          "after": "              <a class=\"cl-button -secondary -medium wf-flexible-section-header_content-cta homepage-products2\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;",
           "hint": "unclassified"
         },
         {
-          "line": 6954,
-          "before": "            <a class=3D\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=3D\"dark\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-ct",
-          "after": "            <a class=3D\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=3D\"dark\" href=3D\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=3Dwww.hubspot.com%2F&amp;hubs_signup-ct",
+          "line": 6102,
+          "before": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=\"--cl-carousel-slide-count: 3; --cl-carousel-auto",
+          "after": "        <div id=\"widget_194002141488_carousel\" class=\"cl-carousel wf-animated-carousel-carousel -infinite -autoplay -custom-breakpoints -active\" style=\"--cl-carousel-slide-count: 3; --cl-carousel-auto",
           "hint": "unclassified"
         },
         {
-          "line": 7627,
-          "before": "  </a><a class=3D\"ga_nav_link hsg-footer__app global-footer__app\" href=3D\"https://play.google.com/store/apps/details?id=3Dcom.hubspot.android&amp;hl=3Den_US&amp;hubs_content=3Dwww.hubspot.com/&amp;hub",
-          "after": "  </a><a class=3D\"ga_nav_link hsg-footer__app global-footer__app\" href=3D\"https://play.google.com/store/apps/details?id=3Dcom.hubspot.android&amp;hl=3Den_US&amp;hubs_content=3Dwww.hubspot.com/&amp;hub",
+          "line": 6118,
+          "before": "            <ul class=\"cl-carousel-train\" role=\"none\" aria-atomic=\"false\" aria-live=\"off\"><li class=\"cl-carousel-slide -clone -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" inert",
+          "after": "            <ul class=\"cl-carousel-train\" role=\"none\" aria-atomic=\"false\" aria-live=\"off\"><li class=\"cl-carousel-slide -clone -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" iner",
           "hint": "unclassified"
         },
         {
-          "line": 7797,
-          "before": "<div role=3D\"region\" aria-label=3D\"Chat Widget\" id=3D\"hubspot-messages-iframe-container\" style=3D\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=3D\"widget",
-          "after": "<div role=3D\"region\" aria-label=3D\"Chat Widget\" id=3D\"hubspot-messages-iframe-container\" style=3D\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=3D\"widget",
+          "line": 6139,
+          "before": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
           "hint": "unclassified"
         },
         {
-          "line": 7808,
-          "before": "<iframe height=3D\"0\" width=3D\"0\" style=3D\"display: none; visibility: hidden;\"></iframe><img src=3D\"https://t.co/1/i/adsct?=3D&amp;bci=3D4&amp;dv=3DAmerica%2FChicago%26en-US%2Cen%26Google%20Inc.%26Linu",
-          "after": "<iframe height=3D\"0\" width=3D\"0\" style=3D\"display: none; visibility: hidden;\"></iframe><img src=3D\"https://t.co/1/i/adsct?=3D&amp;bci=3D4&amp;dv=3DAmerica%2FNew_York%26en-US%2Cen%26Google%20Inc.%26Lin",
+          "line": 6160,
+          "before": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" inert=\"\" aria-hidden=\"true\">",
           "hint": "unclassified"
         },
         {
-          "line": 16510,
-          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-5de1ebe3efe24062@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-5dd5cb701ca14cec@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "line": 6181,
+          "before": "  </div></li><li class=\"cl-carousel-slide -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
           "hint": "unclassified"
         },
         {
-          "line": 16512,
-          "before": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-c140be3ef271412f@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "after": "@font-face { font-family: Lato; font-style: italic; font-weight: 400; font-display: swap; src: url(\"cid:font-e3318e90dc374b26@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "line": 6202,
+          "before": "  </div></li><li class=\"cl-carousel-slide -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
           "hint": "unclassified"
         },
         {
-          "line": 16514,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-f1d672ddd9c5482b@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-38905ad3d1e54bc0@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "line": 6223,
+          "before": "  </div></li><li class=\"cl-carousel-slide -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
           "hint": "unclassified"
         },
         {
-          "line": 16516,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-b35290eedab3482c@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 400; font-display: swap; src: url(\"cid:font-bd93460b91254460@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "line": 6244,
+          "before": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"1 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"false\">",
           "hint": "unclassified"
         },
         {
-          "line": 16518,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-821739ec6bc1418c@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-d887255ad9fe4ec0@snapshot\") format(\"woff2\"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC",
+          "line": 6265,
+          "before": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -clone -left\" aria-label=\"2 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
           "hint": "unclassified"
         },
         {
-          "line": 16520,
-          "before": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-42060b253f6b4b58@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
-          "after": "@font-face { font-family: Lato; font-style: normal; font-weight: 700; font-display: swap; src: url(\"cid:font-1469fae6296c457a@snapshot\") format(\"woff2\"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB",
+          "line": 6286,
+          "before": "  </div></li><li class=\"cl-carousel-slide -clone -right\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
+          "after": "  </div></li><li class=\"cl-carousel-slide -clone -active\" aria-label=\"3 of 3\" role=\"group\" aria-roledescription=\"slide\" aria-hidden=\"true\" inert=\"\">",
           "hint": "unclassified"
         },
         {
-          "line": 18163,
-          "before": "#hs-feedback-ui { animation-duration: 0.4s; animation-timing-function: ease-out; display: none; height: 0px; overflow: hidden; position: fixed; z-index: 2147483647; max-width: 100%; }",
-          "after": "html.hs-messages-widget-open.hs-messages-mobile, html.hs-messages-widget-open.hs-messages-mobile body { overflow: hidden !important; position: relative !important; }",
+          "line": 6896,
+          "before": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
+          "after": "            <a class=\"cl-button -secondary -medium homepage-bottom2\" data-cl-theme=\"dark\" href=\"https://app.hubspot.com/signup-hubspot/crm?hubs_signup-url=www.hubspot.com%2F&amp;hubs_signup-cta=homepa",
           "hint": "unclassified"
         },
         {
-          "line": 18165,
-          "before": ".hubspot.space-sword #hs-feedback-ui { z-index: 1211; }",
-          "after": "html.hs-messages-widget-open.hs-messages-mobile body { height: 100% !important; margin: 0px !important; }",
+          "line": 7569,
+          "before": "  </a><a class=\"ga_nav_link hsg-footer__app global-footer__app\" href=\"https://play.google.com/store/apps/details?id=com.hubspot.android&amp;hl=en_US&amp;hubs_content=www.hubspot.com/&amp;hubs_content-",
+          "after": "  </a><a class=\"ga_nav_link hsg-footer__app global-footer__app\" href=\"https://play.google.com/store/apps/details?id=com.hubspot.android&amp;hl=en_US&amp;hubs_content=www.hubspot.com/&amp;hubs_content-",
           "hint": "unclassified"
         },
         {
-          "line": 18167,
-          "before": "#hs-feedback-ui.hs-feedback-shown { display: block; }",
-          "after": "#hubspot-messages-iframe-container { z-index: 2147483647; display: initial !important; position: fixed !important; bottom: 0px !important; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18169,
-          "before": "#hs-feedback-fetcher { display: none; }",
-          "after": "#hubspot-messages-iframe-container:hover .hs-drag-handle--v2--widget-open--left, #hubspot-messages-iframe-container:hover .hs-drag-handle--v2--widget-open--right { display: flex !important; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18171,
-          "before": "@keyframes feedback-slide-in-hs-feedback-left {=20",
-          "after": "#hubspot-messages-iframe-container.widget-align-left { left: 0px !important; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18172,
-          "before": "  0% { transform: translate(0px, 100%); }",
+          "line": 7726,
+          "before": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 18173,
-          "before": "  100% { transform: translate(0px, 0px); }",
-          "after": "#hubspot-messages-iframe-container.widget-align-right { right: 0px !important; }",
+          "line": 7739,
+          "before": "<img src=\"https://trkn.us/pixel/conv/ppt=23029;g=sitewide;gid=54862;ord=[uniqueid]\" style=\"display:none\"><img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6",
+          "after": "<div role=\"region\" aria-label=\"Chat Widget\" id=\"hubspot-messages-iframe-container\" style=\"color-scheme: light; min-height: 96px; min-width: 100px; width: 282px; height: 277px;\" class=\"widget-align-rig",
           "hint": "unclassified"
         },
         {
-          "line": 18174,
-          "before": "}",
+          "line": 7750,
+          "before": "<img src=\"https://arttrk.com/pixel/?ad_log=referer&amp;action=lead&amp;pixid=6d6f32d8-e109-4ae6-9589-0a5f14faea43\" width=\"1\" height=\"1\" border=\"0\" style=\"display: none;\"><div style=\"display: none; vis",
+          "after": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FChicago%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%262",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7753,
+          "before": "<iframe height=\"0\" width=\"0\" style=\"display: none; visibility: hidden;\"></iframe><img src=\"https://t.co/1/i/adsct?=&amp;bci=4&amp;dv=America%2FNew_York%26en-US%2Cen%26Google%20Inc.%26Linux%20x86_64%26",
+          "after": "<div id=\"batBeacon602636922663\" style=\"width: 0px; height: 0px; display: none; visibility: hidden;\"><img id=\"batBeacon813445308332\" width=\"0\" height=\"0\" alt=\"\" src=\"https://bat.bing.com/action/0?ti=55",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7764,
+          "before": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 18175,
+          "line": 7765,
           "before": "",
-          "after": "#hubspot-messages-iframe-container.internal { z-index: 1016; }",
+          "after": "R0lGODlhAQABAIAAAP///wAAACH5BAkAAAEALAAAAAABAAEAAAICTAEAOw=",
           "hint": "unclassified"
         },
         {
-          "line": 18176,
-          "before": "@keyframes feedback-slide-out-hs-feedback-left {=20",
+          "line": 7766,
+          "before": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=",
+          "after": "Content-Type: image/gif",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7767,
+          "before": "Content-Type: image/gif",
+          "after": "Content-Transfer-Encoding: base64",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7768,
+          "before": "Content-Transfer-Encoding: base64",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 18177,
-          "before": "  0% { transform: translate(0px, 0px); }",
-          "after": "#hubspot-messages-iframe-container.internal iframe { min-width: 108px; }",
+          "line": 7769,
+          "before": "Content-Location: https://trkn.us/pixel/conv/ppt#029;g=sitewide;gidT862;ord=[uniqueid]",
+          "after": "R0lGODlhAQABAIAAAP///wAAACH5BAkAAAEALAAAAAABAAEAAAICTAEAOw=",
           "hint": "unclassified"
         },
         {
-          "line": 18178,
-          "before": "  100% { transform: translate(0px, 100%); }",
-          "after": "",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18179,
-          "before": "}",
-          "after": "#hubspot-messages-iframe-container .hs-shadow-container { z-index: -1; position: absolute; width: 0px; height: 0px; bottom: 0px; content: \"\"; display: initial !important; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18181,
-          "before": "#hs-feedback-ui.hs-feedback-left { animation-name: feedback-slide-in-hs-feedback-left; }",
-          "after": "#hubspot-messages-iframe-container .hs-shadow-container.internal { display: none !important; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18183,
-          "before": "#hs-feedback-ui.hs-feedback-left.hs-feedback-slid-out { animation-name: feedback-slide-out-hs-feedback-left; animation-fill-mode: forwards; }",
-          "after": "#hubspot-messages-iframe-container .hs-shadow-container.active { width: 400px; height: 400px; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18185,
-          "before": "@keyframes feedback-slide-in-hs-feedback-right {=20",
-          "after": "#hubspot-messages-iframe-container iframe { display: initial !important; width: 100% !important; height: 100% !important; border-width: medium !important; border-style: none !important; border-color: ",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18186,
-          "before": "  0% { transform: translate(0px, 100%); }",
-          "after": "",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18187,
-          "before": "  100% { transform: translate(0px, 0px); }",
-          "after": "#hubspot-messages-iframe-container .hs-drag-handle--v2--widget-open--right { bottom: 20px; left: -5px; display: none !important; }",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18188,
-          "before": "}",
-          "after": "",
-          "hint": "unclassified"
-        },
-        {
-          "line": 18189,
+          "line": 7770,
           "before": "",
-          "after": "#hubspot-messages-iframe-container .hs-drag-handle--v2--widget-open--left { bottom: 20px; right: -5px; display: none !important; }",
+          "after": "Content-Type: image/gif",
           "hint": "unclassified"
         },
         {
-          "line": 18190,
-          "before": "@keyframes feedback-slide-out-hs-feedback-right {=20",
+          "line": 7771,
+          "before": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+          "after": "Content-Transfer-Encoding: base64",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7772,
+          "before": "",
+          "after": "Content-Location: https://arttrk.com/pixel/?ad_log=referer&action=lead&pixidm6f32d8-e109-4ae6-9589-0a5f14faea43",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7773,
+          "before": "Content-Type: image/webp",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 18191,
-          "before": "  0% { transform: translate(0px, 0px); }",
-          "after": ".hs-drag-handle { position: absolute; cursor: grab; height: 60px; display: none; align-items: center; transition: opacity 0.5s 0.5s; opacity: 1; }",
+          "line": 7774,
+          "before": "Content-Transfer-Encoding: base64",
+          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=",
           "hint": "unclassified"
         },
         {
-          "line": 18192,
-          "before": "  100% { transform: translate(0px, 100%); }",
+          "line": 7775,
+          "before": "Content-Location: https://www.hubspot.com/hs-fs/hubfs/G2%20badges%20all/G2%20badges%20evergreen/badge-best-usability-enterprise.png?width&height&nameºdge-best-usability-enterprise.png",
+          "after": "Content-Type: image/gif",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7776,
+          "before": "",
+          "after": "Content-Transfer-Encoding: base64",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7777,
+          "before": "UklGRqQIAABXRUJQVlA4WAoAAAAQAAAARAAATwAAQUxQSKoAAAABBmi2rR1v7kBi28kQbdvJ5Gxb",
+          "after": "Content-Location: https://trkn.us/pixel/conv/ppt#029;g=sitewide;gidT862;ord=[uniqueid]",
+          "hint": "unclassified"
+        },
+        {
+          "line": 7778,
+          "before": "bd/37erffk9ETMDt3/9/9fOvQIHBSTgaBCC56SjUkdx46+wehTmSE190dA5CHMiBb9pbe+6oZccP",
           "after": "",
           "hint": "unclassified"
         },
         {
-          "line": 18193,
-          "before": "}",
-          "after": ".hs-drag-handle--v1--right { right: 82px; bottom: 12px; }",
+          "line": 7779,
+          "before": "Wuo7rqhhwQ+ba1tuqGYGQ1N5w8WmYgJjQ2nNbEMGcKgvrJhQQQ9Otdnlj1FWC47VmeWPUEYDztWp",
+          "after": "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
           "hint": "unclassified"
         }
       ],
       "hintCounts": {
         "session-token:hubspot-laboratory": 1,
-        "unclassified": 64998,
-        "session-token:csrf": 6
+        "unclassified": 77228,
+        "animation:mid-frame-transform": 81,
+        "session-token:csrf": 8
       }
     }
   ],
