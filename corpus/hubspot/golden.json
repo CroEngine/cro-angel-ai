@@ -147,7 +147,7 @@
         "area": 2000
       },
       {
-        "text": "Learn more about content agent",
+        "text": "Learn more about prospecting agent",
         "tagName": "a",
         "category": "link",
         "intent": "information",
@@ -155,13 +155,13 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 4000,
+        "yBand": 4200,
         "score": 20,
         "bgContrast": 1,
         "area": 4000
       },
       {
-        "text": "Learn more about content agent",
+        "text": "Learn more about prospecting agent",
         "tagName": "a",
         "category": "link",
         "intent": "information",
@@ -169,13 +169,13 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 4000,
+        "yBand": 4200,
         "score": 20,
         "bgContrast": 1,
         "area": 4000
       },
       {
-        "text": "Learn more about content agent",
+        "text": "Learn more about prospecting agent",
         "tagName": "a",
         "category": "link",
         "intent": "information",
@@ -183,7 +183,7 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 4000,
+        "yBand": 4200,
         "score": 20,
         "bgContrast": 1,
         "area": 4000
@@ -757,7 +757,7 @@
         "area": 2000
       },
       {
-        "text": "Pause Carousel",
+        "text": "Play Carousel",
         "tagName": "button",
         "category": "cta_secondary",
         "intent": "unknown",
@@ -792,7 +792,7 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 5200,
+        "yBand": 5400,
         "score": 20,
         "bgContrast": 1,
         "area": 5000
@@ -1076,20 +1076,6 @@
         "score": 50,
         "bgContrast": 16,
         "area": 6000
-      },
-      {
-        "text": "Affiliate Program",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6400,
-        "score": 50,
-        "bgContrast": 16,
-        "area": 7000
       },
       {
         "text": "AI Content Writer",
@@ -1440,6 +1426,20 @@
         "score": 50,
         "bgContrast": 16,
         "area": 6000
+      },
+      {
+        "text": "Affiliate Program",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6600,
+        "score": 50,
+        "bgContrast": 16,
+        "area": 7000
       },
       {
         "text": "Free Web Hosting",

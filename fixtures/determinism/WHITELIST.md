@@ -119,10 +119,12 @@ Grind 1 runs N=3 freezes of `https://www.hubspot.com/` in separate
 Browserbase sessions (= independent A/B-bucket assignments). The 3-way
 comparison is pairwise (3 pairs).
 
-**Current status (2026-06-17 round3): RED — `pending-determinism`.** See
-`fixtures/determinism/hubspot/diff.json` `round3_post_narrowing` for
-evidence; `corpus/hubspot/meta.json` carries the pending flag. Bot-tarpit
-anchor injection at `<body>` open remains unwhitelisted and unmasked.
+**Current status (2026-06-20 round6): `promoted`.** #4 score-determinism GREEN
+(byte-identical goldens across N=3) is the load-bearing criterion and proves all
+#3 residual drift score-neutral (see round6 section below + `corpus/README.md`
+promotion criteria). The bot-tarpit anchor + the inconsistently-injected overlays
+are no longer "RED, unmasked" — they are removed at capture via
+`SiteSpec.removeSelectors`, and the hero animation via `prefers-reduced-motion`.
 
 ### Known-open mechanisms NOT whitelisted (policy avvaktar plan v2 Block B/C)
 

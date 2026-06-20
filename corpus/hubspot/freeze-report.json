@@ -7,7 +7,7 @@
     "dismissCheck": "hidden",
     "matchCountBeforeClick": 1,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 637,
+    "dismissedAfterMs": 679,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,24 +16,23 @@
     }
   },
   "capture": {
-    "mhtmlKb": 6857,
-    "screenshotKb": 540,
+    "mhtmlKb": 5769,
+    "screenshotKb": 457,
     "beforeDismissScreenshotPath": null,
     "externalFontSrcCount": 0,
-    "embeddedFontCount": 31,
-    "mhtmlKbBeforeFontEmbed": 1931,
+    "embeddedFontCount": 13,
+    "mhtmlKbBeforeFontEmbed": 1568,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "HubSpot Sans",
       "HubSpot Serif",
       "HubSpot Serif Page Header Human",
       "Lato",
-      "Lexend Deca",
       "Zen Kaku Gothic New"
     ],
     "fontUrls": {
       "embedded": 0,
-      "absolute": 32,
+      "absolute": 14,
       "relativeResolved": 0,
       "unresolvable": []
     },
@@ -50,21 +49,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T12:28:26.191Z"
+    "frozenAt": "2026-06-20T16:40:43.989Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 6986,
+    "textLen": 6997,
     "interactiveCount": 281,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 12090,
-    "consentMs": 2089,
-    "scrollMs": 3341,
-    "captureMs": 2244
+    "gotoMs": 14016,
+    "consentMs": 2042,
+    "scrollMs": 3560,
+    "captureMs": 2092
   }
 }
