@@ -15,7 +15,13 @@ import { join } from "node:path";
 
 import { freezeSite } from "../src/lib/tests/snapshot/freeze.server";
 
-interface Site { name: string; url: string }
+interface Site {
+  name: string;
+  url: string;
+  consentSelector?: string;
+  consentFrame?: string;
+  consentDismissCheck?: "detached" | "hidden";
+}
 interface Category { description: string; deferred: boolean; sites: Site[] }
 interface Targets { version: number; categories: Record<string, Category> }
 
@@ -56,6 +62,9 @@ async function runOne(category: string, deferred: boolean, site: Site): Promise<
     const r = await freezeSite({
       url: site.url,
       name: `${category}__${site.name}`,
+      consentSelector: site.consentSelector,
+      consentFrame: site.consentFrame,
+      consentDismissCheck: site.consentDismissCheck,
       outDir: dir,
       notes: `breadth-50 ${new Date().toISOString()}`,
     });
