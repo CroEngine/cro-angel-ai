@@ -1,18 +1,17 @@
 {
-  "ranAt": "2026-06-20T19:07:05.017Z",
+  "ranAt": "2026-06-20T19:23:50.411Z",
   "total": 10,
   "addressableTotal": 10,
-  "addressableOk": 8,
-  "addressableSuccessRate": 0.8,
+  "addressableOk": 9,
+  "addressableSuccessRate": 0.9,
   "byFailureClass": {
-    "timeout": 1,
     "font-embed-failed": 1
   },
   "byCategory": {
     "saas-landing": {
       "total": 10,
-      "ok": 8,
-      "rate": 0.8,
+      "ok": 9,
+      "rate": 0.9,
       "deferred": false
     }
   },
@@ -22,24 +21,24 @@
     {
       "category": "saas-landing",
       "deferred": false,
-      "name": "notion",
-      "url": "https://www.notion.com",
-      "ok": true,
-      "failureClass": null,
-      "reason": null,
-      "mhtmlKb": 4978,
-      "reportPath": "fixtures/breadth-50/saas-landing/notion/freeze-report.json"
-    },
-    {
-      "category": "saas-landing",
-      "deferred": false,
       "name": "stripe",
       "url": "https://stripe.com",
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2097,
+      "mhtmlKb": 2191,
       "reportPath": "fixtures/breadth-50/saas-landing/stripe/freeze-report.json"
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "linear",
+      "url": "https://linear.app",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 4301,
+      "reportPath": "fixtures/breadth-50/saas-landing/linear/freeze-report.json"
     },
     {
       "category": "saas-landing",
@@ -71,19 +70,19 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 6851,
+      "mhtmlKb": 6852,
       "reportPath": "fixtures/breadth-50/saas-landing/hubspot/freeze-report.json"
     },
     {
       "category": "saas-landing",
       "deferred": false,
-      "name": "linear",
-      "url": "https://linear.app",
-      "ok": false,
-      "failureClass": "timeout",
-      "reason": "Error: waitForMainLoadState(load) timed out after 60000ms",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/saas-landing/linear/freeze-report.json"
+      "name": "notion",
+      "url": "https://www.notion.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3728,
+      "reportPath": "fixtures/breadth-50/saas-landing/notion/freeze-report.json"
     },
     {
       "category": "saas-landing",
@@ -103,7 +102,7 @@
       "url": "https://www.figma.com",
       "ok": false,
       "failureClass": "font-embed-failed",
-      "reason": "[freeze] A2 gate: externalFontSrcCount=2 after rewrite (embedded=72, failures=2). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Inspect freeze-report.json fontFetchFailures.",
+      "reason": "[freeze] A2 gate: externalFontSrcCount=3 after rewrite (embedded=71, failures=3). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff, https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff, https://static.figma.com/webfont/1/Figma-Mono-Light-Oblique.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
       "mhtmlKb": 0,
       "reportPath": "fixtures/breadth-50/saas-landing/figma/freeze-report.json"
     },
@@ -115,7 +114,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3704,
+      "mhtmlKb": 4932,
       "reportPath": "fixtures/breadth-50/saas-landing/intercom/freeze-report.json"
     },
     {
@@ -126,7 +125,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 8976,
+      "mhtmlKb": 9080,
       "reportPath": "fixtures/breadth-50/saas-landing/loom/freeze-report.json"
     }
   ]

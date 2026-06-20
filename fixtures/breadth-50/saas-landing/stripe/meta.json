@@ -1,16 +1,16 @@
 {
   "url": "https://stripe.com",
   "name": "saas-landing__stripe",
-  "captured_at": "2026-06-20T19:05:39.215Z",
+  "captured_at": "2026-06-20T19:22:28.348Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T19:05:18.083Z",
+  "notes": "breadth-50 2026-06-20T19:22:08.980Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T19:05:39.215Z",
-  "expiresAt": "2026-09-18T19:05:39.215Z",
+  "frozenAt": "2026-06-20T19:22:28.348Z",
+  "expiresAt": "2026-09-18T19:22:28.348Z",
   "refreezeReason": "manual"
 }

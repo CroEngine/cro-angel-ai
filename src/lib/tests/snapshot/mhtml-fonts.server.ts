@@ -255,6 +255,10 @@ export interface FontEmbedResult {
   mhtml: string;
   /** Count of http(s):// font URLs still present in any CSS part AFTER rewrite. */
   externalFontSrcCount: number;
+  /** Sampled (≤20, deduped) external font URLs still present after rewrite — the
+   *  offenders behind externalFontSrcCount, so a font-embed-failed freeze names
+   *  the URLs in its report instead of needing a re-freeze to diagnose. */
+  unembeddedFontUrls: string[];
   embeddedFontCount: number;
   newBytes: number;
   fetchFailures: { url: string; error: string }[];
@@ -975,6 +979,7 @@ export async function embedMhtmlFonts(
   const out = serializeMhtml(parsed);
 
   let externalFontSrcCount = 0;
+  const unembeddedFontUrls: string[] = [];
   for (let i = 0; i < parsed.parts.length; i++) {
     const part = parsed.parts[i];
     const ct = part.headers["content-type"] || "";
@@ -982,13 +987,19 @@ export async function embedMhtmlFonts(
     const enc = (part.headers["content-transfer-encoding"] || "").toLowerCase();
     const text = enc === "quoted-printable" ? qpDecode(part.body) : part.body;
     for (const m of text.matchAll(FONT_URL_RE)) {
-      if (FONT_EXT_RE.test(m[2])) externalFontSrcCount++;
+      if (FONT_EXT_RE.test(m[2])) {
+        externalFontSrcCount++;
+        if (unembeddedFontUrls.length < 20 && !unembeddedFontUrls.includes(m[2])) {
+          unembeddedFontUrls.push(m[2]);
+        }
+      }
     }
   }
 
   return {
     mhtml: out,
     externalFontSrcCount,
+    unembeddedFontUrls,
     embeddedFontCount,
     newBytes: Buffer.byteLength(out, "utf8"),
     fetchFailures,

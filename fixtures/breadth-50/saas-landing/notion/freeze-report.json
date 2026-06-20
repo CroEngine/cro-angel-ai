@@ -11,12 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 4978,
-    "screenshotKb": 584,
+    "mhtmlKb": 3728,
+    "screenshotKb": 339,
     "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": true,
     "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
     "embeddedFontCount": 51,
-    "mhtmlKbBeforeFontEmbed": 2377,
+    "mhtmlKbBeforeFontEmbed": 1128,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Lyon Text",
@@ -45,21 +47,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:05:22.283Z"
+    "frozenAt": "2026-06-20T19:22:12.797Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 3591,
-    "interactiveCount": 159,
+    "textLen": 2743,
+    "interactiveCount": 149,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 6935,
+    "gotoMs": 63289,
     "consentMs": 0,
-    "scrollMs": 4247,
-    "captureMs": 2426
+    "scrollMs": 3322,
+    "captureMs": 1514
   }
 }

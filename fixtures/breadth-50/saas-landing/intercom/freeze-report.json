@@ -11,12 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 3704,
-    "screenshotKb": 800,
+    "mhtmlKb": 4932,
+    "screenshotKb": 1168,
     "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
     "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
     "embeddedFontCount": 27,
-    "mhtmlKbBeforeFontEmbed": 2129,
+    "mhtmlKbBeforeFontEmbed": 3357,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Beretta",
@@ -52,7 +54,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:05:50.219Z"
+    "frozenAt": "2026-06-20T19:22:45.538Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -64,9 +66,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 62295,
+    "gotoMs": 5874,
     "consentMs": 0,
-    "scrollMs": 3784,
-    "captureMs": 3019
+    "scrollMs": 6131,
+    "captureMs": 46754
   }
 }

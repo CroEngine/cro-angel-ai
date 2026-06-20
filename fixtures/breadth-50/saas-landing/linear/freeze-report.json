@@ -1,6 +1,6 @@
 {
-  "ok": false,
-  "error": "Error: waitForMainLoadState(load) timed out after 60000ms",
+  "ok": true,
+  "error": null,
   "dryRun": false,
   "consent": {
     "selector": null,
@@ -11,15 +11,26 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 0,
-    "screenshotKb": 0,
+    "mhtmlKb": 4301,
+    "screenshotKb": 595,
     "beforeDismissScreenshotPath": null,
-    "externalFontSrcCount": null,
-    "embeddedFontCount": null,
-    "mhtmlKbBeforeFontEmbed": null,
-    "fontFetchFailures": null,
-    "embeddedFamilies": null,
-    "fontUrls": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 4,
+    "mhtmlKbBeforeFontEmbed": 3045,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Berkeley Mono",
+      "Inter Variable",
+      "Tiempos Headline"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 4,
+      "relativeResolved": 0,
+      "unresolvable": []
+    },
     "externalized": false,
     "externalAssetUrl": null,
     "externalAssetSha256": null,
@@ -33,14 +44,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:05:22.045Z"
+    "frozenAt": "2026-06-20T19:22:13.147Z"
   },
-  "failureClass": "timeout",
-  "captureValidity": null,
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 8216,
+    "interactiveCount": 164,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
   "timing": {
-    "gotoMs": 0,
+    "gotoMs": 18002,
     "consentMs": 0,
-    "scrollMs": 0,
-    "captureMs": 0
+    "scrollMs": 3369,
+    "captureMs": 2749
   }
 }

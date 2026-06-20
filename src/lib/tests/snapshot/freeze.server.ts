@@ -78,12 +78,19 @@ interface FreezeReport {
     mhtmlKb: number;
     screenshotKb: number;
     beforeDismissScreenshotPath: string | null;
+    /** Heavy-SPA escape hatch: the `load` event never fired within the goto
+     *  budget so capture proceeded on domcontentloaded. assertCaptureValid is
+     *  the backstop. null = load fired normally. */
+    loadStateDegraded: boolean | null;
     // A2 — font-embedding (post-capture rewrite, see mhtml-fonts.server.ts).
     // externalFontSrcCount is the form-agnostic success gate per plan
     // beslutspunkt 3: must be 0 after rewrite. embeddedFontCount and
     // fetchFailures are diagnostics; mhtmlKbBeforeFontEmbed lets us see
     // the size delta the embedding added.
     externalFontSrcCount: number | null;
+    /** The http(s) font URLs still present after the A2 rewrite (≤20, deduped) —
+     *  self-diagnosing companion to externalFontSrcCount. */
+    unembeddedFontUrls: string[] | null;
     embeddedFontCount: number | null;
     mhtmlKbBeforeFontEmbed: number | null;
     fontFetchFailures: { url: string; error: string }[] | null;
@@ -387,7 +394,9 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       mhtmlKb: 0,
       screenshotKb: 0,
       beforeDismissScreenshotPath: null,
+      loadStateDegraded: null,
       externalFontSrcCount: null,
+      unembeddedFontUrls: null,
       embeddedFontCount: null,
       mhtmlKbBeforeFontEmbed: null,
       fontFetchFailures: null,
@@ -485,7 +494,23 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
 
 
     const tGoto = Date.now();
-    await page.goto(opts.url, { waitUntil: "load", timeoutMs: 60_000 });
+    try {
+      await page.goto(opts.url, { waitUntil: "load", timeoutMs: 60_000 });
+    } catch (e) {
+      // Heavy SPAs (e.g. linear) hold connections open so the `load` event never
+      // fires within budget — but navigation completed and the DOM is present
+      // (domcontentloaded fired long before). Proceed instead of failing the
+      // freeze: the settle + lazyScroll pull in lazy resources, the font-embed
+      // step fetches fonts directly, and assertCaptureValid is the backstop if
+      // the page is genuinely empty. Re-throw anything that is NOT a load-timeout.
+      if (!/timed?\s*out|timeout/i.test(String((e as Error)?.message ?? e))) throw e;
+      report.capture.loadStateDegraded = true;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[freeze] '${opts.name}': load event did not fire within 60s — proceeding ` +
+          `on domcontentloaded (heavy SPA); assertCaptureValid is the backstop`,
+      );
+    }
     await new Promise((r) => setTimeout(r, 1500));
     report.timing.gotoMs = Date.now() - tGoto;
 
@@ -633,6 +658,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     mhtmlBytes = Buffer.byteLength(finalMhtml, "utf8");
     report.capture.mhtmlKb = Math.round(mhtmlBytes / 1024);
     report.capture.externalFontSrcCount = embedded.externalFontSrcCount;
+    report.capture.unembeddedFontUrls = embedded.unembeddedFontUrls;
     report.capture.embeddedFontCount = embedded.embeddedFontCount;
     report.capture.fontFetchFailures = embedded.fetchFailures;
     report.capture.embeddedFamilies = embedded.embeddedFamilies;
@@ -646,7 +672,8 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
         `[freeze] A2 gate: externalFontSrcCount=${embedded.externalFontSrcCount} after rewrite ` +
           `(embedded=${embedded.embeddedFontCount}, failures=${embedded.fetchFailures.length}). ` +
           `Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. ` +
-          `Inspect freeze-report.json fontFetchFailures.`,
+          `Surviving URLs: ${embedded.unembeddedFontUrls.join(", ") || "(none captured)"}. ` +
+          `Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.`,
       );
     }
 

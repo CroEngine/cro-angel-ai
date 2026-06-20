@@ -31,6 +31,7 @@ function flag(name: string): boolean {
 const targets = JSON.parse(readFileSync(join("corpus", "breadth-targets.json"), "utf8")) as Targets;
 const concurrent = Number(arg("concurrent") ?? "4");
 const onlyCategory = arg("category");
+const onlySites = arg("site")?.split(",").map((s) => s.trim()).filter(Boolean);
 const includeDeferred = flag("include-deferred");
 
 const outRoot = join("fixtures", "breadth-50");
@@ -92,7 +93,10 @@ const jobs: { category: string; deferred: boolean; site: Site }[] = [];
 for (const [catName, cat] of Object.entries(targets.categories)) {
   if (onlyCategory && catName !== onlyCategory) continue;
   if (cat.deferred && !includeDeferred) continue;
-  for (const site of cat.sites) jobs.push({ category: catName, deferred: cat.deferred, site });
+  for (const site of cat.sites) {
+    if (onlySites && !onlySites.includes(site.name)) continue;
+    jobs.push({ category: catName, deferred: cat.deferred, site });
+  }
 }
 
 console.log(`[breadth-50] ${jobs.length} sajter (concurrent=${concurrent})`);
