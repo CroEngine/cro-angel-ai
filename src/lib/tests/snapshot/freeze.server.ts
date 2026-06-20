@@ -48,6 +48,10 @@ export interface FreezeOptions {
   dryRun?: boolean;
   /** Extra screenshot before consent click — visual sanity for matchCountBeforeClick. */
   screenshotBeforeDismiss?: boolean;
+  /** CSS selectors removed from the DOM right before captureSnapshot — see
+   *  SiteSpec.removeSelectors. Determinism: strips inconsistently-injected
+   *  third-party overlays so structure is identical across captures. */
+  removeSelectors?: string[];
 }
 
 export interface FreezeResult {
@@ -580,6 +584,26 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
           `text=${validity.textLen}ch interactive=${validity.interactiveCount} ` +
           `heroHeading=${validity.heroHasMeaningfulHeading} ` +
           `challengeMarkers=[${validity.challengeMarkersFound.join(",")}]`,
+      );
+    }
+
+    // Determinism: remove inconsistently-injected third-party overlays (chat,
+    // feedback, web-interactives, bot-tarpit) right before serialization so
+    // every capture has identical structure — the structural cascade driver
+    // behind the residual #3 drift after token masking. Runs AFTER
+    // assertCaptureValid so validity reflects the real page; the overlays are
+    // score-neutral (round6 #4 = identical goldens) and not main content.
+    // Best-effort per selector — a bad selector logs nothing rather than aborts.
+    if (opts.removeSelectors && opts.removeSelectors.length > 0) {
+      const removed = (await page.evaluate(
+        `(() => { const sels = ${JSON.stringify(opts.removeSelectors)}; let n = 0;` +
+          ` for (const s of sels) { try { document.querySelectorAll(s).forEach((el) => { el.remove(); n++; }); } catch (e) {} }` +
+          ` return n; })()`,
+      )) as number;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[freeze] removeSelectors: stripped ${removed} overlay element(s) ` +
+          `(${opts.removeSelectors.length} selectors) before capture`,
       );
     }
 

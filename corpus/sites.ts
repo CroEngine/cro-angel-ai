@@ -23,6 +23,16 @@ export interface SiteSpec {
   consentDismissCheck?: "detached" | "hidden";
   /** Stagehand-fallback om CSS inte räcker. Samma assertion-krav. */
   consentInstruction?: string;
+  /**
+   * CSS-selektorer för element som tas bort FÖRE captureSnapshot.
+   * Determinism: tredjeparts-overlays (chat/feedback/web-interactives/bot-tarpit)
+   * injiceras inkonsekvent mellan captures — närvarande i en, frånvarande i en
+   * annan — vilket ger strukturell drift som positions-diffen kaskaderar. De är
+   * score-neutrala (ej huvudinnehåll; bevisat av round6 #4 = identiska goldens),
+   * så borttagning gör MHTML:en deterministisk utan att röra scoren. Samma
+   * capture-time-normaliseringsmönster som prefers-reduced-motion.
+   */
+  removeSelectors?: string[];
   notes?: string;
 }
 
@@ -44,6 +54,14 @@ export const SITES: SiteSpec[] = [
     // efter klick" trots matchCountBeforeClick=1 + visibleBeforeClick=true.
     // HubSpot döljer bannern istället för att ta bort den ur DOM.
     consentDismissCheck: "hidden",
+    // Determinism (round6): inkonsekvent injicerade overlays som annars ger
+    // strukturell capture-drift. Score-neutrala per #4. Se WHITELIST.md round6.
+    removeSelectors: [
+      "#hubspot-messages-iframe-container", // chat-widget (iframe-container)
+      "#hs-feedback-fetcher", // feedback-widget
+      '[id^="hs-web-interactives"]', // web-interactives push-anchors/containers
+      'body > a[tabindex="-1"][aria-hidden="true"][rel="nofollow"]', // bot-tarpit-ankaret
+    ],
     notes: "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort.",
   },
   {
