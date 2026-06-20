@@ -708,7 +708,35 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     // A2 — embed external font binaries as cid: parts so replay doesn't fall
     // back to OS fonts. The hard-assert below (externalFontSrcCount === 0) is
     // the form-agnostic success gate per plan beslutspunkt 3.
-    const embedded = await embedMhtmlFonts(snap.data);
+    // Browser-context font fetch — fonts the server-side proxy can't reach
+    // (CDN hotlink/IP-block, e.g. Schibsted cdn.aftonbladet.se / static.svd.se)
+    // but the live page already loaded via @font-face. page.evaluate runs the
+    // fetch in the page's own origin; bytes come back base64 (chunked to dodge
+    // the call-stack limit on String.fromCharCode for large fonts). The page is
+    // still on-site here (post-capture, pre-close), so the origin is correct.
+    const browserFetch = async (fontUrl: string): Promise<Buffer | null> => {
+      try {
+        const b64 = (await page.evaluate(
+          `(async () => { try { const r = await fetch(${JSON.stringify(fontUrl)}); if (!r.ok) return null; ` +
+            `const b = new Uint8Array(await r.arrayBuffer()); let s = ""; const C = 0x8000; ` +
+            `for (let i = 0; i < b.length; i += C) s += String.fromCharCode.apply(null, b.subarray(i, i + C)); ` +
+            `return btoa(s); } catch { return null; } })()`,
+        )) as string | null;
+        return b64 ? Buffer.from(b64, "base64") : null;
+      } catch {
+        return null;
+      }
+    };
+    // Which font URLs did the browser actually fetch (resource-timing)? Lets the
+    // A2 gate fire only on render-relevant survivors (loaded but unembeddable),
+    // not referenced-but-unused fonts (e.g. sibling-brand fonts in shared CSS).
+    const loadedFontUrls = (await page
+      .evaluate(
+        `(() => { try { return performance.getEntriesByType("resource").map((e) => e.name)` +
+          `.filter((n) => /\\.(woff2?|ttf|otf|eot)(\\?|$)/i.test(n)); } catch { return []; } })()`,
+      )
+      .catch(() => [])) as string[];
+    const embedded = await embedMhtmlFonts(snap.data, { browserFetch, loadedFontUrls });
     const finalMhtml = embedded.mhtml;
     mhtmlBytes = Buffer.byteLength(finalMhtml, "utf8");
     report.capture.mhtmlKb = Math.round(mhtmlBytes / 1024);
@@ -722,12 +750,19 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     report.capture.fontUrls = embedded.fontUrlSummary;
 
 
-    if (embedded.externalFontSrcCount > 0) {
+    // Gate on fonts the browser LOADED but we couldn't embed (real render-drift).
+    // Referenced-but-unused survivors are score-neutral. If the loaded-signal is
+    // unavailable (empty), fall back to the strict total so a missing signal never
+    // silently passes. Existing corpus sites have 0 survivors → unaffected.
+    const gateFonts =
+      loadedFontUrls.length > 0 ? embedded.unembeddedLoadedFontUrls : embedded.unembeddedFontUrls;
+    const gateFails = loadedFontUrls.length > 0 ? gateFonts.length > 0 : embedded.externalFontSrcCount > 0;
+    if (gateFails) {
       throw new Error(
-        `[freeze] A2 gate: externalFontSrcCount=${embedded.externalFontSrcCount} after rewrite ` +
-          `(embedded=${embedded.embeddedFontCount}, failures=${embedded.fetchFailures.length}). ` +
-          `Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. ` +
-          `Surviving URLs: ${embedded.unembeddedFontUrls.join(", ") || "(none captured)"}. ` +
+        `[freeze] A2 gate: ${gateFonts.length} render-relevant font(s) unembeddable after rewrite ` +
+          `(total external=${embedded.externalFontSrcCount}, embedded=${embedded.embeddedFontCount}, ` +
+          `failures=${embedded.fetchFailures.length}). Replay falls back to OS fonts → area/yBand drift. ` +
+          `Loaded-but-unembedded: ${gateFonts.join(", ") || "(none — strict fallback on total)"}. ` +
           `Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.`,
       );
     }

@@ -259,6 +259,10 @@ export interface FontEmbedResult {
    *  offenders behind externalFontSrcCount, so a font-embed-failed freeze names
    *  the URLs in its report instead of needing a re-freeze to diagnose. */
   unembeddedFontUrls: string[];
+  /** Subset of unembeddedFontUrls the browser actually loaded (resource-timing) —
+   *  the render-drift-relevant survivors. Empty when loadedFontUrls wasn't passed
+   *  (then the A2 gate falls back to the full externalFontSrcCount). */
+  unembeddedLoadedFontUrls: string[];
   embeddedFontCount: number;
   newBytes: number;
   fetchFailures: { url: string; error: string }[];
@@ -747,6 +751,20 @@ export async function embedMhtmlFonts(
   opts: {
     fetchTimeoutMs?: number;
     userAgent?: string;
+    /** Browser-context font fetch (`page.evaluate(fetch)`) used as a FALLBACK
+     *  when the server-side proxy fetch fails (CDN hotlink/IP-block — e.g.
+     *  Schibsted's cdn.aftonbladet.se / static.svd.se, which 403 the proxy).
+     *  The browser already loaded these via @font-face from the right origin,
+     *  so its fetch reads bytes the proxy can't. Returns null on failure,
+     *  including the CORS/403 case for referenced-but-unused fonts the page
+     *  never actually loaded (those are score-neutral and stay unembedded). */
+    browserFetch?: (url: string) => Promise<Buffer | null>;
+    /** Font URLs the browser actually loaded (resource-timing). A surviving
+     *  @font-face URL NOT in this set was referenced-but-unused (e.g. cross-brand
+     *  fonts in shared CSS) → never rendered → safe to leave unembedded. One that
+     *  IS here yet still unembedded is a real render-drift risk the gate keeps.
+     *  Empty/undefined → every survivor counts (pre-fix strict behaviour). */
+    loadedFontUrls?: string[];
     /** Kör positiv + negativ kontrollprobe före URL-loopen. */
     controlProbes?: {
       positiveUrl?: string;
@@ -871,7 +889,17 @@ export async function embedMhtmlFonts(
   await Promise.all(
     Array.from(urlToCid.keys()).map(async (url) => {
       const t0 = performance.now();
-      const r = await classifiedFetch(url, fetchTimeoutMs, userAgent);
+      let r = await classifiedFetch(url, fetchTimeoutMs, userAgent);
+      // Browser-context fallback: the server-side fetch goes through a proxy
+      // some CDNs 403/hotlink-block. If the page itself loaded the font, its
+      // own fetch reads the bytes. Only attempted on a server-side miss, so the
+      // happy path stays fast and parallel.
+      if (r.outcome !== "ok" && opts.browserFetch) {
+        const buf = await opts.browserFetch(url).catch(() => null);
+        if (buf && buf.byteLength > 0) {
+          r = { outcome: "ok", bytes: buf.byteLength, httpStatus: 200, body: buf };
+        }
+      }
       urlToFetchResult.set(url, { ...r, durationMs: Math.round(performance.now() - t0) });
     }),
   );
@@ -980,6 +1008,11 @@ export async function embedMhtmlFonts(
 
   let externalFontSrcCount = 0;
   const unembeddedFontUrls: string[] = [];
+  // Subset of survivors the browser actually loaded — the render-drift-relevant
+  // ones. The rest are referenced-but-unused and score-neutral.
+  const unembeddedLoadedFontUrls: string[] = [];
+  const loadedSet = new Set(opts.loadedFontUrls ?? []);
+  const gateLoadedSubset = loadedSet.size > 0;
   for (let i = 0; i < parsed.parts.length; i++) {
     const part = parsed.parts[i];
     const ct = part.headers["content-type"] || "";
@@ -992,6 +1025,9 @@ export async function embedMhtmlFonts(
         if (unembeddedFontUrls.length < 20 && !unembeddedFontUrls.includes(m[2])) {
           unembeddedFontUrls.push(m[2]);
         }
+        if (gateLoadedSubset && loadedSet.has(m[2]) && !unembeddedLoadedFontUrls.includes(m[2])) {
+          unembeddedLoadedFontUrls.push(m[2]);
+        }
       }
     }
   }
@@ -1000,6 +1036,7 @@ export async function embedMhtmlFonts(
     mhtml: out,
     externalFontSrcCount,
     unembeddedFontUrls,
+    unembeddedLoadedFontUrls,
     embeddedFontCount,
     newBytes: Buffer.byteLength(out, "utf8"),
     fetchFailures,
