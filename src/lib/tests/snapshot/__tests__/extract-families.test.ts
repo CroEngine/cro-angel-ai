@@ -6,6 +6,7 @@ import { describe, it, expect } from "vitest";
 import {
   extractEmbeddedFamilies,
   extractFontFaceDiagnostics,
+  extractMainDocumentFamilies,
 } from "../mhtml-fonts.server";
 
 function mhtml(cssBody: string): string {
@@ -94,6 +95,123 @@ describe("extractEmbeddedFamilies — B1 strukturellt local()-filter", () => {
       @font-face { font-family: "__Inter_abc"; src: url("cid:real") format("woff2"); }
     `;
     expect(extractEmbeddedFamilies(mhtml(css))).toEqual(["__Inter_abc"]);
+  });
+});
+
+// Bygg en flerdels-MHTML med Content-Location per part, så <link>/@import-
+// resolution kan testas (helpern `mhtml()` ovan har bara två länklösa parts).
+function multipartMhtml(parts: Array<{ ct: string; cl?: string; body: string }>): string {
+  const boundary = "----TEST";
+  const lines: string[] = [
+    `From: <Saved by Test>`,
+    `Subject: Test`,
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/related; boundary="${boundary}"`,
+    ``,
+    ``,
+  ];
+  for (const p of parts) {
+    lines.push(`--${boundary}`);
+    lines.push(`Content-Type: ${p.ct}`);
+    lines.push(`Content-Transfer-Encoding: 8bit`);
+    if (p.cl) lines.push(`Content-Location: ${p.cl}`);
+    lines.push(``);
+    lines.push(p.body);
+  }
+  lines.push(`--${boundary}--`);
+  lines.push(``);
+  return lines.join("\r\n");
+}
+
+describe("extractMainDocumentFamilies — huvuddokument-scoping", () => {
+  it("exkluderar sub-frame-only @font-face (iframe-widget-font, Lexend-Deca-buggen)", () => {
+    const doc = multipartMhtml([
+      {
+        ct: "text/html",
+        cl: "https://example.com/",
+        body: `<html><head><link rel="stylesheet" href="https://fonts.example.com/css?family=Main&amp;display=swap"></head><body></body></html>`,
+      },
+      {
+        ct: "text/css",
+        cl: "https://fonts.example.com/css?family=Main&display=swap",
+        body: `@font-face { font-family: "MainFont"; src: url("cid:m") format("woff2"); }`,
+      },
+      {
+        ct: "text/html",
+        cl: "https://widget.example.com/",
+        body: `<html><head><link rel="stylesheet" href="https://widget.example.com/w.css"></head><body></body></html>`,
+      },
+      {
+        ct: "text/css",
+        cl: "https://widget.example.com/w.css",
+        body: `@font-face { font-family: "WidgetFont"; src: url("cid:w") format("woff2"); }`,
+      },
+    ]);
+    // Huvuddokumentet renderar bara MainFont; WidgetFont lever i iframe-parten.
+    expect(extractMainDocumentFamilies(doc)).toEqual(["MainFont"]);
+    // Kontrast: den oscopeade extraktorn ser BÅDA (rätt för "vad bäddades in").
+    expect(extractEmbeddedFamilies(doc)).toEqual(["MainFont", "WidgetFont"]);
+  });
+
+  it("avkodar &amp; i link-href så Google-Fonts-stylesheeten nås (Lato-buggen)", () => {
+    const doc = multipartMhtml([
+      {
+        ct: "text/html",
+        cl: "https://example.com/",
+        body: `<html><head><link rel="stylesheet" href="https://f.example.com/c?a=1&amp;b=2"></head></html>`,
+      },
+      {
+        ct: "text/css",
+        cl: "https://f.example.com/c?a=1&b=2",
+        body: `@font-face { font-family: "Decoded"; src: url("cid:d"); }`,
+      },
+    ]);
+    expect(extractMainDocumentFamilies(doc)).toEqual(["Decoded"]);
+  });
+
+  it("inkluderar inline <style> @font-face i huvuddokumentet", () => {
+    const doc = multipartMhtml([
+      {
+        ct: "text/html",
+        cl: "https://example.com/",
+        body: `<html><head><style>@font-face { font-family: "InlineFont"; src: url("cid:i") format("woff2"); }</style></head></html>`,
+      },
+    ]);
+    expect(extractMainDocumentFamilies(doc)).toEqual(["InlineFont"]);
+  });
+
+  it("följer @import transitivt från en länkad stylesheet", () => {
+    const doc = multipartMhtml([
+      {
+        ct: "text/html",
+        cl: "https://example.com/",
+        body: `<html><head><link rel="stylesheet" href="https://example.com/a.css"></head></html>`,
+      },
+      {
+        ct: "text/css",
+        cl: "https://example.com/a.css",
+        body: `@import url("https://example.com/b.css"); body { color: red; }`,
+      },
+      {
+        ct: "text/css",
+        cl: "https://example.com/b.css",
+        body: `@font-face { font-family: "Imported"; src: url("cid:i"); }`,
+      },
+    ]);
+    expect(extractMainDocumentFamilies(doc)).toEqual(["Imported"]);
+  });
+
+  it("returnerar [] när huvuddokumentet inte når någon stylesheet (harness fail-open)", () => {
+    const doc = multipartMhtml([
+      { ct: "text/html", cl: "https://example.com/", body: `<html><body>hi</body></html>` },
+      // Orphan css-part med en font — INTE nåbar från huvuddokumentet.
+      {
+        ct: "text/css",
+        cl: "https://example.com/orphan.css",
+        body: `@font-face { font-family: "Orphan"; src: url("cid:o"); }`,
+      },
+    ]);
+    expect(extractMainDocumentFamilies(doc)).toEqual([]);
   });
 });
 

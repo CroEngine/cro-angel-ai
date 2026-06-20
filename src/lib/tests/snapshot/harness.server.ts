@@ -25,7 +25,7 @@ import { resolveAssetUrl, sha256OfBuffer, type AssetPointer } from "./externaliz
 import { runRenderCanary, type RenderCanaryReport } from "./render-canary.server";
 import { FamiliesReceiptFileSchema, type FamiliesReceiptFile } from "./render-canary-receipt";
 import { CANARY_VIEWPORT } from "./canary-constants";
-import { extractEmbeddedFamilies } from "./mhtml-fonts.server";
+import { extractEmbeddedFamilies, extractMainDocumentFamilies } from "./mhtml-fonts.server";
 
 import type { CollectedElement } from "../schema";
 
@@ -382,17 +382,26 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       } catch {
         /* best-effort */
       }
-      // Ghost-diskriminator: hämta @font-face-deklarerade familjer direkt
-      // från MHTML (source of truth, oberoende av freeze-time-manifestet).
-      // Familjer i `embeddedFamilies` (manifestet) som saknas här klassas
-      // som ghosts av canaryn när gate1=descriptor_missing.
+      // Canary-manifestet = familjer som HUVUDDOKUMENTET ska rendera (dess
+      // inline <style> + <link>/@import-nådda stylesheets). Sub-frame-only
+      // fonter (t.ex. HubSpots chatt-widget-iframe som har egen "Lexend Deca")
+      // registreras aldrig i top-framens document.fonts och får INTE krävas av
+      // canaryn — annars failar den descriptor_missing på en font den scorade
+      // sidan aldrig använder. extractEmbeddedFamilies (ALLA text/css-parts)
+      // behålls som declaredFamilies för ghost-diskriminatorn.
+      let manifest = embeddedFamilies;
       let declaredFamilies: string[] = [];
       try {
-        declaredFamilies = extractEmbeddedFamilies(readFileSync(tmpFile, "utf8"));
+        const mhtmlOnDisk = readFileSync(tmpFile, "utf8");
+        declaredFamilies = extractEmbeddedFamilies(mhtmlOnDisk);
+        const mainDoc = extractMainDocumentFamilies(mhtmlOnDisk);
+        // Fail-closed: om scopingen inte hittar något (heuristik-miss) faller vi
+        // tillbaka på hela freeze-manifestet hellre än att tyst sluta gate:a.
+        if (mainDoc.length > 0) manifest = mainDoc;
       } catch {
-        /* fail-closed: canaryn behåller descriptor_missing som blockerande */
+        /* fail-closed: behåll embeddedFamilies-manifestet + tomma declaredFamilies */
       }
-      canary = await runRenderCanary(page, embeddedFamilies, {
+      canary = await runRenderCanary(page, manifest, {
         env: { chromiumPath, chromiumVersion, pinned },
         declaredFamilies,
       });

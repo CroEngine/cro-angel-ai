@@ -10,8 +10,8 @@
       "family": "HubSpot Sans",
       "gate1": {
         "wWith": 427,
-        "wFallback": 463,
-        "deltaLoad": 36,
+        "wFallback": 520.171875,
+        "deltaLoad": 93.171875,
         "fontsCheckPass": true,
         "pass": true,
         "reason": "ok"
@@ -61,8 +61,8 @@
       "family": "HubSpot Serif",
       "gate1": {
         "wWith": 434,
-        "wFallback": 463,
-        "deltaLoad": 29,
+        "wFallback": 520.171875,
+        "deltaLoad": 86.171875,
         "fontsCheckPass": true,
         "pass": true,
         "reason": "ok"
@@ -112,8 +112,8 @@
       "family": "HubSpot Serif Page Header Human",
       "gate1": {
         "wWith": 421,
-        "wFallback": 463,
-        "deltaLoad": 42,
+        "wFallback": 520.171875,
+        "deltaLoad": 99.171875,
         "fontsCheckPass": true,
         "pass": true,
         "reason": "ok"
@@ -162,8 +162,8 @@
       "family": "Lato",
       "gate1": {
         "wWith": 396,
-        "wFallback": 463,
-        "deltaLoad": 67,
+        "wFallback": 520.171875,
+        "deltaLoad": 124.171875,
         "fontsCheckPass": true,
         "pass": true,
         "reason": "ok"
@@ -214,60 +214,11 @@
       }
     },
     {
-      "family": "Lexend Deca",
-      "gate1": {
-        "wWith": 463,
-        "wFallback": 463,
-        "deltaLoad": 0,
-        "fontsCheckPass": true,
-        "pass": false,
-        "reason": "descriptor_missing",
-        "loadError": "no face matched descriptor"
-      },
-      "gate2": {
-        "wOrig": 0,
-        "deltaSubset": 0,
-        "pass": true,
-        "reason": "skipped"
-      },
-      "diag": {
-        "branchTaken": "A2-no-descriptor",
-        "loadResultKind": "loaded",
-        "faceCount": 0,
-        "hasDescriptorMatch": false,
-        "epsilonLoadPx": 2,
-        "strings": {
-          "manifestFamily": "Lexend Deca",
-          "allDescriptorFamilies": [
-            "HubSpot Sans",
-            "HubSpot Sans",
-            "HubSpot Serif",
-            "HubSpot Serif",
-            "Zen Kaku Gothic New",
-            "Zen Kaku Gothic New",
-            "Zen Kaku Gothic New",
-            "HubSpot Serif Page Header Human",
-            "Lato",
-            "Lato",
-            "Lato",
-            "Lato",
-            "Lato",
-            "Lato"
-          ],
-          "matchedDescriptorFamilies": [],
-          "checkString": "16px \"Lexend Deca\"",
-          "widthString": "\"Lexend Deca\", monospace"
-        },
-        "canonMismatch": false,
-        "canonMismatchDetail": []
-      }
-    },
-    {
       "family": "Zen Kaku Gothic New",
       "gate1": {
         "wWith": 388,
-        "wFallback": 463,
-        "deltaLoad": 75,
+        "wFallback": 520.171875,
+        "deltaLoad": 132.171875,
         "fontsCheckPass": true,
         "pass": true,
         "reason": "ok"
