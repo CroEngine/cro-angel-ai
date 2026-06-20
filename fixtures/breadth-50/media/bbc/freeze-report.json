@@ -1,0 +1,73 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 3289,
+    "screenshotKb": 1114,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 25,
+    "mhtmlKbBeforeFontEmbed": 1269,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "BBC Reith Sans",
+      "BBC Reith Serif",
+      "Freight Disp Light",
+      "ReithSans",
+      "ReithSerif",
+      "slick"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 44,
+      "relativeResolved": 2,
+      "unresolvable": [
+        {
+          "original": "/https://static.files.bbci.co.uk/bbcdotcom/web/20260616-142550-2eb0b085ec-web-3.10.0-4/Freight_Disp_Light.woff2",
+          "reason": "invalid-base",
+          "partIndex": 15
+        }
+      ]
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T19:32:37.156Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 13551,
+    "interactiveCount": 295,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 11746,
+    "consentMs": 0,
+    "scrollMs": 3916,
+    "captureMs": 7269
+  }
+}

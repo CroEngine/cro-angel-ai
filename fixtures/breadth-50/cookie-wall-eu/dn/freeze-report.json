@@ -1,0 +1,144 @@
+{
+  "ok": false,
+  "error": "[freeze] A2 gate: externalFontSrcCount=1 after rewrite (embedded=29, failures=17). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://cdn.dn-static.se/fonts/DNSans-1-500-Variable-VAP36PT4.woff2. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 4619,
+    "screenshotKb": 0,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 1,
+    "unembeddedFontUrls": [
+      "https://cdn.dn-static.se/fonts/DNSans-1-500-Variable-VAP36PT4.woff2"
+    ],
+    "embeddedFontCount": 29,
+    "mhtmlKbBeforeFontEmbed": 3245,
+    "fontFetchFailures": [
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/siri-headline-medium-condensed.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSans-1-500-Regular.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSansItalic-1-500-Variable.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSerifText-1-600-Bold.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/Inter-VariableFont_opsz,wght.ttf",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSansItalic-1-500-RegularItalic.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSerif-1-600-Variable.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSans-1-500-Variable.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSerifItalic-1-600-Variable.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSerifText-1-600-RegularItalic.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSerifText-1-600-BoldItalic.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/Inter-Italic-VariableFont_opsz,wght.ttf",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/BNSans.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSans-1-500-Bold.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSerifText-1-600-Regular.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSansItalic-1-500-BoldItalic.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://cdn.dn-static.se/fonts/DNSans-1-500-Variable-VAP36PT4.woff2",
+        "error": "proxy denied via header x-deny-reason"
+      }
+    ],
+    "embeddedFamilies": [
+      "BNSans",
+      "DNSans",
+      "DNSansVF",
+      "DNSerif",
+      "DNSerifVF",
+      "DNSerifVf",
+      "Inter",
+      "KrakenOverrides",
+      "PublicoBanner",
+      "PublicoText",
+      "Siri",
+      "VideoJS"
+    ],
+    "fontUrls": {
+      "embedded": 2,
+      "absolute": 4,
+      "relativeResolved": 49,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T19:34:16.486Z"
+  },
+  "failureClass": "font-embed-failed",
+  "captureValidity": {
+    "ok": true,
+    "textLen": 17095,
+    "interactiveCount": 293,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 9094,
+    "consentMs": 0,
+    "scrollMs": 4042,
+    "captureMs": 0
+  }
+}

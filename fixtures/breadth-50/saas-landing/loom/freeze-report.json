@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 9080,
-    "screenshotKb": 820,
+    "mhtmlKb": 8717,
+    "screenshotKb": 815,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 86,
-    "mhtmlKbBeforeFontEmbed": 3146,
+    "mhtmlKbBeforeFontEmbed": 2783,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Atlassian Mono",
@@ -47,21 +47,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:23:32.787Z"
+    "frozenAt": "2026-06-20T19:31:01.150Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
     "textLen": 5839,
-    "interactiveCount": 103,
+    "interactiveCount": 88,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 8690,
+    "gotoMs": 23298,
     "consentMs": 0,
-    "scrollMs": 4355,
-    "captureMs": 4251
+    "scrollMs": 3397,
+    "captureMs": 3506
   }
 }

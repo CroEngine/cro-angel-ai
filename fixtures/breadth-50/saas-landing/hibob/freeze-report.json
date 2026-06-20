@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 2013,
-    "screenshotKb": 621,
+    "mhtmlKb": 2012,
+    "screenshotKb": 623,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 36,
-    "mhtmlKbBeforeFontEmbed": 1297,
+    "mhtmlKbBeforeFontEmbed": 1296,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Gotham SSm A",
@@ -45,21 +45,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:23:16.797Z"
+    "frozenAt": "2026-06-20T19:30:47.286Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 6644,
+    "textLen": 6634,
     "interactiveCount": 188,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 5943,
+    "gotoMs": 5351,
     "consentMs": 0,
-    "scrollMs": 3439,
-    "captureMs": 2934
+    "scrollMs": 3421,
+    "captureMs": 2619
   }
 }

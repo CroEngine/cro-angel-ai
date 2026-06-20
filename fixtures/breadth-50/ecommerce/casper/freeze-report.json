@@ -1,0 +1,94 @@
+{
+  "ok": false,
+  "error": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 15126,
+    "screenshotKb": 904,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 171,
+    "mhtmlKbBeforeFontEmbed": 3033,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "AS Circular-Black",
+      "AS Circular-BlackItalic",
+      "AS Circular-Bold",
+      "AS Circular-BoldItalic",
+      "AS Circular-Book",
+      "AS Circular-BookItalic",
+      "AS Circular-Light",
+      "AS Circular-LightItalic",
+      "AS Circular-Medium",
+      "AS Circular-MediumItalic",
+      "BaronSans-Thin",
+      "Calibre",
+      "Copyright Klim Type Foundry-Not Licensed for Desktop Use",
+      "InterVariable",
+      "Lato",
+      "Montserrat-Medium",
+      "Montserrat-Regular",
+      "Montserrat-SemiBold",
+      "New Kansas TRIAL",
+      "NewKansas-Bold",
+      "NewKansas-Medium",
+      "NewKansas-Regular",
+      "NewKansas-SemiBold",
+      "NewKansas-Thin",
+      "Noto Sans JP",
+      "NotoSansDisplay-Bold",
+      "NotoSansDisplay-Regular",
+      "Open Sans",
+      "Palmer Lake-Print",
+      "Roboto Condensed",
+      "YahooSans-Regular",
+      "affirm",
+      "yotpo-widget-font"
+    ],
+    "fontUrls": {
+      "embedded": 2,
+      "absolute": 185,
+      "relativeResolved": 2,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T19:31:58.277Z"
+  },
+  "failureClass": "unknown",
+  "captureValidity": {
+    "ok": true,
+    "textLen": 5112,
+    "interactiveCount": 401,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 13233,
+    "consentMs": 0,
+    "scrollMs": 3402,
+    "captureMs": 3377
+  }
+}

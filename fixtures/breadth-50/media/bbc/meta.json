@@ -1,0 +1,16 @@
+{
+  "url": "https://www.bbc.com",
+  "name": "media__bbc",
+  "captured_at": "2026-06-20T19:33:00.205Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-20T19:32:34.716Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-20T19:33:00.205Z",
+  "expiresAt": "2026-09-18T19:33:00.205Z",
+  "refreezeReason": "manual"
+}

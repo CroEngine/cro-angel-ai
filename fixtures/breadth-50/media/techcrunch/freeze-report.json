@@ -1,0 +1,236 @@
+{
+  "ok": false,
+  "error": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 12792,
+    "screenshotKb": 1450,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": true,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 199,
+    "mhtmlKbBeforeFontEmbed": 5139,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Archivo",
+      "Arimo",
+      "Bitter",
+      "EB Garamond",
+      "Google Sans",
+      "Google Symbols",
+      "ICGrandMeltonRegular",
+      "Lato",
+      "Libre Franklin",
+      "Lora",
+      "Material Icons",
+      "Merriweather",
+      "Montserrat",
+      "Mukta",
+      "Muli",
+      "Nunito",
+      "Open Sans",
+      "Oswald",
+      "Playfair Display",
+      "Poppins",
+      "Raleway",
+      "Roboto",
+      "Roboto Condensed",
+      "Roboto Slab",
+      "Slabo 27px",
+      "Source Sans Pro",
+      "Ubuntu",
+      "Volkhov",
+      "XSans-Bold",
+      "XSans-Light",
+      "XSans-Medium",
+      "XSans-Regular",
+      "XSans-SemiBold",
+      "XSans-XBold",
+      "XSansSport-XBold",
+      "ftglyphs",
+      "nb_international_promono",
+      "nb_international_proregular",
+      "yellix"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 424,
+      "relativeResolved": 0,
+      "unresolvable": [
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3GUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3CUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3-UBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMawCUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMaxKUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3OUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3KUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3GUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3CUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3-UBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMawCUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMaxKUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3OUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3KUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3GUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3CUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3-UBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMawCUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMaxKUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3OUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3KUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+          "reason": "invalid-base",
+          "partIndex": 102
+        }
+      ]
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T19:32:38.393Z"
+  },
+  "failureClass": "unknown",
+  "captureValidity": {
+    "ok": true,
+    "textLen": 11575,
+    "interactiveCount": 332,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 62615,
+    "consentMs": 0,
+    "scrollMs": 4079,
+    "captureMs": 9436
+  }
+}

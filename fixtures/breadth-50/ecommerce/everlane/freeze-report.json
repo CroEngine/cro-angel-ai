@@ -1,0 +1,167 @@
+{
+  "ok": false,
+  "error": "[freeze] A2 gate: externalFontSrcCount=9 after rewrite (embedded=28, failures=8). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Bold.woff2, https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Book.woff2, https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Demi.woff2, https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Light.woff2, https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Medium.woff2, https://www.everlane.com/assets/fonts/maison/MaisonNeue-Book.woff2, https://www.everlane.com/assets/fonts/maison/MaisonNeue-Demi.woff2, https://www.everlane.com/assets/fonts/maison/MaisonNeue-Light.woff2. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 14328,
+    "screenshotKb": 0,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 9,
+    "unembeddedFontUrls": [
+      "https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Bold.woff2",
+      "https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Book.woff2",
+      "https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Demi.woff2",
+      "https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Light.woff2",
+      "https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Medium.woff2",
+      "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Book.woff2",
+      "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Demi.woff2",
+      "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Light.woff2"
+    ],
+    "embeddedFontCount": 28,
+    "mhtmlKbBeforeFontEmbed": 12903,
+    "fontFetchFailures": [
+      {
+        "url": "https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Demi.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Book.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Medium.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Bold.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Light.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Light.woff2",
+        "error": "HTTP 503"
+      },
+      {
+        "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Demi.woff2",
+        "error": "HTTP 503"
+      },
+      {
+        "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Book.woff2",
+        "error": "HTTP 503"
+      }
+    ],
+    "embeddedFamilies": [
+      "Assistant",
+      "GTStandard-M",
+      "Inter",
+      "Maison Neue",
+      "Maison Neue Book",
+      "Maison Neue Demi",
+      "Maison Neue Medium",
+      "MaisonNeue-Book",
+      "MaisonNeue-Demi",
+      "MaisonNeue-Light",
+      "MaisonNeue-Light2",
+      "Nunito Sans",
+      "Selva Script Pro"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 155,
+      "relativeResolved": 8,
+      "unresolvable": [
+        {
+          "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n4.9120912a469cad1cc292572851508ca49d12e768.woff2",
+          "reason": "invalid-base",
+          "partIndex": 263
+        },
+        {
+          "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n4.6e9875ce64e0fefcd3f4446b7ec9036b3ddd2985.woff",
+          "reason": "invalid-base",
+          "partIndex": 263
+        },
+        {
+          "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n7.bf44452348ec8b8efa3aa3068825305886b1c83c.woff2",
+          "reason": "invalid-base",
+          "partIndex": 263
+        },
+        {
+          "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n7.0c887fee83f6b3bda822f1150b912c72da0f7b64.woff",
+          "reason": "invalid-base",
+          "partIndex": 263
+        },
+        {
+          "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n4.9120912a469cad1cc292572851508ca49d12e768.woff2",
+          "reason": "invalid-base",
+          "partIndex": 263
+        },
+        {
+          "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n4.6e9875ce64e0fefcd3f4446b7ec9036b3ddd2985.woff",
+          "reason": "invalid-base",
+          "partIndex": 263
+        },
+        {
+          "original": "//www.everlane.com/cdn/shop/t/367/assets/MaisonNeue-Book.woff2?v=6561364127032074371758145521",
+          "reason": "invalid-base",
+          "partIndex": 265
+        },
+        {
+          "original": "//www.everlane.com/cdn/shop/t/367/assets/MaisonNeue-Demi.woff2?v=164685462144771994961758145522",
+          "reason": "invalid-base",
+          "partIndex": 265
+        },
+        {
+          "original": "//www.everlane.com/cdn/shop/t/367/assets/MaisonNeue-Medium.woff2?v=89292363418528524481758145523",
+          "reason": "invalid-base",
+          "partIndex": 265
+        },
+        {
+          "original": "//www.everlane.com/cdn/shop/t/367/assets/SelvaScriptPro-Light.woff2?v=20778119153255535891761171714",
+          "reason": "invalid-base",
+          "partIndex": 265
+        }
+      ]
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T19:31:34.491Z"
+  },
+  "failureClass": "font-embed-failed",
+  "captureValidity": {
+    "ok": true,
+    "textLen": 3168,
+    "interactiveCount": 870,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 14133,
+    "consentMs": 0,
+    "scrollMs": 3356,
+    "captureMs": 0
+  }
+}

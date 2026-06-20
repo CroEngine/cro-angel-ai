@@ -1,0 +1,90 @@
+{
+  "ok": false,
+  "error": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 19388,
+    "screenshotKb": 579,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 123,
+    "mhtmlKbBeforeFontEmbed": 6759,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "8Bit",
+      "ABC Ginto Discord",
+      "ABC Ginto Nord",
+      "ABC Ginto Nord Discord",
+      "ABC Ginto Normal",
+      "ABCGintoNormal-Bold",
+      "Abcgintodiscord",
+      "Abcgintodiscordnord",
+      "Abcgintodiscordnord-italic",
+      "Abcgintonord 800",
+      "Corinthia",
+      "Delicious Handrawn",
+      "Fraunces",
+      "Ggsans",
+      "Ggsansmono",
+      "Jellybean",
+      "Medieval",
+      "Modern",
+      "Munro",
+      "Noto Sans",
+      "Poppins",
+      "Press Start 2P",
+      "Sakura",
+      "Source Code Pro",
+      "Tempo",
+      "Vampyre",
+      "gg mono",
+      "gg sans",
+      "webflow-icons"
+    ],
+    "fontUrls": {
+      "embedded": 1,
+      "absolute": 95,
+      "relativeResolved": 51,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T19:33:19.486Z"
+  },
+  "failureClass": "unknown",
+  "captureValidity": {
+    "ok": true,
+    "textLen": 2116,
+    "interactiveCount": 137,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 10986,
+    "consentMs": 0,
+    "scrollMs": 3332,
+    "captureMs": 5017
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "url": "https://www.gymshark.com",
+  "name": "ecommerce__shopify-store-gymshark",
+  "captured_at": "2026-06-20T19:31:33.474Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-20T19:31:13.098Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-20T19:31:33.474Z",
+  "expiresAt": "2026-09-18T19:31:33.474Z",
+  "refreezeReason": "manual"
+}

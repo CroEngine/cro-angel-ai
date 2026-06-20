@@ -161,6 +161,7 @@ interface FreezeReport {
     | "auth-gate"
     | "geo-gate"
     | "mhtml-too-large"
+    | "externalize-unavailable"
     | "mhtml-capture-failed"
     | "font-embed-failed"
     | "unknown";
@@ -276,6 +277,13 @@ function classifyFailure(
   if (msg.includes("a2 gate")) return "font-embed-failed";
   if (msg.includes("mhtml") && (msg.includes("too large") || msg.includes("10 mb"))) {
     return "mhtml-too-large";
+  }
+  // Oversized capture routed to externalize, but the lovable-assets CLI isn't on
+  // PATH in this environment (sandbox/CI without the tool). The capture itself
+  // succeeded — this is an infra/storage gap, not a site or capture failure, so
+  // it gets its own class rather than landing in `unknown` (which trips RED).
+  if (msg.includes("externalize") && msg.includes("lovable-assets")) {
+    return "externalize-unavailable";
   }
   if (msg.includes("net::err_") || msg.includes("403") || msg.includes("blocked")) {
     return "anti-bot-blocked";

@@ -1,0 +1,91 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 4023,
+    "screenshotKb": 510,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 24,
+    "mhtmlKbBeforeFontEmbed": 3024,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Copernicus",
+      "CopernicusEmail",
+      "Montserrat",
+      "Nunito-Sans-Klaviyo-Hosted",
+      "Poppins-Klaviyo-Hosted",
+      "Ridgeway Sans",
+      "RidgewayEmail",
+      "patagonia-icons",
+      "swiper-icons"
+    ],
+    "fontUrls": {
+      "embedded": 3,
+      "absolute": 56,
+      "relativeResolved": 0,
+      "unresolvable": [
+        {
+          "original": "/on/demandware.static/Sites-patagonia-us-Site/-/default/dw39a31a35/fonts/RidgewaySans/RidgewaySans.woff2",
+          "reason": "invalid-base",
+          "partIndex": 70
+        },
+        {
+          "original": "/on/demandware.static/Sites-patagonia-us-Site/-/default/dwcc50899d/fonts/RidgewaySans/RidgewaySans.woff",
+          "reason": "invalid-base",
+          "partIndex": 70
+        },
+        {
+          "original": "/on/demandware.static/Sites-patagonia-us-Site/-/default/dwdc9a6bcd/fonts/GalaxieCopernicus/GalaxieCopernicus-Book.woff2",
+          "reason": "invalid-base",
+          "partIndex": 70
+        },
+        {
+          "original": "/on/demandware.static/Sites-patagonia-us-Site/-/default/dw60127f75/fonts/GalaxieCopernicus/GalaxieCopernicus-BookItalic.woff2",
+          "reason": "invalid-base",
+          "partIndex": 70
+        }
+      ]
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T19:31:35.918Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 3812,
+    "interactiveCount": 493,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 11346,
+    "consentMs": 0,
+    "scrollMs": 5157,
+    "captureMs": 1564
+  }
+}

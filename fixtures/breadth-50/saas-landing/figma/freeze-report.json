@@ -1,6 +1,6 @@
 {
   "ok": false,
-  "error": "[freeze] A2 gate: externalFontSrcCount=3 after rewrite (embedded=71, failures=3). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff, https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff, https://static.figma.com/webfont/1/Figma-Mono-Light-Oblique.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+  "error": "[freeze] A2 gate: externalFontSrcCount=2 after rewrite (embedded=72, failures=2). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff, https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
   "dryRun": false,
   "consent": {
     "selector": null,
@@ -11,18 +11,17 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 9308,
+    "mhtmlKb": 9463,
     "screenshotKb": 0,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
-    "externalFontSrcCount": 3,
+    "externalFontSrcCount": 2,
     "unembeddedFontUrls": [
       "https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff",
-      "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff",
-      "https://static.figma.com/webfont/1/Figma-Mono-Light-Oblique.woff"
+      "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff"
     ],
-    "embeddedFontCount": 71,
-    "mhtmlKbBeforeFontEmbed": 2938,
+    "embeddedFontCount": 72,
+    "mhtmlKbBeforeFontEmbed": 3058,
     "fontFetchFailures": [
       {
         "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff",
@@ -31,10 +30,6 @@
       {
         "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff",
         "error": "403 from proxy"
-      },
-      {
-        "url": "https://static.figma.com/webfont/1/Figma-Mono-Light-Oblique.woff",
-        "error": "proxy denied via header x-deny-reason"
       }
     ],
     "embeddedFamilies": [
@@ -71,7 +66,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:23:24.792Z"
+    "frozenAt": "2026-06-20T19:31:01.153Z"
   },
   "failureClass": "font-embed-failed",
   "captureValidity": {
@@ -83,9 +78,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 4631,
+    "gotoMs": 4100,
     "consentMs": 0,
-    "scrollMs": 4519,
+    "scrollMs": 4952,
     "captureMs": 0
   }
 }

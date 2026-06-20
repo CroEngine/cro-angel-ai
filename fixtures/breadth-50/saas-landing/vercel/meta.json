@@ -1,16 +1,16 @@
 {
   "url": "https://vercel.com",
   "name": "saas-landing__vercel",
-  "captured_at": "2026-06-20T19:22:43.361Z",
+  "captured_at": "2026-06-20T19:30:44.360Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T19:22:28.570Z",
+  "notes": "breadth-50 2026-06-20T19:30:25.031Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T19:22:43.361Z",
-  "expiresAt": "2026-09-18T19:22:43.361Z",
+  "frozenAt": "2026-06-20T19:30:44.360Z",
+  "expiresAt": "2026-09-18T19:30:44.360Z",
   "refreezeReason": "manual"
 }
