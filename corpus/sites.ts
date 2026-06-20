@@ -46,6 +46,17 @@ export const SITES: SiteSpec[] = [
     consentDismissCheck: "hidden",
     notes: "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort.",
   },
+  {
+    name: "microsoft",
+    url: "https://www.microsoft.com",
+    // Verifierat 2026-06-20 via --dry-run --screenshot-before-dismiss: ingen
+    // cookie-consent serveras mot Browserbase-IP (geo-gate, samma som HiBob).
+    // Sidan visar bara en marknadsförings-promo-bar (överst) + en "Store
+    // Assistant"-chatt-widget (nere höger) — ingen consent att dismissa. Lägg
+    // INTE till en selektor utan att först verifiera att en banner faktiskt
+    // rendras i capture-miljön.
+    notes: "Ingen consent-banner i Browserbase-region (geo-gate). Store Assistant-chatt-widget i egen iframe (bra test av huvuddokument-font-scoping). Capture körs utan consent-klick.",
+  },
   // Salesforce, Slack, Kry, Monday: ej tillagda än.
   // Salesforce testad 2026-06-10: ingen consent-banner mot Browserbase-IP
   // (samma geo-gate som HiBob) men page.mhtml blev 60 MB efter font-embed.
