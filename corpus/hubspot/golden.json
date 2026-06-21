@@ -4636,7 +4636,16 @@
     ]
   },
   "croScore": {
-    "extractorVersion": "1.2.1",
+    "extractorVersion": "1.3.0",
+    "pageType": "saas-landing",
+    "pageTypeSignals": [
+      "prices:0",
+      "commerceCtas:0",
+      "saasCtas:8",
+      "pricingNav:1",
+      "infoLinks:14",
+      "conversionCtas:8"
+    ],
     "overall": 91,
     "grade": "A",
     "dimensions": [

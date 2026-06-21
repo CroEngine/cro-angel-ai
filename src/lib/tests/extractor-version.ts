@@ -35,8 +35,14 @@
 //           = bra. value-prop väljer starkaste rubriken av hero.headline/h1
 //           (pageAudit-heuristiken plockar ibland en nav-label, t.ex. hubspots
 //           "Marketing", medan värdeerbjudandet ligger i h1).
+//   1.3.0 — page-type-medveten rubrik (adaptiv enkel rubrik). classifyPageType
+//           klassar deterministiskt saas-landing/ecommerce/content-media/generic
+//           från räknebara golden-signaler (priser, commerce/saas-CTAs, info-
+//           länkar). Samma sex dimensioner men cta-focus + value-prop + vikterna
+//           anpassas per typ — slutar mis-scora ecommerce (många shop-CTAs är
+//           normalt) och media (ingen hård CTA). Goldenen bär pageType + signals.
 
-export const EXTRACTOR_VERSION = "1.2.1" as const;
+export const EXTRACTOR_VERSION = "1.3.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

@@ -244,6 +244,85 @@ describe("croScore — friction & quality", () => {
   });
 });
 
+describe("croScore — page-type classification & adaptation", () => {
+  const shopEls = [
+    el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Add to cart" }),
+    el({ category: "cta_secondary", intent: "navigation", aboveFold: true, text: "Shop women" }),
+    el({ category: "link", intent: "information", text: "$95.00" }),
+    el({ category: "link", intent: "information", text: "$120.00" }),
+    el({ category: "link", intent: "information", text: "$75.00" }),
+  ];
+
+  test("classifies ecommerce from prices + shop CTAs", () => {
+    expect(scoreCro(golden({ elements: shopEls })).pageType).toBe("ecommerce");
+  });
+
+  test("ecommerce: multiple shop CTAs are NOT choice overload", () => {
+    const s = scoreCro(golden({ elements: shopEls }));
+    expect(s.pageType).toBe("ecommerce");
+    expect(dim(s, "cta-focus").score).toBe(100); // would have been penalized under saas rubric
+  });
+
+  test("ecommerce: image-led hero (no headline) is acceptable, not critical", () => {
+    const s = scoreCro(golden({ elements: shopEls, pageAudit: { hero: { headline: "" } } }));
+    expect(dim(s, "value-prop").score).toBe(80);
+    expect(dim(s, "value-prop").findings[0].severity).toBe("good");
+  });
+
+  test("classifies saas-landing from demo/trial CTAs + pricing nav", () => {
+    const s = scoreCro(
+      golden({
+        elements: [
+          el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Get a demo" }),
+          el({ category: "nav_item", intent: "navigation", aboveFold: true, text: "Pricing" }),
+        ],
+      }),
+    );
+    expect(s.pageType).toBe("saas-landing");
+  });
+
+  test("classifies content-media from many info links + few CTAs; missing CTA isn't critical", () => {
+    const articles = Array.from({ length: 25 }, (_, i) =>
+      el({ category: "link", intent: "information", text: `Headline article ${i}` }),
+    );
+    const s = scoreCro(golden({ elements: articles }));
+    expect(s.pageType).toBe("content-media");
+    // no conversion CTA, but content pages aren't failed for it (60, not 20)
+    expect(dim(s, "cta-focus").score).toBe(60);
+  });
+
+  test("content-media with a subscribe CTA scores the conversion path full", () => {
+    const els = [
+      ...Array.from({ length: 25 }, (_, i) => el({ category: "link", intent: "information", text: `Story ${i}` })),
+      el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Subscribe" }),
+    ];
+    const s = scoreCro(golden({ elements: els }));
+    expect(s.pageType).toBe("content-media");
+    expect(dim(s, "cta-focus").score).toBe(100);
+  });
+
+  test("weights adapt to page type (ecommerce value-prop weight is lower)", () => {
+    const ecom = scoreCro(golden({ elements: shopEls }));
+    expect(dim(ecom, "value-prop").weight).toBe(0.1);
+    const saas = scoreCro(
+      golden({ elements: [el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Get a demo" })] }),
+    );
+    expect(dim(saas, "value-prop").weight).toBe(0.2);
+  });
+
+  test("per-type weights always sum to 1.0", () => {
+    for (const g of [
+      golden({ elements: shopEls }),
+      golden({ elements: [el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Get a demo" })] }),
+      golden({ elements: Array.from({ length: 25 }, () => el({ category: "link", intent: "information" })) }),
+      golden({}),
+    ]) {
+      const s = scoreCro(g);
+      expect(s.dimensions.reduce((a, d) => a + d.weight, 0)).toBeCloseTo(1.0, 6);
+    }
+  });
+});
+
 describe("croScore — end to end", () => {
   test("a well-built landing page grades high", () => {
     const s = scoreCro(

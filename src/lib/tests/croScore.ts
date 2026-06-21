@@ -67,9 +67,17 @@ export interface CroDimension {
   findings: CroFinding[];
 }
 
+export type PageType =
+  | "saas-landing"
+  | "ecommerce"
+  | "content-media"
+  | "generic";
+
 export interface CroScore {
   extractorVersion: string;
-  overall: number; // 0–100, weighted
+  pageType: PageType;
+  pageTypeSignals: string[]; // the deterministic counts that drove classification
+  overall: number; // 0–100, weighted (weights adapt to pageType)
   grade: "A" | "B" | "C" | "D" | "F";
   dimensions: CroDimension[];
 }
@@ -101,6 +109,73 @@ function evidenceTexts(els: ScoredElement[], cap = 6): string[] {
     .slice(0, cap);
 }
 
+// --- page-type classification (deterministic) --------------------------------
+// CRO models differ by page type, so the rubric adapts. Classify from countable
+// signals already in the golden — no LLM, no Date/random. Ecommerce is gated on
+// PRICES (a lone "buy" with no prices isn't a store); content-media on a high
+// info-link-to-CTA ratio; saas-landing on demo/trial/signup CTAs + pricing nav.
+const PRICE_RX = /(?:[$£€]\s?\d|\b\d+[.,]\d{2}\b)/;
+const COMMERCE_CTA_RX =
+  /\b(add to (cart|bag|basket)|shop\b|buy now|buy\b|checkout|add to cart)/i;
+const SAAS_CTA_RX =
+  /\b(demo|free trial|get started|start (for )?free|sign ?up|book a (demo|call))/i;
+const SUBSCRIBE_RX = /\b(subscribe|register|sign ?up|create (an )?account|join)/i;
+
+export interface PageTypeResult {
+  pageType: PageType;
+  signals: string[];
+  counts: {
+    prices: number;
+    commerceCtas: number;
+    saasCtas: number;
+    pricingNav: number;
+    infoLinks: number;
+    conversionCtas: number;
+  };
+}
+
+export function classifyPageType(elements: ScoredElement[]): PageTypeResult {
+  let prices = 0,
+    commerceCtas = 0,
+    saasCtas = 0,
+    pricingNav = 0,
+    infoLinks = 0,
+    conversionCtas = 0;
+  for (const e of elements) {
+    const t = (e.text || "").toLowerCase();
+    if (PRICE_RX.test(t)) prices++;
+    const ctaish = isCtaish(e);
+    if (ctaish && isConversion(e)) conversionCtas++;
+    if (ctaish && COMMERCE_CTA_RX.test(t)) commerceCtas++;
+    if (ctaish && SAAS_CTA_RX.test(t)) saasCtas++;
+    if (e.category === "nav_item" && /pricing/i.test(t)) pricingNav++;
+    if (e.category === "link" && e.intent === "information") infoLinks++;
+  }
+  // Ecommerce CTAs only count as a signal when prices corroborate a store.
+  const tally: Record<Exclude<PageType, "generic">, number> = {
+    ecommerce: prices * 1.0 + (prices >= 2 ? commerceCtas * 2.0 : 0),
+    "saas-landing": saasCtas * 2.0 + pricingNav * 1.5,
+    "content-media":
+      Math.min(infoLinks, 40) * 0.15 + (conversionCtas <= 2 ? 1.5 : 0),
+  };
+  const ranked = (
+    Object.entries(tally) as [Exclude<PageType, "generic">, number][]
+  ).sort((a, b) => b[1] - a[1]);
+  const [topType, topScore] = ranked[0];
+  const pageType: PageType = topScore >= 2 ? topType : "generic";
+  const counts = { prices, commerceCtas, saasCtas, pricingNav, infoLinks, conversionCtas };
+  const signals = Object.entries(counts).map(([k, v]) => `${k}:${v}`);
+  return { pageType, signals, counts };
+}
+
+// Per-type weights — same six dimensions, reweighted to the page's CRO model.
+const WEIGHTS_BY_TYPE: Record<PageType, Record<string, number>> = {
+  "saas-landing": { "cta-focus": 0.25, "visual-hierarchy": 0.2, "value-prop": 0.2, trust: 0.15, friction: 0.1, quality: 0.1 },
+  generic: { "cta-focus": 0.25, "visual-hierarchy": 0.2, "value-prop": 0.2, trust: 0.15, friction: 0.1, quality: 0.1 },
+  ecommerce: { "cta-focus": 0.2, "visual-hierarchy": 0.15, "value-prop": 0.1, trust: 0.2, friction: 0.15, quality: 0.2 },
+  "content-media": { "cta-focus": 0.1, "visual-hierarchy": 0.1, "value-prop": 0.25, trust: 0.15, friction: 0.1, quality: 0.3 },
+};
+
 // --- dimensions --------------------------------------------------------------
 // Each returns {score, findings}; the caller stamps id/label/weight.
 
@@ -123,10 +198,75 @@ function distinctConversionCtas(visible: ScoredElement[]): ScoredElement[] {
   return out;
 }
 
-function scoreCtaFocus(visible: ScoredElement[]): {
-  score: number;
-  findings: CroFinding[];
-} {
+function scoreCtaFocus(
+  visible: ScoredElement[],
+  pageType: PageType,
+): { score: number; findings: CroFinding[] } {
+  if (pageType === "ecommerce") {
+    // Multiple shop/category entry points are by design — never "choice
+    // overload". Reward a clear path to purchase above the fold.
+    const shop = visible.filter(
+      (e) =>
+        e.aboveFold &&
+        isCtaish(e) &&
+        (isConversion(e) || COMMERCE_CTA_RX.test((e.text || "").toLowerCase())),
+    );
+    if (shop.length === 0) {
+      return {
+        score: 40,
+        findings: [
+          {
+            severity: "warn",
+            message:
+              "No shop / add-to-cart action above the fold — the path to purchase isn't immediate.",
+          },
+        ],
+      };
+    }
+    return {
+      score: 100,
+      findings: [
+        {
+          severity: "good",
+          message: `Clear shopping entry points above the fold (${shop.length}).`,
+          evidence: evidenceTexts(shop),
+        },
+      ],
+    };
+  }
+  if (pageType === "content-media") {
+    // The conversion is subscribe/register; absence isn't a hard failure for a
+    // content page, but a capture point helps.
+    const subscribe = visible.filter(
+      (e) =>
+        isCtaish(e) &&
+        (SUBSCRIBE_RX.test((e.text || "").toLowerCase()) || isConversion(e)),
+    );
+    if (subscribe.length > 0) {
+      return {
+        score: 100,
+        findings: [
+          {
+            severity: "good",
+            message:
+              "A subscribe / register action is present — the engagement-to-conversion path exists.",
+            evidence: evidenceTexts(subscribe),
+          },
+        ],
+      };
+    }
+    return {
+      score: 60,
+      findings: [
+        {
+          severity: "warn",
+          message:
+            "No subscribe / register CTA found — content pages still benefit from one capture point.",
+        },
+      ],
+    };
+  }
+  // saas-landing / generic: a single dominant conversion action is ideal.
   const distinct = distinctConversionCtas(visible);
   const n = distinct.length;
   const evidence = evidenceTexts(distinct);
@@ -285,13 +425,40 @@ function pickHeadline(audit: NormalizedPageAuditLike): string {
   return pool.slice().sort((a, b) => b.length - a.length)[0];
 }
 
-function scoreValueProp(audit: NormalizedPageAuditLike): {
-  score: number;
-  findings: CroFinding[];
-} {
+function scoreValueProp(
+  audit: NormalizedPageAuditLike,
+  pageType: PageType,
+): { score: number; findings: CroFinding[] } {
   const headline = pickHeadline(audit);
   const h1Count = audit.headings?.h1Count ?? 0;
   const evidence = headline ? [headline] : [];
+
+  if (pageType === "ecommerce") {
+    // Stores lead with merchandising imagery; a text headline is a bonus, not a
+    // requirement — don't hard-fail a missing/short one.
+    if (headline && headline.length >= 10 && !GENERIC_HEADLINE_RX.test(headline)) {
+      return {
+        score: 100,
+        findings: [
+          {
+            severity: "good",
+            message: `Headline reinforces the merchandising ("${headline}").`,
+            evidence,
+          },
+        ],
+      };
+    }
+    return {
+      score: 80,
+      findings: [
+        {
+          severity: "good",
+          message:
+            "Image-led hero (standard for ecommerce) — no strong text value-prop, acceptable for this page type.",
+        },
+      ],
+    };
+  }
 
   if (!headline) {
     return {
@@ -469,15 +636,6 @@ function scoreQuality(audit: NormalizedPageAuditLike): {
 }
 
 // --- public API --------------------------------------------------------------
-const WEIGHTS = {
-  ctaFocus: 0.25,
-  visualHierarchy: 0.2,
-  valueProp: 0.2,
-  trust: 0.15,
-  friction: 0.1,
-  quality: 0.1,
-} as const;
-
 function gradeFor(overall: number): CroScore["grade"] {
   if (overall >= 90) return "A";
   if (overall >= 75) return "B";
@@ -493,30 +651,23 @@ export function scoreCro(golden: GoldenLike): CroScore {
   const visible = elements.filter((e) => e.visible !== false);
   const audit = golden.pageAudit ?? {};
 
-  const cta = scoreCtaFocus(visible);
+  const { pageType, signals } = classifyPageType(visible);
+  const w = WEIGHTS_BY_TYPE[pageType];
+
+  const cta = scoreCtaFocus(visible, pageType);
   const hier = scoreVisualHierarchy(visible);
-  const vp = scoreValueProp(audit);
+  const vp = scoreValueProp(audit, pageType);
   const trust = scoreTrust(audit);
   const friction = scoreFriction(visible);
   const quality = scoreQuality(audit);
 
   const dimensions: CroDimension[] = [
-    { id: "cta-focus", label: "CTA Focus", weight: WEIGHTS.ctaFocus, ...cta },
-    {
-      id: "visual-hierarchy",
-      label: "Visual Hierarchy",
-      weight: WEIGHTS.visualHierarchy,
-      ...hier,
-    },
-    {
-      id: "value-prop",
-      label: "Value Proposition",
-      weight: WEIGHTS.valueProp,
-      ...vp,
-    },
-    { id: "trust", label: "Trust Signals", weight: WEIGHTS.trust, ...trust },
-    { id: "friction", label: "Friction", weight: WEIGHTS.friction, ...friction },
-    { id: "quality", label: "Page Quality", weight: WEIGHTS.quality, ...quality },
+    { id: "cta-focus", label: "CTA Focus", weight: w["cta-focus"], ...cta },
+    { id: "visual-hierarchy", label: "Visual Hierarchy", weight: w["visual-hierarchy"], ...hier },
+    { id: "value-prop", label: "Value Proposition", weight: w["value-prop"], ...vp },
+    { id: "trust", label: "Trust Signals", weight: w.trust, ...trust },
+    { id: "friction", label: "Friction", weight: w.friction, ...friction },
+    { id: "quality", label: "Page Quality", weight: w.quality, ...quality },
   ];
 
   const weightSum = dimensions.reduce((s, d) => s + d.weight, 0);
@@ -526,6 +677,8 @@ export function scoreCro(golden: GoldenLike): CroScore {
 
   return {
     extractorVersion: EXTRACTOR_VERSION,
+    pageType,
+    pageTypeSignals: signals,
     overall,
     grade: gradeFor(overall),
     dimensions,
