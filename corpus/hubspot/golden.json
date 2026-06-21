@@ -4634,5 +4634,101 @@
       "testimonials",
       "content"
     ]
+  },
+  "croScore": {
+    "extractorVersion": "1.2.0",
+    "overall": 69,
+    "grade": "C",
+    "dimensions": [
+      {
+        "id": "cta-focus",
+        "label": "CTA Focus",
+        "weight": 0.25,
+        "score": 40,
+        "findings": [
+          {
+            "severity": "warn",
+            "message": "4 conversion CTAs above the fold dilute focus (choice overload).",
+            "evidence": [
+              "Get a demo of HubSpot's premium software",
+              "Get started free with HubSpot's free tools",
+              "Get a demo of HubSpot's premium software",
+              "Get started free with HubSpot's free tools"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "visual-hierarchy",
+        "label": "Visual Hierarchy",
+        "weight": 0.2,
+        "score": 75,
+        "findings": [
+          {
+            "severity": "warn",
+            "message": "The conversion CTA is prominent but not the single strongest visual element.",
+            "evidence": [
+              "primary CTA salience 40 vs page max 50"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "value-prop",
+        "label": "Value Proposition",
+        "weight": 0.2,
+        "score": 50,
+        "findings": [
+          {
+            "severity": "warn",
+            "message": "Hero headline is weak or generic (\"Marketing\") — it should state a specific value.",
+            "evidence": [
+              "Marketing"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trust",
+        "label": "Trust Signals",
+        "weight": 0.15,
+        "score": 100,
+        "findings": [
+          {
+            "severity": "good",
+            "message": "3 trust signals, 1 above the fold.",
+            "evidence": [
+              "customer_logos: 1",
+              "review_badges: 1",
+              "testimonial: 1"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "friction",
+        "label": "Friction",
+        "weight": 0.1,
+        "score": 100,
+        "findings": [
+          {
+            "severity": "good",
+            "message": "Focused navigation (5 above-fold nav items) — minimal distraction from the primary action."
+          }
+        ]
+      },
+      {
+        "id": "quality",
+        "label": "Page Quality",
+        "weight": 0.1,
+        "score": 88,
+        "findings": [
+          {
+            "severity": "warn",
+            "message": "23/99 images missing alt text (77% coverage)."
+          }
+        ]
+      }
+    ]
   }
 }

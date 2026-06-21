@@ -24,8 +24,13 @@
 //           extractor-sidigt. Synligt-bara element är oförändrade. normalize
 //           bär visible per element + visibleCount/hiddenCount i collect-rollup.
 //           Goldens omblessas (count stiger, ny visible-axel).
+//   1.2.0 — scoring-lager. croScore.ts: deterministisk CRO-rubrik (cta-focus,
+//           visual-hierarchy, value-prop, trust, friction, quality) som ren
+//           funktion av den normaliserade goldenen. Goldenen bär nu ett
+//           croScore-block ("the golden has finished scoring") — regressionstestat
+//           av samma snapshot-diff. Stämpeln bärs på scoren.
 
-export const EXTRACTOR_VERSION = "1.1.0" as const;
+export const EXTRACTOR_VERSION = "1.2.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
