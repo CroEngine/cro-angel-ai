@@ -151,9 +151,13 @@ export function classifyPageType(elements: ScoredElement[]): PageTypeResult {
     if (e.category === "nav_item" && /pricing/i.test(t)) pricingNav++;
     if (e.category === "link" && e.intent === "information") infoLinks++;
   }
-  // Ecommerce CTAs only count as a signal when prices corroborate a store.
+  // Ecommerce is indicated two independent ways: prices in element text, OR a
+  // wall of shop/add-to-cart CTAs (≥3). Prices often live in non-interactive
+  // product-card text we don't collect (allbirds: 0 price hits but 18 shop
+  // CTAs), so a lone "buy" stays weak while a real store's many shop entry
+  // points classify decisively without needing price text.
   const tally: Record<Exclude<PageType, "generic">, number> = {
-    ecommerce: prices * 1.0 + (prices >= 2 ? commerceCtas * 2.0 : 0),
+    ecommerce: prices * 1.0 + (commerceCtas >= 3 ? commerceCtas * 1.0 : 0),
     "saas-landing": saasCtas * 2.0 + pricingNav * 1.5,
     "content-media":
       Math.min(infoLinks, 40) * 0.15 + (conversionCtas <= 2 ? 1.5 : 0),

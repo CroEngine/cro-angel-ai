@@ -257,6 +257,18 @@ describe("croScore — page-type classification & adaptation", () => {
     expect(scoreCro(golden({ elements: shopEls })).pageType).toBe("ecommerce");
   });
 
+  test("classifies ecommerce from many shop CTAs even with no captured prices (the allbirds case)", () => {
+    const shopWall = Array.from({ length: 8 }, (_, i) =>
+      el({ category: "cta_secondary", intent: "navigation", aboveFold: i < 3, text: i % 2 ? "Shop men" : "Shop women" }),
+    );
+    expect(scoreCro(golden({ elements: shopWall })).pageType).toBe("ecommerce");
+  });
+
+  test("a lone 'buy' with no prices or shop wall is NOT ecommerce", () => {
+    const s = scoreCro(golden({ elements: [el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Buy now" })] }));
+    expect(s.pageType).not.toBe("ecommerce");
+  });
+
   test("ecommerce: multiple shop CTAs are NOT choice overload", () => {
     const s = scoreCro(golden({ elements: shopEls }));
     expect(s.pageType).toBe("ecommerce");
