@@ -35,7 +35,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:34:34.443Z"
+    "frozenAt": "2026-06-20T20:41:54.228Z"
   },
   "failureClass": "captured-wrong-page",
   "captureValidity": {
@@ -47,9 +47,9 @@
     "reason": "text-too-short"
   },
   "timing": {
-    "gotoMs": 7142,
+    "gotoMs": 7716,
     "consentMs": 0,
-    "scrollMs": 3330,
+    "scrollMs": 3363,
     "captureMs": 0
   }
 }

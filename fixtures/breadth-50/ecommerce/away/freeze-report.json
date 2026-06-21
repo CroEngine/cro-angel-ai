@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 9250,
-    "screenshotKb": 707,
+    "mhtmlKb": 9223,
+    "screenshotKb": 719,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 57,
-    "mhtmlKbBeforeFontEmbed": 3466,
+    "mhtmlKbBeforeFontEmbed": 3439,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Akkurat",
@@ -138,21 +138,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:32:12.346Z"
+    "frozenAt": "2026-06-20T20:37:56.140Z"
   },
-  "failureClass": "unknown",
+  "failureClass": "externalize-unavailable",
   "captureValidity": {
     "ok": true,
-    "textLen": 4514,
-    "interactiveCount": 565,
+    "textLen": 4589,
+    "interactiveCount": 572,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 13026,
+    "gotoMs": 16902,
     "consentMs": 0,
-    "scrollMs": 4125,
-    "captureMs": 5053
+    "scrollMs": 4209,
+    "captureMs": 2882
   }
 }

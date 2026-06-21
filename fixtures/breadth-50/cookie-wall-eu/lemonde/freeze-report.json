@@ -1,305 +1,27 @@
 {
   "ok": false,
-  "error": "[freeze] A2 gate: externalFontSrcCount=10 after rewrite (embedded=0, failures=38). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Regular-Web.woff2, https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Regular-Web.woff, https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Medium-Web.woff2, https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Medium-Web.woff, https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Semibold-Web.woff2, https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Semibold-Web.woff, https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Medium-Web.woff2, https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Medium-Web.woff, https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Semibold-Web.woff2, https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Semibold-Web.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+  "error": "[freeze] consent-selektor blev aldrig synlig inom 5s: .gdpr-lmd-button--bi (cookie-wall-eu__lemonde). Stale selektor, A/B-variant, eller banner laddade aldrig. Verifiera i --dry-run med --screenshot-before-dismiss.",
   "dryRun": false,
   "consent": {
-    "selector": null,
-    "dismissCheck": null,
+    "selector": ".gdpr-lmd-button--bi",
+    "dismissCheck": "detached",
     "matchCountBeforeClick": null,
     "visibleBeforeClick": null,
     "dismissedAfterMs": null,
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 1678,
+    "mhtmlKb": 0,
     "screenshotKb": 0,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
-    "externalFontSrcCount": 10,
-    "unembeddedFontUrls": [
-      "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Regular-Web.woff2",
-      "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Regular-Web.woff",
-      "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Medium-Web.woff2",
-      "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Medium-Web.woff",
-      "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Semibold-Web.woff2",
-      "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Semibold-Web.woff",
-      "https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Medium-Web.woff2",
-      "https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Medium-Web.woff",
-      "https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Semibold-Web.woff2",
-      "https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Semibold-Web.woff"
-    ],
-    "embeddedFontCount": 0,
-    "mhtmlKbBeforeFontEmbed": 1678,
-    "fontFetchFailures": [
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Bold-Web.07e8c5aa145a2514.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Regular-Web.2f89fff3877253bf.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Semibold-Web.38e59055f09189d1.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Semibold-Web.f7d5c05af8370693.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_800.a5e223e59d84d843.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Medium-Web.3a8ed51cac63c624.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Semibold-Web.dffeaf9c2da6e578.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/variables/the-antiqua-b/TheAntiquaB-LeMonde-Italic.a9ec17f6e3f905ea.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Medium-Web.925dd64435af08a3.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Medium-Web.133dea79c01db68e.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_500.6cb0e24e52ffcbe1.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_500_italic.628901d73211b367.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_500_italic.3ddfddc5c0c16085.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_700_i.6b6f83a7926a4477.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_500.fb7e2b2d80d0fbfc.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_700.117cddd27e9cd053.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/fette-engschrift/FetteEngschrift-webfont.3495353b8bacdbc1.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/fette-engschrift/FetteEngschrift-webfont.d69c710b1a71f006.ttf",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_800.ae7988b2d6c42dc2.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/variables/the-antiqua-b/TheAntiquaB-LeMonde.b353d5d190089f96.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Semibold-Web.22ed62e40765ed70.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB-W6SemiBold.8c714965181aac76.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_700.2aaccac4935cf3d8.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_700_i.714532583c4a9c72.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Medium-Web.ac7bf37b26f16e97.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Regular-Web.cdb3946e94041532.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Bold-Web.f524a1551a2cdcfa.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://www.lemonde.fr/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB-W6SemiBold.6211aff6082c0482.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Regular-Web.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Semibold-Web.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Medium-Web.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Regular-Web.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Medium-Web.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Semibold-Web.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Medium-Web.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Semibold-Web.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Semibold-Web.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Medium-Web.woff2",
-        "error": "HTTP 403"
-      }
-    ],
-    "embeddedFamilies": [
-      "Fette Engschrift",
-      "Marr Sans",
-      "Marr Sans Condensed",
-      "Marr Sans Condensed Bold",
-      "Marr Sans Condensed Semibold",
-      "Marr Sans Condensed cmp",
-      "Marr Sans Medium",
-      "Marr Sans Semibold",
-      "Marr Sans cmp",
-      "The Antiqua B",
-      "The Antiqua B Bold",
-      "The Antiqua B Bold Italic",
-      "The Antiqua B ExtraBold",
-      "The Antiqua B Italic",
-      "The Antiqua B Medium",
-      "The Antiqua B SemiBold",
-      "The Antiqua B standard"
-    ],
-    "fontUrls": {
-      "embedded": 0,
-      "absolute": 10,
-      "relativeResolved": 86,
-      "unresolvable": [
-        {
-          "original": "/en/bucket/resources/english/front/fonts/variables/the-antiqua-b/TheAntiquaB-LeMonde.b353d5d190089f96.woff2",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/variables/the-antiqua-b/TheAntiquaB-LeMonde.b353d5d190089f96.woff2",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_800.a5e223e59d84d843.woff2",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_800.ae7988b2d6c42dc2.woff",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_800.a5e223e59d84d843.woff2",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_800.ae7988b2d6c42dc2.woff",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Regular-Web.2f89fff3877253bf.woff2",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Regular-Web.cdb3946e94041532.woff",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Medium-Web.ac7bf37b26f16e97.woff2",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Medium-Web.925dd64435af08a3.woff",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Medium-Web.ac7bf37b26f16e97.woff2",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Medium-Web.925dd64435af08a3.woff",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Medium-Web.133dea79c01db68e.woff2",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Medium-Web.3a8ed51cac63c624.woff",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Semibold-Web.22ed62e40765ed70.woff2",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Semibold-Web.38e59055f09189d1.woff",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Semibold-Web.22ed62e40765ed70.woff2",
-          "reason": "invalid-base",
-          "partIndex": 26
-        },
-        {
-          "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Semibold-Web.38e59055f09189d1.woff",
-          "reason": "invalid-base",
-          "partIndex": 26
-        }
-      ]
-    },
+    "externalFontSrcCount": null,
+    "unembeddedFontUrls": null,
+    "embeddedFontCount": null,
+    "mhtmlKbBeforeFontEmbed": null,
+    "fontFetchFailures": null,
+    "embeddedFamilies": null,
+    "fontUrls": null,
     "externalized": false,
     "externalAssetUrl": null,
     "externalAssetSha256": null,
@@ -313,21 +35,14 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:34:07.586Z"
+    "frozenAt": "2026-06-20T20:40:55.740Z"
   },
-  "failureClass": "font-embed-failed",
-  "captureValidity": {
-    "ok": true,
-    "textLen": 20475,
-    "interactiveCount": 399,
-    "heroHasMeaningfulHeading": true,
-    "challengeMarkersFound": [],
-    "reason": null
-  },
+  "failureClass": "consent-missed",
+  "captureValidity": null,
   "timing": {
-    "gotoMs": 4846,
+    "gotoMs": 4811,
     "consentMs": 0,
-    "scrollMs": 3345,
+    "scrollMs": 0,
     "captureMs": 0
   }
 }

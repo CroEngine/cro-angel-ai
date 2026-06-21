@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 4929,
-    "screenshotKb": 1171,
+    "mhtmlKb": 5106,
+    "screenshotKb": 1164,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
-    "embeddedFontCount": 27,
-    "mhtmlKbBeforeFontEmbed": 3354,
+    "embeddedFontCount": 31,
+    "mhtmlKbBeforeFontEmbed": 3370,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Beretta",
@@ -33,11 +33,12 @@
       "Raster",
       "Saans",
       "SaansMono",
-      "Serrif"
+      "Serrif",
+      "intercom-font"
     ],
     "fontUrls": {
       "embedded": 0,
-      "absolute": 0,
+      "absolute": 8,
       "relativeResolved": 27,
       "unresolvable": []
     },
@@ -54,7 +55,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:30:47.007Z"
+    "frozenAt": "2026-06-20T20:36:43.124Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -66,9 +67,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 4821,
+    "gotoMs": 5080,
     "consentMs": 0,
-    "scrollMs": 10760,
-    "captureMs": 46711
+    "scrollMs": 6618,
+    "captureMs": 48597
   }
 }

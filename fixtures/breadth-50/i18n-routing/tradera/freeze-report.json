@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 8528,
-    "screenshotKb": 1055,
+    "mhtmlKb": 8620,
+    "screenshotKb": 1092,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 14,
-    "mhtmlKbBeforeFontEmbed": 7367,
+    "mhtmlKbBeforeFontEmbed": 7460,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "HansenGrotesque",
@@ -43,21 +43,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:34:04.783Z"
+    "frozenAt": "2026-06-20T20:40:50.372Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 34970,
-    "interactiveCount": 1593,
+    "textLen": 33747,
+    "interactiveCount": 1505,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 7555,
+    "gotoMs": 9077,
     "consentMs": 0,
-    "scrollMs": 6917,
-    "captureMs": 11003
+    "scrollMs": 5321,
+    "captureMs": 8886
   }
 }

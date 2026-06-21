@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 5414,
+    "mhtmlKb": 5444,
     "screenshotKb": 577,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 28,
-    "mhtmlKbBeforeFontEmbed": 4565,
+    "mhtmlKbBeforeFontEmbed": 4596,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Anton",
@@ -48,7 +48,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:31:15.039Z"
+    "frozenAt": "2026-06-20T20:37:16.723Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -60,9 +60,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 12643,
+    "gotoMs": 13905,
     "consentMs": 0,
-    "scrollMs": 3417,
-    "captureMs": 2291
+    "scrollMs": 3347,
+    "captureMs": 3180
   }
 }

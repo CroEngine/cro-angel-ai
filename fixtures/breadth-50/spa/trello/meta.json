@@ -1,16 +1,16 @@
 {
   "url": "https://trello.com",
   "name": "spa__trello",
-  "captured_at": "2026-06-20T19:33:20.219Z",
+  "captured_at": "2026-06-20T20:39:39.373Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T19:33:00.406Z",
+  "notes": "breadth-50 2026-06-20T20:39:20.715Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T19:33:20.219Z",
-  "expiresAt": "2026-09-18T19:33:20.219Z",
+  "frozenAt": "2026-06-20T20:39:39.373Z",
+  "expiresAt": "2026-09-18T20:39:39.373Z",
   "refreezeReason": "manual"
 }

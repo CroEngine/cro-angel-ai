@@ -70,9 +70,9 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:33:19.486Z"
+    "frozenAt": "2026-06-20T20:39:54.475Z"
   },
-  "failureClass": "unknown",
+  "failureClass": "externalize-unavailable",
   "captureValidity": {
     "ok": true,
     "textLen": 2116,
@@ -82,9 +82,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 10986,
+    "gotoMs": 9856,
     "consentMs": 0,
-    "scrollMs": 3332,
-    "captureMs": 5017
+    "scrollMs": 3385,
+    "captureMs": 5528
   }
 }

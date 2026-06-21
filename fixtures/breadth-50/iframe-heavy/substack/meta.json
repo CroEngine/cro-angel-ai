@@ -1,16 +1,16 @@
 {
   "url": "https://substack.com",
   "name": "iframe-heavy__substack",
-  "captured_at": "2026-06-20T19:34:57.160Z",
+  "captured_at": "2026-06-20T20:42:22.924Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T19:34:38.186Z",
+  "notes": "breadth-50 2026-06-20T20:42:00.352Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T19:34:57.160Z",
-  "expiresAt": "2026-09-18T19:34:57.160Z",
+  "frozenAt": "2026-06-20T20:42:22.924Z",
+  "expiresAt": "2026-09-18T20:42:22.924Z",
   "refreezeReason": "manual"
 }

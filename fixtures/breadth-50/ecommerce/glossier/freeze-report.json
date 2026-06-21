@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 3843,
-    "screenshotKb": 542,
+    "mhtmlKb": 3848,
+    "screenshotKb": 532,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 100,
-    "mhtmlKbBeforeFontEmbed": 1679,
+    "mhtmlKbBeforeFontEmbed": 1684,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Apercu",
@@ -49,21 +49,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:31:57.996Z"
+    "frozenAt": "2026-06-20T20:37:50.243Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 5079,
+    "textLen": 4829,
     "interactiveCount": 453,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 12461,
+    "gotoMs": 28367,
     "consentMs": 0,
-    "scrollMs": 3478,
-    "captureMs": 2123
+    "scrollMs": 3635,
+    "captureMs": 3045
   }
 }

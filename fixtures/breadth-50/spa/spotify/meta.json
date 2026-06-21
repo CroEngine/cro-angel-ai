@@ -1,16 +1,16 @@
 {
   "url": "https://www.spotify.com",
   "name": "spa__spotify",
-  "captured_at": "2026-06-20T19:33:42.382Z",
+  "captured_at": "2026-06-20T20:40:29.923Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T19:33:20.430Z",
+  "notes": "breadth-50 2026-06-20T20:40:09.291Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T19:33:42.382Z",
-  "expiresAt": "2026-09-18T19:33:42.382Z",
+  "frozenAt": "2026-06-20T20:40:29.923Z",
+  "expiresAt": "2026-09-18T20:40:29.923Z",
   "refreezeReason": "manual"
 }

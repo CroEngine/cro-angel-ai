@@ -1,6 +1,6 @@
 {
   "ok": false,
-  "error": "[freeze] A2 gate: externalFontSrcCount=2 after rewrite (embedded=72, failures=2). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff, https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+  "error": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
   "dryRun": false,
   "consent": {
     "selector": null,
@@ -11,8 +11,8 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 9463,
-    "screenshotKb": 0,
+    "mhtmlKb": 9296,
+    "screenshotKb": 680,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 2,
@@ -21,7 +21,7 @@
       "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff"
     ],
     "embeddedFontCount": 72,
-    "mhtmlKbBeforeFontEmbed": 3058,
+    "mhtmlKbBeforeFontEmbed": 2892,
     "fontFetchFailures": [
       {
         "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff",
@@ -66,21 +66,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:31:01.153Z"
+    "frozenAt": "2026-06-20T20:36:57.725Z"
   },
-  "failureClass": "font-embed-failed",
+  "failureClass": "externalize-unavailable",
   "captureValidity": {
     "ok": true,
-    "textLen": 3025,
-    "interactiveCount": 212,
+    "textLen": 3496,
+    "interactiveCount": 220,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 4100,
+    "gotoMs": 4774,
     "consentMs": 0,
-    "scrollMs": 4952,
-    "captureMs": 0
+    "scrollMs": 4568,
+    "captureMs": 5681
   }
 }

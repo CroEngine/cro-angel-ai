@@ -12,7 +12,7 @@
   },
   "capture": {
     "mhtmlKb": 4301,
-    "screenshotKb": 606,
+    "screenshotKb": 595,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
@@ -44,21 +44,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:30:28.996Z"
+    "frozenAt": "2026-06-20T20:36:26.102Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 8216,
+    "textLen": 8217,
     "interactiveCount": 164,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 8942,
+    "gotoMs": 11506,
     "consentMs": 0,
-    "scrollMs": 3366,
-    "captureMs": 3489
+    "scrollMs": 3602,
+    "captureMs": 3509
   }
 }

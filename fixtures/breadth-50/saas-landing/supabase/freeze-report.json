@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 1662,
+    "mhtmlKb": 1659,
     "screenshotKb": 407,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 4,
-    "mhtmlKbBeforeFontEmbed": 1484,
+    "mhtmlKbBeforeFontEmbed": 1481,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "custom-font"
@@ -42,7 +42,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:30:46.692Z"
+    "frozenAt": "2026-06-20T20:36:42.780Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -54,9 +54,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 5305,
+    "gotoMs": 5432,
     "consentMs": 0,
-    "scrollMs": 3780,
-    "captureMs": 2894
+    "scrollMs": 3761,
+    "captureMs": 2424
   }
 }

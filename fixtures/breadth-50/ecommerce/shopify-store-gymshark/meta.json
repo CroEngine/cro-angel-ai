@@ -1,16 +1,16 @@
 {
   "url": "https://www.gymshark.com",
   "name": "ecommerce__shopify-store-gymshark",
-  "captured_at": "2026-06-20T19:31:33.474Z",
+  "captured_at": "2026-06-20T20:37:37.711Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T19:31:13.098Z",
+  "notes": "breadth-50 2026-06-20T20:37:13.304Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T19:31:33.474Z",
-  "expiresAt": "2026-09-18T19:31:33.474Z",
+  "frozenAt": "2026-06-20T20:37:37.711Z",
+  "expiresAt": "2026-09-18T20:37:37.711Z",
   "refreezeReason": "manual"
 }

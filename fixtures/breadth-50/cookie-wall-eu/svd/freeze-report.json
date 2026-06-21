@@ -1,236 +1,33 @@
 {
-  "ok": false,
-  "error": "[freeze] A2 gate: externalFontSrcCount=37 after rewrite (embedded=2, failures=46). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://static.svd.se/font-service/fonts/SvDEsterBlenda-Regular_4d499fd4.woff2, https://static.svd.se/font-service/fonts/SvDEsterBlenda-Medium_ce71f11f.woff2, https://static.svd.se/font-service/fonts/SvDEsterBlenda-Bold_2775ffc4.woff2, https://static.svd.se/font-service/fonts/sueca-web-hd-bold_af5dba33.woff2, https://static.svd.se/font-service/fonts/sueca-web-hd-semibold_c8feba36.woff2, https://static.svd.se/font-service/fonts/sueca-web-hd-light_30d82c42.woff2, https://static.svd.se/font-service/fonts/sueca-text-regular_593d3599.woff2, https://static.svd.se/font-service/fonts/sueca-text-extrabold_ae7fcb27.woff2, https://static.svd.se/font-service/fonts/sueca-text-regular-italic_51117951.woff2, https://static.svd.se/font-service/fonts/sueca-text-regular_7134df68.woff, https://static.svd.se/font-service/fonts/sueca-text-regular_131e2b9.ttf, https://static.svd.se/font-service/fonts/sueca-text-extrabold_dd540211.woff, https://static.svd.se/font-service/fonts/sueca-text-extrabold_9d45a47c.ttf, https://static.svd.se/font-service/fonts/sueca-text-regular-italic_f5ec7859.woff, https://static.svd.se/font-service/fonts/sueca-text-regular-italic_aa6385de.ttf, https://static.svd.se/font-service/fonts/forsberg_b70998f0.woff2, https://static.svd.se/font-service/fonts/forsberg_42d3145d.woff, https://static.svd.se/font-service/fonts/forsberg_9a5379dc.ttf, https://static.svd.se/font-service/fonts/forsberg-semibold_b0023bbc.woff2, https://static.svd.se/font-service/fonts/forsberg-semibold_946056bb.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+  "ok": true,
+  "error": null,
   "dryRun": false,
   "consent": {
-    "selector": null,
-    "dismissCheck": null,
+    "selector": "//button[contains(normalize-space(.),\"Godkänn alla\")]",
+    "dismissCheck": "detached",
     "matchCountBeforeClick": null,
-    "visibleBeforeClick": null,
-    "dismissedAfterMs": null,
-    "postDismissDomHits": null
+    "visibleBeforeClick": true,
+    "dismissedAfterMs": 1185,
+    "postDismissDomHits": {
+      "accept all": 0,
+      "decline all": 0,
+      "reject all": 0,
+      "cookie": 1
+    }
   },
   "capture": {
-    "mhtmlKb": 2332,
-    "screenshotKb": 0,
+    "mhtmlKb": 4148,
+    "screenshotKb": 70,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
-    "externalFontSrcCount": 37,
-    "unembeddedFontUrls": [
-      "https://static.svd.se/font-service/fonts/SvDEsterBlenda-Regular_4d499fd4.woff2",
-      "https://static.svd.se/font-service/fonts/SvDEsterBlenda-Medium_ce71f11f.woff2",
-      "https://static.svd.se/font-service/fonts/SvDEsterBlenda-Bold_2775ffc4.woff2",
-      "https://static.svd.se/font-service/fonts/sueca-web-hd-bold_af5dba33.woff2",
-      "https://static.svd.se/font-service/fonts/sueca-web-hd-semibold_c8feba36.woff2",
-      "https://static.svd.se/font-service/fonts/sueca-web-hd-light_30d82c42.woff2",
-      "https://static.svd.se/font-service/fonts/sueca-text-regular_593d3599.woff2",
-      "https://static.svd.se/font-service/fonts/sueca-text-extrabold_ae7fcb27.woff2",
-      "https://static.svd.se/font-service/fonts/sueca-text-regular-italic_51117951.woff2",
-      "https://static.svd.se/font-service/fonts/sueca-text-regular_7134df68.woff",
-      "https://static.svd.se/font-service/fonts/sueca-text-regular_131e2b9.ttf",
-      "https://static.svd.se/font-service/fonts/sueca-text-extrabold_dd540211.woff",
-      "https://static.svd.se/font-service/fonts/sueca-text-extrabold_9d45a47c.ttf",
-      "https://static.svd.se/font-service/fonts/sueca-text-regular-italic_f5ec7859.woff",
-      "https://static.svd.se/font-service/fonts/sueca-text-regular-italic_aa6385de.ttf",
-      "https://static.svd.se/font-service/fonts/forsberg_b70998f0.woff2",
-      "https://static.svd.se/font-service/fonts/forsberg_42d3145d.woff",
-      "https://static.svd.se/font-service/fonts/forsberg_9a5379dc.ttf",
-      "https://static.svd.se/font-service/fonts/forsberg-semibold_b0023bbc.woff2",
-      "https://static.svd.se/font-service/fonts/forsberg-semibold_946056bb.woff"
-    ],
-    "embeddedFontCount": 2,
-    "mhtmlKbBeforeFontEmbed": 2242,
-    "fontFetchFailures": [
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-web-hd-bold_af5dba33.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-web-hd-light_30d82c42.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/SvDEsterBlenda-Medium_ce71f11f.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/SvDEsterBlenda-Regular_4d499fd4.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/forsberg-semibold_b0023bbc.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-text-regular_593d3599.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-text-extrabold_ae7fcb27.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-web-hd-semibold_c8feba36.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-text-regular-italic_f5ec7859.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-web-hd-bold_f020cc33.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/SvDEsterBlenda-Bold_2775ffc4.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/forsberg_42d3145d.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-text-regular_7134df68.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-text-extrabold_9d45a47c.ttf",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-text-extrabold_dd540211.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/forsberg-semibold_8a86cf04.ttf",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/forsberg-semibold_946056bb.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-web-hd-bold_96ca0b5f.ttf",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-web-hd-semibold_3a5d41eb.ttf",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-web-hd-light_4538660e.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-web-hd-semibold_6e1a73d.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-text-regular-italic_aa6385de.ttf",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/SvDEsterBlenda-Light_67e5c4e7.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-text-regular-italic_51117951.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-web-hd-light_eb6dd1db.ttf",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/forsberg_9a5379dc.ttf",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/forsberg_b70998f0.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://static.svd.se/font-service/fonts/sueca-text-regular_131e2b9.ttf",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff/NSIEverydayWeb-MediumItalic.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff2/NSIEverydayWeb-LightItalic.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff2/NSIEverydayWeb-HeavyItalic.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff2/NSIEverydayWeb-Regular.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff2/NSIEverydayWeb-Bold.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff/NSIEverydayWeb-Heavy.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff/NSIEverydayWeb-Regular.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff2/NSIEverydayWeb-BoldItalic.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff2/NSIEverydayWeb-Light.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff/NSIEverydayWeb-Bold.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff/NSIEverydayWeb-HeavyItalic.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff2/NSIEverydayWeb-Medium.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff/NSIEverydayWeb-LightItalic.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff/NSIEverydayWeb-Medium.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff/NSIEverydayWeb-BoldItalic.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff2/NSIEverydayWeb-MediumItalic.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff/NSIEverydayWeb-Light.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cmp.svd.se/assets/fonts/woff2/NSIEverydayWeb-Heavy.woff2",
-        "error": "proxy denied via header x-deny-reason"
-      }
-    ],
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 28,
+    "mhtmlKbBeforeFontEmbed": 2498,
+    "fontFetchFailures": [],
     "embeddedFamilies": [
       "Ester Blenda",
       "Forsberg",
-      "NSI",
-      "Schibsted Grotesk",
       "Sueca Hd",
       "Sueca Text",
       "Sueca Tx",
@@ -239,8 +36,8 @@
     ],
     "fontUrls": {
       "embedded": 0,
-      "absolute": 41,
-      "relativeResolved": 18,
+      "absolute": 46,
+      "relativeResolved": 0,
       "unresolvable": []
     },
     "externalized": false,
@@ -256,21 +53,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:34:20.357Z"
+    "frozenAt": "2026-06-20T20:41:33.941Z"
   },
-  "failureClass": "font-embed-failed",
+  "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 3444,
-    "interactiveCount": 138,
+    "textLen": 7817,
+    "interactiveCount": 179,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 38114,
-    "consentMs": 0,
-    "scrollMs": 3331,
-    "captureMs": 0
+    "gotoMs": 9284,
+    "consentMs": 2237,
+    "scrollMs": 5152,
+    "captureMs": 9001
   }
 }

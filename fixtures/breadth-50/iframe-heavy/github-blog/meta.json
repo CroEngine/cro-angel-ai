@@ -1,16 +1,16 @@
 {
   "url": "https://github.blog",
   "name": "iframe-heavy__github-blog",
-  "captured_at": "2026-06-20T19:34:59.461Z",
+  "captured_at": "2026-06-20T20:42:20.002Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T19:34:45.308Z",
+  "notes": "breadth-50 2026-06-20T20:42:05.582Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T19:34:59.461Z",
-  "expiresAt": "2026-09-18T19:34:59.461Z",
+  "frozenAt": "2026-06-20T20:42:20.002Z",
+  "expiresAt": "2026-09-18T20:42:20.002Z",
   "refreezeReason": "manual"
 }

@@ -1,130 +1,32 @@
 {
   "ok": false,
-  "error": "[freeze] A2 gate: externalFontSrcCount=18 after rewrite (embedded=0, failures=18). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSlab4UICd-ExtraBold.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSlab4UICd-ExtraBold.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Regular.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Regular.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Italic.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Italic.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Bold.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Bold.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-BoldItalic.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-BoldItalic.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifDisplayUI-BoldItalic.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifDisplayUI-BoldItalic.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Regular.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Regular.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Bold.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Bold.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4-6SemiBold.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4-6SemiBold.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+  "error": "-32000 Failed to generate MHTML",
   "dryRun": false,
   "consent": {
-    "selector": null,
-    "dismissCheck": null,
+    "selector": "//button[contains(normalize-space(.),\"Consent and continue\")]",
+    "dismissCheck": "detached",
     "matchCountBeforeClick": null,
-    "visibleBeforeClick": null,
-    "dismissedAfterMs": null,
-    "postDismissDomHits": null
+    "visibleBeforeClick": true,
+    "dismissedAfterMs": 1334,
+    "postDismissDomHits": {
+      "accept all": 0,
+      "decline all": 0,
+      "reject all": 0,
+      "cookie": 1
+    }
   },
   "capture": {
-    "mhtmlKb": 1878,
+    "mhtmlKb": 0,
     "screenshotKb": 0,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
-    "externalFontSrcCount": 18,
-    "unembeddedFontUrls": [
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSlab4UICd-ExtraBold.woff2",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSlab4UICd-ExtraBold.woff",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Regular.woff2",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Regular.woff",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Italic.woff2",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Italic.woff",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Bold.woff2",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Bold.woff",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-BoldItalic.woff2",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-BoldItalic.woff",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifDisplayUI-BoldItalic.woff2",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifDisplayUI-BoldItalic.woff",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Regular.woff2",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Regular.woff",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Bold.woff2",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Bold.woff",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4-6SemiBold.woff2",
-      "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4-6SemiBold.woff"
-    ],
-    "embeddedFontCount": 0,
-    "mhtmlKbBeforeFontEmbed": 1878,
-    "fontFetchFailures": [
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Italic.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-BoldItalic.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-BoldItalic.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Regular.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Bold.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Bold.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifDisplayUI-BoldItalic.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Regular.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSlab4UICd-ExtraBold.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifDisplayUI-BoldItalic.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Regular.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Italic.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4-6SemiBold.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSlab4UICd-ExtraBold.woff",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4-6SemiBold.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Regular.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Bold.woff2",
-        "error": "HTTP 403"
-      },
-      {
-        "url": "https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Bold.woff2",
-        "error": "HTTP 403"
-      }
-    ],
-    "embeddedFamilies": [
-      "SpiegelSans",
-      "SpiegelSansUI",
-      "SpiegelSerifDisplayUI",
-      "SpiegelSerifUI",
-      "SpiegelSlabCdUI"
-    ],
-    "fontUrls": {
-      "embedded": 0,
-      "absolute": 18,
-      "relativeResolved": 0,
-      "unresolvable": []
-    },
+    "externalFontSrcCount": null,
+    "unembeddedFontUrls": null,
+    "embeddedFontCount": null,
+    "mhtmlKbBeforeFontEmbed": null,
+    "fontFetchFailures": null,
+    "embeddedFamilies": null,
+    "fontUrls": null,
     "externalized": false,
     "externalAssetUrl": null,
     "externalAssetSha256": null,
@@ -138,21 +40,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:34:12.151Z"
+    "frozenAt": "2026-06-20T20:41:07.988Z"
   },
-  "failureClass": "font-embed-failed",
+  "failureClass": "mhtml-capture-failed",
   "captureValidity": {
     "ok": true,
-    "textLen": 34090,
-    "interactiveCount": 984,
+    "textLen": 35230,
+    "interactiveCount": 1009,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 21424,
-    "consentMs": 0,
-    "scrollMs": 3448,
+    "gotoMs": 7345,
+    "consentMs": 2691,
+    "scrollMs": 5900,
     "captureMs": 0
   }
 }

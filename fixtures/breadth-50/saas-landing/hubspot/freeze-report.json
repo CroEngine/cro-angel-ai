@@ -47,7 +47,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:30:47.874Z"
+    "frozenAt": "2026-06-20T20:36:45.443Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -59,9 +59,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 7546,
+    "gotoMs": 6970,
     "consentMs": 0,
-    "scrollMs": 4308,
-    "captureMs": 2400
+    "scrollMs": 4013,
+    "captureMs": 2484
   }
 }

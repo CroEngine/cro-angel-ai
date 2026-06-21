@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 3718,
-    "screenshotKb": 107,
+    "mhtmlKb": 3220,
+    "screenshotKb": 82,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 8,
-    "mhtmlKbBeforeFontEmbed": 3024,
+    "mhtmlKbBeforeFontEmbed": 2527,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Airbnb Cereal VF"
@@ -42,21 +42,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:32:58.046Z"
+    "frozenAt": "2026-06-20T20:39:01.917Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 8800,
-    "interactiveCount": 251,
+    "textLen": 7676,
+    "interactiveCount": 87,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 5146,
+    "gotoMs": 11163,
     "consentMs": 0,
-    "scrollMs": 4135,
-    "captureMs": 2875
+    "scrollMs": 3795,
+    "captureMs": 3397
   }
 }

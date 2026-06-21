@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 3851,
-    "screenshotKb": 95,
+    "mhtmlKb": 6003,
+    "screenshotKb": 412,
     "beforeDismissScreenshotPath": null,
-    "loadStateDegraded": true,
+    "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 28,
-    "mhtmlKbBeforeFontEmbed": 2405,
+    "mhtmlKbBeforeFontEmbed": 4557,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Akkurat Mono",
@@ -47,21 +47,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:31:04.999Z"
+    "frozenAt": "2026-06-20T20:37:05.444Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 1570,
-    "interactiveCount": 242,
+    "textLen": 2378,
+    "interactiveCount": 280,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 62721,
+    "gotoMs": 20412,
     "consentMs": 0,
-    "scrollMs": 3445,
-    "captureMs": 1604
+    "scrollMs": 3428,
+    "captureMs": 1764
   }
 }

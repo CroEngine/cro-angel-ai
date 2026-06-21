@@ -1,16 +1,16 @@
 {
   "url": "https://linear.app",
   "name": "saas-landing__linear",
-  "captured_at": "2026-06-20T19:30:44.868Z",
+  "captured_at": "2026-06-20T20:36:45.124Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T19:30:25.031Z",
+  "notes": "breadth-50 2026-06-20T20:36:22.953Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T19:30:44.868Z",
-  "expiresAt": "2026-09-18T19:30:44.868Z",
+  "frozenAt": "2026-06-20T20:36:45.124Z",
+  "expiresAt": "2026-09-18T20:36:45.124Z",
   "refreezeReason": "manual"
 }

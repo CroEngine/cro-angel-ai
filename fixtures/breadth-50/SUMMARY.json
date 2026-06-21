@@ -1,14 +1,15 @@
 {
-  "ranAt": "2026-06-20T19:35:13.540Z",
+  "ranAt": "2026-06-21T07:55:05.243Z",
   "total": 45,
   "addressableTotal": 45,
-  "addressableOk": 28,
-  "addressableSuccessRate": 0.622,
+  "addressableOk": 32,
+  "addressableSuccessRate": 0.711,
   "byFailureClass": {
-    "font-embed-failed": 8,
-    "unknown": 5,
-    "mhtml-capture-failed": 2,
-    "captured-wrong-page": 2
+    "externalize-unavailable": 7,
+    "font-embed-failed": 1,
+    "captured-wrong-page": 3,
+    "consent-missed": 1,
+    "mhtml-capture-failed": 1
   },
   "byCategory": {
     "saas-landing": {
@@ -19,14 +20,14 @@
     },
     "ecommerce": {
       "total": 10,
-      "ok": 7,
-      "rate": 0.7,
+      "ok": 6,
+      "rate": 0.6,
       "deferred": false
     },
     "media": {
       "total": 5,
-      "ok": 1,
-      "rate": 0.2,
+      "ok": 4,
+      "rate": 0.8,
       "deferred": false
     },
     "spa": {
@@ -37,14 +38,14 @@
     },
     "i18n-routing": {
       "total": 5,
-      "ok": 5,
-      "rate": 1,
+      "ok": 4,
+      "rate": 0.8,
       "deferred": false
     },
     "cookie-wall-eu": {
       "total": 5,
-      "ok": 0,
-      "rate": 0,
+      "ok": 3,
+      "rate": 0.6,
       "deferred": false
     },
     "iframe-heavy": {
@@ -54,19 +55,31 @@
       "deferred": false
     }
   },
-  "unknownCount": 5,
-  "verdict": "RED: 'unknown' failureClass present — utöka classifyFailure i freeze.server.ts",
+  "unknownCount": 0,
+  "verdict": "RED: arkitektur räcker inte för bredd, omdesign krävs",
+  "$note": "SUMMARY regenererad från per-sajt-reports — freeze-breadth-processen dog efter alla 45 reports men före SUMMARY-write (lång körning, bakgrundstimeout). Data är från körningen, inte re-frysta.",
   "outcomes": [
     {
       "category": "saas-landing",
       "deferred": false,
-      "name": "vercel",
-      "url": "https://vercel.com",
+      "name": "stripe",
+      "url": "https://stripe.com",
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2011,
-      "reportPath": "fixtures/breadth-50/saas-landing/vercel/freeze-report.json"
+      "mhtmlKb": 2098,
+      "reportPath": "fixtures/breadth-50/saas-landing/stripe/freeze-report.json"
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "notion",
+      "url": "https://www.notion.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 4124,
+      "reportPath": "fixtures/breadth-50/saas-landing/notion/freeze-report.json"
     },
     {
       "category": "saas-landing",
@@ -82,35 +95,13 @@
     {
       "category": "saas-landing",
       "deferred": false,
-      "name": "notion",
-      "url": "https://www.notion.com",
+      "name": "vercel",
+      "url": "https://vercel.com",
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4972,
-      "reportPath": "fixtures/breadth-50/saas-landing/notion/freeze-report.json"
-    },
-    {
-      "category": "saas-landing",
-      "deferred": false,
-      "name": "stripe",
-      "url": "https://stripe.com",
-      "ok": true,
-      "failureClass": null,
-      "reason": null,
-      "mhtmlKb": 2191,
-      "reportPath": "fixtures/breadth-50/saas-landing/stripe/freeze-report.json"
-    },
-    {
-      "category": "saas-landing",
-      "deferred": false,
-      "name": "hibob",
-      "url": "https://www.hibob.com",
-      "ok": true,
-      "failureClass": null,
-      "reason": null,
-      "mhtmlKb": 2012,
-      "reportPath": "fixtures/breadth-50/saas-landing/hibob/freeze-report.json"
+      "mhtmlKb": 2011,
+      "reportPath": "fixtures/breadth-50/saas-landing/vercel/freeze-report.json"
     },
     {
       "category": "saas-landing",
@@ -120,8 +111,19 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 1662,
+      "mhtmlKb": 1659,
       "reportPath": "fixtures/breadth-50/saas-landing/supabase/freeze-report.json"
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "intercom",
+      "url": "https://www.intercom.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 5106,
+      "reportPath": "fixtures/breadth-50/saas-landing/intercom/freeze-report.json"
     },
     {
       "category": "saas-landing",
@@ -137,12 +139,23 @@
     {
       "category": "saas-landing",
       "deferred": false,
+      "name": "hibob",
+      "url": "https://www.hibob.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 2012,
+      "reportPath": "fixtures/breadth-50/saas-landing/hibob/freeze-report.json"
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
       "name": "figma",
       "url": "https://www.figma.com",
       "ok": false,
-      "failureClass": "font-embed-failed",
-      "reason": "[freeze] A2 gate: externalFontSrcCount=2 after rewrite (embedded=72, failures=2). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff, https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
-      "mhtmlKb": 0,
+      "failureClass": "externalize-unavailable",
+      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+      "mhtmlKb": 9296,
       "reportPath": "fixtures/breadth-50/saas-landing/figma/freeze-report.json"
     },
     {
@@ -153,8 +166,19 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 8717,
+      "mhtmlKb": 9010,
       "reportPath": "fixtures/breadth-50/saas-landing/loom/freeze-report.json"
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "shopify-store-allbirds",
+      "url": "https://www.allbirds.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 6003,
+      "reportPath": "fixtures/breadth-50/ecommerce/shopify-store-allbirds/freeze-report.json"
     },
     {
       "category": "ecommerce",
@@ -164,19 +188,19 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 5414,
+      "mhtmlKb": 5444,
       "reportPath": "fixtures/breadth-50/ecommerce/shopify-store-gymshark/freeze-report.json"
     },
     {
-      "category": "saas-landing",
+      "category": "ecommerce",
       "deferred": false,
-      "name": "intercom",
-      "url": "https://www.intercom.com",
-      "ok": true,
-      "failureClass": null,
-      "reason": null,
-      "mhtmlKb": 4929,
-      "reportPath": "fixtures/breadth-50/saas-landing/intercom/freeze-report.json"
+      "name": "everlane",
+      "url": "https://www.everlane.com",
+      "ok": false,
+      "failureClass": "externalize-unavailable",
+      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+      "mhtmlKb": 13941,
+      "reportPath": "fixtures/breadth-50/ecommerce/everlane/freeze-report.json"
     },
     {
       "category": "ecommerce",
@@ -192,35 +216,24 @@
     {
       "category": "ecommerce",
       "deferred": false,
-      "name": "everlane",
-      "url": "https://www.everlane.com",
-      "ok": false,
-      "failureClass": "font-embed-failed",
-      "reason": "[freeze] A2 gate: externalFontSrcCount=9 after rewrite (embedded=28, failures=8). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Bold.woff2, https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Book.woff2, https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Demi.woff2, https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Light.woff2, https://everlane.s3.amazonaws.com//fonts/MaisonNeueWEB-Medium.woff2, https://www.everlane.com/assets/fonts/maison/MaisonNeue-Book.woff2, https://www.everlane.com/assets/fonts/maison/MaisonNeue-Demi.woff2, https://www.everlane.com/assets/fonts/maison/MaisonNeue-Light.woff2. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/ecommerce/everlane/freeze-report.json"
-    },
-    {
-      "category": "ecommerce",
-      "deferred": false,
       "name": "warby-parker",
       "url": "https://www.warbyparker.com",
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3271,
+      "mhtmlKb": 3391,
       "reportPath": "fixtures/breadth-50/ecommerce/warby-parker/freeze-report.json"
     },
     {
       "category": "ecommerce",
       "deferred": false,
-      "name": "shopify-store-allbirds",
-      "url": "https://www.allbirds.com",
-      "ok": true,
-      "failureClass": null,
-      "reason": null,
-      "mhtmlKb": 3851,
-      "reportPath": "fixtures/breadth-50/ecommerce/shopify-store-allbirds/freeze-report.json"
+      "name": "casper",
+      "url": "https://casper.com",
+      "ok": false,
+      "failureClass": "externalize-unavailable",
+      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+      "mhtmlKb": 14543,
+      "reportPath": "fixtures/breadth-50/ecommerce/casper/freeze-report.json"
     },
     {
       "category": "ecommerce",
@@ -230,30 +243,8 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3843,
+      "mhtmlKb": 3848,
       "reportPath": "fixtures/breadth-50/ecommerce/glossier/freeze-report.json"
-    },
-    {
-      "category": "ecommerce",
-      "deferred": false,
-      "name": "casper",
-      "url": "https://casper.com",
-      "ok": false,
-      "failureClass": "unknown",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/ecommerce/casper/freeze-report.json"
-    },
-    {
-      "category": "media",
-      "deferred": false,
-      "name": "guardian",
-      "url": "https://www.theguardian.com",
-      "ok": false,
-      "failureClass": "mhtml-capture-failed",
-      "reason": "-32000 Failed to generate MHTML",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/media/guardian/freeze-report.json"
     },
     {
       "category": "ecommerce",
@@ -261,10 +252,21 @@
       "name": "away",
       "url": "https://www.awaytravel.com",
       "ok": false,
-      "failureClass": "unknown",
+      "failureClass": "externalize-unavailable",
       "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 0,
+      "mhtmlKb": 9223,
       "reportPath": "fixtures/breadth-50/ecommerce/away/freeze-report.json"
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "rei",
+      "url": "https://www.rei.com",
+      "ok": false,
+      "failureClass": "externalize-unavailable",
+      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+      "mhtmlKb": 9791,
+      "reportPath": "fixtures/breadth-50/ecommerce/rei/freeze-report.json"
     },
     {
       "category": "ecommerce",
@@ -274,30 +276,19 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4881,
+      "mhtmlKb": 4926,
       "reportPath": "fixtures/breadth-50/ecommerce/ikea-se/freeze-report.json"
-    },
-    {
-      "category": "ecommerce",
-      "deferred": false,
-      "name": "rei",
-      "url": "https://www.rei.com",
-      "ok": true,
-      "failureClass": null,
-      "reason": null,
-      "mhtmlKb": 5435,
-      "reportPath": "fixtures/breadth-50/ecommerce/rei/freeze-report.json"
     },
     {
       "category": "media",
       "deferred": false,
-      "name": "nytimes",
-      "url": "https://www.nytimes.com",
-      "ok": false,
-      "failureClass": "font-embed-failed",
-      "reason": "[freeze] A2 gate: externalFontSrcCount=174 after rewrite (embedded=0, failures=292). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://g1.nyt.com/fonts/family/franklin/franklin-normal-500.0f4aea3d462cdb64748629efcbbf36bc.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-500.cb85480c30b6ca5f53f673993211036f.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-500.9061b25032eb73a747c2edf738888891.ttf, https://g1.nyt.com/fonts/family/franklin/franklin-normal-700.91eaf6b5642463af4091160b4bbfdfcb.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-700.ab057a3b069a4ecbde7c3ea74411284e.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-700.3acbe40693cbd3029afc346368ed1b29.ttf, https://g1.nyt.com/fonts/family/franklin/franklin-normal-600.75739ac267f076931c6da9740386ee6b.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-600.e27b5ffa7bfaa0ac78e146668c74e6f4.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-600.23949bc217f2c95dfe21d3e66ba59445.ttf, https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.ttf, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-700.530cfb72378419eedb60da7e266ad5f1.woff2, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-700.738608727fc7c5797889e17788508b26.woff, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-700.85ca4d109571e1e0084aace5a31f049c.ttf, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.e6711d3a9af4e8cc6c129ba9940c081e.woff2, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.0b6312fa2bdacb3a5d93904fb67221e6.woff, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.8a4b4c857c657c3ca62ebbcdd26d2698.ttf, https://g1.nyt.com/fonts/family/imperial/imperial-italic-600.ea97a1cb7a4d63c8104929537e8ebbc8.woff2, https://g1.nyt.com/fonts/family/imperial/imperial-italic-600.e8bf721d90ab733361bebdabe80fd0af.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/media/nytimes/freeze-report.json"
+      "name": "guardian",
+      "url": "https://www.theguardian.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 5032,
+      "reportPath": "fixtures/breadth-50/media/guardian/freeze-report.json"
     },
     {
       "category": "media",
@@ -307,8 +298,41 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3289,
+      "mhtmlKb": 8293,
       "reportPath": "fixtures/breadth-50/media/bbc/freeze-report.json"
+    },
+    {
+      "category": "media",
+      "deferred": false,
+      "name": "verge",
+      "url": "https://www.theverge.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3482,
+      "reportPath": "fixtures/breadth-50/media/verge/freeze-report.json"
+    },
+    {
+      "category": "media",
+      "deferred": false,
+      "name": "techcrunch",
+      "url": "https://techcrunch.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3223,
+      "reportPath": "fixtures/breadth-50/media/techcrunch/freeze-report.json"
+    },
+    {
+      "category": "media",
+      "deferred": false,
+      "name": "nytimes",
+      "url": "https://www.nytimes.com",
+      "ok": false,
+      "failureClass": "font-embed-failed",
+      "reason": "[freeze] A2 gate: externalFontSrcCount=174 after rewrite (embedded=0, failures=292). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://g1.nyt.com/fonts/family/franklin/franklin-normal-500.0f4aea3d462cdb64748629efcbbf36bc.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-500.cb85480c30b6ca5f53f673993211036f.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-500.9061b25032eb73a747c2edf738888891.ttf, https://g1.nyt.com/fonts/family/franklin/franklin-normal-700.91eaf6b5642463af4091160b4bbfdfcb.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-700.ab057a3b069a4ecbde7c3ea74411284e.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-700.3acbe40693cbd3029afc346368ed1b29.ttf, https://g1.nyt.com/fonts/family/franklin/franklin-normal-600.75739ac267f076931c6da9740386ee6b.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-600.e27b5ffa7bfaa0ac78e146668c74e6f4.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-600.23949bc217f2c95dfe21d3e66ba59445.ttf, https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.ttf, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-700.530cfb72378419eedb60da7e266ad5f1.woff2, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-700.738608727fc7c5797889e17788508b26.woff, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-700.85ca4d109571e1e0084aace5a31f049c.ttf, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.e6711d3a9af4e8cc6c129ba9940c081e.woff2, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.0b6312fa2bdacb3a5d93904fb67221e6.woff, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.8a4b4c857c657c3ca62ebbcdd26d2698.ttf, https://g1.nyt.com/fonts/family/imperial/imperial-italic-600.ea97a1cb7a4d63c8104929537e8ebbc8.woff2, https://g1.nyt.com/fonts/family/imperial/imperial-italic-600.e8bf721d90ab733361bebdabe80fd0af.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+      "mhtmlKb": 1669,
+      "reportPath": "fixtures/breadth-50/media/nytimes/freeze-report.json"
     },
     {
       "category": "spa",
@@ -318,19 +342,8 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3718,
+      "mhtmlKb": 3220,
       "reportPath": "fixtures/breadth-50/spa/airbnb/freeze-report.json"
-    },
-    {
-      "category": "media",
-      "deferred": false,
-      "name": "verge",
-      "url": "https://www.theverge.com",
-      "ok": false,
-      "failureClass": "mhtml-capture-failed",
-      "reason": "-32000 Failed to generate MHTML",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/media/verge/freeze-report.json"
     },
     {
       "category": "spa",
@@ -346,12 +359,23 @@
     {
       "category": "spa",
       "deferred": false,
+      "name": "asana",
+      "url": "https://asana.com",
+      "ok": false,
+      "failureClass": "externalize-unavailable",
+      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+      "mhtmlKb": 9640,
+      "reportPath": "fixtures/breadth-50/spa/asana/freeze-report.json"
+    },
+    {
+      "category": "spa",
+      "deferred": false,
       "name": "discord",
       "url": "https://discord.com",
       "ok": false,
-      "failureClass": "unknown",
+      "failureClass": "externalize-unavailable",
       "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 0,
+      "mhtmlKb": 19388,
       "reportPath": "fixtures/breadth-50/spa/discord/freeze-report.json"
     },
     {
@@ -362,40 +386,29 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 6262,
+      "mhtmlKb": 6241,
       "reportPath": "fixtures/breadth-50/spa/spotify/freeze-report.json"
     },
     {
-      "category": "spa",
+      "category": "i18n-routing",
       "deferred": false,
-      "name": "asana",
-      "url": "https://asana.com",
-      "ok": false,
-      "failureClass": "unknown",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/spa/asana/freeze-report.json"
-    },
-    {
-      "category": "media",
-      "deferred": false,
-      "name": "techcrunch",
-      "url": "https://techcrunch.com",
-      "ok": false,
-      "failureClass": "unknown",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/media/techcrunch/freeze-report.json"
+      "name": "klarna",
+      "url": "https://www.klarna.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3052,
+      "reportPath": "fixtures/breadth-50/i18n-routing/klarna/freeze-report.json"
     },
     {
       "category": "i18n-routing",
       "deferred": false,
       "name": "spotify-se",
       "url": "https://www.spotify.com/se/",
-      "ok": true,
-      "failureClass": null,
-      "reason": null,
-      "mhtmlKb": 6262,
+      "ok": false,
+      "failureClass": "captured-wrong-page",
+      "reason": "text-too-short",
+      "mhtmlKb": 0,
       "reportPath": "fixtures/breadth-50/i18n-routing/spotify-se/freeze-report.json"
     },
     {
@@ -406,7 +419,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 1945,
+      "mhtmlKb": 1698,
       "reportPath": "fixtures/breadth-50/i18n-routing/uber/freeze-report.json"
     },
     {
@@ -417,30 +430,8 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 1209,
+      "mhtmlKb": 947,
       "reportPath": "fixtures/breadth-50/i18n-routing/booking/freeze-report.json"
-    },
-    {
-      "category": "i18n-routing",
-      "deferred": false,
-      "name": "klarna",
-      "url": "https://www.klarna.com",
-      "ok": true,
-      "failureClass": null,
-      "reason": null,
-      "mhtmlKb": 3053,
-      "reportPath": "fixtures/breadth-50/i18n-routing/klarna/freeze-report.json"
-    },
-    {
-      "category": "cookie-wall-eu",
-      "deferred": false,
-      "name": "lemonde",
-      "url": "https://www.lemonde.fr",
-      "ok": false,
-      "failureClass": "font-embed-failed",
-      "reason": "[freeze] A2 gate: externalFontSrcCount=10 after rewrite (embedded=0, failures=38). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Regular-Web.woff2, https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Regular-Web.woff, https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Medium-Web.woff2, https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Medium-Web.woff, https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Semibold-Web.woff2, https://cmp.lemonde.fr/fonts/marr-sans/MarrSans-Semibold-Web.woff, https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Medium-Web.woff2, https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Medium-Web.woff, https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Semibold-Web.woff2, https://cmp.lemonde.fr/fonts/marr-sans-condensed/MarrSansCondensed-Semibold-Web.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/lemonde/freeze-report.json"
     },
     {
       "category": "i18n-routing",
@@ -450,19 +441,19 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 8528,
+      "mhtmlKb": 8620,
       "reportPath": "fixtures/breadth-50/i18n-routing/tradera/freeze-report.json"
     },
     {
       "category": "cookie-wall-eu",
       "deferred": false,
-      "name": "dn",
-      "url": "https://www.dn.se",
+      "name": "lemonde",
+      "url": "https://www.lemonde.fr",
       "ok": false,
-      "failureClass": "font-embed-failed",
-      "reason": "[freeze] A2 gate: externalFontSrcCount=1 after rewrite (embedded=29, failures=17). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://cdn.dn-static.se/fonts/DNSans-1-500-Variable-VAP36PT4.woff2. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+      "failureClass": "consent-missed",
+      "reason": "[freeze] consent-selektor blev aldrig synlig inom 5s: .gdpr-lmd-button--bi (cookie-wall-eu__lemonde). Stale selektor, A/B-variant, eller banner laddade aldrig. Verifiera i --dry-run med --screenshot-before-dismiss.",
       "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/dn/freeze-report.json"
+      "reportPath": "fixtures/breadth-50/cookie-wall-eu/lemonde/freeze-report.json"
     },
     {
       "category": "cookie-wall-eu",
@@ -470,10 +461,43 @@
       "name": "spiegel",
       "url": "https://www.spiegel.de",
       "ok": false,
-      "failureClass": "font-embed-failed",
-      "reason": "[freeze] A2 gate: externalFontSrcCount=18 after rewrite (embedded=0, failures=18). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSlab4UICd-ExtraBold.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSlab4UICd-ExtraBold.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Regular.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Regular.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Italic.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Italic.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Bold.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-Bold.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-BoldItalic.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifTextUI-BoldItalic.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifDisplayUI-BoldItalic.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSerifDisplayUI-BoldItalic.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Regular.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Regular.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Bold.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4UI-Bold.woff, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4-6SemiBold.woff2, https://cdn.prod.www.spiegel.de/public/shared/fonts/SpiegelSans4-6SemiBold.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+      "failureClass": "mhtml-capture-failed",
+      "reason": "-32000 Failed to generate MHTML",
       "mhtmlKb": 0,
       "reportPath": "fixtures/breadth-50/cookie-wall-eu/spiegel/freeze-report.json"
+    },
+    {
+      "category": "cookie-wall-eu",
+      "deferred": false,
+      "name": "dn",
+      "url": "https://www.dn.se",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 7777,
+      "reportPath": "fixtures/breadth-50/cookie-wall-eu/dn/freeze-report.json"
+    },
+    {
+      "category": "cookie-wall-eu",
+      "deferred": false,
+      "name": "svd",
+      "url": "https://www.svd.se",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 4148,
+      "reportPath": "fixtures/breadth-50/cookie-wall-eu/svd/freeze-report.json"
+    },
+    {
+      "category": "cookie-wall-eu",
+      "deferred": false,
+      "name": "aftonbladet",
+      "url": "https://www.aftonbladet.se",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 2207,
+      "reportPath": "fixtures/breadth-50/cookie-wall-eu/aftonbladet/freeze-report.json"
     },
     {
       "category": "iframe-heavy",
@@ -487,17 +511,6 @@
       "reportPath": "fixtures/breadth-50/iframe-heavy/medium/freeze-report.json"
     },
     {
-      "category": "cookie-wall-eu",
-      "deferred": false,
-      "name": "aftonbladet",
-      "url": "https://www.aftonbladet.se",
-      "ok": false,
-      "failureClass": "font-embed-failed",
-      "reason": "[freeze] A2 gate: externalFontSrcCount=43 after rewrite (embedded=2, failures=57). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://cdn.aftonbladet.se/fonts/ABMonumentGrotesk/ABMonumentGrotesk-Ultra.woff2, https://cdn.aftonbladet.se/fonts/ABMonumentGrotesk/ABMonumentGrotesk-Bold.woff2, https://cdn.aftonbladet.se/fonts/ABMonumentGrotesk/ABMonumentGrotesk-Regular.woff2, https://cdn.aftonbladet.se/fonts/ABMonumentGrotesk/ABMonumentGrotesk-UltraItalic.woff2, https://cdn.aftonbladet.se/fonts/ABMonumentGrotesk/ABMonumentGrotesk-BoldItalic.woff2, https://cdn.aftonbladet.se/fonts/ABMonumentGrotesk/ABMonumentGrotesk-RegularItalic.woff2, https://cdn.aftonbladet.se/fonts/ABMonumentGroteskHeadline/ABMonumentGroteskHeadline-Bold750.woff2, https://cdn.aftonbladet.se/fonts/ABMonumentGrotesk/ABMonumentGrotesk-Bold750.woff2, https://cdn.aftonbladet.se/editorialtech/fonts/Lato-Regular.ttf, https://cdn.aftonbladet.se/editorialtech/fonts/Lato-Bold.ttf, https://cdn.aftonbladet.se/editorialtech/fonts/Lato-Black.ttf, https://static.svd.se/font-service/fonts/sueca-text-regular_593d3599.woff2, https://static.svd.se/font-service/fonts/sueca-text-regular_7134df68.woff, https://static.svd.se/font-service/fonts/sueca-text-regular_131e2b9.ttf, https://static.svd.se/font-service/fonts/sueca-text-extrabold_ae7fcb27.woff2, https://static.svd.se/font-service/fonts/sueca-text-extrabold_dd540211.woff, https://static.svd.se/font-service/fonts/sueca-text-extrabold_9d45a47c.ttf, https://static.svd.se/font-service/fonts/sueca-text-regular-italic_51117951.woff2, https://static.svd.se/font-service/fonts/sueca-text-regular-italic_f5ec7859.woff, https://static.svd.se/font-service/fonts/sueca-text-regular-italic_aa6385de.ttf. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/aftonbladet/freeze-report.json"
-    },
-    {
       "category": "iframe-heavy",
       "deferred": false,
       "name": "substack",
@@ -505,19 +518,8 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 5370,
+      "mhtmlKb": 5353,
       "reportPath": "fixtures/breadth-50/iframe-heavy/substack/freeze-report.json"
-    },
-    {
-      "category": "iframe-heavy",
-      "deferred": false,
-      "name": "stackoverflow",
-      "url": "https://stackoverflow.com",
-      "ok": false,
-      "failureClass": "captured-wrong-page",
-      "reason": "text-too-short",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/iframe-heavy/stackoverflow/freeze-report.json"
     },
     {
       "category": "iframe-heavy",
@@ -531,15 +533,15 @@
       "reportPath": "fixtures/breadth-50/iframe-heavy/github-blog/freeze-report.json"
     },
     {
-      "category": "cookie-wall-eu",
+      "category": "iframe-heavy",
       "deferred": false,
-      "name": "svd",
-      "url": "https://www.svd.se",
+      "name": "stackoverflow",
+      "url": "https://stackoverflow.com",
       "ok": false,
-      "failureClass": "font-embed-failed",
-      "reason": "[freeze] A2 gate: externalFontSrcCount=37 after rewrite (embedded=2, failures=46). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://static.svd.se/font-service/fonts/SvDEsterBlenda-Regular_4d499fd4.woff2, https://static.svd.se/font-service/fonts/SvDEsterBlenda-Medium_ce71f11f.woff2, https://static.svd.se/font-service/fonts/SvDEsterBlenda-Bold_2775ffc4.woff2, https://static.svd.se/font-service/fonts/sueca-web-hd-bold_af5dba33.woff2, https://static.svd.se/font-service/fonts/sueca-web-hd-semibold_c8feba36.woff2, https://static.svd.se/font-service/fonts/sueca-web-hd-light_30d82c42.woff2, https://static.svd.se/font-service/fonts/sueca-text-regular_593d3599.woff2, https://static.svd.se/font-service/fonts/sueca-text-extrabold_ae7fcb27.woff2, https://static.svd.se/font-service/fonts/sueca-text-regular-italic_51117951.woff2, https://static.svd.se/font-service/fonts/sueca-text-regular_7134df68.woff, https://static.svd.se/font-service/fonts/sueca-text-regular_131e2b9.ttf, https://static.svd.se/font-service/fonts/sueca-text-extrabold_dd540211.woff, https://static.svd.se/font-service/fonts/sueca-text-extrabold_9d45a47c.ttf, https://static.svd.se/font-service/fonts/sueca-text-regular-italic_f5ec7859.woff, https://static.svd.se/font-service/fonts/sueca-text-regular-italic_aa6385de.ttf, https://static.svd.se/font-service/fonts/forsberg_b70998f0.woff2, https://static.svd.se/font-service/fonts/forsberg_42d3145d.woff, https://static.svd.se/font-service/fonts/forsberg_9a5379dc.ttf, https://static.svd.se/font-service/fonts/forsberg-semibold_b0023bbc.woff2, https://static.svd.se/font-service/fonts/forsberg-semibold_946056bb.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
+      "failureClass": "captured-wrong-page",
+      "reason": "no-body",
       "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/svd/freeze-report.json"
+      "reportPath": "fixtures/breadth-50/iframe-heavy/stackoverflow/freeze-report.json"
     },
     {
       "category": "iframe-heavy",
@@ -549,7 +551,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2452,
+      "mhtmlKb": 2506,
       "reportPath": "fixtures/breadth-50/iframe-heavy/dev-to/freeze-report.json"
     }
   ]

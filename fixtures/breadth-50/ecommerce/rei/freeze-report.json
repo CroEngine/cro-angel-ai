@@ -1,6 +1,6 @@
 {
-  "ok": true,
-  "error": null,
+  "ok": false,
+  "error": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
   "dryRun": false,
   "consent": {
     "selector": null,
@@ -11,48 +11,15 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 5435,
-    "screenshotKb": 879,
+    "mhtmlKb": 9791,
+    "screenshotKb": 881,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
-    "embeddedFontCount": 0,
-    "mhtmlKbBeforeFontEmbed": 5435,
-    "fontFetchFailures": [
-      {
-        "url": "https://www.rei.com/satchel/media/font-optimized/Pressura/gt-pressura-mono-regular.woff2",
-        "error": "HTTP 503"
-      },
-      {
-        "url": "https://www.rei.com/satchel/media/font-optimized/Graphik/Graphik-VF-Web-Subset.woff2",
-        "error": "HTTP 503"
-      },
-      {
-        "url": "https://www.rei.com/satchel/media/font-optimized/Stuart/REIStuartWebItalics-VF-Web-Subset.woff2",
-        "error": "HTTP 503"
-      },
-      {
-        "url": "https://www.rei.com/satchel/media/font-optimized/Pressura/gt-pressura-mono-bold.woff2",
-        "error": "HTTP 503"
-      },
-      {
-        "url": "https://www.rei.com/satchel/media/font-optimized/Graphik/GraphikWebItalic-VF-Web-Subset.woff2",
-        "error": "proxy denied via header x-deny-reason"
-      },
-      {
-        "url": "https://www.rei.com/satchel/media/font-optimized/Stuart/REIStuart-VF-Web-Subset.woff2",
-        "error": "HTTP 503"
-      },
-      {
-        "url": "https://www.rei.com/satchel/media/font-optimized/Pressura/gt-pressura-mono-bold.woff",
-        "error": "HTTP 503"
-      },
-      {
-        "url": "https://www.rei.com/satchel/media/font-optimized/Pressura/gt-pressura-mono-regular.woff",
-        "error": "HTTP 503"
-      }
-    ],
+    "embeddedFontCount": 8,
+    "mhtmlKbBeforeFontEmbed": 9324,
+    "fontFetchFailures": [],
     "embeddedFamilies": [
       "Graphik",
       "Pressura",
@@ -77,21 +44,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:32:15.176Z"
+    "frozenAt": "2026-06-20T20:38:01.383Z"
   },
-  "failureClass": null,
+  "failureClass": "externalize-unavailable",
   "captureValidity": {
     "ok": true,
-    "textLen": 7736,
-    "interactiveCount": 1201,
+    "textLen": 7745,
+    "interactiveCount": 1203,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 11738,
+    "gotoMs": 9674,
     "consentMs": 0,
-    "scrollMs": 3382,
-    "captureMs": 5586
+    "scrollMs": 4631,
+    "captureMs": 4256
   }
 }

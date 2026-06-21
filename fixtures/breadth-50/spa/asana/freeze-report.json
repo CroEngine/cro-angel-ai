@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 9655,
-    "screenshotKb": 655,
+    "mhtmlKb": 9640,
+    "screenshotKb": 650,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 38,
-    "mhtmlKbBeforeFontEmbed": 2965,
+    "mhtmlKbBeforeFontEmbed": 2950,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Ghost",
@@ -40,87 +40,87 @@
         {
           "original": "/fonts/haptik/haptik-regular.woff",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/haptik/haptik-light.woff",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/proxima-nova/proxima-nova-reg.woff",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/proxima-nova/proxima-nova-bold.woff",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/asana-icons/asana-icons.woff",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/pp-editorial-new/PPEditorialNew-Regular.woff",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/roboto/Roboto-Medium.ttf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/ghost/Ghost-Medium.otf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-250.otf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-300.otf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-350.otf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-400.otf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-450.otf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-500.otf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-550.otf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/hiragino-kaku-gothic-pron/Hiragino-Kaku-Gothic-ProN-W3.ttf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         },
         {
           "original": "/fonts/hiragino-kaku-gothic-pron/Hiragino-Kaku-Gothic-ProN-W6.ttf",
           "reason": "invalid-base",
-          "partIndex": 307
+          "partIndex": 302
         }
       ]
     },
@@ -137,9 +137,9 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:33:12.630Z"
+    "frozenAt": "2026-06-20T20:39:41.442Z"
   },
-  "failureClass": "unknown",
+  "failureClass": "externalize-unavailable",
   "captureValidity": {
     "ok": true,
     "textLen": 5487,
@@ -149,9 +149,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 14593,
+    "gotoMs": 11909,
     "consentMs": 0,
-    "scrollMs": 11440,
-    "captureMs": 9306
+    "scrollMs": 7036,
+    "captureMs": 10877
   }
 }

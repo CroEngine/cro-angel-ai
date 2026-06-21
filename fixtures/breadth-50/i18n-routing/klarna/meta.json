@@ -1,16 +1,16 @@
 {
   "url": "https://www.klarna.com",
   "name": "i18n-routing__klarna",
-  "captured_at": "2026-06-20T19:34:13.034Z",
+  "captured_at": "2026-06-20T20:40:33.670Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T19:33:39.162Z",
+  "notes": "breadth-50 2026-06-20T20:40:13.568Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T19:34:13.034Z",
-  "expiresAt": "2026-09-18T19:34:13.034Z",
+  "frozenAt": "2026-06-20T20:40:33.670Z",
+  "expiresAt": "2026-09-18T20:40:33.670Z",
   "refreezeReason": "manual"
 }

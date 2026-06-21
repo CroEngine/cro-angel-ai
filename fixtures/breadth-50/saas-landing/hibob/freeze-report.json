@@ -12,7 +12,7 @@
   },
   "capture": {
     "mhtmlKb": 2012,
-    "screenshotKb": 623,
+    "screenshotKb": 604,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
@@ -45,7 +45,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:30:47.286Z"
+    "frozenAt": "2026-06-20T20:36:47.570Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -57,9 +57,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 5351,
+    "gotoMs": 8161,
     "consentMs": 0,
-    "scrollMs": 3421,
-    "captureMs": 2619
+    "scrollMs": 3495,
+    "captureMs": 2419
   }
 }

@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 3289,
-    "screenshotKb": 1114,
+    "mhtmlKb": 8293,
+    "screenshotKb": 1747,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
-    "embeddedFontCount": 25,
-    "mhtmlKbBeforeFontEmbed": 1269,
+    "embeddedFontCount": 26,
+    "mhtmlKbBeforeFontEmbed": 6174,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "BBC Reith Sans",
@@ -30,13 +30,13 @@
     ],
     "fontUrls": {
       "embedded": 0,
-      "absolute": 44,
+      "absolute": 45,
       "relativeResolved": 2,
       "unresolvable": [
         {
           "original": "/https://static.files.bbci.co.uk/bbcdotcom/web/20260616-142550-2eb0b085ec-web-3.10.0-4/Freight_Disp_Light.woff2",
           "reason": "invalid-base",
-          "partIndex": 15
+          "partIndex": 70
         }
       ]
     },
@@ -53,21 +53,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:32:37.156Z"
+    "frozenAt": "2026-06-20T20:38:28.836Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 13551,
+    "textLen": 13777,
     "interactiveCount": 295,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 11746,
+    "gotoMs": 16329,
     "consentMs": 0,
-    "scrollMs": 3916,
-    "captureMs": 7269
+    "scrollMs": 3726,
+    "captureMs": 10507
   }
 }

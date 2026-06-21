@@ -1,6 +1,6 @@
 {
-  "ok": false,
-  "error": "-32000 Failed to generate MHTML",
+  "ok": true,
+  "error": null,
   "dryRun": false,
   "consent": {
     "selector": null,
@@ -11,17 +11,31 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 0,
-    "screenshotKb": 0,
+    "mhtmlKb": 5032,
+    "screenshotKb": 2635,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
-    "externalFontSrcCount": null,
-    "unembeddedFontUrls": null,
-    "embeddedFontCount": null,
-    "mhtmlKbBeforeFontEmbed": null,
-    "fontFetchFailures": null,
-    "embeddedFamilies": null,
-    "fontUrls": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 63,
+    "mhtmlKbBeforeFontEmbed": 2734,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "GH Guardian Headline",
+      "Guardian Egyptian Web",
+      "Guardian Headline Full",
+      "Guardian Text Egyptian Web",
+      "Guardian Text Sans Web",
+      "GuardianTextEgyptian",
+      "GuardianTextSans",
+      "NSI"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 89,
+      "relativeResolved": 18,
+      "unresolvable": []
+    },
     "externalized": false,
     "externalAssetUrl": null,
     "externalAssetSha256": null,
@@ -35,21 +49,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T19:32:20.988Z"
+    "frozenAt": "2026-06-20T20:38:23.001Z"
   },
-  "failureClass": "mhtml-capture-failed",
+  "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 19174,
-    "interactiveCount": 391,
+    "textLen": 19145,
+    "interactiveCount": 389,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 6041,
+    "gotoMs": 6353,
     "consentMs": 0,
-    "scrollMs": 5008,
-    "captureMs": 0
+    "scrollMs": 4754,
+    "captureMs": 16321
   }
 }

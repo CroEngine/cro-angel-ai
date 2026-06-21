@@ -1,16 +1,16 @@
 {
   "url": "https://www.warbyparker.com",
   "name": "ecommerce__warby-parker",
-  "captured_at": "2026-06-20T19:32:08.687Z",
+  "captured_at": "2026-06-20T20:37:58.441Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T19:31:51.839Z",
+  "notes": "breadth-50 2026-06-20T20:37:37.911Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T19:32:08.687Z",
-  "expiresAt": "2026-09-18T19:32:08.687Z",
+  "frozenAt": "2026-06-20T20:37:58.441Z",
+  "expiresAt": "2026-09-18T20:37:58.441Z",
   "refreezeReason": "manual"
 }
