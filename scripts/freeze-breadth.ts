@@ -65,6 +65,7 @@ async function runOne(category: string, deferred: boolean, site: Site): Promise<
       consentSelector: site.consentSelector,
       consentFrame: site.consentFrame,
       consentDismissCheck: site.consentDismissCheck,
+      skipExternalize: true,
       outDir: dir,
       notes: `breadth-50 ${new Date().toISOString()}`,
     });

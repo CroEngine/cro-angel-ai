@@ -1,0 +1,16 @@
+{
+  "url": "https://www.everlane.com",
+  "name": "ecommerce__everlane",
+  "captured_at": "2026-06-21T19:15:04.035Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-21T19:14:34.187Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-21T19:15:04.035Z",
+  "expiresAt": "2026-09-19T19:15:04.035Z",
+  "refreezeReason": "manual"
+}

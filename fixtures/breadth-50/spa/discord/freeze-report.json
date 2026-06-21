@@ -1,6 +1,6 @@
 {
-  "ok": false,
-  "error": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+  "ok": true,
+  "error": null,
   "dryRun": false,
   "consent": {
     "selector": null,
@@ -18,7 +18,7 @@
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 123,
-    "mhtmlKbBeforeFontEmbed": 6759,
+    "mhtmlKbBeforeFontEmbed": 6758,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "8Bit",
@@ -70,9 +70,9 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:39:54.475Z"
+    "frozenAt": "2026-06-21T19:16:14.131Z"
   },
-  "failureClass": "externalize-unavailable",
+  "failureClass": null,
   "captureValidity": {
     "ok": true,
     "textLen": 2116,
@@ -82,9 +82,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 9856,
+    "gotoMs": 12020,
     "consentMs": 0,
-    "scrollMs": 3385,
-    "captureMs": 5528
+    "scrollMs": 3479,
+    "captureMs": 5044
   }
 }

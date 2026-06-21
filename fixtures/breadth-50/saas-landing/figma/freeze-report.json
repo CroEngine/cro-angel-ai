@@ -1,6 +1,6 @@
 {
-  "ok": false,
-  "error": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+  "ok": true,
+  "error": null,
   "dryRun": false,
   "consent": {
     "selector": null,
@@ -11,8 +11,8 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 9296,
-    "screenshotKb": 680,
+    "mhtmlKb": 9216,
+    "screenshotKb": 656,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 2,
@@ -21,14 +21,14 @@
       "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff"
     ],
     "embeddedFontCount": 72,
-    "mhtmlKbBeforeFontEmbed": 2892,
+    "mhtmlKbBeforeFontEmbed": 2812,
     "fontFetchFailures": [
       {
-        "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff",
+        "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff",
         "error": "403 from proxy"
       },
       {
-        "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff",
+        "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff",
         "error": "403 from proxy"
       }
     ],
@@ -66,21 +66,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:36:57.725Z"
+    "frozenAt": "2026-06-21T19:14:39.113Z"
   },
-  "failureClass": "externalize-unavailable",
+  "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 3496,
-    "interactiveCount": 220,
+    "textLen": 3025,
+    "interactiveCount": 212,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 4774,
+    "gotoMs": 4541,
     "consentMs": 0,
-    "scrollMs": 4568,
-    "captureMs": 5681
+    "scrollMs": 4122,
+    "captureMs": 10558
   }
 }

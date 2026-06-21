@@ -59,6 +59,12 @@ export interface FreezeOptions {
    *  SiteSpec.removeSelectors. Determinism: strips inconsistently-injected
    *  third-party overlays so structure is identical across captures. */
   removeSelectors?: string[];
+  /** Skip the >10MB externalize-to-CDN step and always write the MHTML locally.
+   *  For the breadth measurement, whose binaries are gitignored and which scores
+   *  capture-correctness (did we get the right page?), NOT storage capability —
+   *  so an oversized-but-valid capture is a success, not an externalize failure.
+   *  The main corpus leaves this off (it commits to the 10MB-capped repo). */
+  skipExternalize?: boolean;
 }
 
 export interface FreezeResult {
@@ -888,7 +894,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
 
       // Stora MHTML → CDN, pekare i repo. Liten MHTML → direkt i repo som förr.
       // Tröskel ligger marginal under repo-gränsen 10 MB (se externalize.server.ts).
-      if (mhtmlBytes > MHTML_INLINE_THRESHOLD_BYTES) {
+      if (mhtmlBytes > MHTML_INLINE_THRESHOLD_BYTES && !opts.skipExternalize) {
         const pointer: AssetPointer = uploadAsset(
           Buffer.from(finalMhtml, "utf8"),
           "page.mhtml",

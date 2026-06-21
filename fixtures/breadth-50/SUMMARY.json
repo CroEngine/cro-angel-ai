@@ -1,37 +1,36 @@
 {
-  "ranAt": "2026-06-21T10:20:47.558Z",
+  "ranAt": "2026-06-21T19:17:36.094Z",
   "total": 45,
   "addressableTotal": 45,
-  "addressableOk": 35,
-  "addressableSuccessRate": 0.778,
+  "addressableOk": 43,
+  "addressableSuccessRate": 0.956,
   "byFailureClass": {
-    "externalize-unavailable": 8,
     "mhtml-capture-failed": 1,
     "captured-wrong-page": 1
   },
   "byCategory": {
     "saas-landing": {
       "total": 10,
-      "ok": 9,
-      "rate": 0.9,
+      "ok": 10,
+      "rate": 1,
       "deferred": false
     },
     "ecommerce": {
       "total": 10,
-      "ok": 6,
-      "rate": 0.6,
+      "ok": 10,
+      "rate": 1,
       "deferred": false
     },
     "media": {
       "total": 5,
-      "ok": 4,
-      "rate": 0.8,
+      "ok": 5,
+      "rate": 1,
       "deferred": false
     },
     "spa": {
       "total": 5,
-      "ok": 3,
-      "rate": 0.6,
+      "ok": 5,
+      "rate": 1,
       "deferred": false
     },
     "i18n-routing": {
@@ -54,8 +53,8 @@
     }
   },
   "unknownCount": 0,
-  "verdict": "RED: arkitektur räcker inte för bredd",
-  "$note": "Regenererad från reports. CDP getResponseBody-font-path: nytimes font-embed löst (embedded 0->391), nu externalize (166MB).",
+  "verdict": "GREEN: redo för nästa lager",
+  "$note": "skipExternalize för breadth (gitignorade binärer, mäter capture-correctness ej storage). Env-gap eliminerat.",
   "outcomes": [
     {
       "category": "saas-landing",
@@ -150,10 +149,10 @@
       "deferred": false,
       "name": "figma",
       "url": "https://www.figma.com",
-      "ok": false,
-      "failureClass": "externalize-unavailable",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 9296,
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 9216,
       "reportPath": "fixtures/breadth-50/saas-landing/figma/freeze-report.json"
     },
     {
@@ -194,10 +193,10 @@
       "deferred": false,
       "name": "everlane",
       "url": "https://www.everlane.com",
-      "ok": false,
-      "failureClass": "externalize-unavailable",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 13941,
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 13916,
       "reportPath": "fixtures/breadth-50/ecommerce/everlane/freeze-report.json"
     },
     {
@@ -227,10 +226,10 @@
       "deferred": false,
       "name": "casper",
       "url": "https://casper.com",
-      "ok": false,
-      "failureClass": "externalize-unavailable",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 14543,
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 14907,
       "reportPath": "fixtures/breadth-50/ecommerce/casper/freeze-report.json"
     },
     {
@@ -249,10 +248,10 @@
       "deferred": false,
       "name": "away",
       "url": "https://www.awaytravel.com",
-      "ok": false,
-      "failureClass": "externalize-unavailable",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 9223,
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3796,
       "reportPath": "fixtures/breadth-50/ecommerce/away/freeze-report.json"
     },
     {
@@ -260,10 +259,10 @@
       "deferred": false,
       "name": "rei",
       "url": "https://www.rei.com",
-      "ok": false,
-      "failureClass": "externalize-unavailable",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 9791,
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 9771,
       "reportPath": "fixtures/breadth-50/ecommerce/rei/freeze-report.json"
     },
     {
@@ -326,10 +325,10 @@
       "deferred": false,
       "name": "nytimes",
       "url": "https://www.nytimes.com",
-      "ok": false,
-      "failureClass": "externalize-unavailable",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 165993,
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 164930,
       "reportPath": "fixtures/breadth-50/media/nytimes/freeze-report.json"
     },
     {
@@ -359,10 +358,10 @@
       "deferred": false,
       "name": "asana",
       "url": "https://asana.com",
-      "ok": false,
-      "failureClass": "externalize-unavailable",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
-      "mhtmlKb": 9640,
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 16359,
       "reportPath": "fixtures/breadth-50/spa/asana/freeze-report.json"
     },
     {
@@ -370,9 +369,9 @@
       "deferred": false,
       "name": "discord",
       "url": "https://discord.com",
-      "ok": false,
-      "failureClass": "externalize-unavailable",
-      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
       "mhtmlKb": 19388,
       "reportPath": "fixtures/breadth-50/spa/discord/freeze-report.json"
     },

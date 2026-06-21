@@ -1,0 +1,16 @@
+{
+  "url": "https://www.nytimes.com",
+  "name": "media__nytimes",
+  "captured_at": "2026-06-21T19:16:34.804Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-21T19:15:04.985Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-21T19:16:34.804Z",
+  "expiresAt": "2026-09-19T19:16:34.804Z",
+  "refreezeReason": "manual"
+}

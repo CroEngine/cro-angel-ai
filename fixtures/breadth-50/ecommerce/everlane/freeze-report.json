@@ -1,6 +1,6 @@
 {
-  "ok": false,
-  "error": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+  "ok": true,
+  "error": null,
   "dryRun": false,
   "consent": {
     "selector": null,
@@ -11,8 +11,8 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 13941,
-    "screenshotKb": 636,
+    "mhtmlKb": 13916,
+    "screenshotKb": 620,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 3,
@@ -22,18 +22,18 @@
       "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Light.woff2"
     ],
     "embeddedFontCount": 33,
-    "mhtmlKbBeforeFontEmbed": 12254,
+    "mhtmlKbBeforeFontEmbed": 12229,
     "fontFetchFailures": [
-      {
-        "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Light.woff2",
-        "error": "HTTP 404"
-      },
       {
         "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Book.woff2",
         "error": "HTTP 404"
       },
       {
         "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Demi.woff2",
+        "error": "HTTP 404"
+      },
+      {
+        "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Light.woff2",
         "error": "HTTP 404"
       }
     ],
@@ -60,52 +60,52 @@
         {
           "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n4.9120912a469cad1cc292572851508ca49d12e768.woff2",
           "reason": "invalid-base",
-          "partIndex": 266
+          "partIndex": 265
         },
         {
           "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n4.6e9875ce64e0fefcd3f4446b7ec9036b3ddd2985.woff",
           "reason": "invalid-base",
-          "partIndex": 266
+          "partIndex": 265
         },
         {
           "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n7.bf44452348ec8b8efa3aa3068825305886b1c83c.woff2",
           "reason": "invalid-base",
-          "partIndex": 266
+          "partIndex": 265
         },
         {
           "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n7.0c887fee83f6b3bda822f1150b912c72da0f7b64.woff",
           "reason": "invalid-base",
-          "partIndex": 266
+          "partIndex": 265
         },
         {
           "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n4.9120912a469cad1cc292572851508ca49d12e768.woff2",
           "reason": "invalid-base",
-          "partIndex": 266
+          "partIndex": 265
         },
         {
           "original": "//www.everlane.com/cdn/fonts/assistant/assistant_n4.6e9875ce64e0fefcd3f4446b7ec9036b3ddd2985.woff",
           "reason": "invalid-base",
-          "partIndex": 266
+          "partIndex": 265
         },
         {
           "original": "//www.everlane.com/cdn/shop/t/367/assets/MaisonNeue-Book.woff2?v=6561364127032074371758145521",
           "reason": "invalid-base",
-          "partIndex": 268
+          "partIndex": 267
         },
         {
           "original": "//www.everlane.com/cdn/shop/t/367/assets/MaisonNeue-Demi.woff2?v=164685462144771994961758145522",
           "reason": "invalid-base",
-          "partIndex": 268
+          "partIndex": 267
         },
         {
           "original": "//www.everlane.com/cdn/shop/t/367/assets/MaisonNeue-Medium.woff2?v=89292363418528524481758145523",
           "reason": "invalid-base",
-          "partIndex": 268
+          "partIndex": 267
         },
         {
           "original": "//www.everlane.com/cdn/shop/t/367/assets/SelvaScriptPro-Light.woff2?v=20778119153255535891761171714",
           "reason": "invalid-base",
-          "partIndex": 268
+          "partIndex": 267
         }
       ]
     },
@@ -122,21 +122,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:37:23.502Z"
+    "frozenAt": "2026-06-21T19:14:39.184Z"
   },
-  "failureClass": "externalize-unavailable",
+  "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 3722,
-    "interactiveCount": 878,
+    "textLen": 3299,
+    "interactiveCount": 873,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 15106,
+    "gotoMs": 14305,
     "consentMs": 0,
-    "scrollMs": 5236,
-    "captureMs": 3825
+    "scrollMs": 4700,
+    "captureMs": 4635
   }
 }

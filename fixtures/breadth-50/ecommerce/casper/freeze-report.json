@@ -1,6 +1,6 @@
 {
-  "ok": false,
-  "error": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+  "ok": true,
+  "error": null,
   "dryRun": false,
   "consent": {
     "selector": null,
@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 14543,
-    "screenshotKb": 894,
+    "mhtmlKb": 14907,
+    "screenshotKb": 903,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
-    "embeddedFontCount": 171,
-    "mhtmlKbBeforeFontEmbed": 2451,
+    "embeddedFontCount": 161,
+    "mhtmlKbBeforeFontEmbed": 3026,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "AS Circular-Black",
@@ -35,12 +35,10 @@
       "Calibre",
       "Copyright Klim Type Foundry-Not Licensed for Desktop Use",
       "InterVariable",
-      "Lato",
       "Montserrat-Medium",
       "Montserrat-Regular",
       "Montserrat-SemiBold",
       "New Kansas TRIAL",
-      "NewKansas-Bold",
       "NewKansas-Medium",
       "NewKansas-Regular",
       "NewKansas-SemiBold",
@@ -50,14 +48,13 @@
       "NotoSansDisplay-Regular",
       "Open Sans",
       "Palmer Lake-Print",
-      "Roboto Condensed",
       "YahooSans-Regular",
       "affirm",
       "yotpo-widget-font"
     ],
     "fontUrls": {
       "embedded": 2,
-      "absolute": 185,
+      "absolute": 168,
       "relativeResolved": 2,
       "unresolvable": []
     },
@@ -74,9 +71,9 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:37:48.492Z"
+    "frozenAt": "2026-06-21T19:14:41.265Z"
   },
-  "failureClass": "externalize-unavailable",
+  "failureClass": null,
   "captureValidity": {
     "ok": true,
     "textLen": 5112,
@@ -86,9 +83,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 57051,
+    "gotoMs": 16241,
     "consentMs": 0,
-    "scrollMs": 3425,
-    "captureMs": 5322
+    "scrollMs": 3403,
+    "captureMs": 3720
   }
 }

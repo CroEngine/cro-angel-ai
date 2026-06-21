@@ -1,6 +1,6 @@
 {
-  "ok": false,
-  "error": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+  "ok": true,
+  "error": null,
   "dryRun": false,
   "consent": {
     "selector": null,
@@ -11,10 +11,10 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 165993,
-    "screenshotKb": 982,
+    "mhtmlKb": 164930,
+    "screenshotKb": 900,
     "beforeDismissScreenshotPath": null,
-    "loadStateDegraded": true,
+    "loadStateDegraded": null,
     "externalFontSrcCount": 3,
     "unembeddedFontUrls": [
       "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff",
@@ -22,23 +22,22 @@
       "https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.8a4b4c857c657c3ca62ebbcdd26d2698.ttf"
     ],
     "embeddedFontCount": 391,
-    "mhtmlKbBeforeFontEmbed": 12003,
+    "mhtmlKbBeforeFontEmbed": 10939,
     "fontFetchFailures": [
       {
         "url": "https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.8a4b4c857c657c3ca62ebbcdd26d2698.ttf",
         "error": "HTTP 403"
       },
       {
-        "url": "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff",
+        "url": "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.ttf",
         "error": "HTTP 403"
       },
       {
-        "url": "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.ttf",
+        "url": "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff",
         "error": "HTTP 403"
       }
     ],
     "embeddedFamilies": [
-      "&quot",
       "Archivo",
       "Bai Jamjuree",
       "Cormorant",
@@ -108,21 +107,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T10:16:44.332Z"
+    "frozenAt": "2026-06-21T19:15:18.146Z"
   },
-  "failureClass": "externalize-unavailable",
+  "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 12582,
-    "interactiveCount": 905,
+    "textLen": 13089,
+    "interactiveCount": 919,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 62982,
+    "gotoMs": 32250,
     "consentMs": 0,
-    "scrollMs": 4222,
-    "captureMs": 78892
+    "scrollMs": 4384,
+    "captureMs": 39474
   }
 }
