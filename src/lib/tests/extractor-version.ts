@@ -17,8 +17,15 @@
 // Changelog:
 //   1.0.0 — initial. Lock-in efter att hero-headline / skip-link /
 //           word-rotator-fixarna landat.
+//   1.1.0 — completeness ("catch everything"). collect.ts behåller nu
+//           interaktions-gömda element (mega-menyer, kollapsad mobilnav,
+//           tab-paneler, accordions) med visible:false istället för att släppa
+//           dem — innehållet finns redan i den frysta MHTML:en, droppet var
+//           extractor-sidigt. Synligt-bara element är oförändrade. normalize
+//           bär visible per element + visibleCount/hiddenCount i collect-rollup.
+//           Goldens omblessas (count stiger, ny visible-axel).
 
-export const EXTRACTOR_VERSION = "1.0.0" as const;
+export const EXTRACTOR_VERSION = "1.1.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

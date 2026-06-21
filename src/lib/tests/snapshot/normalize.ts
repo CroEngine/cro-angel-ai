@@ -44,6 +44,10 @@ function normElement(e: any) {
     category: e.category,
     intent: e.intent,
     section: e.section,
+    // Completeness flag: hidden interactive surfaces (collapsed menus, tab
+    // panels) are now collected with visible:false. Legacy data without the
+    // field is treated as visible (the old extractor only ever kept visible).
+    visible: e.visible !== false,
     aboveFold: !!e.aboveFold,
     href: e.href ? hostOnly(e.href) : null, // path/query are volatile; host is the signal
     disabled: !!e.disabled,
@@ -66,7 +70,12 @@ function hostOnly(href: string): string {
 
 // Stable sort key so array ORDER is never counted as a change.
 function elementKey(n: ReturnType<typeof normElement>): string {
-  return [n.section, n.category, n.intent, n.yBand, n.text].join("\u0001");
+  // Sort by STABLE identity (section/category/intent/visible/text) first; yBand
+  // LAST as a tiebreak for true duplicates only. Putting yBand before text let a
+  // sub-pixel band-crossing reshuffle the whole adjacent run, turning one real
+  // change into a cascade of positional diffs (masking genuine drift). visible
+  // split keeps a hidden + visible element with identical text as distinct rows.
+  return [n.section, n.category, n.intent, n.visible ? "v" : "h", n.text, n.yBand].join("\u0001");
 }
 
 export function normalizeCollect(collect: any) {
@@ -77,8 +86,11 @@ export function normalizeCollect(collect: any) {
   return {
     target: collect?.target,
     // count reflects the filtered element list so a flaky cookie banner can't
-    // shift the total.
+    // shift the total. visible/hidden split makes the completeness recovery
+    // (interaction-gated surfaces kept with visible:false) legible in the diff.
     count: els.length,
+    visibleCount: els.filter((e: any) => e.visible).length,
+    hiddenCount: els.filter((e: any) => !e.visible).length,
     byCategory: sortObj(collect?.byCategory),
     summary: {
       total: s.total,
