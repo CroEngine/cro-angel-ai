@@ -7,7 +7,7 @@
     "dismissCheck": "detached",
     "matchCountBeforeClick": null,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 1185,
+    "dismissedAfterMs": 954,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,14 +16,14 @@
     }
   },
   "capture": {
-    "mhtmlKb": 4148,
-    "screenshotKb": 70,
+    "mhtmlKb": 4017,
+    "screenshotKb": 123,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 28,
-    "mhtmlKbBeforeFontEmbed": 2498,
+    "mhtmlKbBeforeFontEmbed": 2368,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Ester Blenda",
@@ -53,21 +53,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:41:33.941Z"
+    "frozenAt": "2026-06-21T20:30:38.456Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 7817,
-    "interactiveCount": 179,
+    "textLen": 6951,
+    "interactiveCount": 174,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 9284,
-    "consentMs": 2237,
-    "scrollMs": 5152,
-    "captureMs": 9001
+    "gotoMs": 16071,
+    "consentMs": 1964,
+    "scrollMs": 4032,
+    "captureMs": 7932
   }
 }

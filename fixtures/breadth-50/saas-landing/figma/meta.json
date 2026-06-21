@@ -1,16 +1,16 @@
 {
   "url": "https://www.figma.com",
   "name": "saas-landing__figma",
-  "captured_at": "2026-06-21T19:14:58.503Z",
+  "captured_at": "2026-06-21T21:10:21.094Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T19:14:34.181Z",
+  "notes": "breadth-50 2026-06-21T21:10:05.218Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T19:14:58.503Z",
-  "expiresAt": "2026-09-19T19:14:58.503Z",
+  "frozenAt": "2026-06-21T21:10:21.094Z",
+  "expiresAt": "2026-09-19T21:10:21.094Z",
   "refreezeReason": "manual"
 }

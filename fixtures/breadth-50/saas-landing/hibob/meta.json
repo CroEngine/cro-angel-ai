@@ -1,16 +1,16 @@
 {
   "url": "https://www.hibob.com",
   "name": "saas-landing__hibob",
-  "captured_at": "2026-06-20T20:37:01.883Z",
+  "captured_at": "2026-06-21T21:10:04.956Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T20:36:45.310Z",
+  "notes": "breadth-50 2026-06-21T21:09:49.880Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T20:37:01.883Z",
-  "expiresAt": "2026-09-18T20:37:01.883Z",
+  "frozenAt": "2026-06-21T21:10:04.956Z",
+  "expiresAt": "2026-09-19T21:10:04.956Z",
   "refreezeReason": "manual"
 }

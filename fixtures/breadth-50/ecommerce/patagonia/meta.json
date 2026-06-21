@@ -1,16 +1,16 @@
 {
   "url": "https://www.patagonia.com",
   "name": "ecommerce__patagonia",
-  "captured_at": "2026-06-20T20:37:53.591Z",
+  "captured_at": "2026-06-21T21:11:34.091Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T20:37:31.402Z",
+  "notes": "breadth-50 2026-06-21T21:11:11.480Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T20:37:53.591Z",
-  "expiresAt": "2026-09-18T20:37:53.591Z",
+  "frozenAt": "2026-06-21T21:11:34.091Z",
+  "expiresAt": "2026-09-19T21:11:34.091Z",
   "refreezeReason": "manual"
 }

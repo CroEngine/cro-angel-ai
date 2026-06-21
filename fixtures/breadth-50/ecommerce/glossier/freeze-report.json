@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 3848,
-    "screenshotKb": 532,
+    "mhtmlKb": 3918,
+    "screenshotKb": 534,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 100,
-    "mhtmlKbBeforeFontEmbed": 1684,
+    "mhtmlKbBeforeFontEmbed": 1754,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Apercu",
@@ -49,7 +49,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:37:50.243Z"
+    "frozenAt": "2026-06-21T20:27:15.237Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -61,9 +61,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 28367,
+    "gotoMs": 15633,
     "consentMs": 0,
-    "scrollMs": 3635,
-    "captureMs": 3045
+    "scrollMs": 3642,
+    "captureMs": 3515
   }
 }

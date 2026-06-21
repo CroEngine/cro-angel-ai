@@ -1,16 +1,16 @@
 {
   "url": "https://www.lemonde.fr",
   "name": "cookie-wall-eu__lemonde",
-  "captured_at": "2026-06-21T10:09:42.877Z",
+  "captured_at": "2026-06-21T20:30:35.864Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": ".gdpr-lmd-button--big",
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T10:09:19.567Z",
+  "notes": "breadth-50 2026-06-21T20:30:13.725Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T10:09:42.877Z",
-  "expiresAt": "2026-09-19T10:09:42.877Z",
+  "frozenAt": "2026-06-21T20:30:35.864Z",
+  "expiresAt": "2026-09-19T20:30:35.864Z",
   "refreezeReason": "manual"
 }

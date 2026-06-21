@@ -7,7 +7,7 @@
     "dismissCheck": "detached",
     "matchCountBeforeClick": 1,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 664,
+    "dismissedAfterMs": 693,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,14 +16,14 @@
     }
   },
   "capture": {
-    "mhtmlKb": 4243,
-    "screenshotKb": 907,
+    "mhtmlKb": 4173,
+    "screenshotKb": 971,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 38,
-    "mhtmlKbBeforeFontEmbed": 1671,
+    "mhtmlKbBeforeFontEmbed": 1602,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Fette Engschrift",
@@ -52,92 +52,92 @@
         {
           "original": "/en/bucket/resources/english/front/fonts/variables/the-antiqua-b/TheAntiquaB-LeMonde.b353d5d190089f96.woff2",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/variables/the-antiqua-b/TheAntiquaB-LeMonde.b353d5d190089f96.woff2",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_800.a5e223e59d84d843.woff2",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_800.ae7988b2d6c42dc2.woff",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_800.a5e223e59d84d843.woff2",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/the-antiqua-b/TheAntiquaB_LT_800.ae7988b2d6c42dc2.woff",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Regular-Web.2f89fff3877253bf.woff2",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Regular-Web.cdb3946e94041532.woff",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Medium-Web.ac7bf37b26f16e97.woff2",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Medium-Web.925dd64435af08a3.woff",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Medium-Web.ac7bf37b26f16e97.woff2",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans/MarrSans-Medium-Web.925dd64435af08a3.woff",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Medium-Web.133dea79c01db68e.woff2",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Medium-Web.3a8ed51cac63c624.woff",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Semibold-Web.22ed62e40765ed70.woff2",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Semibold-Web.38e59055f09189d1.woff",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Semibold-Web.22ed62e40765ed70.woff2",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         },
         {
           "original": "/en/bucket/resources/english/front/fonts/marr-sans-cond/MarrSansCondensed-Semibold-Web.38e59055f09189d1.woff",
           "reason": "invalid-base",
-          "partIndex": 21
+          "partIndex": 23
         }
       ]
     },
@@ -154,21 +154,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T10:09:22.381Z"
+    "frozenAt": "2026-06-21T20:30:16.388Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 12560,
-    "interactiveCount": 339,
+    "textLen": 13863,
+    "interactiveCount": 355,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 4515,
-    "consentMs": 1737,
-    "scrollMs": 5001,
-    "captureMs": 9087
+    "gotoMs": 4888,
+    "consentMs": 1787,
+    "scrollMs": 4597,
+    "captureMs": 8024
   }
 }

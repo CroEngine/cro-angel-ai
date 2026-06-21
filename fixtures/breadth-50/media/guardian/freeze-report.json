@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 5032,
-    "screenshotKb": 2635,
+    "mhtmlKb": 5617,
+    "screenshotKb": 2553,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 63,
-    "mhtmlKbBeforeFontEmbed": 2734,
+    "mhtmlKbBeforeFontEmbed": 3320,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "GH Guardian Headline",
@@ -49,21 +49,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:38:23.001Z"
+    "frozenAt": "2026-06-21T20:27:42.711Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 19145,
-    "interactiveCount": 389,
+    "textLen": 19576,
+    "interactiveCount": 405,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 6353,
+    "gotoMs": 4897,
     "consentMs": 0,
-    "scrollMs": 4754,
-    "captureMs": 16321
+    "scrollMs": 4873,
+    "captureMs": 29408
   }
 }

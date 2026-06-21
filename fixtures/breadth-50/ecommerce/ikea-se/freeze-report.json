@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 4926,
-    "screenshotKb": 1137,
+    "mhtmlKb": 4913,
+    "screenshotKb": 1118,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 8,
-    "mhtmlKbBeforeFontEmbed": 4749,
+    "mhtmlKbBeforeFontEmbed": 4736,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Noto IKEA"
@@ -42,21 +42,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:38:23.872Z"
+    "frozenAt": "2026-06-21T20:27:42.790Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 12603,
-    "interactiveCount": 449,
+    "textLen": 12841,
+    "interactiveCount": 455,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 9224,
+    "gotoMs": 8845,
     "consentMs": 0,
-    "scrollMs": 4293,
-    "captureMs": 4109
+    "scrollMs": 3642,
+    "captureMs": 4998
   }
 }

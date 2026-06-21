@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 2506,
-    "screenshotKb": 957,
+    "mhtmlKb": 2434,
+    "screenshotKb": 924,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 4,
-    "mhtmlKbBeforeFontEmbed": 2194,
+    "mhtmlKbBeforeFontEmbed": 2122,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "OpenDyslexic"
@@ -42,21 +42,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:42:22.428Z"
+    "frozenAt": "2026-06-21T20:31:30.168Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 14881,
-    "interactiveCount": 831,
+    "textLen": 14342,
+    "interactiveCount": 804,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 6267,
+    "gotoMs": 5499,
     "consentMs": 0,
-    "scrollMs": 3444,
-    "captureMs": 2213
+    "scrollMs": 3343,
+    "captureMs": 4615
   }
 }

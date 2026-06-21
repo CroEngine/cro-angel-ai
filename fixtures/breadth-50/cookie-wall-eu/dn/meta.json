@@ -1,16 +1,16 @@
 {
   "url": "https://www.dn.se",
   "name": "cookie-wall-eu__dn",
-  "captured_at": "2026-06-20T20:41:47.021Z",
+  "captured_at": "2026-06-21T20:56:28.404Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": "#didomi-notice-agree-button",
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T20:41:14.049Z",
+  "notes": "breadth-50 2026-06-21T20:55:09.842Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T20:41:47.021Z",
-  "expiresAt": "2026-09-18T20:41:47.021Z",
+  "frozenAt": "2026-06-21T20:56:28.404Z",
+  "expiresAt": "2026-09-19T20:56:28.404Z",
   "refreezeReason": "manual"
 }

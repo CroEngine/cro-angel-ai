@@ -1,16 +1,16 @@
 {
   "url": "https://www.glossier.com",
   "name": "ecommerce__glossier",
-  "captured_at": "2026-06-20T20:38:25.617Z",
+  "captured_at": "2026-06-21T20:27:38.184Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T20:37:47.978Z",
+  "notes": "breadth-50 2026-06-21T20:27:13.190Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T20:38:25.617Z",
-  "expiresAt": "2026-09-18T20:38:25.617Z",
+  "frozenAt": "2026-06-21T20:27:38.184Z",
+  "expiresAt": "2026-09-19T20:27:38.184Z",
   "refreezeReason": "manual"
 }

@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 3052,
+    "mhtmlKb": 3053,
     "screenshotKb": 838,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 39,
-    "mhtmlKbBeforeFontEmbed": 1484,
+    "mhtmlKbBeforeFontEmbed": 1485,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Barlow",
@@ -47,7 +47,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:40:15.595Z"
+    "frozenAt": "2026-06-21T20:29:40.159Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -59,9 +59,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 10687,
+    "gotoMs": 21881,
     "consentMs": 0,
-    "scrollMs": 3671,
-    "captureMs": 3268
+    "scrollMs": 3497,
+    "captureMs": 2748
   }
 }

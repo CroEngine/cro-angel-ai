@@ -25,15 +25,15 @@
     "mhtmlKbBeforeFontEmbed": 12229,
     "fontFetchFailures": [
       {
+        "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Light.woff2",
+        "error": "HTTP 404"
+      },
+      {
         "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Book.woff2",
         "error": "HTTP 404"
       },
       {
         "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Demi.woff2",
-        "error": "HTTP 404"
-      },
-      {
-        "url": "https://www.everlane.com/assets/fonts/maison/MaisonNeue-Light.woff2",
         "error": "HTTP 404"
       }
     ],
@@ -122,7 +122,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T19:14:39.184Z"
+    "frozenAt": "2026-06-21T21:11:00.413Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -134,9 +134,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 14305,
+    "gotoMs": 14578,
     "consentMs": 0,
-    "scrollMs": 4700,
-    "captureMs": 4635
+    "scrollMs": 4893,
+    "captureMs": 4061
   }
 }
