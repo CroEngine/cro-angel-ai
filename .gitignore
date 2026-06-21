@@ -42,3 +42,8 @@ fixtures/drift-survey/**/screenshot.jpg
 fixtures/breadth-50/**/page.mhtml
 fixtures/breadth-50/**/page.pre-embed.mhtml
 fixtures/breadth-50/**/screenshot.jpg
+# Per-replay diagnostics written by replayCorpus during ground-truth/scoring
+# spot-checks. breadth-50 is a measurement set, not a regression corpus.
+fixtures/breadth-50/**/render-canary.json
+fixtures/breadth-50/**/render-canary.families.json
+fixtures/breadth-50/**/actual.json
