@@ -1,16 +1,16 @@
 {
   "url": "https://casper.com",
   "name": "ecommerce__casper",
-  "captured_at": "2026-06-21T20:27:41.041Z",
+  "captured_at": "2026-06-21T21:12:04.609Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:27:11.953Z",
+  "notes": "breadth-50 2026-06-21T21:11:34.301Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:27:41.041Z",
-  "expiresAt": "2026-09-19T20:27:41.041Z",
+  "frozenAt": "2026-06-21T21:12:04.609Z",
+  "expiresAt": "2026-09-19T21:12:04.609Z",
   "refreezeReason": "manual"
 }

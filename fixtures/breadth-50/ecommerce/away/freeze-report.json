@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 9252,
-    "screenshotKb": 719,
+    "mhtmlKb": 8751,
+    "screenshotKb": 663,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 57,
-    "mhtmlKbBeforeFontEmbed": 3468,
+    "mhtmlKbBeforeFontEmbed": 2967,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Akkurat",
@@ -46,82 +46,82 @@
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/Graphik-Regular.woff?v=30683354907528724371781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/Graphik-Regular.woff2?v=181781792293030414961781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/Graphik-RegularItalic.woff?v=7068822313990592381781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/Graphik-RegularItalic.woff2?v=152593243490646103971781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/Graphik-Medium.woff?v=53585019654122349531781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/Graphik-Medium.woff2?v=162971284276838589841781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/Graphik-SemiboldItalic.woff?v=116579722798068724851781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/Graphik-SemiboldItalic.woff2?v=51041161535710744321781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/LyonDisplay-Regular.woff?v=132586845922836422811781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/LyonDisplay-Regular.woff2?v=64734233085597227581781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/LyonDisplay-RegularItalic.woff?v=108679835732791780061781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/LyonDisplay-RegularItalic.woff2?v=33241849014978999131781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/AWAYKidsBubbleSolid.woff?v=24504471153597209051781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/RobotoMono-Regular.woff?v=83286180553415245291781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/RobotoMono-Regular.woff2?v=141109557330049454951781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         },
         {
           "original": "//www.awaytravel.com/cdn/shop/t/1293/assets/ReplicaMonoStd.woff2?v=85307841686633917031781712305",
           "reason": "invalid-base",
-          "partIndex": 85
+          "partIndex": 65
         }
       ]
     },
@@ -138,21 +138,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T20:27:15.517Z"
+    "frozenAt": "2026-06-21T21:12:06.889Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 4582,
-    "interactiveCount": 582,
+    "textLen": 4589,
+    "interactiveCount": 579,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 16691,
-    "consentMs": 1,
-    "scrollMs": 3808,
-    "captureMs": 3388
+    "gotoMs": 18232,
+    "consentMs": 0,
+    "scrollMs": 4414,
+    "captureMs": 2526
   }
 }

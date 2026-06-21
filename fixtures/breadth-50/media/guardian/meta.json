@@ -1,16 +1,16 @@
 {
   "url": "https://www.theguardian.com",
   "name": "media__guardian",
-  "captured_at": "2026-06-21T20:28:22.401Z",
+  "captured_at": "2026-06-21T21:13:21.573Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:27:40.196Z",
+  "notes": "breadth-50 2026-06-21T21:12:42.841Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:28:22.401Z",
-  "expiresAt": "2026-09-19T20:28:22.401Z",
+  "frozenAt": "2026-06-21T21:13:21.573Z",
+  "expiresAt": "2026-09-19T21:13:21.573Z",
   "refreezeReason": "manual"
 }

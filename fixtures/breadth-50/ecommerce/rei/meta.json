@@ -1,16 +1,16 @@
 {
   "url": "https://www.rei.com",
   "name": "ecommerce__rei",
-  "captured_at": "2026-06-21T20:27:51.191Z",
+  "captured_at": "2026-06-21T21:12:40.510Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:27:29.969Z",
+  "notes": "breadth-50 2026-06-21T21:12:11.978Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:27:51.191Z",
-  "expiresAt": "2026-09-19T20:27:51.191Z",
+  "frozenAt": "2026-06-21T21:12:40.510Z",
+  "expiresAt": "2026-09-19T21:12:40.510Z",
   "refreezeReason": "manual"
 }

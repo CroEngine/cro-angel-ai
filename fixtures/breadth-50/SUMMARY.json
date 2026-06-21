@@ -1,33 +1,408 @@
 {
-  "ranAt": "2026-06-21T20:59:33.618Z",
-  "total": 2,
-  "addressableTotal": 2,
-  "addressableOk": 1,
-  "addressableSuccessRate": 0.5,
+  "ranAt": "2026-06-21T20:50:36.018Z",
+  "note": "regenerated from 45 per-site reports after concurrent=4 re-run (process hung on tail retry; killed)",
+  "total": 50,
+  "addressableTotal": 45,
+  "addressableOk": 40,
+  "addressableSuccessRate": 0.889,
   "byFailureClass": {
-    "consent-missed": 1
+    "mhtml-capture-failed": 3,
+    "unknown": 1,
+    "missing-report": 5,
+    "captured-wrong-page": 1
   },
-  "byCategory": {
-    "cookie-wall-eu": {
-      "total": 2,
-      "ok": 1,
-      "rate": 0.5,
-      "deferred": false
-    }
-  },
-  "unknownCount": 0,
-  "verdict": "RED: arkitektur räcker inte för bredd, omdesign krävs",
+  "unknownCount": 1,
+  "verdict": "RED: unknown failureClass present",
   "outcomes": [
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "stripe",
+      "url": "https://stripe.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 2098
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "notion",
+      "url": "https://www.notion.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 4821
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "linear",
+      "url": "https://linear.app",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 4301
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "vercel",
+      "url": "https://vercel.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 2011
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "supabase",
+      "url": "https://supabase.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 1665
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "intercom",
+      "url": "https://www.intercom.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 5111
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "hubspot",
+      "url": "https://www.hubspot.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 6851
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "hibob",
+      "url": "https://www.hibob.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 2013
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "figma",
+      "url": "https://www.figma.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 8542
+    },
+    {
+      "category": "saas-landing",
+      "deferred": false,
+      "name": "loom",
+      "url": "https://www.loom.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 9074
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "shopify-store-allbirds",
+      "url": "https://www.allbirds.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 6006
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "shopify-store-gymshark",
+      "url": "https://www.gymshark.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 4384
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "everlane",
+      "url": "https://www.everlane.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 14670
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "patagonia",
+      "url": "https://www.patagonia.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3539
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "warby-parker",
+      "url": "https://www.warbyparker.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3866
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "casper",
+      "url": "https://casper.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 14906
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "glossier",
+      "url": "https://www.glossier.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3918
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "away",
+      "url": "https://www.awaytravel.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 9252
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "rei",
+      "url": "https://www.rei.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 7507
+    },
+    {
+      "category": "ecommerce",
+      "deferred": false,
+      "name": "ikea-se",
+      "url": "https://www.ikea.com/se/sv/",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 4913
+    },
+    {
+      "category": "media",
+      "deferred": false,
+      "name": "guardian",
+      "url": "https://www.theguardian.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 5617
+    },
+    {
+      "category": "media",
+      "deferred": false,
+      "name": "bbc",
+      "url": "https://www.bbc.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 7302
+    },
+    {
+      "category": "media",
+      "deferred": false,
+      "name": "verge",
+      "url": "https://www.theverge.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3482
+    },
+    {
+      "category": "media",
+      "deferred": false,
+      "name": "techcrunch",
+      "url": "https://techcrunch.com",
+      "ok": false,
+      "failureClass": "mhtml-capture-failed",
+      "reason": "-32000 Failed to generate MHTML",
+      "mhtmlKb": 0
+    },
+    {
+      "category": "media",
+      "deferred": false,
+      "name": "nytimes",
+      "url": "https://www.nytimes.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 164603
+    },
+    {
+      "category": "spa",
+      "deferred": false,
+      "name": "airbnb",
+      "url": "https://www.airbnb.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3626
+    },
+    {
+      "category": "spa",
+      "deferred": false,
+      "name": "trello",
+      "url": "https://trello.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3314
+    },
+    {
+      "category": "spa",
+      "deferred": false,
+      "name": "asana",
+      "url": "https://asana.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 2546
+    },
+    {
+      "category": "spa",
+      "deferred": false,
+      "name": "discord",
+      "url": "https://discord.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 19388
+    },
+    {
+      "category": "spa",
+      "deferred": false,
+      "name": "spotify",
+      "url": "https://www.spotify.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 6204
+    },
+    {
+      "category": "i18n-routing",
+      "deferred": false,
+      "name": "klarna",
+      "url": "https://www.klarna.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 3053
+    },
+    {
+      "category": "i18n-routing",
+      "deferred": false,
+      "name": "spotify-se",
+      "url": "https://www.spotify.com/se/",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 6315
+    },
+    {
+      "category": "i18n-routing",
+      "deferred": false,
+      "name": "uber",
+      "url": "https://www.uber.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 1957
+    },
+    {
+      "category": "i18n-routing",
+      "deferred": false,
+      "name": "booking",
+      "url": "https://www.booking.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 1609
+    },
+    {
+      "category": "i18n-routing",
+      "deferred": false,
+      "name": "tradera",
+      "url": "https://www.tradera.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 8704
+    },
+    {
+      "category": "cookie-wall-eu",
+      "deferred": false,
+      "name": "lemonde",
+      "url": "https://www.lemonde.fr",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 4173
+    },
     {
       "category": "cookie-wall-eu",
       "deferred": false,
       "name": "spiegel",
       "url": "https://www.spiegel.de",
+      "ok": false,
+      "failureClass": "mhtml-capture-failed",
+      "reason": "-32000 Failed to generate MHTML",
+      "mhtmlKb": 0
+    },
+    {
+      "category": "cookie-wall-eu",
+      "deferred": false,
+      "name": "dn",
+      "url": "https://www.dn.se",
+      "ok": false,
+      "failureClass": "mhtml-capture-failed",
+      "reason": "-32000 Failed to generate MHTML",
+      "mhtmlKb": 0
+    },
+    {
+      "category": "cookie-wall-eu",
+      "deferred": false,
+      "name": "svd",
+      "url": "https://www.svd.se",
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 6092,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/spiegel/freeze-report.json"
+      "mhtmlKb": 4017
     },
     {
       "category": "cookie-wall-eu",
@@ -35,10 +410,109 @@
       "name": "aftonbladet",
       "url": "https://www.aftonbladet.se",
       "ok": false,
-      "failureClass": "consent-missed",
+      "failureClass": "unknown",
       "reason": "Could not find an element for the given xPath(s): //button[contains(normalize-space(.),\"Godkänn alla\")]",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/aftonbladet/freeze-report.json"
+      "mhtmlKb": 0
+    },
+    {
+      "category": "anti-bot",
+      "deferred": true,
+      "name": "ticketmaster",
+      "url": "https://www.ticketmaster.com",
+      "ok": false,
+      "failureClass": "missing-report",
+      "reason": null,
+      "mhtmlKb": 0
+    },
+    {
+      "category": "anti-bot",
+      "deferred": true,
+      "name": "nike",
+      "url": "https://www.nike.com",
+      "ok": false,
+      "failureClass": "missing-report",
+      "reason": null,
+      "mhtmlKb": 0
+    },
+    {
+      "category": "anti-bot",
+      "deferred": true,
+      "name": "supreme",
+      "url": "https://www.supremenewyork.com",
+      "ok": false,
+      "failureClass": "missing-report",
+      "reason": null,
+      "mhtmlKb": 0
+    },
+    {
+      "category": "anti-bot",
+      "deferred": true,
+      "name": "ssense",
+      "url": "https://www.ssense.com",
+      "ok": false,
+      "failureClass": "missing-report",
+      "reason": null,
+      "mhtmlKb": 0
+    },
+    {
+      "category": "anti-bot",
+      "deferred": true,
+      "name": "farfetch",
+      "url": "https://www.farfetch.com",
+      "ok": false,
+      "failureClass": "missing-report",
+      "reason": null,
+      "mhtmlKb": 0
+    },
+    {
+      "category": "iframe-heavy",
+      "deferred": false,
+      "name": "medium",
+      "url": "https://medium.com",
+      "ok": false,
+      "failureClass": "captured-wrong-page",
+      "reason": "text-too-short",
+      "mhtmlKb": 0
+    },
+    {
+      "category": "iframe-heavy",
+      "deferred": false,
+      "name": "substack",
+      "url": "https://substack.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 5465
+    },
+    {
+      "category": "iframe-heavy",
+      "deferred": false,
+      "name": "github-blog",
+      "url": "https://github.blog",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 8048
+    },
+    {
+      "category": "iframe-heavy",
+      "deferred": false,
+      "name": "stackoverflow",
+      "url": "https://stackoverflow.com",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 1903
+    },
+    {
+      "category": "iframe-heavy",
+      "deferred": false,
+      "name": "dev-to",
+      "url": "https://dev.to",
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 2434
     }
   ]
 }

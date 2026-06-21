@@ -1,16 +1,16 @@
 {
   "url": "https://www.bbc.com",
   "name": "media__bbc",
-  "captured_at": "2026-06-21T20:28:02.638Z",
+  "captured_at": "2026-06-21T21:13:21.693Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:27:41.246Z",
+  "notes": "breadth-50 2026-06-21T21:12:52.814Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:28:02.638Z",
-  "expiresAt": "2026-09-19T20:28:02.638Z",
+  "frozenAt": "2026-06-21T21:13:21.693Z",
+  "expiresAt": "2026-09-19T21:13:21.693Z",
   "refreezeReason": "manual"
 }
