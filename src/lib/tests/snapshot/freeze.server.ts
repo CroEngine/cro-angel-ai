@@ -659,7 +659,38 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
         report.capture.beforeDismissScreenshotPath = beforePath;
       }
       const tClick = Date.now();
-      await page.frameLocator(opts.consentFrame).locator(opts.consentSelector).first().click();
+      // The iframe attaching ≠ the button being rendered. Sourcepoint paints the
+      // CMP body a beat later, so an immediate click raced the button and threw
+      // "Could not find an element for the given xPath(s)". Wait for the button
+      // to be visible inside the frame first; a clean consent error (classified
+      // consent-missed) beats a flaky race.
+      const consentButton = page
+        .frameLocator(opts.consentFrame)
+        .locator(opts.consentSelector)
+        .first();
+      // Stagehand's frame LocatorDelegate has no waitFor — poll isVisible()
+      // (returns false rather than throwing when the xpath hasn't resolved yet)
+      // until the button paints or we time out.
+      const buttonDeadline = Date.now() + 10000;
+      let buttonReady = false;
+      while (Date.now() < buttonDeadline) {
+        try {
+          if (await consentButton.isVisible()) {
+            buttonReady = true;
+            break;
+          }
+        } catch {
+          /* frame mid-navigation — retry */
+        }
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      if (!buttonReady) {
+        throw new Error(
+          `[freeze] consent-knapp syntes aldrig i iframe inom 10s: ${opts.consentSelector} (${opts.name}). ` +
+            `CMP-iframe attachade men knappen renderade aldrig (A/B-variant eller fördröjd render).`,
+        );
+      }
+      await consentButton.click();
       try {
         await page.waitForSelector(opts.consentFrame, { state: dismissState, timeout: 8000 });
       } catch {

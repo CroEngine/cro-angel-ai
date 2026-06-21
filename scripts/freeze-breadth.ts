@@ -35,7 +35,11 @@ function flag(name: string): boolean {
 }
 
 const targets = JSON.parse(readFileSync(join("corpus", "breadth-targets.json"), "utf8")) as Targets;
-const concurrent = Number(arg("concurrent") ?? "4");
+// Default 2, not 4: CDP captureSnapshot (-32000 "Failed to generate MHTML")
+// chokes on large media pages under capture concurrency. spiegel/techcrunch/dn
+// fail at 4 but pass at ≤2. Reliability over wall-clock for the breadth gate;
+// override with --concurrent= for a faster, flakier pass.
+const concurrent = Number(arg("concurrent") ?? "2");
 const onlyCategory = arg("category");
 const onlySites = arg("site")?.split(",").map((s) => s.trim()).filter(Boolean);
 const includeDeferred = flag("include-deferred");
