@@ -1,0 +1,16 @@
+{
+  "url": "https://www.awaytravel.com",
+  "name": "ecommerce__away",
+  "captured_at": "2026-06-21T19:16:11.338Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-21T19:14:58.723Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-21T19:16:11.338Z",
+  "expiresAt": "2026-09-19T19:16:11.338Z",
+  "refreezeReason": "manual"
+}

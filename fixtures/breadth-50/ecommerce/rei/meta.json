@@ -1,0 +1,16 @@
+{
+  "url": "https://www.rei.com",
+  "name": "ecommerce__rei",
+  "captured_at": "2026-06-21T19:15:40.127Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-21T19:15:04.267Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-21T19:15:40.127Z",
+  "expiresAt": "2026-09-19T19:15:40.127Z",
+  "refreezeReason": "manual"
+}

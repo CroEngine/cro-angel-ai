@@ -42,6 +42,13 @@ export interface FreezeOptions {
   consentSelector?: string;
   consentDismissCheck?: "detached" | "hidden";
   consentInstruction?: string;
+  /** iframe-based CMP (e.g. Sourcepoint `sp_message_iframe`): the accept button
+   *  lives inside this iframe, so it's clicked via frameLocator and dismissal is
+   *  verified by the iframe detaching. consentSelector is the button locator
+   *  INSIDE the frame and MUST be an XPath (Stagehand's frame locator resolves
+   *  xpath, not CSS) — e.g. `//button[contains(normalize-space(.),"Godkänn alla")]`.
+   *  Verified 2026-06-20 on aftonbladet (Sourcepoint). */
+  consentFrame?: string;
   outDir?: string;
   notes?: string;
   /** Skip writes to corpus/. Receipt still written to /tmp. */
@@ -52,6 +59,12 @@ export interface FreezeOptions {
    *  SiteSpec.removeSelectors. Determinism: strips inconsistently-injected
    *  third-party overlays so structure is identical across captures. */
   removeSelectors?: string[];
+  /** Skip the >10MB externalize-to-CDN step and always write the MHTML locally.
+   *  For the breadth measurement, whose binaries are gitignored and which scores
+   *  capture-correctness (did we get the right page?), NOT storage capability —
+   *  so an oversized-but-valid capture is a success, not an externalize failure.
+   *  The main corpus leaves this off (it commits to the 10MB-capped repo). */
+  skipExternalize?: boolean;
 }
 
 export interface FreezeResult {
@@ -78,12 +91,19 @@ interface FreezeReport {
     mhtmlKb: number;
     screenshotKb: number;
     beforeDismissScreenshotPath: string | null;
+    /** Heavy-SPA escape hatch: the `load` event never fired within the goto
+     *  budget so capture proceeded on domcontentloaded. assertCaptureValid is
+     *  the backstop. null = load fired normally. */
+    loadStateDegraded: boolean | null;
     // A2 — font-embedding (post-capture rewrite, see mhtml-fonts.server.ts).
     // externalFontSrcCount is the form-agnostic success gate per plan
     // beslutspunkt 3: must be 0 after rewrite. embeddedFontCount and
     // fetchFailures are diagnostics; mhtmlKbBeforeFontEmbed lets us see
     // the size delta the embedding added.
     externalFontSrcCount: number | null;
+    /** The http(s) font URLs still present after the A2 rewrite (≤20, deduped) —
+     *  self-diagnosing companion to externalFontSrcCount. */
+    unembeddedFontUrls: string[] | null;
     embeddedFontCount: number | null;
     mhtmlKbBeforeFontEmbed: number | null;
     fontFetchFailures: { url: string; error: string }[] | null;
@@ -154,6 +174,7 @@ interface FreezeReport {
     | "auth-gate"
     | "geo-gate"
     | "mhtml-too-large"
+    | "externalize-unavailable"
     | "mhtml-capture-failed"
     | "font-embed-failed"
     | "unknown";
@@ -269,6 +290,13 @@ function classifyFailure(
   if (msg.includes("a2 gate")) return "font-embed-failed";
   if (msg.includes("mhtml") && (msg.includes("too large") || msg.includes("10 mb"))) {
     return "mhtml-too-large";
+  }
+  // Oversized capture routed to externalize, but the lovable-assets CLI isn't on
+  // PATH in this environment (sandbox/CI without the tool). The capture itself
+  // succeeded — this is an infra/storage gap, not a site or capture failure, so
+  // it gets its own class rather than landing in `unknown` (which trips RED).
+  if (msg.includes("externalize") && msg.includes("lovable-assets")) {
+    return "externalize-unavailable";
   }
   if (msg.includes("net::err_") || msg.includes("403") || msg.includes("blocked")) {
     return "anti-bot-blocked";
@@ -387,7 +415,9 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       mhtmlKb: 0,
       screenshotKb: 0,
       beforeDismissScreenshotPath: null,
+      loadStateDegraded: null,
       externalFontSrcCount: null,
+      unembeddedFontUrls: null,
       embeddedFontCount: null,
       mhtmlKbBeforeFontEmbed: null,
       fontFetchFailures: null,
@@ -483,17 +513,141 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       frozenAt: new Date().toISOString(),
     };
 
+    // CDP Network capture: record url -> requestId for every font response during
+    // load so we can later read the bytes the browser ACTUALLY downloaded
+    // (Network.getResponseBody). This is the only way to embed fonts a CDN
+    // CORS/hotlink-blocks from BOTH the server-side proxy AND page.evaluate(fetch)
+    // (e.g. nytimes g1.nyt.com). Best-effort: if the CDP session/events aren't
+    // available, embedding falls back to the server-side + page-fetch paths.
+    const fontReqIds = new Map<string, string>();
+    type CdpSessionLike = {
+      send: (method: string, params?: unknown) => Promise<unknown>;
+      on: (event: string, cb: (p: { requestId: string; response?: { url?: string; mimeType?: string } }) => void) => void;
+    };
+    let cdpNet: CdpSessionLike | null = null;
+    try {
+      const ctx = stagehand.context as unknown as {
+        newCDPSession?: (p: unknown) => Promise<CdpSessionLike>;
+      };
+      if (typeof ctx.newCDPSession === "function") {
+        const sess = await ctx.newCDPSession(page);
+        await sess.send("Network.enable");
+        sess.on("Network.responseReceived", (p) => {
+          const url = p.response?.url ?? "";
+          const mime = p.response?.mimeType ?? "";
+          if (url && (/font|woff|ttf|otf/i.test(mime) || /\.(woff2?|ttf|otf|eot)(\?|$)/i.test(url))) {
+            fontReqIds.set(url, p.requestId);
+          }
+        });
+        cdpNet = sess;
+      }
+    } catch {
+      /* CDP Network session unavailable — embedding uses the other fallbacks */
+    }
 
     const tGoto = Date.now();
-    await page.goto(opts.url, { waitUntil: "load", timeoutMs: 60_000 });
+    try {
+      await page.goto(opts.url, { waitUntil: "load", timeoutMs: 60_000 });
+    } catch (e) {
+      // Heavy SPAs (e.g. linear) hold connections open so the `load` event never
+      // fires within budget — but navigation completed and the DOM is present
+      // (domcontentloaded fired long before). Proceed instead of failing the
+      // freeze: the settle + lazyScroll pull in lazy resources, the font-embed
+      // step fetches fonts directly, and assertCaptureValid is the backstop if
+      // the page is genuinely empty. Re-throw anything that is NOT a load-timeout.
+      if (!/timed?\s*out|timeout/i.test(String((e as Error)?.message ?? e))) throw e;
+      report.capture.loadStateDegraded = true;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[freeze] '${opts.name}': load event did not fire within 60s — proceeding ` +
+          `on domcontentloaded (heavy SPA); assertCaptureValid is the backstop`,
+      );
+    }
     await new Promise((r) => setTimeout(r, 1500));
     report.timing.gotoMs = Date.now() - tGoto;
+
+    // Content-ready wait: give late-hydrating SPAs (e.g. spotify) and auto-
+    // clearing bot-challenges (Cloudflare "Just a moment…" / "Performing security
+    // verification" — which solve themselves in ~5–8s, no proxy needed) time to
+    // render real content before capture. Poll until the body has substantial
+    // text AND isn't a challenge interstitial, up to a budget. Normal pages are
+    // ready on the first check and break immediately. This is NOT an anti-bot
+    // bypass — it only waits out challenges that clear on their own; a persistent
+    // challenge or sparse page just times out and assertCaptureValid catches it.
+    {
+      const CONTENT_WAIT_MS = 12_000;
+      const CONTENT_MIN_CHARS = 400;
+      const tReady = Date.now();
+      let ready = false;
+      while (Date.now() - tReady < CONTENT_WAIT_MS) {
+        const st = (await page
+          .evaluate(
+            `(() => { const txt = (document.body?.innerText || "").trim(); return { len: txt.length, ` +
+              `challenge: /just a moment|verify you are human|performing security verification|` +
+              `attention required|enable javascript to continue|checking your browser/i` +
+              `.test(txt + " " + document.title) }; })()`,
+          )
+          .catch(() => ({ len: 0, challenge: false }))) as { len: number; challenge: boolean };
+        if (!st.challenge && st.len >= CONTENT_MIN_CHARS) {
+          ready = true;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (!ready) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[freeze] '${opts.name}': content not ready within ${CONTENT_WAIT_MS}ms ` +
+            `(sparse page or persistent challenge) — proceeding; assertCaptureValid is the backstop`,
+        );
+      }
+    }
 
     // Consent: hård assertion + mätning. Allt mäts in i `report` löpande så
     // receipten är användbar även när vi throwar.
     const tConsent = Date.now();
     const dismissState = opts.consentDismissCheck ?? "detached";
-    if (opts.consentSelector) {
+    if (opts.consentFrame) {
+      // iframe-based CMP (Sourcepoint sp_message_iframe et al). The accept button
+      // lives inside the iframe, so page.locator can't reach it — click via
+      // frameLocator and verify the iframe detaches/hides. consentSelector is the
+      // button locator INSIDE the frame (e.g. button[title="Godkänn alla"]).
+      if (!opts.consentSelector) {
+        throw new Error(
+          `[freeze] consentFrame satt utan consentSelector (knapp-i-iframe): ${opts.name}.`,
+        );
+      }
+      try {
+        await page.waitForSelector(opts.consentFrame, { state: "attached", timeout: 8000 });
+      } catch {
+        throw new Error(
+          `[freeze] consent-iframe blev aldrig attached inom 8s: ${opts.consentFrame} (${opts.name}). ` +
+            `Stale selektor, A/B-variant, eller CMP laddade aldrig.`,
+        );
+      }
+      report.consent.visibleBeforeClick = true;
+      if (opts.screenshotBeforeDismiss) {
+        const beforeShot = await page.screenshot({ type: "jpeg", quality: 70, fullPage: false });
+        const beforePath = opts.dryRun
+          ? join(tmpdir(), `freeze-${opts.name}-${ts}.before-dismiss.jpg`)
+          : join(dir, "screenshot.before-dismiss.jpg");
+        writeFileSync(beforePath, Buffer.from(beforeShot));
+        report.capture.beforeDismissScreenshotPath = beforePath;
+      }
+      const tClick = Date.now();
+      await page.frameLocator(opts.consentFrame).locator(opts.consentSelector).first().click();
+      try {
+        await page.waitForSelector(opts.consentFrame, { state: dismissState, timeout: 8000 });
+      } catch {
+        throw new Error(
+          `[freeze] consent-iframe kvar efter klick (state=${dismissState}, ${opts.consentFrame}): ${opts.name}. ` +
+            `Knapp-selektor i iframe fel, eller CMP döljer istället för att detacha (testa consentDismissCheck=hidden).`,
+        );
+      }
+      report.consent.dismissedAfterMs = Date.now() - tClick;
+      await new Promise((r) => setTimeout(r, 800));
+      report.consent.postDismissDomHits = await measurePostDismissDomHits(page, POST_DISMISS_NEEDLES);
+    } else if (opts.consentSelector) {
       // Vänta in bannern (consent injiceras ofta async via taghanterare).
       // Om DENNA waiten timear ut är det stale selektor / banner laddade aldrig
       // — det är ett legitimt freeze-fel och vi loggar det explicit i error.
@@ -608,9 +762,23 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     }
 
     const tCapture = Date.now();
-    const snap = await page.sendCDP<{ data: string }>("Page.captureSnapshot", {
-      format: "mhtml",
-    });
+    // Page.captureSnapshot intermittently fails with CDP -32000 "Failed to
+    // generate MHTML" (observed: guardian, verge, dn, spiegel). Root cause not
+    // isolated; empirically a settle + retry clears the transient cases. Retry
+    // up to 3x on -32000 only; re-throw any other error immediately.
+    let snap: { data: string } | undefined;
+    let captureErr: unknown;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        snap = await page.sendCDP<{ data: string }>("Page.captureSnapshot", { format: "mhtml" });
+        break;
+      } catch (e) {
+        captureErr = e;
+        if (!/-32000|failed to generate mhtml/i.test(String((e as Error)?.message ?? e))) throw e;
+        await new Promise((r) => setTimeout(r, 1200 * attempt));
+      }
+    }
+    if (!snap) throw captureErr;
     const rawMhtmlBytes = Buffer.byteLength(snap.data, "utf8");
     report.capture.mhtmlKbBeforeFontEmbed = Math.round(rawMhtmlBytes / 1024);
 
@@ -628,11 +796,68 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     // A2 — embed external font binaries as cid: parts so replay doesn't fall
     // back to OS fonts. The hard-assert below (externalFontSrcCount === 0) is
     // the form-agnostic success gate per plan beslutspunkt 3.
-    const embedded = await embedMhtmlFonts(snap.data);
+    // Browser-context font fetch — fonts the server-side proxy can't reach
+    // (CDN hotlink/IP-block, e.g. Schibsted cdn.aftonbladet.se / static.svd.se)
+    // but the live page already loaded via @font-face. page.evaluate runs the
+    // fetch in the page's own origin; bytes come back base64 (chunked to dodge
+    // the call-stack limit on String.fromCharCode for large fonts). The page is
+    // still on-site here (post-capture, pre-close), so the origin is correct.
+    const browserFetch = async (fontUrl: string): Promise<Buffer | null> => {
+      try {
+        const b64 = (await page.evaluate(
+          `(async () => { try { const r = await fetch(${JSON.stringify(fontUrl)}); if (!r.ok) return null; ` +
+            `const b = new Uint8Array(await r.arrayBuffer()); let s = ""; const C = 0x8000; ` +
+            `for (let i = 0; i < b.length; i += C) s += String.fromCharCode.apply(null, b.subarray(i, i + C)); ` +
+            `return btoa(s); } catch { return null; } })()`,
+        )) as string | null;
+        return b64 ? Buffer.from(b64, "base64") : null;
+      } catch {
+        return null;
+      }
+    };
+    // Which font URLs did the browser actually load? Union of resource-timing and
+    // the CDP-observed font requests — the latter has no buffer-eviction gap on
+    // heavy pages. Lets the A2 gate fire only on render-relevant survivors (loaded
+    // but unembeddable), not referenced-but-unused fonts.
+    const perfFontUrls = (await page
+      .evaluate(
+        `(() => { try { return performance.getEntriesByType("resource").map((e) => e.name)` +
+          `.filter((n) => /\\.(woff2?|ttf|otf|eot)(\\?|$)/i.test(n)); } catch { return []; } })()`,
+      )
+      .catch(() => [])) as string[];
+    const loadedFontUrls = Array.from(new Set([...perfFontUrls, ...fontReqIds.keys()]));
+    // Drain the bytes the browser actually downloaded for each font request
+    // (CDP getResponseBody), pre-embed while the bodies are still in the network
+    // buffer. This is the embed fallback that beats CORS/hotlink blocks.
+    const fontBodyCache = new Map<string, Buffer>();
+    if (cdpNet && fontReqIds.size > 0) {
+      await Promise.all(
+        Array.from(fontReqIds).map(async ([url, requestId]) => {
+          try {
+            const body = (await cdpNet!.send("Network.getResponseBody", { requestId })) as {
+              body: string;
+              base64Encoded: boolean;
+            };
+            const buf = body.base64Encoded
+              ? Buffer.from(body.body, "base64")
+              : Buffer.from(body.body, "utf8");
+            if (buf.byteLength > 0) fontBodyCache.set(url, buf);
+          } catch {
+            /* body evicted/unavailable for this request */
+          }
+        }),
+      );
+    }
+    const embedded = await embedMhtmlFonts(snap.data, {
+      browserFetch,
+      loadedFontUrls,
+      fontBodyCache,
+    });
     const finalMhtml = embedded.mhtml;
     mhtmlBytes = Buffer.byteLength(finalMhtml, "utf8");
     report.capture.mhtmlKb = Math.round(mhtmlBytes / 1024);
     report.capture.externalFontSrcCount = embedded.externalFontSrcCount;
+    report.capture.unembeddedFontUrls = embedded.unembeddedFontUrls;
     report.capture.embeddedFontCount = embedded.embeddedFontCount;
     report.capture.fontFetchFailures = embedded.fetchFailures;
     report.capture.embeddedFamilies = embedded.embeddedFamilies;
@@ -641,12 +866,20 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     report.capture.fontUrls = embedded.fontUrlSummary;
 
 
-    if (embedded.externalFontSrcCount > 0) {
+    // Gate on fonts the browser LOADED but we couldn't embed (real render-drift).
+    // Referenced-but-unused survivors are score-neutral. If the loaded-signal is
+    // unavailable (empty), fall back to the strict total so a missing signal never
+    // silently passes. Existing corpus sites have 0 survivors → unaffected.
+    const gateFonts =
+      loadedFontUrls.length > 0 ? embedded.unembeddedLoadedFontUrls : embedded.unembeddedFontUrls;
+    const gateFails = loadedFontUrls.length > 0 ? gateFonts.length > 0 : embedded.externalFontSrcCount > 0;
+    if (gateFails) {
       throw new Error(
-        `[freeze] A2 gate: externalFontSrcCount=${embedded.externalFontSrcCount} after rewrite ` +
-          `(embedded=${embedded.embeddedFontCount}, failures=${embedded.fetchFailures.length}). ` +
-          `Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. ` +
-          `Inspect freeze-report.json fontFetchFailures.`,
+        `[freeze] A2 gate: ${gateFonts.length} render-relevant font(s) unembeddable after rewrite ` +
+          `(total external=${embedded.externalFontSrcCount}, embedded=${embedded.embeddedFontCount}, ` +
+          `failures=${embedded.fetchFailures.length}). Replay falls back to OS fonts → area/yBand drift. ` +
+          `Loaded-but-unembedded: ${gateFonts.join(", ") || "(none — strict fallback on total)"}. ` +
+          `Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.`,
       );
     }
 
@@ -661,7 +894,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
 
       // Stora MHTML → CDN, pekare i repo. Liten MHTML → direkt i repo som förr.
       // Tröskel ligger marginal under repo-gränsen 10 MB (se externalize.server.ts).
-      if (mhtmlBytes > MHTML_INLINE_THRESHOLD_BYTES) {
+      if (mhtmlBytes > MHTML_INLINE_THRESHOLD_BYTES && !opts.skipExternalize) {
         const pointer: AssetPointer = uploadAsset(
           Buffer.from(finalMhtml, "utf8"),
           "page.mhtml",

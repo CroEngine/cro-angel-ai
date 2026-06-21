@@ -1,0 +1,91 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 14907,
+    "screenshotKb": 903,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 161,
+    "mhtmlKbBeforeFontEmbed": 3026,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "AS Circular-Black",
+      "AS Circular-BlackItalic",
+      "AS Circular-Bold",
+      "AS Circular-BoldItalic",
+      "AS Circular-Book",
+      "AS Circular-BookItalic",
+      "AS Circular-Light",
+      "AS Circular-LightItalic",
+      "AS Circular-Medium",
+      "AS Circular-MediumItalic",
+      "BaronSans-Thin",
+      "Calibre",
+      "Copyright Klim Type Foundry-Not Licensed for Desktop Use",
+      "InterVariable",
+      "Montserrat-Medium",
+      "Montserrat-Regular",
+      "Montserrat-SemiBold",
+      "New Kansas TRIAL",
+      "NewKansas-Medium",
+      "NewKansas-Regular",
+      "NewKansas-SemiBold",
+      "NewKansas-Thin",
+      "Noto Sans JP",
+      "NotoSansDisplay-Bold",
+      "NotoSansDisplay-Regular",
+      "Open Sans",
+      "Palmer Lake-Print",
+      "YahooSans-Regular",
+      "affirm",
+      "yotpo-widget-font"
+    ],
+    "fontUrls": {
+      "embedded": 2,
+      "absolute": 168,
+      "relativeResolved": 2,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-21T19:14:41.265Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 5112,
+    "interactiveCount": 401,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 16241,
+    "consentMs": 0,
+    "scrollMs": 3403,
+    "captureMs": 3720
+  }
+}

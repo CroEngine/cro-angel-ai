@@ -255,6 +255,14 @@ export interface FontEmbedResult {
   mhtml: string;
   /** Count of http(s):// font URLs still present in any CSS part AFTER rewrite. */
   externalFontSrcCount: number;
+  /** Sampled (≤20, deduped) external font URLs still present after rewrite — the
+   *  offenders behind externalFontSrcCount, so a font-embed-failed freeze names
+   *  the URLs in its report instead of needing a re-freeze to diagnose. */
+  unembeddedFontUrls: string[];
+  /** Subset of unembeddedFontUrls the browser actually loaded (resource-timing) —
+   *  the render-drift-relevant survivors. Empty when loadedFontUrls wasn't passed
+   *  (then the A2 gate falls back to the full externalFontSrcCount). */
+  unembeddedLoadedFontUrls: string[];
   embeddedFontCount: number;
   newBytes: number;
   fetchFailures: { url: string; error: string }[];
@@ -743,6 +751,26 @@ export async function embedMhtmlFonts(
   opts: {
     fetchTimeoutMs?: number;
     userAgent?: string;
+    /** Browser-context font fetch (`page.evaluate(fetch)`) used as a FALLBACK
+     *  when the server-side proxy fetch fails (CDN hotlink/IP-block — e.g.
+     *  Schibsted's cdn.aftonbladet.se / static.svd.se, which 403 the proxy).
+     *  The browser already loaded these via @font-face from the right origin,
+     *  so its fetch reads bytes the proxy can't. Returns null on failure,
+     *  including the CORS/403 case for referenced-but-unused fonts the page
+     *  never actually loaded (those are score-neutral and stay unembedded). */
+    browserFetch?: (url: string) => Promise<Buffer | null>;
+    /** url -> bytes the browser ALREADY downloaded, captured via CDP
+     *  Network.getResponseBody. The strongest fallback: it reads the actual
+     *  @font-face download, so it works even when the CDN CORS/hotlink-blocks
+     *  both the server-side proxy AND page.evaluate(fetch) (e.g. nytimes
+     *  g1.nyt.com). Consulted before browserFetch on a server-side miss. */
+    fontBodyCache?: Map<string, Buffer>;
+    /** Font URLs the browser actually loaded (resource-timing). A surviving
+     *  @font-face URL NOT in this set was referenced-but-unused (e.g. cross-brand
+     *  fonts in shared CSS) → never rendered → safe to leave unembedded. One that
+     *  IS here yet still unembedded is a real render-drift risk the gate keeps.
+     *  Empty/undefined → every survivor counts (pre-fix strict behaviour). */
+    loadedFontUrls?: string[];
     /** Kör positiv + negativ kontrollprobe före URL-loopen. */
     controlProbes?: {
       positiveUrl?: string;
@@ -867,7 +895,23 @@ export async function embedMhtmlFonts(
   await Promise.all(
     Array.from(urlToCid.keys()).map(async (url) => {
       const t0 = performance.now();
-      const r = await classifiedFetch(url, fetchTimeoutMs, userAgent);
+      let r = await classifiedFetch(url, fetchTimeoutMs, userAgent);
+      // Fallbacks on a server-side miss (proxy 403/hotlink-block), strongest
+      // first. Only attempted on a miss, so the happy path stays fast+parallel.
+      if (r.outcome !== "ok") {
+        // 1) Bytes the browser already downloaded (CDP getResponseBody) — reads
+        //    the real @font-face download, bypassing CORS that blocks fetch().
+        const cached = opts.fontBodyCache?.get(url);
+        if (cached && cached.byteLength > 0) {
+          r = { outcome: "ok", bytes: cached.byteLength, httpStatus: 200, body: cached };
+        } else if (opts.browserFetch) {
+          // 2) page.evaluate(fetch) — works when the CDN allows CORS reads.
+          const buf = await opts.browserFetch(url).catch(() => null);
+          if (buf && buf.byteLength > 0) {
+            r = { outcome: "ok", bytes: buf.byteLength, httpStatus: 200, body: buf };
+          }
+        }
+      }
       urlToFetchResult.set(url, { ...r, durationMs: Math.round(performance.now() - t0) });
     }),
   );
@@ -975,6 +1019,12 @@ export async function embedMhtmlFonts(
   const out = serializeMhtml(parsed);
 
   let externalFontSrcCount = 0;
+  const unembeddedFontUrls: string[] = [];
+  // Subset of survivors the browser actually loaded — the render-drift-relevant
+  // ones. The rest are referenced-but-unused and score-neutral.
+  const unembeddedLoadedFontUrls: string[] = [];
+  const loadedSet = new Set(opts.loadedFontUrls ?? []);
+  const gateLoadedSubset = loadedSet.size > 0;
   for (let i = 0; i < parsed.parts.length; i++) {
     const part = parsed.parts[i];
     const ct = part.headers["content-type"] || "";
@@ -982,13 +1032,23 @@ export async function embedMhtmlFonts(
     const enc = (part.headers["content-transfer-encoding"] || "").toLowerCase();
     const text = enc === "quoted-printable" ? qpDecode(part.body) : part.body;
     for (const m of text.matchAll(FONT_URL_RE)) {
-      if (FONT_EXT_RE.test(m[2])) externalFontSrcCount++;
+      if (FONT_EXT_RE.test(m[2])) {
+        externalFontSrcCount++;
+        if (unembeddedFontUrls.length < 20 && !unembeddedFontUrls.includes(m[2])) {
+          unembeddedFontUrls.push(m[2]);
+        }
+        if (gateLoadedSubset && loadedSet.has(m[2]) && !unembeddedLoadedFontUrls.includes(m[2])) {
+          unembeddedLoadedFontUrls.push(m[2]);
+        }
+      }
     }
   }
 
   return {
     mhtml: out,
     externalFontSrcCount,
+    unembeddedFontUrls,
+    unembeddedLoadedFontUrls,
     embeddedFontCount,
     newBytes: Buffer.byteLength(out, "utf8"),
     fetchFailures,

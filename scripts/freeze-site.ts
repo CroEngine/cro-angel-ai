@@ -46,6 +46,7 @@ const consentSelector = arg("consent") ?? spec?.consentSelector;
 const consentCheckArg = arg("consent-check") as "detached" | "hidden" | undefined;
 const consentDismissCheck = consentCheckArg ?? spec?.consentDismissCheck;
 const consentInstruction = arg("consent-act") ?? spec?.consentInstruction;
+const consentFrame = arg("consent-frame") ?? spec?.consentFrame;
 const notes = arg("notes") ?? spec?.notes ?? undefined;
 const removeSelectors = spec?.removeSelectors;
 const dryRun = flag("dry-run");
@@ -80,6 +81,7 @@ freezeSite({
   consentSelector,
   consentDismissCheck,
   consentInstruction,
+  consentFrame,
   notes,
   removeSelectors,
   dryRun,

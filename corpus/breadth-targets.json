@@ -70,12 +70,13 @@
     "cookie-wall-eu": {
       "description": "GDPR-tunga sajter. Stresstestar consent-flödet.",
       "deferred": false,
+      "$consent-note": "Sourcepoint (aftonbladet/svd/spiegel): consentFrame=sp_message_iframe + xpath-knapp inuti, verifierat 2026-06-20. dn=Didomi (main-frame). lemonde=custom gdpr-knapp (best-effort, ej verifierad i breadth-flödet).",
       "sites": [
-        { "name": "lemonde", "url": "https://www.lemonde.fr" },
-        { "name": "spiegel", "url": "https://www.spiegel.de" },
-        { "name": "dn", "url": "https://www.dn.se" },
-        { "name": "svd", "url": "https://www.svd.se" },
-        { "name": "aftonbladet", "url": "https://www.aftonbladet.se" }
+        { "name": "lemonde", "url": "https://www.lemonde.fr", "consentSelector": ".gdpr-lmd-button--big", "consentDismissCheck": "detached" },
+        { "name": "spiegel", "url": "https://www.spiegel.de", "consentFrame": "iframe[id^=\"sp_message_iframe\"]", "consentSelector": "//button[contains(normalize-space(.),\"Consent and continue\")]", "consentDismissCheck": "detached" },
+        { "name": "dn", "url": "https://www.dn.se", "consentSelector": "#didomi-notice-agree-button", "consentDismissCheck": "detached" },
+        { "name": "svd", "url": "https://www.svd.se", "consentFrame": "iframe[id^=\"sp_message_iframe\"]", "consentSelector": "//button[contains(normalize-space(.),\"Godkänn alla\")]", "consentDismissCheck": "detached" },
+        { "name": "aftonbladet", "url": "https://www.aftonbladet.se", "consentFrame": "iframe[id^=\"sp_message_iframe\"]", "consentSelector": "//button[contains(normalize-space(.),\"Godkänn alla\")]", "consentDismissCheck": "detached" }
       ]
     },
     "anti-bot": {

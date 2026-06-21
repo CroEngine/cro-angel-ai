@@ -104,8 +104,15 @@ A site in `pending-determinism` MUST NOT be relied on for regression assertions 
 A site is promoted (state = `promoted`) only when ALL of the following hold:
 
 1. **Capture-validity** — `assertCaptureValid` passes (see Grind 2 section).
-2. **A2 font-embedding** — `externalFontSrcCount === 0` after rewrite, so
-   replay's render-canary is meaningful (not OS-font fallback).
+2. **A2 font-embedding** — every font the page actually loaded is embedded, so
+   replay's render-canary is meaningful (not OS-font fallback). Embedding falls
+   back to a browser-context fetch (`page.evaluate(fetch)`) for fonts whose CDN
+   blocks the server-side proxy (hotlink/IP). Referenced-but-unused fonts the
+   browser never loaded (e.g. sibling-brand fonts in shared CSS, a CDN's cold-
+   403 fonts) are tolerated — they don't render, so they can't drift. (Was
+   strictly `externalFontSrcCount === 0`; the gate now keys on *loaded*
+   survivors via resource-timing, with a strict fallback when that signal is
+   unavailable.)
 3. **Capture-determinism (score-affecting only)** — N≥3 consecutive freezes
    produce 0 *unexpected score-affecting* drift. Drift attributable to
    whitelisted score-neutral mechanisms (`fixtures/determinism/WHITELIST.md`:

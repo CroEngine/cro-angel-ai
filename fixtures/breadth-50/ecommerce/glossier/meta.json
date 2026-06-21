@@ -1,0 +1,16 @@
+{
+  "url": "https://www.glossier.com",
+  "name": "ecommerce__glossier",
+  "captured_at": "2026-06-20T20:38:25.617Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-20T20:37:47.978Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-20T20:38:25.617Z",
+  "expiresAt": "2026-09-18T20:38:25.617Z",
+  "refreezeReason": "manual"
+}

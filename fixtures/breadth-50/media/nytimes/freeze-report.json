@@ -1,0 +1,127 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 164930,
+    "screenshotKb": 900,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 3,
+    "unembeddedFontUrls": [
+      "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff",
+      "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.ttf",
+      "https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.8a4b4c857c657c3ca62ebbcdd26d2698.ttf"
+    ],
+    "embeddedFontCount": 391,
+    "mhtmlKbBeforeFontEmbed": 10939,
+    "fontFetchFailures": [
+      {
+        "url": "https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.8a4b4c857c657c3ca62ebbcdd26d2698.ttf",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.ttf",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff",
+        "error": "HTTP 403"
+      }
+    ],
+    "embeddedFamilies": [
+      "Archivo",
+      "Bai Jamjuree",
+      "Cormorant",
+      "Figtree",
+      "Fraunces",
+      "Inter",
+      "Montserrat",
+      "Noto Sans",
+      "Poppins",
+      "Roboto",
+      "STIX Two Text",
+      "Sofia Sans Condensed",
+      "Source Sans Pro",
+      "gill-sans-nova",
+      "gill-sans-nova-extra-condens",
+      "nyt-athletic-slab",
+      "nyt-cheltenham",
+      "nyt-cheltenham-cond",
+      "nyt-cheltenham-scaps",
+      "nyt-cheltenham-small",
+      "nyt-cheltenham-text-cond",
+      "nyt-cheltenham-wide",
+      "nyt-cheltenham-xcond",
+      "nyt-fact",
+      "nyt-fact-deck",
+      "nyt-fact-deck-condensed",
+      "nyt-fact-display",
+      "nyt-fact-display-condensed",
+      "nyt-franklin",
+      "nyt-franklin-condensed",
+      "nyt-franklin-cword",
+      "nyt-franklin-small",
+      "nyt-franklin-tv",
+      "nyt-ibm-plex",
+      "nyt-imperial",
+      "nyt-karnak",
+      "nyt-karnak-cond",
+      "nyt-karnak-small",
+      "nyt-kippenberger",
+      "nyt-kippenberger-condensed",
+      "nyt-kippenberger-poster",
+      "nyt-magsans",
+      "nyt-magserif",
+      "nyt-magslab",
+      "nyt-schnyder-s",
+      "nyt-schnyder-scond",
+      "ta-review",
+      "ta-review-condensed",
+      "ta-review-poster"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 478,
+      "relativeResolved": 260,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-21T19:15:18.146Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 13089,
+    "interactiveCount": 919,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 32250,
+    "consentMs": 0,
+    "scrollMs": 4384,
+    "captureMs": 39474
+  }
+}

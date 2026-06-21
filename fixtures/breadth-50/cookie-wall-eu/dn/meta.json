@@ -1,0 +1,16 @@
+{
+  "url": "https://www.dn.se",
+  "name": "cookie-wall-eu__dn",
+  "captured_at": "2026-06-20T20:41:47.021Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": "#didomi-notice-agree-button",
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-20T20:41:14.049Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-20T20:41:47.021Z",
+  "expiresAt": "2026-09-18T20:41:47.021Z",
+  "refreezeReason": "manual"
+}

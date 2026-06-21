@@ -1,0 +1,16 @@
+{
+  "url": "https://www.tradera.com",
+  "name": "i18n-routing__tradera",
+  "captured_at": "2026-06-20T20:41:13.831Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-20T20:40:47.962Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-20T20:41:13.831Z",
+  "expiresAt": "2026-09-18T20:41:13.831Z",
+  "refreezeReason": "manual"
+}

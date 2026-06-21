@@ -1,0 +1,73 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": "//button[contains(normalize-space(.),\"Godkänn alla\")]",
+    "dismissCheck": "detached",
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": true,
+    "dismissedAfterMs": 1185,
+    "postDismissDomHits": {
+      "accept all": 0,
+      "decline all": 0,
+      "reject all": 0,
+      "cookie": 1
+    }
+  },
+  "capture": {
+    "mhtmlKb": 4148,
+    "screenshotKb": 70,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 28,
+    "mhtmlKbBeforeFontEmbed": 2498,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Ester Blenda",
+      "Forsberg",
+      "Sueca Hd",
+      "Sueca Text",
+      "Sueca Tx",
+      "SuecaWeb Hd",
+      "SvD Ester Blenda"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 46,
+      "relativeResolved": 0,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T20:41:33.941Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 7817,
+    "interactiveCount": 179,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 9284,
+    "consentMs": 2237,
+    "scrollMs": 5152,
+    "captureMs": 9001
+  }
+}

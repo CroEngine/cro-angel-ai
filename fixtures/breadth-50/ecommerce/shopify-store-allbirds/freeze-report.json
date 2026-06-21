@@ -1,0 +1,67 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": null,
+    "dismissCheck": null,
+    "matchCountBeforeClick": null,
+    "visibleBeforeClick": null,
+    "dismissedAfterMs": null,
+    "postDismissDomHits": null
+  },
+  "capture": {
+    "mhtmlKb": 6003,
+    "screenshotKb": 412,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 28,
+    "mhtmlKbBeforeFontEmbed": 4557,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Akkurat Mono",
+      "Geograph",
+      "Instrument Serif",
+      "Inter",
+      "Maison Neue Extended",
+      "Self Modern"
+    ],
+    "fontUrls": {
+      "embedded": 3,
+      "absolute": 18,
+      "relativeResolved": 10,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T20:37:05.444Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 2378,
+    "interactiveCount": 280,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 20412,
+    "consentMs": 0,
+    "scrollMs": 3428,
+    "captureMs": 1764
+  }
+}

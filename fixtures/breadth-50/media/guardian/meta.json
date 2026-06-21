@@ -1,0 +1,16 @@
+{
+  "url": "https://www.theguardian.com",
+  "name": "media__guardian",
+  "captured_at": "2026-06-20T20:38:50.541Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-20T20:38:20.617Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-20T20:38:50.541Z",
+  "expiresAt": "2026-09-18T20:38:50.541Z",
+  "refreezeReason": "manual"
+}
