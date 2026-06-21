@@ -1,15 +1,15 @@
 {
-  "ranAt": "2026-06-21T07:55:05.243Z",
+  "ranAt": "2026-06-21T09:54:33.312Z",
   "total": 45,
   "addressableTotal": 45,
-  "addressableOk": 32,
-  "addressableSuccessRate": 0.711,
+  "addressableOk": 34,
+  "addressableSuccessRate": 0.756,
   "byFailureClass": {
     "externalize-unavailable": 7,
     "font-embed-failed": 1,
-    "captured-wrong-page": 3,
     "consent-missed": 1,
-    "mhtml-capture-failed": 1
+    "mhtml-capture-failed": 1,
+    "captured-wrong-page": 1
   },
   "byCategory": {
     "saas-landing": {
@@ -38,8 +38,8 @@
     },
     "i18n-routing": {
       "total": 5,
-      "ok": 4,
-      "rate": 0.8,
+      "ok": 5,
+      "rate": 1,
       "deferred": false
     },
     "cookie-wall-eu": {
@@ -50,14 +50,14 @@
     },
     "iframe-heavy": {
       "total": 5,
-      "ok": 3,
-      "rate": 0.6,
+      "ok": 4,
+      "rate": 0.8,
       "deferred": false
     }
   },
   "unknownCount": 0,
   "verdict": "RED: arkitektur räcker inte för bredd, omdesign krävs",
-  "$note": "SUMMARY regenererad från per-sajt-reports — freeze-breadth-processen dog efter alla 45 reports men före SUMMARY-write (lång körning, bakgrundstimeout). Data är från körningen, inte re-frysta.",
+  "$note": "SUMMARY regenererad från per-sajt-reports (freeze-breadth dog före SUMMARY-write i full-körningen; stackoverflow+spotify-se omfrysta med content-wait-fixen).",
   "outcomes": [
     {
       "category": "saas-landing",
@@ -405,10 +405,10 @@
       "deferred": false,
       "name": "spotify-se",
       "url": "https://www.spotify.com/se/",
-      "ok": false,
-      "failureClass": "captured-wrong-page",
-      "reason": "text-too-short",
-      "mhtmlKb": 0,
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 6262,
       "reportPath": "fixtures/breadth-50/i18n-routing/spotify-se/freeze-report.json"
     },
     {
@@ -537,10 +537,10 @@
       "deferred": false,
       "name": "stackoverflow",
       "url": "https://stackoverflow.com",
-      "ok": false,
-      "failureClass": "captured-wrong-page",
-      "reason": "no-body",
-      "mhtmlKb": 0,
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 1979,
       "reportPath": "fixtures/breadth-50/iframe-heavy/stackoverflow/freeze-report.json"
     },
     {

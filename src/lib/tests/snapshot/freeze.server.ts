@@ -529,6 +529,43 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     await new Promise((r) => setTimeout(r, 1500));
     report.timing.gotoMs = Date.now() - tGoto;
 
+    // Content-ready wait: give late-hydrating SPAs (e.g. spotify) and auto-
+    // clearing bot-challenges (Cloudflare "Just a moment…" / "Performing security
+    // verification" — which solve themselves in ~5–8s, no proxy needed) time to
+    // render real content before capture. Poll until the body has substantial
+    // text AND isn't a challenge interstitial, up to a budget. Normal pages are
+    // ready on the first check and break immediately. This is NOT an anti-bot
+    // bypass — it only waits out challenges that clear on their own; a persistent
+    // challenge or sparse page just times out and assertCaptureValid catches it.
+    {
+      const CONTENT_WAIT_MS = 12_000;
+      const CONTENT_MIN_CHARS = 400;
+      const tReady = Date.now();
+      let ready = false;
+      while (Date.now() - tReady < CONTENT_WAIT_MS) {
+        const st = (await page
+          .evaluate(
+            `(() => { const txt = (document.body?.innerText || "").trim(); return { len: txt.length, ` +
+              `challenge: /just a moment|verify you are human|performing security verification|` +
+              `attention required|enable javascript to continue|checking your browser/i` +
+              `.test(txt + " " + document.title) }; })()`,
+          )
+          .catch(() => ({ len: 0, challenge: false }))) as { len: number; challenge: boolean };
+        if (!st.challenge && st.len >= CONTENT_MIN_CHARS) {
+          ready = true;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (!ready) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[freeze] '${opts.name}': content not ready within ${CONTENT_WAIT_MS}ms ` +
+            `(sparse page or persistent challenge) — proceeding; assertCaptureValid is the backstop`,
+        );
+      }
+    }
+
     // Consent: hård assertion + mätning. Allt mäts in i `report` löpande så
     // receipten är användbar även när vi throwar.
     const tConsent = Date.now();
