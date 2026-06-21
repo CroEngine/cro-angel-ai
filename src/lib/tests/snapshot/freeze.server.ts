@@ -251,10 +251,18 @@ export const ASSERT_CAPTURE_VALID_FN = `(challengeMarkers, consentPatterns, view
     break;
   }
   let reason = null;
-  if (textLen < 500) reason = "text-too-short";
-  else if (hits.length > 0) reason = "challenge-markers:" + hits.join(",");
+  if (hits.length > 0) reason = "challenge-markers:" + hits.join(",");
   else if (interactive < 10) reason = "too-few-interactive-elements";
   else if (!heroHasMeaningfulHeading) reason = "no-meaningful-hero-heading";
+  // Empty-shell floor (checked LAST, after the structural signals). Once a page
+  // has >=10 interactive elements, a meaningful hero heading and no challenge
+  // markers it is demonstrably real content — the only thing left to rule out
+  // is a body that never hydrated (near-zero text). A low floor keeps
+  // deliberately text-light splash pages (e.g. Medium's homepage, ~230ch) while
+  // still catching blank SPA shells. The previous 500ch floor false-failed
+  // those legitimate minimalist pages — the exact false-negative the thresholds
+  // are documented to avoid (see header comment above).
+  else if (textLen < 120) reason = "text-too-short";
   return { ok: reason === null, textLen, interactiveCount: interactive, heroHasMeaningfulHeading, challengeMarkersFound: hits, reason };
 }`;
 
@@ -303,6 +311,18 @@ function classifyFailure(
   }
   if (msg.includes("401") || msg.includes("login") || msg.includes("auth required")) {
     return "auth-gate";
+  }
+  // Any consent-step failure is a consent problem, not an unclassifiable one.
+  // Covers the Sourcepoint/CMP iframe flakes seen on the Schibsted sites:
+  // "consent-iframe blev aldrig attached" (CMP never loaded) and "Could not
+  // find an element for the given xPath(s)" (button xpath not found / detached
+  // mid-act). Without this they land in `unknown`, which trips the RED verdict.
+  if (
+    msg.includes("consent") ||
+    msg.includes("could not find an element") ||
+    msg.includes("given xpath")
+  ) {
+    return "consent-missed";
   }
   // Capture-validity-fel kommer hit som thrown Error från assertCaptureValid-gate
   if (msg.includes("captured-wrong-page")) return "captured-wrong-page";
@@ -618,10 +638,14 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
         );
       }
       try {
-        await page.waitForSelector(opts.consentFrame, { state: "attached", timeout: 8000 });
+        // Sourcepoint on heavy Schibsted sites (aftonbladet/svd) loads its CMP
+        // iframe async and slowly; 8s flaked intermittently. 15s buys the CMP
+        // time without meaningfully slowing the happy path (it resolves as soon
+        // as the iframe attaches).
+        await page.waitForSelector(opts.consentFrame, { state: "attached", timeout: 15000 });
       } catch {
         throw new Error(
-          `[freeze] consent-iframe blev aldrig attached inom 8s: ${opts.consentFrame} (${opts.name}). ` +
+          `[freeze] consent-iframe blev aldrig attached inom 15s: ${opts.consentFrame} (${opts.name}). ` +
             `Stale selektor, A/B-variant, eller CMP laddade aldrig.`,
         );
       }
@@ -768,14 +792,28 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     // up to 3x on -32000 only; re-throw any other error immediately.
     let snap: { data: string } | undefined;
     let captureErr: unknown;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    const CAPTURE_ATTEMPTS = 5;
+    for (let attempt = 1; attempt <= CAPTURE_ATTEMPTS; attempt++) {
       try {
         snap = await page.sendCDP<{ data: string }>("Page.captureSnapshot", { format: "mhtml" });
         break;
       } catch (e) {
         captureErr = e;
         if (!/-32000|failed to generate mhtml/i.test(String((e as Error)?.message ?? e))) throw e;
-        await new Promise((r) => setTimeout(r, 1200 * attempt));
+        // The serializer chokes while the page is still busy — large media
+        // pages (techcrunch/spiegel/dn) with in-flight image/lazy work, worse
+        // under capture concurrency. Re-settle before retrying: scroll back to
+        // top so layout/raster quiesces, then back off progressively
+        // (1.5s,3s,4.5s,6s,7.5s). Empirically clears the transient -32000s that
+        // a bare immediate retry did not.
+        // eslint-disable-next-line no-console
+        console.warn(`[freeze] captureSnapshot -32000 attempt ${attempt}/${CAPTURE_ATTEMPTS} — re-settling`);
+        try {
+          await page.evaluate(() => window.scrollTo(0, 0));
+        } catch {
+          /* execution context busy — skip the nudge, still back off */
+        }
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
       }
     }
     if (!snap) throw captureErr;
