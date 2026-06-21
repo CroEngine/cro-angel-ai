@@ -29,8 +29,14 @@
 //           funktion av den normaliserade goldenen. Goldenen bär nu ett
 //           croScore-block ("the golden has finished scoring") — regressionstestat
 //           av samma snapshot-diff. Stämpeln bärs på scoren.
+//   1.2.1 — score-kalibrering efter ground-truth mot screenshots. cta-focus
+//           dedupar nu samma CTA upprepad i sticky-nav + hero (slutar straffa
+//           standard primary+secondary-mönstret som "choice overload"); 2 unika
+//           = bra. value-prop väljer starkaste rubriken av hero.headline/h1
+//           (pageAudit-heuristiken plockar ibland en nav-label, t.ex. hubspots
+//           "Marketing", medan värdeerbjudandet ligger i h1).
 
-export const EXTRACTOR_VERSION = "1.2.0" as const;
+export const EXTRACTOR_VERSION = "1.2.1" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

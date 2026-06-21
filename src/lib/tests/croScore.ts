@@ -104,15 +104,32 @@ function evidenceTexts(els: ScoredElement[], cap = 6): string[] {
 // --- dimensions --------------------------------------------------------------
 // Each returns {score, findings}; the caller stamps id/label/weight.
 
+// The same CTA repeated across the sticky nav + hero is ONE logical action,
+// not competition — dedupe on normalized text+intent before counting. Empty-
+// text CTAs (icon buttons) are kept distinct so they aren't collapsed together.
+function distinctConversionCtas(visible: ScoredElement[]): ScoredElement[] {
+  const conv = visible.filter(
+    (e) => e.aboveFold && isCtaish(e) && isConversion(e),
+  );
+  const seen = new Set<string>();
+  const out: ScoredElement[] = [];
+  for (const e of conv) {
+    const t = (e.text || "").trim().toLowerCase();
+    const key = t ? `${t}|${e.intent}` : `__empty_${out.length}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(e);
+  }
+  return out;
+}
+
 function scoreCtaFocus(visible: ScoredElement[]): {
   score: number;
   findings: CroFinding[];
 } {
-  const aboveFoldConv = visible.filter(
-    (e) => e.aboveFold && isCtaish(e) && isConversion(e),
-  );
-  const n = aboveFoldConv.length;
-  const evidence = evidenceTexts(aboveFoldConv);
+  const distinct = distinctConversionCtas(visible);
+  const n = distinct.length;
+  const evidence = evidenceTexts(distinct);
   if (n === 0) {
     return {
       score: 20,
@@ -137,24 +154,38 @@ function scoreCtaFocus(visible: ScoredElement[]): {
       ],
     };
   }
-  if (n <= 3) {
+  if (n === 2) {
+    return {
+      score: 90,
+      findings: [
+        {
+          severity: "good",
+          message:
+            "Two distinct conversion CTAs above the fold — a focused primary + secondary pattern.",
+          evidence,
+        },
+      ],
+    };
+  }
+  if (n === 3) {
     return {
       score: 70,
       findings: [
         {
           severity: "warn",
-          message: `${n} competing conversion CTAs above the fold — a single dominant action converts better.`,
+          message:
+            "3 distinct conversion CTAs above the fold start competing for attention.",
           evidence,
         },
       ],
     };
   }
   return {
-    score: 40,
+    score: 45,
     findings: [
       {
         severity: "warn",
-        message: `${n} conversion CTAs above the fold dilute focus (choice overload).`,
+        message: `${n} distinct conversion CTAs above the fold dilute focus (choice overload).`,
         evidence,
       },
     ],
@@ -237,11 +268,28 @@ function scoreVisualHierarchy(visible: ScoredElement[]): {
   };
 }
 
+// The pageAudit hero-headline heuristic sometimes grabs a nav/section label
+// (hubspot: "Marketing") while the real value proposition sits in the h1. Pick
+// the strongest available headline: prefer a substantial, non-generic
+// candidate; otherwise fall back to the longest. The underlying data is already
+// in the golden — this just stops a weak hero pick from masking a strong h1.
+function pickHeadline(audit: NormalizedPageAuditLike): string {
+  const hero = (audit.hero?.headline || "").trim();
+  const h1 = (audit.headings?.h1?.[0] || "").trim();
+  const candidates = [hero, h1].filter((c) => c.length > 0);
+  if (candidates.length === 0) return "";
+  const strong = candidates.filter(
+    (c) => c.length >= 10 && !GENERIC_HEADLINE_RX.test(c),
+  );
+  const pool = strong.length > 0 ? strong : candidates;
+  return pool.slice().sort((a, b) => b.length - a.length)[0];
+}
+
 function scoreValueProp(audit: NormalizedPageAuditLike): {
   score: number;
   findings: CroFinding[];
 } {
-  const headline = (audit.hero?.headline || "").trim();
+  const headline = pickHeadline(audit);
   const h1Count = audit.headings?.h1Count ?? 0;
   const evidence = headline ? [headline] : [];
 

@@ -77,7 +77,7 @@ describe("croScore — CTA focus", () => {
     expect(dim(s, "cta-focus").findings[0].severity).toBe("critical");
   });
 
-  test("competing CTAs above the fold warn and lose points", () => {
+  test("two distinct CTAs = healthy primary+secondary pattern (90, good)", () => {
     const s = scoreCro(
       golden({
         elements: [
@@ -86,8 +86,41 @@ describe("croScore — CTA focus", () => {
         ],
       }),
     );
-    expect(dim(s, "cta-focus").score).toBe(70);
-    expect(dim(s, "cta-focus").findings[0].severity).toBe("warn");
+    expect(dim(s, "cta-focus").score).toBe(90);
+    expect(dim(s, "cta-focus").findings[0].severity).toBe("good");
+  });
+
+  test("the SAME CTA repeated in nav + hero is deduped, not 'choice overload'", () => {
+    const s = scoreCro(
+      golden({
+        elements: [
+          el({ category: "cta_primary", intent: "conversion", aboveFold: true, section: "nav", text: "Get a demo" }),
+          el({ category: "cta_primary", intent: "conversion", aboveFold: true, section: "hero", text: "Get a demo" }),
+          el({ category: "cta_secondary", intent: "conversion", aboveFold: true, section: "nav", text: "Get a demo" }),
+        ],
+      }),
+    );
+    // three instances of one logical CTA → counts as 1 → perfect focus
+    expect(dim(s, "cta-focus").score).toBe(100);
+  });
+
+  test("3 distinct → 70 (warn); 4+ distinct → 45 (choice overload)", () => {
+    const three = scoreCro(
+      golden({
+        elements: ["Buy", "Trial", "Quote"].map((t) =>
+          el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: t }),
+        ),
+      }),
+    );
+    expect(dim(three, "cta-focus").score).toBe(70);
+    const four = scoreCro(
+      golden({
+        elements: ["Buy", "Trial", "Quote", "Call"].map((t) =>
+          el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: t }),
+        ),
+      }),
+    );
+    expect(dim(four, "cta-focus").score).toBe(45);
   });
 
   test("hidden CTAs are excluded from scoring (visible-only)", () => {
@@ -156,6 +189,19 @@ describe("croScore — value proposition", () => {
       golden({ pageAudit: { hero: { headline: "Automate your back office today" }, headings: { h1Count: 3 } } }),
     );
     expect(dim(s, "value-prop").score).toBe(70);
+  });
+
+  test("falls back to h1 when hero headline is a weak label (the hubspot case)", () => {
+    const s = scoreCro(
+      golden({
+        pageAudit: {
+          hero: { headline: "Marketing" }, // pageAudit grabbed a nav label
+          headings: { h1Count: 1, h1: ["Where go-to-market teams go to grow"] },
+        },
+      }),
+    );
+    expect(dim(s, "value-prop").score).toBe(100);
+    expect(dim(s, "value-prop").findings[0].evidence?.[0]).toContain("go-to-market");
   });
 });
 

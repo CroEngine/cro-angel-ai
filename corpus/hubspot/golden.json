@@ -4636,22 +4636,20 @@
     ]
   },
   "croScore": {
-    "extractorVersion": "1.2.0",
-    "overall": 69,
-    "grade": "C",
+    "extractorVersion": "1.2.1",
+    "overall": 91,
+    "grade": "A",
     "dimensions": [
       {
         "id": "cta-focus",
         "label": "CTA Focus",
         "weight": 0.25,
-        "score": 40,
+        "score": 90,
         "findings": [
           {
-            "severity": "warn",
-            "message": "4 conversion CTAs above the fold dilute focus (choice overload).",
+            "severity": "good",
+            "message": "Two distinct conversion CTAs above the fold — a focused primary + secondary pattern.",
             "evidence": [
-              "Get a demo of HubSpot's premium software",
-              "Get started free with HubSpot's free tools",
               "Get a demo of HubSpot's premium software",
               "Get started free with HubSpot's free tools"
             ]
@@ -4677,13 +4675,13 @@
         "id": "value-prop",
         "label": "Value Proposition",
         "weight": 0.2,
-        "score": 50,
+        "score": 100,
         "findings": [
           {
-            "severity": "warn",
-            "message": "Hero headline is weak or generic (\"Marketing\") — it should state a specific value.",
+            "severity": "good",
+            "message": "Clear value proposition in the hero (\"Where go-to-market teams go to grow scale close retain grow\") with a single h1.",
             "evidence": [
-              "Marketing"
+              "Where go-to-market teams go to grow scale close retain grow"
             ]
           }
         ]
