@@ -1,12 +1,11 @@
 {
-  "ranAt": "2026-06-21T10:10:26.843Z",
+  "ranAt": "2026-06-21T10:20:47.558Z",
   "total": 45,
   "addressableTotal": 45,
   "addressableOk": 35,
   "addressableSuccessRate": 0.778,
   "byFailureClass": {
-    "externalize-unavailable": 7,
-    "font-embed-failed": 1,
+    "externalize-unavailable": 8,
     "mhtml-capture-failed": 1,
     "captured-wrong-page": 1
   },
@@ -55,8 +54,8 @@
     }
   },
   "unknownCount": 0,
-  "verdict": "RED: arkitektur räcker inte för bredd, omdesign krävs",
-  "$note": "Regenererad från per-sajt-reports. stackoverflow/spotify-se/lemonde omfrysta med content-wait + korrigerad lemonde-selektor.",
+  "verdict": "RED: arkitektur räcker inte för bredd",
+  "$note": "Regenererad från reports. CDP getResponseBody-font-path: nytimes font-embed löst (embedded 0->391), nu externalize (166MB).",
   "outcomes": [
     {
       "category": "saas-landing",
@@ -328,9 +327,9 @@
       "name": "nytimes",
       "url": "https://www.nytimes.com",
       "ok": false,
-      "failureClass": "font-embed-failed",
-      "reason": "[freeze] A2 gate: externalFontSrcCount=174 after rewrite (embedded=0, failures=292). Replay will fall back to OS fonts for unembedded URLs → area/yBand drift. Surviving URLs: https://g1.nyt.com/fonts/family/franklin/franklin-normal-500.0f4aea3d462cdb64748629efcbbf36bc.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-500.cb85480c30b6ca5f53f673993211036f.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-500.9061b25032eb73a747c2edf738888891.ttf, https://g1.nyt.com/fonts/family/franklin/franklin-normal-700.91eaf6b5642463af4091160b4bbfdfcb.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-700.ab057a3b069a4ecbde7c3ea74411284e.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-700.3acbe40693cbd3029afc346368ed1b29.ttf, https://g1.nyt.com/fonts/family/franklin/franklin-normal-600.75739ac267f076931c6da9740386ee6b.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-600.e27b5ffa7bfaa0ac78e146668c74e6f4.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-600.23949bc217f2c95dfe21d3e66ba59445.ttf, https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff2, https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.woff, https://g1.nyt.com/fonts/family/franklin/franklin-normal-300.a6479a5200f9a6352bdb71589c27c9c3.ttf, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-700.530cfb72378419eedb60da7e266ad5f1.woff2, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-700.738608727fc7c5797889e17788508b26.woff, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-700.85ca4d109571e1e0084aace5a31f049c.ttf, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.e6711d3a9af4e8cc6c129ba9940c081e.woff2, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.0b6312fa2bdacb3a5d93904fb67221e6.woff, https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.8a4b4c857c657c3ca62ebbcdd26d2698.ttf, https://g1.nyt.com/fonts/family/imperial/imperial-italic-600.ea97a1cb7a4d63c8104929537e8ebbc8.woff2, https://g1.nyt.com/fonts/family/imperial/imperial-italic-600.e8bf721d90ab733361bebdabe80fd0af.woff. Inspect freeze-report.json unembeddedFontUrls / fontFetchFailures.",
-      "mhtmlKb": 1669,
+      "failureClass": "externalize-unavailable",
+      "reason": "[externalize] lovable-assets CLI saknas i PATH. Kan inte externalisera stor artefakt. Kör freeze i en miljö där assets-integrationen är aktiv.",
+      "mhtmlKb": 165993,
       "reportPath": "fixtures/breadth-50/media/nytimes/freeze-report.json"
     },
     {

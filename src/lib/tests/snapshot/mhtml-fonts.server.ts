@@ -759,6 +759,12 @@ export async function embedMhtmlFonts(
      *  including the CORS/403 case for referenced-but-unused fonts the page
      *  never actually loaded (those are score-neutral and stay unembedded). */
     browserFetch?: (url: string) => Promise<Buffer | null>;
+    /** url -> bytes the browser ALREADY downloaded, captured via CDP
+     *  Network.getResponseBody. The strongest fallback: it reads the actual
+     *  @font-face download, so it works even when the CDN CORS/hotlink-blocks
+     *  both the server-side proxy AND page.evaluate(fetch) (e.g. nytimes
+     *  g1.nyt.com). Consulted before browserFetch on a server-side miss. */
+    fontBodyCache?: Map<string, Buffer>;
     /** Font URLs the browser actually loaded (resource-timing). A surviving
      *  @font-face URL NOT in this set was referenced-but-unused (e.g. cross-brand
      *  fonts in shared CSS) → never rendered → safe to leave unembedded. One that
@@ -890,14 +896,20 @@ export async function embedMhtmlFonts(
     Array.from(urlToCid.keys()).map(async (url) => {
       const t0 = performance.now();
       let r = await classifiedFetch(url, fetchTimeoutMs, userAgent);
-      // Browser-context fallback: the server-side fetch goes through a proxy
-      // some CDNs 403/hotlink-block. If the page itself loaded the font, its
-      // own fetch reads the bytes. Only attempted on a server-side miss, so the
-      // happy path stays fast and parallel.
-      if (r.outcome !== "ok" && opts.browserFetch) {
-        const buf = await opts.browserFetch(url).catch(() => null);
-        if (buf && buf.byteLength > 0) {
-          r = { outcome: "ok", bytes: buf.byteLength, httpStatus: 200, body: buf };
+      // Fallbacks on a server-side miss (proxy 403/hotlink-block), strongest
+      // first. Only attempted on a miss, so the happy path stays fast+parallel.
+      if (r.outcome !== "ok") {
+        // 1) Bytes the browser already downloaded (CDP getResponseBody) — reads
+        //    the real @font-face download, bypassing CORS that blocks fetch().
+        const cached = opts.fontBodyCache?.get(url);
+        if (cached && cached.byteLength > 0) {
+          r = { outcome: "ok", bytes: cached.byteLength, httpStatus: 200, body: cached };
+        } else if (opts.browserFetch) {
+          // 2) page.evaluate(fetch) — works when the CDN allows CORS reads.
+          const buf = await opts.browserFetch(url).catch(() => null);
+          if (buf && buf.byteLength > 0) {
+            r = { outcome: "ok", bytes: buf.byteLength, httpStatus: 200, body: buf };
+          }
         }
       }
       urlToFetchResult.set(url, { ...r, durationMs: Math.round(performance.now() - t0) });

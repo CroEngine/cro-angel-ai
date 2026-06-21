@@ -507,6 +507,37 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       frozenAt: new Date().toISOString(),
     };
 
+    // CDP Network capture: record url -> requestId for every font response during
+    // load so we can later read the bytes the browser ACTUALLY downloaded
+    // (Network.getResponseBody). This is the only way to embed fonts a CDN
+    // CORS/hotlink-blocks from BOTH the server-side proxy AND page.evaluate(fetch)
+    // (e.g. nytimes g1.nyt.com). Best-effort: if the CDP session/events aren't
+    // available, embedding falls back to the server-side + page-fetch paths.
+    const fontReqIds = new Map<string, string>();
+    type CdpSessionLike = {
+      send: (method: string, params?: unknown) => Promise<unknown>;
+      on: (event: string, cb: (p: { requestId: string; response?: { url?: string; mimeType?: string } }) => void) => void;
+    };
+    let cdpNet: CdpSessionLike | null = null;
+    try {
+      const ctx = stagehand.context as unknown as {
+        newCDPSession?: (p: unknown) => Promise<CdpSessionLike>;
+      };
+      if (typeof ctx.newCDPSession === "function") {
+        const sess = await ctx.newCDPSession(page);
+        await sess.send("Network.enable");
+        sess.on("Network.responseReceived", (p) => {
+          const url = p.response?.url ?? "";
+          const mime = p.response?.mimeType ?? "";
+          if (url && (/font|woff|ttf|otf/i.test(mime) || /\.(woff2?|ttf|otf|eot)(\?|$)/i.test(url))) {
+            fontReqIds.set(url, p.requestId);
+          }
+        });
+        cdpNet = sess;
+      }
+    } catch {
+      /* CDP Network session unavailable — embedding uses the other fallbacks */
+    }
 
     const tGoto = Date.now();
     try {
@@ -778,16 +809,44 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
         return null;
       }
     };
-    // Which font URLs did the browser actually fetch (resource-timing)? Lets the
-    // A2 gate fire only on render-relevant survivors (loaded but unembeddable),
-    // not referenced-but-unused fonts (e.g. sibling-brand fonts in shared CSS).
-    const loadedFontUrls = (await page
+    // Which font URLs did the browser actually load? Union of resource-timing and
+    // the CDP-observed font requests — the latter has no buffer-eviction gap on
+    // heavy pages. Lets the A2 gate fire only on render-relevant survivors (loaded
+    // but unembeddable), not referenced-but-unused fonts.
+    const perfFontUrls = (await page
       .evaluate(
         `(() => { try { return performance.getEntriesByType("resource").map((e) => e.name)` +
           `.filter((n) => /\\.(woff2?|ttf|otf|eot)(\\?|$)/i.test(n)); } catch { return []; } })()`,
       )
       .catch(() => [])) as string[];
-    const embedded = await embedMhtmlFonts(snap.data, { browserFetch, loadedFontUrls });
+    const loadedFontUrls = Array.from(new Set([...perfFontUrls, ...fontReqIds.keys()]));
+    // Drain the bytes the browser actually downloaded for each font request
+    // (CDP getResponseBody), pre-embed while the bodies are still in the network
+    // buffer. This is the embed fallback that beats CORS/hotlink blocks.
+    const fontBodyCache = new Map<string, Buffer>();
+    if (cdpNet && fontReqIds.size > 0) {
+      await Promise.all(
+        Array.from(fontReqIds).map(async ([url, requestId]) => {
+          try {
+            const body = (await cdpNet!.send("Network.getResponseBody", { requestId })) as {
+              body: string;
+              base64Encoded: boolean;
+            };
+            const buf = body.base64Encoded
+              ? Buffer.from(body.body, "base64")
+              : Buffer.from(body.body, "utf8");
+            if (buf.byteLength > 0) fontBodyCache.set(url, buf);
+          } catch {
+            /* body evicted/unavailable for this request */
+          }
+        }),
+      );
+    }
+    const embedded = await embedMhtmlFonts(snap.data, {
+      browserFetch,
+      loadedFontUrls,
+      fontBodyCache,
+    });
     const finalMhtml = embedded.mhtml;
     mhtmlBytes = Buffer.byteLength(finalMhtml, "utf8");
     report.capture.mhtmlKb = Math.round(mhtmlBytes / 1024);
