@@ -1,16 +1,16 @@
 {
   "url": "https://dev.to",
   "name": "iframe-heavy__dev-to",
-  "captured_at": "2026-06-21T20:31:43.908Z",
+  "captured_at": "2026-06-21T21:19:45.274Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:31:28.106Z",
+  "notes": "breadth-50 2026-06-21T21:19:29.702Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:31:43.908Z",
-  "expiresAt": "2026-09-19T20:31:43.908Z",
+  "frozenAt": "2026-06-21T21:19:45.274Z",
+  "expiresAt": "2026-09-19T21:19:45.274Z",
   "refreezeReason": "manual"
 }

@@ -1,16 +1,16 @@
 {
   "url": "https://www.svd.se",
   "name": "cookie-wall-eu__svd",
-  "captured_at": "2026-06-21T20:31:08.613Z",
+  "captured_at": "2026-06-21T21:18:53.004Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": "//button[contains(normalize-space(.),\"Godkänn alla\")]",
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:30:36.053Z",
+  "notes": "breadth-50 2026-06-21T21:18:25.644Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:31:08.613Z",
-  "expiresAt": "2026-09-19T20:31:08.613Z",
+  "frozenAt": "2026-06-21T21:18:53.004Z",
+  "expiresAt": "2026-09-19T21:18:53.004Z",
   "refreezeReason": "manual"
 }

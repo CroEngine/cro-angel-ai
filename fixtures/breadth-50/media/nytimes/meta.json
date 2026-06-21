@@ -1,16 +1,16 @@
 {
   "url": "https://www.nytimes.com",
   "name": "media__nytimes",
-  "captured_at": "2026-06-21T20:29:14.005Z",
+  "captured_at": "2026-06-21T21:15:55.410Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:28:02.836Z",
+  "notes": "breadth-50 2026-06-21T21:14:36.678Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:29:14.005Z",
-  "expiresAt": "2026-09-19T20:29:14.005Z",
+  "frozenAt": "2026-06-21T21:15:55.410Z",
+  "expiresAt": "2026-09-19T21:15:55.410Z",
   "refreezeReason": "manual"
 }

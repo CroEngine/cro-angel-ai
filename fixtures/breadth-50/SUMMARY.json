@@ -1,18 +1,15 @@
 {
-  "ranAt": "2026-06-21T20:50:36.018Z",
-  "note": "regenerated from 45 per-site reports after concurrent=4 re-run (process hung on tail retry; killed)",
+  "ranAt": "2026-06-21T21:22:24.284Z",
+  "note": "clean re-run @ concurrency=2 after freeze hardening (incl. hero-heading validity refinement); aftonbladet re-frozen individually",
   "total": 50,
   "addressableTotal": 45,
-  "addressableOk": 40,
-  "addressableSuccessRate": 0.889,
+  "addressableOk": 45,
+  "addressableSuccessRate": 1,
   "byFailureClass": {
-    "mhtml-capture-failed": 3,
-    "unknown": 1,
-    "missing-report": 5,
-    "captured-wrong-page": 1
+    "missing-report": 5
   },
-  "unknownCount": 1,
-  "verdict": "RED: unknown failureClass present",
+  "unknownCount": 0,
+  "verdict": "GREEN: redo för nästa lager",
   "outcomes": [
     {
       "category": "saas-landing",
@@ -22,7 +19,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2098
+      "mhtmlKb": 2191
     },
     {
       "category": "saas-landing",
@@ -32,7 +29,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4821
+      "mhtmlKb": 4833
     },
     {
       "category": "saas-landing",
@@ -62,7 +59,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 1665
+      "mhtmlKb": 1662
     },
     {
       "category": "saas-landing",
@@ -72,7 +69,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 5111
+      "mhtmlKb": 5110
     },
     {
       "category": "saas-landing",
@@ -92,7 +89,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2013
+      "mhtmlKb": 2012
     },
     {
       "category": "saas-landing",
@@ -102,7 +99,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 8542
+      "mhtmlKb": 1288
     },
     {
       "category": "saas-landing",
@@ -112,7 +109,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 9074
+      "mhtmlKb": 9069
     },
     {
       "category": "ecommerce",
@@ -122,7 +119,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 6006
+      "mhtmlKb": 6004
     },
     {
       "category": "ecommerce",
@@ -132,7 +129,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4384
+      "mhtmlKb": 5443
     },
     {
       "category": "ecommerce",
@@ -142,7 +139,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 14670
+      "mhtmlKb": 13916
     },
     {
       "category": "ecommerce",
@@ -152,7 +149,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3539
+      "mhtmlKb": 4023
     },
     {
       "category": "ecommerce",
@@ -162,7 +159,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3866
+      "mhtmlKb": 3752
     },
     {
       "category": "ecommerce",
@@ -182,7 +179,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3918
+      "mhtmlKb": 3848
     },
     {
       "category": "ecommerce",
@@ -192,7 +189,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 9252
+      "mhtmlKb": 8751
     },
     {
       "category": "ecommerce",
@@ -202,7 +199,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 7507
+      "mhtmlKb": 4690
     },
     {
       "category": "ecommerce",
@@ -212,7 +209,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4913
+      "mhtmlKb": 4930
     },
     {
       "category": "media",
@@ -222,7 +219,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 5617
+      "mhtmlKb": 5762
     },
     {
       "category": "media",
@@ -232,7 +229,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 7302
+      "mhtmlKb": 8603
     },
     {
       "category": "media",
@@ -242,17 +239,17 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3482
+      "mhtmlKb": 6405
     },
     {
       "category": "media",
       "deferred": false,
       "name": "techcrunch",
       "url": "https://techcrunch.com",
-      "ok": false,
-      "failureClass": "mhtml-capture-failed",
-      "reason": "-32000 Failed to generate MHTML",
-      "mhtmlKb": 0
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 4379
     },
     {
       "category": "media",
@@ -262,7 +259,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 164603
+      "mhtmlKb": 165151
     },
     {
       "category": "spa",
@@ -272,7 +269,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3626
+      "mhtmlKb": 3689
     },
     {
       "category": "spa",
@@ -292,7 +289,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2546
+      "mhtmlKb": 16373
     },
     {
       "category": "spa",
@@ -312,7 +309,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 6204
+      "mhtmlKb": 6336
     },
     {
       "category": "i18n-routing",
@@ -322,7 +319,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3053
+      "mhtmlKb": 3049
     },
     {
       "category": "i18n-routing",
@@ -332,7 +329,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 6315
+      "mhtmlKb": 6058
     },
     {
       "category": "i18n-routing",
@@ -342,7 +339,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 1957
+      "mhtmlKb": 2219
     },
     {
       "category": "i18n-routing",
@@ -352,7 +349,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 1609
+      "mhtmlKb": 1435
     },
     {
       "category": "i18n-routing",
@@ -362,7 +359,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 8704
+      "mhtmlKb": 8615
     },
     {
       "category": "cookie-wall-eu",
@@ -372,27 +369,27 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4173
+      "mhtmlKb": 4516
     },
     {
       "category": "cookie-wall-eu",
       "deferred": false,
       "name": "spiegel",
       "url": "https://www.spiegel.de",
-      "ok": false,
-      "failureClass": "mhtml-capture-failed",
-      "reason": "-32000 Failed to generate MHTML",
-      "mhtmlKb": 0
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 6689
     },
     {
       "category": "cookie-wall-eu",
       "deferred": false,
       "name": "dn",
       "url": "https://www.dn.se",
-      "ok": false,
-      "failureClass": "mhtml-capture-failed",
-      "reason": "-32000 Failed to generate MHTML",
-      "mhtmlKb": 0
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 7330
     },
     {
       "category": "cookie-wall-eu",
@@ -402,17 +399,17 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4017
+      "mhtmlKb": 5722
     },
     {
       "category": "cookie-wall-eu",
       "deferred": false,
       "name": "aftonbladet",
       "url": "https://www.aftonbladet.se",
-      "ok": false,
-      "failureClass": "unknown",
-      "reason": "Could not find an element for the given xPath(s): //button[contains(normalize-space(.),\"Godkänn alla\")]",
-      "mhtmlKb": 0
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 2084
     },
     {
       "category": "anti-bot",
@@ -469,10 +466,10 @@
       "deferred": false,
       "name": "medium",
       "url": "https://medium.com",
-      "ok": false,
-      "failureClass": "captured-wrong-page",
-      "reason": "text-too-short",
-      "mhtmlKb": 0
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 1720
     },
     {
       "category": "iframe-heavy",
@@ -482,7 +479,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 5465
+      "mhtmlKb": 6044
     },
     {
       "category": "iframe-heavy",
@@ -502,7 +499,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 1903
+      "mhtmlKb": 1894
     },
     {
       "category": "iframe-heavy",
@@ -512,7 +509,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2434
+      "mhtmlKb": 2455
     }
   ]
 }

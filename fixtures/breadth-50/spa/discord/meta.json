@@ -1,16 +1,16 @@
 {
   "url": "https://discord.com",
   "name": "spa__discord",
-  "captured_at": "2026-06-21T20:29:33.114Z",
+  "captured_at": "2026-06-21T21:16:13.401Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:29:14.231Z",
+  "notes": "breadth-50 2026-06-21T21:15:56.182Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:29:33.114Z",
-  "expiresAt": "2026-09-19T20:29:33.114Z",
+  "frozenAt": "2026-06-21T21:16:13.401Z",
+  "expiresAt": "2026-09-19T21:16:13.401Z",
   "refreezeReason": "manual"
 }

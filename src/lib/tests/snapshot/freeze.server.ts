@@ -253,16 +253,22 @@ export const ASSERT_CAPTURE_VALID_FN = `(challengeMarkers, consentPatterns, view
   let reason = null;
   if (hits.length > 0) reason = "challenge-markers:" + hits.join(",");
   else if (interactive < 10) reason = "too-few-interactive-elements";
-  else if (!heroHasMeaningfulHeading) reason = "no-meaningful-hero-heading";
-  // Empty-shell floor (checked LAST, after the structural signals). Once a page
-  // has >=10 interactive elements, a meaningful hero heading and no challenge
-  // markers it is demonstrably real content — the only thing left to rule out
-  // is a body that never hydrated (near-zero text). A low floor keeps
-  // deliberately text-light splash pages (e.g. Medium's homepage, ~230ch) while
-  // still catching blank SPA shells. The previous 500ch floor false-failed
+  // Empty-shell floor: a body that never hydrated (near-zero text). Low floor
+  // keeps deliberately text-light splash pages (e.g. Medium's homepage, ~230ch)
+  // while still catching blank SPA shells. The previous 500ch floor false-failed
   // those legitimate minimalist pages — the exact false-negative the thresholds
   // are documented to avoid (see header comment above).
   else if (textLen < 120) reason = "text-too-short";
+  // Hero-heading is a quality signal for THIN pages — it catches consent/error
+  // shells that scrape enough chrome links to clear the interactive floor but
+  // carry no real content. A page with substantial text AND many interactive
+  // elements is demonstrably real regardless of whether its top-of-viewport
+  // headline is a semantic h1-h3 (e.g. aftonbladet's image-teaser tabloid front:
+  // 8050ch, 279 interactive, consent dismissed, no challenge). Only require a
+  // hero heading when the content signals are otherwise thin.
+  else if (!heroHasMeaningfulHeading && (textLen < 1500 || interactive < 25)) {
+    reason = "no-meaningful-hero-heading";
+  }
   return { ok: reason === null, textLen, interactiveCount: interactive, heroHasMeaningfulHeading, challengeMarkersFound: hits, reason };
 }`;
 

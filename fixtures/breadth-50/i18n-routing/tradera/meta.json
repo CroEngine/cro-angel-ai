@@ -1,16 +1,16 @@
 {
   "url": "https://www.tradera.com",
   "name": "i18n-routing__tradera",
-  "captured_at": "2026-06-21T20:30:33.382Z",
+  "captured_at": "2026-06-21T21:17:34.971Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:30:08.969Z",
+  "notes": "breadth-50 2026-06-21T21:17:08.523Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:30:33.382Z",
-  "expiresAt": "2026-09-19T20:30:33.382Z",
+  "frozenAt": "2026-06-21T21:17:34.971Z",
+  "expiresAt": "2026-09-19T21:17:34.971Z",
   "refreezeReason": "manual"
 }

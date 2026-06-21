@@ -11,18 +11,20 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 2546,
-    "screenshotKb": 530,
+    "mhtmlKb": 16373,
+    "screenshotKb": 657,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
-    "embeddedFontCount": 0,
-    "mhtmlKbBeforeFontEmbed": 2546,
+    "embeddedFontCount": 76,
+    "mhtmlKbBeforeFontEmbed": 2995,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Ghost",
       "Hiragino Kaku Gothic ProN",
+      "Inter",
+      "Inter var",
       "Roboto",
       "TWK Lausanne",
       "asanaIcons",
@@ -32,93 +34,93 @@
     ],
     "fontUrls": {
       "embedded": 0,
-      "absolute": 0,
-      "relativeResolved": 0,
+      "absolute": 38,
+      "relativeResolved": 38,
       "unresolvable": [
         {
           "original": "/fonts/haptik/haptik-regular.woff",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/haptik/haptik-light.woff",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/proxima-nova/proxima-nova-reg.woff",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/proxima-nova/proxima-nova-bold.woff",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/asana-icons/asana-icons.woff",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/pp-editorial-new/PPEditorialNew-Regular.woff",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/roboto/Roboto-Medium.ttf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/ghost/Ghost-Medium.otf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-250.otf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-300.otf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-350.otf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-400.otf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-450.otf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-500.otf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/lausanne/TWKLausanne-550.otf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/hiragino-kaku-gothic-pron/Hiragino-Kaku-Gothic-ProN-W3.ttf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         },
         {
           "original": "/fonts/hiragino-kaku-gothic-pron/Hiragino-Kaku-Gothic-ProN-W6.ttf",
           "reason": "invalid-base",
-          "partIndex": 285
+          "partIndex": 311
         }
       ]
     },
@@ -135,21 +137,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T20:29:13.443Z"
+    "frozenAt": "2026-06-21T21:15:35.279Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 5511,
-    "interactiveCount": 224,
+    "textLen": 5487,
+    "interactiveCount": 226,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 12403,
+    "gotoMs": 50540,
     "consentMs": 0,
-    "scrollMs": 5141,
-    "captureMs": 4752
+    "scrollMs": 7645,
+    "captureMs": 7964
   }
 }

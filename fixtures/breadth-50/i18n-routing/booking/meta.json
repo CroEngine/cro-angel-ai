@@ -1,16 +1,16 @@
 {
   "url": "https://www.booking.com",
   "name": "i18n-routing__booking",
-  "captured_at": "2026-06-21T20:30:21.433Z",
+  "captured_at": "2026-06-21T21:17:24.239Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:30:06.276Z",
+  "notes": "breadth-50 2026-06-21T21:17:08.491Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:30:21.433Z",
-  "expiresAt": "2026-09-19T20:30:21.433Z",
+  "frozenAt": "2026-06-21T21:17:24.239Z",
+  "expiresAt": "2026-09-19T21:17:24.239Z",
   "refreezeReason": "manual"
 }

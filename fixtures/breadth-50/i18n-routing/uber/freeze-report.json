@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 1957,
-    "screenshotKb": 458,
+    "mhtmlKb": 2219,
+    "screenshotKb": 475,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 16,
-    "mhtmlKbBeforeFontEmbed": 1242,
+    "mhtmlKbBeforeFontEmbed": 1504,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Book",
@@ -40,82 +40,82 @@
         {
           "original": "/_static/d9fefb2e7848440e.woff",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/c7d2487e86a01259.woff2",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/4a6ba14eeb82d398.woff",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/373acd359b809a36.woff2",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/72265bee6edcde38.woff",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/4092f014767a0c42.woff2",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/3b7b2d393828f966.woff",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/d03e099b908c23f5.woff2",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/d35e4f7be34dbdf1.woff",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/3ead8fe086dcc03b.woff2",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/56bde4d6d985fd33.woff",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/22ff2ed7e89a1893.woff2",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/7dee2ff8254c25e7.woff",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/eaaab0415f3c894a.woff2",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/3bafb784fdbf1412.woff",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         },
         {
           "original": "/_static/4971a684a2006b0b.woff2",
           "reason": "invalid-base",
-          "partIndex": 41
+          "partIndex": 36
         }
       ]
     },
@@ -132,21 +132,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T20:29:53.847Z"
+    "frozenAt": "2026-06-21T21:16:56.947Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 2440,
-    "interactiveCount": 202,
+    "textLen": 2885,
+    "interactiveCount": 228,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 4947,
+    "gotoMs": 5478,
     "consentMs": 0,
-    "scrollMs": 3874,
-    "captureMs": 2676
+    "scrollMs": 3672,
+    "captureMs": 1337
   }
 }

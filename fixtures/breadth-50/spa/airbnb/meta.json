@@ -1,16 +1,16 @@
 {
   "url": "https://www.airbnb.com",
   "name": "spa__airbnb",
-  "captured_at": "2026-06-21T20:28:42.479Z",
+  "captured_at": "2026-06-21T21:15:03.319Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:28:23.561Z",
+  "notes": "breadth-50 2026-06-21T21:14:38.298Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:28:42.479Z",
-  "expiresAt": "2026-09-19T20:28:42.479Z",
+  "frozenAt": "2026-06-21T21:15:03.319Z",
+  "expiresAt": "2026-09-19T21:15:03.319Z",
   "refreezeReason": "manual"
 }

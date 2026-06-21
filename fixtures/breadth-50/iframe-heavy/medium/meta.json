@@ -1,16 +1,16 @@
 {
   "url": "https://medium.com",
   "name": "iframe-heavy__medium",
-  "captured_at": "2026-06-21T20:56:11.166Z",
+  "captured_at": "2026-06-21T21:19:22.768Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:55:42.876Z",
+  "notes": "breadth-50 2026-06-21T21:18:53.259Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:56:11.166Z",
-  "expiresAt": "2026-09-19T20:56:11.166Z",
+  "frozenAt": "2026-06-21T21:19:22.768Z",
+  "expiresAt": "2026-09-19T21:19:22.768Z",
   "refreezeReason": "manual"
 }

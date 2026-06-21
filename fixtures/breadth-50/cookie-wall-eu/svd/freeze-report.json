@@ -7,7 +7,7 @@
     "dismissCheck": "detached",
     "matchCountBeforeClick": null,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 954,
+    "dismissedAfterMs": 1606,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,14 +16,14 @@
     }
   },
   "capture": {
-    "mhtmlKb": 4017,
+    "mhtmlKb": 5722,
     "screenshotKb": 123,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
-    "embeddedFontCount": 28,
-    "mhtmlKbBeforeFontEmbed": 2368,
+    "embeddedFontCount": 58,
+    "mhtmlKbBeforeFontEmbed": 3133,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Ester Blenda",
@@ -32,11 +32,16 @@
       "Sueca Text",
       "Sueca Tx",
       "SuecaWeb Hd",
-      "SvD Ester Blenda"
+      "SvD Ester Blenda",
+      "fl28onzp7crlsxvjwoj",
+      "fl2ta2cwiu-adr_q2ud",
+      "fl3bbtbijjlrpintron",
+      "fl7gav49whs4kdyavyr",
+      "flje1e2jk-x78sds5xg"
     ],
     "fontUrls": {
       "embedded": 0,
-      "absolute": 46,
+      "absolute": 76,
       "relativeResolved": 0,
       "unresolvable": []
     },
@@ -53,21 +58,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T20:30:38.456Z"
+    "frozenAt": "2026-06-21T21:18:28.679Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 6951,
-    "interactiveCount": 174,
+    "textLen": 5906,
+    "interactiveCount": 158,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 16071,
-    "consentMs": 1964,
-    "scrollMs": 4032,
-    "captureMs": 7932
+    "gotoMs": 8108,
+    "consentMs": 2610,
+    "scrollMs": 4923,
+    "captureMs": 7140
   }
 }

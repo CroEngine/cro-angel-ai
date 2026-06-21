@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 5465,
-    "screenshotKb": 1189,
+    "mhtmlKb": 6044,
+    "screenshotKb": 684,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 22,
-    "mhtmlKbBeforeFontEmbed": 4343,
+    "mhtmlKbBeforeFontEmbed": 4923,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Cahuenga",
@@ -43,21 +43,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T20:31:08.781Z"
+    "frozenAt": "2026-06-21T21:18:59.724Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 8806,
-    "interactiveCount": 367,
+    "textLen": 4885,
+    "interactiveCount": 217,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 6804,
-    "consentMs": 1,
-    "scrollMs": 3739,
-    "captureMs": 8044
+    "gotoMs": 8397,
+    "consentMs": 0,
+    "scrollMs": 3771,
+    "captureMs": 3693
   }
 }

@@ -1,16 +1,16 @@
 {
   "url": "https://asana.com",
   "name": "spa__asana",
-  "captured_at": "2026-06-21T20:29:37.211Z",
+  "captured_at": "2026-06-21T21:16:44.603Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:29:10.962Z",
+  "notes": "breadth-50 2026-06-21T21:15:31.058Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:29:37.211Z",
-  "expiresAt": "2026-09-19T20:29:37.211Z",
+  "frozenAt": "2026-06-21T21:16:44.603Z",
+  "expiresAt": "2026-09-19T21:16:44.603Z",
   "refreezeReason": "manual"
 }

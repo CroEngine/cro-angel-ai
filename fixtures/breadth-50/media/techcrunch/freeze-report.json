@@ -11,168 +11,167 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 4839,
-    "screenshotKb": 1366,
+    "mhtmlKb": 4379,
+    "screenshotKb": 1392,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
-    "embeddedFontCount": 31,
-    "mhtmlKbBeforeFontEmbed": 3853,
+    "embeddedFontCount": 35,
+    "mhtmlKbBeforeFontEmbed": 3335,
     "fontFetchFailures": [],
     "embeddedFamilies": [
-      "AlasTrial Black",
+      "Helvetica-CondensedBlack",
+      "Helvetica-Light",
+      "HelveticaNeueLTStd-CondensedBlack",
       "Open Sans",
       "Optimist",
       "Optimist Light",
       "Optimist Semi-Bold",
-      "Optimist SemiBold",
-      "Poppins",
       "Roboto",
       "nb_international_promono",
       "nb_international_proregular",
-      "swiper-icons",
       "yellix"
     ],
     "fontUrls": {
-      "embedded": 1,
-      "absolute": 29,
-      "relativeResolved": 3,
+      "embedded": 0,
+      "absolute": 38,
+      "relativeResolved": 6,
       "unresolvable": [
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3GUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3CUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3-UBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMawCUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMaxKUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3OUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3KUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3GUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3CUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3-UBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMawCUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMaxKUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3OUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3KUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3GUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3CUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3-UBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMawCUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMaxKUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3OUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3KUBGEe.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         },
         {
           "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
           "reason": "invalid-base",
-          "partIndex": 97
+          "partIndex": 98
         }
       ]
     },
@@ -189,7 +188,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T20:54:13.988Z"
+    "frozenAt": "2026-06-21T21:13:24.085Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -201,9 +200,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 53100,
+    "gotoMs": 10686,
     "consentMs": 0,
-    "scrollMs": 3801,
-    "captureMs": 12770
+    "scrollMs": 8488,
+    "captureMs": 52681
   }
 }

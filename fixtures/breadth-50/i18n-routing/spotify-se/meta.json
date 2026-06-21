@@ -1,16 +1,16 @@
 {
   "url": "https://www.spotify.com/se/",
   "name": "i18n-routing__spotify-se",
-  "captured_at": "2026-06-21T20:30:13.506Z",
+  "captured_at": "2026-06-21T21:17:08.282Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T20:29:50.022Z",
+  "notes": "breadth-50 2026-06-21T21:16:45.136Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T20:30:13.506Z",
-  "expiresAt": "2026-09-19T20:30:13.506Z",
+  "frozenAt": "2026-06-21T21:17:08.282Z",
+  "expiresAt": "2026-09-19T21:17:08.282Z",
   "refreezeReason": "manual"
 }

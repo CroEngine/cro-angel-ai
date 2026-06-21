@@ -7,7 +7,7 @@
     "dismissCheck": "detached",
     "matchCountBeforeClick": null,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 1219,
+    "dismissedAfterMs": 1866,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,14 +16,14 @@
     }
   },
   "capture": {
-    "mhtmlKb": 6092,
-    "screenshotKb": 2455,
+    "mhtmlKb": 6689,
+    "screenshotKb": 2472,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 38,
-    "mhtmlKbBeforeFontEmbed": 3263,
+    "mhtmlKbBeforeFontEmbed": 3860,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Roboto",
@@ -56,21 +56,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T20:58:34.190Z"
+    "frozenAt": "2026-06-21T21:17:38.085Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 34794,
-    "interactiveCount": 1004,
+    "textLen": 34745,
+    "interactiveCount": 1003,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 5940,
-    "consentMs": 2483,
-    "scrollMs": 4977,
-    "captureMs": 29807
+    "gotoMs": 7085,
+    "consentMs": 3194,
+    "scrollMs": 5783,
+    "captureMs": 45290
   }
 }

@@ -7,7 +7,7 @@
     "dismissCheck": "detached",
     "matchCountBeforeClick": 1,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 693,
+    "dismissedAfterMs": 616,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,14 +16,14 @@
     }
   },
   "capture": {
-    "mhtmlKb": 4173,
-    "screenshotKb": 971,
+    "mhtmlKb": 4516,
+    "screenshotKb": 1016,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 38,
-    "mhtmlKbBeforeFontEmbed": 1602,
+    "mhtmlKbBeforeFontEmbed": 1944,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Fette Engschrift",
@@ -154,21 +154,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T20:30:16.388Z"
+    "frozenAt": "2026-06-21T21:17:26.965Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 13863,
+    "textLen": 14294,
     "interactiveCount": 355,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 4888,
-    "consentMs": 1787,
-    "scrollMs": 4597,
-    "captureMs": 8024
+    "gotoMs": 4653,
+    "consentMs": 1858,
+    "scrollMs": 4558,
+    "captureMs": 13598
   }
 }

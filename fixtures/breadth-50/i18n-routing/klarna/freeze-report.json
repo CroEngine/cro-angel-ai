@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 3053,
-    "screenshotKb": 838,
+    "mhtmlKb": 3049,
+    "screenshotKb": 837,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 39,
-    "mhtmlKbBeforeFontEmbed": 1485,
+    "mhtmlKbBeforeFontEmbed": 1481,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Barlow",
@@ -47,21 +47,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T20:29:40.159Z"
+    "frozenAt": "2026-06-21T21:16:36.002Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 11554,
-    "interactiveCount": 191,
+    "textLen": 11417,
+    "interactiveCount": 194,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 21881,
+    "gotoMs": 11592,
     "consentMs": 0,
-    "scrollMs": 3497,
-    "captureMs": 2748
+    "scrollMs": 3428,
+    "captureMs": 3229
   }
 }

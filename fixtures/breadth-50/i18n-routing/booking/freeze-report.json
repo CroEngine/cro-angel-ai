@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 1609,
-    "screenshotKb": 686,
+    "mhtmlKb": 1435,
+    "screenshotKb": 363,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 3,
-    "mhtmlKbBeforeFontEmbed": 1445,
+    "mhtmlKbBeforeFontEmbed": 1270,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Blue Sans"
@@ -42,21 +42,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T20:30:08.259Z"
+    "frozenAt": "2026-06-21T21:17:11.127Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 3496,
-    "interactiveCount": 249,
+    "textLen": 3298,
+    "interactiveCount": 231,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 4248,
+    "gotoMs": 5067,
     "consentMs": 0,
-    "scrollMs": 3360,
-    "captureMs": 3633
+    "scrollMs": 3486,
+    "captureMs": 2998
   }
 }
