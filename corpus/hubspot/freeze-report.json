@@ -7,7 +7,7 @@
     "dismissCheck": "hidden",
     "matchCountBeforeClick": 1,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 1583,
+    "dismissedAfterMs": 679,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,24 +16,23 @@
     }
   },
   "capture": {
-    "mhtmlKb": 6727,
-    "screenshotKb": 526,
+    "mhtmlKb": 5769,
+    "screenshotKb": 457,
     "beforeDismissScreenshotPath": null,
     "externalFontSrcCount": 0,
-    "embeddedFontCount": 31,
-    "mhtmlKbBeforeFontEmbed": 1801,
+    "embeddedFontCount": 13,
+    "mhtmlKbBeforeFontEmbed": 1568,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "HubSpot Sans",
       "HubSpot Serif",
       "HubSpot Serif Page Header Human",
       "Lato",
-      "Lexend Deca",
       "Zen Kaku Gothic New"
     ],
     "fontUrls": {
       "embedded": 0,
-      "absolute": 32,
+      "absolute": 14,
       "relativeResolved": 0,
       "unresolvable": []
     },
@@ -43,10 +42,28 @@
     "removedStaleLocalMhtml": false,
     "removedStalePointer": false
   },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-06-20T16:40:43.989Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 6997,
+    "interactiveCount": 281,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
   "timing": {
-    "gotoMs": 63318,
-    "consentMs": 3408,
-    "scrollMs": 4576,
-    "captureMs": 3211
+    "gotoMs": 14016,
+    "consentMs": 2042,
+    "scrollMs": 3560,
+    "captureMs": 2092
   }
 }

@@ -63,7 +63,7 @@
         "area": 2000
       },
       {
-        "text": "Learn more about Commerce Hub software",
+        "text": "Learn more about Data Hub software",
         "tagName": "a",
         "category": "link",
         "intent": "information",
@@ -77,7 +77,7 @@
         "area": 2000
       },
       {
-        "text": "Learn more about Data Hub software",
+        "text": "Learn more about Revenue Hub",
         "tagName": "a",
         "category": "link",
         "intent": "information",
@@ -147,7 +147,7 @@
         "area": 2000
       },
       {
-        "text": "Learn more about content agent",
+        "text": "Learn more about prospecting agent",
         "tagName": "a",
         "category": "link",
         "intent": "information",
@@ -155,13 +155,13 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 4000,
+        "yBand": 4200,
         "score": 20,
         "bgContrast": 1,
         "area": 4000
       },
       {
-        "text": "Learn more about content agent",
+        "text": "Learn more about prospecting agent",
         "tagName": "a",
         "category": "link",
         "intent": "information",
@@ -169,13 +169,13 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 4000,
+        "yBand": 4200,
         "score": 20,
         "bgContrast": 1,
         "area": 4000
       },
       {
-        "text": "Learn more about content agent",
+        "text": "Learn more about prospecting agent",
         "tagName": "a",
         "category": "link",
         "intent": "information",
@@ -183,7 +183,7 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 4000,
+        "yBand": 4200,
         "score": 20,
         "bgContrast": 1,
         "area": 4000
@@ -688,8 +688,7 @@
         "href": "app.hubspot.com",
         "disabled": false,
         "yBand": 6000,
-        "score": 60,
-        "bgContrast": 20,
+        "score": 30,
         "area": 10000
       },
       {
@@ -703,7 +702,6 @@
         "disabled": false,
         "yBand": 3400,
         "score": 40,
-        "bgContrast": 1,
         "area": 10000
       },
       {
@@ -716,8 +714,7 @@
         "href": null,
         "disabled": false,
         "yBand": 1600,
-        "score": 40,
-        "bgContrast": 20,
+        "score": 10,
         "area": 2000
       },
       {
@@ -730,8 +727,7 @@
         "href": null,
         "disabled": true,
         "yBand": 1600,
-        "score": 40,
-        "bgContrast": 20,
+        "score": 10,
         "area": 2000
       },
       {
@@ -744,8 +740,7 @@
         "href": null,
         "disabled": false,
         "yBand": 3800,
-        "score": 40,
-        "bgContrast": 20,
+        "score": 10,
         "area": 2000
       },
       {
@@ -758,12 +753,11 @@
         "href": null,
         "disabled": false,
         "yBand": 3800,
-        "score": 40,
-        "bgContrast": 20,
+        "score": 10,
         "area": 2000
       },
       {
-        "text": "Pause Carousel",
+        "text": "Play Carousel",
         "tagName": "button",
         "category": "cta_secondary",
         "intent": "unknown",
@@ -772,8 +766,7 @@
         "href": null,
         "disabled": false,
         "yBand": 4200,
-        "score": 40,
-        "bgContrast": 20,
+        "score": 10,
         "area": 1000
       },
       {
@@ -799,7 +792,7 @@
         "aboveFold": false,
         "href": "www.hubspot.com",
         "disabled": false,
-        "yBand": 5200,
+        "yBand": 5400,
         "score": 20,
         "bgContrast": 1,
         "area": 5000
@@ -828,8 +821,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 7000
       },
       {
@@ -842,8 +835,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -856,8 +849,8 @@
         "href": "www.facebook.com",
         "disabled": false,
         "yBand": 6600,
-        "score": 10,
-        "bgContrast": 1,
+        "score": 40,
+        "bgContrast": 16,
         "area": 1000
       },
       {
@@ -870,8 +863,8 @@
         "href": "www.instagram.com",
         "disabled": false,
         "yBand": 6600,
-        "score": 10,
-        "bgContrast": 1,
+        "score": 40,
+        "bgContrast": 16,
         "area": 1000
       },
       {
@@ -884,8 +877,8 @@
         "href": "www.linkedin.com",
         "disabled": false,
         "yBand": 6600,
-        "score": 10,
-        "bgContrast": 1,
+        "score": 40,
+        "bgContrast": 16,
         "area": 1000
       },
       {
@@ -898,8 +891,8 @@
         "href": "www.reddit.com",
         "disabled": false,
         "yBand": 6600,
-        "score": 10,
-        "bgContrast": 1,
+        "score": 40,
+        "bgContrast": 16,
         "area": 1000
       },
       {
@@ -912,8 +905,8 @@
         "href": "www.tiktok.com",
         "disabled": false,
         "yBand": 6600,
-        "score": 10,
-        "bgContrast": 1,
+        "score": 40,
+        "bgContrast": 16,
         "area": 1000
       },
       {
@@ -926,8 +919,8 @@
         "href": "x.com",
         "disabled": false,
         "yBand": 6600,
-        "score": 10,
-        "bgContrast": 1,
+        "score": 40,
+        "bgContrast": 16,
         "area": 1000
       },
       {
@@ -940,8 +933,8 @@
         "href": "youtube.com",
         "disabled": false,
         "yBand": 6600,
-        "score": 10,
-        "bgContrast": 1,
+        "score": 40,
+        "bgContrast": 16,
         "area": 1000
       },
       {
@@ -954,8 +947,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -968,8 +961,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -982,8 +975,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -996,8 +989,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1010,8 +1003,8 @@
         "href": "help.hubspot.com",
         "disabled": false,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 7000
       },
       {
@@ -1024,8 +1017,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1038,8 +1031,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1052,8 +1045,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 7000
       },
       {
@@ -1066,8 +1059,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1080,23 +1073,9 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
-      },
-      {
-        "text": "Affiliate Program",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 7000
       },
       {
         "text": "AI Content Writer",
@@ -1108,8 +1087,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1122,8 +1101,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1136,8 +1115,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 7000
       },
       {
@@ -1150,8 +1129,8 @@
         "href": "blog.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1164,8 +1143,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1178,8 +1157,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1192,8 +1171,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1206,8 +1185,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1220,8 +1199,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1234,8 +1213,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1248,8 +1227,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1262,8 +1241,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1276,8 +1255,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1290,8 +1269,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1304,8 +1283,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1318,8 +1297,8 @@
         "href": "ir.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1332,8 +1311,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1346,8 +1325,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1360,8 +1339,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1374,8 +1353,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1388,8 +1367,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1402,8 +1381,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 7000
       },
       {
@@ -1416,8 +1395,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1430,8 +1409,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 7000
       },
       {
@@ -1444,9 +1423,23 @@
         "href": "ecosystem.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
+      },
+      {
+        "text": "Affiliate Program",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6600,
+        "score": 50,
+        "bgContrast": 16,
+        "area": 7000
       },
       {
         "text": "Free Web Hosting",
@@ -1458,8 +1451,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6600,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1472,8 +1465,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6600,
-        "score": 10,
-        "bgContrast": 1,
+        "score": 40,
+        "bgContrast": 16,
         "area": 3000
       },
       {
@@ -1486,8 +1479,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6600,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1500,8 +1493,8 @@
         "href": "legal.hubspot.com",
         "disabled": false,
         "yBand": 6800,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 5000
       },
       {
@@ -1514,8 +1507,8 @@
         "href": "legal.hubspot.com",
         "disabled": false,
         "yBand": 6800,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 5000
       },
       {
@@ -1528,8 +1521,8 @@
         "href": "legal.hubspot.com",
         "disabled": false,
         "yBand": 6800,
-        "score": 10,
-        "bgContrast": 1,
+        "score": 40,
+        "bgContrast": 16,
         "area": 4000
       },
       {
@@ -1542,8 +1535,8 @@
         "href": "legal.hubspot.com",
         "disabled": false,
         "yBand": 6800,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 7000
       },
       {
@@ -1556,8 +1549,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6800,
-        "score": 30,
-        "bgContrast": 1,
+        "score": 60,
+        "bgContrast": 16,
         "area": 8000
       },
       {
@@ -1570,8 +1563,8 @@
         "href": "www.hubspot.com",
         "disabled": false,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1584,8 +1577,8 @@
         "href": null,
         "disabled": true,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1598,8 +1591,8 @@
         "href": null,
         "disabled": true,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1612,8 +1605,8 @@
         "href": null,
         "disabled": true,
         "yBand": 6200,
-        "score": 20,
-        "bgContrast": 1,
+        "score": 50,
+        "bgContrast": 16,
         "area": 6000
       },
       {
@@ -1626,8 +1619,8 @@
         "href": null,
         "disabled": true,
         "yBand": 6200,
-        "score": 40,
-        "bgContrast": 1,
+        "score": 70,
+        "bgContrast": 16,
         "area": 10000
       },
       {
@@ -1640,20 +1633,6 @@
         "href": null,
         "disabled": true,
         "yBand": 6400,
-        "score": 20,
-        "bgContrast": 1,
-        "area": 6000
-      },
-      {
-        "text": "Skip to content",
-        "tagName": "a",
-        "category": "cta_primary",
-        "intent": "conversion",
-        "section": "header",
-        "aboveFold": true,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 0,
         "score": 50,
         "bgContrast": 16,
         "area": 6000
@@ -1685,6 +1664,20 @@
         "score": 40,
         "bgContrast": 1,
         "area": 10000
+      },
+      {
+        "text": "Learn more about Revenue Hub",
+        "tagName": "a",
+        "category": "cta_primary",
+        "intent": "information",
+        "section": "hero",
+        "aboveFold": true,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 200,
+        "score": 50,
+        "bgContrast": 16,
+        "area": 5000
       },
       {
         "text": "Get a demo of HubSpot's premium software",
@@ -1955,13 +1948,13 @@
     },
     "hero": {
       "headline": "Marketing",
-      "primaryCtaText": "Skip to content",
+      "primaryCtaText": "Learn more about Revenue Hub",
       "primaryCtaIntent": "conversion",
       "aboveFold": true
     },
     "images": {
       "total": 99,
-      "missingAlt": 42,
+      "missingAlt": 23,
       "modernCount": 12,
       "legacyCount": 24,
       "formats": {
@@ -2003,9 +1996,9 @@
       }
     },
     "ctaSummary": {
-      "total": 13,
-      "primary": 1,
-      "aboveFold": 5
+      "total": 14,
+      "primary": 2,
+      "aboveFold": 6
     },
     "sectionOrder": [
       "header",

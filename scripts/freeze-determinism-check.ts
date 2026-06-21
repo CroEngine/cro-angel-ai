@@ -106,6 +106,7 @@ async function freezeOnce(idx: number) {
     consentSelector: spec!.consentSelector,
     consentDismissCheck: spec!.consentDismissCheck,
     consentInstruction: spec!.consentInstruction,
+    removeSelectors: spec!.removeSelectors,
     outDir: tmpOut,
     notes: `determinism check pass ${idx + 1}/${N}`,
   });

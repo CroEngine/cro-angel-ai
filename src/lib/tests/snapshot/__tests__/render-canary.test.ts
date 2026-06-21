@@ -174,39 +174,30 @@ describe("runRenderCanary — Gate 1 reason taxonomy", () => {
     expect(report.failures.some((f) => f.includes("GhostFamily"))).toBe(true);
   });
 
-  test("ok: registered FontFace with metrics distinct from monospace → gate1.reason === 'ok'", async (ctx) => {
+  test("descriptor_missing: a bare CSS generic has no @font-face descriptor → gate1.reason === 'descriptor_missing'", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
 
-    // Use a minimal valid woff2 via FontFace API. We don't have a brand font
-    // handy in test fixtures, so we exploit a known-distinct metric: register
-    // a font under a custom name whose actual source IS monospace's opposite
-    // (a real proportional font installed on the system). Playwright's bundled
-    // chromium ships with DejaVu Sans on Linux — metrically distinct from
-    // monospace. We do this by NOT using @font-face at all and instead naming
-    // a fallback chain that chromium will resolve to a real proportional face.
-    //
-    // Note: this exercises the metric-distinct path. The 'unresolved' test
-    // above is the actual canary-of-the-canary; this one is sanity that the
-    // happy path also produces the expected reason.
+    // A CSS generic ("monospace") is never declared by an @font-face, so
+    // document.fonts.load("1em monospace", sample) resolves to [] AND no
+    // descriptor matches → the canary classifies it descriptor_missing. Real
+    // manifests never contain generics (extractMainDocumentFamilies /
+    // extractEmbeddedFamilies only ever return @font-face families), so this is
+    // the generic-name edge of the same branch the "typo" test below exercises
+    // with an unregistered brand name. The 'fallback' path (descriptor present
+    // but sample out of unicode-range) is covered by the next test.
     await page.setContent(`<html><body><p>hello canary</p></body></html>`);
 
-    // Register a FontFace pointing at a tiny inline TTF would be ideal but
-    // adds a 50KB+ base64 to the test file. Instead, assert that "monospace"
-    // measured against itself yields reason "fallback" (width identical) —
-    // which is the COMPLEMENTARY case: it locks the comparison logic without
-    // needing a real font file in the repo.
     const report = await runRenderCanary(page, ["monospace"], {
       fontLoadTimeoutMs: 1000,
     });
 
     const fam = report.families[0];
-    // monospace measured against monospace fallback → delta_load ≈ 0.
-    // document.fonts has no @font-face for "monospace" so fontsCheckPass
-    // depends on chromium's generic-family handling; both fallback and
-    // metric_twin are acceptable outcomes here. What MUST NOT happen is
-    // 'unresolved' or 'check_mismatch' — those would indicate a bug in
-    // the reason-selection logic, not a fixture choice.
-    expect(["fallback", "metric_twin", "ok"]).toContain(fam.gate1.reason);
+    expect(fam.gate1.reason).toBe("descriptor_missing");
+    expect(fam.gate1.pass).toBe(false);
+    expect(fam.gate1.loadError).toBe("no face matched descriptor");
+    expect(fam.registered).toBe(false);
+    // MUST NOT collapse to a load-failure or name-mismatch reason — those would
+    // indicate a bug in reason selection, not a fixture choice.
     expect(fam.gate1.reason).not.toBe("unresolved");
     expect(fam.gate1.reason).not.toBe("check_mismatch");
     expect(fam.gate1.reason).not.toBe("timeout");
@@ -222,21 +213,25 @@ describe("runRenderCanary — Gate 1 reason taxonomy", () => {
   // is a non-functional stub that won't reproduce empty-on-out-of-range
   // or honor unicode-range at load time. A jsdom version locks in the
   // collapse the discriminator exists to prevent.
-  test("A2: empty load + descriptor match (unicode-range excludes sample) → 'fallback', NOT 'check_mismatch'", async (ctx) => {
+  test("A2: empty load + descriptor match (unicode-range excludes sample) → descriptor-present (fallback|metric_twin), NOT check_mismatch/descriptor_missing", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
 
     await page.setContent(`<html><body><p>x</p></body></html>`);
 
-    // Register a FontFace whose unicode-range covers only uppercase A-Z.
-    // The canary sample text contains lowercase letters and digits, so
+    // Register a FontFace whose unicode-range is DISJOINT from the canary
+    // sample text. CANARY_SAMPLE_TEXT is Latin letters + ASCII digits (incl.
+    // uppercase), so a U+0041-005A (A-Z) range would actually overlap "T" and
+    // trigger a load of the junk URL → unresolved. Use a Cyrillic range with
+    // zero overlap: the sample has no codepoint in it, so
     // document.fonts.load("Brand", sample) is spec-required to return []
-    // (faces filtered before loading). The URL is intentionally junk —
-    // load is never attempted because the range filter rejects first.
+    // WITHOUT attempting the (junk) URL — the range filter excludes the face
+    // before any load. A descriptor for "Brand" still exists, so
+    // hasDescriptorMatch is true → fallback, NOT descriptor_missing.
     await page.evaluate(() => {
       const face = new FontFace(
         "Brand",
         "url(data:font/woff2;base64,d09GMgABAAAAAAAA)",
-        { unicodeRange: "U+0041-005A" },
+        { unicodeRange: "U+0400-04FF" },
       );
       document.fonts.add(face);
     });
@@ -246,12 +241,17 @@ describe("runRenderCanary — Gate 1 reason taxonomy", () => {
     });
     const fam = report.families[0];
 
-    // The headline assertion: NOT check_mismatch. Descriptor IS registered,
-    // it's the range that excluded the sample — that's a fallback condition,
-    // not a name-mismatch condition.
+    // Headline: the descriptor IS registered, the range merely excluded the
+    // sample. The canary MUST route this to the descriptor-PRESENT side — NOT
+    // check_mismatch (a name mismatch) and NOT descriptor_missing (no descriptor
+    // at all, the typo case below). Whether it lands on 'fallback' (fonts.check
+    // false) or 'metric_twin' (fonts.check true) depends on how this chromium
+    // reports an out-of-range descriptor to fonts.check; both are
+    // descriptor-present outcomes, so accept either rather than pin a
+    // chromium-version detail.
     expect(fam.gate1.reason).not.toBe("check_mismatch");
-    expect(fam.gate1.reason).toBe("fallback");
-    expect(fam.gate1.pass).toBe(false);
+    expect(fam.gate1.reason).not.toBe("descriptor_missing");
+    expect(["fallback", "metric_twin"]).toContain(fam.gate1.reason);
     expect(fam.registered).toBe(true);
   });
 

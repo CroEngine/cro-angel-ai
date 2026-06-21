@@ -488,6 +488,124 @@ export function extractEmbeddedFamilies(mhtmlRaw: string): string[] {
   return Array.from(seen).sort();
 }
 
+// Minimal HTML-entity decode for <link href> / @import-värden. Den kritiska
+// fallen är `&amp;` i Google-Fonts-liknande query-URLer: `<link href="…?family=
+// Lato&amp;display=swap">` ska matcha partens råa `…&display=swap`-
+// Content-Location. Utan denna avkodning ses stylesheeten som onåbar och dess
+// familjer faller felaktigt ur huvuddokument-manifestet (Lato-buggen).
+function htmlDecodeRef(s: string): string {
+  return s
+    .replace(/&amp;/gi, "&")
+    .replace(/&#0*38;/g, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*34;/g, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+/**
+ * @font-face-familjer deklarerade av CSS som faktiskt appliceras på
+ * HUVUDDOKUMENTET — dess inline `<style>` plus de stylesheet-parts som nås från
+ * det via `<link rel=stylesheet>` / `@import` (transitivt). Sub-frame-only
+ * stylesheets EXKLUDERAS.
+ *
+ * Varför separat från extractEmbeddedFamilies: den funktionen skannar VARENDA
+ * text/css|html-part oavsett nåbarhet — rätt för "vad bäddade frysningen in",
+ * men fel för "vad MÅSTE huvuddokumentet rendera vid replay". En font som bara
+ * deklareras inuti en inbäddad widget-iframe (t.ex. HubSpots chatt-widget,
+ * app.hubspot.com/conversations-visitor, som har sin egen "Lexend Deca")
+ * registreras aldrig i top-framens document.fonts, så render-canaryn får INTE
+ * kräva den — annars failar den `descriptor_missing` på en font den scorade
+ * sidan aldrig använder.
+ *
+ * Begränsning: nåbarhet följer `<link>` och `@import`. Fonter som injiceras av
+ * runtime-JS och som Blink serialiserat som en constructed/adopted stylesheet
+ * utan motsvarande `<link>`/`<style>` i den serialiserade DOM:en missas; i
+ * praktiken serialiserar Blink sådana stilar som inline `<style>` i värd-
+ * dokumentet, vilket DENNA funktion skannar. Fail-open mot tom lista hanteras
+ * av callern (harness faller tillbaka på hela manifestet).
+ */
+export function extractMainDocumentFamilies(mhtmlRaw: string): string[] {
+  const parsed = parseMhtml(mhtmlRaw);
+
+  const decodePart = (part: MhtmlPart): string => {
+    const enc = (part.headers["content-transfer-encoding"] || "").toLowerCase();
+    return enc === "quoted-printable" ? qpDecode(part.body) : part.body;
+  };
+
+  // Indexera varje part på Content-Location för <link>/@import-resolution.
+  const byLocation = new Map<string, MhtmlPart>();
+  for (const part of parsed.parts) {
+    const cl = part.headers["content-location"];
+    if (cl && !byLocation.has(cl)) byLocation.set(cl, part);
+  }
+
+  // Huvuddokument = första text/html-parten (Chromium serialiserar roten först).
+  const mainPart = parsed.parts.find((p) =>
+    /^text\/html/i.test(p.headers["content-type"] || ""),
+  );
+  if (!mainPart) return [];
+  const mainLocation = mainPart.headers["content-location"] || "";
+
+  const resolveRef = (ref: string, base: string): string | null => {
+    const decoded = htmlDecodeRef(ref).trim();
+    if (!decoded) return null;
+    if (byLocation.has(decoded)) return decoded;
+    try {
+      const abs = new URL(decoded, base || undefined).href;
+      return byLocation.has(abs) ? abs : decoded;
+    } catch {
+      return decoded;
+    }
+  };
+
+  // CSS som appliceras på huvuddokumentet: inline <style> först, sedan BFS över
+  // nåbara stylesheet-parts via <link> och @import.
+  const cssChunks: string[] = [];
+  const mainHtml = decodePart(mainPart);
+  for (const m of mainHtml.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+    cssChunks.push(m[1]);
+  }
+
+  const seen = new Set<string>();
+  const queue: string[] = [];
+  for (const tag of mainHtml.matchAll(/<link\b[^>]*>/gi)) {
+    if (!/\brel\s*=\s*["']?\s*stylesheet/i.test(tag[0])) continue;
+    const hm = tag[0].match(/\bhref\s*=\s*["']([^"']+)["']/i);
+    if (!hm) continue;
+    const loc = resolveRef(hm[1], mainLocation);
+    if (loc) queue.push(loc);
+  }
+  while (queue.length > 0) {
+    const loc = queue.shift()!;
+    if (seen.has(loc)) continue;
+    seen.add(loc);
+    const part = byLocation.get(loc);
+    if (!part) continue;
+    if (!/^text\/css/i.test(part.headers["content-type"] || "")) continue;
+    const css = decodePart(part);
+    cssChunks.push(css);
+    const base = part.headers["content-location"] || mainLocation;
+    for (const m of css.matchAll(/@import\s+(?:url\(\s*)?["']?([^"')]+)["']?/gi)) {
+      const next = resolveRef(m[1], base);
+      if (next && !seen.has(next)) queue.push(next);
+    }
+  }
+
+  const families = new Set<string>();
+  for (const css of cssChunks) {
+    if (!/@font-face/i.test(css)) continue;
+    for (const block of css.matchAll(FONT_FACE_BLOCK_RE)) {
+      const body = block[1];
+      if (!hasRemoteSrc(body)) continue;
+      const family = familyFromFaceBody(body);
+      if (family) families.add(family);
+    }
+  }
+  return Array.from(families).sort();
+}
+
 export interface FontFaceDiagnostic {
   family: string;
   hasRemoteSrc: boolean;
