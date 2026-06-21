@@ -1,13 +1,12 @@
 {
-  "ranAt": "2026-06-21T09:54:33.312Z",
+  "ranAt": "2026-06-21T10:10:26.843Z",
   "total": 45,
   "addressableTotal": 45,
-  "addressableOk": 34,
-  "addressableSuccessRate": 0.756,
+  "addressableOk": 35,
+  "addressableSuccessRate": 0.778,
   "byFailureClass": {
     "externalize-unavailable": 7,
     "font-embed-failed": 1,
-    "consent-missed": 1,
     "mhtml-capture-failed": 1,
     "captured-wrong-page": 1
   },
@@ -44,8 +43,8 @@
     },
     "cookie-wall-eu": {
       "total": 5,
-      "ok": 3,
-      "rate": 0.6,
+      "ok": 4,
+      "rate": 0.8,
       "deferred": false
     },
     "iframe-heavy": {
@@ -57,7 +56,7 @@
   },
   "unknownCount": 0,
   "verdict": "RED: arkitektur räcker inte för bredd, omdesign krävs",
-  "$note": "SUMMARY regenererad från per-sajt-reports (freeze-breadth dog före SUMMARY-write i full-körningen; stackoverflow+spotify-se omfrysta med content-wait-fixen).",
+  "$note": "Regenererad från per-sajt-reports. stackoverflow/spotify-se/lemonde omfrysta med content-wait + korrigerad lemonde-selektor.",
   "outcomes": [
     {
       "category": "saas-landing",
@@ -449,10 +448,10 @@
       "deferred": false,
       "name": "lemonde",
       "url": "https://www.lemonde.fr",
-      "ok": false,
-      "failureClass": "consent-missed",
-      "reason": "[freeze] consent-selektor blev aldrig synlig inom 5s: .gdpr-lmd-button--bi (cookie-wall-eu__lemonde). Stale selektor, A/B-variant, eller banner laddade aldrig. Verifiera i --dry-run med --screenshot-before-dismiss.",
-      "mhtmlKb": 0,
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 4243,
       "reportPath": "fixtures/breadth-50/cookie-wall-eu/lemonde/freeze-report.json"
     },
     {
