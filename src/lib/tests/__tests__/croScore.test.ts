@@ -269,6 +269,15 @@ describe("croScore — page-type classification & adaptation", () => {
     expect(s.pageType).not.toBe("ecommerce");
   });
 
+  test("editorial '$5M' prices on a news page (no commerce CTAs) are NOT ecommerce (the techcrunch case)", () => {
+    const els = [
+      ...Array.from({ length: 30 }, (_, i) => el({ category: "link", intent: "information", text: `Startup raises $${i}M in funding` })),
+      el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Subscribe" }),
+    ];
+    const s = scoreCro(golden({ elements: els }));
+    expect(s.pageType).toBe("content-media");
+  });
+
   test("ecommerce: multiple shop CTAs are NOT choice overload", () => {
     const s = scoreCro(golden({ elements: shopEls }));
     expect(s.pageType).toBe("ecommerce");
@@ -301,6 +310,14 @@ describe("croScore — page-type classification & adaptation", () => {
     expect(s.pageType).toBe("content-media");
     // no conversion CTA, but content pages aren't failed for it (60, not 20)
     expect(dim(s, "cta-focus").score).toBe(60);
+  });
+
+  test("content-media value-prop: missing single headline is NOT critical (content hub)", () => {
+    const articles = Array.from({ length: 25 }, (_, i) => el({ category: "link", intent: "information", text: `Story ${i}` }));
+    const s = scoreCro(golden({ elements: articles, pageAudit: { hero: { headline: "" }, headings: { h1Count: 0 } } }));
+    expect(s.pageType).toBe("content-media");
+    expect(dim(s, "value-prop").score).toBe(70);
+    expect(dim(s, "value-prop").findings[0].severity).toBe("warn");
   });
 
   test("content-media with a subscribe CTA scores the conversion path full", () => {

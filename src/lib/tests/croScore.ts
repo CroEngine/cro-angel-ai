@@ -130,6 +130,7 @@ export interface PageTypeResult {
     saasCtas: number;
     pricingNav: number;
     infoLinks: number;
+    contentLinks: number;
     conversionCtas: number;
   };
 }
@@ -140,6 +141,7 @@ export function classifyPageType(elements: ScoredElement[]): PageTypeResult {
     saasCtas = 0,
     pricingNav = 0,
     infoLinks = 0,
+    contentLinks = 0,
     conversionCtas = 0;
   for (const e of elements) {
     const t = (e.text || "").toLowerCase();
@@ -149,25 +151,30 @@ export function classifyPageType(elements: ScoredElement[]): PageTypeResult {
     if (ctaish && COMMERCE_CTA_RX.test(t)) commerceCtas++;
     if (ctaish && SAAS_CTA_RX.test(t)) saasCtas++;
     if (e.category === "nav_item" && /pricing/i.test(t)) pricingNav++;
+    if (e.category === "link") contentLinks++;
     if (e.category === "link" && e.intent === "information") infoLinks++;
   }
-  // Ecommerce is indicated two independent ways: prices in element text, OR a
-  // wall of shop/add-to-cart CTAs (≥3). Prices often live in non-interactive
-  // product-card text we don't collect (allbirds: 0 price hits but 18 shop
-  // CTAs), so a lone "buy" stays weak while a real store's many shop entry
-  // points classify decisively without needing price text.
+  // Ecommerce REQUIRES commerce intent (shop/cart/buy CTAs). Editorial "$5M"
+  // mentions on a news site must not classify it as a store, so bare prices
+  // never count alone — they only corroborate when ≥1 commerce CTA is present.
+  // A wall of shop CTAs (≥3) classifies decisively even with no captured prices.
+  // Content/media = many article links with little commerce/saas intent.
   const tally: Record<Exclude<PageType, "generic">, number> = {
-    ecommerce: prices * 1.0 + (commerceCtas >= 3 ? commerceCtas * 1.0 : 0),
+    ecommerce:
+      commerceCtas >= 3
+        ? commerceCtas * 1.0
+        : commerceCtas >= 1 && prices >= 2
+          ? commerceCtas + prices
+          : 0,
     "saas-landing": saasCtas * 2.0 + pricingNav * 1.5,
-    "content-media":
-      Math.min(infoLinks, 40) * 0.15 + (conversionCtas <= 2 ? 1.5 : 0),
+    "content-media": contentLinks >= 25 ? Math.min(contentLinks, 60) * 0.1 : 0,
   };
   const ranked = (
     Object.entries(tally) as [Exclude<PageType, "generic">, number][]
   ).sort((a, b) => b[1] - a[1]);
   const [topType, topScore] = ranked[0];
   const pageType: PageType = topScore >= 2 ? topType : "generic";
-  const counts = { prices, commerceCtas, saasCtas, pricingNav, infoLinks, conversionCtas };
+  const counts = { prices, commerceCtas, saasCtas, pricingNav, infoLinks, contentLinks, conversionCtas };
   const signals = Object.entries(counts).map(([k, v]) => `${k}:${v}`);
   return { pageType, signals, counts };
 }
@@ -459,6 +466,28 @@ function scoreValueProp(
           severity: "good",
           message:
             "Image-led hero (standard for ecommerce) — no strong text value-prop, acceptable for this page type.",
+        },
+      ],
+    };
+  }
+
+  if (pageType === "content-media") {
+    // A content hub's value is its content, not a single hero headline. A clear
+    // lead headline is a plus; its absence is normal (news homepages are link
+    // lists) and must not read as critical.
+    if (headline && headline.length >= 10 && !GENERIC_HEADLINE_RX.test(headline)) {
+      return {
+        score: 100,
+        findings: [{ severity: "good", message: `Clear lead headline ("${headline}").`, evidence }],
+      };
+    }
+    return {
+      score: 70,
+      findings: [
+        {
+          severity: "warn",
+          message:
+            "No single lead headline — typical for a content hub; a clear lead would sharpen scent.",
         },
       ],
     };
