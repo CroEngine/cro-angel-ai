@@ -17,14 +17,42 @@ function getClient() {
   return { client: new Browserbase({ apiKey }), projectId };
 }
 
-export async function createSession(): Promise<BrowserbaseSession> {
+// Stealth defaults applied to every session. Residential proxies + ad-block +
+// a desktop OS fingerprint + captcha solving (on by default in the API; set
+// explicitly for intent). These are broadly safe and improve capture odds on
+// bot-protected sites without changing behaviour on easy ones.
+const BASE_STEALTH = {
+  blockAds: true,
+  solveCaptchas: true,
+  os: "mac" as const,
+};
+
+export async function createSession(
+  opts: { advancedStealth?: boolean } = {},
+): Promise<BrowserbaseSession> {
   const { client, projectId } = getClient();
-  const session = await client.sessions.create({
-    projectId,
-    keepAlive: true,
-    timeout: 16 * 60,
-    proxies: true, // residential proxies — helps past Cloudflare/anti-bot challenges
-  });
+  const base = { projectId, keepAlive: true, timeout: 16 * 60, proxies: true } as const;
+  // advancedStealth is the strongest anti-detection tier (PerimeterX/Akamai
+  // interstitials) but is Enterprise-plan-gated (verified: 403 on lower tiers).
+  // Opt-in so normal sessions don't pay a wasted 403 round-trip; when a caller
+  // requests it we attempt it and fall back to basic stealth on rejection, so
+  // the capability is ready the moment the plan supports it.
+  const wantAdvanced = opts.advancedStealth ?? false;
+  let session;
+  try {
+    session = await client.sessions.create({
+      ...base,
+      browserSettings: wantAdvanced ? { ...BASE_STEALTH, advancedStealth: true } : BASE_STEALTH,
+    });
+  } catch (err) {
+    if (!wantAdvanced) throw err;
+    console.warn(
+      `[browserbase] advancedStealth rejected (${
+        err instanceof Error ? err.message.slice(0, 140) : String(err)
+      }); falling back to basic stealth`,
+    );
+    session = await client.sessions.create({ ...base, browserSettings: BASE_STEALTH });
+  }
   const debug = await client.sessions.debug(session.id);
   return {
     id: session.id,
