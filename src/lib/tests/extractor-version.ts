@@ -42,7 +42,15 @@
 //           anpassas per typ — slutar mis-scora ecommerce (många shop-CTAs är
 //           normalt) och media (ingen hård CTA). Goldenen bär pageType + signals.
 
-export const EXTRACTOR_VERSION = "1.3.0" as const;
+//   1.4.0 — page-type classification hardened toward language-independent
+//           STRUCTURE (deterministic, no LLM): content-media on article-link
+//           density; ecommerce on shop-CTA walls with currency-symbol prices as
+//           a non-classifying corroborator (so "$5M funding" on a news site
+//           can't trip it). Emits pageTypeConfidence (margin of victory) so a
+//           low-confidence call on an ambiguous homepage is legible. i18n
+//           symbol-less stores (ikea-se "kr") remain a documented limit.
+
+export const EXTRACTOR_VERSION = "1.4.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

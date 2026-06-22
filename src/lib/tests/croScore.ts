@@ -76,6 +76,7 @@ export type PageType =
 export interface CroScore {
   extractorVersion: string;
   pageType: PageType;
+  pageTypeConfidence: number; // 0–1 margin of victory; low = ambiguous homepage
   pageTypeSignals: string[]; // the deterministic counts that drove classification
   overall: number; // 0–100, weighted (weights adapt to pageType)
   grade: "A" | "B" | "C" | "D" | "F";
@@ -114,14 +115,14 @@ function evidenceTexts(els: ScoredElement[], cap = 6): string[] {
 // signals already in the golden — no LLM, no Date/random. Ecommerce is gated on
 // PRICES (a lone "buy" with no prices isn't a store); content-media on a high
 // info-link-to-CTA ratio; saas-landing on demo/trial/signup CTAs + pricing nav.
-const PRICE_RX = /(?:[$£€]\s?\d|\b\d+[.,]\d{2}\b)/;
-// Commerce CTAs (English). A naive i18n broadening (sv "köp/handla", etc.) was
-// tried and reverted: it didn't fix the real IKEA-se capture (its Swedish cart
-// terms aren't in the collected INTERACTIVE elements, only body text) and it
-// false-positived a Swedish NEWS site (aftonbladet "köp"/subscribe) into
-// ecommerce. Reliable cross-language page-type detection from text heuristics is
-// a losing game — that judgement belongs in the LLM layer (#4), which can read
-// "this is a Swedish newspaper". i18n ecommerce is a documented classifier limit.
+// Currency SYMBOLS are language-independent: a store's "$99 / £49 / €59" wall
+// classifies ecommerce without needing English "add to cart" text. Bare decimals
+// ("12.99") are deliberately excluded — they appear in editorial copy too (the
+// techcrunch "$5M funding" trap). Code-only currencies (kr/zł) carry no symbol,
+// so a Swedish store priced only in "kr" with image-rendered prices (ikea-se)
+// stays a documented gap — no text heuristic, English or Swedish, fixes that
+// reliably without re-breaking a Swedish newspaper.
+const PRICE_SYMBOL_RX = /[$£€¥₹₩₪₽฿]\s?\d|\d\s?[$£€¥₹₩₪₽฿]/;
 const COMMERCE_CTA_RX =
   /\b(add to (cart|bag|basket)|shop\b|buy now|buy\b|checkout)/i;
 const SAAS_CTA_RX =
@@ -130,48 +131,52 @@ const SUBSCRIBE_RX = /\b(subscribe|register|sign ?up|create (an )?account|join)/
 
 export interface PageTypeResult {
   pageType: PageType;
+  /** 0–1: how decisively the winning signal beat the runner-up. Low = ambiguous
+   *  homepage; downstream can treat a low-confidence type cautiously. Deterministic. */
+  confidence: number;
   signals: string[];
   counts: {
-    prices: number;
+    priceSymbols: number;
     commerceCtas: number;
     saasCtas: number;
     pricingNav: number;
-    infoLinks: number;
     contentLinks: number;
     conversionCtas: number;
   };
 }
 
 export function classifyPageType(elements: ScoredElement[]): PageTypeResult {
-  let prices = 0,
+  let priceSymbols = 0,
     commerceCtas = 0,
     saasCtas = 0,
     pricingNav = 0,
-    infoLinks = 0,
     contentLinks = 0,
     conversionCtas = 0;
   for (const e of elements) {
-    const t = (e.text || "").toLowerCase();
-    if (PRICE_RX.test(t)) prices++;
+    const raw = e.text || "";
+    const t = raw.toLowerCase();
+    if (PRICE_SYMBOL_RX.test(raw)) priceSymbols++;
     const ctaish = isCtaish(e);
     if (ctaish && isConversion(e)) conversionCtas++;
     if (ctaish && COMMERCE_CTA_RX.test(t)) commerceCtas++;
     if (ctaish && SAAS_CTA_RX.test(t)) saasCtas++;
     if (e.category === "nav_item" && /pricing/i.test(t)) pricingNav++;
     if (e.category === "link") contentLinks++;
-    if (e.category === "link" && e.intent === "information") infoLinks++;
   }
-  // Ecommerce REQUIRES commerce intent (shop/cart/buy CTAs). Editorial "$5M"
-  // mentions on a news site must not classify it as a store, so bare prices
-  // never count alone — they only corroborate when ≥1 commerce CTA is present.
-  // A wall of shop CTAs (≥3) classifies decisively even with no captured prices.
-  // Content/media = many article links with little commerce/saas intent.
+  // Prefer language-independent STRUCTURE over language-specific text where it's
+  // reliable:
+  //  - content-media: a wall of article links (link count — language-independent).
+  //  - ecommerce: a wall of shop CTAs (≥3) classifies; symbol prices only
+  //    CORROBORATE a present commerce CTA — never classify alone, because "$5M
+  //    funding" on a news site carries a currency symbol too (the techcrunch
+  //    trap). i18n symbol-less stores (ikea-se "kr") stay a documented limit.
+  //  - saas-landing: demo/trial/signup CTAs + pricing nav.
   const tally: Record<Exclude<PageType, "generic">, number> = {
     ecommerce:
       commerceCtas >= 3
-        ? commerceCtas * 1.0
-        : commerceCtas >= 1 && prices >= 2
-          ? commerceCtas + prices
+        ? commerceCtas
+        : commerceCtas >= 1 && priceSymbols >= 1
+          ? commerceCtas + priceSymbols + 1
           : 0,
     "saas-landing": saasCtas * 2.0 + pricingNav * 1.5,
     "content-media": contentLinks >= 25 ? Math.min(contentLinks, 60) * 0.1 : 0,
@@ -180,10 +185,14 @@ export function classifyPageType(elements: ScoredElement[]): PageTypeResult {
     Object.entries(tally) as [Exclude<PageType, "generic">, number][]
   ).sort((a, b) => b[1] - a[1]);
   const [topType, topScore] = ranked[0];
+  const second = ranked[1]?.[1] ?? 0;
   const pageType: PageType = topScore >= 2 ? topType : "generic";
-  const counts = { prices, commerceCtas, saasCtas, pricingNav, infoLinks, contentLinks, conversionCtas };
+  // Confidence = margin of victory (0 when generic/weak). Deterministic, rounded.
+  const confidence =
+    topScore >= 2 ? Math.round(((topScore - second) / topScore) * 100) / 100 : 0;
+  const counts = { priceSymbols, commerceCtas, saasCtas, pricingNav, contentLinks, conversionCtas };
   const signals = Object.entries(counts).map(([k, v]) => `${k}:${v}`);
-  return { pageType, signals, counts };
+  return { pageType, confidence, signals, counts };
 }
 
 // Per-type weights — same six dimensions, reweighted to the page's CRO model.
@@ -691,7 +700,7 @@ export function scoreCro(golden: GoldenLike): CroScore {
   const visible = elements.filter((e) => e.visible !== false);
   const audit = golden.pageAudit ?? {};
 
-  const { pageType, signals } = classifyPageType(visible);
+  const { pageType, confidence, signals } = classifyPageType(visible);
   const w = WEIGHTS_BY_TYPE[pageType];
 
   const cta = scoreCtaFocus(visible, pageType);
@@ -718,6 +727,7 @@ export function scoreCro(golden: GoldenLike): CroScore {
   return {
     extractorVersion: EXTRACTOR_VERSION,
     pageType,
+    pageTypeConfidence: confidence,
     pageTypeSignals: signals,
     overall,
     grade: gradeFor(overall),

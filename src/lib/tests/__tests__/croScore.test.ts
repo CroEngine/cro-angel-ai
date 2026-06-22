@@ -290,6 +290,34 @@ describe("croScore — page-type classification & adaptation", () => {
     expect(dim(s, "value-prop").findings[0].severity).toBe("good");
   });
 
+  test("symbol prices corroborate a commerce CTA but never classify alone (techcrunch trap stays shut)", () => {
+    // editorial "$5M" amounts + NO commerce CTA → not ecommerce, despite many symbols
+    const news = scoreCro(
+      golden({ elements: Array.from({ length: 30 }, (_, i) => el({ category: "link", intent: "information", text: `Startup raises $${i}M` })) }),
+    );
+    expect(news.pageType).not.toBe("ecommerce");
+    // a real store: $ prices corroborate an add-to-cart CTA → ecommerce
+    const store = scoreCro(
+      golden({ elements: [
+        el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Add to cart" }),
+        el({ category: "link", text: "$49.00" }),
+        el({ category: "link", text: "$99.00" }),
+      ] }),
+    );
+    expect(store.pageType).toBe("ecommerce");
+  });
+
+  test("emits a deterministic confidence: high for a clear winner, 0 for generic", () => {
+    const clear = scoreCro(
+      golden({ elements: Array.from({ length: 30 }, (_, i) => el({ category: "link", intent: "information", text: `Story ${i}` })) }),
+    );
+    expect(clear.pageType).toBe("content-media");
+    expect(clear.pageTypeConfidence).toBeGreaterThan(0.5);
+    const ambiguous = scoreCro(golden({ elements: [el({ category: "other" })] }));
+    expect(ambiguous.pageType).toBe("generic");
+    expect(ambiguous.pageTypeConfidence).toBe(0);
+  });
+
   test("classifies saas-landing from demo/trial CTAs + pricing nav", () => {
     const s = scoreCro(
       golden({
