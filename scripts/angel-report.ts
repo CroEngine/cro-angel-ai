@@ -120,6 +120,9 @@ interface Meta {
 }
 interface FreezeReport {
   env?: { frozenAt?: string };
+  ok?: boolean;
+  failureClass?: string | null;
+  captureValidity?: { ok?: boolean; reason?: string | null } | null;
 }
 
 // One audited site, reduced to the fields the batch table and JSON need.
@@ -140,6 +143,7 @@ interface AuditRow {
   golden: "green" | "drift" | "none";
   driftCount?: number;
   attempts?: number;
+  captureInvalid?: boolean;
 }
 
 interface AuditResult {
@@ -156,6 +160,18 @@ async function audit(siteName: string, root: string): Promise<AuditResult> {
   const meta = readJsonSafe<Meta>(join(dir, "meta.json")) ?? {};
   const freeze = readJsonSafe<FreezeReport>(join(dir, "freeze-report.json")) ?? {};
   const row: AuditRow = { name: siteName, ok: false, golden: "none" };
+
+  // Capture-validity gate: auditing a login wall / anti-bot challenge / empty
+  // shell yields garbage findings. If the freeze flagged the capture invalid
+  // (assertCaptureValid), record it as a capture failure and skip replay —
+  // honest "we never got the real page" rather than a false-green audit.
+  if (freeze.captureValidity?.ok === false || freeze.ok === false) {
+    row.captureInvalid = true;
+    const cls = freeze.failureClass ?? "capture-invalid";
+    const reason = freeze.captureValidity?.reason;
+    row.error = `capture: ${cls}${reason ? ` (${reason})` : ""}`;
+    return { row, meta, freeze };
+  }
 
   const started = Date.now();
   try {
@@ -376,7 +392,8 @@ async function runBatch(root: string): Promise<number> {
     // to `retries` more attempts before it's recorded as a real failure.
     let res = await audit(site, root);
     let attempt = 0;
-    while (!res.row.ok && attempt < retries) {
+    // Don't retry an invalid capture — replay can't fix a bad freeze.
+    while (!res.row.ok && !res.row.captureInvalid && attempt < retries) {
       attempt++;
       process.stdout.write(c(YELLOW, `retry ${attempt} … `));
       res = await audit(site, root);
@@ -388,6 +405,8 @@ async function runBatch(root: string): Promise<number> {
       console.log(
         `${c(GREEN, "ok")}${tag} ${((res.row.tookMs ?? 0) / 1000).toFixed(1)}s · golden ${goldenBadge(res.row.golden)}`,
       );
+    } else if (res.row.captureInvalid) {
+      console.log(`${c(YELLOW, "SKIP")} ${res.row.error}`);
     } else {
       console.log(`${c(RED, "FAIL")} ${res.row.error}`);
     }
@@ -408,7 +427,7 @@ async function runBatch(root: string): Promise<number> {
   ].join(" ");
   console.log(c(DIM, head));
   for (const r of rows) {
-    const okCell = r.ok ? c(GREEN, "✓") : c(RED, "✗");
+    const okCell = r.ok ? c(GREEN, "✓") : r.captureInvalid ? c(YELLOW, "⊘") : c(RED, "✗");
     const cta = r.ok ? `${r.ctaTotal ?? "?"}/${r.ctaPrimary ?? "?"}/${r.ctaAboveFold ?? "?"}` : "—";
     const img = r.ok ? `${r.imgTotal ?? "?"}(${r.imgMissingAlt ?? "?"})` : "—";
     const hero = r.ok ? truncate(r.hero ?? "", 29) : truncate(r.error ?? "", 29);
@@ -428,15 +447,19 @@ async function runBatch(root: string): Promise<number> {
 
   // aggregate
   const okCount = rows.filter((r) => r.ok).length;
-  const failCount = rows.length - okCount;
+  const captureInvalid = rows.filter((r) => r.captureInvalid).length;
+  const replayFail = rows.length - okCount - captureInvalid;
+  const validCaptures = rows.length - captureInvalid;
   const greenCount = rows.filter((r) => r.golden === "green").length;
   const driftCount = rows.filter((r) => r.golden === "drift").length;
   console.log("");
   rule("AGGREGATE");
-  kv("captures", rows.length);
+  kv("captures found", rows.length);
+  kv("invalid captures", captureInvalid > 0 ? c(YELLOW, `${captureInvalid} (skipped)`) : "0");
   kv(
-    "replay ok",
-    `${okCount}/${rows.length}` + (failCount ? c(RED, `  (${failCount} failed)`) : ""),
+    "audited",
+    `${okCount}/${validCaptures} valid` +
+      (replayFail ? c(RED, `  (${replayFail} replay-fail)`) : ""),
   );
   kv("golden green", greenCount > 0 ? c(GREEN, String(greenCount)) : "0");
   kv("golden drift", driftCount > 0 ? c(RED, String(driftCount)) : "0");
@@ -450,8 +473,10 @@ async function runBatch(root: string): Promise<number> {
       generatedAt: new Date().toISOString(),
       summary: {
         captures: rows.length,
+        validCaptures,
+        captureInvalid,
         replayOk: okCount,
-        replayFailed: failCount,
+        replayFailed: replayFail,
         greenCount,
         driftCount,
       },
