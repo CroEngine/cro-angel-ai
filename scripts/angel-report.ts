@@ -20,6 +20,7 @@
 //   bun run angel --breadth                     # alias for --root=fixtures/breadth-50
 //   bun run angel --root=fixtures/breadth-corpus
 //   bun run angel --root=fixtures/breadth-50 --out=fixtures/breadth-50/angel-report.json
+//   bun run angel --root=... --lenient          # audit even canary-imperfect captures
 //   bun run angel --root=... --strict           # exit 1 if any site fails or drifts
 //
 // A "capture" is any directory containing page.mhtml (or a page.mhtml.asset.json
@@ -53,10 +54,14 @@ const batchRoot = flag("breadth") ? "fixtures/breadth-50" : arg("root");
 const outPath = arg("out");
 const wantJson = flag("json");
 const strict = flag("strict");
+// --lenient: run replay without the fatal render-canary gate, so a font-
+// imperfect breadth capture still yields a CRO audit (the canary guards glyph
+// fidelity, not hero/CTA/trust/image structure). Default stays strict.
+const lenient = flag("lenient");
 // Per-site replay budget (s). A pathological capture (animation/context churn)
 // must not stall a batch — it's recorded as a failure and the run continues.
-// Matches the snapshot harness's 120s per-site budget, with headroom.
-const timeoutMs = Number(arg("timeout") ?? "180") * 1000;
+// Matches the snapshot harness's 120s per-site budget.
+const timeoutMs = Number(arg("timeout") ?? "120") * 1000;
 
 // --- tiny terminal formatting -------------------------------------------------
 const BOLD = "\x1b[1m";
@@ -144,7 +149,11 @@ async function audit(siteName: string, root: string): Promise<AuditResult> {
 
   const started = Date.now();
   try {
-    const fresh = await withTimeout(replayCorpus(siteName, root), timeoutMs, siteName);
+    const fresh = await withTimeout(
+      replayCorpus(siteName, root, { lenientCanary: lenient }),
+      timeoutMs,
+      siteName,
+    );
     row.tookMs = Date.now() - started;
     const normalized = {
       collect: normalizeCollect(fresh.collect),

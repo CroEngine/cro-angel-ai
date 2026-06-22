@@ -13,7 +13,14 @@
 //
 // Capture still runs on Browserbase (anti-bot); see freeze.server.ts.
 
-import { readFileSync, existsSync, copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  readFileSync,
+  existsSync,
+  copyFileSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -129,15 +136,26 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
     try {
       done = (await page.evaluate(() => {
         const SEL = [
-          '#onetrust-consent-sdk', '#onetrust-banner-sdk', '#onetrust-accept-btn-handler',
-          '[id*="onetrust" i]', '[class*="onetrust" i]',
-          '#osano-cm-window', '[class*="osano-cm" i]',
-          '[id*="cookiebot" i]', '[id^="CybotCookiebot" i]',
-          '[id*="cookie-banner" i]', '[id*="cookie-consent" i]',
-          '[class*="cookie-banner" i]', '[class*="cookie-consent" i]',
-          '[id*="truste" i]', '[class*="truste" i]',
-          '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
-          '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
+          "#onetrust-consent-sdk",
+          "#onetrust-banner-sdk",
+          "#onetrust-accept-btn-handler",
+          '[id*="onetrust" i]',
+          '[class*="onetrust" i]',
+          "#osano-cm-window",
+          '[class*="osano-cm" i]',
+          '[id*="cookiebot" i]',
+          '[id^="CybotCookiebot" i]',
+          '[id*="cookie-banner" i]',
+          '[id*="cookie-consent" i]',
+          '[class*="cookie-banner" i]',
+          '[class*="cookie-consent" i]',
+          '[id*="truste" i]',
+          '[class*="truste" i]',
+          '[aria-label*="cookie" i]',
+          '[aria-label*="consent" i]',
+          '[id*="usercentrics" i]',
+          '[id*="didomi" i]',
+          '[class*="didomi" i]',
         ].join(",");
         const ROOT_SEL =
           '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i]';
@@ -164,7 +182,11 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
   }
 }
 
-export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise<ReplayResult> {
+export async function replayCorpus(
+  name: string,
+  corpusRoot = "corpus",
+  opts: { lenientCanary?: boolean } = {},
+): Promise<ReplayResult> {
   const dir = join(corpusRoot, name);
   const mhtmlPath = join(dir, "page.mhtml");
   const pointerPath = join(dir, "page.mhtml.asset.json");
@@ -470,15 +492,24 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       );
       if (canary.ghosts.length > 0) {
         // eslint-disable-next-line no-console
-        console.warn(
-          `[replay] canary ghosts (non-blocking): ${canary.ghosts.join(", ")}`,
-        );
+        console.warn(`[replay] canary ghosts (non-blocking): ${canary.ghosts.join(", ")}`);
       }
       if (!canary.ok) {
-        throw new Error(
+        const msg =
           `[replay] render-canary failed for ${name}: ${canary.failures.join("; ")}. ` +
-            `Se corpus/${name}/render-canary.json + render-canary.families.json för full rapport.`,
-        );
+          `Se corpus/${name}/render-canary.json + render-canary.families.json för full rapport.`;
+        // lenientCanary: breadth-audit mode. The canary gates font-render
+        // fidelity (load-bearing for golden determinism), but a CRO audit reads
+        // hero/CTA/trust/image structure, not glyph metrics. Under the flag we
+        // log the failure and continue so a font-imperfect breadth capture
+        // still yields findings. Default stays strict — the promoted corpus and
+        // snapshot determinism are unaffected.
+        if (opts.lenientCanary) {
+          // eslint-disable-next-line no-console
+          console.warn(`${msg} (lenientCanary — continuing)`);
+        } else {
+          throw new Error(msg);
+        }
       }
     }
 
@@ -496,10 +527,10 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
     // eslint-disable-next-line no-console
     console.log(`[replay] collected ${elements.length} elements`);
-    const pageAudit = await runPageAudit(
-      page as unknown as Parameters<typeof runPageAudit>[0],
-      { skipScrollWarmup: true, skipCookiePoll: true },
-    );
+    const pageAudit = await runPageAudit(page as unknown as Parameters<typeof runPageAudit>[0], {
+      skipScrollWarmup: true,
+      skipCookiePoll: true,
+    });
 
     return {
       collect: { target: "clickables", elements, count: elements.length },
