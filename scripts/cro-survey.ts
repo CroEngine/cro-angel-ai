@@ -72,7 +72,10 @@ async function runOne(j: (typeof jobs)[number]): Promise<Result> {
   const t0 = Date.now();
   try {
     const fresh = await withTimeout(
-      replayCorpus(j.name, join("fixtures", "breadth-50", j.category), { skipCanary: true }),
+      replayCorpus(j.name, join("fixtures", "breadth-50", j.category), {
+        skipCanary: true, // score-only: don't run the font canary (slow on huge DOMs)
+        contextTries: 60, // ~9s for heavy SPAs to settle vs the 3s default
+      }),
       perSiteTimeoutMs,
     );
     const collect = normalizeCollect(fresh.collect);

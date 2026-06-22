@@ -167,7 +167,7 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
 export async function replayCorpus(
   name: string,
   corpusRoot = "corpus",
-  opts: { skipCanary?: boolean } = {},
+  opts: { skipCanary?: boolean; contextTries?: number } = {},
 ): Promise<ReplayResult> {
   const dir = join(corpusRoot, name);
   const mhtmlPath = join(dir, "page.mhtml");
@@ -369,7 +369,10 @@ export async function replayCorpus(
     // running anything page-affecting we require that page.evaluate survives
     // N consecutive ticks against the same URL. If it throws (context torn down
     // mid-evaluate by a delayed MHTML commit), reset streak and keep polling.
-    await waitForStableContext(page);
+    // Heavy SPAs (vercel/linear/trello) keep re-rendering well past the default
+    // 20-try (~3s) budget; callers can extend it (the survey passes a larger
+    // contextTries) to let hydration settle instead of failing fast.
+    await waitForStableContext(page, { tries: opts.contextTries ?? 20 });
 
     // Render-canary: gate före Fas 2. Verifierar att de cid:-inbäddade
     // familjerna faktiskt resolvar och påverkar layout (inte bara "registrerade").
@@ -377,7 +380,11 @@ export async function replayCorpus(
     // diagnostik per replay-körning, inte en del av golden). Fail throw:ar
     // hård så CI gate:ar på det.
     let canary: RenderCanaryReport | null = null;
-    try {
+    // Score-only surveys (skipCanary) skip the canary's in-page font measurement
+    // entirely — it's the slowest step on huge DOMs (guardian 24k-px, nytimes
+    // 169MB) and irrelevant to page-type/structural scoring. Promoted snapshot
+    // replays still run it (default). The `if (canary)` block below no-ops on null.
+    if (!opts.skipCanary) try {
       const pinned = !process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
       const chromiumPath = executablePath ?? "<playwright-bundled>";
       let chromiumVersion = "";
