@@ -57,7 +57,15 @@
 //           the full collect.elements carries. Stored on the golden alongside
 //           collect (substrate) + croScore; regression-tested by the same diff.
 
-export const EXTRACTOR_VERSION = "1.5.0" as const;
+//   1.6.0 — make the projection LLM-ready. croProjection.score.dimensions now
+//           carry the evidence-backed findings (severity/message/evidence) + the
+//           dimension weight — the "why", not just numbers — and a top-level
+//           `priorities` list ranks the warn/critical findings by impact
+//           (severity × weight) so the Angel LLM leads with what matters. Dead
+//           competing seam llmContext.ts removed; croProjection is the single
+//           canonical LLM input.
+
+export const EXTRACTOR_VERSION = "1.6.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

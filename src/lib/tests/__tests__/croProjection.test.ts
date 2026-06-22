@@ -98,6 +98,46 @@ describe("croProjection — hierarchy & friction", () => {
   });
 });
 
+describe("croProjection — findings & priorities (the LLM's 'why')", () => {
+  test("dimensions carry the evidence-backed findings + weight, not just scores", () => {
+    const p = projectCro(golden({ elements: [el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Get a demo", score: 90 })] }));
+    const cta = p.score.dimensions.find((d) => d.id === "cta-focus")!;
+    expect(cta).toHaveProperty("weight");
+    expect(cta).toHaveProperty("label");
+    expect(cta.findings.length).toBeGreaterThan(0);
+    expect(cta.findings[0]).toHaveProperty("severity");
+    expect(cta.findings[0]).toHaveProperty("message");
+  });
+
+  test("priorities surface only warn/critical, critical-first", () => {
+    // weak page: no conversion CTA (critical) + no headline (critical) + ...
+    const p = projectCro(golden({ elements: [el({ category: "nav_item", intent: "navigation", aboveFold: true })], pageAudit: { hero: { headline: "" } } }));
+    expect(p.priorities.length).toBeGreaterThan(0);
+    expect(p.priorities.every((x) => x.severity === "warn" || x.severity === "critical")).toBe(true);
+    const rank = { critical: 2, warn: 1, good: 0 } as const;
+    for (let i = 1; i < p.priorities.length; i++) {
+      expect(rank[p.priorities[i - 1].severity]).toBeGreaterThanOrEqual(rank[p.priorities[i].severity]);
+    }
+    expect(p.priorities[0]).toHaveProperty("dimension");
+    expect(p.priorities[0]).toHaveProperty("weight");
+  });
+
+  test("a strong page yields few priorities", () => {
+    const p = projectCro(golden({
+      elements: [
+        el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Get a demo", score: 95 }),
+        ...Array.from({ length: 4 }, () => el({ category: "nav_item", aboveFold: true })),
+      ],
+      pageAudit: {
+        hero: { headline: "The CRM that grows with you" }, headings: { h1Count: 1 },
+        trustSummary: { total: 4, aboveFold: 2, byType: { testimonial: 2, customer_logos: 2 } },
+        images: { total: 8, missingAlt: 0 }, head: { title: "Acme" },
+      },
+    }));
+    expect(p.priorities.length).toBeLessThanOrEqual(2);
+  });
+});
+
 describe("croProjection — trust & flow", () => {
   test("trust types are surfaced sorted; flow is the section order", () => {
     const p = projectCro(golden({ pageAudit: {

@@ -6,12 +6,12 @@
 // path, trust, friction, visual hierarchy, page flow, and the score — so the
 // Angel LLM (and any analytics) reasons over signal, not noise.
 //
-// Pure + deterministic, no IO (like croScore.ts / llmContext.ts). Stored in the
+// Pure + deterministic, no IO (like croScore.ts). Stored in the
 // golden as the ready LLM input and regression-tested by the same snapshot diff.
 // The full collect.elements stays as the substrate; this is the curated lens.
 
 import { EXTRACTOR_VERSION } from "./extractor-version";
-import type { CroScore, PageType } from "./croScore";
+import type { CroScore, PageType, CroFinding, Severity } from "./croScore";
 
 interface ProjEl {
   text: string;
@@ -59,8 +59,32 @@ export interface CroProjection {
   hierarchy: { primaryCtaWinsSalience: boolean | null; topSalient: { text: string; salience: number }[] };
   /** Section order — the persuasive narrative. */
   flow: string[];
-  score: { overall: number; grade: CroScore["grade"]; dimensions: { id: string; score: number }[] };
+  score: {
+    overall: number;
+    grade: CroScore["grade"];
+    // Carries the evidence-backed findings (the "why"), not just numbers — the
+    // LLM turns these into advice.
+    dimensions: {
+      id: string;
+      label: string;
+      score: number;
+      weight: number;
+      findings: CroFinding[];
+    }[];
+  };
+  /** Warn/critical findings across all dimensions, ranked by impact (severity ×
+   *  dimension weight) — the actionable priorities the Angel LLM leads with. */
+  priorities: {
+    dimension: string;
+    severity: Severity;
+    message: string;
+    evidence?: string[];
+    weight: number;
+  }[];
 }
+
+const SEVERITY_RANK: Record<Severity, number> = { critical: 2, warn: 1, good: 0 };
+const PRIORITIES_CAP = 6;
 
 const isCtaish = (e: ProjEl) =>
   e.category === "cta_primary" || e.category === "cta_secondary" || e.category === "form_submit";
@@ -163,7 +187,33 @@ export function projectCro(golden: GoldenIn): CroProjection {
     score: {
       overall: cro?.overall ?? 0,
       grade: cro?.grade ?? "F",
-      dimensions: (cro?.dimensions ?? []).map((d) => ({ id: d.id, score: d.score })),
+      dimensions: (cro?.dimensions ?? []).map((d) => ({
+        id: d.id,
+        label: d.label,
+        score: d.score,
+        weight: d.weight,
+        findings: d.findings,
+      })),
     },
+    priorities: (cro?.dimensions ?? [])
+      .flatMap((d) =>
+        d.findings
+          .filter((f) => f.severity !== "good")
+          .map((f) => ({
+            dimension: d.id,
+            severity: f.severity,
+            message: f.message,
+            ...(f.evidence ? { evidence: f.evidence } : {}),
+            weight: d.weight,
+          })),
+      )
+      // Most impactful first: severity, then how much the dimension weighs.
+      .sort(
+        (a, b) =>
+          SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
+          b.weight - a.weight ||
+          a.dimension.localeCompare(b.dimension),
+      )
+      .slice(0, PRIORITIES_CAP),
   };
 }

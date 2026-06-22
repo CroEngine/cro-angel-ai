@@ -1,6 +1,6 @@
 // Deterministic CRO scorer. Pure function over the NORMALIZED golden (the
 // regression-tested artifact: collect.elements + slim pageAudit). No IO, no
-// Date/random, browser-safe — like llmContext.ts. Same golden in → same score
+// Date/random, browser-safe. Same golden in → same score
 // out, so the score is itself regression-testable and the Angel LLM reasons
 // over scored signals instead of raw DOM.
 //

@@ -4636,7 +4636,7 @@
     ]
   },
   "croScore": {
-    "extractorVersion": "1.5.0",
+    "extractorVersion": "1.6.0",
     "pageType": "saas-landing",
     "pageTypeConfidence": 1,
     "pageTypeSignals": [
@@ -4741,7 +4741,7 @@
     ]
   },
   "croProjection": {
-    "extractorVersion": "1.5.0",
+    "extractorVersion": "1.6.0",
     "pageType": "saas-landing",
     "pageTypeConfidence": 1,
     "valueProp": {
@@ -4836,29 +4836,110 @@
       "dimensions": [
         {
           "id": "cta-focus",
-          "score": 90
+          "label": "CTA Focus",
+          "score": 90,
+          "weight": 0.25,
+          "findings": [
+            {
+              "severity": "good",
+              "message": "Two distinct conversion CTAs above the fold — a focused primary + secondary pattern.",
+              "evidence": [
+                "Get a demo of HubSpot's premium software",
+                "Get started free with HubSpot's free tools"
+              ]
+            }
+          ]
         },
         {
           "id": "visual-hierarchy",
-          "score": 75
+          "label": "Visual Hierarchy",
+          "score": 75,
+          "weight": 0.2,
+          "findings": [
+            {
+              "severity": "warn",
+              "message": "The conversion CTA is prominent but not the single strongest visual element.",
+              "evidence": [
+                "primary CTA salience 40 vs page max 50"
+              ]
+            }
+          ]
         },
         {
           "id": "value-prop",
-          "score": 100
+          "label": "Value Proposition",
+          "score": 100,
+          "weight": 0.2,
+          "findings": [
+            {
+              "severity": "good",
+              "message": "Clear value proposition in the hero (\"Where go-to-market teams go to grow scale close retain grow\") with a single h1.",
+              "evidence": [
+                "Where go-to-market teams go to grow scale close retain grow"
+              ]
+            }
+          ]
         },
         {
           "id": "trust",
-          "score": 100
+          "label": "Trust Signals",
+          "score": 100,
+          "weight": 0.15,
+          "findings": [
+            {
+              "severity": "good",
+              "message": "4 trust signals, 1 above the fold.",
+              "evidence": [
+                "customer_logos: 1",
+                "review_badges: 1",
+                "social_proof_count: 1",
+                "testimonial: 1"
+              ]
+            }
+          ]
         },
         {
           "id": "friction",
-          "score": 100
+          "label": "Friction",
+          "score": 100,
+          "weight": 0.1,
+          "findings": [
+            {
+              "severity": "good",
+              "message": "Focused navigation (5 above-fold nav items) — minimal distraction from the primary action."
+            }
+          ]
         },
         {
           "id": "quality",
-          "score": 88
+          "label": "Page Quality",
+          "score": 88,
+          "weight": 0.1,
+          "findings": [
+            {
+              "severity": "warn",
+              "message": "23/99 images missing alt text (77% coverage)."
+            }
+          ]
         }
       ]
-    }
+    },
+    "priorities": [
+      {
+        "dimension": "visual-hierarchy",
+        "severity": "warn",
+        "message": "The conversion CTA is prominent but not the single strongest visual element.",
+        "evidence": [
+          "primary CTA salience 40 vs page max 50"
+        ],
+        "weight": 0.2
+      },
+      {
+        "dimension": "quality",
+        "severity": "warn",
+        "message": "23/99 images missing alt text (77% coverage).",
+        "weight": 0.1
+      }
+    ]
   }
 }
