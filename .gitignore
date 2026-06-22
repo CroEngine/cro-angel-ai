@@ -51,3 +51,4 @@ fixtures/breadth-50/**/render-canary.json
 fixtures/breadth-50/**/render-canary.families.json
 fixtures/breadth-50/**/actual.json
 fixtures/breadth-50/CRO-SURVEY.jsonl
+fixtures/breadth-50/CRO-SURVEY.json
