@@ -58,6 +58,12 @@ const strict = flag("strict");
 // imperfect breadth capture still yields a CRO audit (the canary guards glyph
 // fidelity, not hero/CTA/trust/image structure). Default stays strict.
 const lenient = flag("lenient");
+// --only=<comma list of relative capture paths>: restrict a batch to specific
+// sites (retry/subset runs), e.g. --only=saas-landing/loom,spa/trello.
+const only = arg("only")
+  ?.split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 // Per-site replay budget (s). A pathological capture (animation/context churn)
 // must not stall a batch — it's recorded as a failure and the run continues.
 // Matches the snapshot harness's 120s per-site budget.
@@ -330,10 +336,21 @@ async function runBatch(root: string): Promise<number> {
     console.error(c(RED, `✗ root not found: ${root}`));
     return 2;
   }
-  const sites = findCaptures(root);
+  const discovered = findCaptures(root);
+  const sites = only ? discovered.filter((s) => only.includes(s)) : discovered;
+  const missing = only ? only.filter((o) => !discovered.includes(o)) : [];
   console.log("");
   console.log(c(BOLD, `Angel breadth report — ${root}`));
-  console.log(c(DIM, `extractor v${EXTRACTOR_VERSION} · ${sites.length} capture(s) found`));
+  console.log(
+    c(
+      DIM,
+      `extractor v${EXTRACTOR_VERSION} · ${sites.length}/${discovered.length} capture(s)` +
+        (only ? ` (--only filter)` : ``),
+    ),
+  );
+  if (missing.length > 0) {
+    console.log(c(YELLOW, `  --only not found under ${root}/: ${missing.join(", ")}`));
+  }
   if (sites.length === 0) {
     console.log(
       c(
