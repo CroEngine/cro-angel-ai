@@ -4636,7 +4636,7 @@
     ]
   },
   "croScore": {
-    "extractorVersion": "1.4.0",
+    "extractorVersion": "1.5.0",
     "pageType": "saas-landing",
     "pageTypeConfidence": 1,
     "pageTypeSignals": [
@@ -4739,5 +4739,126 @@
         ]
       }
     ]
+  },
+  "croProjection": {
+    "extractorVersion": "1.5.0",
+    "pageType": "saas-landing",
+    "pageTypeConfidence": 1,
+    "valueProp": {
+      "headline": "Where go-to-market teams go to grow scale close retain grow"
+    },
+    "primaryCta": {
+      "text": "Get a demo of HubSpot's premium software",
+      "intent": "conversion",
+      "section": "hero",
+      "aboveFold": true,
+      "salience": 40
+    },
+    "conversionPath": [
+      {
+        "text": "Get a demo of HubSpot's premium software",
+        "intent": "conversion",
+        "section": "hero",
+        "aboveFold": true,
+        "salience": 40
+      },
+      {
+        "text": "Get started free with HubSpot's free tools",
+        "intent": "conversion",
+        "section": "hero",
+        "aboveFold": true,
+        "salience": 40
+      },
+      {
+        "text": "Get a demo of HubSpot's software",
+        "intent": "conversion",
+        "section": "content",
+        "aboveFold": false,
+        "salience": 30
+      }
+    ],
+    "competingAboveFold": 2,
+    "trust": {
+      "total": 4,
+      "aboveFold": 1,
+      "types": [
+        "customer_logos",
+        "review_badges",
+        "social_proof_count",
+        "testimonial"
+      ]
+    },
+    "friction": {
+      "aboveFoldNavItems": 5,
+      "aboveFoldInteractive": 5
+    },
+    "hierarchy": {
+      "primaryCtaWinsSalience": false,
+      "topSalient": [
+        {
+          "text": "Learn more about Revenue Hub",
+          "salience": 50
+        },
+        {
+          "text": "Get a demo of HubSpot's premium software",
+          "salience": 40
+        },
+        {
+          "text": "Get started free with HubSpot's free tools",
+          "salience": 40
+        }
+      ]
+    },
+    "flow": [
+      "header",
+      "nav",
+      "nav",
+      "content",
+      "hero",
+      "hero",
+      "testimonials",
+      "testimonials",
+      "content",
+      "content",
+      "content",
+      "content",
+      "content",
+      "content",
+      "footer",
+      "content",
+      "content",
+      "testimonials",
+      "content"
+    ],
+    "score": {
+      "overall": 91,
+      "grade": "A",
+      "dimensions": [
+        {
+          "id": "cta-focus",
+          "score": 90
+        },
+        {
+          "id": "visual-hierarchy",
+          "score": 75
+        },
+        {
+          "id": "value-prop",
+          "score": 100
+        },
+        {
+          "id": "trust",
+          "score": 100
+        },
+        {
+          "id": "friction",
+          "score": 100
+        },
+        {
+          "id": "quality",
+          "score": 88
+        }
+      ]
+    }
   }
 }

@@ -50,7 +50,14 @@
 //           low-confidence call on an ambiguous homepage is legible. i18n
 //           symbol-less stores (ikea-se "kr") remain a documented limit.
 
-export const EXTRACTOR_VERSION = "1.4.0" as const;
+//   1.5.0 — lean CRO projection. croProjection.ts: a curated, deterministic
+//           signal view of the golden (value prop, conversion path, trust,
+//           friction, visual hierarchy, flow, score) — the ready LLM input that
+//           drops the ~78% low-signal noise (hidden nav IA, chrome, fragments)
+//           the full collect.elements carries. Stored on the golden alongside
+//           collect (substrate) + croScore; regression-tested by the same diff.
+
+export const EXTRACTOR_VERSION = "1.5.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
