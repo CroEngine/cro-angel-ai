@@ -279,7 +279,14 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       const startOk = start === 0 || /[.!?]\\s/.test(before2);
       const after = text.slice(end);
       const endOk = /^\\s*$/.test(after) || /^[.!?](\\s|$)/.test(after);
-      if (!startOk || !endOk) {
+      // social_proof_count ("299,000+ customers in over 135 countries grow…")
+      // and trusted_by ("Trusted by 50,000 teams to ship…") are SPECIFIC patterns
+      // that legitimately sit mid-sentence — anchoring them to sentence
+      // boundaries dropped real signals (hubspot's "299,000+ customers" was
+      // rejected because the sentence continued). Skip the anchor for those; keep
+      // it for the rest, where a bare number mid-sentence is a false positive.
+      const sentenceAnchored = type !== 'social_proof_count' && type !== 'trusted_by';
+      if (sentenceAnchored && (!startOk || !endOk)) {
         logDecision('text-pattern', 'rejected', 'substring-fragment-mid-sentence', el, text, {
           matchedText: m[0], startOk: startOk, endOk: endOk,
         });

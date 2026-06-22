@@ -4560,7 +4560,7 @@
       ]
     },
     "hero": {
-      "headline": "Marketing",
+      "headline": "Where go-to-market teams go to grow scale close retain grow",
       "primaryCtaText": "Learn more about Revenue Hub",
       "primaryCtaIntent": "conversion",
       "aboveFold": true
@@ -4582,9 +4582,10 @@
       }
     },
     "trustSummary": {
-      "total": 3,
+      "total": 4,
       "aboveFold": 1,
       "byType": {
+        "social_proof_count": 1,
         "testimonial": 1,
         "customer_logos": 1,
         "review_badges": 1
@@ -4604,8 +4605,7 @@
         "quote-block/rejected/text length 38": 1,
         "quote-block/rejected/text length 39": 2,
         "quote-block/rejected/text length 601": 3,
-        "quote-block/rejected/text length 640": 3,
-        "text-pattern/rejected/substring-fragment-mid-sentence": 1
+        "quote-block/rejected/text length 640": 3
       }
     },
     "ctaSummary": {
@@ -4704,10 +4704,11 @@
         "findings": [
           {
             "severity": "good",
-            "message": "3 trust signals, 1 above the fold.",
+            "message": "4 trust signals, 1 above the fold.",
             "evidence": [
               "customer_logos: 1",
               "review_badges: 1",
+              "social_proof_count: 1",
               "testimonial: 1"
             ]
           }

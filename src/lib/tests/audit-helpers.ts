@@ -180,9 +180,29 @@ export function buildPageSummary(input: {
   };
 }
 
+// A hero "headline" that's just a brand/greeting/section label communicates no
+// value proposition. Used to reject a weak section heading in favour of the h1.
+const GENERIC_HERO_HEADLINE_RX =
+  /^(welcome|home|homepage|hello|hi there|get started|sign in|log ?in|menu|products?|solutions?|resources?|pricing)\b/i;
+
+// Pick the real value-proposition headline. The hero section's first heading is
+// sometimes a nav / product-card label ("Marketing" on hubspot) while the page's
+// actual value prop is the h1 ("Where go-to-market teams go to grow"). Prefer the
+// h1 (the page's semantic primary heading) when it's substantial and non-generic;
+// otherwise fall back to the section heading.
+function pickHeroHeadline(sectionHeading: string, h1: string): string {
+  const sh = (sectionHeading || "").trim();
+  const h = (h1 || "").trim();
+  const strong = (s: string) => s.length >= 10 && !GENERIC_HERO_HEADLINE_RX.test(s);
+  if (strong(h)) return h;
+  if (strong(sh)) return sh;
+  return sh || h;
+}
+
 export function deriveHero(
   sections: PageSection[],
   ctas: CTAEntity[],
+  h1Texts: string[] = [],
 ): HeroContent | undefined {
   const heroSection =
     sections.find((s) => s.type === "hero") ??
@@ -197,7 +217,7 @@ export function deriveHero(
     ctas.find((c) => c.category === "form_submit" && c.aboveFold);
 
   return {
-    headline: heroSection.heading || "",
+    headline: pickHeroHeadline(heroSection.heading || "", h1Texts[0] || ""),
     subheadline: heroSection.subheading || "",
     primaryCtaText: heroCta?.text || "",
     primaryCtaIntent: heroCta?.intent || "",
