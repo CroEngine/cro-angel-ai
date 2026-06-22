@@ -264,6 +264,14 @@ describe("croScore — page-type classification & adaptation", () => {
     expect(scoreCro(golden({ elements: shopWall })).pageType).toBe("ecommerce");
   });
 
+  test("classifies a Swedish store (handla / lägg i varukorg) as ecommerce (the ikea-se case)", () => {
+    const els = [
+      ...Array.from({ length: 5 }, () => el({ category: "cta_secondary", intent: "navigation", aboveFold: true, text: "Handla" })),
+      el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Lägg i varukorg" }),
+    ];
+    expect(scoreCro(golden({ elements: els })).pageType).toBe("ecommerce");
+  });
+
   test("a lone 'buy' with no prices or shop wall is NOT ecommerce", () => {
     const s = scoreCro(golden({ elements: [el({ category: "cta_primary", intent: "conversion", aboveFold: true, text: "Buy now" })] }));
     expect(s.pageType).not.toBe("ecommerce");

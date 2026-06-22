@@ -114,12 +114,19 @@ function evidenceTexts(els: ScoredElement[], cap = 6): string[] {
 // signals already in the golden — no LLM, no Date/random. Ecommerce is gated on
 // PRICES (a lone "buy" with no prices isn't a store); content-media on a high
 // info-link-to-CTA ratio; saas-landing on demo/trial/signup CTAs + pricing nav.
-const PRICE_RX = /(?:[$£€]\s?\d|\b\d+[.,]\d{2}\b)/;
+// Prices: currency symbols, decimal amounts, or amount+currency-word for i18n
+// stores (IKEA-se prices in "kr", not "$").
+const PRICE_RX =
+  /(?:[$£€]\s?\d|\b\d+[.,]\d{2}\b|\b\d{1,4}(?:[ .,]\d{3})?\s?(?:kr|sek|nok|dkk|zł|chf)\b)/i;
+// Commerce CTAs across the corpus's languages (en + sv/de/fr/es). Without this,
+// i18n stores (IKEA-se: "Handla", "Lägg i varukorg") read as commerce-less and
+// misclassify as content-media.
 const COMMERCE_CTA_RX =
-  /\b(add to (cart|bag|basket)|shop\b|buy now|buy\b|checkout|add to cart)/i;
+  /\b(add to (cart|bag|basket)|shop\b|buy now|buy\b|checkout|handla|köp|lägg i (varu)?korg|varukorg|kundvagn|till kassan|beställ|in den warenkorb|kaufen|ajouter au panier|acheter|añadir al carrito|comprar|carrito)/i;
 const SAAS_CTA_RX =
   /\b(demo|free trial|get started|start (for )?free|sign ?up|book a (demo|call))/i;
-const SUBSCRIBE_RX = /\b(subscribe|register|sign ?up|create (an )?account|join)/i;
+const SUBSCRIBE_RX =
+  /\b(subscribe|register|sign ?up|create (an )?account|join|prenumerera|registrera|skapa konto)/i;
 
 export interface PageTypeResult {
   pageType: PageType;
