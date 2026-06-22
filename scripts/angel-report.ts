@@ -1,28 +1,34 @@
 #!/usr/bin/env bun
-// "Angel report" — run the audit engine live against a frozen corpus page.
+// "Angel report" — run the audit engine live against frozen corpus page(s).
 // =====================================================================
-// Replays corpus/<name>/ through the exact same path the snapshot harness and
+// Replays a frozen capture through the exact same path the snapshot harness and
 // the live engine use (COLLECT_SCRIPT + pageAudit in pinned Playwright
 // Chromium), normalizes the result, prints a human-readable CRO/conversion
-// audit, and diffs the fresh run against the committed golden.json so
+// audit, and diffs the fresh run against any committed golden.json so
 // score-determinism drift is visible in a single command.
 //
 // "Live" = recomputed from the frozen DOM right now, not a cat of golden.json.
 // The frozen MHTML is the input; the audit findings are the output.
 //
-// Usage:
+// Single site:
 //   bun run angel --name=hubspot
 //   bun run angel --name=hubspot --json        # also dump full normalized JSON
 //   bun run angel --name=hubspot --strict      # exit 1 on golden drift
-//   bun run angel --name=hubspot --corpus-root=corpus
+//   bun run angel --name=stripe --corpus-root=fixtures/breadth-corpus
 //
-// Replay needs local Playwright Chromium (no Browserbase). The pinned browser
-// is preferred (keeps the render-canary calibrated). If it can't be installed,
-// set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH to an available chrome binary — the
-// render-canary then reports pinned=false and skips its families receipt.
+// Batch (every capture under a root, recursively — for the breadth corpus):
+//   bun run angel --breadth                     # alias for --root=fixtures/breadth-50
+//   bun run angel --root=fixtures/breadth-corpus
+//   bun run angel --root=fixtures/breadth-50 --out=fixtures/breadth-50/angel-report.json
+//   bun run angel --root=... --strict           # exit 1 if any site fails or drifts
+//
+// A "capture" is any directory containing page.mhtml (or a page.mhtml.asset.json
+// CDN pointer). Replay needs local Playwright Chromium (no Browserbase). The
+// pinned browser is preferred (keeps the render-canary calibrated); otherwise
+// set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH to an available chrome binary.
 
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import { replayCorpus } from "../src/lib/tests/snapshot/harness.server";
 import {
@@ -43,13 +49,14 @@ function flag(name: string): boolean {
 
 const name = arg("name");
 const corpusRoot = arg("corpus-root") ?? "corpus";
+const batchRoot = flag("breadth") ? "fixtures/breadth-50" : arg("root");
+const outPath = arg("out");
 const wantJson = flag("json");
 const strict = flag("strict");
-
-if (!name) {
-  console.error("Usage: bun run angel --name=<name> [--corpus-root=corpus] [--json] [--strict]");
-  process.exit(2);
-}
+// Per-site replay budget (s). A pathological capture (animation/context churn)
+// must not stall a batch — it's recorded as a failure and the run continues.
+// Matches the snapshot harness's 120s per-site budget, with headroom.
+const timeoutMs = Number(arg("timeout") ?? "180") * 1000;
 
 // --- tiny terminal formatting -------------------------------------------------
 const BOLD = "\x1b[1m";
@@ -68,6 +75,29 @@ function rule(label = "") {
 function kv(k: string, v: unknown) {
   console.log(`  ${k.padEnd(22)} ${v ?? c(DIM, "∅")}`);
 }
+function truncate(s: string, n: number): string {
+  return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+function readJsonSafe<T>(path: string): T | null {
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as T;
+  } catch {
+    return null;
+  }
+}
+
+// Soft per-site timeout: the underlying replayCorpus has no AbortSignal, so a
+// timed-out replay's browser may linger until process exit — acceptable for a
+// short-lived CLI, and it keeps a single hanging capture from stalling a batch.
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`replay timeout after ${ms / 1000}s (${label})`)), ms),
+    ),
+  ]);
+}
+
 interface Meta {
   url?: string;
   frozenAt?: string;
@@ -78,25 +108,80 @@ interface FreezeReport {
   env?: { frozenAt?: string };
 }
 
-function readJsonSafe<T>(path: string): T | null {
+// One audited site, reduced to the fields the batch table and JSON need.
+interface AuditRow {
+  name: string;
+  ok: boolean;
+  error?: string;
+  tookMs?: number;
+  h1Count?: number;
+  hero?: string;
+  ctaTotal?: number;
+  ctaPrimary?: number;
+  ctaAboveFold?: number;
+  trustTotal?: number;
+  imgTotal?: number;
+  imgMissingAlt?: number;
+  sections?: number;
+  golden: "green" | "drift" | "none";
+  driftCount?: number;
+}
+
+interface AuditResult {
+  row: AuditRow;
+  meta: Meta;
+  freeze: FreezeReport;
+  normalized?: { collect: unknown; pageAudit: unknown };
+}
+
+// Replay one capture, normalize, diff vs golden. Never throws — replay failures
+// are captured on the row so a batch run surfaces them instead of aborting.
+async function audit(siteName: string, root: string): Promise<AuditResult> {
+  const dir = join(root, siteName);
+  const meta = readJsonSafe<Meta>(join(dir, "meta.json")) ?? {};
+  const freeze = readJsonSafe<FreezeReport>(join(dir, "freeze-report.json")) ?? {};
+  const row: AuditRow = { name: siteName, ok: false, golden: "none" };
+
+  const started = Date.now();
   try {
-    return JSON.parse(readFileSync(path, "utf8")) as T;
-  } catch {
-    return null;
+    const fresh = await withTimeout(replayCorpus(siteName, root), timeoutMs, siteName);
+    row.tookMs = Date.now() - started;
+    const normalized = {
+      collect: normalizeCollect(fresh.collect),
+      pageAudit: normalizePageAudit(fresh.pageAudit),
+    };
+    const a = normalized.pageAudit;
+    const col = normalized.collect;
+    row.ok = true;
+    row.h1Count = a.headings?.h1Count;
+    row.hero = (a.hero?.headline ?? "").trim();
+    row.ctaTotal = a.ctaSummary?.total;
+    row.ctaPrimary = a.ctaSummary?.primary;
+    row.ctaAboveFold = a.ctaSummary?.aboveFold;
+    row.trustTotal = a.trustSummary?.total;
+    row.imgTotal = a.images?.total;
+    row.imgMissingAlt = a.images?.missingAlt;
+    row.sections = (a.sectionOrder ?? []).length;
+
+    const golden = readJsonSafe(join(dir, "golden.json"));
+    if (golden) {
+      const diff = diffNormalized(golden, normalized);
+      row.golden = diff.length === 0 ? "green" : "drift";
+      row.driftCount = diff.length;
+    }
+    return { row, meta, freeze, normalized };
+  } catch (err) {
+    row.tookMs = Date.now() - started;
+    row.error = err instanceof Error ? err.message.split("\n")[0].slice(0, 300) : String(err);
+    return { row, meta, freeze };
   }
 }
 
-async function main(): Promise<number> {
-  const dir = join(corpusRoot, name!);
-  if (!existsSync(dir)) {
-    console.error(c(RED, `✗ corpus/${name} not found under ${corpusRoot}/`));
-    return 2;
-  }
-  const meta: Meta = readJsonSafe<Meta>(join(dir, "meta.json")) ?? {};
-  const freeze: FreezeReport = readJsonSafe<FreezeReport>(join(dir, "freeze-report.json")) ?? {};
-
+// --- single-site detailed report ---------------------------------------------
+function renderDetail(siteName: string, res: AuditResult): void {
+  const { meta, freeze, normalized, row } = res;
   console.log("");
-  console.log(c(BOLD, `Angel report — ${name}`));
+  console.log(c(BOLD, `Angel report — ${siteName}`));
   rule();
   kv("url", meta.url);
   kv("frozenAt", meta.frozenAt ?? freeze?.env?.frozenAt);
@@ -108,23 +193,16 @@ async function main(): Promise<number> {
   );
   console.log("");
 
-  // --- live replay ----------------------------------------------------------
-  console.log(c(DIM, "Replaying frozen DOM through collect + pageAudit (pinned Chromium)…"));
-  const started = Date.now();
-  const fresh = await replayCorpus(name!, corpusRoot);
-  const tookMs = Date.now() - started;
-
-  const normalized = {
-    collect: normalizeCollect(fresh.collect),
-    pageAudit: normalizePageAudit(fresh.pageAudit),
-  };
-  const a = normalized.pageAudit;
-  const col = normalized.collect;
-
-  console.log(c(DIM, `replay ok in ${(tookMs / 1000).toFixed(1)}s`));
+  if (!row.ok || !normalized) {
+    console.log(c(RED, `✗ replay failed: ${row.error}`));
+    console.log("");
+    return;
+  }
+  const a = normalized.pageAudit as ReturnType<typeof normalizePageAudit>;
+  const col = normalized.collect as ReturnType<typeof normalizeCollect>;
+  console.log(c(DIM, `replay ok in ${((row.tookMs ?? 0) / 1000).toFixed(1)}s`));
   console.log("");
 
-  // --- page audit (the report) ----------------------------------------------
   rule("PAGE");
   kv("title", a.head?.title);
   kv("lang / canonical", `${a.head?.lang ?? "?"}  ${c(DIM, a.head?.canonical ?? "")}`);
@@ -187,25 +265,19 @@ async function main(): Promise<number> {
   console.log("  " + (a.sectionOrder ?? []).join(" › "));
   console.log("");
 
-  // --- determinism check vs committed golden --------------------------------
   rule("DETERMINISM");
-  const goldenPath = join(dir, "golden.json");
-  const golden = readJsonSafe(goldenPath);
-  let drift = 0;
-  if (!golden) {
+  if (row.golden === "none") {
     console.log(`  ${c(YELLOW, "no golden.json")} — run \`bun run snapshot:update\` to bless one.`);
+  } else if (row.golden === "green") {
+    console.log(
+      `  ${c(GREEN, "✓ GREEN")} — live replay is byte-identical to golden (extractor v${EXTRACTOR_VERSION}).`,
+    );
   } else {
-    const diff = diffNormalized(golden, normalized);
-    drift = diff.length;
-    if (drift === 0) {
-      console.log(
-        `  ${c(GREEN, "✓ GREEN")} — live replay is byte-identical to golden (extractor v${EXTRACTOR_VERSION}).`,
-      );
-    } else {
-      console.log(`  ${c(RED, `✗ DRIFT`)} — ${drift} field(s) differ from golden:`);
-      for (const line of diff.slice(0, 40)) console.log(`    ${line}`);
-      if (diff.length > 40) console.log(`    ${c(DIM, `… and ${diff.length - 40} more`)}`);
-    }
+    const golden = readJsonSafe(join(corpusRoot, siteName, "golden.json"));
+    const diff = golden ? diffNormalized(golden, normalized) : [];
+    console.log(`  ${c(RED, "✗ DRIFT")} — ${row.driftCount} field(s) differ from golden:`);
+    for (const line of diff.slice(0, 40)) console.log(`    ${line}`);
+    if (diff.length > 40) console.log(`    ${c(DIM, `… and ${diff.length - 40} more`)}`);
   }
   console.log("");
 
@@ -214,8 +286,166 @@ async function main(): Promise<number> {
     console.log(JSON.stringify(normalized, null, 2));
     console.log("");
   }
+}
 
-  return strict && drift > 0 ? 1 : 0;
+// --- batch packaging ---------------------------------------------------------
+// A capture dir is one that directly holds page.mhtml or a CDN pointer; we stop
+// descending once found so nested category trees (breadth-50/<cat>/<name>) work.
+function findCaptures(root: string, rel = ""): string[] {
+  const abs = join(root, rel);
+  let entries;
+  try {
+    entries = readdirSync(abs, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const isCapture = entries.some(
+    (e) => e.isFile() && (e.name === "page.mhtml" || e.name === "page.mhtml.asset.json"),
+  );
+  if (isCapture) return [rel];
+  const out: string[] = [];
+  for (const e of entries) {
+    if (e.isDirectory()) out.push(...findCaptures(root, rel ? join(rel, e.name) : e.name));
+  }
+  return out.sort();
+}
+
+function goldenBadge(g: AuditRow["golden"]): string {
+  if (g === "green") return c(GREEN, "GREEN");
+  if (g === "drift") return c(RED, "DRIFT");
+  return c(DIM, "—");
+}
+
+async function runBatch(root: string): Promise<number> {
+  if (!existsSync(root)) {
+    console.error(c(RED, `✗ root not found: ${root}`));
+    return 2;
+  }
+  const sites = findCaptures(root);
+  console.log("");
+  console.log(c(BOLD, `Angel breadth report — ${root}`));
+  console.log(c(DIM, `extractor v${EXTRACTOR_VERSION} · ${sites.length} capture(s) found`));
+  if (sites.length === 0) {
+    console.log(
+      c(
+        YELLOW,
+        `  no captures under ${root}/ — freeze first (e.g. bun run scripts/freeze-breadth.ts).`,
+      ),
+    );
+    return 0;
+  }
+  console.log("");
+
+  const rows: AuditRow[] = [];
+  let i = 0;
+  for (const site of sites) {
+    i++;
+    process.stdout.write(c(DIM, `  [${i}/${sites.length}] ${site} … `));
+    const { row } = await audit(site, root);
+    rows.push(row);
+    if (row.ok) {
+      console.log(
+        `${c(GREEN, "ok")} ${((row.tookMs ?? 0) / 1000).toFixed(1)}s · golden ${goldenBadge(row.golden)}`,
+      );
+    } else {
+      console.log(`${c(RED, "FAIL")} ${row.error}`);
+    }
+  }
+
+  // table
+  console.log("");
+  rule("SUMMARY");
+  const head = [
+    "SITE".padEnd(34),
+    "OK".padEnd(5),
+    "H1".padStart(3),
+    "HERO".padEnd(30),
+    "CTA t/p/af".padEnd(12),
+    "TRUST".padStart(6),
+    "IMG(alt)".padEnd(10),
+    "GOLDEN",
+  ].join(" ");
+  console.log(c(DIM, head));
+  for (const r of rows) {
+    const okCell = r.ok ? c(GREEN, "✓") : c(RED, "✗");
+    const cta = r.ok ? `${r.ctaTotal ?? "?"}/${r.ctaPrimary ?? "?"}/${r.ctaAboveFold ?? "?"}` : "—";
+    const img = r.ok ? `${r.imgTotal ?? "?"}(${r.imgMissingAlt ?? "?"})` : "—";
+    const hero = r.ok ? truncate(r.hero ?? "", 29) : truncate(r.error ?? "", 29);
+    console.log(
+      [
+        truncate(r.name, 34).padEnd(34),
+        okCell.padEnd(supportsColor ? 14 : 5),
+        String(r.ok ? (r.h1Count ?? "?") : "—").padStart(3),
+        hero.padEnd(30),
+        cta.padEnd(12),
+        String(r.ok ? (r.trustTotal ?? "?") : "—").padStart(6),
+        img.padEnd(10),
+        r.ok ? goldenBadge(r.golden) : c(DIM, "—"),
+      ].join(" "),
+    );
+  }
+
+  // aggregate
+  const okCount = rows.filter((r) => r.ok).length;
+  const failCount = rows.length - okCount;
+  const greenCount = rows.filter((r) => r.golden === "green").length;
+  const driftCount = rows.filter((r) => r.golden === "drift").length;
+  console.log("");
+  rule("AGGREGATE");
+  kv("captures", rows.length);
+  kv(
+    "replay ok",
+    `${okCount}/${rows.length}` + (failCount ? c(RED, `  (${failCount} failed)`) : ""),
+  );
+  kv("golden green", greenCount > 0 ? c(GREEN, String(greenCount)) : "0");
+  kv("golden drift", driftCount > 0 ? c(RED, String(driftCount)) : "0");
+  kv("no golden", rows.filter((r) => r.golden === "none").length);
+  console.log("");
+
+  if (outPath) {
+    const payload = {
+      root,
+      extractorVersion: EXTRACTOR_VERSION,
+      generatedAt: new Date().toISOString(),
+      summary: {
+        captures: rows.length,
+        replayOk: okCount,
+        replayFailed: failCount,
+        greenCount,
+        driftCount,
+      },
+      sites: rows,
+    };
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(outPath, JSON.stringify(payload, null, 2));
+    console.log(c(DIM, `  wrote ${outPath}`));
+    console.log("");
+  }
+
+  return strict && (failCount > 0 || driftCount > 0) ? 1 : 0;
+}
+
+async function main(): Promise<number> {
+  if (batchRoot) return runBatch(batchRoot);
+
+  if (!name) {
+    console.error(
+      "Usage:\n" +
+        "  bun run angel --name=<name> [--corpus-root=corpus] [--json] [--strict]\n" +
+        "  bun run angel --root=<dir> [--out=<file.json>] [--strict]   # batch\n" +
+        "  bun run angel --breadth                                     # = --root=fixtures/breadth-50",
+    );
+    return 2;
+  }
+  const dir = join(corpusRoot, name);
+  if (!existsSync(dir)) {
+    console.error(c(RED, `✗ ${name} not found under ${corpusRoot}/`));
+    return 2;
+  }
+  console.log(c(DIM, "Replaying frozen DOM through collect + pageAudit (pinned Chromium)…"));
+  const res = await audit(name, corpusRoot);
+  renderDetail(name, res);
+  return strict && res.row.golden === "drift" ? 1 : res.row.ok ? 0 : 1;
 }
 
 main()

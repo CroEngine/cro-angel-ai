@@ -40,7 +40,9 @@ const onlyCategory = arg("category");
 const onlySites = arg("site")?.split(",").map((s) => s.trim()).filter(Boolean);
 const includeDeferred = flag("include-deferred");
 
-const outRoot = join("fixtures", "breadth-50");
+// --out-root lets a caller freeze into a scratch dir (e.g. angel breadth
+// validation) without clobbering the committed Grind-2 breadth-50 artifacts.
+const outRoot = arg("out-root") ?? join("fixtures", "breadth-50");
 mkdirSync(outRoot, { recursive: true });
 
 interface Outcome {
