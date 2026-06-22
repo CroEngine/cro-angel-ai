@@ -68,6 +68,9 @@ const only = arg("only")
 // must not stall a batch — it's recorded as a failure and the run continues.
 // Matches the snapshot harness's 120s per-site budget.
 const timeoutMs = Number(arg("timeout") ?? "120") * 1000;
+// Auto-retry count for a failed site in batch mode (replay flakiness is often
+// transient). 0 disables.
+const retries = Number(arg("retries") ?? "1");
 
 // --- tiny terminal formatting -------------------------------------------------
 const BOLD = "\x1b[1m";
@@ -136,6 +139,7 @@ interface AuditRow {
   sections?: number;
   golden: "green" | "drift" | "none";
   driftCount?: number;
+  attempts?: number;
 }
 
 interface AuditResult {
@@ -367,14 +371,25 @@ async function runBatch(root: string): Promise<number> {
   for (const site of sites) {
     i++;
     process.stdout.write(c(DIM, `  [${i}/${sites.length}] ${site} … `));
-    const { row } = await audit(site, root);
-    rows.push(row);
-    if (row.ok) {
+    // Auto-retry: replay failures are frequently transient (renderer
+    // contention / context churn under batch load), so a failed site gets up
+    // to `retries` more attempts before it's recorded as a real failure.
+    let res = await audit(site, root);
+    let attempt = 0;
+    while (!res.row.ok && attempt < retries) {
+      attempt++;
+      process.stdout.write(c(YELLOW, `retry ${attempt} … `));
+      res = await audit(site, root);
+    }
+    res.row.attempts = attempt + 1;
+    rows.push(res.row);
+    if (res.row.ok) {
+      const tag = attempt ? c(DIM, ` (after ${attempt} retr${attempt > 1 ? "ies" : "y"})`) : "";
       console.log(
-        `${c(GREEN, "ok")} ${((row.tookMs ?? 0) / 1000).toFixed(1)}s · golden ${goldenBadge(row.golden)}`,
+        `${c(GREEN, "ok")}${tag} ${((res.row.tookMs ?? 0) / 1000).toFixed(1)}s · golden ${goldenBadge(res.row.golden)}`,
       );
     } else {
-      console.log(`${c(RED, "FAIL")} ${row.error}`);
+      console.log(`${c(RED, "FAIL")} ${res.row.error}`);
     }
   }
 

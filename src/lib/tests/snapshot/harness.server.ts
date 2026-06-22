@@ -66,9 +66,14 @@ async function waitForReady(page: Page) {
 // same URL. A delayed MHTML commit tears the execution context down mid-call,
 // so evaluate throws — reset streak and keep going. Throws if the context
 // never stabilizes, since downstream work would be unreliable.
+//
+// Budget is deliberately generous (tries×gapMs ≈ 9s): a stable page returns
+// after ~`need` ticks regardless, but a churny SPA under batch load (renderer
+// contention, slow MHTML commit) needs the headroom — a tight budget turned
+// recoverable flakiness into hard "context never stabilized" failures.
 async function waitForStableContext(
   page: Page,
-  { tries = 20, gapMs = 150, need = 2 }: { tries?: number; gapMs?: number; need?: number } = {},
+  { tries = 45, gapMs = 200, need = 2 }: { tries?: number; gapMs?: number; need?: number } = {},
 ): Promise<string> {
   let streak = 0;
   let lastUrl = "";
