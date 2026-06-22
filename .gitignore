@@ -33,6 +33,9 @@ dist-ssr
 corpus/**/screenshot.before-dismiss.jpg
 
 corpus/**/render-canary.json
+corpus/**/render-canary.families.json
+# snapshot-diff debug artifact (written only when a golden diff fails)
+corpus/**/actual.json
 
 # Grind 0/2 transient survey outputs — research artifacts, not corpus goldens.
 # Re-generera via scripts/drift-survey.ts resp. scripts/freeze-breadth.ts.
