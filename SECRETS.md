@@ -1,0 +1,50 @@
+# Secrets & configuration
+
+Where every credential and config value belongs — and why.
+
+**TL;DR:** secrets go in the secret store for *how you run the code*, never in the
+tracked `.env`, and never behind a `VITE_` name. The full variable list with
+inline notes is in [`.env.example`](./.env.example).
+
+## Secret vs. public
+
+| Secret — never commit | Public config — safe to commit |
+|---|---|
+| `ANTHROPIC_API_KEY` — the Angel LLM | `BROWSERBASE_PROJECT_ID` — identifier |
+| `BROWSERBASE_API_KEY` — freeze pipeline | `SUPABASE_URL` — public endpoint |
+| `SUPABASE_SERVICE_ROLE_KEY` — admin client, bypasses RLS | `SUPABASE_PUBLISHABLE_KEY` — anon key (RLS-guarded) |
+| `GOOGLE_PAGESPEED_API_KEY` — optional | `*_PROJECT_ID`, `VITE_SUPABASE_*` — frontend-safe |
+
+The committed `.env` deliberately holds **only** the public Supabase values: the
+anon key's JWT `role` is `anon`, not `service_role`. That's by design — anon keys
+are meant to ship to the browser, guarded by row-level security. The real secrets
+above are never written to the repo; they're read from `process.env` at runtime.
+
+## Where each secret goes — by how you run it
+
+The same key can live in several of these at once; they're independent runtimes,
+not duplication.
+
+| Runtime that needs the key | Store |
+|---|---|
+| **Local machine** (`bun run freeze`, `bun run angel`) | `.env.local` — gitignored via `*.local`; bun auto-loads it |
+| **Claude Code on the web** (run freeze/Angel in a cloud session) | the environment's **Environment variables** field. ⚠️ Claude Code web has **no secrets store** — this field is the only option and is **visible to anyone who can edit the environment**. Add secrets here knowingly, and rotate periodically. |
+| **Deployed Cloudflare Worker** | `wrangler secret put NAME` (encrypted in the Workers store), or the Cloudflare dashboard. Use `.dev.vars` (gitignored) for local `wrangler dev`. |
+| **GitHub Actions CI** (only if a workflow needs it) | repo → **Settings → Secrets and variables → Actions**. Readable only by Actions — not by cloud sessions and not by the deployed app. |
+
+GitHub itself needs no key from you: Claude Code's GitHub **connector** handles
+auth with scoped credentials through a proxy, so tokens never live in the sandbox.
+
+## Reading pattern (already in the code)
+
+Server code reads `process.env.X` **inside the handler**, per-request — the
+correct pattern for Cloudflare Workers, where env binds at request time, not at
+module load (see `src/lib/config.server.ts`, `src/lib/tests/angel.server.ts`). The
+`.server.ts` suffix keeps these files out of the client bundle.
+
+## If a secret is exposed
+
+Rotate it at the source — don't just delete it from a field. A key that appeared
+in a shared session transcript, a log, or the visible cloud env field should be
+regenerated in its dashboard (Browserbase / Anthropic / Supabase) so the old
+value stops working.

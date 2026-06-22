@@ -14,7 +14,12 @@ dist-ssr
 .vinxi
 .tanstack/**
 .nitro
+
+# Secrets & local env — never commit. Real keys live in .env.local (local dev),
+# the Worker secret store (deploy), or the cloud env field. See SECRETS.md.
+# `.env` itself stays tracked: it holds only public Supabase config.
 *.local
+.env.local
 
 # Wrangler / Cloudflare
 .wrangler/
