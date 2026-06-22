@@ -114,19 +114,19 @@ function evidenceTexts(els: ScoredElement[], cap = 6): string[] {
 // signals already in the golden — no LLM, no Date/random. Ecommerce is gated on
 // PRICES (a lone "buy" with no prices isn't a store); content-media on a high
 // info-link-to-CTA ratio; saas-landing on demo/trial/signup CTAs + pricing nav.
-// Prices: currency symbols, decimal amounts, or amount+currency-word for i18n
-// stores (IKEA-se prices in "kr", not "$").
-const PRICE_RX =
-  /(?:[$£€]\s?\d|\b\d+[.,]\d{2}\b|\b\d{1,4}(?:[ .,]\d{3})?\s?(?:kr|sek|nok|dkk|zł|chf)\b)/i;
-// Commerce CTAs across the corpus's languages (en + sv/de/fr/es). Without this,
-// i18n stores (IKEA-se: "Handla", "Lägg i varukorg") read as commerce-less and
-// misclassify as content-media.
+const PRICE_RX = /(?:[$£€]\s?\d|\b\d+[.,]\d{2}\b)/;
+// Commerce CTAs (English). A naive i18n broadening (sv "köp/handla", etc.) was
+// tried and reverted: it didn't fix the real IKEA-se capture (its Swedish cart
+// terms aren't in the collected INTERACTIVE elements, only body text) and it
+// false-positived a Swedish NEWS site (aftonbladet "köp"/subscribe) into
+// ecommerce. Reliable cross-language page-type detection from text heuristics is
+// a losing game — that judgement belongs in the LLM layer (#4), which can read
+// "this is a Swedish newspaper". i18n ecommerce is a documented classifier limit.
 const COMMERCE_CTA_RX =
-  /\b(add to (cart|bag|basket)|shop\b|buy now|buy\b|checkout|handla|köp|lägg i (varu)?korg|varukorg|kundvagn|till kassan|beställ|in den warenkorb|kaufen|ajouter au panier|acheter|añadir al carrito|comprar|carrito)/i;
+  /\b(add to (cart|bag|basket)|shop\b|buy now|buy\b|checkout)/i;
 const SAAS_CTA_RX =
   /\b(demo|free trial|get started|start (for )?free|sign ?up|book a (demo|call))/i;
-const SUBSCRIBE_RX =
-  /\b(subscribe|register|sign ?up|create (an )?account|join|prenumerera|registrera|skapa konto)/i;
+const SUBSCRIBE_RX = /\b(subscribe|register|sign ?up|create (an )?account|join)/i;
 
 export interface PageTypeResult {
   pageType: PageType;
