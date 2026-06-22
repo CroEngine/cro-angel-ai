@@ -167,7 +167,7 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
 export async function replayCorpus(
   name: string,
   corpusRoot = "corpus",
-  opts: { skipCanary?: boolean; contextTries?: number } = {},
+  opts: { skipCanary?: boolean; contextTries?: number; deadlineMs?: number } = {},
 ): Promise<ReplayResult> {
   const dir = join(corpusRoot, name);
   const mhtmlPath = join(dir, "page.mhtml");
@@ -305,6 +305,17 @@ export async function replayCorpus(
   // deps (e.g. some sandboxes); the user-visible flow uses the pinned binary.
   const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
   const browser = await chromium.launch({ headless: true, executablePath });
+  // Internal deadline: a pathological capture (frozen-SPA re-render loop, 169MB
+  // DOM) can hang a step past any external timeout while holding a browser open
+  // — leaking it across a batch run and starving later sites. On the deadline we
+  // force-close the browser, which makes the in-flight evaluate throw and the
+  // finally clean up. No leak. Opt-in (batch surveys); unset for the snapshot
+  // pipeline, which is bounded by its own per-step waits.
+  const deadline = opts.deadlineMs
+    ? setTimeout(() => {
+        browser.close().catch(() => {});
+      }, opts.deadlineMs)
+    : undefined;
   try {
     // Keep JS enabled — MHTML loaded from file:// does NOT auto-navigate to
     // the embedded URL (we verified URL stays on file://...), and disabling JS
@@ -525,6 +536,7 @@ export async function replayCorpus(
       pageAudit,
     };
   } finally {
+    if (deadline) clearTimeout(deadline);
     try {
       await browser.close();
     } catch {

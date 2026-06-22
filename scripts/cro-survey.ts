@@ -75,8 +75,9 @@ async function runOne(j: (typeof jobs)[number]): Promise<Result> {
       replayCorpus(j.name, join("fixtures", "breadth-50", j.category), {
         skipCanary: true, // score-only: don't run the font canary (slow on huge DOMs)
         contextTries: 60, // ~9s for heavy SPAs to settle vs the 3s default
+        deadlineMs: perSiteTimeoutMs, // force-close the browser at the deadline — no leak
       }),
-      perSiteTimeoutMs,
+      perSiteTimeoutMs + 20000, // external backstop in case browser.close() itself hangs
     );
     const collect = normalizeCollect(fresh.collect);
     const pageAudit = normalizePageAudit(fresh.pageAudit);
