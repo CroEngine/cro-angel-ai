@@ -164,7 +164,11 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
   }
 }
 
-export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise<ReplayResult> {
+export async function replayCorpus(
+  name: string,
+  corpusRoot = "corpus",
+  opts: { skipCanary?: boolean } = {},
+): Promise<ReplayResult> {
   const dir = join(corpusRoot, name);
   const mhtmlPath = join(dir, "page.mhtml");
   const pointerPath = join(dir, "page.mhtml.asset.json");
@@ -474,10 +478,18 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
           `[replay] canary ghosts (non-blocking): ${canary.ghosts.join(", ")}`,
         );
       }
-      if (!canary.ok) {
+      if (!canary.ok && !opts.skipCanary) {
         throw new Error(
           `[replay] render-canary failed for ${name}: ${canary.failures.join("; ")}. ` +
             `Se corpus/${name}/render-canary.json + render-canary.families.json för full rapport.`,
+        );
+      } else if (!canary.ok) {
+        // skipCanary: score-only survey of non-promoted captures. Font-render
+        // may use fallbacks (salience slightly noisy) but page-type + structural
+        // signals hold. Logged, not gated.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[replay] render-canary failed for ${name} (skipCanary set, continuing): ${canary.failures.join("; ")}`,
         );
       }
     }
