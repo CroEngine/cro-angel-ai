@@ -56,7 +56,7 @@ failure modes. Current target set (covers A salience / D skip-link /
 E consent above-fold + dark-theme inversion):
 
 - the 5 existing live-test sites we've been running
-- 1 dark-theme site (for inverted contrast / salience cases)
+- 1 dark-theme site (for inverted contrast / salience cases) — **done: `linear`, promoted 2026-06-23**
 
 Add e-commerce / testimonial-heavy sites only when the trust-signal bugs
 become active again.
@@ -142,6 +142,16 @@ all #3 residual drift proven score-neutral by #4 and reduced at source
 (reduced-motion + `removeSelectors`). See `corpus/hubspot/meta.json` and
 `fixtures/determinism/hubspot/REPORT-round6-2026-06-20.md`. The same rule
 applies to any future corpus site.
+
+Linear is also **`promoted`** (2026-06-23) — dark-theme / inverted-contrast
+coverage. It was promoted via `scripts/promote-corpus.ts`, which automates the
+gate end-to-end: N independent Browserbase freezes → `replayCorpus` + `normalize`
+→ byte-identical-golden diff, staging `corpus/<name>/` only on GREEN (and a
+`--from=<dir>` resume to recover an interrupted run without re-capturing).
+Linear's promotion rests on **#4** (N=3 GREEN, the load-bearing criterion); it
+captured cleanly with no `removeSelectors` needed. It has not been through the
+separate #3 MHTML-pairwise analysis — which #4 GREEN makes score-neutral by
+construction (see the #3/#4 logic above). See `corpus/linear/meta.json`.
 
 
 
