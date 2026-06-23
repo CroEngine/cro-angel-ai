@@ -48,6 +48,17 @@
 //               collapsed into one nav section (warby-parker: valid capture +
 //               h1, but hero was undefined). Only fires when no hero section is
 //               found at all, so the corpus is untouched.
+//           (d) sections.ts walker passes THROUGH display:contents wrappers. They
+//               render no box (width/height 0) so the size guards dropped them and
+//               their whole subtree — warby-parker (<main> → display:contents div →
+//               25 sections) collapsed to one bogus nav section (1 → 19 sections,
+//               real hero recovered). A common React/Next pattern, so this is a
+//               broad section-coverage fix, not a one-site patch. (c) is now the
+//               rare fallback rather than warby-parker's only hero. Corpus goldens
+//               byte-identical (hubspot/linear have no display:contents in their
+//               section path). Also: displayHeading (a) computed only for
+//               above-fold sections — pure perf, below-fold values were never read
+//               and on sections-heavy SPAs the per-node scan risked replay timeouts.
 
 export const EXTRACTOR_VERSION = "1.4.0" as const;
 

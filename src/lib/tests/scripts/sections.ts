@@ -231,10 +231,26 @@ export const SECTIONS_SCRIPT = `(() => {
   }
 
 
+  // display:contents elements render no box of their own but lay their children
+  // out as if they weren't there (a common React/Next wrapper). They fail the
+  // box-size guards below (width 0 / height 0), so without passing THROUGH them
+  // the real sections behind one are dropped with the whole subtree —
+  // warby-parker is <main> → display:contents div → 25 sections, which otherwise
+  // collapsed to a single bogus nav section. Only consulted on the drop paths
+  // (zero/near-zero box), so getComputedStyle isn't called for normal sections.
+  function passThroughContents(el) {
+    try {
+      if (window.getComputedStyle(el).display === 'contents') {
+        const kids = el.children;
+        for (let i = 0; i < kids.length; i++) addNode(kids[i]);
+      }
+    } catch (_) {}
+  }
+
   function addNode(el) {
     if (!el || seen.has(el)) return;
     let rect = el.getBoundingClientRect();
-    if (rect.width < 40) return;
+    if (rect.width < 40) { passThroughContents(el); return; }
     const rawH = rect.height;
     let effectiveH = rawH;
     let offsetH = 0, scrollH = 0, cloneH = 0;
@@ -256,7 +272,7 @@ export const SECTIONS_SCRIPT = `(() => {
         if (cloneH > effectiveH) effectiveH = cloneH;
       } catch (_) {}
     }
-    if (effectiveH < 80) return;
+    if (effectiveH < 80) { passThroughContents(el); return; }
 
     if (effectiveH !== rawH) {
       rect = {
