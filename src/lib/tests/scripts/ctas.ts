@@ -157,6 +157,15 @@ export const CTAS_SCRIPT = `(() => {
     return false;
   }
 
+  // Accessibility skip-links (<a href="#main">Skip to content</a>) are
+  // button-ish anchors that score as cta_primary but are never CTAs — they're
+  // keyboard jump links. Exclude by canonical phrasing.
+  function isSkipLink(text) {
+    const t = (text || '').trim();
+    if (!/^(skip|jump)\\b/i.test(t)) return false;
+    return /^(skip|jump)\\s+(to\\s+)?(the\\s+)?(main\\s+)?(content|navigation|nav|search|menu|main)\\b/i.test(t);
+  }
+
   const SEL = 'button, a[href], input[type=submit], input[type=button], [role="button"]';
   const nodes = Array.from(document.querySelectorAll(SEL));
   const raw = [];
@@ -170,6 +179,7 @@ export const CTAS_SCRIPT = `(() => {
     const cs = window.getComputedStyle(el);
     const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 80);
     if (isCarouselNav(el, text)) continue;
+    if (isSkipLink(text)) continue;
     const category = classifyCategory(el, cs, rect, text);
     if (category === 'other' || category === 'link') continue; // keep button-ish + form_submit only
     raw.push({

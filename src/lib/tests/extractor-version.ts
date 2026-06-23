@@ -27,8 +27,12 @@
 //           modal) typed "hero" had their label taken as the headline
 //           (hubspot "Marketing", spotify "Home", glossier "Shopping Bag") while
 //           the real hero sat in a "content" section. Re-bless goldens.
+//   1.3.0 — ctas.ts excludes accessibility skip-links ("Skip to content"/"Jump
+//           to main") from CTA candidates. They are button-ish anchors that
+//           scored cta_primary (hubspot, everlane) and crowded out / replaced
+//           the real hero CTA. Re-bless goldens.
 
-export const EXTRACTOR_VERSION = "1.2.0" as const;
+export const EXTRACTOR_VERSION = "1.3.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
