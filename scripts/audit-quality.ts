@@ -46,6 +46,10 @@ const c = (code: string, s: string) => (color ? `${code}${s}${RESET}` : s);
 // Nav/UI labels that show up when hero detection grabs the wrong element.
 const NAV_LABEL =
   /^(home|menu|search|log\s?in|sign\s?(in|up)|shopping bag|cart|categories|highlights|products?|explore|or|and|skip to (main )?content|get started|learn more)$/i;
+// A primary CTA that is actually an accessibility skip-link — a hard bug.
+const SKIP_LINK = /^skip to (main )?(content|navigation|nav|search)/i;
+// Informational link masquerading as a conversion CTA.
+const WEAK_CTA = /^(learn more|read more|find out more|see more|explore)\b/i;
 
 interface Flag {
   level: "ERROR" | "WARN";
@@ -85,7 +89,12 @@ interface GoldenAudit {
   pageAudit?: {
     hero?: { headline?: string; primaryCtaText?: string };
     headings?: { h1?: string[]; h1Count?: number };
+    ctaSummary?: { total?: number; primary?: number; aboveFold?: number };
+    trustSummary?: { total?: number; aboveFold?: number; byType?: Record<string, number> };
   };
+  // Raw CTA list, only present in --replay mode (golden drops it). Lets us catch
+  // a skip-link/nav item wrongly classified cta_primary, not just the count.
+  rawCtas?: Array<{ text?: string; category?: string }>;
 }
 
 function checkGolden(golden: GoldenAudit): Flag[] {
@@ -118,8 +127,55 @@ function checkGolden(golden: GoldenAudit): Flag[] {
 
   if ((a.headings?.h1Count ?? 0) === 0)
     flags.push({ level: "WARN", code: "no-h1", detail: "page has no <h1>" });
-  if (!(a.hero?.primaryCtaText ?? "").trim())
+
+  // --- CTA quality ---
+  const heroCta = (a.hero?.primaryCtaText ?? "").trim();
+  if (!heroCta) {
     flags.push({ level: "WARN", code: "no-hero-cta", detail: "no primary CTA detected in hero" });
+  } else if (SKIP_LINK.test(heroCta)) {
+    flags.push({
+      level: "ERROR",
+      code: "hero-cta-skiplink",
+      detail: `hero CTA is a skip-link: "${heroCta}"`,
+    });
+  } else if (NAV_LABEL.test(heroCta)) {
+    flags.push({
+      level: "WARN",
+      code: "hero-cta-nav",
+      detail: `hero CTA looks like a UI label: "${heroCta}"`,
+    });
+  } else if (WEAK_CTA.test(heroCta)) {
+    flags.push({
+      level: "WARN",
+      code: "hero-cta-weak",
+      detail: `hero CTA is informational, not conversion: "${heroCta}"`,
+    });
+  }
+  if ((a.ctaSummary?.total ?? 0) === 0)
+    flags.push({ level: "WARN", code: "no-ctas", detail: "no CTAs detected on the page" });
+  // Replay-only: a skip-link/nav item classified cta_primary (count alone hides it).
+  for (const cta of golden.rawCtas ?? []) {
+    if (cta.category !== "cta_primary") continue;
+    const t = (cta.text ?? "").trim();
+    if (SKIP_LINK.test(t))
+      flags.push({
+        level: "ERROR",
+        code: "skiplink-as-primary-cta",
+        detail: `"${t}" classified cta_primary`,
+      });
+  }
+
+  // --- Trust quality ---
+  const trust = a.trustSummary;
+  if (trust && (trust.total ?? 0) === 0)
+    flags.push({ level: "WARN", code: "no-trust", detail: "no trust signals detected" });
+  for (const [type, n] of Object.entries(trust?.byType ?? {}))
+    if ((n as number) > 25)
+      flags.push({
+        level: "WARN",
+        code: "trust-overcount",
+        detail: `${n} ${type} — likely over-counted`,
+      });
 
   return flags;
 }
@@ -171,7 +227,8 @@ async function loadAudit(name: string): Promise<GoldenAudit | { error: string }>
       timeoutMs,
       name,
     );
-    return { pageAudit: normalizePageAudit(fresh.pageAudit) };
+    const rawPa = fresh.pageAudit as { ctas?: Array<{ text?: string; category?: string }> };
+    return { pageAudit: normalizePageAudit(fresh.pageAudit), rawCtas: rawPa?.ctas ?? [] };
   } catch (e) {
     return { error: e instanceof Error ? e.message.split("\n")[0].slice(0, 120) : String(e) };
   }
