@@ -43,6 +43,11 @@
 //               from the CTA/heading finders. Fixes the no-h1 case where a cart/
 //               search drawer's label was taken as the hero (glossier picked its
 //               cart "Edit item" over the real hero "You smell like vacation").
+//           (c) deriveHero synthesizes a hero from the page h1 when NO section
+//               anchors to it — a landmark-less SPA whose content the walker
+//               collapsed into one nav section (warby-parker: valid capture +
+//               h1, but hero was undefined). Only fires when no hero section is
+//               found at all, so the corpus is untouched.
 
 export const EXTRACTOR_VERSION = "1.4.0" as const;
 

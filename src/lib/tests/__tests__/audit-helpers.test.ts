@@ -1,11 +1,13 @@
 // deriveHero — no-<h1> hero detection (extractor v1.4.0).
 //
-// Pure-function coverage for the two v1.4.0 fixes, locked in here rather than
+// Pure-function coverage for the v1.4.0 fixes, locked in here rather than
 // against live captures (homepages drift — warby-parker grew an <h1>, glossier's
 // campaign copy rotates — so a frozen capture is a poor regression anchor):
 //   (a) displayHeading fallback for a hero with no semantic heading
 //   (b) excluding off-canvas chrome (aside/nav/footer) so an overlay's label
-//       isn't taken as the hero when there's no <h1> to anchor on.
+//       isn't taken as the hero when there's no <h1> to anchor on
+//   (c) synthesizing a hero from the page h1 when no section anchors to it,
+//       with no false hero when there's no meaningful h1.
 
 import { describe, it, expect } from "vitest";
 
@@ -82,6 +84,24 @@ describe("deriveHero — no-h1 hero detection (v1.4.0)", () => {
       mkSection({ id: "section_2", type: "hero", heading: "", displayHeading: "Big Promise" }),
     ];
     expect(deriveHero(sections, [], [])?.headline).toBe("Big Promise");
+  });
+
+  it("synthesizes a hero from the h1 when no section anchors to it (warby-parker case)", () => {
+    // Landmark-less SPA: the walker produced only a nav section (no heading), but
+    // the page has a valid h1. deriveHero must still surface a hero from the h1.
+    const sections = [
+      mkSection({ id: "section_1", type: "nav", heading: "", containsPrimaryCTA: false }),
+    ];
+    const hero = deriveHero(sections, [], ["A new level of lightweight"]);
+    expect(hero?.headline).toBe("A new level of lightweight");
+    expect(hero?.sectionId).toBe("");
+  });
+
+  it("returns undefined when no section anchors AND there is no meaningful h1 (no false hero)", () => {
+    const sections = [mkSection({ id: "section_1", type: "nav", heading: "" })];
+    expect(deriveHero(sections, [], [])).toBeUndefined();
+    // a label-ish single-word h1 is not a headline → still undefined
+    expect(deriveHero(sections, [], ["Menu"])).toBeUndefined();
   });
 
   it("still anchors on the page <h1> first — order/type independent (corpus unchanged)", () => {

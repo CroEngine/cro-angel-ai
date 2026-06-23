@@ -226,13 +226,30 @@ export function deriveHero(
     sections.find((s) => s.type === "hero") ??
     sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading && !isChrome(s)) ??
     sections.find((s) => s.type === "form" && s.aboveFold && s.heading);
-  if (!heroSection) return undefined;
-
   const heroCta =
     ctas.find((c) => c.category === "cta_primary" && c.section === "hero") ??
     ctas.find((c) => c.category === "cta_primary" && c.aboveFold) ??
     ctas.find((c) => c.category === "form_submit" && c.section === "hero") ??
     ctas.find((c) => c.category === "form_submit" && c.aboveFold);
+
+  // Last resort: the page has a real h1 but no section anchored to it — e.g. a
+  // landmark-less SPA whose content the walker collapsed into a single nav
+  // section (warby-parker: valid capture, h1 "A new level of lightweight", yet
+  // zero usable hero sections). The h1 is the headline by every other heuristic
+  // here, so synthesize a hero from it rather than emitting none. Never reached
+  // when a section anchors (the entire corpus), so goldens are unaffected.
+  if (!heroSection) {
+    const h1 = h1Texts.map((t) => (t || "").trim()).find((t) => t && !isLabel(t));
+    if (!h1) return undefined;
+    return {
+      headline: h1,
+      subheadline: "",
+      primaryCtaText: heroCta?.text || "",
+      primaryCtaIntent: heroCta?.intent || "",
+      sectionId: "",
+      aboveFold: true,
+    };
+  }
 
   return {
     // Fall back to the section's prominent display text when it has no semantic
