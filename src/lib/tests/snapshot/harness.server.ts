@@ -210,15 +210,24 @@ export async function replayCorpus(
   // golden. Vi gatar på flaggan och throw:ar på alla inkonsistenta tillstånd.
   let reportExternalized = false;
   let embeddedFamilies: string[] = [];
+  // Did THIS freeze trip the font size-gate (embed only the loaded subset)? Only
+  // then is the canary-scoping below safe to apply; a normal freeze keeps the
+  // full main-doc manifest. Absent on legacy reports → false → no scoping.
+  let reportSizeGated = false;
   if (existsSync(reportPath)) {
     try {
       const r = JSON.parse(readFileSync(reportPath, "utf8")) as {
-        capture?: { externalized?: boolean; embeddedFamilies?: string[] | null };
+        capture?: {
+          externalized?: boolean;
+          embeddedFamilies?: string[] | null;
+          sizeGatedLoadedOnly?: boolean | null;
+        };
       };
       reportExternalized = !!r.capture?.externalized;
       embeddedFamilies = Array.isArray(r.capture?.embeddedFamilies)
         ? (r.capture!.embeddedFamilies as string[])
         : [];
+      reportSizeGated = !!r.capture?.sizeGatedLoadedOnly;
     } catch (e) {
       throw new Error(
         `corpus/${name}/freeze-report.json kunde inte läsas: ${e instanceof Error ? e.message : String(e)}`,
@@ -430,13 +439,20 @@ export async function replayCorpus(
         // externa (mhtml-fonts.server.ts). De är fortfarande deklarerade+nåbara, så
         // mainDoc listar dem — men binärerna droppades MEDVETET, de renderas aldrig
         // (ej laddade → ingen bbox) och kan inte resolva under file://-replay.
-        // Scope:a canaryn till familjer vi FAKTISKT embeddade (≥1 cid:-face) så att
-        // den bara verifierar render-relevanta fonter. No-op för corpus: där blir
-        // varje face cid: → cidFamilies ⊇ mainDoc → snittet == mainDoc. Used-but-
-        // unembedded fångas redan av A2-gaten vid frysning, inte här.
-        const cidFamilies = new Set(extractEmbeddedFamilies(mhtmlOnDisk, { cidOnly: true }));
-        const scoped = manifest.filter((f) => cidFamilies.has(f));
-        if (scoped.length > 0) manifest = scoped;
+        // Scope:a canaryn till familjer vi FAKTISKT embeddade (≥1 cid:-face).
+        //
+        // BARA när size-gaten faktiskt slog till för den här frysningen. För en
+        // NORMAL frysning behåller vi hela main-doc-manifestet, annars tappar
+        // canaryn sin backstop: en använd font som INTE embeddades (t.ex. en
+        // relativ @font-face-url vars fetch failade — A2-gatens survivor-scan är
+        // `https?://`-only och missar den) skulle annars scope:as bort och dess
+        // render-drift gå oupptäckt. Legacy-rapporter saknar flaggan → false →
+        // ingen scoping → identiskt beteende mot innan ändringen.
+        if (reportSizeGated) {
+          const cidFamilies = new Set(extractEmbeddedFamilies(mhtmlOnDisk, { cidOnly: true }));
+          const scoped = manifest.filter((f) => cidFamilies.has(f));
+          if (scoped.length > 0) manifest = scoped;
+        }
       } catch {
         /* fail-closed: behåll embeddedFamilies-manifestet + tomma declaredFamilies */
       }

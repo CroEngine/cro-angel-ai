@@ -113,9 +113,10 @@ interface FreezeReport {
     sizeGatedDroppedCount: number | null;
     mhtmlKbBeforeFontEmbed: number | null;
     fontFetchFailures: { url: string; error: string }[] | null;
-    /** Unika @font-face-familjenamn i den slutliga MHTML:en. Render-canary
-     *  i replay läser denna lista för att avgöra vilka familjer som måste
-     *  faktiskt resolva. */
+    /** Unika @font-face-familjenamn vi FAKTISKT embeddade (cid:-face) i den
+     *  slutliga MHTML:en. Render-canary i replay läser denna lista för att avgöra
+     *  vilka familjer som måste faktiskt resolva. På den size-gatade pathen är
+     *  detta delmängden vi behöll (oanvända, externa faces ingår INTE). */
     embeddedFamilies: string[] | null;
     /** Commit 4 — Per-hink token-occurrence-räknare (INTE distinkta-på-resolved).
      *  Speglar embedded.fontUrlSummary. För korpus-grep: "har sajten relativa

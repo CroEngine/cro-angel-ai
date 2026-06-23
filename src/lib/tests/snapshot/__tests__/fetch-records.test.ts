@@ -164,6 +164,8 @@ describe("embedMhtmlFonts size-gated loaded-only embedding", () => {
     // …but it is NOT a loaded survivor → the freeze A2 loaded-gate stays green.
     expect(r.unembeddedLoadedFontUrls).toEqual([]);
     expect(r.mhtml).toContain("cid:"); // the used face WAS embedded+rewritten
+    // embeddedFamilies reports only what we embedded — NOT the dropped face.
+    expect(r.embeddedFamilies).toEqual(["Used"]);
   });
 
   it("under budget → embed-all even with loadedFontUrls (gate dormant, goldens stable)", async () => {

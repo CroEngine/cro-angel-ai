@@ -1034,11 +1034,17 @@ export async function embedMhtmlFonts(
       (n, p) => n + Buffer.byteLength(p.body ?? "", "utf8"),
       0,
     );
-    // base64 inflates the binary ~4/3; +120 ≈ per-part header + cid line overhead.
-    const projectedFontBytes = Array.from(urlToBinary.values()).reduce(
-      (n, b) => n + Math.ceil((b.byteLength * 4) / 3) + 120,
-      0,
-    );
+    // Project each font's size in the FINAL MHTML: base64 (4 chars / 3 bytes,
+    // padded to a multiple of 4) + a CRLF every 76 chars (Pass 3 wraps the
+    // base64 body) + ~120 for the part header and cid line. Undercounting the
+    // line-wrapping (~2.6%) would let a marginal site project just under budget
+    // and then externalize instead of going loaded-only — a missed optimization,
+    // not a correctness bug, but cheap to get right.
+    const projectedFontBytes = Array.from(urlToBinary.values()).reduce((n, b) => {
+      const b64 = Math.ceil(b.byteLength / 3) * 4;
+      const wrap = Math.ceil(b64 / 76) * 2;
+      return n + b64 + wrap + 120;
+    }, 0);
     if (nonFontBytes + projectedFontBytes > MHTML_INLINE_THRESHOLD_BYTES) {
       const loadedBasenames = new Set<string>();
       for (const u of loadedSet) {
@@ -1140,7 +1146,11 @@ export async function embedMhtmlFonts(
     newBytes: Buffer.byteLength(out, "utf8"),
     fetchFailures,
     fontUrlsSeen: Array.from(urlToCid.keys()),
-    embeddedFamilies: extractEmbeddedFamilies(out),
+    // cidOnly: report the families we ACTUALLY embedded (cid: face), not every
+    // declared remote face. Identical to embed-all on the normal path (every
+    // face becomes cid:); on the size-gated path it excludes the unused faces
+    // left external, so the freeze-report manifest stays truthful.
+    embeddedFamilies: extractEmbeddedFamilies(out, { cidOnly: true }),
     fetchRecords,
     totalHarvestedOccurrences,
     controlProbes,
