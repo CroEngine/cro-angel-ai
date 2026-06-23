@@ -205,14 +205,26 @@ export function deriveHero(
     const h = norm(heading);
     return !h || HERO_LABEL_BLOCKLIST.test(h) || h.split(" ").length < 2;
   };
+  // A hero is main content, never page chrome or an off-canvas overlay. Without
+  // this, a CTA-bearing cart/nav/search drawer (type "aside") above the fold wins
+  // the heading-based finders when there's no h1 to anchor on — e.g. glossier
+  // picked its cart panel "Edit item" over the real hero "You smell like vacation".
+  // Excluded only from the CTA/heading finders; the h1-anchor finder stays
+  // authoritative. "header" is intentionally NOT excluded (heroes often live in a
+  // <header>); only aside/nav/footer are.
+  const isChrome = (s: PageSection): boolean =>
+    s.type === "aside" || s.type === "nav" || s.type === "footer";
 
   const heroSection =
     sections.find((s) => s.aboveFold && s.heading && matchesH1(s.heading)) ??
     sections.find((s) => s.type === "hero" && s.heading && !isLabel(s.heading)) ??
-    sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading && !isLabel(s.heading)) ??
+    sections.find(
+      (s) =>
+        s.aboveFold && s.containsPrimaryCTA && s.heading && !isLabel(s.heading) && !isChrome(s),
+    ) ??
     // Last resorts: original behaviour (a hero/CTA section even if label-ish).
     sections.find((s) => s.type === "hero") ??
-    sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading) ??
+    sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading && !isChrome(s)) ??
     sections.find((s) => s.type === "form" && s.aboveFold && s.heading);
   if (!heroSection) return undefined;
 
@@ -223,7 +235,10 @@ export function deriveHero(
     ctas.find((c) => c.category === "form_submit" && c.aboveFold);
 
   return {
-    headline: heroSection.heading || "",
+    // Fall back to the section's prominent display text when it has no semantic
+    // heading (styled-<div> hero). displayHeading is only populated in that case,
+    // so a normal h1/h2 hero is unaffected — and it never feeds classification.
+    headline: heroSection.heading || heroSection.displayHeading || "",
     subheadline: heroSection.subheading || "",
     primaryCtaText: heroCta?.text || "",
     primaryCtaIntent: heroCta?.intent || "",

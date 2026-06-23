@@ -31,8 +31,20 @@
 //           to main") from CTA candidates. They are button-ish anchors that
 //           scored cta_primary (hubspot, everlane) and crowded out / replaced
 //           the real hero CTA. Re-bless goldens.
+//   1.4.0 — hero detection on pages with no usable <h1>. Two deriveHero/sections
+//           changes (goldens byte-identical for hubspot/linear — h1 heroes win the
+//           anchor finder first; only hero.headline can move, and only for sites
+//           that hit these paths):
+//           (a) sections.ts derives a `displayHeading` (largest-font text run) for
+//               a section with NO semantic heading; deriveHero uses it as the
+//               headline fallback. Fixes empty heroes on styled-<div> headlines.
+//               Not fed to classifyType, not in the normalized golden.
+//           (b) deriveHero excludes off-canvas/chrome sections (aside/nav/footer)
+//               from the CTA/heading finders. Fixes the no-h1 case where a cart/
+//               search drawer's label was taken as the hero (glossier picked its
+//               cart "Edit item" over the real hero "You smell like vacation").
 
-export const EXTRACTOR_VERSION = "1.3.0" as const;
+export const EXTRACTOR_VERSION = "1.4.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

@@ -125,6 +125,11 @@ export type PageSection = {
   position: number;
   heading: string;
   subheading?: string;
+  /** Most visually-prominent text run in a section that has NO semantic heading
+   *  (h1–h4) — e.g. a styled-<div> hero ("SEE SUMMER BETTER"). A hero-headline
+   *  fallback ONLY; deliberately never used for section classification, so it
+   *  cannot ripple into sectionOrder. Absent when a semantic heading exists. */
+  displayHeading?: string;
   selector?: string; // transient — present in browser script output, stripped before persistence
   rect: SectionRect;
   aboveFold: boolean;

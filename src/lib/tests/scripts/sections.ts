@@ -76,6 +76,43 @@ export const SECTIONS_SCRIPT = `(() => {
     return w.join(' ');
   }
 
+  // Largest-font visible text run inside a section — the DISPLAY headline for a
+  // section that has NO semantic heading (h1–h4), e.g. a styled-<div> hero like
+  // warby-parker "SEE SUMMER BETTER" / glossier / spotify's app-shell. This is a
+  // hero-headline FALLBACK only and is deliberately NOT passed to classifyType,
+  // so it can never move a section's type or sectionOrder (the trap the earlier
+  // attempt hit). Deterministic for a frozen DOM + fixed replay viewport: ranks
+  // by computed font-size, then rendered area, then DOM order (strict-greater
+  // keeps the first winner).
+  function prominentText(el) {
+    const nodes = el.querySelectorAll('h5,h6,p,span,div,a,strong,b,em,li,blockquote');
+    let best = '', bestSize = -1, bestArea = -1;
+    const limit = nodes.length < 600 ? nodes.length : 600;
+    for (let i = 0; i < limit; i++) {
+      const node = nodes[i];
+      if (node.tagName === 'BUTTON') continue;
+      // Direct text nodes only — never a wrapper's concatenated descendant text.
+      let txt = '';
+      const kids = node.childNodes;
+      for (let c = 0; c < kids.length; c++) {
+        if (kids[c].nodeType === 3) txt += kids[c].nodeValue;
+      }
+      txt = txt.replace(/\\s+/g, ' ').trim();
+      if (txt.length < 3 || txt.length > 200) continue;
+      if (txt.split(' ').length < 2) continue; // single word ~ a UI label
+      const r = node.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue; // display:none / collapsed
+      const st = window.getComputedStyle(node);
+      if (st.visibility === 'hidden' || parseFloat(st.opacity) === 0) continue;
+      const size = parseFloat(st.fontSize) || 0;
+      const area = r.width * r.height;
+      if (size > bestSize || (size === bestSize && area > bestArea)) {
+        best = txt; bestSize = size; bestArea = area;
+      }
+    }
+    return best.slice(0, 200);
+  }
+
   function headings(el) {
     const h1s = Array.from(el.querySelectorAll('h1'));
     let heading = '';
@@ -91,7 +128,10 @@ export const SECTIONS_SCRIPT = `(() => {
     if (sub && (h1s.length === 0 || h1s.indexOf(sub) === -1)) {
       subheading = cleanHeadingText(sub).slice(0, 200);
     }
-    return { heading, subheading };
+    // Display-only fallback for a section with no semantic heading. Kept OUT of
+    // the heading field so classifyType + sectionOrder are byte-for-byte unaffected.
+    const displayHeading = heading ? '' : prominentText(el);
+    return { heading, subheading, displayHeading };
   }
 
   function classifyType(el, rect, repeated, heading) {
@@ -251,7 +291,8 @@ export const SECTIONS_SCRIPT = `(() => {
     const hh = headings(el);
     const type = classifyType(el, rect, repeated, hh.heading);
     raw.push({
-      el, rect, repeated, heading: hh.heading, subheading: hh.subheading, type,
+      el, rect, repeated, heading: hh.heading, subheading: hh.subheading,
+      displayHeading: hh.displayHeading, type,
     });
   }
 
@@ -342,6 +383,9 @@ export const SECTIONS_SCRIPT = `(() => {
       containsNavigation: r.type === 'nav' || r.type === 'header' || r.type === 'footer',
     };
     if (sub) entry.subheading = sub;
+    // Only present for no-semantic-heading sections; consumed solely by
+    // deriveHero as a headline fallback (not part of the normalized golden).
+    if (r.displayHeading) entry.displayHeading = r.displayHeading;
     return entry;
   });
   return out;
