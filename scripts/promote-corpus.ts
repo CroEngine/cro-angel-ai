@@ -52,6 +52,10 @@ const flag = (name: string) => process.argv.includes(`--${name}`);
 const name = arg("name");
 const N = Number(arg("n") ?? "3");
 const dryRun = flag("dry-run");
+// --from=<dir>: resume the gate from existing freezes (dir/run0/<name>/…,
+// run1/…) instead of capturing fresh — recovers an interrupted run without
+// spending more Browserbase sessions.
+const fromDir = arg("from");
 
 if (!name) {
   console.error("Usage: bun run scripts/promote-corpus.ts --name=<name> [--n=3] [--dry-run]");
@@ -103,19 +107,32 @@ async function main(): Promise<number> {
   console.log(`[promote] ${name} — #4 score-determinism gate, N=${N} independent freezes\n`);
 
   const roots: string[] = [];
-  for (let i = 0; i < N; i++) {
-    console.log(`[promote] freeze ${i + 1}/${N} …`);
-    roots.push(await freezeOnce(i));
+  if (fromDir) {
+    for (let i = 0; existsSync(join(fromDir, `run${i}`, name!, "page.mhtml")); i++) {
+      roots.push(join(fromDir, `run${i}`));
+    }
+    if (roots.length < 2) {
+      throw new Error(
+        `--from=${fromDir}: need >=2 run<N>/${name}/page.mhtml captures, found ${roots.length}`,
+      );
+    }
+    console.log(`[promote] resuming from ${roots.length} existing freeze(s) in ${fromDir}`);
+  } else {
+    for (let i = 0; i < N; i++) {
+      console.log(`[promote] freeze ${i + 1}/${N} …`);
+      roots.push(await freezeOnce(i));
+    }
   }
 
+  const M = roots.length;
   const goldens: Array<Awaited<ReturnType<typeof goldenOf>>> = [];
-  for (let i = 0; i < N; i++) {
-    console.log(`[promote] replay + normalize ${i + 1}/${N} …`);
+  for (let i = 0; i < M; i++) {
+    console.log(`[promote] replay + normalize ${i + 1}/${M} …`);
     goldens.push(await goldenOf(roots[i]));
   }
 
   let drift = 0;
-  for (let i = 1; i < N; i++) {
+  for (let i = 1; i < M; i++) {
     const d = diffNormalized(goldens[0], goldens[i]);
     if (d.length) {
       drift += d.length;
@@ -127,14 +144,14 @@ async function main(): Promise<number> {
 
   if (drift > 0) {
     console.error(
-      `\n✗ NOT PROMOTED — #4 failed: ${drift} field diff(s) across ${N} freezes. ` +
+      `\n✗ NOT PROMOTED — #4 failed: ${drift} field diff(s) across ${M} freezes. ` +
         `The scored DOM isn't deterministic yet; see drift above and add capture-time ` +
         `normalization (SiteSpec.removeSelectors) before retrying.`,
     );
     return 1;
   }
 
-  console.log(`\n✓ #4 GREEN — byte-identical normalized goldens across ${N} independent freezes.`);
+  console.log(`\n✓ #4 GREEN — byte-identical normalized goldens across ${M} independent freezes.`);
   if (dryRun) {
     console.log("[promote] --dry-run: writing nothing to corpus/.");
     return 0;
@@ -156,8 +173,8 @@ async function main(): Promise<number> {
   meta.notes = spec!.notes ?? meta.notes ?? null;
   meta.promoted = true;
   meta["promotion-basis"] =
-    `promote-corpus.ts N=${N} — #4 score-determinism GREEN (byte-identical normalized ` +
-    `goldens across ${N} independent Browserbase captures), extractor v${EXTRACTOR_VERSION}, ` +
+    `promote-corpus.ts N=${M} — #4 score-determinism GREEN (byte-identical normalized ` +
+    `goldens across ${M} independent Browserbase captures), extractor v${EXTRACTOR_VERSION}, ` +
     `${new Date().toISOString().slice(0, 10)}.`;
   writeFileSync(join(dest, "meta.json"), JSON.stringify(meta, null, 2));
 
