@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "freeze": "bun run scripts/freeze-site.ts",
     "angel": "bun run scripts/angel-report.ts",
+    "quality": "bun run scripts/audit-quality.ts",
     "snapshot": "vitest run src/lib/tests/snapshot",
     "snapshot:update": "SNAPSHOT_UPDATE=1 vitest run src/lib/tests/snapshot",
     "typecheck": "tsc --noEmit"
