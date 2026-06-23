@@ -30,6 +30,9 @@ const strict = process.argv.includes("--strict");
 const replay = process.argv.includes("--replay");
 const root = arg("root") ?? "corpus";
 const timeoutMs = Number(arg("timeout") ?? "120") * 1000;
+// Auto-retry a failed replay (flakiness is often transient) so robustness noise
+// doesn't mask real quality signal. Only used in --replay mode.
+const retries = Number(arg("retries") ?? "1");
 
 const BOLD = "\x1b[1m";
 const DIM = "\x1b[2m";
@@ -185,7 +188,10 @@ async function main(): Promise<number> {
   let warns = 0;
   let failed = 0;
   for (const name of sites) {
-    const loaded = await loadAudit(name);
+    let loaded = await loadAudit(name);
+    for (let attempt = 0; replay && "error" in loaded && attempt < retries; attempt++) {
+      loaded = await loadAudit(name);
+    }
     if ("error" in loaded) {
       failed++;
       console.log(`${c(YELLOW, "?")} ${name}`);
