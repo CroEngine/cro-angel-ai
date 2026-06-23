@@ -22,8 +22,13 @@
 //           exact >=3-word whole-phrase repetition. Fixes duplicated/concatenated
 //           hero headlines (e.g. linear's h1 read 3x via textContent). Word-
 //           rotator case (hubspot) verified unchanged. Re-bless goldens.
+//   1.2.0 — deriveHero anchors on the page h1 + rejects UI-label headings.
+//           Fixes hero mis-selection where off-canvas overlay panels (cart/nav/
+//           modal) typed "hero" had their label taken as the headline
+//           (hubspot "Marketing", spotify "Home", glossier "Shopping Bag") while
+//           the real hero sat in a "content" section. Re-bless goldens.
 
-export const EXTRACTOR_VERSION = "1.1.0" as const;
+export const EXTRACTOR_VERSION = "1.2.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

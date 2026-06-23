@@ -180,11 +180,37 @@ export function buildPageSummary(input: {
   };
 }
 
+// Common off-canvas overlay-panel headings (cart drawers, nav menus, search/
+// account modals) that get mis-typed as hero sections. Rejected as hero
+// headlines unless they actually match the page h1.
+const HERO_LABEL_BLOCKLIST =
+  /^(home|menu|search( our site)?|cart|bag|shopping bag|wishlist|favou?rites|account|my account|log\s?in|sign\s?(in|up)|register|subscribe|newsletter|cookies?|consent|skip to (main )?content)$/i;
+
 export function deriveHero(
   sections: PageSection[],
   ctas: CTAEntity[],
+  h1Texts: string[] = [],
 ): HeroContent | undefined {
+  const norm = (s: string) => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const h1set = h1Texts.map(norm).filter(Boolean);
+  // The page's real <h1> is almost always the hero headline. Anchoring to it
+  // sidesteps the classification bug where off-canvas overlay panels (cart/nav/
+  // modal) get typed "hero" and their label ("Shopping Bag", "Home", "Marketing")
+  // was taken as the headline while the actual hero sat in a "content" section.
+  const matchesH1 = (heading: string): boolean => {
+    const h = norm(heading);
+    return !!h && h1set.some((x) => x.includes(h) || h.includes(x));
+  };
+  const isLabel = (heading: string): boolean => {
+    const h = norm(heading);
+    return !h || HERO_LABEL_BLOCKLIST.test(h) || h.split(" ").length < 2;
+  };
+
   const heroSection =
+    sections.find((s) => s.aboveFold && s.heading && matchesH1(s.heading)) ??
+    sections.find((s) => s.type === "hero" && s.heading && !isLabel(s.heading)) ??
+    sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading && !isLabel(s.heading)) ??
+    // Last resorts: original behaviour (a hero/CTA section even if label-ish).
     sections.find((s) => s.type === "hero") ??
     sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading) ??
     sections.find((s) => s.type === "form" && s.aboveFold && s.heading);
