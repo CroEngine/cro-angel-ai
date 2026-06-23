@@ -113,7 +113,7 @@ export const SECTIONS_SCRIPT = `(() => {
     return best.slice(0, 200);
   }
 
-  function headings(el) {
+  function headings(el, rect) {
     const h1s = Array.from(el.querySelectorAll('h1'));
     let heading = '';
     if (h1s.length > 0) {
@@ -130,7 +130,12 @@ export const SECTIONS_SCRIPT = `(() => {
     }
     // Display-only fallback for a section with no semantic heading. Kept OUT of
     // the heading field so classifyType + sectionOrder are byte-for-byte unaffected.
-    const displayHeading = heading ? '' : prominentText(el);
+    // Only computed for ABOVE-FOLD sections: displayHeading is consumed solely as
+    // the hero headline (and heroes are above the fold), so running the O(nodes)
+    // font-size scan on every below-fold heading-less section is pure waste — and
+    // on heavy SPAs that layout-thrash was slow enough to risk replay timeouts.
+    const aboveFold = !rect || rect.top < viewportH;
+    const displayHeading = heading || !aboveFold ? '' : prominentText(el);
     return { heading, subheading, displayHeading };
   }
 
@@ -288,7 +293,7 @@ export const SECTIONS_SCRIPT = `(() => {
     }
     seen.add(el);
     const repeated = repeatedChildrenCount(el);
-    const hh = headings(el);
+    const hh = headings(el, rect);
     const type = classifyType(el, rect, repeated, hh.heading);
     raw.push({
       el, rect, repeated, heading: hh.heading, subheading: hh.subheading,
