@@ -425,6 +425,18 @@ export async function replayCorpus(
         // Fail-closed: om scopingen inte hittar något (heuristik-miss) faller vi
         // tillbaka på hela freeze-manifestet hellre än att tyst sluta gate:a.
         if (mainDoc.length > 0) manifest = mainDoc;
+        // Size-gate-scoping: en storsajt (Apple ≈ 170 deklarerade faces) embeddar
+        // bara den browser-laddade delmängden och lämnar oanvända @font-face-faces
+        // externa (mhtml-fonts.server.ts). De är fortfarande deklarerade+nåbara, så
+        // mainDoc listar dem — men binärerna droppades MEDVETET, de renderas aldrig
+        // (ej laddade → ingen bbox) och kan inte resolva under file://-replay.
+        // Scope:a canaryn till familjer vi FAKTISKT embeddade (≥1 cid:-face) så att
+        // den bara verifierar render-relevanta fonter. No-op för corpus: där blir
+        // varje face cid: → cidFamilies ⊇ mainDoc → snittet == mainDoc. Used-but-
+        // unembedded fångas redan av A2-gaten vid frysning, inte här.
+        const cidFamilies = new Set(extractEmbeddedFamilies(mhtmlOnDisk, { cidOnly: true }));
+        const scoped = manifest.filter((f) => cidFamilies.has(f));
+        if (scoped.length > 0) manifest = scoped;
       } catch {
         /* fail-closed: behåll embeddedFamilies-manifestet + tomma declaredFamilies */
       }

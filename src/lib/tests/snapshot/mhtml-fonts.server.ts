@@ -23,10 +23,22 @@
 // Success metric is form-agnostic: externalFontSrcCount === 0 after rewrite.
 // That invariant holds for both cid: and data: embedding, and for any host.
 //
-// Restrisk (documented in plan.md): we embed every font URL we find in
-// @font-face rules, regardless of whether the unicode-range subset is
-// actually used. Trade-off vs the alternative (filter via document.fonts):
-// 36 woff2 files for hibob ≈ 200-500 KB, acceptable; correctness > size.
+// Default: we embed every font URL we find in @font-face rules, regardless of
+// whether the unicode-range subset is actually used. Trade-off vs the
+// alternative (filter via document.fonts): 36 woff2 files for hibob ≈
+// 200-500 KB, acceptable; correctness > size. This holds for the vast majority
+// of sites and keeps goldens deterministic (no runtime-dependent embed set).
+//
+// Size-gated exception: a few big sites declare hundreds of @font-face faces
+// (Apple ≈ 170 faces / ~50 MB) while the page actually renders a handful.
+// Embed-all there blows the 10 MB repo cap AND swamps Chromium's cid: resolver
+// at replay (it drops parts → the *used* fonts fail → render drift — the exact
+// thing embedding was meant to prevent). So when the embed-all artifact would
+// exceed the in-repo budget (MHTML_INLINE_THRESHOLD_BYTES) AND we know which
+// fonts the browser actually loaded (`loadedFontUrls`), we embed ONLY the
+// loaded subset; unused faces keep their original url() (left external — never
+// rendered, score-neutral). The gate never fires for small sites (projected
+// size << budget), so their embed set — and goldens — are byte-identical.
 
 import { randomUUID } from "node:crypto";
 import {
@@ -35,6 +47,7 @@ import {
   harvestAllFontUrls,
   type HarvestedFontUrl,
 } from "./harvest-font-urls";
+import { MHTML_INLINE_THRESHOLD_BYTES } from "./externalize.server";
 
 const FONT_EXT_RE = /\.(woff2|woff|ttf|otf|eot)(?:\?[^)'"\s]*)?$/i;
 
@@ -264,6 +277,13 @@ export interface FontEmbedResult {
    *  (then the A2 gate falls back to the full externalFontSrcCount). */
   unembeddedLoadedFontUrls: string[];
   embeddedFontCount: number;
+  /** True when the size-gate fired: the embed-all artifact would have exceeded
+   *  the in-repo budget, so only the browser-loaded font subset was embedded
+   *  (unused @font-face faces left external). False = normal embed-all path. */
+  sizeGatedLoadedOnly: boolean;
+  /** How many fetched-OK fonts the size-gate dropped (referenced-but-unused
+   *  faces left external to keep the artifact in-repo). 0 on the embed-all path. */
+  sizeGatedDroppedCount: number;
   newBytes: number;
   fetchFailures: { url: string; error: string }[];
   fontUrlsSeen: string[];
@@ -465,6 +485,17 @@ function hasRemoteSrc(faceBody: string): boolean {
   return URL_TOKEN_RE.test(m[1]);
 }
 
+// A face we ACTUALLY embedded: its src points at a cid: part (post-rewrite).
+// Distinct from hasRemoteSrc, which also matches faces left external (relative/
+// http) — including the unused faces the size-gate deliberately dropped on a big
+// site. The render-canary keys off this to verify render-relevant fonts only.
+const CID_SRC_RE = /url\(\s*['"]?cid:/i;
+function hasCidSrc(faceBody: string): boolean {
+  const m = faceBody.match(SRC_DECL_RE);
+  if (!m) return false;
+  return CID_SRC_RE.test(m[1]);
+}
+
 function familyFromFaceBody(faceBody: string): string | null {
   const m = faceBody.match(FONT_FAMILY_DECL_RE);
   if (!m) return null;
@@ -474,7 +505,10 @@ function familyFromFaceBody(faceBody: string): string | null {
   return unquoted || null;
 }
 
-export function extractEmbeddedFamilies(mhtmlRaw: string): string[] {
+export function extractEmbeddedFamilies(
+  mhtmlRaw: string,
+  opts: { cidOnly?: boolean } = {},
+): string[] {
   const parsed = parseMhtml(mhtmlRaw);
   const seen = new Set<string>();
   for (const part of parsed.parts) {
@@ -488,7 +522,13 @@ export function extractEmbeddedFamilies(mhtmlRaw: string): string[] {
       // B1: hoppa faces utan remote url()-src. Metric-overrides (size-adjust m.m.)
       // exponeras via extractFontFaceDiagnostics, inte här — en face med
       // url() + size-adjust är fortfarande en riktig remote-font.
-      if (!hasRemoteSrc(body)) continue;
+      //
+      // cidOnly: räkna bara faces vi FAKTISKT embeddade (src → cid:). På en
+      // size-gatad storsajt lämnas oanvända faces externa (relativ/http) — de
+      // ska inte in i canary-manifestet, för deras binärer droppades medvetet
+      // och de renderas aldrig. När inget droppats (corpus: varje face blir
+      // cid:) ger cidOnly samma mängd som remote-varianten → ingen beteendeskillnad.
+      if (opts.cidOnly ? !hasCidSrc(body) : !hasRemoteSrc(body)) continue;
       const family = familyFromFaceBody(body);
       if (family) seen.add(family);
     }
@@ -976,6 +1016,50 @@ export async function embedMhtmlFonts(
     }
   }
 
+  // Loaded-font signal (resource-timing + CDP). Shared by the size-gate below
+  // and the post-rewrite survivor scan. Absolute URLs as the browser saw them;
+  // `resolved` keys in urlToBinary are absolute too, so they're comparable.
+  const loadedSet = new Set(opts.loadedFontUrls ?? []);
+  const gateLoadedSubset = loadedSet.size > 0;
+
+  // Size-gate: when the embed-all artifact would exceed the in-repo budget,
+  // embed only the fonts the browser actually loaded (see file header). Dropping
+  // a *used* font would cause render drift, so "loaded" is matched leniently —
+  // exact URL OR basename — and a miss only over-embeds (safe), never under.
+  // Corpus sites project well under budget → gate never fires → embed-all → goldens stable.
+  let sizeGatedLoadedOnly = false;
+  let sizeGatedDroppedCount = 0;
+  if (gateLoadedSubset) {
+    const nonFontBytes = parsed.parts.reduce(
+      (n, p) => n + Buffer.byteLength(p.body ?? "", "utf8"),
+      0,
+    );
+    // base64 inflates the binary ~4/3; +120 ≈ per-part header + cid line overhead.
+    const projectedFontBytes = Array.from(urlToBinary.values()).reduce(
+      (n, b) => n + Math.ceil((b.byteLength * 4) / 3) + 120,
+      0,
+    );
+    if (nonFontBytes + projectedFontBytes > MHTML_INLINE_THRESHOLD_BYTES) {
+      const loadedBasenames = new Set<string>();
+      for (const u of loadedSet) {
+        const base = u.split(/[?#]/)[0].split("/").pop();
+        if (base) loadedBasenames.add(base.toLowerCase());
+      }
+      const isLoaded = (resolved: string): boolean => {
+        if (loadedSet.has(resolved)) return true;
+        const base = resolved.split(/[?#]/)[0].split("/").pop()?.toLowerCase();
+        return base ? loadedBasenames.has(base) : false;
+      };
+      for (const url of Array.from(urlToBinary.keys())) {
+        if (!isLoaded(url)) {
+          urlToBinary.delete(url);
+          sizeGatedDroppedCount++;
+        }
+      }
+      sizeGatedLoadedOnly = sizeGatedDroppedCount > 0;
+    }
+  }
+
 
   // Pass 2: rewrite CSS bodies — match alla url()-token-former (kvoterad
   // & okvoterad), slå upp på partens originalToResolved-map → urlToCid.
@@ -1021,10 +1105,11 @@ export async function embedMhtmlFonts(
   let externalFontSrcCount = 0;
   const unembeddedFontUrls: string[] = [];
   // Subset of survivors the browser actually loaded — the render-drift-relevant
-  // ones. The rest are referenced-but-unused and score-neutral.
+  // ones. The rest are referenced-but-unused and score-neutral (this now
+  // includes the faces the size-gate deliberately left external on a big site:
+  // not loaded → not here → the A2 loaded-gate stays green). loadedSet /
+  // gateLoadedSubset are defined above (shared with the size-gate).
   const unembeddedLoadedFontUrls: string[] = [];
-  const loadedSet = new Set(opts.loadedFontUrls ?? []);
-  const gateLoadedSubset = loadedSet.size > 0;
   for (let i = 0; i < parsed.parts.length; i++) {
     const part = parsed.parts[i];
     const ct = part.headers["content-type"] || "";
@@ -1050,6 +1135,8 @@ export async function embedMhtmlFonts(
     unembeddedFontUrls,
     unembeddedLoadedFontUrls,
     embeddedFontCount,
+    sizeGatedLoadedOnly,
+    sizeGatedDroppedCount,
     newBytes: Buffer.byteLength(out, "utf8"),
     fetchFailures,
     fontUrlsSeen: Array.from(urlToCid.keys()),

@@ -45,6 +45,12 @@ function fontBuf(byte = 0x77): ArrayBuffer {
   return new Uint8Array([byte, byte, byte, byte]).buffer;
 }
 
+// A font body large enough that two of them project over the 9 MB in-repo
+// budget — used to exercise the size-gate without touching the network.
+function bigFontBuf(bytes: number, byte = 0x77): ArrayBuffer {
+  return new Uint8Array(bytes).fill(byte).buffer;
+}
+
 describe("embedMhtmlFonts fetchRecords", () => {
   it("404 → http_error med httpStatus och error ifyllt", async () => {
     globalThis.fetch = vi.fn(async () =>
@@ -132,6 +138,70 @@ describe("embedMhtmlFonts fetchRecords", () => {
     expect(new Set(r.fetchRecords.map((x) => x.url)).size).toBe(2);
     const dedup = r.fetchRecords.filter((x) => x.outcome === "skipped_dedup");
     expect(dedup).toHaveLength(1);
+  });
+});
+
+describe("embedMhtmlFonts size-gated loaded-only embedding", () => {
+  const TWO_FACES = [
+    `@font-face { font-family: "Used"; src: url(https://cdn.example.com/used.woff2); }`,
+    `@font-face { font-family: "Unused"; src: url(https://cdn.example.com/unused.woff2); }`,
+  ].join("\n");
+
+  it("oversized embed-all + loadedFontUrls → embeds only the loaded subset", async () => {
+    // 2 × 4 MB → projected ≈ 10.7 MB (base64) > 9 MB budget → gate fires.
+    globalThis.fetch = vi.fn(
+      async () => new Response(bigFontBuf(4 * 1024 * 1024), { status: 200, headers: new Headers() }),
+    ) as typeof fetch;
+    const r = await embedMhtmlFonts(mhtml(TWO_FACES), {
+      loadedFontUrls: ["https://cdn.example.com/used.woff2"],
+    });
+    expect(r.sizeGatedLoadedOnly).toBe(true);
+    expect(r.sizeGatedDroppedCount).toBe(1);
+    expect(r.embeddedFontCount).toBe(1); // only the loaded one embedded
+    // The unused face is left external (referenced-but-unused, score-neutral)…
+    expect(r.externalFontSrcCount).toBe(1);
+    expect(r.unembeddedFontUrls).toContain("https://cdn.example.com/unused.woff2");
+    // …but it is NOT a loaded survivor → the freeze A2 loaded-gate stays green.
+    expect(r.unembeddedLoadedFontUrls).toEqual([]);
+    expect(r.mhtml).toContain("cid:"); // the used face WAS embedded+rewritten
+  });
+
+  it("under budget → embed-all even with loadedFontUrls (gate dormant, goldens stable)", async () => {
+    globalThis.fetch = vi.fn(
+      async () => new Response(fontBuf(), { status: 200, headers: new Headers() }),
+    ) as typeof fetch;
+    const r = await embedMhtmlFonts(mhtml(TWO_FACES), {
+      loadedFontUrls: ["https://cdn.example.com/used.woff2"],
+    });
+    expect(r.sizeGatedLoadedOnly).toBe(false);
+    expect(r.sizeGatedDroppedCount).toBe(0);
+    expect(r.embeddedFontCount).toBe(2); // both embedded, exactly as before the change
+    expect(r.externalFontSrcCount).toBe(0);
+  });
+
+  it("oversized but NO loaded signal → embed-all (never drops an unknown-usage font)", async () => {
+    globalThis.fetch = vi.fn(
+      async () => new Response(bigFontBuf(4 * 1024 * 1024), { status: 200, headers: new Headers() }),
+    ) as typeof fetch;
+    const r = await embedMhtmlFonts(mhtml(TWO_FACES)); // no loadedFontUrls
+    expect(r.sizeGatedLoadedOnly).toBe(false);
+    expect(r.sizeGatedDroppedCount).toBe(0);
+    expect(r.embeddedFontCount).toBe(2);
+  });
+
+  it("matches loaded fonts by basename so URL-form drift never drops a used face", async () => {
+    globalThis.fetch = vi.fn(
+      async () => new Response(bigFontBuf(4 * 1024 * 1024), { status: 200, headers: new Headers() }),
+    ) as typeof fetch;
+    // resource-timing reported the used font with a cache-buster query the CSS
+    // url() doesn't have — exact match would miss, basename match keeps it.
+    const r = await embedMhtmlFonts(mhtml(TWO_FACES), {
+      loadedFontUrls: ["https://cdn.example.com/used.woff2?v=abc123"],
+    });
+    expect(r.sizeGatedDroppedCount).toBe(1); // only the genuinely-unused face dropped
+    expect(r.embeddedFontCount).toBe(1);
+    expect(r.unembeddedFontUrls).toContain("https://cdn.example.com/unused.woff2");
+    expect(r.unembeddedFontUrls).not.toContain("https://cdn.example.com/used.woff2");
   });
 });
 
