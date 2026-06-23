@@ -17,12 +17,19 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
+import { replayCorpus } from "../src/lib/tests/snapshot/harness.server";
+import { normalizePageAudit } from "../src/lib/tests/snapshot/normalize";
+
 function arg(name: string): string | undefined {
   const prefix = `--${name}=`;
   return process.argv.find((a) => a.startsWith(prefix))?.slice(prefix.length);
 }
 const strict = process.argv.includes("--strict");
+// --replay: replay captures under --root (lenient) and check the live audit,
+// for breadth captures that have no golden.json. Default reads golden.json.
+const replay = process.argv.includes("--replay");
 const root = arg("root") ?? "corpus";
+const timeoutMs = Number(arg("timeout") ?? "120") * 1000;
 
 const BOLD = "\x1b[1m";
 const DIM = "\x1b[2m";
@@ -122,35 +129,96 @@ function listGoldens(): string[] {
     .sort();
 }
 
-const sites = listGoldens();
-console.log("");
-console.log(c(BOLD, `Audit-quality check — ${root}`));
-console.log(c(DIM, `${sites.length} golden(s) · heuristic accuracy proxies (not ground truth)`));
-console.log("");
+// Recursively find capture dirs (page.mhtml) for --replay over nested breadth trees.
+function findCaptures(dir: string, rel = ""): string[] {
+  let entries;
+  try {
+    entries = readdirSync(join(dir, rel), { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  if (
+    entries.some(
+      (e) => e.isFile() && (e.name === "page.mhtml" || e.name === "page.mhtml.asset.json"),
+    )
+  )
+    return [rel];
+  const out: string[] = [];
+  for (const e of entries)
+    if (e.isDirectory()) out.push(...findCaptures(dir, rel ? join(rel, e.name) : e.name));
+  return out.sort();
+}
 
-let errors = 0;
-let warns = 0;
-for (const name of sites) {
-  const golden = JSON.parse(readFileSync(join(root, name, "golden.json"), "utf8"));
-  const flags = checkGolden(golden);
-  const e = flags.filter((f) => f.level === "ERROR").length;
-  const w = flags.filter((f) => f.level === "WARN").length;
-  errors += e;
-  warns += w;
-  const badge = e > 0 ? c(RED, "✗") : w > 0 ? c(YELLOW, "!") : c(GREEN, "✓");
-  console.log(`${badge} ${name}`);
-  for (const f of flags) {
-    const lvl = f.level === "ERROR" ? c(RED, "ERROR") : c(YELLOW, "WARN ");
-    console.log(`    ${lvl} ${f.code.padEnd(18)} ${f.detail}`);
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`replay timeout ${ms / 1000}s (${label})`)), ms),
+    ),
+  ]);
+}
+
+// Resolve a site to { pageAudit } (the shape checkGolden reads): replay+normalize
+// in --replay mode, else read the committed golden.
+async function loadAudit(name: string): Promise<GoldenAudit | { error: string }> {
+  if (!replay) return JSON.parse(readFileSync(join(root, name, "golden.json"), "utf8"));
+  try {
+    const fresh = await withTimeout(
+      replayCorpus(name, root, { lenientCanary: true }),
+      timeoutMs,
+      name,
+    );
+    return { pageAudit: normalizePageAudit(fresh.pageAudit) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message.split("\n")[0].slice(0, 120) : String(e) };
   }
 }
 
-console.log("");
-console.log(
-  `${c(BOLD, "Summary:")} ${sites.length} sites · ` +
-    `${errors > 0 ? c(RED, errors + " errors") : "0 errors"} · ` +
-    `${warns > 0 ? c(YELLOW, warns + " warns") : "0 warns"}`,
-);
-console.log("");
+async function main(): Promise<number> {
+  const sites = replay ? findCaptures(root) : listGoldens();
+  console.log("");
+  console.log(c(BOLD, `Audit-quality check — ${root}${replay ? " (replay)" : ""}`));
+  console.log(c(DIM, `${sites.length} site(s) · heuristic accuracy proxies (not ground truth)`));
+  console.log("");
 
-process.exit(errors > 0 || (strict && warns > 0) ? 1 : 0);
+  let errors = 0;
+  let warns = 0;
+  let failed = 0;
+  for (const name of sites) {
+    const loaded = await loadAudit(name);
+    if ("error" in loaded) {
+      failed++;
+      console.log(`${c(YELLOW, "?")} ${name}`);
+      console.log(`    ${c(DIM, "replay-failed")} ${loaded.error}`);
+      continue;
+    }
+    const flags = checkGolden(loaded);
+    const e = flags.filter((f) => f.level === "ERROR").length;
+    const w = flags.filter((f) => f.level === "WARN").length;
+    errors += e;
+    warns += w;
+    const badge = e > 0 ? c(RED, "✗") : w > 0 ? c(YELLOW, "!") : c(GREEN, "✓");
+    console.log(`${badge} ${name}`);
+    for (const f of flags) {
+      const lvl = f.level === "ERROR" ? c(RED, "ERROR") : c(YELLOW, "WARN ");
+      console.log(`    ${lvl} ${f.code.padEnd(18)} ${f.detail}`);
+    }
+  }
+
+  console.log("");
+  console.log(
+    `${c(BOLD, "Summary:")} ${sites.length} sites · ` +
+      `${errors > 0 ? c(RED, errors + " errors") : "0 errors"} · ` +
+      `${warns > 0 ? c(YELLOW, warns + " warns") : "0 warns"}` +
+      `${failed ? ` · ${c(YELLOW, failed + " replay-failed")}` : ""}`,
+  );
+  console.log("");
+  return errors > 0 || (strict && warns > 0) ? 1 : 0;
+}
+
+main()
+  .then((code) => process.exit(code))
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
