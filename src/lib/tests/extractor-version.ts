@@ -17,8 +17,13 @@
 // Changelog:
 //   1.0.0 — initial. Lock-in efter att hero-headline / skip-link /
 //           word-rotator-fixarna landat.
+//   1.1.0 — heading/hero text via cleanHeadingText: innerText (visible-only,
+//           drops display:none responsive/a11y headline copies) + collapse of
+//           exact >=3-word whole-phrase repetition. Fixes duplicated/concatenated
+//           hero headlines (e.g. linear's h1 read 3x via textContent). Word-
+//           rotator case (hubspot) verified unchanged. Re-bless goldens.
 
-export const EXTRACTOR_VERSION = "1.0.0" as const;
+export const EXTRACTOR_VERSION = "1.1.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

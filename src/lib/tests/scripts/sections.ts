@@ -59,20 +59,37 @@ export const SECTIONS_SCRIPT = `(() => {
     return allSimilar ? maxRun : 0;
   }
 
+  // Heading text as a human reads it: innerText (drops display:none responsive/
+  // a11y copies) + collapse an exact whole-phrase repetition (>=3-word unit) so
+  // a headline duplicated 2-3x into one element isn't read as "X X X". Mirror of
+  // the helper in pageAudit.ts (scripts are self-contained, no shared imports).
+  function cleanHeadingText(el) {
+    if (!el) return '';
+    var t = ((el.innerText || el.textContent || '') + '').trim().replace(/\\s+/g, ' ');
+    var w = t.split(' ');
+    for (var p = 3; p <= w.length / 2; p++) {
+      if (w.length % p !== 0) continue;
+      var ok = true;
+      for (var i = p; i < w.length; i++) { if (w[i] !== w[i % p]) { ok = false; break; } }
+      if (ok) { w = w.slice(0, p); break; }
+    }
+    return w.join(' ');
+  }
+
   function headings(el) {
     const h1s = Array.from(el.querySelectorAll('h1'));
     let heading = '';
     if (h1s.length > 0) {
-      heading = h1s.map((h) => (h.textContent || '').trim()).filter(Boolean).join(' ');
+      heading = h1s.map((h) => cleanHeadingText(h)).filter(Boolean).join(' ');
     } else {
       const h = el.querySelector('h2,h3,h4');
-      heading = h ? (h.textContent || '').trim() : '';
+      heading = h ? cleanHeadingText(h) : '';
     }
     heading = heading.replace(/\\s+/g, ' ').slice(0, 200);
     const sub = el.querySelector('h2,h3,p');
     let subheading = '';
     if (sub && (h1s.length === 0 || h1s.indexOf(sub) === -1)) {
-      subheading = (sub.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 200);
+      subheading = cleanHeadingText(sub).slice(0, 200);
     }
     return { heading, subheading };
   }
