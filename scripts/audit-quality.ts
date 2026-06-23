@@ -50,6 +50,10 @@ const NAV_LABEL =
 const SKIP_LINK = /^skip to (main )?(content|navigation|nav|search)/i;
 // Informational link masquerading as a conversion CTA.
 const WEAK_CTA = /^(learn more|read more|find out more|see more|explore)\b/i;
+// Actual nav/UI items wrongly taken as a CTA. Narrower than NAV_LABEL: a CTA
+// like "Get started"/"Sign up" is GOOD, so those must NOT be flagged here.
+const CTA_NAV_LABEL =
+  /^(home|menu|search|cart|shopping bag|wishlist|favou?rites|account|my account|log\s?in|sign\s?in)$/i;
 
 interface Flag {
   level: "ERROR" | "WARN";
@@ -138,11 +142,11 @@ function checkGolden(golden: GoldenAudit): Flag[] {
       code: "hero-cta-skiplink",
       detail: `hero CTA is a skip-link: "${heroCta}"`,
     });
-  } else if (NAV_LABEL.test(heroCta)) {
+  } else if (CTA_NAV_LABEL.test(heroCta)) {
     flags.push({
       level: "WARN",
       code: "hero-cta-nav",
-      detail: `hero CTA looks like a UI label: "${heroCta}"`,
+      detail: `hero CTA looks like a nav item: "${heroCta}"`,
     });
   } else if (WEAK_CTA.test(heroCta)) {
     flags.push({
