@@ -747,7 +747,13 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         node = node.parentElement;
       }
       const logoInPath = members.filter((m) => m.hay.indexOf('logo') >= 0).length;
-      const wordmarkShape = widthSpread >= 2 && medAspect >= 1.8;
+      // The pure-visual wordmark path (no logo/customer context word, no "logo"
+      // in markup) is the weakest signal — it fired on booking.com's 16px strip
+      // of 5 unlabeled sister-brand wordmarks. Require >=6 members there: a small
+      // unlabeled wordmark strip is more likely sister-brands / partners /
+      // decoration than a customer-logo wall. Context- or "logo"-backed walls
+      // still qualify at >=4.
+      const wordmarkShape = members.length >= 6 && widthSpread >= 2 && medAspect >= 1.8;
       const accept = ctx || (logoInPath >= 3 && logoInPath * 2 >= members.length) || wordmarkShape;
       if (!accept) continue;
       const vh = window.innerHeight;

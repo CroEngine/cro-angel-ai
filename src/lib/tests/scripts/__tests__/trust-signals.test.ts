@@ -199,13 +199,23 @@ describe("trust signals — customer-logo walls, img + svg (recall + precision)"
   const wordmark = (w: number, h = 22) => `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect/></svg>`;
   const square = (s = 50) => `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><rect/></svg>`;
 
-  test("a wordmark wall (varying widths, wider-than-tall) is detected with no context", async (ctx) => {
+  test("a wordmark wall (>=6, varying widths, wider-than-tall) is detected with no context", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
     const { signals } = await detect(
-      `<section><div style="display:flex;gap:24px">${[120, 60, 95, 140, 72].map((w) => wordmark(w)).join("")}</div></section>`,
+      `<section><div style="display:flex;gap:24px">${[120, 60, 95, 140, 72, 108].map((w) => wordmark(w)).join("")}</div></section>`,
     );
     const cl = signals.find((s) => s.type === "customer_logos");
     expect(cl).toBeTruthy();
+  });
+
+  test("a small (5) unlabeled wordmark strip is NOT a wall (booking sister-brand FP)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // No logo/customer context, no "logo" in markup, only 5 thin wordmarks —
+    // the shape that made booking.com's sister-brand strip read as customer logos.
+    const { types } = await detect(
+      `<footer><div style="display:flex;gap:16px">${[120, 60, 95, 140, 72].map((w) => wordmark(w, 16)).join("")}</div></footer>`,
+    );
+    expect(types.has("customer_logos")).toBe(false);
   });
 
   test("a uniform-square svg cluster IS detected when the container has logo context", async (ctx) => {
@@ -251,6 +261,7 @@ describe("trust signals — customer-logo walls, img + svg (recall + precision)"
         logo("c", 96, 20),
         logo("d", 140, 26),
         logo("e", 72, 22),
+        logo("f", 108, 24),
       ].join("")}</div></section>`,
     );
     expect(types.has("customer_logos")).toBe(true);

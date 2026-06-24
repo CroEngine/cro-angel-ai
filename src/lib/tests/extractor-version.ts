@@ -181,8 +181,19 @@
 //           No corpus golden change (hubspot/linear have none of these tokens;
 //           hubspot review_badges are real, not app-store). Detector-only;
 //           bumped because src/lib/tests/scripts/* changed.
+//   1.12.0 — customer_logos precision: the pure-visual WORDMARK path (no logo/
+//           customer context word, no "logo" in markup) now requires >=6 members.
+//           It fired on booking.com's 16px strip of 5 unlabeled sister-brand
+//           wordmarks; a small unlabeled wordmark strip is more likely sister-
+//           brands / partners / decoration than a customer-logo wall. Context- or
+//           "logo"-backed walls still qualify at >=4, so real walls are
+//           unaffected (vercel 7, intercom 24 keep qualifying on shape; supabase/
+//           notion/linear/stripe/hubspot/figma via context or "logo" path).
+//           Benchmark: customer_logos precision 83->100% (booking FP removed),
+//           recall held at 100%; overall precision 92.9->96.3% (26 TP / 1 FP)
+//           with no recall loss. No corpus golden change.
 
-export const EXTRACTOR_VERSION = "1.11.0" as const;
+export const EXTRACTOR_VERSION = "1.12.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
