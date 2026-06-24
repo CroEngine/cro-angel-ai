@@ -59,8 +59,17 @@
 //               section path). Also: displayHeading (a) computed only for
 //               above-fold sections — pure perf, below-fold values were never read
 //               and on sections-heavy SPAs the per-node scan risked replay timeouts.
+//   1.5.0 — ctas.ts excludes image-only / customer-logo links from CTA candidates.
+//           A button-ish <a> with NO visible text of its own but an <img>/<svg>
+//           child (its label comes from alt/aria) is social proof, not a CTA.
+//           Surfaced by a 50-site measurement sweep: notion's hero "trusted by"
+//           strip (OpenAI/Figma/Ramp/Cursor/Vercel) each scored cta_primary/
+//           conversion, so deriveHero took the hero CTA as "OpenAI" instead of
+//           "Get Notion free"; the same logos inflated CTA counts (linear 30 → 12
+//           total). Re-bless linear golden (ctaSummary.total 30→12, aboveFold 3→2);
+//           hubspot unchanged (no image-only links scored as CTAs there).
 
-export const EXTRACTOR_VERSION = "1.4.0" as const;
+export const EXTRACTOR_VERSION = "1.5.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
