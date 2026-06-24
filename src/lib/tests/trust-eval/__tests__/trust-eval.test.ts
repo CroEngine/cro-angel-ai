@@ -1,15 +1,22 @@
 // Trust-signal benchmark as a CI regression gate.
 //
-// Replays the committed-corpus captures (hubspot/linear/hibob) through the real
-// trust detector and scores precision/recall vs the hand-labeled ground truth
-// (labels.json). The 45 trust-signals.test.ts cases lock SPECIFIC behaviours;
-// this is the HOLISTIC backstop — if the detector degrades broadly on real
-// pages, P/R fall through the floor here. The full 18-site set scores locally
-// when the gitignored fixtures are present (run.ts skips captures not on disk).
+// Replays every labeled capture present on disk through the real trust detector
+// and scores precision/recall vs the hand-labeled ground truth (labels.json).
+// In CI that is 30 sites — the committed corpus (hubspot/linear/hibob) plus the
+// tracked drift-survey fixtures; only the two angel-sample captures
+// (everlane/figma) are gitignored, so a local run scores all 32. The
+// trust-signals.test.ts cases lock SPECIFIC behaviours; this is the HOLISTIC
+// backstop — if the detector degrades broadly on real pages, P/R fall through
+// the floor here.
 //
-// Floors are deliberately loose (the unit tests catch fine regressions) so a
-// single flaky replay can't red the build; they still trip on a real break
-// (e.g. logo or testimonial detection disappearing across all three sites).
+// Floors are calibrated to the measured result with headroom for CI font-render
+// flap, NOT pinned to the wire: at v1.14.0 the 30-site CI score is P=97.8% /
+// R=83.3% (32-site local 98.0 / 84.2). The floors below sit ~6 pts under, so a
+// single flaky signal can't red the build, but a broad regression does — the
+// pre-v1.14.0 precision (90.0%, from the spiegel/ikea false positives this gate
+// is meant to catch) is below the 0.92 floor, and losing a whole detection class
+// drops recall through 0.77. Re-tighten these when P/R climb, or the gate goes
+// slack again.
 //
 // Real engine required: skipped where chromium can't launch (same as the other
 // behaviour-layer suites); runs in CI's Playwright job.
@@ -48,7 +55,10 @@ describe("trust-eval — ground-truth regression gate (committed corpus)", () =>
         (r.fps.length ? `  FP:[${r.fps.join(", ")}]` : "") +
         (r.fns.length ? `  FN:[${r.fns.join(", ")}]` : ""),
     );
-    expect(r.precision).toBeGreaterThanOrEqual(0.8);
-    expect(r.recall).toBeGreaterThanOrEqual(0.65);
-  }, 180_000);
+    expect(r.precision).toBeGreaterThanOrEqual(0.92);
+    expect(r.recall).toBeGreaterThanOrEqual(0.77);
+    // Sequential replay of all 30 CI captures runs ~150-200s and varies with
+    // machine load; the old 180s budget straddled that and timed out flakily
+    // (a spurious red, not a real regression). 360s gives ~2x headroom.
+  }, 360_000);
 });

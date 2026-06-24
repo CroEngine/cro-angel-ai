@@ -70,10 +70,16 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=<chrome> bun run src/lib/tests/trust-eval/ru
 bun run src/lib/tests/trust-eval/run.ts hubspot linear
 ```
 
-`corpus/{hubspot,linear,hibob}` are committed, so the gate runs in CI against
-them (the `trust-eval.test.ts` floor). The other 29 captures live under the
-gitignored `fixtures/` (freezes are large); the runner **skips any capture not
-on disk**, so the same harness scores 3 sites in CI and all 32 locally.
+**CI coverage: 30 of the 32 sites.** The `corpus/{hubspot,linear,hibob}` captures
+*and* the tracked `fixtures/drift-survey/**` captures are committed, so the gate
+(`trust-eval.test.ts`, P ≥ 0.92 / R ≥ 0.77) scores all 30 of them in CI — not
+just the corpus three. Only the two `fixtures/angel-sample/` captures
+(everlane, figma) are gitignored, so a local run scores all 32; the runner
+**skips any capture not on disk**. The `drift-survey` `.gitignore` rule only
+stops *new* large freezes from being committed by accident — the existing
+captures predate it and stay tracked. The CI floor is calibrated ~6 pts under
+the measured 30-site result (P 97.8% / R 83.3% at v1.14.0); re-tighten it when
+the numbers climb.
 
 ## Extending the gate
 
