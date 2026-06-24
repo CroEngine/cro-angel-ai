@@ -45,6 +45,9 @@ jobs:
           src/lib/tests/scripts/__tests__/trust-signals.test.ts
           src/lib/tests/scripts/__tests__/collect-visibility.test.ts
 
+      - name: Run trust-signal benchmark gate (committed corpus)
+        run: bunx vitest run src/lib/tests/trust-eval/__tests__/trust-eval.test.ts
+
       - name: Upload canary artifacts
         if: always()
         uses: actions/upload-artifact@v4
