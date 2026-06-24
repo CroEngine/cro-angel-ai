@@ -2174,8 +2174,8 @@
     },
     "hero": {
       "headline": "The product development system for teams and agents",
-      "primaryCtaText": "",
-      "primaryCtaIntent": "",
+      "primaryCtaText": "Sign up",
+      "primaryCtaIntent": "conversion",
       "aboveFold": true
     },
     "images": {
@@ -2208,8 +2208,8 @@
       }
     },
     "ctaSummary": {
-      "total": 12,
-      "primary": 0,
+      "total": 14,
+      "primary": 1,
       "aboveFold": 2
     },
     "sectionOrder": [

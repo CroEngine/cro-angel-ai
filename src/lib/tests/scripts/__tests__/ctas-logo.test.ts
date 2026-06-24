@@ -93,3 +93,35 @@ describe("CTA classifier — logo / image-only links are not CTAs", () => {
     expect(ctas.some((c) => /Start free trial/.test(c.text || ""))).toBe(true);
   });
 });
+
+describe("CTA classifier — primary scoring (small + outline buttons)", () => {
+  test("a small filled above-fold button is primary (≈72×32, under the old 90×28 floor)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // linear's "Sign up" (≈78×30 = 2334px²) used to score 3 → secondary, so its
+    // hero CTA was empty. A button-sized, surfaced, short-text, above-fold control
+    // must reach cta_primary.
+    await page.setContent(
+      `<html><body><section style="padding:24px"><h1>Hi</h1>` +
+        `<a href="/signup" style="display:inline-block;background:#06f;color:#fff;width:72px;height:32px;line-height:32px;text-align:center">Sign up</a>` +
+        `</section></body></html>`,
+    );
+    const ctas = (await page.evaluate(CTAS_SCRIPT)) as Array<{ text?: string; category?: string }>;
+    const su = ctas.find((c) => (c.text || "").trim() === "Sign up");
+    expect(su?.category).toBe("cta_primary");
+  });
+
+  test("an outline/ghost button (border, no fill) is a surfaced CTA, not dropped", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // hasSurface previously only saw backgroundColor, so a transparent-bg outline
+    // button scored no surface point → fell through to a plain link (dropped).
+    await page.setContent(
+      `<html><body><section style="padding:24px"><h1>Hi</h1>` +
+        `<a href="/contact" style="display:inline-block;border:1px solid #06f;color:#06f;padding:14px 24px;background:transparent">Contact sales</a>` +
+        `</section></body></html>`,
+    );
+    const ctas = (await page.evaluate(CTAS_SCRIPT)) as Array<{ text?: string; category?: string }>;
+    const cs = ctas.find((c) => (c.text || "").trim() === "Contact sales");
+    expect(cs).toBeTruthy();
+    expect(["cta_primary", "cta_secondary"]).toContain(cs?.category);
+  });
+});

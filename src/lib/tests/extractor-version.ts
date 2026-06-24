@@ -68,8 +68,17 @@
 //           "Get Notion free"; the same logos inflated CTA counts (linear 30 → 12
 //           total). Re-bless linear golden (ctaSummary.total 30→12, aboveFold 3→2);
 //           hubspot unchanged (no image-only links scored as CTAs there).
+//   1.6.0 — ctas.ts primary-CTA scoring catches small + outline buttons (real hero
+//           CTAs were scoring secondary). Two changes: (1) hasSurface also counts a
+//           visible border, so outline/ghost buttons (transparent fill) are surfaced
+//           CTAs instead of dropped links; (2) the button-size floor drops 90×28 →
+//           64×28, which missed normal small buttons — linear's above-fold "Sign up"
+//           (≈78×30) scored 3 → secondary, leaving its hero CTA empty. Surgical, not
+//           over-classifying: linear hero CTA "" → "Sign up", primary 0 → 1; both
+//           hubspot/linear +2 total (outline buttons now counted); hubspot primary
+//           unchanged. Re-bless both goldens.
 
-export const EXTRACTOR_VERSION = "1.5.0" as const;
+export const EXTRACTOR_VERSION = "1.6.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

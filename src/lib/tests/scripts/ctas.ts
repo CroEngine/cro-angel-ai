@@ -75,7 +75,12 @@ export const CTAS_SCRIPT = `(() => {
 
   function hasSurface(cs) {
     const bg = cs.backgroundColor || '';
-    return !!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent';
+    if (!!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return true;
+    // Outline / ghost buttons have no fill but a visible border — still a
+    // surfaced, clickable region and a common modern CTA style ("Contact sales").
+    const bw = parseFloat(cs.borderTopWidth) || 0;
+    const bs = cs.borderTopStyle || 'none';
+    return bw > 0 && bs !== 'none' && bs !== 'hidden';
   }
 
   function parseRgb(s) {
@@ -133,7 +138,10 @@ export const CTAS_SCRIPT = `(() => {
       let score = 0;
       if (rect.top < viewportH) score++;
       if (text.length > 0 && text.length <= 32) score++;
-      if (area >= 90 * 28) score++;
+      // Button-sized. The old 90×28 floor missed normal small buttons — linear's
+      // above-fold "Sign up" (≈78×30 = 2334px²) scored 3 → secondary, so the hero
+      // CTA came back empty. 64×28 still excludes inline links / sub-icon chrome.
+      if (area >= 64 * 28) score++;
       if (hasSurface(cs)) score++;
       if (score >= 4) return 'cta_primary';
       if (score >= 2 && hasSurface(cs)) return 'cta_secondary';
