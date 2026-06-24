@@ -138,8 +138,27 @@
 //           wall from icon grids). Re-bless linear golden (gains its svg
 //           customer-logo strip — trustSummary total 2->3, +customer_logos);
 //           hubspot byte-identical (its logos are <img>, already counted).
+//   1.10.0 — customer_logos unified into one wall-based detector over img + svg,
+//           replacing the old GLOBAL img count (>=4 logo-sized imgs anywhere on
+//           the page). That global count had no precision floor, so media /
+//           e-commerce pages read their scattered article/product thumbnails as
+//           a "trusted by" wall (The Verge: 33; rei: 10; patagonia: 6; allbirds).
+//           Now a wall must be a container of >=4 logo-sized media that is a
+//           strip / compact grid (height <= 600 — alone this drops a whole-page
+//           image scatter, e.g. Verge's 13,971px "wall") AND carries a logo
+//           signal: a logo/customer CONTEXT word on the container/an ancestor,
+//           most media with "logo" in src/alt, or a wordmark SHAPE (widths vary
+//           >=2x AND wider-than-tall). One signal per page (largest wall), also
+//           folding in the v1.9.0 svg pass (stripe's img+svg now counts once).
+//           Measured: real walls kept (hubspot, supabase, notion, linear,
+//           vercel, intercom, stripe, figma); false positives dropped (verge,
+//           rei, patagonia, allbirds -> no customer_logos). Re-bless hubspot
+//           golden: trustSummary.aboveFold 1->0 — the old path anchored on the
+//           first logo-sized <img> (a header/nav logo, above fold); the real
+//           customer-logo wall is below the fold. customer_logos count and
+//           linear golden byte-identical.
 
-export const EXTRACTOR_VERSION = "1.9.0" as const;
+export const EXTRACTOR_VERSION = "1.10.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

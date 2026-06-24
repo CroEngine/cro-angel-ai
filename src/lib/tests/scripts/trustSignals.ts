@@ -668,78 +668,65 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     }
   });
 
-  // 3) Customer logos — globally dedupe by normalized src
-  const allLogoImgs = Array.from(document.querySelectorAll('img'));
-  const seenSrcs = new Set();
-  const uniqueLogos = [];
-  for (const img of allLogoImgs) {
-    const r = img.getBoundingClientRect();
-    if (r.width < 40 || r.width > 240 || r.height < 20 || r.height > 120) continue;
-    const raw = img.getAttribute('src') || img.currentSrc || '';
-    if (!raw) continue;
-    const key = raw.split('?')[0];
-    if (seenSrcs.has(key)) continue;
-    seenSrcs.add(key);
-    uniqueLogos.push(img);
-  }
-
-  if (uniqueLogos.length >= 4) {
-    const vh = window.innerHeight;
-    const aboveFoldLogoCount = uniqueLogos.filter((i) => {
-      const r = i.getBoundingClientRect();
-      return r.top < vh && r.bottom > 0;
-    }).length;
-    const altText = uniqueLogos
-      .map((i) => (i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || ''))
-      .join(' ').toLowerCase();
-    const recognized = [];
-    for (const b of RECOGNIZED_BRANDS) if (altText.indexOf(b) >= 0) recognized.push(b);
-    const anchor = uniqueLogos[0];
-    push('customer_logos', String(uniqueLogos.length) + ' logo images', anchor, 'img_alt', {
-      logoCount: uniqueLogos.length,
-      aboveFoldLogoCount: aboveFoldLogoCount,
-      recognizedBrands: Array.from(new Set(recognized)).slice(0, 20),
-    });
-  }
-
-  // 3a) Inline-SVG customer-logo walls. Modern SaaS render "trusted by" logos as
-  // inline <svg> (no src/alt), invisible to the <img> pass above — vercel,
-  // intercom, stripe all hide their customer logos this way. Detect a CLUSTER
-  // (>=4) of logo-sized inline svgs sharing a container, and accept it as a wall
-  // only on a strong logo signal so icon/feature grids never false-fire: either
-  // a logo/customer CONTEXT word on the container or an ancestor, OR a wordmark
-  // SHAPE — widths vary >=2x AND each is wider-than-tall — the signature of brand
-  // wordmarks that uniform-square feature-icon grids never have.
+  // 3) Customer-logo walls (img + inline-svg, unified). A wall is a container
+  // holding >=4 logo-sized media — imgs (deduped by src) and/or inline svgs,
+  // which modern SaaS use for "trusted by" logos (no src/alt), invisible to a
+  // plain <img> scan. Emit ONE customer_logos for the largest wall that shows a
+  // real logo signal, so a media / e-commerce page's scattered article/product
+  // thumbnails don't read as a logo wall — the old global img count read 33
+  // article thumbnails on The Verge as customer logos. A wall must be a strip /
+  // compact grid (height <= 600; alone this drops a whole-page image scatter)
+  // AND carry one of: a logo/customer CONTEXT word on the container or an
+  // ancestor; most media carrying "logo" in src/alt; or a wordmark SHAPE (widths
+  // vary >=2x AND each wider-than-tall) — brand wordmarks that uniform
+  // article/product/icon grids never have.
   const LOGO_CTX = /logo|customer|client|partner|brand|trusted|compan|integrat|powered|works with|used by|backed by/i;
-  const logoSvgs = Array.from(document.querySelectorAll('svg')).filter((s) => {
-    const r = s.getBoundingClientRect();
-    if (r.width < 40 || r.width > 240 || r.height < 14 || r.height > 120) return false;
-    const cs = window.getComputedStyle(s);
+  const inLogoBox = (r) => r.width >= 40 && r.width <= 240 && r.height >= 14 && r.height <= 120;
+  const logoVisible = (el) => {
+    const cs = window.getComputedStyle(el);
     if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity || '1') === 0) return false;
-    return true;
-  });
-  if (logoSvgs.length >= 4 && logoSvgs.length <= 400) {
-    const svgSet = new Set(logoSvgs);
-    // each svg -> nearest ancestor (<=4 hops) holding >=4 logo-svgs (the "wall")
-    const wallFor = (svg) => {
-      let p = svg.parentElement, hops = 0;
+    const r = el.getBoundingClientRect();
+    return r.width > 1 && r.height > 1;
+  };
+  const logoCands = [];
+  const seenLogoSrc = new Set();
+  for (const img of document.querySelectorAll('img')) {
+    if (!logoVisible(img)) continue;
+    const r = img.getBoundingClientRect();
+    if (!inLogoBox(r)) continue;
+    const src = (img.getAttribute('src') || img.currentSrc || '').split('?')[0];
+    if (!src || seenLogoSrc.has(src)) continue;
+    seenLogoSrc.add(src);
+    logoCands.push({ el: img, kind: 'img', r, hay: ((img.getAttribute('alt') || '') + ' ' + src).toLowerCase() });
+  }
+  for (const svg of document.querySelectorAll('svg')) {
+    if (!logoVisible(svg)) continue;
+    const r = svg.getBoundingClientRect();
+    if (!inLogoBox(r)) continue;
+    const cls = (svg.className && svg.className.toString && svg.className.toString()) || '';
+    logoCands.push({ el: svg, kind: 'svg', r, hay: ((svg.getAttribute('aria-label') || '') + ' ' + cls).toLowerCase() });
+  }
+  if (logoCands.length >= 4 && logoCands.length <= 600) {
+    const candSet = new Set(logoCands.map((c) => c.el));
+    // each candidate -> nearest ancestor (<=4 hops) holding >=4 candidates (the wall)
+    const wallFor = (el) => {
+      let p = el.parentElement, hops = 0;
       while (p && p !== document.body && hops++ < 4) {
         let c = 0;
-        for (const o of svgSet) { if (p.contains(o)) { c++; if (c >= 4) break; } }
+        for (const o of candSet) { if (p.contains(o)) { c++; if (c >= 4) break; } }
         if (c >= 4) return p;
         p = p.parentElement;
       }
       return null;
     };
     const byWall = new Map();
-    for (const s of logoSvgs) {
-      const w = wallFor(s);
+    for (const cand of logoCands) {
+      const w = wallFor(cand.el);
       if (!w) continue;
       const arr = byWall.get(w) || [];
-      arr.push(s);
+      arr.push(cand);
       byWall.set(w, arr);
     }
-    // keep only the outermost wall of any nested pair (avoid double-counting)
     const wallEls = Array.from(byWall.keys());
     const outerWalls = wallEls.filter((a) => !wallEls.some((b) => b !== a && b.contains(a)));
     const qualifying = [];
@@ -747,11 +734,10 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       const members = byWall.get(wall);
       if (!members || members.length < 4) continue;
       const wr = wall.getBoundingClientRect();
-      if (wr.height > 400) continue; // walls are strips/short grids, not full-bleed art
-      const boxes = members.map((m) => m.getBoundingClientRect());
-      const widths = boxes.map((r) => r.width);
+      if (wr.height > 600) continue; // strip/compact grid only; drops page-wide scatter
+      const widths = members.map((m) => m.r.width);
       const widthSpread = Math.max.apply(null, widths) / Math.max(1, Math.min.apply(null, widths));
-      const aspects = boxes.map((r) => r.width / Math.max(1, r.height)).sort((a, b) => a - b);
+      const aspects = members.map((m) => m.r.width / Math.max(1, m.r.height)).sort((a, b) => a - b);
       const medAspect = aspects[Math.floor(aspects.length / 2)];
       let ctx = false, node = wall;
       for (let i = 0; i < 4 && node && node !== document.body; i++) {
@@ -760,25 +746,30 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         if (LOGO_CTX.test(hay)) { ctx = true; break; }
         node = node.parentElement;
       }
-      const wordmarkShape = members.length >= 5 && widthSpread >= 2 && medAspect >= 1.8;
-      if (!ctx && !wordmarkShape) continue;
+      const logoInPath = members.filter((m) => m.hay.indexOf('logo') >= 0).length;
+      const wordmarkShape = widthSpread >= 2 && medAspect >= 1.8;
+      const accept = ctx || (logoInPath >= 3 && logoInPath * 2 >= members.length) || wordmarkShape;
+      if (!accept) continue;
       const vh = window.innerHeight;
+      const wallHay = members.map((m) => m.hay).join(' ');
+      const recognized = [];
+      for (const b of RECOGNIZED_BRANDS) if (wallHay.indexOf(b) >= 0) recognized.push(b);
       qualifying.push({
         wall,
         count: members.length,
-        aboveFoldLogoCount: boxes.filter((r) => r.top < vh && r.bottom > 0).length,
+        aboveFoldLogoCount: members.filter((m) => m.r.top < vh && m.r.bottom > 0).length,
+        recognizedBrands: Array.from(new Set(recognized)).slice(0, 20),
       });
     }
-    // Emit ONE signal (like the <img> pass): a page has a logo wall or it
-    // doesn't. Anchor on the largest qualifying wall so a multi-strip site
-    // (stripe: several "company-icons" rows) counts once, not once per row.
+    // Emit ONE signal: a page has a logo wall or it doesn't. Anchor on the
+    // largest qualifying wall so a multi-strip site counts once, not per row.
     if (qualifying.length) {
       qualifying.sort((a, b) => b.count - a.count);
       const top = qualifying[0];
-      push('customer_logos', String(top.count) + ' logo images', top.wall, 'svg_wall', {
+      push('customer_logos', String(top.count) + ' logo images', top.wall, 'logo_wall', {
         logoCount: top.count,
         aboveFoldLogoCount: top.aboveFoldLogoCount,
-        mediaType: 'svg',
+        recognizedBrands: top.recognizedBrands,
         wallCount: qualifying.length,
       });
     }

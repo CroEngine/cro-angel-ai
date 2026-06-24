@@ -1970,7 +1970,7 @@
     },
     "trustSummary": {
       "total": 4,
-      "aboveFold": 1,
+      "aboveFold": 0,
       "byType": {
         "social_proof_count": 1,
         "testimonial": 1,

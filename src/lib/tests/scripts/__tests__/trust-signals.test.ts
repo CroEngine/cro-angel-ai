@@ -193,7 +193,7 @@ describe("trust signals — a rating block is not also counted as social proof",
   });
 });
 
-describe("trust signals — inline-SVG customer-logo walls (recall + precision)", () => {
+describe("trust signals — customer-logo walls, img + svg (recall + precision)", () => {
   // varying-width, short inline-svg wordmarks (vercel/intercom/linear render
   // their "trusted by" logos this way; the <img> pass can't see them).
   const wordmark = (w: number, h = 22) => `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect/></svg>`;
@@ -238,5 +238,46 @@ describe("trust signals — inline-SVG customer-logo walls (recall + precision)"
     const strip = `<div class="logos" style="display:flex;gap:20px">${[120, 60, 95, 140, 72].map((w) => wordmark(w)).join("")}</div>`;
     const { signals } = await detect(`<section>${strip}<hr>${strip}</section>`);
     expect(signals.filter((s) => s.type === "customer_logos").length).toBe(1);
+  });
+
+  // --- <img> walls (unified with svg) + the media false-positive guard ---
+
+  test("an <img> wordmark wall (varying widths) is detected", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<section><div style="display:flex;gap:20px">${[
+        logo("a", 120, 24),
+        logo("b", 64, 22),
+        logo("c", 96, 20),
+        logo("d", 140, 26),
+        logo("e", 72, 22),
+      ].join("")}</div></section>`,
+    );
+    expect(types.has("customer_logos")).toBe(true);
+  });
+
+  test("a uniform <img> grid with 'logo' in alt/src is detected", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<section><div>${[0, 0, 0, 0, 0].map((_, i) => logo(`brand${i} logo`, 80, 40)).join("")}</div></section>`,
+    );
+    expect(types.has("customer_logos")).toBe(true);
+  });
+
+  test("a uniform-square <img> thumbnail grid with no logo signal is NOT a wall (the media FP)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // 6 square photos, generic alt, container has no logo/customer context —
+    // the shape that made The Verge's article thumbnails read as 33 logos.
+    const { types } = await detect(
+      `<section class="article-grid"><div>${[
+        "Top stories today",
+        "Breaking news roundup",
+        "Editor's picks",
+        "Latest reviews",
+        "Trending now",
+        "More coverage",
+      ].map((alt) => logo(alt, 80, 80)).join("")}</div></section>`,
+    );
+    expect(types.has("customer_logos")).toBe(false);
   });
 });
