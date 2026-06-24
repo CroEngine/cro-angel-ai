@@ -120,3 +120,15 @@ Källor: CSS-animationer (mid-frame transform), `document.fonts.ready` (pin = ca
 4. `.lovable/plan.md` — stryk B-DOM/B-render-uppdelning, ersätt med "B = ett block, headless via replayCorpus, kontrakt i B-CONTRACT.md, write-gate 2×N=3"; uppdatera leveransstatus med B0 v4-utfall.
 
 Steg-0-grinden hård. Två-trippel-gate default. Dold-flip-rad obligatorisk i B0.2. Per-konsument impact-kolumner i B0.3. Viewport-pin egen rad. Font-settle delad med canary.
+
+---
+
+## Leveransstatus B0 v4 — 2026-06-24
+
+- B-DOM / B-render-uppdelningen är död. B = ett block, headless via `replayCorpus`. Kontrakt i `fixtures/determinism/B-CONTRACT.md`. Write-gate default = 2×N=3.
+- **B0.2 steg 0 — kvitterad mot `src/lib/tests/snapshot/normalize.ts`.** Alla förväntade konstanter och regler matchar källan exakt (yBand=200, score=10, salience=0.2, bgContrast=1, area=sig1, hostOnly, COOKIE_BANNER_RX 8-fras-lista, normTrustDebug default entries:false, normalizePageAudit drops auditedAt/httpHeaders/section-rects, description→hasDescription, title/h1/hero trim, elementKey-sort). Inga oväntade extra regler. Inga avvikelser att rapportera.
+- **B0.2 fil skriven:** `fixtures/determinism/NORMALIZE-COLLAPSE-SET.md` med granskningslins + steg-0-kvitterings­tabell + regeluppsättning. Kvantregler = två tabellrader vardera ((a) sub-kvant osynlig, (b) dold boundary-straddle → falsk-GREEN). Animation-transform-anmärkning hänvisar till `animation:mid-frame-transform` i `MECHANISM-INVENTORY` (D1 verifierad landad i `scripts/mechanism-inventory.ts:132`).
+- **B0.3 fil skriven:** `fixtures/determinism/REPLAY-NONDETERMINISM-SURFACE.md` med fyra konsument-impact-kolumner (snapshot.test, render-canary, breadth-replay, breadth-smoke) + viewport-pin som egen rad + font-settle-pin = canary Gate 1 delad impl. Hypotes-formulering villkorad. Impact-celler markerade `invariant` / `invalidates: <artefakt>` / `unknown — needs measurement`.
+- **B0.1:** Konsoliderad i `B-CONTRACT.md` (driver, golden-shape, write-gate, delade pin-punkter, vad kontraktet inte binder).
+- **Block B är build-redo** mot detta kontrakt. Pinningen implementeras mot B0.3-kartan; varje pin uppdaterar "Hanterad idag?"-kolumnen och flyttar impact-celler från `unknown` till `invariant` / `invalidates: …`.
+
