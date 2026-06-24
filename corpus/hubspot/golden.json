@@ -1969,9 +1969,10 @@
       }
     },
     "trustSummary": {
-      "total": 3,
+      "total": 4,
       "aboveFold": 1,
       "byType": {
+        "social_proof_count": 1,
         "testimonial": 1,
         "customer_logos": 1,
         "review_badges": 1
@@ -1991,8 +1992,7 @@
         "quote-block/rejected/text length 38": 1,
         "quote-block/rejected/text length 39": 2,
         "quote-block/rejected/text length 601": 3,
-        "quote-block/rejected/text length 640": 3,
-        "text-pattern/rejected/substring-fragment-mid-sentence": 1
+        "quote-block/rejected/text length 640": 3
       }
     },
     "ctaSummary": {

@@ -7,11 +7,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   const PATTERNS = {
     testimonial:        /testimonial|kundr[öo]st|kundcitat|customer story|case study/i,
     review_rating:      /\\b(\\d[.,]\\d)\\s*\\/\\s*5\\b|\\b(\\d[.,]\\d)\\s*av\\s*5\\b|\\b(\\d[.,]\\d)\\s*out of\\s*5\\b/i,
-    trusted_by:         /\\b(trusted by|used by|anv[äa]nds av|joined by|loved by|trusted globally by)\\s+[\\d\\w]|featured in|som setts i|as seen in/i,
+    trusted_by:         /\\b(trusted by|used by|anv[äa]nds av|joined by|loved by|trusted globally by)\\s+[\\d\\w]/i,
     certification:      /\\bISO\\s?\\d{4,5}\\b|\\bGDPR\\b|\\bHIPAA\\b|\\bSOC ?2\\b|\\bPCI[- ]?DSS\\b|certifierad|certified/i,
-    guarantee:          /(\\d+)[- ]?(day|dagars?)\\s+(money[- ]back|n[öo]jd[- ]?kund|garanti|guarantee)|return policy|[öo]ppet k[öo]p|money[- ]back guarantee/i,
+    guarantee:          /(\\d+)[- ]?(day|dagars?)\\s+(money[- ]back|n[öo]jd[- ]?kund|garanti|guarantee)|return policy|[öo]ppet k[öo]p|money[- ]back guarantee|\\bguarantee[ds]?\\b|\\bwarranty\\b|\\bgaranti\\b/i,
     secure_payment:     /secure (checkout|payment)|s[äa]ker betalning|ssl secured|256[- ]bit/i,
-    press_mention:      /as seen in|as featured in|som setts i|i pressen|in the news/i,
+    press_mention:      /as seen in|featured in|som setts i|i pressen|in the news/i,
     social_proof_count: /\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d{4,})\\+?\\s*(customers|users|members|kunder|anv[äa]ndare|medlemmar|downloads|nedladdningar|reviews|recensioner)/i,
     org_number:         /\\b\\d{6}-\\d{4}\\b|\\bVAT[: ]?[A-Z]{2}\\d{6,}\\b/i,
   };
@@ -264,11 +264,21 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     if (!leaf) continue;
     const text = (el.innerText || el.textContent || '').trim();
     if (!text || text.length > 600) continue;
+    let blockHadRating = false;
     for (const type in PATTERNS) {
       const rx = PATTERNS[type];
       rx.lastIndex = 0;
       const m = rx.exec(text);
       if (!m) continue;
+      // A "N reviews" volume inside a block that ALSO states an X/5 rating is the
+      // review COUNT (already captured as review_rating.reviewCount), not an
+      // independent social-proof stat. review_rating is evaluated first (PATTERNS
+      // order), so skip the redundant social_proof_count for the same block —
+      // otherwise a product card "1,306 reviews · 4.6/5" counts as two signals.
+      if (type === 'social_proof_count' && blockHadRating) {
+        logDecision('text-pattern', 'rejected', 'redundant-with-review_rating-same-block', el, text);
+        continue;
+      }
       // Sentence-boundary anchor: the match must start at text[0] (or after
       // [.!?]\\s) and end at [.!?] (with optional trailing whitespace) or at
       // block-end. Rejects mid-sentence substring matches like
@@ -279,9 +289,20 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       const startOk = start === 0 || /[.!?]\\s/.test(before2);
       const after = text.slice(end);
       const endOk = /^\\s*$/.test(after) || /^[.!?](\\s|$)/.test(after);
-      if (!startOk || !endOk) {
-        logDecision('text-pattern', 'rejected', 'substring-fragment-mid-sentence', el, text, {
-          matchedText: m[0], startOk: startOk, endOk: endOk,
+      // A SHORT block (badge, caption, label, heading) IS trust copy — the
+      // matched keyword is the whole point of the block, so accept it even when
+      // more words follow ("GDPR Compliant", "30-day money-back guarantee", "As
+      // seen in TechCrunch", "Trusted by 4,000+ companies", "Rated 4.8 out of 5
+      // by 2,341 customers"). The strict start+end sentence anchor only guards
+      // LONG prose blocks, where a keyword buried mid-paragraph is an incidental
+      // fragment, not a signal. Without the exemption the anchor silently
+      // dropped ~2/3 of real-world trust copy (every phrase with a trailing
+      // word). Every PATTERN already carries \\b word boundaries / a specific
+      // numeric format, so the keyword can't match inside another word.
+      const SHORT_TRUST_BLOCK = 120;
+      if (!(startOk && endOk) && text.length > SHORT_TRUST_BLOCK) {
+        logDecision('text-pattern', 'rejected', 'incidental-keyword-in-long-prose', el, text, {
+          matchedText: m[0], startOk: startOk, endOk: endOk, blockLen: text.length,
         });
         continue;
       }
@@ -297,6 +318,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         });
       }
       push(type, text, el, 'text', extras);
+      if (type === 'review_rating') blockHadRating = true;
     }
   }
 
@@ -575,10 +597,26 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
 
 
-  // 2) Star icons clusters
+  // 2) Star icons clusters.
+  // CRITICAL precision filter: [class*="star"] also matches the CSS-utility
+  // tokens "items-start", "col-start-2", "row-start-1", "self-start",
+  // "justify-start" (every one contains the substring "star"), so on any
+  // Tailwind/grid site (vercel, patagonia, …) hundreds of layout cells were
+  // collected as "stars" and miscounted into phantom rating clusters
+  // (vercel reported a bogus "avg 1.33", patagonia "avg 0"). Drop a "star"
+  // candidate unless it carries a REAL star token — "star" NOT inside "start"
+  // (star-not-followed-by-t) — or a star aria-label. "rating"-class candidates
+  // pass through unchanged: utility CSS has no "rating" false friend, and
+  // tightening it would drop camelCase widgets like MUI's "MuiRating-icon".
+  const STAR_TOKEN = /(^|[^a-z])star(?!t)/i;
   const starNodes = Array.from(document.querySelectorAll(
     '[class*="star" i], [class*="rating" i], svg[aria-label*="star" i], i[class*="fa-star"]'
-  ));
+  )).filter((n) => {
+    const cls = (n.className && n.className.toString()) || '';
+    const aria = (n.getAttribute && n.getAttribute('aria-label')) || '';
+    if (/rating/i.test(cls)) return true;                 // unchanged from before
+    return STAR_TOKEN.test(cls) || STAR_TOKEN.test(aria); // "star" but not "start"
+  });
   const byParent = new Map();
   for (const n of starNodes) {
     const p = n.parentElement;
@@ -726,15 +764,30 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
 
 
-  // 4) Payment logos
+  // 4) Payment-method logos. A genuine "we accept …" strip lists SEVERAL
+  // providers, so require >=2 DISTINCT payment brands. Stripe/Klarna/PayPal/
+  // Apple-Pay/Google-Pay also appear as marquee CUSTOMER logos, so a lone one is
+  // far more likely a customer logo than a checkout trust badge — counting it
+  // inflated trust (a single Stripe logo became "1 payment provider logos").
+  // Single-provider secure-payment claims are still covered by the textual
+  // PATTERNS.secure_payment scan ("secure checkout" / "SSL" / "256-bit").
   const paymentRx = /(visa|mastercard|amex|american express|paypal|stripe|klarna|swish|apple pay|google pay)/i;
   const paymentImgs = Array.from(document.querySelectorAll('img[alt], img[src]')).filter((i) => {
+    const r = i.getBoundingClientRect();
+    if (r.width < 16 || r.height < 8) return false;
     const alt = (i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || '');
     return paymentRx.test(alt);
   });
-  if (paymentImgs.length > 0) {
+  const paymentBrands = new Set();
+  for (const i of paymentImgs) {
+    const m = ((i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || '')).match(paymentRx);
+    if (m) paymentBrands.add(m[0].toLowerCase());
+  }
+  if (paymentBrands.size >= 2) {
     const parent = paymentImgs[0].closest('div, section, footer, ul') || paymentImgs[0].parentElement;
-    if (parent) push('secure_payment', paymentImgs.length + ' payment provider logos', parent, 'img_alt');
+    if (parent) push('secure_payment', paymentImgs.length + ' payment provider logos', parent, 'img_alt', {
+      paymentBrands: Array.from(paymentBrands).slice(0, 10),
+    });
   }
 
   // 5) Contact info

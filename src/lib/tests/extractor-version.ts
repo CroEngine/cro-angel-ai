@@ -86,8 +86,45 @@
 //           CTA like "Contact sales" still wins when it's the only primary →
 //           strictly additive, never a regression. Corpus byte-identical (hubspot/
 //           linear hero CTAs are already conversion-worded — linear's "Sign up").
+//   1.8.0 — trustSignals.ts accuracy pass (replayed against real captures:
+//           supabase, rei, airbnb, patagonia, vercel, gymshark, notion, hubspot).
+//           Six changes; only hubspot's golden moves (gains the real "299,000+
+//           customers" social proof the old anchor dropped — total 3→4); linear
+//           byte-identical.
+//           (a) RECALL — short-block sentence-anchor exemption. The text-pattern
+//               scan required the matched keyword to BOTH start and end a sentence,
+//               so any phrase with a trailing word was rejected: "GDPR Compliant",
+//               "30-day money-back guarantee", "As seen in TechCrunch", "Trusted by
+//               4,000+ companies", "Rated 4.8 out of 5 by 2,341 customers" — ~2/3 of
+//               real trust copy silently dropped. Now a SHORT block (<=120 chars:
+//               badge/caption/label/heading) is accepted on keyword presence; the
+//               strict anchor still guards LONG prose (incidental keyword in a
+//               paragraph stays rejected). Recovered supabase 0→8 (trusted_by + 5
+//               certs), airbnb 0→11 (listing ratings), notion →5, hubspot +1.
+//           (b) PRECISION — star clusters drop CSS-utility false friends. The
+//               [class*="star"] selector also matched "items-start" / "col-start-2"
+//               / "row-start-1" / "self-start" (all contain the substring "star"),
+//               so every Tailwind/grid site coined phantom rating clusters (vercel
+//               "avg 1.33", patagonia "avg 0"). Candidates now need a real token —
+//               "star" not inside "start", or "rating" not inside "operating" —
+//               while genuine widgets (rei "avg 4.52") survive.
+//           (c) PRECISION — a payment-method strip needs >=2 DISTINCT brands. A lone
+//               Stripe/Klarna/PayPal/Apple-Pay image is a marquee CUSTOMER logo, not
+//               a checkout badge; one such image used to emit "1 payment provider
+//               logos". Textual "secure checkout / SSL / 256-bit" still covers
+//               single-provider claims.
+//           (d) PRECISION — trusted_by no longer carries the press cues "as seen in"
+//               / "featured in"; those move wholly to press_mention, so an "As seen
+//               in …" line is one signal, not double-typed as trusted_by + press.
+//           (e) PRECISION — within one block, a "N reviews" volume that co-occurs
+//               with an X/5 rating is the review COUNT (already on
+//               review_rating.reviewCount), not an independent social_proof_count —
+//               a product card "1,306 reviews · 4.6/5" counts once (rei 28→22).
+//           (f) RECALL — guarantee also matches bare "guarantee(d)" / "warranty" /
+//               "garanti", catching badges like patagonia's "Ironclad Guarantee"
+//               that the day/money-back/return-policy framing missed.
 
-export const EXTRACTOR_VERSION = "1.7.0" as const;
+export const EXTRACTOR_VERSION = "1.8.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
