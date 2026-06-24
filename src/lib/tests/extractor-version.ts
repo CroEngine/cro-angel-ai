@@ -123,8 +123,23 @@
 //           (f) RECALL — guarantee also matches bare "guarantee(d)" / "warranty" /
 //               "garanti", catching badges like patagonia's "Ironclad Guarantee"
 //               that the day/money-back/return-policy framing missed.
+//   1.9.0 — customer_logos also detects inline-SVG logo walls (recall). Modern
+//           SaaS render their "trusted by" logos as inline <svg> (no src/alt),
+//           invisible to the <img>-based pass — vercel, intercom, linear, stripe
+//           all hide customer logos this way. A cluster of >=4 logo-sized inline
+//           svgs sharing a container is accepted as a wall ONLY on a strong logo
+//           signal so icon/feature grids never false-fire: a logo/customer
+//           CONTEXT word on the container or an ancestor, OR a wordmark SHAPE
+//           (widths vary >=2x AND each is wider-than-tall) — the signature of
+//           brand wordmarks that uniform-square icon grids lack. One signal per
+//           page (largest wall), like the <img> pass. Measured: vercel 0->1,
+//           intercom +logos, stripe's multi-strip 6->1(svg); precision-clean on
+//           hubspot/supabase/notion/glossier/airbnb/verge/figma (no spurious
+//           wall from icon grids). Re-bless linear golden (gains its svg
+//           customer-logo strip — trustSummary total 2->3, +customer_logos);
+//           hubspot byte-identical (its logos are <img>, already counted).
 
-export const EXTRACTOR_VERSION = "1.8.0" as const;
+export const EXTRACTOR_VERSION = "1.9.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

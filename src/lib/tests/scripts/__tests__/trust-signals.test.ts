@@ -192,3 +192,51 @@ describe("trust signals — a rating block is not also counted as social proof",
     expect(types.has("social_proof_count")).toBe(false);
   });
 });
+
+describe("trust signals — inline-SVG customer-logo walls (recall + precision)", () => {
+  // varying-width, short inline-svg wordmarks (vercel/intercom/linear render
+  // their "trusted by" logos this way; the <img> pass can't see them).
+  const wordmark = (w: number, h = 22) => `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect/></svg>`;
+  const square = (s = 50) => `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><rect/></svg>`;
+
+  test("a wordmark wall (varying widths, wider-than-tall) is detected with no context", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { signals } = await detect(
+      `<section><div style="display:flex;gap:24px">${[120, 60, 95, 140, 72].map((w) => wordmark(w)).join("")}</div></section>`,
+    );
+    const cl = signals.find((s) => s.type === "customer_logos");
+    expect(cl).toBeTruthy();
+  });
+
+  test("a uniform-square svg cluster IS detected when the container has logo context", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<section class="customer-logos"><div>${[0, 0, 0, 0, 0].map(() => square(56)).join("")}</div></section>`,
+    );
+    expect(types.has("customer_logos")).toBe(true);
+  });
+
+  test("a uniform-square ICON grid with no logo context is NOT a logo wall", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // 6 identical 48x48 squares in a "feature-grid" — the false-positive shape.
+    const { types } = await detect(
+      `<section class="feature-grid"><div>${[0, 0, 0, 0, 0, 0].map(() => square(48)).join("")}</div></section>`,
+    );
+    expect(types.has("customer_logos")).toBe(false);
+  });
+
+  test("fewer than 4 logo svgs is not a wall", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<section class="logos"><div>${[120, 80, 100].map((w) => wordmark(w)).join("")}</div></section>`,
+    );
+    expect(types.has("customer_logos")).toBe(false);
+  });
+
+  test("multiple logo strips count once (single customer_logos signal)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const strip = `<div class="logos" style="display:flex;gap:20px">${[120, 60, 95, 140, 72].map((w) => wordmark(w)).join("")}</div>`;
+    const { signals } = await detect(`<section>${strip}<hr>${strip}</section>`);
+    expect(signals.filter((s) => s.type === "customer_logos").length).toBe(1);
+  });
+});

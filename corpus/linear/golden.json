@@ -2195,10 +2195,11 @@
       }
     },
     "trustSummary": {
-      "total": 2,
+      "total": 3,
       "aboveFold": 0,
       "byType": {
-        "testimonial": 2
+        "testimonial": 2,
+        "customer_logos": 1
       }
     },
     "trustEvidence": {

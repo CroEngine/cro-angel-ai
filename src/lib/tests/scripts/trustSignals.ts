@@ -702,6 +702,88 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     });
   }
 
+  // 3a) Inline-SVG customer-logo walls. Modern SaaS render "trusted by" logos as
+  // inline <svg> (no src/alt), invisible to the <img> pass above — vercel,
+  // intercom, stripe all hide their customer logos this way. Detect a CLUSTER
+  // (>=4) of logo-sized inline svgs sharing a container, and accept it as a wall
+  // only on a strong logo signal so icon/feature grids never false-fire: either
+  // a logo/customer CONTEXT word on the container or an ancestor, OR a wordmark
+  // SHAPE — widths vary >=2x AND each is wider-than-tall — the signature of brand
+  // wordmarks that uniform-square feature-icon grids never have.
+  const LOGO_CTX = /logo|customer|client|partner|brand|trusted|compan|integrat|powered|works with|used by|backed by/i;
+  const logoSvgs = Array.from(document.querySelectorAll('svg')).filter((s) => {
+    const r = s.getBoundingClientRect();
+    if (r.width < 40 || r.width > 240 || r.height < 14 || r.height > 120) return false;
+    const cs = window.getComputedStyle(s);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity || '1') === 0) return false;
+    return true;
+  });
+  if (logoSvgs.length >= 4 && logoSvgs.length <= 400) {
+    const svgSet = new Set(logoSvgs);
+    // each svg -> nearest ancestor (<=4 hops) holding >=4 logo-svgs (the "wall")
+    const wallFor = (svg) => {
+      let p = svg.parentElement, hops = 0;
+      while (p && p !== document.body && hops++ < 4) {
+        let c = 0;
+        for (const o of svgSet) { if (p.contains(o)) { c++; if (c >= 4) break; } }
+        if (c >= 4) return p;
+        p = p.parentElement;
+      }
+      return null;
+    };
+    const byWall = new Map();
+    for (const s of logoSvgs) {
+      const w = wallFor(s);
+      if (!w) continue;
+      const arr = byWall.get(w) || [];
+      arr.push(s);
+      byWall.set(w, arr);
+    }
+    // keep only the outermost wall of any nested pair (avoid double-counting)
+    const wallEls = Array.from(byWall.keys());
+    const outerWalls = wallEls.filter((a) => !wallEls.some((b) => b !== a && b.contains(a)));
+    const qualifying = [];
+    for (const wall of outerWalls) {
+      const members = byWall.get(wall);
+      if (!members || members.length < 4) continue;
+      const wr = wall.getBoundingClientRect();
+      if (wr.height > 400) continue; // walls are strips/short grids, not full-bleed art
+      const boxes = members.map((m) => m.getBoundingClientRect());
+      const widths = boxes.map((r) => r.width);
+      const widthSpread = Math.max.apply(null, widths) / Math.max(1, Math.min.apply(null, widths));
+      const aspects = boxes.map((r) => r.width / Math.max(1, r.height)).sort((a, b) => a - b);
+      const medAspect = aspects[Math.floor(aspects.length / 2)];
+      let ctx = false, node = wall;
+      for (let i = 0; i < 4 && node && node !== document.body; i++) {
+        const hay = ((node.className && node.className.toString()) || '') + ' ' +
+          (node.id || '') + ' ' + ((node.getAttribute && node.getAttribute('aria-label')) || '');
+        if (LOGO_CTX.test(hay)) { ctx = true; break; }
+        node = node.parentElement;
+      }
+      const wordmarkShape = members.length >= 5 && widthSpread >= 2 && medAspect >= 1.8;
+      if (!ctx && !wordmarkShape) continue;
+      const vh = window.innerHeight;
+      qualifying.push({
+        wall,
+        count: members.length,
+        aboveFoldLogoCount: boxes.filter((r) => r.top < vh && r.bottom > 0).length,
+      });
+    }
+    // Emit ONE signal (like the <img> pass): a page has a logo wall or it
+    // doesn't. Anchor on the largest qualifying wall so a multi-strip site
+    // (stripe: several "company-icons" rows) counts once, not once per row.
+    if (qualifying.length) {
+      qualifying.sort((a, b) => b.count - a.count);
+      const top = qualifying[0];
+      push('customer_logos', String(top.count) + ' logo images', top.wall, 'svg_wall', {
+        logoCount: top.count,
+        aboveFoldLogoCount: top.aboveFoldLogoCount,
+        mediaType: 'svg',
+        wallCount: qualifying.length,
+      });
+    }
+  }
+
   // 3b) Third-party review/award badges (G2, Capterra, Trustpilot, etc.)
   const BADGE_BRANDS = /\\bg2\\b|g2crowd|g2\\.com|capterra|trustradius|trustpilot|software ?advice|getapp|gartner peer insights|sourceforge|product hunt|crozdesk|finances ?online|tekpon/i;
   const BADGE_TITLES = /\\b(leader|high performer|momentum leader|easiest to do business with|best (value|support|relationship|usability|est\\.? roi)|top rated|best of \\d{4}|users love us|fastest implementation|rising star|category leader|customers' choice|editors' choice)\\b/i;
