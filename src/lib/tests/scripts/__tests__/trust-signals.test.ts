@@ -368,3 +368,148 @@ describe("trust signals — coverage fixes surfaced by the ground-truth benchmar
     expect((await detect(`<div><span>Version 8.5 released today</span></div>`)).types.has("review_rating")).toBe(false);
   });
 });
+
+describe("trust signals — v1.14.0 precision/recall fixes (32-site benchmark)", () => {
+  // 1x1 gif that decodes so width/height is honoured; "/logos/" in the src lets
+  // the wall qualify via logoInPath (mirrors how real payment icons are served),
+  // so these tests exercise the payment-strip guard, not a trivially-failing wall.
+  const payLogo = (brand: string) =>
+    `<img src="${PX}#/assets/logos/${encodeURIComponent(brand)}" alt="${brand}" style="width:48px;height:32px;display:inline-block">`;
+  const carCard = (inner: string) =>
+    `<article class="card" style="width:320px;height:190px;display:inline-block;vertical-align:top">${inner}</article>`;
+  const carousel = (cards: string) =>
+    `<div class="swiper" style="overflow-x:auto;display:flex;gap:12px;width:640px">${cards}</div>`;
+
+  // --- A) Quote-block attribution gate: a quote mark alone no longer qualifies
+  // a carousel slide. Killed spiegel (30 »…« news headlines) + spotify (6
+  // "- Title" music slides) testimonial FPs, with no real-testimonial loss. ---
+  test("A: a news-headline slide with »…« guillemets is NOT a testimonial", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<div class="swiper-slide"><a>»Toxisches Schweigen ist der Beziehungskiller Nummer eins«, sagt die Psychologin im großen Interview der Woche.</a></div>`,
+    );
+    expect(types.has("testimonial")).toBe(false);
+  });
+
+  test("A: a music/product slide with a '- Title' hyphen is NOT a testimonial", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<div class="embla__slide"><div>WORTH NOTHING (feat. Oliver Tree) - Fast &amp; Furious: Drift Tape (Phonk House Mix)</div></div>`,
+    );
+    expect(types.has("testimonial")).toBe(false);
+  });
+
+  test("A: a blockquote testimonial is still detected (the tag is the attribution)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<blockquote>This completely changed how our team ships software — we are twice as fast now and far happier.</blockquote>`,
+    );
+    expect(types.has("testimonial")).toBe(true);
+  });
+
+  test("A: a slide WITH a '— Name, Company' author line is still a testimonial", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<div class="swiper-slide"><p>“This tool saved us ten hours every single week and the team loves it.” — Jane Doe, VP Engineering at Acme</p></div>`,
+    );
+    expect(types.has("testimonial")).toBe(true);
+  });
+
+  test("A: an explicit .testimonial card with a <cite> author is still detected", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<div class="testimonial-card"><p>Best infrastructure decision we made all year.</p><cite>Sam Lee, CTO at Globex</cite></div>`,
+    );
+    expect(types.has("testimonial")).toBe(true);
+  });
+
+  // --- B) Stars-anchor commerce guard: a product card carrying an aggregate
+  // star rating in a carousel (ikea: "★4.4 GREJSIMOJS … 99:-") is not a
+  // testimonial; a real review card in the same shape still is. ---
+  test("B: a product card (stars + price) in a carousel is NOT a testimonial", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const cards = [
+      `<div class="rating"><span>★★★★★</span></div><div class="name">GREJSIMOJS Pillowcase set, multicolour</div><div class="price">99:-</div>`,
+      `<div class="rating"><span>★★★★★</span></div><div class="name">DVALA Fitted sheet, grey-green, 90x200</div><div class="price">129:-</div>`,
+      `<div class="rating"><span>★★★★★</span></div><div class="name">HEMNES Cabinet with mirror door, white</div><div class="price">349:-</div>`,
+    ].map(carCard).join("");
+    const { types } = await detect(carousel(cards));
+    expect(types.has("testimonial")).toBe(false);
+  });
+
+  test("B: a real review card (stars + quote + name, no price) in a carousel IS a testimonial", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const cards = [
+      `<div class="rating"><span>★★★★★</span></div><p>Absolutely the best purchase we made this year, and shipping was lightning fast.</p><div class="who">Jane Doe</div>`,
+      `<div class="rating"><span>★★★★★</span></div><p>Support answered within minutes and solved everything — could not be happier.</p><div class="who">Mark Vidal</div>`,
+      `<div class="rating"><span>★★★★★</span></div><p>We rolled it out across the whole company in a week and adoption was instant.</p><div class="who">Priya Raman</div>`,
+    ].map(carCard).join("");
+    const { types } = await detect(carousel(cards));
+    expect(types.has("testimonial")).toBe(true);
+  });
+
+  // --- C) Payment-method strip is secure_payment, NOT customer_logos. ikea's
+  // footer visa/mastercard/amex/swish wall (served under /logos/) double-counted
+  // as a customer-logo wall. ---
+  test("C: a payment-method strip is NOT a customer-logo wall (but IS secure_payment)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<footer><ul class="payments" style="display:flex;gap:8px">${[
+        "Visa",
+        "Mastercard",
+        "Amex",
+        "PayPal",
+        "Klarna",
+      ].map(payLogo).join("")}</ul></footer>`,
+    );
+    expect(types.has("customer_logos")).toBe(false);
+    expect(types.has("secure_payment")).toBe(true);
+  });
+
+  test("C: a real customer-logo strip (same shape, non-payment brands) IS a wall", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const { types } = await detect(
+      `<section><div style="display:flex;gap:8px">${[
+        "Acme",
+        "Globex",
+        "Initech",
+        "Umbrella",
+        "Soylent",
+      ].map(payLogo).join("")}</div></section>`,
+    );
+    expect(types.has("customer_logos")).toBe(true);
+  });
+
+  // --- D) guarantee: "Returns/Exchanges" (slash) + "Refund policy" (allbirds). ---
+  for (const [name, html] of [
+    ["Returns/Exchanges (slash)", `<footer><ul><li><a href="/r">Returns/Exchanges</a></li></ul></footer>`],
+    ["Refund policy", `<footer><ul><li><a href="/r">Refund policy</a></li></ul></footer>`],
+  ] as const) {
+    test(`D: guarantee detects: ${name}`, async (ctx) => {
+      if (!chromiumAvailable) return ctx.skip();
+      expect((await detect(html)).types.has("guarantee")).toBe(true);
+    });
+  }
+
+  // --- E) social_proof_count tolerates up to 2 adjectives between the number
+  // and the unit ("3,958,285 amazing developers" — dev-to), without spanning to
+  // an unrelated noun. ---
+  test("E: social_proof_count detects 'community of 3,958,285 amazing developers'", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    expect(
+      (await detect(`<p>DEV Community is a community of 3,958,285 amazing developers</p>`)).types.has("social_proof_count"),
+    ).toBe(true);
+  });
+  test("E: social_proof_count detects 'over 33,000 product teams'", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    expect(
+      (await detect(`<p>Linear powers over 33,000 product teams worldwide.</p>`)).types.has("social_proof_count"),
+    ).toBe(true);
+  });
+  test("E: the adjective window does NOT span to an unrelated noun ('50,000 sq ft warehouse')", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    expect(
+      (await detect(`<p>Our 50,000 sq ft warehouse ships every order the same day.</p>`)).types.has("social_proof_count"),
+    ).toBe(false);
+  });
+});

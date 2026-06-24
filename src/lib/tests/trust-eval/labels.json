@@ -38,8 +38,8 @@
   "labels": {
     "hubspot":      {"testimonial":1,"customer_logos":1,"rating":0,"certification":0,"guarantee":0,"secure_payment":0,"press_mention":0,"trusted_by":0,"social_proof_count":1,"review_badges":1,
       "_note":"committed corpus. Customer quote + logo wall; '299,000+ customers' (social proof); G2/award badges. Logos but no 'trusted by N companies' text."},
-    "linear":       {"testimonial":1,"customer_logos":1,"rating":0,"certification":0,"guarantee":0,"secure_payment":0,"press_mention":0,"trusted_by":0,"social_proof_count":0,"review_badges":0,
-      "_note":"committed corpus. 2 testimonial quotes + an 8-logo inline-svg strip; nothing else."},
+    "linear":       {"testimonial":1,"customer_logos":1,"rating":0,"certification":0,"guarantee":0,"secure_payment":0,"press_mention":0,"trusted_by":0,"social_proof_count":1,"review_badges":0,
+      "_note":"committed corpus. 2 testimonial quotes + an 8-logo inline-svg strip. social_proof_count CORRECTED 0->1: independently verified a visible first-party adoption claim 'Linear powers over 33,000 product teams' (the count sits in a <strong> at y~9208, deep below the fold, missed in the original above-fold labeling pass). Same claim class as hubspot/loom/dev-to."},
     "hibob":        {"testimonial":1,"customer_logos":1,"rating":1,"certification":0,"guarantee":0,"secure_payment":0,"press_mention":0,"trusted_by":1,"social_proof_count":1,"review_badges":0,
       "_note":"committed corpus. 'Customer stories'; 8-logo strip; review stars; 'Join 5,000+ companies and 1,230,201 people using HiBob'."},
     "supabase":     {"testimonial":1,"customer_logos":1,"rating":0,"certification":1,"guarantee":0,"secure_payment":0,"press_mention":0,"trusted_by":1,"social_proof_count":0,"review_badges":0,

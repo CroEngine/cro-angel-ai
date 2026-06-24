@@ -2195,9 +2195,10 @@
       }
     },
     "trustSummary": {
-      "total": 3,
+      "total": 4,
       "aboveFold": 0,
       "byType": {
+        "social_proof_count": 1,
         "testimonial": 2,
         "customer_logos": 1
       }

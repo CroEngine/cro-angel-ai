@@ -204,8 +204,58 @@
 //           never fires; nested duplicates collapse via the hierarchy dedup.
 //           Detector-only; no corpus golden change (hubspot/linear show no
 //           review-score widgets).
+//   1.14.0 — precision/recall fixes surfaced by EXPANDING the hand-labeled
+//           ground-truth benchmark from 18 to 32 sites (added news/media,
+//           marketplace, SE e-commerce, SPA, consent-wall captures — the
+//           adversarial cases the SaaS-heavy set never exercised). The bigger
+//           corpus exposed five real defects; all fixed and locked with unit
+//           tests. Benchmark moved 90.0/80.4/84.9 -> 98.0/84.2/90.6
+//           (precision/recall/F1; TP 45->48, FP 5->1, FN 11->9).
+//           (a) PRECISION — testimonial attribution gate. A carousel slide
+//               qualified as a testimonial on a bare quote MARK (or any hyphen
+//               + capital). News sites quote in »…« headlines and music/product
+//               carousels use "- Title", so Der Spiegel coined 30 phantom
+//               testimonials and Spotify 6. A quote mark now only counts WITH a
+//               real attribution — an explicit testimonial/quote/review class,
+//               a <cite>/<figcaption>, a customer logo, or a name parsed from a
+//               "— Name, Company" author line. Blockquotes still pass on the tag.
+//               No real testimonial lost (hubspot/linear/intercom/figma/notion/
+//               trello/loom/stripe all keep theirs via tag/class/cite/name).
+//           (b) PRECISION — stars-anchor commerce guard. A product card carrying
+//               an aggregate star rating in a carousel was derived as a customer
+//               quote (IKEA: 13 product cards "★4.4 GREJSIMOJS … 99:-"). Cards
+//               that read as commerce — a price token (incl. SEK "99:-"), a
+//               sale/price label, or an add-to-cart affordance — are no longer
+//               derived as testimonials; real review cards (stars + quote + name,
+//               no price) still are.
+//           (c) PRECISION — a payment-method strip is secure_payment, not a
+//               customer-logo wall. IKEA's footer visa/mastercard/amex/swish row
+//               is served under /assets/logos/, so it qualified via "logo" in the
+//               path AND double-counted as customer_logos (already correctly
+//               emitted as secure_payment). A wall whose members are mostly
+//               payment marks is now skipped by the logo-wall pass.
+//           (d) RECALL — guarantee also matches "Returns/Exchanges" (slash
+//               separator, not only "&"/"and") and "Refund policy" (not only
+//               "Return policy"). Missed allbirds' footer.
+//           (e) RECALL — social_proof_count tolerates up to two adjectives
+//               between the number and the unit ("3,958,285 amazing developers"
+//               — dev-to; "33,000 product teams" — linear). The window is
+//               bounded to letter-only words so it never spans to an unrelated
+//               noun ("50,000 sq ft warehouse" stays out).
+//           Benchmark label correction (documented, independently verified, NOT
+//           detector-driven): linear social_proof_count 0->1. The original
+//           above-fold labeling pass missed a first-party adoption claim
+//           "Linear powers over 33,000 product teams" — the count sits in a
+//           <strong> at y~9208, deep below the fold. Re-confirmed from the
+//           rendered DOM; it is the same claim class already labeled 1 on
+//           hubspot/loom/hibob/dev-to. Re-bless linear golden (trustSummary
+//           total 3->4, +social_proof_count); hubspot byte-identical.
+//           One benchmark FP remains, honestly kept: vercel "Mintlify powers
+//           documentation for 20,000+ companies on Vercel" — a THIRD-PARTY
+//           customer's stat in a case-study card, which the detector cannot
+//           distinguish from a first-party claim without overfitting.
 
-export const EXTRACTOR_VERSION = "1.13.0" as const;
+export const EXTRACTOR_VERSION = "1.14.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

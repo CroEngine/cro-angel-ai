@@ -9,10 +9,10 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     review_rating:      /\\b(\\d[.,]\\d)\\s*\\/\\s*5\\b|\\b(\\d[.,]\\d)\\s*av\\s*5\\b|\\b(\\d[.,]\\d)\\s*out of\\s*5\\b/i,
     trusted_by:         /\\b(trusted by|used by|anv[äa]nds av|joined by|loved by|trusted globally by)\\s+[\\d\\w]/i,
     certification:      /\\bISO\\s?\\d{4,5}\\b|\\bGDPR\\b|\\bHIPAA\\b|\\bSOC ?2\\b|\\bPCI[- ]?DSS\\b|certifierad|\\bcertified\\b(?!\\s+(?:experts?|partners?|professionals?|developers?|consultants?|specialists?|resellers?|trainers?|agenc))/i,
-    guarantee:          /(\\d+)[- ]?(day|dagars?)\\s+(money[- ]back|n[öo]jd[- ]?kund|garanti|guarantee|returns?)|\\breturns?\\s+policy\\b|\\breturns?\\s*(?:&|and)\\s*exchanges?\\b|\\b(?:free|easy|hassle[- ]free)\\s+returns?\\b|[öo]ppet k[öo]p|money[- ]back guarantee|\\bguarantee[ds]?\\b|\\bwarranty\\b|\\bgaranti\\b/i,
+    guarantee:          /(\\d+)[- ]?(day|dagars?)\\s+(money[- ]back|n[öo]jd[- ]?kund|garanti|guarantee|returns?)|\\b(?:returns?|refunds?)\\s+polic(?:y|ies)\\b|\\breturns?\\s*(?:&|and|\\/)\\s*exchanges?\\b|\\b(?:free|easy|hassle[- ]free)\\s+returns?\\b|[öo]ppet k[öo]p|money[- ]back guarantee|\\bguarantee[ds]?\\b|\\bwarranty\\b|\\bgaranti\\b/i,
     secure_payment:     /secure (checkout|payment)|s[äa]ker betalning|ssl secured|256[- ]bit/i,
     press_mention:      /as seen in|featured in|som setts i|i pressen|in the news/i,
-    social_proof_count: /\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d+(?:[.,]\\d+)?[KMBT]|\\d{4,})\\+?\\s*(customers|users|members|kunder|anv[äa]ndare|medlemmar|downloads|nedladdningar|reviews|recensioner|compan(?:y|ies)|businesses|teams|brands|people|developers|organi[sz]ations|websites|sites|stores|merchants|subscribers|installs)/i,
+    social_proof_count: /\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d+(?:[.,]\\d+)?[KMBT]|\\d{4,})\\+?\\s*(?:[a-zåäö]+\\s+){0,2}(customers|users|members|kunder|anv[äa]ndare|medlemmar|downloads|nedladdningar|reviews|recensioner|compan(?:y|ies)|businesses|teams|brands|people|developers|organi[sz]ations|websites|sites|stores|merchants|subscribers|installs)/i,
     org_number:         /\\b\\d{6}-\\d{4}\\b|\\bVAT[: ]?[A-Z]{2}\\d{6,}\\b/i,
   };
 
@@ -340,7 +340,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
     const isSlide = /slide|swiper|slick|embla|keen-slider|glide|splide/.test(cls)
       || (el.getAttribute && (el.getAttribute('aria-roledescription') || '').toLowerCase().indexOf('slide') !== -1);
-    const hasQuote = /[“"„«»]/.test(text) || /[—–-]\\s*[A-ZÅÄÖ]/.test(text);
+    // A quotation mark proves there is quoted text, NOT that the text is a
+    // customer endorsement — news headlines (»…«) and product/music carousels
+    // are full of quoted or dashed text. So a bare quote mark (or a hyphen) no
+    // longer qualifies a slide on its own; it must come with a real attribution.
+    const hasQuoteMark = /[“"„«»]/.test(text);
     const hasTestimonialClass = /testimonial|quote|review/.test(cls);
     // Strong author signal: an explicit <cite>/<figcaption> element with text,
     // OR a customer logo near the card. The previous broad selector
@@ -352,15 +356,17 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const hasLogoImg = !!el.querySelector('img[alt*="logo" i], img[class*="logo" i], [class*="logo" i] img');
 
     const meta = extractTestimonialMeta(el, text);
-    // Attribution: a real testimonial needs at least one strong attribution
-    // signal — a quote-mark, an explicit cite/figcaption, a customer logo, or
-    // a name+company extracted from the text (e.g. "— Jane Doe, Acme Corp").
+    // Attribution: a real testimonial names or marks its endorser. Require one
+    // of — an explicit testimonial/quote/review class (author intent), a
+    // cite/figcaption author element, a customer logo, or a person name parsed
+    // from a "— Jane Doe[, Acme]" author line. A quote mark alone is NOT
+    // sufficient (it fired on »…« news headlines and "- Title" music/product
+    // carousels). Blockquotes still pass on the tag below.
     const hasAttribution =
-      hasQuote ||
+      hasTestimonialClass ||
       hasStrongAuthor ||
       hasLogoImg ||
-      (!!meta.personName && !!meta.company) ||
-      hasTestimonialClass;
+      !!meta.personName;
 
     // Apply the attribution gate to BOTH slides and explicit testimonial/quote
     // containers (CMS authors sometimes reuse those class names for product
@@ -369,7 +375,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const isBlockquote = el.tagName === 'BLOCKQUOTE';
     if (!isBlockquote && !hasAttribution) {
       logDecision('quote-block', 'rejected', 'no attribution signal', el, text, {
-        isSlide: isSlide, hasQuote: hasQuote, hasStrongAuthor: hasStrongAuthor,
+        isSlide: isSlide, hasQuoteMark: hasQuoteMark, hasStrongAuthor: hasStrongAuthor,
         hasLogoImg: hasLogoImg, hasTestimonialClass: hasTestimonialClass,
         personName: meta.personName, company: meta.company,
       });
@@ -378,7 +384,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     logDecision('quote-block', 'accepted',
       isBlockquote ? 'blockquote tag' : (isSlide ? 'slide with attribution' : 'container with attribution'),
       el, text, {
-        isSlide: isSlide, hasQuote: hasQuote, hasStrongAuthor: hasStrongAuthor,
+        isSlide: isSlide, hasQuoteMark: hasQuoteMark, hasStrongAuthor: hasStrongAuthor,
         hasLogoImg: hasLogoImg, hasTestimonialClass: hasTestimonialClass,
         personName: meta.personName, company: meta.company, hasImage: meta.hasImage,
       });
@@ -709,6 +715,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   // vary >=2x AND each wider-than-tall) — brand wordmarks that uniform
   // article/product/icon grids never have.
   const LOGO_CTX = /logo|customer|client|partner|brand|trusted|compan|integrat|powered|works with|used by|backed by/i;
+  // A wall of payment-method marks (visa/mastercard/klarna/swish…) is the
+  // checkout/secure-payment strip, NOT a customer-logo wall — and these icons
+  // often live under /assets/logos/ so they otherwise qualify via "logo" in the
+  // path. The secure_payment pass already emits them; skip such walls here.
+  const PAYMENT_WALL_RX = /\\b(visa|mastercard|maestro|amex|american express|paypal|klarna|swish|apple ?pay|google ?pay|discover|diners|unionpay|mobilepay|vipps|ideal|bancontact|sofort|giropay|sepa|mada)\\b/;
   const inLogoBox = (r) => r.width >= 40 && r.width <= 240 && r.height >= 14 && r.height <= 120;
   const logoVisible = (el) => {
     const cs = window.getComputedStyle(el);
@@ -763,6 +774,10 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       if (!members || members.length < 4) continue;
       const wr = wall.getBoundingClientRect();
       if (wr.height > 600) continue; // strip/compact grid only; drops page-wide scatter
+      // Payment-method strip (visa/mastercard/klarna/swish…) -> secure_payment,
+      // not a customer-logo wall. Skip when most members are payment marks.
+      const paymentMembers = members.filter((m) => PAYMENT_WALL_RX.test(m.hay)).length;
+      if (paymentMembers >= 2 && paymentMembers * 2 >= members.length) continue;
       const widths = members.map((m) => m.r.width);
       const widthSpread = Math.max.apply(null, widths) / Math.max(1, Math.min.apply(null, widths));
       const aspects = members.map((m) => m.r.width / Math.max(1, m.r.height)).sort((a, b) => a - b);
@@ -992,6 +1007,16 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
     const fullCardText = (cardEl.innerText || '').trim().replace(/\\s+/g, ' ');
     if (fullCardText.length < 40 || fullCardText.length > 600) continue;
+
+    // Product cards in a carousel carry an aggregate star rating too, but they
+    // are not testimonials. Reject anything that reads as commerce — a price
+    // token (incl. SEK "99:-"), a sale/price label, or an add-to-cart
+    // affordance — so "★4.4 GREJSIMOJS … 99:-" is not derived as a quote.
+    const COMMERCE_RX = /[$€£¥]\\s?\\d|\\b\\d[\\d  .,]*\\s?(?:kr|sek|usd|eur|gbp|nok|dkk)\\b|\\d+\\s*:\\-|\\b(?:add to (?:cart|bag|basket)|buy now|shop now|in stock|out of stock|sold out|free shipping|fri frakt|k[öo]p\\b|l[äa]gg i|s[äa]nkt pris|tidigare.{0,6}pris|l[äa]gsta pris|ordinarie pris|rea\\b|sale\\b)/i;
+    if (COMMERCE_RX.test(fullCardText)) {
+      logDecision('stars-anchor', 'rejected', 'commercial/product card', cardEl, fullCardText);
+      continue;
+    }
 
     const meta = extractTestimonialMeta(cardEl, fullCardText);
 
