@@ -8,11 +8,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     testimonial:        /testimonial|kundr[öo]st|kundcitat|customer story|case study/i,
     review_rating:      /\\b(\\d[.,]\\d)\\s*\\/\\s*5\\b|\\b(\\d[.,]\\d)\\s*av\\s*5\\b|\\b(\\d[.,]\\d)\\s*out of\\s*5\\b/i,
     trusted_by:         /\\b(trusted by|used by|anv[äa]nds av|joined by|loved by|trusted globally by)\\s+[\\d\\w]/i,
-    certification:      /\\bISO\\s?\\d{4,5}\\b|\\bGDPR\\b|\\bHIPAA\\b|\\bSOC ?2\\b|\\bPCI[- ]?DSS\\b|certifierad|certified/i,
-    guarantee:          /(\\d+)[- ]?(day|dagars?)\\s+(money[- ]back|n[öo]jd[- ]?kund|garanti|guarantee)|return policy|[öo]ppet k[öo]p|money[- ]back guarantee|\\bguarantee[ds]?\\b|\\bwarranty\\b|\\bgaranti\\b/i,
+    certification:      /\\bISO\\s?\\d{4,5}\\b|\\bGDPR\\b|\\bHIPAA\\b|\\bSOC ?2\\b|\\bPCI[- ]?DSS\\b|certifierad|\\bcertified\\b(?!\\s+(?:experts?|partners?|professionals?|developers?|consultants?|specialists?|resellers?|trainers?|agenc))/i,
+    guarantee:          /(\\d+)[- ]?(day|dagars?)\\s+(money[- ]back|n[öo]jd[- ]?kund|garanti|guarantee|returns?)|\\breturns?\\s+policy\\b|\\breturns?\\s*(?:&|and)\\s*exchanges?\\b|\\b(?:free|easy|hassle[- ]free)\\s+returns?\\b|[öo]ppet k[öo]p|money[- ]back guarantee|\\bguarantee[ds]?\\b|\\bwarranty\\b|\\bgaranti\\b/i,
     secure_payment:     /secure (checkout|payment)|s[äa]ker betalning|ssl secured|256[- ]bit/i,
     press_mention:      /as seen in|featured in|som setts i|i pressen|in the news/i,
-    social_proof_count: /\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d{4,})\\+?\\s*(customers|users|members|kunder|anv[äa]ndare|medlemmar|downloads|nedladdningar|reviews|recensioner)/i,
+    social_proof_count: /\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d+(?:[.,]\\d+)?[KMBT]|\\d{4,})\\+?\\s*(customers|users|members|kunder|anv[äa]ndare|medlemmar|downloads|nedladdningar|reviews|recensioner|compan(?:y|ies)|businesses|teams|brands|people|developers|organi[sz]ations|websites|sites|stores|merchants|subscribers|installs)/i,
     org_number:         /\\b\\d{6}-\\d{4}\\b|\\bVAT[: ]?[A-Z]{2}\\d{6,}\\b/i,
   };
 
@@ -779,6 +779,10 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   const BADGE_BRANDS = /\\bg2\\b|g2crowd|g2\\.com|capterra|trustradius|trustpilot|software ?advice|getapp|gartner peer insights|sourceforge|product hunt|crozdesk|finances ?online|tekpon/i;
   const BADGE_TITLES = /\\b(leader|high performer|momentum leader|easiest to do business with|best (value|support|relationship|usability|est\\.? roi)|top rated|best of \\d{4}|users love us|fastest implementation|rising star|category leader|customers' choice|editors' choice)\\b/i;
   const BADGE_PATH = /\\/badges?\\/(file\\/)?/i;
+  // App-store / download badges also live under /badges/ paths but are NOT
+  // third-party REVIEW badges — counting them inflated trust (rei's Google-Play
+  // + App-Store buttons read as review badges). Exclude them up front.
+  const APP_STORE_BADGE = /google.?play|app.?store|apple.?store|microsoft store|windows store|chrome.?web.?store|get.?it.?on|download.?on|f-?droid|galaxy store|app gallery/i;
 
   const allBadgeImgs = Array.from(document.querySelectorAll('img[alt], img[src]'));
   const badgeRects = new Map();
@@ -790,6 +794,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const alt = i.getAttribute('alt') || '';
     const src = i.getAttribute('src') || '';
     const hay = (alt + ' ' + src).toLowerCase();
+    if (APP_STORE_BADGE.test(hay)) return false;
     if (BADGE_BRANDS.test(hay)) return true;
     if (BADGE_PATH.test(src)) return true;
     if (BADGE_TITLES.test(alt) && r.height >= r.width * 0.8) {

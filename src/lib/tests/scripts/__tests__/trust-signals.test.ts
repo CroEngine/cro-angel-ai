@@ -281,3 +281,63 @@ describe("trust signals — customer-logo walls, img + svg (recall + precision)"
     expect(types.has("customer_logos")).toBe(false);
   });
 });
+
+describe("trust signals — coverage fixes surfaced by the ground-truth benchmark", () => {
+  // guarantee: plural "Returns", "free/easy returns", "X-day returns",
+  // "returns & exchanges" — gymshark/warby-parker/everlane were missed because
+  // only singular "return policy" matched.
+  for (const [name, html] of [
+    ["Returns Policy (plural)", `<footer><ul><li><a href="/r">Returns Policy</a></li></ul></footer>`],
+    ["Free 30-day returns", `<span>Free 30-day returns</span>`],
+    ["Easy Returns", `<div><strong>30-Day Easy Returns</strong></div>`],
+    ["Returns & Exchanges", `<footer><ul><li><a href="/r">Returns &amp; Exchanges</a></li></ul></footer>`],
+  ] as const) {
+    test(`guarantee detects: ${name}`, async (ctx) => {
+      if (!chromiumAvailable) return ctx.skip();
+      expect((await detect(html)).types.has("guarantee")).toBe(true);
+    });
+  }
+
+  // social_proof_count: non-customer units (companies/people/teams) + abbreviated
+  // numbers (150K, 119m, 2B) — loom/stripe/klarna were missed.
+  for (const [name, html] of [
+    ["400,000 companies", `<p>Powering 400,000 companies worldwide</p>`],
+    ["150K+ users", `<p>150K+ users have their best day on us</p>`],
+    ["119m users (lowercase m)", `<span>119m users worldwide</span>`],
+    ["1,230,201 people", `<p>Join 5,000+ companies and 1,230,201 people</p>`],
+  ] as const) {
+    test(`social_proof_count detects: ${name}`, async (ctx) => {
+      if (!chromiumAvailable) return ctx.skip();
+      expect((await detect(html)).types.has("social_proof_count")).toBe(true);
+    });
+  }
+
+  test("social_proof_count does NOT fire on a small headcount ('team of 5 people')", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    expect((await detect(`<p>We are a small team of 5 people based in Berlin.</p>`)).types.has("social_proof_count")).toBe(false);
+  });
+
+  // certification: bare "certified" must not match a PARTNER certification
+  // ("Stripe-certified experts") while real compliance certs still match.
+  test("certification ignores 'X-certified experts' (partner cert)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    expect((await detect(`<p>Work with our Stripe-certified experts.</p>`)).types.has("certification")).toBe(false);
+  });
+  test("certification still detects 'SOC 2 Type II certified'", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    expect((await detect(`<span>SOC 2 Type II certified</span>`)).types.has("certification")).toBe(true);
+  });
+
+  // review_badges: a real G2 badge fires; app-store download badges do not.
+  test("review_badges detects a real G2 badge image", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const img = `<img src="${PX}#g2" alt="G2 High Performer Spring 2026" style="width:120px;height:150px;display:inline-block">`;
+    expect((await detect(`<section>${img}</section>`)).types.has("review_badges")).toBe(true);
+  });
+  test("review_badges ignores an app-store download badge", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // alt names a review-ish title AND the store -> the app-store guard wins.
+    const img = `<img src="${PX}#s" alt="Top Rated — Get it on Google Play" style="width:135px;height:140px;display:inline-block">`;
+    expect((await detect(`<section>${img}</section>`)).types.has("review_badges")).toBe(false);
+  });
+});

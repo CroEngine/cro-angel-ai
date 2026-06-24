@@ -157,8 +157,32 @@
 //           first logo-sized <img> (a header/nav logo, above fold); the real
 //           customer-logo wall is below the fold. customer_logos count and
 //           linear golden byte-identical.
+//   1.11.0 — coverage fixes surfaced by an 18-site hand-labeled ground-truth
+//           benchmark (precision/recall measured against labels derived from the
+//           rendered pages, independent of the detector). Four principled fixes,
+//           validated to generalize on 6 fresh hold-out sites:
+//           (a) guarantee — also matches plural/idiomatic returns: "Returns
+//               Policy", "free/easy returns", "X-day returns", "returns &
+//               exchanges". Only singular "return policy" matched before
+//               (missed gymshark/warby-parker/everlane).
+//           (b) social_proof_count — accepts non-customer units (companies/
+//               businesses/teams/people/developers/…) and abbreviated magnitudes
+//               (150K, 119m, 1.9T). Missed "400,000 companies" (loom),
+//               "150K+ users" (stripe), "119m users" (klarna). Small headcounts
+//               stay excluded (the number still needs comma-grouping / 4+ digits
+//               / a K-M-B-T suffix, so "5 people" never matches).
+//           (c) certification — bare "certified" no longer matches a PARTNER
+//               certification ("Stripe-certified experts/partners/developers");
+//               real compliance certs (ISO/SOC2/GDPR/HIPAA/"… certified") still
+//               match. Fixes a stripe false positive.
+//           (d) review_badges — app-store / download badges (Google Play, App
+//               Store) under /badges/ paths are excluded; they are not
+//               third-party REVIEW badges. Fixes a rei false positive.
+//           No corpus golden change (hubspot/linear have none of these tokens;
+//           hubspot review_badges are real, not app-store). Detector-only;
+//           bumped because src/lib/tests/scripts/* changed.
 
-export const EXTRACTOR_VERSION = "1.10.0" as const;
+export const EXTRACTOR_VERSION = "1.11.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
