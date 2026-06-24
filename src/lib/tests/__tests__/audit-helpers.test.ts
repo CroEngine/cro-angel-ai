@@ -12,7 +12,7 @@
 import { describe, it, expect } from "vitest";
 
 import { deriveHero } from "../audit-helpers";
-import type { PageSection } from "../schema";
+import type { CTAEntity, PageSection } from "../schema";
 
 function mkSection(
   p: Partial<PageSection> & { id: string; type: PageSection["type"] },
@@ -30,6 +30,24 @@ function mkSection(
     containsForm: false,
     containsPricing: false,
     containsNavigation: false,
+    ...p,
+  };
+}
+
+function mkCta(
+  p: Partial<CTAEntity> & { text: string; category: CTAEntity["category"] },
+): CTAEntity {
+  return {
+    intent: "conversion",
+    section: "hero",
+    aboveFold: true,
+    visualWeight: 50,
+    competingActions: 0,
+    nearestTrustSignalDistance: 0,
+    nearestFormDistance: 0,
+    contrastRatio: null,
+    wcagLevel: null,
+    rect: { x: 0, y: 0, w: 120, h: 40 },
     ...p,
   };
 }
@@ -119,5 +137,34 @@ describe("deriveHero — no-h1 hero detection (v1.4.0)", () => {
     const hero = deriveHero(sections, [], ["Grow better with HubSpot"]);
     expect(hero?.headline).toBe("Grow better with HubSpot");
     expect(hero?.sectionId).toBe("section_3");
+  });
+});
+
+describe("deriveHero — hero CTA selection (v1.7.0)", () => {
+  const heroSection = mkSection({ id: "s1", type: "hero", heading: "Build things" });
+
+  it("prefers a conversion CTA over a weak link that also scored primary in the hero", () => {
+    // hashicorp picked "Learn more" over "Get started" (both cta_primary, hero).
+    const ctas = [
+      mkCta({ text: "Learn more", category: "cta_primary" }),
+      mkCta({ text: "Get started", category: "cta_primary" }),
+    ];
+    expect(deriveHero([heroSection], ctas, ["Build things"])?.primaryCtaText).toBe("Get started");
+  });
+
+  it("skips a content-card primary for the real conversion CTA, order-independent", () => {
+    // replit picked "Quarterly review preview" over "Start building".
+    const ctas = [
+      mkCta({ text: "Quarterly review preview", category: "cta_primary" }),
+      mkCta({ text: "Start building", category: "cta_primary" }),
+    ];
+    expect(deriveHero([heroSection], ctas, ["Build things"])?.primaryCtaText).toBe(
+      "Start building",
+    );
+  });
+
+  it("falls back to any primary when none is conversion-worded (Contact sales)", () => {
+    const ctas = [mkCta({ text: "Contact sales", category: "cta_primary" })];
+    expect(deriveHero([heroSection], ctas, ["Build things"])?.primaryCtaText).toBe("Contact sales");
   });
 });

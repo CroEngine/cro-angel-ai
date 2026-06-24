@@ -186,6 +186,15 @@ export function buildPageSummary(input: {
 const HERO_LABEL_BLOCKLIST =
   /^(home|menu|search( our site)?|cart|bag|shopping bag|wishlist|favou?rites|account|my account|log\s?in|sign\s?(in|up)|register|subscribe|newsletter|cookies?|consent|skip to (main )?content)$/i;
 
+// A hero CTA should be a conversion ACTION, not a weak/content link that merely
+// also scored cta_primary in the hero region. Without this, deriveHero took the
+// first primary in DOM order — hashicorp picked "Learn more", replit "Quarterly
+// review preview" — over the real "Get started" / "Start building". Used only to
+// PREFER; the original any-primary pick stays as the fallback, so a legitimate
+// non-matching CTA like "Contact sales" still wins when it's the only primary.
+const HERO_CTA_CONVERSION =
+  /\b(get started|start|sign\s?up|signup|try|book|buy|order|checkout|subscribe|register|download|demo|request|trial|join|create account|add to cart|get \w+ (free|now))\b/i;
+
 export function deriveHero(
   sections: PageSection[],
   ctas: CTAEntity[],
@@ -226,7 +235,12 @@ export function deriveHero(
     sections.find((s) => s.type === "hero") ??
     sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading && !isChrome(s)) ??
     sections.find((s) => s.type === "form" && s.aboveFold && s.heading);
+  const isConv = (c: CTAEntity) => HERO_CTA_CONVERSION.test((c.text || "").trim());
   const heroCta =
+    // Prefer a real conversion action; fall back to any primary so non-matching
+    // CTAs ("Contact sales") still win when there's no conversion-worded one.
+    ctas.find((c) => c.category === "cta_primary" && c.section === "hero" && isConv(c)) ??
+    ctas.find((c) => c.category === "cta_primary" && c.aboveFold && isConv(c)) ??
     ctas.find((c) => c.category === "cta_primary" && c.section === "hero") ??
     ctas.find((c) => c.category === "cta_primary" && c.aboveFold) ??
     ctas.find((c) => c.category === "form_submit" && c.section === "hero") ??

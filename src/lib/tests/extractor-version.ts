@@ -77,8 +77,17 @@
 //           over-classifying: linear hero CTA "" → "Sign up", primary 0 → 1; both
 //           hubspot/linear +2 total (outline buttons now counted); hubspot primary
 //           unchanged. Re-bless both goldens.
+//   1.7.0 — deriveHero hero-CTA selection prefers a conversion ACTION over a weak/
+//           content link that also scored cta_primary in the hero. A second
+//           50-site sweep caught it: hashicorp took "Learn more" and replit
+//           "Quarterly review preview" as their hero CTA over the real "Get
+//           started" / "Start building". Prefer-only (HERO_CTA_CONVERSION regex);
+//           the original any-primary pick stays the fallback, so a non-matching
+//           CTA like "Contact sales" still wins when it's the only primary →
+//           strictly additive, never a regression. Corpus byte-identical (hubspot/
+//           linear hero CTAs are already conversion-worded — linear's "Sign up").
 
-export const EXTRACTOR_VERSION = "1.6.0" as const;
+export const EXTRACTOR_VERSION = "1.7.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
