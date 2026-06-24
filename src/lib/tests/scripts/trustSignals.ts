@@ -668,6 +668,34 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     }
   });
 
+  // 2d) Review-score widgets. A compact container that shows a DECIMAL score
+  // co-located with a review COUNT — booking.com "8.5 Very Good · 3,339
+  // reviews", "4.6 (1,200 reviews)", hotel/marketplace/e-commerce score cards.
+  // The score and label often live in separate child nodes, so the leaf
+  // text-scan (PATTERNS.review_rating, /5 only) misses them; scan compact
+  // containers here. Tightly gated: a decimal X.Y (or 10) AND "N reviews" in
+  // the SAME <=120-char block — both together are specifically a rating widget,
+  // so a bare review count ("3,339 reviews") or a stray decimal never fires.
+  // Nested duplicates collapse via the hierarchy-dedup pass below.
+  const SCORE_RX = /(?:^|[^\\d.,])([0-9][.,][0-9]|10(?:[.,]0)?)(?![\\d.,])/;
+  const REVIEWCOUNT_RX = /\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d{2,})\\s*(reviews|recensioner|omd[öo]men|ratings|reviews?)\\b/i;
+  document.querySelectorAll('div, section, li, article, a, figure, span, p').forEach((el) => {
+    // Cheap textContent gate first (no layout): the count keyword must be
+    // present, so we only pay innerText on compact rating-context elements.
+    const tc = el.textContent || '';
+    if (tc.length > 400 || !/review|recension|omd[\\u00f6o]m|rating/i.test(tc)) return;
+    const t = (el.innerText || '').replace(/\\s+/g, ' ').trim();
+    if (t.length < 6 || t.length > 120) return;
+    const sm = t.match(SCORE_RX);
+    const rm = t.match(REVIEWCOUNT_RX);
+    if (!sm || !rm) return;
+    const val = safeFloat(sm[1]);
+    if (val === undefined || val < 1 || val > 10) return;
+    const extras = { rating: val, reviewCount: safeInt(rm[1]) };
+    if (val > 5) extras.ratingScale = 10; // /10 widget (booking-style); else /5
+    push('review_rating', t.slice(0, 80), el, 'widget', extras);
+  });
+
   // 3) Customer-logo walls (img + inline-svg, unified). A wall is a container
   // holding >=4 logo-sized media — imgs (deduped by src) and/or inline svgs,
   // which modern SaaS use for "trusted by" logos (no src/alt), invisible to a

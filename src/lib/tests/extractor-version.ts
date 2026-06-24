@@ -192,8 +192,20 @@
 //           Benchmark: customer_logos precision 83->100% (booking FP removed),
 //           recall held at 100%; overall precision 92.9->96.3% (26 TP / 1 FP)
 //           with no recall loss. No corpus golden change.
+//   1.13.0 — review-score WIDGET detection (recall). The /5 text scan missed
+//           rating widgets where the score and review count live in separate
+//           child nodes — booking.com "8.5 Very Good · 3,339 reviews",
+//           "4.6 (1,200 reviews)" — common on travel / hotel / marketplace /
+//           e-commerce. New pass: a compact (<=120 char) container with a DECIMAL
+//           score (X.Y or 10) co-located with a review COUNT ("N reviews")
+//           emits review_rating (ratingScale=10 when the score is >5, i.e. a
+//           /10 widget). Tightly gated — both signals required together — so a
+//           bare count ("3,339 reviews") or a stray decimal ("Version 8.5")
+//           never fires; nested duplicates collapse via the hierarchy dedup.
+//           Detector-only; no corpus golden change (hubspot/linear show no
+//           review-score widgets).
 
-export const EXTRACTOR_VERSION = "1.12.0" as const;
+export const EXTRACTOR_VERSION = "1.13.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

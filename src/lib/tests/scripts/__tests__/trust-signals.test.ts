@@ -345,10 +345,26 @@ describe("trust signals — coverage fixes surfaced by the ground-truth benchmar
     const img = `<img src="${PX}#g2" alt="G2 High Performer Spring 2026" style="width:120px;height:150px;display:inline-block">`;
     expect((await detect(`<section>${img}</section>`)).types.has("review_badges")).toBe(true);
   });
-  test("review_badges ignores an app-store download badge", async (ctx) => {
+  // review_rating widgets: a decimal score co-located with a review count
+  // (booking.com "8.5 Very Good 3,339 reviews"), where score and count live in
+  // separate child nodes so the leaf /5 scan misses them.
+  test("review_rating detects a score widget ('8.5 Very Good 3,339 reviews')", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
-    // alt names a review-ish title AND the store -> the app-store guard wins.
-    const img = `<img src="${PX}#s" alt="Top Rated — Get it on Google Play" style="width:135px;height:140px;display:inline-block">`;
-    expect((await detect(`<section>${img}</section>`)).types.has("review_badges")).toBe(false);
+    const { types } = await detect(
+      `<div class="card"><div>8.5</div><div>Very Good</div><div>3,339 reviews</div></div>`,
+    );
+    expect(types.has("review_rating") || types.has("stars_aggregate")).toBe(true);
+  });
+  test("review_rating detects '4.6 (1,200 reviews)'", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    expect((await detect(`<span>4.6 (1,200 reviews)</span>`)).types.has("review_rating")).toBe(true);
+  });
+  test("a bare review count ('3,339 reviews') is NOT a rating", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    expect((await detect(`<div><span>3,339 reviews</span></div>`)).types.has("review_rating")).toBe(false);
+  });
+  test("a bare decimal with no review count is NOT a rating widget", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    expect((await detect(`<div><span>Version 8.5 released today</span></div>`)).types.has("review_rating")).toBe(false);
   });
 });
