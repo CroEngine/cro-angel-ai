@@ -25,6 +25,11 @@ public/cdn/
 *.local
 .env.local
 
+# Supabase CLI local state (link + temp)
+supabase/.temp
+supabase/.branches
+supabase/.env
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
