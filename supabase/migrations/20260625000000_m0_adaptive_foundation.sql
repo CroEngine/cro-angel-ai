@@ -10,8 +10,8 @@
 --   * writes to child tables go through the service-role admin client (bypasses RLS);
 --   * raw `events` are service-role-only — the dashboard reads `events_rollup`.
 --
--- Applied by Lovable Cloud on sync (remote project hmhuqqgckuujxwrtdrkj); this file
--- is the source of truth. Additive only — no drops.
+-- Applied to project upvthvbhqzqqimsyjpxw (via the Supabase MCP / `bun run db:push`);
+-- this file is the source of truth. Additive only — no drops.
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- sites — tenancy. One row per customer site; `public_site_key` is the value in

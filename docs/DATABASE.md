@@ -7,14 +7,14 @@ Lovable. This repo is the single source of truth for the schema.
 > ⚠️ **One owner only.** Do not let Lovable *also* apply migrations to the same
 > project — two owners will drift. We own migrations + type generation here.
 
-- **Project:** `hmhuqqgckuujxwrtdrkj` (in `supabase/config.toml`)
+- **Project:** `upvthvbhqzqqimsyjpxw` (in `supabase/config.toml`)
 - **Migrations:** `supabase/migrations/*.sql` — timestamped, additive, applied in order
 - **Generated types:** `src/integrations/supabase/types.ts` — do not hand-edit
 
 ## One-time: link the project
 
 ```bash
-bun run db:link        # supabase link --project-ref hmhuqqgckuujxwrtdrkj
+bun run db:link        # supabase link --project-ref upvthvbhqzqqimsyjpxw
 ```
 
 Prompts for the database password (or set `SUPABASE_DB_PASSWORD`). Link state is

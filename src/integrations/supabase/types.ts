@@ -14,7 +14,272 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      events: {
+        Row: {
+          client_ts: string | null
+          ctx: Json | null
+          id: number
+          received_at: string
+          selector: string | null
+          session_id: string | null
+          site_id: string
+          type: string
+          url: string | null
+          value: number | null
+          visitor_id: string | null
+        }
+        Insert: {
+          client_ts?: string | null
+          ctx?: Json | null
+          id?: never
+          received_at?: string
+          selector?: string | null
+          session_id?: string | null
+          site_id: string
+          type: string
+          url?: string | null
+          value?: number | null
+          visitor_id?: string | null
+        }
+        Update: {
+          client_ts?: string | null
+          ctx?: Json | null
+          id?: never
+          received_at?: string
+          selector?: string | null
+          session_id?: string | null
+          site_id?: string
+          type?: string
+          url?: string | null
+          value?: number | null
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_visitor_id_fkey"
+            columns: ["visitor_id"]
+            isOneToOne: false
+            referencedRelation: "visitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events_rollup: {
+        Row: {
+          avg_scroll_pct: number
+          conversions: number
+          cta_clicks: number
+          day: string
+          exits_before: number
+          id: string
+          reached_section: number
+          section_kind: string
+          segment_id: string | null
+          site_id: string
+          source: string
+          views: number
+        }
+        Insert: {
+          avg_scroll_pct?: number
+          conversions?: number
+          cta_clicks?: number
+          day: string
+          exits_before?: number
+          id?: string
+          reached_section?: number
+          section_kind?: string
+          segment_id?: string | null
+          site_id: string
+          source?: string
+          views?: number
+        }
+        Update: {
+          avg_scroll_pct?: number
+          conversions?: number
+          cta_clicks?: number
+          day?: string
+          exits_before?: number
+          id?: string
+          reached_section?: number
+          section_kind?: string
+          segment_id?: string | null
+          site_id?: string
+          source?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_rollup_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          bounced: boolean | null
+          device: Json | null
+          duration_ms: number | null
+          ended_at: string | null
+          entry_url: string | null
+          exit_url: string | null
+          geo: Json | null
+          id: string
+          language: string | null
+          max_scroll_pct: number | null
+          site_id: string
+          source: string | null
+          started_at: string
+          utm: Json | null
+          visitor_id: string
+        }
+        Insert: {
+          bounced?: boolean | null
+          device?: Json | null
+          duration_ms?: number | null
+          ended_at?: string | null
+          entry_url?: string | null
+          exit_url?: string | null
+          geo?: Json | null
+          id?: string
+          language?: string | null
+          max_scroll_pct?: number | null
+          site_id: string
+          source?: string | null
+          started_at?: string
+          utm?: Json | null
+          visitor_id: string
+        }
+        Update: {
+          bounced?: boolean | null
+          device?: Json | null
+          duration_ms?: number | null
+          ended_at?: string | null
+          entry_url?: string | null
+          exit_url?: string | null
+          geo?: Json | null
+          id?: string
+          language?: string | null
+          max_scroll_pct?: number | null
+          site_id?: string
+          source?: string | null
+          started_at?: string
+          utm?: Json | null
+          visitor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_visitor_id_fkey"
+            columns: ["visitor_id"]
+            isOneToOne: false
+            referencedRelation: "visitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sites: {
+        Row: {
+          allowed_origins: string[]
+          consent_config: Json
+          consent_mode: string
+          created_at: string
+          domain: string
+          id: string
+          owner_user_id: string
+          phase: string
+          public_site_key: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_origins?: string[]
+          consent_config?: Json
+          consent_mode?: string
+          created_at?: string
+          domain: string
+          id?: string
+          owner_user_id: string
+          phase?: string
+          public_site_key: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_origins?: string[]
+          consent_config?: Json
+          consent_mode?: string
+          created_at?: string
+          domain?: string
+          id?: string
+          owner_user_id?: string
+          phase?: string
+          public_site_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      visitors: {
+        Row: {
+          first_referrer: string | null
+          first_seen_at: string
+          first_utm: Json | null
+          id: string
+          is_returning: boolean
+          last_seen_at: string
+          site_id: string
+          visitor_key: string
+        }
+        Insert: {
+          first_referrer?: string | null
+          first_seen_at?: string
+          first_utm?: Json | null
+          id?: string
+          is_returning?: boolean
+          last_seen_at?: string
+          site_id: string
+          visitor_key: string
+        }
+        Update: {
+          first_referrer?: string | null
+          first_seen_at?: string
+          first_utm?: Json | null
+          id?: string
+          is_returning?: boolean
+          last_seen_at?: string
+          site_id?: string
+          visitor_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitors_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

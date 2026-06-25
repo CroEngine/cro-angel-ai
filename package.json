@@ -16,10 +16,10 @@
     "snapshot": "vitest run src/lib/tests/snapshot",
     "snapshot:update": "SNAPSHOT_UPDATE=1 vitest run src/lib/tests/snapshot",
     "typecheck": "tsc --noEmit",
-    "db:link": "supabase link --project-ref hmhuqqgckuujxwrtdrkj",
+    "db:link": "supabase link --project-ref upvthvbhqzqqimsyjpxw",
     "db:push": "supabase db push",
     "db:diff": "supabase db diff",
-    "db:types": "supabase gen types typescript --project-id hmhuqqgckuujxwrtdrkj --schema public > src/integrations/supabase/types.ts"
+    "db:types": "supabase gen types typescript --project-id upvthvbhqzqqimsyjpxw --schema public > src/integrations/supabase/types.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
