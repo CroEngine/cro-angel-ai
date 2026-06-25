@@ -48,10 +48,18 @@ machine or CI — a managed cloud sandbox may not be able to reach the DB direct
 The migration SQL is authored in the repo regardless of where it's applied; only
 the *apply* step needs DB reachability.
 
-## CI (optional, recommended next)
+## CI — migrate on merge
 
-A GitHub Action can run `db:push` + `db:types` on merge to `main` (paths:
-`supabase/migrations/**`), committing the refreshed `types.ts` back — so the schema
-applies itself without anyone running the CLI by hand. It needs
-`SUPABASE_ACCESS_TOKEN` + `SUPABASE_DB_PASSWORD` as repo Actions secrets. Not wired
-yet; see SECRETS.md for where those go.
+`.github/workflows/db-migrate.yml` runs `db:push` + `db:types` when a migration
+lands on `main` (and on manual **Run workflow** dispatch), then commits the
+refreshed `types.ts` back — so the schema applies itself without anyone running the
+CLI by hand.
+
+It needs two repo **Actions** secrets (Settings → Secrets and variables → Actions):
+
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_DB_PASSWORD`
+
+Until those are set, the job **no-ops and stays green**. Note: the commit-back
+pushes to `main`, so if `main` has branch protection that blocks the
+`github-actions` bot, allow it (or swap in a PAT).
