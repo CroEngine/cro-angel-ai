@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
 import { Route as ApiPublicCorpusSplatRouteImport } from './routes/api/public/corpus.$'
 
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CorpusRoute = CorpusRouteImport.update({
   id: '/corpus',
   path: '/corpus',
@@ -44,6 +50,7 @@ const ApiPublicCorpusSplatRoute = ApiPublicCorpusSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
+  '/dashboard': typeof DashboardRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
+  '/dashboard': typeof DashboardRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
+  '/dashboard': typeof DashboardRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
@@ -68,6 +77,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/corpus'
+    | '/dashboard'
     | '/api/ingest'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
@@ -75,6 +85,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/corpus'
+    | '/dashboard'
     | '/api/ingest'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
@@ -82,6 +93,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/corpus'
+    | '/dashboard'
     | '/api/ingest'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
@@ -90,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CorpusRoute: typeof CorpusRoute
+  DashboardRoute: typeof DashboardRoute
   ApiIngestRoute: typeof ApiIngestRoute
   ApiPublicCorpusSplatRoute: typeof ApiPublicCorpusSplatRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
@@ -97,6 +110,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/corpus': {
       id: '/corpus'
       path: '/corpus'
@@ -138,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CorpusRoute: CorpusRoute,
+  DashboardRoute: DashboardRoute,
   ApiIngestRoute: ApiIngestRoute,
   ApiPublicCorpusSplatRoute: ApiPublicCorpusSplatRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
