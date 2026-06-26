@@ -15,14 +15,19 @@
 // `data-endpoint` is configured, POSTed best-effort to the collector.
 
 import { INVENTORY_SCRIPT, type ContentInventory } from "./inventory";
+import { applyAdaptations, type AppliedChange, type AdaptationResult } from "./patterns";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 type AngelGlobal = {
   version: string;
   siteId: string | null;
+  mode: "inventory" | "adapt";
   inventory: ContentInventory | null;
+  applied: AppliedChange[];
   collect: () => ContentInventory;
+  adapt: () => AppliedChange[];
+  revert: () => void;
 };
 
 function currentScript(): HTMLScriptElement | null {
@@ -51,12 +56,51 @@ function summarize(inv: ContentInventory): string {
 let angel: AngelGlobal | null = null;
 let siteId: string | null = null;
 let endpoint: string | null = null;
+let mode: "inventory" | "adapt" = "inventory";
+let activeAdaptation: AdaptationResult | null = null;
+
+// Apply the safe patterns to the page. Idempotent: reverts any prior run first.
+// Exposed as window.__angelAdaptive.adapt() so it works from the console too.
+function adapt(): AppliedChange[] {
+  if (!angel || !angel.inventory) return [];
+  revertAdaptation();
+  activeAdaptation = applyAdaptations(angel.inventory);
+  angel.applied = activeAdaptation.applied;
+  if (activeAdaptation.applied.length) {
+    console.info(
+      `[Angel Adaptive] applied ${activeAdaptation.applied.length} adaptation(s): ` +
+        activeAdaptation.applied.map((a) => a.label).join(", "),
+    );
+  }
+  return angel.applied;
+}
+
+// Undo every applied change, restoring the original page.
+function revertAdaptation(): void {
+  if (activeAdaptation) {
+    activeAdaptation.revert();
+    activeAdaptation = null;
+  }
+  if (angel) angel.applied = [];
+}
 
 function init(): void {
   const script = currentScript();
   siteId = script?.getAttribute("data-site-id") ?? null;
   endpoint = script?.getAttribute("data-endpoint") ?? null;
-  angel = { version: VERSION, siteId, inventory: null, collect: collectInventory };
+  // Read-only by default. Adaptation only runs when explicitly opted in with
+  // data-mode="adapt" (or via the exposed adapt() call) — safe by default.
+  mode = script?.getAttribute("data-mode") === "adapt" ? "adapt" : "inventory";
+  angel = {
+    version: VERSION,
+    siteId,
+    mode,
+    inventory: null,
+    applied: [],
+    collect: collectInventory,
+    adapt,
+    revert: revertAdaptation,
+  };
   (window as unknown as { __angelAdaptive: AngelGlobal }).__angelAdaptive = angel;
 }
 
@@ -72,6 +116,9 @@ function crawl(): void {
   }
   angel.inventory = inventory;
   console.info(summarize(inventory));
+
+  // Apply patterns automatically only when opted in; default stays read-only.
+  if (mode === "adapt") adapt();
 
   if (endpoint) {
     try {

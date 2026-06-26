@@ -44,6 +44,7 @@ export type InventorySection = {
   containsPricing: boolean;
   containsTrustSignals: boolean;
   containsForm: boolean;
+  selector?: string;
 };
 
 export type InventoryCta = {
@@ -174,6 +175,7 @@ function assembleInventory(parts: any): ContentInventory {
       containsPricing: !!sec.containsPricing,
       containsTrustSignals: !!sec.containsTrustSignals,
       containsForm: !!sec.containsForm,
+      selector: sec.selector,
     });
   }
   var sectionTypes: Record<string, number> = {};
