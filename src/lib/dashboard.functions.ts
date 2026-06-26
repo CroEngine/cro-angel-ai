@@ -83,6 +83,30 @@ export const createSite = createServerFn({ method: "POST" })
     return site;
   });
 
+// Flip a site's phase. The gate that matters: only `adaptive` makes /api/plan serve
+// live plans; `learn`/`intelligence` keep the site observe-only. RLS (sites_update_own)
+// guarantees an owner can only change their own site.
+export const setSitePhase = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { siteId: string; phase: "learn" | "intelligence" | "adaptive" }) =>
+    z
+      .object({
+        siteId: z.string().uuid(),
+        phase: z.enum(["learn", "intelligence", "adaptive"]),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }): Promise<DashboardSite> => {
+    const { data: site, error } = await context.supabase
+      .from("sites")
+      .update({ phase: data.phase, updated_at: new Date().toISOString() })
+      .eq("id", data.siteId)
+      .select(SITE_COLS)
+      .single();
+    if (error) throw new Error(error.message);
+    return site;
+  });
+
 export const getSiteAnalytics = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { siteId: string; days?: number }) =>

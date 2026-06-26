@@ -38,10 +38,16 @@ export const Route = createFileRoute("/api/plan")({
         // Resolve the site (service role — the snippet is unauthenticated).
         const { data: site } = await db
           .from("sites")
-          .select("id")
+          .select("id, phase")
           .eq("public_site_key", siteKey)
           .maybeSingle();
         if (!site) return json(noop);
+
+        // The safety gate: only an explicitly `adaptive` site serves live plans.
+        // Learn / Intelligence phases observe + recommend but never touch visitors —
+        // the owner turns adaptation on from the dashboard. (Preview bypasses this
+        // entirely: it runs client-side from sessionStorage, never via this route.)
+        if (site.phase !== "adaptive") return json(noop);
 
         // This visitor's segment = their session's derived source. The session may
         // not exist yet on a first pageview (its first ingest batch hasn't landed) —

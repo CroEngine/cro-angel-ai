@@ -115,7 +115,7 @@ function DashboardInner() {
                     <SegmentsView siteId={selected.id} />
                   </TabsContent>
                   <TabsContent value="adaptations" className="mt-4">
-                    <AdaptationsView siteId={selected.id} />
+                    <AdaptationsView site={selected} />
                   </TabsContent>
                   <TabsContent value="content" className="mt-4">
                     <InventoryView siteId={selected.id} />
