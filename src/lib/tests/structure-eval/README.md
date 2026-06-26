@@ -1,0 +1,103 @@
+# structure-eval — page-structure ground-truth benchmark
+
+Measures **how accurate the section + CTA detectors actually are** — the sibling
+of [`trust-eval`](../trust-eval/README.md), for page structure instead of trust
+signals. Same method: hand-label ground truth from the *rendered* page, replay
+each frozen capture through the real detectors, score against the labels
+(including the cells where the detector is wrong).
+
+## What it measures
+
+Two metrics, both from `runPageAudit` (the same detectors the audit + the Angel
+snippet use):
+
+1. **Section-type presence** — precision / recall / F1 over `(site × type)` for
+   the semantic section types the classifier can emit:
+   `hero, features, benefits, pricing, faq, testimonials, form`. Label `1` = a
+   section of that type is present on the rendered page; the detector "got" it if
+   `audit.sections[].type` contains it.
+2. **Primary CTA** — does the derived hero CTA (`audit.hero.primaryCtaText`) match
+   the real primary action? `pick accuracy` over sites that *have* a single
+   primary CTA, plus a `no-false-primary` rate over sites that genuinely don't
+   (does the detector avoid inventing one?).
+
+## Labels are independent of the detector
+
+`labels.json` is hand-marked from rendered evidence — the heading outline +
+above-fold buttons from `scripts/structure-evidence.ts` (a raw DOM walk that does
+**not** run the classifiers) plus the committed `screenshot.jpg`. Each site has a
+`_note` recording the evidence. Definitions used:
+
+- **hero** — a prominent above-the-fold intro/banner/masthead with a headline.
+  News/feed/app-shell pages that open straight into an article or listing grid
+  (verge, lemonde, spiegel, aftonbladet, dev-to, github-blog, spotify, airbnb)
+  are labeled hero=0 on purpose — they have no marketing hero.
+- **features / benefits** — a section enumerating product capabilities (features)
+  or outcomes/why (benefits). **pricing / faq** — an on-page pricing-plan or FAQ
+  section (a "Pricing" nav *link* does not count). **testimonials** — customer
+  quotes/reviews. **form** — a section whose primary content is a form
+  (newsletter/contact), not an inline search box.
+- **primaryCta** — the single dominant conversion action, or `null` when the page
+  has none (news, search-driven, marketplace, or co-equal "Shop X" e-commerce).
+
+## Result (v1.14.0 detectors)
+
+32-site local run (`bun run structure-eval`); CI scores the 30 committed captures.
+
+### Section-type presence — **P 46.7% · R 42.0% · F1 44.2%**
+
+| type | tp | fp | fn | P | R |
+|---|---|---|---|---|---|
+| hero | 13 | 4 | 11 | 76% | 54% |
+| features | 2 | 3 | 11 | 40% | 15% |
+| testimonials | 4 | 2 | 7 | 67% | 36% |
+| pricing | 1 | 4 | 0 | 20% | 100% |
+| benefits | 0 | 3 | 0 | — | — |
+| faq | 0 | 1 | 0 | — | — |
+| form | 1 | 7 | 0 | 13% | 100% |
+
+This is **much weaker than trust detection (98/84)** — and that is the finding.
+The section classifier (`classifyType` in `scripts/sections.ts`) is keyword-driven
+and conservative, so:
+
+- **It labels almost everything `content`.** notion → 21 sections, **0** typed
+  `hero`; gymshark → 28 sections, all `content`. Hence low recall on
+  hero/features/testimonials — the real sections exist but come back `content`.
+- **`hero` is rarely emitted as a section type** even when the page clearly has
+  one, because `<header>`/geometry guards fire first. The product's actual hero
+  finder is the *separate* `deriveHero`, which DOES locate it — that mechanism is
+  measured by the CTA metric below, not here.
+- **features/testimonials need magic heading words** (`/feature|how it works/`,
+  `/testimonial|customer|review/`). Headings like "Remarkable results", "Loved by
+  teams that ship", "Bring all your work together" miss → false negatives.
+- **Editorial keyword false positives.** On news/feed sites, article titles
+  containing "Why…", "Reviews", "FAQ", pricing words trip features/benefits/faq/
+  pricing/testimonials (dev-to, spiegel, github-blog, verge). The `/review/` rule
+  even tags The Verge's "Reviews" section as testimonials.
+- **`form`, `benefits`, `faq` are near-undefined on this corpus** (0–1 positives)
+  so they mostly surface precision noise — `form` counts inline search sections
+  the labels don't. They stay in the table for transparency.
+
+### Primary CTA — **pick accuracy 78.6% (11/14)**, no-false-primary 16.7% (3/18)
+
+`deriveHero` is far stronger than the section typer: on the 14 sites with a real
+primary CTA it picks the right one 11 times (misses: hubspot picked "Learn more…",
+vercel "Get a Demo" vs "Deploy Now", gymshark "search"). But on the 18 sites with
+**no** single CTA it still asserts a conversion CTA 15 times — surfacing nav /
+category links ("Women's", "LATEST", "Köksutrustning…", "Register"). That nav-as-CTA
+over-assertion is the same class of bug the snippet's inventory CTA reclassification
+fixes; `deriveHero` does not yet apply it. Reported, not gated.
+
+## Running
+
+```
+bun run structure-eval                 # score all captures on disk (32 local)
+bun run structure-eval hubspot stripe  # subset
+bun run structure-evidence hubspot     # dump the raw labeling evidence
+```
+
+The CI gate (`__tests__/structure-eval.test.ts`) floors section P≥0.40 / R≥0.35
+and CTA accuracy ≥0.65 — a few points under measured, so a broad regression reds
+the build while the known weakness doesn't. **Re-tighten as the classifier
+improves.** The honest takeaway: trust detection is production-grade; section
+typing is the next thing to harden, and this benchmark is the yardstick for it.
