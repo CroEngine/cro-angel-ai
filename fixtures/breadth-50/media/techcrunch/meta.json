@@ -1,16 +1,16 @@
 {
   "url": "https://techcrunch.com",
   "name": "media__techcrunch",
-  "captured_at": "2026-06-20T20:40:09.059Z",
+  "captured_at": "2026-06-21T21:14:37.950Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T20:38:51.581Z",
+  "notes": "breadth-50 2026-06-21T21:13:21.911Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T20:40:09.059Z",
-  "expiresAt": "2026-09-18T20:40:09.059Z",
+  "frozenAt": "2026-06-21T21:14:37.950Z",
+  "expiresAt": "2026-09-19T21:14:37.950Z",
   "refreezeReason": "manual"
 }

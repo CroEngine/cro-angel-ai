@@ -49,6 +49,39 @@ to UA defaults (no styles at all). Either path produces different
 saw — breaking salience, contrast, visibility, and visualWeight. MHTML
 inlines everything so the CSSOM at replay matches capture exactly.
 
+## Extraction completeness — "catch everything" (extractor v1.1.0)
+
+Capturing the page properly (MHTML, above) and *extracting* everything from it
+are two different problems. Interaction-gated UI — mega-menus, collapsed mobile
+nav, tab panels, accordions, modal contents — is present in the frozen DOM but
+CSS-hidden (`display:none` / `aria-hidden` / off-flow). The freeze already
+captures it; the loss was extractor-side.
+
+Through v1.0.0 the collector dropped every element that failed `isVisible`
+(`collect.ts`) and hardcoded `visible:true` on the survivors, so a "Contact
+sales" buried in a dropdown — a real conversion surface — never reached the
+golden or the scorer. **v1.1.0** keeps those elements with `visible:false`
+instead of dropping them (a hidden element is kept when it carries a label or
+href; hidden scaffolding with neither is still skipped). Visible elements are
+unchanged.
+
+The golden now carries `visible` per element plus a `visibleCount` /
+`hiddenCount` rollup in `collect`, so the recovery is legible in the diff. On
+hubspot this took the interactive inventory from **138 visible → 303 total**
+(+165 hidden, including the full 106-item navigation IA and 30 dropdown CTAs)
+with **zero new Browserbase captures** — the content was already in the frozen
+MHTML.
+
+Determinism note: `visible:false` elements are read deterministically from the
+frozen DOM (same-capture replay is byte-identical), so the substrate promise
+`score = f(frozen DOM, extractor_vN)` is unchanged in form. Re-affirming full
+cross-capture #4 promotion at v1.1.0 (the new hidden axis) wants a fresh N≥3
+post-pinning freeze + replay-through-v1.1.0 byte-identical-goldens check; see
+`corpus/hubspot/meta.json::rebless-v1.1.0`. Capture-side completeness for
+content that only *materializes on interaction* (lazy-mounted / fetch-on-click,
+never in the static DOM) is a separate, determinism-sensitive workstream and is
+NOT addressed here.
+
 ## Which sites to freeze
 
 Pick sites that exercise the bugs you're actively fixing, not generic

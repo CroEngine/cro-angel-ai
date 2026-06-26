@@ -1,0 +1,16 @@
+{
+  "url": "https://www.spiegel.de",
+  "name": "cookie-wall-eu__spiegel",
+  "captured_at": "2026-06-21T21:18:41.201Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": "//button[contains(normalize-space(.),\"Consent and continue\")]",
+  "consentInstruction": null,
+  "notes": "breadth-50 2026-06-21T21:17:35.419Z",
+  "ttlDays": 90,
+  "frozenAt": "2026-06-21T21:18:41.201Z",
+  "expiresAt": "2026-09-19T21:18:41.201Z",
+  "refreezeReason": "manual"
+}

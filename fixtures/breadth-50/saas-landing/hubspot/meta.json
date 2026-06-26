@@ -1,16 +1,16 @@
 {
   "url": "https://www.hubspot.com",
   "name": "saas-landing__hubspot",
-  "captured_at": "2026-06-20T20:36:59.225Z",
+  "captured_at": "2026-06-21T21:09:49.624Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T20:36:42.269Z",
+  "notes": "breadth-50 2026-06-21T21:09:33.713Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T20:36:59.225Z",
-  "expiresAt": "2026-09-18T20:36:59.225Z",
+  "frozenAt": "2026-06-21T21:09:49.624Z",
+  "expiresAt": "2026-09-19T21:09:49.624Z",
   "refreezeReason": "manual"
 }

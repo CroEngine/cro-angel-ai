@@ -11,16 +11,18 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 5032,
-    "screenshotKb": 2635,
+    "mhtmlKb": 5762,
+    "screenshotKb": 2590,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
-    "embeddedFontCount": 63,
-    "mhtmlKbBeforeFontEmbed": 2734,
+    "embeddedFontCount": 70,
+    "mhtmlKbBeforeFontEmbed": 3086,
     "fontFetchFailures": [],
     "embeddedFamilies": [
+      "Amazon Ember",
+      "Amazon Ember Modern Display",
       "GH Guardian Headline",
       "Guardian Egyptian Web",
       "Guardian Headline Full",
@@ -32,7 +34,7 @@
     ],
     "fontUrls": {
       "embedded": 0,
-      "absolute": 89,
+      "absolute": 103,
       "relativeResolved": 18,
       "unresolvable": []
     },
@@ -49,21 +51,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:38:23.001Z"
+    "frozenAt": "2026-06-21T21:12:46.619Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 19145,
-    "interactiveCount": 389,
+    "textLen": 19581,
+    "interactiveCount": 405,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 6353,
+    "gotoMs": 4974,
     "consentMs": 0,
-    "scrollMs": 4754,
-    "captureMs": 16321
+    "scrollMs": 6590,
+    "captureMs": 22664
   }
 }

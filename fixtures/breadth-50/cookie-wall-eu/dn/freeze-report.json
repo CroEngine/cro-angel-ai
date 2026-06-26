@@ -7,7 +7,7 @@
     "dismissCheck": "detached",
     "matchCountBeforeClick": 1,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 542,
+    "dismissedAfterMs": 508,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,29 +16,29 @@
     }
   },
   "capture": {
-    "mhtmlKb": 7777,
-    "screenshotKb": 2243,
+    "mhtmlKb": 7330,
+    "screenshotKb": 2233,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 42,
-    "mhtmlKbBeforeFontEmbed": 3478,
+    "mhtmlKbBeforeFontEmbed": 3031,
     "fontFetchFailures": [
-      {
-        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSans-1-500-Variable.woff2",
-        "error": "HTTP 403"
-      },
       {
         "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/BNSans.woff2",
         "error": "HTTP 403"
       },
       {
-        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSansItalic-1-500-RegularItalic.woff2",
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSans-1-500-Variable.woff2",
         "error": "HTTP 403"
       },
       {
         "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSansItalic-1-500-BoldItalic.woff2",
+        "error": "HTTP 403"
+      },
+      {
+        "url": "https://ext.dn.se/qs/widgets/patron/oneshot/sport/vm2026/assets/fonts/DNSansItalic-1-500-RegularItalic.woff2",
         "error": "HTTP 403"
       }
     ],
@@ -75,21 +75,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:41:16.051Z"
+    "frozenAt": "2026-06-21T21:17:54.185Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 14209,
+    "textLen": 14247,
     "interactiveCount": 285,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 6527,
-    "consentMs": 2380,
-    "scrollMs": 5522,
-    "captureMs": 15261
+    "gotoMs": 6838,
+    "consentMs": 1563,
+    "scrollMs": 4859,
+    "captureMs": 16774
   }
 }

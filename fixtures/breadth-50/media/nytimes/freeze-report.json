@@ -11,8 +11,8 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 164930,
-    "screenshotKb": 900,
+    "mhtmlKb": 165151,
+    "screenshotKb": 894,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 3,
@@ -22,7 +22,7 @@
       "https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.8a4b4c857c657c3ca62ebbcdd26d2698.ttf"
     ],
     "embeddedFontCount": 391,
-    "mhtmlKbBeforeFontEmbed": 10939,
+    "mhtmlKbBeforeFontEmbed": 11161,
     "fontFetchFailures": [
       {
         "url": "https://g1.nyt.com/fonts/family/cheltenham/cheltenham-normal-500.8a4b4c857c657c3ca62ebbcdd26d2698.ttf",
@@ -107,21 +107,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T19:15:18.146Z"
+    "frozenAt": "2026-06-21T21:14:39.724Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 13089,
-    "interactiveCount": 919,
+    "textLen": 13379,
+    "interactiveCount": 921,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 32250,
+    "gotoMs": 32973,
     "consentMs": 0,
-    "scrollMs": 4384,
-    "captureMs": 39474
+    "scrollMs": 4619,
+    "captureMs": 37860
   }
 }

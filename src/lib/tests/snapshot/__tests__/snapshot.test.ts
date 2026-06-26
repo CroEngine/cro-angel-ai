@@ -17,6 +17,8 @@ import { chromium, type Browser } from "playwright";
 
 import { replayCorpus } from "../harness.server";
 import { normalizeCollect, normalizePageAudit, diffNormalized } from "../normalize";
+import { scoreCro } from "../../croScore";
+import { projectCro } from "../../croProjection";
 
 const CORPUS_ROOT = "corpus";
 const UPDATE = process.env.SNAPSHOT_UPDATE === "1";
@@ -88,9 +90,18 @@ describe.skipIf(sites.length === 0)("snapshot diff", () => {
           );
         }
 
+        const collect = normalizeCollect(fresh.collect);
+        const pageAudit = normalizePageAudit(fresh.pageAudit);
+        // Deterministic CRO score over the golden — "the golden has finished
+        // scoring." Regression-tested by the same diff below.
+        const croScore = scoreCro({ collect, pageAudit });
         const normalized = {
-          collect: normalizeCollect(fresh.collect),
-          pageAudit: normalizePageAudit(fresh.pageAudit),
+          collect,
+          pageAudit,
+          croScore,
+          // Lean curated CRO signal view — the ready, noise-free LLM input
+          // derived from the full golden. Deterministic; regression-tested too.
+          croProjection: projectCro({ collect, pageAudit, croScore }),
         };
 
         const goldenPath = join(CORPUS_ROOT, name, "golden.json");

@@ -18,7 +18,7 @@
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 123,
-    "mhtmlKbBeforeFontEmbed": 6758,
+    "mhtmlKbBeforeFontEmbed": 6759,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "8Bit",
@@ -70,7 +70,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T19:16:14.131Z"
+    "frozenAt": "2026-06-21T21:15:59.263Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -82,9 +82,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 12020,
+    "gotoMs": 7318,
     "consentMs": 0,
-    "scrollMs": 3479,
-    "captureMs": 5044
+    "scrollMs": 3337,
+    "captureMs": 3327
   }
 }

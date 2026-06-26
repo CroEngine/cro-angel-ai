@@ -1,13 +1,13 @@
 {
-  "ok": false,
-  "error": "-32000 Failed to generate MHTML",
+  "ok": true,
+  "error": null,
   "dryRun": false,
   "consent": {
     "selector": "//button[contains(normalize-space(.),\"Consent and continue\")]",
     "dismissCheck": "detached",
     "matchCountBeforeClick": null,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 1334,
+    "dismissedAfterMs": 1866,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,17 +16,33 @@
     }
   },
   "capture": {
-    "mhtmlKb": 0,
-    "screenshotKb": 0,
+    "mhtmlKb": 6689,
+    "screenshotKb": 2472,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
-    "externalFontSrcCount": null,
-    "unembeddedFontUrls": null,
-    "embeddedFontCount": null,
-    "mhtmlKbBeforeFontEmbed": null,
-    "fontFetchFailures": null,
-    "embeddedFamilies": null,
-    "fontUrls": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 38,
+    "mhtmlKbBeforeFontEmbed": 3860,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Roboto",
+      "Roboto Bold",
+      "Roboto Condensed",
+      "Roboto Condensed Bold",
+      "SpiegelSans",
+      "SpiegelSansUI",
+      "SpiegelSerifDisplayUI",
+      "SpiegelSerifUI",
+      "SpiegelSlabCdUI",
+      "hs-icons"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 18,
+      "relativeResolved": 20,
+      "unresolvable": []
+    },
     "externalized": false,
     "externalAssetUrl": null,
     "externalAssetSha256": null,
@@ -40,21 +56,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:41:07.988Z"
+    "frozenAt": "2026-06-21T21:17:38.085Z"
   },
-  "failureClass": "mhtml-capture-failed",
+  "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 35230,
-    "interactiveCount": 1009,
+    "textLen": 34745,
+    "interactiveCount": 1003,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 7345,
-    "consentMs": 2691,
-    "scrollMs": 5900,
-    "captureMs": 0
+    "gotoMs": 7085,
+    "consentMs": 3194,
+    "scrollMs": 5783,
+    "captureMs": 45290
   }
 }

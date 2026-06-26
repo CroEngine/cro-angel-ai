@@ -1,16 +1,16 @@
 {
   "url": "https://www.allbirds.com",
   "name": "ecommerce__shopify-store-allbirds",
-  "captured_at": "2026-06-20T20:37:31.144Z",
+  "captured_at": "2026-06-21T21:11:09.467Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T20:37:02.092Z",
+  "notes": "breadth-50 2026-06-21T21:10:37.143Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T20:37:31.144Z",
-  "expiresAt": "2026-09-18T20:37:31.144Z",
+  "frozenAt": "2026-06-21T21:11:09.467Z",
+  "expiresAt": "2026-09-19T21:11:09.467Z",
   "refreezeReason": "manual"
 }

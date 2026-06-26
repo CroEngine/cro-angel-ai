@@ -1,16 +1,16 @@
 {
   "url": "https://stackoverflow.com",
   "name": "iframe-heavy__stackoverflow",
-  "captured_at": "2026-06-21T09:54:03.354Z",
+  "captured_at": "2026-06-21T21:19:46.968Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-21T09:53:39.338Z",
+  "notes": "breadth-50 2026-06-21T21:19:23.060Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-21T09:54:03.354Z",
-  "expiresAt": "2026-09-19T09:54:03.354Z",
+  "frozenAt": "2026-06-21T21:19:46.968Z",
+  "expiresAt": "2026-09-19T21:19:46.968Z",
   "refreezeReason": "manual"
 }

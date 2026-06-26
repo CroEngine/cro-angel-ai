@@ -164,7 +164,11 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
   }
 }
 
-export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise<ReplayResult> {
+export async function replayCorpus(
+  name: string,
+  corpusRoot = "corpus",
+  opts: { skipCanary?: boolean; contextTries?: number; deadlineMs?: number } = {},
+): Promise<ReplayResult> {
   const dir = join(corpusRoot, name);
   const mhtmlPath = join(dir, "page.mhtml");
   const pointerPath = join(dir, "page.mhtml.asset.json");
@@ -301,6 +305,17 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
   // deps (e.g. some sandboxes); the user-visible flow uses the pinned binary.
   const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
   const browser = await chromium.launch({ headless: true, executablePath });
+  // Internal deadline: a pathological capture (frozen-SPA re-render loop, 169MB
+  // DOM) can hang a step past any external timeout while holding a browser open
+  // — leaking it across a batch run and starving later sites. On the deadline we
+  // force-close the browser, which makes the in-flight evaluate throw and the
+  // finally clean up. No leak. Opt-in (batch surveys); unset for the snapshot
+  // pipeline, which is bounded by its own per-step waits.
+  const deadline = opts.deadlineMs
+    ? setTimeout(() => {
+        browser.close().catch(() => {});
+      }, opts.deadlineMs)
+    : undefined;
   try {
     // Keep JS enabled — MHTML loaded from file:// does NOT auto-navigate to
     // the embedded URL (we verified URL stays on file://...), and disabling JS
@@ -365,7 +380,10 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     // running anything page-affecting we require that page.evaluate survives
     // N consecutive ticks against the same URL. If it throws (context torn down
     // mid-evaluate by a delayed MHTML commit), reset streak and keep polling.
-    await waitForStableContext(page);
+    // Heavy SPAs (vercel/linear/trello) keep re-rendering well past the default
+    // 20-try (~3s) budget; callers can extend it (the survey passes a larger
+    // contextTries) to let hydration settle instead of failing fast.
+    await waitForStableContext(page, { tries: opts.contextTries ?? 20 });
 
     // Render-canary: gate före Fas 2. Verifierar att de cid:-inbäddade
     // familjerna faktiskt resolvar och påverkar layout (inte bara "registrerade").
@@ -373,7 +391,11 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     // diagnostik per replay-körning, inte en del av golden). Fail throw:ar
     // hård så CI gate:ar på det.
     let canary: RenderCanaryReport | null = null;
-    try {
+    // Score-only surveys (skipCanary) skip the canary's in-page font measurement
+    // entirely — it's the slowest step on huge DOMs (guardian 24k-px, nytimes
+    // 169MB) and irrelevant to page-type/structural scoring. Promoted snapshot
+    // replays still run it (default). The `if (canary)` block below no-ops on null.
+    if (!opts.skipCanary) try {
       const pinned = !process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
       const chromiumPath = executablePath ?? "<playwright-bundled>";
       let chromiumVersion = "";
@@ -474,10 +496,18 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
           `[replay] canary ghosts (non-blocking): ${canary.ghosts.join(", ")}`,
         );
       }
-      if (!canary.ok) {
+      if (!canary.ok && !opts.skipCanary) {
         throw new Error(
           `[replay] render-canary failed for ${name}: ${canary.failures.join("; ")}. ` +
             `Se corpus/${name}/render-canary.json + render-canary.families.json för full rapport.`,
+        );
+      } else if (!canary.ok) {
+        // skipCanary: score-only survey of non-promoted captures. Font-render
+        // may use fallbacks (salience slightly noisy) but page-type + structural
+        // signals hold. Logged, not gated.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[replay] render-canary failed for ${name} (skipCanary set, continuing): ${canary.failures.join("; ")}`,
         );
       }
     }
@@ -506,6 +536,7 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       pageAudit,
     };
   } finally {
+    if (deadline) clearTimeout(deadline);
     try {
       await browser.close();
     } catch {

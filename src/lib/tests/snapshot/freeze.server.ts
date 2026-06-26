@@ -251,10 +251,24 @@ export const ASSERT_CAPTURE_VALID_FN = `(challengeMarkers, consentPatterns, view
     break;
   }
   let reason = null;
-  if (textLen < 500) reason = "text-too-short";
-  else if (hits.length > 0) reason = "challenge-markers:" + hits.join(",");
+  if (hits.length > 0) reason = "challenge-markers:" + hits.join(",");
   else if (interactive < 10) reason = "too-few-interactive-elements";
-  else if (!heroHasMeaningfulHeading) reason = "no-meaningful-hero-heading";
+  // Empty-shell floor: a body that never hydrated (near-zero text). Low floor
+  // keeps deliberately text-light splash pages (e.g. Medium's homepage, ~230ch)
+  // while still catching blank SPA shells. The previous 500ch floor false-failed
+  // those legitimate minimalist pages — the exact false-negative the thresholds
+  // are documented to avoid (see header comment above).
+  else if (textLen < 120) reason = "text-too-short";
+  // Hero-heading is a quality signal for THIN pages — it catches consent/error
+  // shells that scrape enough chrome links to clear the interactive floor but
+  // carry no real content. A page with substantial text AND many interactive
+  // elements is demonstrably real regardless of whether its top-of-viewport
+  // headline is a semantic h1-h3 (e.g. aftonbladet's image-teaser tabloid front:
+  // 8050ch, 279 interactive, consent dismissed, no challenge). Only require a
+  // hero heading when the content signals are otherwise thin.
+  else if (!heroHasMeaningfulHeading && (textLen < 1500 || interactive < 25)) {
+    reason = "no-meaningful-hero-heading";
+  }
   return { ok: reason === null, textLen, interactiveCount: interactive, heroHasMeaningfulHeading, challengeMarkersFound: hits, reason };
 }`;
 
@@ -303,6 +317,18 @@ function classifyFailure(
   }
   if (msg.includes("401") || msg.includes("login") || msg.includes("auth required")) {
     return "auth-gate";
+  }
+  // Any consent-step failure is a consent problem, not an unclassifiable one.
+  // Covers the Sourcepoint/CMP iframe flakes seen on the Schibsted sites:
+  // "consent-iframe blev aldrig attached" (CMP never loaded) and "Could not
+  // find an element for the given xPath(s)" (button xpath not found / detached
+  // mid-act). Without this they land in `unknown`, which trips the RED verdict.
+  if (
+    msg.includes("consent") ||
+    msg.includes("could not find an element") ||
+    msg.includes("given xpath")
+  ) {
+    return "consent-missed";
   }
   // Capture-validity-fel kommer hit som thrown Error från assertCaptureValid-gate
   if (msg.includes("captured-wrong-page")) return "captured-wrong-page";
@@ -618,10 +644,14 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
         );
       }
       try {
-        await page.waitForSelector(opts.consentFrame, { state: "attached", timeout: 8000 });
+        // Sourcepoint on heavy Schibsted sites (aftonbladet/svd) loads its CMP
+        // iframe async and slowly; 8s flaked intermittently. 15s buys the CMP
+        // time without meaningfully slowing the happy path (it resolves as soon
+        // as the iframe attaches).
+        await page.waitForSelector(opts.consentFrame, { state: "attached", timeout: 15000 });
       } catch {
         throw new Error(
-          `[freeze] consent-iframe blev aldrig attached inom 8s: ${opts.consentFrame} (${opts.name}). ` +
+          `[freeze] consent-iframe blev aldrig attached inom 15s: ${opts.consentFrame} (${opts.name}). ` +
             `Stale selektor, A/B-variant, eller CMP laddade aldrig.`,
         );
       }
@@ -635,7 +665,38 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
         report.capture.beforeDismissScreenshotPath = beforePath;
       }
       const tClick = Date.now();
-      await page.frameLocator(opts.consentFrame).locator(opts.consentSelector).first().click();
+      // The iframe attaching ≠ the button being rendered. Sourcepoint paints the
+      // CMP body a beat later, so an immediate click raced the button and threw
+      // "Could not find an element for the given xPath(s)". Wait for the button
+      // to be visible inside the frame first; a clean consent error (classified
+      // consent-missed) beats a flaky race.
+      const consentButton = page
+        .frameLocator(opts.consentFrame)
+        .locator(opts.consentSelector)
+        .first();
+      // Stagehand's frame LocatorDelegate has no waitFor — poll isVisible()
+      // (returns false rather than throwing when the xpath hasn't resolved yet)
+      // until the button paints or we time out.
+      const buttonDeadline = Date.now() + 10000;
+      let buttonReady = false;
+      while (Date.now() < buttonDeadline) {
+        try {
+          if (await consentButton.isVisible()) {
+            buttonReady = true;
+            break;
+          }
+        } catch {
+          /* frame mid-navigation — retry */
+        }
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      if (!buttonReady) {
+        throw new Error(
+          `[freeze] consent-knapp syntes aldrig i iframe inom 10s: ${opts.consentSelector} (${opts.name}). ` +
+            `CMP-iframe attachade men knappen renderade aldrig (A/B-variant eller fördröjd render).`,
+        );
+      }
+      await consentButton.click();
       try {
         await page.waitForSelector(opts.consentFrame, { state: dismissState, timeout: 8000 });
       } catch {
@@ -768,14 +829,28 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     // up to 3x on -32000 only; re-throw any other error immediately.
     let snap: { data: string } | undefined;
     let captureErr: unknown;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    const CAPTURE_ATTEMPTS = 5;
+    for (let attempt = 1; attempt <= CAPTURE_ATTEMPTS; attempt++) {
       try {
         snap = await page.sendCDP<{ data: string }>("Page.captureSnapshot", { format: "mhtml" });
         break;
       } catch (e) {
         captureErr = e;
         if (!/-32000|failed to generate mhtml/i.test(String((e as Error)?.message ?? e))) throw e;
-        await new Promise((r) => setTimeout(r, 1200 * attempt));
+        // The serializer chokes while the page is still busy — large media
+        // pages (techcrunch/spiegel/dn) with in-flight image/lazy work, worse
+        // under capture concurrency. Re-settle before retrying: scroll back to
+        // top so layout/raster quiesces, then back off progressively
+        // (1.5s,3s,4.5s,6s,7.5s). Empirically clears the transient -32000s that
+        // a bare immediate retry did not.
+        // eslint-disable-next-line no-console
+        console.warn(`[freeze] captureSnapshot -32000 attempt ${attempt}/${CAPTURE_ATTEMPTS} — re-settling`);
+        try {
+          await page.evaluate(() => window.scrollTo(0, 0));
+        } catch {
+          /* execution context busy — skip the nudge, still back off */
+        }
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
       }
     }
     if (!snap) throw captureErr;

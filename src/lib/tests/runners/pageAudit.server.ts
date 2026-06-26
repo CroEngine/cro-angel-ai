@@ -413,7 +413,7 @@ export async function runPageAudit(
     sections: sectionsTyped,
     dims: dimsTyped,
   });
-  const hero = deriveHero(sectionsTyped, ctasTyped);
+  const hero = deriveHero(sectionsTyped, ctasTyped, audit.headings?.h1Texts ?? []);
 
   // Strip transient `selector` from sections before persistence — it's a
   // DOM lookup helper for the browser-side scripts, not analytics data.

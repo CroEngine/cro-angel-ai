@@ -1,60 +1,15 @@
 {
-  "ranAt": "2026-06-21T19:17:36.094Z",
-  "total": 45,
+  "ranAt": "2026-06-21T21:22:24.284Z",
+  "note": "clean re-run @ concurrency=2 after freeze hardening (incl. hero-heading validity refinement); aftonbladet re-frozen individually",
+  "total": 50,
   "addressableTotal": 45,
-  "addressableOk": 43,
-  "addressableSuccessRate": 0.956,
+  "addressableOk": 45,
+  "addressableSuccessRate": 1,
   "byFailureClass": {
-    "mhtml-capture-failed": 1,
-    "captured-wrong-page": 1
-  },
-  "byCategory": {
-    "saas-landing": {
-      "total": 10,
-      "ok": 10,
-      "rate": 1,
-      "deferred": false
-    },
-    "ecommerce": {
-      "total": 10,
-      "ok": 10,
-      "rate": 1,
-      "deferred": false
-    },
-    "media": {
-      "total": 5,
-      "ok": 5,
-      "rate": 1,
-      "deferred": false
-    },
-    "spa": {
-      "total": 5,
-      "ok": 5,
-      "rate": 1,
-      "deferred": false
-    },
-    "i18n-routing": {
-      "total": 5,
-      "ok": 5,
-      "rate": 1,
-      "deferred": false
-    },
-    "cookie-wall-eu": {
-      "total": 5,
-      "ok": 4,
-      "rate": 0.8,
-      "deferred": false
-    },
-    "iframe-heavy": {
-      "total": 5,
-      "ok": 4,
-      "rate": 0.8,
-      "deferred": false
-    }
+    "missing-report": 5
   },
   "unknownCount": 0,
   "verdict": "GREEN: redo för nästa lager",
-  "$note": "skipExternalize för breadth (gitignorade binärer, mäter capture-correctness ej storage). Env-gap eliminerat.",
   "outcomes": [
     {
       "category": "saas-landing",
@@ -64,8 +19,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2098,
-      "reportPath": "fixtures/breadth-50/saas-landing/stripe/freeze-report.json"
+      "mhtmlKb": 2191
     },
     {
       "category": "saas-landing",
@@ -75,8 +29,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4124,
-      "reportPath": "fixtures/breadth-50/saas-landing/notion/freeze-report.json"
+      "mhtmlKb": 4833
     },
     {
       "category": "saas-landing",
@@ -86,8 +39,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4301,
-      "reportPath": "fixtures/breadth-50/saas-landing/linear/freeze-report.json"
+      "mhtmlKb": 4301
     },
     {
       "category": "saas-landing",
@@ -97,8 +49,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2011,
-      "reportPath": "fixtures/breadth-50/saas-landing/vercel/freeze-report.json"
+      "mhtmlKb": 2011
     },
     {
       "category": "saas-landing",
@@ -108,8 +59,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 1659,
-      "reportPath": "fixtures/breadth-50/saas-landing/supabase/freeze-report.json"
+      "mhtmlKb": 1662
     },
     {
       "category": "saas-landing",
@@ -119,8 +69,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 5106,
-      "reportPath": "fixtures/breadth-50/saas-landing/intercom/freeze-report.json"
+      "mhtmlKb": 5110
     },
     {
       "category": "saas-landing",
@@ -130,8 +79,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 6851,
-      "reportPath": "fixtures/breadth-50/saas-landing/hubspot/freeze-report.json"
+      "mhtmlKb": 6851
     },
     {
       "category": "saas-landing",
@@ -141,8 +89,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2012,
-      "reportPath": "fixtures/breadth-50/saas-landing/hibob/freeze-report.json"
+      "mhtmlKb": 2012
     },
     {
       "category": "saas-landing",
@@ -152,8 +99,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 9216,
-      "reportPath": "fixtures/breadth-50/saas-landing/figma/freeze-report.json"
+      "mhtmlKb": 1288
     },
     {
       "category": "saas-landing",
@@ -163,8 +109,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 9010,
-      "reportPath": "fixtures/breadth-50/saas-landing/loom/freeze-report.json"
+      "mhtmlKb": 9069
     },
     {
       "category": "ecommerce",
@@ -174,8 +119,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 6003,
-      "reportPath": "fixtures/breadth-50/ecommerce/shopify-store-allbirds/freeze-report.json"
+      "mhtmlKb": 6004
     },
     {
       "category": "ecommerce",
@@ -185,8 +129,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 5444,
-      "reportPath": "fixtures/breadth-50/ecommerce/shopify-store-gymshark/freeze-report.json"
+      "mhtmlKb": 5443
     },
     {
       "category": "ecommerce",
@@ -196,8 +139,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 13916,
-      "reportPath": "fixtures/breadth-50/ecommerce/everlane/freeze-report.json"
+      "mhtmlKb": 13916
     },
     {
       "category": "ecommerce",
@@ -207,8 +149,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4023,
-      "reportPath": "fixtures/breadth-50/ecommerce/patagonia/freeze-report.json"
+      "mhtmlKb": 4023
     },
     {
       "category": "ecommerce",
@@ -218,8 +159,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3391,
-      "reportPath": "fixtures/breadth-50/ecommerce/warby-parker/freeze-report.json"
+      "mhtmlKb": 3752
     },
     {
       "category": "ecommerce",
@@ -229,8 +169,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 14907,
-      "reportPath": "fixtures/breadth-50/ecommerce/casper/freeze-report.json"
+      "mhtmlKb": 14906
     },
     {
       "category": "ecommerce",
@@ -240,8 +179,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3848,
-      "reportPath": "fixtures/breadth-50/ecommerce/glossier/freeze-report.json"
+      "mhtmlKb": 3848
     },
     {
       "category": "ecommerce",
@@ -251,8 +189,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3796,
-      "reportPath": "fixtures/breadth-50/ecommerce/away/freeze-report.json"
+      "mhtmlKb": 8751
     },
     {
       "category": "ecommerce",
@@ -262,8 +199,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 9771,
-      "reportPath": "fixtures/breadth-50/ecommerce/rei/freeze-report.json"
+      "mhtmlKb": 4690
     },
     {
       "category": "ecommerce",
@@ -273,8 +209,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4926,
-      "reportPath": "fixtures/breadth-50/ecommerce/ikea-se/freeze-report.json"
+      "mhtmlKb": 4930
     },
     {
       "category": "media",
@@ -284,8 +219,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 5032,
-      "reportPath": "fixtures/breadth-50/media/guardian/freeze-report.json"
+      "mhtmlKb": 5762
     },
     {
       "category": "media",
@@ -295,8 +229,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 8293,
-      "reportPath": "fixtures/breadth-50/media/bbc/freeze-report.json"
+      "mhtmlKb": 8603
     },
     {
       "category": "media",
@@ -306,8 +239,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3482,
-      "reportPath": "fixtures/breadth-50/media/verge/freeze-report.json"
+      "mhtmlKb": 6405
     },
     {
       "category": "media",
@@ -317,8 +249,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3223,
-      "reportPath": "fixtures/breadth-50/media/techcrunch/freeze-report.json"
+      "mhtmlKb": 4379
     },
     {
       "category": "media",
@@ -328,8 +259,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 164930,
-      "reportPath": "fixtures/breadth-50/media/nytimes/freeze-report.json"
+      "mhtmlKb": 165151
     },
     {
       "category": "spa",
@@ -339,8 +269,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3220,
-      "reportPath": "fixtures/breadth-50/spa/airbnb/freeze-report.json"
+      "mhtmlKb": 3689
     },
     {
       "category": "spa",
@@ -350,8 +279,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3314,
-      "reportPath": "fixtures/breadth-50/spa/trello/freeze-report.json"
+      "mhtmlKb": 3314
     },
     {
       "category": "spa",
@@ -361,8 +289,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 16359,
-      "reportPath": "fixtures/breadth-50/spa/asana/freeze-report.json"
+      "mhtmlKb": 16373
     },
     {
       "category": "spa",
@@ -372,8 +299,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 19388,
-      "reportPath": "fixtures/breadth-50/spa/discord/freeze-report.json"
+      "mhtmlKb": 19388
     },
     {
       "category": "spa",
@@ -383,8 +309,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 6241,
-      "reportPath": "fixtures/breadth-50/spa/spotify/freeze-report.json"
+      "mhtmlKb": 6336
     },
     {
       "category": "i18n-routing",
@@ -394,8 +319,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 3052,
-      "reportPath": "fixtures/breadth-50/i18n-routing/klarna/freeze-report.json"
+      "mhtmlKb": 3049
     },
     {
       "category": "i18n-routing",
@@ -405,8 +329,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 6262,
-      "reportPath": "fixtures/breadth-50/i18n-routing/spotify-se/freeze-report.json"
+      "mhtmlKb": 6058
     },
     {
       "category": "i18n-routing",
@@ -416,8 +339,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 1698,
-      "reportPath": "fixtures/breadth-50/i18n-routing/uber/freeze-report.json"
+      "mhtmlKb": 2219
     },
     {
       "category": "i18n-routing",
@@ -427,8 +349,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 947,
-      "reportPath": "fixtures/breadth-50/i18n-routing/booking/freeze-report.json"
+      "mhtmlKb": 1435
     },
     {
       "category": "i18n-routing",
@@ -438,8 +359,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 8620,
-      "reportPath": "fixtures/breadth-50/i18n-routing/tradera/freeze-report.json"
+      "mhtmlKb": 8615
     },
     {
       "category": "cookie-wall-eu",
@@ -449,19 +369,17 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4243,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/lemonde/freeze-report.json"
+      "mhtmlKb": 4516
     },
     {
       "category": "cookie-wall-eu",
       "deferred": false,
       "name": "spiegel",
       "url": "https://www.spiegel.de",
-      "ok": false,
-      "failureClass": "mhtml-capture-failed",
-      "reason": "-32000 Failed to generate MHTML",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/spiegel/freeze-report.json"
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 6689
     },
     {
       "category": "cookie-wall-eu",
@@ -471,8 +389,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 7777,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/dn/freeze-report.json"
+      "mhtmlKb": 7330
     },
     {
       "category": "cookie-wall-eu",
@@ -482,8 +399,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 4148,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/svd/freeze-report.json"
+      "mhtmlKb": 5722
     },
     {
       "category": "cookie-wall-eu",
@@ -493,19 +409,67 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2207,
-      "reportPath": "fixtures/breadth-50/cookie-wall-eu/aftonbladet/freeze-report.json"
+      "mhtmlKb": 2084
+    },
+    {
+      "category": "anti-bot",
+      "deferred": true,
+      "name": "ticketmaster",
+      "url": "https://www.ticketmaster.com",
+      "ok": false,
+      "failureClass": "missing-report",
+      "reason": null,
+      "mhtmlKb": 0
+    },
+    {
+      "category": "anti-bot",
+      "deferred": true,
+      "name": "nike",
+      "url": "https://www.nike.com",
+      "ok": false,
+      "failureClass": "missing-report",
+      "reason": null,
+      "mhtmlKb": 0
+    },
+    {
+      "category": "anti-bot",
+      "deferred": true,
+      "name": "supreme",
+      "url": "https://www.supremenewyork.com",
+      "ok": false,
+      "failureClass": "missing-report",
+      "reason": null,
+      "mhtmlKb": 0
+    },
+    {
+      "category": "anti-bot",
+      "deferred": true,
+      "name": "ssense",
+      "url": "https://www.ssense.com",
+      "ok": false,
+      "failureClass": "missing-report",
+      "reason": null,
+      "mhtmlKb": 0
+    },
+    {
+      "category": "anti-bot",
+      "deferred": true,
+      "name": "farfetch",
+      "url": "https://www.farfetch.com",
+      "ok": false,
+      "failureClass": "missing-report",
+      "reason": null,
+      "mhtmlKb": 0
     },
     {
       "category": "iframe-heavy",
       "deferred": false,
       "name": "medium",
       "url": "https://medium.com",
-      "ok": false,
-      "failureClass": "captured-wrong-page",
-      "reason": "text-too-short",
-      "mhtmlKb": 0,
-      "reportPath": "fixtures/breadth-50/iframe-heavy/medium/freeze-report.json"
+      "ok": true,
+      "failureClass": null,
+      "reason": null,
+      "mhtmlKb": 1720
     },
     {
       "category": "iframe-heavy",
@@ -515,8 +479,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 5353,
-      "reportPath": "fixtures/breadth-50/iframe-heavy/substack/freeze-report.json"
+      "mhtmlKb": 6044
     },
     {
       "category": "iframe-heavy",
@@ -526,8 +489,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 8031,
-      "reportPath": "fixtures/breadth-50/iframe-heavy/github-blog/freeze-report.json"
+      "mhtmlKb": 8048
     },
     {
       "category": "iframe-heavy",
@@ -537,8 +499,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 1979,
-      "reportPath": "fixtures/breadth-50/iframe-heavy/stackoverflow/freeze-report.json"
+      "mhtmlKb": 1894
     },
     {
       "category": "iframe-heavy",
@@ -548,8 +509,7 @@
       "ok": true,
       "failureClass": null,
       "reason": null,
-      "mhtmlKb": 2506,
-      "reportPath": "fixtures/breadth-50/iframe-heavy/dev-to/freeze-report.json"
+      "mhtmlKb": 2455
     }
   ]
 }

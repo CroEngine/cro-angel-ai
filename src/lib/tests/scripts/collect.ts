@@ -405,8 +405,17 @@ export const COLLECT_SCRIPT = `(() => {
   for (const el of kept) {
     const rect = el.getBoundingClientRect();
     const cs = window.getComputedStyle(el);
-    if (!isVisible(el, cs, rect)) continue;
+    const visible = isVisible(el, cs, rect);
     const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 120);
+    // Completeness ("catch everything"): interaction-gated UI — mega-menus,
+    // collapsed mobile nav, tab panels, accordions — sits in the frozen DOM
+    // but CSS-hidden. The capture already holds it; dropping it loses real
+    // conversion surfaces (a "Contact sales" buried in a dropdown is still a
+    // CTA the scorer/LLM must see). Keep hidden elements that carry a label or
+    // href; skip hidden scaffolding with neither (layout-only nodes nobody can
+    // act on). Visible elements are always kept, as before.
+    const hrefForGate = el.tagName === 'A' ? (el.getAttribute('href') || '') : '';
+    if (!visible && !text && !hrefForGate) continue;
     const attrs = {};
     for (const a of Array.from(el.attributes)) {
       attrs[a.name] = (a.value || '').slice(0, 200);
@@ -430,7 +439,7 @@ export const COLLECT_SCRIPT = `(() => {
 
     const suspectOffFlow = isSuspectOffFlow(cs, rect);
     raw.push({
-      el, rect, cs, text, attrs,
+      el, rect, cs, visible, text, attrs,
       docTop, docLeft, yPercent, xPercent, viewportZone,
       area, fontSize, fontWeight, backgroundContrast,
       suspectOffFlow,
@@ -459,8 +468,8 @@ export const COLLECT_SCRIPT = `(() => {
       section: detectSection(r.el, r.rect),
       href: r.el.tagName === 'A' ? (r.el.getAttribute('href') || null) : null,
       disabled: !!r.el.disabled || r.el.getAttribute('aria-disabled') === 'true',
-      visible: true,
-      aboveFold: r.viewportZone === 'above_fold',
+      visible: r.visible,
+      aboveFold: r.visible && r.viewportZone === 'above_fold',
 
       rect: { x: Math.round(r.docLeft), y: Math.round(r.docTop), w: Math.round(r.rect.width), h: Math.round(r.rect.height) },
       position: {

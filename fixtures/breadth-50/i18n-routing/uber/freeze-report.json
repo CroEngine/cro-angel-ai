@@ -11,14 +11,14 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 1698,
-    "screenshotKb": 474,
+    "mhtmlKb": 2219,
+    "screenshotKb": 475,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 16,
-    "mhtmlKbBeforeFontEmbed": 983,
+    "mhtmlKbBeforeFontEmbed": 1504,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Book",
@@ -132,21 +132,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:40:33.719Z"
+    "frozenAt": "2026-06-21T21:16:56.947Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 2876,
+    "textLen": 2885,
     "interactiveCount": 228,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 6191,
+    "gotoMs": 5478,
     "consentMs": 0,
-    "scrollMs": 4428,
-    "captureMs": 3037
+    "scrollMs": 3672,
+    "captureMs": 1337
   }
 }

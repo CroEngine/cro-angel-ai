@@ -11,45 +11,22 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 9216,
-    "screenshotKb": 656,
+    "mhtmlKb": 1288,
+    "screenshotKb": 509,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
-    "externalFontSrcCount": 2,
-    "unembeddedFontUrls": [
-      "https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff",
-      "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff"
-    ],
-    "embeddedFontCount": 72,
-    "mhtmlKbBeforeFontEmbed": 2812,
-    "fontFetchFailures": [
-      {
-        "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular.woff",
-        "error": "403 from proxy"
-      },
-      {
-        "url": "https://static.figma.com/webfont/Figma-Standard-Text-Regular-Oblique.woff",
-        "error": "403 from proxy"
-      }
-    ],
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 1,
+    "mhtmlKbBeforeFontEmbed": 866,
+    "fontFetchFailures": [],
     "embeddedFamilies": [
-      "Apercu",
-      "Apercu-Mono",
-      "D7CBI",
-      "D7CBIB",
-      "Figma Mono",
-      "Figma Sans",
-      "Inter",
-      "Roboto",
-      "Roboto Mono",
-      "Whyte",
-      "WhyteInktrap",
       "figmaMono",
       "figmaSans"
     ],
     "fontUrls": {
       "embedded": 0,
-      "absolute": 77,
+      "absolute": 0,
       "relativeResolved": 2,
       "unresolvable": []
     },
@@ -66,7 +43,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-21T19:14:39.113Z"
+    "frozenAt": "2026-06-21T21:10:08.635Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -78,9 +55,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 4541,
+    "gotoMs": 5324,
     "consentMs": 0,
-    "scrollMs": 4122,
-    "captureMs": 10558
+    "scrollMs": 3331,
+    "captureMs": 3645
   }
 }

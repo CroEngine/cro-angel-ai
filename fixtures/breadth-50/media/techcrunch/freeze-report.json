@@ -11,25 +11,169 @@
     "postDismissDomHits": null
   },
   "capture": {
-    "mhtmlKb": 3223,
-    "screenshotKb": 1272,
+    "mhtmlKb": 4379,
+    "screenshotKb": 1392,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
-    "embeddedFontCount": 10,
-    "mhtmlKbBeforeFontEmbed": 2870,
+    "embeddedFontCount": 35,
+    "mhtmlKbBeforeFontEmbed": 3335,
     "fontFetchFailures": [],
     "embeddedFamilies": [
+      "Helvetica-CondensedBlack",
+      "Helvetica-Light",
+      "HelveticaNeueLTStd-CondensedBlack",
+      "Open Sans",
+      "Optimist",
+      "Optimist Light",
+      "Optimist Semi-Bold",
+      "Roboto",
       "nb_international_promono",
       "nb_international_proregular",
       "yellix"
     ],
     "fontUrls": {
       "embedded": 0,
-      "absolute": 10,
-      "relativeResolved": 0,
-      "unresolvable": []
+      "absolute": 38,
+      "relativeResolved": 6,
+      "unresolvable": [
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3GUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3CUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3-UBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMawCUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMaxKUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3OUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3KUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3GUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3CUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3-UBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMawCUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMaxKUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3OUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3KUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3GUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3iUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3CUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3-UBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMawCUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMaxKUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3OUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3KUBGEe.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        },
+        {
+          "original": "//fonts.gstatic.com/s/roboto/v48/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+          "reason": "invalid-base",
+          "partIndex": 98
+        }
+      ]
     },
     "externalized": false,
     "externalAssetUrl": null,
@@ -44,21 +188,21 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-06-20T20:38:54.448Z"
+    "frozenAt": "2026-06-21T21:13:24.085Z"
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 11512,
-    "interactiveCount": 324,
+    "textLen": 11366,
+    "interactiveCount": 320,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 59379,
+    "gotoMs": 10686,
     "consentMs": 0,
-    "scrollMs": 3540,
-    "captureMs": 11230
+    "scrollMs": 8488,
+    "captureMs": 52681
   }
 }

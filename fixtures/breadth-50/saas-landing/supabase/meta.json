@@ -1,16 +1,16 @@
 {
   "url": "https://supabase.com",
   "name": "saas-landing__supabase",
-  "captured_at": "2026-06-20T20:36:54.724Z",
+  "captured_at": "2026-06-21T21:09:33.481Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
   "consentSelector": null,
   "consentInstruction": null,
-  "notes": "breadth-50 2026-06-20T20:36:38.228Z",
+  "notes": "breadth-50 2026-06-21T21:09:19.166Z",
   "ttlDays": 90,
-  "frozenAt": "2026-06-20T20:36:54.724Z",
-  "expiresAt": "2026-09-18T20:36:54.724Z",
+  "frozenAt": "2026-06-21T21:09:33.481Z",
+  "expiresAt": "2026-09-19T21:09:33.481Z",
   "refreezeReason": "manual"
 }
