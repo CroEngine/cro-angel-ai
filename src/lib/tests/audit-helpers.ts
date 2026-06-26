@@ -40,12 +40,19 @@ export function enrichSections(
 
     const h = (s.heading || "").toLowerCase();
     if (s.type === "content" || s.type === "cards") {
+      // Mirror classifyType's label gate: a semantic type is only assigned when
+      // the heading reads like a short section LABEL, so an article title with an
+      // incidental keyword (news/blog/feed cards) stays content. testimonials is
+      // gated on actual signals (containsTrustSignals), not the heading keyword.
+      const hw = (s.heading || "").trim().split(/\s+/).filter(Boolean).length;
+      const isLabel = hw >= 1 && hw <= 4 && !/[?!]$/.test((s.heading || "").trim());
       if (s.containsForm) s.type = "form";
-      else if (/pric|plan|kostnad|prenum|abonnemang/.test(h)) s.type = "pricing";
-      else if (/faq|frågor|questions|hjälp/.test(h)) s.type = "faq";
+      else if (isLabel && /pric|plan|kostnad|prenum|abonnemang/.test(h)) s.type = "pricing";
+      else if (isLabel && /faq|frågor|questions|hjälp/.test(h)) s.type = "faq";
       else if (/testimonial|kund|customer|review|omdöme|recension/.test(h)) s.type = "testimonials";
-      else if (/feature|funktion|so funkar|how it works|capabilit/.test(h)) s.type = "features";
-      else if (/benefit|fördel|varför|why /.test(h)) s.type = "benefits";
+      else if (isLabel && /feature|funktion|så funkar|how it works|capabilit/.test(h))
+        s.type = "features";
+      else if (isLabel && /benefit|fördel|varför|why /.test(h)) s.type = "benefits";
       else if (
         s.type === "cards" &&
         trustSignals.some(

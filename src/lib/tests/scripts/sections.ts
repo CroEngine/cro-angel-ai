@@ -167,11 +167,20 @@ export const SECTIONS_SCRIPT = `(() => {
     // so this cap can be generous to allow rich hero sections with media/video.
     if (docTop < viewportH * 0.4 && rect.height > 200 && rect.height < viewportH * 2.5) return 'hero';
     const h = (heading || '').toLowerCase();
-    if (/pric|plan|kostnad|prenum|abonnemang/.test(h)) return 'pricing';
-    if (/faq|fr[åa]gor|questions|hj[äa]lp/.test(h)) return 'faq';
+    // A semantic section TYPE (pricing/faq/features/benefits) is only assigned
+    // when the heading reads like a section LABEL — short and not a sentence —
+    // not when a keyword appears incidentally inside an article title. Without
+    // this, news/blog/feed pages turn every card into a section: dev-to's "Why
+    // Your Search Bar Understands You" -> benefits, "...System Design Questions"
+    // -> faq; Der Spiegel's "...drängt an die Börse und plant..." -> pricing.
+    // (testimonials is gated separately, on actual testimonial signals, not here.)
+    const hw = (heading || '').trim().split(/\\s+/).filter(Boolean).length;
+    const isLabel = hw >= 1 && hw <= 4 && !/[?!]$/.test((heading || '').trim());
+    if (isLabel && /pric|plan|kostnad|prenum|abonnemang/.test(h)) return 'pricing';
+    if (isLabel && /faq|fr[åa]gor|questions|hj[äa]lp/.test(h)) return 'faq';
     if (/testimonial|kund|customer|review|omd[öo]me|recension/.test(h)) return 'testimonials';
-    if (/feature|funktion|s[åa] funkar|how it works|capabilit/.test(h)) return 'features';
-    if (/benefit|f[öo]rdel|varf[öo]r|why /.test(h)) return 'benefits';
+    if (isLabel && /feature|funktion|s[åa] funkar|how it works|capabilit/.test(h)) return 'features';
+    if (isLabel && /benefit|f[öo]rdel|varf[öo]r|why /.test(h)) return 'benefits';
     if (repeated >= 4) return 'cards';
     return 'content';
   }
@@ -411,5 +420,3 @@ export const SECTIONS_SCRIPT = `(() => {
   });
   return out;
 })()`;
-
-

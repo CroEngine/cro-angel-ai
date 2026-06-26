@@ -44,16 +44,16 @@ above-fold buttons from `scripts/structure-evidence.ts` (a raw DOM walk that doe
 
 32-site local run (`bun run structure-eval`); CI scores the 30 committed captures.
 
-### Section-type presence — **P 46.7% · R 42.0% · F1 44.2%**
+### Section-type presence — **P 57.1% · R 40.0% · F1 47.1%** (v1.16.0)
 
 | type | tp | fp | fn | P | R |
 |---|---|---|---|---|---|
 | hero | 13 | 4 | 11 | 76% | 54% |
-| features | 2 | 3 | 11 | 40% | 15% |
+| features | 1 | 1 | 12 | 50% | 8% |
 | testimonials | 4 | 2 | 7 | 67% | 36% |
-| pricing | 1 | 4 | 0 | 20% | 100% |
-| benefits | 0 | 3 | 0 | — | — |
-| faq | 0 | 1 | 0 | — | — |
+| pricing | 1 | 0 | 0 | 100% | 100% |
+| benefits | 0 | 1 | 0 | — | — |
+| faq | 0 | 0 | 0 | — | — |
 | form | 1 | 7 | 0 | 13% | 100% |
 
 This is **much weaker than trust detection (98/84)** — and that is the finding.
@@ -70,13 +70,18 @@ and conservative, so:
 - **features/testimonials need magic heading words** (`/feature|how it works/`,
   `/testimonial|customer|review/`). Headings like "Remarkable results", "Loved by
   teams that ship", "Bring all your work together" miss → false negatives.
-- **Editorial keyword false positives.** On news/feed sites, article titles
-  containing "Why…", "Reviews", "FAQ", pricing words trip features/benefits/faq/
-  pricing/testimonials (dev-to, spiegel, github-blog, verge). The `/review/` rule
-  even tags The Verge's "Reviews" section as testimonials.
-- **`form`, `benefits`, `faq` are near-undefined on this corpus** (0–1 positives)
-  so they mostly surface precision noise — `form` counts inline search sections
-  the labels don't. They stay in the table for transparency.
+- **`form` (search sections) + the geometry `hero` on news/app pages** are the
+  residual FPs; testimonials on editorial pages (verge/ikea) is the next pass.
+
+> **v1.16.0 precision gate.** The first run scored **P 46.7%** — news/blog/feed
+> pages turned every card into a section: dev-to's "Why Your Search Bar
+> Understands You" → benefits, "…System Design Questions" → faq; Der Spiegel's
+> "…plant Fronta…" → pricing. `pricing/faq/features/benefits` now only fire when
+> the heading reads like a short section *label* (1–4 words, no trailing ?/!),
+> not when a keyword sits inside an article title. Killed 9 editorial FPs
+> (precision +10 pts) at a cost of one recall point — loom's 6-word "Powerful
+> features for easy, custom recordings" is now missed (recoverable via structural
+> cues). Corpus byte-identical (hubspot/linear carry none of these four types).
 
 ### Primary CTA — **pick accuracy 85.7% (12/14)**, no-false-primary 16.7% (3/18)
 

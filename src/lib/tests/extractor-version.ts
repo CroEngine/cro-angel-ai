@@ -273,8 +273,24 @@
 //           "Get a demo of HubSpot's premium software" — the screenshot-confirmed
 //           real hero CTA; the old value was an enshrined bug). linear
 //           byte-identical ("Sign up" already a clean conversion action).
+//   1.16.0 — section classifier precision gate (sections.ts classifyType +
+//           audit-helpers enrichSections). A semantic section TYPE
+//           (pricing/faq/features/benefits) is now only assigned when the heading
+//           reads like a short section LABEL (1-4 words, not ending in ?/!), not
+//           when a keyword appears incidentally inside an article title. Surfaced
+//           by structure-eval: news/blog/feed pages turned every card into a
+//           section — dev-to "Why Your Search Bar Understands You" -> benefits,
+//           "...System Design Questions" -> faq; Der Spiegel "...plant Fronta..."
+//           -> pricing; ~17 such FPs across dev-to/spiegel/uber/rei. The few real
+//           keyword TPs are short labels (intercom "Transparent pricing") and are
+//           kept. testimonials is intentionally left for the next pass (gated on
+//           actual signals, not headings). Corpus byte-identical: hubspot/linear
+//           carry none of the four gated types in their sectionOrder (only
+//           testimonials), so the gate cannot move them — verified via snapshot.
+//           Also aligns the "så funkar" Swedish features keyword in enrichSections
+//           with classifyType (was "so funkar", never matched).
 
-export const EXTRACTOR_VERSION = "1.15.0" as const;
+export const EXTRACTOR_VERSION = "1.16.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
