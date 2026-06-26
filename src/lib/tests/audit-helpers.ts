@@ -49,7 +49,8 @@ export function enrichSections(
       else if (
         s.type === "cards" &&
         trustSignals.some(
-          (t) => t.type === "customer_logos" && t.rect !== undefined && rectCenterInside(t.rect, s.rect),
+          (t) =>
+            t.type === "customer_logos" && t.rect !== undefined && rectCenterInside(t.rect, s.rect),
         )
       ) {
         s.type = "logos";
@@ -146,7 +147,6 @@ export function buildPageSummary(input: {
     ctasScriptPrimaryCount + secondaryCtaCount + iconButtonCount + otherCtaCount !==
     ctaTotalCount
   ) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[buildPageSummary] CTA reconcile failed: ${ctasScriptPrimaryCount}+${secondaryCtaCount}+${iconButtonCount}+${otherCtaCount} !== ${ctaTotalCount}`,
     );
@@ -195,6 +195,33 @@ const HERO_LABEL_BLOCKLIST =
 const HERO_CTA_CONVERSION =
   /\b(get started|start|sign\s?up|signup|try|book|buy|order|checkout|subscribe|register|download|demo|request|trial|join|create account|add to cart|get \w+ (free|now))\b/i;
 
+// A hero CTA must be a real conversion ACTION — never a weak "learn more"/"read
+// more" content link, page chrome (search/login), a nav/category tab, or a
+// cookie-consent button. These otherwise win deriveHero when they score primary
+// in the hero region: hubspot's lone cta_primary was "Learn more about Revenue
+// Hub" while the real "Get a demo" sat in cta_secondary; gymshark's was "search"
+// (utility); patagonia's were "Women's"/"Men's" category tabs scored conversion.
+const HERO_CTA_WEAK = /^(learn|read|see|view|explore|discover|find out)\b|\b(learn|read) more\b/i;
+const HERO_CTA_COOKIE =
+  /\bcookies?\b|\bconsent\b|let me choose|essential cookies|allow all|only essential|manage preferences/i;
+// Disqualifies a CTA from being the hero action regardless of category: a weak
+// "learn/read more" content link, a cookie-consent button, or a pure search/
+// utility control (gymshark's "search"). Applied to BOTH the conversion-worded
+// preference and the fallback.
+const isCleanAction = (c: CTAEntity): boolean => {
+  const t = (c.text || "").trim();
+  if (!t) return false;
+  if (HERO_CTA_WEAK.test(t) || HERO_CTA_COOKIE.test(t)) return false;
+  return c.intent !== "utility";
+};
+// The fallback (no conversion-worded CTA found) is stricter: a non-conversion
+// primary may only win when it's a genuine in-content/header action — never nav/
+// footer chrome or a navigation-intent tab (verge's "LATEST", patagonia's nav).
+// A CONVERSION-worded CTA, by contrast, is the real action even in the nav
+// (linear's primary is the nav "Sign up"), so it is NOT subject to this gate.
+const isFallbackAction = (c: CTAEntity): boolean =>
+  isCleanAction(c) && c.intent !== "navigation" && c.section !== "nav" && c.section !== "footer";
+
 export function deriveHero(
   sections: PageSection[],
   ctas: CTAEntity[],
@@ -236,13 +263,21 @@ export function deriveHero(
     sections.find((s) => s.aboveFold && s.containsPrimaryCTA && s.heading && !isChrome(s)) ??
     sections.find((s) => s.type === "form" && s.aboveFold && s.heading);
   const isConv = (c: CTAEntity) => HERO_CTA_CONVERSION.test((c.text || "").trim());
+  const isPrimaryish = (c: CTAEntity) =>
+    c.category === "cta_primary" || c.category === "cta_secondary";
+  const convAction = (c: CTAEntity) => isConv(c) && isCleanAction(c);
   const heroCta =
-    // Prefer a real conversion action; fall back to any primary so non-matching
-    // CTAs ("Contact sales") still win when there's no conversion-worded one.
-    ctas.find((c) => c.category === "cta_primary" && c.section === "hero" && isConv(c)) ??
-    ctas.find((c) => c.category === "cta_primary" && c.aboveFold && isConv(c)) ??
-    ctas.find((c) => c.category === "cta_primary" && c.section === "hero") ??
-    ctas.find((c) => c.category === "cta_primary" && c.aboveFold) ??
+    // 1-2. A conversion-worded action in the hero (then above the fold). Consider
+    // cta_secondary too: real hero CTAs often score secondary while a weak link
+    // takes the lone primary (hubspot's "Get a demo" was secondary, "Learn more"
+    // the primary). A conversion CTA in the nav still counts (linear's "Sign up").
+    ctas.find((c) => isPrimaryish(c) && c.section === "hero" && convAction(c)) ??
+    ctas.find((c) => isPrimaryish(c) && c.aboveFold && convAction(c)) ??
+    // 3-4. Else a real (non-weak/non-chrome/non-nav) primary — so "Contact sales"
+    // still wins when nothing is conversion-worded, but "Learn more"/"search"/
+    // a "LATEST" nav tab don't.
+    ctas.find((c) => c.category === "cta_primary" && c.section === "hero" && isFallbackAction(c)) ??
+    ctas.find((c) => c.category === "cta_primary" && c.aboveFold && isFallbackAction(c)) ??
     ctas.find((c) => c.category === "form_submit" && c.section === "hero") ??
     ctas.find((c) => c.category === "form_submit" && c.aboveFold);
 
@@ -325,7 +360,12 @@ export function groupRepeatedControls<T extends CollectedLite>(
     });
     const head = arr[0];
     groups.push({
-      label: (head.text || head.attributes["aria-label"] || head.attributes["title"] || "(no label)").trim(),
+      label: (
+        head.text ||
+        head.attributes["aria-label"] ||
+        head.attributes["title"] ||
+        "(no label)"
+      ).trim(),
       count: arr.length,
       category: head.category,
       intent: head.intent,

@@ -254,8 +254,27 @@
 //           documentation for 20,000+ companies on Vercel" — a THIRD-PARTY
 //           customer's stat in a case-study card, which the detector cannot
 //           distinguish from a first-party claim without overfitting.
+//   1.15.0 — deriveHero hero-CTA selection rejects non-actions and considers
+//           cta_secondary. Surfaced by the NEW structure-eval primary-CTA
+//           benchmark: deriveHero asserted a weak link / chrome / nav tab as the
+//           hero CTA. hubspot's lone cta_primary was "Learn more about Revenue
+//           Hub" while the real "Get a demo …" sat in cta_secondary (never
+//           considered) → hero CTA wrong; gymshark took "search" (utility);
+//           patagonia "Women's" (a category tab scored conversion). Two changes:
+//           (1) a hero CTA must pass isHeroCtaAction — not a "learn/read more"
+//               weak link, a cookie-consent button, or intent navigation/utility,
+//               and not in a nav/footer section (header stays allowed: heroes
+//               often live in <header> — vercel);
+//           (2) the conversion-worded preference now also scans cta_secondary, so
+//               a real "Get a demo" beats a lone weak primary.
+//           The any-primary fallback is retained but gated on isHeroCtaAction, so
+//           "Contact sales" still wins when it's the only primary. Re-bless
+//           hubspot golden (hero.primaryCtaText "Learn more about Revenue Hub" ->
+//           "Get a demo of HubSpot's premium software" — the screenshot-confirmed
+//           real hero CTA; the old value was an enshrined bug). linear
+//           byte-identical ("Sign up" already a clean conversion action).
 
-export const EXTRACTOR_VERSION = "1.14.0" as const;
+export const EXTRACTOR_VERSION = "1.15.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
@@ -273,8 +292,6 @@ export function stampExtractor(): ExtractorStamp {
  * Wrap any score-payload med extractor-stämpel. Future score-aggregator
  * MÅSTE använda den här istället för att hardkoda strängar.
  */
-export function stampScore<T extends Record<string, unknown>>(
-  payload: T,
-): T & ExtractorStamp {
+export function stampScore<T extends Record<string, unknown>>(payload: T): T & ExtractorStamp {
   return { ...payload, ...stampExtractor() };
 }

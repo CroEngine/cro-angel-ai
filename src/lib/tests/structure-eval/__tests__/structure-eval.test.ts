@@ -15,10 +15,11 @@
 //     hero — measured by the CTA metric below, not here). This is the next
 //     detector to harden; the floors sit a few points under measured so a real
 //     regression reds the build while the known weakness doesn't.
-//   * primary-CTA pick ≈ 77% accuracy where a real primary exists (deriveHero is
-//     much stronger than the section typer). The "no false primary" rate on
-//     pages with NO single CTA is poor (~17%) — deriveHero surfaces nav/category
-//     links as conversion CTAs — so it is REPORTED here but not yet gated.
+//   * primary-CTA pick ≈ 86% accuracy where a real primary exists (deriveHero is
+//     much stronger than the section typer; v1.15.0 lifted it from 78.6% by
+//     rejecting weak-link/chrome/nav hero CTAs). The "no false primary" rate on
+//     pages with NO single CTA is still poor (~17%) — they surface a real but
+//     non-dominant conversion button — so it is REPORTED here but not yet gated.
 //
 // Re-tighten the floors as the section classifier improves. Real engine
 // required: skipped where chromium can't launch; runs in CI's Playwright job.
@@ -69,8 +70,11 @@ describe("structure-eval — page-structure ground-truth regression gate", () =>
     // (or a corpus that loses the contentful SaaS sites) reds the build.
     expect(r.precision).toBeGreaterThanOrEqual(0.4);
     expect(r.recall).toBeGreaterThanOrEqual(0.35);
-    // Primary-CTA pick accuracy on sites that HAVE a real primary CTA.
-    expect(r.ctaAccuracy).toBeGreaterThanOrEqual(0.65);
+    // Primary-CTA pick accuracy on sites that HAVE a real primary CTA. Floor at
+    // 0.70 — under the measured ~86% (v1.15.0) so the deriveHero gain is locked
+    // in and can't silently regress, with headroom for the figma/everlane
+    // local-vs-CI split and a fuzzy vercel-style labeling miss.
+    expect(r.ctaAccuracy).toBeGreaterThanOrEqual(0.7);
     // noFalsePrimaryRate is intentionally NOT gated yet (known-weak ~17%); it is
     // logged above so the number is visible and a future fix can be measured.
 

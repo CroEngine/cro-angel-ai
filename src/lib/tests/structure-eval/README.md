@@ -78,15 +78,29 @@ and conservative, so:
   so they mostly surface precision noise — `form` counts inline search sections
   the labels don't. They stay in the table for transparency.
 
-### Primary CTA — **pick accuracy 78.6% (11/14)**, no-false-primary 16.7% (3/18)
+### Primary CTA — **pick accuracy 85.7% (12/14)**, no-false-primary 16.7% (3/18)
 
 `deriveHero` is far stronger than the section typer: on the 14 sites with a real
-primary CTA it picks the right one 11 times (misses: hubspot picked "Learn more…",
-vercel "Get a Demo" vs "Deploy Now", gymshark "search"). But on the 18 sites with
-**no** single CTA it still asserts a conversion CTA 15 times — surfacing nav /
-category links ("Women's", "LATEST", "Köksutrustning…", "Register"). That nav-as-CTA
-over-assertion is the same class of bug the snippet's inventory CTA reclassification
-fixes; `deriveHero` does not yet apply it. Reported, not gated.
+primary CTA it now picks the right one 12 times. The 2 misses are vercel
+("Get a Demo" vs the labeled "Deploy Now" — both real hero CTAs, a labeling
+judgment) and gymshark (now correctly "(none)" rather than a wrong pick — the real
+"Shop Now" never scores `cta_primary`).
+
+> **v1.15.0 fix (this benchmark's first catch).** The first run scored 78.6% —
+> `deriveHero` asserted a weak link / chrome / nav tab as the hero CTA: hubspot's
+> lone `cta_primary` was "Learn more about Revenue Hub" (the real "Get a demo…" sat
+> in `cta_secondary`, which `deriveHero` never considered); gymshark took "search".
+> The fix makes a hero CTA require a real *action* (no learn-more/cookie/search/nav)
+> and lets the conversion-worded preference scan `cta_secondary` too — while still
+> allowing a conversion CTA that lives in the nav (linear's primary IS the nav
+> "Sign up"). hubspot's golden was corrected (it had enshrined the bug).
+
+The `no-false-primary` rate (does the detector avoid inventing a CTA on the 18
+pages that have none?) is still poor and **not gated** — but the egregious picks
+(gymshark "search", verge's "LATEST" nav tab) are gone; what remains are genuinely
+conversion-worded buttons the page does have (Subscribe, Sign up, Register) that
+simply aren't a single dominant CTA. Category tabs scored conversion in the hero
+region (patagonia "Women's") are the residual hard case.
 
 ## Running
 
@@ -97,7 +111,7 @@ bun run structure-evidence hubspot     # dump the raw labeling evidence
 ```
 
 The CI gate (`__tests__/structure-eval.test.ts`) floors section P≥0.40 / R≥0.35
-and CTA accuracy ≥0.65 — a few points under measured, so a broad regression reds
+and CTA accuracy ≥0.70 — a few points under measured, so a broad regression reds
 the build while the known weakness doesn't. **Re-tighten as the classifier
 improves.** The honest takeaway: trust detection is production-grade; section
 typing is the next thing to harden, and this benchmark is the yardstick for it.
