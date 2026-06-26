@@ -17,12 +17,16 @@
 
 import * as detectors from "./detectors.generated";
 
+/** Page-absolute pixel box: x/y from document origin, w/h in CSS pixels. */
+export type Rect = { x: number; y: number; w: number; h: number };
+
 export type InventorySignal = {
   type: string;
   text: string;
   section?: string;
   aboveFold: boolean;
   selector?: string;
+  rect?: Rect;
   rating?: number;
   reviewCount?: number;
   logoCount?: number;
@@ -50,6 +54,7 @@ export type InventoryCta = {
   aboveFold: boolean;
   href: string | null;
   selector?: string;
+  rect?: Rect;
 };
 
 export type ContentInventory = {
@@ -124,6 +129,7 @@ export function assembleInventory(parts: any): ContentInventory {
       aboveFold: !!s.aboveFold,
       selector: s.selector,
     };
+    if (s.rect) o.rect = s.rect;
     if (s.rating !== undefined) o.rating = s.rating;
     if (s.reviewCount !== undefined) o.reviewCount = s.reviewCount;
     if (s.logoCount !== undefined) o.logoCount = s.logoCount;
@@ -179,18 +185,31 @@ export function assembleInventory(parts: any): ContentInventory {
     sectionTypes[ty] = (sectionTypes[ty] || 0) + 1;
   }
 
+  // Correct the CTA intent: a nav/header/footer item — or a bare nav word like
+  // "Products"/"Solutions" — is navigation, NOT a conversion action, even if the
+  // detector tagged it "conversion". Keeps conversionCta + the patterns honest.
+  var CTA_NAV_RX =
+    /^(products?|solutions?|developers?|resources?|pricing|company|about|docs?|support|contact|sign ?in|log ?in|login|menu|features?|customers?|blog|partners?|enterprise|home|search|cart)$/i;
   var ctas = [];
   for (var m2 = 0; m2 < ctasRaw.length; m2++) {
     var c = ctasRaw[m2];
-    ctas.push({
-      text: (c.text || "").slice(0, 80),
-      intent: c.intent,
+    var ctaText = (c.text || "").slice(0, 80);
+    var navish =
+      c.section === "nav" ||
+      c.section === "header" ||
+      c.section === "footer" ||
+      CTA_NAV_RX.test(ctaText.trim());
+    var cm: any = {
+      text: ctaText,
+      intent: navish && c.intent === "conversion" ? "navigation" : c.intent,
       category: c.category,
       section: c.section,
       aboveFold: !!c.aboveFold,
       href: c.href === undefined ? null : c.href,
       selector: c.selector,
-    });
+    };
+    if (c.rect) cm.rect = c.rect;
+    ctas.push(cm);
   }
 
   var h1s = (audit.headings && audit.headings.h1Texts) || [];

@@ -16,6 +16,7 @@
     "build:adaptive": "bun run scripts/gen-detectors.ts && bun build src/adaptive/adaptive.ts --outfile public/adaptive.js --target=browser --format=iife --minify",
     "crawl": "bun run scripts/inventory-crawl.ts",
     "smoke:adaptive": "bun run scripts/adaptive-smoke.ts",
+    "check:learn-mode": "bun run scripts/learn-mode-check.ts",
     "snapshot": "vitest run src/lib/tests/snapshot",
     "snapshot:update": "SNAPSHOT_UPDATE=1 vitest run src/lib/tests/snapshot",
     "typecheck": "tsc --noEmit"

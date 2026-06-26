@@ -3,27 +3,28 @@
 //   <script src="https://app.angeladaptive.com/adaptive.js"
 //           data-site-id="xxxx"></script>
 //
-// v1 scope: READ-ONLY. The snippet builds the page's Content Inventory in the
-// visitor's browser and reports it. It applies NO changes to the page yet —
-// visitor context, the decision engine, the pattern library and DOM adaptation
-// are later steps. Getting the crawl correct and complete first is the whole
-// point of this stage: every later decision relies on an accurate inventory of
-// what content already exists.
+// Phases (mirror sites.phase: learn -> intelligence -> adaptive):
+//   * "learn" (DEFAULT): collect only. Build the Content Inventory AND track
+//     behavior (scroll, CTA clicks, time). Changes NOTHING on the page. This is
+//     the safe default — "first we collect data, then we optimise".
+//   * "adaptive" (opt-in via data-mode="adaptive"): also apply the safe patterns.
 //
-// Safety contract honoured here: never mutates the DOM, never injects content,
-// only reads. The inventory is exposed on `window.__angelAdaptive` and, if a
-// `data-endpoint` is configured, POSTed best-effort to the collector.
+// The inventory + events are exposed on window.__angelAdaptive and, once a
+// `data-endpoint` is configured, POSTed best-effort to the collector — together
+// they are the per-site "CRO-bank" the decision engine will read.
 
 import { collectInventory, type ContentInventory } from "./inventory";
 import { applyAdaptations, type AppliedChange, type AdaptationResult } from "./patterns";
+import { trackBehavior, type BehaviorEvent, type BehaviorTracker } from "./behavior";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 type AngelGlobal = {
   version: string;
   siteId: string | null;
-  mode: "inventory" | "adapt";
+  mode: "learn" | "adaptive";
   inventory: ContentInventory | null;
+  events: BehaviorEvent[];
   applied: AppliedChange[];
   collect: () => ContentInventory;
   adapt: () => AppliedChange[];
@@ -49,8 +50,9 @@ function summarize(inv: ContentInventory): string {
 let angel: AngelGlobal | null = null;
 let siteId: string | null = null;
 let endpoint: string | null = null;
-let mode: "inventory" | "adapt" = "inventory";
+let mode: "learn" | "adaptive" = "learn";
 let activeAdaptation: AdaptationResult | null = null;
+let tracker: BehaviorTracker | null = null;
 
 // Apply the safe patterns to the page. Idempotent: reverts any prior run first.
 // Exposed as window.__angelAdaptive.adapt() so it works from the console too.
@@ -81,14 +83,15 @@ function init(): void {
   const script = currentScript();
   siteId = script?.getAttribute("data-site-id") ?? null;
   endpoint = script?.getAttribute("data-endpoint") ?? null;
-  // Read-only by default. Adaptation only runs when explicitly opted in with
-  // data-mode="adapt" (or via the exposed adapt() call) — safe by default.
-  mode = script?.getAttribute("data-mode") === "adapt" ? "adapt" : "inventory";
+  // Learn by default — collect data, change nothing. Adaptation only runs when
+  // explicitly opted in with data-mode="adaptive" (or the exposed adapt() call).
+  mode = script?.getAttribute("data-mode") === "adaptive" ? "adaptive" : "learn";
   angel = {
     version: VERSION,
     siteId,
     mode,
     inventory: null,
+    events: [],
     applied: [],
     collect: collectInventory,
     adapt,
@@ -110,8 +113,20 @@ function crawl(): void {
   angel.inventory = inventory;
   console.info(summarize(inventory));
 
+  // Learn-mode (default): start passive behavior tracking once. This is the
+  // "collect data" half — scroll depth, CTA clicks, time on page — and it runs
+  // in BOTH modes (adaptation needs the same telemetry to learn from). Read-only.
+  if (!tracker) {
+    try {
+      tracker = trackBehavior(inventory);
+      angel.events = tracker.events;
+    } catch (err) {
+      console.error("[Angel Adaptive] behavior tracking failed to start:", err);
+    }
+  }
+
   // Apply patterns automatically only when opted in; default stays read-only.
-  if (mode === "adapt") adapt();
+  if (mode === "adaptive") adapt();
 
   if (endpoint) {
     try {
