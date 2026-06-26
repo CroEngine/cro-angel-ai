@@ -16,6 +16,7 @@
 import { collectInventory, type ContentInventory } from "./inventory";
 import { applyAdaptations, type AppliedChange, type AdaptationResult } from "./patterns";
 import { trackBehavior, type BehaviorEvent, type BehaviorTracker } from "./behavior";
+import { visitorKey, sessionId, sendInventory, installEventCollector } from "./collector";
 
 const VERSION = "0.3.0";
 
@@ -53,6 +54,7 @@ let endpoint: string | null = null;
 let mode: "learn" | "adaptive" = "learn";
 let activeAdaptation: AdaptationResult | null = null;
 let tracker: BehaviorTracker | null = null;
+let collectorInstalled = false;
 
 // Apply the safe patterns to the page. Idempotent: reverts any prior run first.
 // Exposed as window.__angelAdaptive.adapt() so it works from the console too.
@@ -128,19 +130,26 @@ function crawl(): void {
   // Apply patterns automatically only when opted in; default stays read-only.
   if (mode === "adaptive") adapt();
 
-  if (endpoint) {
+  // Ship to the collector when a data-endpoint is configured. The inventory goes
+  // every crawl (cheap upsert server-side; tracks SPA route changes); the events
+  // collector is installed once and flushes the buffer on page-hide.
+  if (endpoint && siteId) {
+    const id = {
+      endpoint,
+      siteId,
+      version: VERSION,
+      visitorKey: visitorKey(),
+      sessionId: sessionId(),
+    };
     try {
-      void fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siteId, version: VERSION, inventory }),
-        keepalive: true,
-        credentials: "omit",
-      }).catch(() => {
-        /* best-effort; never block or throw on the host page */
-      });
-    } catch {
-      /* ignore */
+      sendInventory(id, inventory);
+      if (!collectorInstalled && angel) {
+        const a = angel;
+        installEventCollector(id, () => a.events);
+        collectorInstalled = true;
+      }
+    } catch (err) {
+      console.error("[Angel Adaptive] collector failed:", err);
     }
   }
 }
