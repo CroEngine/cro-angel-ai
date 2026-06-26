@@ -7,6 +7,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 
 import { AuthGate, signOut } from "@/components/auth/AuthGate";
+import { AdaptationsView } from "@/components/dashboard/AdaptationsView";
 import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
 import { InventoryView } from "@/components/dashboard/InventoryView";
 import { SegmentsView } from "@/components/dashboard/SegmentsView";
@@ -104,6 +105,7 @@ function DashboardInner() {
                   <TabsList>
                     <TabsTrigger value="traffic">Traffic</TabsTrigger>
                     <TabsTrigger value="segments">Segments</TabsTrigger>
+                    <TabsTrigger value="adaptations">Adaptations</TabsTrigger>
                     <TabsTrigger value="content">Content</TabsTrigger>
                   </TabsList>
                   <TabsContent value="traffic" className="mt-4">
@@ -111,6 +113,9 @@ function DashboardInner() {
                   </TabsContent>
                   <TabsContent value="segments" className="mt-4">
                     <SegmentsView siteId={selected.id} />
+                  </TabsContent>
+                  <TabsContent value="adaptations" className="mt-4">
+                    <AdaptationsView siteId={selected.id} />
                   </TabsContent>
                   <TabsContent value="content" className="mt-4">
                     <InventoryView siteId={selected.id} />

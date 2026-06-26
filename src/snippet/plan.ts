@@ -33,15 +33,22 @@ export async function resolvePlan(o: ResolveOpts): Promise<PlanResponse | null> 
   }
 }
 
-// Accepts either a full PlanResponse ({ plan, content }) or a bare AdaptationPlan
-// for convenience when poking from the console.
+// Preview sources, in order: a `window.__ANGEL_PREVIEW__` global (console poking),
+// then sessionStorage["__angel_preview"] (the dashboard's preview button — survives
+// the reload the snippet needs to boot with it, and persists as you click around).
+// Accepts a full PlanResponse or a bare AdaptationPlan.
 function readPreview(): PlanResponse | null {
   try {
     const g = window as unknown as { __ANGEL_PREVIEW__?: PlanResponse | AdaptationPlan };
-    const v = g.__ANGEL_PREVIEW__;
-    if (!v) return null;
-    return "plan" in v ? v : { plan: v, content: {} };
+    if (g.__ANGEL_PREVIEW__) return normalizePreview(g.__ANGEL_PREVIEW__);
+    const raw = sessionStorage.getItem("__angel_preview");
+    if (raw) return normalizePreview(JSON.parse(raw) as PlanResponse | AdaptationPlan);
   } catch {
-    return null;
+    /* ignore malformed preview */
   }
+  return null;
+}
+
+function normalizePreview(v: PlanResponse | AdaptationPlan): PlanResponse {
+  return "plan" in v ? v : { plan: v, content: {} };
 }

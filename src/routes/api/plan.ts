@@ -9,8 +9,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import type { Json } from "@/integrations/supabase/types";
-import { buildPlan, type InventoryRow, segmentUuid } from "@/lib/adapt/decision";
+import { buildPlan, segmentUuid, toInventoryRows } from "@/lib/adapt/decision";
 import { db } from "@/lib/ingest/db-bridge.server";
 import { aggregateSegments, type SessionLite } from "@/lib/segments/aggregate";
 import { EXTRACTOR_VERSION } from "@/lib/tests/extractor-version";
@@ -84,24 +83,13 @@ export const Route = createFileRoute("/api/plan")({
         const invRows = invRes.data ?? [];
         if (!segment || invRows.length === 0) return json(noop);
 
-        const inventory: InventoryRow[] = invRows.map((r) => ({
-          id: r.id,
-          category: r.category,
-          selector: r.selector,
-          text: r.text,
-          sectionKind: r.section_kind,
-          aboveFold: r.above_fold,
-          visualWeight: r.visual_weight,
-          top: rectTop(r.rect),
-        }));
-
         const built = buildPlan({
           siteId: site.id,
           segmentId: segmentUuid(site.id, source),
           extractorVersion: invRows[0]?.extractor_version ?? EXTRACTOR_VERSION,
           segment,
           baseline,
-          inventory,
+          inventory: toInventoryRows(invRows),
         });
         return json(built ? { plan: built.plan, content: built.content } : noop);
       },
@@ -111,15 +99,4 @@ export const Route = createFileRoute("/api/plan")({
 
 function json(body: PlanResponse): Response {
   return new Response(JSON.stringify(body), { status: 200, headers: JSON_HEADERS });
-}
-
-// content_inventory.rect is freeform Json from the extractor; read a numeric top
-// for ordering/anchoring, tolerating shape drift.
-function rectTop(rect: Json): number | null {
-  if (rect && typeof rect === "object" && !Array.isArray(rect)) {
-    const r = rect as Record<string, unknown>;
-    if (typeof r.top === "number") return r.top;
-    if (typeof r.y === "number") return r.y;
-  }
-  return null;
 }

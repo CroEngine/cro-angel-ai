@@ -27,6 +27,44 @@ export interface InventoryRow {
   top: number | null; // rect.top px, for ordering/anchoring when known
 }
 
+// A content_inventory row as Supabase returns it (snake_case, freeform rect Json).
+export interface RawInventoryRow {
+  id: string;
+  category: string;
+  selector: string;
+  text: string | null;
+  section_kind: string | null;
+  above_fold: boolean | null;
+  visual_weight: number | null;
+  rect: unknown;
+}
+
+// Map DB rows → the engine's InventoryRow shape. Shared by every caller so the
+// flattening lives in one place.
+export function toInventoryRows(rows: RawInventoryRow[]): InventoryRow[] {
+  return rows.map((r) => ({
+    id: r.id,
+    category: r.category,
+    selector: r.selector,
+    text: r.text,
+    sectionKind: r.section_kind,
+    aboveFold: r.above_fold,
+    visualWeight: r.visual_weight,
+    top: rectTop(r.rect),
+  }));
+}
+
+// content_inventory.rect is freeform Json from the extractor; read a numeric top
+// for ordering/anchoring, tolerating shape drift.
+export function rectTop(rect: unknown): number | null {
+  if (rect && typeof rect === "object" && !Array.isArray(rect)) {
+    const r = rect as Record<string, unknown>;
+    if (typeof r.top === "number") return r.top;
+    if (typeof r.y === "number") return r.y;
+  }
+  return null;
+}
+
 export interface BuiltPlan {
   plan: AdaptationPlan;
   content: Record<string, never>; // v1 rules use selector-based ops; no content to resolve
