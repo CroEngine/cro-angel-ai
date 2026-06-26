@@ -1,55 +1,35 @@
+# Plan: Konsolidera här, flytta in data — skapa inte nytt projekt
 
-## Mål
+## TL;DR
+Skapa **inte** ett nytt Lovable-projekt. Det löser inget och tappar PR-historik. Lös istället de två faktiska problemen i tur och ordning:
 
-Bygga en `/dashboard`-vy som läser de fem M0 foundation-tabellerna (sites, runs, findings m.fl.) och visar dem som en faktisk dashboard — inte bara den befintliga BrowserShell på `/` och Corpus inspector på `/corpus`.
+1. Få in koden från PR #4 + #5 i det här projektet (main).
+2. Få in datan från `upvthvbhqzqqimsyjpxw` i den Cloud-instans Lovable redan äger här (`hmhuqqgckuujxwrtdrkj`).
 
-## Blockerare som måste lösas först (Phase 0)
+## Varför inte ett nytt projekt
+- Ett nytt Lovable-projekt = ny tom Cloud-instans + nytt GitHub-repo. Samma problem som idag, plus att PR #4/#5 hänger kvar mot det gamla repot.
+- Lovable Cloud kan **inte** pekas om till en extern Supabase-instans (`upvthvbhqzqqimsyjpxw`). Cloud-projektet är managerat 1:1 mot Lovable-projektet.
+- Det "byte av Supabase" du gjorde i Supabase-dashboarden påverkar inte den här sandboxen — `.env` här pekar fortfarande på `hmhuqqgckuujxwrtdrkj`, och det är den Lovable använder.
 
-M0-migrationen finns INTE i denna sandbox. PR #4 (`claude/friendly-bell-fg6fbd`) är inte i remote här, och databasen är tom (0 publika tabeller). Innan dashboarden kan byggas måste schemat finnas. Tre vägar:
+## Steg 1 — Konsolidera kod (gör först)
+- Merga PR #4 (migrationer) och PR #5 (motor + adaptive.js) på GitHub till `main`.
+- GitHub-integrationen syncar ner till sandbox automatiskt — sen är main = sanningen, en branch.
+- Om du vill att jag tittar på diff och föreslår merge-ordning innan du klickar: säg till så kollar jag PR-innehåll vs nuvarande main.
 
-- **A. Du klistrar in `20260625000000_m0_adaptive_foundation.sql`** verbatim → jag kör den via `supabase--migration` (med GRANTs verifierade per Lovable Cloud-reglerna). Säkrast.
-- **B. Du ger GitHub-länk till råfilen** → jag curl:ar och applicerar verbatim.
-- **C. Jag skriver M0 från scratch utifrån C2-handoff/spec.** Risk: divergerar från PR #4:s exakta SQL → två sanningar att avstämma senare.
+## Steg 2 — Flytta data till Lovable Cloud-instansen
+Två alternativ, du väljer:
 
-Phase 1+ nedan förutsätter att en av A/B/C är vald och kör.
+**A) Migrera datan in i `hmhuqqgckuujxwrtdrkj` (rekommenderat)**
+- Kör PR #4-migrationerna som vanliga Lovable-migrationer här → schemat finns i Cloud-instansen.
+- Exportera CSV per tabell från `upvthvbhqzqqimsyjpxw` (Supabase dashboard → Table editor → Export).
+- Importera CSV via Lovable Cloud → Database → Tables → Import.
+- Resultat: en enda källa till sanning (Lovable Cloud), allt kopplat, inga divergerande states.
 
-## Phase 1 — Route + datakontrakt
+**B) Behåll `upvthvbhqzqqimsyjpxw` som extern Supabase**
+- Kräver att vi tar bort Lovable Cloud-integrationen och hårdkodar externa Supabase-nycklar i `.env` + `src/integrations/supabase/client.ts`.
+- Du tappar Lovable Cloud-verktygen (migration-godkännanden, types-regenerering, edge function-deploy via Lovable, secrets-UI).
+- Inte rekommenderat om datan är ~0–låg volym och du ändå tänkt köra Lovable som nav.
 
-- Skapa `src/routes/dashboard.tsx` (publik route, ingen auth — projektet har ingen auth-grind ännu, samma mönster som `/` och `/corpus`).
-- Skapa `src/lib/dashboard.functions.ts` med en `getDashboardOverview` `createServerFn` som läser counts + senaste rader från M0-tabellerna via den server-publishable klienten (inte admin) — kräver narrow `TO anon SELECT` policies på dessa tabeller, vilket M0-migrationen redan ska sätta upp.
-- Loader: `context.queryClient.ensureQueryData(...)`. Component: `useSuspenseQuery`. `head()` med egen title/description.
-
-## Phase 2 — UI-sektioner
-
-Layout: `min-h-screen bg-background`, `max-w-6xl` container, header med länkar till `/` och `/corpus`. Sektioner (en `Card` per):
-
-1. **Översikt** — KPI-rad: antal sites, antal runs (senaste 7d), antal findings (open vs resolved), senaste run-tid.
-2. **Sites** — tabell: name, url, last_run_at, status-badge. Klick → öppnar i ny flik (eller framtida `/dashboard/sites/$id`).
-3. **Senaste runs** — tabell: site, started_at, status, duration. Tom-state om 0 rader.
-4. **Findings** — gruppera per severity (badges), visa de 10 senaste open. Tom-state.
-5. **Tom-state global** — om alla tabeller är tomma: visa "kör en freeze/run för att populera" + länk till `/`.
-
-Komponenter: shadcn `Card`, `Badge`, `Button`, `Table` (lägg till `bunx shadcn@latest add table` om saknas). Inga custom färger — semantiska tokens.
-
-## Phase 3 — Navigation
-
-Lägg en lättviktig top-nav (text-länkar) i `BrowserShell` `TabStrip`-raden ELLER i `CorpusPage`-headern: `/ · /dashboard · /corpus`. Ingen sidebar-shell (overkill för 3 sidor; matcha befintlig stil).
-
-## Vad jag INTE rör
-
-- `BrowserShell` (befintlig `/`-flödet) — orört.
-- `CorpusPage` — orört bortsett från ev. nav-länk.
-- M0-tabellernas struktur — appliceras verbatim från valt källa (A/B), inte omdesignat.
-- Auth — projektet har ingen `_authenticated/` än; dashboard blir publik tills auth tas in separat.
-
-## Teknisk sammanfattning
-
-- Datalager: `createServerFn` + server-publishable Supabase-klient (inte `supabaseAdmin`), TanStack Query primar i loader.
-- Routing: TanStack file-based, ny fil `src/routes/dashboard.tsx`.
-- Stil: shadcn + semantiska tokens, ingen ny styles.css-ändring nödvändig.
-- Beroende: ev. `shadcn add table` om Table-komponenten inte redan finns.
-
-## Beslut jag behöver från dig innan implementation startar
-
-1. **Phase 0**: Vilken väg — A (klistra SQL), B (GitHub-länk), eller C (jag skriver från spec)?
-2. Annars är planen klar att köras rakt igenom efter att M0 är applicerat.
+## Vad jag behöver från dig för att gå vidare
+- Bekräfta: kör Steg 1 (merga PR #4 + #5) — vill du att jag granskar diff först?
+- Välj Steg 2: **A** (migrera in i Cloud) eller **B** (extern Supabase)?
