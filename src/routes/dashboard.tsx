@@ -8,6 +8,7 @@ import { type FormEvent, useState } from "react";
 
 import { AuthGate, signOut } from "@/components/auth/AuthGate";
 import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
+import { InventoryView } from "@/components/dashboard/InventoryView";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createSite, type DashboardSite, listSites } from "@/lib/dashboard.functions";
 
 export const Route = createFileRoute("/dashboard")({
@@ -97,7 +99,18 @@ function DashboardInner() {
             {selected && (
               <>
                 <SnippetCard site={selected} />
-                <AnalyticsView siteId={selected.id} />
+                <Tabs defaultValue="traffic">
+                  <TabsList>
+                    <TabsTrigger value="traffic">Traffic</TabsTrigger>
+                    <TabsTrigger value="content">Content</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="traffic" className="mt-4">
+                    <AnalyticsView siteId={selected.id} />
+                  </TabsContent>
+                  <TabsContent value="content" className="mt-4">
+                    <InventoryView siteId={selected.id} />
+                  </TabsContent>
+                </Tabs>
               </>
             )}
           </>

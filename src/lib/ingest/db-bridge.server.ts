@@ -18,3 +18,7 @@ export type VisitorInsert = TablesInsert<"visitors">;
 export type SessionInsert = TablesInsert<"sessions">;
 export type EventInsert = TablesInsert<"events">;
 export type RollupInsert = TablesInsert<"events_rollup">;
+
+export type CrawlRunRow = Tables<"crawl_runs">;
+export type ContentInventoryRow = Tables<"content_inventory">;
+export type ContentInventoryInsert = TablesInsert<"content_inventory">;

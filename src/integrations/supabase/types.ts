@@ -14,6 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_inventory: {
+        Row: {
+          above_fold: boolean | null
+          attrs: Json | null
+          category: string
+          crawl_run_id: string | null
+          extractor_version: string | null
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          rect: Json | null
+          section_kind: string | null
+          selector: string
+          site_id: string
+          text: string | null
+          url: string
+          visual_weight: number | null
+        }
+        Insert: {
+          above_fold?: boolean | null
+          attrs?: Json | null
+          category: string
+          crawl_run_id?: string | null
+          extractor_version?: string | null
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          rect?: Json | null
+          section_kind?: string | null
+          selector: string
+          site_id: string
+          text?: string | null
+          url: string
+          visual_weight?: number | null
+        }
+        Update: {
+          above_fold?: boolean | null
+          attrs?: Json | null
+          category?: string
+          crawl_run_id?: string | null
+          extractor_version?: string | null
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          rect?: Json | null
+          section_kind?: string | null
+          selector?: string
+          site_id?: string
+          text?: string | null
+          url?: string
+          visual_weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_inventory_crawl_run_id_fkey"
+            columns: ["crawl_run_id"]
+            isOneToOne: false
+            referencedRelation: "crawl_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_inventory_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crawl_runs: {
+        Row: {
+          error: string | null
+          extractor_version: string | null
+          finished_at: string | null
+          id: string
+          pages_crawled: number
+          site_id: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          error?: string | null
+          extractor_version?: string | null
+          finished_at?: string | null
+          id?: string
+          pages_crawled?: number
+          site_id: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          error?: string | null
+          extractor_version?: string | null
+          finished_at?: string | null
+          id?: string
+          pages_crawled?: number
+          site_id?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crawl_runs_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           client_ts: string | null
