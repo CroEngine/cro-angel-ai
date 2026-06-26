@@ -33,7 +33,10 @@
     "dev-to": "fixtures/drift-survey/iframe-heavy/dev-to/page.mhtml",
     "aftonbladet": "fixtures/drift-survey/cookie-wall-eu/aftonbladet/page.mhtml",
     "spiegel": "fixtures/drift-survey/cookie-wall-eu/spiegel/page.mhtml",
-    "github-blog": "fixtures/drift-survey/iframe-heavy/github-blog/page.mhtml"
+    "github-blog": "fixtures/drift-survey/iframe-heavy/github-blog/page.mhtml",
+    "stackoverflow": "fixtures/angel-sample/iframe-heavy/stackoverflow/page.mhtml",
+    "dn": "fixtures/drift-survey/cookie-wall-eu/dn/page.mhtml",
+    "svd": "fixtures/drift-survey/cookie-wall-eu/svd/page.mhtml"
   },
   "labels": {
     "hubspot": {
@@ -195,6 +198,21 @@
       "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
       "primaryCta": null,
       "_note": "GitHub BLOG feed (not the product homepage). Post cards by category. No marketing hero/feature/testimonial sections. Negative control."
+    },
+    "stackoverflow": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "Q&A feed (Newest Questions + question-title list + Collectives). No marketing hero/feature/testimonial sections. Negative control — question titles trip faq/benefits keywords; the v1.16 label gate + v1.17 structural testimonials should keep it clean. (angel-sample: local-only, not scored in CI.)"
+    },
+    "dn": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "SE news (Dagens Nyheter). Breaking-news strip + article grid (Senaste artiklarna). No marketing sections. Negative control — article titles trip pricing/faq/testimonials keywords."
+    },
+    "svd": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "SE news (Svenska Dagbladet). Article grid (Senast publicerat) + stock tickers. No marketing sections. Negative control."
     }
   }
 }

@@ -9,12 +9,13 @@
 // Unlike the trust-eval gate (which guards a STRONG detector — 98/84 — against
 // regression), this gate locks in a WEAK baseline so it can only get better:
 //
-//   * section-type classifier ≈ P 67% / R 60% (32-site local: 66.7 / 60.0, up
-//     from the first-run 46.7 / 42.0 over three passes: v1.16 precision gate,
-//     v1.17 structural testimonials, v1.18 hero aligned with deriveHero).
-//     testimonials P100/R73, hero R79; the last weak type is features (keyword-
-//     gated, R 8%, no clean structural signal). The floors sit a few points under
-//     measured so a real regression reds the build.
+//   * section-type classifier ≈ P 60% / R 60% (35-site local, up from the
+//     first-run 46.7 / 42.0 over three passes: v1.16 precision gate, v1.17
+//     structural testimonials, v1.18 hero aligned with deriveHero; a 32→35 corpus
+//     expansion then traded the rosier 66.7% precision for a more honest 60% by
+//     adding editorial controls). testimonials P100/R73, hero R79; the last weak
+//     type is features (keyword-gated, R 8%, no clean structural signal). The
+//     floors sit a few points under measured so a real regression reds the build.
 //   * primary-CTA pick ≈ 86% accuracy where a real primary exists (deriveHero is
 //     much stronger than the section typer; v1.15.0 lifted it from 78.6% by
 //     rejecting weak-link/chrome/nav hero CTAs). The "no false primary" rate on
@@ -65,10 +66,10 @@ describe("structure-eval — page-structure ground-truth regression gate", () =>
           .join(" "),
     );
 
-    // Section-type presence floors — under the measured ~P67/R60 (v1.18) with
-    // headroom for the figma/everlane local-vs-CI split and replay flap; a broad
-    // classifier regression (or losing the contentful SaaS sites) reds the build.
-    expect(r.precision).toBeGreaterThanOrEqual(0.58);
+    // Section-type presence floors — under the measured ~P60/R60 (35-site corpus)
+    // with headroom for the local-vs-CI split and replay flap; a broad classifier
+    // regression (or losing the contentful SaaS sites) reds the build.
+    expect(r.precision).toBeGreaterThanOrEqual(0.55);
     expect(r.recall).toBeGreaterThanOrEqual(0.5);
     // Primary-CTA pick accuracy on sites that HAVE a real primary CTA. Floor at
     // 0.70 — under the measured ~86% (v1.15.0) so the deriveHero gain is locked

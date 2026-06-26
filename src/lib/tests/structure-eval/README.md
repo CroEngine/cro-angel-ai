@@ -40,21 +40,30 @@ above-fold buttons from `scripts/structure-evidence.ts` (a raw DOM walk that doe
 - **primaryCta** — the single dominant conversion action, or `null` when the page
   has none (news, search-driven, marketplace, or co-equal "Shop X" e-commerce).
 
-## Result (v1.14.0 detectors)
+## Result (v1.18.0 detectors)
 
-32-site local run (`bun run structure-eval`); CI scores the 30 committed captures.
+35-site local run (`bun run structure-eval`); CI scores the 32 committed captures
+(everlane / figma / stackoverflow are gitignored angel-sample, local-only).
 
-### Section-type presence — **P 66.7% · R 60.0% · F1 63.2%** (v1.18.0)
+### Section-type presence — **P 60.0% · R 60.0% · F1 60.0%** (35 sites)
 
 | type | tp | fp | fn | P | R |
 |---|---|---|---|---|---|
 | testimonials | 8 | 0 | 3 | **100%** | 73% |
-| hero | 19 | 6 | 5 | 76% | **79%** |
-| pricing | 1 | 0 | 0 | 100% | 100% |
+| hero | 19 | 8 | 5 | 70% | **79%** |
+| pricing | 1 | 1 | 0 | 50% | 100% |
 | features | 1 | 1 | 12 | 50% | 8% |
 | benefits | 0 | 1 | 0 | — | — |
-| faq | 0 | 0 | 0 | — | — |
-| form | 1 | 7 | 0 | 13% | 100% |
+| faq | 0 | 1 | 0 | — | — |
+| form | 1 | 8 | 0 | 11% | 100% |
+
+> **Corpus expansion (32 → 35).** Added 3 editorial controls — stackoverflow
+> (Q&A feed) + dn/svd (2 SE news papers) — which dropped precision from a rosier
+> **66.7% → 60.0%** while recall held at 60%: a less optimistic, more trustworthy
+> number. The new FPs are all the expected kind — `dn/hero` + `svd/hero` (deriveHero
+> anchoring on a news h1, the bounded gray area), `stackoverflow/faq` ("Newest
+> Questions"), and a couple article-keyword survivors. No detector change; the
+> harder corpus simply measures it more honestly.
 
 Three structure-eval-driven passes took this from the first-run **P 46.7% / R 42.0%**
 (see history below). What remains weak, and why:
@@ -83,14 +92,6 @@ Three structure-eval-driven passes took this from the first-run **P 46.7% / R 42
 > recovered); overall **P 57→65% · R 40→48%**. Re-blessed hubspot (3→1) + linear
 > goldens against rendered evidence.
 
-> **v1.16.0 — precision gate.** The first run scored **P 46.7%** — news/blog/feed
-> pages turned every card into a section: dev-to's "Why Your Search Bar
-> Understands You" → benefits, "…System Design Questions" → faq; Der Spiegel's
-> "…plant Fronta…" → pricing. `pricing/faq/features/benefits` now only fire when
-> the heading reads like a short section *label* (1–4 words, no trailing ?/!),
-> not when a keyword sits inside an article title. Killed 9 editorial FPs
-> (precision +10 pts) at a cost of one recall point — loom's 6-word "Powerful
-
 > **v1.16.0 precision gate.** The first run scored **P 46.7%** — news/blog/feed
 > pages turned every card into a section: dev-to's "Why Your Search Bar
 > Understands You" → benefits, "…System Design Questions" → faq; Der Spiegel's
@@ -101,7 +102,7 @@ Three structure-eval-driven passes took this from the first-run **P 46.7% / R 42
 > features for easy, custom recordings" is now missed (recoverable via structural
 > cues). Corpus byte-identical (hubspot/linear carry none of these four types).
 
-### Primary CTA — **pick accuracy 85.7% (12/14)**, no-false-primary 16.7% (3/18)
+### Primary CTA — **pick accuracy 85.7% (12/14)**, no-false-primary 14.3% (3/21)
 
 `deriveHero` is far stronger than the section typer: on the 14 sites with a real
 primary CTA it now picks the right one 12 times. The 2 misses are vercel
@@ -133,9 +134,9 @@ bun run structure-eval hubspot stripe  # subset
 bun run structure-evidence hubspot     # dump the raw labeling evidence
 ```
 
-The CI gate (`__tests__/structure-eval.test.ts`) floors section P≥0.58 / R≥0.50
+The CI gate (`__tests__/structure-eval.test.ts`) floors section P≥0.55 / R≥0.50
 and CTA accuracy ≥0.70 — a few points under measured, so a broad regression reds
 the build while the known weakness (features) doesn't. **Re-tighten as the
 classifier improves.** The honest takeaway: trust detection is production-grade;
-section typing went from 47%→63% F1 over three passes and `features` is the last
+section typing went from 47%→60% F1 over three passes (then a corpus expansion that traded optimism for robustness) and `features` is the last
 weak type — this benchmark is the yardstick for it.
