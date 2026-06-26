@@ -13,7 +13,7 @@
     "freeze": "bun run scripts/freeze-site.ts",
     "angel": "bun run scripts/angel-report.ts",
     "quality": "bun run scripts/audit-quality.ts",
-    "build:adaptive": "bun build src/adaptive/adaptive.ts --outfile public/adaptive.js --target=browser --format=iife --minify",
+    "build:adaptive": "bun run scripts/gen-detectors.ts && bun build src/adaptive/adaptive.ts --outfile public/adaptive.js --target=browser --format=iife --minify",
     "crawl": "bun run scripts/inventory-crawl.ts",
     "smoke:adaptive": "bun run scripts/adaptive-smoke.ts",
     "snapshot": "vitest run src/lib/tests/snapshot",

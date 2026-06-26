@@ -6,7 +6,14 @@
 //   bun run scripts/adaptive-screens.ts --out=<dir> hubspot
 //   bun run scripts/adaptive-screens.ts --out=<dir> fixtures/drift-survey/saas-landing/stripe/page.mhtml
 import { chromium, type Browser, type Page } from "playwright";
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, copyFileSync, existsSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  readFileSync,
+  writeFileSync,
+  copyFileSync,
+  existsSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, isAbsolute, basename } from "node:path";
 
@@ -17,10 +24,13 @@ const OUT = (process.argv.find((a) => a.startsWith("--out=")) ?? `--out=${REPO}`
 const targets = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 
 function resolveTarget(t: string): { path: string; label: string; isDemo: boolean } | null {
-  if (t === "demo") return { path: join(REPO, "public/demo/index.html"), label: "demo", isDemo: true };
+  if (t === "demo")
+    return { path: join(REPO, "public/demo/index.html"), label: "demo", isDemo: true };
   if (t.endsWith(".mhtml") || t.endsWith(".html")) {
     const p = isAbsolute(t) ? t : join(REPO, t);
-    return existsSync(p) ? { path: p, label: basename(dirname(p)) || basename(p), isDemo: false } : null;
+    return existsSync(p)
+      ? { path: p, label: basename(dirname(p)) || basename(p), isDemo: false }
+      : null;
   }
   const c = join(REPO, "corpus", t, "page.mhtml");
   return existsSync(c) ? { path: c, label: t, isDemo: false } : null;
@@ -66,7 +76,10 @@ async function run(browser: Browser, t: string) {
     // strip the auto-load tag so we control when the page is original vs adapted
     writeFileSync(
       file,
-      readFileSync(r.path, "utf8").replace('<script src="/adaptive.js" data-site-id="demo"></script>', ""),
+      readFileSync(r.path, "utf8").replace(
+        '<script src="/adaptive.js" data-site-id="demo"></script>',
+        "",
+      ),
     );
   } else {
     copyFileSync(r.path, file);
@@ -78,7 +91,9 @@ async function run(browser: Browser, t: string) {
     deviceScaleFactor: 1,
     bypassCSP: true,
   });
-  await ctx.route("**/*", (rq) => (rq.request().url().startsWith("file://") ? rq.continue() : rq.abort()));
+  await ctx.route("**/*", (rq) =>
+    rq.request().url().startsWith("file://") ? rq.continue() : rq.abort(),
+  );
   const page = await ctx.newPage();
   page.on("pageerror", (e) => console.log(`  [${r.label}] pageerror: ${e.message.split("\n")[0]}`));
   try {
@@ -90,18 +105,27 @@ async function run(browser: Browser, t: string) {
     await stable(page);
     await page.screenshot({ path: join(OUT, `adapt-${r.label}-1-before.png`) });
 
-    // Frozen MHTML disables <script> execution; page.evaluate runs via CDP and
-    // bypasses that (on a real live site the normal <script> tag just works).
-    await page.evaluate(readFileSync(BUNDLE, "utf8").trim().replace(/;+\s*$/, ""));
-    await sleep(1500);
-    const diag = await page.evaluate(() => {
-      const g = (window as unknown as { __angelAdaptive?: { inventory?: unknown } }).__angelAdaptive;
-      return `typeof=${typeof g} inv=${g && g.inventory ? "yes" : "no"} scripts=${document.querySelectorAll("script").length}`;
-    });
-    console.log(`  [${r.label}] ${diag}`);
-    const applied = await page.evaluate(
-      () => (window as unknown as { __angelAdaptive: { adapt: () => unknown } }).__angelAdaptive.adapt(),
+    // Frozen MHTML disables <script> execution AND setTimeout; page.evaluate
+    // runs via CDP and bypasses the former. Because timers don't fire, the
+    // snippet's async auto-crawl never runs here — so drive the (eval-free)
+    // crawl synchronously for the test. On a real live site neither workaround
+    // is needed: the <script> tag and timers just work.
+    await page.evaluate(
+      readFileSync(BUNDLE, "utf8")
+        .trim()
+        .replace(/;+\s*$/, ""),
     );
+    await sleep(800);
+    const applied = await page.evaluate(() => {
+      const a = (
+        window as unknown as {
+          __angelAdaptive?: { inventory?: unknown; collect: () => unknown; adapt: () => unknown };
+        }
+      ).__angelAdaptive;
+      if (!a) return null;
+      if (!a.inventory) a.inventory = a.collect();
+      return a.adapt();
+    });
     await sleep(500);
     await page.screenshot({ path: join(OUT, `adapt-${r.label}-2-after.png`) });
     console.log(`${r.label}: ${JSON.stringify(applied)}`);

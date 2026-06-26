@@ -15,12 +15,7 @@
 // The sub-detectors (trust signals especially) are the hardened, CI-gated code
 // from src/lib/tests/scripts/*; we reuse them verbatim rather than re-deriving.
 
-import { PAGE_AUDIT_SCRIPT } from "@/lib/tests/scripts/pageAudit";
-import { SECTIONS_SCRIPT } from "@/lib/tests/scripts/sections";
-import { TRUST_SIGNALS_SCRIPT } from "@/lib/tests/scripts/trustSignals";
-import { CTAS_SCRIPT } from "@/lib/tests/scripts/ctas";
-import { FORMS_SCRIPT } from "@/lib/tests/scripts/forms";
-import { NAVIGATION_SCRIPT } from "@/lib/tests/scripts/navigation";
+import * as detectors from "./detectors.generated";
 
 export type InventorySignal = {
   type: string;
@@ -105,7 +100,7 @@ export type ContentInventory = {
 // same pattern as collect.ts's isVisible. The hard rules are: only reference the
 // `parts` argument + browser globals (no closure over module scope), and the raw
 // detector outputs are genuinely untyped (`any`) since they come back from eval.
-function assembleInventory(parts: any): ContentInventory {
+export function assembleInventory(parts: any): ContentInventory {
   var audit = parts.audit || {};
   var signals = (parts.trust && parts.trust.signals) || [];
   var sectionsRaw = parts.sections || [];
@@ -266,21 +261,18 @@ function assembleInventory(parts: any): ContentInventory {
 /* eslint-enable */
 
 /**
- * Self-contained browser script. Runs every content detector against the
- * current document and returns a {@link ContentInventory}. Evaluate it in the
- * page — `new Function("return " + INVENTORY_SCRIPT)()` in the snippet, or
- * `page.evaluate(INVENTORY_SCRIPT)` from a Playwright harness.
- *
- * Each `${...}` interpolates a sub-detector's compiled IIFE string `(() => …)()`
- * as the right-hand side of a `var`, so it runs and assigns its return value.
+ * Eval-free inventory build. Runs the GENERATED detector functions directly —
+ * no eval, no new Function — so the snippet works under a strict CSP. Produces
+ * the same {@link ContentInventory} as INVENTORY_SCRIPT (which stays for
+ * page.evaluate-based tooling that runs against frozen MHTML captures).
  */
-export const INVENTORY_SCRIPT = `(() => {
-  var audit = ${PAGE_AUDIT_SCRIPT};
-  var sections = ${SECTIONS_SCRIPT};
-  var trust = ${TRUST_SIGNALS_SCRIPT};
-  var ctas = ${CTAS_SCRIPT};
-  var forms = ${FORMS_SCRIPT};
-  var navigation = ${NAVIGATION_SCRIPT};
-  var assemble = ${assembleInventory.toString()};
-  return assemble({ audit: audit, sections: sections, trust: trust, ctas: ctas, forms: forms, navigation: navigation });
-})()`;
+export function collectInventory(): ContentInventory {
+  return assembleInventory({
+    audit: detectors.pageAuditRun(),
+    sections: detectors.sectionsRun(),
+    trust: detectors.trustSignalsRun(),
+    ctas: detectors.ctasRun(),
+    forms: detectors.formsRun(),
+    navigation: detectors.navigationRun(),
+  });
+}

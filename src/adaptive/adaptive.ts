@@ -14,7 +14,7 @@
 // only reads. The inventory is exposed on `window.__angelAdaptive` and, if a
 // `data-endpoint` is configured, POSTed best-effort to the collector.
 
-import { INVENTORY_SCRIPT, type ContentInventory } from "./inventory";
+import { collectInventory, type ContentInventory } from "./inventory";
 import { applyAdaptations, type AppliedChange, type AdaptationResult } from "./patterns";
 
 const VERSION = "0.2.0";
@@ -35,13 +35,6 @@ function currentScript(): HTMLScriptElement | null {
   // Fallback when the bundle runs async/deferred: last script that pulled adaptive(.js).
   const scripts = Array.from(document.querySelectorAll<HTMLScriptElement>("script[data-site-id]"));
   return scripts.length ? scripts[scripts.length - 1] : null;
-}
-
-// Build the inventory by running the composed detector script against the live
-// DOM. `new Function` (not direct eval) keeps it out of this module's scope —
-// the script only touches `document`/`window`.
-function collectInventory(): ContentInventory {
-  return new Function("return " + INVENTORY_SCRIPT)() as ContentInventory;
 }
 
 function summarize(inv: ContentInventory): string {
