@@ -44,34 +44,45 @@ above-fold buttons from `scripts/structure-evidence.ts` (a raw DOM walk that doe
 
 32-site local run (`bun run structure-eval`); CI scores the 30 committed captures.
 
-### Section-type presence — **P 57.1% · R 40.0% · F1 47.1%** (v1.16.0)
+### Section-type presence — **P 64.9% · R 48.0% · F1 55.2%** (v1.17.0)
 
 | type | tp | fp | fn | P | R |
 |---|---|---|---|---|---|
+| testimonials | 8 | 0 | 3 | **100%** | **73%** |
 | hero | 13 | 4 | 11 | 76% | 54% |
-| features | 1 | 1 | 12 | 50% | 8% |
-| testimonials | 4 | 2 | 7 | 67% | 36% |
 | pricing | 1 | 0 | 0 | 100% | 100% |
+| features | 1 | 1 | 12 | 50% | 8% |
 | benefits | 0 | 1 | 0 | — | — |
 | faq | 0 | 0 | 0 | — | — |
 | form | 1 | 7 | 0 | 13% | 100% |
 
-This is **much weaker than trust detection (98/84)** — and that is the finding.
-The section classifier (`classifyType` in `scripts/sections.ts`) is keyword-driven
-and conservative, so:
+Two structure-eval-driven passes took this from the first-run **P 46.7% / R 42.0%**
+(see history below). What remains weak, and why:
 
-- **It labels almost everything `content`.** notion → 21 sections, **0** typed
-  `hero`; gymshark → 28 sections, all `content`. Hence low recall on
-  hero/features/testimonials — the real sections exist but come back `content`.
-- **`hero` is rarely emitted as a section type** even when the page clearly has
-  one, because `<header>`/geometry guards fire first. The product's actual hero
-  finder is the *separate* `deriveHero`, which DOES locate it — that mechanism is
-  measured by the CTA metric below, not here.
-- **features/testimonials need magic heading words** (`/feature|how it works/`,
-  `/testimonial|customer|review/`). Headings like "Remarkable results", "Loved by
-  teams that ship", "Bring all your work together" miss → false negatives.
-- **`form` (search sections) + the geometry `hero` on news/app pages** are the
-  residual FPs; testimonials on editorial pages (verge/ikea) is the next pass.
+- **`hero` (R 54%) + `features` (R 8%) still rely on geometry / heading keywords.**
+  The section classifier labels most regions `content` (notion → 21 sections, 0
+  typed `hero`; the real hero is found by the *separate* `deriveHero`, measured by
+  the CTA metric below). features needs a magic word ("Powerful features"); a
+  heading like "Bring all your work together" misses. These are the next targets —
+  the same structural-signal trick that fixed testimonials could lift them.
+- **`form` (P 13%) counts inline search sections** the labels don't, and the
+  geometry `hero` fires on a few news/app top sections. Residual, lower-value FPs.
+
+> **v1.17.0 — testimonials by structure.** Each testimonial trust signal is
+> attributed to the *smallest* section containing it, and that section becomes
+> `testimonials` — replacing the heading keyword that tagged "…Customer Platform"
+> / The Verge's "Reviews" as testimonials (FP) and missed quote-only sections (FN).
+> testimonials went **P 67→100% · R 36→73%** (verge/ikea FPs gone; loom/notion
+> recovered); overall **P 57→65% · R 40→48%**. Re-blessed hubspot (3→1) + linear
+> goldens against rendered evidence.
+
+> **v1.16.0 — precision gate.** The first run scored **P 46.7%** — news/blog/feed
+> pages turned every card into a section: dev-to's "Why Your Search Bar
+> Understands You" → benefits, "…System Design Questions" → faq; Der Spiegel's
+> "…plant Fronta…" → pricing. `pricing/faq/features/benefits` now only fire when
+> the heading reads like a short section *label* (1–4 words, no trailing ?/!),
+> not when a keyword sits inside an article title. Killed 9 editorial FPs
+> (precision +10 pts) at a cost of one recall point — loom's 6-word "Powerful
 
 > **v1.16.0 precision gate.** The first run scored **P 46.7%** — news/blog/feed
 > pages turned every card into a section: dev-to's "Why Your Search Bar

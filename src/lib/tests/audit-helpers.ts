@@ -29,6 +29,29 @@ export function enrichSections(
   trustSignals: TrustSignal[],
   forms: FormEntity[],
 ): void {
+  // Structural testimonials: attribute each testimonial signal to the SMALLEST
+  // section that contains its center, so a page-wrapper section can't swallow a
+  // quote that belongs to a deeper testimonials block (hubspot's hero wrapper,
+  // notion's). That section (if plain content/cards) becomes `testimonials` —
+  // far more precise than the old heading keyword, which tagged "...Customer
+  // Platform" / The Verge's "Reviews" as testimonials and missed every quote-only
+  // section whose heading had no magic word ("Loved by teams that ship").
+  const testimonialSectionIds = new Set<string>();
+  for (const t of trustSignals) {
+    if (t.type !== "testimonial" || t.rect === undefined) continue;
+    let best: PageSection | null = null;
+    let bestArea = Infinity;
+    for (const s of sections) {
+      if (!rectCenterInside(t.rect, s.rect)) continue;
+      const area = s.rect.w * s.rect.h;
+      if (area < bestArea) {
+        bestArea = area;
+        best = s;
+      }
+    }
+    if (best) testimonialSectionIds.add(best.id);
+  }
+
   for (const s of sections) {
     s.containsPrimaryCTA = ctas.some(
       (c) => c.category === "cta_primary" && rectCenterInside(c.rect, s.rect),
@@ -47,9 +70,9 @@ export function enrichSections(
       const hw = (s.heading || "").trim().split(/\s+/).filter(Boolean).length;
       const isLabel = hw >= 1 && hw <= 4 && !/[?!]$/.test((s.heading || "").trim());
       if (s.containsForm) s.type = "form";
+      else if (testimonialSectionIds.has(s.id)) s.type = "testimonials";
       else if (isLabel && /pric|plan|kostnad|prenum|abonnemang/.test(h)) s.type = "pricing";
       else if (isLabel && /faq|frågor|questions|hjälp/.test(h)) s.type = "faq";
-      else if (/testimonial|kund|customer|review|omdöme|recension/.test(h)) s.type = "testimonials";
       else if (isLabel && /feature|funktion|så funkar|how it works|capabilit/.test(h))
         s.type = "features";
       else if (isLabel && /benefit|fördel|varför|why /.test(h)) s.type = "benefits";

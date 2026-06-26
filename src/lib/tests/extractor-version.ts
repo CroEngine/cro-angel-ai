@@ -289,8 +289,24 @@
 //           testimonials), so the gate cannot move them — verified via snapshot.
 //           Also aligns the "så funkar" Swedish features keyword in enrichSections
 //           with classifyType (was "so funkar", never matched).
+//   1.17.0 — testimonials by STRUCTURE, not heading keyword. classifyType no
+//           longer types a section testimonials from /customer|review|.../;
+//           instead each testimonial trust signal is attributed to the SMALLEST
+//           section whose box contains its center, and that section becomes
+//           `testimonials` (enrichSections for the audit, assembleInventory for
+//           the snippet — both mirror the same rule). Surfaced by structure-eval:
+//           the keyword tagged "HubSpot's Agentic Customer Platform" / The Verge's
+//           "Reviews" as testimonials (FP) and missed every quote-only section
+//           whose heading lacked a magic word ("Loved by teams that ship" — FN).
+//           Smallest-enclosing avoids a page-wrapper section swallowing a quote
+//           (notion's hero no longer mis-typed). Measured on structure-eval:
+//           testimonials precision + recall both up; verge/ikea FPs gone, loom/
+//           notion recovered. Re-bless: hubspot sectionOrder loses 2 keyword-FP
+//           testimonials (3->1, keeping the section that holds its one real quote
+//           signal); linear's moves off "Review PRs and agent output" onto the
+//           actual quote section. Both verified against the rendered page.
 
-export const EXTRACTOR_VERSION = "1.16.0" as const;
+export const EXTRACTOR_VERSION = "1.17.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

@@ -697,7 +697,9 @@ export const sectionsRun: () => any = () => ((() => {
     const isLabel = hw >= 1 && hw <= 4 && !/[?!]$/.test((heading || '').trim());
     if (isLabel && /pric|plan|kostnad|prenum|abonnemang/.test(h)) return 'pricing';
     if (isLabel && /faq|fr[åa]gor|questions|hj[äa]lp/.test(h)) return 'faq';
-    if (/testimonial|kund|customer|review|omd[öo]me|recension/.test(h)) return 'testimonials';
+    // testimonials is assigned downstream from the smallest section that actually
+    // CONTAINS a testimonial signal (enrichSections / assembleInventory), not from
+    // a heading keyword — '...Customer Platform' / 'Reviews' are not testimonials.
     if (isLabel && /feature|funktion|s[åa] funkar|how it works|capabilit/.test(h)) return 'features';
     if (isLabel && /benefit|f[öo]rdel|varf[öo]r|why /.test(h)) return 'benefits';
     if (repeated >= 4) return 'cards';

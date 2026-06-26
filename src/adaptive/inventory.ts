@@ -165,11 +165,35 @@ export function assembleInventory(parts: any): ContentInventory {
     contactInfo: g("contact_info"),
   };
 
+  // Structural testimonials (mirrors the audit's enrichSections): classifyType no
+  // longer keys testimonials off a heading word, so promote the SMALLEST section
+  // that contains a testimonial signal's center. Keeps the snippet's sectionTypes
+  // in step with the audit.
+  var testiIds: Record<string, boolean> = {};
+  for (var ti = 0; ti < signals.length; ti++) {
+    var tsig = signals[ti];
+    if (tsig.type !== "testimonial" || !tsig.rect) continue;
+    var bestId: any = null;
+    var bestArea = Infinity;
+    var cy = tsig.rect.y + tsig.rect.h / 2;
+    for (var si = 0; si < sectionsRaw.length; si++) {
+      var ss = sectionsRaw[si];
+      if (!ss.rect) continue;
+      if (cy < ss.rect.y || cy > ss.rect.y + ss.rect.h) continue;
+      var area = ss.rect.w * ss.rect.h;
+      if (area < bestArea) {
+        bestArea = area;
+        bestId = ss.id;
+      }
+    }
+    if (bestId) testiIds[bestId] = true;
+  }
+
   var sections = [];
   for (var j = 0; j < sectionsRaw.length; j++) {
     var sec = sectionsRaw[j];
     sections.push({
-      type: sec.type,
+      type: testiIds[sec.id] ? "testimonials" : sec.type,
       heading: (sec.heading || sec.displayHeading || "").slice(0, 120),
       position: sec.position,
       aboveFold: !!sec.aboveFold,
