@@ -305,8 +305,24 @@
 //           testimonials (3->1, keeping the section that holds its one real quote
 //           signal); linear's moves off "Review PRs and agent output" onto the
 //           actual quote section. Both verified against the rendered page.
+//   1.18.0 — hero section TYPE aligned with deriveHero (pageAudit.server). The
+//           geometry guard in classifyType rejects a tall hero wrapper (vercel/
+//           gymshark/trello's top section is 5-7x the viewport, over the 2.5x
+//           cap), so the real hero came back `content` and sectionOrder under-
+//           counted heroes. deriveHero already anchors on the page h1 and finds
+//           it; now the section it points at is promoted to `hero` (only plain
+//           content/cards, never structural nav/header/footer/testimonials, and
+//           only when deriveHero anchored on a real section, not the h1-synth
+//           fallback). Measured on structure-eval: hero R 54->79% (precision held
+//           at 76%); overall section presence R 48->60%, F1 55->63. The residual
+//           hero FPs are news/feed/app pages (verge/lemonde/spotify) whose article
+//           h1 deriveHero anchors on — a definitional gray area, bounded.
+//           Re-bless hubspot (hero 2->3: the h1-headline section is now typed
+//           hero alongside the 2 banner sections); linear byte-identical (its
+//           hero was already typed). Snippet unaffected (deriveHero is audit-only;
+//           the snippet's hero.headline already falls back to the page h1).
 
-export const EXTRACTOR_VERSION = "1.17.0" as const;
+export const EXTRACTOR_VERSION = "1.18.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

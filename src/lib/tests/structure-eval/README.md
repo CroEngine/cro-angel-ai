@@ -44,29 +44,36 @@ above-fold buttons from `scripts/structure-evidence.ts` (a raw DOM walk that doe
 
 32-site local run (`bun run structure-eval`); CI scores the 30 committed captures.
 
-### Section-type presence — **P 64.9% · R 48.0% · F1 55.2%** (v1.17.0)
+### Section-type presence — **P 66.7% · R 60.0% · F1 63.2%** (v1.18.0)
 
 | type | tp | fp | fn | P | R |
 |---|---|---|---|---|---|
-| testimonials | 8 | 0 | 3 | **100%** | **73%** |
-| hero | 13 | 4 | 11 | 76% | 54% |
+| testimonials | 8 | 0 | 3 | **100%** | 73% |
+| hero | 19 | 6 | 5 | 76% | **79%** |
 | pricing | 1 | 0 | 0 | 100% | 100% |
 | features | 1 | 1 | 12 | 50% | 8% |
 | benefits | 0 | 1 | 0 | — | — |
 | faq | 0 | 0 | 0 | — | — |
 | form | 1 | 7 | 0 | 13% | 100% |
 
-Two structure-eval-driven passes took this from the first-run **P 46.7% / R 42.0%**
+Three structure-eval-driven passes took this from the first-run **P 46.7% / R 42.0%**
 (see history below). What remains weak, and why:
 
-- **`hero` (R 54%) + `features` (R 8%) still rely on geometry / heading keywords.**
-  The section classifier labels most regions `content` (notion → 21 sections, 0
-  typed `hero`; the real hero is found by the *separate* `deriveHero`, measured by
-  the CTA metric below). features needs a magic word ("Powerful features"); a
-  heading like "Bring all your work together" misses. These are the next targets —
-  the same structural-signal trick that fixed testimonials could lift them.
+- **`features` (R 8%) is the last weak type** — it still needs a magic heading
+  word ("Powerful features"); a section like "Bring all your work together" misses.
+  Unlike testimonials/hero it has no clean structural signal, so it's the hardest
+  to lift without adding FPs.
 - **`form` (P 13%) counts inline search sections** the labels don't, and the
-  geometry `hero` fires on a few news/app top sections. Residual, lower-value FPs.
+  `hero` FPs are all news/feed/app pages (verge, lemonde, spotify) whose article
+  h1 `deriveHero` anchors on — a definitional gray area, bounded (precision held
+  at 76% even as recall rose).
+
+> **v1.18.0 — hero aligned with deriveHero.** classifyType's geometry guard
+> rejects a tall hero wrapper (vercel/gymshark/trello's top section is 5–7× the
+> viewport, over the 2.5× cap), so the real hero came back `content`. `deriveHero`
+> already anchors on the page h1 and finds it; the section it points at is now
+> promoted to `hero`. hero went **R 54→79%** (precision held at 76%); overall
+> **R 48→60%, F1 55→63%**. Re-blessed hubspot (hero 2→3).
 
 > **v1.17.0 — testimonials by structure.** Each testimonial trust signal is
 > attributed to the *smallest* section containing it, and that section becomes
@@ -126,8 +133,9 @@ bun run structure-eval hubspot stripe  # subset
 bun run structure-evidence hubspot     # dump the raw labeling evidence
 ```
 
-The CI gate (`__tests__/structure-eval.test.ts`) floors section P≥0.40 / R≥0.35
+The CI gate (`__tests__/structure-eval.test.ts`) floors section P≥0.58 / R≥0.50
 and CTA accuracy ≥0.70 — a few points under measured, so a broad regression reds
-the build while the known weakness doesn't. **Re-tighten as the classifier
-improves.** The honest takeaway: trust detection is production-grade; section
-typing is the next thing to harden, and this benchmark is the yardstick for it.
+the build while the known weakness (features) doesn't. **Re-tighten as the
+classifier improves.** The honest takeaway: trust detection is production-grade;
+section typing went from 47%→63% F1 over three passes and `features` is the last
+weak type — this benchmark is the yardstick for it.
