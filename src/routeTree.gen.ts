@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPlanRouteImport } from './routes/api/plan'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
 import { Route as ApiPublicCorpusSplatRouteImport } from './routes/api/public/corpus.$'
@@ -29,6 +30,11 @@ const CorpusRoute = CorpusRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlanRoute = ApiPlanRouteImport.update({
+  id: '/api/plan',
+  path: '/api/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIngestRoute = ApiIngestRouteImport.update({
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/api/plan': typeof ApiPlanRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/api/plan': typeof ApiPlanRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/api/plan': typeof ApiPlanRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/dashboard'
     | '/api/ingest'
+    | '/api/plan'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
   fileRoutesByTo: FileRoutesByTo
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/dashboard'
     | '/api/ingest'
+    | '/api/plan'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
   id:
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/dashboard'
     | '/api/ingest'
+    | '/api/plan'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
   fileRoutesById: FileRoutesById
@@ -104,6 +116,7 @@ export interface RootRouteChildren {
   CorpusRoute: typeof CorpusRoute
   DashboardRoute: typeof DashboardRoute
   ApiIngestRoute: typeof ApiIngestRoute
+  ApiPlanRoute: typeof ApiPlanRoute
   ApiPublicCorpusSplatRoute: typeof ApiPublicCorpusSplatRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
 }
@@ -129,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/plan': {
+      id: '/api/plan'
+      path: '/api/plan'
+      fullPath: '/api/plan'
+      preLoaderRoute: typeof ApiPlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ingest': {
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   CorpusRoute: CorpusRoute,
   DashboardRoute: DashboardRoute,
   ApiIngestRoute: ApiIngestRoute,
+  ApiPlanRoute: ApiPlanRoute,
   ApiPublicCorpusSplatRoute: ApiPublicCorpusSplatRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
 }

@@ -104,3 +104,22 @@ export const AdaptationPlanSchema = z.object({
   fallback: z.literal("noop").default("noop"),
 });
 export type AdaptationPlan = z.infer<typeof AdaptationPlanSchema>;
+
+/* ─────────────────────────  plan delivery (transport)  ──────────────────────── */
+// What /api/plan returns to the snippet. The plan references inventory rows by id;
+// the server resolves those ids to their PROVEN content here so the snippet never
+// has to (and never could) invent it. This wrapper is intentionally separate from
+// AdaptationPlanSchema — the plan itself stays a pure, storable, reviewable object;
+// content is resolved fresh at serve time against the current inventory.
+export const ResolvedContentSchema = z.object({
+  text: z.string().optional(),
+  href: z.string().optional(),
+  src: z.string().optional(),
+});
+export type ResolvedContent = z.infer<typeof ResolvedContentSchema>;
+
+export const PlanResponseSchema = z.object({
+  plan: AdaptationPlanSchema.nullable(), // null ⇒ no adaptation; page stays untouched
+  content: z.record(ResolvedContentSchema).default({}), // inventoryId → proven content
+});
+export type PlanResponse = z.infer<typeof PlanResponseSchema>;

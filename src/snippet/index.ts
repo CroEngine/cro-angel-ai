@@ -1,13 +1,17 @@
-// Angel Adaptive — visitor snippet (Learn Mode / M1).
+// Angel Adaptive — visitor snippet.
 //
 // Install once:
 //   <script src="https://cdn.angeladaptive.ai/v1/script.js" data-site-id="…" async></script>
 //
-// This build OBSERVES ONLY — it never mutates the DOM (adaptation arrives at M4).
-// The customer's original site is never changed; nothing here writes to the page.
+// It OBSERVES (streams behavior to /api/ingest) and, when a plan is served or
+// previewed, ADAPTS the page for this visitor via a reversible, content-safe
+// overlay. The customer's original site is never changed: with no plan the page is
+// untouched, and every adaptation is ephemeral + revertible (see adapt.ts).
 
+import { applyPlan } from "./adapt";
 import { Beacon } from "./beacon";
 import { resolveConsent } from "./consent";
+import { resolvePlan } from "./plan";
 import { collectSignals, observeBehavior } from "./signals";
 import { resolveIdentity } from "./visitor";
 
@@ -49,6 +53,15 @@ async function boot(): Promise<void> {
   });
 
   beacon.push({ type: "page_view", ts: Date.now(), url: location.href });
+
+  // Adapt for this visitor if a plan is served/previewed. Fire-and-forget so it
+  // never blocks observation; no plan ⇒ the page is left exactly as it loaded.
+  void resolvePlan({ endpoint: apiBase(SELF), siteKey, sessionId: id.sessionId }).then((pr) => {
+    if (pr?.plan) {
+      const revert = applyPlan(pr.plan, pr.content);
+      (window as unknown as { __angelRevert?: () => void }).__angelRevert = revert;
+    }
+  });
 
   const stop = observeBehavior((e) => beacon.push(e));
 
