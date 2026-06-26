@@ -9,6 +9,7 @@ import { type FormEvent, useState } from "react";
 import { AuthGate, signOut } from "@/components/auth/AuthGate";
 import { AnalyticsView } from "@/components/dashboard/AnalyticsView";
 import { InventoryView } from "@/components/dashboard/InventoryView";
+import { SegmentsView } from "@/components/dashboard/SegmentsView";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -102,10 +103,14 @@ function DashboardInner() {
                 <Tabs defaultValue="traffic">
                   <TabsList>
                     <TabsTrigger value="traffic">Traffic</TabsTrigger>
+                    <TabsTrigger value="segments">Segments</TabsTrigger>
                     <TabsTrigger value="content">Content</TabsTrigger>
                   </TabsList>
                   <TabsContent value="traffic" className="mt-4">
                     <AnalyticsView siteId={selected.id} />
+                  </TabsContent>
+                  <TabsContent value="segments" className="mt-4">
+                    <SegmentsView siteId={selected.id} />
                   </TabsContent>
                   <TabsContent value="content" className="mt-4">
                     <InventoryView siteId={selected.id} />
