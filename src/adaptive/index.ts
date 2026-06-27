@@ -15,5 +15,11 @@ export {
   classifyTrafficSource,
   type ServerSignals,
 } from "./context";
-export { loadInventory, firstItem, pickItem } from "./inventory";
+export { getDemoInventory, emptyInventory, firstItem, pickItem } from "./inventory";
+export {
+  mapAuditToInventory,
+  mapGoldenToInventory,
+  classifyCtaIntent,
+  extractMicrocopy,
+} from "./crawler-inventory";
 export { decide, decisionIdFor, MAX_ADAPTATIONS } from "./decide";

@@ -10,7 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { buildVisitorContext, readServerSignals } from "@/adaptive/context";
 import { decide } from "@/adaptive/decide";
-import { loadInventory } from "@/adaptive/inventory";
+import { resolveInventory } from "@/adaptive/inventory.server";
 import { logDecision } from "@/adaptive/persistence.server";
 import type { ClientSignals } from "@/adaptive/types";
 
@@ -48,7 +48,7 @@ export const Route = createFileRoute("/api/adaptive/decide")({
 
         const server = readServerSignals(request);
         const context = buildVisitorContext(server, client);
-        const inventory = loadInventory(client.site);
+        const inventory = await resolveInventory(client.site);
         const decision = decide(client.site, context, inventory);
 
         // Best-effort log; never blocks or fails the decision.

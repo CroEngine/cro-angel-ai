@@ -32,10 +32,12 @@ core loop described in the product blueprint.
 | ---------------------------------- | ------------------------------------------------------------ | -------------- |
 | `types.ts`                         | Shared domain types (pure data)                              | —              |
 | `context.ts`                       | Build `VisitorContext` from headers + client signals         | Step 3         |
-| `inventory.ts`                     | Content inventory access (demo fixture + loader seam)        | Step 2         |
+| `inventory.ts`                     | Pure inventory surface: demo fixture + helpers (client-safe)  | Step 2         |
+| `crawler-inventory.ts`             | Map crawler output → `ContentInventory` (audit + corpus)     | Step 2         |
+| `inventory.server.ts`              | Resolve a site's inventory: DB → corpus → demo → empty        | Step 2         |
 | `patterns.ts`                      | The fixed **Pattern Library** of safe transformations        | Step 6         |
 | `decide.ts`                        | The **Adaptive Decision Engine** (rule-based, deterministic) | Step 5         |
-| `persistence.server.ts`            | Best-effort event/decision logging (server only)             | Step 8         |
+| `persistence.server.ts`            | Best-effort event/decision logging + inventory save/load     | Step 8         |
 | `index.ts`                         | Public barrel (client-safe; excludes `*.server`)             | —              |
 | `../routes/api/adaptive/decide.ts` | `POST /api/adaptive/decide`                                  | Step 5         |
 | `../routes/api/adaptive/events.ts` | `POST /api/adaptive/events`                                  | Step 8         |
@@ -70,13 +72,40 @@ Run the engine tests:
 bun run vitest run src/adaptive
 ```
 
-## Status (this milestone: end-to-end thin slice)
+## Content inventory: where it comes from
+
+`resolveInventory(site)` (server) resolves a site's inventory in priority order:
+
+1. **Database** (`angel_content_inventory`) — the crawler's persisted output,
+   written by `saveInventory(mapAuditToInventory(audit))`.
+2. **Corpus golden** — real captured sites bundled in `corpus/` (e.g. `hubspot`),
+   adapted by `mapGoldenToInventory`.
+3. **Demo fixture** (`site === "demo"`).
+4. **Empty** — the engine then applies only content-free patterns.
+
+Two mappers, because the crawler has two output shapes:
+
+- `mapAuditToInventory(audit)` — the **full live crawler output** (`PageAuditData`),
+  which keeps the **selectors** the snippet needs to target real DOM. This is the
+  production path: crawl → map → `saveInventory` → DB.
+- `mapGoldenToInventory(golden)` — the **reduced corpus snapshot**. Selectors are
+  stripped in golden, so this recovers the text slots (CTA labels, headlines,
+  microcopy) and records reveal/reorder slots as *present*; full DOM targeting
+  needs the live crawler's pre-persistence output.
+
+Both only ever copy published text — CTA intents are inferred from the label
+(`classifyCtaIntent`) and microcopy is matched against published phrases
+(`extractMicrocopy`); nothing is fabricated.
+
+## Status
 
 Done: snippet, context, pattern library, decision engine, decide + events
-endpoints, demo page, schema migration, unit tests.
+endpoints, demo page, schema migration, unit tests, and the **crawler →
+inventory** pipeline (mappers + `resolveInventory` + DB save/load), verified
+against the real HubSpot corpus.
 
-Next: persist a real per-site content inventory from the existing crawler
-(`scripts/freeze-*`, `src/lib/tests`), apply the migration in Lovable Cloud and
-regenerate `integrations/supabase/types.ts`, then build the customer dashboard
-(Overview, Segments, Live Adaptations, Performance, Content Inventory) on the
-`angel_events` data.
+Next: run the live crawler/orchestrator to persist real per-site inventory
+(`saveInventory`) so selector-backed patterns target production DOM; apply the
+migration in Lovable Cloud and regenerate `integrations/supabase/types.ts`; then
+build the customer dashboard (Overview, Segments, Live Adaptations, Performance,
+Content Inventory) on the `angel_events` data.

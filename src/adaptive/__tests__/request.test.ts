@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import { readServerSignals, buildVisitorContext } from "../context";
 import { decide } from "../decide";
-import { loadInventory } from "../inventory";
+import { getDemoInventory } from "../inventory";
 import type { ClientSignals } from "../types";
 
 // Exercises the exact server-side path that POST /api/adaptive/decide runs:
@@ -26,7 +26,7 @@ function makeRequest(headers: Record<string, string>): Request {
 function runDecision(headers: Record<string, string>, client: ClientSignals) {
   const server = readServerSignals(makeRequest(headers));
   const context = buildVisitorContext(server, client);
-  return { context, decision: decide(client.site, context, loadInventory(client.site)) };
+  return { context, decision: decide(client.site, context, getDemoInventory()) };
 }
 
 describe("server request path", () => {

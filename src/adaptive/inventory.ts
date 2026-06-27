@@ -1,11 +1,9 @@
 // Angel Adaptive — content inventory access (blueprint Step 2).
 //
-// In production the crawler (scripts/freeze-* + src/lib/tests) builds a
-// ContentInventory per site and persists it. For the end-to-end thin slice we
-// ship a hand-authored inventory for the bundled demo site so the whole loop —
-// snippet -> decide -> patterns -> events — can run without the crawler or a
-// populated database. `loadInventory` is the single seam to swap in real,
-// DB-backed inventory later.
+// This module is the pure, client-safe surface: the hand-authored demo
+// inventory and small helpers. Resolving a real site's inventory (DB → corpus →
+// demo → empty) is server-only and lives in inventory.server.ts; the crawler →
+// inventory mapping lives in crawler-inventory.ts.
 
 import type { ContentInventory, InventoryItem, InventorySlot } from "./types";
 
@@ -72,16 +70,14 @@ const DEMO_INVENTORY: ContentInventory = {
   },
 };
 
-const EMPTY_INVENTORY = (site: string): ContentInventory => ({ site, slots: {} });
+/** An inventory with no content — the engine then applies only content-free patterns. */
+export function emptyInventory(site: string): ContentInventory {
+  return { site, slots: {} };
+}
 
-/**
- * Resolve a site's content inventory. Today: the demo fixture, or an empty
- * inventory for unknown sites (the engine then only applies content-free
- * patterns — never inventing copy). Tomorrow: a DB/corpus read keyed by site.
- */
-export function loadInventory(site: string): ContentInventory {
-  if (site === "demo") return DEMO_INVENTORY;
-  return EMPTY_INVENTORY(site);
+/** The hand-authored inventory for the bundled demo page. */
+export function getDemoInventory(): ContentInventory {
+  return DEMO_INVENTORY;
 }
 
 /** First inventory item for a slot, or null. */

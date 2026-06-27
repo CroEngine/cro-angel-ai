@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 
 import { decide, MAX_ADAPTATIONS } from "../decide";
-import { loadInventory } from "../inventory";
+import { emptyInventory, getDemoInventory } from "../inventory";
 import type { PatternId, VisitorContext } from "../types";
 
-const demo = loadInventory("demo");
+const demo = getDemoInventory();
 
 function ctx(overrides: Partial<VisitorContext> = {}): VisitorContext {
   return {
@@ -64,7 +64,7 @@ describe("decide — blueprint scenarios", () => {
 
 describe("decide — safety and invariants", () => {
   it("never invents content: content-required patterns are skipped without inventory", () => {
-    const empty = loadInventory("unknown-site");
+    const empty = emptyInventory("unknown-site");
     const d = decide("unknown-site", ctx({ trafficSource: "google_ads" }), empty);
     // clarify_cta + show_no_credit_card require published content → must be absent.
     const patterns = d.adaptations.map((a) => a.pattern);

@@ -8,13 +8,25 @@
 // (snippet -> decide -> patterns) never depends on persistence succeeding.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type { AngelEvent, VisitorContext } from "./types";
+import type {
+  AngelEvent,
+  ContentInventory,
+  InventoryItem,
+  InventorySlot,
+  VisitorContext,
+} from "./types";
 
-interface InsertResult {
+interface WriteResult {
+  error: { message: string } | null;
+}
+interface SelectResult {
+  data: unknown[] | null;
   error: { message: string } | null;
 }
 interface MinimalTable {
-  insert(rows: unknown): Promise<InsertResult>;
+  insert(rows: unknown): Promise<WriteResult>;
+  upsert(rows: unknown, options?: { onConflict?: string }): Promise<WriteResult>;
+  select(columns: string): { eq(column: string, value: string): Promise<SelectResult> };
 }
 
 // Single localized cast: the generated types don't know these tables yet.
@@ -84,4 +96,82 @@ export async function logDecision(
       },
     },
   ]);
+}
+
+// ---- content inventory ------------------------------------------------------
+
+type InventoryRow = {
+  site_slug: string;
+  slot: string;
+  item_id: string;
+  text: string | null;
+  selector: string | null;
+  meta: Record<string, string>;
+};
+
+/**
+ * Persist a site's content inventory (upsert on (site_slug, item_id)). This is
+ * what the crawler pipeline calls after mapping its audit. Returns the number of
+ * rows written, or 0 if the store is unavailable. Never throws.
+ */
+export async function saveInventory(inventory: ContentInventory): Promise<number> {
+  const rows: InventoryRow[] = [];
+  for (const [slot, items] of Object.entries(inventory.slots)) {
+    for (const item of (items ?? []) as InventoryItem[]) {
+      rows.push({
+        site_slug: inventory.site,
+        slot,
+        item_id: item.id,
+        text: item.text ?? null,
+        selector: item.selector ?? null,
+        meta: item.meta ?? {},
+      });
+    }
+  }
+  if (rows.length === 0) return 0;
+
+  try {
+    const { error } = await table("angel_content_inventory").upsert(rows, {
+      onConflict: "site_slug,item_id",
+    });
+    if (error) {
+      console.warn(`[angel] inventory persistence skipped: ${error.message}`);
+      return 0;
+    }
+    return rows.length;
+  } catch (err) {
+    console.warn(`[angel] inventory persistence unavailable:`, err);
+    return 0;
+  }
+}
+
+/**
+ * Read a site's persisted inventory back into a ContentInventory, or null when
+ * the store is unavailable or has no rows for the site. Never throws.
+ */
+export async function loadInventoryRows(site: string): Promise<ContentInventory | null> {
+  try {
+    const { data, error } = await table("angel_content_inventory")
+      .select("slot,item_id,text,selector,meta")
+      .eq("site_slug", site);
+    if (error || !data || data.length === 0) return null;
+
+    const slots: ContentInventory["slots"] = {};
+    for (const raw of data as Array<Partial<InventoryRow>>) {
+      const slot = raw.slot as InventorySlot | undefined;
+      if (!slot || !raw.item_id) continue;
+      const item: InventoryItem = {
+        id: raw.item_id,
+        slot,
+        text: raw.text ?? undefined,
+        selector: raw.selector ?? undefined,
+        meta: raw.meta ?? undefined,
+      };
+      (slots[slot] ??= []).push(item);
+    }
+    return { site, slots };
+  } catch (err) {
+    console.warn(`[angel] inventory read unavailable:`, err);
+    return null;
+  }
 }
