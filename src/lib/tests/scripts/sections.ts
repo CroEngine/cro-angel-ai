@@ -59,22 +59,84 @@ export const SECTIONS_SCRIPT = `(() => {
     return allSimilar ? maxRun : 0;
   }
 
-  function headings(el) {
+  // Heading text as a human reads it: innerText (drops display:none responsive/
+  // a11y copies) + collapse an exact whole-phrase repetition (>=3-word unit) so
+  // a headline duplicated 2-3x into one element isn't read as "X X X". Mirror of
+  // the helper in pageAudit.ts (scripts are self-contained, no shared imports).
+  function cleanHeadingText(el) {
+    if (!el) return '';
+    var t = ((el.innerText || el.textContent || '') + '').trim().replace(/\\s+/g, ' ');
+    var w = t.split(' ');
+    for (var p = 3; p <= w.length / 2; p++) {
+      if (w.length % p !== 0) continue;
+      var ok = true;
+      for (var i = p; i < w.length; i++) { if (w[i] !== w[i % p]) { ok = false; break; } }
+      if (ok) { w = w.slice(0, p); break; }
+    }
+    return w.join(' ');
+  }
+
+  // Largest-font visible text run inside a section — the DISPLAY headline for a
+  // section that has NO semantic heading (h1–h4), e.g. a styled-<div> hero like
+  // warby-parker "SEE SUMMER BETTER" / glossier / spotify's app-shell. This is a
+  // hero-headline FALLBACK only and is deliberately NOT passed to classifyType,
+  // so it can never move a section's type or sectionOrder (the trap the earlier
+  // attempt hit). Deterministic for a frozen DOM + fixed replay viewport: ranks
+  // by computed font-size, then rendered area, then DOM order (strict-greater
+  // keeps the first winner).
+  function prominentText(el) {
+    const nodes = el.querySelectorAll('h5,h6,p,span,div,a,strong,b,em,li,blockquote');
+    let best = '', bestSize = -1, bestArea = -1;
+    const limit = nodes.length < 600 ? nodes.length : 600;
+    for (let i = 0; i < limit; i++) {
+      const node = nodes[i];
+      if (node.tagName === 'BUTTON') continue;
+      // Direct text nodes only — never a wrapper's concatenated descendant text.
+      let txt = '';
+      const kids = node.childNodes;
+      for (let c = 0; c < kids.length; c++) {
+        if (kids[c].nodeType === 3) txt += kids[c].nodeValue;
+      }
+      txt = txt.replace(/\\s+/g, ' ').trim();
+      if (txt.length < 3 || txt.length > 200) continue;
+      if (txt.split(' ').length < 2) continue; // single word ~ a UI label
+      const r = node.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue; // display:none / collapsed
+      const st = window.getComputedStyle(node);
+      if (st.visibility === 'hidden' || parseFloat(st.opacity) === 0) continue;
+      const size = parseFloat(st.fontSize) || 0;
+      const area = r.width * r.height;
+      if (size > bestSize || (size === bestSize && area > bestArea)) {
+        best = txt; bestSize = size; bestArea = area;
+      }
+    }
+    return best.slice(0, 200);
+  }
+
+  function headings(el, rect) {
     const h1s = Array.from(el.querySelectorAll('h1'));
     let heading = '';
     if (h1s.length > 0) {
-      heading = h1s.map((h) => (h.textContent || '').trim()).filter(Boolean).join(' ');
+      heading = h1s.map((h) => cleanHeadingText(h)).filter(Boolean).join(' ');
     } else {
       const h = el.querySelector('h2,h3,h4');
-      heading = h ? (h.textContent || '').trim() : '';
+      heading = h ? cleanHeadingText(h) : '';
     }
     heading = heading.replace(/\\s+/g, ' ').slice(0, 200);
     const sub = el.querySelector('h2,h3,p');
     let subheading = '';
     if (sub && (h1s.length === 0 || h1s.indexOf(sub) === -1)) {
-      subheading = (sub.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 200);
+      subheading = cleanHeadingText(sub).slice(0, 200);
     }
-    return { heading, subheading };
+    // Display-only fallback for a section with no semantic heading. Kept OUT of
+    // the heading field so classifyType + sectionOrder are byte-for-byte unaffected.
+    // Only computed for ABOVE-FOLD sections: displayHeading is consumed solely as
+    // the hero headline (and heroes are above the fold), so running the O(nodes)
+    // font-size scan on every below-fold heading-less section is pure waste — and
+    // on heavy SPAs that layout-thrash was slow enough to risk replay timeouts.
+    const aboveFold = !rect || rect.top < viewportH;
+    const displayHeading = heading || !aboveFold ? '' : prominentText(el);
+    return { heading, subheading, displayHeading };
   }
 
   function classifyType(el, rect, repeated, heading) {
@@ -105,11 +167,22 @@ export const SECTIONS_SCRIPT = `(() => {
     // so this cap can be generous to allow rich hero sections with media/video.
     if (docTop < viewportH * 0.4 && rect.height > 200 && rect.height < viewportH * 2.5) return 'hero';
     const h = (heading || '').toLowerCase();
-    if (/pric|plan|kostnad|prenum|abonnemang/.test(h)) return 'pricing';
-    if (/faq|fr[åa]gor|questions|hj[äa]lp/.test(h)) return 'faq';
-    if (/testimonial|kund|customer|review|omd[öo]me|recension/.test(h)) return 'testimonials';
-    if (/feature|funktion|s[åa] funkar|how it works|capabilit/.test(h)) return 'features';
-    if (/benefit|f[öo]rdel|varf[öo]r|why /.test(h)) return 'benefits';
+    // A semantic section TYPE (pricing/faq/features/benefits) is only assigned
+    // when the heading reads like a section LABEL — short and not a sentence —
+    // not when a keyword appears incidentally inside an article title. Without
+    // this, news/blog/feed pages turn every card into a section: dev-to's "Why
+    // Your Search Bar Understands You" -> benefits, "...System Design Questions"
+    // -> faq; Der Spiegel's "...drängt an die Börse und plant..." -> pricing.
+    // (testimonials is gated separately, on actual testimonial signals, not here.)
+    const hw = (heading || '').trim().split(/\\s+/).filter(Boolean).length;
+    const isLabel = hw >= 1 && hw <= 4 && !/[?!]$/.test((heading || '').trim());
+    if (isLabel && /pric|plan|kostnad|prenum|abonnemang/.test(h)) return 'pricing';
+    if (isLabel && /faq|fr[åa]gor|questions|hj[äa]lp/.test(h)) return 'faq';
+    // testimonials is assigned downstream from the smallest section that actually
+    // CONTAINS a testimonial signal (enrichSections / assembleInventory), not from
+    // a heading keyword — '...Customer Platform' / 'Reviews' are not testimonials.
+    if (isLabel && /feature|funktion|s[åa] funkar|how it works|capabilit/.test(h)) return 'features';
+    if (isLabel && /benefit|f[öo]rdel|varf[öo]r|why /.test(h)) return 'benefits';
     if (repeated >= 4) return 'cards';
     return 'content';
   }
@@ -169,10 +242,26 @@ export const SECTIONS_SCRIPT = `(() => {
   }
 
 
+  // display:contents elements render no box of their own but lay their children
+  // out as if they weren't there (a common React/Next wrapper). They fail the
+  // box-size guards below (width 0 / height 0), so without passing THROUGH them
+  // the real sections behind one are dropped with the whole subtree —
+  // warby-parker is <main> → display:contents div → 25 sections, which otherwise
+  // collapsed to a single bogus nav section. Only consulted on the drop paths
+  // (zero/near-zero box), so getComputedStyle isn't called for normal sections.
+  function passThroughContents(el) {
+    try {
+      if (window.getComputedStyle(el).display === 'contents') {
+        const kids = el.children;
+        for (let i = 0; i < kids.length; i++) addNode(kids[i]);
+      }
+    } catch (_) {}
+  }
+
   function addNode(el) {
     if (!el || seen.has(el)) return;
     let rect = el.getBoundingClientRect();
-    if (rect.width < 40) return;
+    if (rect.width < 40) { passThroughContents(el); return; }
     const rawH = rect.height;
     let effectiveH = rawH;
     let offsetH = 0, scrollH = 0, cloneH = 0;
@@ -194,7 +283,7 @@ export const SECTIONS_SCRIPT = `(() => {
         if (cloneH > effectiveH) effectiveH = cloneH;
       } catch (_) {}
     }
-    if (effectiveH < 80) return;
+    if (effectiveH < 80) { passThroughContents(el); return; }
 
     if (effectiveH !== rawH) {
       rect = {
@@ -231,10 +320,11 @@ export const SECTIONS_SCRIPT = `(() => {
     }
     seen.add(el);
     const repeated = repeatedChildrenCount(el);
-    const hh = headings(el);
+    const hh = headings(el, rect);
     const type = classifyType(el, rect, repeated, hh.heading);
     raw.push({
-      el, rect, repeated, heading: hh.heading, subheading: hh.subheading, type,
+      el, rect, repeated, heading: hh.heading, subheading: hh.subheading,
+      displayHeading: hh.displayHeading, type,
     });
   }
 
@@ -325,9 +415,10 @@ export const SECTIONS_SCRIPT = `(() => {
       containsNavigation: r.type === 'nav' || r.type === 'header' || r.type === 'footer',
     };
     if (sub) entry.subheading = sub;
+    // Only present for no-semantic-heading sections; consumed solely by
+    // deriveHero as a headline fallback (not part of the normalized golden).
+    if (r.displayHeading) entry.displayHeading = r.displayHeading;
     return entry;
   });
   return out;
 })()`;
-
-

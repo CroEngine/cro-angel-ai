@@ -35,6 +35,19 @@ jobs:
       - name: Run snapshot diff tests
         run: bunx vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts
 
+      - name: Run extractor unit tests
+        run: >-
+          bunx vitest run
+          src/lib/tests/__tests__/audit-helpers.test.ts
+          src/lib/tests/snapshot/__tests__/fetch-records.test.ts
+          src/lib/tests/scripts/__tests__/sections-walker.test.ts
+          src/lib/tests/scripts/__tests__/ctas-logo.test.ts
+          src/lib/tests/scripts/__tests__/trust-signals.test.ts
+          src/lib/tests/scripts/__tests__/collect-visibility.test.ts
+
+      - name: Run trust-signal benchmark gate (committed corpus)
+        run: bunx vitest run src/lib/tests/trust-eval/__tests__/trust-eval.test.ts
+
       - name: Upload canary artifacts
         if: always()
         uses: actions/upload-artifact@v4

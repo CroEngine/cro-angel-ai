@@ -13,7 +13,14 @@
 //
 // Capture still runs on Browserbase (anti-bot); see freeze.server.ts.
 
-import { readFileSync, existsSync, copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  readFileSync,
+  existsSync,
+  copyFileSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -59,9 +66,14 @@ async function waitForReady(page: Page) {
 // same URL. A delayed MHTML commit tears the execution context down mid-call,
 // so evaluate throws — reset streak and keep going. Throws if the context
 // never stabilizes, since downstream work would be unreliable.
+//
+// Budget is deliberately generous (tries×gapMs ≈ 9s): a stable page returns
+// after ~`need` ticks regardless, but a churny SPA under batch load (renderer
+// contention, slow MHTML commit) needs the headroom — a tight budget turned
+// recoverable flakiness into hard "context never stabilized" failures.
 async function waitForStableContext(
   page: Page,
-  { tries = 20, gapMs = 150, need = 2 }: { tries?: number; gapMs?: number; need?: number } = {},
+  { tries = 45, gapMs = 200, need = 2 }: { tries?: number; gapMs?: number; need?: number } = {},
 ): Promise<string> {
   let streak = 0;
   let lastUrl = "";
@@ -129,15 +141,26 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
     try {
       done = (await page.evaluate(() => {
         const SEL = [
-          '#onetrust-consent-sdk', '#onetrust-banner-sdk', '#onetrust-accept-btn-handler',
-          '[id*="onetrust" i]', '[class*="onetrust" i]',
-          '#osano-cm-window', '[class*="osano-cm" i]',
-          '[id*="cookiebot" i]', '[id^="CybotCookiebot" i]',
-          '[id*="cookie-banner" i]', '[id*="cookie-consent" i]',
-          '[class*="cookie-banner" i]', '[class*="cookie-consent" i]',
-          '[id*="truste" i]', '[class*="truste" i]',
-          '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
-          '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
+          "#onetrust-consent-sdk",
+          "#onetrust-banner-sdk",
+          "#onetrust-accept-btn-handler",
+          '[id*="onetrust" i]',
+          '[class*="onetrust" i]',
+          "#osano-cm-window",
+          '[class*="osano-cm" i]',
+          '[id*="cookiebot" i]',
+          '[id^="CybotCookiebot" i]',
+          '[id*="cookie-banner" i]',
+          '[id*="cookie-consent" i]',
+          '[class*="cookie-banner" i]',
+          '[class*="cookie-consent" i]',
+          '[id*="truste" i]',
+          '[class*="truste" i]',
+          '[aria-label*="cookie" i]',
+          '[aria-label*="consent" i]',
+          '[id*="usercentrics" i]',
+          '[id*="didomi" i]',
+          '[class*="didomi" i]',
         ].join(",");
         const ROOT_SEL =
           '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i]';
@@ -164,7 +187,11 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
   }
 }
 
-export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise<ReplayResult> {
+export async function replayCorpus(
+  name: string,
+  corpusRoot = "corpus",
+  opts: { lenientCanary?: boolean } = {},
+): Promise<ReplayResult> {
   const dir = join(corpusRoot, name);
   const mhtmlPath = join(dir, "page.mhtml");
   const pointerPath = join(dir, "page.mhtml.asset.json");
@@ -183,15 +210,24 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
   // golden. Vi gatar på flaggan och throw:ar på alla inkonsistenta tillstånd.
   let reportExternalized = false;
   let embeddedFamilies: string[] = [];
+  // Did THIS freeze trip the font size-gate (embed only the loaded subset)? Only
+  // then is the canary-scoping below safe to apply; a normal freeze keeps the
+  // full main-doc manifest. Absent on legacy reports → false → no scoping.
+  let reportSizeGated = false;
   if (existsSync(reportPath)) {
     try {
       const r = JSON.parse(readFileSync(reportPath, "utf8")) as {
-        capture?: { externalized?: boolean; embeddedFamilies?: string[] | null };
+        capture?: {
+          externalized?: boolean;
+          embeddedFamilies?: string[] | null;
+          sizeGatedLoadedOnly?: boolean | null;
+        };
       };
       reportExternalized = !!r.capture?.externalized;
       embeddedFamilies = Array.isArray(r.capture?.embeddedFamilies)
         ? (r.capture!.embeddedFamilies as string[])
         : [];
+      reportSizeGated = !!r.capture?.sizeGatedLoadedOnly;
     } catch (e) {
       throw new Error(
         `corpus/${name}/freeze-report.json kunde inte läsas: ${e instanceof Error ? e.message : String(e)}`,
@@ -398,6 +434,25 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
         // Fail-closed: om scopingen inte hittar något (heuristik-miss) faller vi
         // tillbaka på hela freeze-manifestet hellre än att tyst sluta gate:a.
         if (mainDoc.length > 0) manifest = mainDoc;
+        // Size-gate-scoping: en storsajt (Apple ≈ 170 deklarerade faces) embeddar
+        // bara den browser-laddade delmängden och lämnar oanvända @font-face-faces
+        // externa (mhtml-fonts.server.ts). De är fortfarande deklarerade+nåbara, så
+        // mainDoc listar dem — men binärerna droppades MEDVETET, de renderas aldrig
+        // (ej laddade → ingen bbox) och kan inte resolva under file://-replay.
+        // Scope:a canaryn till familjer vi FAKTISKT embeddade (≥1 cid:-face).
+        //
+        // BARA när size-gaten faktiskt slog till för den här frysningen. För en
+        // NORMAL frysning behåller vi hela main-doc-manifestet, annars tappar
+        // canaryn sin backstop: en använd font som INTE embeddades (t.ex. en
+        // relativ @font-face-url vars fetch failade — A2-gatens survivor-scan är
+        // `https?://`-only och missar den) skulle annars scope:as bort och dess
+        // render-drift gå oupptäckt. Legacy-rapporter saknar flaggan → false →
+        // ingen scoping → identiskt beteende mot innan ändringen.
+        if (reportSizeGated) {
+          const cidFamilies = new Set(extractEmbeddedFamilies(mhtmlOnDisk, { cidOnly: true }));
+          const scoped = manifest.filter((f) => cidFamilies.has(f));
+          if (scoped.length > 0) manifest = scoped;
+        }
       } catch {
         /* fail-closed: behåll embeddedFamilies-manifestet + tomma declaredFamilies */
       }
@@ -470,15 +525,24 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
       );
       if (canary.ghosts.length > 0) {
         // eslint-disable-next-line no-console
-        console.warn(
-          `[replay] canary ghosts (non-blocking): ${canary.ghosts.join(", ")}`,
-        );
+        console.warn(`[replay] canary ghosts (non-blocking): ${canary.ghosts.join(", ")}`);
       }
       if (!canary.ok) {
-        throw new Error(
+        const msg =
           `[replay] render-canary failed for ${name}: ${canary.failures.join("; ")}. ` +
-            `Se corpus/${name}/render-canary.json + render-canary.families.json för full rapport.`,
-        );
+          `Se corpus/${name}/render-canary.json + render-canary.families.json för full rapport.`;
+        // lenientCanary: breadth-audit mode. The canary gates font-render
+        // fidelity (load-bearing for golden determinism), but a CRO audit reads
+        // hero/CTA/trust/image structure, not glyph metrics. Under the flag we
+        // log the failure and continue so a font-imperfect breadth capture
+        // still yields findings. Default stays strict — the promoted corpus and
+        // snapshot determinism are unaffected.
+        if (opts.lenientCanary) {
+          // eslint-disable-next-line no-console
+          console.warn(`${msg} (lenientCanary — continuing)`);
+        } else {
+          throw new Error(msg);
+        }
       }
     }
 
@@ -496,10 +560,10 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
     // eslint-disable-next-line no-console
     console.log(`[replay] collected ${elements.length} elements`);
-    const pageAudit = await runPageAudit(
-      page as unknown as Parameters<typeof runPageAudit>[0],
-      { skipScrollWarmup: true, skipCookiePoll: true },
-    );
+    const pageAudit = await runPageAudit(page as unknown as Parameters<typeof runPageAudit>[0], {
+      skipScrollWarmup: true,
+      skipCookiePoll: true,
+    });
 
     return {
       collect: { target: "clickables", elements, count: elements.length },

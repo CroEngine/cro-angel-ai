@@ -68,7 +68,8 @@ export const SITES: SiteSpec[] = [
       '[id^="hs-web-interactives"]', // web-interactives push-anchors/containers
       'body > a[tabindex="-1"][aria-hidden="true"][rel="nofollow"]', // bot-tarpit-ankaret
     ],
-    notes: "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort.",
+    notes:
+      "HubSpot's hs-eu-cookie-confirmation (eget system, inte OneTrust). Bannern göms, tas inte bort.",
   },
   {
     name: "microsoft",
@@ -79,7 +80,18 @@ export const SITES: SiteSpec[] = [
     // Assistant"-chatt-widget (nere höger) — ingen consent att dismissa. Lägg
     // INTE till en selektor utan att först verifiera att en banner faktiskt
     // rendras i capture-miljön.
-    notes: "Ingen consent-banner i Browserbase-region (geo-gate). Store Assistant-chatt-widget i egen iframe (bra test av huvuddokument-font-scoping). Capture körs utan consent-klick.",
+    notes:
+      "Ingen consent-banner i Browserbase-region (geo-gate). Store Assistant-chatt-widget i egen iframe (bra test av huvuddokument-font-scoping). Capture körs utan consent-klick.",
+  },
+  {
+    name: "linear",
+    url: "https://linear.app",
+    // Dark-theme SaaS landing — ger corpusen inverted-contrast/salience-täckning
+    // som README:n efterfrågar (komplement till HubSpots ljusa tema). Captured
+    // valid utan consent-klick i breadth-körningen (ingen blockerande banner mot
+    // Browserbase-IP). Promotion gated på #4 score-determinism (promote-corpus.ts).
+    notes:
+      "Dark-theme SaaS-landing (inverterad kontrast/salience). Ingen blockerande consent-banner mot Browserbase-IP i breadth-capture.",
   },
   // Salesforce, Slack, Kry, Monday: ej tillagda än.
   // Salesforce testad 2026-06-10: ingen consent-banner mot Browserbase-IP

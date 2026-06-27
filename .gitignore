@@ -43,3 +43,13 @@ fixtures/drift-survey/**/screenshot.jpg
 fixtures/breadth-50/**/page.mhtml
 fixtures/breadth-50/**/page.pre-embed.mhtml
 fixtures/breadth-50/**/screenshot.jpg
+
+# angel breadth validation — transient scratch captures + report, never committed.
+fixtures/angel-sample/
+
+# Local secrets. The committed template is .env.example (names only, no values).
+# Real keys (BROWSERBASE_API_KEY, etc.) live in .env locally / in the runtime
+# environment — never committed.
+.env
+.env.*
+!.env.example

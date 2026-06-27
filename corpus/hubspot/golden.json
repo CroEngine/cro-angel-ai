@@ -1947,8 +1947,8 @@
       ]
     },
     "hero": {
-      "headline": "Marketing",
-      "primaryCtaText": "Learn more about Revenue Hub",
+      "headline": "Where go-to-market teams go to grow scale close retain grow",
+      "primaryCtaText": "Get a demo of HubSpot's premium software",
       "primaryCtaIntent": "conversion",
       "aboveFold": true
     },
@@ -1969,9 +1969,10 @@
       }
     },
     "trustSummary": {
-      "total": 3,
-      "aboveFold": 1,
+      "total": 4,
+      "aboveFold": 0,
       "byType": {
+        "social_proof_count": 1,
         "testimonial": 1,
         "customer_logos": 1,
         "review_badges": 1
@@ -1991,24 +1992,23 @@
         "quote-block/rejected/text length 38": 1,
         "quote-block/rejected/text length 39": 2,
         "quote-block/rejected/text length 601": 3,
-        "quote-block/rejected/text length 640": 3,
-        "text-pattern/rejected/substring-fragment-mid-sentence": 1
+        "quote-block/rejected/text length 640": 3
       }
     },
     "ctaSummary": {
-      "total": 14,
-      "primary": 2,
-      "aboveFold": 6
+      "total": 15,
+      "primary": 1,
+      "aboveFold": 5
     },
     "sectionOrder": [
       "header",
       "nav",
       "nav",
+      "hero",
+      "hero",
+      "hero",
+      "testimonials",
       "content",
-      "hero",
-      "hero",
-      "testimonials",
-      "testimonials",
       "content",
       "content",
       "content",
@@ -2018,7 +2018,7 @@
       "footer",
       "content",
       "content",
-      "testimonials",
+      "content",
       "content"
     ]
   }

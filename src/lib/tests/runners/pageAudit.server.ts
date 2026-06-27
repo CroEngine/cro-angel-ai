@@ -402,7 +402,6 @@ export async function runPageAudit(
   const dimsTyped = dims as { pageHeightPx: number; foldHeightPx: number };
 
   enrichSections(sectionsTyped, ctasTyped, trustTyped, formsTyped);
-  const sectionOrder = sectionsTyped.map((s) => s.type);
   const trustSummary = buildTrustSummary(trustTyped);
   const pageSummary = buildPageSummary({
     ctas: ctasTyped,
@@ -413,7 +412,19 @@ export async function runPageAudit(
     sections: sectionsTyped,
     dims: dimsTyped,
   });
-  const hero = deriveHero(sectionsTyped, ctasTyped);
+  const hero = deriveHero(sectionsTyped, ctasTyped, audit.headings?.h1Texts ?? []);
+  // Align the hero section's TYPE with deriveHero. classifyType's geometry guard
+  // rejects a tall hero wrapper (vercel/gymshark/trello's top section is 5-7x the
+  // viewport, over the 2.5x cap) so the real hero comes back `content`; deriveHero
+  // anchors on the page h1 and gets it right. Promote only plain content/cards —
+  // never override structural nav/header/footer or a structural testimonials —
+  // and only when deriveHero anchored on a real section (not the h1-synthesized
+  // fallback, whose sectionId is "").
+  if (hero?.sectionId) {
+    const hs = sectionsTyped.find((s) => s.id === hero.sectionId);
+    if (hs && (hs.type === "content" || hs.type === "cards")) hs.type = "hero";
+  }
+  const sectionOrder = sectionsTyped.map((s) => s.type);
 
   // Strip transient `selector` from sections before persistence — it's a
   // DOM lookup helper for the browser-side scripts, not analytics data.

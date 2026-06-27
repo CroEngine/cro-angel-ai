@@ -75,7 +75,12 @@ export const CTAS_SCRIPT = `(() => {
 
   function hasSurface(cs) {
     const bg = cs.backgroundColor || '';
-    return !!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent';
+    if (!!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return true;
+    // Outline / ghost buttons have no fill but a visible border — still a
+    // surfaced, clickable region and a common modern CTA style ("Contact sales").
+    const bw = parseFloat(cs.borderTopWidth) || 0;
+    const bs = cs.borderTopStyle || 'none';
+    return bw > 0 && bs !== 'none' && bs !== 'hidden';
   }
 
   function parseRgb(s) {
@@ -121,10 +126,22 @@ export const CTAS_SCRIPT = `(() => {
     const area = rect.width * rect.height;
     if (isButtonish && rect.width <= 56 && rect.height <= 56 && (!text || text.length <= 2)) return 'icon_button';
     if (isButtonish) {
+      // Customer-logo / image link: it has NO visible text of its own (the label
+      // text passed in comes from img alt / aria-label) and its content is an
+      // image. These fill "trusted by" logo strips and otherwise score
+      // cta_primary — notion's hero logos (OpenAI, Figma, Ramp, Cursor, Vercel)
+      // each became cta_primary/conversion, so deriveHero took "OpenAI" as the
+      // hero CTA over "Get Notion free". Social proof, not a CTA — drop to 'link'
+      // (trust detection counts them as customer_logos where appropriate).
+      const ownText = ((el.innerText || el.value || '') + '').trim();
+      if (!ownText && el.querySelector && el.querySelector('img, svg, picture')) return 'link';
       let score = 0;
       if (rect.top < viewportH) score++;
       if (text.length > 0 && text.length <= 32) score++;
-      if (area >= 90 * 28) score++;
+      // Button-sized. The old 90×28 floor missed normal small buttons — linear's
+      // above-fold "Sign up" (≈78×30 = 2334px²) scored 3 → secondary, so the hero
+      // CTA came back empty. 64×28 still excludes inline links / sub-icon chrome.
+      if (area >= 64 * 28) score++;
       if (hasSurface(cs)) score++;
       if (score >= 4) return 'cta_primary';
       if (score >= 2 && hasSurface(cs)) return 'cta_secondary';
@@ -157,6 +174,15 @@ export const CTAS_SCRIPT = `(() => {
     return false;
   }
 
+  // Accessibility skip-links (<a href="#main">Skip to content</a>) are
+  // button-ish anchors that score as cta_primary but are never CTAs — they're
+  // keyboard jump links. Exclude by canonical phrasing.
+  function isSkipLink(text) {
+    const t = (text || '').trim();
+    if (!/^(skip|jump)\\b/i.test(t)) return false;
+    return /^(skip|jump)\\s+(to\\s+)?(the\\s+)?(main\\s+)?(content|navigation|nav|search|menu|main)\\b/i.test(t);
+  }
+
   const SEL = 'button, a[href], input[type=submit], input[type=button], [role="button"]';
   const nodes = Array.from(document.querySelectorAll(SEL));
   const raw = [];
@@ -170,6 +196,7 @@ export const CTAS_SCRIPT = `(() => {
     const cs = window.getComputedStyle(el);
     const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 80);
     if (isCarouselNav(el, text)) continue;
+    if (isSkipLink(text)) continue;
     const category = classifyCategory(el, cs, rect, text);
     if (category === 'other' || category === 'link') continue; // keep button-ish + form_submit only
     raw.push({
