@@ -54,6 +54,19 @@ RLS is enabled and locked down — all runtime access is server-side via the
 service role. Dashboard read policies (anon/authenticated) come in a later
 migration once auth/tenancy is wired.
 
+## Seed baseline data
+
+`scripts/seed-adaptive.ts` generates idempotent upsert SQL for the `demo` and
+`hubspot` sites + their content inventory, using the same mappers the runtime
+uses (`getDemoInventory` / `mapGoldenToInventory`):
+
+```bash
+bun run scripts/seed-adaptive.ts | psql "$DATABASE_URL"
+# or paste the output into the Supabase SQL editor
+```
+
+Re-runnable (every statement is an upsert).
+
 > Note: the auto-generated files under `src/integrations/supabase/` still print
 > "Connect Supabase in Lovable Cloud" when env vars are missing. That string is
 > cosmetic — the clients read the standard `SUPABASE_*` variables above.
