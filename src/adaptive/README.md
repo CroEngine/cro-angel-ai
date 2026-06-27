@@ -106,6 +106,7 @@ against the real HubSpot corpus.
 
 Next: run the live crawler/orchestrator to persist real per-site inventory
 (`saveInventory`) so selector-backed patterns target production DOM; apply the
-migration in Lovable Cloud and regenerate `integrations/supabase/types.ts`; then
-build the customer dashboard (Overview, Segments, Live Adaptations, Performance,
-Content Inventory) on the `angel_events` data.
+migration directly against Supabase (`supabase db push`) and regenerate
+`integrations/supabase/types.ts` (`supabase gen types`) — see `supabase/README.md`;
+then build the customer dashboard (Overview, Segments, Live Adaptations,
+Performance, Content Inventory) on the `angel_events` data.

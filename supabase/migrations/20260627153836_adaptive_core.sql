@@ -8,8 +8,11 @@
 -- RLS is enabled and locked down: all runtime access goes through the server
 -- using the service-role key (which bypasses RLS). No anon/authenticated
 -- policies are granted here; dashboard read policies are added in a later
--- migration once auth/tenancy is wired. Until this migration is approved in
--- Lovable Cloud, the app degrades gracefully (event writes are best-effort).
+-- migration once auth/tenancy is wired.
+--
+-- Apply directly against Supabase with `supabase db push` (or paste into the
+-- SQL editor). Until applied, the app degrades gracefully (writes are
+-- best-effort). See supabase/README.md.
 
 create extension if not exists "pgcrypto";
 

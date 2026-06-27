@@ -1,11 +1,15 @@
 // Angel Adaptive — best-effort event persistence (server only).
 //
-// The schema lives in supabase/migrations/*_adaptive_core.sql but is not yet
-// reflected in the generated Supabase `Database` types (the migration is pending
-// approval in Lovable Cloud). Until then we reach the tables through a minimal
-// local contract and cast once, here. Every write is best-effort: if the tables
-// or the service-role key are missing, we log and continue. The adaptive loop
-// (snippet -> decide -> patterns) never depends on persistence succeeding.
+// The schema lives in supabase/migrations/*_adaptive_core.sql. We run Supabase
+// directly: apply it with `supabase db push`, then regenerate the typed
+// `Database` (`supabase gen types typescript` → src/integrations/supabase/types.ts).
+// Until those generated types include the angel_* tables we reach them through a
+// minimal local contract and cast once, here; after `gen types` this cast can be
+// dropped for the generated row types. See supabase/README.md.
+//
+// Every write is best-effort: if the tables or the service-role key
+// (SUPABASE_SERVICE_ROLE_KEY) are missing, we log and continue. The adaptive
+// loop (snippet -> decide -> patterns) never depends on persistence succeeding.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type {
