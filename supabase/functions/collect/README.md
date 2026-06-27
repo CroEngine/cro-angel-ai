@@ -14,25 +14,27 @@ adaptive.js  ──POST {siteId, visitorKey, sessionId, url, inventory?, events?
 ## Requires the M0 + M2 schema
 
 This function writes to `sites`, `visitors`, `sessions`, `events`,
-`crawl_runs`, `content_inventory`. Those tables are defined by the migrations in
-`supabase/migrations/` (M0 `…_m0_adaptive_foundation.sql`, M2
-`…_m2_content_inventory.sql`). **Apply them before deploying the function.** They
-are already applied to project `upvthvbhqzqqimsyjpxw`.
+`crawl_runs`, `content_inventory` — the M0 + M2 tables. **They are already applied
+to the collector project `upvthvbhqzqqimsyjpxw`**, so there's nothing to run before
+deploying. (The migration SQL itself — `…_m0_adaptive_foundation.sql`,
+`…_m2_content_inventory.sql` — ships via the M0/M2 PR; you only need
+`supabase db push` if you ever stand up a fresh project.)
 
-> ⚠️ **Project choice.** `supabase/config.toml` currently points at
-> `hmhuqqgckuujxwrtdrkj` (the Lovable-managed project), but the M0/M2 schema lives
-> on `upvthvbhqzqqimsyjpxw`. Pick one canonical project, make sure the schema is
-> applied there, and deploy this function to the same one. (If you standardize on
-> `upvthvbhqzqqimsyjpxw`, update `config.toml`'s `project_id` to match.)
+> ⚠️ **Two projects, on purpose.** `supabase/config.toml` stays pointed at
+> `hmhuqqgckuujxwrtdrkj` (the Lovable-managed app project) — **don't repoint it**,
+> or Lovable's own deploys get confused. The collector and its M0/M2 schema live on
+> the self-managed project **`upvthvbhqzqqimsyjpxw`**. Target that project
+> explicitly with `supabase link --project-ref upvthvbhqzqqimsyjpxw` (below) so the
+> CLI deploys there without touching `config.toml`.
 
 ## Deploy
 
 ```bash
-# link to the chosen project once
-supabase link --project-ref <ref>
+# point the CLI at the self-managed collector project (leaves config.toml alone)
+supabase link --project-ref upvthvbhqzqqimsyjpxw
 
-# apply the schema if it isn't already there
-supabase db push
+# schema is already applied on upvthvbhqzqqimsyjpxw — skip unless it's a fresh project
+# supabase db push
 
 # deploy the function. --no-verify-jwt because the snippet POSTs anonymously,
 # cross-origin, from the customer's site — the gate is the Origin allowlist +
@@ -51,8 +53,14 @@ snippet's `data-site-id`; `allowed_origins` gates who may POST (leave empty to
 accept any origin during first install, then lock it down):
 
 ```sql
+-- owner_user_id references auth.users. In the dashboard SQL editor auth.uid() is
+-- NULL (it runs as the service role, not a signed-in user), so grab your real id
+-- first and paste it in:  select id, email from auth.users;
 insert into public.sites (owner_user_id, domain, public_site_key, allowed_origins)
-values (auth.uid(), 'glutenforum.se', 'glutenforum', array['https://glutenforum.se']);
+values (
+  '00000000-0000-0000-0000-000000000000',          -- ← your auth.users.id
+  'glutenforum.se', 'glutenforum', array['https://glutenforum.se']
+);
 ```
 
 ## Install the snippet
@@ -60,7 +68,7 @@ values (auth.uid(), 'glutenforum.se', 'glutenforum', array['https://glutenforum.
 ```html
 <script src="https://<your-domain>/adaptive.js"
         data-site-id="glutenforum"
-        data-endpoint="https://<project-ref>.functions.supabase.co/collect"></script>
+        data-endpoint="https://upvthvbhqzqqimsyjpxw.supabase.co/functions/v1/collect"></script>
 ```
 
 That's it — the page now collects in **learn mode** (changes nothing) and ships
