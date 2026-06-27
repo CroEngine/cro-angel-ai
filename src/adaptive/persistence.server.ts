@@ -1,17 +1,16 @@
-// Angel Adaptive — best-effort event persistence (server only).
+// Angel Adaptive — best-effort event + inventory persistence (server only).
 //
-// The schema lives in supabase/migrations/*_adaptive_core.sql. We run Supabase
-// directly: apply it with `supabase db push`, then regenerate the typed
-// `Database` (`supabase gen types typescript` → src/integrations/supabase/types.ts).
-// Until those generated types include the angel_* tables we reach them through a
-// minimal local contract and cast once, here; after `gen types` this cast can be
-// dropped for the generated row types. See supabase/README.md.
+// The schema lives in supabase/migrations/*_adaptive_core.sql and is applied to
+// our Supabase project; the angel_* tables are reflected in the generated
+// `Database` types, so the admin client below is fully typed. To regenerate
+// after schema changes: `supabase gen types typescript`. See supabase/README.md.
 //
-// Every write is best-effort: if the tables or the service-role key
-// (SUPABASE_SERVICE_ROLE_KEY) are missing, we log and continue. The adaptive
-// loop (snippet -> decide -> patterns) never depends on persistence succeeding.
+// Every write is best-effort: if the service-role key (SUPABASE_SERVICE_ROLE_KEY)
+// is missing or the request fails, we log and continue. The adaptive loop
+// (snippet -> decide -> patterns) never depends on persistence succeeding.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 import type {
   AngelEvent,
   ContentInventory,
@@ -20,30 +19,12 @@ import type {
   VisitorContext,
 } from "./types";
 
-interface WriteResult {
-  error: { message: string } | null;
-}
-interface SelectResult {
-  data: unknown[] | null;
-  error: { message: string } | null;
-}
-interface MinimalTable {
-  insert(rows: unknown): Promise<WriteResult>;
-  upsert(rows: unknown, options?: { onConflict?: string }): Promise<WriteResult>;
-  select(columns: string): { eq(column: string, value: string): Promise<SelectResult> };
-}
-
-// Single localized cast: the generated types don't know these tables yet.
-function table(name: string): MinimalTable {
-  return (supabaseAdmin as unknown as { from(n: string): MinimalTable }).from(name);
-}
-
 type EventRow = {
   site: string;
   type: string;
   decision_id: string | null;
   visitor_hash: string | null;
-  payload: Record<string, unknown>;
+  payload: Json;
 };
 
 /**
@@ -61,11 +42,11 @@ export async function logEvents(
     type: e.type,
     decision_id: e.decisionId ?? null,
     visitor_hash: visitorHash,
-    payload: e.payload ?? {},
+    payload: (e.payload ?? {}) as Json,
   }));
 
   try {
-    const { error } = await table("angel_events").insert(rows);
+    const { error } = await supabaseAdmin.from("angel_events").insert(rows);
     if (error) {
       console.warn(`[angel] event persistence skipped: ${error.message}`);
       return 0;
@@ -110,7 +91,7 @@ type InventoryRow = {
   item_id: string;
   text: string | null;
   selector: string | null;
-  meta: Record<string, string>;
+  meta: Json;
 };
 
 /**
@@ -128,14 +109,14 @@ export async function saveInventory(inventory: ContentInventory): Promise<number
         item_id: item.id,
         text: item.text ?? null,
         selector: item.selector ?? null,
-        meta: item.meta ?? {},
+        meta: (item.meta ?? {}) as Json,
       });
     }
   }
   if (rows.length === 0) return 0;
 
   try {
-    const { error } = await table("angel_content_inventory").upsert(rows, {
+    const { error } = await supabaseAdmin.from("angel_content_inventory").upsert(rows, {
       onConflict: "site_slug,item_id",
     });
     if (error) {
@@ -155,21 +136,22 @@ export async function saveInventory(inventory: ContentInventory): Promise<number
  */
 export async function loadInventoryRows(site: string): Promise<ContentInventory | null> {
   try {
-    const { data, error } = await table("angel_content_inventory")
+    const { data, error } = await supabaseAdmin
+      .from("angel_content_inventory")
       .select("slot,item_id,text,selector,meta")
       .eq("site_slug", site);
     if (error || !data || data.length === 0) return null;
 
     const slots: ContentInventory["slots"] = {};
-    for (const raw of data as Array<Partial<InventoryRow>>) {
-      const slot = raw.slot as InventorySlot | undefined;
+    for (const raw of data) {
+      const slot = raw.slot as InventorySlot;
       if (!slot || !raw.item_id) continue;
       const item: InventoryItem = {
         id: raw.item_id,
         slot,
         text: raw.text ?? undefined,
         selector: raw.selector ?? undefined,
-        meta: raw.meta ?? undefined,
+        meta: (raw.meta as Record<string, string> | null) ?? undefined,
       };
       (slots[slot] ??= []).push(item);
     }
