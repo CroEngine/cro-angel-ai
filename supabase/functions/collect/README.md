@@ -48,20 +48,16 @@ service-role-only by design).
 
 ## Register a site
 
-Insert one `sites` row per customer site. `public_site_key` is what goes in the
-snippet's `data-site-id`; `allowed_origins` gates who may POST (leave empty to
-accept any origin during first install, then lock it down):
+Run [`register-site.sql`](./register-site.sql) in the SQL editor (project
+`upvthvbhqzqqimsyjpxw`): edit the domain, `public_site_key` (this is the snippet's
+`data-site-id`), `allowed_origins`, and owner email at the top, then run. It's
+idempotent and resolves `owner_user_id` from `auth.users` for you, so there's no
+uuid to hand-copy. `allowed_origins` gates who may POST (leave empty to accept any
+origin during first install, then lock it down).
 
-```sql
--- owner_user_id references auth.users. In the dashboard SQL editor auth.uid() is
--- NULL (it runs as the service role, not a signed-in user), so grab your real id
--- first and paste it in:  select id, email from auth.users;
-insert into public.sites (owner_user_id, domain, public_site_key, allowed_origins)
-values (
-  '00000000-0000-0000-0000-000000000000',          -- ← your auth.users.id
-  'glutenforum.se', 'glutenforum', array['https://glutenforum.se']
-);
-```
+> `sites.owner_user_id` is `NOT NULL → auth.users`. If the project has no users
+> yet, create one once in **Dashboard → Authentication → Users** and re-run — the
+> script picks it up automatically.
 
 ## Install the snippet
 
