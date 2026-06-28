@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DemoRouteImport } from './routes/demo'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiAdaptiveEventsRouteImport } from './routes/api/adaptive/events'
@@ -20,6 +21,11 @@ import { Route as ApiPublicCorpusSplatRouteImport } from './routes/api/public/co
 const DemoRoute = DemoRouteImport.update({
   id: '/demo',
   path: '/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CorpusRoute = CorpusRouteImport.update({
@@ -56,6 +62,7 @@ const ApiPublicCorpusSplatRoute = ApiPublicCorpusSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
+  '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
+  '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
+  '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/corpus'
+    | '/dashboard'
     | '/demo'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/corpus'
+    | '/dashboard'
     | '/demo'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/corpus'
+    | '/dashboard'
     | '/demo'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
@@ -114,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CorpusRoute: typeof CorpusRoute
+  DashboardRoute: typeof DashboardRoute
   DemoRoute: typeof DemoRoute
   ApiAdaptiveDecideRoute: typeof ApiAdaptiveDecideRoute
   ApiAdaptiveEventsRoute: typeof ApiAdaptiveEventsRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/demo'
       fullPath: '/demo'
       preLoaderRoute: typeof DemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/corpus': {
@@ -178,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CorpusRoute: CorpusRoute,
+  DashboardRoute: DashboardRoute,
   DemoRoute: DemoRoute,
   ApiAdaptiveDecideRoute: ApiAdaptiveDecideRoute,
   ApiAdaptiveEventsRoute: ApiAdaptiveEventsRoute,
@@ -187,13 +208,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
