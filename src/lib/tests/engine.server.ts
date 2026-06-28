@@ -8,7 +8,6 @@ import { runPageAudit } from "./runners/pageAudit.server";
 
 import { groupRepeatedControls } from "./audit-helpers";
 
-
 import type {
   CollectedElement,
   CollectTarget,
@@ -64,9 +63,15 @@ function readJpegDimensions(buf: Buffer): { w: number; h: number } | null {
   if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
   let i = 2;
   while (i < buf.length - 9) {
-    if (buf[i] !== 0xff) { i++; continue; }
+    if (buf[i] !== 0xff) {
+      i++;
+      continue;
+    }
     const marker = buf[i + 1];
-    if (marker === 0xff) { i++; continue; }
+    if (marker === 0xff) {
+      i++;
+      continue;
+    }
     const isSOF =
       (marker >= 0xc0 && marker <= 0xc3) ||
       (marker >= 0xc5 && marker <= 0xc7) ||
@@ -85,34 +90,48 @@ function readJpegDimensions(buf: Buffer): { w: number; h: number } | null {
 
 function summarize(step: Step): string {
   switch (step.kind) {
-    case "goto": return `goto ${step.url}`;
-    case "wait": return `wait ${step.ms}ms`;
-    case "assertText": return `assertText "${step.text}"`;
-    case "click": return `click ${step.selector}`;
-    case "fill": return `fill ${step.selector} = "${step.value}"`;
-    case "act": return `act ${step.instruction}`;
-    case "extract": return `extract ${step.instruction}`;
-    case "observe": return `observe ${step.instruction}`;
-    case "collect": return `collect ${step.target}`;
-    case "pageAudit": return `pageAudit`;
+    case "goto":
+      return `goto ${step.url}`;
+    case "wait":
+      return `wait ${step.ms}ms`;
+    case "assertText":
+      return `assertText "${step.text}"`;
+    case "click":
+      return `click ${step.selector}`;
+    case "fill":
+      return `fill ${step.selector} = "${step.value}"`;
+    case "act":
+      return `act ${step.instruction}`;
+    case "extract":
+      return `extract ${step.instruction}`;
+    case "observe":
+      return `observe ${step.instruction}`;
+    case "collect":
+      return `collect ${step.target}`;
+    case "pageAudit":
+      return `pageAudit`;
   }
 }
 
 function filterCollected(all: CollectedElement[], target: CollectTarget): CollectedElement[] {
   if (target === "buttons") {
     // Strict: real <button>, <input type=submit|button>, role=button only.
-    return all.filter((el) =>
-      el.tagName === "button" ||
-      el.tagName === "input[type=submit]" ||
-      el.tagName === "input[type=button]" ||
-      el.tagName === "[role=button]"
+    return all.filter(
+      (el) =>
+        el.tagName === "button" ||
+        el.tagName === "input[type=submit]" ||
+        el.tagName === "input[type=button]" ||
+        el.tagName === "[role=button]",
     );
   }
   // "clickables" → everything we collected.
   return all;
 }
 
-async function scrollWarmup(page: import("@browserbasehq/stagehand").Page, onEvent: (e: EngineEvent) => void) {
+async function scrollWarmup(
+  page: import("@browserbasehq/stagehand").Page,
+  onEvent: (e: EngineEvent) => void,
+) {
   try {
     for (const pct of [0, 25, 50, 75, 100]) {
       await page.evaluate(
@@ -124,7 +143,10 @@ async function scrollWarmup(page: import("@browserbasehq/stagehand").Page, onEve
     await new Promise((res) => setTimeout(res, 200));
     onEvent({ type: "log", message: "scrolled page to trigger lazy content" });
   } catch (e) {
-    onEvent({ type: "log", message: `scroll failed: ${e instanceof Error ? e.message : String(e)}` });
+    onEvent({
+      type: "log",
+      message: `scroll failed: ${e instanceof Error ? e.message : String(e)}`,
+    });
   }
 }
 
@@ -150,13 +172,22 @@ async function captureScreenshot(
 
     const b64 = buf.toString("base64");
     const kb = Math.round(buf.length / 1024);
-    onEvent({ type: "log", message: `screenshot captured (${kb}kb, ${vp.w}×${vp.h}${dims ? "" : " · fallback dims"})` });
+    onEvent({
+      type: "log",
+      message: `screenshot captured (${kb}kb, ${vp.w}×${vp.h}${dims ? "" : " · fallback dims"})`,
+    });
     if (buf.length > 6 * 1024 * 1024 || vp.h > 10000) {
-      onEvent({ type: "log", message: `warn: screenshot is large (${kb}kb, ${vp.h}px tall) — consider storage-upload soon` });
+      onEvent({
+        type: "log",
+        message: `warn: screenshot is large (${kb}kb, ${vp.h}px tall) — consider storage-upload soon`,
+      });
     }
     return { dataUrl: `data:image/jpeg;base64,${b64}`, viewport: vp };
   } catch (e) {
-    onEvent({ type: "log", message: `screenshot failed: ${e instanceof Error ? e.message : String(e)}` });
+    onEvent({
+      type: "log",
+      message: `screenshot failed: ${e instanceof Error ? e.message : String(e)}`,
+    });
     return undefined;
   }
 }
@@ -164,9 +195,16 @@ async function captureScreenshot(
 export async function runSteps(
   sessionId: string,
   steps: Step[],
-  opts: { onEvent: (e: EngineEvent) => void; signal?: AbortSignal },
+  opts: {
+    onEvent: (e: EngineEvent) => void;
+    signal?: AbortSignal;
+    // Called with the full PageAuditData (selectors intact) when a pageAudit
+    // step succeeds — used to ingest content inventory. Best-effort; throwing
+    // here must not fail the run.
+    onAudit?: (audit: PageAuditData) => void | Promise<void>;
+  },
 ): Promise<{ passed: number; failed: number; aborted: boolean }> {
-  const { onEvent, signal } = opts;
+  const { onEvent, signal, onAudit } = opts;
   const apiKey = process.env.BROWSERBASE_API_KEY;
   const projectId = process.env.BROWSERBASE_PROJECT_ID;
   if (!apiKey) throw new Error("BROWSERBASE_API_KEY missing");
@@ -195,7 +233,10 @@ export async function runSteps(
     initialized = true;
 
     for (let i = 0; i < steps.length; i++) {
-      if (signal?.aborted) { aborted = true; break; }
+      if (signal?.aborted) {
+        aborted = true;
+        break;
+      }
 
       const step = steps[i];
       const summary = summarize(step);
@@ -215,11 +256,12 @@ export async function runSteps(
               if (response) {
                 // Stash:a response-metadata på page-objektet så pageAudit-steget
                 // kan plocka upp HTTP-headers (X-Robots-Tag, Cache-Control, etc.).
-                (existing as unknown as { __lovableLastResponse?: unknown }).__lovableLastResponse = {
-                  status: response.status(),
-                  headers: response.headers(), // Playwright lowercase:ar nycklar
-                  url: response.url(),
-                };
+                (existing as unknown as { __lovableLastResponse?: unknown }).__lovableLastResponse =
+                  {
+                    status: response.status(),
+                    headers: response.headers(), // Playwright lowercase:ar nycklar
+                    url: response.url(),
+                  };
               }
             } else {
               await stagehand.context.newPage(step.url);
@@ -243,7 +285,9 @@ export async function runSteps(
                   found = true;
                   break;
                 }
-              } catch { /* retry */ }
+              } catch {
+                /* retry */
+              }
               await new Promise((res) => setTimeout(res, 300));
             }
             if (!found) throw new Error(`text "${step.text}" not found within 5000ms`);
@@ -272,7 +316,9 @@ export async function runSteps(
             try {
               await page.evaluate("window.scrollTo({ top: 0, behavior: 'instant' })");
               await new Promise((res) => setTimeout(res, 300));
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
 
             // Now run COLLECT_SCRIPT — document height matches the JPEG.
             const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
@@ -293,20 +339,26 @@ export async function runSteps(
               intentBreakdown[el.intent] = (intentBreakdown[el.intent] ?? 0) + 1;
               bySection[el.section] = (bySection[el.section] ?? 0) + 1;
               if (el.position.viewportZone === "above_fold") aboveFold++;
-              if (el.category === "cta_primary" && el.intent === "conversion") primaryConversionCtaCount++;
+              if (el.category === "cta_primary" && el.intent === "conversion")
+                primaryConversionCtaCount++;
               if (
                 (el.category === "cta_primary" ||
                   el.category === "cta_secondary" ||
                   el.category === "form_submit") &&
                 el.position.viewportZone === "above_fold" &&
                 el.intent !== "navigation"
-              ) competingAboveFold++;
+              )
+                competingAboveFold++;
             }
             const topVisualWeight = [...filtered]
               .filter((el) => !el.groupedAway)
               .sort((a, b) => b.visualWeight.score - a.visualWeight.score)
               .slice(0, 5)
-              .map((el) => ({ selector: el.selector, text: el.text, score: el.visualWeight.score }));
+              .map((el) => ({
+                selector: el.selector,
+                text: el.text,
+                score: el.visualWeight.score,
+              }));
 
             // Overlay still draws on ALL elements so user sees real density.
             const overlayElements = filtered.map((el) => ({
@@ -318,7 +370,10 @@ export async function runSteps(
               const pairs = filtered.map((el) => [el.selector, el.category]);
               await page.evaluate(`(${OVERLAY_FN.toString()})(${JSON.stringify(pairs)})`);
             } catch (e) {
-              onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
+              onEvent({
+                type: "log",
+                message: `overlay failed: ${e instanceof Error ? e.message : String(e)}`,
+              });
             }
 
             const uniqueCount = filtered.filter((el) => !el.groupedAway).length;
@@ -352,6 +407,17 @@ export async function runSteps(
             try {
               const full = await runPageAudit(page);
               data = full;
+              // Best-effort content-inventory ingest (selectors still intact here).
+              if (onAudit) {
+                try {
+                  await onAudit(full);
+                } catch (e) {
+                  onEvent({
+                    type: "log",
+                    message: `inventory ingest failed: ${e instanceof Error ? e.message : String(e)}`,
+                  });
+                }
+              }
               const sectionOrder = full.sectionOrder;
               // Overlay trust signals on the live page so the user sees what was detected.
               const TRUST_LABELS: Record<string, string> = {
@@ -375,17 +441,24 @@ export async function runSteps(
               try {
                 await page.evaluate(`(${OVERLAY_FN.toString()})(${JSON.stringify(trustPairs)})`);
               } catch (e) {
-                onEvent({ type: "log", message: `overlay failed: ${e instanceof Error ? e.message : String(e)}` });
+                onEvent({
+                  type: "log",
+                  message: `overlay failed: ${e instanceof Error ? e.message : String(e)}`,
+                });
               }
               // Emit overlay rects for the frozen viewport (scoped to the three
               // trust types the user requested to see marked on the screenshot).
               const trustOverlay = full.trustSignals
-                .filter((t) => !!t.selector && !!t.rect &&
-                  (t.type === "testimonial" ||
-                   t.type === "review_badges" ||
-                   t.type === "social_proof_count" ||
-                   t.type === "trusted_by" ||
-                   t.type === "customer_logos"))
+                .filter(
+                  (t) =>
+                    !!t.selector &&
+                    !!t.rect &&
+                    (t.type === "testimonial" ||
+                      t.type === "review_badges" ||
+                      t.type === "social_proof_count" ||
+                      t.type === "trusted_by" ||
+                      t.type === "customer_logos"),
+                )
                 .map((t) => ({ selector: t.selector!, category: t.type, rect: t.rect! }));
               // Strip selector from snapshot arrays now that overlay is built.
               const trustForSnapshot = full.trustSignals.map((t) => {
@@ -408,18 +481,30 @@ export async function runSteps(
             }
             break;
           }
-
         }
-
 
         void page;
 
         passed++;
-        onEvent({ type: "step_passed", index, kind: step.kind, summary, durationMs: Date.now() - t0, data });
+        onEvent({
+          type: "step_passed",
+          index,
+          kind: step.kind,
+          summary,
+          durationMs: Date.now() - t0,
+          data,
+        });
       } catch (err) {
         failed++;
         const message = err instanceof Error ? err.message : String(err);
-        onEvent({ type: "step_failed", index, kind: step.kind, summary, durationMs: Date.now() - t0, error: message });
+        onEvent({
+          type: "step_failed",
+          index,
+          kind: step.kind,
+          summary,
+          durationMs: Date.now() - t0,
+          error: message,
+        });
         break; // stop on first failure
       }
     }
@@ -432,10 +517,17 @@ export async function runSteps(
     // the live-view CDP/WebSocket isn't torn down — closeSession(sessionId)
     // in the orchestrator is the single source of truth for ending the session.
     if (!initialized || crashed) {
-      try { await stagehand.close(); } catch { /* ignore */ }
+      try {
+        await stagehand.close();
+      } catch {
+        /* ignore */
+      }
       onEvent({ type: "log", message: "stagehand closed (init/crash cleanup)" });
     } else {
-      onEvent({ type: "log", message: "stagehand left attached — session ends via closeSession()" });
+      onEvent({
+        type: "log",
+        message: "stagehand left attached — session ends via closeSession()",
+      });
     }
   }
 

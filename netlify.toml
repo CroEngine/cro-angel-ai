@@ -1,0 +1,23 @@
+# Netlify deploy config for this TanStack Start + Nitro app.
+#
+# The app builds via Nitro, which defaults to the Cloudflare target (see
+# @lovable.dev/vite-tanstack-config). NITRO_PRESET=netlify overrides that so the
+# build emits a Netlify function for SSR (server routes /api/adaptive/*, server
+# functions like getDashboard) instead of a Cloudflare Worker. Nitro's netlify
+# preset publishes static assets to `dist` and wires the catch-all function +
+# redirects automatically (per Nitro docs: publish dir = `dist`).
+#
+# IMPORTANT — set these in Netlify → Site settings → Environment variables, or
+# the server has no backend access at runtime (dashboard shows the empty state,
+# /decide + /events become no-ops):
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY        (server, secret)
+#   VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY (client, build-time)
+#   BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID    (only if running the crawler)
+
+[build]
+  command = "bun run build"
+  publish = "dist"
+
+[build.environment]
+  NITRO_PRESET = "netlify"
+  NODE_VERSION = "22"
