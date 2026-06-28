@@ -8,7 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-api
+# Root build output only — must not match source route dirs like src/routes/api/
+/api/
 dist
 dist-ssr
 .output
@@ -43,3 +44,6 @@ fixtures/drift-survey/**/screenshot.jpg
 fixtures/breadth-50/**/page.mhtml
 fixtures/breadth-50/**/page.pre-embed.mhtml
 fixtures/breadth-50/**/screenshot.jpg
+
+# Repo uses bun (bun.lock); npm lockfile is local-only
+package-lock.json

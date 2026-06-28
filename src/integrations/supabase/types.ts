@@ -14,7 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      angel_sites: {
+        Row: {
+          id: string
+          slug: string
+          domain: string | null
+          name: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          domain?: string | null
+          name?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          domain?: string | null
+          name?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      angel_content_inventory: {
+        Row: {
+          id: string
+          site_slug: string
+          slot: string
+          item_id: string
+          text: string | null
+          selector: string | null
+          meta: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          site_slug: string
+          slot: string
+          item_id: string
+          text?: string | null
+          selector?: string | null
+          meta?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          site_slug?: string
+          slot?: string
+          item_id?: string
+          text?: string | null
+          selector?: string | null
+          meta?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      angel_events: {
+        Row: {
+          id: number
+          site: string
+          type: string
+          decision_id: string | null
+          visitor_hash: string | null
+          payload: Json
+          created_at: string
+        }
+        Insert: {
+          id?: never
+          site: string
+          type: string
+          decision_id?: string | null
+          visitor_hash?: string | null
+          payload?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: never
+          site?: string
+          type?: string
+          decision_id?: string | null
+          visitor_hash?: string | null
+          payload?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
