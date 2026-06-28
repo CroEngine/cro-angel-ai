@@ -67,6 +67,10 @@ bun run scripts/seed-adaptive.ts | psql "$DATABASE_URL"
 
 Re-runnable (every statement is an upsert).
 
-> Note: the auto-generated files under `src/integrations/supabase/` still print
-> "Connect Supabase in Lovable Cloud" when env vars are missing. That string is
-> cosmetic — the clients read the standard `SUPABASE_*` variables above.
+## Deploy (Netlify)
+
+The app deploys on Netlify (see `netlify.toml`). Set the same `SUPABASE_*`
+variables above in Netlify → Site settings → Environment variables. The server
+(dashboard reads, event/inventory writes) needs `SUPABASE_SERVICE_ROLE_KEY`;
+without it the dashboard shows an empty state. Env-var changes only take effect
+on a new deploy.

@@ -79,8 +79,8 @@ function Dashboard() {
         {!d.dbAvailable && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             No analytics store reached — showing an empty state. Events populate once the snippet
-            runs and the runtime has <code>SUPABASE_SERVICE_ROLE_KEY</code> (auto-injected by
-            Lovable Cloud).
+            runs and the server has <code>SUPABASE_SERVICE_ROLE_KEY</code> set (Netlify →
+            Environment variables).
           </div>
         )}
 
