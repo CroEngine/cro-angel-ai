@@ -26,6 +26,9 @@ const stepSchema = z.discriminatedUnion("kind", [
 const inputSchema = z.object({
   url: z.string().url(),
   steps: z.array(stepSchema).max(50).optional(),
+  // When set, the page audit's content is mapped to a ContentInventory and
+  // persisted for this site slug (live-crawler → saveInventory).
+  ingestSite: z.string().min(1).optional(),
 });
 
 function defaultSteps(url: string): Step[] {
@@ -38,7 +41,6 @@ function defaultSteps(url: string): Step[] {
     { kind: "pageAudit" },
   ];
 }
-
 
 export const startTestRun = createServerFn({ method: "POST" })
   .inputValidator((input) => inputSchema.parse(input))
@@ -85,6 +87,23 @@ export const startTestRun = createServerFn({ method: "POST" })
         let firstGotoPassed = false;
         const result = await runSteps(sessionId, steps, {
           signal: run.abort.signal,
+          onAudit: data.ingestSite
+            ? async (audit) => {
+                // Lazy import keeps the adaptive/supabase chain out of worker init.
+                const { ingestAudit } = await import("@/adaptive/ingest.server");
+                let domain: string | null = null;
+                try {
+                  domain = new URL(data.url).hostname;
+                } catch {
+                  /* non-fatal */
+                }
+                const res = await ingestAudit(data.ingestSite!, audit, { domain });
+                emit(runId, "log", {
+                  level: "info",
+                  message: `inventory: ${res.items} items mapped, ${res.saved} saved for "${res.site}"`,
+                });
+              }
+            : undefined,
           onEvent: (e) => {
             if (isTerminated(runId)) return;
             if (e.type === "log") {
@@ -133,7 +152,6 @@ export const startTestRun = createServerFn({ method: "POST" })
             failed: result.failed,
           });
         }
-
       } catch (err) {
         if (isTerminated(runId)) return;
         const message = err instanceof Error ? err.message : String(err);

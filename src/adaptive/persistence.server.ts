@@ -116,6 +116,7 @@ export async function saveInventory(inventory: ContentInventory): Promise<number
   if (rows.length === 0) return 0;
 
   try {
+    await registerSite(inventory.site);
     const { error } = await supabaseAdmin.from("angel_content_inventory").upsert(rows, {
       onConflict: "site_slug,item_id",
     });
@@ -159,5 +160,33 @@ export async function loadInventoryRows(site: string): Promise<ContentInventory 
   } catch (err) {
     console.warn(`[angel] inventory read unavailable:`, err);
     return null;
+  }
+}
+
+/**
+ * Register (upsert) a site in angel_sites by slug. Best-effort; returns whether
+ * the row was written. Called by saveInventory and the crawler ingest path.
+ */
+export async function registerSite(
+  slug: string,
+  opts: { domain?: string | null; name?: string | null } = {},
+): Promise<boolean> {
+  try {
+    // Create-if-absent: never overwrite an existing row's name/domain.
+    const { error } = await supabaseAdmin.from("angel_sites").upsert(
+      { slug, domain: opts.domain ?? null, name: opts.name ?? null },
+      {
+        onConflict: "slug",
+        ignoreDuplicates: true,
+      },
+    );
+    if (error) {
+      console.warn(`[angel] site registration skipped: ${error.message}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn(`[angel] site registration unavailable:`, err);
+    return false;
   }
 }
