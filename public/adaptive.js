@@ -268,6 +268,91 @@
     writeStore(s);
   }
 
+  // ---- debug overlay -------------------------------------------------------
+  // Enabled with data-angel-debug="1" on the script tag, or ?angel_debug=1.
+  // Draws a panel showing the detected visitor context + the decision, and
+  // whether each adaptation found a target on the page. Great for testing the
+  // engine live on a real site before any content inventory exists.
+  function isDebug() {
+    return script.getAttribute("data-angel-debug") === "1" || qp.get("angel_debug") === "1";
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>]/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch];
+    });
+  }
+  function renderDebug(decision, applied) {
+    var c = decision.context || {};
+    var ctx = [
+      ["source", c.trafficSource],
+      ["device", c.device],
+      ["country", c.country],
+      ["browser", c.browser],
+      ["returning", String(c.isReturning)],
+    ]
+      .map(function (p) {
+        return (
+          '<span style="display:inline-block;margin:0 8px 4px 0"><b>' +
+          p[0] +
+          ":</b> " +
+          esc(p[1]) +
+          "</span>"
+        );
+      })
+      .join("");
+    var rows = (decision.adaptations || [])
+      .map(function (a) {
+        var found = document.querySelectorAll(a.target).length;
+        var ok = applied.indexOf(a.pattern) !== -1 && found > 0;
+        return (
+          '<li style="margin:6px 0"><span style="color:' +
+          (ok ? "#34d399" : "#9ca3af") +
+          '">' +
+          (ok ? "✓" : "○") +
+          "</span> <b>" +
+          esc(a.pattern) +
+          "</b> " +
+          '<span style="opacity:.65">' +
+          esc(a.op) +
+          (found ? "" : " · no target on page") +
+          "</span>" +
+          (a.value
+            ? '<br><span style="opacity:.65;font-size:11px">→ "' + esc(a.value) + '"</span>'
+            : "") +
+          '<br><span style="opacity:.6;font-size:11px">' +
+          esc(a.reason) +
+          "</span></li>"
+        );
+      })
+      .join("");
+    var el = document.createElement("div");
+    el.id = "angel-debug";
+    el.style.cssText =
+      "position:fixed;bottom:16px;right:16px;z-index:2147483647;width:360px;max-width:92vw;max-height:70vh;overflow:auto;background:#0b1020;color:#e5e7eb;font:13px/1.45 -apple-system,system-ui,sans-serif;border:1px solid #334155;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.45);padding:14px";
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><b style="color:#a78bfa">✦ Angel Adaptive — debug</b><span id="angel-debug-x" style="cursor:pointer;opacity:.6;padding:0 4px">✕</span></div>' +
+      '<div style="font-size:12px;margin-bottom:8px">' +
+      ctx +
+      "</div>" +
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;opacity:.5;margin-bottom:2px">decision ' +
+      esc(decision.decisionId) +
+      " · " +
+      (decision.adaptations || []).length +
+      " adaptation(s)</div>" +
+      '<ul style="list-style:none;margin:0;padding:0">' +
+      (rows || '<li style="opacity:.6">No adaptations for this visitor.</li>') +
+      "</ul>" +
+      '<div style="margin-top:8px;font-size:11px;opacity:.5">site: ' +
+      esc(decision.site) +
+      "</div>";
+    document.body.appendChild(el);
+    var x = document.getElementById("angel-debug-x");
+    if (x)
+      x.onclick = function () {
+        if (el.parentElement) el.parentElement.removeChild(el);
+      };
+  }
+
   // ---- run -----------------------------------------------------------------
   function run() {
     fetch(DECIDE_URL, {
@@ -293,6 +378,7 @@
           track("adaptation_shown", { patterns: applied }, decision.decisionId);
         }
         wireEngagement(decision.decisionId);
+        if (isDebug()) renderDebug(decision, applied);
 
         window.AngelAdaptive = {
           version: VERSION,
