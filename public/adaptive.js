@@ -94,9 +94,13 @@
   // ---- analytics -----------------------------------------------------------
   function send(events) {
     var body = JSON.stringify({ site: site, visitorHash: vid, events: events });
+    // Send as text/plain (a CORS-safelisted content type) so cross-origin
+    // beacons need NO preflight — navigator.sendBeacon cannot perform one, and
+    // application/json would force one and silently drop the beacon. The server
+    // parses the JSON body regardless of the declared content type.
     try {
       if (navigator.sendBeacon) {
-        navigator.sendBeacon(EVENTS_URL, new Blob([body], { type: "application/json" }));
+        navigator.sendBeacon(EVENTS_URL, new Blob([body], { type: "text/plain;charset=UTF-8" }));
         return;
       }
     } catch (e) {
@@ -104,7 +108,7 @@
     }
     fetch(EVENTS_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
       body: body,
       keepalive: true,
     }).catch(function () {});
