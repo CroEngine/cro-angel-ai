@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DemoRouteImport } from './routes/demo'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CorpusRouteImport } from './routes/corpus'
+import { Route as AgentRouteImport } from './routes/agent'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiAdaptiveEventsRouteImport } from './routes/api/adaptive/events'
 import { Route as ApiAdaptiveDecideRouteImport } from './routes/api/adaptive/decide'
@@ -31,6 +32,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const CorpusRoute = CorpusRouteImport.update({
   id: '/corpus',
   path: '/corpus',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentRoute = AgentRouteImport.update({
+  id: '/agent',
+  path: '/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -61,6 +67,7 @@ const ApiPublicCorpusSplatRoute = ApiPublicCorpusSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
@@ -82,6 +90,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agent'
     | '/corpus'
     | '/dashboard'
     | '/demo'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agent'
     | '/corpus'
     | '/dashboard'
     | '/demo'
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/agent'
     | '/corpus'
     | '/dashboard'
     | '/demo'
@@ -125,6 +137,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentRoute: typeof AgentRoute
   CorpusRoute: typeof CorpusRoute
   DashboardRoute: typeof DashboardRoute
   DemoRoute: typeof DemoRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/corpus'
       fullPath: '/corpus'
       preLoaderRoute: typeof CorpusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent': {
+      id: '/agent'
+      path: '/agent'
+      fullPath: '/agent'
+      preLoaderRoute: typeof AgentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -197,6 +217,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentRoute: AgentRoute,
   CorpusRoute: CorpusRoute,
   DashboardRoute: DashboardRoute,
   DemoRoute: DemoRoute,
