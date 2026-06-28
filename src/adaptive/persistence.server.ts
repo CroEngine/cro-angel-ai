@@ -69,6 +69,16 @@ export async function logDecision(
   context: VisitorContext,
   patterns: string[],
 ): Promise<void> {
+  // Register the site (create-if-absent) so it appears in the dashboard's site
+  // picker as soon as its snippet runs — no manual seeding needed.
+  let domain: string | null = null;
+  try {
+    domain = new URL(context.url).hostname || null;
+  } catch {
+    /* non-fatal */
+  }
+  await registerSite(site, { domain });
+
   await logEvents(site, null, [
     {
       type: "adaptation_shown",
