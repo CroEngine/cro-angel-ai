@@ -369,12 +369,17 @@
       })
       .then(function (decision) {
         var applied = apply(decision);
+        var ctx = decision.context || {};
         track(
           "pageview",
           {
-            trafficSource: decision.context && decision.context.trafficSource,
-            device: decision.context && decision.context.device,
-            isReturning: decision.context && decision.context.isReturning,
+            trafficSource: ctx.trafficSource,
+            device: ctx.device,
+            isReturning: ctx.isReturning,
+            country: ctx.country,
+            browser: ctx.browser,
+            language: ctx.language,
+            campaign: ctx.campaign,
           },
           decision.decisionId,
         );
