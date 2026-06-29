@@ -89,6 +89,10 @@ export async function logDecision(
         trafficSource: context.trafficSource,
         device: context.device,
         isReturning: context.isReturning,
+        country: context.country,
+        browser: context.browser,
+        language: context.language,
+        campaign: context.campaign,
         // Raw signals kept for observability — lets us see what a visit
         // classified as "other"/"direct" actually arrived with.
         referrer: meta.referrer || null,

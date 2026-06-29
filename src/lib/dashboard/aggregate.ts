@@ -59,7 +59,14 @@ export interface InventoryGroup {
 
 export interface DashboardMetrics {
   overview: Overview;
-  segments: { byTrafficSource: SegmentBar[]; byDevice: SegmentBar[] };
+  segments: {
+    byTrafficSource: SegmentBar[];
+    byDevice: SegmentBar[];
+    byCountry: SegmentBar[];
+    byBrowser: SegmentBar[];
+    byLanguage: SegmentBar[];
+    byCampaign: SegmentBar[];
+  };
   liveAdaptations: LiveAdaptation[];
   performance: PatternStat[];
   inventory: InventoryGroup[];
@@ -108,6 +115,13 @@ export function aggregate(events: DashEvent[], inventory: InventoryEntry[]): Das
   const segments = {
     byTrafficSource: tally(pageviewEvents.map((e) => str(e.payload.trafficSource))),
     byDevice: tally(pageviewEvents.map((e) => str(e.payload.device))),
+    byCountry: tally(pageviewEvents.map((e) => str(e.payload.country))),
+    byBrowser: tally(pageviewEvents.map((e) => str(e.payload.browser))),
+    byLanguage: tally(pageviewEvents.map((e) => str(e.payload.language))),
+    byCampaign: tally(
+      pageviewEvents.map((e) => str(e.payload.campaign)),
+      "(ingen)",
+    ),
   };
 
   const liveAdaptations: LiveAdaptation[] = [...shownEvents]

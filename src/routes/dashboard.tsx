@@ -140,6 +140,38 @@ function Dashboard() {
                   <BarList items={d.metrics.segments.byDevice} empty="No pageviews yet." />
                 </CardContent>
               </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">By country</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <BarList items={d.metrics.segments.byCountry} empty="No pageviews yet." />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">By browser</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <BarList items={d.metrics.segments.byBrowser} empty="No pageviews yet." />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">By language</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <BarList items={d.metrics.segments.byLanguage} empty="No pageviews yet." />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">By campaign</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <BarList items={d.metrics.segments.byCampaign} empty="No campaigns yet." />
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
