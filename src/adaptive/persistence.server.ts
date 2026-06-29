@@ -68,6 +68,7 @@ export async function logDecision(
   decisionId: string,
   context: VisitorContext,
   patterns: string[],
+  meta: { referrer?: string | null; userAgent?: string | null } = {},
 ): Promise<void> {
   // Register the site (create-if-absent) so it appears in the dashboard's site
   // picker as soon as its snippet runs — no manual seeding needed.
@@ -88,6 +89,10 @@ export async function logDecision(
         trafficSource: context.trafficSource,
         device: context.device,
         isReturning: context.isReturning,
+        // Raw signals kept for observability — lets us see what a visit
+        // classified as "other"/"direct" actually arrived with.
+        referrer: meta.referrer || null,
+        ua: (meta.userAgent ?? "").slice(0, 256) || null,
       },
     },
   ]);

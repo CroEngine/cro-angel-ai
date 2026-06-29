@@ -66,22 +66,32 @@ export function classifyTrafficSource(opts: {
   utmSource?: string;
   utmMedium?: string;
   referrer?: string;
+  userAgent?: string;
 }): TrafficSource {
   const src = (opts.utmSource ?? "").toLowerCase().trim();
   const medium = (opts.utmMedium ?? "").toLowerCase().trim();
 
   const isPaid = /(cpc|ppc|paid)/.test(medium);
+
+  // 1. Explicit UTM source wins — it's unambiguous.
   if (src) {
     if (src.includes("google")) return isPaid ? "google_ads" : "google";
     if (src.includes("linkedin")) return "linkedin";
     if (src.includes("facebook") || src === "fb") return "facebook";
     if (src.includes("instagram") || src === "ig") return "instagram";
     if (src.includes("reddit")) return "reddit";
+    if (src.includes("tiktok")) return "tiktok";
+    if (src.includes("youtube") || src === "yt") return "youtube";
+    if (src.includes("snapchat") || src === "snap") return "snapchat";
+    if (src.includes("pinterest")) return "pinterest";
+    if (src.includes("twitter") || src === "x") return "twitter";
+    if (src.includes("bing")) return "bing";
     if (src.includes("newsletter") || medium.includes("email")) return "newsletter";
     if (src.includes("partner")) return "partner";
   }
   if (medium.includes("email") || medium.includes("newsletter")) return "newsletter";
 
+  // 2. Referrer host — the classic signal when one survives.
   const ref = (opts.referrer ?? "").toLowerCase();
   if (ref) {
     let host = ref;
@@ -95,10 +105,32 @@ export function classifyTrafficSource(opts: {
     if (host.includes("facebook.") || host.includes("fb.")) return "facebook";
     if (host.includes("instagram.")) return "instagram";
     if (host.includes("reddit.")) return "reddit";
-    return "other";
+    if (host.includes("tiktok.")) return "tiktok";
+    if (host.includes("youtube.") || host.includes("youtu.be")) return "youtube";
+    if (host.includes("snapchat.")) return "snapchat";
+    if (host.includes("pinterest.")) return "pinterest";
+    if (host.includes("twitter.") || host === "x.com" || host.includes(".x.com") || host.includes("t.co"))
+      return "twitter";
+    if (host.includes("bing.")) return "bing";
+    // Unknown host — fall through to the User-Agent check before giving up.
   }
 
-  return "direct";
+  // 3. In-app browser via User-Agent. Social apps (esp. Instagram) routinely
+  //    strip the referrer, so this is the only signal for those visits and
+  //    needs no UTM tagging from the customer.
+  const ua = opts.userAgent ?? "";
+  if (ua) {
+    if (/instagram/i.test(ua)) return "instagram";
+    if (/fban|fbav|fb_iab|fb4a|\bfbios\b/i.test(ua)) return "facebook";
+    if (/bytedancewebview|musical_ly|tiktok|\btrill\b/i.test(ua)) return "tiktok";
+    if (/snapchat/i.test(ua)) return "snapchat";
+    if (/pinterest/i.test(ua)) return "pinterest";
+    if (/linkedinapp/i.test(ua)) return "linkedin";
+    if (/twitter/i.test(ua)) return "twitter";
+  }
+
+  // 4. Referrer present but unrecognised → other; nothing at all → direct.
+  return ref ? "other" : "direct";
 }
 
 function primaryLanguage(tag: string): string {
@@ -122,6 +154,7 @@ export function buildVisitorContext(server: ServerSignals, client: ClientSignals
       utmSource: client.utmSource,
       utmMedium: client.utmMedium,
       referrer,
+      userAgent: server.userAgent,
     }),
     device: classifyDevice(server.userAgent, client.screenWidth),
     browser: classifyBrowser(server.userAgent),

@@ -9,7 +9,8 @@
 // Nothing here invents content. Adaptations only ever reference content the
 // site already published (captured in the ContentInventory).
 
-/** Where the visit came from. Derived from referrer + UTM parameters. */
+/** Where the visit came from. Derived from UTM parameters, referrer host, and
+ * (for in-app browsers that strip the referrer) the User-Agent. */
 export type TrafficSource =
   | "google"
   | "google_ads"
@@ -17,6 +18,12 @@ export type TrafficSource =
   | "facebook"
   | "instagram"
   | "reddit"
+  | "tiktok"
+  | "youtube"
+  | "snapchat"
+  | "pinterest"
+  | "twitter"
+  | "bing"
   | "partner"
   | "newsletter"
   | "direct"
