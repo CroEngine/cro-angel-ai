@@ -57,6 +57,7 @@ export const Route = createFileRoute("/api/adaptive/decide")({
           decision.decisionId,
           context,
           decision.adaptations.map((a) => a.pattern),
+          { referrer: client.referrer || server.referrer, userAgent: server.userAgent },
         );
 
         return json(decision);
