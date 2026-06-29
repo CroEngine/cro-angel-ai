@@ -5,7 +5,7 @@ import { UrlBar } from "./UrlBar";
 import { Viewport, type FrozenSnapshot, type OverlayElement, type SessionState } from "./Viewport";
 import { ConsolePanel } from "./ConsolePanel";
 import { useTestStream } from "./hooks/useTestStream";
-import { startTestRun, stopTestRun } from "@/lib/tests/run.functions";
+import { startTestRun } from "@/lib/tests/run.functions";
 
 const DEFAULT_URL = "https://glutenforum.se/";
 const HIDDEN_FREEZE_MS = 15_000;
@@ -14,6 +14,10 @@ export function BrowserShell() {
   const [url, setUrl] = useState(DEFAULT_URL);
 
   const [runId, setRunId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  // The URL the active run is crawling — captured at Run time so the stream
+  // identity stays stable even if the editable URL bar changes mid-run.
+  const [runUrl, setRunUrl] = useState<string | null>(null);
   const [liveUrl, setLiveUrl] = useState<string | null>(null);
   const [sessionState, setSessionState] = useState<SessionState>("cold");
   const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
@@ -22,9 +26,8 @@ export function BrowserShell() {
   const [psiRunKey, setPsiRunKey] = useState(0);
 
   const startFn = useServerFn(startTestRun);
-  const stopFn = useServerFn(stopTestRun);
 
-  const { events } = useTestStream(runId);
+  const { events, stop } = useTestStream(runId, sessionId, runUrl);
 
   // Pull the latest collect's screenshot + overlay out of the stream and
   // stash it so we can show the Frozen viewport after the session closes.
@@ -108,9 +111,9 @@ export function BrowserShell() {
       clearTimer();
       if (document.visibilityState === "hidden") {
         hiddenTimer.current = setTimeout(() => {
-          if (runId) {
-            void stopFn({ data: { runId } });
-          }
+          stop();
+          setSessionState((prev) => (prev === "error" ? prev : "frozen"));
+          setStatusMessage("done · aborted");
         }, HIDDEN_FREEZE_MS);
       }
     };
@@ -119,7 +122,7 @@ export function BrowserShell() {
       document.removeEventListener("visibilitychange", onChange);
       clearTimer();
     };
-  }, [sessionState, runId, stopFn]);
+  }, [sessionState, stop]);
 
 
   const hostname = useMemo(() => {
@@ -133,11 +136,17 @@ export function BrowserShell() {
     setStatusMessage(undefined);
     setLiveUrl(null);
     setRunId(null);
+    setSessionId(null);
+    setRunUrl(null);
     setFrozen(null); // drop previous snapshot so a crashed new run can't show stale data
     try {
       const res = await startFn({ data: { url: nextUrl } });
-      setRunId(res.runId);
       setLiveUrl(res.liveUrl);
+      // Set sessionId + runUrl before runId so the stream opens once, with all
+      // three present (the effect keys on all of them).
+      setSessionId(res.sessionId);
+      setRunUrl(nextUrl);
+      setRunId(res.runId);
       // Trigger PSI in parallel AFTER Browserbase started, so page audit data
       // never lags behind PSI results in the UI.
       setPsiRunKey((k) => k + 1);
@@ -150,10 +159,11 @@ export function BrowserShell() {
   }, [startFn]);
 
 
-  const handleStop = useCallback(async () => {
-    if (!runId) return;
-    try { await stopFn({ data: { runId } }); } catch { /* ignore */ }
-  }, [runId, stopFn]);
+  const handleStop = useCallback(() => {
+    stop();
+    setSessionState((prev) => (prev === "error" ? prev : "frozen"));
+    setStatusMessage("done · aborted");
+  }, [stop]);
 
   const handleResume = useCallback(() => {
     void handleRun(url);
