@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface StreamEvent {
   type: string;
@@ -7,19 +7,23 @@ export interface StreamEvent {
 
 export type StreamStatus = "idle" | "open" | "done" | "error";
 
-export function useTestStream(runId: string | null) {
+// Opens the SSE stream that BOTH drives and reports the crawl. The crawl runs
+// server-side inside this streaming request, so closing the EventSource (stop)
+// aborts the run and releases the Browserbase session via the route's cancel().
+export function useTestStream(runId: string | null, sessionId: string | null, url: string | null) {
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [status, setStatus] = useState<StreamStatus>("idle");
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
     setEvents([]);
-    if (!runId) {
+    if (!runId || !sessionId || !url) {
       setStatus("idle");
       return;
     }
     setStatus("open");
-    const es = new EventSource(`/api/tests/${runId}/stream`);
+    const qs = new URLSearchParams({ sessionId, url }).toString();
+    const es = new EventSource(`/api/tests/${runId}/stream?${qs}`);
     esRef.current = es;
 
     const handle = (type: string) => (ev: MessageEvent) => {
@@ -58,7 +62,15 @@ export function useTestStream(runId: string | null) {
       es.close();
       esRef.current = null;
     };
-  }, [runId]);
+  }, [runId, sessionId, url]);
 
-  return { events, status };
+  // Stop the run: closing the EventSource drops the request, which fires the
+  // stream route's cancel() → aborts the crawl and releases the session. Events
+  // already received are kept so the frozen view/console survive.
+  const stop = useCallback(() => {
+    esRef.current?.close();
+    setStatus((s) => (s === "open" ? "done" : s));
+  }, []);
+
+  return { events, status, stop };
 }

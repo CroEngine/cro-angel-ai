@@ -1,12 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createRun, emit, terminate, getRun, isTerminated } from "./orchestrator.server";
 // Type-only — erased by esbuild, contributes nothing to the runtime graph.
 // Keep as `import type` so a future refactor can't accidentally promote it
 // to a value import and re-leak Stagehand into Worker isolate-init.
 import type { Step } from "./engine.server";
 
-function newRunId() {
+export function newRunId() {
   return `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -31,7 +30,7 @@ const inputSchema = z.object({
   ingestSite: z.string().min(1).optional(),
 });
 
-function defaultSteps(url: string): Step[] {
+export function defaultSteps(url: string): Step[] {
   // collect runs BEFORE pageAudit so the screenshot is captured even if
   // pageAudit later fails or times out.
   return [
@@ -42,135 +41,38 @@ function defaultSteps(url: string): Step[] {
   ];
 }
 
+// Build the final step list: ensure the run starts with a goto for the URL.
+export function buildSteps(url: string, steps?: Step[]): Step[] {
+  let final: Step[] = steps && steps.length > 0 ? steps : defaultSteps(url);
+  if (final[0]?.kind !== "goto") {
+    final = [{ kind: "goto", url }, ...final];
+  }
+  return final;
+}
+
+// startTestRun only opens the Browserbase session and hands the client back a
+// liveUrl + sessionId. The crawl itself is driven by the SSE stream request
+// (`/api/tests/$runId/stream`) so that step execution happens INSIDE a
+// long-lived streaming request that the serverless host keeps alive.
+//
+// Why: a previous version ran the steps in a fire-and-forget background task
+// after the HTTP response returned. On serverless hosts (Netlify Functions)
+// the execution context is frozen once the response is sent, so the crawl
+// never actually ran. Driving it from the stream request fixes that and also
+// removes the need for a cross-instance, process-local event bus.
 export const startTestRun = createServerFn({ method: "POST" })
   .inputValidator((input) => inputSchema.parse(input))
   .handler(async ({ data }) => {
     const runId = newRunId();
 
-    // Build final steps: ensure run starts with a goto for the requested URL.
-    let steps: Step[] = data.steps && data.steps.length > 0 ? data.steps : defaultSteps(data.url);
-    if (steps[0]?.kind !== "goto") {
-      steps = [{ kind: "goto", url: data.url }, ...steps];
-    }
-
-    let session;
-    let runSteps: typeof import("./engine.server").runSteps;
-    let closeSession: typeof import("./browserbase.server").closeSession;
     try {
       // Lazy-load the heavy Stagehand/Browserbase chain so it isn't evaluated
       // at Worker isolate init. See .lovable/plan.md (Phase 2a).
-      const [bb, eng] = await Promise.all([
-        import("./browserbase.server"),
-        import("./engine.server"),
-      ]);
-      closeSession = bb.closeSession;
-      runSteps = eng.runSteps;
-      session = await bb.createSession();
+      const bb = await import("./browserbase.server");
+      const session = await bb.createSession();
+      return { runId, liveUrl: session.liveUrl, sessionId: session.id, url: data.url };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(`Failed to create Browserbase session: ${message}`);
     }
-
-    const { id: sessionId, liveUrl } = session;
-
-    const run = createRun(runId, async () => {
-      await closeSession(sessionId);
-    });
-
-    emit(runId, "session_started", { runId, sessionId, liveUrl });
-
-    // Kick off execution async — do NOT await. Frontend gets liveUrl immediately.
-    (async () => {
-      try {
-        emit(runId, "log", { level: "info", message: `running ${steps.length} step(s)` });
-
-        let firstGotoPassed = false;
-        const result = await runSteps(sessionId, steps, {
-          signal: run.abort.signal,
-          onAudit: data.ingestSite
-            ? async (audit) => {
-                // Lazy import keeps the adaptive/supabase chain out of worker init.
-                const { ingestAudit } = await import("@/adaptive/ingest.server");
-                let domain: string | null = null;
-                try {
-                  domain = new URL(data.url).hostname;
-                } catch {
-                  /* non-fatal */
-                }
-                const res = await ingestAudit(data.ingestSite!, audit, { domain });
-                emit(runId, "log", {
-                  level: "info",
-                  message: `inventory: ${res.items} items mapped, ${res.saved} saved for "${res.site}"`,
-                });
-              }
-            : undefined,
-          onEvent: (e) => {
-            if (isTerminated(runId)) return;
-            if (e.type === "log") {
-              emit(runId, "log", { level: "debug", message: e.message });
-              return;
-            }
-            const payload: Record<string, unknown> = {
-              index: e.index,
-              kind: e.kind,
-              summary: e.summary,
-            };
-            if (e.type === "step_started") {
-              emit(runId, "step_started", payload);
-            } else if (e.type === "step_passed") {
-              payload.durationMs = e.durationMs;
-              if (e.data !== undefined) payload.data = e.data;
-              emit(runId, "step_passed", payload);
-              // Promote first successful goto so the live iframe flips to "idle".
-              if (!firstGotoPassed && e.kind === "goto") {
-                firstGotoPassed = true;
-                emit(runId, "state", { phase: "idle" });
-              }
-            } else if (e.type === "step_failed") {
-              payload.durationMs = e.durationMs;
-              payload.error = e.error;
-              emit(runId, "step_failed", payload);
-            }
-          },
-        });
-
-        if (isTerminated(runId)) return;
-        if (result.failed > 0) {
-          await terminate(runId, "error", {
-            message: `${result.failed} step(s) failed`,
-            passed: result.passed,
-            failed: result.failed,
-          });
-        } else {
-          // Close the Browserbase session immediately after steps complete.
-          // The client transitions to the "Frozen" view using the screenshot
-          // captured during the collect step, so the user keeps seeing the page
-          // without us paying for an idle session.
-          await terminate(runId, "done", {
-            aborted: result.aborted,
-            passed: result.passed,
-            failed: result.failed,
-          });
-        }
-      } catch (err) {
-        if (isTerminated(runId)) return;
-        const message = err instanceof Error ? err.message : String(err);
-        if (run.abort.signal.aborted) {
-          await terminate(runId, "done", { aborted: true, reason: "aborted" });
-        } else {
-          await terminate(runId, "error", { message });
-        }
-      }
-    })();
-
-    return { runId, liveUrl, sessionId };
-  });
-
-export const stopTestRun = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ runId: z.string() }).parse(input))
-  .handler(async ({ data }) => {
-    const run = getRun(data.runId);
-    if (!run) return { stopped: false, reason: "not_found" };
-    await terminate(data.runId, "done", { aborted: true, reason: "user_stop" });
-    return { stopped: true };
   });
