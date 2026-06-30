@@ -218,8 +218,14 @@ export async function runSteps(
     // keepAlive: stagehand.close() should disconnect Stagehand only,
     // not terminate the Browserbase session — the session lives on so the
     // live iframe can keep showing the collect overlay until closeSession()
-    // in the orchestrator's terminate() callback runs.
+    // runs when the run finishes.
     keepAlive: true,
+    // Disable Stagehand's default Pino logger. It lazily loads the
+    // `pino-pretty` transport, which isn't bundled into the Netlify function —
+    // so init() throws "unable to determine transport target for pino-pretty"
+    // and the crawl dies before the first step. Without Pino, Stagehand falls
+    // back to console logging (captured in the function logs).
+    disablePino: true,
   });
 
   let passed = 0;
