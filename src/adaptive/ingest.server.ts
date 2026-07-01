@@ -53,18 +53,20 @@ const MAX_DRIFT_ITEMS = 50;
 export async function ingestAudit(
   site: string,
   audit: Partial<PageAuditData>,
-  meta: { domain?: string | null; name?: string | null } = {},
+  meta: { domain?: string | null; name?: string | null; path?: string | null } = {},
 ): Promise<IngestResult> {
+  // Per-page: scope inventory + drift to this page's path (defaults to homepage).
+  const path = meta.path && meta.path.length > 0 ? meta.path : "/";
   const inventory = mapAuditToInventory(audit, site);
   const items = Object.values(inventory.slots).reduce((n, arr) => n + (arr?.length ?? 0), 0);
 
-  // Read the previously-stored snapshot BEFORE saveInventory overwrites it, so
-  // we can diff this crawl against the last one.
-  const prev = await loadInventoryRows(site);
+  // Read the previously-stored snapshot for THIS page BEFORE saveInventory
+  // overwrites it, so we can diff this crawl against the last one.
+  const prev = await loadInventoryRows(site, path);
   const drift = diffInventory(prev, inventory);
 
   const registered = await registerSite(site, meta);
-  const saved = await saveInventory(inventory);
+  const saved = await saveInventory(inventory, path);
 
   // Record only meaningful change, and only once we have a baseline (the first
   // crawl is the baseline, not "drift").
@@ -72,6 +74,7 @@ export async function ingestAudit(
   if (drift.hasBaseline && changedAtAll) {
     await recordInventoryDrift(site, {
       url: meta.domain ?? null,
+      path,
       counts: drift.counts,
       added: drift.added.slice(0, MAX_DRIFT_ITEMS).map(compact),
       removed: drift.removed.slice(0, MAX_DRIFT_ITEMS).map(compact),

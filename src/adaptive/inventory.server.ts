@@ -20,9 +20,9 @@ function hasAnyItems(inventory: ContentInventory): boolean {
   return Object.values(inventory.slots).some((items) => items && items.length > 0);
 }
 
-export async function resolveInventory(site: string): Promise<ContentInventory> {
-  // 1. Crawler-persisted inventory in the database.
-  const fromDb = await loadInventoryRows(site);
+export async function resolveInventory(site: string, path = "/"): Promise<ContentInventory> {
+  // 1. Crawler-persisted inventory in the database, scoped to this page.
+  const fromDb = await loadInventoryRows(site, path);
   if (fromDb && hasAnyItems(fromDb)) return fromDb;
 
   // 2. A real captured corpus snapshot bundled in the repo.

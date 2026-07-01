@@ -22,17 +22,13 @@
   // Off by default because it moves the viewport (UX). Enable with data-warmup="1".
   var warmup = !!(self && self.getAttribute("data-warmup") === "1");
 
-  function isHomepage() {
-    var p = location.pathname;
-    return p === "/" || p === "";
-  }
-
-  // Sample once per site per UTC day — inventory changes slowly, so one harvest
-  // per day is plenty and keeps the cost off nearly every visitor.
+  // Sample once per (site, page) per UTC day — inventory changes slowly, so one
+  // harvest per page per day is plenty and keeps the cost off nearly every visit.
   function elected() {
     if (force) return true;
     try {
-      var key = "angel_harvest:" + site + ":" + new Date().toISOString().slice(0, 10);
+      var day = new Date().toISOString().slice(0, 10);
+      var key = "angel_harvest:" + site + ":" + location.pathname + ":" + day;
       if (localStorage.getItem(key)) return false;
       localStorage.setItem(key, "1");
       return true;
@@ -2130,7 +2126,7 @@
   }
 
   function schedule() {
-    if (!isHomepage() || !elected()) return;
+    if (!elected()) return;
     var idle = window.requestIdleCallback || function (f) { return setTimeout(f, 1); };
     var go = function () { idle(harvest, { timeout: 4000 }); };
     if (document.readyState === "complete") go();
