@@ -76,6 +76,22 @@ describe("decide — safety and invariants", () => {
     }
   });
 
+  it("skips content-free ops too when the slot has no inventory (no no-op churn)", () => {
+    // Empty inventory → nothing to reveal/move/emphasize/condense either, so the
+    // engine emits nothing rather than no-ops that would burn adaptation slots.
+    const empty = emptyInventory("bare-site");
+    const d = decide("bare-site", ctx({ trafficSource: "linkedin", device: "mobile" }), empty);
+    expect(d.adaptations).toEqual([]);
+  });
+
+  it("still applies content-free ops when the slot has inventory (demo)", () => {
+    const d = decide("demo", ctx({ trafficSource: "linkedin", device: "desktop" }), demo);
+    // demo has customer_logos / testimonial / case_study items → these fire.
+    const patterns = d.adaptations.map((a) => a.pattern);
+    expect(patterns).toContain("show_customer_logos_early");
+    expect(patterns.length).toBeGreaterThan(0);
+  });
+
   it("caps the number of adaptations", () => {
     // A context that triggers many rules at once.
     const d = decide(

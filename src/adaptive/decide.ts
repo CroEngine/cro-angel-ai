@@ -167,9 +167,15 @@ function resolve(
     };
   }
 
-  // reveal / move_up / emphasize / condense — operate on existing DOM only.
+  // reveal / move_up / emphasize / condense — operate on an EXISTING element.
+  // If we harvested nothing for this slot we have no real locator (only the
+  // [data-angel-slot] convention, which un-instrumented sites lack), so the op
+  // would silently no-op AND consume one of the MAX_ADAPTATIONS slots, crowding
+  // out an adaptation that could actually fire. Skip it — same "never act on
+  // content we don't have" rule that governs the set_text / inject_badge paths.
   const item = pickItem(inventory, pattern.slot);
-  const target = item?.selector ?? slotSelector;
+  if (!item) return null;
+  const target = item.selector ?? slotSelector;
   return {
     pattern: id,
     op: pattern.op,
@@ -177,8 +183,8 @@ function resolve(
     slot: pattern.slot,
     // These ops act on an existing element by its content, so its published
     // text is a safe last-resort locator if the selector drifts.
-    anchorText: item?.text,
-    tag: item?.meta?.tag,
+    anchorText: item.text,
+    tag: item.meta?.tag,
     reason: `${pattern.label} for ${context.trafficSource} / ${context.device} visitor.`,
     priority,
   };

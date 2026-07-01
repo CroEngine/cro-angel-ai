@@ -43,6 +43,13 @@ const PERSONAS: Record<PersonaId, Omit<VisitorContext, "url">> = {
 
 export const DEFAULT_PERSONA: PersonaId = "linkedin_desktop";
 
+export const ALL_PERSONAS: PersonaId[] = [
+  "linkedin_desktop",
+  "google_mobile",
+  "returning_pricing",
+  "paid_high_intent",
+];
+
 /** Build a full VisitorContext for a persona on a given URL. */
 export function personaContext(persona: PersonaId, url: string): VisitorContext {
   const base = PERSONAS[persona] ?? PERSONAS[DEFAULT_PERSONA];
