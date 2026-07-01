@@ -30,10 +30,10 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-/** Homepage-only gate (Phase 1). Root path, ignoring query/hash. */
-function isHomePath(path: string): boolean {
-  const p = path.split("?")[0].split("#")[0];
-  return p === "" || p === "/";
+/** Normalize a path: strip query/hash, default to the homepage. */
+function normalizePath(path: string): string {
+  const p = (path || "").split("?")[0].split("#")[0];
+  return p || "/";
 }
 
 interface InventoryBody {
@@ -64,7 +64,8 @@ export const Route = createFileRoute("/api/adaptive/inventory")({
         const site = typeof body?.site === "string" ? body.site.trim() : "";
         if (!site) return json({ ok: false, reason: "no_site" }, 400);
 
-        // Prefer an explicit path; fall back to the URL's pathname.
+        // Prefer an explicit path; fall back to the URL's pathname. Any page is
+        // accepted now — inventory is stored per (site, path).
         let path = typeof body?.path === "string" ? body.path : "";
         if (!path && typeof body?.url === "string") {
           try {
@@ -73,9 +74,7 @@ export const Route = createFileRoute("/api/adaptive/inventory")({
             /* ignore */
           }
         }
-        if (!isHomePath(path)) {
-          return json({ ok: false, reason: "not_homepage", path });
-        }
+        path = normalizePath(path);
 
         const audit = sanitizeAudit(body?.audit);
 
@@ -88,7 +87,7 @@ export const Route = createFileRoute("/api/adaptive/inventory")({
           }
         }
 
-        const res = await ingestAudit(site, audit, { domain });
+        const res = await ingestAudit(site, audit, { domain, path });
         return json({
           ok: true,
           items: res.items,

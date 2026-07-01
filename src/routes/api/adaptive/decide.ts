@@ -48,7 +48,14 @@ export const Route = createFileRoute("/api/adaptive/decide")({
 
         const server = readServerSignals(request);
         const context = buildVisitorContext(server, client);
-        const inventory = await resolveInventory(client.site);
+        // Resolve inventory for the specific page being adapted (per-page).
+        let path = "/";
+        try {
+          path = new URL(client.url).pathname || "/";
+        } catch {
+          /* keep homepage default */
+        }
+        const inventory = await resolveInventory(client.site, path);
         const decision = decide(client.site, context, inventory);
 
         // Best-effort log; never blocks or fails the decision.

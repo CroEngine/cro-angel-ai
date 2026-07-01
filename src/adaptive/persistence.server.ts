@@ -106,6 +106,7 @@ export async function logDecision(
 
 type InventoryRow = {
   site_slug: string;
+  path: string;
   slot: string;
   item_id: string;
   text: string | null;
@@ -114,16 +115,18 @@ type InventoryRow = {
 };
 
 /**
- * Persist a site's content inventory (upsert on (site_slug, item_id)). This is
- * what the crawler pipeline calls after mapping its audit. Returns the number of
+ * Persist a page's content inventory (upsert on (site_slug, path, item_id)).
+ * `path` scopes the inventory to one page so different pages under a domain
+ * don't overwrite each other (defaults to the homepage). Returns the number of
  * rows written, or 0 if the store is unavailable. Never throws.
  */
-export async function saveInventory(inventory: ContentInventory): Promise<number> {
+export async function saveInventory(inventory: ContentInventory, path = "/"): Promise<number> {
   const rows: InventoryRow[] = [];
   for (const [slot, items] of Object.entries(inventory.slots)) {
     for (const item of (items ?? []) as InventoryItem[]) {
       rows.push({
         site_slug: inventory.site,
+        path,
         slot,
         item_id: item.id,
         text: item.text ?? null,
@@ -137,22 +140,23 @@ export async function saveInventory(inventory: ContentInventory): Promise<number
   try {
     await registerSite(inventory.site);
     const { error } = await supabaseAdmin.from("angel_content_inventory").upsert(rows, {
-      onConflict: "site_slug,item_id",
+      onConflict: "site_slug,path,item_id",
     });
     if (error) {
       console.warn(`[angel] inventory persistence skipped: ${error.message}`);
       return 0;
     }
 
-    // Reflect the latest crawl: drop rows for items that are no longer present
-    // so the stored inventory is this crawl's snapshot (not a stale union of
-    // every past crawl). Done AFTER a successful upsert so a failed write never
-    // wipes the existing inventory. Best-effort.
+    // Reflect the latest crawl of THIS page: drop rows for items no longer
+    // present so the stored inventory is this crawl's snapshot (not a stale
+    // union). Scoped to (site_slug, path). Done AFTER a successful upsert so a
+    // failed write never wipes the existing inventory. Best-effort.
     const newIds = new Set(rows.map((r) => r.item_id));
     const { data: existing } = await supabaseAdmin
       .from("angel_content_inventory")
       .select("item_id")
-      .eq("site_slug", inventory.site);
+      .eq("site_slug", inventory.site)
+      .eq("path", path);
     const stale = (existing ?? [])
       .map((r: { item_id: string }) => r.item_id)
       .filter((id: string) => !newIds.has(id));
@@ -161,6 +165,7 @@ export async function saveInventory(inventory: ContentInventory): Promise<number
         .from("angel_content_inventory")
         .delete()
         .eq("site_slug", inventory.site)
+        .eq("path", path)
         .in("item_id", stale);
       if (delError) {
         console.warn(`[angel] inventory stale-cleanup skipped: ${delError.message}`);
@@ -207,12 +212,16 @@ export async function recordInventoryDrift(
  * Read a site's persisted inventory back into a ContentInventory, or null when
  * the store is unavailable or has no rows for the site. Never throws.
  */
-export async function loadInventoryRows(site: string): Promise<ContentInventory | null> {
+export async function loadInventoryRows(
+  site: string,
+  path = "/",
+): Promise<ContentInventory | null> {
   try {
     const { data, error } = await supabaseAdmin
       .from("angel_content_inventory")
       .select("slot,item_id,text,selector,meta")
-      .eq("site_slug", site);
+      .eq("site_slug", site)
+      .eq("path", path);
     if (error || !data || data.length === 0) return null;
 
     const slots: ContentInventory["slots"] = {};
