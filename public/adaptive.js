@@ -138,14 +138,44 @@
     document.head.appendChild(el);
   }
 
-  function each(selector, fn) {
-    var nodes = document.querySelectorAll(selector);
+  function byText(text) {
+    if (!text) return [];
+    var t = String(text).trim().toLowerCase();
+    if (!t) return [];
+    var cands = document.querySelectorAll('a,button,[role="button"],[data-angel-slot]');
+    var out = [];
+    for (var i = 0; i < cands.length; i++) {
+      if ((cands[i].textContent || "").trim().toLowerCase() === t) out.push(cands[i]);
+    }
+    return out;
+  }
+
+  // Resolve an adaptation's target with graceful fallbacks so a drifted
+  // selector never silently no-ops: primary selector -> [data-angel-slot]
+  // -> published-text match. Only the fallbacks are new; when the primary
+  // selector matches, behavior is exactly as before.
+  function resolveNodes(a) {
+    var nodes = [];
+    try { if (a.target) nodes = document.querySelectorAll(a.target); } catch (e) {}
+    if (nodes.length) return nodes;
+    if (a.slot) {
+      try {
+        var s = document.querySelectorAll('[data-angel-slot="' + a.slot + '"]');
+        if (s.length) return s;
+      } catch (e) {}
+    }
+    if (a.anchorText) return byText(a.anchorText);
+    return [];
+  }
+
+  function each(a, fn) {
+    var nodes = resolveNodes(a);
     for (var i = 0; i < nodes.length; i++) fn(nodes[i]);
   }
 
   var OPS = {
     reveal: function (a) {
-      each(a.target, function (el) {
+      each(a, function (el) {
         var hadHidden = el.hasAttribute("data-angel-hidden");
         var prevDisplay = el.style.display;
         el.removeAttribute("data-angel-hidden");
@@ -159,7 +189,7 @@
       });
     },
     move_up: function (a) {
-      each(a.target, function (el) {
+      each(a, function (el) {
         var parent = el.parentElement;
         if (!parent) return;
         var nextSibling = el.nextSibling;
@@ -170,7 +200,7 @@
       });
     },
     emphasize: function (a) {
-      each(a.target, function (el) {
+      each(a, function (el) {
         el.classList.add("angel-emphasized");
         record(function () {
           el.classList.remove("angel-emphasized");
@@ -178,7 +208,7 @@
       });
     },
     condense: function (a) {
-      each(a.target, function (el) {
+      each(a, function (el) {
         el.classList.add("angel-condensed");
         record(function () {
           el.classList.remove("angel-condensed");
@@ -187,7 +217,7 @@
     },
     set_text: function (a) {
       if (!a.value) return;
-      each(a.target, function (el) {
+      each(a, function (el) {
         // Prefer an inner text host so we don't clobber icons/children.
         var host = el.querySelector("[data-angel-text]") || el;
         var prev = host.textContent;
@@ -199,7 +229,7 @@
     },
     inject_badge: function (a) {
       if (!a.value) return;
-      each(a.target, function (el) {
+      each(a, function (el) {
         var badge = document.createElement("span");
         badge.className = "angel-badge";
         badge.setAttribute("data-angel-injected", "");
@@ -306,7 +336,7 @@
       .join("");
     var rows = (decision.adaptations || [])
       .map(function (a) {
-        var found = document.querySelectorAll(a.target).length;
+        var found = resolveNodes(a).length;
         var ok = applied.indexOf(a.pattern) !== -1 && found > 0;
         return (
           '<li style="margin:6px 0"><span style="color:' +

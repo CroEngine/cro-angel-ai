@@ -120,6 +120,13 @@ export interface Adaptation {
   op: AdaptationOp;
   /** CSS selector the op applies to. */
   target: string;
+  /** Inventory slot this targets. Lets the snippet fall back to
+   *  `[data-angel-slot="<slot>"]` when `target` no longer resolves (DOM drift). */
+  slot?: InventorySlot;
+  /** Published text of the targeted element. Last-resort locator: lets the
+   *  snippet re-resolve by content when both `target` and the slot selector
+   *  miss. Only set for ops that act on an existing element by its content. */
+  anchorText?: string;
   /** Published content used by the op (set_text / inject_badge). */
   value?: string;
   /** Human-readable rationale — surfaced in the dashboard and event log. */

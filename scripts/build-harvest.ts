@@ -41,6 +41,9 @@ const bundle = `${banner}
   try { base = self ? new URL(self.src, location.href).origin : location.origin; } catch (e) { base = location.origin; }
   var site = (self && self.getAttribute("data-site")) || location.hostname.replace(/^www\\./, "");
   var force = !!(self && self.getAttribute("data-force") === "1");
+  // Opt-in: sweep-scroll to trigger lazy/below-fold content before extracting.
+  // Off by default because it moves the viewport (UX). Enable with data-warmup="1".
+  var warmup = !!(self && self.getAttribute("data-warmup") === "1");
 
   function isHomepage() {
     var p = location.pathname;
@@ -62,6 +65,28 @@ const bundle = `${banner}
   }
 
   function harvest() {
+    if (!warmup) { extract(); return; }
+    // Gentle sweep: scroll through the page to trigger IntersectionObserver /
+    // lazy content, then restore the visitor's original position and extract.
+    try {
+      var y0 = window.scrollY;
+      var h = document.documentElement.scrollHeight;
+      var steps = 6, i = 0;
+      var iv = setInterval(function () {
+        i++;
+        try { window.scrollTo(0, (h / steps) * i); } catch (e) {}
+        if (i >= steps) {
+          clearInterval(iv);
+          try { window.scrollTo(0, y0); } catch (e) {}
+          setTimeout(extract, 250);
+        }
+      }, 60);
+    } catch (e) {
+      extract();
+    }
+  }
+
+  function extract() {
     try {
       var ctas = ${CTAS_SCRIPT};
       var sections = ${SECTIONS_SCRIPT};

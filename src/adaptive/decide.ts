@@ -127,6 +127,7 @@ function resolve(
       pattern: id,
       op: "set_text",
       target: item.selector ?? slotSelector,
+      slot: pattern.slot,
       value: item.text,
       reason: `CTA set to "${item.text}" for ${context.trafficSource} visitor (intent: ${intent}).`,
       priority,
@@ -141,6 +142,7 @@ function resolve(
       pattern: id,
       op: "inject_badge",
       target: '[data-angel-slot="cta"]',
+      slot: "cta",
       value: item.text,
       reason: `Showing "${item.text}" (${pattern.label}).`,
       priority,
@@ -154,6 +156,10 @@ function resolve(
     pattern: id,
     op: pattern.op,
     target,
+    slot: pattern.slot,
+    // These ops act on an existing element by its content, so its published
+    // text is a safe last-resort locator if the selector drifts.
+    anchorText: item?.text,
     reason: `${pattern.label} for ${context.trafficSource} / ${context.device} visitor.`,
     priority,
   };

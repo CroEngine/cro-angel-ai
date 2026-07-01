@@ -25,7 +25,9 @@ import type {
 } from "@/lib/tests/schema";
 import type { ContentInventory, InventoryItem, InventorySlot } from "./types";
 
-const MAX_PER_SLOT = 8;
+// Cap per slot: high enough to keep long testimonial/feature/CTA lists whole,
+// bounded so a pathological page can't produce unbounded inventory.
+const MAX_PER_SLOT = 24;
 
 /** Derive the CTA *intent* the engine keys on (demo/trial/sales) from a label. */
 export function classifyCtaIntent(text: string): "demo" | "trial" | "sales" {
