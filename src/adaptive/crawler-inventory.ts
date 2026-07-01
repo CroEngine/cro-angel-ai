@@ -29,6 +29,19 @@ import type { ContentInventory, InventoryItem, InventorySlot } from "./types";
 // bounded so a pathological page can't produce unbounded inventory.
 const MAX_PER_SLOT = 24;
 
+/**
+ * The tag name of a selector's terminal element (e.g. "a:nth-of-type(2) > button"
+ * → "button"). Stored as a locator hint so re-resolution by text can also match
+ * on element type — narrowing false positives when a selector drifts. Returns
+ * undefined for id/class-only terminals with no leading tag.
+ */
+export function terminalTag(selector: string | undefined): string | undefined {
+  if (!selector) return undefined;
+  const last = selector.split(/[>\s+~]+/).filter(Boolean).pop() ?? "";
+  const m = last.match(/^([a-zA-Z][a-zA-Z0-9-]*)/);
+  return m ? m[1].toLowerCase() : undefined;
+}
+
 /** Derive the CTA *intent* the engine keys on (demo/trial/sales) from a label. */
 export function classifyCtaIntent(text: string): "demo" | "trial" | "sales" {
   const t = text.toLowerCase();
@@ -105,12 +118,15 @@ class InventoryBuilder {
     if (seen.has(key)) return;
     seen.add(key);
     this.seen.set(slot, seen);
+    // Stash the terminal element tag as an extra locator hint (see terminalTag).
+    const tag = terminalTag(item.selector);
+    const meta = tag ? { ...(item.meta ?? {}), tag } : item.meta;
     list.push({
       id: item.id ?? `${slot}-${list.length}`,
       slot,
       text: item.text,
       selector: item.selector,
-      meta: item.meta,
+      meta,
     });
     this.slots.set(slot, list);
   }
