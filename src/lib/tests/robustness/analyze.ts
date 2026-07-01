@@ -68,6 +68,9 @@ export interface RobustnessReport {
     targetingRate: number;
     /** All decided adaptations resolved to a real target. */
     fullyTargeted: boolean;
+    /** How targets resolved across adaptations — shows the resilient fallbacks
+     *  (slot / text) actually earning their keep vs the primary selector. */
+    via: { selector: number; slot: number; text: number; none: number };
     /** No Angel residue left after reset(). */
     reversible: boolean;
     /** Elements removed after apply vs baseline (layout-breakage smell). */
@@ -86,6 +89,8 @@ function removedFraction(baseline: DomSignature, after: DomSignature): number {
 
 export function analyze(o: RobustnessObservation): RobustnessReport {
   const targeted = o.probes.filter((p) => p.count > 0).length;
+  const via = { selector: 0, slot: 0, text: 0, none: 0 };
+  for (const p of o.probes) via[p.via] += 1;
   const targetingRate = o.decidedCount > 0 ? targeted / o.decidedCount : 1;
   const fullyTargeted = o.decidedCount === 0 || targeted === o.decidedCount;
   const reversible = o.snippetRan && o.residueAfterReset === 0;
@@ -141,6 +146,7 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
       targeted,
       targetingRate,
       fullyTargeted,
+      via,
       reversible,
       elementsRemoved,
       consoleErrorCount: o.consoleErrors.length,

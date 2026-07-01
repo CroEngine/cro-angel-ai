@@ -32,12 +32,6 @@ import {
 // controlled decision is applied explicitly via the seam instead.
 const DEAD_ENDPOINT = "https://angel-harness.invalid";
 
-const SIGNATURE_FN = `() => ({
-  textLen: document.body ? document.body.textContent.length : 0,
-  elementCount: document.getElementsByTagName('*').length,
-  bodyChildCount: document.body ? document.body.children.length : 0,
-})`;
-
 export interface RobustnessRunOptions {
   url: string;
   /** Slug used for the synthetic decision (not persisted). */
@@ -48,7 +42,12 @@ export interface RobustnessRunOptions {
 }
 
 async function signature(page: Page): Promise<DomSignature> {
-  return (await page.evaluate(SIGNATURE_FN)) as DomSignature;
+  // Function form (not a string) so Playwright CALLS it and returns the object.
+  return (await page.evaluate(() => ({
+    textLen: document.body ? document.body.textContent.length : 0,
+    elementCount: document.getElementsByTagName("*").length,
+    bodyChildCount: document.body ? document.body.children.length : 0,
+  }))) as DomSignature;
 }
 
 export async function runSnippetRobustness(
