@@ -68,8 +68,20 @@ export async function runSnippetRobustness(
   const onPageError = (err: unknown) => {
     if (collecting) consoleErrors.push(String(err).slice(0, 300));
   };
-  page.on("console", onConsole);
-  page.on("pageerror", onPageError);
+  // Stagehand's page proxy only supports a subset of Playwright events; attach
+  // each defensively so an unsupported one (e.g. "pageerror") doesn't abort the
+  // run. "console" (type === "error") is the primary capture; uncaught errors
+  // also surface there in Chromium.
+  const safeOn = (event: string, fn: (arg: never) => void) => {
+    try {
+      (page as unknown as { on: (e: string, f: (a: never) => void) => void }).on(event, fn);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  safeOn("console", onConsole as (a: never) => void);
+  const pageErrorAttached = safeOn("pageerror", onPageError as (a: never) => void);
 
   try {
     // 1. Audit → inventory (real selectors from the live DOM).
@@ -183,7 +195,14 @@ export async function runSnippetRobustness(
       durationMs: Date.now() - started,
     });
   } finally {
-    page.off?.("console", onConsole);
-    page.off?.("pageerror", onPageError);
+    const safeOff = (event: string, fn: (arg: never) => void) => {
+      try {
+        (page as unknown as { off?: (e: string, f: (a: never) => void) => void }).off?.(event, fn);
+      } catch {
+        /* ignore */
+      }
+    };
+    safeOff("console", onConsole as (a: never) => void);
+    if (pageErrorAttached) safeOff("pageerror", onPageError as (a: never) => void);
   }
 }
