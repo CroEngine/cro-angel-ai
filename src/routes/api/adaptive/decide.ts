@@ -11,6 +11,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { buildVisitorContext, readServerSignals } from "@/adaptive/context";
 import { decide } from "@/adaptive/decide";
 import { resolveInventory } from "@/adaptive/inventory.server";
+import { loadPatternBoosts } from "@/adaptive/performance.server";
 import { logDecision } from "@/adaptive/persistence.server";
 import type { ClientSignals } from "@/adaptive/types";
 
@@ -56,7 +57,10 @@ export const Route = createFileRoute("/api/adaptive/decide")({
           /* keep homepage default */
         }
         const inventory = await resolveInventory(client.site, path);
-        const decision = decide(client.site, context, inventory);
+        // Feed measured lift back in (increment 2): prefer proven winners,
+        // suppress proven losers. Best-effort + cached; {} means run on defaults.
+        const boosts = await loadPatternBoosts(client.site);
+        const decision = decide(client.site, context, inventory, boosts);
 
         // Measurement holdout: deterministically bucket this visitor 0..99 from
         // its id; below holdoutPct → control (snippet withholds the adaptations

@@ -17,6 +17,23 @@ import type { Adaptation, ContentInventory, Decision, PatternId, VisitorContext 
 /** Most adaptations to apply on a single page load — keep the page coherent. */
 export const MAX_ADAPTATIONS = 6;
 
+/**
+ * Measured performance fed back into the engine (increment 2). A signed priority
+ * delta per pattern, derived from conversion lift vs the holdout control group:
+ *   - proven winner  → small positive boost (rises in the ranking / cap);
+ *   - proven loser   → strong negative delta (suppressed, see PERF_SUPPRESS);
+ *   - not yet significant → absent (0, unchanged default behaviour).
+ * Exploration is not random: the holdout bucket keeps measuring the
+ * counterfactual, so the engine can stay pure and deterministic.
+ */
+export type PatternBoost = Partial<Record<PatternId, number>>;
+
+/** Largest positive nudge a proven winner can earn (keeps rules meaningful). */
+export const PERF_MAX_BOOST = 30;
+/** Delta assigned to a proven loser — drives its effective priority ≤ 0 so the
+ *  engine drops it (stop showing adaptations that measurably hurt). */
+export const PERF_SUPPRESS = -1000;
+
 interface Rule {
   id: string;
   priority: number;
@@ -198,6 +215,7 @@ export function decide(
   site: string,
   context: VisitorContext,
   inventory: ContentInventory,
+  boosts: PatternBoost = {},
 ): Decision {
   // Collect pattern -> best priority across all matching rules.
   const best = new Map<PatternId, number>();
@@ -210,7 +228,11 @@ export function decide(
   }
 
   const adaptations = [...best.entries()]
-    .map(([id, priority]) => resolve(id, priority, context, inventory))
+    // Apply the measured performance delta to each pattern's priority. A proven
+    // loser (PERF_SUPPRESS) lands ≤ 0 and is filtered out below; a winner rises.
+    .map(([id, priority]) => ({ id, priority: priority + (boosts[id] ?? 0) }))
+    .filter((e) => e.priority > 0)
+    .map((e) => resolve(e.id, e.priority, context, inventory))
     .filter((a): a is Adaptation => a !== null)
     .sort((a, b) => b.priority - a.priority || a.pattern.localeCompare(b.pattern))
     .slice(0, MAX_ADAPTATIONS);

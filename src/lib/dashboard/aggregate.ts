@@ -150,7 +150,7 @@ function twoProportionZ(c1: number, n1: number, c2: number, n2: number): number 
  * pageviews don't inflate the numbers. Exposures without a visitorHash can't be
  * joined and are ignored.
  */
-function attribute(events: DashEvent[]): PatternAttribution[] {
+export function attribute(events: DashEvent[]): PatternAttribution[] {
   // visitorHash -> sorted conversion times (ms)
   const conversionsByVisitor = new Map<string, number[]>();
   for (const e of events) {

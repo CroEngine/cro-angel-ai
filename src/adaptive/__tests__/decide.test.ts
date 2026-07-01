@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { decide, MAX_ADAPTATIONS } from "../decide";
+import { decide, MAX_ADAPTATIONS, PERF_MAX_BOOST, PERF_SUPPRESS } from "../decide";
 import { emptyInventory, getDemoInventory } from "../inventory";
 import type { PatternId, VisitorContext } from "../types";
 
@@ -105,5 +105,43 @@ describe("decide — safety and invariants", () => {
     const d = decide("demo", ctx({ trafficSource: "linkedin" }), demo);
     expect(d.adaptations.length).toBeGreaterThan(0);
     for (const a of d.adaptations) expect(a.reason.length).toBeGreaterThan(0);
+  });
+});
+
+describe("decide — performance feedback (bandit)", () => {
+  it("with no boosts, behaves exactly as before (backwards compatible)", () => {
+    const c = ctx({ trafficSource: "linkedin", device: "mobile" });
+    const withArg = decide("demo", c, demo, {});
+    const without = decide("demo", c, demo);
+    expect(withArg.adaptations.map((a) => a.pattern)).toEqual(
+      without.adaptations.map((a) => a.pattern),
+    );
+  });
+
+  it("suppresses a proven loser so it no longer applies", () => {
+    const c = ctx({ trafficSource: "linkedin", device: "desktop" });
+    const base = decide("demo", c, demo).adaptations.map((a) => a.pattern);
+    expect(base).toContain("show_case_study");
+
+    const d = decide("demo", c, demo, { show_case_study: PERF_SUPPRESS });
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_case_study");
+  });
+
+  it("adds the boost to a winning pattern's effective priority", () => {
+    // clarify_cta comes from the linkedin_b2b rule at priority 80; the boost
+    // must lift its reported priority by exactly PERF_MAX_BOOST.
+    const c = ctx({ trafficSource: "linkedin", device: "desktop" });
+    const cta = decide("demo", c, demo, { clarify_cta: PERF_MAX_BOOST }).adaptations.find(
+      (a) => a.pattern === "clarify_cta",
+    );
+    expect(cta).toBeDefined();
+    expect(cta!.priority).toBe(80 + PERF_MAX_BOOST);
+  });
+
+  it("keeps ordering by descending (boosted) priority", () => {
+    const c = ctx({ trafficSource: "linkedin", device: "mobile" });
+    const d = decide("demo", c, demo, { clarify_cta: PERF_MAX_BOOST });
+    const priorities = d.adaptations.map((a) => a.priority);
+    expect(priorities).toEqual([...priorities].sort((x, y) => y - x));
   });
 });
