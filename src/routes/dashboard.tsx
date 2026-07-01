@@ -9,7 +9,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Activity, MousePointerClick, Eye, Users, Target, Sparkles } from "lucide-react";
+import {
+  Activity,
+  MousePointerClick,
+  Eye,
+  Users,
+  Target,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getDashboard, type DashboardResponse } from "@/lib/dashboard/dashboard.functions";
-import type { SegmentBar } from "@/lib/dashboard/aggregate";
+import type { SegmentBar, PatternAttribution } from "@/lib/dashboard/aggregate";
 
 const dashboardQuery = (site: string) =>
   queryOptions({
@@ -90,6 +98,7 @@ function Dashboard() {
             <TabsTrigger value="segments">Visitor Segments</TabsTrigger>
             <TabsTrigger value="live">Live Adaptations</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
+            <TabsTrigger value="attribution">What&apos;s working</TabsTrigger>
             <TabsTrigger value="inventory">Content Inventory</TabsTrigger>
           </TabsList>
 
@@ -232,6 +241,34 @@ function Dashboard() {
             </Card>
           </TabsContent>
 
+          {/* ---- What's working (attribution) ---- */}
+          <TabsContent value="attribution" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingUp className="h-4 w-4 text-violet-600" />
+                  Conversion lift by pattern
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {d.metrics.attribution.length === 0 ? (
+                  <Empty>No attributable exposures yet.</Empty>
+                ) : (
+                  <>
+                    <AttributionTable rows={d.metrics.attribution} />
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Lift compares the adapted group to the withheld control group
+                      (enable a holdout with <code>data-holdout</code> on the snippet). A
+                      conversion counts for a pattern when the same visitor converts within
+                      24 h of being exposed. <strong>sig.</strong> marks a difference at ~95%
+                      confidence.
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* ---- Content Inventory ---- */}
           <TabsContent value="inventory" className="mt-4">
             {d.metrics.inventory.length === 0 ? (
@@ -333,6 +370,76 @@ function BarList({ items, empty }: { items: SegmentBar[]; empty: string }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function pct(rate: number): string {
+  return `${(rate * 100).toFixed(1)}%`;
+}
+
+function AttributionTable({ rows }: { rows: PatternAttribution[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs text-muted-foreground">
+            <th className="py-2 pr-3 font-medium">Pattern</th>
+            <th className="py-2 pr-3 text-right font-medium">Adapted</th>
+            <th className="py-2 pr-3 text-right font-medium">CR</th>
+            <th className="py-2 pr-3 text-right font-medium">Control</th>
+            <th className="py-2 pr-3 text-right font-medium">CR</th>
+            <th className="py-2 pr-3 text-right font-medium">Lift</th>
+            <th className="py-2 text-right font-medium">Sig.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.pattern} className="border-b border-border/60">
+              <td className="py-2 pr-3">
+                <span className="font-mono text-[13px] text-foreground">{r.pattern}</span>
+              </td>
+              <td className="py-2 pr-3 text-right text-muted-foreground">
+                {r.adapted.conversions}/{r.adapted.exposures}
+              </td>
+              <td className="py-2 pr-3 text-right font-medium text-foreground">
+                {r.adapted.exposures > 0 ? pct(r.adapted.rate) : "—"}
+              </td>
+              <td className="py-2 pr-3 text-right text-muted-foreground">
+                {r.control.exposures > 0 ? `${r.control.conversions}/${r.control.exposures}` : "—"}
+              </td>
+              <td className="py-2 pr-3 text-right text-muted-foreground">
+                {r.control.exposures > 0 ? pct(r.control.rate) : "—"}
+              </td>
+              <td className="py-2 pr-3 text-right">
+                {r.lift === null ? (
+                  <span className="text-muted-foreground">no control</span>
+                ) : (
+                  <span
+                    className={
+                      r.lift > 0
+                        ? "font-semibold text-emerald-600"
+                        : r.lift < 0
+                          ? "font-semibold text-rose-600"
+                          : "text-muted-foreground"
+                    }
+                  >
+                    {r.lift > 0 ? "+" : ""}
+                    {(r.lift * 100).toFixed(1)} pp
+                  </span>
+                )}
+              </td>
+              <td className="py-2 text-right">
+                {r.significant ? (
+                  <Badge className="bg-emerald-100 text-[11px] text-emerald-800">95%</Badge>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
