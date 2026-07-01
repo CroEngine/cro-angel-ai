@@ -26,6 +26,7 @@ interface EventBatch {
 const VALID_TYPES = new Set([
   "pageview",
   "adaptation_shown",
+  "adaptation_withheld",
   "cta_click",
   "scroll_depth",
   "conversion",

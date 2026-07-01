@@ -103,6 +103,92 @@ describe("aggregate", () => {
     expect(empty.overview.pageviews).toBe(0);
     expect(empty.overview.conversionRate).toBe(0);
     expect(empty.performance).toEqual([]);
+    expect(empty.attribution).toEqual([]);
     expect(empty.inventory).toEqual([]);
+  });
+});
+
+describe("aggregate — attribution (what's working)", () => {
+  // Two patterns. show_trust_badge has a holdout (control) group; clarify_cta
+  // has none. Conversions are joined to exposures by visitorHash within 24 h.
+  const T = (h: number) => `2026-06-27T${String(h).padStart(2, "0")}:00:00Z`;
+  const shown = (visitor: string, patterns: string[], hour: number): DashEvent =>
+    ev("adaptation_shown", { patterns }, { visitorHash: visitor, createdAt: T(hour) });
+  const withheld = (visitor: string, patterns: string[], hour: number): DashEvent =>
+    ev("adaptation_withheld", { patterns }, { visitorHash: visitor, createdAt: T(hour) });
+  const conv = (visitor: string, hour: number): DashEvent =>
+    ev("conversion", {}, { visitorHash: visitor, createdAt: T(hour) });
+
+  const events: DashEvent[] = [
+    // adapted: v1,v2,v3 exposed to show_trust_badge; v1 & v2 convert -> 2/3
+    shown("v1", ["show_trust_badge", "clarify_cta"], 9),
+    shown("v2", ["show_trust_badge"], 9),
+    shown("v3", ["show_trust_badge"], 9),
+    conv("v1", 10),
+    conv("v2", 11),
+    // control (withheld): v4,v5 held out; only v4 converts -> 1/2
+    withheld("v4", ["show_trust_badge"], 9),
+    withheld("v5", ["show_trust_badge"], 9),
+    conv("v4", 10),
+    // clarify_cta adapted only: v1 exposed, v1 converted -> 1/1, no control
+    // a conversion OUTSIDE the 24h window must not count
+    shown("v6", ["clarify_cta"], 0),
+    conv("v6", 23 /* +23h ok */),
+  ];
+
+  const m = aggregate(events, []);
+  const badge = m.attribution.find((a) => a.pattern === "show_trust_badge")!;
+  const cta = m.attribution.find((a) => a.pattern === "clarify_cta")!;
+
+  it("counts distinct-visitor exposures and conversions per variant", () => {
+    expect(badge.adapted.exposures).toBe(3);
+    expect(badge.adapted.conversions).toBe(2);
+    expect(badge.adapted.rate).toBeCloseTo(2 / 3);
+    expect(badge.control.exposures).toBe(2);
+    expect(badge.control.conversions).toBe(1);
+    expect(badge.control.rate).toBeCloseTo(1 / 2);
+  });
+
+  it("computes lift = adapted − control when a control group exists", () => {
+    expect(badge.lift).toBeCloseTo(2 / 3 - 1 / 2);
+    expect(badge.z).not.toBeNull();
+  });
+
+  it("reports null lift and no significance when there is no control group", () => {
+    expect(cta.control.exposures).toBe(0);
+    expect(cta.lift).toBeNull();
+    expect(cta.z).toBeNull();
+    expect(cta.significant).toBe(false);
+  });
+
+  it("attributes a conversion within the 24h window", () => {
+    expect(cta.adapted.exposures).toBe(2); // v1 (9h) + v6 (0h)
+    // v1 converted at 10h (within window of its 9h exposure); v6 at 23h (within
+    // 24h of its 0h exposure) -> both count
+    expect(cta.adapted.conversions).toBe(2);
+  });
+
+  it("ignores exposures without a visitorHash", () => {
+    const anon = aggregate(
+      [
+        ev("adaptation_shown", { patterns: ["clarify_cta"] }, { createdAt: T(9) }),
+        ev("conversion", {}, { createdAt: T(10) }),
+      ],
+      [],
+    );
+    expect(anon.attribution).toEqual([]);
+  });
+
+  it("does not count a conversion that happened before the exposure", () => {
+    const pre = aggregate(
+      [
+        ev("conversion", {}, { visitorHash: "z", createdAt: T(8) }),
+        ev("adaptation_shown", { patterns: ["clarify_cta"] }, { visitorHash: "z", createdAt: T(9) }),
+      ],
+      [],
+    );
+    const row = pre.attribution.find((a) => a.pattern === "clarify_cta")!;
+    expect(row.adapted.exposures).toBe(1);
+    expect(row.adapted.conversions).toBe(0);
   });
 });

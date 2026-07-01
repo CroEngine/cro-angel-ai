@@ -144,6 +144,9 @@ export interface Decision {
   decisionId: string;
   site: string;
   adaptations: Adaptation[];
+  /** True when this visitor is in the measurement control bucket — the snippet
+   *  withholds the adaptations so their lift can be measured. */
+  holdout?: boolean;
   /** Echoed back for transparency / logging. */
   context: VisitorContext;
 }
@@ -199,11 +202,23 @@ export interface ClientSignals {
   visitCount?: number;
   viewedPricing?: boolean;
   lastPath?: string;
+  /** Persistent visitor id (localStorage). Used server-side for holdout
+   *  bucketing and to stamp adaptation exposure events for attribution. */
+  visitorHash?: string;
+  /** Percentage (0–100) of visitors held out as control for measurement.
+   *  Config-driven; 0 = off (default). */
+  holdoutPct?: number;
 }
 
 /** A single analytics event POSTed to /api/adaptive/events. */
 export interface AngelEvent {
-  type: "pageview" | "adaptation_shown" | "cta_click" | "scroll_depth" | "conversion";
+  type:
+    | "pageview"
+    | "adaptation_shown"
+    | "adaptation_withheld"
+    | "cta_click"
+    | "scroll_depth"
+    | "conversion";
   decisionId?: string;
   payload?: Record<string, unknown>;
   /** Client timestamp (ms epoch). */
