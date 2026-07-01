@@ -58,13 +58,37 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         const inventory = await resolveInventory(client.site, path);
         const decision = decide(client.site, context, inventory);
 
+        // Measurement holdout: deterministically bucket this visitor 0..99 from
+        // its id; below holdoutPct → control (snippet withholds the adaptations
+        // so their lift can be measured). Off (0) unless the site opts in.
+        const holdoutPct =
+          typeof client.holdoutPct === "number"
+            ? Math.max(0, Math.min(100, client.holdoutPct))
+            : 0;
+        const vh = typeof client.visitorHash === "string" ? client.visitorHash : "";
+        let holdout = false;
+        if (holdoutPct > 0 && vh) {
+          let h = 0x811c9dc5;
+          for (let i = 0; i < vh.length; i++) {
+            h ^= vh.charCodeAt(i);
+            h = Math.imul(h, 0x01000193);
+          }
+          holdout = (h >>> 0) % 100 < holdoutPct;
+        }
+        decision.holdout = holdout;
+
         // Best-effort log; never blocks or fails the decision.
         await logDecision(
           decision.site,
           decision.decisionId,
           context,
           decision.adaptations.map((a) => a.pattern),
-          { referrer: client.referrer || server.referrer, userAgent: server.userAgent },
+          {
+            referrer: client.referrer || server.referrer,
+            userAgent: server.userAgent,
+            visitorHash: vh || null,
+            withheld: holdout,
+          },
         );
 
         return json(decision);

@@ -35,6 +35,13 @@
   var DECIDE_URL = base + "/api/adaptive/decide";
   var EVENTS_URL = base + "/api/adaptive/events";
 
+  // ---- measurement config (opt-in) -----------------------------------------
+  // data-holdout: % of visitors held out as control (0 = off).
+  // data-conversion-url / data-conversion-selector: how conversions fire.
+  var HOLDOUT_PCT = parseInt(script.getAttribute("data-holdout") || "0", 10) || 0;
+  var CONVERSION_URL = script.getAttribute("data-conversion-url") || "";
+  var CONVERSION_SELECTOR = script.getAttribute("data-conversion-selector") || "";
+
   var qp = new URLSearchParams(location.search);
 
   // ---- visitor identity + history (localStorage) ---------------------------
@@ -89,6 +96,8 @@
     visitCount: qp.get("angel_returning") === "1" ? Math.max(1, prevVisits) : prevVisits,
     viewedPricing: qp.get("angel_pricing") === "1" || !!store.viewedPricing,
     lastPath: store.lastPath || null,
+    visitorHash: vid,
+    holdoutPct: HOLDOUT_PCT,
   };
 
   // ---- analytics -----------------------------------------------------------
@@ -115,6 +124,40 @@
   }
   function track(type, payload, decisionId) {
     send([{ type: type, decisionId: decisionId, payload: payload || {}, ts: Date.now() }]);
+  }
+
+  // ---- conversions ---------------------------------------------------------
+  var lastDecisionId = null;
+  // Public trigger: the customer calls window.AngelAdaptive.convert(value?, meta?)
+  // (or configures a URL / selector). Carries visitorHash (via send) + the last
+  // decisionId so the conversion can be attributed to what was shown.
+  function convert(value, meta) {
+    var payload = meta && typeof meta === "object" ? meta : {};
+    if (value !== undefined) payload.value = value;
+    track("conversion", payload, lastDecisionId);
+  }
+  function wireConversion() {
+    try {
+      if (CONVERSION_URL && location.href.indexOf(CONVERSION_URL) !== -1) convert();
+      if (CONVERSION_SELECTOR) {
+        document.addEventListener(
+          "click",
+          function (e) {
+            var t = e.target;
+            while (t && t.nodeType === 1) {
+              if (t.matches && t.matches(CONVERSION_SELECTOR)) {
+                convert();
+                return;
+              }
+              t = t.parentElement;
+            }
+          },
+          true,
+        );
+      }
+    } catch (e) {
+      /* non-fatal */
+    }
   }
 
   // ---- reversible DOM ops --------------------------------------------------
@@ -404,7 +447,9 @@
         return r.ok ? r.json() : Promise.reject(new Error("decide " + r.status));
       })
       .then(function (decision) {
-        var applied = apply(decision);
+        lastDecisionId = decision.decisionId;
+        // Control bucket: withhold the adaptations so their lift can be measured.
+        var applied = decision.holdout ? [] : apply(decision);
         var ctx = decision.context || {};
         track(
           "pageview",
@@ -423,6 +468,7 @@
           track("adaptation_shown", { patterns: applied }, decision.decisionId);
         }
         wireEngagement(decision.decisionId);
+        wireConversion();
         if (isDebug()) renderDebug(decision, applied);
 
         window.AngelAdaptive = {
@@ -440,6 +486,7 @@
             }
           },
           track: track,
+          convert: convert,
         };
         document.dispatchEvent(new CustomEvent("angel:applied", { detail: window.AngelAdaptive }));
       })
