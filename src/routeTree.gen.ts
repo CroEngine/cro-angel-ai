@@ -18,6 +18,7 @@ import { Route as ApiAdaptiveEventsRouteImport } from './routes/api/adaptive/eve
 import { Route as ApiAdaptiveDecideRouteImport } from './routes/api/adaptive/decide'
 import { Route as ApiAdaptiveInventoryRouteImport } from './routes/api/adaptive/inventory'
 import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
+import { Route as ApiTestsRobustnessStreamRouteImport } from './routes/api/tests/robustness.stream'
 import { Route as ApiPublicCorpusSplatRouteImport } from './routes/api/public/corpus.$'
 
 const DemoRoute = DemoRouteImport.update({
@@ -65,6 +66,11 @@ const ApiTestsRunIdStreamRoute = ApiTestsRunIdStreamRouteImport.update({
   path: '/api/tests/$runId/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTestsRobustnessStreamRoute = ApiTestsRobustnessStreamRouteImport.update({
+  id: '/api/tests/robustness/stream',
+  path: '/api/tests/robustness/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCorpusSplatRoute = ApiPublicCorpusSplatRouteImport.update({
   id: '/api/public/corpus/$',
   path: '/api/public/corpus/$',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
+  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
+  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
+  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/api/adaptive/inventory'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
+    | '/api/tests/robustness/stream'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/api/adaptive/inventory'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
+    | '/api/tests/robustness/stream'
   id:
     | '__root__'
     | '/'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/api/adaptive/inventory'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
+    | '/api/tests/robustness/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +170,7 @@ export interface RootRouteChildren {
   ApiAdaptiveInventoryRoute: typeof ApiAdaptiveInventoryRoute
   ApiPublicCorpusSplatRoute: typeof ApiPublicCorpusSplatRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
+  ApiTestsRobustnessStreamRoute: typeof ApiTestsRobustnessStreamRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -225,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTestsRunIdStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tests/robustness/stream': {
+      id: '/api/tests/robustness/stream'
+      path: '/api/tests/robustness/stream'
+      fullPath: '/api/tests/robustness/stream'
+      preLoaderRoute: typeof ApiTestsRobustnessStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/corpus/$': {
       id: '/api/public/corpus/$'
       path: '/api/public/corpus/$'
@@ -246,6 +266,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdaptiveInventoryRoute: ApiAdaptiveInventoryRoute,
   ApiPublicCorpusSplatRoute: ApiPublicCorpusSplatRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
+  ApiTestsRobustnessStreamRoute: ApiTestsRobustnessStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

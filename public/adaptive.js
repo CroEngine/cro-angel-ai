@@ -308,6 +308,73 @@
     return applied;
   }
 
+  // ---- test seam (inert in production) -------------------------------------
+  // An automated robustness harness can set window.__ANGEL_HARNESS__ = true
+  // before this script runs to drive the REAL apply/reset/target-resolution
+  // against a page with a provided decision — no network round-trip. Never set
+  // in production, so this block is dead code for real visitors.
+  if (typeof window !== "undefined" && window.__ANGEL_HARNESS__) {
+    window.__angel = {
+      apply: function (decision) {
+        return apply(decision || { adaptations: [] });
+      },
+      reset: function () {
+        while (undoStack.length) {
+          try {
+            undoStack.pop()();
+          } catch (e) {
+            /* keep unwinding */
+          }
+        }
+      },
+      // Mirror resolveNodes() but report which locator matched, for hit-rate.
+      probe: function (a) {
+        var via = "none";
+        var count = 0;
+        try {
+          if (a.target) {
+            var n = document.querySelectorAll(a.target);
+            if (n.length) {
+              via = "selector";
+              count = n.length;
+            }
+          }
+        } catch (e) {
+          /* invalid selector — fall through */
+        }
+        if (!count && a.slot) {
+          try {
+            var s = document.querySelectorAll('[data-angel-slot="' + a.slot + '"]');
+            if (s.length) {
+              via = "slot";
+              count = s.length;
+            }
+          } catch (e) {
+            /* ignore */
+          }
+        }
+        if (!count && a.anchorText) {
+          var t = byText(a.anchorText, a.tag);
+          if (t.length) {
+            via = "text";
+            count = t.length;
+          }
+        }
+        return { via: via, count: count };
+      },
+      // Count of Angel-applied residue still present (0 == fully reversed).
+      residue: function () {
+        try {
+          return document.querySelectorAll(
+            ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected]",
+          ).length;
+        } catch (e) {
+          return -1;
+        }
+      },
+    };
+  }
+
   // ---- engagement tracking -------------------------------------------------
   function wireEngagement(decisionId) {
     // CTA clicks.
