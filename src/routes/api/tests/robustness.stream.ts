@@ -73,7 +73,7 @@ export const Route = createFileRoute("/api/tests/robustness/stream")({
                 const page = opened.page;
 
                 emit("log", { message: `navigating to ${targetUrl}` });
-                await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+                await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeoutMs: 45000 });
 
                 emit("log", { message: "auditing + applying snippet" });
                 const report = await runnerMod.runSnippetRobustness(page, {
