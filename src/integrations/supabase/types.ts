@@ -42,6 +42,7 @@ export type Database = {
         Row: {
           id: string
           site_slug: string
+          path: string
           slot: string
           item_id: string
           text: string | null
@@ -52,6 +53,7 @@ export type Database = {
         Insert: {
           id?: string
           site_slug: string
+          path?: string
           slot: string
           item_id: string
           text?: string | null
@@ -62,6 +64,7 @@ export type Database = {
         Update: {
           id?: string
           site_slug?: string
+          path?: string
           slot?: string
           item_id?: string
           text?: string | null
