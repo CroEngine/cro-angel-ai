@@ -27,7 +27,19 @@ export function BrowserShell() {
 
   const startFn = useServerFn(startTestRun);
 
-  const { events, stop } = useTestStream(runId, sessionId, runUrl);
+  // Persist the crawled inventory under a per-domain slug so the server can
+  // diff it against the previous crawl (drift tracking). Derived from the run's
+  // URL, not the editable bar, so it stays stable for the whole run.
+  const ingestSite = useMemo(() => {
+    if (!runUrl) return null;
+    try {
+      return new URL(runUrl).hostname.replace(/^www\./, "") || null;
+    } catch {
+      return null;
+    }
+  }, [runUrl]);
+
+  const { events, stop } = useTestStream(runId, sessionId, runUrl, ingestSite);
 
   // Pull the latest collect's screenshot + overlay out of the stream and
   // stash it so we can show the Frozen viewport after the session closes.

@@ -143,10 +143,63 @@ export async function saveInventory(inventory: ContentInventory): Promise<number
       console.warn(`[angel] inventory persistence skipped: ${error.message}`);
       return 0;
     }
+
+    // Reflect the latest crawl: drop rows for items that are no longer present
+    // so the stored inventory is this crawl's snapshot (not a stale union of
+    // every past crawl). Done AFTER a successful upsert so a failed write never
+    // wipes the existing inventory. Best-effort.
+    const newIds = new Set(rows.map((r) => r.item_id));
+    const { data: existing } = await supabaseAdmin
+      .from("angel_content_inventory")
+      .select("item_id")
+      .eq("site_slug", inventory.site);
+    const stale = (existing ?? [])
+      .map((r: { item_id: string }) => r.item_id)
+      .filter((id: string) => !newIds.has(id));
+    if (stale.length > 0) {
+      const { error: delError } = await supabaseAdmin
+        .from("angel_content_inventory")
+        .delete()
+        .eq("site_slug", inventory.site)
+        .in("item_id", stale);
+      if (delError) {
+        console.warn(`[angel] inventory stale-cleanup skipped: ${delError.message}`);
+      }
+    }
+
     return rows.length;
   } catch (err) {
     console.warn(`[angel] inventory persistence unavailable:`, err);
     return 0;
+  }
+}
+
+/**
+ * Record a content-inventory drift report (what changed on a site between two
+ * crawls) as a single `inventory_drift` row in angel_events. Reuses the events
+ * table so no schema migration is needed; the dashboard/telemetry can read it
+ * back like any other event. Best-effort; never throws.
+ */
+export async function recordInventoryDrift(
+  site: string,
+  payload: Record<string, unknown>,
+): Promise<boolean> {
+  try {
+    const { error } = await supabaseAdmin.from("angel_events").insert({
+      site,
+      type: "inventory_drift",
+      decision_id: null,
+      visitor_hash: null,
+      payload: payload as Json,
+    });
+    if (error) {
+      console.warn(`[angel] drift record skipped: ${error.message}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn(`[angel] drift record unavailable:`, err);
+    return false;
   }
 }
 

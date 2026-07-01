@@ -10,7 +10,12 @@ export type StreamStatus = "idle" | "open" | "done" | "error";
 // Opens the SSE stream that BOTH drives and reports the crawl. The crawl runs
 // server-side inside this streaming request, so closing the EventSource (stop)
 // aborts the run and releases the Browserbase session via the route's cancel().
-export function useTestStream(runId: string | null, sessionId: string | null, url: string | null) {
+export function useTestStream(
+  runId: string | null,
+  sessionId: string | null,
+  url: string | null,
+  ingestSite: string | null = null,
+) {
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [status, setStatus] = useState<StreamStatus>("idle");
   const esRef = useRef<EventSource | null>(null);
@@ -22,7 +27,11 @@ export function useTestStream(runId: string | null, sessionId: string | null, ur
       return;
     }
     setStatus("open");
-    const qs = new URLSearchParams({ sessionId, url }).toString();
+    const params = new URLSearchParams({ sessionId, url });
+    // When set, the crawl persists its inventory under this site slug and the
+    // server diffs it against the previous crawl (drift tracking).
+    if (ingestSite) params.set("ingestSite", ingestSite);
+    const qs = params.toString();
     const es = new EventSource(`/api/tests/${runId}/stream?${qs}`);
     esRef.current = es;
 
@@ -62,7 +71,7 @@ export function useTestStream(runId: string | null, sessionId: string | null, ur
       es.close();
       esRef.current = null;
     };
-  }, [runId, sessionId, url]);
+  }, [runId, sessionId, url, ingestSite]);
 
   // Stop the run: closing the EventSource drops the request, which fires the
   // stream route's cancel() → aborts the crawl and releases the session. Events

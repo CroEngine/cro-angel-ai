@@ -86,9 +86,13 @@ export const Route = createFileRoute("/api/tests/$runId/stream")({
                           /* non-fatal */
                         }
                         const res = await ingestAudit(ingestSite, audit, { domain });
+                        const d = res.drift;
+                        const driftMsg = d.hasBaseline
+                          ? ` · drift vs last crawl: +${d.added} −${d.removed} ~${d.changed}`
+                          : ` · baseline (first crawl)`;
                         emit("log", {
                           level: "info",
-                          message: `inventory: ${res.items} items mapped, ${res.saved} saved for "${res.site}"`,
+                          message: `inventory: ${res.items} items mapped, ${res.saved} saved for "${res.site}"${driftMsg}`,
                         });
                       }
                     : undefined,
