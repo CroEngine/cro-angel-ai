@@ -138,16 +138,22 @@
     document.head.appendChild(el);
   }
 
-  function byText(text) {
+  function byText(text, tag) {
     if (!text) return [];
     var t = String(text).trim().toLowerCase();
     if (!t) return [];
+    var want = tag ? String(tag).toLowerCase() : "";
     var cands = document.querySelectorAll('a,button,[role="button"],[data-angel-slot]');
-    var out = [];
+    var all = [];
+    var tagged = [];
     for (var i = 0; i < cands.length; i++) {
-      if ((cands[i].textContent || "").trim().toLowerCase() === t) out.push(cands[i]);
+      if ((cands[i].textContent || "").trim().toLowerCase() === t) {
+        all.push(cands[i]);
+        if (want && cands[i].tagName.toLowerCase() === want) tagged.push(cands[i]);
+      }
     }
-    return out;
+    // Prefer matches of the expected element type; fall back to any text match.
+    return tagged.length ? tagged : all;
   }
 
   // Resolve an adaptation's target with graceful fallbacks so a drifted
@@ -164,7 +170,7 @@
         if (s.length) return s;
       } catch (e) {}
     }
-    if (a.anchorText) return byText(a.anchorText);
+    if (a.anchorText) return byText(a.anchorText, a.tag);
     return [];
   }
 

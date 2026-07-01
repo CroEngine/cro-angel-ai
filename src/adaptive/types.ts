@@ -127,6 +127,9 @@ export interface Adaptation {
    *  snippet re-resolve by content when both `target` and the slot selector
    *  miss. Only set for ops that act on an existing element by its content. */
   anchorText?: string;
+  /** Terminal element tag (e.g. "a", "button"). Narrows the text fallback to
+   *  the right element type. */
+  tag?: string;
   /** Published content used by the op (set_text / inject_badge). */
   value?: string;
   /** Human-readable rationale — surfaced in the dashboard and event log. */

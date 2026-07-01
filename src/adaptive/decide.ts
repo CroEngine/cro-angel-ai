@@ -128,6 +128,7 @@ function resolve(
       op: "set_text",
       target: item.selector ?? slotSelector,
       slot: pattern.slot,
+      tag: item.meta?.tag,
       value: item.text,
       reason: `CTA set to "${item.text}" for ${context.trafficSource} visitor (intent: ${intent}).`,
       priority,
@@ -160,6 +161,7 @@ function resolve(
     // These ops act on an existing element by its content, so its published
     // text is a safe last-resort locator if the selector drifts.
     anchorText: item?.text,
+    tag: item?.meta?.tag,
     reason: `${pattern.label} for ${context.trafficSource} / ${context.device} visitor.`,
     priority,
   };
