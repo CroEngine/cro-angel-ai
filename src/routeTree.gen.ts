@@ -16,6 +16,7 @@ import { Route as AgentRouteImport } from './routes/agent'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiAdaptiveEventsRouteImport } from './routes/api/adaptive/events'
 import { Route as ApiAdaptiveDecideRouteImport } from './routes/api/adaptive/decide'
+import { Route as ApiAdaptiveInventoryRouteImport } from './routes/api/adaptive/inventory'
 import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
 import { Route as ApiPublicCorpusSplatRouteImport } from './routes/api/public/corpus.$'
 
@@ -49,6 +50,11 @@ const ApiAdaptiveEventsRoute = ApiAdaptiveEventsRouteImport.update({
   path: '/api/adaptive/events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdaptiveInventoryRoute = ApiAdaptiveInventoryRouteImport.update({
+  id: '/api/adaptive/inventory',
+  path: '/api/adaptive/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdaptiveDecideRoute = ApiAdaptiveDecideRouteImport.update({
   id: '/api/adaptive/decide',
   path: '/api/adaptive/decide',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/demo': typeof DemoRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
+  '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/demo': typeof DemoRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
+  '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/demo': typeof DemoRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
+  '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/demo'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
+    | '/api/adaptive/inventory'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/demo'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
+    | '/api/adaptive/inventory'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/demo'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
+    | '/api/adaptive/inventory'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   DemoRoute: typeof DemoRoute
   ApiAdaptiveDecideRoute: typeof ApiAdaptiveDecideRoute
   ApiAdaptiveEventsRoute: typeof ApiAdaptiveEventsRoute
+  ApiAdaptiveInventoryRoute: typeof ApiAdaptiveInventoryRoute
   ApiPublicCorpusSplatRoute: typeof ApiPublicCorpusSplatRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
 }
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdaptiveEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/adaptive/inventory': {
+      id: '/api/adaptive/inventory'
+      path: '/api/adaptive/inventory'
+      fullPath: '/api/adaptive/inventory'
+      preLoaderRoute: typeof ApiAdaptiveInventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/adaptive/decide': {
       id: '/api/adaptive/decide'
       path: '/api/adaptive/decide'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   DemoRoute: DemoRoute,
   ApiAdaptiveDecideRoute: ApiAdaptiveDecideRoute,
   ApiAdaptiveEventsRoute: ApiAdaptiveEventsRoute,
+  ApiAdaptiveInventoryRoute: ApiAdaptiveInventoryRoute,
   ApiPublicCorpusSplatRoute: ApiPublicCorpusSplatRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
 }
