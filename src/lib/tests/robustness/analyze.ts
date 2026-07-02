@@ -139,6 +139,38 @@ function removedFraction(baseline: DomSignature, after: DomSignature): number {
   return removed > 0 ? removed / baseline.elementCount : 0;
 }
 
+const EMPTY_SIGNATURE: DomSignature = { textLen: 0, elementCount: 0, bodyChildCount: 0 };
+
+/** Build a `fail` report for a page/persona that never got measured (unreachable,
+ *  snippet didn't init, a phase timed out). Shared by the runner and the route. */
+export function failReport(
+  url: string,
+  site: string,
+  persona: string,
+  reason: string,
+  opts: { reachable?: boolean; snippetRan?: boolean } = {},
+): RobustnessReport {
+  return analyze({
+    url,
+    site,
+    persona,
+    reachable: opts.reachable ?? false,
+    snippetRan: opts.snippetRan ?? false,
+    consoleErrors: [reason],
+    decidedCount: 0,
+    appliedCount: 0,
+    probes: [],
+    baseline: EMPTY_SIGNATURE,
+    afterApply: EMPTY_SIGNATURE,
+    afterReset: EMPTY_SIGNATURE,
+    layout: { matched: 0, shiftedCount: 0, shiftedFraction: 0, controlShiftedFraction: 0, maxMove: 0 },
+    rerender: { residueAfterApply: 0, residueAfterRerender: 0 },
+    interaction: { checked: 0, broken: 0 },
+    residueAfterReset: -1,
+    durationMs: 0,
+  });
+}
+
 export function analyze(o: RobustnessObservation): RobustnessReport {
   const targeted = o.probes.filter((p) => p.count > 0).length;
   const via = { selector: 0, slot: 0, text: 0, none: 0 };
