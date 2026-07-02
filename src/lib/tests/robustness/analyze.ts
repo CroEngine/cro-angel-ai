@@ -14,6 +14,20 @@ export interface DomSignature {
   bodyChildCount: number;
 }
 
+/** How much the visible layout moved when the adaptations were applied — a
+ *  CLS-like signal that catches "looks broken / content jumps" even when no
+ *  element was removed and nothing threw. */
+export interface LayoutDiff {
+  /** Elements sampled before apply that were still present after. */
+  matched: number;
+  /** How many of those moved more than a few px. */
+  shiftedCount: number;
+  /** Approx fraction of the viewport whose content moved, 0..1 (CLS-like). */
+  shiftedFraction: number;
+  /** Largest single-element movement, in px. */
+  maxMove: number;
+}
+
 /** Per-adaptation target resolution, mirroring the snippet's resolveNodes(). */
 export interface AdaptationProbe {
   pattern: string;
@@ -43,6 +57,7 @@ export interface RobustnessObservation {
   baseline: DomSignature;
   afterApply: DomSignature;
   afterReset: DomSignature;
+  layout: LayoutDiff;
   /** Angel residue remaining after reset() (must be 0): leftover classes /
    *  injected badges / hidden markers. The strongest reversibility signal —
    *  robust even on pages that mutate their own DOM. */
@@ -75,10 +90,15 @@ export interface RobustnessReport {
     reversible: boolean;
     /** Elements removed after apply vs baseline (layout-breakage smell). */
     elementsRemoved: number;
+    /** CLS-like layout movement caused by apply. */
+    layout: LayoutDiff;
     consoleErrorCount: number;
     durationMs: number;
   };
 }
+
+/** Viewport-shift fraction at/above which we flag the change for visual review. */
+export const LARGE_SHIFT = 0.4;
 
 /** Fraction of the element tree that vanished after apply (0..1). */
 function removedFraction(baseline: DomSignature, after: DomSignature): number {
@@ -132,6 +152,15 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
     if (o.decidedCount === 0) {
       warn("no adaptations decided for this persona (empty inventory?)");
     }
+    // Large layout movement after apply — the page still "works" and reverses,
+    // but content visibly jumps (bad CLS / possible layout break). Flag for a
+    // human to eyeball the screenshots; not an automatic fail because some ops
+    // (move_up / reveal) shift content by design.
+    if (o.layout.shiftedFraction >= LARGE_SHIFT) {
+      warn(
+        `large layout shift: ~${Math.round(o.layout.shiftedFraction * 100)}% of the viewport moved after apply (review)`,
+      );
+    }
   }
 
   return {
@@ -149,6 +178,7 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
       via,
       reversible,
       elementsRemoved,
+      layout: o.layout,
       consoleErrorCount: o.consoleErrors.length,
       durationMs: o.durationMs,
     },
@@ -164,6 +194,8 @@ export interface SweepSummary {
   avgTargetingRate: number;
   /** Pages where reset() failed to fully revert. */
   irreversible: number;
+  /** Pages with a large layout shift after apply (visual-review bucket). */
+  bigShift: number;
 }
 
 /** Aggregate a batch of reports — the launch-gate view. */
@@ -178,5 +210,6 @@ export function summarize(reports: RobustnessReport[]): SweepSummary {
       ? reachable.reduce((s, r) => s + r.metrics.targetingRate, 0) / reachable.length
       : 0;
   const irreversible = reports.filter((r) => r.metrics.reversible === false).length;
-  return { total, pass, warn, fail, avgTargetingRate, irreversible };
+  const bigShift = reports.filter((r) => r.metrics.layout.shiftedFraction >= LARGE_SHIFT).length;
+  return { total, pass, warn, fail, avgTargetingRate, irreversible, bigShift };
 }
