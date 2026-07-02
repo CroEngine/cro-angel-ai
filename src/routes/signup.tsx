@@ -8,7 +8,6 @@
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -53,11 +52,11 @@ function Signup() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center bg-[#fafaf9] px-4 text-stone-900">
+      <Card className="w-full max-w-sm border-stone-200 shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="h-5 w-5 text-violet-600" /> Create your account
+            <span className="text-xl leading-none text-emerald-700">✳</span> Create your account
           </CardTitle>
           <p className="text-sm text-muted-foreground">Start measuring lift on your site.</p>
         </CardHeader>
@@ -97,12 +96,12 @@ function Signup() {
                 />
               </div>
               {error && <p className="text-sm text-rose-600">{error}</p>}
-              <Button type="submit" className="w-full" disabled={busy}>
+              <Button type="submit" className="w-full bg-emerald-700 text-white hover:bg-emerald-600" disabled={busy}>
                 {busy ? "Creating…" : "Create account"}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
                 Already have an account?{" "}
-                <Link to="/login" className="text-violet-600 hover:underline">
+                <Link to="/login" className="text-emerald-700 hover:underline">
                   Sign in
                 </Link>
               </p>
