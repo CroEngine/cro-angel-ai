@@ -92,6 +92,7 @@ export const Route = createFileRoute("/api/adaptive/decide")({
             userAgent: server.userAgent,
             visitorHash: vh || null,
             withheld: holdout,
+            consent: typeof client.consent === "string" ? client.consent : null,
           },
         );
 

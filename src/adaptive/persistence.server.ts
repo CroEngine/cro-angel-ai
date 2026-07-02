@@ -73,6 +73,7 @@ export async function logDecision(
     userAgent?: string | null;
     visitorHash?: string | null;
     withheld?: boolean;
+    consent?: string | null;
   } = {},
 ): Promise<void> {
   // Register the site (create-if-absent) so it appears in the dashboard's site
@@ -105,6 +106,8 @@ export async function logDecision(
         // classified as "other"/"direct" actually arrived with.
         referrer: meta.referrer || null,
         ua: (meta.userAgent ?? "").slice(0, 256) || null,
+        // Consent basis used for this exposure — auditability.
+        consent: meta.consent ?? null,
       },
     },
   ]);
