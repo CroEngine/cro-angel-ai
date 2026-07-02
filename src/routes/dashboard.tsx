@@ -148,6 +148,7 @@ function Dashboard() {
               </Select>
             )}
             <AddSiteControl onCreated={(slug) => setSite(slug)} />
+            <AccountControl />
             <Button variant="outline" size="sm" onClick={signOut}>
               Sign out
             </Button>
@@ -517,6 +518,111 @@ function ConsentControl({
         </AlertDialogContent>
       </AlertDialog>
     </Card>
+  );
+}
+
+function AccountControl() {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }: { data: { user: { email?: string } | null } }) =>
+      setEmail(data.user?.email ?? null),
+    );
+  }, []);
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (pw.length < 8) {
+      setError("At least 8 characters.");
+      return;
+    }
+    if (pw !== pw2) {
+      setError("Passwords don't match.");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setDone(true);
+    setPw("");
+    setPw2("");
+    setTimeout(() => {
+      setDone(false);
+      setOpen(false);
+    }, 1200);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => (setOpen(o), setError(null), setDone(false))}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          Account
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+              [ account ]
+            </span>
+            {email ?? "…"}
+          </DialogTitle>
+          <DialogDescription>Change the password you sign in with.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={changePassword} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="new-pw" className="text-xs">
+              New password
+            </Label>
+            <Input
+              id="new-pw"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-pw2" className="text-xs">
+              Repeat new password
+            </Label>
+            <Input
+              id="new-pw2"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              value={pw2}
+              onChange={(e) => setPw2(e.target.value)}
+              required
+            />
+          </div>
+          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {done && <p className="text-sm text-emerald-700">Password changed.</p>}
+          <DialogFooter>
+            <Button
+              type="submit"
+              className="bg-emerald-700 text-white hover:bg-emerald-600"
+              disabled={busy || done}
+            >
+              {busy ? "Saving…" : "Change password"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
