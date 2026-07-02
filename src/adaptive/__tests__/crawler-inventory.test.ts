@@ -11,6 +11,7 @@ import {
   looksConcatenated,
   mapAuditToInventory,
   mapGoldenToInventory,
+  pickGoalCta,
 } from "../crawler-inventory";
 import type { PageAuditData } from "@/lib/tests/schema";
 
@@ -377,5 +378,38 @@ describe("mapAuditToInventory — full crawler output keeps selectors", () => {
     const empty = mapAuditToInventory({}, "blank");
     expect(empty.site).toBe("blank");
     expect(Object.keys(empty.slots).length).toBe(0);
+  });
+});
+
+describe("pickGoalCta — zero-config goal detection", () => {
+  const inv = (labels: string[]) => ({
+    site: "t",
+    slots: {
+      cta: labels.map((text, i) => ({
+        id: `cta-${i}`,
+        slot: "cta" as const,
+        text,
+        selector: `#cta-${i}`,
+      })),
+    },
+  });
+
+  it("prefers signup over generic engagement CTAs (Swedish)", () => {
+    const g = pickGoalCta(inv(["Skriv ett inlägg", "Skapa konto", "Tipsa om matvara"]));
+    expect(g?.text).toBe("Skapa konto");
+  });
+
+  it("prefers purchase over booking over trial", () => {
+    expect(pickGoalCta(inv(["Boka tid", "Köp nu"]))?.text).toBe("Köp nu");
+    expect(pickGoalCta(inv(["Prova gratis", "Boka tid"]))?.text).toBe("Boka tid");
+  });
+
+  it("works in English", () => {
+    expect(pickGoalCta(inv(["Read more", "Sign up free"]))?.text).toBe("Sign up free");
+  });
+
+  it("returns null when nothing looks like a goal", () => {
+    expect(pickGoalCta(inv(["Läs mer", "Om oss"]))).toBeNull();
+    expect(pickGoalCta({ site: "t", slots: {} })).toBeNull();
   });
 });

@@ -320,6 +320,33 @@ export function curateCtas(raw: CTAEntity[]): CTAEntity[] {
   return deduped.slice(0, MAX_CTAS).map((c) => c.cta);
 }
 
+// Zero-config goal detection: which harvested CTA is most likely the site's
+// conversion goal. Ordered strongest-signal first; the FIRST regex with a match
+// wins, ties broken by curation order (already prominence-scored). EN + SV.
+const GOAL_RX: RegExp[] = [
+  /skapa konto|sign ?up|register|registrera|bli medlem|create (an )?account|join/i,
+  /köp|beställ|add to cart|lägg i varukorg|buy|checkout|till kassan/i,
+  /boka|book (a )?|schedule|reservera/i,
+  /prova|trial|get started|kom igång|starta|start free/i,
+  /kontakt|offert|contact|get a quote|demo/i,
+];
+
+/**
+ * Pick the best conversion-goal candidate from an inventory's CTAs, or null if
+ * none look like a goal. Pure and deterministic — used to auto-fill a site's
+ * conversion goal so the owner only has to CONFIRM, not configure.
+ */
+export function pickGoalCta(
+  inventory: ContentInventory,
+): { selector: string; text: string } | null {
+  const ctas = (inventory.slots.cta ?? []).filter((c) => c.selector && c.text);
+  for (const rx of GOAL_RX) {
+    const hit = ctas.find((c) => rx.test(c.text as string));
+    if (hit) return { selector: hit.selector as string, text: hit.text as string };
+  }
+  return null;
+}
+
 /**
  * Canonical mapper: full live crawler output → ContentInventory, preserving the
  * selectors the snippet needs to target real DOM. Defensive against missing

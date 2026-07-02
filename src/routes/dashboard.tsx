@@ -119,15 +119,15 @@ function Dashboard() {
   const d: DashboardResponse = data;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
+    <div className="min-h-screen bg-[#fafaf9] px-4 py-8 text-stone-900">
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
-              <Sparkles className="h-6 w-6 text-violet-600" /> Angel Adaptive
+              <span className="text-2xl leading-none text-emerald-700">✳</span> Angel
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Per-site performance of the adaptive layer.
+            <p className="mt-1 font-mono text-[11px] tracking-wider text-stone-400">
+              [ per-site performance of the adaptive layer ]
               {isFetching && <span className="ml-2 animate-pulse">updating…</span>}
             </p>
           </div>
@@ -155,9 +155,9 @@ function Dashboard() {
         </header>
 
         {d.sites.length === 0 ? (
-          <Card>
+          <Card className="border-stone-200 shadow-none">
             <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
                 <Sparkles className="h-6 w-6" />
               </div>
               <div>
@@ -234,7 +234,7 @@ function Dashboard() {
           {/* ---- Visitor Segments ---- */}
           <TabsContent value="segments" className="mt-4">
             <div className="grid gap-4 md:grid-cols-2">
-              <Card>
+              <Card className="border-stone-200 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-base">By traffic source</CardTitle>
                 </CardHeader>
@@ -242,7 +242,7 @@ function Dashboard() {
                   <BarList items={d.metrics.segments.byTrafficSource} empty="No pageviews yet." />
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border-stone-200 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-base">By device</CardTitle>
                 </CardHeader>
@@ -250,7 +250,7 @@ function Dashboard() {
                   <BarList items={d.metrics.segments.byDevice} empty="No pageviews yet." />
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border-stone-200 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-base">By country</CardTitle>
                 </CardHeader>
@@ -258,7 +258,7 @@ function Dashboard() {
                   <BarList items={d.metrics.segments.byCountry} empty="No pageviews yet." />
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border-stone-200 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-base">By browser</CardTitle>
                 </CardHeader>
@@ -266,7 +266,7 @@ function Dashboard() {
                   <BarList items={d.metrics.segments.byBrowser} empty="No pageviews yet." />
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border-stone-200 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-base">By language</CardTitle>
                 </CardHeader>
@@ -274,7 +274,7 @@ function Dashboard() {
                   <BarList items={d.metrics.segments.byLanguage} empty="No pageviews yet." />
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border-stone-200 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-base">By campaign</CardTitle>
                 </CardHeader>
@@ -287,7 +287,7 @@ function Dashboard() {
 
           {/* ---- Live Adaptations ---- */}
           <TabsContent value="live" className="mt-4">
-            <Card>
+            <Card className="border-stone-200 shadow-none">
               <CardHeader>
                 <CardTitle className="text-base">Recent adaptations</CardTitle>
               </CardHeader>
@@ -310,7 +310,7 @@ function Dashboard() {
                           {a.patterns.map((p) => (
                             <Badge
                               key={p}
-                              className="bg-violet-100 font-mono text-[11px] text-violet-800"
+                              className="bg-emerald-50 font-mono text-[11px] text-emerald-800"
                             >
                               {p}
                             </Badge>
@@ -329,7 +329,7 @@ function Dashboard() {
 
           {/* ---- Performance ---- */}
           <TabsContent value="performance" className="mt-4">
-            <Card>
+            <Card className="border-stone-200 shadow-none">
               <CardHeader>
                 <CardTitle className="text-base">Adaptations by frequency</CardTitle>
               </CardHeader>
@@ -344,10 +344,10 @@ function Dashboard() {
 
           {/* ---- What's working (attribution) ---- */}
           <TabsContent value="attribution" className="mt-4">
-            <Card>
+            <Card className="border-stone-200 shadow-none">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <TrendingUp className="h-4 w-4 text-violet-600" />
+                  <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ lift ]</span>
                   Conversion lift by pattern
                 </CardTitle>
               </CardHeader>
@@ -373,7 +373,7 @@ function Dashboard() {
           {/* ---- Content Inventory ---- */}
           <TabsContent value="inventory" className="mt-4">
             {d.metrics.inventory.length === 0 ? (
-              <Card>
+              <Card className="border-stone-200 shadow-none">
                 <CardContent className="py-6">
                   <Empty>No content inventory for this site yet.</Empty>
                 </CardContent>
@@ -381,7 +381,7 @@ function Dashboard() {
             ) : (
               <div className="space-y-4">
                 {d.metrics.inventory.map((group) => (
-                  <Card key={group.slot}>
+                  <Card key={group.slot} className="border-stone-200 shadow-none">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-base">
                         <span className="font-mono">{group.slot}</span>
@@ -457,11 +457,11 @@ function ConsentControl({
   }
 
   return (
-    <Card className={attested ? "border-violet-200 bg-violet-50/40" : undefined}>
+    <Card className={attested ? "border-emerald-300 bg-emerald-50/50 shadow-none" : "border-stone-200 shadow-none"}>
       <CardContent className="flex flex-wrap items-center gap-4 py-4">
         <div
           className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-            attested ? "bg-violet-100 text-violet-700" : "bg-muted text-muted-foreground"
+            attested ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
           } [&>svg]:h-5 [&>svg]:w-5`}
         >
           {attested ? <ShieldCheck /> : <Shield />}
@@ -471,7 +471,7 @@ function ConsentControl({
             <span className="text-sm font-semibold text-foreground">
               {attested ? "Full tracking (attested)" : "Anonymous mode"}
             </span>
-            <Badge variant={attested ? "default" : "secondary"} className="text-[11px]">
+            <Badge variant="secondary" className={`text-[11px] font-mono tracking-wider ${attested ? "bg-emerald-700 text-white hover:bg-emerald-700" : ""}`}>
               {attested ? "attested" : "anonymous"}
             </Badge>
           </div>
@@ -487,6 +487,7 @@ function ConsentControl({
             <span className="text-xs text-rose-600">save failed</span>
           )}
           <Switch
+            className="data-[state=checked]:bg-emerald-700"
             checked={attested}
             disabled={disabled || mutation.isPending}
             onCheckedChange={onToggle}
@@ -509,7 +510,7 @@ function ConsentControl({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => mutation.mutate("attested")}>
+            <AlertDialogAction className="bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => mutation.mutate("attested")}>
               I attest — enable
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -600,6 +601,7 @@ function AddSiteControl({
         </div>
         <DialogFooter>
           <Button
+            className="bg-emerald-700 text-white hover:bg-emerald-600"
             onClick={() => {
               setError(null);
               mutation.mutate();
@@ -652,10 +654,10 @@ function InstallCard({
   }
 
   return (
-    <Card>
+    <Card className="border-stone-200 shadow-none">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Sparkles className="h-4 w-4 text-violet-600" /> Install
+          <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ install ]</span>
           {!ingestKey && (
             <Badge variant="secondary" className="text-[11px]">
               unkeyed — writes open
@@ -731,16 +733,81 @@ function MeasurementControl({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
   });
 
+  // Zero-config default: collapsed confirmation line. The three raw fields are
+  // an expert mode behind "Change" — most owners only ever confirm.
+  const [editing, setEditing] = useState(false);
+  useEffect(() => setEditing(false), [site]);
+  const goalCta = ctas.find((c) => c.selector === config.conversionSelector);
+  const goalLabel = goalCta?.text
+    ? `“${goalCta.text}”`
+    : config.conversionSelector
+      ? config.conversionSelector
+      : config.conversionUrl
+        ? `visiting ${config.conversionUrl}`
+        : null;
+
+  if (!editing) {
+    return (
+      <Card className="border-stone-200 shadow-none">
+        <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
+          <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+            [ measurement ]
+          </span>
+          {goalLabel ? (
+            <span className="text-sm text-stone-700">
+              Your goal: <strong>{goalLabel}</strong>{" "}
+              {config.conversionSource === "auto" && (
+                <span className="font-mono text-[11px] tracking-wider text-stone-400">
+                  (auto-detected)
+                </span>
+              )}
+            </span>
+          ) : (
+            <span className="text-sm text-stone-500">
+              Goal not set yet — Angel picks one automatically from your site&apos;s buttons after
+              the first visits.
+            </span>
+          )}
+          <span className="font-mono text-[11px] tracking-wider text-stone-400">
+            · control group: {config.holdoutPct}%
+          </span>
+          {config.consentMode !== "attested" && (
+            <span className="font-mono text-[11px] tracking-wider text-amber-600">
+              · awaiting attestation above
+            </span>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto"
+            disabled={disabled}
+            onClick={() => setEditing(true)}
+          >
+            Change
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card>
+    <Card className="border-stone-200 shadow-none">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Target className="h-4 w-4 text-violet-600" /> Measurement
+          <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ measurement ]</span>
           {config.consentMode !== "attested" && (
             <span className="text-xs font-normal text-muted-foreground">
               — takes effect once full tracking is attested above
             </span>
           )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto text-stone-500"
+            onClick={() => setEditing(false)}
+          >
+            Done
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -810,6 +877,7 @@ function MeasurementControl({
             )}
             <Button
               size="sm"
+              className="bg-emerald-700 text-white hover:bg-emerald-600"
               disabled={disabled || !dirty || mutation.isPending}
               onClick={() => mutation.mutate()}
             >
@@ -836,15 +904,15 @@ function Kpi({
   value: number | string;
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 text-violet-700 [&>svg]:h-5 [&>svg]:w-5">
-          {icon}
+    <Card className="border-stone-200 shadow-none">
+      <CardContent className="py-5">
+        <div className="font-['Sora','Manrope',sans-serif] text-2xl font-semibold text-emerald-700">
+          {value}
         </div>
-        <div>
-          <div className="text-2xl font-bold text-foreground">{value}</div>
-          <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="mt-1 font-mono text-[11px] uppercase tracking-wider text-stone-400">
+          {label}
         </div>
+        <span className="hidden">{icon}</span>
       </CardContent>
     </Card>
   );
@@ -863,7 +931,7 @@ function BarList({ items, empty }: { items: SegmentBar[]; empty: string }) {
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-violet-500"
+              className="h-full rounded-full bg-emerald-600"
               style={{ width: `${(item.pageviews / max) * 100}%` }}
             />
           </div>

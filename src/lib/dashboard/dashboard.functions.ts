@@ -62,15 +62,21 @@ export interface SiteConfigView {
   holdoutPct: number;
   conversionUrl: string | null;
   conversionSelector: string | null;
+  /** Who set the goal: 'auto' (picked from the harvest) | 'owner' | null. */
+  conversionSource: "auto" | "owner" | null;
   /** Per-site write key gating the ingest endpoints. null = unkeyed. */
   ingestKey: string | null;
 }
+
+/** Zero-config default: measurement on from day one, no stats knowledge needed. */
+export const DEFAULT_HOLDOUT_PCT = 12;
 
 const DEFAULT_SITE_CONFIG: SiteConfigView = {
   consentMode: "anonymous",
   holdoutPct: 0,
   conversionUrl: null,
   conversionSelector: null,
+  conversionSource: null,
   ingestKey: null,
 };
 
@@ -111,7 +117,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,ingest_key",
+          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_source,ingest_key",
         )
         .order("slug");
       const rows = siteRows ?? [];
@@ -168,6 +174,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               holdout_pct?: number;
               conversion_url?: string | null;
               conversion_selector?: string | null;
+              conversion_source?: string | null;
               ingest_key?: string | null;
             }
           | undefined;
@@ -177,6 +184,10 @@ export const getDashboard = createServerFn({ method: "POST" })
             holdoutPct: typeof current.holdout_pct === "number" ? current.holdout_pct : 0,
             conversionUrl: current.conversion_url ?? null,
             conversionSelector: current.conversion_selector ?? null,
+            conversionSource:
+              current.conversion_source === "auto" || current.conversion_source === "owner"
+                ? current.conversion_source
+                : null,
             ingestKey: current.ingest_key ?? null,
           };
         }
@@ -233,6 +244,15 @@ export const setConsentMode = createServerFn({ method: "POST" })
       console.warn(`[angel] setConsentMode failed: ${error.message}`);
       return { ok: false, mode };
     }
+    // Zero-config measurement: attesting turns the control group on if the
+    // owner never touched it (0). An explicitly chosen value is left alone.
+    if (mode === "attested") {
+      await supabaseAdmin
+        .from("angel_sites")
+        .update({ holdout_pct: DEFAULT_HOLDOUT_PCT })
+        .eq("slug", site)
+        .eq("holdout_pct", 0);
+    }
     return { ok: true, mode };
   });
 
@@ -264,6 +284,8 @@ export const setMeasurementConfig = createServerFn({ method: "POST" })
         holdout_pct: holdoutPct,
         conversion_url: conversionUrl || null,
         conversion_selector: conversionSelector || null,
+        // An explicit save is the owner's choice — never auto-overwritten again.
+        conversion_source: conversionSelector || conversionUrl ? "owner" : null,
       },
       { onConflict: "slug" },
     );
@@ -352,7 +374,13 @@ export const createSite = createServerFn({ method: "POST" })
         key = genKey();
         const { error } = await supabaseAdmin
           .from("angel_sites")
-          .insert({ slug, name: data.name ?? null, domain: data.domain ?? null, ingest_key: key });
+          .insert({
+            slug,
+            name: data.name ?? null,
+            domain: data.domain ?? null,
+            ingest_key: key,
+            holdout_pct: DEFAULT_HOLDOUT_PCT,
+          });
         if (error) {
           console.warn(`[angel] createSite insert failed: ${error.message}`);
           return { ok: false, reason: "error" };
