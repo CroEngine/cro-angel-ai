@@ -125,6 +125,23 @@ export const MAX_LIVE_ADAPTATIONS = 25;
 /** How long after an exposure a conversion still counts toward it (24 h). */
 export const ATTRIBUTION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+// Minimum evidence before a lift may be called "significant". Without this a
+// couple of lucky conversions cross |z| ≥ 1.96 and the bandit (which gates on
+// `significant`) would flip or permanently suppress a pattern on pure noise.
+// The thresholds enforce the normal-approximation validity condition for a
+// two-proportion test: each arm needs ≥ MIN_ARM_EXPOSURES visitors and at least
+// MIN_ARM_OUTCOMES conversions AND non-conversions (the "success–failure" rule).
+export const MIN_ARM_EXPOSURES = 30;
+export const MIN_ARM_OUTCOMES = 5;
+
+function armValid(s: VariantStat): boolean {
+  return (
+    s.exposures >= MIN_ARM_EXPOSURES &&
+    s.conversions >= MIN_ARM_OUTCOMES &&
+    s.exposures - s.conversions >= MIN_ARM_OUTCOMES
+  );
+}
+
 const ms = (iso: string): number => {
   const t = Date.parse(iso);
   return Number.isNaN(t) ? NaN : t;
@@ -211,7 +228,10 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
       control,
       lift: hasBoth ? adapted.rate - control.rate : null,
       z,
-      significant: z !== null && Math.abs(z) >= 1.96,
+      // Require a valid, adequately-powered sample in BOTH arms, not just a
+      // z-crossing — otherwise tiny-n noise reads as a proven win/loss.
+      significant:
+        z !== null && Math.abs(z) >= 1.96 && armValid(adapted) && armValid(control),
     });
   }
 

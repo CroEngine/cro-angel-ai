@@ -661,9 +661,12 @@
           },
           decision.decisionId,
         );
-        if (applied.length) {
-          track("adaptation_shown", { patterns: applied }, decision.decisionId);
-        }
+        // NOTE: we deliberately do NOT emit an "adaptation_shown" event here.
+        // The server logs the exposure authoritatively for BOTH arms in
+        // logDecision (adaptation_shown when adapted, adaptation_withheld when
+        // held out), so a client emit would double-count exposures and, because
+        // it carries the applied subset rather than the decided set, disagree
+        // with the control arm's source. One source keeps the arms symmetric.
         wireEngagement(decision.decisionId);
         wireConversion();
         if (isDebug()) renderDebug(decision, applied);
