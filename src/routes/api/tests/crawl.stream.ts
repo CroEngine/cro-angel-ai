@@ -14,6 +14,9 @@ export const Route = createFileRoute("/api/tests/crawl/stream")({
         const reqUrl = new URL(request.url);
         const targetUrl = reqUrl.searchParams.get("url");
         const site = reqUrl.searchParams.get("site");
+        // dry=1: audit + map + curate, but DON'T persist — return the inventory
+        // (counts + kept text) so a quality sweep can inspect it without writing.
+        const dry = reqUrl.searchParams.get("dry") === "1";
         if (!targetUrl || !site) return new Response("missing url or site", { status: 400 });
         let path = reqUrl.searchParams.get("path") || "";
         if (!path) {
@@ -45,11 +48,12 @@ export const Route = createFileRoute("/api/tests/crawl/stream")({
               let closeStagehand: (() => Promise<void>) | undefined;
               let closeSession: ((id: string) => Promise<void>) | undefined;
               try {
-                const [bb, sess, audit, ingest] = await Promise.all([
+                const [bb, sess, audit, ingest, mapper] = await Promise.all([
                   import("@/lib/tests/browserbase.server"),
                   import("@/lib/tests/robustness/session.server"),
                   import("@/lib/tests/runners/pageAudit.server"),
                   import("@/adaptive/ingest.server"),
+                  import("@/adaptive/crawler-inventory"),
                 ]);
                 closeSession = bb.closeSession;
 
@@ -81,14 +85,24 @@ export const Route = createFileRoute("/api/tests/crawl/stream")({
                 } catch {
                   /* non-fatal */
                 }
-                emit("log", { message: "mapping + curating + persisting inventory" });
-                const res = await ingest.ingestAudit(site, data, { domain, path });
-                emit("ingested", {
-                  items: res.items,
-                  saved: res.saved,
-                  drift: res.drift,
-                });
-                emit("done", {});
+                if (dry) {
+                  emit("log", { message: "mapping + curating (dry — not persisted)" });
+                  const inv = mapper.mapAuditToInventory(data, site);
+                  const slots: Record<string, (string | null)[]> = {};
+                  const counts: Record<string, number> = {};
+                  for (const [slot, items] of Object.entries(inv.slots)) {
+                    const list = (items ?? []).map((it) => it.text ?? null);
+                    slots[slot] = list;
+                    counts[slot] = list.length;
+                  }
+                  emit("inventory", { slots, counts });
+                  emit("done", {});
+                } else {
+                  emit("log", { message: "mapping + curating + persisting inventory" });
+                  const res = await ingest.ingestAudit(site, data, { domain, path });
+                  emit("ingested", { items: res.items, saved: res.saved, drift: res.drift });
+                  emit("done", {});
+                }
               } catch (err) {
                 emit("error", { message: err instanceof Error ? err.message : String(err) });
               } finally {
