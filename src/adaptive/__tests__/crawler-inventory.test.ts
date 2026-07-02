@@ -4,6 +4,8 @@ import { describe, it, expect } from "vitest";
 import {
   classifyCtaIntent,
   extractMicrocopy,
+  isChromeText,
+  isReusableCta,
   mapAuditToInventory,
   mapGoldenToInventory,
 } from "../crawler-inventory";
@@ -40,6 +42,79 @@ describe("extractMicrocopy", () => {
     );
   });
 });
+
+describe("curation — drop page chrome, keep real CTAs", () => {
+  it("flags chrome text (cookie / rating / nav / numbers) and spares real CTAs", () => {
+    // real glutenforum junk that leaked into the CTA slot
+    for (const junk of [
+      "Acceptera alla",
+      "Endast nödvändiga",
+      "1 stjärnor",
+      "5 stjärnor",
+      "0",
+      "2",
+      "Öppna meny",
+      "Logga in",
+      "Läs mer",
+      "Mer information & öppettider",
+    ]) {
+      expect(isChromeText(junk)).toBe(true);
+    }
+    for (const real of ["Skapa konto", "Book a demo", "Start Free Trial", "Get started free"]) {
+      expect(isChromeText(real)).toBe(false);
+    }
+  });
+
+  it("drops nav / footer / icon-button CTAs, keeps genuine ones", () => {
+    expect(isReusableCta({ text: "Sign up", section: "hero", category: "cta_primary" })).toBe(true);
+    expect(isReusableCta({ text: "Home", section: "nav", category: "nav_item" })).toBe(false);
+    expect(isReusableCta({ text: "Privacy", section: "footer", category: "link" })).toBe(false);
+    expect(isReusableCta({ text: "☰", section: "header", category: "icon_button" })).toBe(false);
+    expect(isReusableCta({ text: "Acceptera alla", section: "content", category: "cta_primary" })).toBe(false);
+  });
+
+  it("mapAuditToInventory keeps only reusable CTAs from a noisy page", () => {
+    const noisy = mapAuditToInventory(
+      {
+        url: "https://forum.example/",
+        ctas: [
+          mkCta("Skapa konto", "content", "cta_primary"),
+          mkCta("Acceptera alla", "content", "cta_primary"),
+          mkCta("1 stjärnor", "cards", "cta_primary"),
+          mkCta("Öppna meny", "nav", "nav_item"),
+          mkCta("Logga in", "header", "cta_secondary"),
+        ],
+      },
+      "forum",
+    );
+    const texts = (noisy.slots.cta ?? []).map((c) => c.text);
+    expect(texts).toContain("Skapa konto");
+    expect(texts).not.toContain("Acceptera alla");
+    expect(texts).not.toContain("1 stjärnor");
+    expect(texts).not.toContain("Öppna meny");
+    expect(texts).not.toContain("Logga in");
+  });
+});
+
+function mkCta(text: string, section: string, category: string): PageAuditData["ctas"][number] {
+  return {
+    text,
+    intent: "conversion",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    category: category as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    section: section as any,
+    aboveFold: true,
+    visualWeight: 40,
+    competingActions: 1,
+    nearestTrustSignalDistance: 0,
+    nearestFormDistance: 0,
+    contrastRatio: 5,
+    wcagLevel: "AA",
+    selector: `#${text.replace(/\s+/g, "-")}`,
+    rect: { x: 0, y: 0, w: 100, h: 40 },
+  };
+}
 
 describe("mapGoldenToInventory — real HubSpot corpus", () => {
   const inv = mapGoldenToInventory(hubspotGolden, "hubspot");
