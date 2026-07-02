@@ -48,6 +48,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  createSite,
   getDashboard,
   rotateIngestKey,
   setConsentMode,
@@ -122,25 +132,46 @@ function Dashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Select value={site} onValueChange={setSite}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Select site" />
-              </SelectTrigger>
-              <SelectContent>
-                {d.sites.map((s) => (
-                  <SelectItem key={s.slug} value={s.slug}>
-                    {s.name ?? s.slug}
-                    {s.domain ? ` (${s.domain})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {d.sites.length > 0 && (
+              <Select value={site} onValueChange={setSite}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Select site" />
+                </SelectTrigger>
+                <SelectContent>
+                  {d.sites.map((s) => (
+                    <SelectItem key={s.slug} value={s.slug}>
+                      {s.name ?? s.slug}
+                      {s.domain ? ` (${s.domain})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <AddSiteControl onCreated={(slug) => setSite(slug)} />
             <Button variant="outline" size="sm" onClick={signOut}>
               Sign out
             </Button>
           </div>
         </header>
 
+        {d.sites.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Add your first site</h2>
+                <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                  Give your site a short id. You&apos;ll get an install snippet to paste once —
+                  then this dashboard fills with its adaptations and measured lift.
+                </p>
+              </div>
+              <AddSiteControl onCreated={(slug) => setSite(slug)} primary />
+            </CardContent>
+          </Card>
+        ) : (
+          <>
         <InstallCard site={site} ingestKey={d.siteConfig.ingestKey} disabled={!d.dbAvailable} />
 
         <ConsentControl site={site} mode={d.siteConfig.consentMode} disabled={!d.dbAvailable} />
@@ -392,6 +423,8 @@ function Dashboard() {
             )}
           </TabsContent>
         </Tabs>
+          </>
+        )}
       </div>
     </div>
   );
@@ -483,6 +516,101 @@ function ConsentControl({
         </AlertDialogContent>
       </AlertDialog>
     </Card>
+  );
+}
+
+function AddSiteControl({
+  onCreated,
+  primary,
+}: {
+  onCreated: (slug: string) => void;
+  primary?: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [slug, setSlug] = useState("");
+  const [name, setName] = useState("");
+  const [domain, setDomain] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      createSite({ data: { slug: slug.trim(), name: name.trim(), domain: domain.trim() } }),
+    onSuccess: (res) => {
+      if (!res.ok) {
+        setError(res.reason === "taken" ? "That id is already taken." : "Couldn't create the site.");
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      onCreated(res.slug!);
+      setOpen(false);
+      setSlug("");
+      setName("");
+      setDomain("");
+      setError(null);
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant={primary ? "default" : "outline"}>
+          Add site
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add a site</DialogTitle>
+          <DialogDescription>
+            Pick a short id (letters, digits, . _ -). If a snippet already reported this id, you&apos;ll claim it.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="new-slug" className="text-xs">
+              Site id
+            </Label>
+            <Input
+              id="new-slug"
+              placeholder="acme.com"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="new-name" className="text-xs">
+                Name (optional)
+              </Label>
+              <Input id="new-name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-domain" className="text-xs">
+                Domain (optional)
+              </Label>
+              <Input
+                id="new-domain"
+                placeholder="acme.com"
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+              />
+            </div>
+          </div>
+          {error && <p className="text-sm text-rose-600">{error}</p>}
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => {
+              setError(null);
+              mutation.mutate();
+            }}
+            disabled={!slug.trim() || mutation.isPending}
+          >
+            {mutation.isPending ? "Creating…" : "Create"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

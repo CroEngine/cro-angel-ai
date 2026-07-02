@@ -53,6 +53,30 @@ export type Database = {
         }
         Relationships: []
       }
+      angel_site_members: {
+        Row: {
+          id: string
+          user_id: string
+          site_slug: string
+          role: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          site_slug: string
+          role?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          site_slug?: string
+          role?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       angel_content_inventory: {
         Row: {
           id: string
