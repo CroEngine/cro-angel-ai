@@ -155,6 +155,26 @@ describe("curation — drop page chrome, keep real CTAs", () => {
     expect(texts).toContain("Action 2");
   });
 
+  it("dedupes repeated CTA labels and drops over-long banner blobs", () => {
+    const inv = mapAuditToInventory(
+      {
+        url: "https://x/",
+        ctas: [
+          mkCta("Read the customer story", "content", "cta_primary"),
+          mkCta("Read the customer story", "content", "cta_primary"), // dup, other selector
+          mkCta("Read the customer story", "content", "cta_primary"), // dup
+          mkCta("DESCUENTAZOS EN BEBIDAS ¡HASTA 40% OFF! Ver ofertas", "content", "cta_primary"),
+          mkCta("Sign up", "hero", "cta_primary"),
+        ],
+      },
+      "x",
+    );
+    const texts = (inv.slots.cta ?? []).map((c) => c.text);
+    expect(texts.filter((t) => t === "Read the customer story").length).toBe(1); // deduped
+    expect(texts.some((t) => (t ?? "").startsWith("DESCUENTAZOS"))).toBe(false); // banner dropped
+    expect(texts).toContain("Sign up");
+  });
+
   it("ctaScore ranks a prominent primary above a faint secondary", () => {
     const primary = ctaScore({ visualWeight: 80, aboveFold: true, category: "cta_primary", intent: "conversion" });
     const faint = ctaScore({ visualWeight: 10, aboveFold: false, category: "cta_secondary", competingActions: 20 });
