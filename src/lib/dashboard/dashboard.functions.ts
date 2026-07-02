@@ -380,6 +380,10 @@ export const createSite = createServerFn({ method: "POST" })
             domain: data.domain ?? null,
             ingest_key: key,
             holdout_pct: DEFAULT_HOLDOUT_PCT,
+            // Owner acknowledged visitor information at signup, so a new site
+            // collects (and measures) from day one — no per-site toggle needed.
+            // GPC/DNT are still enforced per-visitor client-side.
+            consent_mode: "attested",
           });
         if (error) {
           console.warn(`[angel] createSite insert failed: ${error.message}`);
