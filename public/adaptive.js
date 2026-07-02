@@ -340,9 +340,38 @@
     return [];
   }
 
+  // ---- good-tenant no-touch zones -------------------------------------------
+  // Angel lives on someone else's page, next to things it does not own: the
+  // site's cookie/consent banner, recommendation widgets, other tools' UI. We
+  // never adapt anything inside those. Two mechanisms:
+  //   * [data-angel-ignore] — the owner marks any subtree off-limits.
+  //   * known CMP roots — the major consent managers' containers, so a consent
+  //     banner can never be moved/hidden/emphasized (or harvested as a "CTA").
+  var NO_TOUCH =
+    "[data-angel-ignore]," +
+    "#CybotCookiebotDialog,#CybotCookiebotDialogBodyUnderlay," + // Cookiebot
+    "#onetrust-consent-sdk,#onetrust-banner-sdk," + // OneTrust
+    "#usercentrics-root,#uc-center-container," + // Usercentrics
+    ".osano-cm-window,.osano-cm-dialog," + // Osano
+    "#didomi-host,#didomi-notice," + // Didomi
+    ".cc-window,.cc-banner," + // cookieconsent
+    "#cookiescript_injected," + // CookieScript
+    "[data-lovable-cookie-root]," + // Lovable-marked custom banners
+    ".angel-badge"; // our own injections are never re-targeted
+  function isNoTouch(el) {
+    try {
+      return !!(el && el.closest && el.closest(NO_TOUCH));
+    } catch (e) {
+      return false;
+    }
+  }
+
   function each(a, fn) {
     var nodes = resolveNodes(a);
-    for (var i = 0; i < nodes.length; i++) fn(nodes[i]);
+    for (var i = 0; i < nodes.length; i++) {
+      if (isNoTouch(nodes[i])) continue; // never adapt inside a no-touch zone
+      fn(nodes[i]);
+    }
   }
 
   // ---- Core Web Vitals guardrails ------------------------------------------
@@ -437,8 +466,13 @@
       each(a, function (el) {
         var anchor = el.parentElement || el;
         // Never stack a second badge on the same anchor, and never insert next
-        // to the LCP element (a new sibling shifts it).
+        // to the LCP element (a new sibling shifts it). The DOM check (not just
+        // the per-run set) keeps a hydration re-apply from duplicating a badge
+        // that survived.
         if (touchesLcp(anchor)) return;
+        try {
+          if (anchor.querySelector('[data-angel-injected]')) return;
+        } catch (e) {}
         if (badgedAnchors) {
           if (badgedAnchors.has(anchor)) return;
           badgedAnchors.add(anchor);
@@ -695,6 +729,30 @@
         lastDecisionId = decision.decisionId;
         // Control bucket: withhold the adaptations so their lift can be measured.
         var applied = decision.holdout ? [] : apply(decision);
+        // Survive framework hydration: a React/Vue re-render can replace the
+        // DOM we just adapted, silently wiping our (already-logged) exposure.
+        // If every visible trace of the applied ops disappears shortly after
+        // apply, re-apply once or twice — all ops are idempotent (classList
+        // adds, same-value set_text, DOM-checked badge dedup), so a re-apply
+        // on a surviving page is a no-op.
+        if (applied.length > 0) {
+          var reapplies = 0;
+          var checkSurvival = function () {
+            try {
+              var residue = document.querySelectorAll(
+                ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected]",
+              ).length;
+              if (residue === 0 && reapplies < 2) {
+                reapplies++;
+                apply(decision);
+              }
+            } catch (e) {
+              /* never break the host page */
+            }
+          };
+          setTimeout(checkSurvival, 1500);
+          setTimeout(checkSurvival, 4000);
+        }
         var ctx = decision.context || {};
         track(
           "pageview",

@@ -48,6 +48,15 @@ interface Rule {
  */
 const RULES: Rule[] = [
   {
+    // Goal-first: whenever the owner has declared a conversion goal in the
+    // dashboard, highlight it. Resolves to nothing when no goal is configured,
+    // so it costs unconfigured sites zero adaptation slots.
+    id: "goal_focus",
+    priority: 65,
+    when: () => true,
+    patterns: ["emphasize_goal"],
+  },
+  {
     id: "returning_evaluated_pricing",
     priority: 90,
     when: (c) => c.isReturning && c.viewedPricing,
@@ -121,6 +130,12 @@ const MICROCOPY_KIND: Partial<Record<PatternId, string>> = {
   continue_where_left_off: "continuity",
 };
 
+/** The owner's declared conversion goal (Measurement card), if configured. */
+export interface SiteGoal {
+  selector?: string | null;
+  url?: string | null;
+}
+
 /**
  * Turn a chosen pattern into a concrete Adaptation, drawing any text strictly
  * from the inventory. Returns null when the pattern needs published content the
@@ -131,9 +146,24 @@ function resolve(
   priority: number,
   context: VisitorContext,
   inventory: ContentInventory,
+  goal?: SiteGoal,
 ): Adaptation | null {
   const pattern = getPattern(id);
   const slotSelector = `[data-angel-slot="${pattern.slot}"]`;
+
+  if (id === "emphasize_goal") {
+    // Goal-first: the target is the owner's declared conversion element, not an
+    // inventory item. Emphasize is paint-only (no layout, no content), so the
+    // "never invent content" rule is trivially satisfied.
+    if (!goal?.selector) return null;
+    return {
+      pattern: id,
+      op: "emphasize",
+      target: goal.selector,
+      reason: "Highlighting the site's declared conversion goal.",
+      priority,
+    };
+  }
 
   if (pattern.op === "set_text") {
     // clarify_cta — pick the published CTA label matching the visitor's intent.
@@ -201,7 +231,7 @@ function hashHex(input: string): string {
 }
 
 /** Stable id for a decision — the engine inputs that affect the outcome. */
-export function decisionIdFor(site: string, c: VisitorContext): string {
+export function decisionIdFor(site: string, c: VisitorContext, goal?: SiteGoal): string {
   const key = [
     site,
     c.trafficSource,
@@ -209,6 +239,7 @@ export function decisionIdFor(site: string, c: VisitorContext): string {
     c.isReturning ? "ret" : "new",
     c.viewedPricing ? "px" : "-",
     c.language,
+    goal?.selector ? "g" : "-",
   ].join("|");
   return hashHex(key);
 }
@@ -222,6 +253,7 @@ export function decide(
   context: VisitorContext,
   inventory: ContentInventory,
   boosts: PatternBoost = {},
+  goal?: SiteGoal,
 ): Decision {
   // Collect pattern -> best priority across all matching rules.
   const best = new Map<PatternId, number>();
@@ -238,13 +270,13 @@ export function decide(
     // loser (PERF_SUPPRESS) lands ≤ 0 and is filtered out below; a winner rises.
     .map(([id, priority]) => ({ id, priority: priority + (boosts[id] ?? 0) }))
     .filter((e) => e.priority > 0)
-    .map((e) => resolve(e.id, e.priority, context, inventory))
+    .map((e) => resolve(e.id, e.priority, context, inventory, goal))
     .filter((a): a is Adaptation => a !== null)
     .sort((a, b) => b.priority - a.priority || a.pattern.localeCompare(b.pattern))
     .slice(0, MAX_ADAPTATIONS);
 
   return {
-    decisionId: decisionIdFor(site, context),
+    decisionId: decisionIdFor(site, context, goal),
     site,
     adaptations,
     context,

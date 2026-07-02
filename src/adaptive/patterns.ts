@@ -9,6 +9,19 @@
 import type { Pattern, PatternId } from "./types";
 
 export const PATTERNS: Record<PatternId, Pattern> = {
+  emphasize_goal: {
+    id: "emphasize_goal",
+    label: "Emphasize the conversion goal",
+    description:
+      "Visually highlight the element the site owner declared as their conversion goal " +
+      "(the Measurement card's conversion selector). Site-type agnostic, language-free, " +
+      "and paint-only (outline/shadow) so it can never shift layout.",
+    op: "emphasize",
+    // Nominal slot — the target comes from the owner's goal config, not the
+    // inventory (see the emphasize_goal branch in resolve()).
+    slot: "cta",
+    requiresContent: false,
+  },
   show_customer_logos_early: {
     id: "show_customer_logos_early",
     label: "Show customer logos earlier",
