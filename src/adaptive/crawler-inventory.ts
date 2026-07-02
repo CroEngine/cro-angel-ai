@@ -282,6 +282,35 @@ function collapseUniformStrips(cands: { cta: CTAEntity; score: number }[]): void
 }
 
 /**
+ * The CTA curation pipeline, as one explicit sequence:
+ *   filter (chrome / nav / footer / icon / banner)
+ *   → score (language-free prominence)
+ *   → collapse uniform sibling strips (nav / category / logo rows)
+ *   → rank by prominence
+ *   → dedup by label
+ *   → cap to the top MAX_CTAS.
+ * Pure and order-preserving; returns the curated CTAs most-prominent-first.
+ */
+export function curateCtas(raw: CTAEntity[]): CTAEntity[] {
+  const candidates = (raw ?? [])
+    .filter((c) => Boolean(c?.text) && isReusableCta(c))
+    .map((cta) => ({ cta, score: ctaScore(cta) }));
+
+  collapseUniformStrips(candidates);
+  candidates.sort((a, b) => b.score - a.score);
+
+  const seen = new Set<string>();
+  const deduped = candidates.filter(({ cta }) => {
+    const key = normalizeLabel(cta.text ?? "");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return deduped.slice(0, MAX_CTAS).map((c) => c.cta);
+}
+
+/**
  * Canonical mapper: full live crawler output → ContentInventory, preserving the
  * selectors the snippet needs to target real DOM. Defensive against missing
  * fields so partial audits don't throw.
@@ -293,34 +322,11 @@ export function mapAuditToInventory(
   const b = new InventoryBuilder();
   const textPool: string[] = [];
 
-  // Collect reusable CTAs, then keep only the most prominent MAX_CTAS. The
-  // top-K cut is language-agnostic: it bounds the long tail of list/link
-  // "CTAs" even when no chrome wordlist matches (non-EN/SV pages).
-  const ctaCandidates: { cta: CTAEntity; score: number }[] = [];
-  for (const cta of (audit.ctas ?? []) as CTAEntity[]) {
-    if (!cta?.text) continue;
-    textPool.push(cta.text); // keep for microcopy scan even if we drop the CTA
-    if (!isReusableCta(cta)) continue; // curate: skip nav / footer / chrome
-    ctaCandidates.push({ cta, score: ctaScore(cta) });
-  }
-  // Collapse uniform sibling strips (nav / category / logo rows): CTAs sharing a
-  // section + near-identical size + short labels are almost always a repeated
-  // list, not distinct actions ("Women · Men · Kids", "OpenAI · Figma · Ramp").
-  // Keep only the most prominent of each strip — conservative: a real CTA row
-  // never loses more than its extras, and a whole section is never emptied.
-  collapseUniformStrips(ctaCandidates);
-
-  ctaCandidates.sort((a, b) => b.score - a.score);
-  // Dedup by label text (keep the highest-scoring instance): the same CTA often
-  // repeats across cards with different selectors ("Read the customer story" ×5).
-  const seenLabels = new Set<string>();
-  const dedupedCtas = ctaCandidates.filter(({ cta }) => {
-    const key = normalizeLabel(cta.text);
-    if (seenLabels.has(key)) return false;
-    seenLabels.add(key);
-    return true;
-  });
-  for (const { cta } of dedupedCtas.slice(0, MAX_CTAS)) {
+  const rawCtas = (audit.ctas ?? []) as CTAEntity[];
+  // Keep every raw label for the microcopy scan, even ones curation drops.
+  for (const cta of rawCtas) if (cta?.text) textPool.push(cta.text);
+  // Curate → most-prominent CTAs, deduped and capped (see curateCtas).
+  for (const cta of curateCtas(rawCtas)) {
     b.add(
       "cta",
       ctaItem(cta.text, cta.selector, {
