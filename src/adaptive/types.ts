@@ -153,6 +153,7 @@ export interface Decision {
 
 /** Identifiers for the safe-pattern catalog (blueprint Step 6). */
 export type PatternId =
+  | "emphasize_goal"
   | "show_customer_logos_early"
   | "show_testimonial"
   | "show_enterprise_testimonial"

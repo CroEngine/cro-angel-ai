@@ -161,3 +161,37 @@ describe("decide — performance feedback (bandit)", () => {
     expect(priorities).toEqual([...priorities].sort((x, y) => y - x));
   });
 });
+
+describe("decide — goal-first (emphasize_goal)", () => {
+  const goal = { selector: "#register-btn", url: null };
+
+  it("emphasizes the owner's declared conversion goal, even with EMPTY inventory", () => {
+    const d = decide("forum", ctx(), emptyInventory("forum"), {}, goal);
+    const g = d.adaptations.find((a) => a.pattern === "emphasize_goal");
+    expect(g).toBeDefined();
+    expect(g!.op).toBe("emphasize");
+    expect(g!.target).toBe("#register-btn");
+  });
+
+  it("does nothing when no goal is configured (unconfigured sites unaffected)", () => {
+    const d = decide("forum", ctx(), emptyInventory("forum"));
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("emphasize_goal");
+  });
+
+  it("fires for every visitor context (goal-first, not playbook-gated)", () => {
+    for (const c of [
+      ctx({ trafficSource: "google_ads", device: "mobile" }),
+      ctx({ isReturning: true }),
+      ctx({ trafficSource: "linkedin" }),
+    ]) {
+      const d = decide("forum", c, emptyInventory("forum"), {}, goal);
+      expect(d.adaptations.map((a) => a.pattern)).toContain("emphasize_goal");
+    }
+  });
+
+  it("goal presence changes the decisionId (id reflects engine inputs)", () => {
+    const withGoal = decide("forum", ctx(), emptyInventory("forum"), {}, goal);
+    const without = decide("forum", ctx(), emptyInventory("forum"));
+    expect(withGoal.decisionId).not.toBe(without.decisionId);
+  });
+});

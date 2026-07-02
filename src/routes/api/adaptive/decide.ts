@@ -12,7 +12,7 @@ import { buildVisitorContext, readServerSignals } from "@/adaptive/context";
 import { decide } from "@/adaptive/decide";
 import { resolveInventory } from "@/adaptive/inventory.server";
 import { loadPatternBoosts } from "@/adaptive/performance.server";
-import { logDecision, siteWriteAllowed } from "@/adaptive/persistence.server";
+import { loadSiteConfig, logDecision } from "@/adaptive/persistence.server";
 import type { ClientSignals } from "@/adaptive/types";
 
 const CORS_HEADERS: Record<string, string> = {
@@ -47,10 +47,14 @@ export const Route = createFileRoute("/api/adaptive/decide")({
           return json({ error: "missing required fields: site, url" }, 400);
         }
 
+        // One site-config read serves three needs: the write-key check, the
+        // owner's declared conversion goal (drives emphasize_goal), and keeps
+        // decide at a single angel_sites read per request.
+        const cfg = await loadSiteConfig(client.site);
         // Keyed sites must present the matching write key; a wrong/absent key
         // means this isn't the legit install, so we neither decide nor log a
         // (poisonable) exposure. The snippet fails open → page unchanged.
-        if (!(await siteWriteAllowed(client.site, client.key))) {
+        if (cfg.ingestKey && client.key !== cfg.ingestKey) {
           return json({ error: "unauthorized" }, 403);
         }
 
@@ -67,7 +71,10 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         // Feed measured lift back in (increment 2): prefer proven winners,
         // suppress proven losers. Best-effort + cached; {} means run on defaults.
         const boosts = await loadPatternBoosts(client.site);
-        const decision = decide(client.site, context, inventory, boosts);
+        const decision = decide(client.site, context, inventory, boosts, {
+          selector: cfg.conversionSelector,
+          url: cfg.conversionUrl,
+        });
 
         // Measurement holdout: deterministically bucket this visitor 0..99 from
         // its id; below holdoutPct → control (snippet withholds the adaptations

@@ -260,6 +260,8 @@ export interface SiteConfig {
   holdoutPct: number;
   conversionUrl: string | null;
   conversionSelector: string | null;
+  /** Per-site write key; SERVER-ONLY — never include it in a public response. */
+  ingestKey: string | null;
 }
 
 const DEFAULT_SITE_CONFIG: SiteConfig = {
@@ -267,6 +269,7 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   holdoutPct: 0,
   conversionUrl: null,
   conversionSelector: null,
+  ingestKey: null,
 };
 
 /**
@@ -280,7 +283,7 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
   try {
     const { data, error } = await supabaseAdmin
       .from("angel_sites")
-      .select("consent_mode,holdout_pct,conversion_url,conversion_selector")
+      .select("consent_mode,holdout_pct,conversion_url,conversion_selector,ingest_key")
       .eq("slug", slug)
       .maybeSingle();
     if (error || !data) return DEFAULT_SITE_CONFIG;
@@ -290,6 +293,7 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
       holdoutPct: Math.max(0, Math.min(100, pct)),
       conversionUrl: data.conversion_url ?? null,
       conversionSelector: data.conversion_selector ?? null,
+      ingestKey: data.ingest_key ?? null,
     };
   } catch (err) {
     console.warn(`[angel] site-config read unavailable:`, err);
