@@ -14,6 +14,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { ingestAudit } from "@/adaptive/ingest.server";
+import { siteWriteAllowed } from "@/adaptive/persistence.server";
 import { sanitizeAudit } from "@/adaptive/harvest/sanitize";
 
 const CORS_HEADERS: Record<string, string> = {
@@ -40,6 +41,7 @@ interface InventoryBody {
   site?: string;
   url?: string;
   path?: string;
+  key?: string;
   audit?: unknown;
 }
 
@@ -63,6 +65,13 @@ export const Route = createFileRoute("/api/adaptive/inventory")({
 
         const site = typeof body?.site === "string" ? body.site.trim() : "";
         if (!site) return json({ ok: false, reason: "no_site" }, 400);
+
+        // Keyed sites must present the matching write key, else the harvested
+        // inventory (which decide serves back onto the live page) could be
+        // spoofed for an arbitrary slug.
+        if (!(await siteWriteAllowed(site, body?.key))) {
+          return json({ ok: false, reason: "unauthorized" }, 403);
+        }
 
         // Prefer an explicit path; fall back to the URL's pathname. Any page is
         // accepted now — inventory is stored per (site, path).

@@ -24,6 +24,7 @@ export type Database = {
           holdout_pct: number
           conversion_url: string | null
           conversion_selector: string | null
+          ingest_key: string | null
           created_at: string
         }
         Insert: {
@@ -35,6 +36,7 @@ export type Database = {
           holdout_pct?: number
           conversion_url?: string | null
           conversion_selector?: string | null
+          ingest_key?: string | null
           created_at?: string
         }
         Update: {
@@ -46,6 +48,7 @@ export type Database = {
           holdout_pct?: number
           conversion_url?: string | null
           conversion_selector?: string | null
+          ingest_key?: string | null
           created_at?: string
         }
         Relationships: []

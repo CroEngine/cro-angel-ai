@@ -7,7 +7,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { logEvents } from "@/adaptive/persistence.server";
+import { logEvents, siteWriteAllowed } from "@/adaptive/persistence.server";
 import type { AngelEvent } from "@/adaptive/types";
 
 const CORS_HEADERS: Record<string, string> = {
@@ -20,6 +20,7 @@ const CORS_HEADERS: Record<string, string> = {
 interface EventBatch {
   site: string;
   visitorHash?: string;
+  key?: string;
   events: AngelEvent[];
 }
 
@@ -50,7 +51,9 @@ export const Route = createFileRoute("/api/adaptive/events")({
           ? batch.events.filter((e) => e && VALID_TYPES.has(e.type)).slice(0, 100)
           : [];
 
-        if (site && events.length > 0) {
+        // Reject writes for a keyed site that doesn't present the matching key.
+        // Still answer 204 (never leak which slugs are keyed, never break beacons).
+        if (site && events.length > 0 && (await siteWriteAllowed(site, batch.key))) {
           await logEvents(site, batch.visitorHash ?? null, events);
         }
 

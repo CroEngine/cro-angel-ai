@@ -28,6 +28,8 @@ export interface SiteConfigView {
   holdoutPct: number;
   conversionUrl: string | null;
   conversionSelector: string | null;
+  /** Per-site write key gating the ingest endpoints. null = unkeyed. */
+  ingestKey: string | null;
 }
 
 const DEFAULT_SITE_CONFIG: SiteConfigView = {
@@ -35,6 +37,7 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   holdoutPct: 0,
   conversionUrl: null,
   conversionSelector: null,
+  ingestKey: null,
 };
 
 export interface DashboardResponse {
@@ -70,7 +73,9 @@ export const getDashboard = createServerFn({ method: "POST" })
     try {
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
-        .select("slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector")
+        .select(
+          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,ingest_key",
+        )
         .order("slug");
 
       const { data: eventRows } = await supabaseAdmin
@@ -109,6 +114,7 @@ export const getDashboard = createServerFn({ method: "POST" })
             holdout_pct?: number;
             conversion_url?: string | null;
             conversion_selector?: string | null;
+            ingest_key?: string | null;
           }
         | undefined;
       const siteConfig: SiteConfigView = current
@@ -117,6 +123,7 @@ export const getDashboard = createServerFn({ method: "POST" })
             holdoutPct: typeof current.holdout_pct === "number" ? current.holdout_pct : 0,
             conversionUrl: current.conversion_url ?? null,
             conversionSelector: current.conversion_selector ?? null,
+            ingestKey: current.ingest_key ?? null,
           }
         : DEFAULT_SITE_CONFIG;
 
@@ -204,4 +211,25 @@ export const setMeasurementConfig = createServerFn({ method: "POST" })
       return { ok: false };
     }
     return { ok: true };
+  });
+
+/**
+ * Generate (or regenerate) a site's ingest key and return it. Rotating
+ * invalidates the previous key, so the site's snippet tag must be updated with
+ * the new value or its writes will be rejected. Auth-gated.
+ */
+export const rotateIngestKey = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ site: z.string().min(1) }))
+  .handler(async ({ data }): Promise<{ ok: boolean; key: string | null }> => {
+    const key = "ak_" + globalThis.crypto.randomUUID().replace(/-/g, "");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("angel_sites")
+      .upsert({ slug: data.site, ingest_key: key }, { onConflict: "slug" });
+    if (error) {
+      console.warn(`[angel] rotateIngestKey failed: ${error.message}`);
+      return { ok: false, key: null };
+    }
+    return { ok: true, key };
   });
