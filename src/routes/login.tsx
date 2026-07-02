@@ -6,7 +6,7 @@
 // /dashboard). The real security boundary is server-side: requireSupabaseAuth
 // validates the JWT on every dashboard server-fn; this page just gets a session.
 
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 
@@ -87,6 +87,12 @@ function Login() {
             <Button type="submit" className="w-full" disabled={busy}>
               {busy ? "Signing in…" : "Sign in"}
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              No account?{" "}
+              <Link to="/signup" className="text-violet-600 hover:underline">
+                Create one
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>
