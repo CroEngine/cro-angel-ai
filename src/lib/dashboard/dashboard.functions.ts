@@ -19,15 +19,31 @@ export interface SiteRef {
 
 export type ConsentMode = "anonymous" | "attested";
 
+/** The selected site's owner-set config (attestation + measurement), as shown
+ *  and edited in the dashboard. Served to the snippet via
+ *  /api/adaptive/consent-config. */
+export interface SiteConfigView {
+  consentMode: ConsentMode;
+  holdoutPct: number;
+  conversionUrl: string | null;
+  conversionSelector: string | null;
+}
+
+const DEFAULT_SITE_CONFIG: SiteConfigView = {
+  consentMode: "anonymous",
+  holdoutPct: 0,
+  conversionUrl: null,
+  conversionSelector: null,
+};
+
 export interface DashboardResponse {
   site: string;
   sites: SiteRef[];
   dbAvailable: boolean;
   generatedAt: string;
   metrics: DashboardMetrics;
-  /** The selected site's consent mode (owner attestation). Defaults to
-   *  'anonymous' when the site/store is unavailable. */
-  consentMode: ConsentMode;
+  /** Defaults to the anonymous, measurement-off config when unavailable. */
+  siteConfig: SiteConfigView;
 }
 
 // Seeded baseline — shown in the site picker when the DB can't be reached
@@ -52,7 +68,7 @@ export const getDashboard = createServerFn({ method: "POST" })
     try {
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
-        .select("slug,name,domain,consent_mode")
+        .select("slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector")
         .order("slug");
 
       const { data: eventRows } = await supabaseAdmin
@@ -85,10 +101,22 @@ export const getDashboard = createServerFn({ method: "POST" })
 
       const rows = siteRows ?? [];
       const sites = rows.length ? (rows as SiteRef[]) : FALLBACK_SITES;
-      const current = rows.find(
-        (r: { slug: string; consent_mode?: string }) => r.slug === site,
-      ) as { consent_mode?: string } | undefined;
-      const consentMode: ConsentMode = current?.consent_mode === "attested" ? "attested" : "anonymous";
+      const current = rows.find((r: { slug: string }) => r.slug === site) as
+        | {
+            consent_mode?: string;
+            holdout_pct?: number;
+            conversion_url?: string | null;
+            conversion_selector?: string | null;
+          }
+        | undefined;
+      const siteConfig: SiteConfigView = current
+        ? {
+            consentMode: current.consent_mode === "attested" ? "attested" : "anonymous",
+            holdoutPct: typeof current.holdout_pct === "number" ? current.holdout_pct : 0,
+            conversionUrl: current.conversion_url ?? null,
+            conversionSelector: current.conversion_selector ?? null,
+          }
+        : DEFAULT_SITE_CONFIG;
 
       return {
         site,
@@ -96,7 +124,7 @@ export const getDashboard = createServerFn({ method: "POST" })
         dbAvailable: true,
         generatedAt,
         metrics: aggregate(events, inventory),
-        consentMode,
+        siteConfig,
       };
     } catch (err) {
       console.warn(`[angel] dashboard data unavailable:`, err);
@@ -106,7 +134,7 @@ export const getDashboard = createServerFn({ method: "POST" })
         dbAvailable: false,
         generatedAt,
         metrics: aggregate([], []),
-        consentMode: "anonymous",
+        siteConfig: DEFAULT_SITE_CONFIG,
       };
     }
   });
@@ -138,4 +166,38 @@ export const setConsentMode = createServerFn({ method: "POST" })
       return { ok: false, mode };
     }
     return { ok: true, mode };
+  });
+
+/**
+ * Set a site's measurement config: holdout % and what counts as a conversion.
+ * Dashboard-driven so the install tag never needs editing — the snippet picks
+ * these up via /api/adaptive/consent-config (tag attributes still win as
+ * explicit overrides). Empty strings clear a value.
+ */
+export const setMeasurementConfig = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      site: z.string().min(1),
+      holdoutPct: z.number().int().min(0).max(100),
+      conversionUrl: z.string().trim().max(500).optional(),
+      conversionSelector: z.string().trim().max(500).optional(),
+    }),
+  )
+  .handler(async ({ data }): Promise<{ ok: boolean }> => {
+    const { site, holdoutPct, conversionUrl, conversionSelector } = data;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("angel_sites").upsert(
+      {
+        slug: site,
+        holdout_pct: holdoutPct,
+        conversion_url: conversionUrl || null,
+        conversion_selector: conversionSelector || null,
+      },
+      { onConflict: "slug" },
+    );
+    if (error) {
+      console.warn(`[angel] setMeasurementConfig failed: ${error.message}`);
+      return { ok: false };
+    }
+    return { ok: true };
   });

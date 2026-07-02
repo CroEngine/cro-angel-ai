@@ -255,25 +255,45 @@ export async function loadInventoryRows(
   }
 }
 
+export interface SiteConfig {
+  mode: "anonymous" | "attested";
+  holdoutPct: number;
+  conversionUrl: string | null;
+  conversionSelector: string | null;
+}
+
+const DEFAULT_SITE_CONFIG: SiteConfig = {
+  mode: "anonymous",
+  holdoutPct: 0,
+  conversionUrl: null,
+  conversionSelector: null,
+};
+
 /**
- * Read a site's consent mode ('anonymous' | 'attested') by slug. 'attested'
- * means the owner confirmed a lawful basis in the dashboard, so the snippet may
- * run at a consented baseline (GPC/DNT still opt out per-visitor client-side).
- * Anything unexpected/unavailable degrades to 'anonymous' (privacy-safe default).
- * Never throws.
+ * Read a site's owner-set config by slug: consent mode plus measurement config
+ * (holdout %, conversion goal). 'attested' means the owner confirmed a lawful
+ * basis in the dashboard, so the snippet may run at a consented baseline
+ * (GPC/DNT still opt out per-visitor client-side). Anything unexpected or
+ * unavailable degrades to the anonymous, measurement-off default. Never throws.
  */
-export async function loadConsentMode(slug: string): Promise<"anonymous" | "attested"> {
+export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
   try {
     const { data, error } = await supabaseAdmin
       .from("angel_sites")
-      .select("consent_mode")
+      .select("consent_mode,holdout_pct,conversion_url,conversion_selector")
       .eq("slug", slug)
       .maybeSingle();
-    if (error || !data) return "anonymous";
-    return data.consent_mode === "attested" ? "attested" : "anonymous";
+    if (error || !data) return DEFAULT_SITE_CONFIG;
+    const pct = typeof data.holdout_pct === "number" ? data.holdout_pct : 0;
+    return {
+      mode: data.consent_mode === "attested" ? "attested" : "anonymous",
+      holdoutPct: Math.max(0, Math.min(100, pct)),
+      conversionUrl: data.conversion_url ?? null,
+      conversionSelector: data.conversion_selector ?? null,
+    };
   } catch (err) {
-    console.warn(`[angel] consent-mode read unavailable:`, err);
-    return "anonymous";
+    console.warn(`[angel] site-config read unavailable:`, err);
+    return DEFAULT_SITE_CONFIG;
   }
 }
 
