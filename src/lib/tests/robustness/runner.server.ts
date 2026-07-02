@@ -26,6 +26,7 @@ import {
   type AdaptationProbe,
   type DomSignature,
   type LayoutDiff,
+  type RerenderProbe,
   type RobustnessObservation,
   type RobustnessReport,
 } from "./analyze";
@@ -92,6 +93,8 @@ const EMPTY_LAYOUT: LayoutDiff = {
   controlShiftedFraction: 0,
   maxMove: 0,
 };
+
+const EMPTY_RERENDER: RerenderProbe = { residueAfterApply: 0, residueAfterRerender: 0 };
 
 /** How long to watch the page's own motion before applying, to net it out. */
 const CONTROL_MS = 500;
@@ -171,9 +174,35 @@ function failReport(
     afterApply: EMPTY_SIG,
     afterReset: EMPTY_SIG,
     layout: EMPTY_LAYOUT,
+    rerender: EMPTY_RERENDER,
     residueAfterReset: -1,
     durationMs: 0,
   });
+}
+
+/** Provoke the kinds of things that make a framework re-render, without
+ *  navigating away: scroll the page, fire resize/scroll/visibility, settle. */
+async function provokeRerender(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    try {
+      window.scrollTo(0, (document.body && document.body.scrollHeight) || 3000);
+      window.dispatchEvent(new Event("resize"));
+      window.dispatchEvent(new Event("scroll"));
+      document.dispatchEvent(new Event("visibilitychange"));
+    } catch {
+      /* non-fatal */
+    }
+  });
+  await new Promise((r) => setTimeout(r, 400));
+  await page.evaluate(() => {
+    try {
+      window.scrollTo(0, 0);
+      window.dispatchEvent(new Event("resize"));
+    } catch {
+      /* non-fatal */
+    }
+  });
+  await new Promise((r) => setTimeout(r, 400));
 }
 
 export async function runSnippetRobustness(
@@ -397,6 +426,12 @@ async function measurePersona(
     args.onShot({ persona, phase: "after", jpegBase64: await shoot(page) });
   }
 
+  // Post-re-render stability: does our change survive a framework re-render?
+  const residueAfterApply = Number(await page.evaluate(`window.__angel.residue()`));
+  await provokeRerender(page);
+  const residueAfterRerender = Number(await page.evaluate(`window.__angel.residue()`));
+  const rerender: RerenderProbe = { residueAfterApply, residueAfterRerender };
+
   await page.evaluate(`window.__angel.reset()`);
   const afterReset = await signature(page);
   const residueAfterReset = Number(await page.evaluate(`window.__angel.residue()`));
@@ -415,6 +450,7 @@ async function measurePersona(
     afterApply,
     afterReset,
     layout,
+    rerender,
     residueAfterReset,
     durationMs: Date.now() - started,
   };

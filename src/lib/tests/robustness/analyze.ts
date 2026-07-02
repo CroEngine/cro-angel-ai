@@ -32,6 +32,17 @@ export interface LayoutDiff {
   maxMove: number;
 }
 
+/** Did the adaptation survive a framework re-render? On a React/Vue/Svelte page
+ *  the next render can revert our change (markers vanish) or duplicate it. We
+ *  compare the count of Angel markers right after apply vs after provoking a
+ *  re-render (scroll / resize / time). */
+export interface RerenderProbe {
+  /** Angel markers present immediately after apply. */
+  residueAfterApply: number;
+  /** Angel markers present after a re-render was provoked. */
+  residueAfterRerender: number;
+}
+
 /** Per-adaptation target resolution, mirroring the snippet's resolveNodes(). */
 export interface AdaptationProbe {
   pattern: string;
@@ -62,6 +73,7 @@ export interface RobustnessObservation {
   afterApply: DomSignature;
   afterReset: DomSignature;
   layout: LayoutDiff;
+  rerender: RerenderProbe;
   /** Angel residue remaining after reset() (must be 0): leftover classes /
    *  injected badges / hidden markers. The strongest reversibility signal —
    *  robust even on pages that mutate their own DOM. */
@@ -96,6 +108,8 @@ export interface RobustnessReport {
     elementsRemoved: number;
     /** CLS-like layout movement caused by apply. */
     layout: LayoutDiff;
+    /** Did the marker-bearing adaptations survive a re-render unchanged? */
+    rerenderStable: boolean;
     consoleErrorCount: number;
     durationMs: number;
   };
@@ -118,6 +132,11 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
   const targetingRate = o.decidedCount > 0 ? targeted / o.decidedCount : 1;
   const fullyTargeted = o.decidedCount === 0 || targeted === o.decidedCount;
   const reversible = o.snippetRan && o.residueAfterReset === 0;
+  // Only meaningful when apply left markers to track (reveal/emphasize/condense/
+  // inject_badge). move_up / set_text leave none, so treat as stable.
+  const rerenderStable =
+    o.rerender.residueAfterApply === 0 ||
+    o.rerender.residueAfterRerender === o.rerender.residueAfterApply;
   const elementsRemoved = Math.max(0, o.baseline.elementCount - o.afterApply.elementCount);
   const removedFrac = removedFraction(o.baseline, o.afterApply);
 
@@ -165,6 +184,18 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
         `large layout shift: ~${Math.round(o.layout.shiftedFraction * 100)}% of the viewport moved after apply (review)`,
       );
     }
+    // The adaptation didn't survive a re-render — a framework (React/Vue/…)
+    // reverted or duplicated it. The page isn't broken (no error, still
+    // reversible), but Angel won't reliably stick there. Worth flagging.
+    if (!rerenderStable) {
+      const a = o.rerender.residueAfterApply;
+      const b = o.rerender.residueAfterRerender;
+      warn(
+        b < a
+          ? `adaptation reverted by page re-render (${a}→${b} markers survived)`
+          : `adaptation duplicated after page re-render (${a}→${b} markers)`,
+      );
+    }
   }
 
   return {
@@ -183,6 +214,7 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
       reversible,
       elementsRemoved,
       layout: o.layout,
+      rerenderStable,
       consoleErrorCount: o.consoleErrors.length,
       durationMs: o.durationMs,
     },
