@@ -44,9 +44,102 @@
 
   var qp = new URLSearchParams(location.search);
 
-  // ---- visitor identity + history (localStorage) ---------------------------
+  // ---- consent gate (anonymous-default) ------------------------------------
+  // We never render our own banner. We read the site's EXISTING consent; until
+  // we see a positive signal we run in ANONYMOUS mode: still adapt the page
+  // (pure, reversible DOM — no storage), but store no persistent id, run no
+  // holdout bucketing, and send no behavioural events. A later grant (TCF /
+  // Cookiebot) upgrades live. GPC/DNT are hard opt-outs. Config via
+  // data-consent="granted"|"denied" overrides detection.
+  var CONSENT_OVERRIDE = script.getAttribute("data-consent") || "";
+  var consented = false;
+  var consentBasis = "anonymous_default";
+
+  function gpcOrDnt() {
+    try {
+      if (navigator.globalPrivacyControl === true) return true;
+      var dnt = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      if (dnt === "1" || dnt === "yes") return true;
+    } catch (e) {}
+    return false;
+  }
+  function cmpGrantedSync() {
+    try {
+      if (
+        window.Cookiebot &&
+        window.Cookiebot.consent &&
+        (window.Cookiebot.consent.statistics || window.Cookiebot.consent.marketing)
+      )
+        return "cookiebot";
+    } catch (e) {}
+    return null;
+  }
+  function resolveConsentSync() {
+    if (CONSENT_OVERRIDE === "granted") {
+      consentBasis = "site_signal";
+      return true;
+    }
+    if (CONSENT_OVERRIDE === "denied") {
+      consentBasis = "site_denied";
+      return false;
+    }
+    if (gpcOrDnt()) {
+      consentBasis = "gpc_dnt";
+      return false;
+    }
+    var cmp = cmpGrantedSync();
+    if (cmp) {
+      consentBasis = cmp;
+      return true;
+    }
+    return false; // no signal → anonymous
+  }
+  consented = resolveConsentSync();
+
+  // Upgrade to consented mode when the site's CMP later reports a grant. We only
+  // start persisting an id + sending events from that point on (no back-fill of
+  // pre-consent activity). Downgrade isn't handled in this increment.
+  function upgradeConsent(basis) {
+    if (consented) return;
+    consented = true;
+    consentBasis = basis || "granted";
+    try {
+      vid = visitorId();
+    } catch (e) {}
+    try {
+      recordVisit();
+    } catch (e) {}
+  }
+  function watchConsent() {
+    try {
+      window.addEventListener("CookiebotOnAccept", function () {
+        if (cmpGrantedSync()) upgradeConsent("cookiebot");
+      });
+    } catch (e) {}
+    // The CMP may inject __tcfapi after us — poll briefly, then register.
+    var tries = 0;
+    (function pollTcf() {
+      if (consented) return;
+      try {
+        if (window.__tcfapi) {
+          window.__tcfapi("addEventListener", 2, function (tcData, ok) {
+            if (!ok || !tcData) return;
+            var granted =
+              tcData.gdprApplies === false ||
+              (tcData.purpose && tcData.purpose.consents && tcData.purpose.consents[1]);
+            if (granted) upgradeConsent("tcf");
+          });
+          return;
+        }
+      } catch (e) {}
+      if (tries++ < 10) setTimeout(pollTcf, 500);
+    })();
+  }
+
+  // ---- visitor identity + history (localStorage — CONSENTED ONLY) ----------
   var STORE_KEY = "angel:" + site;
   function readStore() {
+    if (!consented) return {}; // anonymous: never read the device
     try {
       return JSON.parse(localStorage.getItem(STORE_KEY) || "{}") || {};
     } catch (e) {
@@ -54,6 +147,7 @@
     }
   }
   function writeStore(s) {
+    if (!consented) return; // anonymous: never write to the device
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify(s));
     } catch (e) {
@@ -73,7 +167,8 @@
 
   var store = readStore();
   var prevVisits = store.visits || 0;
-  var vid = visitorId();
+  // No persistent id in anonymous mode → server runs no holdout / attribution.
+  var vid = consented ? visitorId() : null;
 
   // ---- demo simulator overrides (?angel_source=, angel_device=, ...) --------
   function deviceWidth(d) {
@@ -96,12 +191,18 @@
     visitCount: qp.get("angel_returning") === "1" ? Math.max(1, prevVisits) : prevVisits,
     viewedPricing: qp.get("angel_pricing") === "1" || !!store.viewedPricing,
     lastPath: store.lastPath || null,
-    visitorHash: vid,
-    holdoutPct: HOLDOUT_PCT,
+    // Omitted (undefined) in anonymous mode so the server withholds holdout
+    // bucketing + attribution. holdoutPct is 0 unless consented.
+    visitorHash: vid || undefined,
+    holdoutPct: consented ? HOLDOUT_PCT : 0,
+    consent: consentBasis,
   };
 
   // ---- analytics -----------------------------------------------------------
   function send(events) {
+    // Anonymous mode sends no behavioural data (no visitorHash to attribute it
+    // to anyway). A later consent grant enables sending from that point on.
+    if (!consented) return;
     var body = JSON.stringify({ site: site, visitorHash: vid, events: events });
     // Send as text/plain (a CORS-safelisted content type) so cross-origin
     // beacons need NO preflight — navigator.sendBeacon cannot perform one, and
@@ -562,6 +663,8 @@
         if (window.console && console.warn) console.warn("[angel] decide failed:", err);
       });
 
+    // Watch for a later consent grant (CMP loads async) to upgrade live.
+    watchConsent();
     recordVisit();
   }
 

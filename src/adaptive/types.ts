@@ -208,6 +208,9 @@ export interface ClientSignals {
   /** Percentage (0–100) of visitors held out as control for measurement.
    *  Config-driven; 0 = off (default). */
   holdoutPct?: number;
+  /** Consent basis the snippet resolved (anonymous_default | gpc_dnt | tcf |
+   *  cookiebot | site_signal | …). Stamped on the decision for auditability. */
+  consent?: string;
 }
 
 /** A single analytics event POSTed to /api/adaptive/events. */
