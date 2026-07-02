@@ -22,9 +22,13 @@ export interface LayoutDiff {
   matched: number;
   /** How many of those moved more than a few px. */
   shiftedCount: number;
-  /** Approx fraction of the viewport whose content moved, 0..1 (CLS-like). */
+  /** Angel-attributable viewport shift, 0..1 (CLS-like): motion during apply
+   *  MINUS the page's own ambient motion over an equal control window. */
   shiftedFraction: number;
-  /** Largest single-element movement, in px. */
+  /** The page's own motion over the control window (carousels, autoplay, etc.),
+   *  0..1 — surfaced so a large ambient number explains a noisy page. */
+  controlShiftedFraction: number;
+  /** Largest single-element movement during apply, in px. */
   maxMove: number;
 }
 

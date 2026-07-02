@@ -27,7 +27,7 @@ function obs(over: Partial<RobustnessObservation> = {}): RobustnessObservation {
     baseline: sig(100),
     afterApply: sig(103),
     afterReset: sig(100),
-    layout: { matched: 50, shiftedCount: 0, shiftedFraction: 0, maxMove: 0 },
+    layout: { matched: 50, shiftedCount: 0, shiftedFraction: 0, controlShiftedFraction: 0, maxMove: 0 },
     residueAfterReset: 0,
     durationMs: 10,
     ...over,
@@ -82,14 +82,35 @@ describe("analyze — robustness verdicts", () => {
   });
 
   it("warns (with review note) on a large layout shift after apply", () => {
-    const r = analyze(obs({ layout: { matched: 60, shiftedCount: 40, shiftedFraction: 0.55, maxMove: 320 } }));
+    const r = analyze(
+      obs({
+        layout: {
+          matched: 60,
+          shiftedCount: 40,
+          shiftedFraction: 0.55,
+          controlShiftedFraction: 0.02,
+          maxMove: 320,
+        },
+      }),
+    );
     expect(r.verdict).toBe("warn");
     expect(r.reasons.some((x) => x.includes("layout shift"))).toBe(true);
     expect(r.metrics.layout.shiftedFraction).toBeCloseTo(0.55);
   });
 
-  it("does not warn on a small layout shift", () => {
-    const r = analyze(obs({ layout: { matched: 60, shiftedCount: 3, shiftedFraction: 0.05, maxMove: 12 } }));
+  it("does not warn when the shift is mostly the page's own motion (netted out)", () => {
+    // apply motion was small once ambient carousel motion is subtracted.
+    const r = analyze(
+      obs({
+        layout: {
+          matched: 60,
+          shiftedCount: 3,
+          shiftedFraction: 0.05,
+          controlShiftedFraction: 0.75,
+          maxMove: 12,
+        },
+      }),
+    );
     expect(r.verdict).toBe("pass");
   });
 

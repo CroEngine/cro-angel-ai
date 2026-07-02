@@ -85,7 +85,70 @@ async function signature(page: Page): Promise<DomSignature> {
 }
 
 const EMPTY_SIG: DomSignature = { textLen: 0, elementCount: 0, bodyChildCount: 0 };
-const EMPTY_LAYOUT: LayoutDiff = { matched: 0, shiftedCount: 0, shiftedFraction: 0, maxMove: 0 };
+const EMPTY_LAYOUT: LayoutDiff = {
+  matched: 0,
+  shiftedCount: 0,
+  shiftedFraction: 0,
+  controlShiftedFraction: 0,
+  maxMove: 0,
+};
+
+/** How long to watch the page's own motion before applying, to net it out. */
+const CONTROL_MS = 500;
+
+type Rect = { k: number; x: number; y: number; w: number; h: number };
+type RectSet = { vw: number; vh: number; rects: Rect[] };
+type Movement = { matched: number; shiftedCount: number; shiftedFraction: number; maxMove: number };
+
+/** Read current rects for the elements stamped by the `before` pass. */
+async function readRects(page: Page): Promise<RectSet> {
+  return (await page.evaluate(() => {
+    const els = document.querySelectorAll("[data-angel-vk]");
+    const rects: { k: number; x: number; y: number; w: number; h: number }[] = [];
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i];
+      const k = Number(el.getAttribute("data-angel-vk"));
+      const r = el.getBoundingClientRect();
+      rects.push({ k, x: r.left, y: r.top, w: r.width, h: r.height });
+    }
+    return { vw: window.innerWidth || 1, vh: window.innerHeight || 1, rects };
+  })) as RectSet;
+}
+
+/** Measure how far the stamped elements moved relative to a recorded rect set. */
+async function measureAgainst(page: Page, baseRects: RectSet): Promise<Movement> {
+  return (await page.evaluate(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (b: any) => {
+      const vw = window.innerWidth || 1;
+      const vh = window.innerHeight || 1;
+      const vpArea = Math.max(1, vw * vh);
+      let shiftedCount = 0;
+      let shiftedArea = 0;
+      let maxMove = 0;
+      let matched = 0;
+      for (const rec of b.rects as { k: number; x: number; y: number; w: number; h: number }[]) {
+        const el = document.querySelector('[data-angel-vk="' + rec.k + '"]');
+        if (!el) continue;
+        matched++;
+        const r = el.getBoundingClientRect();
+        const move = Math.max(Math.abs(r.left - rec.x), Math.abs(r.top - rec.y));
+        if (move > maxMove) maxMove = move;
+        if (move > 4) {
+          shiftedCount++;
+          shiftedArea += Math.min(vpArea, rec.w * rec.h);
+        }
+      }
+      return {
+        matched,
+        shiftedCount,
+        shiftedFraction: Math.min(1, shiftedArea / vpArea),
+        maxMove: Math.round(maxMove),
+      };
+    },
+    baseRects,
+  )) as Movement;
+}
 
 function failReport(
   url: string,
@@ -277,9 +340,11 @@ async function measurePersona(
     adaptations,
   )) as AdaptationProbe[];
 
-  // Stamp visible in-viewport elements and record their rects, so we can measure
-  // how far the layout moves when the adaptations apply (CLS-like).
-  const before = (await page.evaluate(() => {
+  // Stamp visible in-viewport elements and record their rects (R0). We then
+  // watch the page's OWN motion over a control window (carousels, autoplay,
+  // gradient animations) and net it out, so the reported shift reflects Angel's
+  // change — not the page animating itself.
+  const r0 = (await page.evaluate(() => {
     const vw = window.innerWidth || 1;
     const vh = window.innerHeight || 1;
     const all = document.body ? document.body.getElementsByTagName("*") : [];
@@ -295,8 +360,15 @@ async function measurePersona(
       k++;
     }
     return { vw, vh, rects };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  })) as any;
+  })) as RectSet;
+
+  // Ambient motion over the control window (no apply).
+  await new Promise((r) => setTimeout(r, CONTROL_MS));
+  const control = await measureAgainst(page, r0);
+
+  // Re-baseline to the positions right before apply, so apply-motion excludes
+  // the drift that already happened during the control window.
+  const r1 = await readRects(page);
 
   if (args.captureShots && args.onShot) {
     args.onShot({ persona, phase: "before", jpegBase64: await shoot(page) });
@@ -309,38 +381,17 @@ async function measurePersona(
   )) as string[];
   const afterApply = await signature(page);
 
-  // Measure how far each stamped element moved.
-  const layout = (await page.evaluate(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (b: any) => {
-      const vw = window.innerWidth || 1;
-      const vh = window.innerHeight || 1;
-      const vpArea = Math.max(1, vw * vh);
-      let shiftedCount = 0;
-      let shiftedArea = 0;
-      let maxMove = 0;
-      let matched = 0;
-      for (const rec of b.rects as { k: number; x: number; y: number; w: number; h: number }[]) {
-        const el = document.querySelector('[data-angel-vk="' + rec.k + '"]');
-        if (!el) continue;
-        matched++;
-        const r = el.getBoundingClientRect();
-        const move = Math.max(Math.abs(r.left - rec.x), Math.abs(r.top - rec.y));
-        if (move > maxMove) maxMove = move;
-        if (move > 4) {
-          shiftedCount++;
-          shiftedArea += Math.min(vpArea, rec.w * rec.h);
-        }
-      }
-      return {
-        matched,
-        shiftedCount,
-        shiftedFraction: Math.min(1, shiftedArea / vpArea),
-        maxMove: Math.round(maxMove),
-      };
-    },
-    before,
-  )) as LayoutDiff;
+  const applyMove = await measureAgainst(page, r1);
+
+  // Net out the ambient rate: the honest Angel-attributable shift.
+  const netFraction = Math.max(0, applyMove.shiftedFraction - control.shiftedFraction);
+  const layout: LayoutDiff = {
+    matched: applyMove.matched,
+    shiftedCount: applyMove.shiftedCount,
+    shiftedFraction: netFraction,
+    controlShiftedFraction: control.shiftedFraction,
+    maxMove: applyMove.maxMove,
+  };
 
   if (args.captureShots && args.onShot) {
     args.onShot({ persona, phase: "after", jpegBase64: await shoot(page) });
