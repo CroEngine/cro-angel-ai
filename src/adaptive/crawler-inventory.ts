@@ -84,14 +84,24 @@ export function looksConcatenated(text: string | undefined | null): boolean {
   return /\p{Ll}{2,}[.!?]\p{Lu}\p{Ll}/u.test((text ?? "").trim());
 }
 
+/** A CTA label longer than this is almost never a button — it's a scraped
+ *  banner / sentence (e.g. "DESCUENTAZOS ¡HASTA 40% OFF! Ver ofertas"). */
+export const MAX_CTA_LABEL_LEN = 40;
+
+/** Normalise a label for dedup: trim + lowercase + collapse whitespace. */
+export function normalizeLabel(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 /** Keep a CTA only if it looks like a genuine conversion/engagement action —
- *  not nav, footer, an icon button, or chrome copy. */
+ *  not nav, footer, an icon button, chrome copy, or an over-long banner blob. */
 export function isReusableCta(cta: {
   text?: string;
   section?: string;
   category?: string;
 }): boolean {
   if (!cta?.text || isChromeText(cta.text)) return false;
+  if (cta.text.trim().length > MAX_CTA_LABEL_LEN) return false; // banner / sentence, not a label
   if (cta.section === "nav" || cta.section === "footer") return false;
   if (cta.category === "nav_item" || cta.category === "icon_button") return false;
   return true;
@@ -253,7 +263,16 @@ export function mapAuditToInventory(
     ctaCandidates.push({ cta, score: ctaScore(cta) });
   }
   ctaCandidates.sort((a, b) => b.score - a.score);
-  for (const { cta } of ctaCandidates.slice(0, MAX_CTAS)) {
+  // Dedup by label text (keep the highest-scoring instance): the same CTA often
+  // repeats across cards with different selectors ("Read the customer story" ×5).
+  const seenLabels = new Set<string>();
+  const dedupedCtas = ctaCandidates.filter(({ cta }) => {
+    const key = normalizeLabel(cta.text);
+    if (seenLabels.has(key)) return false;
+    seenLabels.add(key);
+    return true;
+  });
+  for (const { cta } of dedupedCtas.slice(0, MAX_CTAS)) {
     b.add(
       "cta",
       ctaItem(cta.text, cta.selector, {
