@@ -43,6 +43,17 @@ export interface RerenderProbe {
   residueAfterRerender: number;
 }
 
+/** Did the page stay USABLE after apply? We hit-test interactive elements
+ *  (CTA / nav / form controls) at their centre before and after apply; an
+ *  element that was clickable and became covered / hidden / detached is a
+ *  functional regression, not just a cosmetic one. */
+export interface InteractionProbe {
+  /** Interactive elements that were clickable (hit-testable) before apply. */
+  checked: number;
+  /** How many of those became unclickable after apply. */
+  broken: number;
+}
+
 /** Per-adaptation target resolution, mirroring the snippet's resolveNodes(). */
 export interface AdaptationProbe {
   pattern: string;
@@ -74,6 +85,7 @@ export interface RobustnessObservation {
   afterReset: DomSignature;
   layout: LayoutDiff;
   rerender: RerenderProbe;
+  interaction: InteractionProbe;
   /** Angel residue remaining after reset() (must be 0): leftover classes /
    *  injected badges / hidden markers. The strongest reversibility signal —
    *  robust even on pages that mutate their own DOM. */
@@ -110,6 +122,8 @@ export interface RobustnessReport {
     layout: LayoutDiff;
     /** Did the marker-bearing adaptations survive a re-render unchanged? */
     rerenderStable: boolean;
+    /** Interactive elements that became unclickable after apply (0 = good). */
+    interactionBroken: number;
     consoleErrorCount: number;
     durationMs: number;
   };
@@ -167,6 +181,12 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
     if (removedFrac >= 0.1) {
       fail(`${elementsRemoved} elements (${Math.round(removedFrac * 100)}%) removed after apply`);
     }
+    // A clickable element became unclickable = functional breakage, not cosmetic.
+    if (o.interaction.broken > 0) {
+      fail(
+        `${o.interaction.broken} interactive element(s) became unclickable after apply (covered / hidden / detached)`,
+      );
+    }
 
     // Soft signals — worth surfacing, not launch-blocking.
     if (o.decidedCount > 0 && !fullyTargeted) {
@@ -215,6 +235,7 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
       elementsRemoved,
       layout: o.layout,
       rerenderStable,
+      interactionBroken: o.interaction.broken,
       consoleErrorCount: o.consoleErrors.length,
       durationMs: o.durationMs,
     },
@@ -232,6 +253,8 @@ export interface SweepSummary {
   irreversible: number;
   /** Pages with a large layout shift after apply (visual-review bucket). */
   bigShift: number;
+  /** Pages where an interactive element became unclickable after apply. */
+  interactionBroken: number;
 }
 
 /** Aggregate a batch of reports — the launch-gate view. */
@@ -247,5 +270,6 @@ export function summarize(reports: RobustnessReport[]): SweepSummary {
       : 0;
   const irreversible = reports.filter((r) => r.metrics.reversible === false).length;
   const bigShift = reports.filter((r) => r.metrics.layout.shiftedFraction >= LARGE_SHIFT).length;
-  return { total, pass, warn, fail, avgTargetingRate, irreversible, bigShift };
+  const interactionBroken = reports.filter((r) => r.metrics.interactionBroken > 0).length;
+  return { total, pass, warn, fail, avgTargetingRate, irreversible, bigShift, interactionBroken };
 }

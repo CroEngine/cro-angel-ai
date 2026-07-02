@@ -145,6 +145,7 @@ export const Route = createFileRoute("/api/tests/robustness/stream")({
                             maxMove: 0,
                           },
                           rerender: { residueAfterApply: 0, residueAfterRerender: 0 },
+                          interaction: { checked: 0, broken: 0 },
                           residueAfterReset: -1,
                           durationMs: 0,
                         }),

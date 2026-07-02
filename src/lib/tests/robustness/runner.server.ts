@@ -25,6 +25,7 @@ import {
   analyze,
   type AdaptationProbe,
   type DomSignature,
+  type InteractionProbe,
   type LayoutDiff,
   type RerenderProbe,
   type RobustnessObservation,
@@ -95,6 +96,79 @@ const EMPTY_LAYOUT: LayoutDiff = {
 };
 
 const EMPTY_RERENDER: RerenderProbe = { residueAfterApply: 0, residueAfterRerender: 0 };
+const EMPTY_INTERACTION: InteractionProbe = { checked: 0, broken: 0 };
+
+/** Selector for elements a visitor is meant to be able to click / use. */
+const INTERACTIVE_SELECTOR =
+  'a[href],button,[role="button"],input:not([type="hidden"]),select,textarea';
+
+/** Stamp visible in-viewport interactive elements and record whether each is
+ *  hit-testable at its centre (i.e. actually clickable) BEFORE apply. */
+async function captureInteractiveBefore(
+  page: Page,
+): Promise<{ k: number; hittable: boolean }[]> {
+  return (await page.evaluate((sel: string) => {
+    const els = document.querySelectorAll(sel);
+    const vw = window.innerWidth || 1;
+    const vh = window.innerHeight || 1;
+    const rec: { k: number; hittable: boolean }[] = [];
+    let k = 0;
+    for (let i = 0; i < els.length && k < 400; i++) {
+      const el = els[i];
+      const r = el.getBoundingClientRect();
+      if (r.width < 4 || r.height < 4) continue;
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      if (cx < 0 || cx > vw || cy < 0 || cy > vh) continue; // centre in viewport
+      const hit = document.elementFromPoint(cx, cy);
+      const hittable = !!hit && (hit === el || el.contains(hit) || hit.contains(el));
+      el.setAttribute("data-angel-ik", String(k));
+      rec.push({ k, hittable });
+      k++;
+    }
+    return rec;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }, INTERACTIVE_SELECTOR)) as any;
+}
+
+/** Re-check the previously-clickable elements after apply: how many became
+ *  unclickable (covered / hidden / detached). Only regressions are counted. */
+async function measureInteractiveAfter(
+  page: Page,
+  before: { k: number; hittable: boolean }[],
+): Promise<InteractionProbe> {
+  return (await page.evaluate(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (b: any) => {
+      const vw = window.innerWidth || 1;
+      const vh = window.innerHeight || 1;
+      let checked = 0;
+      let broken = 0;
+      for (const rec of b as { k: number; hittable: boolean }[]) {
+        if (!rec.hittable) continue; // only care about things that WERE clickable
+        checked++;
+        const el = document.querySelector('[data-angel-ik="' + rec.k + '"]');
+        if (!el) {
+          broken++; // detached from the DOM
+          continue;
+        }
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        // Moved out of the viewport → can't judge; don't count either way.
+        if (cx < 0 || cx > vw || cy < 0 || cy > vh) {
+          checked--;
+          continue;
+        }
+        const hit = document.elementFromPoint(cx, cy);
+        const ok = !!hit && (hit === el || el.contains(hit) || hit.contains(el));
+        if (!ok) broken++;
+      }
+      return { checked, broken };
+    },
+    before,
+  )) as InteractionProbe;
+}
 
 /** How long to watch the page's own motion before applying, to net it out. */
 const CONTROL_MS = 500;
@@ -175,6 +249,7 @@ function failReport(
     afterReset: EMPTY_SIG,
     layout: EMPTY_LAYOUT,
     rerender: EMPTY_RERENDER,
+    interaction: EMPTY_INTERACTION,
     residueAfterReset: -1,
     durationMs: 0,
   });
@@ -403,6 +478,10 @@ async function measurePersona(
     args.onShot({ persona, phase: "before", jpegBase64: await shoot(page) });
   }
 
+  // Record which interactive elements are clickable right before apply (scroll
+  // is still at the top here — the re-render provoke that scrolls comes later).
+  const interactiveBefore = await captureInteractiveBefore(page);
+
   const applied = (await page.evaluate(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (d: any) => (window as any).__angel.apply(d),
@@ -411,6 +490,8 @@ async function measurePersona(
   const afterApply = await signature(page);
 
   const applyMove = await measureAgainst(page, r1);
+  // Did any clickable element become unclickable? (covered / hidden / detached)
+  const interaction = await measureInteractiveAfter(page, interactiveBefore);
 
   // Net out the ambient rate: the honest Angel-attributable shift.
   const netFraction = Math.max(0, applyMove.shiftedFraction - control.shiftedFraction);
@@ -451,6 +532,7 @@ async function measurePersona(
     afterReset,
     layout,
     rerender,
+    interaction,
     residueAfterReset,
     durationMs: Date.now() - started,
   };
