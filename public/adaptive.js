@@ -345,6 +345,36 @@
     for (var i = 0; i < nodes.length; i++) fn(nodes[i]);
   }
 
+  // ---- Core Web Vitals guardrails ------------------------------------------
+  // An adaptation must never make the page it's meant to improve worse. We
+  // watch the real Largest Contentful Paint element and refuse layout-affecting
+  // ops on it (moving/hiding/retexting the largest paint regresses LCP and
+  // shifts layout), and we never stack more than one injected badge per anchor.
+  var lcpEl = null;
+  try {
+    if (window.PerformanceObserver) {
+      var lcpObserver = new PerformanceObserver(function (list) {
+        var entries = list.getEntries();
+        var last = entries[entries.length - 1];
+        if (last && last.element) lcpEl = last.element;
+      });
+      lcpObserver.observe({ type: "largest-contentful-paint", buffered: true });
+    }
+  } catch (e) {
+    /* no LCP observer — guards below simply no-op */
+  }
+  // True when an op on `el` would move/hide/retext the LCP element (it IS the
+  // LCP element, or wraps it, or sits inside it).
+  function touchesLcp(el) {
+    if (!lcpEl || !el) return false;
+    try {
+      return el === lcpEl || el.contains(lcpEl) || lcpEl.contains(el);
+    } catch (e) {
+      return false;
+    }
+  }
+  var badgedAnchors = typeof WeakSet !== "undefined" ? new WeakSet() : null;
+
   var OPS = {
     reveal: function (a) {
       each(a, function (el) {
@@ -362,6 +392,7 @@
     },
     move_up: function (a) {
       each(a, function (el) {
+        if (touchesLcp(el)) return; // reordering the LCP element shifts layout
         var parent = el.parentElement;
         if (!parent) return;
         var nextSibling = el.nextSibling;
@@ -381,6 +412,7 @@
     },
     condense: function (a) {
       each(a, function (el) {
+        if (touchesLcp(el)) return; // collapsing around the LCP element shifts it
         el.classList.add("angel-condensed");
         record(function () {
           el.classList.remove("angel-condensed");
@@ -390,6 +422,7 @@
     set_text: function (a) {
       if (!a.value) return;
       each(a, function (el) {
+        if (touchesLcp(el)) return; // retexting the LCP element can regress LCP + shift
         // Prefer an inner text host so we don't clobber icons/children.
         var host = el.querySelector("[data-angel-text]") || el;
         var prev = host.textContent;
@@ -402,11 +435,18 @@
     inject_badge: function (a) {
       if (!a.value) return;
       each(a, function (el) {
+        var anchor = el.parentElement || el;
+        // Never stack a second badge on the same anchor, and never insert next
+        // to the LCP element (a new sibling shifts it).
+        if (touchesLcp(anchor)) return;
+        if (badgedAnchors) {
+          if (badgedAnchors.has(anchor)) return;
+          badgedAnchors.add(anchor);
+        }
         var badge = document.createElement("span");
         badge.className = "angel-badge";
         badge.setAttribute("data-angel-injected", "");
         badge.textContent = a.value;
-        var anchor = el.parentElement || el;
         anchor.appendChild(badge);
         record(function () {
           if (badge.parentElement) badge.parentElement.removeChild(badge);
@@ -417,6 +457,9 @@
 
   function apply(decision) {
     ensureStyles();
+    // Badge dedup is scoped to one apply() run, so an apply/reset/apply cycle
+    // (robustness harness) re-adds badges cleanly.
+    if (typeof WeakSet !== "undefined") badgedAnchors = new WeakSet();
     var applied = [];
     (decision.adaptations || []).forEach(function (a) {
       var op = OPS[a.op];
@@ -440,6 +483,11 @@
     window.__angel = {
       apply: function (decision) {
         return apply(decision || { adaptations: [] });
+      },
+      // Report the currently-observed LCP element (id/tag) so a test can wait
+      // for LCP capture before asserting the CWV guards. Null until observed.
+      lcp: function () {
+        return lcpEl ? lcpEl.id || lcpEl.tagName.toLowerCase() : null;
       },
       reset: function () {
         while (undoStack.length) {
