@@ -117,12 +117,6 @@ function ctaIntent(c: VisitorContext): string {
   return "trial";
 }
 
-const CTA_LABEL: Record<string, string> = {
-  demo: "Book a demo",
-  trial: "Start Free Trial",
-  sales: "Contact Sales",
-};
-
 /** Microcopy meta.kind a given inject pattern wants. */
 const MICROCOPY_KIND: Partial<Record<PatternId, string>> = {
   show_no_credit_card: "no_credit_card",
@@ -156,6 +150,9 @@ function resolve(
     // inventory item. Emphasize is paint-only (no layout, no content), so the
     // "never invent content" rule is trivially satisfied.
     if (!goal?.selector) return null;
+    // Page-aware: on a conversion page the visitor is already AT the goal —
+    // decorating it there is noise, not a nudge.
+    if (context.pageType === "conversion") return null;
     return {
       pattern: id,
       op: "emphasize",
@@ -175,6 +172,9 @@ function resolve(
       op: "set_text",
       target: item.selector ?? slotSelector,
       slot: pattern.slot,
+      // The published label doubles as a text locator if the selector drifts —
+      // the same resilience the reveal/move ops already had (audit gap).
+      anchorText: item.text,
       tag: item.meta?.tag,
       value: item.text,
       reason: `CTA set to "${item.text}" for ${context.trafficSource} visitor (intent: ${intent}).`,
@@ -239,6 +239,7 @@ export function decisionIdFor(site: string, c: VisitorContext, goal?: SiteGoal):
     c.isReturning ? "ret" : "new",
     c.viewedPricing ? "px" : "-",
     c.language,
+    c.pageType,
     goal?.selector ? "g" : "-",
   ].join("|");
   return hashHex(key);

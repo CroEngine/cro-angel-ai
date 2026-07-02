@@ -21,6 +21,7 @@ function ctx(overrides: Partial<VisitorContext> = {}): VisitorContext {
     lastPath: null,
     hourOfDay: 12,
     url: "https://example.com/",
+    pageType: "home",
     ...overrides,
   };
 }
@@ -193,5 +194,33 @@ describe("decide — goal-first (emphasize_goal)", () => {
     const withGoal = decide("forum", ctx(), emptyInventory("forum"), {}, goal);
     const without = decide("forum", ctx(), emptyInventory("forum"));
     expect(withGoal.decisionId).not.toBe(without.decisionId);
+  });
+});
+
+describe("decide — page-aware goal", () => {
+  const goal = { selector: "#register-btn", url: null };
+
+  it("suppresses emphasize_goal on a conversion page (visitor is already there)", () => {
+    const d = decide(
+      "forum",
+      ctx({ pageType: "conversion", url: "https://example.com/skapa-konto" }),
+      emptyInventory("forum"),
+      {},
+      goal,
+    );
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("emphasize_goal");
+  });
+
+  it("keeps emphasize_goal on home and content pages", () => {
+    for (const pageType of ["home", "content"] as const) {
+      const d = decide("forum", ctx({ pageType }), emptyInventory("forum"), {}, goal);
+      expect(d.adaptations.map((a) => a.pattern)).toContain("emphasize_goal");
+    }
+  });
+
+  it("pageType changes the decisionId", () => {
+    const a = decide("forum", ctx({ pageType: "home" }), emptyInventory("forum"), {}, goal);
+    const b = decide("forum", ctx({ pageType: "content" }), emptyInventory("forum"), {}, goal);
+    expect(a.decisionId).not.toBe(b.decisionId);
   });
 });

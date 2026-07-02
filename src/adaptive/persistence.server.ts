@@ -191,35 +191,6 @@ export async function saveInventory(inventory: ContentInventory, path = "/"): Pr
 }
 
 /**
- * Record a content-inventory drift report (what changed on a site between two
- * crawls) as a single `inventory_drift` row in angel_events. Reuses the events
- * table so no schema migration is needed; the dashboard/telemetry can read it
- * back like any other event. Best-effort; never throws.
- */
-export async function recordInventoryDrift(
-  site: string,
-  payload: Record<string, unknown>,
-): Promise<boolean> {
-  try {
-    const { error } = await supabaseAdmin.from("angel_events").insert({
-      site,
-      type: "inventory_drift",
-      decision_id: null,
-      visitor_hash: null,
-      payload: payload as Json,
-    });
-    if (error) {
-      console.warn(`[angel] drift record skipped: ${error.message}`);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn(`[angel] drift record unavailable:`, err);
-    return false;
-  }
-}
-
-/**
  * Read a site's persisted inventory back into a ContentInventory, or null when
  * the store is unavailable or has no rows for the site. Never throws.
  */
