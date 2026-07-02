@@ -137,9 +137,10 @@ describe("curation — drop page chrome, keep real CTAs", () => {
   });
 
   it("bounds CTAs to the most prominent MAX_CTAS (language-agnostic)", () => {
-    // 14 reusable CTAs of varying prominence — none matches a chrome wordlist.
+    // 14 reusable CTAs of varying prominence — none matches a chrome wordlist,
+    // and each a different width so they don't read as one uniform strip.
     const ctas = Array.from({ length: 14 }, (_, i) =>
-      mkCta(`Action ${i}`, "content", i < 3 ? "cta_primary" : "cta_secondary"),
+      mkCta(`Action ${i}`, "content", i < 3 ? "cta_primary" : "cta_secondary", 60 + i * 7, 40),
     );
     // make the first three clearly most prominent
     ctas[0].visualWeight = 95;
@@ -175,6 +176,20 @@ describe("curation — drop page chrome, keep real CTAs", () => {
     expect(texts).toContain("Sign up");
   });
 
+  it("collapses a uniform nav/category strip to its most prominent member", () => {
+    // 5 same-size, short-label CTAs in one section = a nav/category/logo strip.
+    const strip = ["Women", "Men", "Kids", "Baby", "Sale"].map((t) =>
+      mkCta(t, "content", "cta_primary", 80, 30),
+    );
+    strip[0].visualWeight = 50; // "Women" the most prominent of the strip
+    const distinct = mkCta("Sign up now", "hero", "cta_primary", 160, 48);
+    const inv = mapAuditToInventory({ url: "https://x/", ctas: [...strip, distinct] }, "x");
+    const texts = (inv.slots.cta ?? []).map((c) => c.text);
+    expect(texts).toContain("Sign up now"); // the distinct CTA survives
+    const stripKept = ["Women", "Men", "Kids", "Baby", "Sale"].filter((t) => texts.includes(t));
+    expect(stripKept.length).toBe(1); // only one of the strip remains
+  });
+
   it("ctaScore ranks a prominent primary above a faint secondary", () => {
     const primary = ctaScore({ visualWeight: 80, aboveFold: true, category: "cta_primary", intent: "conversion" });
     const faint = ctaScore({ visualWeight: 10, aboveFold: false, category: "cta_secondary", competingActions: 20 });
@@ -204,7 +219,13 @@ describe("curation — drop page chrome, keep real CTAs", () => {
   });
 });
 
-function mkCta(text: string, section: string, category: string): PageAuditData["ctas"][number] {
+function mkCta(
+  text: string,
+  section: string,
+  category: string,
+  w = 100,
+  h = 40,
+): PageAuditData["ctas"][number] {
   return {
     text,
     intent: "conversion",
@@ -220,7 +241,7 @@ function mkCta(text: string, section: string, category: string): PageAuditData["
     contrastRatio: 5,
     wcagLevel: "AA",
     selector: `#${text.replace(/\s+/g, "-")}`,
-    rect: { x: 0, y: 0, w: 100, h: 40 },
+    rect: { x: 0, y: 0, w, h },
   };
 }
 

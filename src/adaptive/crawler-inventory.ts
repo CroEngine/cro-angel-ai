@@ -240,6 +240,47 @@ function ctaItem(text: string, selector: string | undefined, extraMeta: Record<s
   };
 }
 
+/** A repeated uniform strip needs at least this many members to be collapsed. */
+const STRIP_MIN = 4;
+/** Members of a strip are "short-labelled" up to this length. */
+const STRIP_SHORT_LABEL = 18;
+
+/**
+ * In-place: collapse uniform sibling strips to their single most-prominent
+ * member. A strip = ≥ STRIP_MIN CTAs that share a section AND a near-identical
+ * size AND are mostly short-labelled (nav tabs / category chips / logo rows).
+ * Conservative by design — only the extras are dropped, never a whole section.
+ */
+function collapseUniformStrips(cands: { cta: CTAEntity; score: number }[]): void {
+  const groups = new Map<string, { cta: CTAEntity; score: number }[]>();
+  for (const c of cands) {
+    const r = c.cta.rect;
+    const wb = r ? Math.round((r.w ?? 0) / 8) : 0;
+    const hb = r ? Math.round((r.h ?? 0) / 8) : 0;
+    const key = `${c.cta.section ?? ""}|${wb}x${hb}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = [];
+      groups.set(key, g);
+    }
+    g.push(c);
+  }
+  const suppressed = new Set<{ cta: CTAEntity; score: number }>();
+  for (const members of groups.values()) {
+    if (members.length < STRIP_MIN) continue;
+    const short = members.filter(
+      (m) => normalizeLabel(m.cta.text ?? "").length <= STRIP_SHORT_LABEL,
+    ).length;
+    if (short < members.length * 0.7) continue; // not a short-label strip
+    members.sort((a, b) => b.score - a.score);
+    for (const m of members.slice(1)) suppressed.add(m);
+  }
+  if (suppressed.size === 0) return;
+  for (let i = cands.length - 1; i >= 0; i--) {
+    if (suppressed.has(cands[i])) cands.splice(i, 1);
+  }
+}
+
 /**
  * Canonical mapper: full live crawler output → ContentInventory, preserving the
  * selectors the snippet needs to target real DOM. Defensive against missing
@@ -262,6 +303,13 @@ export function mapAuditToInventory(
     if (!isReusableCta(cta)) continue; // curate: skip nav / footer / chrome
     ctaCandidates.push({ cta, score: ctaScore(cta) });
   }
+  // Collapse uniform sibling strips (nav / category / logo rows): CTAs sharing a
+  // section + near-identical size + short labels are almost always a repeated
+  // list, not distinct actions ("Women · Men · Kids", "OpenAI · Figma · Ramp").
+  // Keep only the most prominent of each strip — conservative: a real CTA row
+  // never loses more than its extras, and a whole section is never emptied.
+  collapseUniformStrips(ctaCandidates);
+
   ctaCandidates.sort((a, b) => b.score - a.score);
   // Dedup by label text (keep the highest-scoring instance): the same CTA often
   // repeats across cards with different selectors ("Read the customer story" ×5).
