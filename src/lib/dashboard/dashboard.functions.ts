@@ -17,12 +17,17 @@ export interface SiteRef {
   domain: string | null;
 }
 
+export type ConsentMode = "anonymous" | "attested";
+
 export interface DashboardResponse {
   site: string;
   sites: SiteRef[];
   dbAvailable: boolean;
   generatedAt: string;
   metrics: DashboardMetrics;
+  /** The selected site's consent mode (owner attestation). Defaults to
+   *  'anonymous' when the site/store is unavailable. */
+  consentMode: ConsentMode;
 }
 
 // Seeded baseline — shown in the site picker when the DB can't be reached
@@ -47,7 +52,7 @@ export const getDashboard = createServerFn({ method: "POST" })
     try {
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
-        .select("slug,name,domain")
+        .select("slug,name,domain,consent_mode")
         .order("slug");
 
       const { data: eventRows } = await supabaseAdmin
@@ -78,9 +83,21 @@ export const getDashboard = createServerFn({ method: "POST" })
         meta: (r.meta as Record<string, string> | null) ?? {},
       }));
 
-      const sites = (siteRows ?? []).length ? (siteRows as SiteRef[]) : FALLBACK_SITES;
+      const rows = siteRows ?? [];
+      const sites = rows.length ? (rows as SiteRef[]) : FALLBACK_SITES;
+      const current = rows.find(
+        (r: { slug: string; consent_mode?: string }) => r.slug === site,
+      ) as { consent_mode?: string } | undefined;
+      const consentMode: ConsentMode = current?.consent_mode === "attested" ? "attested" : "anonymous";
 
-      return { site, sites, dbAvailable: true, generatedAt, metrics: aggregate(events, inventory) };
+      return {
+        site,
+        sites,
+        dbAvailable: true,
+        generatedAt,
+        metrics: aggregate(events, inventory),
+        consentMode,
+      };
     } catch (err) {
       console.warn(`[angel] dashboard data unavailable:`, err);
       return {
@@ -89,6 +106,36 @@ export const getDashboard = createServerFn({ method: "POST" })
         dbAvailable: false,
         generatedAt,
         metrics: aggregate([], []),
+        consentMode: "anonymous",
       };
     }
+  });
+
+/**
+ * Set a site's consent mode (owner attestation). Writing 'attested' records the
+ * owner's confirmation that they have a lawful basis / visitor consent to run
+ * Angel in full; 'anonymous' reverts to storage-free operation. The snippet
+ * reads this via /api/adaptive/consent-config. Best-effort but surfaces failure
+ * so the UI can report it — this is a legally meaningful action.
+ */
+export const setConsentMode = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      site: z.string().min(1),
+      mode: z.enum(["anonymous", "attested"]),
+    }),
+  )
+  .handler(async ({ data }): Promise<{ ok: boolean; mode: ConsentMode }> => {
+    const { site, mode } = data;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Ensure the row exists (a site may not be registered until its snippet
+    // first runs), then set the mode. Upsert on the unique slug.
+    const { error } = await supabaseAdmin
+      .from("angel_sites")
+      .upsert({ slug: site, consent_mode: mode }, { onConflict: "slug" });
+    if (error) {
+      console.warn(`[angel] setConsentMode failed: ${error.message}`);
+      return { ok: false, mode };
+    }
+    return { ok: true, mode };
   });
