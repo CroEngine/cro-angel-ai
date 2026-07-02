@@ -6,9 +6,11 @@
 // When the DB is unavailable (e.g. local dev without a service-role key) the
 // dashboard renders a clean empty state.
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+
+import { supabase } from "@/integrations/supabase/client";
 import {
   Activity,
   MousePointerClick,
@@ -68,13 +70,29 @@ export const Route = createFileRoute("/dashboard")({
       { name: "description", content: "Per-site performance of the Angel Adaptive layer." },
     ],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(dashboardQuery("demo")),
+  // Client-only UX gate: send unauthenticated users to /login. The session lives
+  // in localStorage (invisible during SSR), so we only check in the browser; the
+  // real protection is server-side (requireSupabaseAuth on every dashboard
+  // server-fn), so an unauthenticated request still can't read any data.
+  beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined") return;
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      throw redirect({ to: "/login", search: { redirect: location.href } });
+    }
+  },
   component: Dashboard,
 });
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [site, setSite] = useState("demo");
   const { data, isFetching } = useQuery(dashboardQuery(site));
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    navigate({ to: "/login" });
+  }
 
   // If the selected site isn't in the list (e.g. the seeded "demo" was cleaned
   // up), fall over to the first real site so the picker never shows a ghost.
@@ -102,19 +120,24 @@ function Dashboard() {
               {isFetching && <span className="ml-2 animate-pulse">updating…</span>}
             </p>
           </div>
-          <Select value={site} onValueChange={setSite}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Select site" />
-            </SelectTrigger>
-            <SelectContent>
-              {d.sites.map((s) => (
-                <SelectItem key={s.slug} value={s.slug}>
-                  {s.name ?? s.slug}
-                  {s.domain ? ` (${s.domain})` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select value={site} onValueChange={setSite}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Select site" />
+              </SelectTrigger>
+              <SelectContent>
+                {d.sites.map((s) => (
+                  <SelectItem key={s.slug} value={s.slug}>
+                    {s.name ?? s.slug}
+                    {s.domain ? ` (${s.domain})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              Sign out
+            </Button>
+          </div>
         </header>
 
         <ConsentControl site={site} mode={d.siteConfig.consentMode} disabled={!d.dbAvailable} />

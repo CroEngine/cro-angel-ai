@@ -9,6 +9,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { aggregate, type DashboardMetrics, type DashEvent, type InventoryEntry } from "./aggregate";
 
 export interface SiteRef {
@@ -56,6 +57,7 @@ const FALLBACK_SITES: SiteRef[] = [
 const EVENT_LIMIT = 5000;
 
 export const getDashboard = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ site: z.string().min(1).default("demo") }))
   .handler(async ({ data }): Promise<DashboardResponse> => {
     const { site } = data;
@@ -147,6 +149,7 @@ export const getDashboard = createServerFn({ method: "POST" })
  * so the UI can report it — this is a legally meaningful action.
  */
 export const setConsentMode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       site: z.string().min(1),
@@ -175,6 +178,7 @@ export const setConsentMode = createServerFn({ method: "POST" })
  * explicit overrides). Empty strings clear a value.
  */
 export const setMeasurementConfig = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       site: z.string().min(1),
