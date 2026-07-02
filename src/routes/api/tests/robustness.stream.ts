@@ -31,6 +31,7 @@ export const Route = createFileRoute("/api/tests/robustness/stream")({
         const many = reqUrl.searchParams.get("urls");
         const personaParam = reqUrl.searchParams.get("persona") || DEFAULT_PERSONA;
         const site = reqUrl.searchParams.get("site") || "robustness";
+        const captureShots = reqUrl.searchParams.get("shots") === "1";
 
         const urls = (many ? many.split(",") : single ? [single] : [])
           .map((u) => u.trim())
@@ -102,6 +103,16 @@ export const Route = createFileRoute("/api/tests/robustness/stream")({
                       site,
                       personas,
                       snippetSource,
+                      captureShots,
+                      onShot: captureShots
+                        ? (shot) =>
+                            emit("shot", {
+                              url: targetUrl,
+                              persona: shot.persona,
+                              phase: shot.phase,
+                              jpeg: shot.jpegBase64,
+                            })
+                        : undefined,
                     });
                     for (const report of reports) {
                       allReports.push(report);
@@ -126,6 +137,13 @@ export const Route = createFileRoute("/api/tests/robustness/stream")({
                           baseline: { textLen: 0, elementCount: 0, bodyChildCount: 0 },
                           afterApply: { textLen: 0, elementCount: 0, bodyChildCount: 0 },
                           afterReset: { textLen: 0, elementCount: 0, bodyChildCount: 0 },
+                          layout: {
+                            matched: 0,
+                            shiftedCount: 0,
+                            shiftedFraction: 0,
+                            controlShiftedFraction: 0,
+                            maxMove: 0,
+                          },
                           residueAfterReset: -1,
                           durationMs: 0,
                         }),
