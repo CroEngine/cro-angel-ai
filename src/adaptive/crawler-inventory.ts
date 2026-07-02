@@ -42,6 +42,45 @@ export function terminalTag(selector: string | undefined): string | undefined {
   return m ? m[1].toLowerCase() : undefined;
 }
 
+// Curation — keep only content that's actually reusable for CRO, drop page
+// "chrome" (cookie banners, rating widgets, nav/menu/pagination, bare numbers).
+// Without this the inventory fills with junk and clarify_cta could set a site's
+// CTA to "Accept all cookies". Conservative by design: only unambiguous chrome
+// is dropped, so real conversion CTAs are never lost.
+const CHROME_TEXT_RX: RegExp[] = [
+  /^\d+([.,]\d+)?$/, // bare numbers ("0", "2", "3")
+  /^[★☆⭐\s]+$/, // star glyphs
+  /\b\d+\s*(?:stjärn\w*|stars?)\b/i, // "1 stjärnor", "5 stars"
+  /\b(?:cookies?|consent|samtycke)\b/i, // cookie/consent
+  // "Accept all" / "Acceptera alla" / "Reject all" / "Godkänn alla" … — the
+  // trailing `a?` covers the Swedish "alla" which has no \b after "all".
+  /\b(?:accept(?:era)?\s+alla?|reject\s+alla?|allow\s+alla?|deny\s+alla?|only\s+necessary|endast\s+nödvändiga|godkänn\s+alla?|neka\s+alla?|tillåt\s+alla?|avvisa\s+alla?|manage\s+(?:cookies|preferences))\b/i,
+  /^(?:logga\s?(?:in|ut)|log\s?(?:in|out)|sign\s?(?:in|out)|login|logout)$/i,
+  /^(?:öppna\s+meny|open\s+menu|meny|menu|stäng|close|sök|search|skriv\s+ut|print|dela(?:\s+med\s+dig)?|share)$/i,
+  /^(?:läs\s+mer|read\s+more|visa\s+mer|show\s+more|mer\s+info(?:rmation)?(?:\s*&\s*öppettider)?)$/i,
+  /^(?:«|»|‹|›|<|>|\.{2,}|prev(?:ious)?|next|föregående|nästa|tillbaka|back|hem|home)$/i,
+];
+
+/** True when a label is page chrome, not reusable CRO content. */
+export function isChromeText(text: string | undefined | null): boolean {
+  const t = (text ?? "").trim();
+  if (t.length < 2) return true;
+  return CHROME_TEXT_RX.some((rx) => rx.test(t));
+}
+
+/** Keep a CTA only if it looks like a genuine conversion/engagement action —
+ *  not nav, footer, an icon button, or chrome copy. */
+export function isReusableCta(cta: {
+  text?: string;
+  section?: string;
+  category?: string;
+}): boolean {
+  if (!cta?.text || isChromeText(cta.text)) return false;
+  if (cta.section === "nav" || cta.section === "footer") return false;
+  if (cta.category === "nav_item" || cta.category === "icon_button") return false;
+  return true;
+}
+
 /** Derive the CTA *intent* the engine keys on (demo/trial/sales) from a label. */
 export function classifyCtaIntent(text: string): "demo" | "trial" | "sales" {
   const t = text.toLowerCase();
@@ -160,27 +199,29 @@ export function mapAuditToInventory(
 
   for (const cta of (audit.ctas ?? []) as CTAEntity[]) {
     if (!cta?.text) continue;
-    textPool.push(cta.text);
+    textPool.push(cta.text); // keep for microcopy scan even if we drop the CTA
+    if (!isReusableCta(cta)) continue; // curate: skip nav / footer / chrome
     b.add(
       "cta",
       ctaItem(cta.text, cta.selector, {
         elementIntent: cta.intent,
         category: cta.category,
+        section: cta.section, // kept for the engine to reason about placement
         aboveFold: String(cta.aboveFold),
       }),
     );
   }
 
-  if (audit.hero?.headline) {
+  if (audit.hero?.headline && !isChromeText(audit.hero.headline)) {
     b.add("headline", { text: audit.hero.headline });
     textPool.push(audit.hero.headline);
   }
-  if (audit.hero?.primaryCtaText) {
+  if (audit.hero?.primaryCtaText && !isChromeText(audit.hero.primaryCtaText)) {
     b.add("cta", ctaItem(audit.hero.primaryCtaText, undefined, { source: "hero" }));
     textPool.push(audit.hero.primaryCtaText);
   }
   for (const h1 of audit.headings?.h1Texts ?? []) {
-    if (h1) b.add("headline", { text: h1 });
+    if (h1 && !isChromeText(h1)) b.add("headline", { text: h1 });
   }
 
   for (const ts of (audit.trustSignals ?? []) as TrustSignal[]) {
