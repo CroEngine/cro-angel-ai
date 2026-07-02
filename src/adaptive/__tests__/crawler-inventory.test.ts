@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   classifyCtaIntent,
+  ctaScore,
   extractMicrocopy,
   isChromeText,
   isReusableCta,
@@ -133,6 +134,31 @@ describe("curation — drop page chrome, keep real CTAs", () => {
     const hero = inv.slots.hero?.[0];
     expect(hero?.selector).toBe("#hero"); // still targetable
     expect(hero?.text).toBeUndefined(); // but the junk heading is not reused
+  });
+
+  it("bounds CTAs to the most prominent MAX_CTAS (language-agnostic)", () => {
+    // 14 reusable CTAs of varying prominence — none matches a chrome wordlist.
+    const ctas = Array.from({ length: 14 }, (_, i) =>
+      mkCta(`Action ${i}`, "content", i < 3 ? "cta_primary" : "cta_secondary"),
+    );
+    // make the first three clearly most prominent
+    ctas[0].visualWeight = 95;
+    ctas[1].visualWeight = 90;
+    ctas[2].visualWeight = 85;
+    const inv = mapAuditToInventory({ url: "https://x/", ctas }, "x");
+    const kept = inv.slots.cta ?? [];
+    expect(kept.length).toBeLessThanOrEqual(8);
+    const texts = kept.map((c) => c.text);
+    // the three high-weight primaries survive the top-K cut
+    expect(texts).toContain("Action 0");
+    expect(texts).toContain("Action 1");
+    expect(texts).toContain("Action 2");
+  });
+
+  it("ctaScore ranks a prominent primary above a faint secondary", () => {
+    const primary = ctaScore({ visualWeight: 80, aboveFold: true, category: "cta_primary", intent: "conversion" });
+    const faint = ctaScore({ visualWeight: 10, aboveFold: false, category: "cta_secondary", competingActions: 20 });
+    expect(primary).toBeGreaterThan(faint);
   });
 
   it("mapAuditToInventory keeps only reusable CTAs from a noisy page", () => {
