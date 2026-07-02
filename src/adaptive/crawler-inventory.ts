@@ -73,6 +73,17 @@ export function isChromeText(text: string | undefined | null): boolean {
   return CHROME_TEXT_RX.some((rx) => rx.test(t));
 }
 
+/** True when a string looks like two DOM text nodes scraped together — a
+ *  sentence-ending punctuation glued straight onto a capitalised word with no
+ *  space (e.g. "Toppen-produkt.Forum", "varför?Forum"). These are card/post
+ *  titles bleeding a trailing category label; the text is unreliable as copy.
+ *  Deliberately narrow: a lowercase word, then sentence punctuation, then a
+ *  capitalised word — so "YouTube"/"iPhone" (no punctuation) and "U.S. Bank"
+ *  (abbreviation, no lowercase run before the dot) are spared. */
+export function looksConcatenated(text: string | undefined | null): boolean {
+  return /\p{Ll}{2,}[.!?]\p{Lu}\p{Ll}/u.test((text ?? "").trim());
+}
+
 /** Keep a CTA only if it looks like a genuine conversion/engagement action —
  *  not nav, footer, an icon button, or chrome copy. */
 export function isReusableCta(cta: {
@@ -217,7 +228,11 @@ export function mapAuditToInventory(
     );
   }
 
-  if (audit.hero?.headline && !isChromeText(audit.hero.headline)) {
+  if (
+    audit.hero?.headline &&
+    !isChromeText(audit.hero.headline) &&
+    !looksConcatenated(audit.hero.headline)
+  ) {
     b.add("headline", { text: audit.hero.headline });
     textPool.push(audit.hero.headline);
   }
@@ -226,7 +241,7 @@ export function mapAuditToInventory(
     textPool.push(audit.hero.primaryCtaText);
   }
   for (const h1 of audit.headings?.h1Texts ?? []) {
-    if (h1 && !isChromeText(h1)) b.add("headline", { text: h1 });
+    if (h1 && !isChromeText(h1) && !looksConcatenated(h1)) b.add("headline", { text: h1 });
   }
 
   for (const ts of (audit.trustSignals ?? []) as TrustSignal[]) {
@@ -244,8 +259,15 @@ export function mapAuditToInventory(
   for (const section of (audit.sections ?? []) as PageSection[]) {
     const slot = SECTION_SLOT[section.type];
     if (!slot) continue;
+    // Keep the section as a target, but only reuse its heading as copy when it
+    // reads like real copy — not a card/post title bleed. A bad heading leaves
+    // a presence-only item (selector) the snippet can still reveal / move.
+    const heading =
+      section.heading && !isChromeText(section.heading) && !looksConcatenated(section.heading)
+        ? section.heading
+        : undefined;
     b.add(slot, {
-      text: section.heading || undefined,
+      text: heading,
       selector: section.selector,
       meta: { sectionType: section.type, position: String(section.position) },
     });
