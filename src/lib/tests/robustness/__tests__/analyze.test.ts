@@ -28,6 +28,7 @@ function obs(over: Partial<RobustnessObservation> = {}): RobustnessObservation {
     afterApply: sig(103),
     afterReset: sig(100),
     layout: { matched: 50, shiftedCount: 0, shiftedFraction: 0, controlShiftedFraction: 0, maxMove: 0 },
+    rerender: { residueAfterApply: 2, residueAfterRerender: 2 },
     residueAfterReset: 0,
     durationMs: 10,
     ...over,
@@ -111,6 +112,25 @@ describe("analyze — robustness verdicts", () => {
         },
       }),
     );
+    expect(r.verdict).toBe("pass");
+  });
+
+  it("warns when a re-render reverts the adaptation (SPA conflict)", () => {
+    const r = analyze(obs({ rerender: { residueAfterApply: 3, residueAfterRerender: 1 } }));
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.some((x) => x.includes("reverted by page re-render"))).toBe(true);
+    expect(r.metrics.rerenderStable).toBe(false);
+  });
+
+  it("warns when a re-render duplicates the adaptation", () => {
+    const r = analyze(obs({ rerender: { residueAfterApply: 2, residueAfterRerender: 4 } }));
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.some((x) => x.includes("duplicated"))).toBe(true);
+  });
+
+  it("treats marker-less ops (residue 0) as re-render stable", () => {
+    const r = analyze(obs({ rerender: { residueAfterApply: 0, residueAfterRerender: 0 } }));
+    expect(r.metrics.rerenderStable).toBe(true);
     expect(r.verdict).toBe("pass");
   });
 
