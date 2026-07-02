@@ -20,6 +20,7 @@ export type Database = {
           slug: string
           domain: string | null
           name: string | null
+          consent_mode: string
           created_at: string
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           slug: string
           domain?: string | null
           name?: string | null
+          consent_mode?: string
           created_at?: string
         }
         Update: {
@@ -34,6 +36,7 @@ export type Database = {
           slug?: string
           domain?: string | null
           name?: string | null
+          consent_mode?: string
           created_at?: string
         }
         Relationships: []

@@ -256,6 +256,28 @@ export async function loadInventoryRows(
 }
 
 /**
+ * Read a site's consent mode ('anonymous' | 'attested') by slug. 'attested'
+ * means the owner confirmed a lawful basis in the dashboard, so the snippet may
+ * run at a consented baseline (GPC/DNT still opt out per-visitor client-side).
+ * Anything unexpected/unavailable degrades to 'anonymous' (privacy-safe default).
+ * Never throws.
+ */
+export async function loadConsentMode(slug: string): Promise<"anonymous" | "attested"> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("angel_sites")
+      .select("consent_mode")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (error || !data) return "anonymous";
+    return data.consent_mode === "attested" ? "attested" : "anonymous";
+  } catch (err) {
+    console.warn(`[angel] consent-mode read unavailable:`, err);
+    return "anonymous";
+  }
+}
+
+/**
  * Register (upsert) a site in angel_sites by slug. Best-effort; returns whether
  * the row was written. Called by saveInventory and the crawler ingest path.
  */
