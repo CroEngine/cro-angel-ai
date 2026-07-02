@@ -29,6 +29,7 @@ function obs(over: Partial<RobustnessObservation> = {}): RobustnessObservation {
     afterReset: sig(100),
     layout: { matched: 50, shiftedCount: 0, shiftedFraction: 0, controlShiftedFraction: 0, maxMove: 0 },
     rerender: { residueAfterApply: 2, residueAfterRerender: 2 },
+    interaction: { checked: 20, broken: 0 },
     residueAfterReset: 0,
     durationMs: 10,
     ...over,
@@ -138,6 +139,19 @@ describe("analyze — robustness verdicts", () => {
     const r = analyze(obs({ decidedCount: 0, appliedCount: 0, probes: [] }));
     expect(r.verdict).toBe("warn");
     expect(r.metrics.targetingRate).toBe(1);
+  });
+
+  it("fails when a clickable element became unclickable after apply", () => {
+    const r = analyze(obs({ interaction: { checked: 20, broken: 2 } }));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons.some((x) => x.includes("unclickable"))).toBe(true);
+    expect(r.metrics.interactionBroken).toBe(2);
+  });
+
+  it("passes when all clickable elements stay clickable", () => {
+    const r = analyze(obs({ interaction: { checked: 30, broken: 0 } }));
+    expect(r.verdict).toBe("pass");
+    expect(r.metrics.interactionBroken).toBe(0);
   });
 
   it("fails an unreachable page", () => {
