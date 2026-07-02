@@ -12,6 +12,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -24,18 +25,32 @@ function Signup() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [ack, setAck] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!ack) {
+      setError("Please acknowledge how Angel uses visitor information.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/login` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/login`,
+        // Record the owner's acknowledgment (lawful basis for visitor
+        // information) on the account itself — this is the attestation, moved
+        // out of the per-site toggle so setup is one decision, not many.
+        data: {
+          visitor_info_acknowledged: true,
+          visitor_info_acknowledged_at: new Date().toISOString(),
+        },
+      },
     });
     setBusy(false);
     if (error) {
@@ -95,8 +110,32 @@ function Signup() {
                   required
                 />
               </div>
+              <div className="rounded-lg border border-stone-200 bg-stone-50/60 p-3">
+                <div className="mb-2 font-mono text-[11px] tracking-wider text-emerald-700">
+                  [ visitor information ]
+                </div>
+                <label htmlFor="ack" className="flex cursor-pointer items-start gap-2.5">
+                  <Checkbox
+                    id="ack"
+                    checked={ack}
+                    onCheckedChange={(v) => setAck(v === true)}
+                    className="mt-0.5 border-stone-400 data-[state=checked]:border-emerald-700 data-[state=checked]:bg-emerald-700"
+                  />
+                  <span className="text-xs leading-relaxed text-stone-600">
+                    To measure real lift, Angel uses <strong>visitor information</strong> — a
+                    persistent visitor id and conversion events — on the sites I connect. I confirm I
+                    have a lawful basis or visitor consent for this and remain the data controller.
+                    Visitors who signal Global Privacy Control or Do&nbsp;Not&nbsp;Track are always
+                    excluded.
+                  </span>
+                </label>
+              </div>
               {error && <p className="text-sm text-rose-600">{error}</p>}
-              <Button type="submit" className="w-full bg-emerald-700 text-white hover:bg-emerald-600" disabled={busy}>
+              <Button
+                type="submit"
+                className="w-full bg-emerald-700 text-white hover:bg-emerald-600"
+                disabled={busy || !ack}
+              >
                 {busy ? "Creating…" : "Create account"}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
