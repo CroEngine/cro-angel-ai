@@ -6,6 +6,7 @@ import {
   extractMicrocopy,
   isChromeText,
   isReusableCta,
+  looksConcatenated,
   mapAuditToInventory,
   mapGoldenToInventory,
 } from "../crawler-inventory";
@@ -91,6 +92,47 @@ describe("curation — drop page chrome, keep real CTAs", () => {
     expect(isReusableCta({ text: "Privacy", section: "footer", category: "link" })).toBe(false);
     expect(isReusableCta({ text: "☰", section: "header", category: "icon_button" })).toBe(false);
     expect(isReusableCta({ text: "Acceptera alla", section: "content", category: "cta_primary" })).toBe(false);
+  });
+
+  it("detects scraped-together card titles, spares clean copy and brand names", () => {
+    expect(looksConcatenated("Toppen-produkt.Forum")).toBe(true);
+    expect(looksConcatenated("Kraftig reaktion på gluten, varför?Forum")).toBe(true);
+    expect(looksConcatenated("Sveriges största samlingsplats för allt om glutenfritt")).toBe(false);
+    expect(looksConcatenated("Dela med dig!")).toBe(false);
+    expect(looksConcatenated("YouTube")).toBe(false);
+    expect(looksConcatenated("iPhone 15 Pro")).toBe(false);
+  });
+
+  it("strips a bleeding section heading but keeps the section as a target", () => {
+    const inv = mapAuditToInventory(
+      {
+        url: "https://forum.example/",
+        sections: [
+          {
+            id: "h",
+            type: "hero",
+            position: 0,
+            heading: "Dazzley kladdkaka! Toppen-produkt.Forum",
+            selector: "#hero",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            rect: { y: 0, w: 0, h: 0 } as any,
+            aboveFold: true,
+            visualWeight: 50,
+            elementCount: 3,
+            childCount: 3,
+            containsPrimaryCTA: false,
+            containsTrustSignals: false,
+            containsForm: false,
+            containsPricing: false,
+            containsNavigation: false,
+          },
+        ],
+      },
+      "forum",
+    );
+    const hero = inv.slots.hero?.[0];
+    expect(hero?.selector).toBe("#hero"); // still targetable
+    expect(hero?.text).toBeUndefined(); // but the junk heading is not reused
   });
 
   it("mapAuditToInventory keeps only reusable CTAs from a noisy page", () => {
