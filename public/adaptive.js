@@ -39,7 +39,11 @@
   // ---- measurement config (opt-in) -----------------------------------------
   // data-holdout: % of visitors held out as control (0 = off).
   // data-conversion-url / data-conversion-selector: how conversions fire.
-  var HOLDOUT_PCT = parseInt(script.getAttribute("data-holdout") || "0", 10) || 0;
+  // These are per-install OVERRIDES: normally the owner sets holdout and the
+  // conversion goal in the dashboard and the values arrive via the site-config
+  // fetch (applySiteConfig) — the tag never needs editing after install.
+  var HOLDOUT_ATTR = script.getAttribute("data-holdout");
+  var HOLDOUT_PCT = parseInt(HOLDOUT_ATTR || "0", 10) || 0;
   var CONVERSION_URL = script.getAttribute("data-conversion-url") || "";
   var CONVERSION_SELECTOR = script.getAttribute("data-conversion-selector") || "";
 
@@ -244,7 +248,13 @@
     if (value !== undefined) payload.value = value;
     track("conversion", payload, lastDecisionId);
   }
+  // Idempotent: called after decide AND when late-arriving site config fills in
+  // a conversion goal — it must only ever register listeners once. A call with
+  // nothing configured is a no-op that does NOT consume the guard.
+  var conversionWired = false;
   function wireConversion() {
+    if (conversionWired || (!CONVERSION_URL && !CONVERSION_SELECTOR)) return;
+    conversionWired = true;
     try {
       if (CONVERSION_URL && location.href.indexOf(CONVERSION_URL) !== -1) convert();
       if (CONVERSION_SELECTOR) {
@@ -682,13 +692,35 @@
     recordVisit();
   }
 
-  // Resolve the SITE OWNER's consent configuration before the first decision.
-  // The owner (data controller) can attest a lawful basis in the dashboard;
-  // an attested site runs consented at baseline (persistent id + measurement).
-  // GPC/DNT and an explicit data-consent override always take precedence and
-  // skip the round-trip. Anonymous sites decide without waiting.
-  function resolveOwnerConsentThen(next) {
-    if (consented || CONSENT_OVERRIDE || gpcOrDnt()) return next();
+  // Resolve the SITE OWNER's dashboard config before the first decision:
+  //   mode       — 'attested' = owner (data controller) confirmed a lawful
+  //                basis, so run consented at baseline (id + measurement).
+  //   holdoutPct — measurement control %, unless the tag set data-holdout.
+  //   conversion — conversion goal, unless the tag set data-conversion-*.
+  // GPC/DNT and data-consent="denied" make measurement impossible/forbidden,
+  // so they skip the round-trip entirely. Tag attributes always win over
+  // dashboard values (explicit per-install overrides).
+  function applySiteConfig(cfg) {
+    if (!cfg) return;
+    if (HOLDOUT_ATTR === null && typeof cfg.holdoutPct === "number") {
+      HOLDOUT_PCT = Math.max(0, Math.min(100, cfg.holdoutPct));
+    }
+    if (cfg.conversion) {
+      if (!CONVERSION_URL && cfg.conversion.url) CONVERSION_URL = String(cfg.conversion.url);
+      if (!CONVERSION_SELECTOR && cfg.conversion.selector) {
+        CONVERSION_SELECTOR = String(cfg.conversion.selector);
+      }
+    }
+    if (cfg.mode === "attested") upgradeConsent("site_attested");
+    // Already consented before this config arrived (CMP sync grant / override):
+    // upgradeConsent above was a no-op, so refresh the holdout signal here.
+    if (consented) signals.holdoutPct = HOLDOUT_PCT;
+    // If the decision round-trip already wired conversions this is a no-op;
+    // otherwise a late-arriving goal still gets wired exactly once.
+    wireConversion();
+  }
+  function resolveSiteConfigThen(next) {
+    if (gpcOrDnt() || CONSENT_OVERRIDE === "denied") return next();
     var done = false;
     function proceed() {
       if (done) return;
@@ -700,16 +732,15 @@
         .then(function (r) {
           return r.ok ? r.json() : null;
         })
-        .then(function (cfg) {
-          if (cfg && cfg.mode === "attested") upgradeConsent("site_attested");
-        })
+        .then(applySiteConfig)
         .catch(function () {})
         .then(proceed);
     } catch (e) {
       proceed();
     }
-    // Never let a slow/hung config response delay adaptation: decide anonymously
-    // after a short wait; a late attestation still upgrades events from then on.
+    // Never let a slow/hung config response delay adaptation: decide with the
+    // tag/default values after a short wait; late config still upgrades
+    // consent + wires conversions from that point on.
     setTimeout(proceed, 1500);
   }
 
@@ -771,7 +802,7 @@
   }
 
   function run() {
-    resolveOwnerConsentThen(decideAndApply);
+    resolveSiteConfigThen(decideAndApply);
     // Harvest is independent of the decision round-trip: schedule it for idle
     // after load so it never sits on the critical path.
     scheduleHarvest();

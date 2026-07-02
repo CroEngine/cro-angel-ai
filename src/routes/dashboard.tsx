@@ -8,7 +8,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Activity,
   MousePointerClick,
@@ -22,7 +22,10 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -45,8 +48,10 @@ import {
 import {
   getDashboard,
   setConsentMode,
+  setMeasurementConfig,
   type ConsentMode,
   type DashboardResponse,
+  type SiteConfigView,
 } from "@/lib/dashboard/dashboard.functions";
 import type { SegmentBar, PatternAttribution } from "@/lib/dashboard/aggregate";
 
@@ -70,6 +75,16 @@ export const Route = createFileRoute("/dashboard")({
 function Dashboard() {
   const [site, setSite] = useState("demo");
   const { data, isFetching } = useQuery(dashboardQuery(site));
+
+  // If the selected site isn't in the list (e.g. the seeded "demo" was cleaned
+  // up), fall over to the first real site so the picker never shows a ghost.
+  const sites = data?.sites ?? [];
+  useEffect(() => {
+    if (sites.length > 0 && !sites.some((s) => s.slug === site)) {
+      setSite(sites[0].slug);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   if (!data) return null;
   const d: DashboardResponse = data;
@@ -102,7 +117,16 @@ function Dashboard() {
           </Select>
         </header>
 
-        <ConsentControl site={site} mode={d.consentMode} disabled={!d.dbAvailable} />
+        <ConsentControl site={site} mode={d.siteConfig.consentMode} disabled={!d.dbAvailable} />
+
+        <MeasurementControl
+          site={site}
+          config={d.siteConfig}
+          ctas={(d.metrics.inventory.find((g) => g.slot === "cta")?.items ?? []).filter(
+            (i) => i.text && i.selector,
+          )}
+          disabled={!d.dbAvailable}
+        />
 
         {!d.dbAvailable && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -432,6 +456,143 @@ function ConsentControl({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </Card>
+  );
+}
+
+function MeasurementControl({
+  site,
+  config,
+  ctas,
+  disabled,
+}: {
+  site: string;
+  config: SiteConfigView;
+  ctas: { id: string; text: string | null; selector: string | null }[];
+  disabled: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [holdout, setHoldout] = useState(String(config.holdoutPct));
+  const [convUrl, setConvUrl] = useState(config.conversionUrl ?? "");
+  const [convSel, setConvSel] = useState(config.conversionSelector ?? "");
+
+  // Re-sync the form when the selected site (or its saved config) changes.
+  useEffect(() => {
+    setHoldout(String(config.holdoutPct));
+    setConvUrl(config.conversionUrl ?? "");
+    setConvSel(config.conversionSelector ?? "");
+  }, [site, config.holdoutPct, config.conversionUrl, config.conversionSelector]);
+
+  const holdoutNum = Math.max(0, Math.min(100, parseInt(holdout, 10) || 0));
+  const dirty =
+    holdoutNum !== config.holdoutPct ||
+    convUrl.trim() !== (config.conversionUrl ?? "") ||
+    convSel.trim() !== (config.conversionSelector ?? "");
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      setMeasurementConfig({
+        data: {
+          site,
+          holdoutPct: holdoutNum,
+          conversionUrl: convUrl.trim(),
+          conversionSelector: convSel.trim(),
+        },
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Target className="h-4 w-4 text-violet-600" /> Measurement
+          {config.consentMode !== "attested" && (
+            <span className="text-xs font-normal text-muted-foreground">
+              — takes effect once full tracking is attested above
+            </span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="holdout" className="text-xs">
+              Holdout (% control group)
+            </Label>
+            <Input
+              id="holdout"
+              type="number"
+              min={0}
+              max={100}
+              value={holdout}
+              disabled={disabled}
+              onChange={(e) => setHoldout(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="conv-url" className="text-xs">
+              Conversion URL contains
+            </Label>
+            <Input
+              id="conv-url"
+              placeholder="/thank-you"
+              value={convUrl}
+              disabled={disabled}
+              onChange={(e) => setConvUrl(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="conv-sel" className="text-xs">
+              Conversion click (CSS selector)
+            </Label>
+            <Input
+              id="conv-sel"
+              placeholder="a[href*='signup'] button"
+              value={convSel}
+              disabled={disabled}
+              onChange={(e) => setConvSel(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {ctas.length > 0 && (
+            <Select value="" onValueChange={(v) => setConvSel(v)}>
+              <SelectTrigger className="w-64" disabled={disabled}>
+                <SelectValue placeholder="…or pick a button we found on your site" />
+              </SelectTrigger>
+              <SelectContent>
+                {ctas.map((c) => (
+                  <SelectItem key={c.id + c.selector} value={c.selector as string}>
+                    {c.text}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            {mutation.isPending && <span className="text-xs text-muted-foreground">saving…</span>}
+            {mutation.data?.ok === false && (
+              <span className="text-xs text-rose-600">save failed</span>
+            )}
+            {mutation.isSuccess && mutation.data?.ok && !dirty && (
+              <span className="text-xs text-emerald-600">saved</span>
+            )}
+            <Button
+              size="sm"
+              disabled={disabled || !dirty || mutation.isPending}
+              onClick={() => mutation.mutate()}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          The snippet picks these up automatically — no changes needed on the site. A holdout keeps
+          that share of visitors unadapted as a control group so conversion lift can be measured.
+        </p>
+      </CardContent>
     </Card>
   );
 }

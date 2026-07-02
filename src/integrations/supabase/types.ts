@@ -21,6 +21,9 @@ export type Database = {
           domain: string | null
           name: string | null
           consent_mode: string
+          holdout_pct: number
+          conversion_url: string | null
+          conversion_selector: string | null
           created_at: string
         }
         Insert: {
@@ -29,6 +32,9 @@ export type Database = {
           domain?: string | null
           name?: string | null
           consent_mode?: string
+          holdout_pct?: number
+          conversion_url?: string | null
+          conversion_selector?: string | null
           created_at?: string
         }
         Update: {
@@ -37,6 +43,9 @@ export type Database = {
           domain?: string | null
           name?: string | null
           consent_mode?: string
+          holdout_pct?: number
+          conversion_url?: string | null
+          conversion_selector?: string | null
           created_at?: string
         }
         Relationships: []
