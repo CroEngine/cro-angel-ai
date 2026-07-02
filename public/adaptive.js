@@ -713,8 +713,68 @@
     setTimeout(proceed, 1500);
   }
 
+  // ---- content harvest (one tag, lazy + sampled) --------------------------
+  // Fold the inventory harvester into this single install tag. After load, in
+  // idle time, inject adaptive-harvest.js — but only for an ELECTED session, so
+  // the heavy (~90 KB) harvester is fetched at most once per page/day and never
+  // competes with adaptation or the TBT window. Non-elected visitors never even
+  // download it. We elect here (not inside the harvester) precisely so we can
+  // skip the download; the harvester is then told data-force="1" to run without
+  // re-electing (which also means it writes no localStorage of its own).
+  var HARVEST_URL = base + "/adaptive-harvest.js";
+  function harvestElected() {
+    // Consented: dedupe persistently, once per (site,path,UTC-day) — inventory
+    // changes slowly. Anonymous: no device storage, so sample ~1/10 loads to
+    // still gather inventory cheaply without writing anything.
+    try {
+      if (consented) {
+        var day = new Date().toISOString().slice(0, 10);
+        var key = "angel_harvest:" + site + ":" + location.pathname + ":" + day;
+        if (localStorage.getItem(key)) return false;
+        localStorage.setItem(key, "1");
+        return true;
+      }
+    } catch (e) {
+      /* storage blocked — fall through to sampling */
+    }
+    return Math.random() < 0.1;
+  }
+  function loadHarvest() {
+    try {
+      // GPC/DNT is a hard opt-out for us everywhere — don't even harvest.
+      if (gpcOrDnt()) return;
+      // Don't double-load if a standalone harvest tag is still on the page
+      // (e.g. mid-migration) or one was already injected.
+      if (document.querySelector('script[src*="adaptive-harvest"]')) return;
+      if (!harvestElected()) return;
+      var s = document.createElement("script");
+      s.src = HARVEST_URL;
+      s.async = true;
+      s.setAttribute("data-site", site);
+      s.setAttribute("data-force", "1"); // already elected here
+      (document.head || document.documentElement).appendChild(s);
+    } catch (e) {
+      /* never break the host page */
+    }
+  }
+  function scheduleHarvest() {
+    var idle =
+      window.requestIdleCallback ||
+      function (f) {
+        return setTimeout(f, 1);
+      };
+    var go = function () {
+      idle(loadHarvest, { timeout: 4000 });
+    };
+    if (document.readyState === "complete") go();
+    else window.addEventListener("load", go, { once: true });
+  }
+
   function run() {
     resolveOwnerConsentThen(decideAndApply);
+    // Harvest is independent of the decision round-trip: schedule it for idle
+    // after load so it never sits on the critical path.
+    scheduleHarvest();
   }
 
   if (document.readyState === "loading") {
