@@ -65,6 +65,26 @@ describe("curation — drop page chrome, keep real CTAs", () => {
     }
   });
 
+  it("drops bare social links and listing sort/filter controls", () => {
+    for (const chrome of [
+      "Instagram",
+      "Facebook",
+      "Populärt",
+      "Flest röster",
+      "Genom tiderna",
+      "Senaste",
+      "Trending",
+      "Sortera",
+      "Visa alla",
+      "Mest lästa",
+    ]) {
+      expect(isChromeText(chrome)).toBe(true);
+    }
+    // a real engagement CTA that merely mentions a platform is kept
+    expect(isChromeText("Follow us on Instagram")).toBe(false);
+    expect(isChromeText("Kommentera")).toBe(false);
+  });
+
   it("drops nav / footer / icon-button CTAs, keeps genuine ones", () => {
     expect(isReusableCta({ text: "Sign up", section: "hero", category: "cta_primary" })).toBe(true);
     expect(isReusableCta({ text: "Home", section: "nav", category: "nav_item" })).toBe(false);

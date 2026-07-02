@@ -59,6 +59,11 @@ const CHROME_TEXT_RX: RegExp[] = [
   /^(?:öppna\s+meny|open\s+menu|meny|menu|stäng|close|sök|search|skriv\s+ut|print|dela(?:\s+med\s+dig)?|share)$/i,
   /^(?:läs\s+mer|read\s+more|visa\s+mer|show\s+more|mer\s+info(?:rmation)?(?:\s*&\s*öppettider)?)$/i,
   /^(?:«|»|‹|›|<|>|\.{2,}|prev(?:ious)?|next|föregående|nästa|tillbaka|back|hem|home)$/i,
+  // bare social-platform links (a real CTA is "Follow us on Instagram", not "Instagram")
+  /^(?:instagram|facebook|twitter|x|linkedin|tiktok|youtube|pinterest|snapchat|whatsapp|telegram|threads|reddit)$/i,
+  // listing sort/filter controls (forum / blog / catalog chrome, not conversions).
+  // Unicode-aware so Nordic letters in "flest röster" / "mest lästa" match.
+  /^(?:popul[äa]rt?|popular|senaste|latest|nyast?|newest|äldst[ae]?|oldest|trending|topp(?:listan|en)?|top|genom\s+tiderna|all\s*time|(?:mest|flest)\s+[\p{L}\s]+|sortera|sort(?:\s+by)?|filtrera|filter|visa\s+alla|show\s+all|se\s+alla|view\s+all|alla\s+[\p{L}\s]+)$/iu,
 ];
 
 /** True when a label is page chrome, not reusable CRO content. */
