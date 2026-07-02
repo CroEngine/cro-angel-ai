@@ -31,6 +31,11 @@ export type TrafficSource =
 
 export type DeviceType = "desktop" | "mobile" | "tablet";
 
+/** What kind of page is being adapted, derived from its URL path. Different
+ *  pages want different things: a conversion page (signup/checkout) is the
+ *  goal itself, so goal-decoration patterns step aside there. */
+export type PageType = "home" | "conversion" | "content" | "other";
+
 /**
  * Everything the engine knows about the current visitor. Assembled from
  * server-side signals (headers) and client-side signals (the snippet).
@@ -60,6 +65,8 @@ export interface VisitorContext {
   hourOfDay: number;
   /** The URL currently being adapted. */
   url: string;
+  /** Page classification derived from the URL (home | conversion | content | other). */
+  pageType: PageType;
 }
 
 /**
@@ -155,17 +162,13 @@ export interface Decision {
 export type PatternId =
   | "emphasize_goal"
   | "show_customer_logos_early"
-  | "show_testimonial"
   | "show_enterprise_testimonial"
   | "show_trust_badge"
   | "clarify_cta"
   | "show_guarantee"
   | "move_faq_up"
   | "shorten_hero"
-  | "highlight_popular_plan"
-  | "show_security_info"
   | "show_case_study"
-  | "add_microcopy"
   | "show_no_credit_card"
   | "show_2min_setup"
   | "surface_pricing"
@@ -179,12 +182,6 @@ export interface Pattern {
   op: AdaptationOp;
   /** The slot this pattern operates on. */
   slot: InventorySlot;
-  /**
-   * When true, the pattern injects/sets published text and is SKIPPED if the
-   * inventory has no item for its slot — this is how "never invent content" is
-   * enforced. When false, the op only reorders/reveals existing DOM.
-   */
-  requiresContent: boolean;
 }
 
 /** Client-collected signals POSTed to /api/adaptive/decide. */

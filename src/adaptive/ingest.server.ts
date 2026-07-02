@@ -13,13 +13,7 @@
 
 import { mapAuditToInventory } from "./crawler-inventory";
 import { diffInventory } from "./inventory-drift";
-import {
-  loadInventoryRows,
-  recordInventoryDrift,
-  registerSite,
-  saveInventory,
-} from "./persistence.server";
-import type { InventoryItem } from "./types";
+import { loadInventoryRows, registerSite, saveInventory } from "./persistence.server";
 import type { PageAuditData } from "@/lib/tests/schema";
 
 export interface IngestDriftSummary {
@@ -43,13 +37,6 @@ export interface IngestResult {
   drift: IngestDriftSummary;
 }
 
-/** Trim an item down to the fields worth storing in a drift report. */
-function compact(item: InventoryItem) {
-  return { slot: item.slot, text: item.text ?? null, selector: item.selector ?? null };
-}
-
-const MAX_DRIFT_ITEMS = 50;
-
 export async function ingestAudit(
   site: string,
   audit: Partial<PageAuditData>,
@@ -68,19 +55,9 @@ export async function ingestAudit(
   const registered = await registerSite(site, meta);
   const saved = await saveInventory(inventory, path);
 
-  // Record only meaningful change, and only once we have a baseline (the first
-  // crawl is the baseline, not "drift").
-  const changedAtAll = drift.counts.added + drift.counts.removed + drift.counts.changed > 0;
-  if (drift.hasBaseline && changedAtAll) {
-    await recordInventoryDrift(site, {
-      url: meta.domain ?? null,
-      path,
-      counts: drift.counts,
-      added: drift.added.slice(0, MAX_DRIFT_ITEMS).map(compact),
-      removed: drift.removed.slice(0, MAX_DRIFT_ITEMS).map(compact),
-      changed: drift.changed.slice(0, MAX_DRIFT_ITEMS),
-    });
-  }
+  // NOTE: drift is returned to the caller (surfaced live in the crawl/harvest
+  // responses) but no longer persisted as inventory_drift events — the audit
+  // found that sink was write-only: nothing ever read it back from the DB.
 
   return {
     site,

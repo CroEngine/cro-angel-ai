@@ -97,3 +97,27 @@ describe("route modules load", () => {
     expect(eventsRoute.Route).toBeTruthy();
   });
 });
+
+describe("classifyPageType", () => {
+  it("classifies home / conversion / content, EN + SV", async () => {
+    const { classifyPageType } = await import("../context");
+    expect(classifyPageType("https://x.se/")).toBe("home");
+    expect(classifyPageType("https://x.se/skapa-konto")).toBe("conversion");
+    expect(classifyPageType("https://x.se/signup")).toBe("conversion");
+    expect(classifyPageType("https://x.se/kassa")).toBe("conversion");
+    expect(classifyPageType("https://x.se/checkout/step-2")).toBe("conversion");
+    expect(classifyPageType("https://x.se/recept/glutenfri-pizza")).toBe("content");
+    expect(classifyPageType("not a url")).toBe("other");
+  });
+});
+
+describe("classifyCtaIntent — Swedish", () => {
+  it("maps SV labels to intents", async () => {
+    const { classifyCtaIntent } = await import("../crawler-inventory");
+    expect(classifyCtaIntent("Boka demo")).toBe("demo");
+    expect(classifyCtaIntent("Kontakta oss")).toBe("sales");
+    expect(classifyCtaIntent("Begär offert")).toBe("sales");
+    expect(classifyCtaIntent("Skapa konto")).toBe("trial");
+    expect(classifyCtaIntent("Prova gratis")).toBe("trial");
+  });
+});

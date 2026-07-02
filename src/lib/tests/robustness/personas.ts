@@ -4,11 +4,12 @@
 //
 // Pure: no IO. `url` is filled in per page at run time.
 
+import { classifyPageType } from "@/adaptive/context";
 import type { VisitorContext } from "@/adaptive/types";
 
 export type PersonaId = "linkedin_desktop" | "google_mobile" | "returning_pricing" | "paid_high_intent";
 
-const BASE: Omit<VisitorContext, "url"> = {
+const BASE: Omit<VisitorContext, "url" | "pageType"> = {
   trafficSource: "direct",
   device: "desktop",
   browser: "chrome",
@@ -23,7 +24,7 @@ const BASE: Omit<VisitorContext, "url"> = {
   hourOfDay: 12,
 };
 
-const PERSONAS: Record<PersonaId, Omit<VisitorContext, "url">> = {
+const PERSONAS: Record<PersonaId, Omit<VisitorContext, "url" | "pageType">> = {
   // B2B: logos early, enterprise testimonial, clarify CTA (set_text), case study.
   linkedin_desktop: { ...BASE, trafficSource: "linkedin", device: "desktop" },
   // Organic mobile: shorten hero, FAQ up, clarify CTA.
@@ -53,7 +54,7 @@ export const ALL_PERSONAS: PersonaId[] = [
 /** Build a full VisitorContext for a persona on a given URL. */
 export function personaContext(persona: PersonaId, url: string): VisitorContext {
   const base = PERSONAS[persona] ?? PERSONAS[DEFAULT_PERSONA];
-  return { ...base, url };
+  return { ...base, url, pageType: classifyPageType(url) };
 }
 
 export function isPersona(v: string): v is PersonaId {

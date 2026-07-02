@@ -139,6 +139,26 @@ function primaryLanguage(tag: string): string {
   return lang || "en";
 }
 
+// Path fragments that mark a CONVERSION page — the visitor is already at the
+// goal (signup/checkout/booking), so goal-decoration patterns step aside.
+// Deterministic and multilingual-by-structure (EN + SV terms; extend per market).
+const CONVERSION_PATH_RX =
+  /(sign[-_]?up|register|registrera|skapa[-_]?konto|bli[-_]?medlem|join|checkout|kassa|cart|varukorg|subscribe|prenumerera|log[-_]?in|logga[-_]?in|anmal|anm[aä]lan|boka|book(ing)?|contact|kontakt|quote|offert)/i;
+
+/** Classify what kind of page a URL points at. Pure; safe on bad input. */
+export function classifyPageType(url: string): VisitorContext["pageType"] {
+  let path = "/";
+  try {
+    path = new URL(url).pathname || "/";
+  } catch {
+    return "other";
+  }
+  if (path === "/" || path === "") return "home";
+  if (CONVERSION_PATH_RX.test(path)) return "conversion";
+  // Any real sub-path is content (article, product, listing, thread, ...).
+  return "content";
+}
+
 /** Merge server + client signals into the VisitorContext the engine consumes. */
 export function buildVisitorContext(server: ServerSignals, client: ClientSignals): VisitorContext {
   const referrer = client.referrer || server.referrer;
@@ -168,5 +188,6 @@ export function buildVisitorContext(server: ServerSignals, client: ClientSignals
     lastPath: client.lastPath?.trim() || null,
     hourOfDay,
     url: client.url,
+    pageType: classifyPageType(client.url),
   };
 }

@@ -136,20 +136,30 @@ export function ctaScore(cta: {
   return s;
 }
 
-/** Derive the CTA *intent* the engine keys on (demo/trial/sales) from a label. */
+/** Derive the CTA *intent* the engine keys on (demo/trial/sales) from a label.
+ *  EN + SV — the pilot market is Swedish; extend per market. */
 export function classifyCtaIntent(text: string): "demo" | "trial" | "sales" {
   const t = text.toLowerCase();
-  if (/\bdemo\b|book a|request a|get a demo|see it in action/.test(t)) return "demo";
-  if (/contact|talk to|sales|enterprise|get in touch/.test(t)) return "sales";
-  return "trial"; // free / start / sign up / get started / try
+  if (/\bdemo\b|book a|request a|get a demo|see it in action|boka (en )?demo|visning/.test(t))
+    return "demo";
+  if (/contact|talk to|sales|enterprise|get in touch|kontakt|offert|prata med/.test(t))
+    return "sales";
+  return "trial"; // free / start / sign up / prova / kom igång / skapa konto
 }
 
-/** Published reassurance phrases worth re-surfacing, keyed by microcopy kind. */
+/** Published reassurance phrases worth re-surfacing, keyed by microcopy kind.
+ *  EN + SV variants per kind. */
 const MICROCOPY_PATTERNS: { kind: string; rx: RegExp }[] = [
-  { kind: "no_credit_card", rx: /no credit card( required)?/i },
-  { kind: "setup_time", rx: /\b\d+[- ]?(?:min|minute)s?\b[^.]*\bsetup\b|set up in[^.]*\bmin/i },
-  { kind: "continuity", rx: /continue where you left off/i },
-  { kind: "guarantee", rx: /money[- ]back|cancel anytime|satisfaction guarantee/i },
+  { kind: "no_credit_card", rx: /no credit card( required)?|(inget|utan) (kredit)?kort/i },
+  {
+    kind: "setup_time",
+    rx: /\b\d+[- ]?(?:min|minute)s?\b[^.]*\bsetup\b|set up in[^.]*\bmin|klart? p[åa] \d+ min|ig[åa]ng p[åa] \d+/i,
+  },
+  { kind: "continuity", rx: /continue where you left off|forts[äa]tt d[äa]r du (var|slutade)/i },
+  {
+    kind: "guarantee",
+    rx: /money[- ]back|cancel anytime|satisfaction guarantee|pengarna tillbaka|avsluta n[äa]r som helst|ingen bindningstid/i,
+  },
 ];
 
 /** Pull published microcopy out of a pool of on-page texts. */
@@ -185,11 +195,11 @@ const TRUST_SLOT: Partial<Record<TrustSignalType, InventorySlot>> = {
   social_proof_count: "trust_badge",
 };
 
+// NOTE: features/benefits sections are deliberately NOT mapped — no pattern
+// consumes a "feature" slot, so harvesting it was storage for nothing (audit).
 const SECTION_SLOT: Partial<Record<SectionType, InventorySlot>> = {
   hero: "hero",
   logos: "customer_logos",
-  features: "feature",
-  benefits: "feature",
   testimonials: "testimonial",
   reviews: "testimonial",
   pricing: "pricing",
