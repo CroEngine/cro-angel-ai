@@ -190,6 +190,9 @@ export interface Pattern {
 export interface ClientSignals {
   site: string;
   url: string;
+  /** Per-site write key (data-key on the snippet tag). Gates the ingest
+   *  endpoints for keyed sites; absent/empty for unkeyed (legacy) sites. */
+  key?: string;
   referrer?: string;
   utmSource?: string;
   utmMedium?: string;

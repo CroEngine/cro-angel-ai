@@ -40,6 +40,7 @@ const bundle = `${banner}
   var base = "";
   try { base = self ? new URL(self.src, location.href).origin : location.origin; } catch (e) { base = location.origin; }
   var site = (self && self.getAttribute("data-site")) || location.hostname.replace(/^www\\./, "");
+  var key = (self && self.getAttribute("data-key")) || "";
   var force = !!(self && self.getAttribute("data-force") === "1");
   // Opt-in: sweep-scroll to trigger lazy/below-fold content before extracting.
   // Off by default because it moves the viewport (UX). Enable with data-warmup="1".
@@ -115,6 +116,7 @@ const bundle = `${banner}
       var audit = ${PAGE_AUDIT_SCRIPT};
       var payload = {
         site: site,
+        key: key || undefined,
         url: location.href,
         path: location.pathname,
         audit: {

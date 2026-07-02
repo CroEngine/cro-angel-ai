@@ -12,7 +12,7 @@ import { buildVisitorContext, readServerSignals } from "@/adaptive/context";
 import { decide } from "@/adaptive/decide";
 import { resolveInventory } from "@/adaptive/inventory.server";
 import { loadPatternBoosts } from "@/adaptive/performance.server";
-import { logDecision } from "@/adaptive/persistence.server";
+import { logDecision, siteWriteAllowed } from "@/adaptive/persistence.server";
 import type { ClientSignals } from "@/adaptive/types";
 
 const CORS_HEADERS: Record<string, string> = {
@@ -45,6 +45,13 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         }
         if (!client?.site || !client?.url) {
           return json({ error: "missing required fields: site, url" }, 400);
+        }
+
+        // Keyed sites must present the matching write key; a wrong/absent key
+        // means this isn't the legit install, so we neither decide nor log a
+        // (poisonable) exposure. The snippet fails open → page unchanged.
+        if (!(await siteWriteAllowed(client.site, client.key))) {
+          return json({ error: "unauthorized" }, 403);
         }
 
         const server = readServerSignals(request);

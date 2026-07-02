@@ -298,6 +298,35 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
 }
 
 /**
+ * Gate a write to the public ingest endpoints (decide / events / inventory).
+ * Returns true if the write is allowed:
+ *   - site has no key set (NULL) → allowed (unkeyed / auto-registration path),
+ *   - site has a key → allowed only if `providedKey` matches it exactly.
+ * Fail-open on an infra error, consistent with the best-effort persistence
+ * ethos (a DB hiccup that hides the key would also fail the write itself).
+ * Never throws.
+ */
+export async function siteWriteAllowed(
+  slug: string,
+  providedKey: string | null | undefined,
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("angel_sites")
+      .select("ingest_key")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (error) return true; // transient read failure → don't block legit traffic
+    const key = data?.ingest_key ?? null;
+    if (!key) return true; // unkeyed site
+    return typeof providedKey === "string" && providedKey.length > 0 && providedKey === key;
+  } catch (err) {
+    console.warn(`[angel] site-key check unavailable:`, err);
+    return true;
+  }
+}
+
+/**
  * Register (upsert) a site in angel_sites by slug. Best-effort; returns whether
  * the row was written. Called by saveInventory and the crawler ingest path.
  */

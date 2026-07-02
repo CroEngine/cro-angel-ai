@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/select";
 import {
   getDashboard,
+  rotateIngestKey,
   setConsentMode,
   setMeasurementConfig,
   type ConsentMode,
@@ -139,6 +140,8 @@ function Dashboard() {
             </Button>
           </div>
         </header>
+
+        <InstallCard site={site} ingestKey={d.siteConfig.ingestKey} disabled={!d.dbAvailable} />
 
         <ConsentControl site={site} mode={d.siteConfig.consentMode} disabled={!d.dbAvailable} />
 
@@ -479,6 +482,75 @@ function ConsentControl({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </Card>
+  );
+}
+
+function InstallCard({
+  site,
+  ingestKey,
+  disabled,
+}: {
+  site: string;
+  ingestKey: string | null;
+  disabled: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [copied, setCopied] = useState(false);
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  const rotate = useMutation({
+    mutationFn: () => rotateIngestKey({ data: { site } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
+  });
+
+  const keyAttr = ingestKey ? ` data-key="${ingestKey}"` : "";
+  const snippet = `<script async src="${origin}/adaptive.js" data-site="${site}"${keyAttr}></script>`;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked — user can select manually */
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="h-4 w-4 text-violet-600" /> Install
+          {!ingestKey && (
+            <Badge variant="secondary" className="text-[11px]">
+              unkeyed — writes open
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <pre className="overflow-x-auto rounded-md border border-border bg-muted/50 p-3 text-xs text-foreground">
+          {snippet}
+        </pre>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={copy} disabled={disabled}>
+            {copied ? "Copied" : "Copy snippet"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => rotate.mutate()}
+            disabled={disabled || rotate.isPending}
+          >
+            {rotate.isPending ? "Rotating…" : ingestKey ? "Rotate key" : "Generate key"}
+          </Button>
+          {rotate.data?.ok === false && <span className="text-xs text-rose-600">failed</span>}
+          <p className="ml-auto text-xs text-muted-foreground">
+            Paste once on the site. {ingestKey ? "Rotating invalidates the old key — update the tag." : "Generate a key to lock writes to this site."}
+          </p>
+        </div>
+      </CardContent>
     </Card>
   );
 }

@@ -31,6 +31,10 @@
   if (!script) return;
 
   var site = script.getAttribute("data-site") || "demo";
+  // Per-site write key. Public (it ships in this tag), but it binds this install
+  // to its slug so the ingest endpoints reject writes for a keyed site that
+  // don't present it. Unkeyed (legacy) sites simply omit it.
+  var KEY = script.getAttribute("data-key") || "";
   var base = script.getAttribute("data-endpoint") || new URL(script.src).origin;
   var DECIDE_URL = base + "/api/adaptive/decide";
   var EVENTS_URL = base + "/api/adaptive/events";
@@ -191,6 +195,7 @@
   var signals = {
     site: site,
     url: location.href,
+    key: KEY || undefined,
     referrer: document.referrer || "",
     utmSource: qp.get("utm_source") || qp.get("angel_source") || undefined,
     utmMedium: qp.get("utm_medium") || qp.get("angel_medium") || undefined,
@@ -214,7 +219,7 @@
     // Anonymous mode sends no behavioural data (no visitorHash to attribute it
     // to anyway). A later consent grant enables sending from that point on.
     if (!consented) return;
-    var body = JSON.stringify({ site: site, visitorHash: vid, events: events });
+    var body = JSON.stringify({ site: site, key: KEY || undefined, visitorHash: vid, events: events });
     // Send as text/plain (a CORS-safelisted content type) so cross-origin
     // beacons need NO preflight — navigator.sendBeacon cannot perform one, and
     // application/json would force one and silently drop the beacon. The server
@@ -782,6 +787,7 @@
       s.src = HARVEST_URL;
       s.async = true;
       s.setAttribute("data-site", site);
+      if (KEY) s.setAttribute("data-key", KEY); // gate the inventory POST too
       s.setAttribute("data-force", "1"); // already elected here
       (document.head || document.documentElement).appendChild(s);
     } catch (e) {
