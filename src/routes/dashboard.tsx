@@ -625,7 +625,13 @@ function InstallCard({
 }) {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  // The snippet URL must always be the durable production origin. A dashboard
+  // opened on a Netlify deploy preview (deploy-preview-N--site.netlify.app)
+  // would otherwise hand out a tag pinned to an ephemeral, frozen build.
+  const origin = (typeof window !== "undefined" ? window.location.origin : "").replace(
+    /^https:\/\/deploy-preview-\d+--/,
+    "https://",
+  );
 
   const rotate = useMutation({
     mutationFn: () => rotateIngestKey({ data: { site } }),
