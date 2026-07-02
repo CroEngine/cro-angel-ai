@@ -192,3 +192,47 @@ describe("aggregate — attribution (what's working)", () => {
     expect(row.adapted.conversions).toBe(0);
   });
 });
+
+describe("aggregate — significance requires an adequate sample", () => {
+  const T = (h: number) => `2026-06-27T${String(h).padStart(2, "0")}:00:00Z`;
+  // Build one pattern's arms from (exposures, conversions) per variant.
+  function build(
+    adapted: { n: number; c: number },
+    control: { n: number; c: number },
+  ): DashEvent[] {
+    const out: DashEvent[] = [];
+    const arm = (prefix: string, type: string, n: number, c: number) => {
+      for (let i = 0; i < n; i++) {
+        const v = `${prefix}${i}`;
+        out.push(ev(type, { patterns: ["clarify_cta"] }, { visitorHash: v, createdAt: T(9) }));
+        if (i < c) out.push(ev("conversion", {}, { visitorHash: v, createdAt: T(10) }));
+      }
+    };
+    arm("a", "adaptation_shown", adapted.n, adapted.c);
+    arm("c", "adaptation_withheld", control.n, control.c);
+    return out;
+  }
+  const row = (evs: DashEvent[]) =>
+    aggregate(evs, []).attribution.find((a) => a.pattern === "clarify_cta")!;
+
+  it("is NOT significant on a tiny lucky sample (3/3 vs 0/3)", () => {
+    // z here exceeds 1.96, but the sample fails the success–failure condition.
+    const r = row(build({ n: 3, c: 3 }, { n: 3, c: 0 }));
+    expect(r.z).not.toBeNull();
+    expect(Math.abs(r.z as number)).toBeGreaterThan(1.96);
+    expect(r.significant).toBe(false);
+  });
+
+  it("IS significant once both arms are adequately powered", () => {
+    // 40 vs 40 exposures, 20 vs 5 conversions — valid arms + a real gap.
+    const r = row(build({ n: 40, c: 20 }, { n: 40, c: 5 }));
+    expect(r.lift).toBeCloseTo(20 / 40 - 5 / 40);
+    expect(r.significant).toBe(true);
+  });
+
+  it("is NOT significant when an arm has too few outcomes (below-threshold conversions)", () => {
+    // 40 vs 40 exposures but only 2 conversions in the adapted arm.
+    const r = row(build({ n: 40, c: 2 }, { n: 40, c: 0 }));
+    expect(r.significant).toBe(false);
+  });
+});
