@@ -97,6 +97,35 @@ export function isReusableCta(cta: {
   return true;
 }
 
+/** Most CTAs to keep per page, taken by prominence. Bounds the long tail of
+ *  list/link "CTAs" on ANY language — the structural backstop that doesn't rely
+ *  on knowing chrome words in that language. */
+export const MAX_CTAS = 8;
+
+/**
+ * Language-agnostic prominence score: how much this reads like a real primary
+ * action, from signals the audit already computed (visual weight, above-fold,
+ * category, intent) — no text/wordlists. A page's most prominent actions score
+ * highest; a wall of low-weight list links scores low and falls out of top-K.
+ */
+export function ctaScore(cta: {
+  visualWeight?: number;
+  aboveFold?: boolean;
+  category?: string;
+  intent?: string;
+  competingActions?: number;
+}): number {
+  let s = typeof cta.visualWeight === "number" ? cta.visualWeight : 0;
+  if (cta.aboveFold) s += 20;
+  if (cta.category === "cta_primary") s += 30;
+  else if (cta.category === "form_submit") s += 25;
+  else if (cta.category === "cta_secondary") s += 12;
+  if (cta.intent === "conversion") s += 15;
+  // A CTA sitting among many sibling actions is usually one link in a list/nav.
+  if (typeof cta.competingActions === "number" && cta.competingActions > 8) s -= 15;
+  return s;
+}
+
 /** Derive the CTA *intent* the engine keys on (demo/trial/sales) from a label. */
 export function classifyCtaIntent(text: string): "demo" | "trial" | "sales" {
   const t = text.toLowerCase();
@@ -213,10 +242,18 @@ export function mapAuditToInventory(
   const b = new InventoryBuilder();
   const textPool: string[] = [];
 
+  // Collect reusable CTAs, then keep only the most prominent MAX_CTAS. The
+  // top-K cut is language-agnostic: it bounds the long tail of list/link
+  // "CTAs" even when no chrome wordlist matches (non-EN/SV pages).
+  const ctaCandidates: { cta: CTAEntity; score: number }[] = [];
   for (const cta of (audit.ctas ?? []) as CTAEntity[]) {
     if (!cta?.text) continue;
     textPool.push(cta.text); // keep for microcopy scan even if we drop the CTA
     if (!isReusableCta(cta)) continue; // curate: skip nav / footer / chrome
+    ctaCandidates.push({ cta, score: ctaScore(cta) });
+  }
+  ctaCandidates.sort((a, b) => b.score - a.score);
+  for (const { cta } of ctaCandidates.slice(0, MAX_CTAS)) {
     b.add(
       "cta",
       ctaItem(cta.text, cta.selector, {

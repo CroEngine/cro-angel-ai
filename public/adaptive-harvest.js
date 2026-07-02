@@ -59,8 +59,33 @@
     }
   }
 
+  // Mark the cookie-consent container so the extraction scripts exclude its
+  // buttons ("Accept all", "Alle akzeptieren", …) — language-agnostic, mirrors
+  // the headless crawler's cookie-poll. The crawler marks this Node-side; the
+  // on-page harvester must do it itself or CTA extraction picks up cookie chrome.
+  function markCookieRoot() {
+    try {
+      var SEL = '#onetrust-consent-sdk,#onetrust-banner-sdk,[id*="onetrust" i],[class*="onetrust" i],#osano-cm-window,[class*="osano-cm" i],[id*="cookiebot" i],[id^="CybotCookiebot" i],[id*="cookie-banner" i],[id*="cookie-consent" i],[class*="cookie-banner" i],[class*="cookie-consent" i],[id*="truste" i],[class*="truste" i],[aria-label*="cookie" i],[aria-label*="consent" i],[id*="usercentrics" i],[id*="didomi" i],[class*="didomi" i]';
+      var ROOT_SEL = '#onetrust-consent-sdk,[id*="cookie" i],[class*="cookie" i],[id*="consent" i],[id*="onetrust" i]';
+      var all = document.querySelectorAll(SEL);
+      var found = null;
+      for (var i = 0; i < all.length; i++) {
+        var t = all[i].tagName;
+        if (t !== "STYLE" && t !== "SCRIPT" && t !== "LINK") { found = all[i]; break; }
+      }
+      if (!found) return;
+      var r = found.getBoundingClientRect();
+      var known = /onetrust|cookiebot|usercentrics|didomi|osano/i.test(found.id || "");
+      if (known || (r.width > 50 && r.height > 30)) {
+        var root = (found.closest && found.closest(ROOT_SEL)) || found;
+        try { root.setAttribute("data-lovable-cookie-root", "1"); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
   function extract() {
     try {
+      markCookieRoot();
       var ctas = (() => {
   const viewportH = window.innerHeight || 720;
 
