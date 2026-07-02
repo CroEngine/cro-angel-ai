@@ -34,6 +34,7 @@
   var base = script.getAttribute("data-endpoint") || new URL(script.src).origin;
   var DECIDE_URL = base + "/api/adaptive/decide";
   var EVENTS_URL = base + "/api/adaptive/events";
+  var CONFIG_URL = base + "/api/adaptive/consent-config";
 
   // ---- measurement config (opt-in) -----------------------------------------
   // data-holdout: % of visitors held out as control (0 = off).
@@ -106,6 +107,12 @@
     try {
       vid = visitorId();
     } catch (e) {}
+    // Refresh the consent-dependent signal fields so any decision computed
+    // after this upgrade gets holdout bucketing + attribution. A no-op for the
+    // fields the server ignores when anonymous.
+    signals.visitorHash = vid || undefined;
+    signals.holdoutPct = HOLDOUT_PCT;
+    signals.consent = consentBasis;
     try {
       recordVisit();
     } catch (e) {}
@@ -511,7 +518,14 @@
   }
 
   // ---- persist this visit --------------------------------------------------
+  // Idempotent per page load: an attestation/CMP upgrade and the post-decision
+  // tail can both reach here, but a visit must only be counted once. Anonymous
+  // calls are a no-op that does NOT consume the guard, so a later consent
+  // upgrade in the same load still records the (now lawful) visit exactly once.
+  var visitRecorded = false;
   function recordVisit() {
+    if (visitRecorded || !consented) return;
+    visitRecorded = true;
     var s = readStore();
     s.visits = (s.visits || 0) + 1;
     s.lastPath = location.pathname;
@@ -605,7 +619,7 @@
   }
 
   // ---- run -----------------------------------------------------------------
-  function run() {
+  function decideAndApply() {
     fetch(DECIDE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -666,6 +680,41 @@
     // Watch for a later consent grant (CMP loads async) to upgrade live.
     watchConsent();
     recordVisit();
+  }
+
+  // Resolve the SITE OWNER's consent configuration before the first decision.
+  // The owner (data controller) can attest a lawful basis in the dashboard;
+  // an attested site runs consented at baseline (persistent id + measurement).
+  // GPC/DNT and an explicit data-consent override always take precedence and
+  // skip the round-trip. Anonymous sites decide without waiting.
+  function resolveOwnerConsentThen(next) {
+    if (consented || CONSENT_OVERRIDE || gpcOrDnt()) return next();
+    var done = false;
+    function proceed() {
+      if (done) return;
+      done = true;
+      next();
+    }
+    try {
+      fetch(CONFIG_URL + "?site=" + encodeURIComponent(site))
+        .then(function (r) {
+          return r.ok ? r.json() : null;
+        })
+        .then(function (cfg) {
+          if (cfg && cfg.mode === "attested") upgradeConsent("site_attested");
+        })
+        .catch(function () {})
+        .then(proceed);
+    } catch (e) {
+      proceed();
+    }
+    // Never let a slow/hung config response delay adaptation: decide anonymously
+    // after a short wait; a late attestation still upgrades events from then on.
+    setTimeout(proceed, 1500);
+  }
+
+  function run() {
+    resolveOwnerConsentThen(decideAndApply);
   }
 
   if (document.readyState === "loading") {

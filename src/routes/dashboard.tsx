@@ -7,7 +7,7 @@
 // dashboard renders a clean empty state.
 
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   Activity,
@@ -17,11 +17,24 @@ import {
   Target,
   Sparkles,
   TrendingUp,
+  ShieldCheck,
+  Shield,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -29,7 +42,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getDashboard, type DashboardResponse } from "@/lib/dashboard/dashboard.functions";
+import {
+  getDashboard,
+  setConsentMode,
+  type ConsentMode,
+  type DashboardResponse,
+} from "@/lib/dashboard/dashboard.functions";
 import type { SegmentBar, PatternAttribution } from "@/lib/dashboard/aggregate";
 
 const dashboardQuery = (site: string) =>
@@ -83,6 +101,8 @@ function Dashboard() {
             </SelectContent>
           </Select>
         </header>
+
+        <ConsentControl site={site} mode={d.consentMode} disabled={!d.dbAvailable} />
 
         {!d.dbAvailable && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -324,6 +344,95 @@ function Dashboard() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+function ConsentControl({
+  site,
+  mode,
+  disabled,
+}: {
+  site: string;
+  mode: ConsentMode;
+  disabled: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const attested = mode === "attested";
+
+  const mutation = useMutation({
+    mutationFn: (next: ConsentMode) => setConsentMode({ data: { site, mode: next } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
+  });
+
+  function onToggle(next: boolean) {
+    if (next) {
+      setConfirmOpen(true); // enabling is a legal attestation → confirm first
+    } else {
+      mutation.mutate("anonymous"); // withdrawing needs no attestation
+    }
+  }
+
+  return (
+    <Card className={attested ? "border-violet-200 bg-violet-50/40" : undefined}>
+      <CardContent className="flex flex-wrap items-center gap-4 py-4">
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+            attested ? "bg-violet-100 text-violet-700" : "bg-muted text-muted-foreground"
+          } [&>svg]:h-5 [&>svg]:w-5`}
+        >
+          {attested ? <ShieldCheck /> : <Shield />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-foreground">
+              {attested ? "Full tracking (attested)" : "Anonymous mode"}
+            </span>
+            <Badge variant={attested ? "default" : "secondary"} className="text-[11px]">
+              {attested ? "attested" : "anonymous"}
+            </Badge>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {attested
+              ? "Angel stores a persistent visitor id and measures conversion lift for this site. Visitors who signal GPC/DNT are still excluded automatically."
+              : "Angel adapts the page but stores no persistent id and sends no behavioural events. Turn this on only if you have a lawful basis / visitor consent."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {mutation.isPending && <span className="text-xs text-muted-foreground">saving…</span>}
+          {mutation.data?.ok === false && (
+            <span className="text-xs text-rose-600">save failed</span>
+          )}
+          <Switch
+            checked={attested}
+            disabled={disabled || mutation.isPending}
+            onCheckedChange={onToggle}
+            aria-label="Attest lawful basis for full tracking"
+          />
+        </div>
+      </CardContent>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enable full tracking for this site?</AlertDialogTitle>
+            <AlertDialogDescription>
+              By turning this on you attest that you have a lawful basis — for example valid
+              visitor consent under GDPR/ePrivacy — for Angel to store a persistent visitor
+              identifier and measure conversions on <strong>{site}</strong>. You remain the data
+              controller. Visitors who signal Global Privacy Control or Do Not Track are excluded
+              automatically. You can withdraw this at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => mutation.mutate("attested")}>
+              I attest — enable
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
   );
 }
 

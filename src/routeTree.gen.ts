@@ -17,6 +17,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiAdaptiveEventsRouteImport } from './routes/api/adaptive/events'
 import { Route as ApiAdaptiveDecideRouteImport } from './routes/api/adaptive/decide'
 import { Route as ApiAdaptiveInventoryRouteImport } from './routes/api/adaptive/inventory'
+import { Route as ApiAdaptiveConsentConfigRouteImport } from './routes/api/adaptive/consent-config'
 import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
 import { Route as ApiTestsRobustnessStreamRouteImport } from './routes/api/tests/robustness.stream'
 import { Route as ApiTestsCrawlStreamRouteImport } from './routes/api/tests/crawl.stream'
@@ -60,6 +61,11 @@ const ApiAdaptiveInventoryRoute = ApiAdaptiveInventoryRouteImport.update({
 const ApiAdaptiveDecideRoute = ApiAdaptiveDecideRouteImport.update({
   id: '/api/adaptive/decide',
   path: '/api/adaptive/decide',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdaptiveConsentConfigRoute = ApiAdaptiveConsentConfigRouteImport.update({
+  id: '/api/adaptive/consent-config',
+  path: '/api/adaptive/consent-config',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTestsRunIdStreamRoute = ApiTestsRunIdStreamRouteImport.update({
@@ -180,6 +186,7 @@ export interface RootRouteChildren {
   ApiAdaptiveDecideRoute: typeof ApiAdaptiveDecideRoute
   ApiAdaptiveEventsRoute: typeof ApiAdaptiveEventsRoute
   ApiAdaptiveInventoryRoute: typeof ApiAdaptiveInventoryRoute
+  ApiAdaptiveConsentConfigRoute: typeof ApiAdaptiveConsentConfigRoute
   ApiPublicCorpusSplatRoute: typeof ApiPublicCorpusSplatRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
   ApiTestsRobustnessStreamRoute: typeof ApiTestsRobustnessStreamRoute
@@ -244,6 +251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdaptiveDecideRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/adaptive/consent-config': {
+      id: '/api/adaptive/consent-config'
+      path: '/api/adaptive/consent-config'
+      fullPath: '/api/adaptive/consent-config'
+      preLoaderRoute: typeof ApiAdaptiveConsentConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tests/$runId/stream': {
       id: '/api/tests/$runId/stream'
       path: '/api/tests/$runId/stream'
@@ -284,6 +298,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdaptiveDecideRoute: ApiAdaptiveDecideRoute,
   ApiAdaptiveEventsRoute: ApiAdaptiveEventsRoute,
   ApiAdaptiveInventoryRoute: ApiAdaptiveInventoryRoute,
+  ApiAdaptiveConsentConfigRoute: ApiAdaptiveConsentConfigRoute,
   ApiPublicCorpusSplatRoute: ApiPublicCorpusSplatRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
   ApiTestsRobustnessStreamRoute: ApiTestsRobustnessStreamRoute,
