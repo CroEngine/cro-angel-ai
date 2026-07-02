@@ -24,6 +24,7 @@ export type Database = {
           holdout_pct: number
           conversion_url: string | null
           conversion_selector: string | null
+          conversion_source: string | null
           ingest_key: string | null
           created_at: string
         }
@@ -36,6 +37,7 @@ export type Database = {
           holdout_pct?: number
           conversion_url?: string | null
           conversion_selector?: string | null
+          conversion_source?: string | null
           ingest_key?: string | null
           created_at?: string
         }
@@ -48,6 +50,7 @@ export type Database = {
           holdout_pct?: number
           conversion_url?: string | null
           conversion_selector?: string | null
+          conversion_source?: string | null
           ingest_key?: string | null
           created_at?: string
         }

@@ -733,6 +733,63 @@ function MeasurementControl({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
   });
 
+  // Zero-config default: collapsed confirmation line. The three raw fields are
+  // an expert mode behind "Change" — most owners only ever confirm.
+  const [editing, setEditing] = useState(false);
+  useEffect(() => setEditing(false), [site]);
+  const goalCta = ctas.find((c) => c.selector === config.conversionSelector);
+  const goalLabel = goalCta?.text
+    ? `“${goalCta.text}”`
+    : config.conversionSelector
+      ? config.conversionSelector
+      : config.conversionUrl
+        ? `visiting ${config.conversionUrl}`
+        : null;
+
+  if (!editing) {
+    return (
+      <Card className="border-stone-200 shadow-none">
+        <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
+          <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+            [ measurement ]
+          </span>
+          {goalLabel ? (
+            <span className="text-sm text-stone-700">
+              Your goal: <strong>{goalLabel}</strong>{" "}
+              {config.conversionSource === "auto" && (
+                <span className="font-mono text-[11px] tracking-wider text-stone-400">
+                  (auto-detected)
+                </span>
+              )}
+            </span>
+          ) : (
+            <span className="text-sm text-stone-500">
+              Goal not set yet — Angel picks one automatically from your site&apos;s buttons after
+              the first visits.
+            </span>
+          )}
+          <span className="font-mono text-[11px] tracking-wider text-stone-400">
+            · control group: {config.holdoutPct}%
+          </span>
+          {config.consentMode !== "attested" && (
+            <span className="font-mono text-[11px] tracking-wider text-amber-600">
+              · awaiting attestation above
+            </span>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto"
+            disabled={disabled}
+            onClick={() => setEditing(true)}
+          >
+            Change
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-stone-200 shadow-none">
       <CardHeader className="pb-3">
@@ -743,6 +800,14 @@ function MeasurementControl({
               — takes effect once full tracking is attested above
             </span>
           )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto text-stone-500"
+            onClick={() => setEditing(false)}
+          >
+            Done
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

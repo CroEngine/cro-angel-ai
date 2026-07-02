@@ -302,6 +302,35 @@ export async function siteWriteAllowed(
 }
 
 /**
+ * Zero-config goal: fill in a site's conversion goal from the harvest when the
+ * owner hasn't set one. Only writes when conversion_selector is NULL — an
+ * owner-saved goal (conversion_source='owner') or a previous auto-pick is never
+ * churned. Best-effort; never throws.
+ */
+export async function maybeAutoSetGoal(
+  slug: string,
+  goal: { selector: string; text: string } | null,
+): Promise<boolean> {
+  if (!goal) return false;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("angel_sites")
+      .update({ conversion_selector: goal.selector, conversion_source: "auto" })
+      .eq("slug", slug)
+      .is("conversion_selector", null)
+      .select("slug");
+    if (error) {
+      console.warn(`[angel] auto-goal skipped: ${error.message}`);
+      return false;
+    }
+    return (data ?? []).length > 0;
+  } catch (err) {
+    console.warn(`[angel] auto-goal unavailable:`, err);
+    return false;
+  }
+}
+
+/**
  * Register (upsert) a site in angel_sites by slug. Best-effort; returns whether
  * the row was written. Called by saveInventory and the crawler ingest path.
  */

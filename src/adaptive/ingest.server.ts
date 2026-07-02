@@ -11,9 +11,14 @@
 // but the mapping + drift diff always run so callers can see what was extracted
 // and what changed.
 
-import { mapAuditToInventory } from "./crawler-inventory";
+import { mapAuditToInventory, pickGoalCta } from "./crawler-inventory";
 import { diffInventory } from "./inventory-drift";
-import { loadInventoryRows, registerSite, saveInventory } from "./persistence.server";
+import {
+  loadInventoryRows,
+  maybeAutoSetGoal,
+  registerSite,
+  saveInventory,
+} from "./persistence.server";
 import type { PageAuditData } from "@/lib/tests/schema";
 
 export interface IngestDriftSummary {
@@ -54,6 +59,12 @@ export async function ingestAudit(
 
   const registered = await registerSite(site, meta);
   const saved = await saveInventory(inventory, path);
+
+  // Zero-config measurement: if the owner hasn't set a conversion goal yet,
+  // auto-pick the best goal-intent CTA from this harvest ("Skapa konto",
+  // "Sign up", "Köp", ...). The dashboard shows it as auto-detected; the owner
+  // confirms or changes instead of configuring.
+  await maybeAutoSetGoal(site, pickGoalCta(inventory));
 
   // NOTE: drift is returned to the caller (surfaced live in the crawl/harvest
   // responses) but no longer persisted as inventory_drift events — the audit
