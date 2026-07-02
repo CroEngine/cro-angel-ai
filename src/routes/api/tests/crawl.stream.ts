@@ -76,6 +76,13 @@ export const Route = createFileRoute("/api/tests/crawl/stream")({
                   };
                 }
 
+                // Extraction hardening: dismiss consent gates + let SPAs hydrate
+                // before auditing, so consent-walled / client-rendered pages
+                // don't come back empty. Both deterministic + language-agnostic.
+                emit("log", { message: "settling (consent + hydrate)" });
+                await sess.dismissConsent(opened.page);
+                await sess.waitForContent(opened.page);
+
                 emit("log", { message: "auditing page" });
                 const data = await audit.runPageAudit(opened.page);
 
