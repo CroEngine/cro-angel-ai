@@ -4,6 +4,7 @@ import { describe, it, expect } from "vitest";
 import {
   classifyCtaIntent,
   ctaScore,
+  curateCtas,
   extractMicrocopy,
   isChromeText,
   isReusableCta,
@@ -188,6 +189,22 @@ describe("curation — drop page chrome, keep real CTAs", () => {
     expect(texts).toContain("Sign up now"); // the distinct CTA survives
     const stripKept = ["Women", "Men", "Kids", "Baby", "Sale"].filter((t) => texts.includes(t));
     expect(stripKept.length).toBe(1); // only one of the strip remains
+  });
+
+  it("curateCtas runs the whole pipeline (filter → collapse → dedup → cap) and orders by prominence", () => {
+    const out = curateCtas([
+      mkCta("Acceptera alla", "content", "cta_primary"), // chrome → dropped
+      mkCta("Read the customer story", "content", "cta_primary"), // dup
+      mkCta("Read the customer story", "content", "cta_primary"), // dup → collapsed
+      mkCta("A very very very long promotional banner label here", "content", "cta_primary"), // banner → dropped
+      Object.assign(mkCta("Book a demo", "hero", "cta_primary", 180, 52), { visualWeight: 99 }),
+    ]);
+    const texts = out.map((c) => c.text);
+    expect(texts).not.toContain("Acceptera alla");
+    expect(texts.filter((t) => t === "Read the customer story").length).toBe(1);
+    expect(texts.some((t) => t.startsWith("A very very"))).toBe(false);
+    expect(texts[0]).toBe("Book a demo"); // highest prominence first
+    expect(out.length).toBeLessThanOrEqual(8);
   });
 
   it("ctaScore ranks a prominent primary above a faint secondary", () => {
