@@ -150,16 +150,21 @@ export const getDashboard = createServerFn({ method: "POST" })
       let inventory: InventoryEntry[] = [];
       let siteConfig: SiteConfigView = DEFAULT_SITE_CONFIG;
       if (canView) {
-        const { data: eventRows } = await supabaseAdmin
+        // A failed read must surface as dbAvailable:false, NOT as an empty
+        // site — "no data" gates onboarding UI (the install card), so it can't
+        // be allowed to masquerade as "no traffic yet".
+        const { data: eventRows, error: evError } = await supabaseAdmin
           .from("angel_events")
           .select("type,payload,visitor_hash,decision_id,created_at")
           .eq("site", site)
           .order("created_at", { ascending: false })
           .limit(EVENT_LIMIT);
-        const { data: invRows } = await supabaseAdmin
+        if (evError) throw evError;
+        const { data: invRows, error: invError } = await supabaseAdmin
           .from("angel_content_inventory")
           .select("slot,item_id,text,selector,meta")
           .eq("site_slug", site);
+        if (invError) throw invError;
 
         events = (eventRows ?? []).map((r) => ({
           type: r.type,
@@ -398,29 +403,64 @@ export const setMeasurementConfig = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Verify an account password against Supabase Auth, server-side. Returns
+ *  'ok' | 'password' (wrong credentials) | 'error' (rate limit / infra). The
+ *  returned session is discarded — this is a yes/no check only. */
+async function verifyPassword(email: string, password: string): Promise<"ok" | "password" | "error"> {
+  const url = process.env.SUPABASE_URL;
+  const apikey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !apikey) return "error";
+  try {
+    const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey },
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.ok) return "ok";
+    return res.status === 400 ? "password" : "error";
+  } catch (err) {
+    console.warn(`[angel] password verification unavailable:`, err);
+    return "error";
+  }
+}
+
 /**
  * Generate (or regenerate) a site's ingest key and return it. Rotating
  * invalidates the previous key, so the site's snippet tag must be updated with
- * the new value or its writes will be rejected. Auth-gated.
+ * the new value or its writes will be rejected. Because that can silently stop
+ * a live site's data, a valid session is NOT enough: the caller's account
+ * password is re-verified HERE, server-side — a client-side check could be
+ * bypassed by anyone holding the session token.
  */
 export const rotateIngestKey = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ site: z.string().min(1) }))
-  .handler(async ({ data, context }): Promise<{ ok: boolean; key: string | null }> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    if (!(await ownsSite(supabaseAdmin, context as unknown as AuthCtx, data.site))) {
-      return { ok: false, key: null };
-    }
-    const key = genKey();
-    const { error } = await supabaseAdmin
-      .from("angel_sites")
-      .upsert({ slug: data.site, ingest_key: key }, { onConflict: "slug" });
-    if (error) {
-      console.warn(`[angel] rotateIngestKey failed: ${error.message}`);
-      return { ok: false, key: null };
-    }
-    return { ok: true, key };
-  });
+  .inputValidator(z.object({ site: z.string().min(1), password: z.string().min(1) }))
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{ ok: boolean; reason?: "auth" | "password" | "error"; key: string | null }> => {
+      const ctx = context as unknown as AuthCtx;
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      if (!(await ownsSite(supabaseAdmin, ctx, data.site))) {
+        return { ok: false, reason: "auth", key: null };
+      }
+      const email = ctx.claims?.email;
+      if (!email) return { ok: false, reason: "password", key: null };
+      const verdict = await verifyPassword(email, data.password);
+      if (verdict !== "ok") return { ok: false, reason: verdict, key: null };
+
+      const key = genKey();
+      const { error } = await supabaseAdmin
+        .from("angel_sites")
+        .upsert({ slug: data.site, ingest_key: key }, { onConflict: "slug" });
+      if (error) {
+        console.warn(`[angel] rotateIngestKey failed: ${error.message}`);
+        return { ok: false, reason: "error", key: null };
+      }
+      return { ok: true, key };
+    },
+  );
 
 /**
  * Create (or claim) a site and make the caller its owner. A brand-new slug is
@@ -491,10 +531,11 @@ export const createSite = createServerFn({ method: "POST" })
           console.warn(`[angel] createSite insert failed: ${error.message}`);
           return { ok: false, reason: "error" };
         }
-      } else if (!key) {
-        key = genKey();
-        await supabaseAdmin.from("angel_sites").update({ ingest_key: key }).eq("slug", slug);
       }
+      // Claiming an existing unkeyed site must NOT auto-generate a key: the
+      // site's live tag has no data-key, so keying here would silently 403
+      // every request from the running install. Locking writes is an explicit,
+      // password-gated action in Settings instead.
 
       // Claim ownership (idempotent).
       const { error: memErr } = await supabaseAdmin

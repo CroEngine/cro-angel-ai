@@ -130,6 +130,11 @@ function Dashboard() {
 
   if (!data) return null;
   const d: DashboardResponse = data;
+  // The snippet is "installed" once the site has reported any traffic —
+  // exposures are server-logged for all visitors (anonymous included), and
+  // pageviews cover consented-only history older than the exposure events.
+  const installed =
+    d.metrics.timeseries.daily.some((p) => p.visits > 0) || d.metrics.overview.pageviews > 0;
 
   return (
     <div className="min-h-screen bg-[#fafaf9] px-4 py-8 text-stone-900">
@@ -161,6 +166,13 @@ function Dashboard() {
               </Select>
             )}
             <AddSiteControl onCreated={(slug) => setSite(slug)} />
+            {d.sites.length > 0 && (
+              <SettingsControl
+                site={site}
+                config={d.siteConfig}
+                disabled={!d.dbAvailable}
+              />
+            )}
             <AccountControl />
             <Button variant="outline" size="sm" onClick={signOut}>
               Sign out
@@ -186,9 +198,13 @@ function Dashboard() {
           </Card>
         ) : (
           <>
-        <InstallCard site={site} ingestKey={d.siteConfig.ingestKey} disabled={!d.dbAvailable} />
-
-        <ConsentControl site={site} mode={d.siteConfig.consentMode} disabled={!d.dbAvailable} />
+        {/* Onboarding only: once the snippet reports traffic the install card
+            retires to Settings and the dashboard is just the product. Hidden
+            when the store is unreachable — "no data" isn't "not installed",
+            and the fallback config would render the wrong (keyless) tag. */}
+        {d.dbAvailable && !installed && (
+          <InstallCard site={site} ingestKey={d.siteConfig.ingestKey} />
+        )}
 
         <MeasurementControl
           config={d.siteConfig}
@@ -450,19 +466,199 @@ function Dashboard() {
   );
 }
 
-function ConsentControl({
+/** The one durable install tag for a site. Strips deploy-preview origins so a
+ *  dashboard opened on a preview never hands out an ephemeral URL. */
+function buildSnippet(site: string, ingestKey: string | null): string {
+  const origin = (typeof window !== "undefined" ? window.location.origin : "").replace(
+    /^https:\/\/deploy-preview-\d+--/,
+    "https://",
+  );
+  const keyAttr = ingestKey ? ` data-key="${ingestKey}"` : "";
+  return `<script async src="${origin}/adaptive.js" data-site="${site}"${keyAttr}></script>`;
+}
+
+/** Per-site settings dialog: the install tag (with password-guarded key
+ *  rotation) and the visitor-information terms. Lives in the header so the
+ *  dashboard itself stays pure product. */
+function SettingsControl({
   site,
-  mode,
+  config,
   disabled,
 }: {
   site: string;
-  mode: ConsentMode;
+  config: SiteConfigView;
   disabled: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          Settings
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+              [ settings ]
+            </span>
+            {site}
+          </DialogTitle>
+          <DialogDescription>
+            Install tag, security and data terms for this site.
+          </DialogDescription>
+        </DialogHeader>
+        {disabled ? (
+          // The fallback config is a default, not this site's truth — showing
+          // it here would present a keyless tag and "paused" terms as fact.
+          <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            The data store can&apos;t be reached right now, so this site&apos;s settings can&apos;t
+            be shown. Try again in a moment.
+          </p>
+        ) : (
+          <div className="space-y-6">
+            <InstallSection site={site} ingestKey={config.ingestKey} />
+            <ConsentSection site={site} mode={config.consentMode} />
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function InstallSection({ site, ingestKey }: { site: string; ingestKey: string | null }) {
   const queryClient = useQueryClient();
-  // 'attested' = collecting visitor information (on); 'anonymous' = paused. The
-  // lawful-basis acknowledgment happens once at signup, so the per-site control
-  // is just an on/pause switch here — no attestation dialog.
+  const [copied, setCopied] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [pw, setPw] = useState("");
+
+  const snippet = buildSnippet(site, ingestKey);
+
+  // The password travels WITH the rotation request — it's verified server-side
+  // in rotateIngestKey, so the gate can't be bypassed by calling the endpoint
+  // directly with a stolen session.
+  const rotate = useMutation({
+    mutationFn: (password: string) => rotateIngestKey({ data: { site, password } }),
+    onSuccess: (res) => {
+      if (res.ok) {
+        setConfirming(false);
+        setPw("");
+        queryClient.invalidateQueries({ queryKey: ["dashboard", site] });
+      }
+    },
+  });
+
+  const rotateError = rotate.isError
+    ? "Couldn't reach the server — try again."
+    : rotate.data?.ok === false
+      ? rotate.data.reason === "password"
+        ? "Wrong password."
+        : "Couldn't verify right now — try again in a moment."
+      : null;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked — user can select manually */
+    }
+  }
+
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ install ]</span>
+        {!ingestKey && (
+          <Badge variant="secondary" className="text-[11px]">
+            unkeyed — writes open
+          </Badge>
+        )}
+      </div>
+      <pre className="overflow-x-auto rounded-md border border-border bg-muted/50 p-3 text-xs text-foreground">
+        {snippet}
+      </pre>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" onClick={copy}>
+          {copied ? "Copied" : "Copy snippet"}
+        </Button>
+        {!confirming && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              rotate.reset();
+              setConfirming(true);
+            }}
+            disabled={rotate.isPending}
+          >
+            {rotate.isPending ? "Rotating…" : ingestKey ? "Rotate key" : "Generate key"}
+          </Button>
+        )}
+      </div>
+      {confirming && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            rotate.mutate(pw);
+          }}
+          className="space-y-2 rounded-md border border-amber-200 bg-amber-50/60 p-3"
+        >
+          <p className="text-xs text-amber-900">
+            {ingestKey
+              ? "Rotating invalidates the current key — the tag on your site must be updated or its data stops. Enter your password to confirm."
+              : "Generating a key locks writes to this site. Enter your password to confirm."}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="password"
+              autoComplete="current-password"
+              placeholder="Your password"
+              className="h-8 w-48 bg-white text-sm"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              required
+            />
+            <Button
+              type="submit"
+              size="sm"
+              className="bg-emerald-700 text-white hover:bg-emerald-600"
+              disabled={rotate.isPending || pw.length === 0}
+            >
+              {rotate.isPending ? "Checking…" : "Confirm"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-stone-500"
+              onClick={() => {
+                setConfirming(false);
+                setPw("");
+                rotate.reset();
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+          {rotateError && <p className="text-xs text-rose-600">{rotateError}</p>}
+        </form>
+      )}
+      <p className="text-xs text-muted-foreground">
+        Paste once on the site — it never needs updating. Changes you make here apply
+        automatically.
+      </p>
+    </section>
+  );
+}
+
+/** 'attested' = collecting visitor information (on); 'anonymous' = paused. The
+ *  lawful-basis acknowledgment happens once at signup, so this is just an
+ *  on/pause switch filed under the account's terms. */
+function ConsentSection({ site, mode }: { site: string; mode: ConsentMode }) {
+  const queryClient = useQueryClient();
   const on = mode === "attested";
 
   const mutation = useMutation({
@@ -471,12 +667,17 @@ function ConsentControl({
   });
 
   return (
-    <Card className={on ? "border-emerald-300 bg-emerald-50/50 shadow-none" : "border-stone-200 shadow-none"}>
-      <CardContent className="flex flex-wrap items-center gap-4 py-4">
+    <section className="space-y-2">
+      <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ terms ]</span>
+      <div
+        className={`flex flex-wrap items-center gap-3 rounded-md border p-3 ${
+          on ? "border-emerald-300 bg-emerald-50/50" : "border-stone-200"
+        }`}
+      >
         <div
-          className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+          className={`flex h-9 w-9 items-center justify-center rounded-lg ${
             on ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
-          } [&>svg]:h-5 [&>svg]:w-5`}
+          } [&>svg]:h-4 [&>svg]:w-4`}
         >
           {on ? <ShieldCheck /> : <Shield />}
         </div>
@@ -500,19 +701,17 @@ function ConsentControl({
         </div>
         <div className="flex items-center gap-2">
           {mutation.isPending && <span className="text-xs text-muted-foreground">saving…</span>}
-          {mutation.data?.ok === false && (
-            <span className="text-xs text-rose-600">save failed</span>
-          )}
+          {mutation.data?.ok === false && <span className="text-xs text-rose-600">save failed</span>}
           <Switch
             className="data-[state=checked]:bg-emerald-700"
             checked={on}
-            disabled={disabled || mutation.isPending}
+            disabled={mutation.isPending}
             onCheckedChange={(next) => mutation.mutate(next ? "attested" : "anonymous")}
             aria-label="Collect visitor information on this site"
           />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -717,32 +916,12 @@ function AddSiteControl({
   );
 }
 
-function InstallCard({
-  site,
-  ingestKey,
-  disabled,
-}: {
-  site: string;
-  ingestKey: string | null;
-  disabled: boolean;
-}) {
-  const queryClient = useQueryClient();
+/** Onboarding-only card: shown until the snippet reports its first traffic,
+ *  then the tag retires to Settings. Copy is the only action — key rotation is
+ *  a security operation and lives behind the password check in Settings. */
+function InstallCard({ site, ingestKey }: { site: string; ingestKey: string | null }) {
   const [copied, setCopied] = useState(false);
-  // The snippet URL must always be the durable production origin. A dashboard
-  // opened on a Netlify deploy preview (deploy-preview-N--site.netlify.app)
-  // would otherwise hand out a tag pinned to an ephemeral, frozen build.
-  const origin = (typeof window !== "undefined" ? window.location.origin : "").replace(
-    /^https:\/\/deploy-preview-\d+--/,
-    "https://",
-  );
-
-  const rotate = useMutation({
-    mutationFn: () => rotateIngestKey({ data: { site } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
-  });
-
-  const keyAttr = ingestKey ? ` data-key="${ingestKey}"` : "";
-  const snippet = `<script async src="${origin}/adaptive.js" data-site="${site}"${keyAttr}></script>`;
+  const snippet = buildSnippet(site, ingestKey);
 
   async function copy() {
     try {
@@ -759,11 +938,9 @@ function InstallCard({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ install ]</span>
-          {!ingestKey && (
-            <Badge variant="secondary" className="text-[11px]">
-              unkeyed — writes open
-            </Badge>
-          )}
+          <span className="text-sm font-normal text-muted-foreground">
+            one tag, paste once — this card disappears when your first visit arrives
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -771,20 +948,11 @@ function InstallCard({
           {snippet}
         </pre>
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" onClick={copy} disabled={disabled}>
+          <Button size="sm" variant="outline" onClick={copy}>
             {copied ? "Copied" : "Copy snippet"}
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => rotate.mutate()}
-            disabled={disabled || rotate.isPending}
-          >
-            {rotate.isPending ? "Rotating…" : ingestKey ? "Rotate key" : "Generate key"}
-          </Button>
-          {rotate.data?.ok === false && <span className="text-xs text-rose-600">failed</span>}
           <p className="ml-auto text-xs text-muted-foreground">
-            Paste once on the site. {ingestKey ? "Rotating invalidates the old key — update the tag." : "Generate a key to lock writes to this site."}
+            It never needs updating — changes in the dashboard apply automatically.
           </p>
         </div>
       </CardContent>
@@ -832,7 +1000,7 @@ function MeasurementControl({
         )}
         {paused && (
           <span className="font-mono text-[11px] tracking-wider text-amber-600">
-            · paused — turn on visitor information above to measure
+            · paused — turn on visitor information in Settings to measure
           </span>
         )}
       </CardContent>
