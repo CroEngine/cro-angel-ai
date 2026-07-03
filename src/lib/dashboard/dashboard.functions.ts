@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 import { aggregate, type DashboardMetrics, type DashEvent, type InventoryEntry } from "./aggregate";
 
 // ---- tenancy helpers (server-only) ------------------------------------------
@@ -101,9 +102,16 @@ const EVENT_LIMIT = 5000;
 
 export const getDashboard = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ site: z.string().min(1).default("demo") }))
+  .inputValidator(
+    z.object({
+      site: z.string().min(1).default("demo"),
+      /** Browser tz offset (Date#getTimezoneOffset) so time buckets read as the
+       *  owner's local wall-clock, not UTC. */
+      tzOffsetMinutes: z.number().int().min(-840).max(840).optional(),
+    }),
+  )
   .handler(async ({ data, context }): Promise<DashboardResponse> => {
-    const { site } = data;
+    const { site, tzOffsetMinutes } = data;
     const ctx = context as unknown as AuthCtx;
     const generatedAt = new Date().toISOString();
 
@@ -198,7 +206,7 @@ export const getDashboard = createServerFn({ method: "POST" })
         sites,
         dbAvailable: true,
         generatedAt,
-        metrics: aggregate(events, inventory),
+        metrics: aggregate(events, inventory, { tzOffsetMinutes }),
         siteConfig,
       };
     } catch (err) {
@@ -213,6 +221,100 @@ export const getDashboard = createServerFn({ method: "POST" })
       };
     }
   });
+
+/** One event in a single visitor's replayed history. Payload stays Json so the
+ *  server-fn return type remains serializable. */
+export interface TimelineEvent {
+  id: number;
+  type: string;
+  payload: Record<string, Json | undefined>;
+  decisionId: string | null;
+  createdAt: string;
+}
+
+/** Cap a single visitor's replay — far above any real session count. */
+const TIMELINE_LIMIT = 500;
+
+/** Strip query string + hash from a referrer URL — click-through links
+ *  routinely carry emails/tokens in the query, which the dashboard must not
+ *  transmit. Non-URL referrers pass through truncated. */
+function cleanReferrer(raw: unknown): string | null {
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    const u = new URL(raw);
+    return u.origin + u.pathname;
+  } catch {
+    return raw.slice(0, 200);
+  }
+}
+
+/** What the timeline endpoint may transmit per event type. Conversion payloads
+ *  are owner-supplied free-form meta — only the numeric `value` passes. */
+function sanitizeTimelinePayload(
+  type: string,
+  payload: Record<string, Json | undefined>,
+): Record<string, Json | undefined> {
+  if (type === "conversion") {
+    return typeof payload.value === "number" ? { value: payload.value } : {};
+  }
+  if (typeof payload.referrer === "string") {
+    return { ...payload, referrer: cleanReferrer(payload.referrer) };
+  }
+  return payload;
+}
+
+/**
+ * Fetch one identified visitor's event history for a site so the dashboard can
+ * replay exactly what they did. Takes the NEWEST events (a heavy visitor's
+ * history must not silently drop recent activity), returned oldest-first for
+ * display; `id` breaks ties for events sharing a timestamp. Queries by
+ * (site, visitor_hash) directly instead of reusing the site-wide event pull.
+ * Auth-gated + ownership-checked like every dashboard read.
+ */
+export const getVisitorTimeline = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      site: z.string().min(1),
+      visitorHash: z.string().min(1).max(256),
+    }),
+  )
+  .handler(
+    async ({ data, context }): Promise<{ ok: boolean; events: TimelineEvent[] }> => {
+      const { site, visitorHash } = data;
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      if (!(await ownsSite(supabaseAdmin, context as unknown as AuthCtx, site))) {
+        return { ok: false, events: [] };
+      }
+      const { data: rows, error } = await supabaseAdmin
+        .from("angel_events")
+        .select("id,type,payload,decision_id,created_at")
+        .eq("site", site)
+        .eq("visitor_hash", visitorHash)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(TIMELINE_LIMIT);
+      if (error) {
+        console.warn(`[angel] visitor timeline unavailable: ${error.message}`);
+        return { ok: false, events: [] };
+      }
+      return {
+        ok: true,
+        events: (rows ?? [])
+          .reverse()
+          .map((r) => ({
+            id: r.id,
+            type: r.type,
+            payload: sanitizeTimelinePayload(
+              r.type,
+              (r.payload as Record<string, Json | undefined>) ?? {},
+            ),
+            decisionId: r.decision_id,
+            createdAt: r.created_at,
+          })),
+      };
+    },
+  );
 
 /**
  * Set a site's consent mode (owner attestation). Writing 'attested' records the
@@ -380,6 +482,10 @@ export const createSite = createServerFn({ method: "POST" })
             domain: data.domain ?? null,
             ingest_key: key,
             holdout_pct: DEFAULT_HOLDOUT_PCT,
+            // Owner acknowledged visitor information at signup, so a new site
+            // collects (and measures) from day one — no per-site toggle needed.
+            // GPC/DNT are still enforced per-visitor client-side.
+            consent_mode: "attested",
           });
         if (error) {
           console.warn(`[angel] createSite insert failed: ${error.message}`);

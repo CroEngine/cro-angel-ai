@@ -58,6 +58,19 @@ export async function logEvents(
   }
 }
 
+/** Strip query string + hash before persisting a referrer — click-through URLs
+ *  routinely carry emails/tokens in the query (newsletters, reset links), and
+ *  origin+path is all observability needs. Non-URL referrers pass truncated. */
+function cleanReferrer(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    return u.origin + u.pathname;
+  } catch {
+    return raw.slice(0, 200);
+  }
+}
+
 /**
  * Record that a decision was made and which adaptations it produced. Stored as a
  * single `decision` event so the dashboard can reconstruct "Live Adaptations"
@@ -102,9 +115,9 @@ export async function logDecision(
         browser: context.browser,
         language: context.language,
         campaign: context.campaign,
-        // Raw signals kept for observability — lets us see what a visit
-        // classified as "other"/"direct" actually arrived with.
-        referrer: meta.referrer || null,
+        // Referrer kept for observability (what did an "other"/"direct" visit
+        // actually arrive with?) — query/hash stripped, never stored.
+        referrer: cleanReferrer(meta.referrer),
         ua: (meta.userAgent ?? "").slice(0, 256) || null,
         // Consent basis used for this exposure — auditability.
         consent: meta.consent ?? null,

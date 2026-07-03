@@ -31,16 +31,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -59,20 +49,43 @@ import {
 import {
   createSite,
   getDashboard,
+  getVisitorTimeline,
   rotateIngestKey,
   setConsentMode,
-  setMeasurementConfig,
   type ConsentMode,
   type DashboardResponse,
   type SiteConfigView,
+  type TimelineEvent,
 } from "@/lib/dashboard/dashboard.functions";
-import type { SegmentBar, PatternAttribution } from "@/lib/dashboard/aggregate";
+import type {
+  SegmentBar,
+  PatternAttribution,
+  DayPoint,
+  HourPoint,
+  VisitorSummary,
+} from "@/lib/dashboard/aggregate";
+import {
+  Area,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  ResponsiveContainer,
+  Tooltip as ChartTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-const dashboardQuery = (site: string) =>
-  queryOptions({
-    queryKey: ["dashboard", site],
-    queryFn: () => getDashboard({ data: { site } }),
+const dashboardQuery = (site: string) => {
+  // Buckets read as the owner's local wall-clock, not UTC. Part of the key so a
+  // server-rendered fetch (offset 0) never masks the client's.
+  const tzOffsetMinutes = typeof window === "undefined" ? 0 : new Date().getTimezoneOffset();
+  return queryOptions({
+    queryKey: ["dashboard", site, tzOffsetMinutes],
+    queryFn: () => getDashboard({ data: { site, tzOffsetMinutes } }),
   });
+};
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -178,12 +191,10 @@ function Dashboard() {
         <ConsentControl site={site} mode={d.siteConfig.consentMode} disabled={!d.dbAvailable} />
 
         <MeasurementControl
-          site={site}
           config={d.siteConfig}
           ctas={(d.metrics.inventory.find((g) => g.slot === "cta")?.items ?? []).filter(
             (i) => i.text && i.selector,
           )}
-          disabled={!d.dbAvailable}
         />
 
         {!d.dbAvailable && (
@@ -197,6 +208,7 @@ function Dashboard() {
         <Tabs defaultValue="overview">
           <TabsList className="flex flex-wrap">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="visitors">Visitors</TabsTrigger>
             <TabsTrigger value="segments">Visitor Segments</TabsTrigger>
             <TabsTrigger value="live">Live Adaptations</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
@@ -205,12 +217,13 @@ function Dashboard() {
           </TabsList>
 
           {/* ---- Overview ---- */}
-          <TabsContent value="overview" className="mt-4">
+          <TabsContent value="overview" className="mt-4 space-y-4">
+            <TrafficChart daily={d.metrics.timeseries.daily} hourly={d.metrics.timeseries.hourly} />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Kpi icon={<Eye />} label="Pageviews" value={d.metrics.overview.pageviews} />
               <Kpi
                 icon={<Users />}
-                label="Unique visitors"
+                label="Identified visitors"
                 value={d.metrics.overview.uniqueVisitors}
               />
               <Kpi
@@ -230,6 +243,12 @@ function Dashboard() {
                 value={`${(d.metrics.overview.conversionRate * 100).toFixed(1)}%`}
               />
             </div>
+          </TabsContent>
+
+          {/* ---- Visitors (identified) ---- */}
+          <TabsContent value="visitors" className="mt-4">
+            {/* key: switching sites resets the selected-visitor dialog state */}
+            <VisitorsPanel key={site} site={site} visitors={d.metrics.visitors} />
           </TabsContent>
 
           {/* ---- Visitor Segments ---- */}
@@ -441,45 +460,42 @@ function ConsentControl({
   disabled: boolean;
 }) {
   const queryClient = useQueryClient();
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const attested = mode === "attested";
+  // 'attested' = collecting visitor information (on); 'anonymous' = paused. The
+  // lawful-basis acknowledgment happens once at signup, so the per-site control
+  // is just an on/pause switch here — no attestation dialog.
+  const on = mode === "attested";
 
   const mutation = useMutation({
     mutationFn: (next: ConsentMode) => setConsentMode({ data: { site, mode: next } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
   });
 
-  function onToggle(next: boolean) {
-    if (next) {
-      setConfirmOpen(true); // enabling is a legal attestation → confirm first
-    } else {
-      mutation.mutate("anonymous"); // withdrawing needs no attestation
-    }
-  }
-
   return (
-    <Card className={attested ? "border-emerald-300 bg-emerald-50/50 shadow-none" : "border-stone-200 shadow-none"}>
+    <Card className={on ? "border-emerald-300 bg-emerald-50/50 shadow-none" : "border-stone-200 shadow-none"}>
       <CardContent className="flex flex-wrap items-center gap-4 py-4">
         <div
           className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-            attested ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
+            on ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
           } [&>svg]:h-5 [&>svg]:w-5`}
         >
-          {attested ? <ShieldCheck /> : <Shield />}
+          {on ? <ShieldCheck /> : <Shield />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-foreground">
-              {attested ? "Full tracking (attested)" : "Anonymous mode"}
-            </span>
-            <Badge variant="secondary" className={`text-[11px] font-mono tracking-wider ${attested ? "bg-emerald-700 text-white hover:bg-emerald-700" : ""}`}>
-              {attested ? "attested" : "anonymous"}
+            <span className="text-sm font-semibold text-foreground">Visitor information</span>
+            <Badge
+              variant="secondary"
+              className={`font-mono text-[11px] tracking-wider ${
+                on ? "bg-emerald-700 text-white hover:bg-emerald-700" : ""
+              }`}
+            >
+              {on ? "on" : "paused"}
             </Badge>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {attested
-              ? "Angel stores a persistent visitor id and measures conversion lift for this site. Visitors who signal GPC/DNT are still excluded automatically."
-              : "Angel adapts the page but stores no persistent id and sends no behavioural events. Turn this on only if you have a lawful basis / visitor consent."}
+            {on
+              ? "Angel uses a persistent visitor id and conversion events on this site to measure lift. Visitors who signal GPC or Do Not Track are always excluded."
+              : "Paused — Angel adapts the page but stores no visitor id and records no events, so lift isn't measured on this site."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -489,34 +505,13 @@ function ConsentControl({
           )}
           <Switch
             className="data-[state=checked]:bg-emerald-700"
-            checked={attested}
+            checked={on}
             disabled={disabled || mutation.isPending}
-            onCheckedChange={onToggle}
-            aria-label="Attest lawful basis for full tracking"
+            onCheckedChange={(next) => mutation.mutate(next ? "attested" : "anonymous")}
+            aria-label="Collect visitor information on this site"
           />
         </div>
       </CardContent>
-
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Enable full tracking for this site?</AlertDialogTitle>
-            <AlertDialogDescription>
-              By turning this on you attest that you have a lawful basis — for example valid
-              visitor consent under GDPR/ePrivacy — for Angel to store a persistent visitor
-              identifier and measure conversions on <strong>{site}</strong>. You remain the data
-              controller. Visitors who signal Global Privacy Control or Do Not Track are excluded
-              automatically. You can withdraw this at any time.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => mutation.mutate("attested")}>
-              I attest — enable
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 }
@@ -798,51 +793,16 @@ function InstallCard({
 }
 
 function MeasurementControl({
-  site,
   config,
   ctas,
-  disabled,
 }: {
-  site: string;
   config: SiteConfigView;
   ctas: { id: string; text: string | null; selector: string | null }[];
-  disabled: boolean;
 }) {
-  const queryClient = useQueryClient();
-  const [holdout, setHoldout] = useState(String(config.holdoutPct));
-  const [convUrl, setConvUrl] = useState(config.conversionUrl ?? "");
-  const [convSel, setConvSel] = useState(config.conversionSelector ?? "");
-
-  // Re-sync the form when the selected site (or its saved config) changes.
-  useEffect(() => {
-    setHoldout(String(config.holdoutPct));
-    setConvUrl(config.conversionUrl ?? "");
-    setConvSel(config.conversionSelector ?? "");
-  }, [site, config.holdoutPct, config.conversionUrl, config.conversionSelector]);
-
-  const holdoutNum = Math.max(0, Math.min(100, parseInt(holdout, 10) || 0));
-  const dirty =
-    holdoutNum !== config.holdoutPct ||
-    convUrl.trim() !== (config.conversionUrl ?? "") ||
-    convSel.trim() !== (config.conversionSelector ?? "");
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      setMeasurementConfig({
-        data: {
-          site,
-          holdoutPct: holdoutNum,
-          conversionUrl: convUrl.trim(),
-          conversionSelector: convSel.trim(),
-        },
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
-  });
-
-  // Zero-config default: collapsed confirmation line. The three raw fields are
-  // an expert mode behind "Change" — most owners only ever confirm.
-  const [editing, setEditing] = useState(false);
-  useEffect(() => setEditing(false), [site]);
+  // Read-only by design: the goal and control group are chosen automatically —
+  // there's nothing for the owner to configure. Resolve the goal selector to the
+  // button's human text when we harvested it, otherwise fall back to the raw
+  // selector / URL.
   const goalCta = ctas.find((c) => c.selector === config.conversionSelector);
   const goalLabel = goalCta?.text
     ? `“${goalCta.text}”`
@@ -851,150 +811,395 @@ function MeasurementControl({
       : config.conversionUrl
         ? `visiting ${config.conversionUrl}`
         : null;
-
-  if (!editing) {
-    return (
-      <Card className="border-stone-200 shadow-none">
-        <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
-          <span className="font-mono text-[11px] tracking-wider text-emerald-700">
-            [ measurement ]
-          </span>
-          {goalLabel ? (
-            <span className="text-sm text-stone-700">
-              Your goal: <strong>{goalLabel}</strong>{" "}
-              {config.conversionSource === "auto" && (
-                <span className="font-mono text-[11px] tracking-wider text-stone-400">
-                  (auto-detected)
-                </span>
-              )}
-            </span>
-          ) : (
-            <span className="text-sm text-stone-500">
-              Goal not set yet — Angel picks one automatically from your site&apos;s buttons after
-              the first visits.
-            </span>
-          )}
-          <span className="font-mono text-[11px] tracking-wider text-stone-400">
-            · control group: {config.holdoutPct}%
-          </span>
-          {config.consentMode !== "attested" && (
-            <span className="font-mono text-[11px] tracking-wider text-amber-600">
-              · awaiting attestation above
-            </span>
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            className="ml-auto"
-            disabled={disabled}
-            onClick={() => setEditing(true)}
-          >
-            Change
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  const paused = config.consentMode !== "attested";
 
   return (
     <Card className="border-stone-200 shadow-none">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ measurement ]</span>
-          {config.consentMode !== "attested" && (
-            <span className="text-xs font-normal text-muted-foreground">
-              — takes effect once full tracking is attested above
-            </span>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="ml-auto text-stone-500"
-            onClick={() => setEditing(false)}
-          >
-            Done
-          </Button>
+      <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
+        <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+          [ measurement ]
+        </span>
+        {goalLabel ? (
+          <span className="text-sm text-stone-700">
+            Measuring conversions to <strong>{goalLabel}</strong> against a{" "}
+            {config.holdoutPct || 12}% control group — chosen automatically, nothing to set up.
+          </span>
+        ) : (
+          <span className="text-sm text-stone-500">
+            Angel picks your conversion goal automatically from your site&apos;s buttons after the
+            first visits, then measures it against a {config.holdoutPct || 12}% control group.
+          </span>
+        )}
+        {paused && (
+          <span className="font-mono text-[11px] tracking-wider text-amber-600">
+            · paused — turn on visitor information above to measure
+          </span>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---- visitors over time -------------------------------------------------------
+
+const CHART_TICK = { fontSize: 11, fontFamily: "ui-monospace, monospace", fill: "#a8a29e" };
+const CHART_TOOLTIP_STYLE = {
+  fontSize: 11,
+  fontFamily: "ui-monospace, monospace",
+  border: "1px solid #e7e5e4",
+  borderRadius: 8,
+  background: "#fff",
+  boxShadow: "none",
+};
+
+function LegendChip({ swatch, label }: { swatch: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5 font-mono text-[11px] tracking-wider text-stone-500">
+      <span className={`h-2 w-2 rounded-full ${swatch}`} />
+      {label}
+    </span>
+  );
+}
+
+function TrafficChart({ daily, hourly }: { daily: DayPoint[]; hourly: HourPoint[] }) {
+  const [mode, setMode] = useState<"day" | "hour">("day");
+  const hasData = daily.some((p) => p.visits > 0 || p.identified > 0 || p.conversions > 0);
+  // A 1–2 point line/area is invisible without dots.
+  const showDots = daily.length < 3;
+
+  return (
+    <Card className="border-stone-200 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex flex-wrap items-center gap-x-4 gap-y-2 text-base">
+          <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+            [ visitors over time ]
+          </span>
+          <span className="flex flex-wrap items-center gap-3">
+            <LegendChip swatch="bg-stone-300" label="page loads" />
+            <LegendChip swatch="bg-emerald-300" label="identified visitors" />
+            <LegendChip swatch="bg-emerald-700" label="conversions" />
+          </span>
+          <span className="ml-auto flex overflow-hidden rounded-md border border-stone-200">
+            {(["day", "hour"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`px-2.5 py-1 font-mono text-[11px] tracking-wider transition ${
+                  mode === m
+                    ? "bg-stone-900 text-white"
+                    : "bg-white text-stone-500 hover:bg-stone-50"
+                }`}
+              >
+                {m === "day" ? "by day" : "time of day"}
+              </button>
+            ))}
+          </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="holdout" className="text-xs">
-              Holdout (% control group)
-            </Label>
-            <Input
-              id="holdout"
-              type="number"
-              min={0}
-              max={100}
-              value={holdout}
-              disabled={disabled}
-              onChange={(e) => setHoldout(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="conv-url" className="text-xs">
-              Conversion URL contains
-            </Label>
-            <Input
-              id="conv-url"
-              placeholder="/thank-you"
-              value={convUrl}
-              disabled={disabled}
-              onChange={(e) => setConvUrl(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="conv-sel" className="text-xs">
-              Conversion click (CSS selector)
-            </Label>
-            <Input
-              id="conv-sel"
-              placeholder="a[href*='signup'] button"
-              value={convSel}
-              disabled={disabled}
-              onChange={(e) => setConvSel(e.target.value)}
-            />
-          </div>
-        </div>
+      <CardContent>
+        {!hasData ? (
+          <Empty>No traffic recorded yet — the chart fills as the snippet runs.</Empty>
+        ) : mode === "day" ? (
+          <ResponsiveContainer width="100%" height={240}>
+            <ComposedChart data={daily} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
+              <XAxis
+                dataKey="day"
+                tick={CHART_TICK}
+                tickFormatter={(day: string) => day.slice(5)}
+                tickLine={false}
+                axisLine={{ stroke: "#e7e5e4" }}
+              />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <ChartTooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Area
+                type="monotone"
+                dataKey="visits"
+                name="page loads"
+                stroke="#a8a29e"
+                fill="#e7e5e4"
+                fillOpacity={0.6}
+                strokeWidth={1.5}
+                dot={showDots}
+              />
+              <Area
+                type="monotone"
+                dataKey="identified"
+                name="identified visitors"
+                stroke="#059669"
+                fill="#a7f3d0"
+                fillOpacity={0.45}
+                strokeWidth={1.5}
+                dot={showDots}
+              />
+              <Line
+                type="monotone"
+                dataKey="conversions"
+                name="conversions"
+                stroke="#047857"
+                strokeWidth={2}
+                dot={showDots}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={hourly} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
+              <XAxis
+                dataKey="hour"
+                tick={CHART_TICK}
+                tickFormatter={(h: number) => `${h}`}
+                tickLine={false}
+                axisLine={{ stroke: "#e7e5e4" }}
+              />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
+              <ChartTooltip
+                contentStyle={CHART_TOOLTIP_STYLE}
+                labelFormatter={(h) => `${String(h).padStart(2, "0")}:00–${String(h).padStart(2, "0")}:59`}
+              />
+              <Bar dataKey="visits" name="page loads" fill="#d6d3d1" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="identified" name="identified visitors" fill="#059669" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+        {hasData && mode === "day" && (
+          <p className="mt-2 font-mono text-[10px] tracking-wide text-stone-400">
+            PAGE LOADS COUNT ALL TRAFFIC · IDENTIFIED VISITORS ARE THE CONSENTED SUBSET WITH A
+            VISITOR ID · TIMES IN YOUR LOCAL TIMEZONE
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
-        <div className="flex flex-wrap items-center gap-3">
-          {ctas.length > 0 && (
-            <Select value="" onValueChange={(v) => setConvSel(v)}>
-              <SelectTrigger className="w-64" disabled={disabled}>
-                <SelectValue placeholder="…or pick a button we found on your site" />
-              </SelectTrigger>
-              <SelectContent>
-                {ctas.map((c) => (
-                  <SelectItem key={c.id + c.selector} value={c.selector as string}>
-                    {c.text}
-                  </SelectItem>
+// ---- per-visitor drilldown ------------------------------------------------------
+
+/** Human line for one timeline event; tone picks the dot colour. */
+function describeEvent(e: TimelineEvent): { label: string; detail: string | null; dot: string } {
+  const p = e.payload;
+  const patterns = Array.isArray(p.patterns)
+    ? (p.patterns as unknown[]).filter((x): x is string => typeof x === "string")
+    : [];
+  switch (e.type) {
+    case "pageview": {
+      const bits = [p.trafficSource, p.device, p.browser, p.country]
+        .map((v) => (typeof v === "string" && v ? v : null))
+        .filter(Boolean);
+      return { label: "Page view", detail: bits.join(" · ") || null, dot: "bg-stone-400" };
+    }
+    case "adaptation_shown":
+      return {
+        label: "Adaptations applied",
+        detail: patterns.join(", ") || "(none this page)",
+        dot: "bg-emerald-500",
+      };
+    case "adaptation_withheld":
+      return {
+        label: "Control group — adaptations withheld",
+        detail: patterns.join(", ") || null,
+        dot: "bg-amber-400",
+      };
+    case "cta_click":
+      return {
+        label: "Clicked CTA",
+        detail: typeof p.text === "string" ? `“${p.text}”` : null,
+        dot: "bg-emerald-600",
+      };
+    case "scroll_depth":
+      return {
+        label: `Scrolled ${typeof p.depth === "number" ? p.depth : "?"}% of the page`,
+        detail: null,
+        dot: "bg-stone-300",
+      };
+    case "conversion":
+      // The server already strips owner-supplied conversion meta down to the
+      // numeric value; only that is shown.
+      return {
+        label: "Converted",
+        detail: typeof p.value === "number" ? `value ${p.value}` : null,
+        dot: "bg-emerald-700",
+      };
+    default:
+      return { label: e.type, detail: null, dot: "bg-stone-300" };
+  }
+}
+
+function ArmBadge({ arm }: { arm: VisitorSummary["arm"] }) {
+  if (!arm) return <span className="text-xs text-stone-400">—</span>;
+  if (arm === "control")
+    return (
+      <Badge variant="outline" className="font-mono text-[10px] tracking-wider text-amber-700">
+        control
+      </Badge>
+    );
+  return (
+    <Badge className="bg-emerald-50 font-mono text-[10px] tracking-wider text-emerald-800 hover:bg-emerald-50">
+      {arm}
+    </Badge>
+  );
+}
+
+function VisitorTimeline({ site, visitor }: { site: string; visitor: VisitorSummary }) {
+  const { data, isPending } = useQuery({
+    queryKey: ["visitor-timeline", site, visitor.hash],
+    queryFn: () => getVisitorTimeline({ data: { site, visitorHash: visitor.hash } }),
+  });
+
+  if (isPending) {
+    return <p className="py-6 text-center text-sm text-stone-400">loading history…</p>;
+  }
+  if (!data?.ok) {
+    return <p className="py-6 text-center text-sm text-rose-600">Couldn&apos;t load this visitor.</p>;
+  }
+  return (
+    <ol className="max-h-[55vh] space-y-0 overflow-y-auto pr-1">
+      {data.events.map((e) => {
+        const { label, detail, dot } = describeEvent(e);
+        return (
+          <li key={e.id} className="relative flex gap-3 pb-4 pl-1 last:pb-0">
+            <span className="relative flex flex-col items-center">
+              <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} />
+              <span className="mt-1 w-px flex-1 bg-stone-200" />
+            </span>
+            <div className="min-w-0 flex-1 pb-1">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                <span className="text-sm font-medium text-stone-800">{label}</span>
+                <span className="font-mono text-[10px] tracking-wider text-stone-400">
+                  {new Date(e.createdAt).toLocaleString()}
+                </span>
+              </div>
+              {detail && <p className="mt-0.5 text-xs text-stone-500">{detail}</p>}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function VisitorsPanel({ site, visitors }: { site: string; visitors: VisitorSummary[] }) {
+  const [selected, setSelected] = useState<VisitorSummary | null>(null);
+
+  return (
+    <Card className="border-stone-200 shadow-none">
+      <CardHeader>
+        <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+          <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+            [ visitors ]
+          </span>
+          Identified visitors
+          <span className="text-xs font-normal text-muted-foreground">
+            — consented visitors with a visitor id. Anonymous visitors are unlinkable by design.
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {visitors.length === 0 ? (
+          <Empty>
+            No identified visitors yet — they appear once visitor information is on and the
+            snippet runs.
+          </Empty>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                  <th className="py-2 pr-3 font-medium">Visitor</th>
+                  <th className="py-2 pr-3 font-medium">Last seen</th>
+                  <th className="py-2 pr-3 font-medium">Context</th>
+                  <th className="py-2 pr-3 text-right font-medium">Pages</th>
+                  <th className="py-2 pr-3 text-right font-medium">Clicks</th>
+                  <th className="py-2 pr-3 text-right font-medium">Scroll</th>
+                  <th className="py-2 pr-3 font-medium">Arm</th>
+                  <th className="py-2 text-right font-medium">Converted</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visitors.map((v) => (
+                  <tr
+                    key={v.hash}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open activity for visitor ${v.hash.slice(0, 8)}`}
+                    onClick={() => setSelected(v)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelected(v);
+                      }
+                    }}
+                    className="cursor-pointer border-b border-border/60 transition hover:bg-stone-50 focus-visible:bg-stone-50 focus-visible:outline-none"
+                  >
+                    <td className="py-2 pr-3">
+                      <span className="font-mono text-[12px] text-emerald-800">
+                        {v.hash.slice(0, 8)}…
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3 text-xs text-muted-foreground">
+                      {new Date(v.lastSeen).toLocaleString()}
+                    </td>
+                    <td className="py-2 pr-3 text-xs text-muted-foreground">
+                      {[v.trafficSource, v.device, v.country].filter(Boolean).join(" · ") || "—"}
+                    </td>
+                    <td className="py-2 pr-3 text-right text-stone-700">{v.pageviews}</td>
+                    <td className="py-2 pr-3 text-right text-stone-700">{v.ctaClicks}</td>
+                    <td className="py-2 pr-3 text-right text-stone-700">
+                      {v.maxScroll > 0 ? `${v.maxScroll}%` : "—"}
+                    </td>
+                    <td className="py-2 pr-3">
+                      <ArmBadge arm={v.arm} />
+                    </td>
+                    <td className="py-2 text-right">
+                      {v.conversions > 0 ? (
+                        <Badge className="bg-emerald-700 font-mono text-[10px] text-white hover:bg-emerald-700">
+                          ✓ {v.conversions}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-stone-400">—</span>
+                      )}
+                    </td>
+                  </tr>
                 ))}
-              </SelectContent>
-            </Select>
-          )}
-          <div className="ml-auto flex items-center gap-2">
-            {mutation.isPending && <span className="text-xs text-muted-foreground">saving…</span>}
-            {mutation.data?.ok === false && (
-              <span className="text-xs text-rose-600">save failed</span>
-            )}
-            {mutation.isSuccess && mutation.data?.ok && !dirty && (
-              <span className="text-xs text-emerald-600">saved</span>
-            )}
-            <Button
-              size="sm"
-              className="bg-emerald-700 text-white hover:bg-emerald-600"
-              disabled={disabled || !dirty || mutation.isPending}
-              onClick={() => mutation.mutate()}
-            >
-              Save
-            </Button>
+              </tbody>
+            </table>
+            <p className="mt-3 font-mono text-[10px] tracking-wide text-stone-400">
+              CLICK A ROW TO REPLAY THAT VISITOR&apos;S EXACT ACTIVITY · RANDOM PSEUDONYMOUS IDS —
+              ANGEL NEVER COLLECTS NAMES, EMAILS OR IP ADDRESSES ITSELF
+            </p>
           </div>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          The snippet picks these up automatically — no changes needed on the site. A holdout keeps
-          that share of visitors unadapted as a control group so conversion lift can be measured.
-        </p>
+        )}
+
+        <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+          <DialogContent className="max-w-lg">
+            {selected && (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+                      [ visitor ]
+                    </span>
+                    <span className="font-mono text-sm">{selected.hash.slice(0, 12)}…</span>
+                    <ArmBadge arm={selected.arm} />
+                    {selected.conversions > 0 && (
+                      <Badge className="bg-emerald-700 font-mono text-[10px] text-white hover:bg-emerald-700">
+                        converted
+                      </Badge>
+                    )}
+                  </DialogTitle>
+                  <DialogDescription>
+                    First seen {new Date(selected.firstSeen).toLocaleString()}
+                    {selected.patterns.length > 0 &&
+                      ` · exposed to: ${selected.patterns.join(", ")}`}
+                  </DialogDescription>
+                </DialogHeader>
+                <VisitorTimeline site={site} visitor={selected} />
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
 
-import { aggregate, type DashEvent, type InventoryEntry } from "../aggregate";
+import {
+  aggregate,
+  bucketByTime,
+  summarizeVisitors,
+  MAX_DAY_POINTS,
+  MAX_VISITORS,
+  type DashEvent,
+  type InventoryEntry,
+} from "../aggregate";
 
 function ev(
   type: string,
@@ -234,5 +242,147 @@ describe("aggregate — significance requires an adequate sample", () => {
     // 40 vs 40 exposures but only 2 conversions in the adapted arm.
     const r = row(build({ n: 40, c: 2 }, { n: 40, c: 0 }));
     expect(r.significant).toBe(false);
+  });
+});
+
+describe("bucketByTime — visitors over time", () => {
+  const ev2 = (
+    type: string,
+    createdAt: string,
+    visitorHash: string | null = null,
+    payload: Record<string, unknown> = {},
+  ): DashEvent => ({ type, payload, visitorHash, decisionId: null, createdAt });
+
+  it("buckets exposures per day, counts identified visitors distinct, gap-fills", () => {
+    const { daily } = bucketByTime([
+      ev2("adaptation_shown", "2026-06-25T10:00:00Z", "a"),
+      ev2("adaptation_shown", "2026-06-25T11:00:00Z", "a"), // same visitor, 2 visits
+      ev2("adaptation_withheld", "2026-06-25T12:00:00Z", null), // anonymous still a visit
+      // 26th has no events — must appear as a zero bucket
+      ev2("adaptation_shown", "2026-06-27T09:00:00Z", "b"),
+      ev2("conversion", "2026-06-27T10:00:00Z", "b"),
+    ]);
+    expect(daily.map((d) => d.day)).toEqual(["2026-06-25", "2026-06-26", "2026-06-27"]);
+    expect(daily[0]).toEqual({ day: "2026-06-25", visits: 3, identified: 1, conversions: 0 });
+    expect(daily[1]).toEqual({ day: "2026-06-26", visits: 0, identified: 0, conversions: 0 });
+    expect(daily[2]).toEqual({ day: "2026-06-27", visits: 1, identified: 1, conversions: 1 });
+  });
+
+  it("produces a full 24-hour profile with visits in the right buckets", () => {
+    const { hourly } = bucketByTime([
+      ev2("adaptation_shown", "2026-06-25T09:15:00Z", "a"),
+      ev2("adaptation_shown", "2026-06-26T09:45:00Z", "b"), // different day, same hour
+      ev2("adaptation_shown", "2026-06-25T22:00:00Z", "a"),
+    ]);
+    expect(hourly).toHaveLength(24);
+    expect(hourly[9]).toEqual({ hour: 9, visits: 2, identified: 2 });
+    expect(hourly[22]).toEqual({ hour: 22, visits: 1, identified: 1 });
+    expect(hourly[0].visits).toBe(0);
+  });
+
+  it("shifts buckets into the display timezone (Stockholm summer = −120)", () => {
+    // 23:30 UTC on the 25th is 01:30 local on the 26th.
+    const { daily, hourly } = bucketByTime(
+      [ev2("adaptation_shown", "2026-06-25T23:30:00Z", "a")],
+      -120,
+    );
+    expect(daily).toEqual([{ day: "2026-06-26", visits: 1, identified: 1, conversions: 0 }]);
+    expect(hourly[1].visits).toBe(1);
+    expect(hourly[23].visits).toBe(0);
+  });
+
+  it("caps the daily series at MAX_DAY_POINTS (newest kept)", () => {
+    const { daily } = bucketByTime([
+      ev2("adaptation_shown", "2025-01-01T10:00:00Z", "old"),
+      ev2("adaptation_shown", "2026-06-27T10:00:00Z", "new"),
+    ]);
+    expect(daily).toHaveLength(MAX_DAY_POINTS);
+    expect(daily[daily.length - 1].day).toBe("2026-06-27");
+  });
+
+  it("returns empty daily and a zero hourly profile for no events", () => {
+    const { daily, hourly } = bucketByTime([]);
+    expect(daily).toEqual([]);
+    expect(hourly.every((h) => h.visits === 0 && h.identified === 0)).toBe(true);
+  });
+});
+
+describe("summarizeVisitors — per-visitor footprints", () => {
+  const ev2 = (
+    type: string,
+    createdAt: string,
+    visitorHash: string | null,
+    payload: Record<string, unknown> = {},
+  ): DashEvent => ({ type, payload, visitorHash, decisionId: null, createdAt });
+
+  it("groups one visitor's events into a footprint", () => {
+    const [v] = summarizeVisitors([
+      ev2("adaptation_shown", "2026-06-25T10:00:00Z", "a", { patterns: ["emphasize_goal"] }),
+      ev2("pageview", "2026-06-25T10:00:01Z", "a", {
+        device: "mobile",
+        country: "SE",
+        trafficSource: "google",
+        browser: "Chrome",
+      }),
+      ev2("scroll_depth", "2026-06-25T10:01:00Z", "a", { depth: 50 }),
+      ev2("scroll_depth", "2026-06-25T10:02:00Z", "a", { depth: 75 }),
+      ev2("cta_click", "2026-06-25T10:03:00Z", "a", { text: "Skapa konto" }),
+      ev2("conversion", "2026-06-25T10:04:00Z", "a"),
+    ]);
+    expect(v.hash).toBe("a");
+    expect(v.firstSeen).toBe("2026-06-25T10:00:00Z");
+    expect(v.lastSeen).toBe("2026-06-25T10:04:00Z");
+    expect(v.pageviews).toBe(1);
+    expect(v.ctaClicks).toBe(1);
+    expect(v.maxScroll).toBe(75);
+    expect(v.conversions).toBe(1);
+    expect(v.patterns).toEqual(["emphasize_goal"]);
+    expect(v.arm).toBe("adapted");
+    expect(v.device).toBe("mobile");
+    expect(v.country).toBe("SE");
+  });
+
+  it("takes context columns from the NEWEST pageview regardless of input order", () => {
+    // getDashboard feeds events newest-first — the newer pageview's context
+    // must win even when it is processed before the older one.
+    const [v] = summarizeVisitors([
+      ev2("pageview", "2026-06-26T10:00:00Z", "a", { device: "desktop", trafficSource: "direct" }),
+      ev2("pageview", "2026-06-25T10:00:00Z", "a", { device: "mobile", trafficSource: "google" }),
+    ]);
+    expect(v.device).toBe("desktop");
+    expect(v.trafficSource).toBe("direct");
+    expect(v.firstSeen).toBe("2026-06-25T10:00:00Z");
+    expect(v.lastSeen).toBe("2026-06-26T10:00:00Z");
+  });
+
+  it("marks the control arm and excludes anonymous events", () => {
+    const out = summarizeVisitors([
+      ev2("adaptation_withheld", "2026-06-25T10:00:00Z", "c", { patterns: ["emphasize_goal"] }),
+      ev2("adaptation_shown", "2026-06-25T10:00:00Z", null, { patterns: ["emphasize_goal"] }),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].arm).toBe("control");
+  });
+
+  it("sorts by most recent activity and caps at MAX_VISITORS", () => {
+    const events: DashEvent[] = [];
+    for (let i = 0; i < MAX_VISITORS + 10; i++) {
+      const hh = String(Math.floor(i / 60)).padStart(2, "0");
+      const mm = String(i % 60).padStart(2, "0");
+      events.push(ev2("pageview", `2026-06-25T${hh}:${mm}:00Z`, `v${i}`));
+    }
+    const out = summarizeVisitors(events);
+    expect(out).toHaveLength(MAX_VISITORS);
+    expect(out[0].hash).toBe(`v${MAX_VISITORS + 9}`); // newest first
+  });
+
+  it("rides along in aggregate() with the timeseries", () => {
+    const m = aggregate(
+      [ev2("adaptation_shown", "2026-06-25T10:00:00Z", "a", { patterns: [] })],
+      [],
+      { tzOffsetMinutes: 0 },
+    );
+    expect(m.timeseries.daily).toHaveLength(1);
+    expect(m.visitors).toHaveLength(1);
   });
 });
