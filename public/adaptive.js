@@ -297,7 +297,9 @@
       ".angel-emphasized{outline:2px solid #6d28d9;outline-offset:4px;border-radius:8px;box-shadow:0 0 0 4px rgba(109,40,217,.12);transition:box-shadow .2s}" +
       ".angel-condensed [data-angel-secondary]{display:none!important}" +
       ".angel-badge{display:inline-flex;align-items:center;gap:6px;margin:8px 8px 0 0;padding:4px 10px;font-size:12px;font-weight:600;line-height:1;border-radius:999px;background:#f3f0ff;color:#5b21b6;border:1px solid #ddd6fe}" +
-      ".angel-badge::before{content:'\\2713';font-weight:700}";
+      ".angel-badge::before{content:'\\2713';font-weight:700}" +
+      // Debug-only: outline exactly which elements Angel touched (?angel_debug=1).
+      ".angel-debug-touched{outline:2px dashed #059669!important;outline-offset:3px!important}";
     var el = document.createElement("style");
     el.id = "angel-style";
     el.textContent = css;
@@ -366,11 +368,15 @@
     }
   }
 
+  // Elements the current apply() run actually modified, with the pattern that
+  // touched them — feeds the debug outline so "what changed" is visible on-page.
+  var touchedEls = [];
   function each(a, fn) {
     var nodes = resolveNodes(a);
     for (var i = 0; i < nodes.length; i++) {
       if (isNoTouch(nodes[i])) continue; // never adapt inside a no-touch zone
       fn(nodes[i]);
+      touchedEls.push({ el: nodes[i], pattern: a.pattern });
     }
   }
 
@@ -494,6 +500,7 @@
     // Badge dedup is scoped to one apply() run, so an apply/reset/apply cycle
     // (robustness harness) re-adds badges cleanly.
     if (typeof WeakSet !== "undefined") badgedAnchors = new WeakSet();
+    touchedEls = [];
     var applied = [];
     (decision.adaptations || []).forEach(function (a) {
       var op = OPS[a.op];
@@ -505,6 +512,19 @@
         /* one bad selector must not break the rest */
       }
     });
+    // Debug mode: dashed outline + tooltip on every element that was actually
+    // modified, so "what changed" is visible on the page itself. The dashboard's
+    // "see it as this visitor" preview links open with ?angel_debug=1.
+    if (isDebug()) {
+      for (var i = 0; i < touchedEls.length; i++) {
+        try {
+          touchedEls[i].el.classList.add("angel-debug-touched");
+          if (!touchedEls[i].el.title) touchedEls[i].el.title = "Angel: " + touchedEls[i].pattern;
+        } catch (e) {
+          /* decorative only */
+        }
+      }
+    }
     return applied;
   }
 

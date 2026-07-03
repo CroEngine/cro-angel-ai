@@ -107,6 +107,16 @@ export const Route = createFileRoute("/api/adaptive/decide")({
             visitorHash: vh || null,
             withheld: holdout,
             consent: typeof client.consent === "string" ? client.consent : null,
+            // The concrete changes, so the dashboard can show exactly what this
+            // visitor saw (or what the control arm was denied).
+            changes: decision.adaptations.map((a) => ({
+              pattern: a.pattern,
+              op: a.op,
+              target: a.target,
+              anchorText: a.anchorText,
+              value: a.value,
+              reason: a.reason,
+            })),
           },
         );
 
