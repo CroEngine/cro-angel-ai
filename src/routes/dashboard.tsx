@@ -64,6 +64,7 @@ import type {
   HourPoint,
   VisitorSummary,
 } from "@/lib/dashboard/aggregate";
+import type { Json } from "@/integrations/supabase/types";
 import {
   Area,
   Bar,
@@ -264,7 +265,12 @@ function Dashboard() {
           {/* ---- Visitors (identified) ---- */}
           <TabsContent value="visitors" className="mt-4">
             {/* key: switching sites resets the selected-visitor dialog state */}
-            <VisitorsPanel key={site} site={site} visitors={d.metrics.visitors} />
+            <VisitorsPanel
+              key={site}
+              site={site}
+              domain={d.sites.find((s) => s.slug === site)?.domain ?? null}
+              visitors={d.metrics.visitors}
+            />
           </TabsContent>
 
           {/* ---- Visitor Segments ---- */}
@@ -1145,41 +1151,91 @@ function TrafficChart({ daily, hourly }: { daily: DayPoint[]; hourly: HourPoint[
 
 // ---- per-visitor drilldown ------------------------------------------------------
 
-/** Human line for one timeline event; tone picks the dot colour. */
-function describeEvent(e: TimelineEvent): { label: string; detail: string | null; dot: string } {
-  const p = e.payload;
-  const patterns = Array.isArray(p.patterns)
+/** One concrete change from an exposure payload → a human sentence.
+ *  "Emphasized 'Skapa konto'", "Renamed 'Läs mer' → 'Se priser'", … */
+function changeLine(c: Record<string, Json | undefined>): string {
+  const s = (v: Json | undefined) => (typeof v === "string" && v ? v : null);
+  const label = s(c.anchorText) ?? s(c.target) ?? "";
+  switch (s(c.op)) {
+    case "emphasize":
+      return `Emphasized “${label}”`;
+    case "set_text":
+      return s(c.anchorText)
+        ? `Renamed “${s(c.anchorText)}” → “${s(c.value) ?? ""}”`
+        : `Set text to “${s(c.value) ?? ""}”`;
+    case "inject_badge":
+      return `Added “${s(c.value) ?? ""}” next to “${label}”`;
+    case "reveal":
+      return `Revealed “${label}”`;
+    case "move_up":
+      return `Moved “${label}” up the page`;
+    case "condense":
+      return `Condensed “${label}”`;
+    default:
+      return s(c.pattern) ?? "adaptation";
+  }
+}
+
+/** The concrete changes on an exposure event, one sentence each. Older events
+ *  (before changes were persisted) fall back to bare pattern ids. */
+function changeLines(p: Record<string, Json | undefined>): string[] {
+  if (Array.isArray(p.changes) && p.changes.length > 0) {
+    return (p.changes as unknown[])
+      .filter((c): c is Record<string, Json | undefined> => !!c && typeof c === "object")
+      .map(changeLine);
+  }
+  return Array.isArray(p.patterns)
     ? (p.patterns as unknown[]).filter((x): x is string => typeof x === "string")
     : [];
+}
+
+/** "Open the page as this visitor saw it": the demo-override query params make
+ *  the deterministic engine reproduce the same decision, and angel_debug=1
+ *  outlines exactly what changed. Only exposure events carry the context. */
+function previewUrl(domain: string | null, p: Record<string, Json | undefined>): string | null {
+  if (!domain) return null;
+  const path = typeof p.path === "string" && p.path.startsWith("/") ? p.path : "/";
+  const params = new URLSearchParams({ angel_debug: "1" });
+  if (typeof p.trafficSource === "string" && p.trafficSource) params.set("angel_source", p.trafficSource);
+  if (typeof p.device === "string" && p.device) params.set("angel_device", p.device);
+  if (p.isReturning === true) params.set("angel_returning", "1");
+  return `https://${domain}${path}?${params.toString()}`;
+}
+
+/** Human lines for one timeline event; tone picks the dot colour. */
+function describeEvent(e: TimelineEvent): { label: string; details: string[]; dot: string } {
+  const p = e.payload;
   switch (e.type) {
     case "pageview": {
       const bits = [p.trafficSource, p.device, p.browser, p.country]
         .map((v) => (typeof v === "string" && v ? v : null))
-        .filter(Boolean);
-      return { label: "Page view", detail: bits.join(" · ") || null, dot: "bg-stone-400" };
+        .filter((v): v is string => !!v);
+      return { label: "Page view", details: bits.length ? [bits.join(" · ")] : [], dot: "bg-stone-400" };
     }
-    case "adaptation_shown":
+    case "adaptation_shown": {
+      const lines = changeLines(p);
       return {
         label: "Adaptations applied",
-        detail: patterns.join(", ") || "(none this page)",
+        details: lines.length ? lines : ["(none this page)"],
         dot: "bg-emerald-500",
       };
+    }
     case "adaptation_withheld":
       return {
         label: "Control group — adaptations withheld",
-        detail: patterns.join(", ") || null,
+        details: changeLines(p),
         dot: "bg-amber-400",
       };
     case "cta_click":
       return {
         label: "Clicked CTA",
-        detail: typeof p.text === "string" ? `“${p.text}”` : null,
+        details: typeof p.text === "string" ? [`“${p.text}”`] : [],
         dot: "bg-emerald-600",
       };
     case "scroll_depth":
       return {
         label: `Scrolled ${typeof p.depth === "number" ? p.depth : "?"}% of the page`,
-        detail: null,
+        details: [],
         dot: "bg-stone-300",
       };
     case "conversion":
@@ -1187,11 +1243,11 @@ function describeEvent(e: TimelineEvent): { label: string; detail: string | null
       // numeric value; only that is shown.
       return {
         label: "Converted",
-        detail: typeof p.value === "number" ? `value ${p.value}` : null,
+        details: typeof p.value === "number" ? [`value ${p.value}`] : [],
         dot: "bg-emerald-700",
       };
     default:
-      return { label: e.type, detail: null, dot: "bg-stone-300" };
+      return { label: e.type, details: [], dot: "bg-stone-300" };
   }
 }
 
@@ -1210,7 +1266,15 @@ function ArmBadge({ arm }: { arm: VisitorSummary["arm"] }) {
   );
 }
 
-function VisitorTimeline({ site, visitor }: { site: string; visitor: VisitorSummary }) {
+function VisitorTimeline({
+  site,
+  domain,
+  visitor,
+}: {
+  site: string;
+  domain: string | null;
+  visitor: VisitorSummary;
+}) {
   const { data, isPending } = useQuery({
     queryKey: ["visitor-timeline", site, visitor.hash],
     queryFn: () => getVisitorTimeline({ data: { site, visitorHash: visitor.hash } }),
@@ -1225,7 +1289,9 @@ function VisitorTimeline({ site, visitor }: { site: string; visitor: VisitorSumm
   return (
     <ol className="max-h-[55vh] space-y-0 overflow-y-auto pr-1">
       {data.events.map((e) => {
-        const { label, detail, dot } = describeEvent(e);
+        const { label, details, dot } = describeEvent(e);
+        const isExposure = e.type === "adaptation_shown" || e.type === "adaptation_withheld";
+        const preview = isExposure ? previewUrl(domain, e.payload) : null;
         return (
           <li key={e.id} className="relative flex gap-3 pb-4 pl-1 last:pb-0">
             <span className="relative flex flex-col items-center">
@@ -1238,8 +1304,24 @@ function VisitorTimeline({ site, visitor }: { site: string; visitor: VisitorSumm
                 <span className="font-mono text-[10px] tracking-wider text-stone-400">
                   {new Date(e.createdAt).toLocaleString()}
                 </span>
+                {preview && (
+                  <a
+                    href={preview}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono text-[10px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
+                  >
+                    {e.type === "adaptation_withheld"
+                      ? "see what was withheld ↗"
+                      : "see it as this visitor ↗"}
+                  </a>
+                )}
               </div>
-              {detail && <p className="mt-0.5 text-xs text-stone-500">{detail}</p>}
+              {details.map((d, i) => (
+                <p key={i} className="mt-0.5 text-xs text-stone-500">
+                  {d}
+                </p>
+              ))}
             </div>
           </li>
         );
@@ -1248,7 +1330,15 @@ function VisitorTimeline({ site, visitor }: { site: string; visitor: VisitorSumm
   );
 }
 
-function VisitorsPanel({ site, visitors }: { site: string; visitors: VisitorSummary[] }) {
+function VisitorsPanel({
+  site,
+  domain,
+  visitors,
+}: {
+  site: string;
+  domain: string | null;
+  visitors: VisitorSummary[];
+}) {
   const [selected, setSelected] = useState<VisitorSummary | null>(null);
 
   return (
@@ -1363,7 +1453,7 @@ function VisitorsPanel({ site, visitors }: { site: string; visitors: VisitorSumm
                       ` · exposed to: ${selected.patterns.join(", ")}`}
                   </DialogDescription>
                 </DialogHeader>
-                <VisitorTimeline site={site} visitor={selected} />
+                <VisitorTimeline site={site} domain={domain} visitor={selected} />
               </>
             )}
           </DialogContent>

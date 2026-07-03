@@ -71,6 +71,26 @@ function cleanReferrer(raw: string | null | undefined): string | null {
   }
 }
 
+/** What one adaptation concretely did — persisted on the exposure event so the
+ *  dashboard can show exactly what changed (or was withheld) for a visitor. */
+export interface AdaptationChange {
+  pattern: string;
+  op: string;
+  target: string;
+  anchorText?: string;
+  value?: string;
+  reason?: string;
+}
+
+const trimChange = (c: AdaptationChange): AdaptationChange => ({
+  pattern: c.pattern,
+  op: c.op,
+  target: (c.target ?? "").slice(0, 200),
+  ...(c.anchorText ? { anchorText: c.anchorText.slice(0, 120) } : {}),
+  ...(c.value ? { value: c.value.slice(0, 120) } : {}),
+  ...(c.reason ? { reason: c.reason.slice(0, 160) } : {}),
+});
+
 /**
  * Record that a decision was made and which adaptations it produced. Stored as a
  * single `decision` event so the dashboard can reconstruct "Live Adaptations"
@@ -87,6 +107,9 @@ export async function logDecision(
     visitorHash?: string | null;
     withheld?: boolean;
     consent?: string | null;
+    /** The concrete changes behind `patterns` — same for both arms, so the
+     *  control rows record what WOULD have been shown. */
+    changes?: AdaptationChange[];
   } = {},
 ): Promise<void> {
   // Register the site (create-if-absent) so it appears in the dashboard's site
@@ -102,12 +125,23 @@ export async function logDecision(
   // Stamp the exposure with the visitorHash so a later conversion (same
   // visitorHash) can be attributed to these patterns. `withheld` marks the
   // control bucket — same payload, so adapted vs control are directly comparable.
+  // Page path (no query/hash) so the dashboard can replay/preview the visit.
+  let path: string | null = null;
+  try {
+    path = new URL(context.url).pathname || "/";
+  } catch {
+    /* non-fatal */
+  }
+
   await logEvents(site, meta.visitorHash ?? null, [
     {
       type: meta.withheld ? "adaptation_withheld" : "adaptation_shown",
       decisionId,
       payload: {
         patterns,
+        // What each pattern concretely did — capped and trimmed; jsonb payload.
+        changes: (meta.changes ?? []).slice(0, 10).map(trimChange) as unknown as Json,
+        path,
         trafficSource: context.trafficSource,
         device: context.device,
         isReturning: context.isReturning,
