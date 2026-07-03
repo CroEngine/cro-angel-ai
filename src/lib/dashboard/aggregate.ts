@@ -85,6 +85,48 @@ export interface InventoryGroup {
   items: InventoryEntry[];
 }
 
+/** One day's traffic in the display timezone. `visits` counts exposures
+ *  (adaptation_shown + adaptation_withheld — the server logs one per page
+ *  render, for ALL traffic including anonymous); `identified` counts distinct
+ *  consented visitors (non-null hash) seen that day. */
+export interface DayPoint {
+  /** YYYY-MM-DD in the display timezone. */
+  day: string;
+  visits: number;
+  identified: number;
+  conversions: number;
+}
+
+/** Aggregated time-of-day profile across the whole window (display tz). */
+export interface HourPoint {
+  /** 0..23 in the display timezone. */
+  hour: number;
+  visits: number;
+  identified: number;
+}
+
+/** One identified (consented) visitor's footprint — anonymous traffic carries
+ *  no id by design and can't appear here. */
+export interface VisitorSummary {
+  hash: string;
+  firstSeen: string;
+  lastSeen: string;
+  events: number;
+  pageviews: number;
+  ctaClicks: number;
+  /** Deepest scroll bucket reached: 0 | 25 | 50 | 75 | 100. */
+  maxScroll: number;
+  conversions: number;
+  /** Distinct patterns this visitor was exposed to (shown or withheld). */
+  patterns: string[];
+  /** Which measurement arm they landed in, if any. */
+  arm: "adapted" | "control" | "mixed" | null;
+  device: string | null;
+  country: string | null;
+  trafficSource: string | null;
+  browser: string | null;
+}
+
 export interface DashboardMetrics {
   overview: Overview;
   segments: {
@@ -95,6 +137,11 @@ export interface DashboardMetrics {
     byLanguage: SegmentBar[];
     byCampaign: SegmentBar[];
   };
+  timeseries: {
+    daily: DayPoint[];
+    hourly: HourPoint[];
+  };
+  visitors: VisitorSummary[];
   liveAdaptations: LiveAdaptation[];
   performance: PatternStat[];
   attribution: PatternAttribution[];
@@ -121,6 +168,12 @@ function tally(pairs: (string | null)[], fallback = "unknown"): SegmentBar[] {
 }
 
 export const MAX_LIVE_ADAPTATIONS = 25;
+
+/** Longest daily series the chart renders — older buckets are dropped. */
+export const MAX_DAY_POINTS = 90;
+
+/** Longest visitor list the dashboard shows (newest activity first). */
+export const MAX_VISITORS = 50;
 
 /** How long after an exposure a conversion still counts toward it (24 h). */
 export const ATTRIBUTION_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -240,7 +293,196 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
   );
 }
 
-export function aggregate(events: DashEvent[], inventory: InventoryEntry[]): DashboardMetrics {
+// ---- time bucketing ----------------------------------------------------------
+
+/** Exposure events: one per page render, logged server-side for ALL traffic
+ *  (anonymous included) — the closest thing we store to "a visit". */
+const isExposure = (t: string) => t === "adaptation_shown" || t === "adaptation_withheld";
+
+/** Shift an event's UTC ms into the display timezone so its UTC getters read as
+ *  local wall-clock. `tzOffsetMinutes` uses Date#getTimezoneOffset semantics
+ *  (UTC − local, so Stockholm in summer is −120). */
+const shifted = (iso: string, tzOffsetMinutes: number): Date | null => {
+  const t = ms(iso);
+  if (Number.isNaN(t)) return null;
+  return new Date(t - tzOffsetMinutes * 60_000);
+};
+
+/**
+ * Bucket traffic by calendar day and by hour of day (both in the display tz).
+ * Days are gap-filled with zeros between the first and last event so the chart
+ * has a continuous axis; the series is capped to the newest MAX_DAY_POINTS.
+ * Hours are always the full 0..23 profile aggregated across the window. Pure —
+ * buckets derive only from event timestamps, never the clock.
+ */
+export function bucketByTime(
+  events: DashEvent[],
+  tzOffsetMinutes = 0,
+): { daily: DayPoint[]; hourly: HourPoint[] } {
+  type DayAcc = { visits: number; identified: Set<string>; conversions: number };
+  const days = new Map<string, DayAcc>();
+  const hours: { visits: number; identified: Set<string> }[] = Array.from(
+    { length: 24 },
+    () => ({ visits: 0, identified: new Set<string>() }),
+  );
+
+  for (const e of events) {
+    const d = shifted(e.createdAt, tzOffsetMinutes);
+    if (!d) continue;
+    const dayKey = d.toISOString().slice(0, 10);
+    const hour = d.getUTCHours();
+    let day = days.get(dayKey);
+    if (!day) {
+      day = { visits: 0, identified: new Set(), conversions: 0 };
+      days.set(dayKey, day);
+    }
+    if (isExposure(e.type)) {
+      day.visits++;
+      hours[hour].visits++;
+    }
+    if (e.visitorHash) {
+      day.identified.add(e.visitorHash);
+      hours[hour].identified.add(e.visitorHash);
+    }
+    if (e.type === "conversion") day.conversions++;
+  }
+
+  // Gap-fill: walk day by day from the earliest to the latest bucket. Stepping
+  // in whole UTC days over the shifted timeline is DST-safe.
+  const daily: DayPoint[] = [];
+  const keys = [...days.keys()].sort();
+  if (keys.length > 0) {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const first = Date.parse(`${keys[0]}T00:00:00Z`);
+    const last = Date.parse(`${keys[keys.length - 1]}T00:00:00Z`);
+    for (let t = first; t <= last; t += DAY_MS) {
+      const key = new Date(t).toISOString().slice(0, 10);
+      const acc = days.get(key);
+      daily.push({
+        day: key,
+        visits: acc?.visits ?? 0,
+        identified: acc?.identified.size ?? 0,
+        conversions: acc?.conversions ?? 0,
+      });
+    }
+  }
+
+  return {
+    daily: daily.slice(-MAX_DAY_POINTS),
+    hourly: hours.map((h, hour) => ({ hour, visits: h.visits, identified: h.identified.size })),
+  };
+}
+
+/**
+ * Group events into per-visitor footprints (identified visitors only —
+ * anonymous traffic has no id and is unlinkable by design). Sorted by most
+ * recent activity, capped at MAX_VISITORS. Order-independent: the context
+ * columns come from the NEWEST pageview by timestamp, not input position.
+ */
+export function summarizeVisitors(events: DashEvent[]): VisitorSummary[] {
+  type Acc = {
+    first: string;
+    last: string;
+    events: number;
+    pageviews: number;
+    ctaClicks: number;
+    maxScroll: number;
+    conversions: number;
+    patterns: Set<string>;
+    adapted: boolean;
+    control: boolean;
+    /** Timestamp of the pageview the context columns came from. */
+    ctxAt: string | null;
+    device: string | null;
+    country: string | null;
+    trafficSource: string | null;
+    browser: string | null;
+  };
+  const byVisitor = new Map<string, Acc>();
+
+  for (const e of events) {
+    if (!e.visitorHash) continue;
+    let acc = byVisitor.get(e.visitorHash);
+    if (!acc) {
+      acc = {
+        first: e.createdAt,
+        last: e.createdAt,
+        events: 0,
+        pageviews: 0,
+        ctaClicks: 0,
+        maxScroll: 0,
+        conversions: 0,
+        patterns: new Set(),
+        adapted: false,
+        control: false,
+        ctxAt: null,
+        device: null,
+        country: null,
+        trafficSource: null,
+        browser: null,
+      };
+      byVisitor.set(e.visitorHash, acc);
+    }
+    acc.events++;
+    if (e.createdAt < acc.first) acc.first = e.createdAt;
+    if (e.createdAt > acc.last) acc.last = e.createdAt;
+    if (e.type === "pageview") {
+      acc.pageviews++;
+      // The newest pageview (by timestamp — input order varies) provides the
+      // context columns.
+      if (acc.ctxAt === null || e.createdAt >= acc.ctxAt) {
+        acc.ctxAt = e.createdAt;
+        acc.device = str(e.payload.device) ?? acc.device;
+        acc.country = str(e.payload.country) ?? acc.country;
+        acc.trafficSource = str(e.payload.trafficSource) ?? acc.trafficSource;
+        acc.browser = str(e.payload.browser) ?? acc.browser;
+      }
+    } else if (e.type === "cta_click") {
+      acc.ctaClicks++;
+    } else if (e.type === "scroll_depth") {
+      const depth = typeof e.payload.depth === "number" ? e.payload.depth : 0;
+      if (depth > acc.maxScroll) acc.maxScroll = depth;
+    } else if (e.type === "conversion") {
+      acc.conversions++;
+    } else if (isExposure(e.type)) {
+      for (const p of patternsOf(e.payload)) acc.patterns.add(p);
+      if (e.type === "adaptation_shown") acc.adapted = true;
+      else acc.control = true;
+    }
+  }
+
+  return [...byVisitor.entries()]
+    .map(([hash, a]) => ({
+      hash,
+      firstSeen: a.first,
+      lastSeen: a.last,
+      events: a.events,
+      pageviews: a.pageviews,
+      ctaClicks: a.ctaClicks,
+      maxScroll: a.maxScroll,
+      conversions: a.conversions,
+      patterns: [...a.patterns].sort(),
+      arm: (a.adapted && a.control
+        ? "mixed"
+        : a.adapted
+          ? "adapted"
+          : a.control
+            ? "control"
+            : null) as VisitorSummary["arm"],
+      device: a.device,
+      country: a.country,
+      trafficSource: a.trafficSource,
+      browser: a.browser,
+    }))
+    .sort((a, b) => b.lastSeen.localeCompare(a.lastSeen) || a.hash.localeCompare(b.hash))
+    .slice(0, MAX_VISITORS);
+}
+
+export function aggregate(
+  events: DashEvent[],
+  inventory: InventoryEntry[],
+  opts: { tzOffsetMinutes?: number } = {},
+): DashboardMetrics {
   const pageviewEvents = events.filter((e) => e.type === "pageview");
   const shownEvents = events.filter((e) => e.type === "adaptation_shown");
 
@@ -305,6 +547,8 @@ export function aggregate(events: DashEvent[], inventory: InventoryEntry[]): Das
   return {
     overview,
     segments,
+    timeseries: bucketByTime(events, opts.tzOffsetMinutes ?? 0),
+    visitors: summarizeVisitors(events),
     liveAdaptations,
     performance,
     attribution,
