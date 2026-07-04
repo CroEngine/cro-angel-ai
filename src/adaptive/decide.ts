@@ -167,6 +167,17 @@ function resolve(
     const intent = ctaIntent(context);
     const item = pickItem(inventory, "cta", (i) => i.meta?.intent === intent);
     if (!item?.text) return null;
+    // Never retext an element with the only label we know for it — that's a
+    // guaranteed no-op ("Skapa konto" → "Skapa konto", seen live on the pilot,
+    // where the crawler harvests each CTA's own text). The change is real only
+    // when the inventory holds ANOTHER label for the same element (multi-label
+    // demo slots) or we're falling back to the generic instrumented slot.
+    if (item.selector) {
+      const otherLabel = (inventory.slots.cta ?? []).some(
+        (i) => i !== item && i.selector === item.selector && i.text && i.text !== item.text,
+      );
+      if (!otherLabel) return null;
+    }
     return {
       pattern: id,
       op: "set_text",
