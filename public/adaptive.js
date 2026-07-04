@@ -461,6 +461,9 @@
         // Prefer an inner text host so we don't clobber icons/children.
         var host = el.querySelector("[data-angel-text]") || el;
         var prev = host.textContent;
+        // Same text = no change: skip the pointless write (and the false
+        // "renamed X → X" it would report).
+        if ((prev || "").trim() === String(a.value).trim()) return;
         host.textContent = a.value;
         record(function () {
           host.textContent = prev;
