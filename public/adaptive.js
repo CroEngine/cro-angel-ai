@@ -414,6 +414,8 @@
     reveal: function (a) {
       each(a, function (el) {
         var hadHidden = el.hasAttribute("data-angel-hidden");
+        // Revealing something already visible is a no-op — skip the fake change.
+        if (!hadHidden && el.style.display !== "none") return;
         var prevDisplay = el.style.display;
         el.removeAttribute("data-angel-hidden");
         el.classList.add("angel-revealed");
@@ -448,6 +450,11 @@
     condense: function (a) {
       each(a, function (el) {
         if (touchesLcp(el)) return; // collapsing around the LCP element shifts it
+        // The class only hides [data-angel-secondary] children — without any,
+        // "condensing" changes nothing. Skip the fake change.
+        try {
+          if (!el.querySelector("[data-angel-secondary]")) return;
+        } catch (e) {}
         el.classList.add("angel-condensed");
         record(function () {
           el.classList.remove("angel-condensed");

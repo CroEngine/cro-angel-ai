@@ -217,6 +217,18 @@ function resolve(
   const item = pickItem(inventory, pattern.slot);
   if (!item) return null;
   const target = item.selector ?? slotSelector;
+  // reveal only un-hides [data-angel-hidden] and condense only hides
+  // [data-angel-secondary] children — markers that exist solely on
+  // slot-instrumented pages. On a crawled site (raw CSS selector, element
+  // harvested visible) both are guaranteed visual no-ops that would still be
+  // logged as exposures and pollute measurement (seen live: shorten_hero on
+  // the pilot's un-instrumented <main>). Same honesty rule as set_text.
+  if (
+    (pattern.op === "reveal" || pattern.op === "condense") &&
+    !target.startsWith("[data-angel-slot")
+  ) {
+    return null;
+  }
   return {
     pattern: id,
     op: pattern.op,
