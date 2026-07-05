@@ -611,11 +611,25 @@ function ContentSection({ inventory }: { inventory: InventoryGroup[] }) {
                 </Badge>
               </div>
               <ul className="mt-1 space-y-0.5">
-                {group.items.slice(0, 8).map((item) => (
-                  <li key={item.id} className="truncate text-xs text-stone-500">
-                    {item.text ?? item.selector ?? item.id}
-                  </li>
-                ))}
+                {group.items.slice(0, 8).map((item) => {
+                  // Non-acquisition roles (support / login / legal / nav …) are
+                  // shown for transparency but never used by the engine.
+                  const role = item.meta.role;
+                  const excluded = !!role && role !== "acquisition";
+                  return (
+                    <li
+                      key={item.id}
+                      className={`truncate text-xs ${excluded ? "text-stone-400" : "text-stone-500"}`}
+                    >
+                      {item.text ?? item.selector ?? item.id}
+                      {excluded && (
+                        <span className="ml-1 font-mono text-[10px] tracking-wider text-stone-400">
+                          · {role} — never used
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
                 {group.items.length > 8 && (
                   <li className="text-xs text-stone-400">…and {group.items.length - 8} more</li>
                 )}
