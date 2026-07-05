@@ -1,14 +1,15 @@
 // /dashboard — the customer dashboard (blueprint Step 8).
 //
-// Five views over a site's data: Overview, Visitor Segments, Live Adaptations,
-// Performance, and Content Inventory. Data comes from getDashboard (server
-// function → Supabase via service role), aggregated by src/lib/dashboard.
-// When the DB is unavailable (e.g. local dev without a service-role key) the
-// dashboard renders a clean empty state.
+// Three views, one owner-question each: Overview (how is it going?), Visitors
+// (who was here and what did they do?), and What's working (is Angel earning
+// its keep?). Everything operational lives in the header Settings dialog.
+// Data comes from getDashboard (server function → Supabase via service role),
+// aggregated by src/lib/dashboard. When the DB is unavailable the dashboard
+// renders a clean empty state.
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -63,6 +64,7 @@ import type {
   DayPoint,
   HourPoint,
   VisitorSummary,
+  InventoryGroup,
 } from "@/lib/dashboard/aggregate";
 import type { Json } from "@/integrations/supabase/types";
 import {
@@ -171,6 +173,7 @@ function Dashboard() {
               <SettingsControl
                 site={site}
                 config={d.siteConfig}
+                inventory={d.metrics.inventory}
                 disabled={!d.dbAvailable}
               />
             )}
@@ -223,14 +226,12 @@ function Dashboard() {
         )}
 
         <Tabs defaultValue="overview">
+          {/* Three tabs, one owner-question each: How is it going? Who was
+              here and what did they do? Is Angel earning its keep? */}
           <TabsList className="flex flex-wrap">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="visitors">Visitors</TabsTrigger>
-            <TabsTrigger value="segments">Visitor Segments</TabsTrigger>
-            <TabsTrigger value="live">Live Adaptations</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="attribution">What&apos;s working</TabsTrigger>
-            <TabsTrigger value="inventory">Content Inventory</TabsTrigger>
           </TabsList>
 
           {/* ---- Overview ---- */}
@@ -260,6 +261,41 @@ function Dashboard() {
                 value={`${(d.metrics.overview.conversionRate * 100).toFixed(1)}%`}
               />
             </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="border-stone-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">By traffic source</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <BarList
+                    items={d.metrics.segments.byTrafficSource.slice(0, 5)}
+                    empty="No pageviews yet."
+                  />
+                </CardContent>
+              </Card>
+              <Card className="border-stone-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">By device</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <BarList
+                    items={d.metrics.segments.byDevice.slice(0, 5)}
+                    empty="No pageviews yet."
+                  />
+                </CardContent>
+              </Card>
+              <Card className="border-stone-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">By country</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <BarList
+                    items={d.metrics.segments.byCountry.slice(0, 5)}
+                    empty="No pageviews yet."
+                  />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* ---- Visitors (identified) ---- */}
@@ -271,117 +307,6 @@ function Dashboard() {
               domain={d.sites.find((s) => s.slug === site)?.domain ?? null}
               visitors={d.metrics.visitors}
             />
-          </TabsContent>
-
-          {/* ---- Visitor Segments ---- */}
-          <TabsContent value="segments" className="mt-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader>
-                  <CardTitle className="text-base">By traffic source</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BarList items={d.metrics.segments.byTrafficSource} empty="No pageviews yet." />
-                </CardContent>
-              </Card>
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader>
-                  <CardTitle className="text-base">By device</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BarList items={d.metrics.segments.byDevice} empty="No pageviews yet." />
-                </CardContent>
-              </Card>
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader>
-                  <CardTitle className="text-base">By country</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BarList items={d.metrics.segments.byCountry} empty="No pageviews yet." />
-                </CardContent>
-              </Card>
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader>
-                  <CardTitle className="text-base">By browser</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BarList items={d.metrics.segments.byBrowser} empty="No pageviews yet." />
-                </CardContent>
-              </Card>
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader>
-                  <CardTitle className="text-base">By language</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BarList items={d.metrics.segments.byLanguage} empty="No pageviews yet." />
-                </CardContent>
-              </Card>
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader>
-                  <CardTitle className="text-base">By campaign</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BarList items={d.metrics.segments.byCampaign} empty="No campaigns yet." />
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* ---- Live Adaptations ---- */}
-          <TabsContent value="live" className="mt-4">
-            <Card className="border-stone-200 shadow-none">
-              <CardHeader>
-                <CardTitle className="text-base">Recent adaptations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {d.metrics.liveAdaptations.length === 0 ? (
-                  <Empty>No adaptations recorded yet.</Empty>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {d.metrics.liveAdaptations.map((a, i) => (
-                      <li
-                        key={`${a.decisionId}-${i}`}
-                        className="flex flex-wrap items-center gap-2 py-3"
-                      >
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {a.decisionId || "—"}
-                        </span>
-                        {a.trafficSource && <Badge variant="secondary">{a.trafficSource}</Badge>}
-                        {a.device && <Badge variant="outline">{a.device}</Badge>}
-                        <span className="flex flex-wrap gap-1">
-                          {a.patterns.map((p) => (
-                            <Badge
-                              key={p}
-                              className="bg-emerald-50 font-mono text-[11px] text-emerald-800"
-                            >
-                              {p}
-                            </Badge>
-                          ))}
-                        </span>
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {new Date(a.at).toLocaleString()}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* ---- Performance ---- */}
-          <TabsContent value="performance" className="mt-4">
-            <Card className="border-stone-200 shadow-none">
-              <CardHeader>
-                <CardTitle className="text-base">Adaptations by frequency</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <BarList
-                  items={d.metrics.performance.map((p) => ({ key: p.pattern, pageviews: p.shown }))}
-                  empty="No adaptations shown yet."
-                />
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* ---- What's working (attribution) ---- */}
@@ -400,10 +325,9 @@ function Dashboard() {
                   <>
                     <AttributionTable rows={d.metrics.attribution} />
                     <p className="mt-3 text-xs text-muted-foreground">
-                      Lift compares the adapted group to the withheld control group
-                      (enable a holdout with <code>data-holdout</code> on the snippet). A
-                      conversion counts for a pattern when the same visitor converts within
-                      24 h of being exposed. <strong>sig.</strong> marks a difference at ~95%
+                      Lift compares the adapted group to the automatically held-back control
+                      group. A conversion counts for a pattern when the same visitor
+                      converts within 24 h of being exposed. <strong>sig.</strong> marks a difference at ~95%
                       confidence.
                     </p>
                   </>
@@ -412,58 +336,6 @@ function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* ---- Content Inventory ---- */}
-          <TabsContent value="inventory" className="mt-4">
-            {d.metrics.inventory.length === 0 ? (
-              <Card className="border-stone-200 shadow-none">
-                <CardContent className="py-6">
-                  <Empty>No content inventory for this site yet.</Empty>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {d.metrics.inventory.map((group) => (
-                  <Card key={group.slot} className="border-stone-200 shadow-none">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <span className="font-mono">{group.slot}</span>
-                        <Badge variant="outline">{group.items.length}</Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {group.items.map((item) => (
-                          <li key={item.id} className="rounded border border-border p-2 text-sm">
-                            <div className="font-medium text-foreground">
-                              {item.text ?? (
-                                <span className="italic text-muted-foreground">
-                                  (no text — DOM slot)
-                                </span>
-                              )}
-                            </div>
-                            {item.selector && (
-                              <div className="font-mono text-xs text-muted-foreground">
-                                {item.selector}
-                              </div>
-                            )}
-                            {Object.keys(item.meta).length > 0 && (
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                {Object.entries(item.meta).map(([k, v]) => (
-                                  <Badge key={k} variant="secondary" className="text-[11px]">
-                                    {k}: {v}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
         </Tabs>
           </>
         )}
@@ -489,10 +361,12 @@ function buildSnippet(site: string, ingestKey: string | null): string {
 function SettingsControl({
   site,
   config,
+  inventory,
   disabled,
 }: {
   site: string;
   config: SiteConfigView;
+  inventory: InventoryGroup[];
   disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -523,9 +397,10 @@ function SettingsControl({
             be shown. Try again in a moment.
           </p>
         ) : (
-          <div className="space-y-6">
+          <div className="max-h-[70vh] space-y-6 overflow-y-auto pr-1">
             <InstallSection site={site} ingestKey={config.ingestKey} />
             <ConsentSection site={site} mode={config.consentMode} />
+            <ContentSection inventory={inventory} />
           </div>
         )}
       </DialogContent>
@@ -717,6 +592,48 @@ function ConsentSection({ site, mode }: { site: string; mode: ConsentMode }) {
           />
         </div>
       </div>
+    </section>
+  );
+}
+
+/** Read-only: what the crawler found on the site. Adaptations only ever reuse
+ *  this published content — surfaced here for transparency, not editing. */
+function ContentSection({ inventory }: { inventory: InventoryGroup[] }) {
+  return (
+    <section className="space-y-2">
+      <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ content ]</span>
+      {inventory.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Nothing harvested yet — Angel maps your published content after the first visits.
+        </p>
+      ) : (
+        <div className="max-h-52 space-y-3 overflow-y-auto rounded-md border border-stone-200 p-3">
+          {inventory.map((group) => (
+            <div key={group.slot}>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-stone-700">{group.slot}</span>
+                <Badge variant="outline" className="text-[10px]">
+                  {group.items.length}
+                </Badge>
+              </div>
+              <ul className="mt-1 space-y-0.5">
+                {group.items.slice(0, 8).map((item) => (
+                  <li key={item.id} className="truncate text-xs text-stone-500">
+                    {item.text ?? item.selector ?? item.id}
+                  </li>
+                ))}
+                {group.items.length > 8 && (
+                  <li className="text-xs text-stone-400">…and {group.items.length - 8} more</li>
+                )}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">
+        What Angel found on your pages. Adaptations only ever reuse this published content —
+        nothing is invented.
+      </p>
     </section>
   );
 }
@@ -1270,10 +1187,12 @@ function VisitorTimeline({
   site,
   domain,
   visitor,
+  onPreview,
 }: {
   site: string;
   domain: string | null;
   visitor: VisitorSummary;
+  onPreview: (p: { url: string; device: string; withheld: boolean }) => void;
 }) {
   const { data, isPending } = useQuery({
     queryKey: ["visitor-timeline", site, visitor.hash],
@@ -1291,7 +1210,7 @@ function VisitorTimeline({
       {data.events.map((e) => {
         const { label, details, dot } = describeEvent(e);
         const isExposure = e.type === "adaptation_shown" || e.type === "adaptation_withheld";
-        const preview = isExposure ? previewUrl(domain, e.payload) : null;
+        const url = isExposure ? previewUrl(domain, e.payload) : null;
         return (
           <li key={e.id} className="relative flex gap-3 pb-4 pl-1 last:pb-0">
             <span className="relative flex flex-col items-center">
@@ -1304,17 +1223,23 @@ function VisitorTimeline({
                 <span className="font-mono text-[10px] tracking-wider text-stone-400">
                   {new Date(e.createdAt).toLocaleString()}
                 </span>
-                {preview && (
-                  <a
-                    href={preview}
-                    target="_blank"
-                    rel="noreferrer"
+                {url && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onPreview({
+                        url,
+                        device:
+                          typeof e.payload.device === "string" ? e.payload.device : "desktop",
+                        withheld: e.type === "adaptation_withheld",
+                      })
+                    }
                     className="font-mono text-[10px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
                   >
                     {e.type === "adaptation_withheld"
                       ? "see what was withheld ↗"
                       : "see it as this visitor ↗"}
-                  </a>
+                  </button>
                 )}
               </div>
               {details.map((d, i) => (
@@ -1330,6 +1255,80 @@ function VisitorTimeline({
   );
 }
 
+/** Device-true preview: the iframe's own CSS width IS its layout viewport, so
+ *  a 1440px frame renders the site's desktop layout even on a phone (and a
+ *  375px frame renders mobile on a desktop), scaled to fit the dialog. */
+function DevicePreview({
+  url,
+  device,
+  withheld,
+  onBack,
+}: {
+  url: string;
+  device: string;
+  withheld: boolean;
+  onBack: () => void;
+}) {
+  const frameW = device === "mobile" ? 375 : device === "tablet" ? 800 : 1440;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.3);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const update = () => setScale(Math.min(1, el.clientWidth / frameW));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [frameW]);
+
+  const wrapH = Math.round(
+    typeof window !== "undefined" ? Math.min(560, window.innerHeight * 0.6) : 480,
+  );
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="ghost" className="text-stone-500" onClick={onBack}>
+          ← Back
+        </Button>
+        <span className="font-mono text-[11px] tracking-wider text-stone-400">
+          [ {device} view {withheld ? "· what the control visitor was denied" : "· changes ringed in green"} ]
+        </span>
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
+        >
+          open in new tab ↗
+        </a>
+      </div>
+      <div
+        ref={wrapRef}
+        className="overflow-hidden rounded-md border border-stone-200 bg-white"
+        style={{ height: wrapH }}
+      >
+        <iframe
+          src={url}
+          title="Visitor preview"
+          sandbox="allow-scripts allow-same-origin"
+          style={{
+            width: frameW,
+            height: Math.round(wrapH / scale),
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            border: "0",
+          }}
+        />
+      </div>
+      <p className="font-mono text-[10px] tracking-wide text-stone-400">
+        SOME SITES BLOCK EMBEDDING — IF THE FRAME STAYS BLANK, USE “OPEN IN NEW TAB”
+      </p>
+    </div>
+  );
+}
+
 function VisitorsPanel({
   site,
   domain,
@@ -1340,6 +1339,9 @@ function VisitorsPanel({
   visitors: VisitorSummary[];
 }) {
   const [selected, setSelected] = useState<VisitorSummary | null>(null);
+  const [preview, setPreview] = useState<{ url: string; device: string; withheld: boolean } | null>(
+    null,
+  );
 
   return (
     <Card className="border-stone-200 shadow-none">
@@ -1430,8 +1432,16 @@ function VisitorsPanel({
           </div>
         )}
 
-        <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-          <DialogContent className="max-w-lg">
+        <Dialog
+          open={!!selected}
+          onOpenChange={(o) => {
+            if (!o) {
+              setSelected(null);
+              setPreview(null);
+            }
+          }}
+        >
+          <DialogContent className={preview ? "max-w-3xl" : "max-w-lg"}>
             {selected && (
               <>
                 <DialogHeader>
@@ -1453,7 +1463,21 @@ function VisitorsPanel({
                       ` · exposed to: ${selected.patterns.join(", ")}`}
                   </DialogDescription>
                 </DialogHeader>
-                <VisitorTimeline site={site} domain={domain} visitor={selected} />
+                {preview ? (
+                  <DevicePreview
+                    url={preview.url}
+                    device={preview.device}
+                    withheld={preview.withheld}
+                    onBack={() => setPreview(null)}
+                  />
+                ) : (
+                  <VisitorTimeline
+                    site={site}
+                    domain={domain}
+                    visitor={selected}
+                    onPreview={setPreview}
+                  />
+                )}
               </>
             )}
           </DialogContent>
