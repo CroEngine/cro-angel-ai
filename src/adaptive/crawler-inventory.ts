@@ -189,11 +189,33 @@ export function classifyCtaRole(text: string, href?: string): CtaRole {
   return "acquisition";
 }
 
+/** Below this confidence an LLM label is advisory only (shown as uncertain,
+ *  never acted on). */
+export const LLM_CONFIDENCE_FLOOR = 0.7;
+
+/**
+ * Resolve an item's effective role from both label sources. Precedence:
+ *   1. The deterministic rule verdict (text/href) is a FLOOR — when it says
+ *      support/auth/…, no LLM label can promote the item back to acquisition
+ *      (bounds prompt-injection via page content to "stays excluded").
+ *   2. A confident LLM label may DEMOTE an item the rules missed
+ *      (e.g. "Hilfe" with no tell-tale href).
+ *   3. Otherwise acquisition — including legacy rows with no labels at all.
+ */
+export function resolveRole(item: { meta?: Record<string, string> }): CtaRole {
+  const m = item.meta ?? {};
+  if (m.role && m.role !== "acquisition") return m.role as CtaRole;
+  const conf = Number(m.llmConfidence ?? "0");
+  if (m.llmRole && m.llmRole !== "acquisition" && conf >= LLM_CONFIDENCE_FLOOR) {
+    return m.llmRole === "other" ? "nav" : (m.llmRole as CtaRole);
+  }
+  return "acquisition";
+}
+
 /** True when an inventory item may be used for conversion work (goal pick,
- *  pattern content). Items without a role (legacy harvests) pass. */
+ *  pattern content). Items without any label (legacy harvests) pass. */
 export function isAcquisition(item: { meta?: Record<string, string> }): boolean {
-  const role = item.meta?.role;
-  return !role || role === "acquisition";
+  return resolveRole(item) === "acquisition";
 }
 
 /** Derive the CTA *intent* the engine keys on (demo/trial/sales) from a label.
@@ -311,7 +333,13 @@ function ctaItem(
   return {
     text,
     selector,
-    meta: { intent: classifyCtaIntent(text), role: classifyCtaRole(text, href), ...extraMeta },
+    meta: {
+      intent: classifyCtaIntent(text),
+      role: classifyCtaRole(text, href),
+      // Kept for the labeller's change-detection cache and transparency.
+      ...(href ? { href: href.slice(0, 200) } : {}),
+      ...extraMeta,
+    },
   };
 }
 
@@ -401,12 +429,28 @@ const GOAL_RX: RegExp[] = [
  * none look like a goal. Pure and deterministic — used to auto-fill a site's
  * conversion goal so the owner only has to CONFIRM, not configure.
  */
+/** Fixed goal ranking — the LLM labels intent, but the ORDER is ours. */
+const INTENT_PRIORITY = ["signup", "purchase", "booking", "trial", "quote", "contact"] as const;
+
 export function pickGoalCta(
   inventory: ContentInventory,
 ): { selector: string; text: string } | null {
   // Support/login/legal/nav items can never be the conversion goal, no matter
   // how well their label happens to match a goal word in some language.
   const ctas = (inventory.slots.cta ?? []).filter((c) => c.selector && c.text && isAcquisition(c));
+
+  // LLM-labelled pass first: works in ANY language ("Konto erstellen" carries
+  // llmIntent=signup). The intent ranking stays deterministic and ours.
+  for (const intent of INTENT_PRIORITY) {
+    const hit = ctas.find(
+      (c) =>
+        c.meta?.llmIntent === intent &&
+        Number(c.meta?.llmConfidence ?? "0") >= LLM_CONFIDENCE_FLOOR,
+    );
+    if (hit) return { selector: hit.selector as string, text: hit.text as string };
+  }
+
+  // Deterministic EN+SV word rules — always available, no key required.
   for (const rx of GOAL_RX) {
     const hit = ctas.find((c) => rx.test(c.text as string));
     if (hit) return { selector: hit.selector as string, text: hit.text as string };

@@ -613,9 +613,22 @@ function ContentSection({ inventory }: { inventory: InventoryGroup[] }) {
               <ul className="mt-1 space-y-0.5">
                 {group.items.slice(0, 8).map((item) => {
                   // Non-acquisition roles (support / login / legal / nav …) are
-                  // shown for transparency but never used by the engine.
-                  const role = item.meta.role;
-                  const excluded = !!role && role !== "acquisition";
+                  // shown for transparency but never used by the engine. Same
+                  // precedence as the engine's resolveRole: rule verdict is a
+                  // floor; a confident LLM label may demote, never promote.
+                  const m = item.meta;
+                  const conf = Number(m.llmConfidence ?? "0");
+                  const role =
+                    m.role && m.role !== "acquisition"
+                      ? m.role
+                      : m.llmRole && m.llmRole !== "acquisition" && conf >= 0.7
+                        ? m.llmRole
+                        : "acquisition";
+                  const excluded = role !== "acquisition";
+                  // The model suspected a non-conversion role but wasn't sure —
+                  // the item stays in use; surface the doubt for the owner.
+                  const uncertain =
+                    !excluded && !!m.llmRole && m.llmRole !== "acquisition" && conf < 0.7;
                   return (
                     <li
                       key={item.id}
@@ -625,6 +638,11 @@ function ContentSection({ inventory }: { inventory: InventoryGroup[] }) {
                       {excluded && (
                         <span className="ml-1 font-mono text-[10px] tracking-wider text-stone-400">
                           · {role} — never used
+                        </span>
+                      )}
+                      {uncertain && (
+                        <span className="ml-1 font-mono text-[10px] tracking-wider text-amber-600">
+                          · maybe {m.llmRole}?
                         </span>
                       )}
                     </li>
