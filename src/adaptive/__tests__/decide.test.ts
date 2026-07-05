@@ -30,15 +30,17 @@ const patternsOf = (c: VisitorContext): PatternId[] =>
   decide("demo", c, demo).adaptations.map((a) => a.pattern);
 
 describe("decide — blueprint scenarios", () => {
-  it("Visitor 1: LinkedIn, desktop, first visit → logos early, enterprise testimonial, Book a demo, case study", () => {
+  it("Visitor 1: LinkedIn, desktop, first visit → top-3 B2B patterns within the design cap", () => {
     const d = decide(
       "demo",
       ctx({ trafficSource: "linkedin", device: "desktop", isReturning: false }),
       demo,
     );
     const patterns = d.adaptations.map((a) => a.pattern);
+    // MAX_ADAPTATIONS (3) is a design-integrity contract: the page must stay
+    // the customer's. Equal-priority LinkedIn patterns tie-break by name.
+    expect(patterns.length).toBeLessThanOrEqual(3);
     expect(patterns).toContain("show_customer_logos_early");
-    expect(patterns).toContain("show_enterprise_testimonial");
     expect(patterns).toContain("show_case_study");
 
     const cta = d.adaptations.find((a) => a.pattern === "clarify_cta");
@@ -350,5 +352,62 @@ describe("levers — sticky goal shortcut and softer secondary CTA", () => {
       goal,
     );
     expect(evil.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
+  });
+});
+
+describe("design integrity — the page stays the customer's", () => {
+  const goal = { selector: "#signup", text: "Skapa konto" };
+  const richInventory = () => ({
+    site: "t",
+    slots: {
+      cta: [
+        { id: "c0", slot: "cta" as const, text: "Skapa konto", selector: "#signup", meta: { role: "acquisition", href: "/s" } },
+        { id: "c1", slot: "cta" as const, text: "Se hur det fungerar", selector: "#how", meta: { role: "acquisition", href: "#how" } },
+      ],
+      microcopy: [
+        { id: "m0", slot: "microcopy" as const, text: "Inget kort krävs", meta: { kind: "no_credit_card" } },
+      ],
+    },
+  });
+
+  it("never applies more than MAX_ADAPTATIONS (3)", () => {
+    // Mobile + cold + google: many rules fire, the cap must hold.
+    const d = decide(
+      "t",
+      ctx({ device: "mobile", trafficSource: "google", isReturning: false, visitCount: 0, pageType: "content" }),
+      richInventory(),
+      {},
+      goal,
+    );
+    expect(d.adaptations.length).toBeLessThanOrEqual(3);
+  });
+
+  it("injects at most ONE added element per page (sticky beats secondary by priority)", () => {
+    const d = decide(
+      "t",
+      ctx({ device: "mobile", isReturning: false, visitCount: 0, pageType: "content" }),
+      richInventory(),
+      {},
+      goal,
+    );
+    const injects = d.adaptations.filter((a) =>
+      ["inject_sticky", "inject_secondary", "inject_badge"].includes(a.op),
+    );
+    expect(injects.length).toBe(1);
+    expect(injects[0].pattern).toBe("sticky_goal_cta"); // highest-priority injection wins
+  });
+
+  it("desktop cold visitors get the secondary link as their single injection", () => {
+    const d = decide(
+      "t",
+      ctx({ device: "desktop", isReturning: false, visitCount: 0, pageType: "home" }),
+      richInventory(),
+      {},
+      goal,
+    );
+    const injects = d.adaptations.filter((a) =>
+      ["inject_sticky", "inject_secondary", "inject_badge"].includes(a.op),
+    );
+    expect(injects.map((a) => a.pattern)).toEqual(["show_secondary_cta"]);
   });
 });
