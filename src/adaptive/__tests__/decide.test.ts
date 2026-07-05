@@ -79,6 +79,23 @@ describe("decide — safety and invariants", () => {
     }
   });
 
+  it("refuses reveal on harvest-sourced items — visible content cannot be 'revealed'", () => {
+    // A harvested trust row (visible on the page, often selector-less like the
+    // synthetic stars-aggregate) must never produce a show_trust_badge: the
+    // reveal would be a visual no-op logged as a real exposure.
+    const inv = emptyInventory("harvested-site");
+    inv.slots.trust_badge = [
+      {
+        id: "trust_badge-0",
+        slot: "trust_badge",
+        text: "20 star ratings (avg 5)",
+        meta: { source: "harvest", trustType: "stars_aggregate" },
+      },
+    ];
+    const d = decide("harvested-site", ctx({ isReturning: false }), inv);
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_trust_badge");
+  });
+
   it("skips content-free ops too when the slot has no inventory (no no-op churn)", () => {
     // Empty inventory → nothing to reveal/move/emphasize/condense either, so the
     // engine emits nothing rather than no-ops that would burn adaptation slots.

@@ -61,7 +61,10 @@ export interface CtaLabel {
 export async function labelTexts(
   items: { text: string; href?: string; section?: string }[],
 ): Promise<(CtaLabel | null)[] | null> {
-  const key = process.env.ANTHROPIC_API_KEY;
+  // Primary name first; `claude` is the name the key was actually saved under
+  // in Netlify (secret values can't be read back or renamed via the API, so we
+  // meet it where it is). Remove the fallback once the var is renamed.
+  const key = process.env.ANTHROPIC_API_KEY || process.env.claude;
   if (!key || items.length === 0) return null;
   const batch = items.slice(0, MAX_ITEMS_PER_CALL);
 
