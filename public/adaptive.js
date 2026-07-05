@@ -298,8 +298,11 @@
       ".angel-condensed [data-angel-secondary]{display:none!important}" +
       ".angel-badge{display:inline-flex;align-items:center;gap:6px;margin:8px 8px 0 0;padding:4px 10px;font-size:12px;font-weight:600;line-height:1;border-radius:999px;background:#f3f0ff;color:#5b21b6;border:1px solid #ddd6fe}" +
       ".angel-badge::before{content:'\\2713';font-weight:700}" +
-      // Debug-only: outline exactly which elements Angel touched (?angel_debug=1).
-      ".angel-debug-touched{outline:2px dashed #059669!important;outline-offset:3px!important}";
+      // Debug-only (?angel_debug=1): make what Angel touched IMPOSSIBLE to miss —
+      // a pulsing ring plus a floating label chip per touched element.
+      ".angel-debug-touched{outline:3px solid #10b981!important;outline-offset:3px!important;animation:angelDebugPulse 1.6s ease-out 4}" +
+      "@keyframes angelDebugPulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.55)}100%{box-shadow:0 0 0 18px rgba(16,185,129,0)}}" +
+      ".angel-debug-tag{position:absolute;z-index:2147483646;pointer-events:none;padding:3px 8px;font:700 11px/1.2 -apple-system,system-ui,sans-serif;color:#fff;background:#059669;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap}";
     var el = document.createElement("style");
     el.id = "angel-style";
     el.textContent = css;
@@ -414,6 +417,8 @@
     reveal: function (a) {
       each(a, function (el) {
         var hadHidden = el.hasAttribute("data-angel-hidden");
+        // Revealing something already visible is a no-op — skip the fake change.
+        if (!hadHidden && el.style.display !== "none") return;
         var prevDisplay = el.style.display;
         el.removeAttribute("data-angel-hidden");
         el.classList.add("angel-revealed");
@@ -448,6 +453,11 @@
     condense: function (a) {
       each(a, function (el) {
         if (touchesLcp(el)) return; // collapsing around the LCP element shifts it
+        // The class only hides [data-angel-secondary] children — without any,
+        // "condensing" changes nothing. Skip the fake change.
+        try {
+          if (!el.querySelector("[data-angel-secondary]")) return;
+        } catch (e) {}
         el.classList.add("angel-condensed");
         record(function () {
           el.classList.remove("angel-condensed");
@@ -515,20 +525,53 @@
         /* one bad selector must not break the rest */
       }
     });
-    // Debug mode: dashed outline + tooltip on every element that was actually
-    // modified, so "what changed" is visible on the page itself. The dashboard's
-    // "see it as this visitor" preview links open with ?angel_debug=1.
-    if (isDebug()) {
-      for (var i = 0; i < touchedEls.length; i++) {
-        try {
-          touchedEls[i].el.classList.add("angel-debug-touched");
-          if (!touchedEls[i].el.title) touchedEls[i].el.title = "Angel: " + touchedEls[i].pattern;
-        } catch (e) {
-          /* decorative only */
-        }
+    // Debug mode: pulsing ring + floating label on every element that was
+    // actually modified, and scroll the first one into view — "what changed"
+    // must be impossible to miss. The dashboard's "see it as this visitor"
+    // previews open with ?angel_debug=1.
+    if (isDebug()) markTouched();
+    return applied;
+  }
+
+  var DEBUG_LABEL = {
+    emphasize_goal: "lyfte fram målknappen",
+    clarify_cta: "bytte knapptext",
+    shorten_hero: "kortade hjälten",
+    show_trust_badge: "visade förtroendemärke",
+  };
+  function markTouched() {
+    // Old tags from a previous apply (hydration re-run) are stale — clear them.
+    try {
+      var old = document.querySelectorAll(".angel-debug-tag");
+      for (var j = 0; j < old.length; j++) old[j].parentNode.removeChild(old[j]);
+    } catch (e) {}
+    var first = null;
+    for (var i = 0; i < touchedEls.length; i++) {
+      try {
+        var el = touchedEls[i].el;
+        el.classList.add("angel-debug-touched");
+        var rect = el.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) continue;
+        var tag = document.createElement("div");
+        tag.className = "angel-debug-tag";
+        tag.textContent =
+          "✳ Angel " + (DEBUG_LABEL[touchedEls[i].pattern] || touchedEls[i].pattern);
+        tag.style.left = Math.max(4, rect.left + (window.scrollX || 0)) + "px";
+        tag.style.top = Math.max(4, rect.top + (window.scrollY || 0) - 26) + "px";
+        document.body.appendChild(tag);
+        if (!first) first = el;
+      } catch (e) {
+        /* decorative only */
       }
     }
-    return applied;
+    if (first) {
+      var target = first;
+      setTimeout(function () {
+        try {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+        } catch (e) {}
+      }, 600);
+    }
   }
 
   // ---- test seam (inert in production) -------------------------------------
