@@ -63,6 +63,8 @@ export interface SiteConfigView {
   holdoutPct: number;
   conversionUrl: string | null;
   conversionSelector: string | null;
+  /** The goal's visible label (auto-harvested), e.g. "Skapa konto". */
+  conversionText: string | null;
   /** Who set the goal: 'auto' (picked from the harvest) | 'owner' | null. */
   conversionSource: "auto" | "owner" | null;
   /** Per-site write key gating the ingest endpoints. null = unkeyed. */
@@ -77,6 +79,7 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   holdoutPct: 0,
   conversionUrl: null,
   conversionSelector: null,
+  conversionText: null,
   conversionSource: null,
   ingestKey: null,
 };
@@ -125,7 +128,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_source,ingest_key",
+          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,ingest_key",
         )
         .order("slug");
       const rows = siteRows ?? [];
@@ -187,6 +190,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               holdout_pct?: number;
               conversion_url?: string | null;
               conversion_selector?: string | null;
+              conversion_text?: string | null;
               conversion_source?: string | null;
               ingest_key?: string | null;
             }
@@ -197,6 +201,7 @@ export const getDashboard = createServerFn({ method: "POST" })
             holdoutPct: typeof current.holdout_pct === "number" ? current.holdout_pct : 0,
             conversionUrl: current.conversion_url ?? null,
             conversionSelector: current.conversion_selector ?? null,
+            conversionText: current.conversion_text ?? null,
             conversionSource:
               current.conversion_source === "auto" || current.conversion_source === "owner"
                 ? current.conversion_source
@@ -391,6 +396,9 @@ export const setMeasurementConfig = createServerFn({ method: "POST" })
         holdout_pct: holdoutPct,
         conversion_url: conversionUrl || null,
         conversion_selector: conversionSelector || null,
+        // An owner-set goal has no harvested label — clear it so click
+        // detection never falls back to text belonging to the OLD goal.
+        conversion_text: null,
         // An explicit save is the owner's choice — never auto-overwritten again.
         conversion_source: conversionSelector || conversionUrl ? "owner" : null,
       },

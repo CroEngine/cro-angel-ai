@@ -14,7 +14,6 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Activity,
-  MousePointerClick,
   Eye,
   Users,
   Target,
@@ -248,11 +247,6 @@ function Dashboard() {
                 icon={<Activity />}
                 label="Adaptations shown"
                 value={d.metrics.overview.adaptationsShown}
-              />
-              <Kpi
-                icon={<MousePointerClick />}
-                label="CTA clicks"
-                value={d.metrics.overview.ctaClicks}
               />
               <Kpi icon={<Target />} label="Conversions" value={d.metrics.overview.conversions} />
               <Kpi
@@ -895,8 +889,9 @@ function MeasurementControl({
   // button's human text when we harvested it, otherwise fall back to the raw
   // selector / URL.
   const goalCta = ctas.find((c) => c.selector === config.conversionSelector);
-  const goalLabel = goalCta?.text
-    ? `“${goalCta.text}”`
+  const goalText = goalCta?.text ?? config.conversionText;
+  const goalLabel = goalText
+    ? `“${goalText}”`
     : config.conversionSelector
       ? config.conversionSelector
       : config.conversionUrl
@@ -1371,7 +1366,6 @@ function VisitorsPanel({
                   <th className="py-2 pr-3 font-medium">Last seen</th>
                   <th className="py-2 pr-3 font-medium">Context</th>
                   <th className="py-2 pr-3 text-right font-medium">Pages</th>
-                  <th className="py-2 pr-3 text-right font-medium">Clicks</th>
                   <th className="py-2 pr-3 text-right font-medium">Scroll</th>
                   <th className="py-2 pr-3 font-medium">Arm</th>
                   <th className="py-2 text-right font-medium">Converted</th>
@@ -1405,7 +1399,6 @@ function VisitorsPanel({
                       {[v.trafficSource, v.device, v.country].filter(Boolean).join(" · ") || "—"}
                     </td>
                     <td className="py-2 pr-3 text-right text-stone-700">{v.pageviews}</td>
-                    <td className="py-2 pr-3 text-right text-stone-700">{v.ctaClicks}</td>
                     <td className="py-2 pr-3 text-right text-stone-700">
                       {v.maxScroll > 0 ? `${v.maxScroll}%` : "—"}
                     </td>
