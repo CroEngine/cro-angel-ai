@@ -200,6 +200,8 @@ export type WcagLevel = "AAA" | "AA" | "AA-large" | "FAIL";
 
 export type CTAEntity = {
   text: string;
+  /** Destination (raw href) — language-independent role signal (/login, /faq …). */
+  href?: string;
   intent: ElementIntent;
   category: ElementCategory;
   section: SectionKind;

@@ -12,6 +12,8 @@ import {
   mapAuditToInventory,
   mapGoldenToInventory,
   pickGoalCta,
+  classifyCtaRole,
+  isAcquisition,
 } from "../crawler-inventory";
 import type { PageAuditData } from "@/lib/tests/schema";
 
@@ -411,5 +413,68 @@ describe("pickGoalCta — zero-config goal detection", () => {
   it("returns null when nothing looks like a goal", () => {
     expect(pickGoalCta(inv(["Läs mer", "Om oss"]))).toBeNull();
     expect(pickGoalCta({ site: "t", slots: {} })).toBeNull();
+  });
+});
+
+describe("classifyCtaRole — non-conversion intents are labelled and excluded", () => {
+  it("classifies support/auth/legal/search/social/nav by text (EN+SV)", () => {
+    expect(classifyCtaRole("Hjälp")).toBe("support");
+    expect(classifyCtaRole("Help center")).toBe("support");
+    expect(classifyCtaRole("Kundtjänst")).toBe("support");
+    expect(classifyCtaRole("Logga in")).toBe("auth");
+    expect(classifyCtaRole("Sign in")).toBe("auth");
+    expect(classifyCtaRole("Mina sidor")).toBe("auth");
+    expect(classifyCtaRole("Användarvillkor")).toBe("legal");
+    expect(classifyCtaRole("Privacy policy")).toBe("legal");
+    expect(classifyCtaRole("Sök")).toBe("search");
+    expect(classifyCtaRole("Instagram")).toBe("social");
+    expect(classifyCtaRole("Läs mer")).toBe("nav");
+    expect(classifyCtaRole("Learn more")).toBe("nav");
+  });
+
+  it("classifies by href when the label is opaque (language-independent)", () => {
+    expect(classifyCtaRole("Hilfe", "/help")).toBe("support");
+    expect(classifyCtaRole("Anmelden", "/login")).toBe("auth");
+    expect(classifyCtaRole("Suivez-nous", "https://instagram.com/acme")).toBe("social");
+    expect(classifyCtaRole("Podmínky", "/terms")).toBe("legal");
+  });
+
+  it("keeps real conversion CTAs as acquisition — including sign UP vs sign IN", () => {
+    expect(classifyCtaRole("Skapa konto")).toBe("acquisition");
+    expect(classifyCtaRole("Sign up")).toBe("acquisition");
+    expect(classifyCtaRole("Köp nu")).toBe("acquisition");
+    expect(classifyCtaRole("Boka demo")).toBe("acquisition");
+    expect(classifyCtaRole("Kontakt")).toBe("acquisition"); // a real goal for service sites
+  });
+
+  it("pickGoalCta never picks a non-acquisition item even if a goal word matches", () => {
+    const inv = {
+      site: "t",
+      slots: {
+        cta: [
+          {
+            id: "c0",
+            slot: "cta" as const,
+            text: "Logga in på ditt konto", // contains "konto" but is auth
+            selector: "#login",
+            meta: { role: "auth" },
+          },
+          {
+            id: "c1",
+            slot: "cta" as const,
+            text: "Skapa konto",
+            selector: "#signup",
+            meta: { role: "acquisition" },
+          },
+        ],
+      },
+    };
+    expect(pickGoalCta(inv)?.selector).toBe("#signup");
+  });
+
+  it("legacy items without a role still qualify (isAcquisition defaults true)", () => {
+    expect(isAcquisition({ meta: {} })).toBe(true);
+    expect(isAcquisition({})).toBe(true);
+    expect(isAcquisition({ meta: { role: "support" } })).toBe(false);
   });
 });

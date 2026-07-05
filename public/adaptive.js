@@ -50,6 +50,9 @@
   var HOLDOUT_PCT = parseInt(HOLDOUT_ATTR || "0", 10) || 0;
   var CONVERSION_URL = script.getAttribute("data-conversion-url") || "";
   var CONVERSION_SELECTOR = script.getAttribute("data-conversion-selector") || "";
+  // The goal's visible label — resilience for click detection when the CSS
+  // selector doesn't resolve on a page (structures differ across pages).
+  var CONVERSION_TEXT = script.getAttribute("data-conversion-text") || "";
 
   var qp = new URLSearchParams(location.search);
 
@@ -258,17 +261,29 @@
   // nothing configured is a no-op that does NOT consume the guard.
   var conversionWired = false;
   function wireConversion() {
-    if (conversionWired || (!CONVERSION_URL && !CONVERSION_SELECTOR)) return;
+    if (conversionWired || (!CONVERSION_URL && !CONVERSION_SELECTOR && !CONVERSION_TEXT)) return;
     conversionWired = true;
     try {
       if (CONVERSION_URL && location.href.indexOf(CONVERSION_URL) !== -1) convert();
-      if (CONVERSION_SELECTOR) {
+      if (CONVERSION_SELECTOR || CONVERSION_TEXT) {
         document.addEventListener(
           "click",
           function (e) {
             var t = e.target;
             while (t && t.nodeType === 1) {
-              if (t.matches && t.matches(CONVERSION_SELECTOR)) {
+              // Primary: the configured CSS selector. Fallback: the goal's
+              // visible label on a link/button — selectors like
+              // "a:nth-of-type(2) > button" are structure-dependent and miss on
+              // pages whose markup differs; the label survives that.
+              if (CONVERSION_SELECTOR && t.matches && t.matches(CONVERSION_SELECTOR)) {
+                convert();
+                return;
+              }
+              if (
+                CONVERSION_TEXT &&
+                (t.tagName === "A" || t.tagName === "BUTTON") &&
+                (t.textContent || "").trim() === CONVERSION_TEXT
+              ) {
                 convert();
                 return;
               }
@@ -294,7 +309,9 @@
     var css =
       "[data-angel-hidden]{display:none!important}" +
       ".angel-revealed{display:revert!important}" +
-      ".angel-emphasized{outline:2px solid #6d28d9;outline-offset:4px;border-radius:8px;box-shadow:0 0 0 4px rgba(109,40,217,.12);transition:box-shadow .2s}" +
+      // Brand-neutral emphasis: a soft dark ring + lift shadow reads as "this
+      // matters" on any palette — no Angel colours on the customer's page.
+      ".angel-emphasized{box-shadow:0 0 0 3px rgba(15,23,42,.2),0 10px 28px rgba(15,23,42,.22);border-radius:10px;transition:box-shadow .2s}" +
       ".angel-condensed [data-angel-secondary]{display:none!important}" +
       ".angel-badge{display:inline-flex;align-items:center;gap:6px;margin:8px 8px 0 0;padding:4px 10px;font-size:12px;font-weight:600;line-height:1;border-radius:999px;background:#f3f0ff;color:#5b21b6;border:1px solid #ddd6fe}" +
       ".angel-badge::before{content:'\\2713';font-weight:700}" +
@@ -648,17 +665,9 @@
 
   // ---- engagement tracking -------------------------------------------------
   function wireEngagement(decisionId) {
-    // CTA clicks.
-    document.addEventListener(
-      "click",
-      function (e) {
-        var t = e.target;
-        var cta = t && t.closest && t.closest('[data-angel-slot="cta"], [data-angel-cta]');
-        if (cta)
-          track("cta_click", { text: (cta.textContent || "").trim().slice(0, 80) }, decisionId);
-      },
-      true,
-    );
+    // (cta_click removed: it only ever fired on [data-angel-slot] instrumented
+    // markup — a demo leftover that read as a dead metric on real sites. Goal
+    // clicks are the conversion and are wired in wireConversion.)
 
     // Scroll depth — fire each 25% bucket once.
     var buckets = { 25: false, 50: false, 75: false, 100: false };
@@ -889,6 +898,9 @@
       if (!CONVERSION_URL && cfg.conversion.url) CONVERSION_URL = String(cfg.conversion.url);
       if (!CONVERSION_SELECTOR && cfg.conversion.selector) {
         CONVERSION_SELECTOR = String(cfg.conversion.selector);
+      }
+      if (!CONVERSION_TEXT && cfg.conversion.text) {
+        CONVERSION_TEXT = String(cfg.conversion.text);
       }
     }
     if (cfg.mode === "attested") upgradeConsent("site_attested");

@@ -136,6 +136,88 @@ export function ctaScore(cta: {
   return s;
 }
 
+/**
+ * CTA *role*: is this element about acquiring a customer at all? Some intents
+ * are NEVER conversion content regardless of site — support, login, legal,
+ * search, socials, weak nav ("read more"). Items keep being harvested (the
+ * dashboard shows them, labelled) but the engine never uses them and goal
+ * detection never picks them. Text rules are EN+SV; the href rules are
+ * language-independent (web paths follow English conventions surprisingly
+ * often) — full language coverage is the LLM-labelling step (planned).
+ */
+export type CtaRole = "acquisition" | "support" | "auth" | "nav" | "legal" | "search" | "social";
+
+const ROLE_RULES: { role: Exclude<CtaRole, "acquisition">; text?: RegExp; href?: RegExp }[] = [
+  {
+    role: "support",
+    text: /\b(hj[äa]lp|help( ?cent(er|re))?|support|kundtj[äa]nst|kundservice|vanliga fr[åa]gor|faq)\b/i,
+    href: /\/(help|support|faq|kundservice|kundtjanst|hjalp)([/?#]|$)/i,
+  },
+  {
+    role: "auth",
+    text: /\b(logga in|log ?in|sign ?in|inloggning|mina sidor|mitt konto|my account)\b/i,
+    href: /\/(log-?in|sign-?in|auth|account\/log-?in|mina-sidor)([/?#]|$)/i,
+  },
+  {
+    role: "legal",
+    text: /\b(villkor|anv[äa]ndarvillkor|integritet(spolicy)?|privacy( policy)?|terms|cookie[sr]?|gdpr)\b/i,
+    href: /\/(terms|privacy|legal|villkor|integritet|cookie)/i,
+  },
+  {
+    role: "search",
+    text: /^(s[öo]k|search)$/i,
+    href: /\/search([/?#]|$)/i,
+  },
+  {
+    role: "social",
+    text: /^(facebook|instagram|twitter|x|linkedin|youtube|tiktok)$/i,
+    href: /(facebook|instagram|twitter|linkedin|youtube|tiktok)\.com|(^|\.)x\.com/i,
+  },
+  {
+    role: "nav",
+    text: /^(l[äa]s mer|mer info(rmation)?|learn more|read more|see more|visa (mer|alla)|tillbaka|back|hem|home)$/i,
+  },
+];
+
+export function classifyCtaRole(text: string, href?: string): CtaRole {
+  const t = (text ?? "").trim();
+  const h = (href ?? "").trim();
+  for (const rule of ROLE_RULES) {
+    if (rule.text && rule.text.test(t)) return rule.role;
+    if (rule.href && h && rule.href.test(h)) return rule.role;
+  }
+  return "acquisition";
+}
+
+/** Below this confidence an LLM label is advisory only (shown as uncertain,
+ *  never acted on). */
+export const LLM_CONFIDENCE_FLOOR = 0.7;
+
+/**
+ * Resolve an item's effective role from both label sources. Precedence:
+ *   1. The deterministic rule verdict (text/href) is a FLOOR — when it says
+ *      support/auth/…, no LLM label can promote the item back to acquisition
+ *      (bounds prompt-injection via page content to "stays excluded").
+ *   2. A confident LLM label may DEMOTE an item the rules missed
+ *      (e.g. "Hilfe" with no tell-tale href).
+ *   3. Otherwise acquisition — including legacy rows with no labels at all.
+ */
+export function resolveRole(item: { meta?: Record<string, string> }): CtaRole {
+  const m = item.meta ?? {};
+  if (m.role && m.role !== "acquisition") return m.role as CtaRole;
+  const conf = Number(m.llmConfidence ?? "0");
+  if (m.llmRole && m.llmRole !== "acquisition" && conf >= LLM_CONFIDENCE_FLOOR) {
+    return m.llmRole === "other" ? "nav" : (m.llmRole as CtaRole);
+  }
+  return "acquisition";
+}
+
+/** True when an inventory item may be used for conversion work (goal pick,
+ *  pattern content). Items without any label (legacy harvests) pass. */
+export function isAcquisition(item: { meta?: Record<string, string> }): boolean {
+  return resolveRole(item) === "acquisition";
+}
+
 /** Derive the CTA *intent* the engine keys on (demo/trial/sales) from a label.
  *  EN + SV — the pilot market is Swedish; extend per market. */
 export function classifyCtaIntent(text: string): "demo" | "trial" | "sales" {
@@ -242,11 +324,22 @@ class InventoryBuilder {
   }
 }
 
-function ctaItem(text: string, selector: string | undefined, extraMeta: Record<string, string>) {
+function ctaItem(
+  text: string,
+  selector: string | undefined,
+  extraMeta: Record<string, string>,
+  href?: string,
+) {
   return {
     text,
     selector,
-    meta: { intent: classifyCtaIntent(text), ...extraMeta },
+    meta: {
+      intent: classifyCtaIntent(text),
+      role: classifyCtaRole(text, href),
+      // Kept for the labeller's change-detection cache and transparency.
+      ...(href ? { href: href.slice(0, 200) } : {}),
+      ...extraMeta,
+    },
   };
 }
 
@@ -336,10 +429,28 @@ const GOAL_RX: RegExp[] = [
  * none look like a goal. Pure and deterministic — used to auto-fill a site's
  * conversion goal so the owner only has to CONFIRM, not configure.
  */
+/** Fixed goal ranking — the LLM labels intent, but the ORDER is ours. */
+const INTENT_PRIORITY = ["signup", "purchase", "booking", "trial", "quote", "contact"] as const;
+
 export function pickGoalCta(
   inventory: ContentInventory,
 ): { selector: string; text: string } | null {
-  const ctas = (inventory.slots.cta ?? []).filter((c) => c.selector && c.text);
+  // Support/login/legal/nav items can never be the conversion goal, no matter
+  // how well their label happens to match a goal word in some language.
+  const ctas = (inventory.slots.cta ?? []).filter((c) => c.selector && c.text && isAcquisition(c));
+
+  // LLM-labelled pass first: works in ANY language ("Konto erstellen" carries
+  // llmIntent=signup). The intent ranking stays deterministic and ours.
+  for (const intent of INTENT_PRIORITY) {
+    const hit = ctas.find(
+      (c) =>
+        c.meta?.llmIntent === intent &&
+        Number(c.meta?.llmConfidence ?? "0") >= LLM_CONFIDENCE_FLOOR,
+    );
+    if (hit) return { selector: hit.selector as string, text: hit.text as string };
+  }
+
+  // Deterministic EN+SV word rules — always available, no key required.
   for (const rx of GOAL_RX) {
     const hit = ctas.find((c) => rx.test(c.text as string));
     if (hit) return { selector: hit.selector as string, text: hit.text as string };
@@ -366,12 +477,17 @@ export function mapAuditToInventory(
   for (const cta of curateCtas(rawCtas)) {
     b.add(
       "cta",
-      ctaItem(cta.text, cta.selector, {
-        elementIntent: cta.intent,
-        category: cta.category,
-        section: cta.section, // kept for the engine to reason about placement
-        aboveFold: String(cta.aboveFold),
-      }),
+      ctaItem(
+        cta.text,
+        cta.selector,
+        {
+          elementIntent: cta.intent,
+          category: cta.category,
+          section: cta.section, // kept for the engine to reason about placement
+          aboveFold: String(cta.aboveFold),
+        },
+        cta.href,
+      ),
     );
   }
 

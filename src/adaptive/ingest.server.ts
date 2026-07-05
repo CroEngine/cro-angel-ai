@@ -13,6 +13,7 @@
 
 import { mapAuditToInventory, pickGoalCta } from "./crawler-inventory";
 import { diffInventory } from "./inventory-drift";
+import { labelInventoryCtas } from "./labeler.server";
 import {
   loadInventoryRows,
   maybeAutoSetGoal,
@@ -56,6 +57,13 @@ export async function ingestAudit(
   // overwrites it, so we can diff this crawl against the last one.
   const prev = await loadInventoryRows(site, path);
   const drift = diffInventory(prev, inventory);
+
+  // LLM labelling (best-effort, after the drift diff so labels never read as
+  // content changes): CTA roles/intents for any language, cached per
+  // (text|href) from the previous rows so the model only sees NEW content.
+  // The harvest POST is fire-and-forget from the visitor's browser, so the
+  // latency here is invisible. No ANTHROPIC_API_KEY → deterministic rules only.
+  await labelInventoryCtas(inventory, prev);
 
   const registered = await registerSite(site, meta);
   const saved = await saveInventory(inventory, path);

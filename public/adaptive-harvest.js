@@ -311,8 +311,15 @@
     const fontWeightN = parseInt(r.cs.fontWeight, 10) || 400;
     const contrastRatio = wcagContrast(r.cs.color, r.cs.backgroundColor);
     const wcagLevel = deriveWcagLevel(contrastRatio, fontSizePx, fontWeightN);
+    // Destination is a language-independent intent signal (/login, /faq,
+    // facebook.com …) — the server-side role classifier keys on it.
+    const hrefEl = r.el && r.el.closest
+      ? (r.el.getAttribute && r.el.getAttribute('href') ? r.el : r.el.closest('a[href]'))
+      : null;
+    const href = hrefEl ? String(hrefEl.getAttribute('href') || '').slice(0, 300) : '';
     return {
       text: r.text,
+      href: href,
       intent: r.intent,
       category: r.category,
       section: r.section,

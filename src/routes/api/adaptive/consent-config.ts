@@ -39,7 +39,11 @@ const json = (body: unknown, cache: string) =>
     },
   });
 
-const ANON = { mode: "anonymous", holdoutPct: 0, conversion: { url: null, selector: null } };
+const ANON = {
+  mode: "anonymous",
+  holdoutPct: 0,
+  conversion: { url: null, selector: null, text: null },
+};
 
 export const Route = createFileRoute("/api/adaptive/consent-config")({
   server: {
@@ -56,7 +60,11 @@ export const Route = createFileRoute("/api/adaptive/consent-config")({
           {
             mode: cfg.mode,
             holdoutPct: cfg.holdoutPct,
-            conversion: { url: cfg.conversionUrl, selector: cfg.conversionSelector },
+            conversion: {
+              url: cfg.conversionUrl,
+              selector: cfg.conversionSelector,
+              text: cfg.conversionText,
+            },
           },
           "public, max-age=300",
         );

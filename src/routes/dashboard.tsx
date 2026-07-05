@@ -14,7 +14,6 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Activity,
-  MousePointerClick,
   Eye,
   Users,
   Target,
@@ -248,11 +247,6 @@ function Dashboard() {
                 icon={<Activity />}
                 label="Adaptations shown"
                 value={d.metrics.overview.adaptationsShown}
-              />
-              <Kpi
-                icon={<MousePointerClick />}
-                label="CTA clicks"
-                value={d.metrics.overview.ctaClicks}
               />
               <Kpi icon={<Target />} label="Conversions" value={d.metrics.overview.conversions} />
               <Kpi
@@ -617,11 +611,43 @@ function ContentSection({ inventory }: { inventory: InventoryGroup[] }) {
                 </Badge>
               </div>
               <ul className="mt-1 space-y-0.5">
-                {group.items.slice(0, 8).map((item) => (
-                  <li key={item.id} className="truncate text-xs text-stone-500">
-                    {item.text ?? item.selector ?? item.id}
-                  </li>
-                ))}
+                {group.items.slice(0, 8).map((item) => {
+                  // Non-acquisition roles (support / login / legal / nav …) are
+                  // shown for transparency but never used by the engine. Same
+                  // precedence as the engine's resolveRole: rule verdict is a
+                  // floor; a confident LLM label may demote, never promote.
+                  const m = item.meta;
+                  const conf = Number(m.llmConfidence ?? "0");
+                  const role =
+                    m.role && m.role !== "acquisition"
+                      ? m.role
+                      : m.llmRole && m.llmRole !== "acquisition" && conf >= 0.7
+                        ? m.llmRole
+                        : "acquisition";
+                  const excluded = role !== "acquisition";
+                  // The model suspected a non-conversion role but wasn't sure —
+                  // the item stays in use; surface the doubt for the owner.
+                  const uncertain =
+                    !excluded && !!m.llmRole && m.llmRole !== "acquisition" && conf < 0.7;
+                  return (
+                    <li
+                      key={item.id}
+                      className={`truncate text-xs ${excluded ? "text-stone-400" : "text-stone-500"}`}
+                    >
+                      {item.text ?? item.selector ?? item.id}
+                      {excluded && (
+                        <span className="ml-1 font-mono text-[10px] tracking-wider text-stone-400">
+                          · {role} — never used
+                        </span>
+                      )}
+                      {uncertain && (
+                        <span className="ml-1 font-mono text-[10px] tracking-wider text-amber-600">
+                          · maybe {m.llmRole}?
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
                 {group.items.length > 8 && (
                   <li className="text-xs text-stone-400">…and {group.items.length - 8} more</li>
                 )}
@@ -895,8 +921,9 @@ function MeasurementControl({
   // button's human text when we harvested it, otherwise fall back to the raw
   // selector / URL.
   const goalCta = ctas.find((c) => c.selector === config.conversionSelector);
-  const goalLabel = goalCta?.text
-    ? `“${goalCta.text}”`
+  const goalText = goalCta?.text ?? config.conversionText;
+  const goalLabel = goalText
+    ? `“${goalText}”`
     : config.conversionSelector
       ? config.conversionSelector
       : config.conversionUrl
@@ -1371,7 +1398,6 @@ function VisitorsPanel({
                   <th className="py-2 pr-3 font-medium">Last seen</th>
                   <th className="py-2 pr-3 font-medium">Context</th>
                   <th className="py-2 pr-3 text-right font-medium">Pages</th>
-                  <th className="py-2 pr-3 text-right font-medium">Clicks</th>
                   <th className="py-2 pr-3 text-right font-medium">Scroll</th>
                   <th className="py-2 pr-3 font-medium">Arm</th>
                   <th className="py-2 text-right font-medium">Converted</th>
@@ -1405,7 +1431,6 @@ function VisitorsPanel({
                       {[v.trafficSource, v.device, v.country].filter(Boolean).join(" · ") || "—"}
                     </td>
                     <td className="py-2 pr-3 text-right text-stone-700">{v.pageviews}</td>
-                    <td className="py-2 pr-3 text-right text-stone-700">{v.ctaClicks}</td>
                     <td className="py-2 pr-3 text-right text-stone-700">
                       {v.maxScroll > 0 ? `${v.maxScroll}%` : "—"}
                     </td>

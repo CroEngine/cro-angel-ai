@@ -10,6 +10,7 @@
 //   - transparent: every adaptation carries a human-readable reason, and the
 //     whole decision hashes to a stable id for logging and replay.
 
+import { isAcquisition } from "./crawler-inventory";
 import { getPattern } from "./patterns";
 import { pickItem } from "./inventory";
 import type { Adaptation, ContentInventory, Decision, PatternId, VisitorContext } from "./types";
@@ -164,9 +165,15 @@ function resolve(
 
   if (pattern.op === "set_text") {
     // clarify_cta — pick the published CTA label matching the visitor's intent.
+    // Only acquisition CTAs qualify: "Hjälp"/"Logga in"/"Läs mer" are labelled
+    // by role at harvest and must never become conversion copy.
     const intent = ctaIntent(context);
-    const item = pickItem(inventory, "cta", (i) => i.meta?.intent === intent);
-    if (!item?.text) return null;
+    const item = pickItem(
+      inventory,
+      "cta",
+      (i) => isAcquisition(i) && i.meta?.intent === intent,
+    );
+    if (!item?.text || !isAcquisition(item)) return null;
     // Never retext an element with the only label we know for it — that's a
     // guaranteed no-op ("Skapa konto" → "Skapa konto", seen live on the pilot,
     // where the crawler harvests each CTA's own text). The change is real only
