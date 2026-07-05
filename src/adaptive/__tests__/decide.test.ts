@@ -224,3 +224,18 @@ describe("decide — page-aware goal", () => {
     expect(a.decisionId).not.toBe(b.decisionId);
   });
 });
+
+describe("emphasize_goal — label rides along as cross-page locator", () => {
+  it("sets anchorText from the goal text so subpages resolve by label", () => {
+    const d = decide(
+      "t",
+      ctx({ trafficSource: "google", device: "mobile", pageType: "content" }),
+      emptyInventory("t"),
+      {},
+      { selector: "a:nth-of-type(2) > button", text: "Skapa konto" },
+    );
+    const emph = d.adaptations.find((a) => a.pattern === "emphasize_goal");
+    expect(emph?.target).toBe("a:nth-of-type(2) > button");
+    expect(emph?.anchorText).toBe("Skapa konto");
+  });
+});

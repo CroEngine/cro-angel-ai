@@ -129,6 +129,9 @@ const MICROCOPY_KIND: Partial<Record<PatternId, string>> = {
 export interface SiteGoal {
   selector?: string | null;
   url?: string | null;
+  /** The goal's visible label — target-resolution fallback on pages where the
+   *  CSS selector doesn't resolve (structures differ across pages). */
+  text?: string | null;
 }
 
 /**
@@ -158,6 +161,12 @@ function resolve(
       pattern: id,
       op: "emphasize",
       target: goal.selector,
+      // The label is the cross-page locator: selectors like
+      // "a:nth-of-type(2) > button" are structure-dependent and miss on pages
+      // whose markup differs — the snippet then falls back to finding the
+      // button by its visible text (seen live: "emphasized" logged with
+      // nothing visible on the page).
+      anchorText: goal.text ?? undefined,
       reason: "Highlighting the site's declared conversion goal.",
       priority,
     };

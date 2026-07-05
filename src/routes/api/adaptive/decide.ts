@@ -74,6 +74,7 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         const decision = decide(client.site, context, inventory, boosts, {
           selector: cfg.conversionSelector,
           url: cfg.conversionUrl,
+          text: cfg.conversionText,
         });
 
         // Measurement holdout: deterministically bucket this visitor 0..99 from
