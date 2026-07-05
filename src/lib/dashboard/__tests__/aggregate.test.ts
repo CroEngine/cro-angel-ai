@@ -386,3 +386,52 @@ describe("summarizeVisitors — per-visitor footprints", () => {
     expect(m.visitors).toHaveLength(1);
   });
 });
+
+describe("attribute — micro-conversions (engagement on the way to the goal)", () => {
+  const T0 = Date.parse("2026-06-25T09:00:00Z");
+  const at = (offsetH: number) => new Date(T0 + offsetH * 3600_000).toISOString();
+  const ev3 = (
+    type: string,
+    offsetH: number,
+    visitorHash: string,
+    payload: Record<string, unknown> = {},
+  ): DashEvent => ({ type, payload, visitorHash, decisionId: null, createdAt: at(offsetH) });
+
+  it("counts deep scroll, multi-page and return per exposed visitor and arm", () => {
+    const rows = aggregate(
+      [
+        // v1 (adapted): deep scroll + two pageviews inside 24h + a return on day 3
+        ev3("adaptation_shown", 0, "v1", { patterns: ["emphasize_goal"] }),
+        ev3("scroll_depth", 1, "v1", { depth: 75 }),
+        ev3("pageview", 1, "v1"),
+        ev3("pageview", 2, "v1"),
+        ev3("pageview", 70, "v1"), // day 3 → returned
+        // v2 (adapted): shallow scroll only — no micro-conversions
+        ev3("adaptation_shown", 0, "v2", { patterns: ["emphasize_goal"] }),
+        ev3("scroll_depth", 1, "v2", { depth: 50 }),
+        ev3("pageview", 1, "v2"),
+        // v3 (control): deep scroll only
+        ev3("adaptation_withheld", 0, "v3", { patterns: ["emphasize_goal"] }),
+        ev3("scroll_depth", 2, "v3", { depth: 100 }),
+      ],
+      [],
+    ).attribution.find((r) => r.pattern === "emphasize_goal")!;
+
+    expect(rows.adapted.exposures).toBe(2);
+    expect(rows.adaptedMicro).toEqual({ deepScroll: 1, multiPage: 1, returned: 1 });
+    expect(rows.control.exposures).toBe(1);
+    expect(rows.controlMicro).toEqual({ deepScroll: 1, multiPage: 0, returned: 0 });
+  });
+
+  it("ignores activity outside the windows", () => {
+    const row = aggregate(
+      [
+        ev3("adaptation_shown", 0, "v1", { patterns: ["emphasize_goal"] }),
+        ev3("scroll_depth", 30, "v1", { depth: 100 }), // after 24h window
+        ev3("pageview", 24 * 8, "v1"), // after the 7-day return horizon
+      ],
+      [],
+    ).attribution.find((r) => r.pattern === "emphasize_goal")!;
+    expect(row.adaptedMicro).toEqual({ deepScroll: 0, multiPage: 0, returned: 0 });
+  });
+});

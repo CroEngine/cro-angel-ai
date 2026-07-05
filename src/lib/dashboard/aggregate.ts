@@ -62,6 +62,19 @@ export interface VariantStat {
   rate: number;
 }
 
+/** Micro-conversions: steps on the way to the goal, counted per distinct
+ *  exposed visitor. They NEVER enter the headline lift — they exist so the
+ *  engine (and the owner) can read direction long before final conversions
+ *  reach significance on low-volume sites. */
+export interface MicroStats {
+  /** Visitors who scrolled ≥75% of a page within the attribution window. */
+  deepScroll: number;
+  /** Visitors with ≥2 pageviews within the attribution window. */
+  multiPage: number;
+  /** Visitors who came back (a pageview after the window, within 7 days). */
+  returned: number;
+}
+
 /**
  * "What's working": per-pattern causal read. Joins each visitor's earliest
  * `adaptation_shown` (adapted) / `adaptation_withheld` (control) to any later
@@ -71,6 +84,9 @@ export interface PatternAttribution {
   pattern: string;
   adapted: VariantStat;
   control: VariantStat;
+  /** Micro-conversion counts for the same exposed-visitor sets. */
+  adaptedMicro: MicroStats;
+  controlMicro: MicroStats;
   /** adapted.rate − control.rate; null when there's no control group to
    *  compare against (holdout off / no withheld exposures yet). */
   lift: number | null;
@@ -178,6 +194,13 @@ export const MAX_VISITORS = 50;
 /** How long after an exposure a conversion still counts toward it (24 h). */
 export const ATTRIBUTION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+/** A pageview after the attribution window but within this horizon counts as
+ *  a return visit (micro-conversion). */
+export const MICRO_RETURN_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Deep scroll = at least this bucket. */
+export const DEEP_SCROLL_DEPTH = 75;
+
 // Minimum evidence before a lift may be called "significant". Without this a
 // couple of lucky conversions cross |z| ≥ 1.96 and the bandit (which gates on
 // `significant`) would flip or permanently suppress a pattern on pure noise.
@@ -221,23 +244,40 @@ function twoProportionZ(c1: number, n1: number, c2: number, n2: number): number 
  * joined and are ignored.
  */
 export function attribute(events: DashEvent[]): PatternAttribution[] {
-  // visitorHash -> sorted conversion times (ms)
+  // Per-visitor event timelines (ms, sorted): conversions for the headline
+  // metric, deep scrolls + pageviews for the micro-conversions.
   const conversionsByVisitor = new Map<string, number[]>();
+  const deepScrollsByVisitor = new Map<string, number[]>();
+  const pageviewsByVisitor = new Map<string, number[]>();
+  const push = (map: Map<string, number[]>, visitor: string, t: number) =>
+    (map.get(visitor) ?? map.set(visitor, []).get(visitor)!).push(t);
   for (const e of events) {
-    if (e.type !== "conversion" || !e.visitorHash) continue;
+    if (!e.visitorHash) continue;
     const t = ms(e.createdAt);
     if (Number.isNaN(t)) continue;
-    (conversionsByVisitor.get(e.visitorHash) ?? conversionsByVisitor.set(e.visitorHash, []).get(e.visitorHash)!).push(t);
+    if (e.type === "conversion") push(conversionsByVisitor, e.visitorHash, t);
+    else if (e.type === "pageview") push(pageviewsByVisitor, e.visitorHash, t);
+    else if (
+      e.type === "scroll_depth" &&
+      typeof e.payload.depth === "number" &&
+      e.payload.depth >= DEEP_SCROLL_DEPTH
+    ) {
+      push(deepScrollsByVisitor, e.visitorHash, t);
+    }
   }
-  for (const times of conversionsByVisitor.values()) times.sort((a, b) => a - b);
+  for (const map of [conversionsByVisitor, deepScrollsByVisitor, pageviewsByVisitor]) {
+    for (const times of map.values()) times.sort((a, b) => a - b);
+  }
 
-  const converted = (visitor: string, from: number): boolean => {
-    const times = conversionsByVisitor.get(visitor);
-    if (!times) return false;
-    const until = from + ATTRIBUTION_WINDOW_MS;
-    for (const t of times) if (t >= from && t <= until) return true;
-    return false;
+  const countIn = (times: number[] | undefined, from: number, until: number): number => {
+    if (!times) return 0;
+    let n = 0;
+    for (const t of times) if (t >= from && t <= until) n++;
+    return n;
   };
+
+  const converted = (visitor: string, from: number): boolean =>
+    countIn(conversionsByVisitor.get(visitor), from, from + ATTRIBUTION_WINDOW_MS) > 0;
 
   // pattern -> variant -> visitor -> earliest exposure time (ms)
   type VariantKey = "adapted" | "control";
@@ -267,6 +307,19 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
     return { exposures: exp, conversions, rate: exp > 0 ? conversions / exp : 0 };
   };
 
+  const microStat = (visitors: Map<string, number>): MicroStats => {
+    const m: MicroStats = { deepScroll: 0, multiPage: 0, returned: 0 };
+    for (const [visitor, from] of visitors) {
+      const until = from + ATTRIBUTION_WINDOW_MS;
+      if (countIn(deepScrollsByVisitor.get(visitor), from, until) > 0) m.deepScroll++;
+      if (countIn(pageviewsByVisitor.get(visitor), from, until) >= 2) m.multiPage++;
+      if (countIn(pageviewsByVisitor.get(visitor), until, from + MICRO_RETURN_WINDOW_MS) > 0) {
+        m.returned++;
+      }
+    }
+    return m;
+  };
+
   const out: PatternAttribution[] = [];
   for (const [pattern, byVariant] of exposures) {
     const adapted = stat(byVariant.adapted);
@@ -279,6 +332,8 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
       pattern,
       adapted,
       control,
+      adaptedMicro: microStat(byVariant.adapted),
+      controlMicro: microStat(byVariant.control),
       lift: hasBoth ? adapted.rate - control.rate : null,
       z,
       // Require a valid, adequately-powered sample in BOTH arms, not just a
