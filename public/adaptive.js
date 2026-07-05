@@ -523,9 +523,28 @@
           goalEl.click();
         } catch (e) {}
       });
+      // Design integrity: the pill exists only while the REAL goal is
+      // off-screen. When the site's own button is visible the page stays
+      // exactly the customer's — no duplicate floating chrome.
+      var observer = null;
+      try {
+        if (window.IntersectionObserver) {
+          btn.style.display = "none";
+          observer = new IntersectionObserver(function (entries) {
+            var visible = entries[0] && entries[0].isIntersecting;
+            btn.style.display = visible ? "none" : "";
+          });
+          observer.observe(goalEl);
+        }
+      } catch (e) {
+        /* no observer → pill simply stays visible */
+      }
       document.body.appendChild(btn);
       touchedEls.push({ el: btn, pattern: a.pattern });
       record(function () {
+        try {
+          if (observer) observer.disconnect();
+        } catch (e) {}
         if (btn.parentElement) btn.parentElement.removeChild(btn);
       });
     },

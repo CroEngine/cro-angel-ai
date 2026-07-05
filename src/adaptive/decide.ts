@@ -15,8 +15,11 @@ import { getPattern } from "./patterns";
 import { pickItem } from "./inventory";
 import type { Adaptation, ContentInventory, Decision, PatternId, VisitorContext } from "./types";
 
-/** Most adaptations to apply on a single page load — keep the page coherent. */
-export const MAX_ADAPTATIONS = 6;
+/** Most adaptations on a single page load. Three is deliberate: one visual
+ *  emphasis, at most one added element, one structural tweak — a page that
+ *  keeps its own design. More reads as clutter and erodes the customer's
+ *  brand (and our credibility). */
+export const MAX_ADAPTATIONS = 3;
 
 /**
  * Measured performance fed back into the engine (increment 2). A signed priority
@@ -28,6 +31,11 @@ export const MAX_ADAPTATIONS = 6;
  * counterfactual, so the engine can stay pure and deterministic.
  */
 export type PatternBoost = Partial<Record<PatternId, number>>;
+
+/** Ops that ADD an element to the page. Design-integrity rule: at most ONE
+ *  of these per decision — floating pills, extra links and badges stack into
+ *  visual noise fast, and the customer's design must stay theirs. */
+const INJECT_OPS = new Set(["inject_sticky", "inject_secondary", "inject_badge"]);
 
 /** Largest positive nudge a proven winner can earn (keeps rules meaningful). */
 export const PERF_MAX_BOOST = 30;
@@ -382,6 +390,21 @@ export function decide(
     .map((e) => resolve(e.id, e.priority, context, inventory, goal))
     .filter((a): a is Adaptation => a !== null)
     .sort((a, b) => b.priority - a.priority || a.pattern.localeCompare(b.pattern))
+    // Injection budget: keep only the highest-priority element-adding op so a
+    // visitor never sees more than one thing Angel added to the page.
+    .filter(
+      (
+        () => {
+          let injected = false;
+          return (a: Adaptation) => {
+            if (!INJECT_OPS.has(a.op)) return true;
+            if (injected) return false;
+            injected = true;
+            return true;
+          };
+        }
+      )(),
+    )
     .slice(0, MAX_ADAPTATIONS);
 
   return {
