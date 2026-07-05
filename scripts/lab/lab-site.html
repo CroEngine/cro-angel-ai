@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bokklubben Norr — läscirklar för hela Norrland</title>
+  <!-- The snippet (byte-identical repo copy of the deployed file, served
+       locally because the lab browser has no direct egress) with data-endpoint
+       pointed at the runner's proxy, which forwards every API call to the REAL
+       production endpoints. The runner substitutes the placeholders. -->
+  <script async src="/adaptive.js" data-site="{{SITE}}" data-key="{{KEY}}" data-endpoint="{{API}}"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { font: 16px/1.6 -apple-system, system-ui, sans-serif; color: #1f2421; background: #fbfaf7; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; border-bottom: 1px solid #e4e1d8; background: #fff; }
+    .logo { font-weight: 800; color: #2f5d3a; }
+    nav { display: flex; gap: 18px; font-size: 14px; color: #5d635c; }
+    nav a { color: inherit; text-decoration: none; }
+    #lab-goal { padding: 10px 18px; border: 0; border-radius: 8px; background: #2f5d3a; color: #fff; font: 600 14px/1 inherit; cursor: pointer; }
+    .hero { max-width: 860px; margin: 0 auto; padding: 56px 22px 40px; }
+    h1 { font-size: 34px; line-height: 1.15; }
+    .hero p { margin-top: 12px; color: #5d635c; max-width: 520px; }
+    #lab-how { display: inline-block; margin-top: 18px; color: #2f5d3a; font-weight: 600; }
+    section { max-width: 860px; margin: 0 auto; padding: 44px 22px; border-top: 1px solid #eceae2; }
+    h2 { font-size: 22px; margin-bottom: 10px; }
+    .card { background: #fff; border: 1px solid #e4e1d8; border-radius: 10px; padding: 18px; margin-top: 14px; }
+    footer { padding: 40px 22px; color: #8a9088; font-size: 13px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">📚 Bokklubben Norr</span>
+    <nav><a href="#how">Så funkar det</a><a href="#circles">Cirklar</a><a href="#voices">Röster</a></nav>
+    <button id="lab-goal" type="button">Skapa konto</button>
+  </header>
+
+  <div class="hero">
+    <h1>Sveriges enklaste sätt att komma igång med en läscirkel</h1>
+    <p>Hitta en cirkel nära dig, dela boktips och träffa andra som läser — helt gratis för medlemmar i Norrland.</p>
+    <a id="lab-how" href="#how">Se hur det fungerar</a>
+  </div>
+
+  <section id="how">
+    <h2>Så funkar det</h2>
+    <div class="card">1. Skapa ett konto och berätta vad du gillar att läsa.</div>
+    <div class="card">2. Vi matchar dig med en cirkel nära dig — eller hjälper dig starta en egen.</div>
+    <div class="card">3. Träffas hemma, på biblioteket eller online. En bok i månaden, noll stress.</div>
+  </section>
+
+  <section id="circles">
+    <h2>Aktiva cirklar just nu</h2>
+    <div class="card">Umeå — Deckarcirkeln · torsdagar udda veckor</div>
+    <div class="card">Luleå — Norrländska röster · första måndagen i månaden</div>
+    <div class="card">Skellefteå — Fantasy &amp; sci-fi · varannan onsdag</div>
+    <div class="card">Örnsköldsvik — Klassikerklubben · söndagsfika</div>
+  </section>
+
+  <section id="voices">
+    <h2>Vad medlemmarna säger</h2>
+    <div class="card">"Jag har bott här i tre år och det var läscirkeln som fick stan att kännas som hemma." — Anna, Umeå</div>
+    <div class="card">"Bästa torsdagarna på året." — Pelle, Luleå</div>
+  </section>
+
+  <footer>Bokklubben Norr · en ideell förening · <a href="#">Villkor</a></footer>
+</body>
+</html>
