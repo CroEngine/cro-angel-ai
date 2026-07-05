@@ -324,6 +324,7 @@ function Dashboard() {
                       converts within 24 h of being exposed. <strong>sig.</strong> marks a difference at ~95%
                       confidence.
                     </p>
+                    <EarlySignals rows={d.metrics.attribution} />
                   </>
                 )}
               </CardContent>
@@ -1625,6 +1626,74 @@ function AttributionTable({ rows }: { rows: PatternAttribution[] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** Micro-conversion direction per pattern (deep scroll / kept browsing /
+ *  came back), adapted vs control. Direction only — deliberately separate from
+ *  the lift table so early engagement can never be mistaken for proof. */
+function EarlySignals({ rows }: { rows: PatternAttribution[] }) {
+  const shown = rows.filter((r) => r.adapted.exposures > 0);
+  if (shown.length === 0) return null;
+  const cell = (n: number, exposures: number) =>
+    exposures > 0 ? `${((n / exposures) * 100).toFixed(0)}%` : "—";
+  return (
+    <div className="mt-6">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+          [ early signals ]
+        </span>
+        <span className="text-xs text-muted-foreground">
+          engagement on the way to the goal — adapted vs control
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs text-muted-foreground">
+              <th className="py-2 pr-3 font-medium">Pattern</th>
+              <th className="py-2 pr-3 text-right font-medium">Scrolled ≥75%</th>
+              <th className="py-2 pr-3 text-right font-medium">Kept browsing</th>
+              <th className="py-2 text-right font-medium">Came back</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((r) => (
+              <tr key={r.pattern} className="border-b border-border/60">
+                <td className="py-2 pr-3">
+                  <span className="font-mono text-[13px] text-foreground">{r.pattern}</span>
+                </td>
+                <td className="py-2 pr-3 text-right text-stone-700">
+                  {cell(r.adaptedMicro.deepScroll, r.adapted.exposures)}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    vs {cell(r.controlMicro.deepScroll, r.control.exposures)}
+                  </span>
+                </td>
+                <td className="py-2 pr-3 text-right text-stone-700">
+                  {cell(r.adaptedMicro.multiPage, r.adapted.exposures)}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    vs {cell(r.controlMicro.multiPage, r.control.exposures)}
+                  </span>
+                </td>
+                <td className="py-2 text-right text-stone-700">
+                  {cell(r.adaptedMicro.returned, r.adapted.exposures)}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    vs {cell(r.controlMicro.returned, r.control.exposures)}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 font-mono text-[10px] tracking-wide text-stone-400">
+        DIRECTION ONLY — NEVER ENTERS THE LIFT NUMBER. THE ENGINE USES THESE TO LEARN FASTER
+        WHILE CONVERSIONS ACCUMULATE.
+      </p>
     </div>
   );
 }
