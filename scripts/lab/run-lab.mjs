@@ -37,6 +37,7 @@ const P_ADAPTED = parseFloat(arg("p-adapted", "0.35"));
 const P_CONTROL = parseFloat(arg("p-control", "0.15"));
 const SEED = parseInt(arg("seed", "42"), 10);
 const SHOTS = arg("shots", "");
+const SHOTS_ALL = arg("shots-all", ""); // screenshot EVERY visitor + build a replay gallery
 const ORIGIN = arg("origin", "https://croengine.netlify.app");
 const CONCURRENCY = parseInt(arg("concurrency", "5"), 10);
 const CHROME =
@@ -197,6 +198,16 @@ async function visit(i) {
     } else {
       await page.waitForTimeout(300);
     }
+
+    // Replay gallery: capture how the page actually LOOKED for this bot, in
+    // its final scrolled state (shows the sticky pill exactly when a human
+    // would see it).
+    if (SHOTS_ALL) {
+      fs.mkdirSync(SHOTS_ALL, { recursive: true });
+      const shot = `bot-${String(i).padStart(3, "0")}.jpg`;
+      await page.screenshot({ path: path.join(SHOTS_ALL, shot), type: "jpeg", quality: 55 });
+      out.shot = shot;
+    }
   } catch (err) {
     out.error = String(err).slice(0, 120);
   } finally {
@@ -246,3 +257,48 @@ fs.writeFileSync(
   path.join(__dirname, `run-${SITE.replace(/[^a-z0-9.-]/gi, "_")}.json`),
   JSON.stringify({ summary, results }, null, 2),
 );
+
+// ---- replay gallery ----------------------------------------------------------
+// One card per bot: persona, arm, what Angel applied, outcome, and the real
+// screenshot — the lab's answer to the dashboard's "see it as this visitor".
+if (SHOTS_ALL) {
+  const esc = (v) => String(v).replace(/[&<>]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[ch]);
+  const cards = results
+    .slice()
+    .sort((a, b) => a.i - b.i)
+    .map((r) => {
+      const arm = r.holdout === true ? "control" : r.holdout === false ? "adapted" : "error";
+      return `<div class="card ${arm}">
+  <div class="head">
+    <span class="mono">#${String(r.i).padStart(3, "0")}</span>
+    <span class="badge ${arm}">${arm}</span>
+    ${r.converted ? '<span class="badge conv">converted</span>' : ""}
+  </div>
+  <div class="meta">${esc(r.source)} · ${esc(r.device)}</div>
+  <div class="patterns">${(r.applied || []).map((p) => `<span class="pat">${esc(p)}</span>`).join("") || '<span class="none">page untouched (control)</span>'}</div>
+  ${r.shot ? `<img loading="lazy" src="${r.shot}" alt="bot ${r.i}">` : `<div class="err">${esc(r.error || "no shot")}</div>`}
+</div>`;
+    })
+    .join("\n");
+  const galleryHtml = `<!doctype html><html><head><meta charset="utf-8"><title>Angel Lab — replay ${esc(SITE)}</title><style>
+  body{margin:0;background:#fafaf9;color:#1c1917;font:14px/1.5 -apple-system,system-ui,sans-serif;padding:28px}
+  h1{font-size:18px} .sub{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.05em;color:#a8a29e;margin-bottom:20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .card{background:#fff;border:1px solid #e7e5e4;border-radius:10px;padding:12px}
+  .card.control{background:#fffdf5}
+  .head{display:flex;gap:8px;align-items:center}
+  .mono{font-family:ui-monospace,monospace;font-size:11px;color:#a8a29e}
+  .badge{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.05em;padding:2px 8px;border-radius:6px}
+  .badge.adapted{background:#ecfdf5;color:#065f46}.badge.control{background:#fef3c7;color:#92400e}.badge.conv{background:#047857;color:#fff}
+  .meta{margin-top:4px;color:#78716c;font-size:12px}
+  .patterns{margin:6px 0}.pat{display:inline-block;margin:2px 4px 2px 0;padding:2px 7px;border-radius:6px;background:#f5f5f4;font-family:ui-monospace,monospace;font-size:10px;color:#44403c}
+  .none{font-size:11px;color:#a8a29e;font-style:italic}
+  img{width:100%;border:1px solid #e7e5e4;border-radius:6px;margin-top:6px}
+  .err{color:#b91c1c;font-size:11px;font-family:ui-monospace,monospace}
+  </style></head><body>
+  <h1>✳ Angel Lab — replay</h1>
+  <div class="sub">[ ${esc(SITE)} · n=${results.length} · adapted ${summary.arms.adapted.visitors} (${summary.arms.adapted.conversions} conv) · control ${summary.arms.control.visitors} (${summary.arms.control.conversions} conv) · planted p=${P_ADAPTED}/${P_CONTROL} ]</div>
+  <div class="grid">${cards}</div></body></html>`;
+  fs.writeFileSync(path.join(SHOTS_ALL, "gallery.html"), galleryHtml);
+  console.log(`[lab] replay gallery → ${path.join(SHOTS_ALL, "gallery.html")}`);
+}
