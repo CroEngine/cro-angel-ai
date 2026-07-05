@@ -282,6 +282,9 @@
               if (
                 CONVERSION_TEXT &&
                 (t.tagName === "A" || t.tagName === "BUTTON") &&
+                // Angel's own injected shortcuts don't count — the sticky pill
+                // forwards the click to the REAL goal element, which does.
+                !t.hasAttribute("data-angel-injected") &&
                 (t.textContent || "").trim() === CONVERSION_TEXT
               ) {
                 convert();
@@ -315,6 +318,10 @@
       ".angel-condensed [data-angel-secondary]{display:none!important}" +
       ".angel-badge{display:inline-flex;align-items:center;gap:6px;margin:8px 8px 0 0;padding:4px 10px;font-size:12px;font-weight:600;line-height:1;border-radius:999px;background:#f3f0ff;color:#5b21b6;border:1px solid #ddd6fe}" +
       ".angel-badge::before{content:'\\2713';font-weight:700}" +
+      // Sticky goal shortcut (mobile): fixed → zero layout shift by construction.
+      ".angel-sticky-cta{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:2147482000;padding:13px 26px;border-radius:999px;background:#0f172a;color:#fff;font:600 15px/1 -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);border:0;cursor:pointer}" +
+      // Secondary lower-commitment link beside the goal — inherits the site's type.
+      ".angel-secondary-cta{display:inline-block;margin-left:12px;font:inherit;font-size:14px;color:inherit;opacity:.85;text-decoration:underline;text-underline-offset:3px}" +
       // Debug-only (?angel_debug=1): make what Angel touched IMPOSSIBLE to miss —
       // a pulsing ring plus a floating label chip per touched element.
       ".angel-debug-touched{outline:3px solid #10b981!important;outline-offset:3px!important;animation:angelDebugPulse 1.6s ease-out 4}" +
@@ -497,6 +504,52 @@
         });
       });
     },
+    inject_sticky: function (a) {
+      if (!a.value) return;
+      if (document.querySelector(".angel-sticky-cta")) return; // one per page
+      // Only when the real goal is on (or reachable from) this page — the pill
+      // clicks the genuine element, so navigation and conversion tracking are
+      // the site's own. No resolvable goal → no fake shortcut.
+      var goalNodes = resolveNodes({ target: a.target, anchorText: a.anchorText });
+      if (!goalNodes.length) return;
+      var goalEl = goalNodes[0];
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "angel-sticky-cta";
+      btn.setAttribute("data-angel-injected", "");
+      btn.textContent = a.value;
+      btn.addEventListener("click", function () {
+        try {
+          goalEl.click();
+        } catch (e) {}
+      });
+      document.body.appendChild(btn);
+      touchedEls.push({ el: btn, pattern: a.pattern });
+      record(function () {
+        if (btn.parentElement) btn.parentElement.removeChild(btn);
+      });
+    },
+    inject_secondary: function (a) {
+      if (!a.value || !a.href) return;
+      if (/^javascript:/i.test(a.href)) return; // belt: server already refuses
+      if (document.querySelector(".angel-secondary-cta")) return; // one per page
+      var nodes = resolveNodes({ target: a.target, anchorText: a.anchorText });
+      if (!nodes.length) return;
+      var goalEl = nodes[0];
+      var parent = goalEl.parentElement;
+      if (!parent) return;
+      if (touchesLcp(parent)) return; // a new sibling next to the LCP shifts it
+      var link = document.createElement("a");
+      link.className = "angel-secondary-cta";
+      link.setAttribute("data-angel-injected", "");
+      link.href = a.href;
+      link.textContent = a.value;
+      parent.insertBefore(link, goalEl.nextSibling);
+      touchedEls.push({ el: link, pattern: a.pattern });
+      record(function () {
+        if (link.parentElement) link.parentElement.removeChild(link);
+      });
+    },
     inject_badge: function (a) {
       if (!a.value) return;
       each(a, function (el) {
@@ -552,6 +605,8 @@
 
   var DEBUG_LABEL = {
     emphasize_goal: "lyfte fram målknappen",
+    sticky_goal_cta: "la till sticky-genväg",
+    show_secondary_cta: "la till mjukare alternativ",
     clarify_cta: "bytte knapptext",
     shorten_hero: "kortade hjälten",
     show_trust_badge: "visade förtroendemärke",

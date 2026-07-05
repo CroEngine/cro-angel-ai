@@ -81,6 +81,22 @@ const RULES: Rule[] = [
     patterns: ["clarify_cta", "show_no_credit_card", "show_guarantee", "show_trust_badge"],
   },
   {
+    // Mobile: the goal is often buried behind a hamburger — keep it one
+    // thumb-tap away. Fixed-position, so it can never shift layout.
+    id: "mobile_sticky_goal",
+    priority: 72,
+    when: (c) => c.device === "mobile",
+    patterns: ["sticky_goal_cta"],
+  },
+  {
+    // Cold first-time visitors: the primary goal can be too big a first step —
+    // surface a published lower-commitment path beside it.
+    id: "cold_soft_path",
+    priority: 55,
+    when: (c) => !c.isReturning && c.visitCount === 0,
+    patterns: ["show_secondary_cta"],
+  },
+  {
     id: "mobile_simplify",
     priority: 70,
     when: (c) => c.device === "mobile",
@@ -168,6 +184,59 @@ function resolve(
       // nothing visible on the page).
       anchorText: goal.text ?? undefined,
       reason: "Highlighting the site's declared conversion goal.",
+      priority,
+    };
+  }
+
+  if (id === "sticky_goal_cta") {
+    // Needs a labelled goal: the pill shows the goal's own text and clicks the
+    // real element, so both navigation and conversion tracking stay the site's.
+    if (!goal?.text || (!goal.selector && !goal.text)) return null;
+    if (context.pageType === "conversion") return null;
+    return {
+      pattern: id,
+      op: "inject_sticky",
+      target: goal.selector ?? "",
+      anchorText: goal.text,
+      value: goal.text,
+      reason: "Keeping the goal one thumb-tap away on mobile.",
+      priority,
+    };
+  }
+
+  if (id === "show_secondary_cta") {
+    if (!goal?.selector && !goal?.text) return null;
+    if (context.pageType === "conversion") return null;
+    // A published, lower-commitment alternative: an acquisition CTA with its
+    // own destination whose label differs from the goal. pickItem falls back
+    // to the first item when the match misses, so re-guard after.
+    const alt = pickItem(
+      inventory,
+      "cta",
+      (i) =>
+        isAcquisition(i) &&
+        Boolean(i.text) &&
+        Boolean(i.meta?.href) &&
+        i.text !== goal.text &&
+        !/^javascript:/i.test(i.meta?.href ?? ""),
+    );
+    if (
+      !alt?.text ||
+      !alt.meta?.href ||
+      alt.text === goal.text ||
+      !isAcquisition(alt) ||
+      /^javascript:/i.test(alt.meta.href)
+    ) {
+      return null;
+    }
+    return {
+      pattern: id,
+      op: "inject_secondary",
+      target: goal.selector ?? "",
+      anchorText: goal.text ?? undefined,
+      value: alt.text,
+      href: alt.meta.href,
+      reason: `Published lower-commitment path "${alt.text}" beside the goal for a first-time visitor.`,
       priority,
     };
   }

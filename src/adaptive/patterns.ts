@@ -22,6 +22,26 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     // inventory (see the emphasize_goal branch in resolve()).
     slot: "cta",
   },
+  sticky_goal_cta: {
+    id: "sticky_goal_cta",
+    label: "Sticky goal shortcut on mobile",
+    description:
+      "A fixed bottom button (no layout shift) that keeps the declared goal one thumb-tap " +
+      "away on mobile. Clicking it triggers the real goal element, so navigation and " +
+      "conversion tracking are the site's own.",
+    op: "inject_sticky",
+    slot: "cta",
+  },
+  show_secondary_cta: {
+    id: "show_secondary_cta",
+    label: "Softer option beside the goal",
+    description:
+      "For first-time visitors the primary goal can be too big a step. Surfaces a published " +
+      "lower-commitment CTA (text + destination from the site's own inventory) as a link " +
+      "beside the goal.",
+    op: "inject_secondary",
+    slot: "cta",
+  },
   show_customer_logos_early: {
     id: "show_customer_logos_early",
     label: "Show customer logos earlier",

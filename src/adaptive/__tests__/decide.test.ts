@@ -239,3 +239,116 @@ describe("emphasize_goal — label rides along as cross-page locator", () => {
     expect(emph?.anchorText).toBe("Skapa konto");
   });
 });
+
+describe("levers — sticky goal shortcut and softer secondary CTA", () => {
+  const goal = { selector: "#signup", text: "Skapa konto" };
+  const invWithAlt = (): ReturnType<typeof emptyInventory> => ({
+    site: "t",
+    slots: {
+      cta: [
+        {
+          id: "c-goal",
+          slot: "cta" as const,
+          text: "Skapa konto",
+          selector: "#signup",
+          meta: { role: "acquisition", href: "/skapa-konto" },
+        },
+        {
+          id: "c-alt",
+          slot: "cta" as const,
+          text: "Se hur det fungerar",
+          selector: "#how",
+          meta: { role: "acquisition", href: "/sa-funkar-det" },
+        },
+      ],
+    },
+  });
+
+  it("mobile visitors get the sticky goal shortcut, desktop does not", () => {
+    const mobile = decide("t", ctx({ device: "mobile", pageType: "content" }), emptyInventory("t"), {}, goal);
+    const sticky = mobile.adaptations.find((a) => a.pattern === "sticky_goal_cta");
+    expect(sticky?.op).toBe("inject_sticky");
+    expect(sticky?.value).toBe("Skapa konto");
+    expect(sticky?.anchorText).toBe("Skapa konto");
+
+    const desktop = decide("t", ctx({ device: "desktop", pageType: "content" }), emptyInventory("t"), {}, goal);
+    expect(desktop.adaptations.find((a) => a.pattern === "sticky_goal_cta")).toBeUndefined();
+  });
+
+  it("sticky requires a labelled goal and steps aside on conversion pages", () => {
+    const noText = decide("t", ctx({ device: "mobile" }), emptyInventory("t"), {}, { selector: "#x" });
+    expect(noText.adaptations.find((a) => a.pattern === "sticky_goal_cta")).toBeUndefined();
+
+    const convPage = decide("t", ctx({ device: "mobile", pageType: "conversion" }), emptyInventory("t"), {}, goal);
+    expect(convPage.adaptations.find((a) => a.pattern === "sticky_goal_cta")).toBeUndefined();
+  });
+
+  it("cold first-time visitors get a published softer option with its own href", () => {
+    const cold = decide(
+      "t",
+      ctx({ isReturning: false, visitCount: 0, pageType: "home" }),
+      invWithAlt(),
+      {},
+      goal,
+    );
+    const alt = cold.adaptations.find((a) => a.pattern === "show_secondary_cta");
+    expect(alt?.op).toBe("inject_secondary");
+    expect(alt?.value).toBe("Se hur det fungerar");
+    expect(alt?.href).toBe("/sa-funkar-det");
+
+    const warm = decide(
+      "t",
+      ctx({ isReturning: true, visitCount: 3, pageType: "home" }),
+      invWithAlt(),
+      {},
+      goal,
+    );
+    expect(warm.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
+  });
+
+  it("secondary never fires without a distinct published alternative or with a javascript: href", () => {
+    const onlyGoal = decide(
+      "t",
+      ctx({ isReturning: false, visitCount: 0 }),
+      {
+        site: "t",
+        slots: {
+          cta: [
+            {
+              id: "c-goal",
+              slot: "cta" as const,
+              text: "Skapa konto",
+              selector: "#signup",
+              meta: { role: "acquisition", href: "/skapa-konto" },
+            },
+          ],
+        },
+      },
+      {},
+      goal,
+    );
+    expect(onlyGoal.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
+
+    const evil = decide(
+      "t",
+      ctx({ isReturning: false, visitCount: 0 }),
+      {
+        site: "t",
+        slots: {
+          cta: [
+            {
+              id: "c-evil",
+              slot: "cta" as const,
+              text: "Se mer",
+              selector: "#e",
+              meta: { role: "acquisition", href: "javascript:alert(1)" },
+            },
+          ],
+        },
+      },
+      {},
+      goal,
+    );
+    expect(evil.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
+  });
+});
