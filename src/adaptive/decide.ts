@@ -316,9 +316,13 @@ function resolve(
   // harvested visible) both are guaranteed visual no-ops that would still be
   // logged as exposures and pollute measurement (seen live: shorten_hero on
   // the pilot's un-instrumented <main>). Same honesty rule as set_text.
+  // Two ways to be dishonest here: a raw harvested selector as the target, or
+  // a harvest-sourced item with NO selector (e.g. the synthetic stars-aggregate
+  // trust row) falling back to the slot-convention target — its anchorText then
+  // text-matches the already-visible element on an un-instrumented page.
   if (
     (pattern.op === "reveal" || pattern.op === "condense") &&
-    !target.startsWith("[data-angel-slot")
+    (!target.startsWith("[data-angel-slot") || item.meta?.source === "harvest")
   ) {
     return null;
   }

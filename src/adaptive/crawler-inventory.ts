@@ -418,7 +418,7 @@ export function curateCtas(raw: CTAEntity[]): CTAEntity[] {
 // wins, ties broken by curation order (already prominence-scored). EN + SV.
 const GOAL_RX: RegExp[] = [
   /skapa konto|sign ?up|register|registrera|bli medlem|create (an )?account|join/i,
-  /köp|beställ|add to cart|lägg i varukorg|buy|checkout|till kassan/i,
+  /köp|beställ|add to (cart|basket|bag)|lägg i varukorg|buy|checkout|till kassan/i,
   /boka|book (a )?|schedule|reservera/i,
   /prova|trial|get started|kom igång|starta|start free/i,
   /kontakt|offert|contact|get a quote|demo/i,
@@ -538,7 +538,15 @@ export function mapAuditToInventory(
 
   for (const mc of extractMicrocopy(textPool)) b.add("microcopy", mc);
 
-  return b.build(site);
+  const inventory = b.build(site);
+  // Provenance: everything this mapper produces came off the live page, i.e.
+  // was VISIBLE when harvested/crawled. decide() reads this to refuse
+  // reveal/condense on such items — you cannot "reveal" what visitors already
+  // see, and the no-op exposure would pollute measurement.
+  for (const items of Object.values(inventory.slots)) {
+    for (const item of items ?? []) item.meta = { source: "harvest", ...(item.meta ?? {}) };
+  }
+  return inventory;
 }
 
 // ---- corpus (reduced golden) adapter ---------------------------------------
