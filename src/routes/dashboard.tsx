@@ -1110,6 +1110,10 @@ function changeLine(c: Record<string, Json | undefined>): string {
         : `Set text to “${s(c.value) ?? ""}”`;
     case "inject_badge":
       return `Added “${s(c.value) ?? ""}” next to “${label}”`;
+    case "inject_sticky":
+      return `Added a sticky “${s(c.value) ?? ""}” shortcut (mobile)`;
+    case "inject_secondary":
+      return `Added softer option “${s(c.value) ?? ""}” beside the goal`;
     case "reveal":
       return `Revealed “${label}”`;
     case "move_up":

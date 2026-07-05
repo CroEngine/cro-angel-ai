@@ -119,7 +119,9 @@ export type AdaptationOp =
   | "emphasize" // visually highlight an existing element
   | "set_text" // replace a target's text with published inventory text
   | "condense" // collapse a slot to its essentials (e.g. shorten hero)
-  | "inject_badge"; // insert published microcopy near a target
+  | "inject_badge" // insert published microcopy near a target
+  | "inject_sticky" // fixed bottom shortcut to the goal (mobile) — no layout shift
+  | "inject_secondary"; // published lower-commitment CTA link beside the goal
 
 /** One concrete change selected for this specific visitor. */
 export interface Adaptation {
@@ -137,8 +139,11 @@ export interface Adaptation {
   /** Terminal element tag (e.g. "a", "button"). Narrows the text fallback to
    *  the right element type. */
   tag?: string;
-  /** Published content used by the op (set_text / inject_badge). */
+  /** Published content used by the op (set_text / inject_badge / inject_*). */
   value?: string;
+  /** Destination for injected links (inject_secondary) — always a href the
+   *  site itself published on the source element. */
+  href?: string;
   /** Human-readable rationale — surfaced in the dashboard and event log. */
   reason: string;
   /** Higher runs first; also used to cap how many adaptations apply. */
@@ -161,6 +166,8 @@ export interface Decision {
 /** Identifiers for the safe-pattern catalog (blueprint Step 6). */
 export type PatternId =
   | "emphasize_goal"
+  | "sticky_goal_cta"
+  | "show_secondary_cta"
   | "show_customer_logos_early"
   | "show_enterprise_testimonial"
   | "show_trust_badge"
