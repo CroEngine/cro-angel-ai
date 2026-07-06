@@ -1,5 +1,8 @@
 // Auto-extracted from engine.server.ts — runs inside the browser via page.evaluate.
-// Keep self-contained: no imports, no closures over server state.
+// Keep self-contained: no imports of server state; the shared classifier below
+// is inlined into the script string via toString(), never closed over.
+
+import { classifyIntentShared } from "./shared/intent";
 
 // Exporterad så att (a) testet importerar exakt samma predikat och
 // (b) den kan inlinas i COLLECT_SCRIPT via ${isVisible.toString()}.
@@ -50,6 +53,7 @@ export function isSuspectOffFlow(
 export const COLLECT_SCRIPT = `(() => {
   ${isVisible.toString()}
   ${isSuspectOffFlow.toString()}
+
 
   const SEMANTIC_SEL =
     'button, a[href], input[type=submit], input[type=button], ' +
@@ -238,31 +242,16 @@ export const COLLECT_SCRIPT = `(() => {
     return 'other';
   }
 
-  // Intent ordlistor — partial match, case-insensitive
-  const INTENT_RX = {
-    // "lägg i (varu|kund)?korg(en)?": fixes a drift-typo that never matched the
-    // common "lägg i varukorgen". Extra terms (teckna/jämför/shoppa/donera/
-    // månadsgivare) mined from the 107-site harvest — see
-    // corpus/vocab-harvest-2026-07-06.json.
-    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ne[dr]|lägg i (varu|kund)?korg(en)?|lägg till|ansök|bidra|donera|teckna|jämför|shoppa|månadsgivare)/i,
-    information: /(learn|read|explore|see how|how |why |about |läs|utforska|så funkar|mer info)/i,
-    navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inställningar)/i,
-    social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
-    utility: /(search|sök|language|språk|cookie|accept|godkänn|contact|kontakt|help|hjälp|faq)/i,
-    engagement: /(like|love|save|bookmark|share|comment|reply|follow|subscribe|upvote|downvote|gilla|spara|kommentar|svara|följ|prenumerera|rösta|röst)/i,
-  };
-
-  const SOCIAL_HOST_RX = /(facebook|instagram|linkedin|twitter|x\\.com|youtube|tiktok|pinterest|snapchat|reddit|threads|mastodon)\\./i;
+  // THE shared intent classifier — inlined from shared/intent.ts so this
+  // script and CTAS_SCRIPT can never drift apart again (B1). Wordlists,
+  // rule order and the contact/tel: semantics live THERE, not here.
+  ${classifyIntentShared.toString()}
 
   function classifyIntent(el, text, category, rect) {
     const tag = el.tagName;
     const type = (el.getAttribute('type') || '').toLowerCase();
     const isFormSubmit = (tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit');
-    if (isFormSubmit) return 'conversion';
-
     const href = (el.getAttribute('href') || '');
-    if (href.startsWith('tel:') || href.startsWith('mailto:')) return 'utility';
-    if (SOCIAL_HOST_RX.test(href)) return 'social';
 
     // data-* attribute signals (data-event, data-cta, data-track, data-analytics-*)
     const attrBag = [];
@@ -270,21 +259,15 @@ export const COLLECT_SCRIPT = `(() => {
       if (a.name.startsWith('data-')) attrBag.push(a.value || '');
     }
     const attrStr = attrBag.join(' ');
-
     const t = (text || '').trim();
-    const probe = t + ' ' + attrStr;
 
-    if (INTENT_RX.conversion.test(probe)) return 'conversion';
-    if (INTENT_RX.engagement.test(probe)) return 'engagement';
-    if (INTENT_RX.navigation.test(probe)) return 'navigation';
-    if (INTENT_RX.social.test(probe)) return 'social';
-    if (INTENT_RX.utility.test(probe)) return 'utility';
-    if (INTENT_RX.information.test(probe)) return 'information';
+    const intent = classifyIntentShared(
+      t, href, attrStr, category, isFormSubmit, rect.top < window.innerHeight,
+    );
+    if (intent !== 'unknown') return intent;
 
-    // Position-based fallback: above-fold primary CTA without keyword match → likely conversion.
-    if (category === 'cta_primary' && rect.top < window.innerHeight) return 'conversion';
-
-    // Text-less icon buttons in a horizontal row of ≥3 siblings → engagement toolbar.
+    // DOM-dependent tail (needs siblings, so it stays outside the pure core):
+    // text-less icon buttons in a horizontal row of ≥3 siblings → engagement toolbar.
     if (!t && category === 'icon_button') {
       const parent = el.parentElement;
       if (parent) {

@@ -30,6 +30,10 @@ export type ViewportZone = "above_fold" | "mid_page" | "below_fold";
 
 export type ElementIntent =
   | "conversion"
+  /** Contact actions (tel:/mailto:/contact wording) — their own intent, NOT
+   *  'utility': for lead-gen businesses contact IS the conversion, and the
+   *  goal system (GoalKind contact/lead) already treats it that way (A1). */
+  | "contact"
   | "information"
   | "navigation"
   | "social"

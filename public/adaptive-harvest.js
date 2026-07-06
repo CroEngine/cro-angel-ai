@@ -90,12 +90,33 @@
       var ctas = (() => {
   const viewportH = window.innerHeight || 720;
 
-  const INTENT_RX = {
-    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|best[äa]ll|k[öo]p|boka|prova|kom ig[åa]ng|skapa konto|registrera|ans[öo]k)/i,
-    navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst[äa]llningar)/i,
-    utility: /(search|s[öo]k|language|spr[åa]k|cookie|accept|godk[äa]nn|contact|kontakt|help|hj[äa]lp|faq)/i,
-    social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
-  };
+  // THE shared intent classifier — inlined from shared/intent.ts, same source
+  // COLLECT_SCRIPT uses (B1). This file used to carry its own drifted copy of
+  // the wordlists; it no longer defines any.
+  function classifyIntentShared(text, href, attrText, category, isFormSubmit, aboveFold) {
+  const probe = (text || "").trim() + " " + (attrText || ""), h = href || "";
+  if (isFormSubmit)
+    return "conversion";
+  if (/(facebook|instagram|linkedin|twitter|x\.com|youtube|tiktok|pinterest|snapchat|reddit|threads|mastodon)\./i.test(h))
+    return "social";
+  if (/(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|best\u00E4ll|k\u00F6p|boka|prova|kom ig\u00E5ng|skapa konto|registrera|g\u00E5 med|gratis|ladda ne[dr]|l\u00E4gg i (varu|kund)?korg(en)?|l\u00E4gg till|ans\u00F6k|bidra|donera|teckna|j\u00E4mf\u00F6r|shoppa|m\u00E5nadsgivare)/i.test(probe))
+    return "conversion";
+  if (/^(tel:|mailto:)/i.test(h) || /(contact|kontakt)/i.test(probe))
+    return "contact";
+  if (/(like|love|save|bookmark|share|comment|reply|follow|subscribe|upvote|downvote|gilla|spara|kommentar|svara|f\u00F6lj|prenumerera|r\u00F6sta|r\u00F6st)/i.test(probe))
+    return "engagement";
+  if (/(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst\u00E4llningar)/i.test(probe))
+    return "navigation";
+  if (/(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i.test(probe))
+    return "social";
+  if (/(search|s\u00F6k|language|spr\u00E5k|cookie|accept|godk\u00E4nn|help|hj\u00E4lp|faq)/i.test(probe))
+    return "utility";
+  if (/(learn|read|explore|see how|how |why |about |l\u00E4s|utforska|s\u00E5 funkar|mer info)/i.test(probe))
+    return "information";
+  if (category === "cta_primary" && aboveFold)
+    return "conversion";
+  return "unknown";
+}
 
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\w-]*$/.test(el.id)) return '#' + el.id;
@@ -219,14 +240,18 @@
     return 'other';
   }
 
-  function classifyIntent(text, category, rect) {
-    const t = (text || '').trim();
-    if (INTENT_RX.conversion.test(t)) return 'conversion';
-    if (INTENT_RX.navigation.test(t)) return 'navigation';
-    if (INTENT_RX.social.test(t)) return 'social';
-    if (INTENT_RX.utility.test(t)) return 'utility';
-    if (category === 'cta_primary' && rect.top < viewportH) return 'conversion';
-    return 'unknown';
+  function classifyIntent(el, text, category, rect) {
+    const tag = el.tagName;
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    const isFormSubmit = (tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit');
+    const href = (el.getAttribute('href') || '');
+    const attrBag = [];
+    for (const a of Array.from(el.attributes)) {
+      if (a.name.startsWith('data-')) attrBag.push(a.value || '');
+    }
+    return classifyIntentShared(
+      (text || '').trim(), href, attrBag.join(' '), category, isFormSubmit, rect.top < viewportH,
+    );
   }
 
   // Collect candidate CTAs (buttons + anchor links with visible surface or strong CTA-ish text)
@@ -260,7 +285,7 @@
     if (category === 'other' || category === 'link') continue; // keep button-ish + form_submit only
     raw.push({
       el, rect, cs, text, category,
-      intent: classifyIntent(text, category, rect),
+      intent: classifyIntent(el, text, category, rect),
       section: sectionKind(el, rect),
     });
   }

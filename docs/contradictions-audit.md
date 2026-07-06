@@ -10,9 +10,10 @@
 > directions. Result: **24 unique confirmed contradictions** (2 high),
 > 14 candidates refuted. Line numbers refer to `7bb49dd`.
 >
-> **Status:** the first fix wave (same branch) resolves **B6, C2, E1, E2, A4,
-> A5, A6** — each marked ✅ below with what changed. The remaining findings
-> keep their fix sketches.
+> **Status:** the first fix wave resolves **B6, C2, E1, E2, A4, A5, A6**; the
+> second wave resolves **B1, A1, A3** (one shared intent classifier + contact
+> intent + auth pageType). Each is marked ✅ below with what changed. The
+> remaining findings keep their fix sketches.
 
 ## Root cause
 
@@ -35,7 +36,7 @@ on** (see [Target architecture](#target-architecture) at the end).
 
 ## A. The same button both is and isn't "the conversion" (audit vs goal system)
 
-### A1. `tel:`/`mailto:`/contact CTAs are "utility" to the audit but THE goal to the goal system — *medium*
+### A1. `tel:`/`mailto:`/contact CTAs are "utility" to the audit but THE goal to the goal system — *medium* — ✅ fixed
 
 - `src/lib/tests/scripts/collect.ts:259` forces `tel:`/`mailto:` to
   `intent='utility'` **before** any keyword check, and the utility wordlist
@@ -52,9 +53,10 @@ above fold*, while the goal judge proposes that same button as the #1 goal,
 the owner confirms it, and the engine measures clicks on it. One layer says
 the conversion path is absent; the other says it's the whole point of the site.
 
-**Fix sketch:** reorder `classifyIntent` so the conversion-keyword test runs
-before the `tel:`/`mailto:` short-circuit; add `contact` as a first-class
-intent in `schema.ts` instead of burying it in `utility`.
+**Fixed:** the shared classifier tests conversion keywords BEFORE the
+`tel:`/`mailto:` short-circuit ("Ring och boka" is a conversion), and
+contact actions get the new first-class `contact` intent in `schema.ts` —
+never `utility`. Applies to both scripts via the shared source (B1).
 
 ### A2. Every form-submit is unconditionally "conversion" — *medium*
 
@@ -67,7 +69,7 @@ path, `rankGoalCandidates` scores a hero newsletter submit above a below-fold
 `subscribe`/`lead`; search → `utility`) and make the deterministic ranker
 kind-aware, not placement-only.
 
-### A3. Login pages are "conversion pages" — *medium*
+### A3. Login pages are "conversion pages" — *medium* — ✅ fixed
 
 `context.ts:146` (`CONVERSION_PATH_RX`) includes `log[-_]?in|logga[-_]?in`, so
 `/login` classifies as `pageType='conversion'` — "the visitor is already AT
@@ -76,8 +78,10 @@ the goal" — and `decide.ts:184/203/218` suppresses `emphasize_goal`,
 taxonomy (`crawler-inventory.ts:156-159`, labeler prompt) states auth is
 **never** a conversion. A first-time mobile visitor landing on `/logga-in` is
 exactly the visitor the sticky goal shortcut exists for, and gets nothing.
-**Fix:** move auth paths out of `CONVERSION_PATH_RX` into a `pageType='auth'`
-(reuse the `ROLE_RULES` auth href regex so the two taxonomies can't drift).
+**Fixed:** auth paths moved out of `CONVERSION_PATH_RX` into a new
+`pageType='auth'` (goal decoration stays ACTIVE there); ROLE_RULES' auth
+href gained the Swedish `logga-in|inloggning` paths; and a drift-guard test
+pins the canonical login paths both taxonomy sides must agree on.
 
 ### A4. The judge is told "nonprofit → donate" but no `donate` kind exists — *low*
 
@@ -115,7 +119,7 @@ gone — strict intent match only, so the reason string cannot misreport.
 
 ## B. Duplicated definitions that drifted (audit-internal)
 
-### B1. Two copies of the conversion-keyword classifier drifted — *medium* — ⚠️ partially fixed
+### B1. Two copies of the conversion-keyword classifier drifted — *medium* — ✅ fixed
 
 `collect.ts:243` has `gå med|gratis|ladda ner|lägg i (varu)?kund?korg|lägg
 till|bidra` that `ctas.ts:8` lacks; the two `classifyIntent` functions also
@@ -124,12 +128,11 @@ Bonus bug found during verification: the drifted regex has a typo —
 `lägg i (varu)?kund?korg` matches "lägg i kundkorg" but **never the common
 "lägg i varukorg"** (intended `(varu|kund)korg`). The same button is a
 conversion CTA in one half of the report and not in the other.
-**Partially fixed:** the `varukorg(en)` typo is corrected and `collect.ts`'s
-conversion list extended from the 107-site vocabulary harvest
-(`corpus/vocab-harvest-2026-07-06.json`). Still open: one shared
-`INTENT_RX` + `classifyIntentCore` source file, interpolated into both script
-template strings (the scripts stay self-contained in `page.evaluate`) — until
-then the two copies can still drift.
+**Fixed:** one shared `classifyIntentShared` (src/lib/tests/scripts/shared/
+intent.ts) is inlined into BOTH script template strings via `toString()` —
+neither script defines its own wordlists anymore, and an inline-parity test
+asserts the exact shared source appears in both. (The `varukorg(en)` typo
+fix + harvest vocabulary landed in the previous wave.)
 
 ### B2. `cta_primary` requires above-fold in `ctas.ts` but not in `collect.ts` — *medium*
 

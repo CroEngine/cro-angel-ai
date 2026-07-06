@@ -33,8 +33,11 @@ export type DeviceType = "desktop" | "mobile" | "tablet";
 
 /** What kind of page is being adapted, derived from its URL path. Different
  *  pages want different things: a conversion page (signup/checkout) is the
- *  goal itself, so goal-decoration patterns step aside there. */
-export type PageType = "home" | "conversion" | "content" | "other";
+ *  goal itself, so goal-decoration patterns step aside there. 'auth' =
+ *  login/account pages — NOT conversion pages (auth is never a conversion in
+ *  the role taxonomy), so goal decoration stays active: a visitor who landed
+ *  on /logga-in by mistake is exactly who needs the shortcut to the goal. */
+export type PageType = "home" | "conversion" | "auth" | "content" | "other";
 
 /**
  * Everything the engine knows about the current visitor. Assembled from

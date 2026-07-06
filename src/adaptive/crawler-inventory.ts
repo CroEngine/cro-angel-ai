@@ -156,7 +156,10 @@ const ROLE_RULES: { role: Exclude<CtaRole, "acquisition">; text?: RegExp; href?:
   {
     role: "auth",
     text: /\b(logga in|log ?in|sign ?in|inloggning|mina sidor|mitt konto|my account)\b/i,
-    href: /\/(log-?in|sign-?in|auth|account\/log-?in|mina-sidor)([/?#]|$)/i,
+    // Keep in agreement with AUTH_PATH_RX in context.ts (the page-type side of
+    // the same taxonomy) — drift guard in goal-taxonomy.test.ts. "logga-in"/
+    // "inloggning" added: the Swedish pilot's login paths weren't covered.
+    href: /\/(log-?in|logga-?in|inloggning|sign-?in|auth|account\/log-?in|mina-sidor)([/?#]|$)/i,
   },
   {
     role: "legal",

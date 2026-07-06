@@ -142,8 +142,20 @@ function primaryLanguage(tag: string): string {
 // Path fragments that mark a CONVERSION page — the visitor is already at the
 // goal (signup/checkout/booking), so goal-decoration patterns step aside.
 // Deterministic and multilingual-by-structure (EN + SV terms; extend per market).
+// NOTE: login/auth paths are deliberately NOT here — auth is never a
+// conversion (see ROLE_RULES in crawler-inventory.ts), and treating /logga-in
+// as "already at the goal" silently disabled every goal pattern exactly for
+// the visitor who mis-clicked their way to a login form (audit finding A3).
 const CONVERSION_PATH_RX =
-  /(sign[-_]?up|register|registrera|skapa[-_]?konto|bli[-_]?medlem|join|checkout|kassa|cart|varukorg|subscribe|prenumerera|log[-_]?in|logga[-_]?in|anmal|anm[aä]lan|boka|book(ing)?|contact|kontakt|quote|offert)/i;
+  /(sign[-_]?up|register|registrera|skapa[-_]?konto|bli[-_]?medlem|join|checkout|kassa|cart|varukorg|subscribe|prenumerera|anmal|anm[aä]lan|boka|book(ing)?|contact|kontakt|quote|offert)/i;
+
+// Auth/account pages. Kept in agreement with the ROLE_RULES auth entry in
+// crawler-inventory.ts (the CTA-role side of the same taxonomy) — a drift
+// guard in goal-taxonomy.test.ts asserts both classify the canonical login
+// paths the same way. Checked BEFORE conversion so "/login?next=/checkout"
+// style paths read as auth.
+const AUTH_PATH_RX =
+  /(log[-_]?in|logga[-_]?in|sign[-_]?in|inloggning|mina[-_]?sidor|minasidor|my[-_]?account|(^|\/)auth([/?#]|$))/i;
 
 /** Classify what kind of page a URL points at. Pure; safe on bad input. */
 export function classifyPageType(url: string): VisitorContext["pageType"] {
@@ -154,6 +166,7 @@ export function classifyPageType(url: string): VisitorContext["pageType"] {
     return "other";
   }
   if (path === "/" || path === "") return "home";
+  if (AUTH_PATH_RX.test(path)) return "auth";
   if (CONVERSION_PATH_RX.test(path)) return "conversion";
   // Any real sub-path is content (article, product, listing, thread, ...).
   return "content";

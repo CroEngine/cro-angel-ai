@@ -503,3 +503,29 @@ describe("clarify_cta — goal-kind-aware label preference (one goal vocabulary)
     expect(a.decisionId).not.toBe(b.decisionId);
   });
 });
+
+describe("decide — auth pages are not conversion pages (A3)", () => {
+  const goal = { selector: "#signup", text: "Skapa konto" };
+
+  it("keeps goal decoration on auth pages — the mis-clicked visitor needs it most", () => {
+    const d = decide(
+      "t",
+      ctx({ pageType: "auth", url: "https://example.com/logga-in" }),
+      emptyInventory("t"),
+      {},
+      goal,
+    );
+    expect(d.adaptations.map((a) => a.pattern)).toContain("emphasize_goal");
+  });
+
+  it("still suppresses goal decoration on real conversion pages", () => {
+    const d = decide(
+      "t",
+      ctx({ pageType: "conversion", url: "https://example.com/skapa-konto" }),
+      emptyInventory("t"),
+      {},
+      goal,
+    );
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("emphasize_goal");
+  });
+});

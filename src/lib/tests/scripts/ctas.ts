@@ -1,15 +1,16 @@
 // Auto-extracted from engine.server.ts — runs inside the browser via page.evaluate.
-// Keep self-contained: no imports, no closures over server state.
+// Keep self-contained: no imports of server state; the shared classifier below
+// is inlined into the script string via toString(), never closed over.
+
+import { classifyIntentShared } from "./shared/intent";
 
 export const CTAS_SCRIPT = `(() => {
   const viewportH = window.innerHeight || 720;
 
-  const INTENT_RX = {
-    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|best[äa]ll|k[öo]p|boka|prova|kom ig[åa]ng|skapa konto|registrera|ans[öo]k)/i,
-    navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst[äa]llningar)/i,
-    utility: /(search|s[öo]k|language|spr[åa]k|cookie|accept|godk[äa]nn|contact|kontakt|help|hj[äa]lp|faq)/i,
-    social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
-  };
+  // THE shared intent classifier — inlined from shared/intent.ts, same source
+  // COLLECT_SCRIPT uses (B1). This file used to carry its own drifted copy of
+  // the wordlists; it no longer defines any.
+  ${classifyIntentShared.toString()}
 
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
@@ -133,14 +134,18 @@ export const CTAS_SCRIPT = `(() => {
     return 'other';
   }
 
-  function classifyIntent(text, category, rect) {
-    const t = (text || '').trim();
-    if (INTENT_RX.conversion.test(t)) return 'conversion';
-    if (INTENT_RX.navigation.test(t)) return 'navigation';
-    if (INTENT_RX.social.test(t)) return 'social';
-    if (INTENT_RX.utility.test(t)) return 'utility';
-    if (category === 'cta_primary' && rect.top < viewportH) return 'conversion';
-    return 'unknown';
+  function classifyIntent(el, text, category, rect) {
+    const tag = el.tagName;
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    const isFormSubmit = (tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit');
+    const href = (el.getAttribute('href') || '');
+    const attrBag = [];
+    for (const a of Array.from(el.attributes)) {
+      if (a.name.startsWith('data-')) attrBag.push(a.value || '');
+    }
+    return classifyIntentShared(
+      (text || '').trim(), href, attrBag.join(' '), category, isFormSubmit, rect.top < viewportH,
+    );
   }
 
   // Collect candidate CTAs (buttons + anchor links with visible surface or strong CTA-ish text)
@@ -174,7 +179,7 @@ export const CTAS_SCRIPT = `(() => {
     if (category === 'other' || category === 'link') continue; // keep button-ish + form_submit only
     raw.push({
       el, rect, cs, text, category,
-      intent: classifyIntent(text, category, rect),
+      intent: classifyIntent(el, text, category, rect),
       section: sectionKind(el, rect),
     });
   }
