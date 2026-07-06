@@ -19,7 +19,10 @@ import {
 
 const MAX_HTML_BYTES = 3_000_000;
 const FETCH_TIMEOUT_MS = 12_000;
-const UA = "Mozilla/5.0 (compatible; AngelSandbox/1.0; +https://croengine.netlify.app)";
+// A realistic browser UA — many sites 403 unknown agents. (Sites that block by
+// datacenter IP will still refuse; that's inherent to any server-side fetch.)
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
 function deny(status: number, reason: string): Response {
   return new Response(`sandbox mirror: ${reason}`, {

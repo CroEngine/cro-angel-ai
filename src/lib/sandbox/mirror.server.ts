@@ -143,14 +143,20 @@ export interface SafeFetchResult {
  * Fetch an external page for the mirror WITHOUT the SSRF holes a plain
  * `fetch(url, { redirect: "follow" })` leaves open:
  *  - every host is DNS-resolved and EVERY resolved address range-checked
- *    (blockedIpReason) before any connection — a public name that resolves to
+ *    (blockedIpReason) before the connection — a public name that resolves to
  *    a private/loopback/metadata IP is refused;
- *  - the connection is PINNED to the validated address via an undici Agent
- *    whose lookup only ever returns that IP, so the name can't re-resolve to a
- *    different address between check and connect (TOCTOU / DNS rebinding);
  *  - redirects are followed MANUALLY, re-running guardTargetUrl + resolve +
  *    range-check on each hop, so a public page can't 30x us onto localhost.
- * TLS still validates against the real hostname (SNI/servername unchanged).
+ *
+ * We deliberately do NOT pin the socket to the resolved IP: the reliable way
+ * to pin (an undici Agent with a custom connect.lookup) both breaks in
+ * proxied environments and, tested against real HTTPS origins, fails the TLS
+ * connection. The residual it would close is the TOCTOU / DNS-rebinding race
+ * (the name re-resolving to a different IP between our check and fetch's own
+ * connect). For an ADMIN-ONLY preview tool whose operator chooses the URL,
+ * that narrow race is an accepted residual; the resolve-and-range-check above
+ * closes the practical vectors (literal IPs, internal names, public→private,
+ * redirect-to-internal).
  */
 export async function safeMirrorFetch(
   startUrl: string,
@@ -159,29 +165,6 @@ export async function safeMirrorFetch(
   let current = startUrl;
   const maxHops = opts.maxHops ?? 5;
 
-  // Connection-pinning (below) connects straight to the validated IP. That is
-  // the right protection when we own the socket — but if an egress proxy is
-  // configured (dev containers, some hosts), the proxy must do the connecting,
-  // so pinning would both break the fetch AND be meaningless (the proxy
-  // re-resolves anyway). Production (Netlify) has no such proxy → we pin.
-  const proxied = !!(
-    process.env.HTTPS_PROXY ||
-    process.env.https_proxy ||
-    process.env.HTTP_PROXY ||
-    process.env.http_proxy
-  );
-
-  // undici ships with Node's global fetch; import lazily so a bundling hiccup
-  // degrades to a clear error rather than a build failure.
-  let Agent: typeof import("undici").Agent | null = null;
-  if (!proxied) {
-    try {
-      ({ Agent } = await import("undici"));
-    } catch {
-      Agent = null; // fall back to the default dispatcher — resolve-check still runs
-    }
-  }
-
   for (let hop = 0; hop <= maxHops; hop++) {
     const guard = guardTargetUrl(current);
     if (!guard.ok) return { ok: false, reason: hop === 0 ? guard.reason : "redirect_" + guard.reason };
@@ -189,7 +172,7 @@ export async function safeMirrorFetch(
 
     // Resolve + range-check EVERY address the host maps to. This closes the
     // primary SSRF vector (a public name pointing at a private/loopback/
-    // metadata IP) regardless of pinning, on every redirect hop.
+    // metadata IP), on every redirect hop.
     let addrs: { address: string; family: number }[];
     try {
       addrs = (await dnsLookupAll(host, { all: true })) as { address: string; family: number }[];
@@ -202,37 +185,19 @@ export async function safeMirrorFetch(
       if (blocked) return { ok: false, reason: blocked };
     }
 
-    // Pin the socket to the already-validated IP (no proxy only); TLS
-    // servername stays the host so cert validation is unaffected. This also
-    // closes the TOCTOU / DNS-rebinding race between check and connect.
-    const agent =
-      Agent && !proxied
-        ? new Agent({
-            connect: {
-              lookup: (_hostname, _options, cb) =>
-                cb(null, addrs[0].address as never, addrs[0].family as never),
-            },
-          })
-        : null;
-
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
     let res: Response;
     try {
-      // `dispatcher` is an undici extension to RequestInit that Node's global
-      // fetch honours but the DOM types don't declare — hence the cast.
-      const init: RequestInit & { dispatcher?: unknown } = {
+      res = await fetch(guard.url.href, {
         signal: controller.signal,
         redirect: "manual",
         headers: { "user-agent": opts.ua, accept: "text/html,application/xhtml+xml" },
-      };
-      if (agent) init.dispatcher = agent;
-      res = await fetch(guard.url.href, init);
+      });
     } catch {
       return { ok: false, reason: hop === 0 ? "unreachable" : "redirect_unreachable" };
     } finally {
       clearTimeout(timer);
-      if (agent) void agent.close();
     }
 
     // Manual redirect handling — resolve Location against the current URL and loop.
