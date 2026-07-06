@@ -81,6 +81,54 @@ export const SITES: SiteSpec[] = [
     // rendras i capture-miljön.
     notes: "Ingen consent-banner i Browserbase-region (geo-gate). Store Assistant-chatt-widget i egen iframe (bra test av huvuddokument-font-scoping). Capture körs utan consent-klick.",
   },
+  // ---- Arketyp-korpusen: en frusen sajt per konverteringsmåltyp -------------
+  // Poängen (contradictions-audit "target architecture"): hela kedjan
+  // skörd → måldom → mönster regressionstestas PER MÅLTYP, inte bara för
+  // SaaS-signup. CMP-vendor per sajt identifierad 2026-07-06 ur server-
+  // renderad HTML (vocab-harvesten); selektorerna är vendorernas standard-id:n.
+  {
+    // PURCHASE — svensk marketplace/webshop ("Köp", varukorg, till kassan).
+    name: "cdon",
+    url: "https://cdon.se",
+    consentSelector: "#didomi-notice-agree-button",
+    notes: "Didomi-CMP. Arketyp: purchase (webshop).",
+  },
+  // LEAD-arketypen (mäklare/hemlarm) ännu ofrusen: Verisure (OneTrust) gick
+  // över externalize-tröskeln utan lovable-assets-CLI i miljön, och
+  // Svensk Fast/Cookiebot renderade ingen banner mot Browserbase-IP. tel:/
+  // callback-lead-klassningen täcks av enhetstesterna i goal-taxonomy.test.ts
+  // tills en lead-sajt fryser rent — bokadirekt (booking) ligger närmast.
+  {
+    // START_FLOW — jämförelseportal för elavtal ("Jämför och byt elavtal").
+    name: "elskling",
+    url: "https://elskling.se",
+    consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    // Verifierat 2026-07-06: Cookiebot göms (detachas inte), som HubSpot.
+    consentDismissCheck: "hidden",
+    notes: "Cookiebot-CMP. Arketyp: start_flow (jämförelseportal).",
+  },
+  {
+    // DONATE — insamlingsorganisation ("Ge en gåva", "Bli månadsgivare").
+    name: "cancerfonden",
+    url: "https://www.cancerfonden.se",
+    consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    // Verifierat 2026-07-06: Cookiebot göms (detachas inte), som HubSpot.
+    consentDismissCheck: "hidden",
+    notes: "Cookiebot-CMP. Arketyp: donate (nonprofit).",
+  },
+  // SUBSCRIBE-arketypen (di.se) ännu ofrusen: Dagens Industris egna fonter
+  // (BentonSans/BrunelDeck) gick över inline-tröskeln och render-canary-
+  // gaten failade utan lovable-assets-CLI. subscribe-klassningen täcks av
+  // enhetstesterna tills en lättare paywall-sajt fryser rent.
+  {
+    // BOOKING — bokningsmarknadsplats ("Boka tid"). Ingen CMP-vendor synlig i
+    // server-HTML — kör --dry-run --screenshot-before-dismiss först och lägg
+    // till selektor ENDAST om en banner faktiskt rendras i capture-miljön
+    // (samma disciplin som hibob/microsoft).
+    name: "bokadirekt",
+    url: "https://www.bokadirekt.se",
+    notes: "Arketyp: booking (bokningsmarknadsplats). CMP okänd — verifiera med dry-run.",
+  },
   // Salesforce, Slack, Kry, Monday: ej tillagda än.
   // Salesforce testad 2026-06-10: ingen consent-banner mot Browserbase-IP
   // (samma geo-gate som HiBob) men page.mhtml blev 60 MB efter font-embed.

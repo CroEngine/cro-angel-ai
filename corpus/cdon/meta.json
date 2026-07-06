@@ -1,0 +1,16 @@
+{
+  "url": "https://cdon.se",
+  "name": "cdon",
+  "captured_at": "2026-07-06T20:07:23.703Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": "#didomi-notice-agree-button",
+  "consentInstruction": null,
+  "notes": "Didomi-CMP. Arketyp: purchase (webshop).",
+  "ttlDays": 90,
+  "frozenAt": "2026-07-06T20:07:23.703Z",
+  "expiresAt": "2026-10-04T20:07:23.703Z",
+  "refreezeReason": "manual"
+}

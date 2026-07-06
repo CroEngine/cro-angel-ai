@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "env": {
+    "chromiumPath": "<playwright-bundled>",
+    "chromiumVersion": "148.0.7778.96",
+    "pinned": true
+  },
+  "families": [
+    {
+      "family": "inter",
+      "gate1": {
+        "wWith": 447,
+        "wFallback": 520.171875,
+        "deltaLoad": 73.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 3,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "inter",
+          "allDescriptorFamilies": [
+            "pantograph-pro",
+            "pantograph-pro-fallback",
+            "inter",
+            "inter",
+            "inter-fallback",
+            "pantograph-pro",
+            "pantograph-pro-fallback",
+            "inter",
+            "inter",
+            "inter-fallback",
+            "pantograph-pro",
+            "pantograph-pro-fallback",
+            "inter",
+            "inter",
+            "inter-fallback"
+          ],
+          "matchedDescriptorFamilies": [
+            "inter",
+            "inter",
+            "inter",
+            "inter",
+            "inter",
+            "inter"
+          ],
+          "checkString": "16px \"inter\"",
+          "widthString": "\"inter\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "pantograph-pro",
+      "gate1": {
+        "wWith": 413,
+        "wFallback": 520.171875,
+        "deltaLoad": 107.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 3,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "pantograph-pro",
+          "allDescriptorFamilies": [
+            "pantograph-pro",
+            "pantograph-pro-fallback",
+            "inter",
+            "inter",
+            "inter-fallback",
+            "pantograph-pro",
+            "pantograph-pro-fallback",
+            "inter",
+            "inter",
+            "inter-fallback",
+            "pantograph-pro",
+            "pantograph-pro-fallback",
+            "inter",
+            "inter",
+            "inter-fallback"
+          ],
+          "matchedDescriptorFamilies": [
+            "pantograph-pro",
+            "pantograph-pro",
+            "pantograph-pro"
+          ],
+          "checkString": "16px \"pantograph-pro\"",
+          "widthString": "\"pantograph-pro\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    }
+  ]
+}

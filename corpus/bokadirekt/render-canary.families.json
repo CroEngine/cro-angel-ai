@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "env": {
+    "chromiumPath": "<playwright-bundled>",
+    "chromiumVersion": "148.0.7778.96",
+    "pinned": true
+  },
+  "families": [
+    {
+      "family": "Brown",
+      "gate1": {
+        "wWith": 424,
+        "wFallback": 520.171875,
+        "deltaLoad": 96.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Brown",
+          "allDescriptorFamilies": [
+            "Gibson",
+            "Gibson",
+            "Gibson",
+            "Brown",
+            "Brown",
+            "DigitalNumbers",
+            "Klarna Headline"
+          ],
+          "matchedDescriptorFamilies": [
+            "Brown",
+            "Brown"
+          ],
+          "checkString": "16px \"Brown\"",
+          "widthString": "\"Brown\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "DigitalNumbers",
+      "gate1": {
+        "wWith": 702,
+        "wFallback": 520.171875,
+        "deltaLoad": 181.828125,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "DigitalNumbers",
+          "allDescriptorFamilies": [
+            "Gibson",
+            "Gibson",
+            "Gibson",
+            "Brown",
+            "Brown",
+            "DigitalNumbers",
+            "Klarna Headline"
+          ],
+          "matchedDescriptorFamilies": [
+            "DigitalNumbers"
+          ],
+          "checkString": "16px \"DigitalNumbers\"",
+          "widthString": "\"DigitalNumbers\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Gibson",
+      "gate1": {
+        "wWith": 394,
+        "wFallback": 520.171875,
+        "deltaLoad": 126.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Gibson",
+          "allDescriptorFamilies": [
+            "Gibson",
+            "Gibson",
+            "Gibson",
+            "Brown",
+            "Brown",
+            "DigitalNumbers",
+            "Klarna Headline"
+          ],
+          "matchedDescriptorFamilies": [
+            "Gibson",
+            "Gibson",
+            "Gibson"
+          ],
+          "checkString": "16px \"Gibson\"",
+          "widthString": "\"Gibson\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Klarna Headline",
+      "gate1": {
+        "wWith": 437,
+        "wFallback": 520.171875,
+        "deltaLoad": 83.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Klarna Headline",
+          "allDescriptorFamilies": [
+            "Gibson",
+            "Gibson",
+            "Gibson",
+            "Brown",
+            "Brown",
+            "DigitalNumbers",
+            "Klarna Headline"
+          ],
+          "matchedDescriptorFamilies": [
+            "Klarna Headline"
+          ],
+          "checkString": "16px \"Klarna Headline\"",
+          "widthString": "\"Klarna Headline\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    }
+  ]
+}

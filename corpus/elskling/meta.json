@@ -1,0 +1,16 @@
+{
+  "url": "https://elskling.se",
+  "name": "elskling",
+  "captured_at": "2026-07-06T20:13:55.604Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+  "consentInstruction": null,
+  "notes": "Cookiebot-CMP. Arketyp: start_flow (jämförelseportal).",
+  "ttlDays": 90,
+  "frozenAt": "2026-07-06T20:13:55.604Z",
+  "expiresAt": "2026-10-04T20:13:55.604Z",
+  "refreezeReason": "manual"
+}

@@ -61,6 +61,37 @@ E consent above-fold + dark-theme inversion):
 Add e-commerce / testimonial-heavy sites only when the trust-signal bugs
 become active again.
 
+## Archetype corpus — one frozen site per conversion goal kind
+
+Beyond snapshot regression, the corpus doubles as a **per-goal-kind
+regression suite** (`__tests__/archetype-goals.test.ts`): the whole pipeline
+harvest → `mapAuditToInventory` → `rankGoalCandidates` is exercised on a real
+site of each conversion type, so a taxonomy change that re-types a webshop's
+"Köp" as signup, or a nonprofit's "Ge en gåva" as start_flow, fails CI. This
+is the "one goal model for any conversion site" claim made testable.
+
+| Site | Goal kind | CMP | Notes |
+|---|---|---|---|
+| `cdon` | purchase | Didomi | Swedish marketplace/webshop |
+| `elskling` | start_flow / quote | Cookiebot (hidden) | electricity comparison portal |
+| `cancerfonden` | donate | Cookiebot (hidden) | nonprofit |
+| `hubspot` | signup / trial / contact | (own banner, hidden) | SaaS (pre-existing) |
+| `bokadirekt` | booking* | none (region) | booking marketplace |
+
+\* **bokadirekt is soft-asserted only.** Its homepage is a category portal —
+the prominent CTAs are href-less service tiles ("Frisör", "Massage"), so the
+deterministic no-LLM floor sees no booking verb/href and defaults to signup;
+the real "Boka tid" lives on the service page. The holistic goal judge (LLM)
+reads "booking marketplace" from the whole inventory, but the floor can't from
+this capture. A strict booking archetype needs a service-page capture.
+
+Not yet frozen: **lead** (Verisure/OneTrust exceeded the 9 MB externalize
+threshold with no lovable-assets CLI in the freeze env; Svensk Fast/Cookiebot
+rendered no banner against the Browserbase IP) and **subscribe** (di.se's
+newspaper fonts exceeded the inline threshold and broke the render-canary).
+Both goal kinds stay covered by `goal-taxonomy.test.ts` unit tests until a
+lighter site freezes cleanly.
+
 ## Determinism contract & limitations (Grind 1)
 
 The substrate's promise is `score = f(frozen DOM, extractor_vN)`. For this to

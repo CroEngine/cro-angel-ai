@@ -35,6 +35,9 @@ jobs:
       - name: Run snapshot diff tests
         run: bunx vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts
 
+      - name: Run archetype goal-kind tests
+        run: bunx vitest run src/lib/tests/snapshot/__tests__/archetype-goals.test.ts
+
       - name: Upload canary artifacts
         if: always()
         uses: actions/upload-artifact@v4
