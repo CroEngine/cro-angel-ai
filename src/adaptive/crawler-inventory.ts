@@ -160,7 +160,10 @@ const ROLE_RULES: { role: Exclude<CtaRole, "acquisition">; text?: RegExp; href?:
   },
   {
     role: "legal",
-    text: /\b(villkor|anv[äa]ndarvillkor|integritet(spolicy)?|privacy( policy)?|terms|cookie[sr]?|gdpr)\b/i,
+    // Consent/cookie buttons ("Jag godkänner", "Acceptera alla", "Accept all")
+    // are utility chrome, never a conversion goal — exclude them so they can't
+    // be proposed as a candidate even when the harvester's cookie filter misses.
+    text: /\b(villkor|anv[äa]ndarvillkor|integritet(spolicy)?|privacy( policy)?|terms|cookie[sr]?|gdpr|jag godk[äa]nner|godk[äa]nn(er)? alla|acceptera( alla)?|accept all|allow all|till[åa]t alla)\b/i,
     href: /\/(terms|privacy|legal|villkor|integritet|cookie)/i,
   },
   {
@@ -376,6 +379,16 @@ function collapseUniformStrips(cands: { cta: CTAEntity; score: number }[]): void
     ).length;
     if (short < members.length * 0.7) continue; // not a short-label strip
     members.sort((a, b) => b.score - a.score);
+    // Keep the most-prominent member, but stamp it with the strip's size + a few
+    // sibling labels so goal judgment still sees "1 of an N-item grid" (a strong
+    // comparison-portal / category-funnel signal) even though the rest are dropped.
+    const rep = members[0].cta;
+    rep.variantCount = members.length;
+    rep.variantSample = members
+      .slice(1)
+      .map((m) => (m.cta.text ?? "").trim())
+      .filter((t) => t && t !== (rep.text ?? "").trim())
+      .slice(0, 4);
     for (const m of members.slice(1)) suppressed.add(m);
   }
   if (suppressed.size === 0) return;
@@ -644,6 +657,13 @@ export function mapAuditToInventory(
           category: cta.category,
           section: cta.section, // kept for the engine to reason about placement
           aboveFold: String(cta.aboveFold),
+          // Collapsed-strip context for goal judgment (see collapseUniformStrips).
+          ...(cta.variantCount && cta.variantCount > 1
+            ? { variantCount: String(cta.variantCount) }
+            : {}),
+          ...(cta.variantSample && cta.variantSample.length
+            ? { variantSample: cta.variantSample.join(" · ").slice(0, 200) }
+            : {}),
         },
         cta.href,
       ),

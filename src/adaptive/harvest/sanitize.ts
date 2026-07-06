@@ -42,6 +42,15 @@ function optSelector(s: unknown): string | undefined {
   return typeof s === "string" && s ? s : undefined;
 }
 
+/** A CTA's bounding box (pixels only — no PII). Curation groups by size to
+ *  collapse uniform strips; without it, strips can't be told apart by size. */
+function cleanRect(r: unknown): { x: number; y: number; w: number; h: number } | undefined {
+  if (!r || typeof r !== "object") return undefined;
+  const o = r as Record<string, unknown>;
+  const n = (v: unknown) => (typeof v === "number" && isFinite(v) ? Math.round(v) : 0);
+  return { x: n(o.x), y: n(o.y), w: n(o.w), h: n(o.h) };
+}
+
 /** A CTA's destination — the language-independent goal signal (off-domain =
  *  affiliate/outbound, /checkout = purchase, tel:/mailto: = lead/contact).
  *  Bounded; dangerous schemes are dropped, and any query string is stripped
@@ -103,6 +112,9 @@ export function sanitizeAudit(raw: unknown): Partial<PageAuditData> {
       aboveFold: Boolean(c.aboveFold),
       selector: optSelector(c.selector),
       href: cleanHref(c.href),
+      // Size (no PII) — curation's strip-collapse groups by section+size to fold
+      // uniform grids. Dropping it made collapse degrade to "one CTA per section".
+      rect: cleanRect(c.rect),
     }))
     .filter((c) => c.text || c.selector);
   if (ctas.length) out.ctas = ctas;

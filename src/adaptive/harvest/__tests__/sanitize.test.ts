@@ -72,6 +72,19 @@ describe("sanitizeAudit", () => {
     expect(ctas[3].href).toBe("/bilforsakring"); // relative path kept, query gone
   });
 
+  it("preserves a CTA's rect (size — no PII) so curation can group strips by size", () => {
+    const out = sanitizeAudit({
+      url: "https://x.se/",
+      ctas: [
+        { text: "Cat", selector: "#a", rect: { x: 10.4, y: 20.6, w: 291.2, h: 60.8 } },
+        { text: "NoRect", selector: "#b" },
+      ],
+    });
+    const ctas = out.ctas as { rect?: { w: number; h: number } }[];
+    expect(ctas[0].rect).toEqual({ x: 10, y: 21, w: 291, h: 61 }); // rounded, kept
+    expect(ctas[1].rect).toBeUndefined();
+  });
+
   it("returns {} for garbage input", () => {
     expect(sanitizeAudit(null)).toEqual({});
     expect(sanitizeAudit("nope")).toEqual({});
