@@ -83,3 +83,86 @@ describe("B1 — inline parity: one classifier, two scripts", () => {
     expect(COLLECT_SCRIPT).not.toContain("INTENT_RX");
   });
 });
+
+describe("classifyIntentShared — A2: form kind decides what a submit converts", () => {
+  it("search submits are utility, newsletter submits are engagement", () => {
+    expect(
+      classifyIntentShared("Sök", "", "", "form_submit", true, true, "search"),
+    ).toBe("utility");
+    expect(
+      classifyIntentShared("Skicka", "", "", "form_submit", true, true, "newsletter"),
+    ).toBe("engagement");
+    // Everything else: a submit is still the form's whole point.
+    expect(classifyIntentShared("Skicka", "", "", "form_submit", true, true, "")).toBe(
+      "conversion",
+    );
+  });
+});
+
+import {
+  classifyCategoryShared,
+  hasMeaningfulSurfaceShared,
+  HERO_MAX_VIEWPORTS,
+} from "../shared/category";
+
+describe("classifyCategoryShared — B2: one 5-signal category rule", () => {
+  const cat = (opts: {
+    tag?: string;
+    type?: string;
+    role?: string;
+    href?: boolean;
+    w?: number;
+    h?: number;
+    top?: number;
+    textLen?: number;
+    surface?: boolean;
+    chrome?: boolean;
+  }) =>
+    classifyCategoryShared(
+      opts.tag ?? "BUTTON",
+      opts.type ?? "",
+      opts.role ?? "",
+      opts.href ?? false,
+      opts.w ?? 200,
+      opts.h ?? 48,
+      opts.top ?? 100,
+      opts.textLen ?? 10,
+      opts.surface ?? true,
+      opts.chrome ?? false,
+      720,
+    );
+
+  it("a prominent BELOW-fold button can be primary (4 of 5 without the fold signal)", () => {
+    // The old ctas.ts 4-of-4 rule made this structurally impossible there.
+    expect(cat({ top: 2000 })).toBe("cta_primary");
+  });
+
+  it("chrome membership costs the fifth signal", () => {
+    expect(cat({ top: 100, chrome: true })).toBe("cta_primary"); // 4/5 still
+    expect(cat({ top: 2000, chrome: true })).toBe("cta_secondary"); // 3/5 + surface
+  });
+
+  it("chrome anchor links are nav_item, content links are link", () => {
+    expect(cat({ tag: "A", href: true, surface: false, textLen: 40, chrome: true })).toBe(
+      "nav_item",
+    );
+    expect(cat({ tag: "A", href: true, surface: false, textLen: 40, chrome: false })).toBe("link");
+  });
+
+  it("submit inputs are form_submit regardless of everything else", () => {
+    expect(cat({ tag: "INPUT", type: "submit", chrome: true, surface: false })).toBe("form_submit");
+  });
+
+  it("borders count as surface (collect's definition, now canonical)", () => {
+    expect(hasMeaningfulSurfaceShared("rgba(0, 0, 0, 0)", "1px solid rgb(0,0,0)")).toBe(true);
+    expect(hasMeaningfulSurfaceShared("rgba(0, 0, 0, 0)", "0px none")).toBe(false);
+  });
+
+  it("inline parity: both scripts carry the shared category source + hero constant", () => {
+    const src = classifyCategoryShared.toString();
+    expect(CTAS_SCRIPT).toContain(src);
+    expect(COLLECT_SCRIPT).toContain(src);
+    expect(CTAS_SCRIPT).toContain(`viewportH * ${HERO_MAX_VIEWPORTS}`);
+    expect(COLLECT_SCRIPT).toContain(`viewportH * ${HERO_MAX_VIEWPORTS}`);
+  });
+});

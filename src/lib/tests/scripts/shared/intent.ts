@@ -35,6 +35,7 @@ export function classifyIntentShared(
   category: string,
   isFormSubmit: boolean,
   aboveFold: boolean,
+  formKind?: "" | "search" | "newsletter",
 ):
   | "conversion"
   | "contact"
@@ -48,7 +49,15 @@ export function classifyIntentShared(
   const probe = t + " " + (attrText || "");
   const h = href || "";
 
-  if (isFormSubmit) return "conversion";
+  // A submit is the form's whole point — but WHAT it converts depends on the
+  // form (A2): a search submit is utility, an email-only newsletter submit is
+  // engagement (the subscribe wordlist's home), everything else conversion.
+  // Callers derive formKind with formKindShared().
+  if (isFormSubmit) {
+    if (formKind === "search") return "utility";
+    if (formKind === "newsletter") return "engagement";
+    return "conversion";
+  }
   if (
     /(facebook|instagram|linkedin|twitter|x\.com|youtube|tiktok|pinterest|snapchat|reddit|threads|mastodon)\./i.test(
       h,
@@ -91,4 +100,36 @@ export function classifyIntentShared(
   // likely conversion.
   if (category === "cta_primary" && aboveFold) return "conversion";
   return "unknown";
+}
+
+/** What kind of form does this (submit) element belong to? Same page-safe
+ *  contract as isVisible: touches only its argument + DOM. Drives the A2
+ *  rule in classifyIntentShared — search submits are not conversions, and an
+ *  email-only field means a newsletter capture, not the site's money action. */
+export function formKindShared(el: Element): "" | "search" | "newsletter" {
+  try {
+    const f = el.closest ? el.closest("form") : null;
+    if (!f) return "";
+    const role = (f.getAttribute("role") || "").toLowerCase();
+    const action = f.getAttribute("action") || "";
+    if (role === "search" || f.querySelector('input[type="search"]') || /(^|[/?#-])s(earch|ok)([/?#-]|$)/i.test(action)) {
+      return "search";
+    }
+    const inputs = f.querySelectorAll(
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"])',
+    );
+    if (inputs.length === 1) {
+      const i0 = inputs[0];
+      const hint = (
+        (i0.getAttribute("type") || "") + " " +
+        (i0.getAttribute("name") || "") + " " +
+        (i0.getAttribute("placeholder") || "") + " " +
+        (i0.getAttribute("aria-label") || "")
+      ).toLowerCase();
+      if (/email|e-?post|nyhetsbrev|newsletter/.test(hint)) return "newsletter";
+    }
+  } catch (e) {
+    /* classification must never break the page */
+  }
+  return "";
 }

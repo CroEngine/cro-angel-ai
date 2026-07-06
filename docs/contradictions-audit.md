@@ -10,10 +10,11 @@
 > directions. Result: **24 unique confirmed contradictions** (2 high),
 > 14 candidates refuted. Line numbers refer to `7bb49dd`.
 >
-> **Status:** the first fix wave resolves **B6, C2, E1, E2, A4, A5, A6**; the
-> second wave resolves **B1, A1, A3** (one shared intent classifier + contact
-> intent + auth pageType). Each is marked ✅ below with what changed. The
-> remaining findings keep their fix sketches.
+> **Status:** wave 1 resolves **B6, C2, E1, E2, A4, A5, A6**; wave 2 resolves
+> **B1, A1, A3** (shared intent classifier + contact intent + auth pageType);
+> wave 3 resolves **A2, B2, B4, B5, B7, B8, B9, C1** and part of **B3**.
+> Each is marked ✅ below with what changed. Still open: B3 (section-typing
+> half), C3, and the measurement group D1–D4.
 
 ## Root cause
 
@@ -58,16 +59,18 @@ the conversion path is absent; the other says it's the whole point of the site.
 contact actions get the new first-class `contact` intent in `schema.ts` —
 never `utility`. Applies to both scripts via the shared source (B1).
 
-### A2. Every form-submit is unconditionally "conversion" — *medium*
+### A2. Every form-submit is unconditionally "conversion" — *medium* — ✅ fixed
 
 `collect.ts:256-257` returns `conversion` for any `type=submit` button before
 keyword checks, so a newsletter "Skicka" or a search submit counts as a
 conversion CTA — while the goal judge (`goal-judge.server.ts:58`) defines the
 goal as *"the primary money/value action for THIS business"*. In the no-LLM
 path, `rankGoalCandidates` scores a hero newsletter submit above a below-fold
-"Köp" button. **Fix:** classify form submits by form contents (email-only →
-`subscribe`/`lead`; search → `utility`) and make the deterministic ranker
-kind-aware, not placement-only.
+"Köp" button. **Fixed:** `formKindShared` inspects the submit's form in BOTH scripts
+(search form → `utility`, email-only field → `engagement`, else conversion),
+and the harvest stamps `inForm` so `classifyGoalKind` types in-form submits
+as `lead` in the no-LLM ranker — a hero newsletter form can no longer
+masquerade as the signup goal.
 
 ### A3. Login pages are "conversion pages" — *medium* — ✅ fixed
 
@@ -134,43 +137,48 @@ neither script defines its own wordlists anymore, and an inline-parity test
 asserts the exact shared source appears in both. (The `varukorg(en)` typo
 fix + harvest vocabulary landed in the previous wave.)
 
-### B2. `cta_primary` requires above-fold in `ctas.ts` but not in `collect.ts` — *medium*
+### B2. `cta_primary` requires above-fold in `ctas.ts` but not in `collect.ts` — *medium* — ✅ fixed
 
 `ctas.ts:123-131` scores 4 signals and requires **4/4** (above-fold is
 mandatory → a below-fold buy button can never be primary). `collect.ts:222-231`
 adds a 5th signal (`!inChrome`) and requires 4/5 (below-fold primary
 possible). Same page → "primary-script 0" and "Primary-conversion CTAs: 1"
-in the same findings card; `deriveHero` finds no hero CTA. **Fix:** adopt the
-5-signal rule in one shared classifier (see B1).
+in the same findings card; `deriveHero` finds no hero CTA. **Fixed:** `classifyCategoryShared` (shared/category.ts) is the one
+5-signal rule, inlined into both scripts — a prominent below-fold buy button
+can be primary in both now, and chrome links are `nav_item` everywhere.
 
-### B3. "Hero" has four different boundaries — *medium*
+### B3. "Hero" has four different boundaries — *medium* — ⚠️ partially fixed
 
 `sections.ts:106` = first **0.4** viewports; `collect.ts` ≈ 1.0–1.2;
 `ctas.ts:72` and `visualHierarchy.ts:102` = **1.1**. With a tall announcement
 bar the LLM context simultaneously asserts a hero exists (`cro.hero`,
-hero-role CTAs) and shows a section flow with no hero. **Fix:** one shared
-`HERO_MAX_DOC_TOP_VH` constant interpolated into all scripts; reconcile
-element `section` labels against typed sections server-side after
-`enrichSections`.
+hero-role CTAs) and shows a section flow with no hero. **Partially fixed:** the three ELEMENT-level scripts interpolate one shared
+`HERO_MAX_VIEWPORTS` (1.1) — the 1.0/1.1/1.2 spread is gone. Still open:
+sections.ts's 0.4-viewport section-typing rule is deliberately different
+(documented at the constant); reconciling element labels against typed
+sections server-side remains future work.
 
-### B4. CTA trust-proximity uses its own crude trust detector — *medium*
+### B4. CTA trust-proximity uses its own crude trust detector — *medium* — ✅ fixed
 
 `ctas.ts:184-191` measures `nearestTrustSignalDistance` from class-name
 guesses (`[class*="testimonial"]`, `[class*="star"]`, `blockquote`…), not from
 `trustSignals.ts`'s output. Same report: "Trust signals: 1 above fold" and
 "trust 9999px" for the CTA next to it — and the reverse (class-name hits that
 the trust engine rightly rejects). The `9999` sentinel also reads as a real
-distance downstream. **Fix:** delete the in-script heuristic; compute distance
-server-side from the two rect sets already emitted; use `null`, not 9999.
+distance downstream. **Fixed:** the in-script class-name heuristic is deleted;
+`computeTrustProximity` (audit-helpers) fills the distance server-side from
+the trust engine's canonical rects, and pages without positioned trust
+signals get `null` — never a 9999 sentinel.
 
-### B5. `wcagLevel` means two different measurements — *medium*
+### B5. `wcagLevel` means two different measurements — *medium* — ✅ fixed
 
 `ctas.ts:226` = real text-vs-own-background contrast (correct WCAG semantics);
 `visualHierarchy.ts:143/187` = element-surface-vs-page-background salience,
 emitted under the same field name and shared `WcagLevel` type. A white button
 with dark text on a white page is simultaneously `AAA` and `FAIL` in the same
-`PageAuditData`. **Fix:** rename the hierarchy metric (`bgSeparation`) and
-drop its fake WCAG level.
+`PageAuditData`. **Fixed:** the hierarchy metric is renamed `bgSeparation` and its fake WCAG
+level is gone — `wcagLevel` now means text contrast (CTAEntity) and nothing
+else.
 
 ### B6. JSON-LD review signals silently delete every visible review widget — **high**
 
@@ -183,38 +191,40 @@ from findings, `trustSummary`, the inventory and the goal judge's `trust`
 hint. **Fix:** give document-level schema entries `_block = null` (dedup
 already skips those), mark them `section='document'`, `aboveFold=false`.
 
-### B7. `findings.ts` sums review counts over a type that can never exist — *medium*
+### B7. `findings.ts` sums review counts over a type that can never exist — *medium* — ✅ fixed
 
 `trustSignals.ts:945-963` collapses all `stars` entries into one
 `stars_aggregate` before returning — and drops `reviewCount` in the collapse —
 while `findings.ts:205-207` computes total review count over
 `review_rating || stars`. The "Total review count" finding silently
-undercounts/vanishes. **Fix:** carry `reviewCount` (max, not sum) onto
-`stars_aggregate`; filter on `review_rating || stars_aggregate`.
+undercounts/vanishes. **Fixed:** the stars collapse carries `reviewCount` (max, not sum) onto
+`stars_aggregate`, and findings sums over `review_rating || stars_aggregate`
+— the dead `stars` arm is gone.
 
-### B8. The audit's own ideal page can never score "Competing CTAs: 0" — *medium*
+### B8. The audit's own ideal page can never score "Competing CTAs: 0" — *medium* — ✅ fixed
 
 `engine.server.ts:350-357` counts **every** above-fold non-navigation CTA as
 "competing" — including the primary itself — while the per-CTA
 `competingActions` (`ctas.ts:217-223`) excludes self. A textbook single-CTA
 landing page shows "Competing CTAs above fold: 1" next to "competing 0" for
-the same button. **Fix:** reserve one slot for the primary:
-`competing = max(0, conversionCtasAboveFold − 1)`.
+the same button. **Fixed:** `competingAboveFold` reserves one slot for the primary — the
+ideal single-CTA page reads 0, matching the per-CTA self-exclusion; the raw
+pool is exposed as `conversionCtasAboveFold`.
 
-### B9. `ctasScriptPrimaryCount` documented as NOT intent-gated, computed intent-gated — *medium*
+### B9. `ctasScriptPrimaryCount` documented as NOT intent-gated, computed intent-gated — *medium* — ✅ fixed
 
 `schema.ts:294` documents the count as category-only ("not intent-grided");
 `audit-helpers.ts:135-137` filters `category === 'cta_primary' &&
 intent === 'conversion'`. A primary-styled "Logga in" is listed as a primary
-CTA in the rows but excluded from the count above them. **Fix:** drop the
-intent clause in `buildPageSummary`; keep the intent-gated number only in the
-collect summary where it's documented.
+CTA in the rows but excluded from the count above them. **Fixed:** `buildPageSummary` counts category-only, exactly as the schema
+documents; the intent-gated number lives solely in
+`CollectSummary.primaryConversionCtaCount`.
 
 ---
 
 ## C. The runtime engine violates the audit's own doctrine
 
-### C1. Angel injects a competing CTA that Angel's own audit then flags — *medium*
+### C1. Angel injects a competing CTA that Angel's own audit then flags — *medium* — ✅ fixed
 
 The audit penalizes *"Competing CTAs above fold"* (`findings.ts:66`), while
 `cold_soft_path` (`decide.ts:104,215`) injects a secondary CTA beside the goal
@@ -222,9 +232,9 @@ for every first-time visitor — and **no collector excludes Angel's own
 injected elements**, although every injected node carries
 `data-angel-injected`. An audit crawl of a snippet-installed site can count
 Angel's own pill/badge/link as page CTAs, polluting the inventory and even the
-goal-judge input on re-harvest. **Fix:** two-line guard in `collect`/`ctas`
-candidate loops — `el.closest('[data-angel-injected]')` → skip (mirrors the
-existing cookie-root exclusion).
+goal-judge input on re-harvest. **Fixed:** both collectors skip anything inside `[data-angel-injected]` /
+Angel's own class names (mirrors the cookie-root exclusion) — the audit
+never counts Angel's injections as the page's own content.
 
 ### C2. The robustness gate hard-fails covered clickables; the flagship mobile pattern covers clickables — and the harness structurally can't see it — **high**
 

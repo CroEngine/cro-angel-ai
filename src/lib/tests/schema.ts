@@ -215,7 +215,12 @@ export type CTAEntity = {
   aboveFold: boolean;
   visualWeight: number;
   competingActions: number;
-  nearestTrustSignalDistance: number;
+  /** Distance (px, document space) from this CTA's centre to the nearest
+   *  POSITIONED trust signal, computed SERVER-SIDE from the trust engine's
+   *  canonical rects (audit-helpers computeTrustProximity, B4) — never from
+   *  in-script class-name guessing. null = no positioned trust signal on the
+   *  page (never a 9999 sentinel). */
+  nearestTrustSignalDistance: number | null;
   nearestFormDistance: number;
   contrastRatio: number | null;
   wcagLevel: WcagLevel | null;
@@ -290,8 +295,12 @@ export type VisualHierarchyEntry = {
   area: number;
   fontSize: number;
   fontWeight: number;
-  contrast: number;
-  wcagLevel: WcagLevel | null;
+  /** Element surface vs PAGE background — a salience input, NOT text
+   *  readability. Real WCAG text contrast lives on CTAEntity
+   *  (contrastRatio/wcagLevel); this field deliberately does not borrow that
+   *  vocabulary (audit B5: the same button used to be 'AAA' there and 'FAIL'
+   *  here in the same PageAuditData). */
+  bgSeparation: number;
   position: { xPct: number; yPct: number };
   aboveFold: boolean;
   section: SectionKind;
@@ -587,6 +596,13 @@ export type CollectSummary = {
   total: number;
   aboveFold: number;
   primaryConversionCtaCount: number;
+  /** All above-fold conversion-capable CTAs, INCLUDING the primary — the raw
+   *  pool competingAboveFold is derived from. */
+  conversionCtasAboveFold?: number;
+  /** CTAs competing WITH the primary above the fold: the raw pool minus one
+   *  reserved slot for the primary itself (B8 — the audit's own ideal page,
+   *  exactly one above-fold conversion CTA, reads 0 here, matching the
+   *  per-CTA competingActions self-exclusion convention). */
   competingAboveFold: number;
   topVisualWeight: Array<{ selector: string; text: string; score: number }>;
   intentBreakdown: Partial<Record<ElementIntent, number>>;

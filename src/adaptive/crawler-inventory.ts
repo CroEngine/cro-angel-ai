@@ -658,7 +658,15 @@ export function rankGoalCandidates(
     selector: s.c.selector as string,
     text: s.c.text as string,
     ...(s.c.meta?.href ? { href: s.c.meta.href } : {}),
-    kind: classifyGoalKind(s.c.text as string, s.c.meta?.href, siteDomain),
+    // inForm (A2): a harvested in-form submit classifies as lead, not as a
+    // bare "signup" button — so a hero newsletter form can't masquerade as
+    // the site's signup goal in the no-LLM floor.
+    kind: classifyGoalKind(
+      s.c.text as string,
+      s.c.meta?.href,
+      siteDomain,
+      s.c.meta?.inForm === "true",
+    ),
     rank: idx + 1,
     confidence: 0.5,
     source: "rule" as const,
@@ -692,6 +700,9 @@ export function mapAuditToInventory(
           category: cta.category,
           section: cta.section, // kept for the engine to reason about placement
           aboveFold: String(cta.aboveFold),
+          // Form context for goal-kind classification (A2): a submit inside a
+          // form is a lead/subscribe motion, not a bare "signup" button.
+          ...(cta.nearestFormDistance === 0 ? { inForm: "true" } : {}),
           // Collapsed-strip context for goal judgment (see collapseUniformStrips).
           ...(cta.variantCount && cta.variantCount > 1
             ? { variantCount: String(cta.variantCount) }
