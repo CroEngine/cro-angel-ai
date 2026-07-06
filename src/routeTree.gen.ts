@@ -9,25 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DemoRouteImport } from './routes/demo'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SandboxRouteImport } from './routes/sandbox'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as DemoRouteImport } from './routes/demo'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as AgentRouteImport } from './routes/agent'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiSandboxMirrorRouteImport } from './routes/api/sandbox/mirror'
+import { Route as ApiAdaptiveInventoryRouteImport } from './routes/api/adaptive/inventory'
 import { Route as ApiAdaptiveEventsRouteImport } from './routes/api/adaptive/events'
 import { Route as ApiAdaptiveDecideRouteImport } from './routes/api/adaptive/decide'
-import { Route as ApiAdaptiveInventoryRouteImport } from './routes/api/adaptive/inventory'
 import { Route as ApiAdaptiveConsentConfigRouteImport } from './routes/api/adaptive/consent-config'
-import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
 import { Route as ApiTestsRobustnessStreamRouteImport } from './routes/api/tests/robustness.stream'
 import { Route as ApiTestsCrawlStreamRouteImport } from './routes/api/tests/crawl.stream'
+import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
 import { Route as ApiPublicCorpusSplatRouteImport } from './routes/api/public/corpus.$'
 
-const DemoRoute = DemoRouteImport.update({
-  id: '/demo',
-  path: '/demo',
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SandboxRoute = SandboxRouteImport.update({
+  id: '/sandbox',
+  path: '/sandbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -35,9 +42,9 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -60,9 +67,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAdaptiveEventsRoute = ApiAdaptiveEventsRouteImport.update({
-  id: '/api/adaptive/events',
-  path: '/api/adaptive/events',
+const ApiSandboxMirrorRoute = ApiSandboxMirrorRouteImport.update({
+  id: '/api/sandbox/mirror',
+  path: '/api/sandbox/mirror',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdaptiveInventoryRoute = ApiAdaptiveInventoryRouteImport.update({
@@ -70,29 +77,36 @@ const ApiAdaptiveInventoryRoute = ApiAdaptiveInventoryRouteImport.update({
   path: '/api/adaptive/inventory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdaptiveEventsRoute = ApiAdaptiveEventsRouteImport.update({
+  id: '/api/adaptive/events',
+  path: '/api/adaptive/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdaptiveDecideRoute = ApiAdaptiveDecideRouteImport.update({
   id: '/api/adaptive/decide',
   path: '/api/adaptive/decide',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAdaptiveConsentConfigRoute = ApiAdaptiveConsentConfigRouteImport.update({
-  id: '/api/adaptive/consent-config',
-  path: '/api/adaptive/consent-config',
+const ApiAdaptiveConsentConfigRoute =
+  ApiAdaptiveConsentConfigRouteImport.update({
+    id: '/api/adaptive/consent-config',
+    path: '/api/adaptive/consent-config',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiTestsRobustnessStreamRoute =
+  ApiTestsRobustnessStreamRouteImport.update({
+    id: '/api/tests/robustness/stream',
+    path: '/api/tests/robustness/stream',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiTestsCrawlStreamRoute = ApiTestsCrawlStreamRouteImport.update({
+  id: '/api/tests/crawl/stream',
+  path: '/api/tests/crawl/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTestsRunIdStreamRoute = ApiTestsRunIdStreamRouteImport.update({
   id: '/api/tests/$runId/stream',
   path: '/api/tests/$runId/stream',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTestsRobustnessStreamRoute = ApiTestsRobustnessStreamRouteImport.update({
-  id: '/api/tests/robustness/stream',
-  path: '/api/tests/robustness/stream',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTestsCrawlStreamRoute = ApiTestsCrawlStreamRouteImport.update({
-  id: '/api/tests/crawl/stream',
-  path: '/api/tests/crawl/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicCorpusSplatRoute = ApiPublicCorpusSplatRouteImport.update({
@@ -107,13 +121,18 @@ export interface FileRoutesByFullPath {
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
+  '/login': typeof LoginRoute
+  '/sandbox': typeof SandboxRoute
+  '/signup': typeof SignupRoute
+  '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
+  '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
-  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
   '/api/tests/crawl/stream': typeof ApiTestsCrawlStreamRoute
+  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -121,13 +140,18 @@ export interface FileRoutesByTo {
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
+  '/login': typeof LoginRoute
+  '/sandbox': typeof SandboxRoute
+  '/signup': typeof SignupRoute
+  '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
+  '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
-  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
   '/api/tests/crawl/stream': typeof ApiTestsCrawlStreamRoute
+  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -136,13 +160,18 @@ export interface FileRoutesById {
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
+  '/login': typeof LoginRoute
+  '/sandbox': typeof SandboxRoute
+  '/signup': typeof SignupRoute
+  '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
+  '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
-  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
   '/api/tests/crawl/stream': typeof ApiTestsCrawlStreamRoute
+  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -152,13 +181,18 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/dashboard'
     | '/demo'
+    | '/login'
+    | '/sandbox'
+    | '/signup'
+    | '/api/adaptive/consent-config'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
     | '/api/adaptive/inventory'
+    | '/api/sandbox/mirror'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
-    | '/api/tests/robustness/stream'
     | '/api/tests/crawl/stream'
+    | '/api/tests/robustness/stream'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,13 +200,18 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/dashboard'
     | '/demo'
+    | '/login'
+    | '/sandbox'
+    | '/signup'
+    | '/api/adaptive/consent-config'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
     | '/api/adaptive/inventory'
+    | '/api/sandbox/mirror'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
-    | '/api/tests/robustness/stream'
     | '/api/tests/crawl/stream'
+    | '/api/tests/robustness/stream'
   id:
     | '__root__'
     | '/'
@@ -180,13 +219,18 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/dashboard'
     | '/demo'
+    | '/login'
+    | '/sandbox'
+    | '/signup'
+    | '/api/adaptive/consent-config'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
     | '/api/adaptive/inventory'
+    | '/api/sandbox/mirror'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
-    | '/api/tests/robustness/stream'
     | '/api/tests/crawl/stream'
+    | '/api/tests/robustness/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -196,24 +240,33 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   DemoRoute: typeof DemoRoute
   LoginRoute: typeof LoginRoute
+  SandboxRoute: typeof SandboxRoute
   SignupRoute: typeof SignupRoute
+  ApiAdaptiveConsentConfigRoute: typeof ApiAdaptiveConsentConfigRoute
   ApiAdaptiveDecideRoute: typeof ApiAdaptiveDecideRoute
   ApiAdaptiveEventsRoute: typeof ApiAdaptiveEventsRoute
   ApiAdaptiveInventoryRoute: typeof ApiAdaptiveInventoryRoute
-  ApiAdaptiveConsentConfigRoute: typeof ApiAdaptiveConsentConfigRoute
+  ApiSandboxMirrorRoute: typeof ApiSandboxMirrorRoute
   ApiPublicCorpusSplatRoute: typeof ApiPublicCorpusSplatRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
-  ApiTestsRobustnessStreamRoute: typeof ApiTestsRobustnessStreamRoute
   ApiTestsCrawlStreamRoute: typeof ApiTestsCrawlStreamRoute
+  ApiTestsRobustnessStreamRoute: typeof ApiTestsRobustnessStreamRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/demo': {
-      id: '/demo'
-      path: '/demo'
-      fullPath: '/demo'
-      preLoaderRoute: typeof DemoRouteImport
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sandbox': {
+      id: '/sandbox'
+      path: '/sandbox'
+      fullPath: '/sandbox'
+      preLoaderRoute: typeof SandboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -223,11 +276,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -258,11 +311,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/adaptive/events': {
-      id: '/api/adaptive/events'
-      path: '/api/adaptive/events'
-      fullPath: '/api/adaptive/events'
-      preLoaderRoute: typeof ApiAdaptiveEventsRouteImport
+    '/api/sandbox/mirror': {
+      id: '/api/sandbox/mirror'
+      path: '/api/sandbox/mirror'
+      fullPath: '/api/sandbox/mirror'
+      preLoaderRoute: typeof ApiSandboxMirrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/adaptive/inventory': {
@@ -270,6 +323,13 @@ declare module '@tanstack/react-router' {
       path: '/api/adaptive/inventory'
       fullPath: '/api/adaptive/inventory'
       preLoaderRoute: typeof ApiAdaptiveInventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/adaptive/events': {
+      id: '/api/adaptive/events'
+      path: '/api/adaptive/events'
+      fullPath: '/api/adaptive/events'
+      preLoaderRoute: typeof ApiAdaptiveEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/adaptive/decide': {
@@ -286,13 +346,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdaptiveConsentConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/tests/$runId/stream': {
-      id: '/api/tests/$runId/stream'
-      path: '/api/tests/$runId/stream'
-      fullPath: '/api/tests/$runId/stream'
-      preLoaderRoute: typeof ApiTestsRunIdStreamRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/tests/robustness/stream': {
       id: '/api/tests/robustness/stream'
       path: '/api/tests/robustness/stream'
@@ -305,6 +358,13 @@ declare module '@tanstack/react-router' {
       path: '/api/tests/crawl/stream'
       fullPath: '/api/tests/crawl/stream'
       preLoaderRoute: typeof ApiTestsCrawlStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tests/$runId/stream': {
+      id: '/api/tests/$runId/stream'
+      path: '/api/tests/$runId/stream'
+      fullPath: '/api/tests/$runId/stream'
+      preLoaderRoute: typeof ApiTestsRunIdStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/corpus/$': {
@@ -324,16 +384,28 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   DemoRoute: DemoRoute,
   LoginRoute: LoginRoute,
+  SandboxRoute: SandboxRoute,
   SignupRoute: SignupRoute,
+  ApiAdaptiveConsentConfigRoute: ApiAdaptiveConsentConfigRoute,
   ApiAdaptiveDecideRoute: ApiAdaptiveDecideRoute,
   ApiAdaptiveEventsRoute: ApiAdaptiveEventsRoute,
   ApiAdaptiveInventoryRoute: ApiAdaptiveInventoryRoute,
-  ApiAdaptiveConsentConfigRoute: ApiAdaptiveConsentConfigRoute,
+  ApiSandboxMirrorRoute: ApiSandboxMirrorRoute,
   ApiPublicCorpusSplatRoute: ApiPublicCorpusSplatRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
-  ApiTestsRobustnessStreamRoute: ApiTestsRobustnessStreamRoute,
   ApiTestsCrawlStreamRoute: ApiTestsCrawlStreamRoute,
+  ApiTestsRobustnessStreamRoute: ApiTestsRobustnessStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
