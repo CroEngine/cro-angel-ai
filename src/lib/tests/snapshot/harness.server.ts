@@ -79,6 +79,35 @@ async function waitForStableContext(
   throw new Error(`[replay] context never stabilized after ${tries} tries`);
 }
 
+// Deterministic visual settle: await the async resource application the fixed
+// timers race against. The MHTML archive's embedded fonts and raster images
+// decode ASYNCHRONOUSLY after readyState=complete — a font swap or an image
+// getting its intrinsic size reflows content by ~a row (~200px), which tips
+// yBand buckets and cascades through the position-sorted diff (the bokadirekt
+// homepage CI flake: same sha green+red, ~711 diffs, 2026-07-06). Fonts +
+// decode of every started image + double-rAF so the reflow is committed
+// before anything measures layout. decode() rejects for aborted/broken
+// images (external requests are route-aborted by design) — swallowed per
+// image; this waits for what CAN finish, deterministically.
+async function awaitVisualSettle(page: Page): Promise<void> {
+  try {
+    await page.evaluate(
+      `(async () => {
+        try { await document.fonts.ready; } catch {}
+        await Promise.all(
+          Array.from(document.images).map((img) =>
+            img.decode().catch(() => {})
+          )
+        );
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      })()`,
+    );
+  } catch {
+    // Context hiccup — the caller's stable-context gates handle retries;
+    // a missed settle degrades to the pre-fix behavior rather than aborting.
+  }
+}
+
 // Node-driven scroll loop. Re-reads scrollHeight before each step so lazy-load
 // expansion is not missed. Each evaluate is short; on failure we re-gate and
 // retry the step once so a transient context tear-down doesn't silently
@@ -367,6 +396,10 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     // mid-evaluate by a delayed MHTML commit), reset streak and keep polling.
     await waitForStableContext(page);
 
+    // Deterministisk settle FÖRE allt som mäter layout (canary + collect):
+    // fonts.ready + bilddekodning + dubbel rAF. Se awaitVisualSettle.
+    await awaitVisualSettle(page);
+
     // Render-canary: gate före Fas 2. Verifierar att de cid:-inbäddade
     // familjerna faktiskt resolvar och påverkar layout (inte bara "registrerade").
     // Rapporten skrivs till corpus/<name>/render-canary.json (gitignored —
@@ -492,6 +525,10 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
 
     // Node-driven cookie-root stamping. Same principle: short evaluates only.
     await nodeLoopStampCookieRoot(page);
+
+    // Re-settle efter scrollen: lazy-bilder som började ladda under scrollen
+    // måste ha dekodat (och deras reflow committats) innan collect mäter.
+    await awaitVisualSettle(page);
 
     const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
     // eslint-disable-next-line no-console
