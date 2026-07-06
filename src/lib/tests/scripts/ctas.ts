@@ -1,15 +1,23 @@
 // Auto-extracted from engine.server.ts — runs inside the browser via page.evaluate.
-// Keep self-contained: no imports, no closures over server state.
+// Keep self-contained: no imports of server state; the shared classifier below
+// is inlined into the script string via toString(), never closed over.
+
+import { classifyIntentShared, formKindShared } from "./shared/intent";
+import {
+  classifyCategoryShared,
+  hasMeaningfulSurfaceShared,
+  HERO_MAX_VIEWPORTS,
+  inNavOrFooterShared,
+} from "./shared/category";
 
 export const CTAS_SCRIPT = `(() => {
   const viewportH = window.innerHeight || 720;
 
-  const INTENT_RX = {
-    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|best[äa]ll|k[öo]p|boka|prova|kom ig[åa]ng|skapa konto|registrera|ans[öo]k)/i,
-    navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst[äa]llningar)/i,
-    utility: /(search|s[öo]k|language|spr[åa]k|cookie|accept|godk[äa]nn|contact|kontakt|help|hj[äa]lp|faq)/i,
-    social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
-  };
+  // THE shared intent classifier — inlined from shared/intent.ts, same source
+  // COLLECT_SCRIPT uses (B1). This file used to carry its own drifted copy of
+  // the wordlists; it no longer defines any.
+  ${classifyIntentShared.toString()}
+  ${formKindShared.toString()}
 
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
@@ -69,13 +77,8 @@ export const CTAS_SCRIPT = `(() => {
       p = p.parentElement;
     }
     const docTop = rect.top + window.scrollY;
-    if (docTop < viewportH * 1.1) return 'hero';
+    if (docTop < viewportH * ${HERO_MAX_VIEWPORTS}) return 'hero';
     return 'content';
-  }
-
-  function hasSurface(cs) {
-    const bg = cs.backgroundColor || '';
-    return !!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent';
   }
 
   function parseRgb(s) {
@@ -112,35 +115,40 @@ export const CTAS_SCRIPT = `(() => {
     return 'FAIL';
   }
 
+  // Shared category classification (B2) — same 5-signal rule as COLLECT_SCRIPT
+  // (this script used to require above-fold for cta_primary; a prominent
+  // below-fold buy button can be primary in both scripts now).
+  ${hasMeaningfulSurfaceShared.toString()}
+  ${inNavOrFooterShared.toString()}
+  ${classifyCategoryShared.toString()}
+
   function classifyCategory(el, cs, rect, text) {
-    const tag = el.tagName;
-    const type = (el.getAttribute('type') || '').toLowerCase();
-    if ((tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit')) return 'form_submit';
-    const role = (el.getAttribute('role') || '').toLowerCase();
-    const isButtonish = tag === 'BUTTON' || tag === 'INPUT' || role === 'button' || (tag === 'A' && el.hasAttribute('href'));
-    const area = rect.width * rect.height;
-    if (isButtonish && rect.width <= 56 && rect.height <= 56 && (!text || text.length <= 2)) return 'icon_button';
-    if (isButtonish) {
-      let score = 0;
-      if (rect.top < viewportH) score++;
-      if (text.length > 0 && text.length <= 32) score++;
-      if (area >= 90 * 28) score++;
-      if (hasSurface(cs)) score++;
-      if (score >= 4) return 'cta_primary';
-      if (score >= 2 && hasSurface(cs)) return 'cta_secondary';
-    }
-    if (tag === 'A' && el.hasAttribute('href')) return 'link';
-    return 'other';
+    return classifyCategoryShared(
+      el.tagName,
+      el.getAttribute('type') || '',
+      el.getAttribute('role') || '',
+      el.tagName === 'A' && el.hasAttribute('href'),
+      rect.width, rect.height, rect.top,
+      (text || '').length,
+      hasMeaningfulSurfaceShared(cs.backgroundColor || '', cs.border || ''),
+      inNavOrFooterShared(el),
+      viewportH,
+    );
   }
 
-  function classifyIntent(text, category, rect) {
-    const t = (text || '').trim();
-    if (INTENT_RX.conversion.test(t)) return 'conversion';
-    if (INTENT_RX.navigation.test(t)) return 'navigation';
-    if (INTENT_RX.social.test(t)) return 'social';
-    if (INTENT_RX.utility.test(t)) return 'utility';
-    if (category === 'cta_primary' && rect.top < viewportH) return 'conversion';
-    return 'unknown';
+  function classifyIntent(el, text, category, rect) {
+    const tag = el.tagName;
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    const isFormSubmit = (tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit');
+    const href = (el.getAttribute('href') || '');
+    const attrBag = [];
+    for (const a of Array.from(el.attributes)) {
+      if (a.name.startsWith('data-')) attrBag.push(a.value || '');
+    }
+    return classifyIntentShared(
+      (text || '').trim(), href, attrBag.join(' '), category, isFormSubmit, rect.top < viewportH,
+      isFormSubmit ? formKindShared(el) : '',
+    );
   }
 
   // Collect candidate CTAs (buttons + anchor links with visible surface or strong CTA-ish text)
@@ -165,30 +173,30 @@ export const CTAS_SCRIPT = `(() => {
     if (el.closest && el.closest('[data-lovable-cookie-root="1"]')) {
       continue;
     }
+    // Never audit Angel's own runtime injections (C1) — same rule as collect.
+    if (el.closest && el.closest('[data-angel-injected], .angel-badge, .angel-sticky-cta, .angel-secondary-cta, #angel-debug')) {
+      continue;
+    }
     const rect = el.getBoundingClientRect();
 
     const cs = window.getComputedStyle(el);
     const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\\s+/g, ' ').slice(0, 80);
     if (isCarouselNav(el, text)) continue;
     const category = classifyCategory(el, cs, rect, text);
-    if (category === 'other' || category === 'link') continue; // keep button-ish + form_submit only
+    if (category === 'other' || category === 'link' || category === 'nav_item') continue; // keep button-ish + form_submit only
     raw.push({
       el, rect, cs, text, category,
-      intent: classifyIntent(text, category, rect),
+      intent: classifyIntent(el, text, category, rect),
       section: sectionKind(el, rect),
     });
   }
 
-  // Pre-fetch trust signal + form rects for distance calc
-  const trustRects = [];
-  document.querySelectorAll('[class*="testimonial" i], [class*="review" i], [class*="trust" i], blockquote').forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (r.width > 1 && r.height > 1) trustRects.push({ cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
-  });
-  document.querySelectorAll('[class*="star" i], [class*="logo" i]').forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (r.width > 1 && r.height > 1) trustRects.push({ cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
-  });
+  // NOTE (B4): trust proximity is NOT computed here anymore. This script used
+  // to guess trust locations from class names ([class*="trust"], blockquote…),
+  // which disagreed with the real trust engine in the same report ("Trust
+  // signals: 1 above fold" next to "trust 9999px"). The server now computes
+  // nearestTrustSignalDistance from TRUST_SIGNALS_SCRIPT's canonical rects
+  // (audit-helpers.ts computeTrustProximity); this script emits null.
   const formRects = Array.from(document.querySelectorAll('form')).map((f) => {
     const r = f.getBoundingClientRect();
     return { x: r.left, y: r.top, w: r.width, h: r.height, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
@@ -233,7 +241,9 @@ export const CTAS_SCRIPT = `(() => {
       aboveFold: r.rect.top < viewportH,
       visualWeight: Math.round(r.rect.width * r.rect.height),
       competingActions: competing,
-      nearestTrustSignalDistance: minDist(cx, cy, trustRects),
+      // Filled server-side from the canonical trust rects (B4); null when the
+      // page has no positioned trust signal — never a fake 9999.
+      nearestTrustSignalDistance: null,
       nearestFormDistance: formDistance(r.el, cx, cy),
       contrastRatio: contrastRatio,
       wcagLevel: wcagLevel,

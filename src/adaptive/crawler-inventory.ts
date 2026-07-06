@@ -156,7 +156,10 @@ const ROLE_RULES: { role: Exclude<CtaRole, "acquisition">; text?: RegExp; href?:
   {
     role: "auth",
     text: /\b(logga in|log ?in|sign ?in|inloggning|mina sidor|mitt konto|my account)\b/i,
-    href: /\/(log-?in|sign-?in|auth|account\/log-?in|mina-sidor)([/?#]|$)/i,
+    // Keep in agreement with AUTH_PATH_RX in context.ts (the page-type side of
+    // the same taxonomy) — drift guard in goal-taxonomy.test.ts. "logga-in"/
+    // "inloggning" added: the Swedish pilot's login paths weren't covered.
+    href: /\/(log-?in|logga-?in|inloggning|sign-?in|auth|account\/log-?in|mina-sidor)([/?#]|$)/i,
   },
   {
     role: "legal",
@@ -655,7 +658,15 @@ export function rankGoalCandidates(
     selector: s.c.selector as string,
     text: s.c.text as string,
     ...(s.c.meta?.href ? { href: s.c.meta.href } : {}),
-    kind: classifyGoalKind(s.c.text as string, s.c.meta?.href, siteDomain),
+    // inForm (A2): a harvested in-form submit classifies as lead, not as a
+    // bare "signup" button — so a hero newsletter form can't masquerade as
+    // the site's signup goal in the no-LLM floor.
+    kind: classifyGoalKind(
+      s.c.text as string,
+      s.c.meta?.href,
+      siteDomain,
+      s.c.meta?.inForm === "true",
+    ),
     rank: idx + 1,
     confidence: 0.5,
     source: "rule" as const,
@@ -689,6 +700,9 @@ export function mapAuditToInventory(
           category: cta.category,
           section: cta.section, // kept for the engine to reason about placement
           aboveFold: String(cta.aboveFold),
+          // Form context for goal-kind classification (A2): a submit inside a
+          // form is a lead/subscribe motion, not a bare "signup" button.
+          ...(cta.nearestFormDistance === 0 ? { inForm: "true" } : {}),
           // Collapsed-strip context for goal judgment (see collapseUniformStrips).
           ...(cta.variantCount && cta.variantCount > 1
             ? { variantCount: String(cta.variantCount) }

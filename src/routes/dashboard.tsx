@@ -1668,9 +1668,18 @@ function AttributionTable({ rows }: { rows: PatternAttribution[] }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.pattern} className="border-b border-border/60">
+            <tr key={`${r.pattern}${r.segment ?? ""}`} className="border-b border-border/60">
               <td className="py-2 pr-3">
-                <span className="font-mono text-[13px] text-foreground">{r.pattern}</span>
+                {r.segment === null ? (
+                  <span className="font-mono text-[13px] text-foreground">{r.pattern}</span>
+                ) : (
+                  // Per-segment sub-row (D4): the doc-specified pattern ×
+                  // segment read — a pattern can win on one source and lose
+                  // on another; the blended row alone would hide that.
+                  <span className="pl-4 font-mono text-[12px] text-muted-foreground">
+                    ↳ {r.segment}
+                  </span>
+                )}
               </td>
               <td className="py-2 pr-3 text-right text-muted-foreground">
                 {r.adapted.conversions}/{r.adapted.exposures}
@@ -1721,7 +1730,8 @@ function AttributionTable({ rows }: { rows: PatternAttribution[] }) {
  *  came back), adapted vs control. Direction only — deliberately separate from
  *  the lift table so early engagement can never be mistaken for proof. */
 function EarlySignals({ rows }: { rows: PatternAttribution[] }) {
-  const shown = rows.filter((r) => r.adapted.exposures > 0);
+  // Overall rows only — per-segment engagement shares would be noise here.
+  const shown = rows.filter((r) => r.segment === null && r.adapted.exposures > 0);
   if (shown.length === 0) return null;
   const cell = (n: number, exposures: number) =>
     exposures > 0 ? `${((n / exposures) * 100).toFixed(0)}%` : "—";
@@ -1732,7 +1742,7 @@ function EarlySignals({ rows }: { rows: PatternAttribution[] }) {
           [ early signals ]
         </span>
         <span className="text-xs text-muted-foreground">
-          engagement on the way to the goal — adapted vs control
+          engagement among not-yet-converted visitors — adapted vs control
         </span>
       </div>
       <div className="overflow-x-auto">

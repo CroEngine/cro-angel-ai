@@ -958,8 +958,12 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       ? withRating.reduce((s, e) => s + e.rating, 0) / withRating.length
       : null;
     const aboveFoldCount = starsEntries.filter((e) => e.aboveFold).length;
+    // Review VOLUME must survive the collapse (B7): downstream sums used to
+    // read reviewCount off type 'stars', which no longer exists after this
+    // point. Max, not sum — multiple star clusters restate the same corpus.
+    const reviewCount = starsEntries.reduce((m, e) => Math.max(m, e.reviewCount || 0), 0);
     filtered = filtered.filter((e) => e.type !== 'stars');
-    filtered.push({
+    filtered.push(Object.assign({
       type: 'stars_aggregate',
       text: starsEntries.length + ' star ratings' + (avg !== null ? ' (avg ' + (Math.round(avg * 100) / 100) + ')' : ''),
       section: starsEntries[0].section,
@@ -969,7 +973,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       averageRating: avg !== null ? Math.round(avg * 100) / 100 : null,
       count: starsEntries.length,
       aboveFoldCount,
-    });
+    }, reviewCount > 0 ? { reviewCount } : {}));
   }
 
   return { signals: filtered, _debug: debug };

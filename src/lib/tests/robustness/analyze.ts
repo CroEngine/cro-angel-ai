@@ -77,6 +77,10 @@ export interface RobustnessObservation {
   consoleErrors: string[];
   /** decision.adaptations.length. */
   decidedCount: number;
+  /** decision.declined — WHY nominated patterns resolved to nothing (C3).
+   *  Lets the analyzer tell "declined by design" (conversion page) from
+   *  "the inventory is empty" instead of warning on both. */
+  declined?: { pattern: string; reason: string }[];
   /** ids apply() reported as applied. */
   appliedCount: number;
   probes: AdaptationProbe[];
@@ -225,7 +229,28 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
       warn(`${o.decidedCount - targeted}/${o.decidedCount} adaptation(s) resolved no target`);
     }
     if (o.decidedCount === 0) {
-      warn("no adaptations decided for this persona (empty inventory?)");
+      // Zero decisions is CORRECT engine behavior on conversion pages —
+      // decide() now says WHY each nominated pattern declined (C3), so only
+      // genuinely unexplained/inventory-empty zeros warn.
+      const declines = o.declined ?? [];
+      const byDesign =
+        declines.length > 0 && declines.every((d) => d.reason === "conversion_page");
+      if (!byDesign) {
+        if (declines.length === 0) {
+          warn("no adaptations decided for this persona (empty inventory?)");
+        } else {
+          const rollup = Object.entries(
+            declines.reduce<Record<string, number>>((acc, d) => {
+              acc[d.reason] = (acc[d.reason] ?? 0) + 1;
+              return acc;
+            }, {}),
+          )
+            .sort((a, b) => b[1] - a[1])
+            .map(([r, n]) => `${r} ×${n}`)
+            .join(", ");
+          warn(`no adaptations decided for this persona (${rollup})`);
+        }
+      }
     }
     // Large layout movement after apply — the page still "works" and reverses,
     // but content visibly jumps (bad CLS / possible layout break). Flag for a

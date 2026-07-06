@@ -30,7 +30,11 @@ export interface Overview {
   adaptationsShown: number;
   ctaClicks: number;
   conversions: number;
-  /** conversions / pageviews, 0..1. */
+  /** Share of identified visitors who converted: distinct converted visitors
+   *  / distinct identified visitors, 0..1 (D1). The SAME species of number as
+   *  VariantStat.rate, so the headline is directly comparable with the lift
+   *  table — the old conversions/pageviews mixed event counts with visit
+   *  counts and read ~5x lower than the per-visitor rates beside it. */
   conversionRate: number;
 }
 
@@ -63,15 +67,18 @@ export interface VariantStat {
 }
 
 /** Micro-conversions: steps on the way to the goal, counted per distinct
- *  exposed visitor. They NEVER enter the headline lift — they exist so the
+ *  exposed visitor who did NOT convert in the window (D2) — a visitor who
+ *  converted already gave the terminal signal, and counting their missing
+ *  scroll/return against a pattern punished exactly the patterns that convert
+ *  people fast. They NEVER enter the headline lift — they exist so the
  *  engine (and the owner) can read direction long before final conversions
  *  reach significance on low-volume sites. */
 export interface MicroStats {
-  /** Visitors who scrolled ≥75% of a page within the attribution window. */
+  /** Non-converted visitors who scrolled ≥75% within the attribution window. */
   deepScroll: number;
-  /** Visitors with ≥2 pageviews within the attribution window. */
+  /** Non-converted visitors with ≥2 pageviews within the attribution window. */
   multiPage: number;
-  /** Visitors who came back (a pageview after the window, within 7 days). */
+  /** Non-converted visitors who came back (a pageview after the window, within 7 days). */
   returned: number;
 }
 
@@ -82,6 +89,11 @@ export interface MicroStats {
  */
 export interface PatternAttribution {
   pattern: string;
+  /** null = the overall (all-traffic) row. A string (trafficSource) marks a
+   *  per-segment row (D4): a pattern can win on linkedin and lose on paid —
+   *  one blended verdict would suppress it sitewide, including where it wins.
+   *  Segment rows exist only where an arm reaches MIN_ARM_EXPOSURES. */
+  segment: string | null;
   adapted: VariantStat;
   control: VariantStat;
   /** Micro-conversion counts for the same exposed-visitor sets. */
@@ -281,22 +293,43 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
 
   // pattern -> variant -> visitor -> earliest exposure time (ms)
   type VariantKey = "adapted" | "control";
-  const exposures = new Map<string, Record<VariantKey, Map<string, number>>>();
+  type Arms = Record<VariantKey, Map<string, number>>;
+  const newArms = (): Arms => ({ adapted: new Map(), control: new Map() });
+  const exposures = new Map<string, Arms>();
+  // Per (pattern, trafficSource) exposure sets (D4): the doc-specified
+  // "per pattern × segment" read. Same earliest-exposure semantics.
+  const segExposures = new Map<string, Map<string, Arms>>();
   for (const e of events) {
     const variant: VariantKey | null =
       e.type === "adaptation_shown" ? "adapted" : e.type === "adaptation_withheld" ? "control" : null;
     if (!variant || !e.visitorHash) continue;
     const t = ms(e.createdAt);
     if (Number.isNaN(t)) continue;
+    const segment = str(e.payload.trafficSource);
     for (const pattern of patternsOf(e.payload)) {
       let byVariant = exposures.get(pattern);
       if (!byVariant) {
-        byVariant = { adapted: new Map(), control: new Map() };
+        byVariant = newArms();
         exposures.set(pattern, byVariant);
       }
       const seen = byVariant[variant];
       const prev = seen.get(e.visitorHash);
       if (prev === undefined || t < prev) seen.set(e.visitorHash, t);
+      if (segment) {
+        let bySeg = segExposures.get(pattern);
+        if (!bySeg) {
+          bySeg = new Map();
+          segExposures.set(pattern, bySeg);
+        }
+        let segArms = bySeg.get(segment);
+        if (!segArms) {
+          segArms = newArms();
+          bySeg.set(segment, segArms);
+        }
+        const segSeen = segArms[variant];
+        const segPrev = segSeen.get(e.visitorHash);
+        if (segPrev === undefined || t < segPrev) segSeen.set(e.visitorHash, t);
+      }
     }
   }
 
@@ -307,9 +340,13 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
     return { exposures: exp, conversions, rate: exp > 0 ? conversions / exp : 0 };
   };
 
+  // Engagement among NON-converters only (D2): a converted visitor already
+  // gave the terminal signal — counting their missing scroll/return against
+  // a pattern punished exactly the patterns that convert people fast.
   const microStat = (visitors: Map<string, number>): MicroStats => {
     const m: MicroStats = { deepScroll: 0, multiPage: 0, returned: 0 };
     for (const [visitor, from] of visitors) {
+      if (converted(visitor, from)) continue;
       const until = from + ATTRIBUTION_WINDOW_MS;
       if (countIn(deepScrollsByVisitor.get(visitor), from, until) > 0) m.deepScroll++;
       if (countIn(pageviewsByVisitor.get(visitor), from, until) >= 2) m.multiPage++;
@@ -320,31 +357,62 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
     return m;
   };
 
-  const out: PatternAttribution[] = [];
-  for (const [pattern, byVariant] of exposures) {
-    const adapted = stat(byVariant.adapted);
-    const control = stat(byVariant.control);
+  const rowFor = (pattern: string, segment: string | null, arms: Arms): PatternAttribution => {
+    const adapted = stat(arms.adapted);
+    const control = stat(arms.control);
     const hasBoth = adapted.exposures > 0 && control.exposures > 0;
     const z = hasBoth
       ? twoProportionZ(adapted.conversions, adapted.exposures, control.conversions, control.exposures)
       : null;
-    out.push({
+    return {
       pattern,
+      segment,
       adapted,
       control,
-      adaptedMicro: microStat(byVariant.adapted),
-      controlMicro: microStat(byVariant.control),
+      adaptedMicro: microStat(arms.adapted),
+      controlMicro: microStat(arms.control),
       lift: hasBoth ? adapted.rate - control.rate : null,
       z,
       // Require a valid, adequately-powered sample in BOTH arms, not just a
       // z-crossing — otherwise tiny-n noise reads as a proven win/loss.
       significant:
         z !== null && Math.abs(z) >= 1.96 && armValid(adapted) && armValid(control),
-    });
+    };
+  };
+
+  const out: PatternAttribution[] = [];
+  for (const [pattern, byVariant] of exposures) {
+    out.push(rowFor(pattern, null, byVariant));
+    // Segment rows only where an arm is adequately powered — thin segments
+    // would just be noise rows in the dashboard.
+    const bySeg = segExposures.get(pattern);
+    if (!bySeg) continue;
+    const segRows: PatternAttribution[] = [];
+    for (const [segment, arms] of bySeg) {
+      if (arms.adapted.size >= MIN_ARM_EXPOSURES || arms.control.size >= MIN_ARM_EXPOSURES) {
+        segRows.push(rowFor(pattern, segment, arms));
+      }
+    }
+    segRows.sort(
+      (a, b) => b.adapted.exposures - a.adapted.exposures || (a.segment ?? "").localeCompare(b.segment ?? ""),
+    );
+    out.push(...segRows);
   }
 
+  // Overall rows keep the original ordering contract; each pattern's segment
+  // rows follow their overall row directly (already appended in order).
+  const overallOrder = new Map(
+    [...exposures.entries()]
+      .map(([pattern, arms]) => ({ pattern, exp: arms.adapted.size }))
+      .sort((a, b) => b.exp - a.exp || a.pattern.localeCompare(b.pattern))
+      .map((e, i) => [e.pattern, i] as const),
+  );
   return out.sort(
-    (a, b) => b.adapted.exposures - a.adapted.exposures || a.pattern.localeCompare(b.pattern),
+    (a, b) =>
+      (overallOrder.get(a.pattern) ?? 0) - (overallOrder.get(b.pattern) ?? 0) ||
+      Number(a.segment !== null) - Number(b.segment !== null) ||
+      b.adapted.exposures - a.adapted.exposures ||
+      (a.segment ?? "").localeCompare(b.segment ?? ""),
   );
 }
 
@@ -546,6 +614,13 @@ export function aggregate(
 
   const pageviews = pageviewEvents.length;
   const conversions = events.filter((e) => e.type === "conversion").length;
+  // Per-visitor conversion rate (D1): distinct converted / distinct
+  // identified — the same denominator species as the lift table's arms, so a
+  // double-fired convert() can no longer inflate the headline.
+  const convertedVisitors = new Set<string>();
+  for (const e of events) {
+    if (e.type === "conversion" && e.visitorHash) convertedVisitors.add(e.visitorHash);
+  }
 
   const overview: Overview = {
     pageviews,
@@ -553,7 +628,7 @@ export function aggregate(
     adaptationsShown: shownEvents.length,
     ctaClicks: events.filter((e) => e.type === "cta_click").length,
     conversions,
-    conversionRate: pageviews > 0 ? conversions / pageviews : 0,
+    conversionRate: visitors.size > 0 ? convertedVisitors.size / visitors.size : 0,
   };
 
   const segments = {

@@ -503,3 +503,77 @@ describe("clarify_cta — goal-kind-aware label preference (one goal vocabulary)
     expect(a.decisionId).not.toBe(b.decisionId);
   });
 });
+
+describe("decide — auth pages are not conversion pages (A3)", () => {
+  const goal = { selector: "#signup", text: "Skapa konto" };
+
+  it("keeps goal decoration on auth pages — the mis-clicked visitor needs it most", () => {
+    const d = decide(
+      "t",
+      ctx({ pageType: "auth", url: "https://example.com/logga-in" }),
+      emptyInventory("t"),
+      {},
+      goal,
+    );
+    expect(d.adaptations.map((a) => a.pattern)).toContain("emphasize_goal");
+  });
+
+  it("still suppresses goal decoration on real conversion pages", () => {
+    const d = decide(
+      "t",
+      ctx({ pageType: "conversion", url: "https://example.com/skapa-konto" }),
+      emptyInventory("t"),
+      {},
+      goal,
+    );
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("emphasize_goal");
+  });
+});
+
+describe("decide — decline reasons (C3) and the micro-nudge floor (D3)", () => {
+  const goal = { selector: "#signup", text: "Skapa konto" };
+
+  it("says WHY nothing was decided on a conversion page", () => {
+    const d = decide(
+      "t",
+      ctx({ pageType: "conversion", device: "mobile", url: "https://x.se/skapa-konto" }),
+      emptyInventory("t"),
+      {},
+      goal,
+    );
+    expect(d.adaptations).toEqual([]);
+    const reasons = new Set((d.declined ?? []).map((x) => x.reason));
+    expect(reasons.has("conversion_page")).toBe(true); // goal patterns stepped aside
+    expect(reasons.has("no_inventory_for_slot")).toBe(true); // rest lacked content
+  });
+
+  it("thin inventories decline with inventory reasons, not silence", () => {
+    const d = decide("t", ctx(), emptyInventory("t"));
+    expect(d.adaptations).toEqual([]);
+    expect((d.declined ?? []).length).toBeGreaterThan(0);
+    expect((d.declined ?? []).some((x) => x.reason === "no_goal_configured")).toBe(true);
+  });
+
+  it("a micro nudge can demote but never zero out the baseline pattern (D3)", () => {
+    // Inventory with ONLY setup_time microcopy: show_2min_setup is the sole
+    // injectable nominee (no_credit_card/continuity decline for lack of
+    // content), so the injection budget can't mask the floor under test.
+    // A -10 engagement nudge used to hit the priority>0 filter and silently
+    // kill the priority-10 baseline site-wide; now it floors at 1 and fires.
+    const inv = emptyInventory("lowvol");
+    inv.slots.microcopy = [
+      { id: "mc-setup", slot: "microcopy", text: "2 minute setup", meta: { kind: "setup_time" } },
+    ];
+    const c = ctx();
+    const base = decide("lowvol", c, inv).adaptations.map((a) => a.pattern);
+    expect(base).toContain("show_2min_setup");
+    const nudged = decide("lowvol", c, inv, { show_2min_setup: -10 });
+    expect(nudged.adaptations.map((a) => a.pattern)).toContain("show_2min_setup");
+    expect(
+      nudged.adaptations.find((a) => a.pattern === "show_2min_setup")!.priority,
+    ).toBe(1);
+    // Only a significant-conversion verdict may remove it.
+    const suppressed = decide("lowvol", c, inv, { show_2min_setup: PERF_SUPPRESS });
+    expect(suppressed.adaptations.map((a) => a.pattern)).not.toContain("show_2min_setup");
+  });
+});

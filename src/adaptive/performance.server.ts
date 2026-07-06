@@ -14,6 +14,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   attribute,
   MIN_ARM_EXPOSURES,
+  MIN_ARM_OUTCOMES,
   type DashEvent,
   type MicroStats,
 } from "@/lib/dashboard/aggregate";
@@ -24,7 +25,15 @@ import type { PatternId } from "./types";
 const TTL_MS = 5 * 60 * 1000;
 const EVENT_LIMIT = 5000;
 
-const cache = new Map<string, { at: number; boosts: PatternBoost }>();
+/** Overall boosts + per-trafficSource overrides (D4): a pattern that wins on
+ *  linkedin and loses on paid must not get one blended sitewide verdict —
+ *  the segment's own adequately-powered verdict wins for that segment. */
+interface BoostSet {
+  overall: PatternBoost;
+  bySegment: Record<string, PatternBoost>;
+}
+
+const cache = new Map<string, { at: number; boosts: BoostSet }>();
 
 /** Map a significant lift into a bounded positive nudge; proven-negative lift
  *  suppresses the pattern outright. Only called for significant rows. */
@@ -39,7 +48,8 @@ function boostForLift(lift: number): number {
 // micro-conversions (deep scroll, multi-page, return visits) accumulate 10-50×
 // faster. While a pattern has no proven lift, a clear engagement gap between
 // the arms nudges its priority MILDLY — capped far below a proven win and
-// never suppressing. The moment real lift is significant it takes over.
+// never suppressing (decide() floors non-sentinel deltas at priority 1, D3).
+// The moment real lift is significant it takes over.
 /** Max |priority delta| an engagement signal may contribute (⅓ of proven max). */
 const MICRO_MAX_NUDGE = 10;
 /** Minimum absolute composite-score gap between arms before nudging. */
@@ -47,41 +57,79 @@ const MICRO_MIN_DIFF = 0.05;
 /** Minimum relative gap vs the control score (noise floor). */
 const MICRO_MIN_REL = 0.25;
 
-/** Composite engagement score, 0..1: weighted share of exposed visitors who
- *  scrolled deep / browsed on / came back. Weights favour the stronger
- *  intent signals; deterministic and documented, not fitted. */
-function microScore(m: MicroStats, exposures: number): number {
-  if (exposures <= 0) return 0;
-  return (0.25 * m.deepScroll + 0.35 * m.multiPage + 0.4 * m.returned) / exposures;
+/** Hierarchical composite score, 0..1 (D2): conversion is the TERMINAL
+ *  signal; engagement only scores the non-converted remainder —
+ *  score = convRate + (1 − convRate) · engagement(non-converters). A pattern
+ *  can never score worse by converting people out of the browsing funnel,
+ *  which the old all-visitors share did (fast converters don't scroll,
+ *  browse on, or come back — and were counted as disengaged). MicroStats
+ *  are counted among non-converters upstream (aggregate.ts microStat). */
+function microScore(arm: { exposures: number; conversions: number }, m: MicroStats): number {
+  if (arm.exposures <= 0) return 0;
+  const convRate = arm.conversions / arm.exposures;
+  const nonConverters = arm.exposures - arm.conversions;
+  const engagement =
+    nonConverters > 0
+      ? (0.25 * m.deepScroll + 0.35 * m.multiPage + 0.4 * m.returned) / nonConverters
+      : 0;
+  return convRate + (1 - convRate) * engagement;
 }
 
 /** The micro nudge for one attribution row, or 0 when the evidence is thin. */
 export function microNudge(row: {
-  adapted: { exposures: number };
-  control: { exposures: number };
+  adapted: { exposures: number; conversions: number; rate: number };
+  control: { exposures: number; conversions: number; rate: number };
   adaptedMicro: MicroStats;
   controlMicro: MicroStats;
 }): number {
   if (row.adapted.exposures < MIN_ARM_EXPOSURES || row.control.exposures < MIN_ARM_EXPOSURES) {
     return 0;
   }
-  const a = microScore(row.adaptedMicro, row.adapted.exposures);
-  const c = microScore(row.controlMicro, row.control.exposures);
+  const a = microScore(row.adapted, row.adaptedMicro);
+  const c = microScore(row.control, row.controlMicro);
   const diff = a - c;
   if (Math.abs(diff) < MICRO_MIN_DIFF) return 0;
   if (c > 0 && Math.abs(diff) / c < MICRO_MIN_REL) return 0;
-  return Math.max(-MICRO_MAX_NUDGE, Math.min(MICRO_MAX_NUDGE, Math.round(diff * 60)));
+  const nudge = Math.max(-MICRO_MAX_NUDGE, Math.min(MICRO_MAX_NUDGE, Math.round(diff * 60)));
+  // Directional guard (D2): when both arms have real conversion outcomes and
+  // the (not-yet-significant) lift is POSITIVE, an engagement gap may never
+  // drag the pattern down — the real goal outranks its proxies.
+  if (
+    nudge < 0 &&
+    row.adapted.conversions >= MIN_ARM_OUTCOMES &&
+    row.control.conversions >= MIN_ARM_OUTCOMES &&
+    row.adapted.rate > row.control.rate
+  ) {
+    return 0;
+  }
+  return nudge;
+}
+
+/** Boost from one attribution row: a significant conversion verdict always
+ *  wins; otherwise a mild engagement nudge while conversions accumulate. */
+function boostFromRow(row: Parameters<typeof microNudge>[0] & {
+  significant: boolean;
+  lift: number | null;
+}): number {
+  if (row.significant && row.lift !== null) return boostForLift(row.lift);
+  return microNudge(row);
 }
 
 /**
- * Load the per-pattern boost map for a site from measured attribution.
- * Never throws; returns {} when there's nothing significant yet or the store is
- * unavailable. Cached per site for TTL_MS.
+ * Load the per-pattern boost map for a site from measured attribution,
+ * resolved for one visitor's traffic source (D4): a segment's own
+ * adequately-powered verdict overrides the sitewide one, so a pattern that
+ * wins on linkedin keeps running there even when the blended average is
+ * negative. Never throws; returns {} when there's nothing significant yet or
+ * the store is unavailable. Cached per site for TTL_MS.
  */
-export async function loadPatternBoosts(site: string): Promise<PatternBoost> {
+export async function loadPatternBoosts(
+  site: string,
+  trafficSource?: string | null,
+): Promise<PatternBoost> {
   const now = Date.now();
   const hit = cache.get(site);
-  if (hit && now - hit.at < TTL_MS) return hit.boosts;
+  if (hit && now - hit.at < TTL_MS) return resolveBoosts(hit.boosts, trafficSource);
 
   try {
     const { data } = await supabaseAdmin
@@ -101,22 +149,28 @@ export async function loadPatternBoosts(site: string): Promise<PatternBoost> {
       createdAt: r.created_at,
     }));
 
-    const boosts: PatternBoost = {};
+    const boosts: BoostSet = { overall: {}, bySegment: {} };
     for (const row of attribute(events)) {
-      // A significant conversion verdict always wins (needs a holdout group).
-      if (row.significant && row.lift !== null) {
-        boosts[row.pattern as PatternId] = boostForLift(row.lift);
-        continue;
+      const b = boostFromRow(row);
+      if (b === 0) continue;
+      if (row.segment === null) {
+        boosts.overall[row.pattern as PatternId] = b;
+      } else {
+        (boosts.bySegment[row.segment] ??= {})[row.pattern as PatternId] = b;
       }
-      // Otherwise: a mild engagement nudge while conversions accumulate.
-      const nudge = microNudge(row);
-      if (nudge !== 0) boosts[row.pattern as PatternId] = nudge;
     }
 
     cache.set(site, { at: now, boosts });
-    return boosts;
+    return resolveBoosts(boosts, trafficSource);
   } catch (err) {
     console.warn(`[angel] performance boosts unavailable:`, err);
-    return hit?.boosts ?? {};
+    return hit ? resolveBoosts(hit.boosts, trafficSource) : {};
   }
+}
+
+/** Merge: segment-specific verdicts override the sitewide ones. Exported for
+ *  tests; pure. */
+export function resolveBoosts(boosts: BoostSet, trafficSource?: string | null): PatternBoost {
+  const seg = trafficSource ? boosts.bySegment[trafficSource] : undefined;
+  return seg ? { ...boosts.overall, ...seg } : { ...boosts.overall };
 }

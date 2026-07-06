@@ -13,7 +13,14 @@
 import { isAcquisition, type GoalKind } from "./crawler-inventory";
 import { getPattern } from "./patterns";
 import { pickItem } from "./inventory";
-import type { Adaptation, ContentInventory, Decision, PatternId, VisitorContext } from "./types";
+import type {
+  Adaptation,
+  ContentInventory,
+  Decision,
+  DeclineReason,
+  PatternId,
+  VisitorContext,
+} from "./types";
 
 /** Most adaptations on a single page load. Three is deliberate: one visual
  *  emphasis, at most one added element, one structural tweak — a page that
@@ -181,8 +188,9 @@ export interface SiteGoal {
 
 /**
  * Turn a chosen pattern into a concrete Adaptation, drawing any text strictly
- * from the inventory. Returns null when the pattern needs published content the
- * site doesn't have — the safety valve that prevents invented copy.
+ * from the inventory. Returns a DeclineReason (string) when the pattern must
+ * not fire — the safety valve that prevents invented copy, now with WHY (C3)
+ * so zero-adaptation decisions are explainable instead of warn-noise.
  */
 function resolve(
   id: PatternId,
@@ -190,7 +198,7 @@ function resolve(
   context: VisitorContext,
   inventory: ContentInventory,
   goal?: SiteGoal,
-): Adaptation | null {
+): Adaptation | DeclineReason {
   const pattern = getPattern(id);
   const slotSelector = `[data-angel-slot="${pattern.slot}"]`;
 
@@ -198,10 +206,10 @@ function resolve(
     // Goal-first: the target is the owner's declared conversion element, not an
     // inventory item. Emphasize is paint-only (no layout, no content), so the
     // "never invent content" rule is trivially satisfied.
-    if (!goal?.selector) return null;
+    if (!goal?.selector) return "no_goal_configured";
     // Page-aware: on a conversion page the visitor is already AT the goal —
     // decorating it there is noise, not a nudge.
-    if (context.pageType === "conversion") return null;
+    if (context.pageType === "conversion") return "conversion_page";
     return {
       pattern: id,
       op: "emphasize",
@@ -220,8 +228,8 @@ function resolve(
   if (id === "sticky_goal_cta") {
     // Needs a labelled goal: the pill shows the goal's own text and clicks the
     // real element, so both navigation and conversion tracking stay the site's.
-    if (!goal?.text || (!goal.selector && !goal.text)) return null;
-    if (context.pageType === "conversion") return null;
+    if (!goal?.text || (!goal.selector && !goal.text)) return "no_goal_configured";
+    if (context.pageType === "conversion") return "conversion_page";
     return {
       pattern: id,
       op: "inject_sticky",
@@ -234,8 +242,8 @@ function resolve(
   }
 
   if (id === "show_secondary_cta") {
-    if (!goal?.selector && !goal?.text) return null;
-    if (context.pageType === "conversion") return null;
+    if (!goal?.selector && !goal?.text) return "no_goal_configured";
+    if (context.pageType === "conversion") return "conversion_page";
     // A published, lower-commitment alternative: an acquisition CTA with its
     // own destination whose label differs from the goal. pickItem falls back
     // to the first item when the match misses, so re-guard after.
@@ -256,7 +264,7 @@ function resolve(
       !isAcquisition(alt) ||
       /^javascript:/i.test(alt.meta.href)
     ) {
-      return null;
+      return "no_secondary_alternative";
     }
     return {
       pattern: id,
@@ -290,7 +298,7 @@ function resolve(
         break;
       }
     }
-    if (!item?.text || !isAcquisition(item)) return null;
+    if (!item?.text || !isAcquisition(item)) return "no_intent_variant";
     // Never retext an element with the only label we know for it — that's a
     // guaranteed no-op ("Skapa konto" → "Skapa konto", seen live on the pilot,
     // where the crawler harvests each CTA's own text). The change is real only
@@ -300,7 +308,7 @@ function resolve(
       const otherLabel = (inventory.slots.cta ?? []).some(
         (i) => i !== item && i.selector === item.selector && i.text && i.text !== item.text,
       );
-      if (!otherLabel) return null;
+      if (!otherLabel) return "single_label_cta";
     }
     return {
       pattern: id,
@@ -320,7 +328,11 @@ function resolve(
   if (pattern.op === "inject_badge") {
     const kind = MICROCOPY_KIND[id];
     const item = pickItem(inventory, "microcopy", kind ? (i) => i.meta?.kind === kind : undefined);
-    if (!item?.text) return null;
+    // STRICT kind match — pickItem's first-item fallback would otherwise
+    // inject some OTHER published reassurance under this pattern's name
+    // ("No credit card required" badge showing the setup-time copy). Same
+    // no-arbitrary-fallback rule as clarify_cta's intent match.
+    if (!item?.text || (kind && item.meta?.kind !== kind)) return "no_microcopy";
     return {
       pattern: id,
       op: "inject_badge",
@@ -339,7 +351,7 @@ function resolve(
   // out an adaptation that could actually fire. Skip it — same "never act on
   // content we don't have" rule that governs the set_text / inject_badge paths.
   const item = pickItem(inventory, pattern.slot);
-  if (!item) return null;
+  if (!item) return "no_inventory_for_slot";
   const target = item.selector ?? slotSelector;
   // reveal only un-hides [data-angel-hidden] and condense only hides
   // [data-angel-secondary] children — markers that exist solely on
@@ -355,7 +367,7 @@ function resolve(
     (pattern.op === "reveal" || pattern.op === "condense") &&
     (!target.startsWith("[data-angel-slot") || item.meta?.source === "harvest")
   ) {
-    return null;
+    return "reveal_would_noop";
   }
   return {
     pattern: id,
@@ -420,12 +432,33 @@ export function decide(
     }
   }
 
+  // Why nominated patterns resolved to nothing (C3) — the honesty gates make
+  // zero adaptations CORRECT on many pages, and this is how downstream
+  // consumers (the robustness harness above all) can tell that apart from an
+  // empty inventory. Highest-priority attempt per pattern wins.
+  const declined: { pattern: PatternId; reason: DeclineReason }[] = [];
+
   const adaptations = [...best.entries()]
-    // Apply the measured performance delta to each pattern's priority. A proven
-    // loser (PERF_SUPPRESS) lands ≤ 0 and is filtered out below; a winner rises.
-    .map(([id, priority]) => ({ id, priority: priority + (boosts[id] ?? 0) }))
+    // Apply the measured performance delta to each pattern's priority. Only a
+    // SIGNIFICANT conversion verdict (PERF_SUPPRESS) may remove a pattern;
+    // milder negatives (micro/engagement nudges) demote in the ranking but
+    // floor at priority 1 (D3) — an engagement proxy that never met the
+    // significance bar must not zero out e.g. the priority-10 baseline rule.
+    .map(([id, priority]) => {
+      const boost = boosts[id] ?? 0;
+      const effective =
+        boost <= PERF_SUPPRESS ? priority + boost : Math.max(1, priority + boost);
+      return { id, priority: effective };
+    })
     .filter((e) => e.priority > 0)
-    .map((e) => resolve(e.id, e.priority, context, inventory, goal))
+    .map((e) => {
+      const result = resolve(e.id, e.priority, context, inventory, goal);
+      if (typeof result === "string") {
+        declined.push({ pattern: e.id, reason: result });
+        return null;
+      }
+      return result;
+    })
     .filter((a): a is Adaptation => a !== null)
     .sort((a, b) => b.priority - a.priority || a.pattern.localeCompare(b.pattern))
     // Injection budget: keep only the highest-priority element-adding op so a
@@ -449,6 +482,7 @@ export function decide(
     decisionId: decisionIdFor(site, context, goal),
     site,
     adaptations,
+    ...(declined.length > 0 ? { declined } : {}),
     context,
   };
 }

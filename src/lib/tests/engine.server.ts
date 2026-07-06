@@ -338,7 +338,7 @@ export async function runSteps(
             const bySection: Record<string, number> = {};
             let aboveFold = 0;
             let primaryConversionCtaCount = 0;
-            let competingAboveFold = 0;
+            let conversionCtasAboveFold = 0;
             for (const el of filtered) {
               if (el.groupedAway) continue; // dedupe from aggregates
               byCategory[el.category] = (byCategory[el.category] ?? 0) + 1;
@@ -354,8 +354,15 @@ export async function runSteps(
                 el.position.viewportZone === "above_fold" &&
                 el.intent !== "navigation"
               )
-                competingAboveFold++;
+                conversionCtasAboveFold++;
             }
+            // "Competing" reserves one slot for the primary itself (B8): the
+            // ideal single-CTA page reads 0, matching the per-CTA
+            // competingActions self-exclusion convention in CTAS_SCRIPT.
+            const competingAboveFold = Math.max(
+              0,
+              conversionCtasAboveFold - (primaryConversionCtaCount > 0 ? 1 : 0),
+            );
             const topVisualWeight = [...filtered]
               .filter((el) => !el.groupedAway)
               .sort((a, b) => b.visualWeight.score - a.visualWeight.score)
@@ -392,6 +399,7 @@ export async function runSteps(
                 total: uniqueCount,
                 aboveFold,
                 primaryConversionCtaCount,
+                conversionCtasAboveFold,
                 competingAboveFold,
                 topVisualWeight,
                 intentBreakdown,

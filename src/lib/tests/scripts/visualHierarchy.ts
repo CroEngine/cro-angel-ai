@@ -1,6 +1,8 @@
 // Auto-extracted from engine.server.ts — runs inside the browser via page.evaluate.
 // Keep self-contained: no imports, no closures over server state.
 
+import { HERO_MAX_VIEWPORTS } from "./shared/category";
+
 export const VISUAL_HIERARCHY_SCRIPT = `(() => {
   const viewportH = window.innerHeight || 720;
   const docH = document.documentElement.scrollHeight || viewportH;
@@ -99,7 +101,7 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
       p = p.parentElement;
     }
     const docTop = rect.top + window.scrollY;
-    if (docTop < viewportH * 1.1) return 'hero';
+    if (docTop < viewportH * ${HERO_MAX_VIEWPORTS}) return 'hero';
     return 'content';
   }
 
@@ -162,15 +164,6 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
   }
   const maxScore = deduped[0] ? deduped[0].score : 1;
 
-  function deriveWcagLevel(ratio, fontSizePx, fontWeight) {
-    if (ratio === null || !isFinite(ratio)) return null;
-    const isLarge = fontSizePx >= 18 || (fontSizePx >= 14 && fontWeight >= 700);
-    if (ratio >= 7) return 'AAA';
-    if (ratio >= 4.5) return 'AA';
-    if (ratio >= 3 && isLarge) return 'AA-large';
-    return 'FAIL';
-  }
-
   return deduped.map((s) => {
     const sk = sectionKind(s.el, s.rect);
     const contrastRatio = Math.round(s.con * 10) / 10;
@@ -183,8 +176,11 @@ export const VISUAL_HIERARCHY_SCRIPT = `(() => {
       area: Math.round(s.area),
       fontSize: Math.round(s.fontSize),
       fontWeight: s.fontWeight,
-      contrast: contrastRatio,
-      wcagLevel: deriveWcagLevel(contrastRatio, s.fontSize, s.fontWeight),
+      // bgSeparation: element surface vs PAGE background — a salience input,
+      // not text readability. This used to be emitted as contrast + a fake
+      // wcagLevel: the same button could be 'AAA' in ctas.ts (real text
+      // contrast) and 'FAIL' here, in the same PageAuditData (audit B5).
+      bgSeparation: contrastRatio,
       position: {
         xPct: Math.round(((s.rect.left + s.rect.width / 2) / docW) * 100),
         yPct: Math.round(((s.rect.top + window.scrollY) / docH) * 100),

@@ -15,6 +15,7 @@ import { VISUAL_HIERARCHY_SCRIPT } from "../scripts/visualHierarchy";
 import {
   buildPageSummary,
   buildTrustSummary,
+  computeTrustProximity,
   deriveHero,
   enrichSections,
 } from "../audit-helpers";
@@ -402,6 +403,9 @@ export async function runPageAudit(
   const dimsTyped = dims as { pageHeightPx: number; foldHeightPx: number };
 
   enrichSections(sectionsTyped, ctasTyped, trustTyped, formsTyped);
+  // Trust proximity from the trust engine's canonical rects — the CTA script
+  // no longer guesses trust locations from class names (B4).
+  computeTrustProximity(ctasTyped, trustTyped);
   const sectionOrder = sectionsTyped.map((s) => s.type);
   const trustSummary = buildTrustSummary(trustTyped);
   const pageSummary = buildPageSummary({

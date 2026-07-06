@@ -80,7 +80,9 @@ describe("aggregate", () => {
     expect(m.overview.adaptationsShown).toBe(2);
     expect(m.overview.ctaClicks).toBe(1);
     expect(m.overview.conversions).toBe(1);
-    expect(m.overview.conversionRate).toBeCloseTo(1 / 3);
+    // Per-visitor rate (D1): 1 converted visitor of 2 identified — the same
+    // species as the lift table's arms, not conversions/pageviews.
+    expect(m.overview.conversionRate).toBeCloseTo(1 / 2);
   });
 
   it("segments pageviews by traffic source and device (sorted desc)", () => {
@@ -433,5 +435,64 @@ describe("attribute — micro-conversions (engagement on the way to the goal)", 
       [],
     ).attribution.find((r) => r.pattern === "emphasize_goal")!;
     expect(row.adaptedMicro).toEqual({ deepScroll: 0, multiPage: 0, returned: 0 });
+  });
+});
+
+describe("attribute — per-segment rows (D4) and non-converter micro stats (D2)", () => {
+  const T0 = Date.parse("2026-06-25T09:00:00Z");
+  const at = (offsetH: number) => new Date(T0 + offsetH * 3600_000).toISOString();
+  const ev4 = (
+    type: string,
+    offsetH: number,
+    visitorHash: string,
+    payload: Record<string, unknown> = {},
+  ): DashEvent => ({ type, payload, visitorHash, decisionId: null, createdAt: at(offsetH) });
+
+  it("emits segment rows only where an arm is adequately powered", () => {
+    const events: DashEvent[] = [];
+    // 30 adapted + 30 control linkedin visitors → powered segment.
+    for (let i = 0; i < 30; i++) {
+      events.push(
+        ev4("adaptation_shown", 0, `la${i}`, {
+          patterns: ["clarify_cta"],
+          trafficSource: "linkedin",
+        }),
+        ev4("adaptation_withheld", 0, `lc${i}`, {
+          patterns: ["clarify_cta"],
+          trafficSource: "linkedin",
+        }),
+      );
+    }
+    // 2 google_ads visitors → below MIN_ARM_EXPOSURES, no segment row.
+    events.push(
+      ev4("adaptation_shown", 0, "g1", { patterns: ["clarify_cta"], trafficSource: "google_ads" }),
+      ev4("adaptation_shown", 0, "g2", { patterns: ["clarify_cta"], trafficSource: "google_ads" }),
+    );
+
+    const rows = aggregate(events, []).attribution.filter((r) => r.pattern === "clarify_cta");
+    const overall = rows.find((r) => r.segment === null)!;
+    expect(overall.adapted.exposures).toBe(32); // all traffic blended
+    const segments = rows.filter((r) => r.segment !== null).map((r) => r.segment);
+    expect(segments).toEqual(["linkedin"]); // google_ads too thin for a row
+    const linkedin = rows.find((r) => r.segment === "linkedin")!;
+    expect(linkedin.adapted.exposures).toBe(30);
+    expect(linkedin.control.exposures).toBe(30);
+  });
+
+  it("does not count a converted visitor's engagement (they already gave the terminal signal)", () => {
+    const row = aggregate(
+      [
+        // v1 converts AND deep-scrolls → must NOT count in micro stats.
+        ev4("adaptation_shown", 0, "v1", { patterns: ["emphasize_goal"] }),
+        ev4("scroll_depth", 1, "v1", { depth: 90 }),
+        ev4("conversion", 2, "v1"),
+        // v2 doesn't convert but deep-scrolls → counts.
+        ev4("adaptation_shown", 0, "v2", { patterns: ["emphasize_goal"] }),
+        ev4("scroll_depth", 1, "v2", { depth: 90 }),
+      ],
+      [],
+    ).attribution.find((r) => r.pattern === "emphasize_goal" && r.segment === null)!;
+    expect(row.adapted.conversions).toBe(1);
+    expect(row.adaptedMicro.deepScroll).toBe(1); // v2 only — v1 is a converter
   });
 });

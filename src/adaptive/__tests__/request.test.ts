@@ -109,6 +109,17 @@ describe("classifyPageType", () => {
     expect(classifyPageType("https://x.se/recept/glutenfri-pizza")).toBe("content");
     expect(classifyPageType("not a url")).toBe("other");
   });
+
+  it("A3: login/account pages are auth, never conversion", async () => {
+    const { classifyPageType } = await import("../context");
+    expect(classifyPageType("https://x.se/login")).toBe("auth");
+    expect(classifyPageType("https://x.se/logga-in")).toBe("auth");
+    expect(classifyPageType("https://x.se/sign-in")).toBe("auth");
+    expect(classifyPageType("https://x.se/inloggning")).toBe("auth");
+    expect(classifyPageType("https://x.se/mina-sidor")).toBe("auth");
+    // auth wins even when the query/next hop mentions a conversion path
+    expect(classifyPageType("https://x.se/login/checkout-redirect")).toBe("auth");
+  });
 });
 
 describe("classifyCtaIntent — Swedish", () => {

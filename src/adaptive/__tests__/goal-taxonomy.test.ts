@@ -152,3 +152,33 @@ describe("judgeSiteGoals — cache + deterministic fallback (no network)", () =>
     expect(out.goals).toEqual([]);
   });
 });
+
+describe("auth taxonomy drift guard — pageType and CTA role must agree (A3)", () => {
+  // Two sides of one taxonomy: context.ts AUTH_PATH_RX (page classification)
+  // and ROLE_RULES auth href (CTA-role classification). They anchor
+  // differently (path fragment vs segment), so this guard pins the canonical
+  // login paths both MUST classify as auth — if either side drifts, this
+  // fails before the audit has to rediscover finding A3.
+  const CANONICAL_AUTH_PATHS = [
+    "/login",
+    "/log-in",
+    "/logga-in",
+    "/sign-in",
+    "/inloggning",
+    "/mina-sidor",
+  ];
+
+  it("classifyPageType calls them auth", async () => {
+    const { classifyPageType } = await import("../context");
+    for (const p of CANONICAL_AUTH_PATHS) {
+      expect(classifyPageType(`https://x.se${p}`), p).toBe("auth");
+    }
+  });
+
+  it("classifyCtaRole calls hrefs to them auth", async () => {
+    const { classifyCtaRole } = await import("../crawler-inventory");
+    for (const p of CANONICAL_AUTH_PATHS) {
+      expect(classifyCtaRole("Fortsätt", p), p).toBe("auth");
+    }
+  });
+});

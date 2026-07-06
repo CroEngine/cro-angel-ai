@@ -552,6 +552,7 @@ async function measurePersona(
     snippetRan: true,
     consoleErrors: consoleErrors.slice(errBefore),
     decidedCount: adaptations.length,
+    declined: decision.declined,
     appliedCount: Array.isArray(applied) ? applied.length : 0,
     probes,
     baseline,

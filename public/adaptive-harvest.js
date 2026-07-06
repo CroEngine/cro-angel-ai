@@ -90,12 +90,55 @@
       var ctas = (() => {
   const viewportH = window.innerHeight || 720;
 
-  const INTENT_RX = {
-    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|best[äa]ll|k[öo]p|boka|prova|kom ig[åa]ng|skapa konto|registrera|ans[öo]k)/i,
-    navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst[äa]llningar)/i,
-    utility: /(search|s[öo]k|language|spr[åa]k|cookie|accept|godk[äa]nn|contact|kontakt|help|hj[äa]lp|faq)/i,
-    social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
-  };
+  // THE shared intent classifier — inlined from shared/intent.ts, same source
+  // COLLECT_SCRIPT uses (B1). This file used to carry its own drifted copy of
+  // the wordlists; it no longer defines any.
+  function classifyIntentShared(text, href, attrText, category, isFormSubmit, aboveFold, formKind) {
+  const probe = (text || "").trim() + " " + (attrText || ""), h = href || "";
+  if (isFormSubmit) {
+    if (formKind === "search")
+      return "utility";
+    if (formKind === "newsletter")
+      return "engagement";
+    return "conversion";
+  }
+  if (/(facebook|instagram|linkedin|twitter|x\.com|youtube|tiktok|pinterest|snapchat|reddit|threads|mastodon)\./i.test(h))
+    return "social";
+  if (/(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|best\u00E4ll|k\u00F6p|boka|prova|kom ig\u00E5ng|skapa konto|registrera|g\u00E5 med|gratis|ladda ne[dr]|l\u00E4gg i (varu|kund)?korg(en)?|l\u00E4gg till|ans\u00F6k|bidra|donera|teckna|j\u00E4mf\u00F6r|shoppa|m\u00E5nadsgivare)/i.test(probe))
+    return "conversion";
+  if (/^(tel:|mailto:)/i.test(h) || /(contact|kontakt)/i.test(probe))
+    return "contact";
+  if (/(like|love|save|bookmark|share|comment|reply|follow|subscribe|upvote|downvote|gilla|spara|kommentar|svara|f\u00F6lj|prenumerera|r\u00F6sta|r\u00F6st)/i.test(probe))
+    return "engagement";
+  if (/(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst\u00E4llningar)/i.test(probe))
+    return "navigation";
+  if (/(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i.test(probe))
+    return "social";
+  if (/(search|s\u00F6k|language|spr\u00E5k|cookie|accept|godk\u00E4nn|help|hj\u00E4lp|faq)/i.test(probe))
+    return "utility";
+  if (/(learn|read|explore|see how|how |why |about |l\u00E4s|utforska|s\u00E5 funkar|mer info)/i.test(probe))
+    return "information";
+  if (category === "cta_primary" && aboveFold)
+    return "conversion";
+  return "unknown";
+}
+  function formKindShared(el) {
+  try {
+    const f = el.closest ? el.closest("form") : null;
+    if (!f)
+      return "";
+    const role = (f.getAttribute("role") || "").toLowerCase(), action = f.getAttribute("action") || "";
+    if (role === "search" || f.querySelector('input[type="search"]') || /(^|[/?#-])s(earch|ok)([/?#-]|$)/i.test(action))
+      return "search";
+    const inputs = f.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"])');
+    if (inputs.length === 1) {
+      const i0 = inputs[0], hint = ((i0.getAttribute("type") || "") + " " + (i0.getAttribute("name") || "") + " " + (i0.getAttribute("placeholder") || "") + " " + (i0.getAttribute("aria-label") || "")).toLowerCase();
+      if (/email|e-?post|nyhetsbrev|newsletter/.test(hint))
+        return "newsletter";
+    }
+  } catch (e) {}
+  return "";
+}
 
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\w-]*$/.test(el.id)) return '#' + el.id;
@@ -159,11 +202,6 @@
     return 'content';
   }
 
-  function hasSurface(cs) {
-    const bg = cs.backgroundColor || '';
-    return !!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent';
-  }
-
   function parseRgb(s) {
     if (!s) return null;
     const m = s.match(/rgba?\(([^)]+)\)/);
@@ -198,35 +236,80 @@
     return 'FAIL';
   }
 
+  // Shared category classification (B2) — same 5-signal rule as COLLECT_SCRIPT
+  // (this script used to require above-fold for cta_primary; a prominent
+  // below-fold buy button can be primary in both scripts now).
+  function hasMeaningfulSurfaceShared(backgroundColor, border) {
+  const bg = backgroundColor || "", b = border || "", bgSolid = !!bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent", hasBorder = /\d+px/.test(b) && !/0px/.test(b.split(" ")[0] || "");
+  return bgSolid || hasBorder;
+}
+  function inNavOrFooterShared(el) {
+  let p = el.parentElement;
+  while (p && p !== document.body) {
+    const tag = p.tagName, role = (p.getAttribute && p.getAttribute("role") || "").toLowerCase();
+    if (tag === "NAV" || tag === "HEADER" || tag === "FOOTER" || role === "navigation")
+      return !0;
+    p = p.parentElement;
+  }
+  return !1;
+}
+  function classifyCategoryShared(tagName, inputType, role, hasHref, rectW, rectH, rectTop, textLen, hasSurface, inChrome, viewportH) {
+  const tag = (tagName || "").toUpperCase(), type = (inputType || "").toLowerCase();
+  if (tag === "BUTTON" && type === "submit" || tag === "INPUT" && type === "submit")
+    return "form_submit";
+  const isButtonish = tag === "BUTTON" || tag === "INPUT" || (role || "").toLowerCase() === "button" || tag === "A" && hasHref, area = rectW * rectH, smallSquareish = rectW <= 56 && rectH <= 56, shortLabel = textLen <= 2;
+  if (isButtonish && smallSquareish && shortLabel)
+    return "icon_button";
+  const aboveFold = rectTop < viewportH;
+  if (isButtonish) {
+    let score = 0;
+    if (aboveFold)
+      score++;
+    if (textLen > 0 && textLen <= 32)
+      score++;
+    if (area >= 2520)
+      score++;
+    if (hasSurface)
+      score++;
+    if (!inChrome)
+      score++;
+    if (score >= 4)
+      return "cta_primary";
+    if (score >= 2 && hasSurface)
+      return "cta_secondary";
+  }
+  if (tag === "A" && hasHref)
+    return inChrome ? "nav_item" : "link";
+  return "other";
+}
+
   function classifyCategory(el, cs, rect, text) {
-    const tag = el.tagName;
-    const type = (el.getAttribute('type') || '').toLowerCase();
-    if ((tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit')) return 'form_submit';
-    const role = (el.getAttribute('role') || '').toLowerCase();
-    const isButtonish = tag === 'BUTTON' || tag === 'INPUT' || role === 'button' || (tag === 'A' && el.hasAttribute('href'));
-    const area = rect.width * rect.height;
-    if (isButtonish && rect.width <= 56 && rect.height <= 56 && (!text || text.length <= 2)) return 'icon_button';
-    if (isButtonish) {
-      let score = 0;
-      if (rect.top < viewportH) score++;
-      if (text.length > 0 && text.length <= 32) score++;
-      if (area >= 90 * 28) score++;
-      if (hasSurface(cs)) score++;
-      if (score >= 4) return 'cta_primary';
-      if (score >= 2 && hasSurface(cs)) return 'cta_secondary';
-    }
-    if (tag === 'A' && el.hasAttribute('href')) return 'link';
-    return 'other';
+    return classifyCategoryShared(
+      el.tagName,
+      el.getAttribute('type') || '',
+      el.getAttribute('role') || '',
+      el.tagName === 'A' && el.hasAttribute('href'),
+      rect.width, rect.height, rect.top,
+      (text || '').length,
+      hasMeaningfulSurfaceShared(cs.backgroundColor || '', cs.border || ''),
+      inNavOrFooterShared(el),
+      viewportH,
+    );
   }
 
-  function classifyIntent(text, category, rect) {
-    const t = (text || '').trim();
-    if (INTENT_RX.conversion.test(t)) return 'conversion';
-    if (INTENT_RX.navigation.test(t)) return 'navigation';
-    if (INTENT_RX.social.test(t)) return 'social';
-    if (INTENT_RX.utility.test(t)) return 'utility';
-    if (category === 'cta_primary' && rect.top < viewportH) return 'conversion';
-    return 'unknown';
+  function classifyIntent(el, text, category, rect) {
+    const tag = el.tagName;
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    const isFormSubmit = (tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit');
+    const href = (el.getAttribute('href') || '');
+    const attrBag = [];
+    for (const a of Array.from(el.attributes)) {
+      if (a.name.startsWith('data-')) attrBag.push(a.value || '');
+    }
+    return classifyIntentShared(
+      (text || '').trim(), href, attrBag.join(' '), category, isFormSubmit, rect.top < viewportH,
+      isFormSubmit ? formKindShared(el) : '',
+    );
   }
 
   // Collect candidate CTAs (buttons + anchor links with visible surface or strong CTA-ish text)
@@ -251,30 +334,30 @@
     if (el.closest && el.closest('[data-lovable-cookie-root="1"]')) {
       continue;
     }
+    // Never audit Angel's own runtime injections (C1) — same rule as collect.
+    if (el.closest && el.closest('[data-angel-injected], .angel-badge, .angel-sticky-cta, .angel-secondary-cta, #angel-debug')) {
+      continue;
+    }
     const rect = el.getBoundingClientRect();
 
     const cs = window.getComputedStyle(el);
     const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\s+/g, ' ').slice(0, 80);
     if (isCarouselNav(el, text)) continue;
     const category = classifyCategory(el, cs, rect, text);
-    if (category === 'other' || category === 'link') continue; // keep button-ish + form_submit only
+    if (category === 'other' || category === 'link' || category === 'nav_item') continue; // keep button-ish + form_submit only
     raw.push({
       el, rect, cs, text, category,
-      intent: classifyIntent(text, category, rect),
+      intent: classifyIntent(el, text, category, rect),
       section: sectionKind(el, rect),
     });
   }
 
-  // Pre-fetch trust signal + form rects for distance calc
-  const trustRects = [];
-  document.querySelectorAll('[class*="testimonial" i], [class*="review" i], [class*="trust" i], blockquote').forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (r.width > 1 && r.height > 1) trustRects.push({ cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
-  });
-  document.querySelectorAll('[class*="star" i], [class*="logo" i]').forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (r.width > 1 && r.height > 1) trustRects.push({ cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
-  });
+  // NOTE (B4): trust proximity is NOT computed here anymore. This script used
+  // to guess trust locations from class names ([class*="trust"], blockquote…),
+  // which disagreed with the real trust engine in the same report ("Trust
+  // signals: 1 above fold" next to "trust 9999px"). The server now computes
+  // nearestTrustSignalDistance from TRUST_SIGNALS_SCRIPT's canonical rects
+  // (audit-helpers.ts computeTrustProximity); this script emits null.
   const formRects = Array.from(document.querySelectorAll('form')).map((f) => {
     const r = f.getBoundingClientRect();
     return { x: r.left, y: r.top, w: r.width, h: r.height, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
@@ -319,7 +402,9 @@
       aboveFold: r.rect.top < viewportH,
       visualWeight: Math.round(r.rect.width * r.rect.height),
       competingActions: competing,
-      nearestTrustSignalDistance: minDist(cx, cy, trustRects),
+      // Filled server-side from the canonical trust rects (B4); null when the
+      // page has no positioned trust signal — never a fake 9999.
+      nearestTrustSignalDistance: null,
       nearestFormDistance: formDistance(r.el, cx, cy),
       contrastRatio: contrastRatio,
       wcagLevel: wcagLevel,
@@ -1619,8 +1704,12 @@
       ? withRating.reduce((s, e) => s + e.rating, 0) / withRating.length
       : null;
     const aboveFoldCount = starsEntries.filter((e) => e.aboveFold).length;
+    // Review VOLUME must survive the collapse (B7): downstream sums used to
+    // read reviewCount off type 'stars', which no longer exists after this
+    // point. Max, not sum — multiple star clusters restate the same corpus.
+    const reviewCount = starsEntries.reduce((m, e) => Math.max(m, e.reviewCount || 0), 0);
     filtered = filtered.filter((e) => e.type !== 'stars');
-    filtered.push({
+    filtered.push(Object.assign({
       type: 'stars_aggregate',
       text: starsEntries.length + ' star ratings' + (avg !== null ? ' (avg ' + (Math.round(avg * 100) / 100) + ')' : ''),
       section: starsEntries[0].section,
@@ -1630,7 +1719,7 @@
       averageRating: avg !== null ? Math.round(avg * 100) / 100 : null,
       count: starsEntries.length,
       aboveFoldCount,
-    });
+    }, reviewCount > 0 ? { reviewCount } : {}));
   }
 
   return { signals: filtered, _debug: debug };

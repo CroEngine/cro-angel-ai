@@ -10,9 +10,11 @@
 > directions. Result: **24 unique confirmed contradictions** (2 high),
 > 14 candidates refuted. Line numbers refer to `7bb49dd`.
 >
-> **Status:** the first fix wave (same branch) resolves **B6, C2, E1, E2, A4,
-> A5, A6** — each marked ✅ below with what changed. The remaining findings
-> keep their fix sketches.
+> **Status:** wave 1 resolves **B6, C2, E1, E2, A4, A5, A6**; wave 2 resolves
+> **B1, A1, A3**; wave 3 resolves **A2, B2, B4, B5, B7, B8, B9, C1** + part
+> of **B3**; wave 4 resolves **C3, D1, D2, D3, D4**. Each is marked ✅ below
+> with what changed. **23 of 24 findings closed** — the only remainder is
+> B3's section-typing half (documented as deliberate at the constant).
 
 ## Root cause
 
@@ -35,7 +37,7 @@ on** (see [Target architecture](#target-architecture) at the end).
 
 ## A. The same button both is and isn't "the conversion" (audit vs goal system)
 
-### A1. `tel:`/`mailto:`/contact CTAs are "utility" to the audit but THE goal to the goal system — *medium*
+### A1. `tel:`/`mailto:`/contact CTAs are "utility" to the audit but THE goal to the goal system — *medium* — ✅ fixed
 
 - `src/lib/tests/scripts/collect.ts:259` forces `tel:`/`mailto:` to
   `intent='utility'` **before** any keyword check, and the utility wordlist
@@ -52,22 +54,25 @@ above fold*, while the goal judge proposes that same button as the #1 goal,
 the owner confirms it, and the engine measures clicks on it. One layer says
 the conversion path is absent; the other says it's the whole point of the site.
 
-**Fix sketch:** reorder `classifyIntent` so the conversion-keyword test runs
-before the `tel:`/`mailto:` short-circuit; add `contact` as a first-class
-intent in `schema.ts` instead of burying it in `utility`.
+**Fixed:** the shared classifier tests conversion keywords BEFORE the
+`tel:`/`mailto:` short-circuit ("Ring och boka" is a conversion), and
+contact actions get the new first-class `contact` intent in `schema.ts` —
+never `utility`. Applies to both scripts via the shared source (B1).
 
-### A2. Every form-submit is unconditionally "conversion" — *medium*
+### A2. Every form-submit is unconditionally "conversion" — *medium* — ✅ fixed
 
 `collect.ts:256-257` returns `conversion` for any `type=submit` button before
 keyword checks, so a newsletter "Skicka" or a search submit counts as a
 conversion CTA — while the goal judge (`goal-judge.server.ts:58`) defines the
 goal as *"the primary money/value action for THIS business"*. In the no-LLM
 path, `rankGoalCandidates` scores a hero newsletter submit above a below-fold
-"Köp" button. **Fix:** classify form submits by form contents (email-only →
-`subscribe`/`lead`; search → `utility`) and make the deterministic ranker
-kind-aware, not placement-only.
+"Köp" button. **Fixed:** `formKindShared` inspects the submit's form in BOTH scripts
+(search form → `utility`, email-only field → `engagement`, else conversion),
+and the harvest stamps `inForm` so `classifyGoalKind` types in-form submits
+as `lead` in the no-LLM ranker — a hero newsletter form can no longer
+masquerade as the signup goal.
 
-### A3. Login pages are "conversion pages" — *medium*
+### A3. Login pages are "conversion pages" — *medium* — ✅ fixed
 
 `context.ts:146` (`CONVERSION_PATH_RX`) includes `log[-_]?in|logga[-_]?in`, so
 `/login` classifies as `pageType='conversion'` — "the visitor is already AT
@@ -76,8 +81,10 @@ the goal" — and `decide.ts:184/203/218` suppresses `emphasize_goal`,
 taxonomy (`crawler-inventory.ts:156-159`, labeler prompt) states auth is
 **never** a conversion. A first-time mobile visitor landing on `/logga-in` is
 exactly the visitor the sticky goal shortcut exists for, and gets nothing.
-**Fix:** move auth paths out of `CONVERSION_PATH_RX` into a `pageType='auth'`
-(reuse the `ROLE_RULES` auth href regex so the two taxonomies can't drift).
+**Fixed:** auth paths moved out of `CONVERSION_PATH_RX` into a new
+`pageType='auth'` (goal decoration stays ACTIVE there); ROLE_RULES' auth
+href gained the Swedish `logga-in|inloggning` paths; and a drift-guard test
+pins the canonical login paths both taxonomy sides must agree on.
 
 ### A4. The judge is told "nonprofit → donate" but no `donate` kind exists — *low*
 
@@ -115,7 +122,7 @@ gone — strict intent match only, so the reason string cannot misreport.
 
 ## B. Duplicated definitions that drifted (audit-internal)
 
-### B1. Two copies of the conversion-keyword classifier drifted — *medium* — ⚠️ partially fixed
+### B1. Two copies of the conversion-keyword classifier drifted — *medium* — ✅ fixed
 
 `collect.ts:243` has `gå med|gratis|ladda ner|lägg i (varu)?kund?korg|lägg
 till|bidra` that `ctas.ts:8` lacks; the two `classifyIntent` functions also
@@ -124,50 +131,54 @@ Bonus bug found during verification: the drifted regex has a typo —
 `lägg i (varu)?kund?korg` matches "lägg i kundkorg" but **never the common
 "lägg i varukorg"** (intended `(varu|kund)korg`). The same button is a
 conversion CTA in one half of the report and not in the other.
-**Partially fixed:** the `varukorg(en)` typo is corrected and `collect.ts`'s
-conversion list extended from the 107-site vocabulary harvest
-(`corpus/vocab-harvest-2026-07-06.json`). Still open: one shared
-`INTENT_RX` + `classifyIntentCore` source file, interpolated into both script
-template strings (the scripts stay self-contained in `page.evaluate`) — until
-then the two copies can still drift.
+**Fixed:** one shared `classifyIntentShared` (src/lib/tests/scripts/shared/
+intent.ts) is inlined into BOTH script template strings via `toString()` —
+neither script defines its own wordlists anymore, and an inline-parity test
+asserts the exact shared source appears in both. (The `varukorg(en)` typo
+fix + harvest vocabulary landed in the previous wave.)
 
-### B2. `cta_primary` requires above-fold in `ctas.ts` but not in `collect.ts` — *medium*
+### B2. `cta_primary` requires above-fold in `ctas.ts` but not in `collect.ts` — *medium* — ✅ fixed
 
 `ctas.ts:123-131` scores 4 signals and requires **4/4** (above-fold is
 mandatory → a below-fold buy button can never be primary). `collect.ts:222-231`
 adds a 5th signal (`!inChrome`) and requires 4/5 (below-fold primary
 possible). Same page → "primary-script 0" and "Primary-conversion CTAs: 1"
-in the same findings card; `deriveHero` finds no hero CTA. **Fix:** adopt the
-5-signal rule in one shared classifier (see B1).
+in the same findings card; `deriveHero` finds no hero CTA. **Fixed:** `classifyCategoryShared` (shared/category.ts) is the one
+5-signal rule, inlined into both scripts — a prominent below-fold buy button
+can be primary in both now, and chrome links are `nav_item` everywhere.
 
-### B3. "Hero" has four different boundaries — *medium*
+### B3. "Hero" has four different boundaries — *medium* — ⚠️ partially fixed
 
 `sections.ts:106` = first **0.4** viewports; `collect.ts` ≈ 1.0–1.2;
 `ctas.ts:72` and `visualHierarchy.ts:102` = **1.1**. With a tall announcement
 bar the LLM context simultaneously asserts a hero exists (`cro.hero`,
-hero-role CTAs) and shows a section flow with no hero. **Fix:** one shared
-`HERO_MAX_DOC_TOP_VH` constant interpolated into all scripts; reconcile
-element `section` labels against typed sections server-side after
-`enrichSections`.
+hero-role CTAs) and shows a section flow with no hero. **Partially fixed:** the three ELEMENT-level scripts interpolate one shared
+`HERO_MAX_VIEWPORTS` (1.1) — the 1.0/1.1/1.2 spread is gone. Still open:
+sections.ts's 0.4-viewport section-typing rule is deliberately different
+(documented at the constant); reconciling element labels against typed
+sections server-side remains future work.
 
-### B4. CTA trust-proximity uses its own crude trust detector — *medium*
+### B4. CTA trust-proximity uses its own crude trust detector — *medium* — ✅ fixed
 
 `ctas.ts:184-191` measures `nearestTrustSignalDistance` from class-name
 guesses (`[class*="testimonial"]`, `[class*="star"]`, `blockquote`…), not from
 `trustSignals.ts`'s output. Same report: "Trust signals: 1 above fold" and
 "trust 9999px" for the CTA next to it — and the reverse (class-name hits that
 the trust engine rightly rejects). The `9999` sentinel also reads as a real
-distance downstream. **Fix:** delete the in-script heuristic; compute distance
-server-side from the two rect sets already emitted; use `null`, not 9999.
+distance downstream. **Fixed:** the in-script class-name heuristic is deleted;
+`computeTrustProximity` (audit-helpers) fills the distance server-side from
+the trust engine's canonical rects, and pages without positioned trust
+signals get `null` — never a 9999 sentinel.
 
-### B5. `wcagLevel` means two different measurements — *medium*
+### B5. `wcagLevel` means two different measurements — *medium* — ✅ fixed
 
 `ctas.ts:226` = real text-vs-own-background contrast (correct WCAG semantics);
 `visualHierarchy.ts:143/187` = element-surface-vs-page-background salience,
 emitted under the same field name and shared `WcagLevel` type. A white button
 with dark text on a white page is simultaneously `AAA` and `FAIL` in the same
-`PageAuditData`. **Fix:** rename the hierarchy metric (`bgSeparation`) and
-drop its fake WCAG level.
+`PageAuditData`. **Fixed:** the hierarchy metric is renamed `bgSeparation` and its fake WCAG
+level is gone — `wcagLevel` now means text contrast (CTAEntity) and nothing
+else.
 
 ### B6. JSON-LD review signals silently delete every visible review widget — **high**
 
@@ -180,38 +191,40 @@ from findings, `trustSummary`, the inventory and the goal judge's `trust`
 hint. **Fix:** give document-level schema entries `_block = null` (dedup
 already skips those), mark them `section='document'`, `aboveFold=false`.
 
-### B7. `findings.ts` sums review counts over a type that can never exist — *medium*
+### B7. `findings.ts` sums review counts over a type that can never exist — *medium* — ✅ fixed
 
 `trustSignals.ts:945-963` collapses all `stars` entries into one
 `stars_aggregate` before returning — and drops `reviewCount` in the collapse —
 while `findings.ts:205-207` computes total review count over
 `review_rating || stars`. The "Total review count" finding silently
-undercounts/vanishes. **Fix:** carry `reviewCount` (max, not sum) onto
-`stars_aggregate`; filter on `review_rating || stars_aggregate`.
+undercounts/vanishes. **Fixed:** the stars collapse carries `reviewCount` (max, not sum) onto
+`stars_aggregate`, and findings sums over `review_rating || stars_aggregate`
+— the dead `stars` arm is gone.
 
-### B8. The audit's own ideal page can never score "Competing CTAs: 0" — *medium*
+### B8. The audit's own ideal page can never score "Competing CTAs: 0" — *medium* — ✅ fixed
 
 `engine.server.ts:350-357` counts **every** above-fold non-navigation CTA as
 "competing" — including the primary itself — while the per-CTA
 `competingActions` (`ctas.ts:217-223`) excludes self. A textbook single-CTA
 landing page shows "Competing CTAs above fold: 1" next to "competing 0" for
-the same button. **Fix:** reserve one slot for the primary:
-`competing = max(0, conversionCtasAboveFold − 1)`.
+the same button. **Fixed:** `competingAboveFold` reserves one slot for the primary — the
+ideal single-CTA page reads 0, matching the per-CTA self-exclusion; the raw
+pool is exposed as `conversionCtasAboveFold`.
 
-### B9. `ctasScriptPrimaryCount` documented as NOT intent-gated, computed intent-gated — *medium*
+### B9. `ctasScriptPrimaryCount` documented as NOT intent-gated, computed intent-gated — *medium* — ✅ fixed
 
 `schema.ts:294` documents the count as category-only ("not intent-grided");
 `audit-helpers.ts:135-137` filters `category === 'cta_primary' &&
 intent === 'conversion'`. A primary-styled "Logga in" is listed as a primary
-CTA in the rows but excluded from the count above them. **Fix:** drop the
-intent clause in `buildPageSummary`; keep the intent-gated number only in the
-collect summary where it's documented.
+CTA in the rows but excluded from the count above them. **Fixed:** `buildPageSummary` counts category-only, exactly as the schema
+documents; the intent-gated number lives solely in
+`CollectSummary.primaryConversionCtaCount`.
 
 ---
 
 ## C. The runtime engine violates the audit's own doctrine
 
-### C1. Angel injects a competing CTA that Angel's own audit then flags — *medium*
+### C1. Angel injects a competing CTA that Angel's own audit then flags — *medium* — ✅ fixed
 
 The audit penalizes *"Competing CTAs above fold"* (`findings.ts:66`), while
 `cold_soft_path` (`decide.ts:104,215`) injects a secondary CTA beside the goal
@@ -219,9 +232,9 @@ for every first-time visitor — and **no collector excludes Angel's own
 injected elements**, although every injected node carries
 `data-angel-injected`. An audit crawl of a snippet-installed site can count
 Angel's own pill/badge/link as page CTAs, polluting the inventory and even the
-goal-judge input on re-harvest. **Fix:** two-line guard in `collect`/`ctas`
-candidate loops — `el.closest('[data-angel-injected]')` → skip (mirrors the
-existing cookie-root exclusion).
+goal-judge input on re-harvest. **Fixed:** both collectors skip anything inside `[data-angel-injected]` /
+Angel's own class names (mirrors the cookie-root exclusion) — the audit
+never counts Angel's injections as the page's own content.
 
 ### C2. The robustness gate hard-fails covered clickables; the flagship mobile pattern covers clickables — and the harness structurally can't see it — **high**
 
@@ -237,59 +250,69 @@ launch gate has never actually tested the pattern most likely to trip it.
 `rankGoalCandidates` floor, or the stored confirmed goal), and teach the
 snippet to nudge the pill when it would cover an interactive element.
 
-### C3. The harness warns about behavior the engine documents as correct — *medium*
+### C3. The harness warns about behavior the engine documents as correct — *medium* — ✅ fixed
 
 `analyze.ts:227` warns *"no adaptations decided (empty inventory?)"* — but
 `decide()` returns zero **by design** on conversion pages and honest-gated
 thin inventories (`decide.ts:183-341`). Sweeps produce warn-noise on exactly
 the pages where the engine behaves best, training people to ignore warnings.
-**Fix:** emit structured decline reasons from `resolve()`
-(`no_goal_configured | conversion_page | no_inventory_for_slot | …`) and let
-`analyze()` distinguish "declined by design" from "empty inventory".
+**Fixed:** `resolve()` returns a typed `DeclineReason` instead of null
+(`no_goal_configured | conversion_page | no_inventory_for_slot | …`),
+`Decision.declined` carries them, and `analyze()` passes cleanly when zero
+decisions are all conversion-page-by-design — otherwise it warns WITH the
+reason rollup instead of guessing "(empty inventory?)".
 
 ---
 
 ## D. Measurement disagrees with itself
 
-### D1. Two incompatible numbers are both called "conversion rate" — *medium*
+### D1. Two incompatible numbers are both called "conversion rate" — *medium* — ✅ fixed
 
 Overview headline: `conversions / pageviews` (event-based,
 `aggregate.ts:556`); "What's working" arms: distinct converted visitors /
 distinct exposed visitors (`aggregate.ts:246-343`). Same site, same day: 1.2%
 vs 6.8% with no denominator hint in the UI — and double-firing
-`convert()` inflates only one of them. **Fix:** make the headline
-per-visitor (both sets already exist in `aggregate()`), keep raw event KPIs
-as secondary numbers.
+`convert()` inflates only one of them. **Fixed:** the Overview headline is per-visitor (distinct converted /
+distinct identified) — the same species as the lift table's arms; the raw
+pageview/conversion KPIs remain as counts.
 
-### D2. The engagement proxy is anti-correlated with fast conversion — *medium*
+### D2. The engagement proxy is anti-correlated with fast conversion — *medium* — ✅ fixed
 
 `microScore` (`performance.server.ts:53-55`) rewards deep scroll, multi-page
 and return visits. A pattern that converts visitors **immediately** (the
 point of the product) depresses all three — converted visitors stop scrolling,
 browsing and returning — so on low-volume sites the winning pattern collects a
 negative nudge while a pattern that merely makes people wander collects a
-positive one. **Fix:** hierarchical score — conversion is the terminal
-signal; engagement only scores the non-converted remainder
-(`score = convRate + (1 − convRate) · engagement(non-converters)`).
+positive one. **Fixed:** MicroStats are counted among NON-converters (aggregate.ts) and
+`microScore` is hierarchical: `convRate + (1 − convRate) ·
+engagement(non-converters)`. A directional guard also blocks negative
+nudges whenever both arms have real conversion outcomes and the (not yet
+significant) lift is positive — the real goal outranks its proxies.
 
-### D3. The "never suppressing" micro nudge suppresses the baseline pattern — *medium*
+### D3. The "never suppressing" micro nudge suppresses the baseline pattern — *medium* — ✅ fixed
 
 `performance.server.ts:42-44` documents micro nudges as *"capped far below a
 proven win and never suppressing"*, but `MICRO_MAX_NUDGE = 10` exactly equals
 the `baseline` rule's priority 10 (`decide.ts:132-136`), and the
 `priority > 0` filter (`decide.ts:393`) drops the pattern at 0 — full
-site-wide suppression from a sub-significance engagement gap. **Fix:** floor
-non-sentinel deltas at effective priority 1; only `PERF_SUPPRESS` may kill.
+site-wide suppression from a sub-significance engagement gap. **Fixed:** `decide()` floors non-sentinel deltas at effective priority 1 —
+only a significant `PERF_SUPPRESS` verdict can remove a pattern, exactly as
+the micro-nudge documentation always promised. (The fix's test also caught a
+sibling bug: `inject_badge` fell back to the WRONG microcopy kind via
+`pickItem`'s first-item fallback — now strict, same rule as clarify_cta.)
 
-### D4. The rollup is per pattern only, not per pattern × segment — *medium*
+### D4. The rollup is per pattern only, not per pattern × segment — *medium* — ✅ fixed
 
 `docs/attribution-rollup.md:29-40` specifies attribution *"per (site, path,
 segment, pattern, variant)"*; `attribute()` keys on pattern only. A pattern
 that wins on LinkedIn and loses on paid gets one blended verdict — possibly
 `PERF_SUPPRESS`-killed site-wide including the segment where it wins,
-directly against the doc's stated purpose. **Fix:** add a segment key inside
-`attribute()` (payloads already carry `trafficSource`/device/path), emit
-overall + per-segment rows, make `PatternBoost` segment-aware.
+directly against the doc's stated purpose. **Fixed:** `attribute()` emits the overall row (`segment: null`) plus
+per-trafficSource rows where an arm reaches `MIN_ARM_EXPOSURES`; the
+dashboard renders them as sub-rows; and `loadPatternBoosts(site,
+trafficSource)` resolves segment verdicts OVER the sitewide blend — a
+pattern that wins on linkedin keeps running there even when the blended
+average is negative.
 
 ---
 
