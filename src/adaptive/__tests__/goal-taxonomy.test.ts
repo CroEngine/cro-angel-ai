@@ -182,3 +182,24 @@ describe("auth taxonomy drift guard — pageType and CTA role must agree (A3)", 
     }
   });
 });
+
+describe("classifyGoalKind — category-grid tiles are start_flow, not signup (C, bokadirekt)", () => {
+  it("a href-less no-verb tile in a grid (variantCount>1) reads start_flow", () => {
+    // bokadirekt's "Frisör"/"Massage" category tiles: no verb, no href, but
+    // one of N near-identical siblings — a funnel entry, not a signup button.
+    expect(classifyGoalKind("Frisör", undefined, "bokadirekt.se", false, 8)).toBe("start_flow");
+    expect(classifyGoalKind("Massage", undefined, "bokadirekt.se", false, 12)).toBe("start_flow");
+  });
+
+  it("a bare no-verb button NOT in a grid stays signup (default unchanged)", () => {
+    expect(classifyGoalKind("Klicka här", undefined, "x.se", false, 0)).toBe("signup");
+    expect(classifyGoalKind("Klicka här", undefined, "x.se", false, 1)).toBe("signup");
+  });
+
+  it("a verb label is classified by its verb regardless of the grid signal", () => {
+    // Safety: "Skapa konto" in a grid is still signup, "Köp" still purchase.
+    expect(classifyGoalKind("Skapa konto", undefined, "x.se", false, 8)).toBe("signup");
+    expect(classifyGoalKind("Köp nu", undefined, "x.se", false, 8)).toBe("purchase");
+    expect(classifyGoalKind("Donera", undefined, "x.se", false, 8)).toBe("donate");
+  });
+});

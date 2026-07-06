@@ -9,6 +9,13 @@
 
 import type { Pattern, PatternId } from "./types";
 
+// Goal-kind applicability lives per-pattern (Pattern.appliesTo). Patterns
+// WITHOUT appliesTo are goal-agnostic. The lists below exclude the goal kinds
+// a pattern would be wrong or irrelevant for; see docs/contradictions-audit.md
+// "target architecture" step 4. Only set on the SaaS/vertical-flavored
+// patterns — the goal-first patterns (emphasize/sticky/secondary/clarify) and
+// universal UX patterns (faq/hero/continuity) stay agnostic.
+
 export const PATTERNS: Record<PatternId, Pattern> = {
   emphasize_goal: {
     id: "emphasize_goal",
@@ -48,6 +55,11 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: "Move the customer-logo wall higher up the page.",
     op: "move_up",
     slot: "customer_logos",
+    // "Customers" is a B2B/retail notion; a nonprofit's partner logos and a
+    // subscription/download's absence of them are a different semantic.
+    appliesTo: [
+      "signup", "trial", "quote", "contact", "lead", "booking", "purchase", "outbound", "start_flow",
+    ],
   },
   show_enterprise_testimonial: {
     id: "show_enterprise_testimonial",
@@ -55,6 +67,10 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: "Surface an enterprise-flavoured testimonial for high-intent B2B visitors.",
     op: "reveal",
     slot: "testimonial",
+    // LOAD-BEARING (not belt-and-suspenders): resolve() reveals ANY published
+    // testimonial, not an enterprise one, so without this a webshop/nonprofit
+    // LinkedIn visitor gets a testimonial under false "enterprise" pretenses.
+    appliesTo: ["lead", "quote", "contact", "trial", "signup", "booking"],
   },
   show_trust_badge: {
     id: "show_trust_badge",
@@ -62,6 +78,11 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: "Reveal compliance / trust badges (GDPR, ISO, SOC2).",
     op: "reveal",
     slot: "trust_badge",
+    // Broadly relevant (payment-security for purchase, secure-donation for
+    // donate) — only irrelevant where there is no transaction/trust surface.
+    appliesTo: [
+      "signup", "trial", "quote", "contact", "lead", "booking", "purchase", "donate", "subscribe",
+    ],
   },
   clarify_cta: {
     id: "clarify_cta",
@@ -76,6 +97,9 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: "Reveal a published guarantee (money-back, cancel anytime).",
     op: "reveal",
     slot: "guarantee",
+    // "Money-back" / "cancel anytime" presuppose a paid commitment — wrong for
+    // donate, lead/quote/contact, outbound/start_flow, and free downloads.
+    appliesTo: ["purchase", "trial", "subscribe", "booking", "signup"],
   },
   move_faq_up: {
     id: "move_faq_up",
@@ -97,6 +121,9 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: "Reveal a published case study with results.",
     op: "reveal",
     slot: "case_study",
+    // A "case study with results" is a B2B considered-purchase device — not a
+    // webshop/nonprofit/subscription/download conversion aid.
+    appliesTo: ["lead", "quote", "contact", "trial", "signup", "booking"],
   },
   show_no_credit_card: {
     id: "show_no_credit_card",
@@ -104,6 +131,9 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: 'Inject the published "No credit card required" reassurance near the CTA.',
     op: "inject_badge",
     slot: "microcopy",
+    // Sharpest contradiction: it negates the payment step that purchase,
+    // donate, booking and subscribe REQUIRE. Only free SaaS entry wants it.
+    appliesTo: ["trial", "signup"],
   },
   show_2min_setup: {
     id: "show_2min_setup",
@@ -111,6 +141,10 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: 'Inject the published "2 minute setup" reassurance near the CTA.',
     op: "inject_badge",
     slot: "microcopy",
+    // "Setup" is a SaaS/app onboarding notion. This is nominated UNIVERSALLY
+    // by the baseline rule (decide.ts baseline, when: ()=>true), so gating it
+    // behind a confirmed kind is the single clearest SaaS-default removal.
+    appliesTo: ["trial", "signup", "download"],
   },
   surface_pricing: {
     id: "surface_pricing",
@@ -118,6 +152,10 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: "Move pricing higher for returning visitors who already evaluated it.",
     op: "move_up",
     slot: "pricing",
+    // "Pricing" presupposes a price to evaluate — irrelevant for donate (a
+    // gift has no price), lead/quote/contact (price comes after contact),
+    // outbound/start_flow (no on-site price), and free downloads.
+    appliesTo: ["purchase", "subscribe", "trial", "signup", "booking"],
   },
   continue_where_left_off: {
     id: "continue_where_left_off",

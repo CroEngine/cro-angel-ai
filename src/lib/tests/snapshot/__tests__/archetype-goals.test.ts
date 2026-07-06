@@ -34,16 +34,18 @@ const ARCHETYPES: Archetype[] = [
   { name: "elskling", domain: "elskling.se", expectKinds: ["start_flow", "quote"] },
   { name: "cancerfonden", domain: "cancerfonden.se", expectKinds: ["donate"] },
   { name: "hubspot", domain: "hubspot.com", expectKinds: ["signup", "trial", "contact"] },
-  // NOTE: bokadirekt (booking) is deliberately NOT a strict-kind archetype.
-  // Its homepage is a CATEGORY PORTAL — the most prominent CTAs are service
-  // tiles ("Frisör", "Massage") rendered as href-less buttons, so the no-LLM
-  // floor sees no booking verb/href and defaults to signup. The actual "Boka
-  // tid" lives on the service page, not the homepage. The holistic goal judge
-  // (LLM) reads "booking marketplace" from the whole inventory; the
-  // deterministic floor can't from this capture. bokadirekt still ships as an
-  // audit-layer snapshot (snapshot.test.ts) and is covered softly below. A
-  // clean booking archetype needs a service-page capture — see the sites.ts
-  // note.
+  // NOTE: bokadirekt (booking) is soft-asserted only (below), NOT a strict
+  // kind archetype. Its homepage tiles ("Deals"/"Frisör"/"Massage"/"Anpassa")
+  // are HETEROGENEOUS href-less category buttons — different text, so they are
+  // NOT a uniform strip and collapseUniformStrips gives them no variantCount.
+  // The deterministic floor can't safely tell heterogeneous category nav from
+  // a bare signup button without false positives, so they default to signup;
+  // the holistic LLM judge reads "booking marketplace" from the whole
+  // inventory. (The variantCount→start_flow fix from this wave correctly
+  // handles UNIFORM grids — a comparison portal's identical cards — which is a
+  // different shape; see the classifyGoalKind unit test.) The real "Boka tid"
+  // lives on the service page; a strict booking/start_flow archetype needs a
+  // service-page capture. See corpus/README.md.
 ];
 
 let chromiumAvailable = false;
@@ -97,10 +99,10 @@ describe("archetype goal kinds — the goal pipeline reads every conversion type
     );
   }
 
-  // bokadirekt (booking): soft coverage — the homepage is a category portal,
-  // so we only assert the pipeline produces candidates from the real capture,
-  // not a specific kind (see the ARCHETYPES note). This still guards against
-  // the harvest → inventory path silently breaking for a booking marketplace.
+  // bokadirekt (booking): soft coverage — heterogeneous href-less category nav
+  // (see ARCHETYPES note), so we assert the pipeline produces candidates, not a
+  // specific kind. Still guards the harvest → inventory path from silently
+  // breaking for a booking marketplace.
   const bokadirektFrozen = existsSync(join("corpus", "bokadirekt", "page.mhtml"));
   it(
     "bokadirekt (booking portal): harvest → inventory yields goal candidates",
