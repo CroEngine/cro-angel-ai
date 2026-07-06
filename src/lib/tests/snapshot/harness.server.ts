@@ -169,10 +169,38 @@ async function nodeLoopScroll(page: Page, steps = 8, gapMs = 150): Promise<void>
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   });
   await new Promise((r) => setTimeout(r, 600));
+  // Top-återgång: EXPLICIT behavior:"instant" + verifierad scrollY===0.
+  // Sajter med `scroll-behavior: smooth` (bokadirekt: .scroll-smooth) ANIMERAR
+  // ett vanligt scrollTo(0,0) — en fast 200ms-vänta fångar då sidan mitt i
+  // flykten, och varje sticky-/fixed-element mäts med docTop = rect.top +
+  // scrollY ≈ animationens aktuella position. Det var rotorsaken till
+  // bokadirekt-service-flaket: hela headern (+ dess dolda mega-menypaneler)
+  // vandrade ±200px ≈ en yBand-bucket mellan replays och kaskaderade genom
+  // normalize-sorteringen. Instant-scroll + poll tills scrollY är 0 två ticks
+  // i rad gör slutpositionen deterministisk för ALLA sajter.
   await safeStep(async () => {
-    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }));
   });
-  await new Promise((r) => setTimeout(r, 200));
+  for (let i = 0, zeros = 0; i < 30 && zeros < 2; i++) {
+    let y: number | null = null;
+    try {
+      y = (await page.evaluate(() => window.scrollY)) as number;
+    } catch {
+      /* context-tick — räkna inte, försök igen */
+    }
+    if (y === 0) {
+      zeros++;
+    } else {
+      zeros = 0;
+      if (y !== null) {
+        // Scroll-anchoring/lazy-expansion kan ha knuffat oss — pinna om.
+        await page
+          .evaluate(() => window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }))
+          .catch(() => {});
+      }
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
 }
 
 // Node-driven cookie-banner stamping. Mirrors the in-page poll from
