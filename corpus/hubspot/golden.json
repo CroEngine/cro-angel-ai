@@ -812,6 +812,20 @@
         "area": 5000
       },
       {
+        "text": "Contact Us",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "contact",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "www.hubspot.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 50,
+        "bgContrast": 16,
+        "area": 6000
+      },
+      {
         "text": "HubSpot for Startups",
         "tagName": "a",
         "category": "nav_item",
@@ -1554,20 +1568,6 @@
         "area": 8000
       },
       {
-        "text": "Contact Us",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "utility",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "www.hubspot.com",
-        "disabled": false,
-        "yBand": 6400,
-        "score": 50,
-        "bgContrast": 16,
-        "area": 6000
-      },
-      {
         "text": "Company",
         "tagName": "button",
         "category": "other",
@@ -1708,6 +1708,20 @@
         "area": 6000
       },
       {
+        "text": "Contact Sales",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "contact",
+        "section": "nav",
+        "aboveFold": true,
+        "href": "offers.hubspot.com",
+        "disabled": false,
+        "yBand": 0,
+        "score": 10,
+        "bgContrast": 1,
+        "area": 2000
+      },
+      {
         "text": "Log in",
         "tagName": "a",
         "category": "nav_item",
@@ -1762,20 +1776,6 @@
         "score": 10,
         "bgContrast": 1,
         "area": 1000
-      },
-      {
-        "text": "Contact Sales",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "utility",
-        "section": "nav",
-        "aboveFold": true,
-        "href": "offers.hubspot.com",
-        "disabled": false,
-        "yBand": 0,
-        "score": 10,
-        "bgContrast": 1,
-        "area": 2000
       },
       {
         "text": "About",
@@ -1949,7 +1949,7 @@
     "hero": {
       "headline": "Marketing",
       "primaryCtaText": "Learn more about Revenue Hub",
-      "primaryCtaIntent": "conversion",
+      "primaryCtaIntent": "information",
       "aboveFold": true
     },
     "images": {
