@@ -16,7 +16,7 @@ import { aggregate, type DashboardMetrics, type DashEvent, type InventoryEntry }
 // ---- tenancy helpers (server-only) ------------------------------------------
 
 /** Emails allowed to see/administer every site (comma-separated env). */
-function isAdminEmail(email: unknown): boolean {
+export function isAdminEmail(email: unknown): boolean {
   if (typeof email !== "string") return false;
   const set = new Set(
     (process.env.ANGEL_ADMIN_EMAILS ?? "")
@@ -92,6 +92,8 @@ export interface DashboardResponse {
   metrics: DashboardMetrics;
   /** Defaults to the anonymous, measurement-off config when unavailable. */
   siteConfig: SiteConfigView;
+  /** Admin extras (the sandbox link) render only for ANGEL_ADMIN_EMAILS. */
+  isAdmin: boolean;
 }
 
 // Seeded baseline — shown in the site picker when the DB can't be reached
@@ -131,7 +133,12 @@ export const getDashboard = createServerFn({ method: "POST" })
           "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,ingest_key",
         )
         .order("slug");
-      const rows = siteRows ?? [];
+      // `sandbox--<host>` rows are the admin sandbox's private per-host scratch
+      // sites (inventory the preview needs). They carry no measurement and must
+      // never appear in the dashboard's site picker as if they were customers.
+      const rows = (siteRows ?? []).filter(
+        (r: { slug: string }) => !r.slug.startsWith("sandbox--"),
+      );
 
       // Ownership filter: admins see every site; everyone else only their own.
       let owned: Set<string> | null = null;
@@ -218,6 +225,7 @@ export const getDashboard = createServerFn({ method: "POST" })
         generatedAt,
         metrics: aggregate(events, inventory, { tzOffsetMinutes }),
         siteConfig,
+        isAdmin: admin,
       };
     } catch (err) {
       console.warn(`[angel] dashboard data unavailable:`, err);
@@ -228,6 +236,7 @@ export const getDashboard = createServerFn({ method: "POST" })
         generatedAt,
         metrics: aggregate([], []),
         siteConfig: DEFAULT_SITE_CONFIG,
+        isAdmin: false,
       };
     }
   });

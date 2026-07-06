@@ -27,6 +27,13 @@ type EventRow = {
   payload: Json;
 };
 
+/** Admin sandbox previews run under `sandbox--<host>` slugs. They must adapt
+ *  (that's the preview) but write NO analytics events — otherwise a preview
+ *  would seed adaptation_shown rows that show up as measurement noise. Inventory
+ *  and site registration still persist (decide reads them back); only the event
+ *  log is suppressed. This is the single choke point for angel_events writes. */
+export const isSandboxSlug = (slug: string): boolean => slug.startsWith("sandbox--");
+
 /**
  * Persist a batch of analytics events. Returns the number stored, or 0 if the
  * store is unavailable. Never throws.
@@ -37,6 +44,8 @@ export async function logEvents(
   events: AngelEvent[],
 ): Promise<number> {
   if (events.length === 0) return 0;
+  // Sandbox previews never write to the event log — see isSandboxSlug.
+  if (isSandboxSlug(site)) return 0;
   const rows: EventRow[] = events.map((e) => ({
     site,
     type: e.type,

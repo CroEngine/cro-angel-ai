@@ -177,6 +177,11 @@ function Dashboard() {
               />
             )}
             <AccountControl />
+            {d.isAdmin && (
+              <Button variant="outline" size="sm" asChild>
+                <a href="/sandbox">Sandbox</a>
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={signOut}>
               Sign out
             </Button>
