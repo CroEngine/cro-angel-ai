@@ -117,9 +117,17 @@ async function awaitVisualSettle(page: Page, label = ""): Promise<void> {
     );
     // eslint-disable-next-line no-console
     console.log(`[replay] visual-settle${label ? ` ${label}` : ""} ${receipt}`);
-  } catch {
-    // Context hiccup — the caller's stable-context gates handle retries;
-    // a missed settle degrades to the pre-fix behavior rather than aborting.
+  } catch (e) {
+    // Context hiccup — the caller's stable-context gates handle retries; a
+    // missed settle degrades to the pre-fix behavior rather than aborting.
+    // LOGGED, inte tyst: en svald settle är exakt den sorts osynliga
+    // nondeterminism-källa den här funktionen finns för att stänga.
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[replay] visual-settle${label ? ` ${label}` : ""} MISSLYCKADES (degraderar till pre-fix-beteende): ${
+        e instanceof Error ? e.message.split("\n")[0] : e
+      }`,
+    );
   }
 }
 
