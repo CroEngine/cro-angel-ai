@@ -166,6 +166,21 @@ function ctaIntentPreferences(c: VisitorContext, goal?: SiteGoal): string[] {
   }
 }
 
+/**
+ * Is this pattern eligible for the site's confirmed goal kind? A pattern with
+ * no `appliesTo` is goal-agnostic (always eligible). A pattern WITH an
+ * appliesTo is dropped only when the site has a CONFIRMED goal kind that the
+ * list excludes — so a "2 minute setup" SaaS badge is not nominated on a
+ * donate site. Backward compatible: no confirmed kind (or an unrecognized
+ * one) → every pattern stays eligible, exactly as before goal kinds existed.
+ */
+function patternFitsGoalKind(id: PatternId, kind?: string | null): boolean {
+  if (!kind) return true;
+  const applies = getPattern(id).appliesTo;
+  if (!applies) return true; // agnostic pattern
+  return (applies as string[]).includes(kind);
+}
+
 /** Microcopy meta.kind a given inject pattern wants. */
 const MICROCOPY_KIND: Partial<Record<PatternId, string>> = {
   show_no_credit_card: "no_credit_card",
@@ -452,6 +467,16 @@ export function decide(
     })
     .filter((e) => e.priority > 0)
     .map((e) => {
+      // Goal-kind eligibility (target architecture step 4): drop patterns the
+      // site's CONFIRMED goal kind excludes BEFORE resolving them, so a
+      // SaaS-flavored pattern never fires on a donate/purchase site even when
+      // matching inventory happens to exist (the load-bearing case is
+      // show_enterprise_testimonial, which reveals ANY testimonial). No
+      // confirmed kind → no gating, so unconfigured sites are unaffected.
+      if (!patternFitsGoalKind(e.id, goal?.kind)) {
+        declined.push({ pattern: e.id, reason: "goal_kind_mismatch" });
+        return null;
+      }
       const result = resolve(e.id, e.priority, context, inventory, goal);
       if (typeof result === "string") {
         declined.push({ pattern: e.id, reason: result });

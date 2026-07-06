@@ -9,6 +9,11 @@
 // Nothing here invents content. Adaptations only ever reference content the
 // site already published (captured in the ContentInventory).
 
+// Type-only import — GoalKind is defined in crawler-inventory.ts (which
+// type-imports from here). A pure type-only cycle: erased at compile, no
+// runtime dependency. Used to declare each Pattern's goal-kind applicability.
+import type { GoalKind } from "./crawler-inventory";
+
 /** Where the visit came from. Derived from UTM parameters, referrer host, and
  * (for in-app browsers that strip the referrer) the User-Agent. */
 export type TrafficSource =
@@ -166,7 +171,12 @@ export type DeclineReason =
   | "single_label_cta"
   | "no_microcopy"
   | "no_inventory_for_slot"
-  | "reveal_would_noop";
+  | "reveal_would_noop"
+  /** The pattern's declared goal-kind applicability (Pattern.appliesTo) does
+   *  not include the site's confirmed conversion goal kind — e.g. a "2 minute
+   *  setup" SaaS badge nominated for a donate site. Only fires when a goal
+   *  kind is confirmed; unconfigured sites are never gated this way. */
+  | "goal_kind_mismatch";
 
 export interface Decision {
   /** Deterministic hash of (site + normalized context). Stable for replay. */
@@ -210,6 +220,16 @@ export interface Pattern {
   op: AdaptationOp;
   /** The slot this pattern operates on. */
   slot: InventorySlot;
+  /** The conversion goal kinds this pattern is appropriate for. Omitted =
+   *  goal-agnostic (eligible for any goal). When a site has a CONFIRMED goal
+   *  kind, decide() drops patterns whose appliesTo is set and excludes it —
+   *  e.g. a "No credit card required" badge (trial/signup) is not nominated on
+   *  a donate/purchase/booking site, where a card is the point. Sites with no
+   *  confirmed kind are never gated (backward compatible). Most patterns are
+   *  content-gated in resolve() already; the load-bearing case is
+   *  show_enterprise_testimonial, which reveals ANY testimonial regardless of
+   *  whether it's enterprise. */
+  appliesTo?: GoalKind[];
 }
 
 /** Client-collected signals POSTed to /api/adaptive/decide. */

@@ -577,3 +577,85 @@ describe("decide — decline reasons (C3) and the micro-nudge floor (D3)", () =>
     expect(suppressed.adaptations.map((a) => a.pattern)).not.toContain("show_2min_setup");
   });
 });
+
+describe("decide — goal-conditioned pattern eligibility (target arch step 4)", () => {
+  // An inventory with the SaaS microcopy + a testimonial + guarantee, so the
+  // SaaS/vertical patterns WOULD fire on content grounds — goal-kind gating is
+  // the only thing that can stop them.
+  const richInv = () => {
+    const inv = emptyInventory("t");
+    inv.slots.microcopy = [
+      { id: "mc-setup", slot: "microcopy", text: "2 minute setup", meta: { kind: "setup_time" } },
+      { id: "mc-nocc", slot: "microcopy", text: "No credit card required", meta: { kind: "no_credit_card" } },
+    ];
+    inv.slots.testimonial = [
+      { id: "t1", slot: "testimonial", selector: '[data-angel-slot="testimonial"]' },
+    ];
+    inv.slots.guarantee = [
+      { id: "g1", slot: "guarantee", selector: '[data-angel-slot="guarantee"]' },
+    ];
+    return inv;
+  };
+
+  it("a confirmed donate goal suppresses the SaaS 'setup'/'no credit card' badges", () => {
+    const inv = richInv();
+    const donate = decide("t", ctx(), inv, {}, { selector: "#g", text: "Ge en gåva", kind: "donate" });
+    const patterns = donate.adaptations.map((a) => a.pattern);
+    expect(patterns).not.toContain("show_2min_setup");
+    expect(patterns).not.toContain("show_no_credit_card");
+    // ...and the decline is explained (C3), not silent.
+    const reasons = (donate.declined ?? []).filter((d) => d.reason === "goal_kind_mismatch");
+    expect(reasons.map((d) => d.pattern)).toContain("show_2min_setup");
+  });
+
+  it("a confirmed purchase goal suppresses show_enterprise_testimonial (the load-bearing case)", () => {
+    // resolve() reveals ANY testimonial, so ONLY goal-kind gating stops a
+    // webshop's LinkedIn visitor from getting a testimonial under 'enterprise'.
+    const inv = richInv();
+    const buyer = decide(
+      "t",
+      ctx({ trafficSource: "linkedin", device: "desktop" }),
+      inv,
+      {},
+      { selector: "#buy", text: "Köp nu", kind: "purchase" },
+    );
+    expect(buyer.adaptations.map((a) => a.pattern)).not.toContain("show_enterprise_testimonial");
+  });
+
+  it("the same SaaS patterns DO fire for a confirmed trial goal (positive control)", () => {
+    // Isolate the injection budget: ONLY setup_time microcopy, so
+    // show_2min_setup (baseline, inject_badge) is the sole inject candidate and
+    // isn't out-competed by a higher-priority inject (e.g. show_no_credit_card).
+    const inv = emptyInventory("t");
+    inv.slots.microcopy = [
+      { id: "mc-setup", slot: "microcopy", text: "2 minute setup", meta: { kind: "setup_time" } },
+    ];
+    const trial = decide("t", ctx(), inv, {}, { selector: "#t", text: "Prova gratis", kind: "trial" });
+    // trial is in show_2min_setup.appliesTo → eligible, so it fires.
+    expect(trial.adaptations.map((a) => a.pattern)).toContain("show_2min_setup");
+    // ...and it is NOT recorded as a goal-kind decline.
+    expect((trial.declined ?? []).some((d) => d.pattern === "show_2min_setup")).toBe(false);
+  });
+
+  it("no confirmed kind → no gating (backward compatible with every prior test)", () => {
+    const inv = emptyInventory("t");
+    inv.slots.microcopy = [
+      { id: "mc-setup", slot: "microcopy", text: "2 minute setup", meta: { kind: "setup_time" } },
+    ];
+    const withKind = decide("t", ctx(), inv, {}, { selector: "#g", text: "x", kind: "donate" });
+    const noKind = decide("t", ctx(), inv, {}, { selector: "#g", text: "x" }); // kind undefined
+    // The donate site loses the SaaS badge (gated); the no-kind site keeps it.
+    expect(withKind.adaptations.map((a) => a.pattern)).not.toContain("show_2min_setup");
+    expect((withKind.declined ?? []).some(
+      (d) => d.pattern === "show_2min_setup" && d.reason === "goal_kind_mismatch",
+    )).toBe(true);
+    expect(noKind.adaptations.map((a) => a.pattern)).toContain("show_2min_setup");
+  });
+
+  it("agnostic patterns (emphasize_goal) fire regardless of goal kind", () => {
+    for (const kind of ["donate", "purchase", "subscribe", "booking"] as const) {
+      const d = decide("t", ctx(), emptyInventory("t"), {}, { selector: "#g", text: "x", kind });
+      expect(d.adaptations.map((a) => a.pattern)).toContain("emphasize_goal");
+    }
+  });
+});

@@ -598,14 +598,21 @@ const KIND_HREF: { kind: GoalKind; rx: RegExp }[] = [
  * Best-effort language-independent-first classification of what CONVERTING via
  * this CTA means. Priority: hard structural signals (form/tel/mailto/off-domain)
  * → href path → text. Falls back to `start_flow` for a prominent same-site
- * acquisition link (a category/funnel entry, e.g. a comparison portal's
- * "Bilförsäkring"), and `signup` for a bare button with no other signal.
+ * acquisition link OR a category-grid tile (a funnel entry, e.g. a comparison
+ * portal's "Bilförsäkring" or a booking portal's "Frisör"/"Massage"), and
+ * `signup` for a bare button with no other signal.
+ *
+ * `variantCount` is the "1 of N near-identical siblings" grid signal from
+ * collapseUniformStrips — the same signal the holistic LLM judge uses to read
+ * a category/funnel (goal-judge.server.ts). Without it a booking marketplace's
+ * href-less service tiles fell through to the bare-button `signup` default.
  */
 export function classifyGoalKind(
   text: string,
   href: string | undefined,
   siteDomain: string | null,
   inForm = false,
+  variantCount = 0,
 ): GoalKind {
   const h = (href ?? "").trim();
   if (/^tel:/i.test(h) || inForm) return "lead";
@@ -626,6 +633,11 @@ export function classifyGoalKind(
   // A same-site link that survived acquisition filtering but matched no verb is
   // most likely a funnel/category entry.
   if (h && /^(\/|https?:)/i.test(h)) return "start_flow";
+  // A prominent tile that is one of N near-identical siblings (a category grid
+  // / funnel of options) is a funnel entry even without an href — the booking-
+  // /comparison-portal case. Verb-bearing labels ("Skapa konto") already
+  // returned above, so this only catches the residual no-verb bucket.
+  if (variantCount > 1) return "start_flow";
   return "signup";
 }
 
@@ -661,11 +673,14 @@ export function rankGoalCandidates(
     // inForm (A2): a harvested in-form submit classifies as lead, not as a
     // bare "signup" button — so a hero newsletter form can't masquerade as
     // the site's signup goal in the no-LLM floor.
+    // variantCount (C): a category-grid tile reads as start_flow, not signup —
+    // a booking/comparison portal's href-less funnel entries.
     kind: classifyGoalKind(
       s.c.text as string,
       s.c.meta?.href,
       siteDomain,
       s.c.meta?.inForm === "true",
+      Number(s.c.meta?.variantCount ?? "0") || 0,
     ),
     rank: idx + 1,
     confidence: 0.5,
