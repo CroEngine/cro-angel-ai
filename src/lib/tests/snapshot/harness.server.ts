@@ -90,45 +90,49 @@ async function waitForStableContext(
 // images (external requests are route-aborted by design) — swallowed per
 // image; this waits for what CAN finish, deterministically.
 async function awaitVisualSettle(page: Page, label = ""): Promise<void> {
-  try {
-    const receipt = await page.evaluate(
-      `(async () => {
-        // Varje steg är CAPPAT: route-abortade externa laddningar kan lämna
-        // document.fonts.ready / img.decode() PERMANENT pending (de blir aldrig
-        // klara, men reflowar heller aldrig senare), och en obunden await
-        // hänger då hela replayen. Arkiv-resurser (cid:/data:) dekodar på
-        // millisekunder från disk, så cappen binder bara för de permanent
-        // fastnade — tillståndet vid mätning är "allt som KAN bli klart är
-        // klart", vilket är deterministiskt.
-        const cap = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]);
-        const out = { imgs: document.images.length, fontsMs: 0, imgsMs: 0 };
-        let t = Date.now();
-        try { await cap(document.fonts.ready, 4000); } catch {}
-        out.fontsMs = Date.now() - t;
-        t = Date.now();
-        await cap(
-          Promise.all(Array.from(document.images).map((img) => img.decode().catch(() => {}))),
-          4000,
-        );
-        out.imgsMs = Date.now() - t;
-        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        return JSON.stringify(out);
-      })()`,
-    );
-    // eslint-disable-next-line no-console
-    console.log(`[replay] visual-settle${label ? ` ${label}` : ""} ${receipt}`);
-  } catch (e) {
-    // Context hiccup — the caller's stable-context gates handle retries; a
-    // missed settle degrades to the pre-fix behavior rather than aborting.
-    // LOGGED, inte tyst: en svald settle är exakt den sorts osynliga
-    // nondeterminism-källa den här funktionen finns för att stänga.
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[replay] visual-settle${label ? ` ${label}` : ""} MISSLYCKADES (degraderar till pre-fix-beteende): ${
-        e instanceof Error ? e.message.split("\n")[0] : e
-      }`,
-    );
+  // NODE-DRIVEN med KORTA evaluates — samma arkitekturregel som nodeLoopScroll:
+  // MHTML:ens fördröjda commit river execution-contexten sporadiskt, och en
+  // lång in-page await (fonts.ready + decode()-kedjor) spänner över teardownen
+  // och dör med "Execution context was destroyed" (verifierat 2026-07-06 —
+  // första settle-versionen small exakt så). Korta reads kostar en retry-tick
+  // vid teardown i stället för hela settlen.
+  //
+  // Slutpunkt: fonts loaded + 0 icke-kompletta bilder, ELLER oförändrat
+  // tillstånd 3 ticks i rad. Route-abortade externa laddningar blir aldrig
+  // klara men ändrar sig heller aldrig — "stabilt" är därmed deterministiskt
+  // även för dem. Layout styrs av intrinsic size (img.complete) och font-swap
+  // (fonts.status) — raster-dekodning flyttar ingen layout och behöver inte
+  // inväntas.
+  const t0 = Date.now();
+  let last = "";
+  let stable = 0;
+  let receipt = "(unread)";
+  for (let i = 0; i < 40 && Date.now() - t0 < 8000; i++) {
+    let cur: string;
+    try {
+      cur = (await page.evaluate(
+        `JSON.stringify({ f: document.fonts.status, i: Array.from(document.images).filter((im) => !im.complete).length })`,
+      )) as string;
+    } catch {
+      stable = 0; // context-teardown mitt i ticken — börja om på stabilitetsräkningen
+      await new Promise((r) => setTimeout(r, 200));
+      continue;
+    }
+    receipt = cur;
+    stable = cur === last ? stable + 1 : 1;
+    last = cur;
+    if (cur === '{"f":"loaded","i":0}' || stable >= 3) break;
+    await new Promise((r) => setTimeout(r, 200));
   }
+  // INGEN rAF-commit: en statisk headless-sida producerar inga nya frames, så
+  // en dubbel-rAF-vänta hänger tills nästa naturliga invalidation (uppmätt
+  // 6-20s/sajt 2026-07-06). Den är också onödig — Blink-layout är synkron vid
+  // läsning: COLLECT_SCRIPTs getBoundingClientRect tvingar själv fram färsk
+  // layout från det settlade font-/bildtillståndet ovan.
+  // eslint-disable-next-line no-console
+  console.log(
+    `[replay] visual-settle${label ? ` ${label}` : ""} ${receipt} ${Date.now() - t0}ms`,
+  );
 }
 
 // Node-driven scroll loop. Re-reads scrollHeight before each step so lazy-load
