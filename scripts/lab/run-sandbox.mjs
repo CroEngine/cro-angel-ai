@@ -201,20 +201,34 @@ const browser = await chromium.launch({ executablePath: CHROME, args: ["--no-san
   await installEgressProxy(ctx);
   const page = await ctx.newPage();
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+  // Assets stream in slowly through the node proxy, so give the page time and
+  // sweep-scroll it to render lazy/below-fold CTAs (a comparison portal's whole
+  // category grid) BEFORE harvesting — otherwise we capture a thin page.
+  await page.waitForTimeout(2500);
+  await page.evaluate(async () => {
+    const h = document.documentElement.scrollHeight;
+    for (let y = 0; y <= h; y += Math.max(400, window.innerHeight)) {
+      window.scrollTo(0, y);
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    window.scrollTo(0, 0);
+  });
   await page.waitForTimeout(1500);
-  // Force the harvester regardless of sampling, so inventory + auto-goal +
-  // labelling happen NOW rather than on a lucky visit.
+  // Force the harvester regardless of sampling; data-warmup sweeps again so lazy
+  // content is present at extraction time.
   await page.evaluate(() => {
+    const tag = document.querySelector("script[data-site]");
     const s = document.createElement("script");
     s.src = "/__angel/prox/adaptive-harvest.js";
-    s.setAttribute("data-site", document.querySelector("script[data-site]").getAttribute("data-site"));
-    s.setAttribute("data-endpoint", document.querySelector("script[data-site]").getAttribute("data-endpoint"));
+    s.setAttribute("data-site", tag.getAttribute("data-site"));
+    s.setAttribute("data-endpoint", tag.getAttribute("data-endpoint"));
     s.setAttribute("data-force", "1");
+    s.setAttribute("data-warmup", "1");
     document.head.appendChild(s);
   });
-  await page.waitForTimeout(9000); // harvest POST + ingest (incl. LLM labelling + auto-goal)
+  await page.waitForTimeout(10000); // harvest POST + ingest (incl. LLM labelling + goal judge)
   await page.context().close();
-  console.log("[sandbox] harvest visit done — inventory + auto-goal ingested");
+  console.log("[sandbox] harvest visit done — inventory + goal candidates ingested");
 }
 
 // Best-effort: click away a cookie banner so the shots show the page, not the
@@ -250,6 +264,11 @@ for (let i = 0; i < Math.min(PERSONAS, PERSONA_DEFS.length); i++) {
   const p = PERSONA_DEFS[i];
   const context = await browser.newContext({ viewport: p.viewport });
   await installEgressProxy(context);
+  // Personas PREVIEW only — the dedicated harvest visit is authoritative. In
+  // anonymous mode the snippet re-harvests ~10% of loads, and a persona (esp.
+  // mobile) would capture a thinner page and clobber the good candidates. Block
+  // the harvester so the harvest visit's inventory + goal ranking stand.
+  await context.route("**/adaptive-harvest*", (r) => r.abort());
   const page = await context.newPage();
   const out = { persona: p.name, applied: [] };
   try {

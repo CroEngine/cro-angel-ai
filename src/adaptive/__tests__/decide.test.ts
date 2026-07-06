@@ -58,10 +58,12 @@ describe("decide — blueprint scenarios", () => {
     expect(cta?.value).toBe("Start Free Trial");
   });
 
-  it("Visitor 3: returning, viewed pricing → surface pricing + continue where left off", () => {
+  it("Visitor 3: returning, viewed pricing → surface pricing + case study (non-invasive only)", () => {
     const patterns = patternsOf(ctx({ isReturning: true, visitCount: 2, viewedPricing: true }));
     expect(patterns).toContain("surface_pricing");
-    expect(patterns).toContain("continue_where_left_off");
+    expect(patterns).toContain("show_case_study");
+    // The old injected "continue where you left off" badge is gone — non-invasive.
+    expect(patterns).not.toContain("continue_where_left_off");
   });
 });
 
@@ -283,92 +285,18 @@ describe("levers — sticky goal shortcut and softer secondary CTA", () => {
     },
   });
 
-  it("mobile visitors get the sticky goal shortcut, desktop does not", () => {
-    const mobile = decide("t", ctx({ device: "mobile", pageType: "content" }), emptyInventory("t"), {}, goal);
-    const sticky = mobile.adaptations.find((a) => a.pattern === "sticky_goal_cta");
-    expect(sticky?.op).toBe("inject_sticky");
-    expect(sticky?.value).toBe("Skapa konto");
-    expect(sticky?.anchorText).toBe("Skapa konto");
-
-    const desktop = decide("t", ctx({ device: "desktop", pageType: "content" }), emptyInventory("t"), {}, goal);
-    expect(desktop.adaptations.find((a) => a.pattern === "sticky_goal_cta")).toBeUndefined();
+  it("never injects a floating sticky pill — mobile or desktop (non-invasive policy)", () => {
+    for (const device of ["mobile", "desktop"] as const) {
+      const d = decide("t", ctx({ device, pageType: "content" }), emptyInventory("t"), {}, goal);
+      expect(d.adaptations.find((a) => a.pattern === "sticky_goal_cta")).toBeUndefined();
+      expect(d.adaptations.some((a) => a.op === "inject_sticky")).toBe(false);
+    }
   });
 
-  it("sticky requires a labelled goal and steps aside on conversion pages", () => {
-    const noText = decide("t", ctx({ device: "mobile" }), emptyInventory("t"), {}, { selector: "#x" });
-    expect(noText.adaptations.find((a) => a.pattern === "sticky_goal_cta")).toBeUndefined();
-
-    const convPage = decide("t", ctx({ device: "mobile", pageType: "conversion" }), emptyInventory("t"), {}, goal);
-    expect(convPage.adaptations.find((a) => a.pattern === "sticky_goal_cta")).toBeUndefined();
-  });
-
-  it("cold first-time visitors get a published softer option with its own href", () => {
-    const cold = decide(
-      "t",
-      ctx({ isReturning: false, visitCount: 0, pageType: "home" }),
-      invWithAlt(),
-      {},
-      goal,
-    );
-    const alt = cold.adaptations.find((a) => a.pattern === "show_secondary_cta");
-    expect(alt?.op).toBe("inject_secondary");
-    expect(alt?.value).toBe("Se hur det fungerar");
-    expect(alt?.href).toBe("/sa-funkar-det");
-
-    const warm = decide(
-      "t",
-      ctx({ isReturning: true, visitCount: 3, pageType: "home" }),
-      invWithAlt(),
-      {},
-      goal,
-    );
-    expect(warm.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
-  });
-
-  it("secondary never fires without a distinct published alternative or with a javascript: href", () => {
-    const onlyGoal = decide(
-      "t",
-      ctx({ isReturning: false, visitCount: 0 }),
-      {
-        site: "t",
-        slots: {
-          cta: [
-            {
-              id: "c-goal",
-              slot: "cta" as const,
-              text: "Skapa konto",
-              selector: "#signup",
-              meta: { role: "acquisition", href: "/skapa-konto" },
-            },
-          ],
-        },
-      },
-      {},
-      goal,
-    );
-    expect(onlyGoal.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
-
-    const evil = decide(
-      "t",
-      ctx({ isReturning: false, visitCount: 0 }),
-      {
-        site: "t",
-        slots: {
-          cta: [
-            {
-              id: "c-evil",
-              slot: "cta" as const,
-              text: "Se mer",
-              selector: "#e",
-              meta: { role: "acquisition", href: "javascript:alert(1)" },
-            },
-          ],
-        },
-      },
-      {},
-      goal,
-    );
-    expect(evil.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
+  it("never injects a secondary CTA link — cold or warm visitors", () => {
+    const cold = decide("t", ctx({ isReturning: false, visitCount: 0, pageType: "home" }), invWithAlt(), {}, goal);
+    expect(cold.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
+    expect(cold.adaptations.some((a) => a.op === "inject_secondary")).toBe(false);
   });
 });
 
@@ -399,32 +327,21 @@ describe("design integrity — the page stays the customer's", () => {
     expect(d.adaptations.length).toBeLessThanOrEqual(3);
   });
 
-  it("injects at most ONE added element per page (sticky beats secondary by priority)", () => {
-    const d = decide(
-      "t",
+  it("NEVER adds an element to the page — zero injections, any visitor", () => {
+    // Sweep the visitor space that used to trigger sticky / secondary / badge.
+    const contexts = [
       ctx({ device: "mobile", isReturning: false, visitCount: 0, pageType: "content" }),
-      richInventory(),
-      {},
-      goal,
-    );
-    const injects = d.adaptations.filter((a) =>
-      ["inject_sticky", "inject_secondary", "inject_badge"].includes(a.op),
-    );
-    expect(injects.length).toBe(1);
-    expect(injects[0].pattern).toBe("sticky_goal_cta"); // highest-priority injection wins
-  });
-
-  it("desktop cold visitors get the secondary link as their single injection", () => {
-    const d = decide(
-      "t",
       ctx({ device: "desktop", isReturning: false, visitCount: 0, pageType: "home" }),
-      richInventory(),
-      {},
-      goal,
-    );
-    const injects = d.adaptations.filter((a) =>
-      ["inject_sticky", "inject_secondary", "inject_badge"].includes(a.op),
-    );
-    expect(injects.map((a) => a.pattern)).toEqual(["show_secondary_cta"]);
+      ctx({ trafficSource: "google_ads", isReturning: false }),
+      ctx({ isReturning: true, viewedPricing: true }),
+      ctx({ device: "mobile", trafficSource: "google" }),
+    ];
+    for (const c of contexts) {
+      const d = decide("t", c, richInventory(), {}, goal);
+      const injects = d.adaptations.filter((a) =>
+        ["inject_sticky", "inject_secondary", "inject_badge"].includes(a.op),
+      );
+      expect(injects).toEqual([]);
+    }
   });
 });
