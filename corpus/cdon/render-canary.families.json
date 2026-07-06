@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "env": {
+    "chromiumPath": "<playwright-bundled>",
+    "chromiumVersion": "148.0.7778.96",
+    "pinned": true
+  },
+  "families": [
+    {
+      "family": "__Manrope_812432",
+      "gate1": {
+        "wWith": 419,
+        "wFallback": 520.171875,
+        "deltaLoad": 101.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "__Manrope_812432",
+          "allDescriptorFamilies": [
+            "hotjar",
+            "roboto",
+            "roboto",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_Fallback_812432",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_Fallback_353619"
+          ],
+          "matchedDescriptorFamilies": [
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432"
+          ],
+          "checkString": "16px \"__Manrope_812432\"",
+          "widthString": "\"__Manrope_812432\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "__Varela_Round_353619",
+      "gate1": {
+        "wWith": 444,
+        "wFallback": 520.171875,
+        "deltaLoad": 76.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "__Varela_Round_353619",
+          "allDescriptorFamilies": [
+            "hotjar",
+            "roboto",
+            "roboto",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_Fallback_812432",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_Fallback_353619"
+          ],
+          "matchedDescriptorFamilies": [
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619"
+          ],
+          "checkString": "16px \"__Varela_Round_353619\"",
+          "widthString": "\"__Varela_Round_353619\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "hotjar",
+      "gate1": {
+        "wWith": 505.484375,
+        "wFallback": 520.171875,
+        "deltaLoad": 14.6875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "hotjar",
+          "allDescriptorFamilies": [
+            "hotjar",
+            "roboto",
+            "roboto",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_Fallback_812432",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_Fallback_353619"
+          ],
+          "matchedDescriptorFamilies": [
+            "hotjar"
+          ],
+          "checkString": "16px \"hotjar\"",
+          "widthString": "\"hotjar\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "roboto",
+      "gate1": {
+        "wWith": 410,
+        "wFallback": 520.171875,
+        "deltaLoad": 110.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "roboto",
+          "allDescriptorFamilies": [
+            "hotjar",
+            "roboto",
+            "roboto",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_812432",
+            "__Manrope_Fallback_812432",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_353619",
+            "__Varela_Round_Fallback_353619"
+          ],
+          "matchedDescriptorFamilies": [
+            "roboto",
+            "roboto"
+          ],
+          "checkString": "16px \"roboto\"",
+          "widthString": "\"roboto\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    }
+  ]
+}

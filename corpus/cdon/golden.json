@@ -130,7 +130,7 @@
         "yBand": 9600,
         "score": 10,
         "bgContrast": 1,
-        "area": 3000
+        "area": 4000
       },
       {
         "text": "Balkongbord",
@@ -144,7 +144,7 @@
         "yBand": 9600,
         "score": 10,
         "bgContrast": 1,
-        "area": 4000
+        "area": 5000
       },
       {
         "text": "Barncykel",
@@ -200,7 +200,7 @@
         "yBand": 9600,
         "score": 10,
         "bgContrast": 1,
-        "area": 5000
+        "area": 6000
       },
       {
         "text": "Elsparkcykel",
@@ -214,7 +214,7 @@
         "yBand": 9600,
         "score": 10,
         "bgContrast": 1,
-        "area": 4000
+        "area": 5000
       },
       {
         "text": "Förråd",
@@ -242,7 +242,7 @@
         "yBand": 9600,
         "score": 10,
         "bgContrast": 1,
-        "area": 3000
+        "area": 4000
       },
       {
         "text": "Hudvård",
@@ -284,7 +284,7 @@
         "yBand": 9600,
         "score": 10,
         "bgContrast": 1,
-        "area": 4000
+        "area": 5000
       },
       {
         "text": "Parfym herr",
@@ -340,7 +340,7 @@
         "yBand": 9600,
         "score": 10,
         "bgContrast": 1,
-        "area": 6000
+        "area": 7000
       },
       {
         "text": "Smink",
@@ -704,7 +704,7 @@
         "yBand": 9800,
         "score": 10,
         "bgContrast": 1,
-        "area": 4000
+        "area": 5000
       },
       {
         "text": "Snus",
@@ -1474,7 +1474,7 @@
         "yBand": 10200,
         "score": 40,
         "bgContrast": 14,
-        "area": 1000
+        "area": 2000
       },
       {
         "text": "Om oss",
@@ -1950,7 +1950,7 @@
         "yBand": 200,
         "score": 10,
         "bgContrast": 1,
-        "area": 7000
+        "area": 8000
       },
       {
         "text": "Skönhet",
