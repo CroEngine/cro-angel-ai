@@ -89,19 +89,34 @@ async function waitForStableContext(
 // before anything measures layout. decode() rejects for aborted/broken
 // images (external requests are route-aborted by design) — swallowed per
 // image; this waits for what CAN finish, deterministically.
-async function awaitVisualSettle(page: Page): Promise<void> {
+async function awaitVisualSettle(page: Page, label = ""): Promise<void> {
   try {
-    await page.evaluate(
+    const receipt = await page.evaluate(
       `(async () => {
-        try { await document.fonts.ready; } catch {}
-        await Promise.all(
-          Array.from(document.images).map((img) =>
-            img.decode().catch(() => {})
-          )
+        // Varje steg är CAPPAT: route-abortade externa laddningar kan lämna
+        // document.fonts.ready / img.decode() PERMANENT pending (de blir aldrig
+        // klara, men reflowar heller aldrig senare), och en obunden await
+        // hänger då hela replayen. Arkiv-resurser (cid:/data:) dekodar på
+        // millisekunder från disk, så cappen binder bara för de permanent
+        // fastnade — tillståndet vid mätning är "allt som KAN bli klart är
+        // klart", vilket är deterministiskt.
+        const cap = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]);
+        const out = { imgs: document.images.length, fontsMs: 0, imgsMs: 0 };
+        let t = Date.now();
+        try { await cap(document.fonts.ready, 4000); } catch {}
+        out.fontsMs = Date.now() - t;
+        t = Date.now();
+        await cap(
+          Promise.all(Array.from(document.images).map((img) => img.decode().catch(() => {}))),
+          4000,
         );
+        out.imgsMs = Date.now() - t;
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        return JSON.stringify(out);
       })()`,
     );
+    // eslint-disable-next-line no-console
+    console.log(`[replay] visual-settle${label ? ` ${label}` : ""} ${receipt}`);
   } catch {
     // Context hiccup — the caller's stable-context gates handle retries;
     // a missed settle degrades to the pre-fix behavior rather than aborting.
@@ -398,7 +413,7 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
 
     // Deterministisk settle FÖRE allt som mäter layout (canary + collect):
     // fonts.ready + bilddekodning + dubbel rAF. Se awaitVisualSettle.
-    await awaitVisualSettle(page);
+    await awaitVisualSettle(page, "pre-canary");
 
     // Render-canary: gate före Fas 2. Verifierar att de cid:-inbäddade
     // familjerna faktiskt resolvar och påverkar layout (inte bara "registrerade").
@@ -528,7 +543,7 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
 
     // Re-settle efter scrollen: lazy-bilder som började ladda under scrollen
     // måste ha dekodat (och deras reflow committats) innan collect mäter.
-    await awaitVisualSettle(page);
+    await awaitVisualSettle(page, "pre-collect");
 
     const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
     // eslint-disable-next-line no-console
