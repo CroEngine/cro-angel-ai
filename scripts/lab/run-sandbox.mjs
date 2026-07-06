@@ -51,26 +51,42 @@ const snippetJs = fs.readFileSync(path.join(__dirname, "..", "..", "public", "ad
 const harvestJs = fs.readFileSync(path.join(__dirname, "..", "..", "public", "adaptive-harvest.js"));
 
 // ---- target fetch (fetch → curl fallback) --------------------------------------
-// In proxied environments node's fetch can fail TLS to some origins while curl
-// (honouring HTTPS_PROXY + CA bundle) gets through — fall back per request.
-const UA = "Mozilla/5.0 (AngelSandbox preview)";
+// node's fetch (undici) is fingerprinted-blocked (403) by some bot walls that
+// curl sails through, and in proxied envs its TLS can fail where curl's
+// (HTTPS_PROXY + CA bundle) succeeds. So: try node, fall back to curl on error,
+// relay 5xx, OR a bot-block status. A real browser UA + Accept headers get past
+// UA sniffers.
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+const BROWSER_HEADERS = {
+  "user-agent": UA,
+  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  "accept-language": "sv-SE,sv;q=0.9,en;q=0.8",
+};
+const BOT_BLOCK = new Set([401, 403, 405, 406, 429, 451]);
 const execFileP = promisify(execFile);
 let tmpSeq = 0;
-async function fetchTarget(url) {
+async function fetchTarget(url, extraHeaders = {}) {
   try {
-    const r = await fetch(url, { headers: { "user-agent": UA }, redirect: "follow" });
+    const r = await fetch(url, { headers: { ...BROWSER_HEADERS, ...extraHeaders }, redirect: "follow" });
     const body = Buffer.from(await r.arrayBuffer());
-    // An intermediary transport failure (Envoy-style 5xx) is not the target's
-    // answer — fall through to curl for those instead of mirroring the error.
-    const relayFail = r.status >= 502 && body.subarray(0, 80).toString().includes("upstream connect error");
-    if (!relayFail) return { status: r.status, type: r.headers.get("content-type") || "", body };
+    const relayFail =
+      r.status >= 502 && body.subarray(0, 80).toString().includes("upstream connect error");
+    // A bot wall answers node but not curl — fall through so the asset loads.
+    if (!relayFail && !BOT_BLOCK.has(r.status)) {
+      return { status: r.status, type: r.headers.get("content-type") || "", body };
+    }
   } catch {
     /* fall through to curl */
   }
   const tmp = path.join(os.tmpdir(), `angel-sandbox-${process.pid}-${tmpSeq++}`);
+  const hdrArgs = Object.entries({ ...BROWSER_HEADERS, ...extraHeaders }).flatMap(([k, v]) => [
+    "-H",
+    `${k}: ${v}`,
+  ]);
   try {
     const { stdout } = await execFileP("curl", [
-      "-sS", "-L", "--max-time", "25", "-A", UA,
+      "-sS", "-L", "--max-time", "25", ...hdrArgs,
       "-o", tmp, "-w", "%{http_code}\t%{content_type}", url,
     ]);
     const [code, type] = stdout.split("\t");
@@ -78,6 +94,33 @@ async function fetchTarget(url) {
   } finally {
     fs.rmSync(tmp, { force: true });
   }
+}
+
+// Route EVERY browser request that isn't our local mirror through node (which
+// has egress; the lab Chromium doesn't). Cross-origin assets — CDNs, font hosts,
+// resources.<site>, Trustpilot widgets — load this way, so the shot shows the
+// real design, not a bare skeleton. Applied to each BrowserContext.
+async function installEgressProxy(context) {
+  await context.route("**/*", async (route) => {
+    const req = route.request();
+    const url = req.url();
+    // Local mirror (snippet, API forwarding, main HTML) is served by our http
+    // server — let those hit 127.0.0.1 directly.
+    if (url.includes("127.0.0.1") || url.startsWith("data:") || url.startsWith("blob:")) {
+      return route.continue();
+    }
+    try {
+      const method = req.method();
+      const fetched = await fetchTarget(url, method === "GET" ? {} : {});
+      await route.fulfill({
+        status: fetched.status,
+        contentType: fetched.type || undefined,
+        body: fetched.body,
+      });
+    } catch {
+      await route.abort();
+    }
+  });
 }
 
 // ---- mirror server -----------------------------------------------------------
@@ -154,7 +197,9 @@ console.log(`[sandbox] mirroring ${TARGET} → ${PAGE} as site "${SITE}"`);
 // ---- 1) harvest visit: teach Angel the page -----------------------------------
 const browser = await chromium.launch({ executablePath: CHROME, args: ["--no-sandbox"] });
 {
-  const page = await (await browser.newContext({ viewport: { width: 1366, height: 900 } })).newPage();
+  const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  await installEgressProxy(ctx);
+  const page = await ctx.newPage();
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
   // Force the harvester regardless of sampling, so inventory + auto-goal +
@@ -204,6 +249,7 @@ const results = [];
 for (let i = 0; i < Math.min(PERSONAS, PERSONA_DEFS.length); i++) {
   const p = PERSONA_DEFS[i];
   const context = await browser.newContext({ viewport: p.viewport });
+  await installEgressProxy(context);
   const page = await context.newPage();
   const out = { persona: p.name, applied: [] };
   try {

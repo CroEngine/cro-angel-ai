@@ -458,6 +458,165 @@ export function pickGoalCta(
   return null;
 }
 
+// ---- goal KIND + ranked candidates (the "propose" side) ---------------------
+//
+// A site's goal is not always a SaaS signup. `GoalKind` widens what a conversion
+// can be so the proposal fits any business — a comparison portal's real goal is
+// starting a comparison / an affiliate outbound click, not "create account".
+// The kind is a language-independent-first classification (href/structure), with
+// EN+SV text as backup; the holistic LLM judge (goal-judge.server.ts) refines it
+// and ranks, but this is the deterministic floor + no-key fallback.
+
+export type GoalKind =
+  | "signup"
+  | "purchase"
+  | "booking"
+  | "trial"
+  | "quote"
+  | "contact"
+  | "lead"
+  | "outbound"
+  | "start_flow"
+  | "subscribe"
+  | "download";
+
+export const GOAL_KINDS: GoalKind[] = [
+  "signup",
+  "purchase",
+  "booking",
+  "trial",
+  "quote",
+  "contact",
+  "lead",
+  "outbound",
+  "start_flow",
+  "subscribe",
+  "download",
+];
+
+export interface GoalCandidate {
+  selector: string;
+  text: string;
+  href?: string;
+  kind: GoalKind;
+  /** 1 = primary; higher = weaker. */
+  rank: number;
+  /** 0..1 — the judge's confidence; rule-derived candidates use a fixed floor. */
+  confidence: number;
+  /** Where the kind/ranking came from. */
+  source: "rule" | "llm";
+}
+
+/** Registrable-ish host compare: strip a leading www. and lowercase. Good enough
+ *  to tell "same site" from "affiliate/partner domain" for goal classification. */
+function normHost(h: string): string {
+  return h.replace(/^www\./i, "").toLowerCase();
+}
+
+/** Resolve an href's host against the site domain; null when relative/unknown. */
+function hrefHost(href: string | undefined, siteDomain: string | null): string | null {
+  if (!href) return null;
+  try {
+    const base = siteDomain ? `https://${siteDomain}` : "https://x.invalid";
+    return normHost(new URL(href, base).hostname);
+  } catch {
+    return null;
+  }
+}
+
+const KIND_TEXT: { kind: GoalKind; rx: RegExp }[] = [
+  { kind: "purchase", rx: /\b(k[öo]p|best[äa]ll|add to (cart|basket|bag)|l[äa]gg i varukorg|buy|checkout|till kassan)\b/i },
+  { kind: "signup", rx: /\b(skapa konto|sign ?up|register|registrera|bli medlem|create (an )?account|join)\b/i },
+  { kind: "booking", rx: /\b(boka|book|schedule|reservera|boka tid)\b/i },
+  { kind: "trial", rx: /\b(prova|trial|get started|kom ig[åa]ng|start free|starta gratis)\b/i },
+  { kind: "quote", rx: /\b(offert|f[åa] (en )?offert|get a quote|request a quote|pris(f[öo]rslag)?)\b/i },
+  { kind: "lead", rx: /\b(vi ringer upp|ring mig|bli uppringd|get a callback|request a call|boka (ett )?samtal|kontakta mig)\b/i },
+  { kind: "contact", rx: /\b(kontakta oss|contact( sales| us)?|kontakt|talk to sales)\b/i },
+  { kind: "subscribe", rx: /\b(prenumerera|subscribe|newsletter|nyhetsbrev|f[öo]lj)\b/i },
+  { kind: "download", rx: /\b(ladda ner|download|h[äa]mta appen|get the app|install)\b/i },
+];
+
+const KIND_HREF: { kind: GoalKind; rx: RegExp }[] = [
+  { kind: "purchase", rx: /\/(checkout|cart|kassa|varukorg|order|betala)([/?#]|$)/i },
+  { kind: "signup", rx: /\/(sign-?up|signup|register|registrera|skapa-konto|join|create-account)([/?#]|$)/i },
+  { kind: "booking", rx: /\/(book|boka|schedule|reservera|appointment)([/?#]|$)/i },
+  { kind: "trial", rx: /\/(trial|free-trial|prova|kom-igang|get-started)([/?#]|$)/i },
+  { kind: "quote", rx: /\/(quote|offert|pris|get-a-quote)([/?#]|$)/i },
+  { kind: "contact", rx: /\/(contact|kontakt|sales)([/?#]|$)/i },
+  { kind: "download", rx: /(apps\.apple\.com|play\.google\.com|\/(download|ladda-ner))/i },
+];
+
+/**
+ * Best-effort language-independent-first classification of what CONVERTING via
+ * this CTA means. Priority: hard structural signals (form/tel/mailto/off-domain)
+ * → href path → text. Falls back to `start_flow` for a prominent same-site
+ * acquisition link (a category/funnel entry, e.g. a comparison portal's
+ * "Bilförsäkring"), and `signup` for a bare button with no other signal.
+ */
+export function classifyGoalKind(
+  text: string,
+  href: string | undefined,
+  siteDomain: string | null,
+  inForm = false,
+): GoalKind {
+  const h = (href ?? "").trim();
+  if (/^tel:/i.test(h) || inForm) return "lead";
+  if (/^mailto:/i.test(h)) return "contact";
+
+  const host = hrefHost(h, siteDomain);
+  const isAbsolute = /^https?:\/\//i.test(h);
+  const offDomain =
+    isAbsolute && host !== null && siteDomain !== null && host !== normHost(siteDomain);
+
+  for (const { kind, rx } of KIND_HREF) if (h && rx.test(h)) return kind;
+  const t = (text ?? "").trim();
+  for (const { kind, rx } of KIND_TEXT) if (rx.test(t)) return kind;
+
+  // An off-domain link with no other signal reads as an affiliate/partner
+  // handoff — the conversion for comparison/lead-gen sites.
+  if (offDomain) return "outbound";
+  // A same-site link that survived acquisition filtering but matched no verb is
+  // most likely a funnel/category entry.
+  if (h && /^(\/|https?:)/i.test(h)) return "start_flow";
+  return "signup";
+}
+
+/**
+ * Deterministic ranked candidate list — the no-LLM floor the judge builds on.
+ * Acquisition CTAs only, scored by the language-independent prominence score,
+ * each tagged with a GoalKind. Pure; stable order (score desc, then original
+ * order). `MAX_GOAL_CANDIDATES` keeps the dashboard list human.
+ */
+export const MAX_GOAL_CANDIDATES = 6;
+
+export function rankGoalCandidates(
+  inventory: ContentInventory,
+  siteDomain: string | null,
+): GoalCandidate[] {
+  const ctas = (inventory.slots.cta ?? []).filter((c) => c.selector && c.text && isAcquisition(c));
+  const scored = ctas.map((c, i) => ({
+    c,
+    i,
+    score: ctaScore({
+      visualWeight: Number(c.meta?.visualWeight ?? "0") || undefined,
+      aboveFold: c.meta?.aboveFold === "true",
+      category: c.meta?.category,
+      intent: c.meta?.elementIntent,
+      competingActions: Number(c.meta?.competingActions ?? "0") || undefined,
+    }),
+  }));
+  scored.sort((a, b) => b.score - a.score || a.i - b.i);
+  return scored.slice(0, MAX_GOAL_CANDIDATES).map((s, idx) => ({
+    selector: s.c.selector as string,
+    text: s.c.text as string,
+    ...(s.c.meta?.href ? { href: s.c.meta.href } : {}),
+    kind: classifyGoalKind(s.c.text as string, s.c.meta?.href, siteDomain),
+    rank: idx + 1,
+    confidence: 0.5,
+    source: "rule" as const,
+  }));
+}
+
 /**
  * Canonical mapper: full live crawler output → ContentInventory, preserving the
  * selectors the snippet needs to target real DOM. Defensive against missing

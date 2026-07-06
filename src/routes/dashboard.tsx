@@ -47,6 +47,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  confirmGoal,
   createSite,
   getDashboard,
   getVisitorTimeline,
@@ -57,6 +58,7 @@ import {
   type SiteConfigView,
   type TimelineEvent,
 } from "@/lib/dashboard/dashboard.functions";
+import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
 import type {
   SegmentBar,
   PatternAttribution,
@@ -215,6 +217,7 @@ function Dashboard() {
         )}
 
         <MeasurementControl
+          site={site}
           config={d.siteConfig}
           ctas={(d.metrics.inventory.find((g) => g.slot === "cta")?.items ?? []).filter(
             (i) => i.text && i.selector,
@@ -915,48 +918,120 @@ function InstallCard({ site, ingestKey }: { site: string; ingestKey: string | nu
   );
 }
 
+const GOAL_KIND_LABEL: Record<GoalKind, string> = {
+  signup: "sign up",
+  purchase: "purchase",
+  booking: "booking",
+  trial: "start trial",
+  quote: "get a quote",
+  contact: "contact",
+  lead: "lead / callback",
+  outbound: "outbound (affiliate)",
+  start_flow: "start a flow",
+  subscribe: "subscribe",
+  download: "download",
+};
+
 function MeasurementControl({
+  site,
   config,
   ctas,
 }: {
+  site: string;
   config: SiteConfigView;
   ctas: { id: string; text: string | null; selector: string | null }[];
 }) {
-  // Read-only by design: the goal and control group are chosen automatically —
-  // there's nothing for the owner to configure. Resolve the goal selector to the
-  // button's human text when we harvested it, otherwise fall back to the raw
-  // selector / URL.
-  const goalCta = ctas.find((c) => c.selector === config.conversionSelector);
-  const goalText = goalCta?.text ?? config.conversionText;
-  const goalLabel = goalText
-    ? `“${goalText}”`
-    : config.conversionSelector
-      ? config.conversionSelector
-      : config.conversionUrl
-        ? `visiting ${config.conversionUrl}`
-        : null;
+  const queryClient = useQueryClient();
+  const confirm = useMutation({
+    mutationFn: (c: { selector: string; text?: string; url?: string }) =>
+      confirmGoal({ data: { site, ...c } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
+  });
+
+  const confirmed = config.conversionSource === "owner";
+  const activeSelector = config.conversionSelector;
+  const goalCta = ctas.find((c) => c.selector === activeSelector);
+  const activeText = goalCta?.text ?? config.conversionText ?? activeSelector;
+  const candidates: GoalCandidate[] = config.goalCandidates ?? [];
   const paused = config.consentMode !== "attested";
 
   return (
     <Card className="border-stone-200 shadow-none">
-      <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 py-4">
-        <span className="font-mono text-[11px] tracking-wider text-emerald-700">
-          [ measurement ]
-        </span>
-        {goalLabel ? (
-          <span className="text-sm text-stone-700">
-            Measuring conversions to <strong>{goalLabel}</strong> against a{" "}
-            {config.holdoutPct || 12}% control group — chosen automatically, nothing to set up.
+      <CardContent className="space-y-3 py-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+            [ conversion goal ]
           </span>
-        ) : (
-          <span className="text-sm text-stone-500">
-            Angel picks your conversion goal automatically from your site&apos;s buttons after the
-            first visits, then measures it against a {config.holdoutPct || 12}% control group.
-          </span>
+          {config.businessType && (
+            <span className="font-mono text-[10px] tracking-wider text-stone-400">
+              detected: {config.businessType}
+            </span>
+          )}
+          {confirmed ? (
+            <span className="text-sm text-stone-700">
+              Angel is working toward <strong>“{activeText}”</strong>, measured against a{" "}
+              {config.holdoutPct || 12}% control group.
+            </span>
+          ) : activeSelector ? (
+            <span className="text-sm text-stone-600">
+              Auto-detected goal <strong>“{activeText}”</strong> — confirm it (or pick another) to
+              lock it in.
+            </span>
+          ) : candidates.length > 0 ? (
+            <span className="text-sm text-stone-600">
+              Confirm your conversion goal to activate Angel — it won’t change or measure anything
+              until you do.
+            </span>
+          ) : (
+            <span className="text-sm text-stone-500">
+              Angel is learning your page — goal candidates appear here after the first visits.
+            </span>
+          )}
+          {paused && confirmed && (
+            <span className="font-mono text-[11px] tracking-wider text-amber-600">
+              · paused — turn on visitor information in Settings to measure
+            </span>
+          )}
+        </div>
+
+        {candidates.length > 0 && (
+          <ul className="space-y-1.5">
+            {candidates.map((c) => {
+              const isActive = c.selector === activeSelector;
+              return (
+                <li
+                  key={`${c.rank}-${c.selector}`}
+                  className="flex flex-wrap items-center gap-2 rounded-md border border-stone-100 bg-stone-50/60 px-2.5 py-1.5"
+                >
+                  <span className="font-mono text-[10px] tracking-wider text-stone-400">
+                    {c.rank === 1 ? "primary" : `#${c.rank}`}
+                  </span>
+                  <span className="text-sm text-stone-800">{c.text}</span>
+                  <span className="rounded-full border border-stone-200 bg-white px-2 py-0.5 font-mono text-[10px] tracking-wider text-stone-500">
+                    {GOAL_KIND_LABEL[c.kind] ?? c.kind}
+                  </span>
+                  {isActive && confirmed ? (
+                    <span className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700">
+                      · active
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={confirm.isPending}
+                      onClick={() => confirm.mutate({ selector: c.selector, text: c.text })}
+                      className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700 disabled:opacity-50"
+                    >
+                      {isActive ? "confirm" : "set as goal"}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
-        {paused && (
+        {confirm.isError && (
           <span className="font-mono text-[11px] tracking-wider text-amber-600">
-            · paused — turn on visitor information in Settings to measure
+            couldn’t save — try again
           </span>
         )}
       </CardContent>
