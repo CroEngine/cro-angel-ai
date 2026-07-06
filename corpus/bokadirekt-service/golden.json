@@ -7,20 +7,6 @@
     },
     "elements": [
       {
-        "text": "Betyg",
-        "tagName": "a",
-        "category": "cta_primary",
-        "intent": "conversion",
-        "section": "cards",
-        "aboveFold": true,
-        "href": "www.bokadirekt.se",
-        "disabled": false,
-        "yBand": 400,
-        "score": 10,
-        "bgContrast": 1,
-        "area": 5000
-      },
-      {
         "text": "Lägg till plats i favoriter",
         "tagName": "button",
         "category": "cta_primary",
@@ -35,10 +21,24 @@
         "area": 2000
       },
       {
+        "text": "Betyg",
+        "tagName": "a",
+        "category": "cta_primary",
+        "intent": "navigation",
+        "section": "cards",
+        "aboveFold": true,
+        "href": "www.bokadirekt.se",
+        "disabled": false,
+        "yBand": 400,
+        "score": 10,
+        "bgContrast": 1,
+        "area": 5000
+      },
+      {
         "text": "Om",
         "tagName": "a",
         "category": "cta_primary",
-        "intent": "conversion",
+        "intent": "navigation",
         "section": "cards",
         "aboveFold": true,
         "href": "www.bokadirekt.se",
@@ -52,7 +52,7 @@
         "text": "Personal",
         "tagName": "a",
         "category": "cta_primary",
-        "intent": "conversion",
+        "intent": "navigation",
         "section": "cards",
         "aboveFold": true,
         "href": "www.bokadirekt.se",
@@ -66,7 +66,7 @@
         "text": "Visa tjänster",
         "tagName": "a",
         "category": "cta_primary",
-        "intent": "conversion",
+        "intent": "navigation",
         "section": "cards",
         "aboveFold": true,
         "href": "www.bokadirekt.se",
@@ -75,6 +75,20 @@
         "score": 40,
         "bgContrast": 11,
         "area": 5000
+      },
+      {
+        "text": "Bilder",
+        "tagName": "a",
+        "category": "cta_primary",
+        "intent": "navigation",
+        "section": "cards",
+        "aboveFold": false,
+        "href": "www.bokadirekt.se",
+        "disabled": false,
+        "yBand": 800,
+        "score": 50,
+        "bgContrast": 1,
+        "area": 70000
       },
       {
         "text": "Välj tjänst",
@@ -103,20 +117,6 @@
         "score": 40,
         "bgContrast": 11,
         "area": 4000
-      },
-      {
-        "text": "Bilder",
-        "tagName": "a",
-        "category": "cta_primary",
-        "intent": "unknown",
-        "section": "cards",
-        "aboveFold": false,
-        "href": "www.bokadirekt.se",
-        "disabled": false,
-        "yBand": 800,
-        "score": 50,
-        "bgContrast": 1,
-        "area": 70000
       },
       {
         "text": "Boka",
