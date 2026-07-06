@@ -37,7 +37,7 @@ Materialize into `adaptation_performance` (site, path, segment, pattern, day, ex
 
 ## Dashboard surface
 
-A **"What's working"** view: per pattern × segment → exposures, conversion rate, **lift vs control**, significance. This is where you see which adaptations to trust — the input to increment 2.
+A **"What's working"** view: per pattern × segment → exposures, conversion rate, **lift vs control**, significance. This is where you see which adaptations to trust — the input to increment 2. *(Implemented: `attribute()` emits the overall row plus per-trafficSource rows where an arm reaches `MIN_ARM_EXPOSURES`, the dashboard shows them as sub-rows, and the engine's boosts resolve per segment.)*
 
 ## Increment boundaries
 

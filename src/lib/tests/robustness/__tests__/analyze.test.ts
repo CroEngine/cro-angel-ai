@@ -229,3 +229,57 @@ describe("personas", () => {
     expect(isPersona("nope")).toBe(false);
   });
 });
+
+describe("analyze — zero decisions with decline reasons (C3)", () => {
+  const baseObservation = {
+    url: "https://x.se/skapa-konto",
+    site: "t",
+    persona: "mobile_google",
+    reachable: true,
+    snippetRan: true,
+    consoleErrors: [] as string[],
+    decidedCount: 0,
+    appliedCount: 0,
+    probes: [],
+    baseline: { textLen: 100, elementCount: 50, bodyChildCount: 5 },
+    afterApply: { textLen: 100, elementCount: 50, bodyChildCount: 5 },
+    afterReset: { textLen: 100, elementCount: 50, bodyChildCount: 5 },
+    layout: { matched: 0, shiftedCount: 0, shiftedFraction: 0, controlShiftedFraction: 0, maxMove: 0 },
+    rerender: { residueAfterApply: 0, residueAfterRerender: 0 },
+    interaction: { checked: 10, broken: 0 },
+    residueAfterReset: 0,
+    durationMs: 100,
+  };
+
+  it("zero decided purely by conversion-page design → clean pass, no warn", () => {
+    const report = analyze({
+      ...baseObservation,
+      declined: [
+        { pattern: "emphasize_goal", reason: "conversion_page" },
+        { pattern: "sticky_goal_cta", reason: "conversion_page" },
+      ],
+    });
+    expect(report.verdict).toBe("pass");
+    expect(report.reasons).toEqual([]);
+  });
+
+  it("zero decided for inventory reasons → warn with an explanatory rollup", () => {
+    const report = analyze({
+      ...baseObservation,
+      declined: [
+        { pattern: "show_trust_badge", reason: "no_inventory_for_slot" },
+        { pattern: "show_guarantee", reason: "no_inventory_for_slot" },
+        { pattern: "emphasize_goal", reason: "no_goal_configured" },
+      ],
+    });
+    expect(report.verdict).toBe("warn");
+    expect(report.reasons.join(" ")).toContain("no_inventory_for_slot ×2");
+    expect(report.reasons.join(" ")).toContain("no_goal_configured ×1");
+  });
+
+  it("zero decided with no decline info at all → the old empty-inventory warn", () => {
+    const report = analyze({ ...baseObservation, declined: [] });
+    expect(report.verdict).toBe("warn");
+    expect(report.reasons.join(" ")).toContain("empty inventory");
+  });
+});

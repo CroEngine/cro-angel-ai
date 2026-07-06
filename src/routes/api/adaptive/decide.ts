@@ -69,8 +69,9 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         }
         const inventory = await resolveInventory(client.site, path);
         // Feed measured lift back in (increment 2): prefer proven winners,
-        // suppress proven losers. Best-effort + cached; {} means run on defaults.
-        const boosts = await loadPatternBoosts(client.site);
+        // suppress proven losers — per SEGMENT where the segment has its own
+        // adequately-powered verdict (D4). Best-effort + cached; {} = defaults.
+        const boosts = await loadPatternBoosts(client.site, context.trafficSource);
         const decision = decide(client.site, context, inventory, boosts, {
           selector: cfg.conversionSelector,
           url: cfg.conversionUrl,

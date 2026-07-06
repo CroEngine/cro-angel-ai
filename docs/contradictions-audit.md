@@ -11,10 +11,10 @@
 > 14 candidates refuted. Line numbers refer to `7bb49dd`.
 >
 > **Status:** wave 1 resolves **B6, C2, E1, E2, A4, A5, A6**; wave 2 resolves
-> **B1, A1, A3** (shared intent classifier + contact intent + auth pageType);
-> wave 3 resolves **A2, B2, B4, B5, B7, B8, B9, C1** and part of **B3**.
-> Each is marked ✅ below with what changed. Still open: B3 (section-typing
-> half), C3, and the measurement group D1–D4.
+> **B1, A1, A3**; wave 3 resolves **A2, B2, B4, B5, B7, B8, B9, C1** + part
+> of **B3**; wave 4 resolves **C3, D1, D2, D3, D4**. Each is marked ✅ below
+> with what changed. **23 of 24 findings closed** — the only remainder is
+> B3's section-typing half (documented as deliberate at the constant).
 
 ## Root cause
 
@@ -250,59 +250,69 @@ launch gate has never actually tested the pattern most likely to trip it.
 `rankGoalCandidates` floor, or the stored confirmed goal), and teach the
 snippet to nudge the pill when it would cover an interactive element.
 
-### C3. The harness warns about behavior the engine documents as correct — *medium*
+### C3. The harness warns about behavior the engine documents as correct — *medium* — ✅ fixed
 
 `analyze.ts:227` warns *"no adaptations decided (empty inventory?)"* — but
 `decide()` returns zero **by design** on conversion pages and honest-gated
 thin inventories (`decide.ts:183-341`). Sweeps produce warn-noise on exactly
 the pages where the engine behaves best, training people to ignore warnings.
-**Fix:** emit structured decline reasons from `resolve()`
-(`no_goal_configured | conversion_page | no_inventory_for_slot | …`) and let
-`analyze()` distinguish "declined by design" from "empty inventory".
+**Fixed:** `resolve()` returns a typed `DeclineReason` instead of null
+(`no_goal_configured | conversion_page | no_inventory_for_slot | …`),
+`Decision.declined` carries them, and `analyze()` passes cleanly when zero
+decisions are all conversion-page-by-design — otherwise it warns WITH the
+reason rollup instead of guessing "(empty inventory?)".
 
 ---
 
 ## D. Measurement disagrees with itself
 
-### D1. Two incompatible numbers are both called "conversion rate" — *medium*
+### D1. Two incompatible numbers are both called "conversion rate" — *medium* — ✅ fixed
 
 Overview headline: `conversions / pageviews` (event-based,
 `aggregate.ts:556`); "What's working" arms: distinct converted visitors /
 distinct exposed visitors (`aggregate.ts:246-343`). Same site, same day: 1.2%
 vs 6.8% with no denominator hint in the UI — and double-firing
-`convert()` inflates only one of them. **Fix:** make the headline
-per-visitor (both sets already exist in `aggregate()`), keep raw event KPIs
-as secondary numbers.
+`convert()` inflates only one of them. **Fixed:** the Overview headline is per-visitor (distinct converted /
+distinct identified) — the same species as the lift table's arms; the raw
+pageview/conversion KPIs remain as counts.
 
-### D2. The engagement proxy is anti-correlated with fast conversion — *medium*
+### D2. The engagement proxy is anti-correlated with fast conversion — *medium* — ✅ fixed
 
 `microScore` (`performance.server.ts:53-55`) rewards deep scroll, multi-page
 and return visits. A pattern that converts visitors **immediately** (the
 point of the product) depresses all three — converted visitors stop scrolling,
 browsing and returning — so on low-volume sites the winning pattern collects a
 negative nudge while a pattern that merely makes people wander collects a
-positive one. **Fix:** hierarchical score — conversion is the terminal
-signal; engagement only scores the non-converted remainder
-(`score = convRate + (1 − convRate) · engagement(non-converters)`).
+positive one. **Fixed:** MicroStats are counted among NON-converters (aggregate.ts) and
+`microScore` is hierarchical: `convRate + (1 − convRate) ·
+engagement(non-converters)`. A directional guard also blocks negative
+nudges whenever both arms have real conversion outcomes and the (not yet
+significant) lift is positive — the real goal outranks its proxies.
 
-### D3. The "never suppressing" micro nudge suppresses the baseline pattern — *medium*
+### D3. The "never suppressing" micro nudge suppresses the baseline pattern — *medium* — ✅ fixed
 
 `performance.server.ts:42-44` documents micro nudges as *"capped far below a
 proven win and never suppressing"*, but `MICRO_MAX_NUDGE = 10` exactly equals
 the `baseline` rule's priority 10 (`decide.ts:132-136`), and the
 `priority > 0` filter (`decide.ts:393`) drops the pattern at 0 — full
-site-wide suppression from a sub-significance engagement gap. **Fix:** floor
-non-sentinel deltas at effective priority 1; only `PERF_SUPPRESS` may kill.
+site-wide suppression from a sub-significance engagement gap. **Fixed:** `decide()` floors non-sentinel deltas at effective priority 1 —
+only a significant `PERF_SUPPRESS` verdict can remove a pattern, exactly as
+the micro-nudge documentation always promised. (The fix's test also caught a
+sibling bug: `inject_badge` fell back to the WRONG microcopy kind via
+`pickItem`'s first-item fallback — now strict, same rule as clarify_cta.)
 
-### D4. The rollup is per pattern only, not per pattern × segment — *medium*
+### D4. The rollup is per pattern only, not per pattern × segment — *medium* — ✅ fixed
 
 `docs/attribution-rollup.md:29-40` specifies attribution *"per (site, path,
 segment, pattern, variant)"*; `attribute()` keys on pattern only. A pattern
 that wins on LinkedIn and loses on paid gets one blended verdict — possibly
 `PERF_SUPPRESS`-killed site-wide including the segment where it wins,
-directly against the doc's stated purpose. **Fix:** add a segment key inside
-`attribute()` (payloads already carry `trafficSource`/device/path), emit
-overall + per-segment rows, make `PatternBoost` segment-aware.
+directly against the doc's stated purpose. **Fixed:** `attribute()` emits the overall row (`segment: null`) plus
+per-trafficSource rows where an arm reaches `MIN_ARM_EXPOSURES`; the
+dashboard renders them as sub-rows; and `loadPatternBoosts(site,
+trafficSource)` resolves segment verdicts OVER the sitewide blend — a
+pattern that wins on linkedin keeps running there even when the blended
+average is negative.
 
 ---
 

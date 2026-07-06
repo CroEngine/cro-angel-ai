@@ -154,11 +154,29 @@ export interface Adaptation {
 }
 
 /** The engine's answer for one visitor on one page load. */
+/** Why a nominated pattern resolved to nothing (C3). The engine's honesty
+ *  gates make "zero adaptations" CORRECT on many pages — these reasons let
+ *  the robustness harness (and debugging) tell "declined by design" from
+ *  "the inventory is empty", instead of warning on both. */
+export type DeclineReason =
+  | "no_goal_configured"
+  | "conversion_page"
+  | "no_secondary_alternative"
+  | "no_intent_variant"
+  | "single_label_cta"
+  | "no_microcopy"
+  | "no_inventory_for_slot"
+  | "reveal_would_noop";
+
 export interface Decision {
   /** Deterministic hash of (site + normalized context). Stable for replay. */
   decisionId: string;
   site: string;
   adaptations: Adaptation[];
+  /** Nominated patterns that resolved to nothing, with WHY (C3). Only the
+   *  highest-priority attempt per pattern is kept. Transparency data — the
+   *  snippet ignores it. */
+  declined?: { pattern: PatternId; reason: DeclineReason }[];
   /** True when this visitor is in the measurement control bucket — the snippet
    *  withholds the adaptations so their lift can be measured. */
   holdout?: boolean;
