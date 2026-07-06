@@ -26,7 +26,7 @@ import {
 import type { ContentInventory } from "./types";
 
 /** Bump to re-judge everything (prompt/model change). */
-export const JUDGE_VERSION = "g1";
+export const JUDGE_VERSION = "g2";
 const MODEL = "claude-haiku-4-5";
 const TIMEOUT_MS = 9000;
 const MAX_CTAS = 40;
@@ -62,7 +62,7 @@ const SYSTEM = [
   "variantCount>1 means this CTA is one of N near-identical siblings (a category grid / funnel of options, e.g. a comparison portal) — a strong signal that the goal is starting one of them (kind=start_flow or outbound), and businessType is likely comparison/marketplace.",
   'Output: ONLY JSON {"businessType": <type>, "goals":[{"i":<cta index>,"kind":<kind>,"rank":<1..N>,"confidence":<0..1>}]}.',
   "businessType is one of: comparison | saas | ecommerce | leadgen | marketplace | media | booking | nonprofit | other.",
-  "kind is one of: signup | purchase | booking | trial | quote | contact | lead | outbound | start_flow | subscribe | download.",
+  "kind is one of: signup | purchase | booking | trial | quote | contact | lead | outbound | start_flow | subscribe | download | donate.",
   "Every goal.i MUST be an index from the provided ctas. Rank at most 4 goals. No prose, raw JSON only.",
 ].join("\n");
 

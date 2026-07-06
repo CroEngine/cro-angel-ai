@@ -43,7 +43,10 @@ export type SectionKind =
   | "hero"
   | "cards"
   | "content"
-  | "footer";
+  | "footer"
+  /** Non-positional, document-level evidence (schema.org JSON-LD anchored to
+   *  <body>) — never above-fold, never competes with visible signals. */
+  | "document";
 
 export type CollectedElement = {
   text: string;

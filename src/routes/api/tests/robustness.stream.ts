@@ -59,6 +59,22 @@ export const Route = createFileRoute("/api/tests/robustness/stream")({
           if (!snippetRes.ok) throw new Error(`adaptive.js fetch ${snippetRes.status}`);
           const snippetSource = await snippetRes.text();
 
+          // Stored owner-confirmed goal for registered sites, so the sweep
+          // exercises the goal-decoration patterns (sticky pill, secondary
+          // link) exactly as production would. Unregistered slugs fall back to
+          // the runner's deterministic rankGoalCandidates() floor.
+          let goal: { selector?: string | null; text?: string | null } | null = null;
+          try {
+            const { loadSiteConfig } = await import("@/adaptive/persistence.server");
+            const cfg = await loadSiteConfig(site);
+            if (cfg.conversionSelector || cfg.conversionText) {
+              goal = { selector: cfg.conversionSelector, text: cfg.conversionText };
+            }
+          } catch {
+            /* best-effort — runner derives its own floor */
+          }
+          if (goal) emit("log", { message: `using stored conversion goal for '${site}'` });
+
           const allReports: import("@/lib/tests/robustness/analyze").RobustnessReport[] = [];
 
           for (const targetUrl of urls) {
@@ -75,6 +91,7 @@ export const Route = createFileRoute("/api/tests/robustness/stream")({
                   site,
                   personas,
                   snippetSource,
+                  goal,
                   captureShots,
                   onShot: captureShots
                     ? (shot) =>

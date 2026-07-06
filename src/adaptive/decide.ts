@@ -10,7 +10,7 @@
 //   - transparent: every adaptation carries a human-readable reason, and the
 //     whole decision hashes to a stable id for logging and replay.
 
-import { isAcquisition } from "./crawler-inventory";
+import { isAcquisition, type GoalKind } from "./crawler-inventory";
 import { getPattern } from "./patterns";
 import { pickItem } from "./inventory";
 import type { Adaptation, ContentInventory, Decision, PatternId, VisitorContext } from "./types";
@@ -136,10 +136,27 @@ const RULES: Rule[] = [
   },
 ];
 
-/** Which published CTA label fits this visitor. */
-function ctaIntent(c: VisitorContext): string {
-  if (c.trafficSource === "linkedin" || c.trafficSource === "partner") return "demo";
-  return "trial";
+/**
+ * Which published CTA labels fit this visitor, best-first. The confirmed
+ * goal's KIND anchors what "clarifying the CTA" means for THIS business —
+ * the judge ranks goals per business type, and the runtime must not undo that
+ * by assuming SaaS: a lead-gen/quote site's clarification is the sales
+ * motion, not a free trial. The list is a fallback chain over the PUBLISHED
+ * label variants (harvest stamps demo/trial/sales), so every published
+ * variant is reachable — a sales-only inventory no longer dead-ends.
+ */
+function ctaIntentPreferences(c: VisitorContext, goal?: SiteGoal): string[] {
+  const b2b = c.trafficSource === "linkedin" || c.trafficSource === "partner";
+  switch (goal?.kind) {
+    case "contact":
+    case "lead":
+    case "quote":
+      return ["sales", "demo", "trial"];
+    case "booking":
+      return ["demo", "sales", "trial"];
+    default:
+      return b2b ? ["demo", "sales", "trial"] : ["trial", "demo", "sales"];
+  }
 }
 
 /** Microcopy meta.kind a given inject pattern wants. */
@@ -156,6 +173,10 @@ export interface SiteGoal {
   /** The goal's visible label — target-resolution fallback on pages where the
    *  CSS selector doesn't resolve (structures differ across pages). */
   text?: string | null;
+  /** WHAT converting means (judge taxonomy), persisted when the owner confirms
+   *  a proposed candidate. Conditions goal-aware rules — e.g. which published
+   *  CTA label variant clarify_cta prefers. Absent on raw owner overrides. */
+  kind?: GoalKind | string | null;
 }
 
 /**
@@ -250,15 +271,25 @@ function resolve(
   }
 
   if (pattern.op === "set_text") {
-    // clarify_cta — pick the published CTA label matching the visitor's intent.
+    // clarify_cta — pick the published CTA label matching the visitor's intent,
+    // walking the goal-aware preference chain until a variant actually exists.
     // Only acquisition CTAs qualify: "Hjälp"/"Logga in"/"Läs mer" are labelled
-    // by role at harvest and must never become conversion copy.
-    const intent = ctaIntent(context);
-    const item = pickItem(
-      inventory,
-      "cta",
-      (i) => isAcquisition(i) && i.meta?.intent === intent,
-    );
+    // by role at harvest and must never become conversion copy. STRICT match
+    // only — pickItem's first-item fallback would grab an arbitrary CTA and
+    // misreport its intent in the reason string.
+    const prefs = ctaIntentPreferences(context, goal);
+    let item: ReturnType<typeof pickItem> = null;
+    let intent = prefs[0];
+    for (const wanted of prefs) {
+      const hit = (inventory.slots.cta ?? []).find(
+        (i) => isAcquisition(i) && i.meta?.intent === wanted && Boolean(i.text),
+      );
+      if (hit) {
+        item = hit;
+        intent = wanted;
+        break;
+      }
+    }
     if (!item?.text || !isAcquisition(item)) return null;
     // Never retext an element with the only label we know for it — that's a
     // guaranteed no-op ("Skapa konto" → "Skapa konto", seen live on the pilot,
@@ -361,6 +392,9 @@ export function decisionIdFor(site: string, c: VisitorContext, goal?: SiteGoal):
     c.language,
     c.pageType,
     goal?.selector ? "g" : "-",
+    // The goal KIND steers clarify_cta's label choice, so it is a real engine
+    // input — same visitor + re-judged kind must yield a new decisionId.
+    goal?.kind ?? "-",
   ].join("|");
   return hashHex(key);
 }

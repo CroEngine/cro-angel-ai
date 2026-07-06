@@ -26,6 +26,7 @@ export type Database = {
           conversion_selector: string | null
           conversion_text: string | null
           conversion_source: string | null
+          conversion_kind: string | null
           ingest_key: string | null
           goal_candidates: Json | null
           created_at: string
@@ -41,6 +42,7 @@ export type Database = {
           conversion_selector?: string | null
           conversion_text?: string | null
           conversion_source?: string | null
+          conversion_kind?: string | null
           ingest_key?: string | null
           goal_candidates?: Json | null
           created_at?: string
@@ -56,6 +58,7 @@ export type Database = {
           conversion_selector?: string | null
           conversion_text?: string | null
           conversion_source?: string | null
+          conversion_kind?: string | null
           ingest_key?: string | null
           goal_candidates?: Json | null
           created_at?: string

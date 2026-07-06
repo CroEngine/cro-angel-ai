@@ -240,7 +240,11 @@ export const COLLECT_SCRIPT = `(() => {
 
   // Intent ordlistor — partial match, case-insensitive
   const INTENT_RX = {
-    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ner|lägg i (varu)?kund?korg|lägg till|ansök|bidra)/i,
+    // "lägg i (varu|kund)?korg(en)?": fixes a drift-typo that never matched the
+    // common "lägg i varukorgen". Extra terms (teckna/jämför/shoppa/donera/
+    // månadsgivare) mined from the 107-site harvest — see
+    // corpus/vocab-harvest-2026-07-06.json.
+    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ne[dr]|lägg i (varu|kund)?korg(en)?|lägg till|ansök|bidra|donera|teckna|jämför|shoppa|månadsgivare)/i,
     information: /(learn|read|explore|see how|how |why |about |läs|utforska|så funkar|mer info)/i,
     navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inställningar)/i,
     social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,

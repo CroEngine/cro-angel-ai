@@ -291,6 +291,9 @@ export interface SiteConfig {
   /** The goal's visible label — click-detection fallback when the CSS selector
    *  doesn't resolve on a page. */
   conversionText: string | null;
+  /** WHAT converting means (GoalKind), persisted when the owner confirms a
+   *  judged candidate. null on raw owner overrides and legacy rows. */
+  conversionKind: string | null;
   /** Per-site write key; SERVER-ONLY — never include it in a public response. */
   ingestKey: string | null;
 }
@@ -301,6 +304,7 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   conversionUrl: null,
   conversionSelector: null,
   conversionText: null,
+  conversionKind: null,
   ingestKey: null,
 };
 
@@ -315,7 +319,9 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
   try {
     const { data, error } = await supabaseAdmin
       .from("angel_sites")
-      .select("consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,ingest_key")
+      .select(
+        "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key",
+      )
       .eq("slug", slug)
       .maybeSingle();
     if (error || !data) return DEFAULT_SITE_CONFIG;
@@ -326,6 +332,7 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
       conversionUrl: data.conversion_url ?? null,
       conversionSelector: data.conversion_selector ?? null,
       conversionText: data.conversion_text ?? null,
+      conversionKind: data.conversion_kind ?? null,
       ingestKey: data.ingest_key ?? null,
     };
   } catch (err) {

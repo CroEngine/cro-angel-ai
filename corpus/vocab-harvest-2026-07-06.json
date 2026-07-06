@@ -1,0 +1,7543 @@
+{
+ "$comment": "CTA/knapp-etiketter skördade 2026-07-06 från 107 startsidor (breadth-targets + breddad svensk/nordisk mix över måltyper: e-handel, bokning, lead-gen, jämförelse, nonprofit, media, SaaS, bank, telekom, energi). Metod: curl av server-renderad HTML, <a>/<button>/submit-etiketter, dedup per sajt, chrome-etiketter (login/sök/social/legal/nav) bortfiltrerade, tröskel ≥2 sajter. Underlag för KIND_TEXT-utökningarna i crawler-inventory.ts.",
+ "harvestedAt": "2026-07-06",
+ "siteCount": 107,
+ "labels": {
+  "Kontakta oss": {
+   "sites": 29,
+   "sample_sites": [
+    "advisa.se",
+    "anticimex.se",
+    "barncancerfonden.se",
+    "bygghemma.se"
+   ],
+   "sample_hrefs": [
+    "/kontakta-oss",
+    "/om-oss/kontakta-oss/"
+   ]
+  },
+  "Företag": {
+   "sites": 20,
+   "sample_sites": [
+    "cancerfonden.se",
+    "compricer.se",
+    "folksam.se",
+    "fortum.se"
+   ],
+   "sample_hrefs": [
+    "/foretag",
+    "/foretag/"
+   ]
+  },
+  "Erbjudanden": {
+   "sites": 14,
+   "sample_sites": [
+    "aftonbladet.se",
+    "dn.se",
+    "elskling.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/erbjudanden",
+    "/handla/erbjudanden"
+   ]
+  },
+  "Privat": {
+   "sites": 13,
+   "sample_sites": [
+    "folksam.se",
+    "fortum.se",
+    "hallon.se",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "#",
+    "/"
+   ]
+  },
+  "Hållbarhet": {
+   "sites": 12,
+   "sample_sites": [
+    "elgiganten.se",
+    "fastighetsbyran.se",
+    "fortum.se",
+    "kivra.se"
+   ],
+   "sample_hrefs": [
+    "/hallbarhet",
+    "/om-trygghansa/csr"
+   ]
+  },
+  "Sport": {
+   "sites": 11,
+   "sample_sites": [
+    "aftonbladet.se",
+    "cdon.se",
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/sport/",
+    "/tv/sportrattigheter"
+   ]
+  },
+  "Ångerrätt": {
+   "sites": 10,
+   "sample_sites": [
+    "bygghemma.se",
+    "fortum.se",
+    "insplanet.com",
+    "lendo.se"
+   ],
+   "sample_hrefs": [
+    "/for-medlemmar/angerratt-vid-kop-online/",
+    "/forsakring/angerratt"
+   ]
+  },
+  "Personuppgiftspolicy": {
+   "sites": 10,
+   "sample_sites": [
+    "aftonbladet.se",
+    "compricer.se",
+    "di.se",
+    "dn.se"
+   ],
+   "sample_hrefs": [
+    "/information/personuppgiftspolicy",
+    "/personuppgifter/#personuppgiftspolicy"
+   ]
+  },
+  "För företag": {
+   "sites": 9,
+   "sample_sites": [
+    "actionaid.se",
+    "barncancerfonden.se",
+    "bokadirekt.se",
+    "hermods.se"
+   ],
+   "sample_hrefs": [
+    "/for-foretag/",
+    "/stod-oss/foretag"
+   ]
+  },
+  "Resources": {
+   "sites": 9,
+   "sample_sites": [
+    "billogram.com",
+    "calendly.com",
+    "hibob.com",
+    "hubspot.com"
+   ],
+   "sample_hrefs": [
+    "#",
+    "/resources"
+   ]
+  },
+  "Blog": {
+   "sites": 9,
+   "sample_sites": [
+    "billogram.com",
+    "calendly.com",
+    "hibob.com",
+    "hubspot.com"
+   ],
+   "sample_hrefs": [
+    "/blog",
+    "https://blog.hubspot.com"
+   ]
+  },
+  "Pricing": {
+   "sites": 9,
+   "sample_sites": [
+    "calendly.com",
+    "hibob.com",
+    "hubspot.com",
+    "intercom.com"
+   ],
+   "sample_hrefs": [
+    "//www.hubspot.com/pricing/marketing",
+    "/pricing"
+   ]
+  },
+  "Försäkringar": {
+   "sites": 9,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "if.se",
+    "insplanet.com"
+   ],
+   "sample_hrefs": [
+    "/forsakring/",
+    "/forsakringar"
+   ]
+  },
+  "Hem": {
+   "sites": 9,
+   "sample_sites": [
+    "ellos.se",
+    "folksam.se",
+    "hedvig.com",
+    "maklarhuset.se"
+   ],
+   "sample_hrefs": [
+    "/",
+    "/hem-inredning"
+   ]
+  },
+  "Prenumerera": {
+   "sites": 9,
+   "sample_sites": [
+    "centralbadet.se",
+    "compricer.se",
+    "di.se",
+    "dn.se"
+   ],
+   "sample_hrefs": [
+    "/tjanster/nyhetsbrev/",
+    "https://prenumerera.di.se/"
+   ]
+  },
+  "X": {
+   "sites": 8,
+   "sample_sites": [
+    "boozt.com",
+    "compricer.se",
+    "di.se",
+    "fastighetsbyran.se"
+   ],
+   "sample_hrefs": [
+    "https://twitter.com/NotionHQ",
+    "https://x.com/Hibob_hr"
+   ]
+  },
+  "Träning": {
+   "sites": 8,
+   "sample_sites": [
+    "bokadirekt.se",
+    "cdon.se",
+    "intersport.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/kampanjer/summer-deals/aktiv-livsstil/traning/",
+    "/se/category/books/traning-108"
+   ]
+  },
+  "Vanliga frågor": {
+   "sites": 8,
+   "sample_sites": [
+    "bygghemma.se",
+    "cdon.se",
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/cdon/faq/",
+    "https://konto.bonniernews.se/vanliga-fragor/dn/?brandref=https%3A%2F%2Fwww.dn.se"
+   ]
+  },
+  "Bilförsäkring": {
+   "sites": 8,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "hedvig.com",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/bil/",
+    "/forsakringar/bilforsakring"
+   ]
+  },
+  "Hemförsäkring": {
+   "sites": 8,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "hedvig.com",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/hem/",
+    "/forsakringar/hemforsakring"
+   ]
+  },
+  "Kontakt": {
+   "sites": 8,
+   "sample_sites": [
+    "actionaid.se",
+    "anticimex.se",
+    "centralbadet.se",
+    "compricer.se"
+   ],
+   "sample_hrefs": [
+    "/contact/",
+    "/kontakt"
+   ]
+  },
+  "Trustpilot": {
+   "sites": 7,
+   "sample_sites": [
+    "advisa.se",
+    "compricer.se",
+    "ellos.se",
+    "lendo.se"
+   ],
+   "sample_hrefs": [
+    "https://se.trustpilot.com/review/advisa.se",
+    "https://se.trustpilot.com/review/ellos.se"
+   ]
+  },
+  "Solutions": {
+   "sites": 7,
+   "sample_sites": [
+    "billogram.com",
+    "calendly.com",
+    "hibob.com",
+    "hubspot.com"
+   ],
+   "sample_hrefs": [
+    "#",
+    "/solutions"
+   ]
+  },
+  "Security": {
+   "sites": 7,
+   "sample_sites": [
+    "calendly.com",
+    "hibob.com",
+    "hubspot.com",
+    "intercom.com"
+   ],
+   "sample_hrefs": [
+    "/security",
+    "https://legal.hubspot.com/security"
+   ]
+  },
+  "Varumärken": {
+   "sites": 7,
+   "sample_sites": [
+    "cdon.se",
+    "elgiganten.se",
+    "intersport.se",
+    "kjell.com"
+   ],
+   "sample_hrefs": [
+    "/b/brandindex",
+    "/varumarke/"
+   ]
+  },
+  "Barn": {
+   "sites": 7,
+   "sample_sites": [
+    "ellos.se",
+    "intersport.se",
+    "nordea.se",
+    "pricerunner.se"
+   ],
+   "sample_hrefs": [
+    "/barn",
+    "/barn/c/9300000"
+   ]
+  },
+  "Bli medlem": {
+   "sites": 7,
+   "sample_sites": [
+    "fitness24seven.com",
+    "kjell.com",
+    "nordicwellness.se",
+    "omni.se"
+   ],
+   "sample_hrefs": [
+    "/bli-medlem/",
+    "/skank-pengar/bli-medlem/"
+   ]
+  },
+  "Partners": {
+   "sites": 7,
+   "sample_sites": [
+    "billogram.com",
+    "fitness24seven.com",
+    "fortnox.se",
+    "hibob.com"
+   ],
+   "sample_hrefs": [
+    "/partner",
+    "/partners/"
+   ]
+  },
+  "Bli månadsgivare": {
+   "sites": 7,
+   "sample_sites": [
+    "actionaid.se",
+    "barncancerfonden.se",
+    "cancerfonden.se",
+    "hjart-lungfonden.se"
+   ],
+   "sample_hrefs": [
+    "/skank-pengar/bli-manadsgivare/",
+    "/stod-oss/bli-manadsgivare"
+   ]
+  },
+  "Villaförsäkring": {
+   "sites": 7,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "hedvig.com",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/villa/",
+    "/forsakringar/hemforsakring/villaforsakring"
+   ]
+  },
+  "Personuppgifter": {
+   "sites": 7,
+   "sample_sites": [
+    "compricer.se",
+    "folkuniversitetet.se",
+    "hedvig.com",
+    "lansforsakringar.se"
+   ],
+   "sample_hrefs": [
+    "/om-trygghansa/om-webbplatsen/personuppgifter",
+    "/personuppgifter/#personuppgiftspolicy"
+   ]
+  },
+  "Learn more": {
+   "sites": 7,
+   "sample_sites": [
+    "budbee.com",
+    "calendly.com",
+    "charitywater.org",
+    "hibob.com"
+   ],
+   "sample_hrefs": [
+    "/the-tributary",
+    "https://budbee.com/merchants/"
+   ]
+  },
+  "Contact Us": {
+   "sites": 7,
+   "sample_sites": [
+    "calendly.com",
+    "charitywater.org",
+    "hibob.com",
+    "hubspot.com"
+   ],
+   "sample_hrefs": [
+    "/contact",
+    "/contact-us"
+   ]
+  },
+  "Nyhetsbrev": {
+   "sites": 7,
+   "sample_sites": [
+    "aftonbladet.se",
+    "di.se",
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/minsida/nyhetsbrev",
+    "/nyhetsbrev/"
+   ]
+  },
+  "Privatlån": {
+   "sites": 7,
+   "sample_sites": [
+    "advisa.se",
+    "compricer.se",
+    "lansforsakringar.se",
+    "lendo.se"
+   ],
+   "sample_hrefs": [
+    "/",
+    "/privat/bank/lana/privatlan/"
+   ]
+  },
+  "Sverige": {
+   "sites": 7,
+   "sample_sites": [
+    "dn.se",
+    "expressen.se",
+    "kjell.com",
+    "matsmart.se"
+   ],
+   "sample_hrefs": [
+    "/se",
+    "/sverige/"
+   ]
+  },
+  "Product": {
+   "sites": 6,
+   "sample_sites": [
+    "billogram.com",
+    "calendly.com",
+    "intercom.com",
+    "linear.app"
+   ],
+   "sample_hrefs": [
+    "/features"
+   ]
+  },
+  "Enterprise": {
+   "sites": 6,
+   "sample_sites": [
+    "hibob.com",
+    "hubspot.com",
+    "linear.app",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/enterprise",
+    "/solutions/enterprise"
+   ]
+  },
+  "Presentkort": {
+   "sites": 6,
+   "sample_sites": [
+    "bokadirekt.se",
+    "centralbadet.se",
+    "ellos.se",
+    "intersport.se"
+   ],
+   "sample_hrefs": [
+    "/kampanj/presentkort",
+    "/presentkort"
+   ]
+  },
+  "Ge en gåva": {
+   "sites": 6,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "cancerfonden.se",
+    "hjart-lungfonden.se",
+    "lakareutangranser.se"
+   ],
+   "sample_hrefs": [
+    "/jag-vill-bidra/ge-en-gava/",
+    "/skank-pengar/ge-en-gava/"
+   ]
+  },
+  "Student": {
+   "sites": 6,
+   "sample_sites": [
+    "folksam.se",
+    "hallon.se",
+    "hedvig.com",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/bredband/bredband-fiber-student",
+    "/jobb-och-karriar/student"
+   ]
+  },
+  "Inspiration": {
+   "sites": 6,
+   "sample_sites": [
+    "ellos.se",
+    "ica.se",
+    "mathem.se",
+    "nordicwellness.se"
+   ],
+   "sample_hrefs": [
+    "/inspiration",
+    "/inspiration/"
+   ]
+  },
+  "Olycksfallsförsäkring": {
+   "sites": 6,
+   "sample_sites": [
+    "compricer.se",
+    "fitness24seven.com",
+    "folksam.se",
+    "hedvig.com"
+   ],
+   "sample_hrefs": [
+    "/forsakring/olycksfall/",
+    "/forsakringar/olycksfallsforsakring"
+   ]
+  },
+  "Bolån": {
+   "sites": 6,
+   "sample_sites": [
+    "compricer.se",
+    "lansforsakringar.se",
+    "lendo.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/bolan",
+    "/bolan/"
+   ]
+  },
+  "Billån": {
+   "sites": 6,
+   "sample_sites": [
+    "advisa.se",
+    "compricer.se",
+    "lansforsakringar.se",
+    "lendo.se"
+   ],
+   "sample_hrefs": [
+    "/billan",
+    "/billan/"
+   ]
+  },
+  "Frågor och svar": {
+   "sites": 6,
+   "sample_sites": [
+    "elskling.se",
+    "hedvig.com",
+    "seb.se",
+    "unicef.se"
+   ],
+   "sample_hrefs": [
+    "/fragor-och-svar",
+    "/kundservice/fragor-och-svar/"
+   ]
+  },
+  "Guider": {
+   "sites": 6,
+   "sample_sites": [
+    "cdon.se",
+    "hedvig.com",
+    "intersport.se",
+    "pricerunner.se"
+   ],
+   "sample_hrefs": [
+    "/blog",
+    "/inspiration/"
+   ]
+  },
+  "Mobilabonnemang": {
+   "sites": 5,
+   "sample_sites": [
+    "compricer.se",
+    "hallon.se",
+    "tele2.se",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/handla/mobilabonnemang",
+    "/mobilabonnemang"
+   ]
+  },
+  "Bredband": {
+   "sites": 5,
+   "sample_sites": [
+    "compricer.se",
+    "hallon.se",
+    "tele2.se",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/bredband",
+    "/bredband/"
+   ]
+  },
+  "Vanliga frågor och svar": {
+   "sites": 5,
+   "sample_sites": [
+    "di.se",
+    "mathem.se",
+    "matsmart.se",
+    "medborgarskolan.se"
+   ],
+   "sample_hrefs": [
+    "/om-medborgarskolan/vanliga-fragor-och-svar/",
+    "/support"
+   ]
+  },
+  "Butiker": {
+   "sites": 5,
+   "sample_sites": [
+    "ica.se",
+    "intersport.se",
+    "kjell.com",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/butiker/",
+    "/om-tre/kontakt/butiker"
+   ]
+  },
+  "Startups": {
+   "sites": 5,
+   "sample_sites": [
+    "linear.app",
+    "notion.com",
+    "stripe.com",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "/solutions/startups",
+    "/startups"
+   ]
+  },
+  "Customer stories": {
+   "sites": 5,
+   "sample_sites": [
+    "billogram.com",
+    "calendly.com",
+    "hibob.com",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/cases",
+    "/customers"
+   ]
+  },
+  "Status": {
+   "sites": 5,
+   "sample_sites": [
+    "calendly.com",
+    "intercom.com",
+    "linear.app",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "https://linearstatus.com",
+    "https://vercel-status.com"
+   ]
+  },
+  "Community": {
+   "sites": 5,
+   "sample_sites": [
+    "hibob.com",
+    "linear.app",
+    "notion.com",
+    "stripe.com"
+   ],
+   "sample_hrefs": [
+    "/community",
+    "https://community.hibob.com/"
+   ]
+  },
+  "Fotboll": {
+   "sites": 5,
+   "sample_sites": [
+    "aftonbladet.se",
+    "expressen.se",
+    "intersport.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/fotboll",
+    "/sport/fotboll/c/160200"
+   ]
+  },
+  "Padel": {
+   "sites": 5,
+   "sample_sites": [
+    "intersport.se",
+    "nordicwellness.se",
+    "sats.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/padel",
+    "/sport/racketsport/padel/c/160610"
+   ]
+  },
+  "Stöd oss": {
+   "sites": 5,
+   "sample_sites": [
+    "actionaid.se",
+    "cancerfonden.se",
+    "hjart-lungfonden.se",
+    "lakareutangranser.se"
+   ],
+   "sample_hrefs": [
+    "/stod-oss",
+    "https://actionaid.se/stod-oss/"
+   ]
+  },
+  "Ge en minnesgåva": {
+   "sites": 5,
+   "sample_sites": [
+    "actionaid.se",
+    "cancerfonden.se",
+    "hjart-lungfonden.se",
+    "lakareutangranser.se"
+   ],
+   "sample_hrefs": [
+    "/skank-pengar/ge-en-minnesgava/",
+    "/stod-oss/minnesgava"
+   ]
+  },
+  "Fritidshusförsäkring": {
+   "sites": 5,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "hedvig.com",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/fritidshus/",
+    "/forsakringar/fritidshusforsakring"
+   ]
+  },
+  "Livförsäkring": {
+   "sites": 5,
+   "sample_sites": [
+    "folksam.se",
+    "if.se",
+    "nordea.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/livforsakring",
+    "/forsakringar/livforsakring/livforsakring"
+   ]
+  },
+  "Mc-försäkring": {
+   "sites": 5,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/mcforsakring",
+    "/forsakring/motorcykel/"
+   ]
+  },
+  "Hundförsäkring": {
+   "sites": 5,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "hedvig.com",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/djurforsakring/hundforsakring",
+    "/forsakring/hund/"
+   ]
+  },
+  "Kattförsäkring": {
+   "sites": 5,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "hedvig.com",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/djurforsakring/kattforsakring",
+    "/forsakring/katt/"
+   ]
+  },
+  "Om du inte är nöjd": {
+   "sites": 5,
+   "sample_sites": [
+    "advisa.se",
+    "hedvig.com",
+    "if.se",
+    "seb.se"
+   ],
+   "sample_hrefs": [
+    "/om-advisa/klagomalsinformation/",
+    "/om-trygghansa/inte-nojd"
+   ]
+  },
+  "Visselblåsning": {
+   "sites": 5,
+   "sample_sites": [
+    "elgiganten.se",
+    "intersport.se",
+    "kivra.se",
+    "lakareutangranser.se"
+   ],
+   "sample_hrefs": [
+    "/kontakta-oss/visselblasning",
+    "/kundtjanst/visselblasningspolicy-elgiganten"
+   ]
+  },
+  "Events": {
+   "sites": 5,
+   "sample_sites": [
+    "billogram.com",
+    "hibob.com",
+    "intercom.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/events",
+    "/investors/events"
+   ]
+  },
+  "Kultur": {
+   "sites": 5,
+   "sample_sites": [
+    "aftonbladet.se",
+    "dn.se",
+    "expressen.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/kultur",
+    "/kultur/"
+   ]
+  },
+  "Ledare": {
+   "sites": 5,
+   "sample_sites": [
+    "aftonbladet.se",
+    "di.se",
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/ledare",
+    "/ledare/"
+   ]
+  },
+  "Musik": {
+   "sites": 5,
+   "sample_sites": [
+    "aftonbladet.se",
+    "cdon.se",
+    "expressen.se",
+    "medborgarskolan.se"
+   ],
+   "sample_hrefs": [
+    "/kurser-och-evenemang/musik/",
+    "/musik/"
+   ]
+  },
+  "Aktuellt": {
+   "sites": 5,
+   "sample_sites": [
+    "actionaid.se",
+    "centralbadet.se",
+    "lakareutangranser.se",
+    "mathem.se"
+   ],
+   "sample_hrefs": [
+    "/aktuellt",
+    "/aktuellt/"
+   ]
+  },
+  "Sustainability": {
+   "sites": 5,
+   "sample_sites": [
+    "billogram.com",
+    "budbee.com",
+    "flixbus.se",
+    "hubspot.com"
+   ],
+   "sample_hrefs": [
+    "//www.hubspot.com/sustainability",
+    "/company/sustainability"
+   ]
+  },
+  "Fonder": {
+   "sites": 5,
+   "sample_sites": [
+    "compricer.se",
+    "di.se",
+    "lansforsakringar.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/fonder/",
+    "/privat/bank/spara/fonder/"
+   ]
+  },
+  "Pension": {
+   "sites": 5,
+   "sample_sites": [
+    "compricer.se",
+    "expressen.se",
+    "lansforsakringar.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/ekonomi/pension/",
+    "/pension/"
+   ]
+  },
+  "Privatekonomi": {
+   "sites": 5,
+   "sample_sites": [
+    "compricer.se",
+    "di.se",
+    "expressen.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/",
+    "/amnen/privatekonomi/"
+   ]
+  },
+  "Tjänster": {
+   "sites": 5,
+   "sample_sites": [
+    "elgiganten.se",
+    "nordicwellness.se",
+    "sats.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "/tjanster",
+    "/tjanster-tillbehor/tjanster"
+   ]
+  },
+  "Kategorier": {
+   "sites": 5,
+   "sample_sites": [
+    "bokadirekt.se",
+    "cdon.se",
+    "mathem.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/alla-kategorier/"
+   ]
+  },
+  "Politik": {
+   "sites": 5,
+   "sample_sites": [
+    "di.se",
+    "dn.se",
+    "expressen.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/amnen/politik/",
+    "/om/svensk-politik/"
+   ]
+  },
+  "Gå till startsidan": {
+   "sites": 5,
+   "sample_sites": [
+    "elskling.se",
+    "insplanet.com",
+    "mathem.se",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "/",
+    "/se/"
+   ]
+  },
+  "Lediga jobb": {
+   "sites": 5,
+   "sample_sites": [
+    "actionaid.se",
+    "barncancerfonden.se",
+    "folksam.se",
+    "medborgarskolan.se"
+   ],
+   "sample_hrefs": [
+    "/jobb-och-karriar/lediga-jobb",
+    "/om-medborgarskolan/lediga-jobb/"
+   ]
+  },
+  "Frågor & svar": {
+   "sites": 5,
+   "sample_sites": [
+    "advisa.se",
+    "barncancerfonden.se",
+    "bygghemma.se",
+    "svd.se"
+   ],
+   "sample_hrefs": [
+    "/kundservice/kontakta-oss/",
+    "/om-advisa/fragor-svar/"
+   ]
+  },
+  "Investor relations": {
+   "sites": 5,
+   "sample_sites": [
+    "cdon.se",
+    "hubspot.com",
+    "prisjakt.nu",
+    "qliro.com"
+   ],
+   "sample_hrefs": [
+    "//ir.hubspot.com",
+    "https://investorrelations.prisjakt.nu"
+   ]
+  },
+  "Lediga tjänster": {
+   "sites": 5,
+   "sample_sites": [
+    "bygghemma.se",
+    "fortnox.se",
+    "seb.se",
+    "unicef.se"
+   ],
+   "sample_hrefs": [
+    "/karriar/lediga-jobb",
+    "/om-unicef-sverige/jobb"
+   ]
+  },
+  "Avbryt": {
+   "sites": 4,
+   "sample_sites": [
+    "compricer.se",
+    "hermods.se",
+    "lakareutangranser.se",
+    "unicef.se"
+   ],
+   "sample_hrefs": [
+    "#"
+   ]
+  },
+  "Artiklar": {
+   "sites": 4,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "hermods.se",
+    "prisjakt.nu",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/artiklar",
+    "/artiklar/"
+   ]
+  },
+  "Jobb": {
+   "sites": 4,
+   "sample_sites": [
+    "compricer.se",
+    "di.se",
+    "hermods.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/lediga-jobb/",
+    "https://careers.verisure.com/se/sv/home"
+   ]
+  },
+  "Språk": {
+   "sites": 4,
+   "sample_sites": [
+    "folkuniversitetet.se",
+    "hermods.se",
+    "medborgarskolan.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/kurser-och-evenemang/sprak/",
+    "https://hermods.se/article_category/sprak/"
+   ]
+  },
+  "Mobiler": {
+   "sites": 4,
+   "sample_sites": [
+    "pricerunner.se",
+    "tele2.se",
+    "telia.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/handla/mobiltelefoner",
+    "/mobiler"
+   ]
+  },
+  "Köp nu": {
+   "sites": 4,
+   "sample_sites": [
+    "airmee.se",
+    "cdon.se",
+    "nordicwellness.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "#order",
+    "/kampanjer/fri-traning-hela-sommaren/"
+   ]
+  },
+  "Developers": {
+   "sites": 4,
+   "sample_sites": [
+    "linear.app",
+    "notion.com",
+    "stripe.com",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "/developers",
+    "https://developers.notion.com"
+   ]
+  },
+  "Dam": {
+   "sites": 4,
+   "sample_sites": [
+    "ellos.se",
+    "intersport.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/dam",
+    "/dam/c/9200000"
+   ]
+  },
+  "Alla kategorier": {
+   "sites": 4,
+   "sample_sites": [
+    "cdon.se",
+    "nextory.se",
+    "pricerunner.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "#",
+    "/alla-kategorier/"
+   ]
+  },
+  "Solglasögon": {
+   "sites": 4,
+   "sample_sites": [
+    "cdon.se",
+    "prisjakt.nu",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/accessoarer/solglasogon/",
+    "/c/solglasogon"
+   ]
+  },
+  "Herr": {
+   "sites": 4,
+   "sample_sites": [
+    "ellos.se",
+    "intersport.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr",
+    "/herr/c/9100000"
+   ]
+  },
+  "Löpning": {
+   "sites": 4,
+   "sample_sites": [
+    "intersport.se",
+    "sats.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/lopning",
+    "/sport/lopning/c/290000"
+   ]
+  },
+  "Cykel": {
+   "sites": 4,
+   "sample_sites": [
+    "cdon.se",
+    "intersport.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/cdon.se/sport/cykling/cyklar/",
+    "/cykel"
+   ]
+  },
+  "Träningskläder": {
+   "sites": 4,
+   "sample_sites": [
+    "ellos.se",
+    "intersport.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/dam/sport-outdoor/traningsklader",
+    "/sport/lopning/traningsklader/c/120822"
+   ]
+  },
+  "Outdoor": {
+   "sites": 4,
+   "sample_sites": [
+    "cdon.se",
+    "intersport.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/outdoor",
+    "/outdoor/"
+   ]
+  },
+  "Kläder": {
+   "sites": 4,
+   "sample_sites": [
+    "matsmart.se",
+    "pricerunner.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/c/120400",
+    "/t/141/Klaeder-Accessoarer"
+   ]
+  },
+  "Skor": {
+   "sites": 4,
+   "sample_sites": [
+    "ellos.se",
+    "intersport.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/dam/skor",
+    "/herr/skor/c/140200"
+   ]
+  },
+  "Hockey": {
+   "sites": 4,
+   "sample_sites": [
+    "aftonbladet.se",
+    "expressen.se",
+    "intersport.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/hockey",
+    "/sport/hockey/"
+   ]
+  },
+  "Yoga": {
+   "sites": 4,
+   "sample_sites": [
+    "bokadirekt.se",
+    "nextory.se",
+    "sats.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/se/category/books/yoga-168",
+    "/yoga"
+   ]
+  },
+  "Böcker": {
+   "sites": 4,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "cdon.se",
+    "prisjakt.nu",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/bocker/",
+    "/c/bocker"
+   ]
+  },
+  "Partnerskap": {
+   "sites": 4,
+   "sample_sites": [
+    "hedvig.com",
+    "if.se",
+    "intersport.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/inspiration/partnerskap",
+    "/om-if/partnerskap"
+   ]
+  },
+  "Gravidförsäkring": {
+   "sites": 4,
+   "sample_sites": [
+    "folksam.se",
+    "if.se",
+    "swedbank.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/gravidforsakring",
+    "/privat/forsakra/personforsakring/gravidforsakring.html"
+   ]
+  },
+  "Barnförsäkring": {
+   "sites": 4,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/barn/",
+    "/forsakringar/barnforsakring/barnforsakring"
+   ]
+  },
+  "Mopedförsäkring": {
+   "sites": 4,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/moped/",
+    "/forsakringar/fordon/mopedforsakring"
+   ]
+  },
+  "Båtförsäkring": {
+   "sites": 4,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/bat/",
+    "/forsakringar/batforsakring"
+   ]
+  },
+  "Husbilsförsäkring": {
+   "sites": 4,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/husbil/",
+    "/forsakringar/fordon/husbilsforsakring"
+   ]
+  },
+  "Anmäl skada": {
+   "sites": 4,
+   "sample_sites": [
+    "folksam.se",
+    "lansforsakringar.se",
+    "swedbank.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/anmal-skada",
+    "/privat/forsakra/anmal-skada.html"
+   ]
+  },
+  "Tips och råd": {
+   "sites": 4,
+   "sample_sites": [
+    "elskling.se",
+    "folksam.se",
+    "trygghansa.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/tips-rad"
+   ]
+  },
+  "Integrations": {
+   "sites": 4,
+   "sample_sites": [
+    "calendly.com",
+    "hibob.com",
+    "linear.app",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "/integration",
+    "/integrations"
+   ]
+  },
+  "Contact sales": {
+   "sites": 4,
+   "sample_sites": [
+    "hubspot.com",
+    "intercom.com",
+    "linear.app",
+    "stripe.com"
+   ],
+   "sample_hrefs": [
+    "//offers.hubspot.com/contact-sales",
+    "/contact-sales"
+   ]
+  },
+  "Get started": {
+   "sites": 4,
+   "sample_sites": [
+    "calendly.com",
+    "charitywater.org",
+    "linear.app",
+    "stripe.com"
+   ],
+   "sample_hrefs": [
+    "/fundraise#start-fundraiser",
+    "/signup"
+   ]
+  },
+  "konsumentverket.se": {
+   "sites": 4,
+   "sample_sites": [
+    "hallon.se",
+    "lendo.se",
+    "swedbank.se",
+    "tele2.se"
+   ],
+   "sample_hrefs": [
+    "https://konsumentverket.se",
+    "https://www.konsumentverket.se"
+   ]
+  },
+  "TV": {
+   "sites": 4,
+   "sample_sites": [
+    "aftonbladet.se",
+    "cdon.se",
+    "netonnet.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/art/tv",
+    "/c/tv"
+   ]
+  },
+  "Quiz": {
+   "sites": 4,
+   "sample_sites": [
+    "aftonbladet.se",
+    "dn.se",
+    "expressen.se",
+    "svd.se"
+   ],
+   "sample_hrefs": [
+    "/quiz/",
+    "/spel/quiz/"
+   ]
+  },
+  "Bil": {
+   "sites": 4,
+   "sample_sites": [
+    "aftonbladet.se",
+    "di.se",
+    "folksam.se",
+    "hedvig.com"
+   ],
+   "sample_hrefs": [
+    "/bil/",
+    "https://www.aftonbladet.se/bil"
+   ]
+  },
+  "Skönhet": {
+   "sites": 4,
+   "sample_sites": [
+    "aftonbladet.se",
+    "bokadirekt.se",
+    "cdon.se",
+    "ellos.se"
+   ],
+   "sample_hrefs": [
+    "/skonhet",
+    "/skonhet/"
+   ]
+  },
+  "Debatt": {
+   "sites": 4,
+   "sample_sites": [
+    "aftonbladet.se",
+    "di.se",
+    "expressen.se",
+    "svd.se"
+   ],
+   "sample_hrefs": [
+    "/debatt",
+    "/debatt/"
+   ]
+  },
+  "Customers": {
+   "sites": 4,
+   "sample_sites": [
+    "hubspot.com",
+    "intercom.com",
+    "linear.app",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/customers"
+   ]
+  },
+  "Outlet": {
+   "sites": 4,
+   "sample_sites": [
+    "elgiganten.se",
+    "ellos.se",
+    "kjell.com",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/outlet",
+    "/se/outlet"
+   ]
+  },
+  "Våra tjänster": {
+   "sites": 4,
+   "sample_sites": [
+    "anticimex.se",
+    "ellos.se",
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": []
+  },
+  "Skicka": {
+   "sites": 4,
+   "sample_sites": [
+    "actionaid.se",
+    "centralbadet.se",
+    "rodakorset.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": []
+  },
+  "Français": {
+   "sites": 4,
+   "sample_sites": [
+    "budbee.com",
+    "calendly.com",
+    "flixbus.se",
+    "hubspot.com"
+   ],
+   "sample_hrefs": [
+    "//www.flixbus.fr/?noRedirect=true",
+    "/fr/"
+   ]
+  },
+  "Contact": {
+   "sites": 4,
+   "sample_sites": [
+    "billogram.com",
+    "budbee.com",
+    "linear.app",
+    "visma.se"
+   ],
+   "sample_hrefs": [
+    "/contact",
+    "https://instabee.com/contact/"
+   ]
+  },
+  "Bolåneräntor": {
+   "sites": 4,
+   "sample_sites": [
+    "compricer.se",
+    "lendo.se",
+    "seb.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/bolan/bolanerantor",
+    "/borantor/"
+   ]
+  },
+  "Elavtal": {
+   "sites": 4,
+   "sample_sites": [
+    "compricer.se",
+    "fortum.se",
+    "vattenfall.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/el",
+    "/el/avtal/"
+   ]
+  },
+  "Kreditkort": {
+   "sites": 4,
+   "sample_sites": [
+    "compricer.se",
+    "nordea.se",
+    "swedbank.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/kreditkort",
+    "/kreditkort/"
+   ]
+  },
+  "Blogg": {
+   "sites": 4,
+   "sample_sites": [
+    "advisa.se",
+    "fortum.se",
+    "verisure.se",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "/artiklar",
+    "/blogg/"
+   ]
+  },
+  "Lägenhet": {
+   "sites": 4,
+   "sample_sites": [
+    "fortum.se",
+    "svenskfast.se",
+    "vattenfall.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/elavtal/valja-elavtal/lagenhet/",
+    "/funnel/standalone/basic/?utm_content=alarm&property=apartment"
+   ]
+  },
+  "Fritidshus": {
+   "sites": 4,
+   "sample_sites": [
+    "fortum.se",
+    "svenskfast.se",
+    "vattenfall.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "#",
+    "/elavtal/valja-elavtal/fritidshus/"
+   ]
+  },
+  "Gruppträning": {
+   "sites": 4,
+   "sample_sites": [
+    "bokadirekt.se",
+    "fitness24seven.com",
+    "nordicwellness.se",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/all-grupptraning",
+    "/grupptraning/hela-sverige"
+   ]
+  },
+  "Personlig tränare": {
+   "sites": 4,
+   "sample_sites": [
+    "bokadirekt.se",
+    "fitness24seven.com",
+    "nordicwellness.se",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/personlig-tranare",
+    "/personlig-tranare/hela-sverige"
+   ]
+  },
+  "Priser": {
+   "sites": 4,
+   "sample_sites": [
+    "nordicwellness.se",
+    "seb.se",
+    "telia.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/om/priser",
+    "/priser/"
+   ]
+  },
+  "Hälsa": {
+   "sites": 4,
+   "sample_sites": [
+    "bokadirekt.se",
+    "cdon.se",
+    "nextory.se",
+    "pricerunner.se"
+   ],
+   "sample_hrefs": [
+    "/halsa/",
+    "/halsa/hela-sverige"
+   ]
+  },
+  "Vår historia": {
+   "sites": 4,
+   "sample_sites": [
+    "centralbadet.se",
+    "fitness24seven.com",
+    "nextory.se",
+    "willys.se"
+   ],
+   "sample_hrefs": [
+    "/artikel/om-oss/var-historia",
+    "/se/about"
+   ]
+  },
+  "Recept": {
+   "sites": 4,
+   "sample_sites": [
+    "coop.se",
+    "ica.se",
+    "mathem.se",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/magazine/mat-och-halsa/recept",
+    "/recept/"
+   ]
+  },
+  "Startsida": {
+   "sites": 4,
+   "sample_sites": [
+    "anticimex.se",
+    "dn.se",
+    "if.se",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/",
+    "/privat"
+   ]
+  },
+  "Låna pengar": {
+   "sites": 4,
+   "sample_sites": [
+    "advisa.se",
+    "lendo.se",
+    "swedbank.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/lana-pengar",
+    "/lana-pengar/"
+   ]
+  },
+  "Till startsidan": {
+   "sites": 4,
+   "sample_sites": [
+    "bygghemma.se",
+    "if.se",
+    "medborgarskolan.se",
+    "netonnet.se"
+   ],
+   "sample_hrefs": [
+    "/",
+    "/privat"
+   ]
+  },
+  "Utbildningar": {
+   "sites": 4,
+   "sample_sites": [
+    "anticimex.se",
+    "di.se",
+    "fortnox.se",
+    "medborgarskolan.se"
+   ],
+   "sample_hrefs": [
+    "/akademi/",
+    "/utbildningar/"
+   ]
+  },
+  "Twitter": {
+   "sites": 4,
+   "sample_sites": [
+    "charitywater.org",
+    "hubspot.com",
+    "lansforsakringar.se",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "https://twitter.com/charitywater",
+    "https://twitter.com/share?url=http%3A%2F%2Fwww.lansforsakringar.se%2Fstockholm%2Fprivat%2F&text=L%C3%A4nsf%C3%B6rs%C3%A4"
+   ]
+  },
+  "Friskvård": {
+   "sites": 4,
+   "sample_sites": [
+    "bokadirekt.se",
+    "centralbadet.se",
+    "fitness24seven.com",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/friskvard",
+    "/friskvard-for-foretag/friskvard-for-foretag/oversikt/"
+   ]
+  },
+  "Mobiltelefoner": {
+   "sites": 4,
+   "sample_sites": [
+    "cdon.se",
+    "netonnet.se",
+    "prisjakt.nu",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/c/mobiltelefoner",
+    "/mobiltelefoner"
+   ]
+  },
+  "Español": {
+   "sites": 4,
+   "sample_sites": [
+    "calendly.com",
+    "fastighetsbyran.se",
+    "flixbus.se",
+    "hubspot.com"
+   ],
+   "sample_hrefs": [
+    "//www.flixbus.es/?noRedirect=true",
+    "/es/"
+   ]
+  },
+  "Português": {
+   "sites": 4,
+   "sample_sites": [
+    "calendly.com",
+    "fastighetsbyran.se",
+    "flixbus.se",
+    "hubspot.com"
+   ],
+   "sample_hrefs": [
+    "//www.flixbus.pt/?noRedirect=true",
+    "/pt/"
+   ]
+  },
+  "Hörlurar": {
+   "sites": 4,
+   "sample_sites": [
+    "kjell.com",
+    "prisjakt.nu",
+    "telia.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/c/horlurar",
+    "/mobiltelefoner/horlurar"
+   ]
+  },
+  "Kampanjer": {
+   "sites": 4,
+   "sample_sites": [
+    "elgiganten.se",
+    "kjell.com",
+    "prisjakt.nu",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/kampanj",
+    "/kampanjer"
+   ]
+  },
+  "Varukorg": {
+   "sites": 4,
+   "sample_sites": [
+    "bygghemma.se",
+    "hallon.se",
+    "intersport.se",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/checkout"
+   ]
+  },
+  "Om webbplatsen": {
+   "sites": 3,
+   "sample_sites": [
+    "folkuniversitetet.se",
+    "hermods.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/om-trygghansa/om-webbplatsen",
+    "https://hermods.se/om-hermods/om-webbplatsen/"
+   ]
+  },
+  "Hantering av personuppgifter": {
+   "sites": 3,
+   "sample_sites": [
+    "hermods.se",
+    "if.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/faq/hantering-av-personuppgifter",
+    "/om-webbplatsen/hantering-av-personuppgifter"
+   ]
+  },
+  "Visa resultat": {
+   "sites": 3,
+   "sample_sites": [
+    "expressen.se",
+    "folkuniversitetet.se",
+    "hermods.se"
+   ],
+   "sample_hrefs": []
+  },
+  "Köp": {
+   "sites": 3,
+   "sample_sites": [
+    "bokadirekt.se",
+    "lyko.com",
+    "matsmart.se"
+   ],
+   "sample_hrefs": [
+    "/friskvardskort"
+   ]
+  },
+  "Fortsätt": {
+   "sites": 3,
+   "sample_sites": [
+    "lakareutangranser.se",
+    "lyko.com",
+    "unicef.se"
+   ],
+   "sample_hrefs": [
+    "#"
+   ]
+  },
+  "Följ oss": {
+   "sites": 3,
+   "sample_sites": [
+    "lyko.com",
+    "nordicwellness.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": []
+  },
+  "Samsung Galaxy": {
+   "sites": 3,
+   "sample_sites": [
+    "tele2.se",
+    "telia.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/handla/mobiltelefoner/samsung",
+    "/mobiler/samsung"
+   ]
+  },
+  "Google Pixel": {
+   "sites": 3,
+   "sample_sites": [
+    "tele2.se",
+    "telia.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/handla/mobiltelefoner/google",
+    "/mobiler/google-pixel"
+   ]
+  },
+  "Familjeabonnemang": {
+   "sites": 3,
+   "sample_sites": [
+    "telia.se",
+    "tre.se",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "/handla/mobilabonnemang/familjeabonnemang",
+    "/mobilabonnemang/familj"
+   ]
+  },
+  "Whistleblowing": {
+   "sites": 3,
+   "sample_sites": [
+    "budbee.com",
+    "tre.se",
+    "visma.se"
+   ],
+   "sample_hrefs": [
+    "/whistleblowing",
+    "https://instabee.com/whistleblowing/"
+   ]
+  },
+  "Säkerhet": {
+   "sites": 3,
+   "sample_sites": [
+    "kivra.se",
+    "telia.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/om-tre/sakerhet",
+    "/sakerhet"
+   ]
+  },
+  "Webinars": {
+   "sites": 3,
+   "sample_sites": [
+    "hibob.com",
+    "hubspot.com",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "//www.hubspot.com/resources/webinar#resource-library-page-headers",
+    "/webinars"
+   ]
+  },
+  "Academy": {
+   "sites": 3,
+   "sample_sites": [
+    "intercom.com",
+    "notion.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/academy",
+    "https://academy.fin.ai"
+   ]
+  },
+  "Suomi": {
+   "sites": 3,
+   "sample_sites": [
+    "flixbus.se",
+    "nextory.se",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "//www.flixbus.fi/?noRedirect=true",
+    "/fi"
+   ]
+  },
+  "Byxor": {
+   "sites": 3,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/dam/byxor",
+    "/herr/klader/byxor/c/120410"
+   ]
+  },
+  "Jackor": {
+   "sites": 3,
+   "sample_sites": [
+    "prisjakt.nu",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/c/jackor",
+    "/herr/klader/jackor/c/120404"
+   ]
+  },
+  "Badkläder": {
+   "sites": 3,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/dam/badklader",
+    "/herr/klader/badklader/c/120416"
+   ]
+  },
+  "Baddräkter": {
+   "sites": 3,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/dam/badklader/baddrakter",
+    "/dam/klader/badklader/baddrakter/c/12021802"
+   ]
+  },
+  "Löparskor": {
+   "sites": 3,
+   "sample_sites": [
+    "prisjakt.nu",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/c/loparskor",
+    "/sport/lopning/alla-loparskor/c/142010"
+   ]
+  },
+  "Träningsskor": {
+   "sites": 3,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/dam/sport-outdoor/skor/traningsskor",
+    "/herr/skor/traningsskor/c/140224"
+   ]
+  },
+  "Cyklar": {
+   "sites": 3,
+   "sample_sites": [
+    "prisjakt.nu",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/c/cyklar",
+    "/sport/cykel/cyklar/c/100200"
+   ]
+  },
+  "Kampsport": {
+   "sites": 3,
+   "sample_sites": [
+    "aftonbladet.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ovrig-sport/kampsport/c/180600",
+    "https://www.aftonbladet.se/tagg/kampsport"
+   ]
+  },
+  "Tält": {
+   "sites": 3,
+   "sample_sites": [
+    "prisjakt.nu",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/c/talt",
+    "/outdoor/sov-ute/talt/c/200200"
+   ]
+  },
+  "Tillbehör": {
+   "sites": 3,
+   "sample_sites": [
+    "stadium.se",
+    "telia.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ovrig-sport/vaskor-ryggsackar/drikksackar-och-loparvast/tillbehor/c/1006062",
+    "/surfplattor/tillbehor"
+   ]
+  },
+  "Ryggsäckar": {
+   "sites": 3,
+   "sample_sites": [
+    "prisjakt.nu",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/c/ryggsackar",
+    "/outdoor/ryggsackar/c/201400"
+   ]
+  },
+  "Längdskidor": {
+   "sites": 3,
+   "sample_sites": [
+    "expressen.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/langdskidor/",
+    "/sport/vintersport/langdskidor/c/240200"
+   ]
+  },
+  "Innebandy": {
+   "sites": 3,
+   "sample_sites": [
+    "intersport.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/innebandy",
+    "/sport/lagsport/innebandy/c/160804"
+   ]
+  },
+  "Tennis": {
+   "sites": 3,
+   "sample_sites": [
+    "intersport.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/racketsport/tennis/c/160604",
+    "/tennis"
+   ]
+  },
+  "Leverans": {
+   "sites": 3,
+   "sample_sites": [
+    "cdon.se",
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/cdon/leverans/",
+    "/kundservice/fragor-och-svar/leverans"
+   ]
+  },
+  "Betalning": {
+   "sites": 3,
+   "sample_sites": [
+    "cdon.se",
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/cdon/betalning/",
+    "/faq/betalning"
+   ]
+  },
+  "Forskning": {
+   "sites": 3,
+   "sample_sites": [
+    "cancerfonden.se",
+    "hjart-lungfonden.se",
+    "lansforsakringar.se"
+   ],
+   "sample_hrefs": [
+    "/forskning",
+    "/privat/om-oss/forskning/"
+   ]
+  },
+  "Read more": {
+   "sites": 3,
+   "sample_sites": [
+    "cancerfonden.se",
+    "qliro.com",
+    "stripe.com"
+   ],
+   "sample_hrefs": [
+    "/blog/introducing-our-agentic-commerce-solutions",
+    "/om-oss/75/momentum"
+   ]
+  },
+  "Bostadsrättsförsäkring": {
+   "sites": 3,
+   "sample_sites": [
+    "folksam.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/hemforsakring/bostadsrattsforsakring",
+    "/privat/forsakringar/hemforsakring/bostadsrattsforsakring"
+   ]
+  },
+  "Hyresrättsförsäkring": {
+   "sites": 3,
+   "sample_sites": [
+    "folksam.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/hemforsakring/hyresrattsforsakring",
+    "/privat/forsakringar/hemforsakring/hyresratt"
+   ]
+  },
+  "Reseförsäkring": {
+   "sites": 3,
+   "sample_sites": [
+    "folksam.se",
+    "nordea.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/reseforsakring",
+    "/privat/produkter/kreditkort-bankkort/kompletterande-reseforsakring.html"
+   ]
+  },
+  "Släpvagnsförsäkring": {
+   "sites": 3,
+   "sample_sites": [
+    "folksam.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/fordon/slapvagnsforsakring",
+    "/forsakringar/slapvagnsforsakring"
+   ]
+  },
+  "Husvagnsförsäkring": {
+   "sites": 3,
+   "sample_sites": [
+    "folksam.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/fordon/husvagnsforsakring",
+    "/forsakringar/husvagnsforsakring"
+   ]
+  },
+  "Snöskoterförsäkring": {
+   "sites": 3,
+   "sample_sites": [
+    "compricer.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/snoskoter/",
+    "/forsakringar/fordon/snoskoterforsakring"
+   ]
+  },
+  "Våra försäkringar": {
+   "sites": 3,
+   "sample_sites": [
+    "folksam.se",
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar",
+    "/privat/forsakringar"
+   ]
+  },
+  "Company": {
+   "sites": 3,
+   "sample_sites": [
+    "hibob.com",
+    "hubspot.com",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "#",
+    "/company"
+   ]
+  },
+  "Marketplace": {
+   "sites": 3,
+   "sample_sites": [
+    "elgiganten.se",
+    "hibob.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/marketplace",
+    "/partner"
+   ]
+  },
+  "Products": {
+   "sites": 3,
+   "sample_sites": [
+    "hubspot.com",
+    "stripe.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": []
+  },
+  "Payments": {
+   "sites": 3,
+   "sample_sites": [
+    "billogram.com",
+    "calendly.com",
+    "stripe.com"
+   ],
+   "sample_hrefs": [
+    "/payments"
+   ]
+  },
+  "Jobs": {
+   "sites": 3,
+   "sample_sites": [
+    "flixbus.se",
+    "stripe.com",
+    "tibber.com"
+   ],
+   "sample_hrefs": [
+    "/jobs",
+    "https://flix.careers"
+   ]
+  },
+  "Mobilt bredband": {
+   "sites": 3,
+   "sample_sites": [
+    "hallon.se",
+    "tele2.se",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/bredband",
+    "/bredband/mobilt-bredband"
+   ]
+  },
+  "Mobiltillbehör": {
+   "sites": 3,
+   "sample_sites": [
+    "cdon.se",
+    "kjell.com",
+    "tele2.se"
+   ],
+   "sample_hrefs": [
+    "/mobiltelefoni/mobiltillbehor/",
+    "/mobiltillbehor"
+   ]
+  },
+  "Surfplattor": {
+   "sites": 3,
+   "sample_sites": [
+    "cdon.se",
+    "prisjakt.nu",
+    "tele2.se"
+   ],
+   "sample_hrefs": [
+    "/c/surfplattor",
+    "/mobiltelefoni/surfplattor/"
+   ]
+  },
+  "Tv & streaming": {
+   "sites": 3,
+   "sample_sites": [
+    "compricer.se",
+    "expressen.se",
+    "tele2.se"
+   ],
+   "sample_hrefs": [
+    "/noje/tv-och-streaming/",
+    "/tv"
+   ]
+  },
+  "Utlandspriser": {
+   "sites": 3,
+   "sample_sites": [
+    "hallon.se",
+    "tele2.se",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "/utland",
+    "/utlandspriser"
+   ]
+  },
+  "Start": {
+   "sites": 3,
+   "sample_sites": [
+    "aftonbladet.se",
+    "expressen.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "/",
+    "https://www.aftonbladet.se"
+   ]
+  },
+  "Tipsa": {
+   "sites": 3,
+   "sample_sites": [
+    "aftonbladet.se",
+    "expressen.se",
+    "svd.se"
+   ],
+   "sample_hrefs": [
+    "https://www.aftonbladet.se/tipsa",
+    "https://www.expressen.se/nyheter/har-du-ett-nyhetstips-eller-bilder/"
+   ]
+  },
+  "Film": {
+   "sites": 3,
+   "sample_sites": [
+    "aftonbladet.se",
+    "cdon.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/film/",
+    "/noje/film/"
+   ]
+  },
+  "Kontakta redaktionen": {
+   "sites": 3,
+   "sample_sites": [
+    "aftonbladet.se",
+    "di.se",
+    "svd.se"
+   ],
+   "sample_hrefs": [
+    "/kontakta-oss/",
+    "https://www.aftonbladet.se/omaftonbladet/a/LOlQ4/om-aftonbladet"
+   ]
+  },
+  "Docs": {
+   "sites": 3,
+   "sample_sites": [
+    "linear.app",
+    "supabase.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/docs"
+   ]
+  },
+  "Changelog": {
+   "sites": 3,
+   "sample_sites": [
+    "linear.app",
+    "supabase.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/changelog"
+   ]
+  },
+  "Sign Up": {
+   "sites": 3,
+   "sample_sites": [
+    "klarna.com",
+    "linear.app",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/signup",
+    "/us/memberships/"
+   ]
+  },
+  "DPA": {
+   "sites": 3,
+   "sample_sites": [
+    "linear.app",
+    "supabase.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/dpa",
+    "/legal/dpa"
+   ]
+  },
+  "GitHub": {
+   "sites": 3,
+   "sample_sites": [
+    "linear.app",
+    "supabase.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "https://github.com/linear",
+    "https://github.com/supabase"
+   ]
+  },
+  "REA": {
+   "sites": 3,
+   "sample_sites": [
+    "ellos.se",
+    "intersport.se",
+    "pricerunner.se"
+   ],
+   "sample_hrefs": [
+    "/deals",
+    "/rea"
+   ]
+  },
+  "Bli kund": {
+   "sites": 3,
+   "sample_sites": [
+    "ellos.se",
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/co/register",
+    "/privat/bli-bankkund/"
+   ]
+  },
+  "Makeup": {
+   "sites": 3,
+   "sample_sites": [
+    "bokadirekt.se",
+    "cdon.se",
+    "ellos.se"
+   ],
+   "sample_hrefs": [
+    "/makeup/hela-sverige",
+    "/skonhet/makeup"
+   ]
+  },
+  "Ekonomi": {
+   "sites": 3,
+   "sample_sites": [
+    "dn.se",
+    "expressen.se",
+    "lakareutangranser.se"
+   ],
+   "sample_hrefs": [
+    "/ekonomi/",
+    "/vilka-vi-ar/ekonomi"
+   ]
+  },
+  "Gåvoshop": {
+   "sites": 3,
+   "sample_sites": [
+    "actionaid.se",
+    "rodakorset.se",
+    "unicef.se"
+   ],
+   "sample_hrefs": [
+    "/gavoshop",
+    "/skank-pengar/gavoshop/"
+   ]
+  },
+  "Lån": {
+   "sites": 3,
+   "sample_sites": [
+    "compricer.se",
+    "lendo.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/lan/",
+    "/lana-pengar"
+   ]
+  },
+  "Företagslån": {
+   "sites": 3,
+   "sample_sites": [
+    "compricer.se",
+    "lendo.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/foretagslan",
+    "/foretagslan/"
+   ]
+  },
+  "Elpriser": {
+   "sites": 3,
+   "sample_sites": [
+    "compricer.se",
+    "elskling.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/el/priser/",
+    "/elavtal/elpriser/"
+   ]
+  },
+  "Sparande": {
+   "sites": 3,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/pengar/",
+    "/sparande"
+   ]
+  },
+  "Tjänstepension": {
+   "sites": 3,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/pension/tjanste/",
+    "/privat/pension/pensionens-tre-delar/tjanstepension.html"
+   ]
+  },
+  "Försäkring": {
+   "sites": 3,
+   "sample_sites": [
+    "compricer.se",
+    "lansforsakringar.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring",
+    "/forsakring/"
+   ]
+  },
+  "Fast elpris": {
+   "sites": 3,
+   "sample_sites": [
+    "elskling.se",
+    "fortum.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/elavtal/elpriser/fast-elpris/",
+    "/jamfor/elpriser/fast"
+   ]
+  },
+  "Villa": {
+   "sites": 3,
+   "sample_sites": [
+    "fortum.se",
+    "hedvig.com",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "/hus/",
+    "https://www.hedvig.com/se/forsakringar/villaforsakring"
+   ]
+  },
+  "Ladda ner": {
+   "sites": 3,
+   "sample_sites": [
+    "fortum.se",
+    "ica.se",
+    "vy.se"
+   ],
+   "sample_hrefs": [
+    "/se/el/api/app-download?id=11n2vbkRdzgJ63iLxhP7wW"
+   ]
+  },
+  "Ta reda på mer": {
+   "sites": 3,
+   "sample_sites": [
+    "elskling.se",
+    "fortum.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/se/el/radgivning/elmarknaden/vad-hander-pa-elmarknaden"
+   ]
+  },
+  "Event": {
+   "sites": 3,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "billogram.com",
+    "intersport.se"
+   ],
+   "sample_hrefs": [
+    "/event/",
+    "/events"
+   ]
+  },
+  "Medlemskap": {
+   "sites": 3,
+   "sample_sites": [
+    "fitness24seven.com",
+    "nordicwellness.se",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/medlemskap/",
+    "/medlemskap/vara-medlemskap/"
+   ]
+  },
+  "Ladda ner appen": {
+   "sites": 3,
+   "sample_sites": [
+    "folksam.se",
+    "nextory.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/kundservice/app",
+    "/se/download-apps"
+   ]
+  },
+  "Trädgård": {
+   "sites": 3,
+   "sample_sites": [
+    "nextory.se",
+    "pricerunner.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/kategori.php?k=2236",
+    "/se/category/books/tradgard-284"
+   ]
+  },
+  "Världen": {
+   "sites": 3,
+   "sample_sites": [
+    "dn.se",
+    "expressen.se",
+    "svd.se"
+   ],
+   "sample_hrefs": [
+    "/nyheter/varlden/",
+    "/varlden/"
+   ]
+  },
+  "Kakpolicy": {
+   "sites": 3,
+   "sample_sites": [
+    "di.se",
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "https://gdpr.bonniernews.se/cookiepolicy",
+    "https://privacy.bonniernews.se/cookiepolicy"
+   ]
+  },
+  "Annonsera": {
+   "sites": 3,
+   "sample_sites": [
+    "di.se",
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "https://advertising.bonniernews.se",
+    "https://advertising.bonniernews.se/"
+   ]
+  },
+  "Anmäl störande/felaktig annons": {
+   "sites": 3,
+   "sample_sites": [
+    "di.se",
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "javascript:window.location.href='mailto:adops@bonniernews.se'",
+    "mailto:anmalannons@di.se"
+   ]
+  },
+  "Trygghetsförsäkring": {
+   "sites": 3,
+   "sample_sites": [
+    "advisa.se",
+    "lendo.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/trygghetsforsakring/",
+    "/trygghetsforsakring"
+   ]
+  },
+  "Jämför lån": {
+   "sites": 3,
+   "sample_sites": [
+    "advisa.se",
+    "lendo.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/",
+    "/jamfor-lan/"
+   ]
+  },
+  "Samla lån": {
+   "sites": 3,
+   "sample_sites": [
+    "advisa.se",
+    "lendo.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/samla-lan-krediter",
+    "/samla-lan/"
+   ]
+  },
+  "Alla försäkringar": {
+   "sites": 3,
+   "sample_sites": [
+    "if.se",
+    "lansforsakringar.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring",
+    "/privat/forsakring/"
+   ]
+  },
+  "Flytta bolån": {
+   "sites": 3,
+   "sample_sites": [
+    "lendo.se",
+    "seb.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/bolan/flytta-bolan",
+    "/bolan/utoka-bolan"
+   ]
+  },
+  "Lånelöfte": {
+   "sites": 3,
+   "sample_sites": [
+    "lendo.se",
+    "swedbank.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/bolan/lanelofte",
+    "/bolan/lanelofte-ansok"
+   ]
+  },
+  "Ordlista": {
+   "sites": 3,
+   "sample_sites": [
+    "advisa.se",
+    "hedvig.com",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/ordlista",
+    "/ordlista/"
+   ]
+  },
+  "Affiliate": {
+   "sites": 3,
+   "sample_sites": [
+    "advisa.se",
+    "elskling.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/affiliate-program",
+    "https://samblagroupaffiliates.com/"
+   ]
+  },
+  "Alla tjänster": {
+   "sites": 3,
+   "sample_sites": [
+    "sector-alarm.se",
+    "telia.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/alla-tjanster",
+    "/tjanster"
+   ]
+  },
+  "Behandling av personuppgifter": {
+   "sites": 3,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "medborgarskolan.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/bedrageri-och-sakerhet/banksekretess-och-integritet/behandling-av-personuppgifter.html",
+    "/om-medborgarskolan/personuppgiftspolicy/"
+   ]
+  },
+  "Swish": {
+   "sites": 3,
+   "sample_sites": [
+    "lansforsakringar.se",
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/bank/kort--betalningar/swish/",
+    "/privat/betala-och-overfora/swish.html"
+   ]
+  },
+  "Mobilt BankID": {
+   "sites": 3,
+   "sample_sites": [
+    "nordea.se",
+    "seb.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/digitala-tjanster-och-sakerhet/mobilt-bankid?icmp=sebsep_other-genother_find_x_mobiltbankid",
+    "/privat/digitala-tjanster/mobilt-bankid.html"
+   ]
+  },
+  "Sparkonton": {
+   "sites": 3,
+   "sample_sites": [
+    "lansforsakringar.se",
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/bank/spara/alla-konton-for-sparande/",
+    "/privat/produkter/spara-investera/sparkonton/"
+   ]
+  },
+  "Aktier": {
+   "sites": 3,
+   "sample_sites": [
+    "nordea.se",
+    "seb.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/produkter/spara-investera/aktier/",
+    "/privat/spara-och-investera/aktier-och-vardepapper"
+   ]
+  },
+  "Gaming": {
+   "sites": 3,
+   "sample_sites": [
+    "elgiganten.se",
+    "netonnet.se",
+    "pricerunner.se"
+   ],
+   "sample_hrefs": [
+    "/art/gaming",
+    "/t/19/Gaming-Underhaallning"
+   ]
+  },
+  "Fordon": {
+   "sites": 3,
+   "sample_sites": [
+    "folksam.se",
+    "if.se",
+    "pricerunner.se"
+   ],
+   "sample_hrefs": [
+    "/foretag/vid-skada/bilskada",
+    "/t/11/Fordon-Tillbehoer"
+   ]
+  },
+  "Hitta mäklare": {
+   "sites": 3,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "maklarhuset.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "/hitta-maklare/",
+    "/maklare"
+   ]
+  },
+  "Legal": {
+   "sites": 3,
+   "sample_sites": [
+    "calendly.com",
+    "flixbus.se",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "/legal"
+   ]
+  },
+  "Whistleblower": {
+   "sites": 3,
+   "sample_sites": [
+    "fitness24seven.com",
+    "sats.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/om-sats/vi-vill-goera-det-som-aer-raett",
+    "https://group.vattenfall.com/se/om-oss/bolagsstyrning/intern-styrning/whistleblowing"
+   ]
+  },
+  "Smarta hem": {
+   "sites": 3,
+   "sample_sites": [
+    "cdon.se",
+    "kjell.com",
+    "sector-alarm.se"
+   ],
+   "sample_hrefs": [
+    "/hemelektronik/smarta-hem/",
+    "/se/produkter/smarta-hem"
+   ]
+  },
+  "Vitvaror": {
+   "sites": 3,
+   "sample_sites": [
+    "cdon.se",
+    "elgiganten.se",
+    "netonnet.se"
+   ],
+   "sample_hrefs": [
+    "/art/vitvaror",
+    "/hushall-kok/vitvaror/"
+   ]
+  },
+  "Robotgräsklippare": {
+   "sites": 3,
+   "sample_sites": [
+    "bygghemma.se",
+    "cdon.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/c/robotgrasklippare",
+    "/hem-tradgard/tradgardsskotsel/tradgardsmaskiner/grasklippare/robotgrasklippare/"
+   ]
+  },
+  "Dataskydd": {
+   "sites": 3,
+   "sample_sites": [
+    "kivra.se",
+    "verisure.se",
+    "willys.se"
+   ],
+   "sample_hrefs": [
+    "/artikel/villkor-dataskydd",
+    "/integritetsmeddelande-konsumenter"
+   ]
+  },
+  "Börja pensionsspara": {
+   "sites": 3,
+   "sample_sites": [
+    "folksam.se",
+    "nordea.se",
+    "seb.se"
+   ],
+   "sample_hrefs": [
+    "/privat/pension/borja-pensionsspara",
+    "/privat/produkter/pension/borja-pensionsspara.html"
+   ]
+  },
+  "Nyhetsrum": {
+   "sites": 3,
+   "sample_sites": [
+    "folksam.se",
+    "prisjakt.nu",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "https://corporate.prisjakt.nu/newsroom/",
+    "https://nyhetsrum.folksam.se/"
+   ]
+  },
+  "Hitta snabbt": {
+   "sites": 3,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "folksam.se",
+    "hallon.se"
+   ],
+   "sample_hrefs": []
+  },
+  "Grill": {
+   "sites": 3,
+   "sample_sites": [
+    "ica.se",
+    "mathem.se",
+    "netonnet.se"
+   ],
+   "sample_hrefs": [
+    "/art/grill",
+    "/se/categories/1039-grill/"
+   ]
+  },
+  "Dataskyddspolicy": {
+   "sites": 3,
+   "sample_sites": [
+    "advisa.se",
+    "hjart-lungfonden.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/om-advisa/dataskyddspolicy/",
+    "/om-oss/dataskydd/"
+   ]
+  },
+  "Alla produkter": {
+   "sites": 3,
+   "sample_sites": [
+    "bygghemma.se",
+    "matsmart.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/alla-produkter",
+    "https://www.xxl.se/kampanj"
+   ]
+  },
+  "Välj": {
+   "sites": 3,
+   "sample_sites": [
+    "hallon.se",
+    "matsmart.se",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "/bestall/valj/nummer?data=1",
+    "/mobiler/mobiltelefoner/iphone-17?farg=Black&storlek=256GB"
+   ]
+  },
+  "Vanliga frågor & svar": {
+   "sites": 3,
+   "sample_sites": [
+    "intersport.se",
+    "lansforsakringar.se",
+    "willys.se"
+   ],
+   "sample_hrefs": [
+    "/artikel/kundservice/vanliga-fragor-och-svar",
+    "/kundservice/vanliga-fragor-svar"
+   ]
+  },
+  "Teknik": {
+   "sites": 2,
+   "sample_sites": [
+    "hermods.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/se/category/books/teknik-198",
+    "https://hermods.se/article_category/teknik/"
+   ]
+  },
+  "På gång": {
+   "sites": 2,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "hermods.se"
+   ],
+   "sample_hrefs": [
+    "/sv/sverige/artiklar/salja-bostad/pa-gang",
+    "https://hermods.se/event_category/pa-gang/"
+   ]
+  },
+  "SE": {
+   "sites": 2,
+   "sample_sites": [
+    "budbee.com",
+    "lyko.com"
+   ],
+   "sample_hrefs": [
+    "https://budbee.com/se/"
+   ]
+  },
+  "snapchat": {
+   "sites": 2,
+   "sample_sites": [
+    "charitywater.org",
+    "lyko.com"
+   ],
+   "sample_hrefs": [
+    "https://www.snapchat.com/add/charitywater",
+    "https://www.snapchat.com/add/lykosverige"
+   ]
+  },
+  "Apple iPhone": {
+   "sites": 2,
+   "sample_sites": [
+    "tele2.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/handla/mobiltelefoner/apple",
+    "/mobiler/apple"
+   ]
+  },
+  "Oppo": {
+   "sites": 2,
+   "sample_sites": [
+    "tele2.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/handla/mobiltelefoner/oppo",
+    "/mobiler/oppo"
+   ]
+  },
+  "Apple": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/apple",
+    "https://cdon.se/varumarke/apple/"
+   ]
+  },
+  "Samsung": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/samsung",
+    "https://cdon.se/varumarke/samsung/"
+   ]
+  },
+  "Köpinformation": {
+   "sites": 2,
+   "sample_sites": [
+    "telia.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/support/kopinformation"
+   ]
+  },
+  "5G": {
+   "sites": 2,
+   "sample_sites": [
+    "telia.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/mobilabonnemang/5g-typ-overallt",
+    "/varfor-tre/tackning/5g"
+   ]
+  },
+  "Byt in din gamla mobil": {
+   "sites": 2,
+   "sample_sites": [
+    "tele2.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/mobiler/byt-in",
+    "/varfor-tre/hos-tre/3atervinn"
+   ]
+  },
+  "Begagnade mobiler": {
+   "sites": 2,
+   "sample_sites": [
+    "telia.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/handla/mobiltelefoner/begagnad",
+    "/mobiltelefoner/begagnade"
+   ]
+  },
+  "Hållbarhetsarbete": {
+   "sites": 2,
+   "sample_sites": [
+    "telia.se",
+    "tre.se"
+   ],
+   "sample_hrefs": [
+    "/om-tre/hallbarhet",
+    "/om/hallbarhet"
+   ]
+  },
+  "Integritet": {
+   "sites": 2,
+   "sample_sites": [
+    "tre.se",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "/om-tre/sakerhet/dataskyddsinformation",
+    "http://vimla.se/integritetspolicy/"
+   ]
+  },
+  "Marketing": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/solutions/marketing",
+    "/templates/category/marketing"
+   ]
+  },
+  "IT": {
+   "sites": 2,
+   "sample_sites": [
+    "hibob.com",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/templates/category/ticketing",
+    "https://www.hibob.com/solutions/it/"
+   ]
+  },
+  "Education": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/product/notion-for-education",
+    "/solutions/education"
+   ]
+  },
+  "Templates": {
+   "sites": 2,
+   "sample_sites": [
+    "notion.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/templates"
+   ]
+  },
+  "Connections": {
+   "sites": 2,
+   "sample_sites": [
+    "flixbus.se",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/connections"
+   ]
+  },
+  "Request a demo": {
+   "sites": 2,
+   "sample_sites": [
+    "notion.com",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "/contact-sales",
+    "/contact/sales"
+   ]
+  },
+  "Vercel": {
+   "sites": 2,
+   "sample_sites": [
+    "notion.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/customers/vercel",
+    "/home"
+   ]
+  },
+  "Clay": {
+   "sites": 2,
+   "sample_sites": [
+    "intercom.com",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/customers/clay",
+    "https://fin.ai/customers/clay"
+   ]
+  },
+  "Go to slide 1": {
+   "sites": 2,
+   "sample_sites": [
+    "netonnet.se",
+    "notion.com"
+   ],
+   "sample_hrefs": []
+  },
+  "Go to slide 2": {
+   "sites": 2,
+   "sample_sites": [
+    "netonnet.se",
+    "notion.com"
+   ],
+   "sample_hrefs": []
+  },
+  "Go to slide 3": {
+   "sites": 2,
+   "sample_sites": [
+    "netonnet.se",
+    "notion.com"
+   ],
+   "sample_hrefs": []
+  },
+  "Dansk": {
+   "sites": 2,
+   "sample_sites": [
+    "flixbus.se",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "//www.flixbus.dk/?noRedirect=true",
+    "/da"
+   ]
+  },
+  "Español (España)": {
+   "sites": 2,
+   "sample_sites": [
+    "hibob.com",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/es-ES",
+    "https://www.hibob.com/es/"
+   ]
+  },
+  "Italiano": {
+   "sites": 2,
+   "sample_sites": [
+    "flixbus.se",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "//www.flixbus.it/?noRedirect=true",
+    "/it"
+   ]
+  },
+  "עברית": {
+   "sites": 2,
+   "sample_sites": [
+    "hibob.com",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/he",
+    "https://www.hibob.com/he/"
+   ]
+  },
+  "日本語": {
+   "sites": 2,
+   "sample_sites": [
+    "hubspot.com",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/ja",
+    "https://www.hubspot.jp"
+   ]
+  },
+  "Small business": {
+   "sites": 2,
+   "sample_sites": [
+    "hubspot.com",
+    "notion.com"
+   ],
+   "sample_hrefs": [
+    "/teams"
+   ]
+  },
+  "Min profil": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/my-stadium/details",
+    "/mypages/v2/profile"
+   ]
+  },
+  "Populärt": {
+   "sites": 2,
+   "sample_sites": [
+    "nordicwellness.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/butik/populart/",
+    "https://www.stadium.se/INTERSHOP/web/WFS/Stadium-SwedenB2C-Site/sv_SE/-/SEK/ViewStandardCatalog-Browse?CatalogID=tag&Cat"
+   ]
+  },
+  "Tröjor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/trojor/c/120406",
+    "https://www.stadium.se/dam/damklader/trojor.se29811246"
+   ]
+  },
+  "Cykelbyxor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/cykel/cykelklader/cykelbyxor/c/100402",
+    "https://www.stadium.se/dam/damklader/byxor/cykelbyxor.se29930955"
+   ]
+  },
+  "Tights": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/tights/c/120414",
+    "https://www.stadium.se/dam/damklader/tights.se29931023"
+   ]
+  },
+  "Träningstights": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/dam/sport-outdoor/traningsklader/tights",
+    "https://www.stadium.se/dam/damklader/tights/traningstights.se29931026"
+   ]
+  },
+  "Sport-BH": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/dam/klader/sport-bh/c/120230",
+    "https://www.stadium.se/dam/damklader/sport-bh.se29861170"
+   ]
+  },
+  "Vårjackor": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/dam/jackor-kappor/varjackor",
+    "https://www.stadium.se/dam/damklader/jackor/varjackor.se29931000"
+   ]
+  },
+  "Mössor & pannband": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/mossor-pannband/c/12070004",
+    "https://www.stadium.se/dam/damklader/mossor-pannband.se29811241"
+   ]
+  },
+  "Handskar & vantar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/handskar-vantar/c/12070010",
+    "https://www.stadium.se/dam/damklader/handskar-vantar.se29811249"
+   ]
+  },
+  "Halsdukar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/halsdukar/c/12070008",
+    "https://www.stadium.se/dam/damklader/halsdukar.se29811236"
+   ]
+  },
+  "Underställ": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/understall/c/120418",
+    "https://www.stadium.se/dam/damklader/understall.se29811248"
+   ]
+  },
+  "Strumpor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/strumpor/c/12070002",
+    "https://www.stadium.se/dam/damklader/strumpor.se29811244"
+   ]
+  },
+  "Underkläder": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/dam/underklader",
+    "https://www.stadium.se/dam/damklader/underklader.se29811247"
+   ]
+  },
+  "Regnkläder": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/regnklader/c/120420",
+    "https://www.stadium.se/dam/damklader/regnklader.se29880439"
+   ]
+  },
+  "Kepsar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/kepsar/c/12070014",
+    "https://www.stadium.se/dam/damklader/kepsar.se29811238"
+   ]
+  },
+  "Bikini": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/dam/badklader/bikini",
+    "https://www.stadium.se/dam/damklader/badklader/bikini.se29930951"
+   ]
+  },
+  "Shorts": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/shorts/c/120412",
+    "https://www.stadium.se/dam/damklader/shorts.se29811242"
+   ]
+  },
+  "Sneakers": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/dam/skor/sneakers",
+    "https://www.stadium.se/dam/damskor/sneakers.se29811315"
+   ]
+  },
+  "Fotbollsskor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/fotboll/fotbollsskor/c/160202",
+    "https://www.stadium.se/dam/damskor/fotbollsskor.se29811292"
+   ]
+  },
+  "Golfskor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/golfutrustning/golfskor/c/160406",
+    "https://www.stadium.se/dam/damskor/golfskor.se29811301"
+   ]
+  },
+  "Cykelskor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/cykel/cykelskor-tillbehor/c/100500",
+    "https://www.stadium.se/dam/damskor/cykelskor.se29811285"
+   ]
+  },
+  "Gummistövlar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/skor/gummistovlar/c/140216",
+    "https://www.stadium.se/dam/damskor/gummistovlar.se29811316"
+   ]
+  },
+  "Skotillbehör": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/skor/skotillbehor/c/140800",
+    "https://www.stadium.se/dam/damskor/skotillbehor.se29811314"
+   ]
+  },
+  "Herrkläder": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/herr/mode",
+    "https://www.stadium.se/herr/herrklader.se29811227"
+   ]
+  },
+  "T-shirts": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/barn/klader/t-shirts/c/120612",
+    "https://www.stadium.se/herr/herrklader/t-shirts.se29811261"
+   ]
+  },
+  "Badshorts": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/klader/badklader/badshorts/c/12041602",
+    "https://www.stadium.se/herr/herrklader/badklader/badshorts.se29931163"
+   ]
+  },
+  "Herrskor": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/herr/herrskor",
+    "https://www.stadium.se/herr/herrskor.se29811228"
+   ]
+  },
+  "Barnkläder": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/barn/barnklader",
+    "https://www.stadium.se/barn/barnklader.se29811231"
+   ]
+  },
+  "Overaller": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/barn/klader/overaller/c/120604",
+    "https://www.stadium.se/barn/barnklader/overaller.se29811275"
+   ]
+  },
+  "Babykläder": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/barn/babyklader-stl-50-92",
+    "https://www.stadium.se/barn/barnklader/baby/babyklader.se292109610"
+   ]
+  },
+  "Barnskor": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/barn/barnskor",
+    "https://www.stadium.se/barn/barnskor.se29811232"
+   ]
+  },
+  "Inomhusskor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/barn/skor/inomhusskor/c/140612",
+    "https://www.stadium.se/barn/barnskor/inomhusskor.se29811324"
+   ]
+  },
+  "Pulsklockor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/elektronik/pulsklockor/c/100700",
+    "https://www.stadium.se/sport/lopning/pulsklockor.se29739875"
+   ]
+  },
+  "Sportglasögon": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ovrig-sport/solglasogon/sportglasogon/c/1810122",
+    "https://www.stadium.se/sport/lopning/sportglasogon.se292427068"
+   ]
+  },
+  "Fotbollar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/fotboll/fotbollar/c/160204",
+    "https://www.stadium.se/sport/fotboll/fotbollar.se29739880"
+   ]
+  },
+  "Fotbollstillbehör": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/fotboll/fotbollstillbehor/c/160214",
+    "https://www.stadium.se/sport/fotboll/fotbollstillbehor.se29739883"
+   ]
+  },
+  "Cykelhjälmar": {
+   "sites": 2,
+   "sample_sites": [
+    "prisjakt.nu",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/c/cykelhjalmar",
+    "https://www.stadium.se/sport/cykel/cykelhjalmar.se29740505"
+   ]
+  },
+  "Cykeltillbehör": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/cykel/cykeltillbehor/c/101300",
+    "https://www.stadium.se/sport/cykel/cykeltillbehor.se29740504"
+   ]
+  },
+  "Cykelkläder": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/cykel/cykelklader/c/100400",
+    "https://www.stadium.se/sport/cykel/cykelklader.se29740506"
+   ]
+  },
+  "Golf": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/golfutrustning/c/160400",
+    "https://www.stadium.se/sport/golf.se29740535"
+   ]
+  },
+  "Golfklubbor": {
+   "sites": 2,
+   "sample_sites": [
+    "prisjakt.nu",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/c/golfklubbor",
+    "https://www.stadium.se/sport/golf/golfklubbor.se29740536"
+   ]
+  },
+  "Golfvagnar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/golfutrustning/golfvagnar/c/160418",
+    "https://www.stadium.se/sport/golf/golfvagnar.se292196435"
+   ]
+  },
+  "Golfbagar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/golfutrustning/golfbagar/c/160412",
+    "https://www.stadium.se/sport/golf/golfbagar.se29740541"
+   ]
+  },
+  "Golfbollar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/golfutrustning/golfbollar/c/160404",
+    "https://www.stadium.se/sport/golf/golfbollar.se29740538"
+   ]
+  },
+  "Golfkläder": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/golfutrustning/golfklader/c/160419",
+    "https://www.stadium.se/sport/golf/golfklader.se29740539"
+   ]
+  },
+  "Golftillbehör": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/golfutrustning/golftillbehor/c/160414",
+    "https://www.stadium.se/sport/golf/golftillbehor.se29740542"
+   ]
+  },
+  "Golfhandskar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/golfutrustning/golfhandskar/c/160410",
+    "https://www.stadium.se/sport/golf/golfhandskar.se29740540"
+   ]
+  },
+  "Träningsutrustning": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/traningsutrustning/",
+    "https://www.stadium.se/sport/traning/traningsutrustning.se29739869"
+   ]
+  },
+  "Träningstillbehör": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/lopning/traningsklader/traningstillbehor/c/12070022",
+    "https://www.stadium.se/sport/traning/traningstillbehor.se29739870"
+   ]
+  },
+  "Träningsmaskiner": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/traning/traningsmaskiner/c/180200",
+    "https://www.stadium.se/sport/traning/traningsmaskiner.se29739868"
+   ]
+  },
+  "Väskor & ryggsäckar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ovrig-sport/vaskor-ryggsackar/c/161600",
+    "https://www.stadium.se/sport/vaskor-ryggsackar.se29801890"
+   ]
+  },
+  "Alpint": {
+   "sites": 2,
+   "sample_sites": [
+    "intersport.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/alpint",
+    "https://www.stadium.se/sport/alpint.se29740543"
+   ]
+  },
+  "Snowboard": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/vintersport/snowboard/c/240800",
+    "https://www.stadium.se/sport/snowboard.se29740550"
+   ]
+  },
+  "Rullskidor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ovrig-sport/rullskidor/c/161206",
+    "https://www.stadium.se/sport/langd/rullskidor.se29813234"
+   ]
+  },
+  "Skridskor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ishockey/skridskor/c/241002",
+    "https://www.stadium.se/sport/skridskor.se291986079"
+   ]
+  },
+  "Hockeyklubbor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ishockey/hockeyklubbor/c/241004",
+    "https://www.stadium.se/sport/hockey/hockeyklubbor.se29739887"
+   ]
+  },
+  "Hockeyskydd": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ishockey/hockeyskydd/c/241010",
+    "https://www.stadium.se/sport/hockey/hockeyskydd.se29739892"
+   ]
+  },
+  "Bandy": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/lagsport/bandy/c/242200",
+    "https://www.stadium.se/sport/bandy.se292064262"
+   ]
+  },
+  "Handboll": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/lagsport/handboll/c/160802",
+    "https://www.stadium.se/sport/handboll.se29740497"
+   ]
+  },
+  "Basket": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/lagsport/basket/c/160806",
+    "https://www.stadium.se/sport/basket.se29740512"
+   ]
+  },
+  "Bordtennis": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/racketsport/bordtennis/c/160602",
+    "https://www.stadium.se/sport/bordtennis.se29931370"
+   ]
+  },
+  "Badminton": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/racketsport/badminton/c/160608",
+    "https://www.stadium.se/sport/badminton.se29931368"
+   ]
+  },
+  "Squash": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/racketsport/squash/c/160606",
+    "https://www.stadium.se/sport/squash.se29931371"
+   ]
+  },
+  "Discgolf": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ovrig-sport/discgolf/c/161406",
+    "https://www.stadium.se/sport/discgolf.se29807929"
+   ]
+  },
+  "Jakt": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/jakt-outdoor/jakt/c/220200",
+    "https://www.stadium.se/sport/jakt.se292216866"
+   ]
+  },
+  "Jaktkläder": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/jakt-outdoor/jakt/jaktklader/c/220202",
+    "https://www.stadium.se/sport/jakt/jaktklader.se292216867"
+   ]
+  },
+  "Jaktkängor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/outdoor/vandringsskor-vandringskangor/jaktkangor/c/200810",
+    "https://www.stadium.se/sport/jakt/jaktkangor.se292232388"
+   ]
+  },
+  "Fiske": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/jakt-outdoor/fiske/c/220000",
+    "https://www.stadium.se/sport/fiske.se292643460"
+   ]
+  },
+  "Fiskerullar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/jakt-outdoor/fiske/fiskerullar/c/220402",
+    "https://www.stadium.se/sport/fiske/fiskerullar.se292695418"
+   ]
+  },
+  "Fiskespön": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/jakt-outdoor/fiske/fiskespon/c/220404",
+    "https://www.stadium.se/sport/fiske/fiskespon.se292695402"
+   ]
+  },
+  "Klättring": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ovrig-sport/klattring/c/201200",
+    "https://www.stadium.se/sport/klattring.se291432385"
+   ]
+  },
+  "Vattensport": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/vattensport/c/820000",
+    "https://www.stadium.se/sport/vattensport.se291527302"
+   ]
+  },
+  "Snorkelset": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/vattensport/dykutrustning/snorkelset/c/820904",
+    "https://www.stadium.se/sport/vattensport/snorkelset.se291859308"
+   ]
+  },
+  "Simning": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/vattensport/simning/c/800800",
+    "https://www.stadium.se/sport/simning.se29740522"
+   ]
+  },
+  "Ridkläder": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/ovrig-sport/ridklader/c/202002",
+    "https://www.stadium.se/sport/ridsport/ridklader.se291670506"
+   ]
+  },
+  "Elektronik": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/elektronik/c/800000",
+    "https://www.stadium.se/sport/elektronik.se292064269"
+   ]
+  },
+  "Vinterskor": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/herr/skor/vinterskor/c/140220",
+    "https://www.stadium.se/sport/alla-skor/vinterskor.se292830425"
+   ]
+  },
+  "Shoppa badkläder": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/dam/deals/underwear-3"
+   ]
+  },
+  "sovsäckar": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/outdoor/sov-ute/sovsackar/c/201010",
+    "https://www.stadium.se/sport/outdoor/sovsackar-liggunderlag.se29740531"
+   ]
+  },
+  "Återkallelse": {
+   "sites": 2,
+   "sample_sites": [
+    "intersport.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "/kundservice/vanliga-fragor-svar/aterkallelse",
+    "https://www.stadium.se/recall"
+   ]
+  },
+  "Black Friday": {
+   "sites": 2,
+   "sample_sites": [
+    "bygghemma.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "https://www.bygghemma.se/kampanj/black-friday/",
+    "https://www.stadium.se/black-friday"
+   ]
+  },
+  "Discover": {
+   "sites": 2,
+   "sample_sites": [
+    "flixbus.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": [
+    "https://www.stadium.se/reportage-och-artiklar"
+   ]
+  },
+  "Handla tryggt": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "stadium.se"
+   ],
+   "sample_hrefs": []
+  },
+  "Team Sales": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/teamsales",
+    "https://www.stadiumteamsales.se/"
+   ]
+  },
+  "Hitta butik": {
+   "sites": 2,
+   "sample_sites": [
+    "stadium.se",
+    "willys.se"
+   ],
+   "sample_hrefs": [
+    "/butik-sok"
+   ]
+  },
+  "Leukemi": {
+   "sites": 2,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "cancerfonden.se"
+   ],
+   "sample_hrefs": [
+    "/om-barncancer/diagnoser/leukemi/",
+    "/om-cancer/cancersjukdomar/leukemi"
+   ]
+  },
+  "Levercancer": {
+   "sites": 2,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "cancerfonden.se"
+   ],
+   "sample_hrefs": [
+    "/om-barncancer/diagnoser/levercancer/",
+    "/om-cancer/cancersjukdomar/levercancer"
+   ]
+  },
+  "Sarkom": {
+   "sites": 2,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "cancerfonden.se"
+   ],
+   "sample_hrefs": [
+    "/om-barncancer/diagnoser/sarkom/",
+    "/om-cancer/cancersjukdomar/sarkom"
+   ]
+  },
+  "Wilms tumör": {
+   "sites": 2,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "cancerfonden.se"
+   ],
+   "sample_hrefs": [
+    "/om-barncancer/diagnoser/wilms-tumor/",
+    "/om-cancer/cancersjukdomar/njurcancer/wilms-tumor"
+   ]
+  },
+  "Helförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/bilforsakring/helforsakring"
+   ]
+  },
+  "Halvförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/bilforsakring/halvforsakring"
+   ]
+  },
+  "Studentförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "hedvig.com",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/hemforsakring/studentforsakring",
+    "https://www.hedvig.com/se/forsakringar/hemforsakring/student"
+   ]
+  },
+  "Personförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "swedbank.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/person",
+    "/privat/forsakra/personforsakring.html"
+   ]
+  },
+  "Vårdförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/person/vardforsakring",
+    "/forsakringar/vardforsakring"
+   ]
+  },
+  "Djurförsäkringar": {
+   "sites": 2,
+   "sample_sites": [
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/djurforsakring",
+    "/privat/forsakringar/djurforsakring"
+   ]
+  },
+  "Genvägar": {
+   "sites": 2,
+   "sample_sites": [
+    "mathem.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/se/products/"
+   ]
+  },
+  "Beställa grönt kort": {
+   "sites": 2,
+   "sample_sites": [
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/bilforsakring/gront-kort",
+    "/privat/forsakringar/bilforsakring/resa-med-bil/gront-kort-for-bil"
+   ]
+  },
+  "För hundägare": {
+   "sites": 2,
+   "sample_sites": [
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/privat/forsakringar/djurforsakring/hundforsakring/skydda-din-hund",
+    "/tips-rad/hund"
+   ]
+  },
+  "För kattägare": {
+   "sites": 2,
+   "sample_sites": [
+    "if.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/privat/forsakringar/djurforsakring/kattforsakring/tips-kattagare",
+    "/tips-rad/katt"
+   ]
+  },
+  "Samhällsengagemang": {
+   "sites": 2,
+   "sample_sites": [
+    "trygghansa.se",
+    "willys.se"
+   ],
+   "sample_hrefs": [
+    "/artikel/om-oss/hallbarhet/samhallsengagemang",
+    "/om-trygghansa/samhallsengagemang"
+   ]
+  },
+  "Våra experter": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "trygghansa.se"
+   ],
+   "sample_hrefs": [
+    "/experter",
+    "/om-trygghansa/experter"
+   ]
+  },
+  "Compare": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "hibob.com"
+   ],
+   "sample_hrefs": [
+    "/compare",
+    "https://www.hibob.com/compare/"
+   ]
+  },
+  "Resource center": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "hibob.com"
+   ],
+   "sample_hrefs": [
+    "/resources",
+    "https://www.hibob.com/resources/"
+   ]
+  },
+  "Guides": {
+   "sites": 2,
+   "sample_sites": [
+    "hibob.com",
+    "stripe.com"
+   ],
+   "sample_hrefs": [
+    "/guides",
+    "https://www.hibob.com/guides/"
+   ]
+  },
+  "ROI Calculator": {
+   "sites": 2,
+   "sample_sites": [
+    "hibob.com",
+    "intercom.com"
+   ],
+   "sample_hrefs": [
+    "https://fin.ai/roi-calculator",
+    "https://www.hibob.com/hr-roi-calculator/"
+   ]
+  },
+  "WATCH NOW": {
+   "sites": 2,
+   "sample_sites": [
+    "hibob.com",
+    "stripe.com"
+   ],
+   "sample_hrefs": [
+    "https://stripe.com/sessions/2026?utm_medium=owned-surfaces&utm_source=9cb9&utm_campaign=GLOBAL_4301&utm_content=8a70&utm"
+   ]
+  },
+  "Accessibility Statement": {
+   "sites": 2,
+   "sample_sites": [
+    "flixbus.se",
+    "hibob.com"
+   ],
+   "sample_hrefs": [
+    "/digital-accessibility-statement",
+    "https://www.hibob.com/privacy/hibobs-website-accessibility-statement/"
+   ]
+  },
+  "Back": {
+   "sites": 2,
+   "sample_sites": [
+    "hubspot.com",
+    "stripe.com"
+   ],
+   "sample_hrefs": []
+  },
+  "Checkout": {
+   "sites": 2,
+   "sample_sites": [
+    "klarna.com",
+    "stripe.com"
+   ],
+   "sample_hrefs": [
+    "/payments/checkout",
+    "https://www.klarna.com/us/payments/"
+   ]
+  },
+  "Platforms": {
+   "sites": 2,
+   "sample_sites": [
+    "stripe.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/solutions/multi-tenant-saas",
+    "/use-cases/platforms"
+   ]
+  },
+  "Insurance": {
+   "sites": 2,
+   "sample_sites": [
+    "billogram.com",
+    "stripe.com"
+   ],
+   "sample_hrefs": [
+    "/industries/insurance",
+    "/industry/insurance"
+   ]
+  },
+  "Documentation": {
+   "sites": 2,
+   "sample_sites": [
+    "stripe.com",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "/docs",
+    "https://docs.stripe.com/"
+   ]
+  },
+  "Professional services": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "stripe.com"
+   ],
+   "sample_hrefs": [
+    "/professional-services",
+    "/solutions/professional-services"
+   ]
+  },
+  "Alla mobilabonnemang": {
+   "sites": 2,
+   "sample_sites": [
+    "tele2.se",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/mobilabonnemang"
+   ]
+  },
+  "Familj": {
+   "sites": 2,
+   "sample_sites": [
+    "tele2.se",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "/bestall/familjeabonnemang/",
+    "/mobilabonnemang/familj"
+   ]
+  },
+  "Aktuella erbjudanden": {
+   "sites": 2,
+   "sample_sites": [
+    "fortum.se",
+    "tele2.se"
+   ],
+   "sample_hrefs": [
+    "/erbjudanden",
+    "/se/el/behov/vara-erbjudanden-pa-elavtal"
+   ]
+  },
+  "Våra butiker": {
+   "sites": 2,
+   "sample_sites": [
+    "kjell.com",
+    "tele2.se"
+   ],
+   "sample_hrefs": [
+    "/butiker",
+    "/se/butiker"
+   ]
+  },
+  "Nöje": {
+   "sites": 2,
+   "sample_sites": [
+    "aftonbladet.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/noje/",
+    "https://www.aftonbladet.se/nojesbladet"
+   ]
+  },
+  "Trav": {
+   "sites": 2,
+   "sample_sites": [
+    "aftonbladet.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/sport/trav/",
+    "https://www.aftonbladet.se/sportbladet/trav365"
+   ]
+  },
+  "Melodifestivalen": {
+   "sites": 2,
+   "sample_sites": [
+    "aftonbladet.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/noje/melodifestivalen/",
+    "https://www.aftonbladet.se/nojesbladet/melodifestivalen"
+   ]
+  },
+  "Magasin": {
+   "sites": 2,
+   "sample_sites": [
+    "aftonbladet.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/se/magazines",
+    "https://etidning.aftonbladet.se"
+   ]
+  },
+  "Klart": {
+   "sites": 2,
+   "sample_sites": [
+    "aftonbladet.se",
+    "svd.se"
+   ],
+   "sample_hrefs": [
+    "https://www.klart.se"
+   ]
+  },
+  "Kungligt": {
+   "sites": 2,
+   "sample_sites": [
+    "aftonbladet.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/nyheter/kungligt/",
+    "https://www.aftonbladet.se/kungligt"
+   ]
+  },
+  "Mode": {
+   "sites": 2,
+   "sample_sites": [
+    "aftonbladet.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/se/category/books/mode-286",
+    "https://www.aftonbladet.se/mode"
+   ]
+  },
+  "Resa": {
+   "sites": 2,
+   "sample_sites": [
+    "aftonbladet.se",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/foretag/vid-skada/tjansteresa",
+    "https://www.aftonbladet.se/resa"
+   ]
+  },
+  "A-Ö": {
+   "sites": 2,
+   "sample_sites": [
+    "aftonbladet.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/om-expressen/a-till-o/",
+    "https://www.aftonbladet.se/a-o"
+   ]
+  },
+  "Podme": {
+   "sites": 2,
+   "sample_sites": [
+    "aftonbladet.se",
+    "svd.se"
+   ],
+   "sample_hrefs": [
+    "https://podme.com/",
+    "https://podme.com/se/"
+   ]
+  },
+  "Get a Demo": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/contact/demo",
+    "/contact/sales/demo"
+   ]
+  },
+  "Talk to Sales": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/contact",
+    "/contact/sales/demo"
+   ]
+  },
+  "Nuxt": {
+   "sites": 2,
+   "sample_sites": [
+    "supabase.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/docs/frameworks/full-stack/nuxt"
+   ]
+  },
+  "Articles": {
+   "sites": 2,
+   "sample_sites": [
+    "billogram.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/blog",
+    "/i"
+   ]
+  },
+  "Acceptable Use Policy": {
+   "sites": 2,
+   "sample_sites": [
+    "supabase.com",
+    "vercel.com"
+   ],
+   "sample_hrefs": [
+    "/aup",
+    "/legal/acceptable-use-policy"
+   ]
+  },
+  "Deals": {
+   "sites": 2,
+   "sample_sites": [
+    "bokadirekt.se",
+    "ellos.se"
+   ],
+   "sample_hrefs": [
+    "/deals",
+    "/deals-hem"
+   ]
+  },
+  "Upptäck mer": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "fortnox.se"
+   ],
+   "sample_hrefs": [
+    "/finansiering/betalningar",
+    "/inspiration/shoppa-stilen"
+   ]
+  },
+  "Trosor": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/dam/klader/trosor/c/12022010",
+    "/dam/underklader/trosor"
+   ]
+  },
+  "Beställning": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/kundservice/fragor-och-svar/bestallning",
+    "/kundservice/min-order"
+   ]
+  },
+  "Samarbeta med oss": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/affiliate-marketing-program",
+    "/se/collab/contact/se"
+   ]
+  },
+  "Pinterest": {
+   "sites": 2,
+   "sample_sites": [
+    "ellos.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "https://www.pinterest.com/svenskfastighetsformedling/",
+    "https://www.pinterest.se/ellos/"
+   ]
+  },
+  "Vårt arbete": {
+   "sites": 2,
+   "sample_sites": [
+    "actionaid.se",
+    "lakareutangranser.se"
+   ],
+   "sample_hrefs": [
+    "/vart-arbete",
+    "https://actionaid.se/vart-arbete/"
+   ]
+  },
+  "Jobba med oss": {
+   "sites": 2,
+   "sample_sites": [
+    "anticimex.se",
+    "lakareutangranser.se"
+   ],
+   "sample_hrefs": [
+    "/for-maklare/",
+    "/jobba-med-oss"
+   ]
+  },
+  "Swisha en gåva": {
+   "sites": 2,
+   "sample_sites": [
+    "lakareutangranser.se",
+    "rodakorset.se"
+   ],
+   "sample_hrefs": [
+    "/skank-pengar/swisha-en-gava/",
+    "/stod-oss/swisha-en-gava"
+   ]
+  },
+  "Minnesgåva": {
+   "sites": 2,
+   "sample_sites": [
+    "lakareutangranser.se",
+    "unicef.se"
+   ],
+   "sample_hrefs": [
+    "/minnesgava",
+    "/stod-oss/minnesgava"
+   ]
+  },
+  "Skattereduktion": {
+   "sites": 2,
+   "sample_sites": [
+    "lakareutangranser.se",
+    "unicef.se"
+   ],
+   "sample_hrefs": [
+    "/kontakta-oss/givarservice/skattereduktion",
+    "/om-unicef-sverige/skatteavdrag-for-gavor"
+   ]
+  },
+  "Testamente": {
+   "sites": 2,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "lakareutangranser.se"
+   ],
+   "sample_hrefs": [
+    "/jag-vill-bidra/testamente/",
+    "/stod-oss/testamente"
+   ]
+  },
+  "Naturkatastrofer": {
+   "sites": 2,
+   "sample_sites": [
+    "lakareutangranser.se",
+    "rodakorset.se"
+   ],
+   "sample_hrefs": [
+    "/vad-vi-gor/vara-arbetsomraden/naturkatastrofer-och-insatser",
+    "/var-varld/naturkatastrofer/"
+   ]
+  },
+  "Bli månadsgivare nu": {
+   "sites": 2,
+   "sample_sites": [
+    "lakareutangranser.se",
+    "rodakorset.se"
+   ],
+   "sample_hrefs": [
+    "/skank-pengar/bli-manadsgivare/#manadsgivare",
+    "/stod-oss/manadsgivare"
+   ]
+  },
+  "Vilka vi är": {
+   "sites": 2,
+   "sample_sites": [
+    "lakareutangranser.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/vilka-vi-ar",
+    "https://www.nordea.com/sv/om-nordea/vilka-vi-ar/"
+   ]
+  },
+  "Månadsgivare": {
+   "sites": 2,
+   "sample_sites": [
+    "actionaid.se",
+    "lakareutangranser.se"
+   ],
+   "sample_hrefs": [
+    "/stod-oss/manadsgivare",
+    "https://actionaid.se/manadsgivare/"
+   ]
+  },
+  "Testamentera": {
+   "sites": 2,
+   "sample_sites": [
+    "rodakorset.se",
+    "unicef.se"
+   ],
+   "sample_hrefs": [
+    "/skank-pengar/testamente/",
+    "/testamente"
+   ]
+  },
+  "Här arbetar vi": {
+   "sites": 2,
+   "sample_sites": [
+    "actionaid.se",
+    "rodakorset.se"
+   ],
+   "sample_hrefs": [
+    "/var-varld/har-arbetar-vi/",
+    "https://actionaid.se/har-arbetar-vi/"
+   ]
+  },
+  "Ge en företagsgåva": {
+   "sites": 2,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "rodakorset.se"
+   ],
+   "sample_hrefs": [
+    "/for-foretag/ge-en-foretagsgava/",
+    "/for-foretag/ge-en-gava-som-foretag/"
+   ]
+  },
+  "Till kassan": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "rodakorset.se"
+   ],
+   "sample_hrefs": [
+    "/checkout/"
+   ]
+  },
+  "How it works": {
+   "sites": 2,
+   "sample_sites": [
+    "budbee.com",
+    "qliro.com"
+   ],
+   "sample_hrefs": [
+    "https://budbee.com/how-budbee-works/",
+    "https://qliro.com/for-shoppers/pay"
+   ]
+  },
+  "Customer service": {
+   "sites": 2,
+   "sample_sites": [
+    "budbee.com",
+    "flixbus.se"
+   ],
+   "sample_hrefs": [
+    "https://budbee.com/customer-service/"
+   ]
+  },
+  "EN": {
+   "sites": 2,
+   "sample_sites": [
+    "budbee.com",
+    "sector-alarm.se"
+   ],
+   "sample_hrefs": [
+    "#pll_switcher",
+    "/home-alarms/"
+   ]
+  },
+  "For merchants": {
+   "sites": 2,
+   "sample_sites": [
+    "budbee.com",
+    "qliro.com"
+   ],
+   "sample_hrefs": [
+    "https://budbee.com/en/merchants/",
+    "https://qliro.com/for-merchants"
+   ]
+  },
+  "Inkomstförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "compricer.se",
+    "folksam.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/inkomst/",
+    "/forsakringar/inkomstforsakring"
+   ]
+  },
+  "Företagsbilförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "compricer.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/forsakring/bil/foretag/",
+    "/forsakring/foretagsbilforsakring"
+   ]
+  },
+  "Allt om lån": {
+   "sites": 2,
+   "sample_sites": [
+    "compricer.se",
+    "lendo.se"
+   ],
+   "sample_hrefs": [
+    "/allt-om-lan",
+    "/lan/"
+   ]
+  },
+  "El": {
+   "sites": 2,
+   "sample_sites": [
+    "compricer.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/el",
+    "/el/"
+   ]
+  },
+  "Jämför el": {
+   "sites": 2,
+   "sample_sites": [
+    "compricer.se",
+    "elskling.se"
+   ],
+   "sample_hrefs": [
+    "/el/",
+    "/jamfor"
+   ]
+  },
+  "Allmän pension": {
+   "sites": 2,
+   "sample_sites": [
+    "compricer.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/pension/allman/",
+    "/privat/pension/pensionens-tre-delar/allman-pension.html"
+   ]
+  },
+  "Premiepension": {
+   "sites": 2,
+   "sample_sites": [
+    "compricer.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/pension/premie/",
+    "/privat/produkter/pension/premiepension.html"
+   ]
+  },
+  "Kvartspris": {
+   "sites": 2,
+   "sample_sites": [
+    "fortum.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/elavtal/elpriser/kvartspris/",
+    "/se/el/teckna-elavtal/kvartspris"
+   ]
+  },
+  "Trygghetspaketet": {
+   "sites": 2,
+   "sample_sites": [
+    "fortum.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/privat/produkter/forsakringar/trygghetspaketet.html",
+    "/se/el/teckna-elavtal/tillaggstjanster/trygghetspaketet"
+   ]
+  },
+  "Smartladdning": {
+   "sites": 2,
+   "sample_sites": [
+    "fortum.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/ladda-elbilen/smartladdning/",
+    "/se/el/teckna-elavtal/tillaggstjanster/smartladdning"
+   ]
+  },
+  "Alla artiklar": {
+   "sites": 2,
+   "sample_sites": [
+    "fortum.se",
+    "maklarhuset.se"
+   ],
+   "sample_hrefs": [
+    "/magazine",
+    "/se/el/radgivning/blogg"
+   ]
+  },
+  "Teckna elavtal": {
+   "sites": 2,
+   "sample_sites": [
+    "fortum.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/elavtal/teckna-elavtal/",
+    "/se/el/teckna-elavtal"
+   ]
+  },
+  "Radhus": {
+   "sites": 2,
+   "sample_sites": [
+    "fortum.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "#"
+   ]
+  },
+  "Företaget": {
+   "sites": 2,
+   "sample_sites": [
+    "bygghemma.se",
+    "fortum.se"
+   ],
+   "sample_hrefs": [
+    "/om-bygghemma/foretaget/",
+    "https://www.fortum.com/se/om-oss/vart-foretag"
+   ]
+  },
+  "Product overview": {
+   "sites": 2,
+   "sample_sites": [
+    "billogram.com",
+    "calendly.com"
+   ],
+   "sample_hrefs": [
+    "/features",
+    "/invoice-management"
+   ]
+  },
+  "Reporting": {
+   "sites": 2,
+   "sample_sites": [
+    "billogram.com",
+    "intercom.com"
+   ],
+   "sample_hrefs": [
+    "/invoice-management/reporting-reconciliation",
+    "https://www.intercom.com/helpdesk/reporting"
+   ]
+  },
+  "Gym": {
+   "sites": 2,
+   "sample_sites": [
+    "nordicwellness.se",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/gym",
+    "/traning/gym/"
+   ]
+  },
+  "Boka gruppträning": {
+   "sites": 2,
+   "sample_sites": [
+    "nordicwellness.se",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/boka",
+    "/boka/boka-grupptraning/"
+   ]
+  },
+  "Provträna": {
+   "sites": 2,
+   "sample_sites": [
+    "fitness24seven.com",
+    "nordicwellness.se"
+   ],
+   "sample_hrefs": [
+    "/provtraning/",
+    "/traning/provtrana/"
+   ]
+  },
+  "Butik": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "nordicwellness.se"
+   ],
+   "sample_hrefs": [
+    "/butik",
+    "/butik/"
+   ]
+  },
+  "Dryck": {
+   "sites": 2,
+   "sample_sites": [
+    "nextory.se",
+    "nordicwellness.se"
+   ],
+   "sample_hrefs": [
+    "/butik/dryck/",
+    "/se/category/books/dryck-278"
+   ]
+  },
+  "Boka": {
+   "sites": 2,
+   "sample_sites": [
+    "centralbadet.se",
+    "nordicwellness.se"
+   ],
+   "sample_hrefs": [
+    "/boka/",
+    "https://centralbadet.se/boka"
+   ]
+  },
+  "Vårt ansvar": {
+   "sites": 2,
+   "sample_sites": [
+    "intersport.se",
+    "nordicwellness.se"
+   ],
+   "sample_hrefs": [
+    "/om-nordic-wellness/vart-ansvar/",
+    "/vart-ansvar"
+   ]
+  },
+  "Website owner? Click here to fix": {
+   "sites": 2,
+   "sample_sites": [
+    "adlibris.com",
+    "bokus.com"
+   ],
+   "sample_hrefs": [
+    "https://vercel.link/security-checkpoint"
+   ]
+  },
+  "Lättläst": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/hjalp/lattlast"
+   ]
+  },
+  "Litteratur": {
+   "sites": 2,
+   "sample_sites": [
+    "expressen.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/kultur/bocker/",
+    "/se/category/books/litteratur-39"
+   ]
+  },
+  "Reportage": {
+   "sites": 2,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/reportage/",
+    "/se/category/books/reportage-48"
+   ]
+  },
+  "Marknadsföring": {
+   "sites": 2,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/se/category/books/marknadsforing-195",
+    "/sv/sverige/guider/salja-bostad/saljguide/marknadsforing"
+   ]
+  },
+  "Husdjur": {
+   "sites": 2,
+   "sample_sites": [
+    "matsmart.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/se/category/books/husdjur-201"
+   ]
+  },
+  "Mat och dryck": {
+   "sites": 2,
+   "sample_sites": [
+    "medborgarskolan.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/kurser-och-evenemang/mat-och-dryck/"
+   ]
+  },
+  "Hem och trädgård": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/kampanjer/summer-deals/hem-och-tradgard/"
+   ]
+  },
+  "Utforska": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "nextory.se"
+   ],
+   "sample_hrefs": []
+  },
+  "France": {
+   "sites": 2,
+   "sample_sites": [
+    "boozt.com",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/fr/fr",
+    "https://nextory.com/fr/book/ilvy-schlaft-gut-schlafen-lernen-mit-system-5491049"
+   ]
+  },
+  "Norge": {
+   "sites": 2,
+   "sample_sites": [
+    "kjell.com",
+    "nextory.se"
+   ],
+   "sample_hrefs": [
+    "/no",
+    "https://nextory.com/no/book/ilvy-schlaft-gut-schlafen-lernen-mit-system-5491049"
+   ]
+  },
+  "Handla online": {
+   "sites": 2,
+   "sample_sites": [
+    "coop.se",
+    "ica.se"
+   ],
+   "sample_hrefs": [
+    "/handla/",
+    "https://handla.ica.se/?chooseStore=true"
+   ]
+  },
+  "Medlem": {
+   "sites": 2,
+   "sample_sites": [
+    "coop.se",
+    "kjell.com"
+   ],
+   "sample_hrefs": [
+    "/medlem/",
+    "/se/medlem"
+   ]
+  },
+  "Mitt konto": {
+   "sites": 2,
+   "sample_sites": [
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "https://id.bonniernews.se/login?autoLogin=true&returnUri=https%3A%2F%2Fkonto.bonniernews.se%2F%3Fbrandref%3Dhttps%253A%2",
+    "https://konto.bonniernews.se/"
+   ]
+  },
+  "Sparade artiklar": {
+   "sites": 2,
+   "sample_sites": [
+    "dn.se",
+    "svd.se"
+   ],
+   "sample_hrefs": [
+    "/sparade-artiklar/",
+    "https://www.svd.se/sparat"
+   ]
+  },
+  "Spel": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "dn.se"
+   ],
+   "sample_hrefs": [
+    "/spel/"
+   ]
+  },
+  "Bli prenumerant": {
+   "sites": 2,
+   "sample_sites": [
+    "di.se",
+    "dn.se"
+   ],
+   "sample_hrefs": [
+    "https://prenumerera.di.se/",
+    "https://prenumerera.dn.se/"
+   ]
+  },
+  "Upphovsrätt och AI": {
+   "sites": 2,
+   "sample_sites": [
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "https://www.bonniernews.se/info/upphovsratt-och-ai"
+   ]
+  },
+  "Mobil": {
+   "sites": 2,
+   "sample_sites": [
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": []
+  },
+  "Tablet": {
+   "sites": 2,
+   "sample_sites": [
+    "dn.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": []
+  },
+  "Företagsförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "if.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/foretag/forsakringar"
+   ]
+  },
+  "Bolånekalkyl": {
+   "sites": 2,
+   "sample_sites": [
+    "swedbank.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/bolan/bolanekalkyl",
+    "/privat/boende-och-bolan/rakna-pa-ditt-bolan.html"
+   ]
+  },
+  "Aktiebolag": {
+   "sites": 2,
+   "sample_sites": [
+    "lendo.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/foretagslan/aktiebolag",
+    "/foretagslan/foretagslan-aktiebolag"
+   ]
+  },
+  "Företagskredit": {
+   "sites": 2,
+   "sample_sites": [
+    "lendo.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/foretagslan/foretagskredit"
+   ]
+  },
+  "Enskild firma": {
+   "sites": 2,
+   "sample_sites": [
+    "lendo.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/foretagslan/enskild-firma",
+    "/foretagslan/foretagslan-enskild-firma"
+   ]
+  },
+  "Jämför elavtal": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "/el",
+    "/jamfor"
+   ]
+  },
+  "Legalt": {
+   "sites": 2,
+   "sample_sites": [
+    "insplanet.com",
+    "zmarta.se"
+   ],
+   "sample_hrefs": []
+  },
+  "zmarta.se": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "https://www.zmarta.se"
+   ]
+  },
+  "zmarta.fi": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "https://www.zmarta.fi"
+   ]
+  },
+  "zmarta.no": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "https://www.zmarta.no"
+   ]
+  },
+  "elskling.se": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "https://www.elskling.se"
+   ]
+  },
+  "elskling.no": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "https://www.elskling.no"
+   ]
+  },
+  "uscore.se": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "zmarta.se"
+   ],
+   "sample_hrefs": [
+    "https://www.uscore.se"
+   ]
+  },
+  "Studiecirklar och samarbeten": {
+   "sites": 2,
+   "sample_sites": [
+    "folkuniversitetet.se",
+    "medborgarskolan.se"
+   ],
+   "sample_hrefs": [
+    "/starta-studiecirkel/",
+    "/studiecirklar-och-samarbeten/"
+   ]
+  },
+  "Distans": {
+   "sites": 2,
+   "sample_sites": [
+    "folkuniversitetet.se",
+    "medborgarskolan.se"
+   ],
+   "sample_hrefs": [
+    "/kurser-och-evenemang/distans/",
+    "/sok?l=13487"
+   ]
+  },
+  "Stockholm": {
+   "sites": 2,
+   "sample_sites": [
+    "folkuniversitetet.se",
+    "lansforsakringar.se"
+   ],
+   "sample_hrefs": [
+    "/sok?l=13450",
+    "/stockholm/privat/"
+   ]
+  },
+  "Jönköping": {
+   "sites": 2,
+   "sample_sites": [
+    "folkuniversitetet.se",
+    "lansforsakringar.se"
+   ],
+   "sample_hrefs": [
+    "/sok?l=13537",
+    "/stockholm/privat/"
+   ]
+  },
+  "Kalmar": {
+   "sites": 2,
+   "sample_sites": [
+    "folkuniversitetet.se",
+    "lansforsakringar.se"
+   ],
+   "sample_hrefs": [
+    "/sok?l=13580",
+    "/stockholm/privat/"
+   ]
+  },
+  "Uppsala": {
+   "sites": 2,
+   "sample_sites": [
+    "folkuniversitetet.se",
+    "lansforsakringar.se"
+   ],
+   "sample_hrefs": [
+    "/sok?l=13516",
+    "/stockholm/privat/"
+   ]
+  },
+  "Konst": {
+   "sites": 2,
+   "sample_sites": [
+    "expressen.se",
+    "folkuniversitetet.se"
+   ],
+   "sample_hrefs": [
+    "/kultur/konst/",
+    "https://www.folkuniversitetet.se/kurser-utbildningar/konst/"
+   ]
+  },
+  "Denmark": {
+   "sites": 2,
+   "sample_sites": [
+    "boozt.com",
+    "flixbus.se"
+   ],
+   "sample_hrefs": [
+    "/bus/denmark",
+    "/dk/da"
+   ]
+  },
+  "Sweden": {
+   "sites": 2,
+   "sample_sites": [
+    "boozt.com",
+    "fitness24seven.com"
+   ],
+   "sample_hrefs": [
+    "/se/sv"
+   ]
+  },
+  "Norway": {
+   "sites": 2,
+   "sample_sites": [
+    "boozt.com",
+    "fitness24seven.com"
+   ],
+   "sample_hrefs": [
+    "/no/no",
+    "https://no.cms-prod.az.fitness24seven.com/"
+   ]
+  },
+  "Finland": {
+   "sites": 2,
+   "sample_sites": [
+    "boozt.com",
+    "fitness24seven.com"
+   ],
+   "sample_hrefs": [
+    "/fi/fi",
+    "https://fi.cms-prod.az.fitness24seven.com/"
+   ]
+  },
+  "Germany": {
+   "sites": 2,
+   "sample_sites": [
+    "boozt.com",
+    "flixbus.se"
+   ],
+   "sample_hrefs": [
+    "/bus/germany",
+    "/de/de"
+   ]
+  },
+  "Poland": {
+   "sites": 2,
+   "sample_sites": [
+    "boozt.com",
+    "flixbus.se"
+   ],
+   "sample_hrefs": [
+    "/bus/poland",
+    "/pl/pl"
+   ]
+  },
+  "Download": {
+   "sites": 2,
+   "sample_sites": [
+    "boozt.com",
+    "linear.app"
+   ],
+   "sample_hrefs": [
+    "#",
+    "/download"
+   ]
+  },
+  "Private Banking": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/private-banking.html",
+    "/private-banking/"
+   ]
+  },
+  "Bli privatkund": {
+   "sites": 2,
+   "sample_sites": [
+    "seb.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/bli-kund",
+    "/privat/bli-kund.html"
+   ]
+  },
+  "Bli företagskund": {
+   "sites": 2,
+   "sample_sites": [
+    "seb.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/foretag/bli-kund.html",
+    "/foretag/erbjudande-och-bli-foretagskund/bli-foretagskund"
+   ]
+  },
+  "Flytta ditt bolån till oss": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/boende-och-bolan/flytta-ditt-bolan-till-oss.html",
+    "/privat/produkter/bolan/flytta-bolan-till-oss.html"
+   ]
+  },
+  "Höj ditt bolån": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/boende-och-bolan/hoj-bolan.html",
+    "/privat/produkter/bolan/hoja-bolan-eller-oka-bolan-och-lana-pa-huset.html"
+   ]
+  },
+  "Energilån": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/privatlan-och-krediter/energilan.html",
+    "/privat/produkter/lan/energilan.html"
+   ]
+  },
+  "Bankkort": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/kort/bankkort.html",
+    "/privat/produkter/kreditkort-bankkort/bankkort.html"
+   ]
+  },
+  "Beställ nytt kort": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/kort/bestall-nytt-kort.html",
+    "/privat/produkter/kreditkort-bankkort/bestall-nytt-kort.html"
+   ]
+  },
+  "Spärra ditt kort": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/kort/sparra-kort.html",
+    "/privat/kundservice/sparra-kort.html"
+   ]
+  },
+  "Kortreklamation": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/kort/kortreklamation.html",
+    "/privat/kundservice/kortreklamation.html"
+   ]
+  },
+  "Utlandsbetalningar": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/betala-och-overfora/betalningar-till-utlandet.html",
+    "/privat/produkter/konton-betalningar/utlandsbetalningar.html"
+   ]
+  },
+  "Andra värdepapper": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/produkter/spara-investera/andra-vardepapper.html",
+    "/privat/spara-och-placera/vardepapper/andra-vardepapper.html"
+   ]
+  },
+  "Appen": {
+   "sites": 2,
+   "sample_sites": [
+    "hedvig.com",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/privat/digitala-tjanster/vara-appar.html",
+    "https://www.hedvig.com/se/hedvig/app"
+   ]
+  },
+  "Hitta bankkontor": {
+   "sites": 2,
+   "sample_sites": [
+    "seb.se",
+    "swedbank.se"
+   ],
+   "sample_hrefs": [
+    "/hitta-bankkontor",
+    "/om-oss/kontakta-oss/kontor.html"
+   ]
+  },
+  "Leksaker": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "pricerunner.se"
+   ],
+   "sample_hrefs": [
+    "/leksaker/",
+    "/t/1493/Leksaker-Hobby"
+   ]
+  },
+  "Börs": {
+   "sites": 2,
+   "sample_sites": [
+    "di.se",
+    "svd.se"
+   ],
+   "sample_hrefs": [
+    "/bors/",
+    "https://www.svd.se/bors"
+   ]
+  },
+  "Bevakningar": {
+   "sites": 2,
+   "sample_sites": [
+    "di.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/bevakningar/"
+   ]
+  },
+  "Tipsa oss": {
+   "sites": 2,
+   "sample_sites": [
+    "di.se",
+    "expressen.se"
+   ],
+   "sample_hrefs": [
+    "/nyheter/har-du-ett-nyhetstips-eller-bilder/",
+    "/nyheter/tipsa-dagens-industri/"
+   ]
+  },
+  "Räntor": {
+   "sites": 2,
+   "sample_sites": [
+    "di.se",
+    "seb.se"
+   ],
+   "sample_hrefs": [
+    "/privat/tjanster/aktuella-rantor",
+    "/rantor/"
+   ]
+  },
+  "Valutakurser": {
+   "sites": 2,
+   "sample_sites": [
+    "di.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/privat/valutakurser.html",
+    "/valutor/"
+   ]
+  },
+  "Värdering": {
+   "sites": 2,
+   "sample_sites": [
+    "maklarhuset.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "/vardera-bostad/",
+    "/vardering?cif=header-link-2"
+   ]
+  },
+  "Budgivning": {
+   "sites": 2,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "maklarhuset.se"
+   ],
+   "sample_hrefs": [
+    "/kopa-bostad/budgivning",
+    "/sv/sverige/guider/salja-bostad/saljguide/budgivning-saljguide"
+   ]
+  },
+  "Bostäder till salu": {
+   "sites": 2,
+   "sample_sites": [
+    "maklarhuset.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "/bostad/sverige",
+    "https://www.svenskfast.se/bostad/"
+   ]
+  },
+  "Värdera bostad": {
+   "sites": 2,
+   "sample_sites": [
+    "maklarhuset.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "/vardera-bostad/",
+    "/vardering?cif=menu-main-button-1"
+   ]
+  },
+  "Mäklare": {
+   "sites": 2,
+   "sample_sites": [
+    "if.se",
+    "maklarhuset.se"
+   ],
+   "sample_hrefs": [
+    "/foretag/allians/maklare/logga-in",
+    "/maklare"
+   ]
+  },
+  "Agents": {
+   "sites": 2,
+   "sample_sites": [
+    "linear.app",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "/agents",
+    "/solutions/agents"
+   ]
+  },
+  "Become a Partner": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "/partners",
+    "/partners/contact"
+   ]
+  },
+  "Security & Compliance": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "supabase.com"
+   ],
+   "sample_hrefs": [
+    "/integration#security-and-compliance",
+    "/security"
+   ]
+  },
+  "Gå direkt till sidans innehåll": {
+   "sites": 2,
+   "sample_sites": [
+    "expressen.se",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "#content",
+    "#main"
+   ]
+  },
+  "Sjuk- och olycksfallsförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/sjuk-och-olycksfallsforsakring",
+    "/privat/forsakringar/personforsakring/sjuk-olycksfallsforsakring"
+   ]
+  },
+  "Hästförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/hastforsakring",
+    "/privat/forsakringar/djurforsakring/hastforsakring"
+   ]
+  },
+  "A-traktorförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/a-traktorforsakring",
+    "/privat/forsakringar/fordonsforsakringar/a-traktorforsakring"
+   ]
+  },
+  "Mopedbilsförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/forsakringar/mopedbilsforsakring",
+    "/privat/forsakringar/fordonsforsakringar/mopedbilsforsakring"
+   ]
+  },
+  "Företagsförsäkringar": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/foretag",
+    "/foretag/forsakringar"
+   ]
+  },
+  "Person": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/foretag/vid-skada/personskador"
+   ]
+  },
+  "Personförsäkringar": {
+   "sites": 2,
+   "sample_sites": [
+    "if.se",
+    "lansforsakringar.se"
+   ],
+   "sample_hrefs": [
+    "/privat/forsakring/personforsakring/",
+    "/privat/forsakringar/personforsakring"
+   ]
+  },
+  "Djurförsäkring": {
+   "sites": 2,
+   "sample_sites": [
+    "hedvig.com",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/privat/forsakringar/djurforsakring",
+    "https://www.hedvig.com/se/forsakringar/djurforsakring"
+   ]
+  },
+  "Livshändelser": {
+   "sites": 2,
+   "sample_sites": [
+    "if.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/privat/livet"
+   ]
+  },
+  "Vårt hållbarhetsarbete": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/om-if/hallbarhet",
+    "/om-oss/vart-hallbarhetsarbete"
+   ]
+  },
+  "Kundomdömen": {
+   "sites": 2,
+   "sample_sites": [
+    "hedvig.com",
+    "if.se"
+   ],
+   "sample_hrefs": [
+    "/om-webbplatsen/kundomdomen",
+    "https://www.hedvig.com/se/hedvig/omdomen"
+   ]
+  },
+  "samarbetspartners": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "insplanet.com"
+   ],
+   "sample_hrefs": [
+    "#"
+   ]
+  },
+  "Läs alla omdömen": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "insplanet.com"
+   ],
+   "sample_hrefs": []
+  },
+  "Rörligt elpris": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/elavtal/elpriser/rorligt-elpris/",
+    "/jamfor/elpriser/rorligt"
+   ]
+  },
+  "Mixat elpris": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/elavtal/elpriser/mixat-elpris/",
+    "/jamfor/elpriser/mixat-elpris"
+   ]
+  },
+  "Sälj din solel": {
+   "sites": 2,
+   "sample_sites": [
+    "elskling.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/salj-el",
+    "/solceller/installera-solceller/mikroproduktion-salj-solel/"
+   ]
+  },
+  "Hitta gym": {
+   "sites": 2,
+   "sample_sites": [
+    "fitness24seven.com",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/gym",
+    "/vara-gym/se-vara-gym/"
+   ]
+  },
+  "Våra medlemskap": {
+   "sites": 2,
+   "sample_sites": [
+    "fitness24seven.com",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/medlemskap/vara-medlemskap/",
+    "/vara-medlemskap"
+   ]
+  },
+  "Privatperson": {
+   "sites": 2,
+   "sample_sites": [
+    "fitness24seven.com",
+    "kjell.com"
+   ],
+   "sample_hrefs": [
+    "/friskvardsbidrag-privatperson/"
+   ]
+  },
+  "Legal notice": {
+   "sites": 2,
+   "sample_sites": [
+    "tibber.com",
+    "visma.se"
+   ],
+   "sample_hrefs": [
+    "/en/legal-notice",
+    "/legal-notice"
+   ]
+  },
+  "App Store": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "tibber.com"
+   ],
+   "sample_hrefs": [
+    "https://apps.apple.com/app/calendly-mobile/id1451094657?pt=118425599&mt=8&ct=footer&utm_source=calendly&utm_medium=marke",
+    "https://tibber.onelink.me/3IQr"
+   ]
+  },
+  "Inbox": {
+   "sites": 2,
+   "sample_sites": [
+    "intercom.com",
+    "linear.app"
+   ],
+   "sample_hrefs": [
+    "https://www.intercom.com/helpdesk/inbox"
+   ]
+  },
+  "More": {
+   "sites": 2,
+   "sample_sites": [
+    "intercom.com",
+    "linear.app"
+   ],
+   "sample_hrefs": [
+    "https://fin.ai/customers"
+   ]
+  },
+  "Insights": {
+   "sites": 2,
+   "sample_sites": [
+    "linear.app",
+    "visma.se"
+   ],
+   "sample_hrefs": [
+    "/insights"
+   ]
+  },
+  "Brand": {
+   "sites": 2,
+   "sample_sites": [
+    "linear.app",
+    "sector-alarm.se"
+   ],
+   "sample_hrefs": [
+    "/brand",
+    "/var-tjanst/brandlarm/"
+   ]
+  },
+  "X (Twitter)": {
+   "sites": 2,
+   "sample_sites": [
+    "flixbus.se",
+    "linear.app"
+   ],
+   "sample_hrefs": [
+    "https://twitter.com/FlixBus",
+    "https://x.com/linear"
+   ]
+  },
+  "Senaste nytt": {
+   "sites": 2,
+   "sample_sites": [
+    "expressen.se",
+    "omni.se"
+   ],
+   "sample_hrefs": [
+    "/senaste",
+    "https://www.expressen.se/nyheter/senaste-nytt/"
+   ]
+  },
+  "Accessoarer": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/accessoarer/",
+    "/herr/accessoarer-tillbehor/c/120700"
+   ]
+  },
+  "Barn & baby": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "matsmart.se"
+   ],
+   "sample_hrefs": [
+    "/barn-baby/"
+   ]
+  },
+  "Mobiltelefoni": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/mobiltelefoni/",
+    "/support/mobiltelefoni"
+   ]
+  },
+  "Dammsugare": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/c/dammsugare",
+    "/hushall-kok/dammsugare/"
+   ]
+  },
+  "Hudvård": {
+   "sites": 2,
+   "sample_sites": [
+    "bokadirekt.se",
+    "cdon.se"
+   ],
+   "sample_hrefs": [
+    "/hudvard/hela-sverige",
+    "/skonhet/hudvard/"
+   ]
+  },
+  "Hårvård": {
+   "sites": 2,
+   "sample_sites": [
+    "bokadirekt.se",
+    "cdon.se"
+   ],
+   "sample_hrefs": [
+    "/harvard/hela-sverige",
+    "/skonhet/harvard/"
+   ]
+  },
+  "Parfym": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/c/parfym",
+    "/skonhet/parfym/"
+   ]
+  },
+  "Handla nu": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "ica.se"
+   ],
+   "sample_hrefs": [
+    "https://handla.ica.se/?chooseStore=true"
+   ]
+  },
+  "Adidas": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "https://cdon.se/varumarke/adidas/",
+    "https://www.xxl.se/b/adidas/adidas"
+   ]
+  },
+  "Barncykel": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/cykel/cyklar/barncykel/c/100210",
+    "/sport/cykling/cyklar/barncyklar/"
+   ]
+  },
+  "Smartwatch": {
+   "sites": 2,
+   "sample_sites": [
+    "cdon.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/c/smartwatch",
+    "/mobiltelefoni/wearables/smartklockor/"
+   ]
+  },
+  "Skapa konto": {
+   "sites": 2,
+   "sample_sites": [
+    "kivra.se",
+    "mathem.se"
+   ],
+   "sample_hrefs": [
+    "/se/user/signup/",
+    "https://accounts.kivra.com/register/user?locale=sv"
+   ]
+  },
+  "Kom igång": {
+   "sites": 2,
+   "sample_sites": [
+    "kivra.se",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/magazine/traning/kom-igang"
+   ]
+  },
+  "Djur": {
+   "sites": 2,
+   "sample_sites": [
+    "folksam.se",
+    "hedvig.com"
+   ],
+   "sample_hrefs": [
+    "https://www.hedvig.com/se/forsakringar/djurforsakring"
+   ]
+  },
+  "Se ditt pris": {
+   "sites": 2,
+   "sample_sites": [
+    "hedvig.com",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/fjarrvarme/priser/se-ditt-pris/"
+   ]
+  },
+  "Our Work": {
+   "sites": 2,
+   "sample_sites": [
+    "charitywater.org",
+    "girleffect.org"
+   ],
+   "sample_hrefs": [
+    "/our-work",
+    "https://girleffect.org/our-impact/"
+   ]
+  },
+  "Köp presentkort": {
+   "sites": 2,
+   "sample_sites": [
+    "centralbadet.se",
+    "mathem.se"
+   ],
+   "sample_hrefs": [
+    "https://centralbadet.zoezi.se/presentkort",
+    "https://www.mathem.se/se/about/presentkort/"
+   ]
+  },
+  "Fotbolls-VM": {
+   "sites": 2,
+   "sample_sites": [
+    "expressen.se",
+    "mathem.se"
+   ],
+   "sample_hrefs": [
+    "/se/categories/1420-fotbolls-vm/",
+    "https://www.expressen.se/sport/fotboll/fotbolls-vm-2026-resultat/"
+   ]
+  },
+  "Prismatch": {
+   "sites": 2,
+   "sample_sites": [
+    "elgiganten.se",
+    "mathem.se"
+   ],
+   "sample_hrefs": [
+    "/kundtjanst/prismatch",
+    "/se/categories/911-prismatch/"
+   ]
+  },
+  "Gå till huvudinnehåll": {
+   "sites": 2,
+   "sample_sites": [
+    "anticimex.se",
+    "vy.se"
+   ],
+   "sample_hrefs": [
+    "#center",
+    "#main-content"
+   ]
+  },
+  "Energideklaration": {
+   "sites": 2,
+   "sample_sites": [
+    "anticimex.se",
+    "fastighetsbyran.se"
+   ],
+   "sample_hrefs": [
+    "/energideklaration-villa/",
+    "/sv/sverige/artiklar/salja-bostad/energideklaration"
+   ]
+  },
+  "Sälja hus": {
+   "sites": 2,
+   "sample_sites": [
+    "anticimex.se",
+    "fastighetsbyran.se"
+   ],
+   "sample_hrefs": [
+    "/salja-hus/",
+    "/sv/sverige/artiklar/salja-bostad/salja-hus"
+   ]
+  },
+  "Gå till innehåll": {
+   "sites": 2,
+   "sample_sites": [
+    "centralbadet.se",
+    "fastighetsbyran.se"
+   ],
+   "sample_hrefs": [
+    "#tw-main"
+   ]
+  },
+  "Sälja": {
+   "sites": 2,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "#",
+    "/sv/sverige/salja-bostad"
+   ]
+  },
+  "Köpa": {
+   "sites": 2,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "#",
+    "/sv/sverige/kopa-bostad"
+   ]
+  },
+  "Köpa nyproduktion": {
+   "sites": 2,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "/kopa-nyproduktion/",
+    "/sv/sverige/artiklar/kopa-bostad/nyproduktion"
+   ]
+  },
+  "Swedbank": {
+   "sites": 2,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "unicef.se"
+   ],
+   "sample_hrefs": [
+    "https://www.swedbank.se"
+   ]
+  },
+  "För byggbolag": {
+   "sites": 2,
+   "sample_sites": [
+    "fastighetsbyran.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "/salja-nyproduktion/",
+    "/sv/sverige/artiklar/om-oss/for-byggbolag"
+   ]
+  },
+  "Båtlån": {
+   "sites": 2,
+   "sample_sites": [
+    "advisa.se",
+    "lendo.se"
+   ],
+   "sample_hrefs": [
+    "/batlan",
+    "/batlan/"
+   ]
+  },
+  "Blancolån": {
+   "sites": 2,
+   "sample_sites": [
+    "advisa.se",
+    "lendo.se"
+   ],
+   "sample_hrefs": [
+    "/blancolan",
+    "/blancolan/"
+   ]
+  },
+  "Drycker": {
+   "sites": 2,
+   "sample_sites": [
+    "matsmart.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/sport/traning/kosttillskott/drycker/c/180819"
+   ]
+  },
+  "Styrketräning": {
+   "sites": 2,
+   "sample_sites": [
+    "sats.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/magazine/traning/styrketraning",
+    "/sport/traning/styrketraning/c/180410"
+   ]
+  },
+  "Reklamation": {
+   "sites": 2,
+   "sample_sites": [
+    "vy.se",
+    "xxl.se"
+   ],
+   "sample_hrefs": [
+    "/kundservice/reklamation",
+    "/kundservice/reklamationer"
+   ]
+  },
+  "Så fungerar det": {
+   "sites": 2,
+   "sample_sites": [
+    "barncancerfonden.se",
+    "insplanet.com"
+   ],
+   "sample_hrefs": [
+    "/for-foretag/skattereduktion-for-gavor/",
+    "/sa-fungerar-det"
+   ]
+  },
+  "Hem & Hushåll": {
+   "sites": 2,
+   "sample_sites": [
+    "matsmart.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/kategori.php?k=502"
+   ]
+  },
+  "Routrar": {
+   "sites": 2,
+   "sample_sites": [
+    "prisjakt.nu",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/bredband/routrar",
+    "/c/router"
+   ]
+  },
+  "Ljud & Bild": {
+   "sites": 2,
+   "sample_sites": [
+    "kjell.com",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/kategori.php?k=479",
+    "/se/produkter/ljud-bild"
+   ]
+  },
+  "LEGO": {
+   "sites": 2,
+   "sample_sites": [
+    "elgiganten.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/c/lego",
+    "/sport-fritid/lego"
+   ]
+  },
+  "Foto & Video": {
+   "sites": 2,
+   "sample_sites": [
+    "kjell.com",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/kategori.php?k=480",
+    "/se/produkter/ljud-bild/foto-video"
+   ]
+  },
+  "Datorkomponenter": {
+   "sites": 2,
+   "sample_sites": [
+    "elgiganten.se",
+    "prisjakt.nu"
+   ],
+   "sample_hrefs": [
+    "/kategori.php?k=1243"
+   ]
+  },
+  "Kontantkort": {
+   "sites": 2,
+   "sample_sites": [
+    "hallon.se",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "/kontantkort",
+    "http://vimla.se/kontantkort/"
+   ]
+  },
+  "Laddare": {
+   "sites": 2,
+   "sample_sites": [
+    "kjell.com",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/mobiltelefoner/laddare",
+    "/se/produkter/mobilt/mobilladdare"
+   ]
+  },
+  "Barberare": {
+   "sites": 2,
+   "sample_sites": [
+    "bokadirekt.se",
+    "centralbadet.se"
+   ],
+   "sample_hrefs": [
+    "/barberare/hela-sverige",
+    "https://centralbadet.se/barberare"
+   ]
+  },
+  "Spa": {
+   "sites": 2,
+   "sample_sites": [
+    "bokadirekt.se",
+    "centralbadet.se"
+   ],
+   "sample_hrefs": [
+    "/spa/hela-sverige",
+    "https://centralbadet.se/spa"
+   ]
+  },
+  "Mina favoriter": {
+   "sites": 2,
+   "sample_sites": [
+    "bokadirekt.se",
+    "elgiganten.se"
+   ],
+   "sample_hrefs": [
+    "/favoriter",
+    "/login?return-path=%2Faccount%2Fproduct-favorites&userOrigin=MYFAV"
+   ]
+  },
+  "For shoppers": {
+   "sites": 2,
+   "sample_sites": [
+    "klarna.com",
+    "qliro.com"
+   ],
+   "sample_hrefs": [
+    "/us/",
+    "https://qliro.com"
+   ]
+  },
+  "App": {
+   "sites": 2,
+   "sample_sites": [
+    "klarna.com",
+    "qliro.com"
+   ],
+   "sample_hrefs": [
+    "/us/klarna-app/",
+    "https://qliro.com/for-shoppers/app"
+   ]
+  },
+  "Kundvagn": {
+   "sites": 2,
+   "sample_sites": [
+    "elgiganten.se",
+    "netonnet.se"
+   ],
+   "sample_hrefs": []
+  },
+  "Ledningsgrupp": {
+   "sites": 2,
+   "sample_sites": [
+    "elgiganten.se",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/om-elgiganten/elgigantens-ledningsgrupp",
+    "/om/ledningen"
+   ]
+  },
+  "Produktinformationsblad": {
+   "sites": 2,
+   "sample_sites": [
+    "elgiganten.se",
+    "netonnet.se"
+   ],
+   "sample_hrefs": []
+  },
+  "Nordea": {
+   "sites": 2,
+   "sample_sites": [
+    "nordea.se",
+    "unicef.se"
+   ],
+   "sample_hrefs": [
+    "/"
+   ]
+  },
+  "Fondkurser": {
+   "sites": 2,
+   "sample_sites": [
+    "lansforsakringar.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/privat/bank/spara/fondkurser/",
+    "/privat/produkter/spara-investera/fonder/fondutbud.html"
+   ]
+  },
+  "Våra kontor": {
+   "sites": 2,
+   "sample_sites": [
+    "fortnox.se",
+    "lansforsakringar.se"
+   ],
+   "sample_hrefs": [
+    "/karriar/vara-kontor",
+    "/privat/kundservice/#kontor"
+   ]
+  },
+  "Prisgaranti": {
+   "sites": 2,
+   "sample_sites": [
+    "bygghemma.se",
+    "matsmart.se"
+   ],
+   "sample_hrefs": [
+    "/kopvillkor/prisgaranti/",
+    "https://www.matsmart.se/hett-just-nu/prisgaranti"
+   ]
+  },
+  "Hemlarm": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/hemlarm",
+    "https://www.sectoralarm.se/hemlarm/"
+   ]
+  },
+  "Villalarm": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/hemlarm/villalarm",
+    "https://www.sectoralarm.se/hemlarm/villalarm/"
+   ]
+  },
+  "Lägenhetslarm": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/hemlarm/lagenhetslarm",
+    "https://www.sectoralarm.se/hemlarm/lagenhetslarm/"
+   ]
+  },
+  "Företagslarm": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/foretagslarm",
+    "https://www.sectoralarm.se/foretagslarm/"
+   ]
+  },
+  "Inbrottslarm": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/produkter-tjanster/inbrottslarm",
+    "https://www.sectoralarm.se/var-tjanst/inbrottslarm/"
+   ]
+  },
+  "Brandlarm": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/produkter-tjanster/brandlarm",
+    "https://www.sectoralarm.se/var-tjanst/brandlarm/"
+   ]
+  },
+  "Hus": {
+   "sites": 2,
+   "sample_sites": [
+    "svenskfast.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "#",
+    "/funnel/standalone/basic/?utm_content=alarm&property=house"
+   ]
+  },
+  "Kameradetektor": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/produkter-tjanster/kameradetektor",
+    "https://www.sectoralarm.se/produkter/overvakningskameror/kameradetektor/"
+   ]
+  },
+  "Rökdetektor": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/produkter-tjanster/rokdetektor",
+    "https://www.sectoralarm.se/produkter/sakerhetssensorer/rokdetektor/"
+   ]
+  },
+  "Vibrationsdetektor": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/produkter-tjanster/vibrationsdetektor",
+    "https://www.sectoralarm.se/produkter/sakerhetssensorer/vibrationsdetektor/"
+   ]
+  },
+  "Vattendetektor": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/produkter-tjanster/vattendetektor",
+    "https://www.sectoralarm.se/produkter/sakerhetssensorer/vattendetektor/"
+   ]
+  },
+  "Inomhussiren": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/produkter-tjanster/siren",
+    "https://www.sectoralarm.se/produkter/sakerhetssensorer/inomhussiren/"
+   ]
+  },
+  "Larmbricka": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/produkter-tjanster/larmbricka",
+    "/produkter/grundprodukter/manoverpanel-och-larmbrickor/"
+   ]
+  },
+  "Skalskydd": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "verisure.se"
+   ],
+   "sample_hrefs": [
+    "/hemlarm/skalskydd/",
+    "/skalskydd"
+   ]
+  },
+  "SHL": {
+   "sites": 2,
+   "sample_sites": [
+    "expressen.se",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/sport/hockey/shl/",
+    "/tv/sport/shl"
+   ]
+  },
+  "Driftinformation": {
+   "sites": 2,
+   "sample_sites": [
+    "fortnox.se",
+    "telia.se"
+   ],
+   "sample_hrefs": [
+    "/support/felsokning-och-driftinformation",
+    "https://status.fortnox.se/"
+   ]
+  },
+  "Developer Tools": {
+   "sites": 2,
+   "sample_sites": [
+    "calendly.com",
+    "hubspot.com"
+   ],
+   "sample_hrefs": [
+    "//developers.hubspot.com",
+    "https://developer.calendly.com/?_ga=2.256195651.97573991.1727360292-272702306.1727360288"
+   ]
+  },
+  "Huvudkontoret": {
+   "sites": 2,
+   "sample_sites": [
+    "sector-alarm.se",
+    "svenskfast.se"
+   ],
+   "sample_hrefs": [
+    "/huvudkontor/",
+    "javascript:;"
+   ]
+  },
+  "Service": {
+   "sites": 2,
+   "sample_sites": [
+    "flixbus.se",
+    "intersport.se"
+   ],
+   "sample_hrefs": [
+    "/kundservice/service"
+   ]
+  },
+  "Get the App": {
+   "sites": 2,
+   "sample_sites": [
+    "flixbus.se",
+    "klarna.com"
+   ],
+   "sample_hrefs": [
+    "/service/bus-app",
+    "/us/klarna-app/"
+   ]
+  },
+  "Prislista": {
+   "sites": 2,
+   "sample_sites": [
+    "fortnox.se",
+    "vattenfall.se"
+   ],
+   "sample_hrefs": [
+    "/elavtal/elpriser/prislista/",
+    "/produkt/prislista"
+   ]
+  },
+  "Abonnemang": {
+   "sites": 2,
+   "sample_sites": [
+    "fortnox.se",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "/bestall/",
+    "https://support.fortnox.se/hantera-fortnox/abonnemang-och-avtal"
+   ]
+  },
+  "Bastu": {
+   "sites": 2,
+   "sample_sites": [
+    "centralbadet.se",
+    "sats.se"
+   ],
+   "sample_hrefs": [
+    "/bastu",
+    "https://centralbadet.se/bastu"
+   ]
+  },
+  "Apple Pay": {
+   "sites": 2,
+   "sample_sites": [
+    "klarna.com",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/privat/produkter/konton-betalningar/apple-pay.html",
+    "https://www.klarna.com/us/klarna-apple-pay/"
+   ]
+  },
+  "Who We Are": {
+   "sites": 2,
+   "sample_sites": [
+    "girleffect.org",
+    "visma.se"
+   ],
+   "sample_hrefs": [
+    "#"
+   ]
+  },
+  "Sista chansen": {
+   "sites": 2,
+   "sample_sites": [
+    "intersport.se",
+    "matsmart.se"
+   ],
+   "sample_hrefs": [
+    "/sista-chansen"
+   ]
+  },
+  "Renoveringslån": {
+   "sites": 2,
+   "sample_sites": [
+    "lendo.se",
+    "nordea.se"
+   ],
+   "sample_hrefs": [
+    "/privat/produkter/bolan/renovera-bostad/finansiera-renovering.html",
+    "/privatlan/renoveringslan"
+   ]
+  },
+  "Till dealen": {
+   "sites": 2,
+   "sample_sites": [
+    "matsmart.se",
+    "vimla.se"
+   ],
+   "sample_hrefs": [
+    "/produkt/lofbergs-bryggkaffe-fika?ref=site-wide-notification",
+    "https://www.samsung.com/se/plans/vimla/?cid=se_ow_affiliate_onsite_none_pre-order_paradigmvimlase_other_paradigm_newcust"
+   ]
+  },
+  "Produkter": {
+   "sites": 2,
+   "sample_sites": [
+    "matsmart.se",
+    "sector-alarm.se"
+   ],
+   "sample_hrefs": [
+    "https://www.sectoralarm.se/produkter/"
+   ]
+  }
+ }
+}

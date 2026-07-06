@@ -75,6 +75,7 @@ export const Route = createFileRoute("/api/adaptive/decide")({
           selector: cfg.conversionSelector,
           url: cfg.conversionUrl,
           text: cfg.conversionText,
+          kind: cfg.conversionKind,
         });
 
         // Measurement holdout: deterministically bucket this visitor 0..99 from

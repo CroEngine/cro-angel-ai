@@ -16,8 +16,8 @@
 
 import type { Page } from "@browserbasehq/stagehand";
 
-import { decide } from "@/adaptive/decide";
-import { mapAuditToInventory } from "@/adaptive/crawler-inventory";
+import { decide, type SiteGoal } from "@/adaptive/decide";
+import { mapAuditToInventory, rankGoalCandidates } from "@/adaptive/crawler-inventory";
 import type { ContentInventory } from "@/adaptive/types";
 import { runPageAudit } from "../runners/pageAudit.server";
 import { personaContext, type PersonaId } from "./personas";
@@ -54,6 +54,16 @@ export interface RobustnessRunOptions {
   personas: PersonaId[];
   /** The production snippet source (public/adaptive.js), fetched by the caller. */
   snippetSource: string;
+  /**
+   * The conversion goal to decide() with — the stored owner-confirmed goal
+   * when the caller has one. Without a goal every goal-decoration pattern
+   * (emphasize_goal / sticky_goal_cta / show_secondary_cta) resolves to null,
+   * so the launch gate never exercised the patterns most likely to trip it
+   * (the fixed mobile pill covering a cookie bar, the injected secondary
+   * link). When absent, the runner derives the same deterministic floor the
+   * goal judge falls back to: rankGoalCandidates()'s top candidate.
+   */
+  goal?: SiteGoal | null;
   prepareTimeoutMs?: number;
   personaTimeoutMs?: number;
   /** Capture before/after screenshots for human review (heavier). */
@@ -306,6 +316,7 @@ export async function runSnippetRobustness(
   safeOn("console", onConsole as (a: never) => void);
 
   let inventory: ContentInventory | null = null;
+  let goal: SiteGoal | null = opts.goal ?? null;
   let snippetRan = false;
   let baseline: DomSignature = EMPTY_SIG;
 
@@ -313,6 +324,20 @@ export async function runSnippetRobustness(
   try {
     const audit = await withTimeout(runPageAudit(page), prepareTimeout, "audit");
     inventory = mapAuditToInventory(audit, site);
+
+    // No stored goal from the caller → the deterministic no-LLM floor, exactly
+    // what judgeSiteGoals() falls back to. This makes the harness measure the
+    // goal-decoration patterns instead of silently skipping them.
+    if (!goal) {
+      let domain: string | null = null;
+      try {
+        domain = new URL(url).hostname;
+      } catch {
+        /* keep null */
+      }
+      const top = rankGoalCandidates(inventory, domain)[0];
+      if (top) goal = { selector: top.selector, text: top.text };
+    }
 
     collecting = true;
     await withTimeout(
@@ -370,6 +395,7 @@ export async function runSnippetRobustness(
           site,
           persona,
           inventory,
+          goal,
           baseline,
           started,
           errBefore,
@@ -421,6 +447,7 @@ async function measurePersona(
     site: string;
     persona: PersonaId;
     inventory: ContentInventory;
+    goal: SiteGoal | null;
     baseline: DomSignature;
     started: number;
     errBefore: number;
@@ -429,9 +456,9 @@ async function measurePersona(
     onShot?: (shot: Shot) => void;
   },
 ): Promise<RobustnessReport> {
-  const { url, site, persona, inventory, baseline, started, errBefore, consoleErrors } = args;
+  const { url, site, persona, inventory, goal, baseline, started, errBefore, consoleErrors } = args;
   const context = personaContext(persona, url);
-  const decision = decide(site, context, inventory);
+  const decision = decide(site, context, inventory, {}, goal ?? undefined);
   const adaptations = decision.adaptations;
 
   const probes = (await page.evaluate(
