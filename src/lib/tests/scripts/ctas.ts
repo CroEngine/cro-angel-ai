@@ -146,13 +146,21 @@ export const CTAS_SCRIPT = `(() => {
       if (a.name.startsWith('data-')) attrBag.push(a.value || '');
     }
     // Same-page anchor (flik/TOC) — samma beräkning som collect.ts (regel 6 i
-    // classifyIntentShared): flikar får inte positions-fallbackas till conversion.
+    // classifyIntentShared): flikar får inte positions-fallbackas till
+    // conversion. Deklarerad URL (canonical/og:url) som bas, location som
+    // fallback — annars flippar regeln aldrig i MHTML-replay (file://-location
+    // vs absoluta https-själv-URL:er) och live/replay divergerar.
     let samePageAnchor = false;
     if (el.tagName === 'A' && href) {
       try {
-        const u = new URL(href, location.href);
-        samePageAnchor = !!u.hash && u.origin === location.origin &&
-          u.pathname === location.pathname && u.search === location.search;
+        let pageUrl = new URL(location.href);
+        const canon = document.querySelector('link[rel="canonical"]');
+        const og = document.querySelector('meta[property="og:url"]');
+        const declared = (canon && canon.getAttribute('href')) || (og && og.getAttribute('content')) || '';
+        if (declared && /^https?:/i.test(declared)) pageUrl = new URL(declared);
+        const u = new URL(href, pageUrl.href);
+        samePageAnchor = !!u.hash && u.origin === pageUrl.origin &&
+          u.pathname === pageUrl.pathname && u.search === pageUrl.search;
       } catch (e) { /* trasig href -> ingen flagga */ }
     }
     return classifyIntentShared(

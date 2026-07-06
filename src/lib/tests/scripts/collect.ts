@@ -246,14 +246,22 @@ export const COLLECT_SCRIPT = `(() => {
 
     // Same-page anchor (flik/TOC): href resolvar till DENNA sida + fragment.
     // Matar regel 6 i classifyIntentShared — flikar får inte positions-
-    // fallbackas till conversion. new URL hanterar både "#x" och absoluta
-    // själv-URL:er med fragment (bokadirekt-service: .../citymassage-457#staff).
+    // fallbackas till conversion. Jämförelsebasen är sidans DEKLARERADE URL
+    // (canonical/og:url) med location som fallback: i MHTML-replay är
+    // location en file://-URL medan capturens ankare är absoluta
+    // https-själv-URL:er (.../citymassage-457#staff) — utan deklarerad bas
+    // flippar regeln aldrig i replay och live/replay divergerar.
     let samePageAnchor = false;
     if (el.tagName === 'A' && href) {
       try {
-        const u = new URL(href, location.href);
-        samePageAnchor = !!u.hash && u.origin === location.origin &&
-          u.pathname === location.pathname && u.search === location.search;
+        let pageUrl = new URL(location.href);
+        const canon = document.querySelector('link[rel="canonical"]');
+        const og = document.querySelector('meta[property="og:url"]');
+        const declared = (canon && canon.getAttribute('href')) || (og && og.getAttribute('content')) || '';
+        if (declared && /^https?:/i.test(declared)) pageUrl = new URL(declared);
+        const u = new URL(href, pageUrl.href);
+        samePageAnchor = !!u.hash && u.origin === pageUrl.origin &&
+          u.pathname === pageUrl.pathname && u.search === pageUrl.search;
       } catch (e) { /* trasig href -> ingen flagga */ }
     }
 
