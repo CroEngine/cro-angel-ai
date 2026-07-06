@@ -1,0 +1,16 @@
+{
+  "url": "https://www.bokadirekt.se",
+  "name": "bokadirekt",
+  "captured_at": "2026-07-06T20:17:03.908Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": null,
+  "consentInstruction": null,
+  "notes": "Arketyp: booking (bokningsmarknadsplats). CMP okänd — verifiera med dry-run.",
+  "ttlDays": 90,
+  "frozenAt": "2026-07-06T20:17:03.908Z",
+  "expiresAt": "2026-10-04T20:17:03.908Z",
+  "refreezeReason": "manual"
+}

@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    "dismissCheck": "hidden",
+    "matchCountBeforeClick": 1,
+    "visibleBeforeClick": true,
+    "dismissedAfterMs": 809,
+    "postDismissDomHits": {
+      "accept all": 0,
+      "decline all": 0,
+      "reject all": 0,
+      "cookie": 1
+    }
+  },
+  "capture": {
+    "mhtmlKb": 2194,
+    "screenshotKb": 538,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 18,
+    "mhtmlKbBeforeFontEmbed": 1254,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "inter",
+      "pantograph-pro"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 27,
+      "relativeResolved": 27,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-07-06T20:13:35.471Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 5806,
+    "interactiveCount": 138,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 5374,
+    "consentMs": 2045,
+    "scrollMs": 3478,
+    "captureMs": 9034
+  }
+}
