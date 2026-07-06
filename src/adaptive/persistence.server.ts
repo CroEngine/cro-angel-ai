@@ -11,6 +11,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
+import type { GoalJudgment } from "./goal-judge.server";
 import type {
   AngelEvent,
   ContentInventory,
@@ -363,37 +364,40 @@ export async function siteWriteAllowed(
 }
 
 /**
- * Zero-config goal: fill in a site's conversion goal from the harvest when the
- * owner hasn't set one. Only writes when conversion_selector is NULL — an
- * owner-saved goal (conversion_source='owner') or a previous auto-pick is never
- * churned. Best-effort; never throws.
+ * Store the harvest's ranked goal PROPOSAL (goal-judge output). Overwrites the
+ * goal_candidates column each harvest; it never touches conversion_selector /
+ * conversion_source — the goal only goes live when the owner confirms one
+ * candidate (confirmGoal). Best-effort; never throws.
  */
-export async function maybeAutoSetGoal(
-  slug: string,
-  goal: { selector: string; text: string } | null,
-): Promise<boolean> {
-  if (!goal) return false;
+export async function storeGoalCandidates(slug: string, judgment: GoalJudgment): Promise<boolean> {
+  try {
+    const { error } = await supabaseAdmin
+      .from("angel_sites")
+      .update({ goal_candidates: judgment as unknown as Json })
+      .eq("slug", slug);
+    if (error) {
+      console.warn(`[angel] goal-candidates store skipped: ${error.message}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn(`[angel] goal-candidates store unavailable:`, err);
+    return false;
+  }
+}
+
+/** Read the previously-stored judgment (for the ingest cache). Never throws. */
+export async function loadGoalCandidates(slug: string): Promise<GoalJudgment | null> {
   try {
     const { data, error } = await supabaseAdmin
       .from("angel_sites")
-      .update({
-        conversion_selector: goal.selector,
-        // The label rides along: click detection falls back to it when the
-        // CSS selector doesn't resolve on a page.
-        conversion_text: goal.text || null,
-        conversion_source: "auto",
-      })
+      .select("goal_candidates")
       .eq("slug", slug)
-      .is("conversion_selector", null)
-      .select("slug");
-    if (error) {
-      console.warn(`[angel] auto-goal skipped: ${error.message}`);
-      return false;
-    }
-    return (data ?? []).length > 0;
-  } catch (err) {
-    console.warn(`[angel] auto-goal unavailable:`, err);
-    return false;
+      .maybeSingle();
+    if (error || !data?.goal_candidates) return null;
+    return data.goal_candidates as unknown as GoalJudgment;
+  } catch {
+    return null;
   }
 }
 

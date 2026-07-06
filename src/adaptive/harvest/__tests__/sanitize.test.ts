@@ -55,6 +55,23 @@ describe("sanitizeAudit", () => {
     expect((out.ctas as unknown[]).length).toBe(2);
   });
 
+  it("preserves a CTA's href (the goal signal), stripping query and dangerous schemes", () => {
+    const out = sanitizeAudit({
+      url: "https://x.se/",
+      ctas: [
+        { text: "Compare", selector: "#a", href: "https://partner.example/deal?ref=abc#x" },
+        { text: "Call", selector: "#b", href: "tel:+46812345" },
+        { text: "Evil", selector: "#c", href: "javascript:alert(1)" },
+        { text: "Cat", selector: "#d", href: "/bilforsakring?utm=1" },
+      ],
+    });
+    const ctas = out.ctas as { href?: string }[];
+    expect(ctas[0].href).toBe("https://partner.example/deal"); // query/hash gone
+    expect(ctas[1].href).toBe("tel:+46812345");
+    expect(ctas[2].href).toBeUndefined(); // javascript: dropped
+    expect(ctas[3].href).toBe("/bilforsakring"); // relative path kept, query gone
+  });
+
   it("returns {} for garbage input", () => {
     expect(sanitizeAudit(null)).toEqual({});
     expect(sanitizeAudit("nope")).toEqual({});

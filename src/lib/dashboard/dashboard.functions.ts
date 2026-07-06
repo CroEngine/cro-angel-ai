@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
+import type { GoalCandidate } from "@/adaptive/crawler-inventory";
 import { aggregate, type DashboardMetrics, type DashEvent, type InventoryEntry } from "./aggregate";
 
 // ---- tenancy helpers (server-only) ------------------------------------------
@@ -65,10 +66,15 @@ export interface SiteConfigView {
   conversionSelector: string | null;
   /** The goal's visible label (auto-harvested), e.g. "Skapa konto". */
   conversionText: string | null;
-  /** Who set the goal: 'auto' (picked from the harvest) | 'owner' | null. */
+  /** Who set the goal: 'auto' (legacy pre-confirm pick) | 'owner' (confirmed) | null. */
   conversionSource: "auto" | "owner" | null;
   /** Per-site write key gating the ingest endpoints. null = unkeyed. */
   ingestKey: string | null;
+  /** The judged business type, when detected (e.g. "comparison"). */
+  businessType: string | null;
+  /** Ranked conversion-goal candidates proposed at harvest — the owner confirms
+   *  one to activate Angel. Empty until the first harvest judges the page. */
+  goalCandidates: GoalCandidate[];
 }
 
 /** Zero-config default: measurement on from day one, no stats knowledge needed. */
@@ -81,6 +87,8 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   conversionSelector: null,
   conversionText: null,
   conversionSource: null,
+  businessType: null,
+  goalCandidates: [],
   ingestKey: null,
 };
 
@@ -130,7 +138,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,ingest_key",
+          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,ingest_key,goal_candidates",
         )
         .order("slug");
       // `sandbox--<host>` rows are the admin sandbox's private per-host scratch
@@ -200,9 +208,11 @@ export const getDashboard = createServerFn({ method: "POST" })
               conversion_text?: string | null;
               conversion_source?: string | null;
               ingest_key?: string | null;
+              goal_candidates?: { businessType?: string; goals?: GoalCandidate[] } | null;
             }
           | undefined;
         if (current) {
+          const judged = current.goal_candidates ?? null;
           siteConfig = {
             consentMode: current.consent_mode === "attested" ? "attested" : "anonymous",
             holdoutPct: typeof current.holdout_pct === "number" ? current.holdout_pct : 0,
@@ -214,6 +224,8 @@ export const getDashboard = createServerFn({ method: "POST" })
                 ? current.conversion_source
                 : null,
             ingestKey: current.ingest_key ?? null,
+            businessType: typeof judged?.businessType === "string" ? judged.businessType : null,
+            goalCandidates: Array.isArray(judged?.goals) ? judged.goals.slice(0, 6) : [],
           };
         }
       }
@@ -415,6 +427,46 @@ export const setMeasurementConfig = createServerFn({ method: "POST" })
     );
     if (error) {
       console.warn(`[angel] setMeasurementConfig failed: ${error.message}`);
+      return { ok: false };
+    }
+    return { ok: true };
+  });
+
+/**
+ * Confirm a proposed goal candidate as the site's ACTIVE conversion goal. This
+ * is the "commit" half of propose→commit: it sets conversion_source='owner' so
+ * the deterministic engine starts highlighting/measuring this goal, and — unlike
+ * a raw owner override — keeps the harvested label (conversion_text) so click
+ * detection can fall back to it. Only the site's owner/admin may call it.
+ */
+export const confirmGoal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      site: z.string().min(1),
+      selector: z.string().trim().min(1).max(500),
+      text: z.string().trim().max(300).optional(),
+      url: z.string().trim().max(500).optional(),
+    }),
+  )
+  .handler(async ({ data, context }): Promise<{ ok: boolean }> => {
+    const { site, selector, text, url } = data;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!(await ownsSite(supabaseAdmin, context as unknown as AuthCtx, site))) {
+      return { ok: false };
+    }
+    const { error } = await supabaseAdmin.from("angel_sites").upsert(
+      {
+        slug: site,
+        conversion_selector: selector,
+        conversion_text: text || null,
+        conversion_url: url || null,
+        conversion_source: "owner",
+      },
+      { onConflict: "slug" },
+    );
+    if (error) {
+      console.warn(`[angel] confirmGoal failed: ${error.message}`);
       return { ok: false };
     }
     return { ok: true };

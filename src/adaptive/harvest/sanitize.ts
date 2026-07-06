@@ -42,6 +42,29 @@ function optSelector(s: unknown): string | undefined {
   return typeof s === "string" && s ? s : undefined;
 }
 
+/** A CTA's destination — the language-independent goal signal (off-domain =
+ *  affiliate/outbound, /checkout = purchase, tel:/mailto: = lead/contact).
+ *  Bounded; dangerous schemes are dropped, and any query string is stripped
+ *  (it can carry tokens/PII) while the path — which carries the intent — stays. */
+function cleanHref(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim().slice(0, 300);
+  if (!s) return undefined;
+  try {
+    const u = new URL(s, "https://x.invalid");
+    // Allowlist the PARSED protocol — the URL parser has already normalized
+    // case and stripped embedded control chars, so this catches javascript:/
+    // data: even when obfuscated (e.g. "java\tscript:"), which a pre-parse
+    // regex misses.
+    if (!["http:", "https:", "tel:", "mailto:"].includes(u.protocol)) return undefined;
+    if (u.protocol === "tel:" || u.protocol === "mailto:") return s;
+    // Relative → keep path only; absolute → origin+path (drop query/hash).
+    return u.hostname === "x.invalid" ? u.pathname : u.origin + u.pathname;
+  } catch {
+    return undefined;
+  }
+}
+
 function looseArray(v: unknown): Record<string, unknown>[] {
   return Array.isArray(v)
     ? (v.slice(0, MAX_ITEMS).filter((x) => x && typeof x === "object") as Record<string, unknown>[])
@@ -79,6 +102,7 @@ export function sanitizeAudit(raw: unknown): Partial<PageAuditData> {
       section: c.section,
       aboveFold: Boolean(c.aboveFold),
       selector: optSelector(c.selector),
+      href: cleanHref(c.href),
     }))
     .filter((c) => c.text || c.selector);
   if (ctas.length) out.ctas = ctas;

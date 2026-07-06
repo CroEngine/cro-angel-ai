@@ -27,6 +27,7 @@ export type Database = {
           conversion_text: string | null
           conversion_source: string | null
           ingest_key: string | null
+          goal_candidates: Json | null
           created_at: string
         }
         Insert: {
@@ -41,6 +42,7 @@ export type Database = {
           conversion_text?: string | null
           conversion_source?: string | null
           ingest_key?: string | null
+          goal_candidates?: Json | null
           created_at?: string
         }
         Update: {
@@ -55,6 +57,7 @@ export type Database = {
           conversion_text?: string | null
           conversion_source?: string | null
           ingest_key?: string | null
+          goal_candidates?: Json | null
           created_at?: string
         }
         Relationships: []

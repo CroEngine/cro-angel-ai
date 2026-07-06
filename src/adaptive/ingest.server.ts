@@ -11,14 +11,16 @@
 // but the mapping + drift diff always run so callers can see what was extracted
 // and what changed.
 
-import { mapAuditToInventory, pickGoalCta } from "./crawler-inventory";
+import { mapAuditToInventory } from "./crawler-inventory";
+import { judgeSiteGoals } from "./goal-judge.server";
 import { diffInventory } from "./inventory-drift";
 import { labelInventoryCtas } from "./labeler.server";
 import {
+  loadGoalCandidates,
   loadInventoryRows,
-  maybeAutoSetGoal,
   registerSite,
   saveInventory,
+  storeGoalCandidates,
 } from "./persistence.server";
 import type { PageAuditData } from "@/lib/tests/schema";
 
@@ -68,11 +70,19 @@ export async function ingestAudit(
   const registered = await registerSite(site, meta);
   const saved = await saveInventory(inventory, path);
 
-  // Zero-config measurement: if the owner hasn't set a conversion goal yet,
-  // auto-pick the best goal-intent CTA from this harvest ("Skapa konto",
-  // "Sign up", "Köp", ...). The dashboard shows it as auto-detected; the owner
-  // confirms or changes instead of configuring.
-  await maybeAutoSetGoal(site, pickGoalCta(inventory));
+  // Goal judgment: propose a RANKED list of conversion-goal candidates (any
+  // business type — comparison/affiliate/lead, not just SaaS signup), mapped to
+  // real harvested CTAs. This only PROPOSES — it never sets the active goal.
+  // The owner confirms one in the dashboard (→ conversion_source='owner'); until
+  // then the engine highlights and measures nothing. Cached by CTA-set hash so
+  // the proposal is stable. Best-effort; no key → deterministic ranker floor.
+  try {
+    const prevJudgment = await loadGoalCandidates(site);
+    const judgment = await judgeSiteGoals(inventory, meta.domain ?? null, prevJudgment);
+    await storeGoalCandidates(site, judgment);
+  } catch (err) {
+    console.warn(`[angel] goal judgment skipped:`, err);
+  }
 
   // NOTE: drift is returned to the caller (surfaced live in the crawl/harvest
   // responses) but no longer persisted as inventory_drift events — the audit
