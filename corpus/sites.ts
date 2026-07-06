@@ -167,6 +167,21 @@ export const SITES: SiteSpec[] = [
     name: "bokadirekt-service",
     url: "https://www.bokadirekt.se/places/citymassage-457",
     consentSelector: '[data-cy="allowCookiesButton"]',
+    // Determinism: headerns KOLLAPSADE mega-menypaneler (`absolute inset-0
+    // h-0 -z-10` — osynliga för besökare, men barnen mäter fulla rects) får
+    // sin absoluta Y-position att flippa ±200px mellan replays (CI 2026-07-06:
+    // grön+röd+röd på samma sha; ±200 = exakt en yBand-bucket, och eftersom
+    // yBand ingår i normalize-sorteringsnyckeln kaskaderar flippen till
+    // ~700 diffrader). Panelerna är score-neutrala (dolt nav-innehåll, inte
+    // huvudinnehåll) — samma capture-time-normalisering som hubspots overlays.
+    // Homepage-capturen har samma paneler men historiskt stabila goldens —
+    // rör den inte i efterhand; flippar den någon gång är detta boten.
+    // Systemisk fix (clip-medveten synlighet i collectorn) är våg 7-arbete.
+    // #mega-menu-manager-container: syskonstrippen med "X nära mig"-undernav
+    // ("Huvudnavigation underkategorier" — dropdown-innehåll, inte den synliga
+    // kategoriraden) flippade likadant (±200px, "Deals"/"För företag") när
+    // panelerna väl var borta — samma dolda-header-klass, samma bot.
+    removeSelectors: [".mega-menu-categories-category", "#mega-menu-manager-container"],
     notes: "Egen consent-dialog (React-modal, data-cy-krok). Arketyp: booking strikt (tjänstesida med Boka-CTA:er).",
   },
   // Salesforce, Slack, Kry, Monday: ej tillagda än.

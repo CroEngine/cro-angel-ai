@@ -7,7 +7,7 @@
     "dismissCheck": "detached",
     "matchCountBeforeClick": 1,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 716,
+    "dismissedAfterMs": 632,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
@@ -16,14 +16,14 @@
     }
   },
   "capture": {
-    "mhtmlKb": 2056,
-    "screenshotKb": 308,
+    "mhtmlKb": 1718,
+    "screenshotKb": 304,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 11,
-    "mhtmlKbBeforeFontEmbed": 1192,
+    "mhtmlKbBeforeFontEmbed": 854,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Brown",
@@ -50,7 +50,7 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-07-06T21:52:23.375Z"
+    "frozenAt": "2026-07-06T23:26:30.675Z"
   },
   "failureClass": null,
   "captureValidity": {
@@ -62,9 +62,9 @@
     "reason": null
   },
   "timing": {
-    "gotoMs": 9337,
-    "consentMs": 1857,
-    "scrollMs": 3474,
-    "captureMs": 9045
+    "gotoMs": 12583,
+    "consentMs": 1780,
+    "scrollMs": 3573,
+    "captureMs": 10440
   }
 }
