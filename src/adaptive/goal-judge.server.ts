@@ -58,7 +58,8 @@ const SYSTEM = [
   "A conversion goal is the primary money/value action for THIS business — which is NOT always 'create account'.",
   "Judge the business type first, then pick the CTAs a visitor completes to convert, ranked primary-first.",
   "Examples by business type: comparison/leadgen → starting a comparison or an affiliate/partner outbound click or a callback lead form; ecommerce → buy/checkout; saas → sign up / start trial / book demo; booking → book; nonprofit → donate.",
-  'Input: {domain, ctas:[{i,text,href,role,section}], headings:[...], sections:[...], trust:[...]}.',
+  'Input: {domain, ctas:[{i,text,href,role,section,variantCount?,variantSiblings?}], headings:[...], sections:[...], trust:[...]}.',
+  "variantCount>1 means this CTA is one of N near-identical siblings (a category grid / funnel of options, e.g. a comparison portal) — a strong signal that the goal is starting one of them (kind=start_flow or outbound), and businessType is likely comparison/marketplace.",
   'Output: ONLY JSON {"businessType": <type>, "goals":[{"i":<cta index>,"kind":<kind>,"rank":<1..N>,"confidence":<0..1>}]}.',
   "businessType is one of: comparison | saas | ecommerce | leadgen | marketplace | media | booking | nonprofit | other.",
   "kind is one of: signup | purchase | booking | trial | quote | contact | lead | outbound | start_flow | subscribe | download.",
@@ -89,6 +90,10 @@ function compactInventory(inventory: ContentInventory) {
       href: (c.meta?.href ?? "").slice(0, 200),
       role: c.meta?.llmRole ?? c.meta?.role ?? "",
       section: c.meta?.section ?? "",
+      // "1 of N near-identical siblings" — a grid/funnel signal (e.g. a
+      // comparison portal's 40 category cards collapse to one representative).
+      ...(c.meta?.variantCount ? { variantCount: Number(c.meta.variantCount) } : {}),
+      ...(c.meta?.variantSample ? { variantSiblings: c.meta.variantSample } : {}),
       _item: c,
     }));
   const headings = [
@@ -170,13 +175,9 @@ export async function judgeSiteGoals(
             role: "user",
             content: JSON.stringify({
               domain: siteDomain ?? "",
-              ctas: compact.ctas.map(({ i, text, href, role, section }) => ({
-                i,
-                text,
-                href,
-                role,
-                section,
-              })),
+              ctas: compact.ctas.map(
+                ({ _item, ...cta }) => cta, // strip the internal item ref; keep variant* hints
+              ),
               headings: compact.headings,
               sections: compact.sections,
               trust: compact.trust,

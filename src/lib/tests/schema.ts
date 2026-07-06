@@ -213,6 +213,12 @@ export type CTAEntity = {
   contrastRatio: number | null;
   wcagLevel: WcagLevel | null;
   selector?: string; // transient — present in browser script output, stripped before persistence
+  /** Set by curation when this CTA REPRESENTS a collapsed uniform strip (nav /
+   *  category grid): how many near-identical siblings it stood in for, and a few
+   *  of their labels. Preserves the "this is 1 of a 40-item comparison grid"
+   *  signal that goal judgment needs, without keeping all 40 in the inventory. */
+  variantCount?: number;
+  variantSample?: string[];
   rect: Rect;
 };
 

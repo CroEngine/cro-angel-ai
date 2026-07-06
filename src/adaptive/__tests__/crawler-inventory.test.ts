@@ -14,6 +14,7 @@ import {
   pickGoalCta,
   classifyCtaRole,
   isAcquisition,
+  rankGoalCandidates,
 } from "../crawler-inventory";
 import type { PageAuditData } from "@/lib/tests/schema";
 
@@ -208,6 +209,37 @@ describe("curation — drop page chrome, keep real CTAs", () => {
     expect(texts.some((t) => t.startsWith("A very very"))).toBe(false);
     expect(texts[0]).toBe("Book a demo"); // highest prominence first
     expect(out.length).toBeLessThanOrEqual(8);
+  });
+
+  it("collapses a same-SIZE strip but keeps a differently-sized sibling, stamping variantCount", () => {
+    // A 6-card category grid (all 291x60) + a distinct-size newsletter button.
+    const grid = Array.from({ length: 6 }, (_, i) => mkCta(`Kat ${i}`, "content", "cta_primary", 291, 60));
+    const distinct = mkCta("Prenumerera", "content", "form_submit", 288, 48);
+    const out = curateCtas([...grid, distinct]);
+    const texts = out.map((c) => c.text);
+    // The uniform grid collapses to exactly ONE representative...
+    expect(grid.map((c) => c.text).filter((t) => texts.includes(t)).length).toBe(1);
+    // ...but the differently-sized CTA is NOT folded into it (the rect fix).
+    expect(texts).toContain("Prenumerera");
+    // The representative carries the grid's size + a few sibling labels for the judge.
+    const rep = out.find((c) => /^Kat /.test(c.text));
+    expect(rep?.variantCount).toBe(6);
+    expect(rep?.variantSample?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it("excludes consent/cookie buttons from goal candidates (legal role)", () => {
+    expect(classifyCtaRole("Jag godkänner")).toBe("legal");
+    expect(classifyCtaRole("Acceptera alla")).toBe("legal");
+    const inv = mapAuditToInventory(
+      {
+        url: "https://x.se/",
+        ctas: [mkCta("Skapa konto", "hero", "cta_primary"), mkCta("Jag godkänner", "hero", "cta_primary")],
+      },
+      "x",
+    );
+    const cands = rankGoalCandidates(inv, "x.se").map((c) => c.text);
+    expect(cands).toContain("Skapa konto");
+    expect(cands).not.toContain("Jag godkänner");
   });
 
   it("ctaScore ranks a prominent primary above a faint secondary", () => {
