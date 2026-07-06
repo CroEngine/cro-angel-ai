@@ -1,0 +1,72 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": "#coiPage-1 button[onclick*=\"submitAllCategories\"]",
+    "dismissCheck": "hidden",
+    "matchCountBeforeClick": 1,
+    "visibleBeforeClick": true,
+    "dismissedAfterMs": 665,
+    "postDismissDomHits": {
+      "accept all": 0,
+      "decline all": 0,
+      "reject all": 0,
+      "cookie": 1
+    }
+  },
+  "capture": {
+    "mhtmlKb": 2968,
+    "screenshotKb": 869,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 13,
+    "mhtmlKbBeforeFontEmbed": 2611,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "Icon",
+      "Metric",
+      "Metric-Bold",
+      "Metric-Light",
+      "Metric-Regular",
+      "Metric-SemiBold"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 13,
+      "relativeResolved": 0,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-07-06T21:36:29.290Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 9157,
+    "interactiveCount": 216,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 9346,
+    "consentMs": 1955,
+    "scrollMs": 4066,
+    "captureMs": 8743
+  }
+}

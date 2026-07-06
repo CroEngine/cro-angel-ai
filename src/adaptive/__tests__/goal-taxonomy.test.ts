@@ -125,6 +125,51 @@ describe("rankGoalCandidates — deterministic no-LLM floor", () => {
     const many = Array.from({ length: 12 }, (_, i) => ({ text: `Skapa konto ${i}` }));
     expect(rankGoalCandidates(inv(many), DOMAIN).length).toBeLessThanOrEqual(MAX_GOAL_CANDIDATES);
   });
+
+  it("a collapsed action strip outranks one-off primaries (bokadirekt service page)", () => {
+    // The real shape from corpus/bokadirekt-service: one small below-fold
+    // "Boka" rep carrying variantCount=16 (row-level buttons, cta_secondary)
+    // vs seven above-fold one-off primaries (tab anchors, photo buttons).
+    // Without the shared stripAggregateBonus the rep ranks 8th and falls out
+    // of the top-6 goal candidates — the page's REAL conversion action.
+    const oneOffs = ["Bilder", "Personal", "Betyg", "Visa tjänster", "Fler bilder", "Om", "Favorit"];
+    const inventory = {
+      site: "t",
+      slots: {
+        cta: [
+          ...oneOffs.map((text, i) => ({
+            id: `p${i}`,
+            slot: "cta" as const,
+            text,
+            selector: `#p${i}`,
+            meta: {
+              elementIntent: "conversion",
+              category: "cta_primary",
+              aboveFold: "true",
+              visualWeight: "5000",
+            },
+          })),
+          {
+            id: "boka",
+            slot: "cta" as const,
+            text: "Boka",
+            selector: "#boka",
+            meta: {
+              elementIntent: "conversion",
+              category: "cta_secondary",
+              aboveFold: "false",
+              visualWeight: "2347",
+              variantCount: "16",
+            },
+          },
+        ],
+      },
+    } as unknown as ContentInventory;
+    const out = rankGoalCandidates(inventory, "bokadirekt.se");
+    const boka = out.find((g) => g.text === "Boka");
+    expect(boka).toBeDefined();
+    expect(boka?.kind).toBe("booking");
+  });
 });
 
 describe("judgeSiteGoals — cache + deterministic fallback (no network)", () => {

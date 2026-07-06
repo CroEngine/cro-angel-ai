@@ -74,6 +74,33 @@ try {
       });
       if (out.length >= 60) break;
     }
+    // Pass 3: textbaserat — knappar vars text ÄR en consent-fras, oavsett hur
+    // containern heter (helt egenbyggda dialoger à la bokadirekt: inga
+    // cookie/consent-namn någonstans i id/class). Dumpar självets attribut +
+    // närmaste förfäder med id/class/data-attribut så en selektor kan byggas.
+    const TXT = /till[åa]t alla|godk[äa]nn alla|acceptera( alla)?|accept all|jag f[öo]rst[åa]r|cookie/i;
+    for (const el of document.querySelectorAll('button, a, [role="button"]')) {
+      const t = (el.textContent || '').trim();
+      if (t.length > 60 || !TXT.test(t)) continue;
+      const r = el.getBoundingClientRect();
+      const chain = [];
+      let cur = el;
+      for (let d = 0; cur && d < 6; d++) {
+        const attrs = {};
+        for (const a of (cur.attributes || [])) {
+          if (/^(id|class|data-[a-z-]+|aria-label|role)$/.test(a.name)) attrs[a.name] = a.value.slice(0, 80);
+        }
+        chain.push(cur.tagName + ' ' + JSON.stringify(attrs));
+        cur = cur.parentElement;
+      }
+      out.push({
+        pass: 3,
+        text: t.slice(0, 60),
+        visible: r.width > 0 && r.height > 0,
+        chain,
+      });
+      if (out.length >= 100) break;
+    }
     // Pass 2: ALLA knappar/länkar INUTI en vendor-container — custom-mallar
     // ger ofta knapparna klasslösa/omärkta namn (pass 1 missar dem).
     const roots = document.querySelectorAll('#coiOverlay, #cookie-information-template-wrapper, [id*="cookie" i], [id*="consent" i]');

@@ -158,11 +158,16 @@ export const SITES: SiteSpec[] = [
     // BOOKING (strikt) — TJÄNSTESIDA på bokadirekt, där de riktiga "Boka"-
     // CTA:erna bor (SSR:ade; homepagens kategorityler är JS-hydrerade och
     // href-lösa, se archetype-goals.test.ts). Sidan vald ur sitemap-details
-    // (lågt id = etablerad salong, stabil URL). Homepage-frysningen 2026-07-06
-    // visade ingen CMP-banner i capture-miljön; samma app/origin här.
+    // (lågt id = etablerad salong, stabil URL).
+    // OBS: till skillnad från homepagen visar TJÄNSTESIDAN bokadirekts EGEN
+    // consent-dialog ("Vi värdesätter dina val" — React-modal, inga vendor-
+    // namn i id/class). Hittad 2026-07-06 via probe-consent-dom.ts pass 3
+    // (textbaserat): accept-knappen bär data-cy="allowCookiesButton".
+    // Modalen unmountas vid accept → detached (default).
     name: "bokadirekt-service",
     url: "https://www.bokadirekt.se/places/citymassage-457",
-    notes: "Arketyp: booking strikt (tjänstesida med Boka-CTA:er). Ingen CMP-banner i capture-miljön (som homepage).",
+    consentSelector: '[data-cy="allowCookiesButton"]',
+    notes: "Egen consent-dialog (React-modal, data-cy-krok). Arketyp: booking strikt (tjänstesida med Boka-CTA:er).",
   },
   // Salesforce, Slack, Kry, Monday: ej tillagda än.
   // Salesforce testad 2026-06-10: ingen consent-banner mot Browserbase-IP

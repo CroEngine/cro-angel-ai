@@ -77,7 +77,7 @@ is the "one goal model for any conversion site" claim made testable.
 | `cancerfonden` | donate | Cookiebot (hidden) | nonprofit |
 | `hubspot` | signup / trial / contact | (own banner, hidden) | SaaS (pre-existing) |
 | `bokadirekt` | booking* | none (region) | booking marketplace homepage |
-| `bokadirekt-service` | booking | none (region) | service page — the SSR:ed "Boka" CTAs |
+| `bokadirekt-service` | booking | own React-modal (`data-cy="allowCookiesButton"`, detached) | service page — the SSR:ed "Boka" CTAs; dialog shows on service pages but not the homepage |
 | `nextory` | trial / subscribe | none in region (Cookiebot in server HTML only) | audiobook subscription |
 | `sector-alarm` | lead / quote | Cookie Information (custom template, hidden) | home-alarm lead-gen |
 
