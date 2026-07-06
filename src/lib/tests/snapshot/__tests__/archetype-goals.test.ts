@@ -34,18 +34,28 @@ const ARCHETYPES: Archetype[] = [
   { name: "elskling", domain: "elskling.se", expectKinds: ["start_flow", "quote"] },
   { name: "cancerfonden", domain: "cancerfonden.se", expectKinds: ["donate"] },
   { name: "hubspot", domain: "hubspot.com", expectKinds: ["signup", "trial", "contact"] },
-  // NOTE: bokadirekt (booking) is soft-asserted only (below), NOT a strict
-  // kind archetype. Its homepage tiles ("Deals"/"Frisör"/"Massage"/"Anpassa")
+  // BOOKING (strict): a bokadirekt SERVICE page, where the real "Boka" CTAs
+  // are SSR:ed. The HOMEPAGE stays soft-asserted (below) — its category tiles
+  // are heterogeneous href-less buttons the deterministic floor can't type.
+  { name: "bokadirekt-service", domain: "bokadirekt.se", expectKinds: ["booking"] },
+  // SUBSCRIBE/TRIAL: audiobook subscription — "Prova gratis nu" is the trial
+  // entry into a subscription; either kind proves the motion is representable.
+  { name: "nextory", domain: "nextory.com", expectKinds: ["trial", "subscribe"] },
+  // LEAD: home-alarm lead-gen — "Få ditt pris på larm" (quote flow), "Vi
+  // ringer upp dig" (callback) and a tel: CTA; lead or quote both type the
+  // get-contacted motion correctly.
+  { name: "sector-alarm", domain: "sectoralarm.se", expectKinds: ["lead", "quote"] },
+  // NOTE: bokadirekt HOMEPAGE (booking) is soft-asserted only (below), NOT a
+  // strict kind archetype. Its tiles ("Deals"/"Frisör"/"Massage"/"Anpassa")
   // are HETEROGENEOUS href-less category buttons — different text, so they are
   // NOT a uniform strip and collapseUniformStrips gives them no variantCount.
   // The deterministic floor can't safely tell heterogeneous category nav from
   // a bare signup button without false positives, so they default to signup;
   // the holistic LLM judge reads "booking marketplace" from the whole
-  // inventory. (The variantCount→start_flow fix from this wave correctly
-  // handles UNIFORM grids — a comparison portal's identical cards — which is a
-  // different shape; see the classifyGoalKind unit test.) The real "Boka tid"
-  // lives on the service page; a strict booking/start_flow archetype needs a
-  // service-page capture. See corpus/README.md.
+  // inventory. (The variantCount→start_flow fix correctly handles UNIFORM
+  // grids — a comparison portal's identical cards — which is a different
+  // shape; see the classifyGoalKind unit test.) The real "Boka tid" lives on
+  // the service page — that IS the bokadirekt-service archetype above.
 ];
 
 let chromiumAvailable = false;

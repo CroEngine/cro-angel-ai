@@ -93,11 +93,26 @@ export const SITES: SiteSpec[] = [
     consentSelector: "#didomi-notice-agree-button",
     notes: "Didomi-CMP. Arketyp: purchase (webshop).",
   },
-  // LEAD-arketypen (mäklare/hemlarm) ännu ofrusen: Verisure (OneTrust) gick
-  // över externalize-tröskeln utan lovable-assets-CLI i miljön, och
-  // Svensk Fast/Cookiebot renderade ingen banner mot Browserbase-IP. tel:/
-  // callback-lead-klassningen täcks av enhetstesterna i goal-taxonomy.test.ts
-  // tills en lead-sajt fryser rent — bokadirekt (booking) ligger närmast.
+  {
+    // LEAD — hemlarm med "bli uppringd"/kostnadsfritt hembesök som primär
+    // konvertering. Tidigare lead-försök föll: Verisure (OneTrust) över
+    // externalize-tröskeln, Svensk Fast (Cookiebot) renderade ingen banner
+    // mot Browserbase-IP. sector-alarm.se → www.sectoralarm.se (redirect),
+    // vi fryser slut-URL:en direkt.
+    name: "sector-alarm",
+    url: "https://www.sectoralarm.se/",
+    // Cookie Information-CMP (policy.app.cookieinformation.com/uc.js) med
+    // CUSTOM-mall: accept-knappen är klasslös (".coi-banner__accept" finns
+    // inte) — identifierad 2026-07-06 via scripts/probe-consent-dom.ts:
+    // <button class="button ... button--gossamer"
+    //   onclick="CookieInformation.submitAllCategories();resolveLeadSourceId();">
+    // Attribut-selektorn är den enda stabila kroken och matchar exakt 1 element
+    // (coiPage-2:s "välj alla"-knapp kör setCheckboxes, inte submitAllCategories).
+    consentSelector: '#coiPage-1 button[onclick*="submitAllCategories"]',
+    // CoI göms (overlay display:none) — knappen detachar inte.
+    consentDismissCheck: "hidden",
+    notes: "Cookie Information-CMP (custom-mall). Arketyp: lead (hemlarm, callback/hembesök).",
+  },
   {
     // START_FLOW — jämförelseportal för elavtal ("Jämför och byt elavtal").
     name: "elskling",
@@ -116,10 +131,20 @@ export const SITES: SiteSpec[] = [
     consentDismissCheck: "hidden",
     notes: "Cookiebot-CMP. Arketyp: donate (nonprofit).",
   },
-  // SUBSCRIBE-arketypen (di.se) ännu ofrusen: Dagens Industris egna fonter
-  // (BentonSans/BrunelDeck) gick över inline-tröskeln och render-canary-
-  // gaten failade utan lovable-assets-CLI. subscribe-klassningen täcks av
-  // enhetstesterna tills en lättare paywall-sajt fryser rent.
+  {
+    // SUBSCRIBE/TRIAL — ljudboks-abonnemang ("Prova gratis" → prenumeration).
+    // di.se (första subscribe-försöket) föll på egna fonter över inline-
+    // tröskeln + render-canary; Nextory är en lättare abonnemangssajt.
+    // nextory.se → nextory.com/se (redirect), vi fryser slut-URL:en direkt.
+    name: "nextory",
+    url: "https://nextory.com/se",
+    // Verifierat 2026-07-06 via --dry-run --screenshot-before-dismiss:
+    // Cookiebot finns i server-HTML:en men ingen banner rendras mot
+    // Browserbase-IP (geo-gate, samma som hibob/microsoft) — sidan rendrar
+    // fullt med "Prova gratis nu"-hero. Lägg INTE tillbaka selektorn utan att
+    // först verifiera att bannern faktiskt rendras i capture-miljön.
+    notes: "Ingen consent-banner i Browserbase-region (geo-gate; Cookiebot enbart i server-HTML). Arketyp: subscribe/trial (abonnemang).",
+  },
   {
     // BOOKING — bokningsmarknadsplats ("Boka tid"). Ingen CMP-vendor synlig i
     // server-HTML — kör --dry-run --screenshot-before-dismiss först och lägg
@@ -128,6 +153,16 @@ export const SITES: SiteSpec[] = [
     name: "bokadirekt",
     url: "https://www.bokadirekt.se",
     notes: "Arketyp: booking (bokningsmarknadsplats). CMP okänd — verifiera med dry-run.",
+  },
+  {
+    // BOOKING (strikt) — TJÄNSTESIDA på bokadirekt, där de riktiga "Boka"-
+    // CTA:erna bor (SSR:ade; homepagens kategorityler är JS-hydrerade och
+    // href-lösa, se archetype-goals.test.ts). Sidan vald ur sitemap-details
+    // (lågt id = etablerad salong, stabil URL). Homepage-frysningen 2026-07-06
+    // visade ingen CMP-banner i capture-miljön; samma app/origin här.
+    name: "bokadirekt-service",
+    url: "https://www.bokadirekt.se/places/citymassage-457",
+    notes: "Arketyp: booking strikt (tjänstesida med Boka-CTA:er). Ingen CMP-banner i capture-miljön (som homepage).",
   },
   // Salesforce, Slack, Kry, Monday: ej tillagda än.
   // Salesforce testad 2026-06-10: ingen consent-banner mot Browserbase-IP
