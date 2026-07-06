@@ -9,6 +9,10 @@
 > described AND a single realistic page makes them fire in conflicting
 > directions. Result: **24 unique confirmed contradictions** (2 high),
 > 14 candidates refuted. Line numbers refer to `7bb49dd`.
+>
+> **Status:** the first fix wave (same branch) resolves **B6, C2, E1, E2, A4,
+> A5, A6** — each marked ✅ below with what changed. The remaining findings
+> keep their fix sketches.
 
 ## Root cause
 
@@ -80,8 +84,9 @@ exactly the visitor the sticky goal shortcut exists for, and gets nothing.
 `goal-judge.server.ts:60` instructs the model *"nonprofit → donate"*; the kind
 enum (`:65`, `GOAL_KINDS`) has no `donate`. A `kind:"donate"` reply fails
 validation at `:215` and is silently re-labelled via `classifyGoalKind` as
-`start_flow`/`signup`. **Fix:** add `donate` to `GoalKind`, `KIND_TEXT`,
-`KIND_HREF` and the prompt enum; bump `JUDGE_VERSION`.
+`start_flow`/`signup`. **Fixed:** `donate` added to `GoalKind`/`GOAL_KINDS`, `KIND_TEXT`, `KIND_HREF`
+and the judge prompt enum; `JUDGE_VERSION` bumped to `g2` so cached judgments
+re-run.
 
 ### A5. The runtime engine ignores the judged goal kind entirely — *medium*
 
@@ -90,9 +95,11 @@ SaaS assumption — and `confirmGoal` (`dashboard.functions.ts:442`) **discards
 the candidate's `kind`** when the owner confirms. A confirmed `contact`-kind
 goal on a lead-gen site means `clarify_cta` hunts for demo/trial labels that
 don't exist, forever. The baseline rule shows a "2 minute setup" badge to
-every site type. **Fix:** persist `conversion_kind` at confirm; thread
-`kind` into `SiteGoal`; make `ctaIntent` return a ranked preference list
-derived from the goal kind.
+every site type. **Fixed:** new `angel_sites.conversion_kind` column (migration
+`20260706150000`); `confirmGoal` persists the candidate's kind (a raw owner
+override clears it); `SiteGoal.kind` flows through `/api/adaptive/decide`;
+`clarify_cta` walks a goal-kind-derived preference chain (`contact|lead|quote
+→ sales` first) and the kind is part of `decisionIdFor`.
 
 ### A6. `classifyCtaIntent` produces a `sales` intent the engine can never request — *medium*
 
@@ -100,13 +107,15 @@ derived from the goal kind.
 `decide.ts:140` only ever asks for `demo` or `trial` — `sales`-labelled
 variants are dead inventory, and `pickItem`'s first-item fallback plus the
 `otherLabel` guard means `clarify_cta` silently never fires on sales-led
-sites. **Fix:** same as A5 — one taxonomy, ranked preferences.
+sites. **Fixed:** with A5's preference chain every published variant (incl.
+`sales`) is reachable, and the arbitrary `pickItem` first-item fallback is
+gone — strict intent match only, so the reason string cannot misreport.
 
 ---
 
 ## B. Duplicated definitions that drifted (audit-internal)
 
-### B1. Two copies of the conversion-keyword classifier drifted — *medium*
+### B1. Two copies of the conversion-keyword classifier drifted — *medium* — ⚠️ partially fixed
 
 `collect.ts:243` has `gå med|gratis|ladda ner|lägg i (varu)?kund?korg|lägg
 till|bidra` that `ctas.ts:8` lacks; the two `classifyIntent` functions also
@@ -115,9 +124,12 @@ Bonus bug found during verification: the drifted regex has a typo —
 `lägg i (varu)?kund?korg` matches "lägg i kundkorg" but **never the common
 "lägg i varukorg"** (intended `(varu|kund)korg`). The same button is a
 conversion CTA in one half of the report and not in the other.
-**Fix:** one shared `INTENT_RX` + `classifyIntentCore` source file,
-interpolated into both script template strings (the scripts stay
-self-contained in `page.evaluate`).
+**Partially fixed:** the `varukorg(en)` typo is corrected and `collect.ts`'s
+conversion list extended from the 107-site vocabulary harvest
+(`corpus/vocab-harvest-2026-07-06.json`). Still open: one shared
+`INTENT_RX` + `classifyIntentCore` source file, interpolated into both script
+template strings (the scripts stay self-contained in `page.evaluate`) — until
+then the two copies can still drift.
 
 ### B2. `cta_primary` requires above-fold in `ctas.ts` but not in `collect.ts` — *medium*
 

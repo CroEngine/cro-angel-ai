@@ -428,3 +428,78 @@ describe("design integrity — the page stays the customer's", () => {
     expect(injects.map((a) => a.pattern)).toEqual(["show_secondary_cta"]);
   });
 });
+
+describe("clarify_cta — goal-kind-aware label preference (one goal vocabulary)", () => {
+  it("a confirmed contact/lead goal steers clarify_cta to the sales label, not demo", () => {
+    // Lead-gen site: the judge ranked "contact" as the goal kind and the owner
+    // confirmed it. The engine must not undo that by assuming SaaS demo/trial.
+    const d = decide(
+      "leadgen",
+      ctx({ trafficSource: "linkedin" }),
+      demo,
+      {},
+      { selector: "#goal", text: "Kontakta oss", kind: "contact" },
+    );
+    const cta = d.adaptations.find((a) => a.pattern === "clarify_cta");
+    expect(cta?.value).toBe("Contact Sales");
+    expect(cta?.reason).toContain("sales");
+  });
+
+  it("sales-only inventories are reachable via the preference chain (no dead inventory)", () => {
+    // Before: ctaIntent() only ever asked for demo|trial, so a site whose only
+    // published variants are the sales motion never clarified anything.
+    const inv = emptyInventory("salesled");
+    inv.slots.cta = [
+      {
+        id: "c-1",
+        slot: "cta",
+        text: "Kontakta säljteamet",
+        selector: "#cta",
+        meta: { role: "acquisition", intent: "sales" },
+      },
+      {
+        id: "c-2",
+        slot: "cta",
+        text: "Prata med oss",
+        selector: "#cta",
+        meta: { role: "acquisition", intent: "sales" },
+      },
+    ];
+    const d = decide("salesled", ctx({ trafficSource: "google_ads" }), inv);
+    const cta = d.adaptations.find((a) => a.pattern === "clarify_cta");
+    expect(cta?.value).toBe("Kontakta säljteamet");
+    expect(cta?.reason).toContain("sales"); // strict match — never misreported
+  });
+
+  it("no wrong-intent fallback: unstamped multi-label CTAs stay untouched", () => {
+    // Two labels on the same element but NO intent stamps: the old first-item
+    // fallback would have retexted this to "Läs mer" and reported
+    // "(intent: trial)". Strict matching declines instead.
+    const inv = emptyInventory("plain");
+    inv.slots.cta = [
+      {
+        id: "c-a",
+        slot: "cta",
+        text: "Läs mer",
+        selector: "#only",
+        meta: { role: "acquisition" }, // no intent stamped at all
+      },
+      {
+        id: "c-b",
+        slot: "cta",
+        text: "Utforska mer",
+        selector: "#only",
+        meta: { role: "acquisition" },
+      },
+    ];
+    const d = decide("plain", ctx({ trafficSource: "google_ads" }), inv);
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("clarify_cta");
+  });
+
+  it("the goal kind is a real engine input: it changes the decisionId", () => {
+    const base = { selector: "#goal", text: "Boka möte" };
+    const a = decide("t", ctx(), demo, {}, { ...base, kind: "contact" });
+    const b = decide("t", ctx(), demo, {}, { ...base, kind: "trial" });
+    expect(a.decisionId).not.toBe(b.decisionId);
+  });
+});

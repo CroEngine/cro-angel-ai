@@ -523,6 +523,61 @@
           goalEl.click();
         } catch (e) {}
       });
+
+      // Good-tenant placement: a fixed bottom-centre pill can sit exactly where
+      // pages put their own chrome — cookie-bar accept buttons, sticky navs,
+      // chat launchers. The pill must never make something clickable
+      // unclickable (the same rule the robustness launch gate enforces), so
+      // before it shows we probe what is underneath: covered interactive
+      // element → lift the pill a step and re-probe; no clear band within a
+      // few steps → keep the pill hidden rather than cover the page's own UI.
+      var PILL_LIFT_STEP = 56; // px per lift ≈ one row of touch-target chrome
+      var PILL_MAX_LIFTS = 3; // beyond ~3 rows the pill stops being "bottom"
+      var INTERACTIVE = 'a[href],button,[role="button"],input,select,textarea';
+      function pillVictim() {
+        var r = btn.getBoundingClientRect();
+        if (!r.width || !r.height) return null;
+        var pts = [
+          [r.left + r.width / 2, r.top + r.height / 2],
+          [r.left + 4, r.top + 4],
+          [r.right - 4, r.top + 4],
+          [r.left + 4, r.bottom - 4],
+          [r.right - 4, r.bottom - 4],
+        ];
+        var prev = btn.style.visibility;
+        btn.style.visibility = "hidden"; // elementFromPoint must see through it
+        var victim = null;
+        try {
+          for (var i = 0; i < pts.length && !victim; i++) {
+            var hit = document.elementFromPoint(pts[i][0], pts[i][1]);
+            if (!hit || btn.contains(hit)) continue;
+            var inter = hit.closest ? hit.closest(INTERACTIVE) : null;
+            if (inter && !btn.contains(inter)) victim = inter;
+          }
+        } catch (e) {
+          /* probing must never break the page */
+        }
+        btn.style.visibility = prev;
+        return victim;
+      }
+      function placePill() {
+        btn.style.bottom = ""; // base position from the stylesheet
+        for (var lift = 1; lift <= PILL_MAX_LIFTS + 1; lift++) {
+          if (!pillVictim()) return true;
+          if (lift > PILL_MAX_LIFTS) return false;
+          btn.style.bottom =
+            "calc(" + (14 + lift * PILL_LIFT_STEP) + "px + env(safe-area-inset-bottom,0px))";
+        }
+        return false;
+      }
+      var goalVisible = false;
+      var hiddenByOverlap = false;
+      function showPill() {
+        btn.style.display = "";
+        hiddenByOverlap = !placePill();
+        if (hiddenByOverlap) btn.style.display = "none";
+      }
+
       // Design integrity: the pill exists only while the REAL goal is
       // off-screen. When the site's own button is visible the page stays
       // exactly the customer's — no duplicate floating chrome.
@@ -531,8 +586,12 @@
         if (window.IntersectionObserver) {
           btn.style.display = "none";
           observer = new IntersectionObserver(function (entries) {
-            var visible = entries[0] && entries[0].isIntersecting;
-            btn.style.display = visible ? "none" : "";
+            goalVisible = !!(entries[0] && entries[0].isIntersecting);
+            if (goalVisible) {
+              btn.style.display = "none";
+            } else {
+              showPill();
+            }
           });
           observer.observe(goalEl);
         }
@@ -540,10 +599,32 @@
         /* no observer → pill simply stays visible */
       }
       document.body.appendChild(btn);
+      if (!observer) showPill();
+      // The band under the pill changes as the page scrolls (and when a cookie
+      // bar is dismissed) — re-probe on scroll/resize, throttled.
+      var lastProbe = 0;
+      function onViewportChange() {
+        var now = Date.now();
+        if (now - lastProbe < 250) return;
+        lastProbe = now;
+        if (goalVisible) return; // observer owns visibility here
+        if (btn.style.display === "none" && !hiddenByOverlap) return;
+        showPill();
+      }
+      try {
+        window.addEventListener("scroll", onViewportChange, { passive: true });
+        window.addEventListener("resize", onViewportChange);
+      } catch (e) {
+        /* listeners are best-effort */
+      }
       touchedEls.push({ el: btn, pattern: a.pattern });
       record(function () {
         try {
           if (observer) observer.disconnect();
+        } catch (e) {}
+        try {
+          window.removeEventListener("scroll", onViewportChange);
+          window.removeEventListener("resize", onViewportChange);
         } catch (e) {}
         if (btn.parentElement) btn.parentElement.removeChild(btn);
       });

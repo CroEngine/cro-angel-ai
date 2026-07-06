@@ -22,7 +22,7 @@ A conversion usually happens on a **later page** than where the adaptation was s
    - Public API `window.AngelAdaptive.convert(value?, meta?)` (thank-you page, purchase), and/or
    - config-driven: a conversion URL pattern or a CSS selector to watch.
    - Carries `visitorHash` + the last `decisionId`.
-2. **Holdout** — to measure causal **lift** (not correlation) we need a control group: a deterministic control bucket per visitor, `hash(visitorHash) % 100 < holdoutPct`. Control visitors get **no** adaptations, but we still log `adaptation_withheld` with the patterns that *would* have shown + segment. Default `holdoutPct = 0` (off) — opt-in per site.
+2. **Holdout** — to measure causal **lift** (not correlation) we need a control group: a deterministic control bucket per visitor, `hash(visitorHash) % 100 < holdoutPct`. Control visitors get **no** adaptations, but we still log `adaptation_withheld` with the patterns that *would* have shown + segment. Default `holdoutPct = 0` (off). Opt-in per site: when the owner **attests** a lawful basis in the dashboard, an untouched holdout (0) is auto-set to `DEFAULT_HOLDOUT_PCT` (12) so measurement is zero-config from the moment collection is allowed; an owner-chosen value is never overwritten.
 
 ## The rollup (this increment)
 

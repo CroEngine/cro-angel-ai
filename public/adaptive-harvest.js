@@ -311,15 +311,8 @@
     const fontWeightN = parseInt(r.cs.fontWeight, 10) || 400;
     const contrastRatio = wcagContrast(r.cs.color, r.cs.backgroundColor);
     const wcagLevel = deriveWcagLevel(contrastRatio, fontSizePx, fontWeightN);
-    // Destination is a language-independent intent signal (/login, /faq,
-    // facebook.com …) — the server-side role classifier keys on it.
-    const hrefEl = r.el && r.el.closest
-      ? (r.el.getAttribute && r.el.getAttribute('href') ? r.el : r.el.closest('a[href]'))
-      : null;
-    const href = hrefEl ? String(hrefEl.getAttribute('href') || '').slice(0, 300) : '';
     return {
       text: r.text,
-      href: href,
       intent: r.intent,
       category: r.category,
       section: r.section,
@@ -813,8 +806,15 @@
 
   function push(type, text, el, source, extras) {
     const block = nearestBlock(el);
-    const inCarousel = isInsideCarousel(block);
-    const visibleEnough = isVisible(block) || (inCarousel && block.getBoundingClientRect().width > 0);
+    // Document-level entries (schema.org JSON-LD, anchored to <body>) are
+    // non-positional corroboration, not visible UI: body.contains(everything),
+    // so giving them a _block would let hierarchyDedup keep the invisible
+    // schema entry and silently delete every VISIBLE signal of the same type
+    // (Trustpilot widget, "4.7 av 5" text). They also must not count as
+    // above-fold/hero — they have no visual position at all.
+    const isDocLevel = block === document.body;
+    const inCarousel = !isDocLevel && isInsideCarousel(block);
+    const visibleEnough = isDocLevel || isVisible(block) || (inCarousel && block.getBoundingClientRect().width > 0);
     if (!visibleEnough) return;
     if (type === 'stars') {
       const raw = block.getBoundingClientRect();
@@ -829,10 +829,10 @@
     const entry = {
       type,
       text: cleanText,
-      section: SECTION_KIND(block, rect),
-      aboveFold: rect.top < viewportH,
+      section: isDocLevel ? 'document' : SECTION_KIND(block, rect),
+      aboveFold: isDocLevel ? false : rect.top < viewportH,
       selector: buildSelector(block),
-      visualWeight: Math.round(rect.width * rect.height),
+      visualWeight: isDocLevel ? 0 : Math.round(rect.width * rect.height),
       source,
       rect: {
         x: Math.round(rect.left + window.scrollX),
@@ -845,7 +845,9 @@
     if (inCarousel) entry.inCarousel = true;
     // Stash the source block on every entry so the post-collection hierarchy
     // dedup can walk ancestor/descendant relationships. Stripped before return.
-    entry._block = block;
+    // Doc-level entries get NO block: hierarchyDedup skips null-_block entries,
+    // so schema corroboration and visible widgets coexist instead of competing.
+    entry._block = isDocLevel ? null : block;
     out.push(entry);
   }
 

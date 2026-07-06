@@ -930,6 +930,7 @@ const GOAL_KIND_LABEL: Record<GoalKind, string> = {
   start_flow: "start a flow",
   subscribe: "subscribe",
   download: "download",
+  donate: "donate",
 };
 
 function MeasurementControl({
@@ -943,7 +944,7 @@ function MeasurementControl({
 }) {
   const queryClient = useQueryClient();
   const confirm = useMutation({
-    mutationFn: (c: { selector: string; text?: string; url?: string }) =>
+    mutationFn: (c: { selector: string; text?: string; url?: string; kind?: GoalKind }) =>
       confirmGoal({ data: { site, ...c } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
   });
@@ -1018,7 +1019,9 @@ function MeasurementControl({
                     <button
                       type="button"
                       disabled={confirm.isPending}
-                      onClick={() => confirm.mutate({ selector: c.selector, text: c.text })}
+                      onClick={() =>
+                        confirm.mutate({ selector: c.selector, text: c.text, kind: c.kind })
+                      }
                       className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700 disabled:opacity-50"
                     >
                       {isActive ? "confirm" : "set as goal"}

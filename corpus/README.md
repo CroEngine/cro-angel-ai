@@ -166,3 +166,17 @@ and SPA shell etags make HEAD too noisy to be authoritative).
 
 A weekly GitHub Action runs `scripts/freeze-staleness-check.ts` and opens
 an issue listing stale snapshots. Human triggers re-freeze; no auto-refreeze.
+
+## Vocabulary harvest (KIND_TEXT evidence)
+
+`vocab-harvest-2026-07-06.json` — CTA/button labels harvested from 107 live
+homepages across goal archetypes (e-com, booking, lead-gen, comparison,
+nonprofit, media, SaaS, bank, telecom, energy; breadth-targets + a broadened
+Swedish/Nordic mix). Method: curl of server-rendered HTML, `<a>`/`<button>`/
+submit labels, deduped per site, chrome labels (login/search/social/legal/nav)
+filtered out, threshold ≥ 2 sites. This file is the evidence base for the
+`KIND_TEXT` vocabulary in `src/adaptive/crawler-inventory.ts` — extend the
+regexes only with terms that clear the same bar (≥ 2 independent sites, no
+plausible non-goal reading), and re-run a harvest when entering a new market
+or vertical. Note it captures server-rendered labels only (no JS execution) —
+SPA-heavy sites need the real crawler/freeze pipeline.

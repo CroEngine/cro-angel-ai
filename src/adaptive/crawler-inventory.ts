@@ -491,7 +491,8 @@ export type GoalKind =
   | "outbound"
   | "start_flow"
   | "subscribe"
-  | "download";
+  | "download"
+  | "donate";
 
 export const GOAL_KINDS: GoalKind[] = [
   "signup",
@@ -505,6 +506,7 @@ export const GOAL_KINDS: GoalKind[] = [
   "start_flow",
   "subscribe",
   "download",
+  "donate",
 ];
 
 export interface GoalCandidate {
@@ -537,16 +539,45 @@ function hrefHost(href: string | undefined, siteDomain: string | null): string |
   }
 }
 
+// Vocabulary provenance: the non-obvious terms below were mined from a
+// 107-site homepage harvest across goal archetypes (e-com, booking, lead-gen,
+// comparison, nonprofit, media, SaaS, bank, telecom, energy) — evidence with
+// per-label site counts in corpus/vocab-harvest-2026-07-06.json. Inclusion
+// bar: >= 2 independent sites and no plausible non-goal reading.
 const KIND_TEXT: { kind: GoalKind; rx: RegExp }[] = [
-  { kind: "purchase", rx: /\b(k[öo]p|best[äa]ll|add to (cart|basket|bag)|l[äa]gg i varukorg|buy|checkout|till kassan)\b/i },
-  { kind: "signup", rx: /\b(skapa konto|sign ?up|register|registrera|bli medlem|create (an )?account|join)\b/i },
+  // "teckna" = sign an insurance/utility/telecom contract — that vertical's
+  // purchase ("Teckna elavtal", "Få pris och teckna"). \b keeps "Tecknade
+  // serier" (comics) out. "handla nu/online" and "shoppa …" are e-com CTAs;
+  // bare "handla"/"så handlar du" stays unmatched (nav/how-to).
+  { kind: "purchase", rx: /\b(k[öo]p|best[äa]ll|add to (cart|basket|bag)|l[äa]gg i (varu|kund)?korg(en)?|buy|checkout|till kassan|shoppa|handla (nu|online|h[äa]r)|teckna)\b/i },
+  // "jämför …" = a comparison portal's funnel entry — its real goal. Ordered
+  // above signup so "Jämför och byt elavtal" reads as the comparison start.
+  { kind: "start_flow", rx: /\b(j[äa]mf[öo]r)\b/i },
+  // "bli kund"/"öppna konto" (banks), "anmäl dig" (courses/newsletters —
+  // "anmäl skada" is a support action and must NOT match), "byt till oss/
+  // elavtal/…" = switch-provider signup (utilities/insurance/telecom).
+  // NOTE: JS \b is ASCII-only — it never fires next to å/ä/ö, so "Öppna konto"
+  // gets its own entry with an explicit left boundary instead of \b.
+  { kind: "signup", rx: /(?:^|[^a-zåäö0-9])[öo]ppna( ett)? konto\b/i },
+  { kind: "signup", rx: /\b(skapa konto|sign ?up|register|registrera|bli medlem|create (an )?account|join|bli (privat|f[öo]retags)?kund|anm[äa]l dig|byt (till oss|elavtal|elbolag|f[öo]rs[äa]kring|bank))\b/i },
   { kind: "booking", rx: /\b(boka|book|schedule|reservera|boka tid)\b/i },
   { kind: "trial", rx: /\b(prova|trial|get started|kom ig[åa]ng|start free|starta gratis)\b/i },
-  { kind: "quote", rx: /\b(offert|f[åa] (en )?offert|get a quote|request a quote|pris(f[öo]rslag)?)\b/i },
-  { kind: "lead", rx: /\b(vi ringer upp|ring mig|bli uppringd|get a callback|request a call|boka (ett )?samtal|kontakta mig)\b/i },
+  // Nonprofit money actions: månadsgivare/swisha en gåva/skänk pengar/stöd oss
+  // are the sector's standard donate CTAs (rodakorset, cancerfonden, unicef…).
+  { kind: "donate", rx: /\b(donate|donera|ge en g[åa]va|sk[äa]nk (en|pengar|aktie|din)|bidra|give now|(bli )?m[åa]nadsgivare|swisha (en |din )?g[åa]va|st[öo]d oss)\b/i },
+  // "räkna (på/ut)" = bank & insurance price calculators — the quote motion.
+  // The på/ut tail is optional so the trailing \b lands after "räkna"'s ASCII
+  // "a" (JS \b never matches next to å — see the signup note above).
+  { kind: "quote", rx: /\b(offert|f[åa] (en )?offert|get a quote|request a quote|pris(f[öo]rslag)?|r[äa]kna( p[åa]| ut)?)\b/i },
+  // "ansök (om …)" = loan/school applications, the lead-gen conversion for
+  // banks and education. Boundary keeps "så ansöker du" (how-to) out.
+  { kind: "lead", rx: /\b(vi ringer upp|ring mig|bli uppringd|get a callback|request a call|boka (ett )?samtal|kontakta mig|ans[öo]k(an)?)\b/i },
   { kind: "contact", rx: /\b(kontakta oss|contact( sales| us)?|kontakt|talk to sales)\b/i },
-  { kind: "subscribe", rx: /\b(prenumerera|subscribe|newsletter|nyhetsbrev|f[öo]lj)\b/i },
-  { kind: "download", rx: /\b(ladda ner|download|h[äa]mta appen|get the app|install)\b/i },
+  // Harvest falsification: every "följ …" label on 107 sites was a social
+  // link ("Följ oss på Instagram") — "följ" is OUT of the subscribe rule.
+  // "prenumerant" ("Bli prenumerant", news paywalls) is in.
+  { kind: "subscribe", rx: /\b(prenumer(era|ant)|subscribe|newsletter|nyhetsbrev)\b/i },
+  { kind: "download", rx: /\b(ladda ne[dr]|download|h[äa]mta appen|get the app|install)\b/i },
 ];
 
 const KIND_HREF: { kind: GoalKind; rx: RegExp }[] = [
@@ -556,6 +587,7 @@ const KIND_HREF: { kind: GoalKind; rx: RegExp }[] = [
   { kind: "trial", rx: /\/(trial|free-trial|prova|kom-igang|get-started)([/?#]|$)/i },
   { kind: "quote", rx: /\/(quote|offert|pris|get-a-quote)([/?#]|$)/i },
   { kind: "contact", rx: /\/(contact|kontakt|sales)([/?#]|$)/i },
+  { kind: "donate", rx: /\/(donate|donera|bidra|give|gava|stod-oss|support-us)([/?#]|$)/i },
   { kind: "download", rx: /(apps\.apple\.com|play\.google\.com|\/(download|ladda-ner))/i },
 ];
 

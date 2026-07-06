@@ -11,7 +11,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
-import type { GoalCandidate } from "@/adaptive/crawler-inventory";
+import { GOAL_KINDS, type GoalCandidate } from "@/adaptive/crawler-inventory";
 import { aggregate, type DashboardMetrics, type DashEvent, type InventoryEntry } from "./aggregate";
 
 // ---- tenancy helpers (server-only) ------------------------------------------
@@ -68,6 +68,9 @@ export interface SiteConfigView {
   conversionText: string | null;
   /** Who set the goal: 'auto' (legacy pre-confirm pick) | 'owner' (confirmed) | null. */
   conversionSource: "auto" | "owner" | null;
+  /** WHAT converting means (GoalKind), persisted at confirm; null on raw
+   *  owner overrides and legacy rows. */
+  conversionKind: string | null;
   /** Per-site write key gating the ingest endpoints. null = unkeyed. */
   ingestKey: string | null;
   /** The judged business type, when detected (e.g. "comparison"). */
@@ -87,6 +90,7 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   conversionSelector: null,
   conversionText: null,
   conversionSource: null,
+  conversionKind: null,
   businessType: null,
   goalCandidates: [],
   ingestKey: null,
@@ -138,7 +142,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,ingest_key,goal_candidates",
+          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,goal_candidates",
         )
         .order("slug");
       // `sandbox--<host>` rows are the admin sandbox's private per-host scratch
@@ -207,6 +211,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               conversion_selector?: string | null;
               conversion_text?: string | null;
               conversion_source?: string | null;
+              conversion_kind?: string | null;
               ingest_key?: string | null;
               goal_candidates?: { businessType?: string; goals?: GoalCandidate[] } | null;
             }
@@ -223,6 +228,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               current.conversion_source === "auto" || current.conversion_source === "owner"
                 ? current.conversion_source
                 : null,
+            conversionKind: current.conversion_kind ?? null,
             ingestKey: current.ingest_key ?? null,
             businessType: typeof judged?.businessType === "string" ? judged.businessType : null,
             goalCandidates: Array.isArray(judged?.goals) ? judged.goals.slice(0, 6) : [],
@@ -420,6 +426,9 @@ export const setMeasurementConfig = createServerFn({ method: "POST" })
         // An owner-set goal has no harvested label — clear it so click
         // detection never falls back to text belonging to the OLD goal.
         conversion_text: null,
+        // ...and no judged kind either: the raw override bypasses the judge,
+        // so goal-kind-conditioned rules must fall back to neutral defaults.
+        conversion_kind: null,
         // An explicit save is the owner's choice — never auto-overwritten again.
         conversion_source: conversionSelector || conversionUrl ? "owner" : null,
       },
@@ -447,10 +456,14 @@ export const confirmGoal = createServerFn({ method: "POST" })
       selector: z.string().trim().min(1).max(500),
       text: z.string().trim().max(300).optional(),
       url: z.string().trim().max(500).optional(),
+      /** The confirmed candidate's judged GoalKind — WHAT converting means.
+       *  Persisted so the runtime engine can condition on it (goal-aware
+       *  clarify_cta etc.) instead of assuming SaaS demo/trial. */
+      kind: z.enum(GOAL_KINDS as [string, ...string[]]).optional(),
     }),
   )
   .handler(async ({ data, context }): Promise<{ ok: boolean }> => {
-    const { site, selector, text, url } = data;
+    const { site, selector, text, url, kind } = data;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (!(await ownsSite(supabaseAdmin, context as unknown as AuthCtx, site))) {
       return { ok: false };
@@ -461,6 +474,7 @@ export const confirmGoal = createServerFn({ method: "POST" })
         conversion_selector: selector,
         conversion_text: text || null,
         conversion_url: url || null,
+        conversion_kind: kind || null,
         conversion_source: "owner",
       },
       { onConflict: "slug" },
@@ -590,11 +604,15 @@ export const createSite = createServerFn({ method: "POST" })
             name: data.name ?? null,
             domain: data.domain ?? null,
             ingest_key: key,
-            holdout_pct: DEFAULT_HOLDOUT_PCT,
-            // Owner acknowledged visitor information at signup, so a new site
-            // collects (and measures) from day one — no per-site toggle needed.
-            // GPC/DNT are still enforced per-visitor client-side.
-            consent_mode: "attested",
+            // Consent-by-default: a new site starts ANONYMOUS (the DB default —
+            // no persistent visitor id, no behavioural events) and with no
+            // holdout, per docs/consent-gate.md ("never assume consent") and
+            // GDPR's opt-in default. The owner flips the existing dashboard
+            // attestation toggle when they have a lawful basis — setConsentMode
+            // then auto-enables the DEFAULT_HOLDOUT_PCT control group, so
+            // measurement is still zero-config from the moment collection is
+            // actually allowed. The signup checkbox alone is not a lawful basis
+            // for the VISITORS of a site the account hasn't attested.
           });
         if (error) {
           console.warn(`[angel] createSite insert failed: ${error.message}`);

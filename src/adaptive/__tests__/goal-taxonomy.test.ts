@@ -45,6 +45,41 @@ describe("classifyGoalKind — a goal is not always a signup", () => {
     expect(classifyGoalKind("Kom igång nu med oss", undefined, DOMAIN)).toBe("trial"); // "kom igång"
     expect(classifyGoalKind("Klicka här", undefined, DOMAIN)).toBe("signup");
   });
+
+  it("classifies donations as donate, not signup/start_flow (nonprofit goal)", () => {
+    expect(classifyGoalKind("Donera nu", undefined, DOMAIN)).toBe("donate");
+    expect(classifyGoalKind("Ge en gåva", undefined, DOMAIN)).toBe("donate");
+    expect(classifyGoalKind("Give now", undefined, DOMAIN)).toBe("donate");
+    // href path signal, even with a verb-less label
+    expect(classifyGoalKind("Stöd oss", "/donera", DOMAIN)).toBe("donate");
+    expect(classifyGoalKind("Support us", "/donate", DOMAIN)).toBe("donate");
+  });
+
+  it("covers the 107-site harvest vocabulary (corpus/vocab-harvest-2026-07-06.json)", () => {
+    // Nonprofit money actions
+    expect(classifyGoalKind("Bli månadsgivare", undefined, DOMAIN)).toBe("donate");
+    expect(classifyGoalKind("Swisha en gåva", undefined, DOMAIN)).toBe("donate");
+    expect(classifyGoalKind("Skänk pengar", undefined, DOMAIN)).toBe("donate");
+    // Insurance/utility/telecom contract signing = that vertical's purchase
+    expect(classifyGoalKind("Teckna elavtal", undefined, DOMAIN)).toBe("purchase");
+    expect(classifyGoalKind("Lägg i varukorgen", undefined, DOMAIN)).toBe("purchase");
+    expect(classifyGoalKind("Shoppa kollektionen", undefined, DOMAIN)).toBe("purchase");
+    // Banks: open account / apply / price calculators
+    expect(classifyGoalKind("Bli kund", undefined, DOMAIN)).toBe("signup");
+    expect(classifyGoalKind("Öppna konto", undefined, DOMAIN)).toBe("signup");
+    expect(classifyGoalKind("Ansök om bolån", undefined, DOMAIN)).toBe("lead");
+    expect(classifyGoalKind("Räkna på bolån", undefined, DOMAIN)).toBe("quote");
+    // Comparison portals: the funnel entry IS the goal
+    expect(classifyGoalKind("Jämför och byt elavtal", undefined, DOMAIN)).toBe("start_flow");
+    // News paywalls
+    expect(classifyGoalKind("Bli prenumerant", undefined, DOMAIN)).toBe("subscribe");
+    // "Ladda ned" spelling variant
+    expect(classifyGoalKind("Ladda ned appen", undefined, DOMAIN)).toBe("download");
+    // Harvest falsification: "Följ oss" is a social link, never a subscribe goal
+    expect(classifyGoalKind("Följ oss", undefined, DOMAIN)).not.toBe("subscribe");
+    // "Tecknade serier" (comics category) must not read as contract signing
+    expect(classifyGoalKind("Tecknade serier", undefined, DOMAIN)).not.toBe("purchase");
+  });
 });
 
 describe("rankGoalCandidates — deterministic no-LLM floor", () => {
