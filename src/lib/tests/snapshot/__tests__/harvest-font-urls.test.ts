@@ -185,6 +185,54 @@ describe("harvestFontUrls — klassificering per hink", () => {
   });
 });
 
+describe("harvestFontUrls — docBase-fallback (nextory: constructed stylesheets i cid:-parts)", () => {
+  // Blink serialiserar constructed/adopted stylesheets till parts med
+  // Content-Location `cid:css-…@mhtml.blink`. new URL(rel, "cid:…") kastar,
+  // men i webbläsaren resolvar en constructed sheet relativa URLer mot
+  // DOKUMENTETS bas — docBase-parametern replikerar det.
+  const CSS = `@font-face{font-family:"N";src:url(/fonts/x.woff2)}`;
+
+  it("cid:-Content-Location + docBase → hink 3 löst mot docBase", () => {
+    const r = harvestFontUrls(CSS, "cid:css-abc@mhtml.blink", "https://nextory.com/se");
+    expect(r[0]).toEqual({
+      kind: "relative-resolved",
+      original: "/fonts/x.woff2",
+      resolved: "https://nextory.com/fonts/x.woff2",
+      base: "https://nextory.com/se",
+      faceIndex: 0,
+    });
+  });
+
+  it("giltig http-Content-Location vinner över docBase (CSS-spec för länkade sheets)", () => {
+    const r = harvestFontUrls(CSS, "https://cdn.example/css/app.css", "https://nextory.com/se");
+    expect(r[0]).toMatchObject({
+      kind: "relative-resolved",
+      resolved: "https://cdn.example/fonts/x.woff2",
+      base: "https://cdn.example/css/app.css",
+    });
+  });
+
+  it("cid:-Content-Location UTAN docBase → hink 4 (oförändrat)", () => {
+    const r = harvestFontUrls(CSS, "cid:css-abc@mhtml.blink");
+    expect(r[0]).toMatchObject({
+      kind: "relative-unresolvable",
+      reason: "invalid-base",
+    });
+  });
+
+  it("real corpus: nextory/page.pre-embed.mhtml — alla 17 font-URLer resolvar via docBase", () => {
+    const p = join(CORPUS_ROOT, "nextory", "page.pre-embed.mhtml");
+    if (!existsSync(p)) return; // capture ej i checkouten
+    const all = harvestAllFontUrls(readFileSync(p, "utf8"));
+    expect(all.length).toBeGreaterThan(0);
+    expect(all.every((u) => u.kind === "relative-resolved")).toBe(true);
+    for (const u of all) {
+      if (u.kind !== "relative-resolved") continue;
+      expect(u.resolved).toMatch(/^https:\/\/nextory\.com\/fonts\//);
+    }
+  });
+});
+
 describe("harvestFontUrls — tokeniserings-grammatik", () => {
   it("local() ignoreras (inte url())", () => {
     const r = harvestOf(

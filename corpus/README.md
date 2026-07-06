@@ -76,21 +76,26 @@ is the "one goal model for any conversion site" claim made testable.
 | `elskling` | start_flow / quote | Cookiebot (hidden) | electricity comparison portal |
 | `cancerfonden` | donate | Cookiebot (hidden) | nonprofit |
 | `hubspot` | signup / trial / contact | (own banner, hidden) | SaaS (pre-existing) |
-| `bokadirekt` | booking* | none (region) | booking marketplace |
+| `bokadirekt` | booking* | none (region) | booking marketplace homepage |
+| `bokadirekt-service` | booking | own React-modal (`data-cy="allowCookiesButton"`, detached) | service page — the SSR:ed "Boka" CTAs; dialog shows on service pages but not the homepage |
+| `nextory` | trial / subscribe | none in region (Cookiebot in server HTML only) | audiobook subscription |
+| `sector-alarm` | lead / quote | Cookie Information (custom template, hidden) | home-alarm lead-gen |
 
-\* **bokadirekt is soft-asserted only.** Its homepage is a category portal —
-the prominent CTAs are href-less service tiles ("Frisör", "Massage"), so the
-deterministic no-LLM floor sees no booking verb/href and defaults to signup;
-the real "Boka tid" lives on the service page. The holistic goal judge (LLM)
-reads "booking marketplace" from the whole inventory, but the floor can't from
-this capture. A strict booking archetype needs a service-page capture.
+\* **bokadirekt (homepage) is soft-asserted only.** The homepage is a category
+portal — the prominent CTAs are href-less service tiles ("Frisör", "Massage"),
+so the deterministic no-LLM floor sees no booking verb/href and defaults to
+signup; the holistic goal judge (LLM) reads "booking marketplace" from the
+whole inventory. The real "Boka" CTAs live on the service pages — that is what
+`bokadirekt-service` captures, giving booking its strict archetype.
 
-Not yet frozen: **lead** (Verisure/OneTrust exceeded the 9 MB externalize
-threshold with no lovable-assets CLI in the freeze env; Svensk Fast/Cookiebot
-rendered no banner against the Browserbase IP) and **subscribe** (di.se's
-newspaper fonts exceeded the inline threshold and broke the render-canary).
-Both goal kinds stay covered by `goal-taxonomy.test.ts` unit tests until a
-lighter site freezes cleanly.
+Failed freeze attempts, for the record: **lead** — Verisure/OneTrust exceeded
+the 9 MB externalize threshold with no lovable-assets CLI in the freeze env;
+Svensk Fast/Cookiebot rendered no banner against the Browserbase IP (replaced
+by sector-alarm). **subscribe** — di.se's newspaper fonts exceeded the inline
+threshold and broke the render-canary (replaced by nextory). When a CMP ships
+a custom template (standard vendor selectors match nothing),
+`scripts/probe-consent-dom.ts --url=…` dumps the banner's real DOM to pick a
+selector from — that's how sector-alarm's classless accept button was found.
 
 ## Determinism contract & limitations (Grind 1)
 

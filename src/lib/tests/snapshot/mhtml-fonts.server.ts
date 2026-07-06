@@ -33,6 +33,7 @@ import {
   iterateCssParts,
   harvestFontUrls,
   harvestAllFontUrls,
+  mhtmlDocumentBase,
   type HarvestedFontUrl,
 } from "./harvest-font-urls";
 
@@ -650,6 +651,9 @@ export function extractFontFaceDiagnostics(
   mhtmlRaw: string,
 ): FontFaceDiagnostic[] {
   const parts = iterateCssParts(mhtmlRaw);
+  // Samma docBase-fallback som harvestAllFontUrls — P==M kräver att båda
+  // sidor löser cid:-parts relativa URLer mot dokumentets URL.
+  const docBase = mhtmlDocumentBase(mhtmlRaw);
   const out: FontFaceDiagnostic[] = [];
   for (const part of parts) {
     // Per-face metadata (family, local-only, metric-overrides) — kräver
@@ -660,7 +664,7 @@ export function extractFontFaceDiagnostics(
     for (const m of part.css.matchAll(FONT_FACE_BLOCK_RE)) {
       faceBodies.push({ family: familyFromFaceBody(m[1]), body: m[1] });
     }
-    const urls = harvestFontUrls(part.css, part.contentLocation);
+    const urls = harvestFontUrls(part.css, part.contentLocation, docBase);
 
     for (let i = 0; i < faceBodies.length; i++) {
       const fb = faceBodies[i];

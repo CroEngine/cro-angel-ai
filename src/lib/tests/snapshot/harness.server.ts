@@ -79,6 +79,62 @@ async function waitForStableContext(
   throw new Error(`[replay] context never stabilized after ${tries} tries`);
 }
 
+// Deterministic visual settle: await the async resource application the fixed
+// timers race against. The MHTML archive's embedded fonts and raster images
+// decode ASYNCHRONOUSLY after readyState=complete — a font swap or an image
+// getting its intrinsic size reflows content by ~a row (~200px), which tips
+// yBand buckets and cascades through the position-sorted diff (the bokadirekt
+// homepage CI flake: same sha green+red, ~711 diffs, 2026-07-06). Fonts +
+// decode of every started image + double-rAF so the reflow is committed
+// before anything measures layout. decode() rejects for aborted/broken
+// images (external requests are route-aborted by design) — swallowed per
+// image; this waits for what CAN finish, deterministically.
+async function awaitVisualSettle(page: Page, label = ""): Promise<void> {
+  // NODE-DRIVEN med KORTA evaluates — samma arkitekturregel som nodeLoopScroll:
+  // MHTML:ens fördröjda commit river execution-contexten sporadiskt, och en
+  // lång in-page await (fonts.ready + decode()-kedjor) spänner över teardownen
+  // och dör med "Execution context was destroyed" (verifierat 2026-07-06 —
+  // första settle-versionen small exakt så). Korta reads kostar en retry-tick
+  // vid teardown i stället för hela settlen.
+  //
+  // Slutpunkt: fonts loaded + 0 icke-kompletta bilder, ELLER oförändrat
+  // tillstånd 3 ticks i rad. Route-abortade externa laddningar blir aldrig
+  // klara men ändrar sig heller aldrig — "stabilt" är därmed deterministiskt
+  // även för dem. Layout styrs av intrinsic size (img.complete) och font-swap
+  // (fonts.status) — raster-dekodning flyttar ingen layout och behöver inte
+  // inväntas.
+  const t0 = Date.now();
+  let last = "";
+  let stable = 0;
+  let receipt = "(unread)";
+  for (let i = 0; i < 40 && Date.now() - t0 < 8000; i++) {
+    let cur: string;
+    try {
+      cur = (await page.evaluate(
+        `JSON.stringify({ f: document.fonts.status, i: Array.from(document.images).filter((im) => !im.complete).length })`,
+      )) as string;
+    } catch {
+      stable = 0; // context-teardown mitt i ticken — börja om på stabilitetsräkningen
+      await new Promise((r) => setTimeout(r, 200));
+      continue;
+    }
+    receipt = cur;
+    stable = cur === last ? stable + 1 : 1;
+    last = cur;
+    if (cur === '{"f":"loaded","i":0}' || stable >= 3) break;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  // INGEN rAF-commit: en statisk headless-sida producerar inga nya frames, så
+  // en dubbel-rAF-vänta hänger tills nästa naturliga invalidation (uppmätt
+  // 6-20s/sajt 2026-07-06). Den är också onödig — Blink-layout är synkron vid
+  // läsning: COLLECT_SCRIPTs getBoundingClientRect tvingar själv fram färsk
+  // layout från det settlade font-/bildtillståndet ovan.
+  // eslint-disable-next-line no-console
+  console.log(
+    `[replay] visual-settle${label ? ` ${label}` : ""} ${receipt} ${Date.now() - t0}ms`,
+  );
+}
+
 // Node-driven scroll loop. Re-reads scrollHeight before each step so lazy-load
 // expansion is not missed. Each evaluate is short; on failure we re-gate and
 // retry the step once so a transient context tear-down doesn't silently
@@ -113,10 +169,38 @@ async function nodeLoopScroll(page: Page, steps = 8, gapMs = 150): Promise<void>
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   });
   await new Promise((r) => setTimeout(r, 600));
+  // Top-återgång: EXPLICIT behavior:"instant" + verifierad scrollY===0.
+  // Sajter med `scroll-behavior: smooth` (bokadirekt: .scroll-smooth) ANIMERAR
+  // ett vanligt scrollTo(0,0) — en fast 200ms-vänta fångar då sidan mitt i
+  // flykten, och varje sticky-/fixed-element mäts med docTop = rect.top +
+  // scrollY ≈ animationens aktuella position. Det var rotorsaken till
+  // bokadirekt-service-flaket: hela headern (+ dess dolda mega-menypaneler)
+  // vandrade ±200px ≈ en yBand-bucket mellan replays och kaskaderade genom
+  // normalize-sorteringen. Instant-scroll + poll tills scrollY är 0 två ticks
+  // i rad gör slutpositionen deterministisk för ALLA sajter.
   await safeStep(async () => {
-    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }));
   });
-  await new Promise((r) => setTimeout(r, 200));
+  for (let i = 0, zeros = 0; i < 30 && zeros < 2; i++) {
+    let y: number | null = null;
+    try {
+      y = (await page.evaluate(() => window.scrollY)) as number;
+    } catch {
+      /* context-tick — räkna inte, försök igen */
+    }
+    if (y === 0) {
+      zeros++;
+    } else {
+      zeros = 0;
+      if (y !== null) {
+        // Scroll-anchoring/lazy-expansion kan ha knuffat oss — pinna om.
+        await page
+          .evaluate(() => window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }))
+          .catch(() => {});
+      }
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
 }
 
 // Node-driven cookie-banner stamping. Mirrors the in-page poll from
@@ -367,6 +451,10 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
     // mid-evaluate by a delayed MHTML commit), reset streak and keep polling.
     await waitForStableContext(page);
 
+    // Deterministisk settle FÖRE allt som mäter layout (canary + collect):
+    // fonts.ready + bilddekodning + dubbel rAF. Se awaitVisualSettle.
+    await awaitVisualSettle(page, "pre-canary");
+
     // Render-canary: gate före Fas 2. Verifierar att de cid:-inbäddade
     // familjerna faktiskt resolvar och påverkar layout (inte bara "registrerade").
     // Rapporten skrivs till corpus/<name>/render-canary.json (gitignored —
@@ -492,6 +580,10 @@ export async function replayCorpus(name: string, corpusRoot = "corpus"): Promise
 
     // Node-driven cookie-root stamping. Same principle: short evaluates only.
     await nodeLoopStampCookieRoot(page);
+
+    // Re-settle efter scrollen: lazy-bilder som började ladda under scrollen
+    // måste ha dekodat (och deras reflow committats) innan collect mäter.
+    await awaitVisualSettle(page, "pre-collect");
 
     const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
     // eslint-disable-next-line no-console

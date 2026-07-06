@@ -349,6 +349,29 @@ function ctaItem(
   };
 }
 
+/**
+ * Multiplicity IS prominence for a repeated ACTION strip: on a booking
+ * marketplace's service page, 16 identical row-level "Boka" buttons are the
+ * page's dominant action even though each button alone is small
+ * (cta_secondary, below fold) — scored singly, the collapsed rep falls out of
+ * MAX_CTAS/MAX_GOAL_CANDIDATES under one-off chrome primaries ("Fler bilder",
+ * "Lägg till i favoriter"). Aggregate the strip's visual weight, bounded so a
+ * huge list can't drown the hero CTA chain entirely. Conversion-intent only:
+ * nav/category chips and logo rows keep their single-member score.
+ *
+ * SHARED by curateCtas (strip collapse) and rankGoalCandidates (goal floor) —
+ * the bonus must not get lost between curation and goal ranking, or the goal
+ * floor re-buries exactly the CTA the collapse just surfaced.
+ */
+export function stripAggregateBonus(
+  intent: string | undefined,
+  visualWeight: number,
+  variantCount: number,
+): number {
+  if (intent !== "conversion" || variantCount <= 1) return 0;
+  return Math.min(variantCount - 1, 11) * visualWeight;
+}
+
 /** A repeated uniform strip needs at least this many members to be collapsed. */
 const STRIP_MIN = 4;
 /** Members of a strip are "short-labelled" up to this length. */
@@ -392,6 +415,11 @@ function collapseUniformStrips(cands: { cta: CTAEntity; score: number }[]): void
       .map((m) => (m.cta.text ?? "").trim())
       .filter((t) => t && t !== (rep.text ?? "").trim())
       .slice(0, 4);
+    members[0].score += stripAggregateBonus(
+      rep.intent,
+      typeof rep.visualWeight === "number" ? rep.visualWeight : 0,
+      members.length,
+    );
     for (const m of members.slice(1)) suppressed.add(m);
   }
   if (suppressed.size === 0) return;
@@ -657,13 +685,21 @@ export function rankGoalCandidates(
   const scored = ctas.map((c, i) => ({
     c,
     i,
-    score: ctaScore({
-      visualWeight: Number(c.meta?.visualWeight ?? "0") || undefined,
-      aboveFold: c.meta?.aboveFold === "true",
-      category: c.meta?.category,
-      intent: c.meta?.elementIntent,
-      competingActions: Number(c.meta?.competingActions ?? "0") || undefined,
-    }),
+    score:
+      ctaScore({
+        visualWeight: Number(c.meta?.visualWeight ?? "0") || undefined,
+        aboveFold: c.meta?.aboveFold === "true",
+        category: c.meta?.category,
+        intent: c.meta?.elementIntent,
+        competingActions: Number(c.meta?.competingActions ?? "0") || undefined,
+      }) +
+      // Collapsed-strip multiplicity — same aggregate as curateCtas, see
+      // stripAggregateBonus.
+      stripAggregateBonus(
+        c.meta?.elementIntent,
+        Number(c.meta?.visualWeight ?? "0") || 0,
+        Number(c.meta?.variantCount ?? "0") || 0,
+      ),
   }));
   scored.sort((a, b) => b.score - a.score || a.i - b.i);
   return scored.slice(0, MAX_GOAL_CANDIDATES).map((s, idx) => ({
@@ -715,6 +751,16 @@ export function mapAuditToInventory(
           category: cta.category,
           section: cta.section, // kept for the engine to reason about placement
           aboveFold: String(cta.aboveFold),
+          // Prominence inputs for rankGoalCandidates' ctaScore call — it has
+          // always read these meta keys, but the mapper never supplied them,
+          // so the goal floor ranked on category/fold bonuses alone and a
+          // small-but-dominant action lost to any one-off primary.
+          ...(typeof cta.visualWeight === "number"
+            ? { visualWeight: String(cta.visualWeight) }
+            : {}),
+          ...(typeof cta.competingActions === "number"
+            ? { competingActions: String(cta.competingActions) }
+            : {}),
           // Form context for goal-kind classification (A2): a submit inside a
           // form is a lead/subscribe motion, not a bare "signup" button.
           ...(cta.nearestFormDistance === 0 ? { inForm: "true" } : {}),

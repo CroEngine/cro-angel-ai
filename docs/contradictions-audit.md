@@ -15,6 +15,13 @@
 > of **B3**; wave 4 resolves **C3, D1, D2, D3, D4**. Each is marked ✅ below
 > with what changed. **23 of 24 findings closed** — the only remainder is
 > B3's section-typing half (documented as deliberate at the constant).
+> Wave 5 adds goal-conditioned pattern eligibility (`Pattern.appliesTo`) and
+> uniform-grid funnel classification. Wave 6 completes the archetype corpus
+> (strict booking / subscribe–trial / lead captures) and closes two gaps that
+> the new archetypes exposed: relative font URLs in Blink's `cid:` stylesheet
+> parts never got embedded (nextory), and a repeated row-level action strip
+> ("Boka" ×16) lost to one-off chrome primaries in both CTA curation and the
+> goal floor (`stripAggregateBonus` in `crawler-inventory.ts`).
 
 ## Root cause
 

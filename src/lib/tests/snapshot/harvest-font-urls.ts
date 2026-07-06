@@ -9,7 +9,12 @@
 // Universumet partitioneras explicit och uttömmande i fyra hinkar:
 //   1 embedded             — data:/cid: (ingen fetch, redan inlinead)
 //   2 absolute             — https?:// (ingen base behövs)
-//   3 relative-resolved    — relativ inkl. //host/x, löst mot Content-Location
+//   3 relative-resolved    — relativ inkl. //host/x, löst mot Content-Location;
+//                            när Content-Location själv inte duger som bas
+//                            (Blink serialiserar konstruerade/adopted stylesheets
+//                            till `cid:css-…@mhtml.blink`-parts — nextory-fallet)
+//                            löses den mot DOKUMENTETS URL istället, samma
+//                            semantik som webbläsaren ger constructed sheets
 //   4 relative-unresolvable — relativ utan giltig base (no-base / invalid-base)
 //
 // Invariant P==M opererar över hink2 ∪ hink3, dedupad på `resolved`.
@@ -104,6 +109,7 @@ function classify(
   original: string,
   base: string | undefined,
   faceIndex: number,
+  docBase?: string,
 ): NormalizedFontUrl {
   // Hink 1 — redan inlinead / cid-rewriten.
   if (/^data:/i.test(original) || /^cid:/i.test(original)) {
@@ -114,26 +120,25 @@ function classify(
     return { kind: "absolute", original, resolved: original, faceIndex };
   }
   // Hink 3 (eller 4 om base saknas) — protokoll-relativ + path-relativ.
-  if (!base) {
-    return {
-      kind: "relative-unresolvable",
-      original,
-      reason: "no-base",
-      faceIndex,
-    };
+  // Basordning: partens Content-Location först (CSS-spec för länkade
+  // stylesheets), sedan dokumentets URL (webbläsarsemantiken för constructed
+  // stylesheets, vars MHTML-part har en opak cid:-Content-Location som
+  // new URL() kastar på).
+  for (const b of [base, docBase]) {
+    if (!b) continue;
+    try {
+      const resolved = new URL(original, b).href;
+      return { kind: "relative-resolved", original, resolved, base: b, faceIndex };
+    } catch {
+      /* prova nästa bas */
+    }
   }
-  let resolved: string;
-  try {
-    resolved = new URL(original, base).href;
-  } catch {
-    return {
-      kind: "relative-unresolvable",
-      original,
-      reason: "invalid-base",
-      faceIndex,
-    };
-  }
-  return { kind: "relative-resolved", original, resolved, base, faceIndex };
+  return {
+    kind: "relative-unresolvable",
+    original,
+    reason: base || docBase ? "invalid-base" : "no-base",
+    faceIndex,
+  };
 }
 
 /**
@@ -141,11 +146,16 @@ function classify(
  * returnera klassificerade url()-tokens från @font-face/src-deskriptorer
  * i harvest-ordning (face → src → url).
  *
- * Ren funktion: output är en deterministisk funktion av (css, contentLocation).
+ * `docBase` (dokumentets URL) är fallback-bas när contentLocation inte duger
+ * som URL-bas — cid:-parts från Blinks constructed-stylesheet-serialisering.
+ *
+ * Ren funktion: output är en deterministisk funktion av
+ * (css, contentLocation, docBase).
  */
 export function harvestFontUrls(
   css: string,
   contentLocation: string | undefined,
+  docBase?: string,
 ): NormalizedFontUrl[] {
   const out: NormalizedFontUrl[] = [];
   let faceIndex = 0;
@@ -156,11 +166,32 @@ export function harvestFontUrls(
     // `src: ([^;}]+)`-extraktion bryter på data:-URLs som innehåller `;`
     // (t.ex. `data:font/woff2;base64,...`).
     for (const token of tokensFromSrcValue(faceBody)) {
-      out.push(classify(token, contentLocation, faceIndex));
+      out.push(classify(token, contentLocation, faceIndex, docBase));
     }
     faceIndex++;
   }
   return out;
+}
+
+/**
+ * Dokumentets URL i en MHTML: första text/html-partens Content-Location
+ * (Chromium serialiserar roten först — samma konvention som
+ * mhtml-fonts.server.ts main-part-uppslag), förutsatt att den duger som
+ * URL-bas. Fallback-basen för cid:-CSS-parts i harvesten.
+ */
+export function mhtmlDocumentBase(mhtml: string): string | undefined {
+  const parsed = parseMhtml(mhtml);
+  const mainPart = parsed.parts.find((p) =>
+    /^text\/html/i.test(p.headers["content-type"] || ""),
+  );
+  const loc = mainPart?.headers["content-location"];
+  if (!loc) return undefined;
+  try {
+    new URL("x", loc);
+    return loc;
+  } catch {
+    return undefined;
+  }
 }
 
 // ---------------- harvestAllFontUrls (commit 3) --------------------------
@@ -178,8 +209,9 @@ export type HarvestedFontUrl = NormalizedFontUrl & {
 
 export function harvestAllFontUrls(mhtml: string): HarvestedFontUrl[] {
   const out: HarvestedFontUrl[] = [];
+  const docBase = mhtmlDocumentBase(mhtml);
   for (const part of iterateCssParts(mhtml)) {
-    for (const u of harvestFontUrls(part.css, part.contentLocation)) {
+    for (const u of harvestFontUrls(part.css, part.contentLocation, docBase)) {
       out.push({
         ...u,
         partIndex: part.partIndex,
