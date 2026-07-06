@@ -32,9 +32,12 @@ export const MAX_ADAPTATIONS = 3;
  */
 export type PatternBoost = Partial<Record<PatternId, number>>;
 
-/** Ops that ADD an element to the page. Design-integrity rule: at most ONE
- *  of these per decision — floating pills, extra links and badges stack into
- *  visual noise fast, and the customer's design must stay theirs. */
+/** Ops that ADD a new element to the page (a floating pill, an extra link, a
+ *  badge). Angel is NON-INVASIVE by policy: it adapts only what is already on
+ *  the page — emphasis, reorder, reveal, clarified text — so the customer's
+ *  design stays theirs. These ops are never applied (dropped in decide); the
+ *  patterns/handlers remain as dormant capability if injection is ever made an
+ *  explicit per-site opt-in. */
 const INJECT_OPS = new Set(["inject_sticky", "inject_secondary", "inject_badge"]);
 
 /** Largest positive nudge a proven winner can earn (keeps rules meaningful). */
@@ -69,7 +72,7 @@ const RULES: Rule[] = [
     id: "returning_evaluated_pricing",
     priority: 90,
     when: (c) => c.isReturning && c.viewedPricing,
-    patterns: ["surface_pricing", "continue_where_left_off", "show_case_study"],
+    patterns: ["surface_pricing", "show_case_study"],
   },
   {
     id: "linkedin_b2b",
@@ -86,23 +89,7 @@ const RULES: Rule[] = [
     id: "paid_high_intent",
     priority: 75,
     when: (c) => c.trafficSource === "google_ads",
-    patterns: ["clarify_cta", "show_no_credit_card", "show_guarantee", "show_trust_badge"],
-  },
-  {
-    // Mobile: the goal is often buried behind a hamburger — keep it one
-    // thumb-tap away. Fixed-position, so it can never shift layout.
-    id: "mobile_sticky_goal",
-    priority: 72,
-    when: (c) => c.device === "mobile",
-    patterns: ["sticky_goal_cta"],
-  },
-  {
-    // Cold first-time visitors: the primary goal can be too big a first step —
-    // surface a published lower-commitment path beside it.
-    id: "cold_soft_path",
-    priority: 55,
-    when: (c) => !c.isReturning && c.visitCount === 0,
-    patterns: ["show_secondary_cta"],
+    patterns: ["clarify_cta", "show_guarantee", "show_trust_badge"],
   },
   {
     id: "mobile_simplify",
@@ -120,19 +107,7 @@ const RULES: Rule[] = [
     id: "first_time_trust",
     priority: 50,
     when: (c) => !c.isReturning,
-    patterns: ["show_trust_badge", "show_no_credit_card"],
-  },
-  {
-    id: "returning_generic",
-    priority: 40,
-    when: (c) => c.isReturning,
-    patterns: ["continue_where_left_off"],
-  },
-  {
-    id: "baseline",
-    priority: 10,
-    when: () => true,
-    patterns: ["show_2min_setup"],
+    patterns: ["show_trust_badge"],
   },
 ];
 
@@ -394,21 +369,12 @@ export function decide(
     .map((e) => resolve(e.id, e.priority, context, inventory, goal))
     .filter((a): a is Adaptation => a !== null)
     .sort((a, b) => b.priority - a.priority || a.pattern.localeCompare(b.pattern))
-    // Injection budget: keep only the highest-priority element-adding op so a
-    // visitor never sees more than one thing Angel added to the page.
-    .filter(
-      (
-        () => {
-          let injected = false;
-          return (a: Adaptation) => {
-            if (!INJECT_OPS.has(a.op)) return true;
-            if (injected) return false;
-            injected = true;
-            return true;
-          };
-        }
-      )(),
-    )
+    // Non-invasive guarantee: never apply an op that ADDS an element to the
+    // page. Angel only adapts existing content, so the customer's design is
+    // never altered by a foreign pill/link/badge. Belt-and-suspenders — the
+    // rules no longer emit injecting patterns, but this holds even if one is
+    // added later.
+    .filter((a) => !INJECT_OPS.has(a.op))
     .slice(0, MAX_ADAPTATIONS);
 
   return {

@@ -315,17 +315,34 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
   try {
     const { data, error } = await supabaseAdmin
       .from("angel_sites")
-      .select("consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,ingest_key")
+      .select(
+        "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,ingest_key,goal_candidates",
+      )
       .eq("slug", slug)
       .maybeSingle();
     if (error || !data) return DEFAULT_SITE_CONFIG;
     const pct = typeof data.holdout_pct === "number" ? data.holdout_pct : 0;
+
+    let conversionSelector = data.conversion_selector ?? null;
+    let conversionText = data.conversion_text ?? null;
+    // Preview goal: a sandbox site has no owner to confirm a goal, but the whole
+    // point of the preview is to SHOW what Angel would do — so activate the
+    // top-ranked judged candidate. Never applies to real customer slugs, which
+    // correctly stay inert until the owner confirms.
+    if (!conversionSelector && isSandboxSlug(slug)) {
+      const top = (data.goal_candidates as GoalJudgment | null)?.goals?.[0];
+      if (top?.selector) {
+        conversionSelector = top.selector;
+        conversionText = top.text ?? null;
+      }
+    }
+
     return {
       mode: data.consent_mode === "attested" ? "attested" : "anonymous",
       holdoutPct: Math.max(0, Math.min(100, pct)),
       conversionUrl: data.conversion_url ?? null,
-      conversionSelector: data.conversion_selector ?? null,
-      conversionText: data.conversion_text ?? null,
+      conversionSelector,
+      conversionText,
       ingestKey: data.ingest_key ?? null,
     };
   } catch (err) {
