@@ -47,3 +47,5 @@ fixtures/breadth-50/**/screenshot.jpg
 
 # Repo uses bun (bun.lock); npm lockfile is local-only
 package-lock.json
+# Snapshot-diffens debug-avtryck vid fail — skrivs av snapshot.test.ts, aldrig commitbart.
+corpus/**/actual.json

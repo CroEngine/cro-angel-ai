@@ -145,9 +145,19 @@ export const CTAS_SCRIPT = `(() => {
     for (const a of Array.from(el.attributes)) {
       if (a.name.startsWith('data-')) attrBag.push(a.value || '');
     }
+    // Same-page anchor (flik/TOC) — samma beräkning som collect.ts (regel 6 i
+    // classifyIntentShared): flikar får inte positions-fallbackas till conversion.
+    let samePageAnchor = false;
+    if (el.tagName === 'A' && href) {
+      try {
+        const u = new URL(href, location.href);
+        samePageAnchor = !!u.hash && u.origin === location.origin &&
+          u.pathname === location.pathname && u.search === location.search;
+      } catch (e) { /* trasig href -> ingen flagga */ }
+    }
     return classifyIntentShared(
       (text || '').trim(), href, attrBag.join(' '), category, isFormSubmit, rect.top < viewportH,
-      isFormSubmit ? formKindShared(el) : '',
+      isFormSubmit ? formKindShared(el) : '', samePageAnchor,
     );
   }
 

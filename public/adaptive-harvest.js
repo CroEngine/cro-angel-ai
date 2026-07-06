@@ -42,17 +42,37 @@
     if (!warmup) { extract(); return; }
     // Gentle sweep: scroll through the page to trigger IntersectionObserver /
     // lazy content, then restore the visitor's original position and extract.
+    //
+    // VIKTIGT: alla scroll är behavior:'instant'. På sajter med CSS
+    // scroll-behavior: smooth ANIMERAS ett vanligt scrollTo, och en fast
+    // timeout mäter då mitt i flykten — varje sticky-/fixed-element får
+    // docTop = rect.top + scrollY ≈ animationens läge och fel aboveFold.
+    // (Samma bugg-klass hittades och fixades i replay-harnessen 2026-07-06.)
+    // Extraktionen väntar dessutom in att scrollY faktiskt STÅR på y0 två
+    // ticks i rad (scroll-anchoring kan knuffa) i stället för en blind timer.
     try {
       var y0 = window.scrollY;
       var h = document.documentElement.scrollHeight;
       var steps = 6, i = 0;
       var iv = setInterval(function () {
         i++;
-        try { window.scrollTo(0, (h / steps) * i); } catch (e) {}
+        try { window.scrollTo({ top: (h / steps) * i, left: 0, behavior: 'instant' }); } catch (e) {}
         if (i >= steps) {
           clearInterval(iv);
-          try { window.scrollTo(0, y0); } catch (e) {}
-          setTimeout(extract, 250);
+          try { window.scrollTo({ top: y0, left: 0, behavior: 'instant' }); } catch (e) {}
+          var settled = 0, tries = 0;
+          var pin = setInterval(function () {
+            tries++;
+            var atRest = Math.abs(window.scrollY - y0) < 2;
+            if (atRest) { settled++; } else {
+              settled = 0;
+              try { window.scrollTo({ top: y0, left: 0, behavior: 'instant' }); } catch (e) {}
+            }
+            if (settled >= 2 || tries >= 20) {
+              clearInterval(pin);
+              extract();
+            }
+          }, 100);
         }
       }, 60);
     } catch (e) {
@@ -93,7 +113,7 @@
   // THE shared intent classifier — inlined from shared/intent.ts, same source
   // COLLECT_SCRIPT uses (B1). This file used to carry its own drifted copy of
   // the wordlists; it no longer defines any.
-  function classifyIntentShared(text, href, attrText, category, isFormSubmit, aboveFold, formKind) {
+  function classifyIntentShared(text, href, attrText, category, isFormSubmit, aboveFold, formKind, samePageAnchor) {
   const probe = (text || "").trim() + " " + (attrText || ""), h = href || "";
   if (isFormSubmit) {
     if (formKind === "search")
@@ -118,6 +138,8 @@
     return "utility";
   if (/(learn|read|explore|see how|how |why |about |l\u00E4s|utforska|s\u00E5 funkar|mer info)/i.test(probe))
     return "information";
+  if (samePageAnchor)
+    return "navigation";
   if (category === "cta_primary" && aboveFold)
     return "conversion";
   return "unknown";
@@ -306,9 +328,19 @@
     for (const a of Array.from(el.attributes)) {
       if (a.name.startsWith('data-')) attrBag.push(a.value || '');
     }
+    // Same-page anchor (flik/TOC) — samma beräkning som collect.ts (regel 6 i
+    // classifyIntentShared): flikar får inte positions-fallbackas till conversion.
+    let samePageAnchor = false;
+    if (el.tagName === 'A' && href) {
+      try {
+        const u = new URL(href, location.href);
+        samePageAnchor = !!u.hash && u.origin === location.origin &&
+          u.pathname === location.pathname && u.search === location.search;
+      } catch (e) { /* trasig href -> ingen flagga */ }
+    }
     return classifyIntentShared(
       (text || '').trim(), href, attrBag.join(' '), category, isFormSubmit, rect.top < viewportH,
-      isFormSubmit ? formKindShared(el) : '',
+      isFormSubmit ? formKindShared(el) : '', samePageAnchor,
     );
   }
 

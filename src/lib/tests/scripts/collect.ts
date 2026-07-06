@@ -244,9 +244,22 @@ export const COLLECT_SCRIPT = `(() => {
     const attrStr = attrBag.join(' ');
     const t = (text || '').trim();
 
+    // Same-page anchor (flik/TOC): href resolvar till DENNA sida + fragment.
+    // Matar regel 6 i classifyIntentShared — flikar får inte positions-
+    // fallbackas till conversion. new URL hanterar både "#x" och absoluta
+    // själv-URL:er med fragment (bokadirekt-service: .../citymassage-457#staff).
+    let samePageAnchor = false;
+    if (el.tagName === 'A' && href) {
+      try {
+        const u = new URL(href, location.href);
+        samePageAnchor = !!u.hash && u.origin === location.origin &&
+          u.pathname === location.pathname && u.search === location.search;
+      } catch (e) { /* trasig href -> ingen flagga */ }
+    }
+
     const intent = classifyIntentShared(
       t, href, attrStr, category, isFormSubmit, rect.top < window.innerHeight,
-      isFormSubmit ? formKindShared(el) : '',
+      isFormSubmit ? formKindShared(el) : '', samePageAnchor,
     );
     if (intent !== 'unknown') return intent;
 

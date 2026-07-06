@@ -80,6 +80,33 @@ describe("classifyGoalKind — a goal is not always a signup", () => {
     // "Tecknade serier" (comics category) must not read as contract signing
     expect(classifyGoalKind("Tecknade serier", undefined, DOMAIN)).not.toBe("purchase");
   });
+
+  it("covers the 20-site breadth-fixture findings (breadth-goal-fixtures.json)", () => {
+    // Subdomäner är samma sajt — inte affiliate-outbound (unicef + fortnox).
+    expect(
+      classifyGoalKind("Egen insamling", "https://insamling.unicef.se", "unicef.se"),
+    ).toBe("start_flow");
+    expect(
+      classifyGoalKind("Starta köpguiden", "https://buy-guide.fortnox.se/", "fortnox.se"),
+    ).toBe("start_flow");
+    // …men en RIKTIG partner-handoff är fortfarande outbound.
+    expect(
+      classifyGoalKind("Till leverantören", "https://partner.example/deal", "unicef.se"),
+    ).toBe("outbound");
+    // Sammansatta gåvo-ord (unicef katastrofgåva, rodakorset företagsgåva,
+    // MSF minnesgåva).
+    expect(classifyGoalKind("Ge en katastrofgåva", undefined, DOMAIN)).toBe("donate");
+    expect(classifyGoalKind("Ge en företagsgåva", undefined, DOMAIN)).toBe("donate");
+    expect(classifyGoalKind("Ge en minnesgåva", undefined, DOMAIN)).toBe("donate");
+    // App-butiksknappar bakom tracker-domäner (tibber onelink.me,
+    // bokadirekt smart.link) — texten vinner före offdomän-fallbacken.
+    expect(
+      classifyGoalKind("App Store", "https://tibber.onelink.me/3IQr", "tibber.com"),
+    ).toBe("download");
+    expect(
+      classifyGoalKind("Google Play", "https://tibber.onelink.me/3IQr", "tibber.com"),
+    ).toBe("download");
+  });
 });
 
 describe("rankGoalCandidates — deterministic no-LLM floor", () => {
@@ -124,6 +151,29 @@ describe("rankGoalCandidates — deterministic no-LLM floor", () => {
   it("never exceeds MAX_GOAL_CANDIDATES", () => {
     const many = Array.from({ length: 12 }, (_, i) => ({ text: `Skapa konto ${i}` }));
     expect(rankGoalCandidates(inv(many), DOMAIN).length).toBeLessThanOrEqual(MAX_GOAL_CANDIDATES);
+  });
+
+  it("navigation-intent CTAs (in-page tabs) are never goal candidates", () => {
+    // bokadirekt-service: flikarna klassas navigation av collectorn
+    // (samePageAnchor-regeln) och får inte återuppstå som mål i golvet.
+    const inventory = {
+      site: "t",
+      slots: {
+        cta: [
+          {
+            id: "tab", slot: "cta", text: "Betyg", selector: "#tab",
+            meta: { elementIntent: "navigation", category: "cta_primary", aboveFold: "true", visualWeight: "6000" },
+          },
+          {
+            id: "boka", slot: "cta", text: "Boka", selector: "#boka",
+            meta: { elementIntent: "conversion", category: "cta_secondary", aboveFold: "false", visualWeight: "2347" },
+          },
+        ],
+      },
+    } as unknown as ContentInventory;
+    const out = rankGoalCandidates(inventory, "bokadirekt.se");
+    expect(out.map((g) => g.text)).toEqual(["Boka"]);
+    expect(out[0].kind).toBe("booking");
   });
 
   it("a collapsed action strip outranks one-off primaries (bokadirekt service page)", () => {
