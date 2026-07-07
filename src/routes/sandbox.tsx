@@ -47,6 +47,20 @@ const PATTERN_LABEL: Record<string, string> = {
   move_faq_up: "FAQ flyttad upp",
   surface_pricing: "priser lyfta",
   continue_where_left_off: "fortsätt där du var",
+  show_customer_logos_early: "kundlogotyper tidigt",
+  show_enterprise_testimonial: "kundcitat framlyft",
+  show_trust_badge: "trust-signal synlig",
+  show_guarantee: "garanti synlig",
+  show_case_study: "case study framlyft",
+  show_no_credit_card: "”inget kort krävs”-badge",
+  show_2min_setup: "”igång på minuter”-badge",
+  // Våg 8 — vertikala mönster (docs/wave8-pattern-spec.md):
+  move_reviews_up: "recensioner flyttade upp",
+  show_rating_near_goal: "sajtens betyg vid målet",
+  show_payment_security: "betaltrygghet vid målet",
+  show_monthly_giving_option: "månadsgivar-väg bredvid gåvan",
+  show_callback_option: "bli-uppringd-väg vid målet",
+  show_cancel_anytime: "”avsluta när du vill”-badge",
 };
 
 const REASON_TEXT: Record<string, string> = {

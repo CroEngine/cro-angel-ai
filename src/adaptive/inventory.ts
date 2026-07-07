@@ -52,14 +52,27 @@ const DEMO_INVENTORY: ContentInventory = {
         text: "Continue where you left off",
         meta: { kind: "continuity" },
       },
-      { id: "mc-cancel", slot: "microcopy", text: "Cancel anytime", meta: { kind: "guarantee" } },
+      // cancel_anytime är en EGEN kind sedan våg 8:s kind-split (guarantee =
+      // pengarna-tillbaka-löften) — show_cancel_anytime konsumerar denna.
+      { id: "mc-cancel", slot: "microcopy", text: "Cancel anytime", meta: { kind: "cancel_anytime" } },
+      // Våg 8/S3: publicerad betaltrygghet — gör show_payment_security synlig
+      // på /demo (badge vid målet).
+      { id: "mc-paysec", slot: "microcopy", text: "Secure checkout", meta: { kind: "payment_security" } },
     ],
     customer_logos: [
       { id: "logos", slot: "customer_logos", selector: '[data-angel-slot="customer_logos"]' },
     ],
     testimonial: [{ id: "t1", slot: "testimonial", selector: '[data-angel-slot="testimonial"]' }],
     trust_badge: [
-      { id: "trust", slot: "trust_badge", selector: '[data-angel-slot="trust_badge"]' },
+      // text + trustType gör show_rating_near_goal (S2) demonstrerbar på
+      // /demo — det strikta predikatet kräver betygstyp + sifferform.
+      {
+        id: "trust",
+        slot: "trust_badge",
+        selector: '[data-angel-slot="trust_badge"]',
+        text: "4.8 · 2,138 reviews",
+        meta: { trustType: "stars_aggregate" },
+      },
     ],
     guarantee: [{ id: "guarantee", slot: "guarantee", selector: '[data-angel-slot="guarantee"]' }],
     faq: [{ id: "faq", slot: "faq", selector: '[data-angel-slot="faq"]' }],
