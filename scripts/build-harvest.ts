@@ -62,6 +62,18 @@ const bundle = `${banner}
   }
 
   function harvest() {
+    // ALDRIG extrahera en adapterad DOM — bältet på extraktionsnivån, så
+    // regeln håller oavsett laddningsväg (injicerad av adaptive.js ELLER
+    // fristående tag mitt i migrering). Utan den mäter skördaren Angels egen
+    // förändring och skriver över sidans inventory med post-adaptations-
+    // tillståndet (feedback-loopen som raderade FAQ-posten: flytten gjorde
+    // att nästa skörd inte kände igen sektionen som FAQ). adaptive.js har
+    // samma spärr FÖRE nedladdning; denna täcker resten.
+    try {
+      if (document.querySelector(
+        '.angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],.angel-sticky-cta,.angel-secondary-cta,.angel-badge'
+      )) return;
+    } catch (e) { /* selector-fel får aldrig stoppa skörden i sig */ }
     if (!warmup) { extract(); return; }
     // Gentle sweep: scroll through the page to trigger IntersectionObserver /
     // lazy content, then restore the visitor's original position and extract.
