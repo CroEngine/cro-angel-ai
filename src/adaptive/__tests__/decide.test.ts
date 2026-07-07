@@ -867,6 +867,33 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
     )).toBe(true);
   });
 
+  it("sidtyps-gating: flytt-mönster nomineras aldrig på content-sidor (blogg-incidenten)", () => {
+    // glutenforum: move_faq_up flyttade FAQ:n ovanför blogginlägget — flytt-/
+    // omordningsmönster är landningsyte-verktyg och gate:as bort på content.
+    const inv = emptyInventory("t");
+    inv.slots.faq = [{ id: "f", slot: "faq", selector: "#faq", text: "Vanliga frågor" }];
+    const onBlog = decide(
+      "t",
+      ctx({ trafficSource: "google", pageType: "content" }),
+      inv,
+      {},
+      { selector: "#g", text: "Skapa konto", kind: "signup" },
+    );
+    expect(onBlog.adaptations.map((a) => a.pattern)).not.toContain("move_faq_up");
+    expect((onBlog.declined ?? []).some(
+      (d) => d.pattern === "move_faq_up" && d.reason === "page_type_mismatch",
+    )).toBe(true);
+    // …men på en landningssida (home) nomineras flytten precis som förr.
+    const onHome = decide(
+      "t",
+      ctx({ trafficSource: "google", pageType: "home" }),
+      inv,
+      {},
+      { selector: "#g", text: "Skapa konto", kind: "signup" },
+    );
+    expect(onHome.adaptations.map((a) => a.pattern)).toContain("move_faq_up");
+  });
+
   it("W8-E1-regression: befintliga badges målankras när mål finns, demo-slot annars", () => {
     const inv = emptyInventory("t");
     inv.slots.microcopy = [

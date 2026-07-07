@@ -55,6 +55,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: "Move the customer-logo wall higher up the page.",
     op: "move_up",
     slot: "customer_logos",
+    avoidPageTypes: ["content", "auth"],
     // "Customers" is a B2B/retail notion; a nonprofit's partner logos and a
     // subscription/download's absence of them are a different semantic.
     appliesTo: [
@@ -107,6 +108,9 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: "Surface the FAQ earlier for visitors likely to have objections.",
     op: "move_up",
     slot: "faq",
+    // Omordning är designad för landningsytor — på en artikel-/bloggsida är
+    // "FAQ först" alltid fel (glutenforum: FAQ ovanför inlägget).
+    avoidPageTypes: ["content", "auth"],
   },
   shorten_hero: {
     id: "shorten_hero",
@@ -114,6 +118,9 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: "Condense the hero to its essentials (helpful on mobile).",
     op: "condense",
     slot: "hero",
+    // En artikel har ingen hero att komprimera — det som råkar matcha är
+    // artikelns eget huvud.
+    avoidPageTypes: ["content", "auth"],
   },
   show_case_study: {
     id: "show_case_study",
@@ -152,6 +159,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     description: "Move pricing higher for returning visitors who already evaluated it.",
     op: "move_up",
     slot: "pricing",
+    avoidPageTypes: ["content", "auth"],
     // "Pricing" presupposes a price to evaluate — irrelevant for donate (a
     // gift has no price), lead/quote/contact (price comes after contact),
     // outbound/start_flow (no on-site price), and free downloads.
@@ -177,6 +185,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     op: "move_up",
     slot: "testimonial",
     appliesTo: ["booking", "purchase", "start_flow", "subscribe", "lead", "quote"],
+    avoidPageTypes: ["content", "auth"],
   },
   show_rating_near_goal: {
     id: "show_rating_near_goal",
