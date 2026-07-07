@@ -755,7 +755,7 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
     const inv = emptyInventory("t");
     inv.slots.microcopy = [
       { id: "ps", slot: "microcopy", text: "Säker betalning", meta: { kind: "payment_security" } },
-      { id: "g", slot: "microcopy", text: "Avsluta när du vill", meta: { kind: "guarantee" } },
+      { id: "g", slot: "microcopy", text: "Avsluta när du vill", meta: { kind: "cancel_anytime" } },
     ];
     const d = decide("t", ctx(), inv, {}, { selector: "#s", text: "Skapa konto", kind: "signup" });
     const declinedKinds = (d.declined ?? []).filter((x) => x.reason === "goal_kind_mismatch");
@@ -766,12 +766,89 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
   it("S6 subscribe (nextory): 'Avsluta när du vill' blir badge när betaltrygghet saknas", () => {
     const inv = emptyInventory("t");
     inv.slots.microcopy = [
-      { id: "g", slot: "microcopy", text: "Avsluta när du vill", meta: { kind: "guarantee" } },
+      { id: "g", slot: "microcopy", text: "Avsluta när du vill", meta: { kind: "cancel_anytime" } },
     ];
     const d = decide("t", ctx(), inv, {}, { selector: "#prova", text: "Prova gratis nu", kind: "subscribe" });
     const badge = d.adaptations.find((a) => a.pattern === "show_cancel_anytime");
     expect(badge?.value).toBe("Avsluta när du vill");
     expect(badge?.target).toBe("#prova");
+  });
+
+  it("S6: ett refund-löfte får ALDRIG rendera under avsluta-etiketten (kind-split)", () => {
+    // Granskningsfynd: med delad guarantee-kind ockuperade "30 dagar pengarna
+    // tillbaka" platsen och blev cancel-anytime-badgens text.
+    const inv = emptyInventory("t");
+    inv.slots.microcopy = [
+      { id: "mb", slot: "microcopy", text: "30 dagar pengarna tillbaka", meta: { kind: "guarantee" } },
+    ];
+    const d = decide("t", ctx(), inv, {}, { selector: "#prova", text: "Prova gratis", kind: "subscribe" });
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_cancel_anytime");
+    expect((d.declined ?? []).some(
+      (x) => x.pattern === "show_cancel_anytime" && x.reason === "no_microcopy",
+    )).toBe(true);
+  });
+
+  it("S4/S5: när den specialiserade CTA:n ÄR målet declinas — målet dubbleras aldrig", () => {
+    // Granskningsfynd (verifierat via körning): utan destination-guard
+    // injicerades målet bredvid sig självt när goal.url == CTA:ns href,
+    // och en skiftlägesvariant av måltexten kringgick textjämförelsen.
+    const inv = emptyInventory("t");
+    inv.slots.cta = [
+      { id: "c1", slot: "cta", text: "Bli månadsgivare", selector: "#m",
+        meta: { href: "https://x.se/stod-oss/bli-manadsgivare/" } },
+    ];
+    const sameDest = decide("t", ctx(), inv, {}, {
+      selector: "#m", text: "BLI MÅNADSGIVARE", kind: "donate",
+      url: "/stod-oss/bli-manadsgivare",
+    });
+    expect(sameDest.adaptations.map((a) => a.pattern)).not.toContain("show_monthly_giving_option");
+    expect((sameDest.declined ?? []).some(
+      (x) => x.pattern === "show_monthly_giving_option" && x.reason === "no_secondary_alternative",
+    )).toBe(true);
+  });
+
+  it("S5 pinnar vokabulär + gating: icke-callback-CTA duger inte, fel måltyp gate:as", () => {
+    const inv = emptyInventory("t");
+    inv.slots.cta = [
+      { id: "c1", slot: "cta", text: "Läs mer om larm", selector: "#l", meta: { href: "/larm" } },
+    ];
+    // Vokabulären: en icke-callback-CTA matchar inte SECONDARY_TEXT → decline.
+    const d = decide("t", ctx(), inv, {}, { selector: "#pris", text: "Få pris", kind: "quote" });
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_callback_option");
+    expect((d.declined ?? []).some(
+      (x) => x.pattern === "show_callback_option" && x.reason === "no_secondary_alternative",
+    )).toBe(true);
+    // Gatingen: en purchase-sajt får aldrig callback-mönstret nominerat skarpt.
+    const inv2 = emptyInventory("t");
+    inv2.slots.cta = [
+      { id: "cb", slot: "cta", text: "Vi ringer upp dig", selector: "#cb", meta: { href: "/callback" } },
+    ];
+    const buyer = decide("t", ctx(), inv2, {}, { selector: "#k", text: "Köp nu", kind: "purchase" });
+    expect(buyer.adaptations.map((a) => a.pattern)).not.toContain("show_callback_option");
+    expect((buyer.declined ?? []).some(
+      (x) => x.pattern === "show_callback_option" && x.reason === "goal_kind_mismatch",
+    )).toBe(true);
+  });
+
+  it("S2 pinnar sifferformen: rätt trustType men pratig text declinar; interpunkt-formen eldar", () => {
+    const talky = emptyInventory("t");
+    talky.slots.trust_badge = [
+      { id: "t", slot: "trust_badge", text: "Våra kunder älskar oss", selector: "#t",
+        meta: { trustType: "stars" } },
+    ];
+    const d1 = decide("t", ctx(), talky, {}, { selector: "#boka", text: "Boka", kind: "booking" });
+    expect(d1.adaptations.map((a) => a.pattern)).not.toContain("show_rating_near_goal");
+
+    // Dokumenterad spec-avvikelse: interpunkt (·) ingår i sifferklassen —
+    // "4.8 · 2138 betyg" är standardformen på ratingsammanfattningar.
+    const dotted = emptyInventory("t");
+    dotted.slots.trust_badge = [
+      { id: "r", slot: "trust_badge", text: "4.8 · 2138 betyg", selector: "#r",
+        meta: { trustType: "stars_aggregate" } },
+    ];
+    const d2 = decide("t", ctx(), dotted, {}, { selector: "#boka", text: "Boka", kind: "booking" });
+    expect(d2.adaptations.find((a) => a.pattern === "show_rating_near_goal")?.value)
+      .toBe("4.8 · 2138 betyg");
   });
 
   it("S1 (alla köptunga vertikaler): recensionssektionen flyttas upp för förstagångare", () => {

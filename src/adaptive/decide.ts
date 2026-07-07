@@ -227,11 +227,12 @@ const MICROCOPY_KIND: Partial<Record<PatternId, string>> = {
   show_no_credit_card: "no_credit_card",
   show_2min_setup: "setup_time",
   continue_where_left_off: "continuity",
-  // Våg 8 (S3, S6): båda konsumerar ENBART sajtens publicerade fraser —
-  // payment_security är en ny extraherad kind; guarantee fanns i skörden men
-  // konsumerades aldrig av något inject-mönster.
+  // Våg 8 (S3, S6): båda konsumerar ENBART sajtens publicerade fraser.
+  // cancel_anytime är en EGEN kind, skild från guarantee (pengarna tillbaka)
+  // — granskningsfynd: en delad kind lät ett refund-löfte rendera under
+  // avsluta-när-du-vill-etiketten.
   show_payment_security: "payment_security",
-  show_cancel_anytime: "guarantee",
+  show_cancel_anytime: "cancel_anytime",
 };
 
 /** Våg 8 (W8-E1): badge-mönster vars TEXTKÄLLA är en annan slot än microcopy
@@ -334,6 +335,20 @@ function resolve(
     if (!goal?.selector && !goal?.text) return "no_goal_configured";
     if (context.pageType === "conversion") return "conversion_page";
     const txtRx = SECONDARY_TEXT[id];
+    // Granskningsfynd (våg 8): "skiljer sig från målet" måste gälla
+    // DESTINATIONEN också, inte bara etiketten — annars injiceras målet
+    // bredvid sig självt när sajtens månadsgivar-/callback-CTA ÄR målet
+    // (samma href, eller samma text i annan skiftläggning). Path-jämförelse
+    // utan origin/avslutande snedstreck så relativa och absoluta former möts.
+    const pathOf = (u: string) =>
+      u
+        .replace(/^https?:\/\/[^/]+/i, "")
+        .replace(/[?#].*$/, "")
+        .replace(/\/+$/, "") || "/";
+    const goalText = (goal.text ?? "").trim().toLowerCase();
+    const goalPath = goal.url ? pathOf(goal.url) : null;
+    const differsFromGoal = (text: string, href: string) =>
+      text.trim().toLowerCase() !== goalText && (!goalPath || pathOf(href) !== goalPath);
     // A published, lower-commitment alternative: an acquisition CTA with its
     // own destination whose label differs from the goal. pickItem falls back
     // to the first item when the match misses, so re-guard after.
@@ -344,14 +359,14 @@ function resolve(
         isAcquisition(i) &&
         Boolean(i.text) &&
         Boolean(i.meta?.href) &&
-        i.text !== goal.text &&
+        differsFromGoal(i.text ?? "", i.meta?.href ?? "") &&
         !/^javascript:/i.test(i.meta?.href ?? "") &&
         (!txtRx || txtRx.test(i.text ?? "")),
     );
     if (
       !alt?.text ||
       !alt.meta?.href ||
-      alt.text === goal.text ||
+      !differsFromGoal(alt.text, alt.meta.href) ||
       !isAcquisition(alt) ||
       /^javascript:/i.test(alt.meta.href) ||
       (txtRx && !txtRx.test(alt.text))

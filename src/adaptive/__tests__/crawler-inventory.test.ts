@@ -42,7 +42,9 @@ describe("extractMicrocopy", () => {
     ]);
     const kinds = items.map((i) => i.meta?.kind);
     expect(kinds).toContain("no_credit_card");
-    expect(kinds).toContain("guarantee");
+    // "Cancel anytime" är no-lock-in-kinden — EGEN kind, skild från
+    // guarantee/pengarna-tillbaka (våg 8-granskningens kind-split).
+    expect(kinds).toContain("cancel_anytime");
     // text is the actual published string, never invented
     expect(items.find((i) => i.meta?.kind === "no_credit_card")?.text).toBe(
       "No credit card required",
@@ -54,12 +56,16 @@ describe("extractMicrocopy", () => {
     // trust-texter når microcopy-poolen via mapAuditToInventory, så frasen
     // materialiseras vid replay av den frusna capturen (S3-testplanen).
     const items = extractMicrocopy([
+      "30 dagar pengarna tillbaka",
       "Säker betalning",
       "Avsluta när du vill", // nextorys fras — gamla rx:en täckte bara "när som helst"
     ]);
     const byKind = Object.fromEntries(items.map((i) => [i.meta?.kind, i.text]));
     expect(byKind.payment_security).toBe("Säker betalning");
-    expect(byKind.guarantee).toBe("Avsluta när du vill");
+    // Kind-split (granskningsfynd): refund-löftet och no-lock-in-löftet är
+    // OLIKA kinds och samexisterar — det ena får aldrig ockupera det andras plats.
+    expect(byKind.guarantee).toBe("30 dagar pengarna tillbaka");
+    expect(byKind.cancel_anytime).toBe("Avsluta när du vill");
   });
 });
 
