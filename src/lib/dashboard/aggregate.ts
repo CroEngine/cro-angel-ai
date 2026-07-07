@@ -159,11 +159,21 @@ export interface VisitorSummary {
  *  besökare och deras utfall inom attributionsfönstret. */
 export interface ArmProof {
   visitors: number;
+  /** Besökare som klickade på MÅLET (cta_click med path≠"assist"). Angels
+   *  egna genvägar räknas inte här — de finns bara i adapterade armen och
+   *  skulle blåsa upp jämförelsen strukturellt. */
   ctaClicks: number;
+  /** Besökare med minst ett genvägsklick (cta_click path="assist") i
+   *  fönstret. Kan ÖVERLAPPA ctaClicks — en besökare som tappar pillret på
+   *  laddning 1 och klickar målet på laddning 2 räknas i bägge kolumnerna
+   *  (separata mått, ingen partition). Per konstruktion 0 i kontrollarmen —
+   *  redovisas separat, aldrig i pWin. */
+  assistClicks: number;
   conversions: number;
   /** Återbesök 6h–7d efter exponeringen — retention-proxy (nedströmsmåttet). */
   returns: number;
   ctaClickRate: number;
+  assistRate: number;
   conversionRate: number;
   returnRate: number;
 }
@@ -175,9 +185,14 @@ export interface ArmProof {
 export interface ProofSummary {
   adapted: ArmProof;
   control: ArmProof;
-  /** P(adapterad arm > kontroll) på CTA-klickfrekvensen. Beta(1,1)-posterior
-   *  per arm, normalapproximation av differensen. null när endera armen
-   *  saknar exponeringar (ingen hold-out konfigurerad ännu). */
+  /** P(adapterad arm > kontroll) på MÅL-klickfrekvensen (ctaClicks, aldrig
+   *  assist). Beta(1,1)-posterior per arm, normalapproximation av
+   *  differensen. null när hold-out saknas ELLER när evidensen är för tunn
+   *  för att siffran ska betyda något: med Beta(1,1)-priors och olikstora
+   *  armar (t.ex. 88/12) ger NOLL klick i bägge armarna ~19 % — en
+   *  självsäkert felaktig avläsning ur ren prior. Grinden (bägge armarna ≥
+   *  MIN_ARM_EXPOSURES besökare och ≥ MIN_ARM_OUTCOMES mål-klick totalt)
+   *  gör null = "för tidigt att säga", som UI:t visar explicit. */
   pWin: number | null;
   holdoutActive: boolean;
 }
@@ -309,10 +324,13 @@ const RETURN_MAX_MS = 7 * 24 * 60 * 60 * 1000;
  * och återbesök 6h–7d (nedströms/retention-proxyn).
  */
 export function proofSummary(events: DashEvent[]): ProofSummary | null {
-  const byVisitor = (type: string): Map<string, number[]> => {
+  const byVisitor = (
+    type: string,
+    keep: (e: DashEvent) => boolean = () => true,
+  ): Map<string, number[]> => {
     const m = new Map<string, number[]>();
     for (const e of events) {
-      if (e.type !== type || !e.visitorHash) continue;
+      if (e.type !== type || !e.visitorHash || !keep(e)) continue;
       const t = ms(e.createdAt);
       if (Number.isNaN(t)) continue;
       (m.get(e.visitorHash) ?? m.set(e.visitorHash, []).get(e.visitorHash)!).push(t);
@@ -320,7 +338,12 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
     for (const times of m.values()) times.sort((a, b) => a - b);
     return m;
   };
-  const clicks = byVisitor("cta_click");
+  // Mål-klick vs Angel-genvägsklick hålls isär: "assist" finns bara i den
+  // adapterade armen (kontrollen har inga injicerade genvägar), så att blanda
+  // in dem i jämförelsen vore ett strukturellt tummen-på-vågen. Saknad path
+  // räknas som mål-klick.
+  const clicks = byVisitor("cta_click", (e) => e.payload.path !== "assist");
+  const assists = byVisitor("cta_click", (e) => e.payload.path === "assist");
   const convs = byVisitor("conversion");
   const views = byVisitor("pageview");
 
@@ -349,9 +372,11 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
   const empty = (): ArmProof => ({
     visitors: 0,
     ctaClicks: 0,
+    assistClicks: 0,
     conversions: 0,
     returns: 0,
     ctaClickRate: 0,
+    assistRate: 0,
     conversionRate: 0,
     returnRate: 0,
   });
@@ -360,18 +385,26 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
     const a = arms[arm];
     a.visitors++;
     if (anyIn(clicks.get(visitor), t, t + ATTRIBUTION_WINDOW_MS)) a.ctaClicks++;
+    if (anyIn(assists.get(visitor), t, t + ATTRIBUTION_WINDOW_MS)) a.assistClicks++;
     if (anyIn(convs.get(visitor), t, t + ATTRIBUTION_WINDOW_MS)) a.conversions++;
     if (anyIn(views.get(visitor), t + RETURN_MIN_MS, t + RETURN_MAX_MS)) a.returns++;
   }
   for (const a of [arms.adapted, arms.control]) {
     a.ctaClickRate = a.visitors > 0 ? a.ctaClicks / a.visitors : 0;
+    a.assistRate = a.visitors > 0 ? a.assistClicks / a.visitors : 0;
     a.conversionRate = a.visitors > 0 ? a.conversions / a.visitors : 0;
     a.returnRate = a.visitors > 0 ? a.returns / a.visitors : 0;
   }
 
   const holdoutActive = arms.control.visitors > 0;
+  // Evidensgrind (se ProofSummary.pWin-kommentaren): under de här trösklarna
+  // domineras posteriorn av prior + armstorleks-asymmetri och siffran ljuger.
+  const enoughEvidence =
+    arms.adapted.visitors >= MIN_ARM_EXPOSURES &&
+    arms.control.visitors >= MIN_ARM_EXPOSURES &&
+    arms.adapted.ctaClicks + arms.control.ctaClicks >= MIN_ARM_OUTCOMES;
   const pWin =
-    holdoutActive && arms.adapted.visitors > 0
+    holdoutActive && enoughEvidence
       ? pBetaGreater(
           arms.adapted.ctaClicks,
           arms.adapted.visitors,

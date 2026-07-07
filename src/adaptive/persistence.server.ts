@@ -35,6 +35,16 @@ type EventRow = {
  *  log is suppressed. This is the single choke point for angel_events writes. */
 export const isSandboxSlug = (slug: string): boolean => slug.startsWith("sandbox--");
 
+/** Den RIKTIGA sajt-slugen bakom en sandbox-spegel (`sandbox--www.kund.se` →
+ *  `kund.se`), eller null för vanliga slugs. Sandboxen LÄSER kundens config +
+ *  inventory när sajten är konfigurerad — annars visar förhandsgranskningen av
+ *  en fullt konfigurerad kund noll adaptationer (levande fynd: glutenforum i
+ *  sandboxen deklinerade allt med no_goal_configured fast sajten har mål och
+ *  skördat inventory). Skrivvägarna påverkas inte: event-loggen är avstängd
+ *  för sandbox-slugs och skörd skrivs under sandbox-slugen. */
+export const sandboxRealSlug = (slug: string): string | null =>
+  isSandboxSlug(slug) ? slug.slice("sandbox--".length).replace(/^www\./, "") || null : null;
+
 /**
  * Persist a batch of analytics events. Returns the number stored, or 0 if the
  * store is unavailable. Never throws.
@@ -321,29 +331,45 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
  */
 export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("angel_sites")
-      .select(
-        "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled",
-      )
-      .eq("slug", slug)
-      .maybeSingle();
-    if (error || !data) return DEFAULT_SITE_CONFIG;
-    const pct = typeof data.holdout_pct === "number" ? data.holdout_pct : 0;
-    return {
-      mode: data.consent_mode === "attested" ? "attested" : "anonymous",
-      holdoutPct: Math.max(0, Math.min(100, pct)),
-      conversionUrl: data.conversion_url ?? null,
-      conversionSelector: data.conversion_selector ?? null,
-      conversionText: data.conversion_text ?? null,
-      conversionKind: data.conversion_kind ?? null,
-      ingestKey: data.ingest_key ?? null,
-      layoutPatternsEnabled: data.layout_patterns_enabled === true,
-    };
+    // Sandbox-spegel av en KONFIGURERAD sajt: läs kundens config så förhands-
+    // granskningen visar det riktiga beteendet (mål → emphasize/badge/sticky,
+    // layout-opt-in). Mät-/nyckelsemantiken följer INTE med: previews kör
+    // anonymt, utan hold-out (adminen ska aldrig hamna i kontrollarmen av sin
+    // egen förhandsgranskning) och utan ingest-nyckelkrav (spegelsnippeten har
+    // ingen nyckel; sandbox-slugs skriver ändå inga events).
+    const real = sandboxRealSlug(slug);
+    if (real) {
+      const cfg = await fetchSiteConfigRow(real);
+      if (cfg) return { ...cfg, mode: "anonymous", holdoutPct: 0, ingestKey: null };
+    }
+    return (await fetchSiteConfigRow(slug)) ?? DEFAULT_SITE_CONFIG;
   } catch (err) {
     console.warn(`[angel] site-config read unavailable:`, err);
     return DEFAULT_SITE_CONFIG;
   }
+}
+
+/** One angel_sites row → SiteConfig, or null when the slug has no row. */
+async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
+  const { data, error } = await supabaseAdmin
+    .from("angel_sites")
+    .select(
+      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled",
+    )
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error || !data) return null;
+  const pct = typeof data.holdout_pct === "number" ? data.holdout_pct : 0;
+  return {
+    mode: data.consent_mode === "attested" ? "attested" : "anonymous",
+    holdoutPct: Math.max(0, Math.min(100, pct)),
+    conversionUrl: data.conversion_url ?? null,
+    conversionSelector: data.conversion_selector ?? null,
+    conversionText: data.conversion_text ?? null,
+    conversionKind: data.conversion_kind ?? null,
+    ingestKey: data.ingest_key ?? null,
+    layoutPatternsEnabled: data.layout_patterns_enabled === true,
+  };
 }
 
 /**

@@ -13,7 +13,7 @@
 import { hasGolden, loadGolden } from "@/lib/corpus-bundle";
 import { mapGoldenToInventory } from "./crawler-inventory";
 import { emptyInventory } from "./inventory";
-import { loadInventoryRows } from "./persistence.server";
+import { loadInventoryRows, sandboxRealSlug } from "./persistence.server";
 import type { ContentInventory } from "./types";
 
 function hasAnyItems(inventory: ContentInventory): boolean {
@@ -21,17 +21,29 @@ function hasAnyItems(inventory: ContentInventory): boolean {
 }
 
 export async function resolveInventory(site: string, path = "/"): Promise<ContentInventory> {
+  // 0. Sandbox-spegel av en redan skördad sajt: läs den RIKTIGA sajtens
+  // inventory så förhandsgranskningen adapterar som kundens sida gör (utan
+  // det deklinerar allt innehållsberoende med no_inventory_for_slot fast
+  // skörden finns). Skörd från spegeln skrivs fortsatt under sandbox-slugen —
+  // spegel-DOM får aldrig förorena kundens inventory.
+  const real = sandboxRealSlug(site);
+  if (real) {
+    const fromRealDb = await loadInventoryRows(real, path);
+    if (fromRealDb && hasAnyItems(fromRealDb)) return fromRealDb;
+  }
+
   // 1. Crawler-persisted inventory in the database, scoped to this page.
   const fromDb = await loadInventoryRows(site, path);
   if (fromDb && hasAnyItems(fromDb)) return fromDb;
 
   // 2. A real captured corpus snapshot bundled in the repo.
-  if (hasGolden(site)) {
+  for (const slug of real ? [real, site] : [site]) {
+    if (!hasGolden(slug)) continue;
     try {
-      const inv = mapGoldenToInventory(await loadGolden(site), site);
+      const inv = mapGoldenToInventory(await loadGolden(slug), site);
       if (hasAnyItems(inv)) return inv;
     } catch (err) {
-      console.warn(`[angel] corpus inventory for "${site}" unavailable:`, err);
+      console.warn(`[angel] corpus inventory for "${slug}" unavailable:`, err);
     }
   }
 

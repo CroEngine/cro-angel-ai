@@ -69,13 +69,16 @@ describe("decide — blueprint scenarios (v1: nivå 1–2 som standard)", () => 
   });
 
   it("Visitor 3: returning + pricing → continue; pris-flytten kräver opt-in men funkar då", () => {
+    // continue_where_left_off är en badge och badges ankras vid målet sedan
+    // granskningen (utan mål = ärlig decline) — scenariot behöver sajtens goal.
+    const goal = { selector: "#cta", text: "Start Free Trial" };
     const c = ctx({ isReturning: true, visitCount: 2, viewedPricing: true });
-    const narrow = decide("demo", c, demo);
+    const narrow = decide("demo", c, demo, {}, goal);
     expect(narrow.adaptations.map((a) => a.pattern)).toContain("continue_where_left_off");
     expect(narrow.adaptations.map((a) => a.pattern)).not.toContain("surface_pricing");
     // Opt-in (angel_sites.layout_patterns_enabled) återställer nivå 3 exakt
     // som förr — layouten är ett per-sajt-beslut, inte borttagen förmåga.
-    const optIn = decide("demo", c, demo, {}, undefined, { allowLayoutPatterns: true });
+    const optIn = decide("demo", c, demo, {}, goal, { allowLayoutPatterns: true });
     expect(optIn.adaptations.map((a) => a.pattern)).toContain("surface_pricing");
     expect(optIn.adaptations.map((a) => a.pattern)).toContain("continue_where_left_off");
   });
@@ -581,9 +584,13 @@ describe("decide — decline reasons (C3) and the micro-nudge floor (D3)", () =>
       goal,
     );
     expect(d.adaptations).toEqual([]);
-    const reasons = new Set((d.declined ?? []).map((x) => x.reason));
-    expect(reasons.has("conversion_page")).toBe(true); // goal patterns stepped aside
-    expect(reasons.has("no_inventory_for_slot")).toBe(true); // rest lacked content
+    // v1: konverteringssidan är fredad för ALLA mönster (checkout-ingrepp ur
+    // do-not-build-listan) — varje nominerat mönster avböjer med samma typade
+    // skäl, inte en blandning av innehållsskäl.
+    expect((d.declined ?? []).length).toBeGreaterThan(0);
+    for (const x of d.declined ?? []) {
+      expect(x.reason).toBe("conversion_page");
+    }
   });
 
   it("thin inventories decline with inventory reasons, not silence", () => {
@@ -599,20 +606,22 @@ describe("decide — decline reasons (C3) and the micro-nudge floor (D3)", () =>
     // content), so the injection budget can't mask the floor under test.
     // A -10 engagement nudge used to hit the priority>0 filter and silently
     // kill the priority-10 baseline site-wide; now it floors at 1 and fires.
+    // (Badges är målankrade sedan granskningen — utan mål avböjer de, så
+    // scenariot behöver sajtens goal.)
     const inv = emptyInventory("lowvol");
     inv.slots.microcopy = [
       { id: "mc-setup", slot: "microcopy", text: "2 minute setup", meta: { kind: "setup_time" } },
     ];
     const c = ctx();
-    const base = decide("lowvol", c, inv).adaptations.map((a) => a.pattern);
+    const base = decide("lowvol", c, inv, {}, goal).adaptations.map((a) => a.pattern);
     expect(base).toContain("show_2min_setup");
-    const nudged = decide("lowvol", c, inv, { show_2min_setup: -10 });
+    const nudged = decide("lowvol", c, inv, { show_2min_setup: -10 }, goal);
     expect(nudged.adaptations.map((a) => a.pattern)).toContain("show_2min_setup");
     expect(
       nudged.adaptations.find((a) => a.pattern === "show_2min_setup")!.priority,
     ).toBe(1);
     // Only a significant-conversion verdict may remove it.
-    const suppressed = decide("lowvol", c, inv, { show_2min_setup: PERF_SUPPRESS });
+    const suppressed = decide("lowvol", c, inv, { show_2min_setup: PERF_SUPPRESS }, goal);
     expect(suppressed.adaptations.map((a) => a.pattern)).not.toContain("show_2min_setup");
   });
 });
@@ -947,7 +956,7 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
     expect(onHome.adaptations.map((a) => a.pattern)).toContain("move_faq_up");
   });
 
-  it("W8-E1-regression: befintliga badges målankras när mål finns, demo-slot annars", () => {
+  it("W8-E1-regression: badges målankras när mål finns — utan mål ärlig decline", () => {
     const inv = emptyInventory("t");
     inv.slots.microcopy = [
       { id: "mc", slot: "microcopy", text: "No credit card required", meta: { kind: "no_credit_card" } },
@@ -960,8 +969,15 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
     expect(anchored?.target).toBe("#trial");
     expect(anchored?.anchorText).toBe("Prova gratis");
 
+    // Demo-slot-fallbacken är borta med /demo: utan mål finns inget ankare på
+    // en riktig sida — badgen no-op:ade tyst men loggades som exposure
+    // (mätförorening). Nu typad decline i stället.
     const noGoal = decide("t", ctx({ trafficSource: "google_ads" }), inv);
-    const fallback = noGoal.adaptations.find((a) => a.pattern === "show_no_credit_card");
-    expect(fallback?.target).toBe('[data-angel-slot="cta"]');
+    expect(noGoal.adaptations.map((a) => a.pattern)).not.toContain("show_no_credit_card");
+    expect(
+      (noGoal.declined ?? []).some(
+        (d) => d.pattern === "show_no_credit_card" && d.reason === "no_goal_configured",
+      ),
+    ).toBe(true);
   });
 });

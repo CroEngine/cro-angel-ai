@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import { labelTexts, labelInventoryCtas, LABEL_VERSION } from "../labeler.server";
-import { pickGoalCta, resolveRole, isAcquisition } from "../crawler-inventory";
+import { resolveRole, isAcquisition } from "../crawler-inventory";
 import type { ContentInventory } from "../types";
 
 const apiResponse = (labels: unknown) => ({
@@ -141,60 +141,3 @@ describe("resolveRole — precedence between rule verdicts and LLM labels", () =
   });
 });
 
-describe("pickGoalCta — LLM intents unlock any language", () => {
-  it("picks the German signup CTA via llmIntent, no word rules involved", () => {
-    const g = pickGoalCta({
-      site: "t",
-      slots: {
-        cta: [
-          {
-            id: "c0",
-            slot: "cta",
-            text: "Mehr erfahren",
-            selector: "#more",
-            meta: { role: "acquisition", llmRole: "nav", llmConfidence: "0.85" },
-          },
-          {
-            id: "c1",
-            slot: "cta",
-            text: "Konto erstellen",
-            selector: "#signup",
-            meta: {
-              role: "acquisition",
-              llmRole: "acquisition",
-              llmIntent: "signup",
-              llmConfidence: "0.92",
-            },
-          },
-        ],
-      },
-    });
-    expect(g?.selector).toBe("#signup");
-    expect(g?.text).toBe("Konto erstellen");
-  });
-
-  it("intent ranking stays ours: signup beats purchase regardless of order", () => {
-    const g = pickGoalCta({
-      site: "t",
-      slots: {
-        cta: [
-          {
-            id: "c0",
-            slot: "cta",
-            text: "Jetzt kaufen",
-            selector: "#buy",
-            meta: { llmIntent: "purchase", llmConfidence: "0.95" },
-          },
-          {
-            id: "c1",
-            slot: "cta",
-            text: "Konto erstellen",
-            selector: "#signup",
-            meta: { llmIntent: "signup", llmConfidence: "0.95" },
-          },
-        ],
-      },
-    });
-    expect(g?.selector).toBe("#signup");
-  });
-});

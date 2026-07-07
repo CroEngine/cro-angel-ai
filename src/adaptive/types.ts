@@ -84,7 +84,6 @@ export interface VisitorContext {
 export type InventorySlot =
   | "headline"
   | "hero"
-  | "feature"
   | "cta"
   | "testimonial"
   | "customer_logos"
@@ -287,6 +286,11 @@ export interface ClientSignals {
   /** Percentage (0–100) of visitors held out as control for measurement.
    *  Config-driven; 0 = off (default). */
   holdoutPct?: number;
+  /** True när holdoutPct kommer från tag-attributet data-holdout (den
+   *  EXPLICITA per-install-overriden, inkl. "0" som avstängning). Utan
+   *  markören är dashboard-värdet auktoritativt på servern — en config-
+   *  timeout i snippetet får inte bucketa om besökare mitt i mätningen. */
+  holdoutOverride?: boolean;
   /** Consent basis the snippet resolved (anonymous_default | gpc_dnt | tcf |
    *  cookiebot | site_signal | …). Stamped on the decision for auditability. */
   consent?: string;

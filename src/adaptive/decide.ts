@@ -315,9 +315,8 @@ function resolve(
     // inventory item. Emphasize is paint-only (no layout, no content), so the
     // "never invent content" rule is trivially satisfied.
     if (!goal?.selector) return "no_goal_configured";
-    // Page-aware: on a conversion page the visitor is already AT the goal —
-    // decorating it there is noise, not a nudge.
-    if (context.pageType === "conversion") return "conversion_page";
+    // (Konverterings-/auth-sidor grindas för ALLA mönster i decide-kedjan —
+    // resolve behöver inte längre egna conversion_page-vakter.)
     return {
       pattern: id,
       op: "emphasize",
@@ -336,8 +335,7 @@ function resolve(
   if (id === "sticky_goal_cta") {
     // Needs a labelled goal: the pill shows the goal's own text and clicks the
     // real element, so both navigation and conversion tracking stay the site's.
-    if (!goal?.text || (!goal.selector && !goal.text)) return "no_goal_configured";
-    if (context.pageType === "conversion") return "conversion_page";
+    if (!goal?.text) return "no_goal_configured";
     return {
       pattern: id,
       op: "inject_sticky",
@@ -355,7 +353,6 @@ function resolve(
     // motion (SECONDARY_TEXT) — månadsgivar-/callback-vägen ska vara sajtens
     // EGEN publicerade sådan, inte första bästa CTA.
     if (!goal?.selector && !goal?.text) return "no_goal_configured";
-    if (context.pageType === "conversion") return "conversion_page";
     const txtRx = SECONDARY_TEXT[id];
     // Granskningsfynd (våg 8): "skiljer sig från målet" måste gälla
     // DESTINATIONEN också, inte bara etiketten — annars injiceras målet
@@ -477,18 +474,18 @@ function resolve(
       if (!item?.text || (kind && item.meta?.kind !== kind)) return "no_microcopy";
       text = item.text;
     }
-    // W8-E1: målankrat target. Slot-konventionen '[data-angel-slot="cta"]'
-    // finns bara på instrumenterade demosidor — på crawlade sidor no-op:ade
-    // varje badge tyst men loggades som exposure (mätförorening). Med ett
-    // konfigurerat mål ankras badgen vid målet (selector + text-fallback,
-    // samma resolveNodes-mekanik som inject_sticky/inject_secondary); utan
-    // mål behålls slot-konventionen (demosidorna).
-    const anchored = Boolean(goal?.selector || goal?.text);
+    // W8-E1: målankrat target — badgen är per definition "rätt stödbevis
+    // INTILL MÅLET". Utan konfigurerat mål finns inget ankare: den gamla
+    // slot-konventionen '[data-angel-slot="cta"]' fanns bara på de numera
+    // borttagna demosidorna, så fallbacken var en garanterad tyst no-op som
+    // ändå loggades som exposure (mätförorening, granskningsfynd). Typad
+    // decline i stället.
+    if (!goal?.selector && !goal?.text) return "no_goal_configured";
     return {
       pattern: id,
       op: "inject_badge",
-      target: anchored ? goal?.selector ?? "" : '[data-angel-slot="cta"]',
-      ...(anchored && goal?.text ? { anchorText: goal.text } : {}),
+      target: goal.selector ?? "",
+      ...(goal.text ? { anchorText: goal.text } : {}),
       slot: "cta",
       value: text,
       reason: `Showing "${text}" (${pattern.label}).`,
@@ -613,6 +610,20 @@ export function decide(
     })
     .filter((e) => e.priority > 0)
     .map((e) => {
+      // v1-grind: på konverteringssidor (/kassa, /signup, /checkout …) står
+      // Angel HELT stilla. Tidigare gällde conversion_page bara måldekorations-
+      // opsen (emphasize/sticky/secondary) — badges, set_text och (med opt-in)
+      // flyttar kunde fortfarande landa på checkouten. Det är "formulär-/
+      // checkout-ingrepp" ur do-not-build-listan oavsett op: besökaren är
+      // redan vid målet, och förtroendenivån för att röra den ytan har vi
+      // inte. Auth-sidor grindas däremot INTE blankt (A3, medvetet beslut):
+      // den felklickade besökaren på /login behöver vägen tillbaka till målet
+      // — flyttarna utesluts där via avoidPageTypes. Typad decline per
+      // mönster så pre-flight förklarar frånvaron.
+      if (context.pageType === "conversion") {
+        declined.push({ pattern: e.id, reason: "conversion_page" });
+        return null;
+      }
       // Goal-kind eligibility (target architecture step 4): drop patterns the
       // site's CONFIRMED goal kind excludes BEFORE resolving them, so a
       // SaaS-flavored pattern never fires on a donate/purchase site even when

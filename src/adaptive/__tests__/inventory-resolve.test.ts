@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import { resolveInventory } from "../inventory.server";
+import { isSandboxSlug, sandboxRealSlug } from "../persistence.server";
 
 // End-to-end resolution: with no service-role key configured in the test env,
 // the DB step fails gracefully and resolution falls through to the corpus
@@ -25,5 +26,25 @@ describe("resolveInventory", () => {
     const inv = await resolveInventory("totally-unknown-site");
     expect(inv.site).toBe("totally-unknown-site");
     expect(Object.keys(inv.slots).length).toBe(0);
+  });
+
+  it("sandbox-spegel av corpus-sajt läser den riktiga sajtens innehåll", async () => {
+    // Läs-genomslaget (config + inventory) är poängen med sandbox-fixen: en
+    // spegel av en känd sajt ska adaptera som sajten gör. DB-steget faller
+    // igenom i testmiljön; corpus-steget bevisar mappningen sandbox--X → X.
+    const inv = await resolveInventory("sandbox--hubspot");
+    expect(inv.site).toBe("sandbox--hubspot");
+    expect((inv.slots.cta ?? []).length).toBeGreaterThan(0);
+  });
+});
+
+describe("sandboxRealSlug", () => {
+  it("mappar sandbox-slugs till riktiga slugs (www strippas), annars null", () => {
+    expect(sandboxRealSlug("sandbox--glutenforum.se")).toBe("glutenforum.se");
+    expect(sandboxRealSlug("sandbox--www.compricer.se")).toBe("compricer.se");
+    expect(sandboxRealSlug("glutenforum.se")).toBeNull();
+    expect(sandboxRealSlug("sandbox--")).toBeNull();
+    expect(isSandboxSlug("sandbox--x")).toBe(true);
+    expect(isSandboxSlug("x")).toBe(false);
   });
 });

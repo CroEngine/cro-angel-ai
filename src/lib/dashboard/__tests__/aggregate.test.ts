@@ -517,10 +517,38 @@ describe("proofSummary — v1-beviset (adapterad vs hold-out)", () => {
     expect(p.holdoutActive).toBe(true);
     expect(p.adapted).toMatchObject({ visitors: 1, ctaClicks: 1, conversions: 1, returns: 1 });
     expect(p.control).toMatchObject({ visitors: 1, ctaClicks: 0, conversions: 0, returns: 0 });
-    // Bayesiansk avläsning: adapterad arm sannolikt bättre (> 0.5), men EN
-    // besökare per arm ska inte ge visshet (< 0.95).
-    expect(p.pWin).toBeGreaterThan(0.5);
-    expect(p.pWin).toBeLessThan(0.95);
+    // Evidensgrinden: EN besökare per arm är långt under tröskeln — pWin ska
+    // vara null ("för tidigt att säga"), inte en prior-driven procentsiffra.
+    expect(p.pWin).toBeNull();
+  });
+
+  it("assist-klick (Angels genvägar) räknas separat och aldrig in i pWin-underlaget", () => {
+    const events: DashEvent[] = [
+      ev("adaptation_shown", {}, { visitorHash: "a", createdAt: T0 }),
+      ev("cta_click", { path: "assist" }, { visitorHash: "a", createdAt: plus(0.1) }),
+      ev("adaptation_shown", {}, { visitorHash: "b", createdAt: T0 }),
+      ev("cta_click", { path: "goal" }, { visitorHash: "b", createdAt: plus(0.1) }),
+      // Saknad path (äldre event) räknas som mål-klick.
+      ev("adaptation_shown", {}, { visitorHash: "c", createdAt: T0 }),
+      ev("cta_click", {}, { visitorHash: "c", createdAt: plus(0.1) }),
+      ev("adaptation_withheld", {}, { visitorHash: "k", createdAt: T0 }),
+    ];
+    const p = proofSummary(events)!;
+    expect(p.adapted).toMatchObject({ visitors: 3, ctaClicks: 2, assistClicks: 1 });
+    expect(p.control).toMatchObject({ visitors: 1, ctaClicks: 0, assistClicks: 0 });
+  });
+
+  it("noll klick i olikstora armar ger pWin=null — inte en prior-lögn (~19 %)", () => {
+    // 88/12-splitten med noll klick var det verifierade felläget: Beta(1,1)-
+    // posteriorerna gav ~0.19 ur ren prior. Grinden ska stoppa avläsningen.
+    const many: DashEvent[] = [];
+    for (let i = 0; i < 88; i++)
+      many.push(ev("adaptation_shown", {}, { visitorHash: `a${i}`, createdAt: T0 }));
+    for (let i = 0; i < 12; i++)
+      many.push(ev("adaptation_withheld", {}, { visitorHash: `c${i}`, createdAt: T0 }));
+    const p = proofSummary(many)!;
+    expect(p.holdoutActive).toBe(true);
+    expect(p.pWin).toBeNull();
   });
 
   it("utan hold-out: holdoutActive=false och pWin=null — aldrig låtsas-bevis", () => {
