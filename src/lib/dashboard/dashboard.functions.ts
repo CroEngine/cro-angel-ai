@@ -111,7 +111,6 @@ export interface DashboardResponse {
 // Seeded baseline — shown in the site picker when the DB can't be reached
 // (e.g. local dev without a service-role key).
 const FALLBACK_SITES: SiteRef[] = [
-  { slug: "demo", name: "Demo", domain: null },
   { slug: "hubspot", name: "HubSpot", domain: "hubspot.com" },
 ];
 
@@ -121,7 +120,7 @@ export const getDashboard = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      site: z.string().min(1).default("demo"),
+      site: z.string().min(1).default(FALLBACK_SITES[0].slug),
       /** Browser tz offset (Date#getTimezoneOffset) so time buckets read as the
        *  owner's local wall-clock, not UTC. */
       tzOffsetMinutes: z.number().int().min(-840).max(840).optional(),

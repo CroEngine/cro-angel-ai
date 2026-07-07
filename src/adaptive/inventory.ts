@@ -88,7 +88,9 @@ export function emptyInventory(site: string): ContentInventory {
   return { site, slots: {} };
 }
 
-/** The hand-authored inventory for the bundled demo page. */
+/** The hand-authored REFERENCE inventory. /demo är borttagen (sandboxen är
+ *  den enda visuella verifieringsytan) — detta är numera enbart testernas
+ *  rika fixture (decide.test.ts m.fl.); ingen runtime-väg serverar den. */
 export function getDemoInventory(): ContentInventory {
   return DEMO_INVENTORY;
 }

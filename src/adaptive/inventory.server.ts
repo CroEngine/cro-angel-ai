@@ -12,7 +12,7 @@
 
 import { hasGolden, loadGolden } from "@/lib/corpus-bundle";
 import { mapGoldenToInventory } from "./crawler-inventory";
-import { emptyInventory, getDemoInventory } from "./inventory";
+import { emptyInventory } from "./inventory";
 import { loadInventoryRows } from "./persistence.server";
 import type { ContentInventory } from "./types";
 
@@ -35,7 +35,8 @@ export async function resolveInventory(site: string, path = "/"): Promise<Conten
     }
   }
 
-  // 3 & 4. Demo fixture, else empty.
-  if (site === "demo") return getDemoInventory();
+  // 3. Ingen skörd, ingen corpus → tomt inventory (decide declinar ärligt).
+  // Demo-fixturen serveras inte längre här — /demo är borttagen och
+  // getDemoInventory lever kvar enbart som testernas referens-fixture.
   return emptyInventory(site);
 }

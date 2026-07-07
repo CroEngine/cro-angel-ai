@@ -4,7 +4,8 @@ import { resolveInventory } from "../inventory.server";
 
 // End-to-end resolution: with no service-role key configured in the test env,
 // the DB step fails gracefully and resolution falls through to the corpus
-// snapshot / demo fixture / empty inventory — exactly the production order.
+// snapshot / empty inventory — exactly the production order. (/demo och dess
+// server-fixture-specialfall är borttagna; sandboxen är verifieringsytan.)
 
 describe("resolveInventory", () => {
   it('returns real corpus-derived content for a captured site ("hubspot")', async () => {
@@ -14,10 +15,10 @@ describe("resolveInventory", () => {
     expect((inv.slots.headline ?? []).length).toBeGreaterThan(0);
   });
 
-  it("returns the demo fixture for the demo site", async () => {
+  it('the retired "demo" slug resolves like any unknown site — empty, never the fixture', async () => {
     const inv = await resolveInventory("demo");
     expect(inv.site).toBe("demo");
-    expect(inv.slots.cta?.some((c) => c.meta?.intent === "demo")).toBe(true);
+    expect(Object.keys(inv.slots).length).toBe(0);
   });
 
   it("returns an empty inventory for an unknown site (never invents)", async () => {
