@@ -245,8 +245,24 @@ const MICROCOPY_PATTERNS: { kind: string; rx: RegExp }[] = [
   },
   { kind: "continuity", rx: /continue where you left off|forts[äa]tt d[äa]r du (var|slutade)/i },
   {
+    // Enbart pengarna-tillbaka-/nöjdhetslöften. Avsluta-när-du-vill är en
+    // EGEN kind (nedan) — granskningsfynd våg 8: extractMicrocopy tar första
+    // träffen per kind, så en gemensam kind lät "30 dagar pengarna tillbaka"
+    // ockupera platsen och renderas under "avsluta när du vill"-etiketten.
     kind: "guarantee",
-    rx: /money[- ]back|cancel anytime|satisfaction guarantee|pengarna tillbaka|avsluta n[äa]r som helst|ingen bindningstid/i,
+    rx: /money[- ]back|satisfaction guarantee|pengarna tillbaka|n[öo]jd[- ]kund[- ]garanti/i,
+  },
+  {
+    // Våg 8/S6: no-lock-in-löftet. "avsluta när du vill" är nextorys faktiska
+    // publicerade fras; skeppade rx:en täckte bara "när som helst"-varianten.
+    kind: "cancel_anytime",
+    rx: /cancel anytime|avsluta n[äa]r (som helst|du vill)|ingen bindningstid|s[äa]g upp n[äa]r du vill/i,
+  },
+  {
+    // Våg 8/S3: publicerad betaltrygghet ("Säker betalning" — cdon:s
+    // secure_payment-trustsignal når microcopy-poolen via mapAuditToInventory).
+    kind: "payment_security",
+    rx: /s[äa]ker betaln|trygga? betaln|secure (payment|checkout)|s[äa]kra betalningar/i,
   },
 ];
 

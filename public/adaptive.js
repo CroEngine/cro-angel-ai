@@ -435,7 +435,6 @@
       return false;
     }
   }
-  var badgedAnchors = typeof WeakSet !== "undefined" ? new WeakSet() : null;
 
   var OPS = {
     reveal: function (a) {
@@ -652,37 +651,42 @@
     },
     inject_badge: function (a) {
       if (!a.value) return;
-      each(a, function (el) {
-        var anchor = el.parentElement || el;
-        // Never stack a second badge on the same anchor, and never insert next
-        // to the LCP element (a new sibling shifts it). The DOM check (not just
-        // the per-run set) keeps a hydration re-apply from duplicating a badge
-        // that survived.
-        if (touchesLcp(anchor)) return;
-        try {
-          if (anchor.querySelector('[data-angel-injected]')) return;
-        } catch (e) {}
-        if (badgedAnchors) {
-          if (badgedAnchors.has(anchor)) return;
-          badgedAnchors.add(anchor);
-        }
-        var badge = document.createElement("span");
-        badge.className = "angel-badge";
-        badge.setAttribute("data-angel-injected", "");
-        badge.textContent = a.value;
-        anchor.appendChild(badge);
-        record(function () {
-          if (badge.parentElement) badge.parentElement.removeChild(badge);
-        });
+      // EN badge per sida — samma singleton-semantik som inject_sticky/
+      // inject_secondary (nodes[0] + sidoguard). Tidigare applicerade each()
+      // på ALLA resolvade noder: med målankrade badges (W8-E1) vars
+      // anchorText text-matchar föll selector-missar tillbaka på byText, och
+      // en lista med 16 identiska "Boka"-radknappar fick 16 badges
+      // (granskningsfynd, våg 8). Beslutets injektionsbudget är en badge —
+      // DOM-appliceringen ska vara det också.
+      if (document.querySelector(".angel-badge")) return; // one per page
+      var nodes = resolveNodes({ target: a.target, anchorText: a.anchorText });
+      var el = null;
+      for (var i = 0; i < nodes.length; i++) {
+        if (!isNoTouch(nodes[i])) { el = nodes[i]; break; }
+      }
+      if (!el) return;
+      var anchor = el.parentElement || el;
+      // Never stack a second badge on the same anchor, and never insert next
+      // to the LCP element (a new sibling shifts it). The DOM check keeps a
+      // hydration re-apply from duplicating a badge that survived.
+      if (touchesLcp(anchor)) return;
+      try {
+        if (anchor.querySelector('[data-angel-injected]')) return;
+      } catch (e) {}
+      var badge = document.createElement("span");
+      badge.className = "angel-badge";
+      badge.setAttribute("data-angel-injected", "");
+      badge.textContent = a.value;
+      anchor.appendChild(badge);
+      touchedEls.push({ el: el, pattern: a.pattern });
+      record(function () {
+        if (badge.parentElement) badge.parentElement.removeChild(badge);
       });
     },
   };
 
   function apply(decision) {
     ensureStyles();
-    // Badge dedup is scoped to one apply() run, so an apply/reset/apply cycle
-    // (robustness harness) re-adds badges cleanly.
-    if (typeof WeakSet !== "undefined") badgedAnchors = new WeakSet();
     touchedEls = [];
     var applied = [];
     (decision.adaptations || []).forEach(function (a) {

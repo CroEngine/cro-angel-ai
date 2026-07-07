@@ -164,6 +164,72 @@ export const PATTERNS: Record<PatternId, Pattern> = {
     op: "inject_badge",
     slot: "microcopy",
   },
+  // ---- Våg 8: vertikal täckning för icke-SaaS-måltyper --------------------
+  // Design + domarpanel + testplaner: docs/wave8-pattern-spec.md. Varje
+  // mönster återexponerar ENBART sajtens publicerade innehåll och declinar
+  // med typad reason i stället för att no-op:a.
+  move_reviews_up: {
+    id: "move_reviews_up",
+    label: "Reviews earlier for first-time visitors",
+    description:
+      "Moves the site's own testimonial/review section up for first-time visitors — " +
+      "social proof before the decision, not after it (S1).",
+    op: "move_up",
+    slot: "testimonial",
+    appliesTo: ["booking", "purchase", "start_flow", "subscribe", "lead", "quote"],
+  },
+  show_rating_near_goal: {
+    id: "show_rating_near_goal",
+    label: "Published rating beside the goal",
+    description:
+      "Injects the site's own harvested review rating (e.g. \"4.8 · 2138 betyg\") as a badge " +
+      "beside the conversion goal on decision-heavy marketplaces (S2).",
+    op: "inject_badge",
+    // Textkälla = trust_badge-slotten (inte microcopy) — se BADGE_SLOT_ITEM i
+    // decide.ts: strikt trustType-predikat + sifferformskrav, aldrig cert-texter.
+    slot: "trust_badge",
+    appliesTo: ["booking", "start_flow"],
+  },
+  show_payment_security: {
+    id: "show_payment_security",
+    label: "Published payment-security copy near the goal",
+    description:
+      "Injects the site's own published payment-security phrase (\"Säker betalning\") beside " +
+      "the goal where paying is the conversion (S3).",
+    op: "inject_badge",
+    slot: "microcopy",
+    appliesTo: ["purchase", "subscribe", "booking", "donate"],
+  },
+  show_monthly_giving_option: {
+    id: "show_monthly_giving_option",
+    label: "Monthly-giving path beside the gift goal",
+    description:
+      "Surfaces the nonprofit's own recurring-giving CTA (\"Bli månadsgivare\", its real href) " +
+      "beside the one-off gift goal for cold first-time visitors (S4).",
+    op: "inject_secondary",
+    slot: "cta",
+    appliesTo: ["donate"],
+  },
+  show_callback_option: {
+    id: "show_callback_option",
+    label: "Callback path beside the goal",
+    description:
+      "Surfaces the site's own callback CTA (\"Vi ringer upp dig\", its real href) beside the " +
+      "goal on high-consideration lead/quote sites (S5).",
+    op: "inject_secondary",
+    slot: "cta",
+    appliesTo: ["lead", "quote", "contact"],
+  },
+  show_cancel_anytime: {
+    id: "show_cancel_anytime",
+    label: "Published cancel-anytime reassurance",
+    description:
+      "Injects the site's own published no-lock-in phrase (\"Avsluta när du vill\") beside the " +
+      "goal on subscription sites (S6). Signup deliberately excluded — nothing to cancel.",
+    op: "inject_badge",
+    slot: "microcopy",
+    appliesTo: ["subscribe", "trial"],
+  },
 };
 
 export function getPattern(id: PatternId): Pattern {
