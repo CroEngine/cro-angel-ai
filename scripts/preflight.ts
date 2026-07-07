@@ -22,7 +22,7 @@ import { join } from "node:path";
 
 import { createSession, closeSession } from "../src/lib/tests/browserbase.server";
 import { openPage, dismissConsent, waitForContent } from "../src/lib/tests/robustness/session.server";
-import { runRobustness, type Shot } from "../src/lib/tests/robustness/runner.server";
+import { runSnippetRobustness, type Shot } from "../src/lib/tests/robustness/runner.server";
 import { ALL_PERSONAS, type PersonaId } from "../src/lib/tests/robustness/personas";
 import type { SiteGoal } from "@/adaptive/decide";
 
@@ -70,7 +70,7 @@ try {
     await new Promise((r) => setTimeout(r, 1200));
 
     const shots: Shot[] = [];
-    const reports = await runRobustness(page, {
+    const reports = await runSnippetRobustness(page, {
       url,
       site,
       personas,
@@ -100,6 +100,7 @@ try {
       ].join("  ");
       console.log(line);
       for (const reason of r.reasons) console.log(`      · ${reason}`);
+      for (const d of r.declined ?? []) console.log(`      ø ${d.pattern}: ${d.reason}`);
       if (r.verdict === "fail") exitCode = 1;
     }
     console.log(`[preflight] shots + report.json -> ${outDir}/`);

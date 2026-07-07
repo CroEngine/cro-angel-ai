@@ -135,6 +135,10 @@ export interface RobustnessReport {
   verdict: Verdict;
   /** Human-readable issues, most severe first. Empty on a clean pass. */
   reasons: string[];
+  /** decide():s typade declines — VARFÖR nominerade mönster inte kördes
+   *  (page_type_mismatch, goal_kind_mismatch, no_inventory_for_slot, …).
+   *  Utan dem kan pre-flight-rapporten bara visa VAD som hände, inte varför. */
+  declined?: { pattern: string; reason: string }[];
   metrics: {
     decided: number;
     applied: number;
@@ -331,6 +335,7 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
     persona: o.persona,
     verdict,
     reasons,
+    ...(o.declined && o.declined.length > 0 ? { declined: o.declined } : {}),
     metrics: {
       decided: o.decidedCount,
       applied: o.appliedCount,
