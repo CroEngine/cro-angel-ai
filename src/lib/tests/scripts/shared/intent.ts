@@ -23,7 +23,12 @@
 //      NOT 'utility': for lead-gen businesses contact IS the goal, and the
 //      goal system already treats it that way (A1);
 //   5. the remaining wordlists in the order collect.ts always used;
-//   6. position fallback: an above-fold primary with no keyword evidence is
+//   6. same-page anchors (tabs/TOC) with no keyword evidence are in-page
+//      NAVIGATION — the position fallback must never promote them (a booking
+//      service page's "Bilder"/"Betyg"/"Om" tab strip is above-fold primary
+//      chrome, not conversion; verbs still win, so <a href="#bokning">Boka</a>
+//      classifies as the conversion it is);
+//   7. position fallback: an above-fold primary with no keyword evidence is
 //      most likely a conversion.
 //
 // Vocabulary provenance: corpus/vocab-harvest-2026-07-06.json (107-site
@@ -36,6 +41,7 @@ export function classifyIntentShared(
   isFormSubmit: boolean,
   aboveFold: boolean,
   formKind?: "" | "search" | "newsletter",
+  samePageAnchor?: boolean,
 ):
   | "conversion"
   | "contact"
@@ -96,6 +102,13 @@ export function classifyIntentShared(
   if (/(learn|read|explore|see how|how |why |about |läs|utforska|så funkar|mer info)/i.test(probe)) {
     return "information";
   }
+  // Same-page anchor with NO keyword evidence (nothing above matched): an
+  // in-page tab/TOC link — navigation, and deliberately BEFORE the position
+  // fallback so an above-fold tab strip ("Bilder"/"Betyg"/"Om") can't be
+  // promoted to conversion by placement alone. Callers compute the flag from
+  // the DOM: an <a> whose href resolves to location's origin+path+search with
+  // a fragment.
+  if (samePageAnchor) return "navigation";
   // Position-based fallback: above-fold primary CTA without keyword match →
   // likely conversion.
   if (category === "cta_primary" && aboveFold) return "conversion";

@@ -481,7 +481,11 @@ export function pickGoalCta(
 ): { selector: string; text: string } | null {
   // Support/login/legal/nav items can never be the conversion goal, no matter
   // how well their label happens to match a goal word in some language.
-  const ctas = (inventory.slots.cta ?? []).filter((c) => c.selector && c.text && isAcquisition(c));
+  // elementIntent "navigation" likaså: en in-page-flik ("Bilder"/"Betyg") är
+  // harvestad som CTA men är sidnavigering — aldrig ett konverteringsmål.
+  const ctas = (inventory.slots.cta ?? []).filter(
+    (c) => c.selector && c.text && isAcquisition(c) && c.meta?.elementIntent !== "navigation",
+  );
 
   // LLM-labelled pass first: works in ANY language ("Konto erstellen" carries
   // llmIntent=signup). The intent ranking stays deterministic and ours.
@@ -559,6 +563,19 @@ function normHost(h: string): string {
   return h.replace(/^www\./i, "").toLowerCase();
 }
 
+/** Same registrable domain — SUBDOMAINS are the same site, not an outbound
+ *  affiliate handoff. Breddfixturerna 2026-07-06 gav två felklassningar av
+ *  samma klass: insamling.unicef.se (unicef.se) och buy-guide.fortnox.se
+ *  (fortnox.se) → outbound i stället för start_flow. Heuristik: sista två
+ *  labels ("unicef.se"). Medvetet enkel — eTLD-fall som example.co.uk läser
+ *  "co.uk" och blir för generösa, men falsk-SAMMA kräver att båda hosts delar
+ *  eTLD-svansen, vilket i praktiken är samma organisations domäner; riktiga
+ *  affiliate-handoffs (partner.example → annan huvuddomän) fångas fortfarande. */
+function sameRegistrableDomain(a: string, b: string): boolean {
+  const tail = (h: string) => normHost(h).split(".").slice(-2).join(".");
+  return tail(a) === tail(b);
+}
+
 /** Resolve an href's host against the site domain; null when relative/unknown. */
 function hrefHost(href: string | undefined, siteDomain: string | null): string | null {
   if (!href) return null;
@@ -595,7 +612,15 @@ const KIND_TEXT: { kind: GoalKind; rx: RegExp }[] = [
   { kind: "trial", rx: /\b(prova|trial|get started|kom ig[åa]ng|start free|starta gratis)\b/i },
   // Nonprofit money actions: månadsgivare/swisha en gåva/skänk pengar/stöd oss
   // are the sector's standard donate CTAs (rodakorset, cancerfonden, unicef…).
-  { kind: "donate", rx: /\b(donate|donera|ge en g[åa]va|sk[äa]nk (en|pengar|aktie|din)|bidra|give now|(bli )?m[åa]nadsgivare|swisha (en |din )?g[åa]va|st[öo]d oss)\b/i },
+  // "ge en [katastrof|företags|minnes]gåva" — sammansatta gåvo-ord är sektorns
+  // standard (unicef katastrofgåva, rodakorset företagsgåva, MSF minnesgåva;
+  // breddfixturerna 2026-07-06). De tre bevisade sammansättningarna gäller
+  // också FRISTÅENDE ("Företagsgåva" som meny-CTA, unicef) — explicit vänster-
+  // boundary eftersom JS \b inte fungerar intill å/ä/ö. Bare "gåva" är
+  // medvetet OTÄCKT (e-handelns "Köp gåva" fångas av purchase-regeln före,
+  // men "Gåvokort"/"gåvor" ska inte bli donate). \b efter "gåva" landar på
+  // ASCII-'a' och funkar.
+  { kind: "donate", rx: /\b(donate|donera|ge en (?:[a-zåäö]+)?g[åa]va|sk[äa]nk (en|pengar|aktie|din)|bidra|give now|(bli )?m[åa]nadsgivare|swisha (en |din )?g[åa]va|st[öo]d oss)\b|(?:^|[^a-zåäö0-9])(?:katastrof|f[öo]retags|minnes)g[åa]va\b/i },
   // "räkna (på/ut)" = bank & insurance price calculators — the quote motion.
   // The på/ut tail is optional so the trailing \b lands after "räkna"'s ASCII
   // "a" (JS \b never matches next to å — see the signup note above).
@@ -608,7 +633,10 @@ const KIND_TEXT: { kind: GoalKind; rx: RegExp }[] = [
   // link ("Följ oss på Instagram") — "följ" is OUT of the subscribe rule.
   // "prenumerant" ("Bli prenumerant", news paywalls) is in.
   { kind: "subscribe", rx: /\b(prenumer(era|ant)|subscribe|newsletter|nyhetsbrev)\b/i },
-  { kind: "download", rx: /\b(ladda ne[dr]|download|h[äa]mta appen|get the app|install)\b/i },
+  // "App Store"/"Google Play"-knappar sitter ofta bakom tracker-domäner
+  // (tibber → onelink.me, bokadirekt → smart.link) som annars läses som
+  // outbound — textregeln körs FÖRE offdomän-fallbacken och vinner därför.
+  { kind: "download", rx: /\b(ladda ne[dr]|download|h[äa]mta appen|get the app|install|app ?store|google play)\b/i },
 ];
 
 const KIND_HREF: { kind: GoalKind; rx: RegExp }[] = [
@@ -648,8 +676,13 @@ export function classifyGoalKind(
 
   const host = hrefHost(h, siteDomain);
   const isAbsolute = /^https?:\/\//i.test(h);
+  // Subdomäner är samma sajt (insamling.unicef.se, buy-guide.fortnox.se) —
+  // registrerbar-domän-jämförelse, inte exakt host. Se sameRegistrableDomain.
   const offDomain =
-    isAbsolute && host !== null && siteDomain !== null && host !== normHost(siteDomain);
+    isAbsolute &&
+    host !== null &&
+    siteDomain !== null &&
+    !sameRegistrableDomain(host, siteDomain);
 
   for (const { kind, rx } of KIND_HREF) if (h && rx.test(h)) return kind;
   const t = (text ?? "").trim();
@@ -681,7 +714,12 @@ export function rankGoalCandidates(
   inventory: ContentInventory,
   siteDomain: string | null,
 ): GoalCandidate[] {
-  const ctas = (inventory.slots.cta ?? []).filter((c) => c.selector && c.text && isAcquisition(c));
+  // Navigation-intent (in-page-flikar, meny-poster) är aldrig målkandidater —
+  // samma spärr som pickGoalCta. Roll-filtret (isAcquisition) ser dem inte:
+  // en flik har acquisition-roll per text/href men navigations-INTENT.
+  const ctas = (inventory.slots.cta ?? []).filter(
+    (c) => c.selector && c.text && isAcquisition(c) && c.meta?.elementIntent !== "navigation",
+  );
   const scored = ctas.map((c, i) => ({
     c,
     i,

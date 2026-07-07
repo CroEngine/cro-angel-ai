@@ -66,6 +66,39 @@ describe("classifyIntentShared — A1: contact is real, conversion beats tel:", 
   });
 });
 
+describe("classifyIntentShared — same-page anchors (tabs/TOC) are navigation", () => {
+  const anchor = (text: string, opts: { category?: string; aboveFold?: boolean } = {}) =>
+    classifyIntentShared(
+      text,
+      "https://www.bokadirekt.se/places/citymassage-457#reviews",
+      "",
+      opts.category ?? "cta_primary",
+      false,
+      opts.aboveFold ?? true,
+      "",
+      /* samePageAnchor */ true,
+    );
+
+  it("an above-fold primary tab strip is NOT position-fallbacked to conversion", () => {
+    // bokadirekt-service: "Bilder"/"Personal"/"Betyg"/"Om"/"Visa tjänster"
+    // — absolute self-URL + fragment, no verbs, primary surface, above fold.
+    // Pre-fix these became conversion via the placement fallback and then
+    // top signup goal candidates.
+    for (const t of ["Bilder", "Personal", "Betyg", "Om", "Visa tjänster"]) {
+      expect(anchor(t), t).toBe("navigation");
+    }
+  });
+
+  it("a VERB on a same-page anchor still wins — #bokning-CTA:n är äkta", () => {
+    expect(anchor("Boka nu")).toBe("conversion");
+    expect(anchor("Kontakta oss")).toBe("contact");
+  });
+
+  it("without the flag the placement fallback is unchanged", () => {
+    expect(classify("Fortsätt", { category: "cta_primary", aboveFold: true })).toBe("conversion");
+  });
+});
+
 describe("B1 — inline parity: one classifier, two scripts", () => {
   const src = classifyIntentShared.toString();
 

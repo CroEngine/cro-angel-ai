@@ -65,17 +65,37 @@ const bundle = `${banner}
     if (!warmup) { extract(); return; }
     // Gentle sweep: scroll through the page to trigger IntersectionObserver /
     // lazy content, then restore the visitor's original position and extract.
+    //
+    // VIKTIGT: alla scroll är behavior:'instant'. På sajter med CSS
+    // scroll-behavior: smooth ANIMERAS ett vanligt scrollTo, och en fast
+    // timeout mäter då mitt i flykten — varje sticky-/fixed-element får
+    // docTop = rect.top + scrollY ≈ animationens läge och fel aboveFold.
+    // (Samma bugg-klass hittades och fixades i replay-harnessen 2026-07-06.)
+    // Extraktionen väntar dessutom in att scrollY faktiskt STÅR på y0 två
+    // ticks i rad (scroll-anchoring kan knuffa) i stället för en blind timer.
     try {
       var y0 = window.scrollY;
       var h = document.documentElement.scrollHeight;
       var steps = 6, i = 0;
       var iv = setInterval(function () {
         i++;
-        try { window.scrollTo(0, (h / steps) * i); } catch (e) {}
+        try { window.scrollTo({ top: (h / steps) * i, left: 0, behavior: 'instant' }); } catch (e) {}
         if (i >= steps) {
           clearInterval(iv);
-          try { window.scrollTo(0, y0); } catch (e) {}
-          setTimeout(extract, 250);
+          try { window.scrollTo({ top: y0, left: 0, behavior: 'instant' }); } catch (e) {}
+          var settled = 0, tries = 0;
+          var pin = setInterval(function () {
+            tries++;
+            var atRest = Math.abs(window.scrollY - y0) < 2;
+            if (atRest) { settled++; } else {
+              settled = 0;
+              try { window.scrollTo({ top: y0, left: 0, behavior: 'instant' }); } catch (e) {}
+            }
+            if (settled >= 2 || tries >= 20) {
+              clearInterval(pin);
+              extract();
+            }
+          }, 100);
         }
       }, 60);
     } catch (e) {

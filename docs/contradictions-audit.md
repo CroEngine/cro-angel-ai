@@ -21,7 +21,19 @@
 > the new archetypes exposed: relative font URLs in Blink's `cid:` stylesheet
 > parts never got embedded (nextory), and a repeated row-level action strip
 > ("Boka" ×16) lost to one-off chrome primaries in both CTA curation and the
-> goal floor (`stripAggregateBonus` in `crawler-inventory.ts`).
+> goal floor (`stripAggregateBonus` in `crawler-inventory.ts`); it also made
+> the replay substrate deterministic (visual settle + instant verified scroll
+> pin — smooth-scroll sites measured sticky headers mid-animation).
+> Wave 7: in-page tab anchors classify as navigation and are excluded from
+> goal candidates (the bokadirekt-service "Bilder"/"Betyg" finding — same
+> same-page-anchor rule in both inlined scripts AND the on-page harvest
+> snippet, whose warmup also got the instant+verified scroll pin); the dead
+> goal-blind `llmContext` module is deleted (a goal-relative replacement is
+> specced in Target architecture steps 2/5); and a 20-site breadth suite
+> (`goal-breadth.test.ts`, 120 real CTA labels) pins the taxonomy per site,
+> which surfaced and fixed three classifier gaps: subdomains are not
+> outbound, compound gåvo-words are donate, app-store badges behind tracker
+> domains are download.
 
 ## Root cause
 
