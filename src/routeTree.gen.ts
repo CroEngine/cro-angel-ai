@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SandboxRouteImport } from './routes/sandbox'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as DemoRouteImport } from './routes/demo'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as AgentRouteImport } from './routes/agent'
@@ -40,11 +39,6 @@ const SandboxRoute = SandboxRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoRoute = DemoRouteImport.update({
-  id: '/demo',
-  path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -120,7 +114,6 @@ export interface FileRoutesByFullPath {
   '/agent': typeof AgentRoute
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
-  '/demo': typeof DemoRoute
   '/login': typeof LoginRoute
   '/sandbox': typeof SandboxRoute
   '/signup': typeof SignupRoute
@@ -139,7 +132,6 @@ export interface FileRoutesByTo {
   '/agent': typeof AgentRoute
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
-  '/demo': typeof DemoRoute
   '/login': typeof LoginRoute
   '/sandbox': typeof SandboxRoute
   '/signup': typeof SignupRoute
@@ -159,7 +151,6 @@ export interface FileRoutesById {
   '/agent': typeof AgentRoute
   '/corpus': typeof CorpusRoute
   '/dashboard': typeof DashboardRoute
-  '/demo': typeof DemoRoute
   '/login': typeof LoginRoute
   '/sandbox': typeof SandboxRoute
   '/signup': typeof SignupRoute
@@ -180,7 +171,6 @@ export interface FileRouteTypes {
     | '/agent'
     | '/corpus'
     | '/dashboard'
-    | '/demo'
     | '/login'
     | '/sandbox'
     | '/signup'
@@ -199,7 +189,6 @@ export interface FileRouteTypes {
     | '/agent'
     | '/corpus'
     | '/dashboard'
-    | '/demo'
     | '/login'
     | '/sandbox'
     | '/signup'
@@ -218,7 +207,6 @@ export interface FileRouteTypes {
     | '/agent'
     | '/corpus'
     | '/dashboard'
-    | '/demo'
     | '/login'
     | '/sandbox'
     | '/signup'
@@ -238,7 +226,6 @@ export interface RootRouteChildren {
   AgentRoute: typeof AgentRoute
   CorpusRoute: typeof CorpusRoute
   DashboardRoute: typeof DashboardRoute
-  DemoRoute: typeof DemoRoute
   LoginRoute: typeof LoginRoute
   SandboxRoute: typeof SandboxRoute
   SignupRoute: typeof SignupRoute
@@ -274,13 +261,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo': {
-      id: '/demo'
-      path: '/demo'
-      fullPath: '/demo'
-      preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -382,7 +362,6 @@ const rootRouteChildren: RootRouteChildren = {
   AgentRoute: AgentRoute,
   CorpusRoute: CorpusRoute,
   DashboardRoute: DashboardRoute,
-  DemoRoute: DemoRoute,
   LoginRoute: LoginRoute,
   SandboxRoute: SandboxRoute,
   SignupRoute: SignupRoute,

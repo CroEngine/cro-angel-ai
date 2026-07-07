@@ -114,7 +114,7 @@ export const Route = createFileRoute("/dashboard")({
 
 function Dashboard() {
   const navigate = useNavigate();
-  const [site, setSite] = useState("demo");
+  const [site, setSite] = useState("hubspot");
   const { data, isFetching } = useQuery(dashboardQuery(site));
 
   async function signOut() {
@@ -122,8 +122,8 @@ function Dashboard() {
     navigate({ to: "/login" });
   }
 
-  // If the selected site isn't in the list (e.g. the seeded "demo" was cleaned
-  // up), fall over to the first real site so the picker never shows a ghost.
+  // If the selected site isn't in the list (the seed is just a fallback),
+  // fall over to the first real site so the picker never shows a ghost.
   const sites = data?.sites ?? [];
   useEffect(() => {
     if (sites.length > 0 && !sites.some((s) => s.slug === site)) {

@@ -66,9 +66,6 @@ function Nav() {
         <span className="text-xl leading-none text-emerald-700">✳</span> Angel
       </div>
       <nav className="flex items-center gap-2 text-sm">
-        <Link to="/demo" className="px-3 py-2 font-medium text-stone-600 hover:text-stone-900">
-          Demo
-        </Link>
         <Link to="/login" className="px-3 py-2 font-medium text-stone-600 hover:text-stone-900">
           Sign in
         </Link>
@@ -138,12 +135,6 @@ function Hero() {
             className="rounded-lg bg-emerald-700 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-emerald-600"
           >
             Start for free
-          </Link>
-          <Link
-            to="/demo"
-            className="rounded-lg border border-stone-300 bg-white px-6 py-3 text-[15px] font-semibold text-stone-700 transition hover:bg-stone-50"
-          >
-            See it work
           </Link>
         </div>
 

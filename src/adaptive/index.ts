@@ -15,7 +15,7 @@ export {
   classifyTrafficSource,
   type ServerSignals,
 } from "./context";
-export { getDemoInventory, emptyInventory, firstItem, pickItem } from "./inventory";
+export { emptyInventory, firstItem, pickItem } from "./inventory";
 export {
   mapAuditToInventory,
   mapGoldenToInventory,
