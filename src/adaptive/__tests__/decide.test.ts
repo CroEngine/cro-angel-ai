@@ -659,3 +659,152 @@ describe("decide — goal-conditioned pattern eligibility (target arch step 4)",
     }
   });
 });
+
+describe("decide — våg 8: vertikala mönster mot arketypformade inventorier", () => {
+  // Varje inventory speglar den frusna arketypens VERKLIGA innehåll
+  // (docs/wave8-pattern-spec.md testplaner) så enhetstesterna pinnar samma
+  // beteende som robustness-körningarna verifierar mot capturen.
+
+  it("S4 donate (cancerfonden): månadsgivar-CTA:n injiceras bredvid gåvomålet", () => {
+    const inv = emptyInventory("t");
+    inv.slots.cta = [
+      { id: "c1", slot: "cta", text: "Bli månadsgivare", selector: "#m",
+        meta: { href: "/stod-oss/bli-manadsgivare" } },
+      { id: "c2", slot: "cta", text: "Företag", selector: "#f", meta: { href: "/foretag" } },
+    ];
+    const d = decide("t", ctx(), inv, {}, { selector: "#gava", text: "Ge en gåva", kind: "donate" });
+    const monthly = d.adaptations.find((a) => a.pattern === "show_monthly_giving_option");
+    expect(monthly?.op).toBe("inject_secondary");
+    expect(monthly?.value).toBe("Bli månadsgivare");
+    expect(monthly?.href).toBe("/stod-oss/bli-manadsgivare");
+    expect(monthly?.target).toBe("#gava");
+    // Den specialiserade motionen (56) vinner injektionsbudgeten över den
+    // generiska show_secondary_cta (55).
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_secondary_cta");
+  });
+
+  it("S4 declinar utan publicerad månadsgivar-CTA — hittar aldrig på en", () => {
+    const inv = emptyInventory("t");
+    inv.slots.cta = [
+      { id: "c1", slot: "cta", text: "Swisha", selector: "#s", meta: { href: "/swish" } },
+    ];
+    const d = decide("t", ctx(), inv, {}, { selector: "#gava", text: "Ge en gåva", kind: "donate" });
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_monthly_giving_option");
+    expect((d.declined ?? []).some(
+      (x) => x.pattern === "show_monthly_giving_option" && x.reason === "no_secondary_alternative",
+    )).toBe(true);
+  });
+
+  it("S5 lead/quote (sector-alarm): callback-CTA:n injiceras bredvid prismålet", () => {
+    const inv = emptyInventory("t");
+    inv.slots.cta = [
+      { id: "c1", slot: "cta", text: "Låt oss kontakta dig!", selector: "#cb",
+        meta: { href: "/kontakta-oss" } },
+    ];
+    const d = decide("t", ctx(), inv, {}, { selector: "#pris", text: "Få pris på larm", kind: "quote" });
+    const cb = d.adaptations.find((a) => a.pattern === "show_callback_option");
+    expect(cb?.value).toBe("Låt oss kontakta dig!");
+    expect(cb?.href).toBe("/kontakta-oss");
+  });
+
+  it("S2 booking (bokadirekt-service): sajtens eget betyg blir badge vid målet", () => {
+    const inv = emptyInventory("t");
+    inv.slots.trust_badge = [
+      { id: "r1", slot: "trust_badge", text: "2138 betyg", selector: "#rating",
+        meta: { trustType: "review_rating" } },
+    ];
+    const d = decide("t", ctx(), inv, {}, { selector: "#boka", text: "Boka", kind: "booking" });
+    const badge = d.adaptations.find((a) => a.pattern === "show_rating_near_goal");
+    expect(badge?.op).toBe("inject_badge");
+    expect(badge?.value).toBe("2138 betyg");
+    // W8-E1: målankrad, inte demo-slot-konventionen.
+    expect(badge?.target).toBe("#boka");
+    expect(badge?.anchorText).toBe("Boka");
+  });
+
+  it("S2: en certifiering får ALDRIG rendera under betygsetiketten (predikat + form)", () => {
+    const inv = emptyInventory("t");
+    inv.slots.trust_badge = [
+      { id: "cert", slot: "trust_badge", text: "GDPR-certifierad", selector: "#c",
+        meta: { trustType: "certification" } },
+    ];
+    const d = decide("t", ctx(), inv, {}, { selector: "#boka", text: "Boka", kind: "booking" });
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_rating_near_goal");
+    expect((d.declined ?? []).some(
+      (x) => x.pattern === "show_rating_near_goal" && x.reason === "no_inventory_for_slot",
+    )).toBe(true);
+  });
+
+  it("S3 purchase (cdon): publicerad betaltrygghet blir badge; declinar ärligt utan", () => {
+    const inv = emptyInventory("t");
+    inv.slots.microcopy = [
+      { id: "ps", slot: "microcopy", text: "Säker betalning", meta: { kind: "payment_security" } },
+    ];
+    const d = decide("t", ctx(), inv, {}, { selector: "#kop", text: "Köp nu", kind: "purchase" });
+    const badge = d.adaptations.find((a) => a.pattern === "show_payment_security");
+    expect(badge?.value).toBe("Säker betalning");
+    expect(badge?.target).toBe("#kop");
+
+    const bare = decide("t", ctx(), emptyInventory("t"), {}, { selector: "#kop", text: "Köp nu", kind: "purchase" });
+    expect((bare.declined ?? []).some(
+      (x) => x.pattern === "show_payment_security" && x.reason === "no_microcopy",
+    )).toBe(true);
+  });
+
+  it("S3/S6 gate:as på fel måltyp (signup/lead får ingen betal-/avsluta-badge)", () => {
+    const inv = emptyInventory("t");
+    inv.slots.microcopy = [
+      { id: "ps", slot: "microcopy", text: "Säker betalning", meta: { kind: "payment_security" } },
+      { id: "g", slot: "microcopy", text: "Avsluta när du vill", meta: { kind: "guarantee" } },
+    ];
+    const d = decide("t", ctx(), inv, {}, { selector: "#s", text: "Skapa konto", kind: "signup" });
+    const declinedKinds = (d.declined ?? []).filter((x) => x.reason === "goal_kind_mismatch");
+    expect(declinedKinds.map((x) => x.pattern)).toContain("show_payment_security");
+    expect(declinedKinds.map((x) => x.pattern)).toContain("show_cancel_anytime");
+  });
+
+  it("S6 subscribe (nextory): 'Avsluta när du vill' blir badge när betaltrygghet saknas", () => {
+    const inv = emptyInventory("t");
+    inv.slots.microcopy = [
+      { id: "g", slot: "microcopy", text: "Avsluta när du vill", meta: { kind: "guarantee" } },
+    ];
+    const d = decide("t", ctx(), inv, {}, { selector: "#prova", text: "Prova gratis nu", kind: "subscribe" });
+    const badge = d.adaptations.find((a) => a.pattern === "show_cancel_anytime");
+    expect(badge?.value).toBe("Avsluta när du vill");
+    expect(badge?.target).toBe("#prova");
+  });
+
+  it("S1 (alla köptunga vertikaler): recensionssektionen flyttas upp för förstagångare", () => {
+    const inv = emptyInventory("t");
+    inv.slots.testimonial = [
+      { id: "t1", slot: "testimonial", selector: "#reviews", text: "Omdömen" },
+    ];
+    const d = decide("t", ctx(), inv, {}, { selector: "#kop", text: "Köp nu", kind: "purchase" });
+    const mv = d.adaptations.find((a) => a.pattern === "move_reviews_up");
+    expect(mv?.op).toBe("move_up");
+    expect(mv?.target).toBe("#reviews");
+    // ...men inte för en donate-sajt (gåvan har ingen produktrecension-motion).
+    const donate = decide("t", ctx(), inv, {}, { selector: "#g", text: "Ge en gåva", kind: "donate" });
+    expect((donate.declined ?? []).some(
+      (x) => x.pattern === "move_reviews_up" && x.reason === "goal_kind_mismatch",
+    )).toBe(true);
+  });
+
+  it("W8-E1-regression: befintliga badges målankras när mål finns, demo-slot annars", () => {
+    const inv = emptyInventory("t");
+    inv.slots.microcopy = [
+      { id: "mc", slot: "microcopy", text: "No credit card required", meta: { kind: "no_credit_card" } },
+    ];
+    const withGoal = decide(
+      "t", ctx({ trafficSource: "google_ads" }), inv, {},
+      { selector: "#trial", text: "Prova gratis", kind: "trial" },
+    );
+    const anchored = withGoal.adaptations.find((a) => a.pattern === "show_no_credit_card");
+    expect(anchored?.target).toBe("#trial");
+    expect(anchored?.anchorText).toBe("Prova gratis");
+
+    const noGoal = decide("t", ctx({ trafficSource: "google_ads" }), inv);
+    const fallback = noGoal.adaptations.find((a) => a.pattern === "show_no_credit_card");
+    expect(fallback?.target).toBe('[data-angel-slot="cta"]');
+  });
+});

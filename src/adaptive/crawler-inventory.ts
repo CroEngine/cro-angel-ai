@@ -246,7 +246,15 @@ const MICROCOPY_PATTERNS: { kind: string; rx: RegExp }[] = [
   { kind: "continuity", rx: /continue where you left off|forts[äa]tt d[äa]r du (var|slutade)/i },
   {
     kind: "guarantee",
-    rx: /money[- ]back|cancel anytime|satisfaction guarantee|pengarna tillbaka|avsluta n[äa]r som helst|ingen bindningstid/i,
+    // "avsluta när du vill" — nextorys faktiska publicerade fras (våg 8/S6);
+    // den skeppade rx:en täckte bara "när som helst"-varianten.
+    rx: /money[- ]back|cancel anytime|satisfaction guarantee|pengarna tillbaka|avsluta n[äa]r (som helst|du vill)|ingen bindningstid/i,
+  },
+  {
+    // Våg 8/S3: publicerad betaltrygghet ("Säker betalning" — cdon:s
+    // secure_payment-trustsignal når microcopy-poolen via mapAuditToInventory).
+    kind: "payment_security",
+    rx: /s[äa]ker betaln|trygga? betaln|secure (payment|checkout)|s[äa]kra betalningar/i,
   },
 ];
 

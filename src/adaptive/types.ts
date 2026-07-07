@@ -210,7 +210,14 @@ export type PatternId =
   | "show_no_credit_card"
   | "show_2min_setup"
   | "surface_pricing"
-  | "continue_where_left_off";
+  | "continue_where_left_off"
+  // Våg 8 — vertikal täckning för icke-SaaS-måltyper (docs/wave8-pattern-spec.md):
+  | "move_reviews_up"
+  | "show_rating_near_goal"
+  | "show_payment_security"
+  | "show_monthly_giving_option"
+  | "show_callback_option"
+  | "show_cancel_anytime";
 
 /** A catalog entry describing one safe transformation. */
 export interface Pattern {

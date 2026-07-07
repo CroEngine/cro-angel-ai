@@ -48,6 +48,19 @@ describe("extractMicrocopy", () => {
       "No credit card required",
     );
   });
+
+  it("våg 8: betaltrygghet + nextorys 'avsluta när du vill'-variant", () => {
+    // "Säker betalning" är cdon:s secure_payment-trustsignal ordagrant —
+    // trust-texter når microcopy-poolen via mapAuditToInventory, så frasen
+    // materialiseras vid replay av den frusna capturen (S3-testplanen).
+    const items = extractMicrocopy([
+      "Säker betalning",
+      "Avsluta när du vill", // nextorys fras — gamla rx:en täckte bara "när som helst"
+    ]);
+    const byKind = Object.fromEntries(items.map((i) => [i.meta?.kind, i.text]));
+    expect(byKind.payment_security).toBe("Säker betalning");
+    expect(byKind.guarantee).toBe("Avsluta när du vill");
+  });
 });
 
 describe("curation — drop page chrome, keep real CTAs", () => {

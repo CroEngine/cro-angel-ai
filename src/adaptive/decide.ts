@@ -141,6 +141,47 @@ const RULES: Rule[] = [
     when: () => true,
     patterns: ["show_2min_setup"],
   },
+  // ---- Våg 8 (docs/wave8-pattern-spec.md) — prioriteter är avsiktligt
+  // kalibrerade mot befintliga regler: payment_trust (64) under goal_focus
+  // (65); decision_point_proof (62) under mobile_sticky_goal (72) så stickyn
+  // vinner injektionsbudgeten på mobil; donate/callback-vägarna (56) slår
+  // generiska cold_soft_path (55) så den specialiserade motionen vinner.
+  {
+    id: "first_time_social_proof",
+    priority: 58,
+    when: (c) => !c.isReturning,
+    patterns: ["move_reviews_up"],
+  },
+  {
+    id: "decision_point_proof",
+    priority: 62,
+    when: (c) => !c.isReturning,
+    patterns: ["show_rating_near_goal"],
+  },
+  {
+    id: "payment_trust",
+    priority: 64,
+    when: (c) => !c.isReturning || c.trafficSource === "google_ads",
+    patterns: ["show_payment_security"],
+  },
+  {
+    id: "donate_recurring_path",
+    priority: 56,
+    when: (c) => !c.isReturning && c.visitCount === 0,
+    patterns: ["show_monthly_giving_option"],
+  },
+  {
+    id: "high_consideration_channel",
+    priority: 56,
+    when: (c) => !c.isReturning && c.visitCount === 0,
+    patterns: ["show_callback_option"],
+  },
+  {
+    id: "subscription_risk_reversal",
+    priority: 60,
+    when: (c) => !c.isReturning || c.trafficSource === "google_ads",
+    patterns: ["show_cancel_anytime"],
+  },
 ];
 
 /**
@@ -186,6 +227,35 @@ const MICROCOPY_KIND: Partial<Record<PatternId, string>> = {
   show_no_credit_card: "no_credit_card",
   show_2min_setup: "setup_time",
   continue_where_left_off: "continuity",
+  // Våg 8 (S3, S6): båda konsumerar ENBART sajtens publicerade fraser —
+  // payment_security är en ny extraherad kind; guarantee fanns i skörden men
+  // konsumerades aldrig av något inject-mönster.
+  show_payment_security: "payment_security",
+  show_cancel_anytime: "guarantee",
+};
+
+/** Våg 8 (W8-E1): badge-mönster vars TEXTKÄLLA är en annan slot än microcopy
+ *  (Pattern.slot). Predikatet är per mönster och STRIKT — S2-lärdomen från
+ *  show_enterprise_testimonial: utan typ-predikat kan en GDPR-cert dyka upp
+ *  under en betygsetikett. Formkravet på texten är andra försvarslinjen. */
+const BADGE_SLOT_ITEM: Partial<
+  Record<PatternId, (i: { text?: string; selector?: string; meta?: Record<string, string> }) => boolean>
+> = {
+  show_rating_near_goal: (i) =>
+    Boolean(i.text) &&
+    Boolean(i.selector) &&
+    ["review_rating", "stars", "stars_aggregate"].includes(i.meta?.trustType ?? "") &&
+    /^\d[\d\s.,·]*\s*(betyg|omd[öo]men|reviews?|av 5)/i.test((i.text ?? "").trim()),
+};
+
+/** Våg 8 (W8-E2): inject_secondary-mönster med KRAV på att alternativets text
+ *  matchar mönstrets motion — generiska show_secondary_cta har inget filter.
+ *  Vokabulären är samma som mål-taxonomins (donate-recurring, lead-callback);
+ *  matchar ingen publicerad CTA → no_secondary_alternative, aldrig påhitt. */
+const SECONDARY_TEXT: Partial<Record<PatternId, RegExp>> = {
+  show_monthly_giving_option: /(bli )?m[åa]nadsgivare|monthly (donor|giving)/i,
+  show_callback_option:
+    /vi ringer upp|ring mig|bli uppringd|boka (ett )?samtal|kontakta (mig|dig|oss)|request a call(back)?/i,
 };
 
 /** The owner's declared conversion goal (Measurement card), if configured. */
@@ -256,9 +326,14 @@ function resolve(
     };
   }
 
-  if (id === "show_secondary_cta") {
+  if (pattern.op === "inject_secondary") {
+    // show_secondary_cta (ofiltrerad) + våg 8:s specialiserade varianter
+    // (W8-E2): samma guards ordagrant, plus ett textkrav när mönstret bär en
+    // motion (SECONDARY_TEXT) — månadsgivar-/callback-vägen ska vara sajtens
+    // EGEN publicerade sådan, inte första bästa CTA.
     if (!goal?.selector && !goal?.text) return "no_goal_configured";
     if (context.pageType === "conversion") return "conversion_page";
+    const txtRx = SECONDARY_TEXT[id];
     // A published, lower-commitment alternative: an acquisition CTA with its
     // own destination whose label differs from the goal. pickItem falls back
     // to the first item when the match misses, so re-guard after.
@@ -270,14 +345,16 @@ function resolve(
         Boolean(i.text) &&
         Boolean(i.meta?.href) &&
         i.text !== goal.text &&
-        !/^javascript:/i.test(i.meta?.href ?? ""),
+        !/^javascript:/i.test(i.meta?.href ?? "") &&
+        (!txtRx || txtRx.test(i.text ?? "")),
     );
     if (
       !alt?.text ||
       !alt.meta?.href ||
       alt.text === goal.text ||
       !isAcquisition(alt) ||
-      /^javascript:/i.test(alt.meta.href)
+      /^javascript:/i.test(alt.meta.href) ||
+      (txtRx && !txtRx.test(alt.text))
     ) {
       return "no_secondary_alternative";
     }
@@ -341,20 +418,43 @@ function resolve(
   }
 
   if (pattern.op === "inject_badge") {
-    const kind = MICROCOPY_KIND[id];
-    const item = pickItem(inventory, "microcopy", kind ? (i) => i.meta?.kind === kind : undefined);
-    // STRICT kind match — pickItem's first-item fallback would otherwise
-    // inject some OTHER published reassurance under this pattern's name
-    // ("No credit card required" badge showing the setup-time copy). Same
-    // no-arbitrary-fallback rule as clarify_cta's intent match.
-    if (!item?.text || (kind && item.meta?.kind !== kind)) return "no_microcopy";
+    // Textkälla: microcopy som default; ett badge-mönster med annan slot
+    // (S2: trust_badge) hämtar texten därifrån via sitt strikta
+    // BADGE_SLOT_ITEM-predikat.
+    let text: string | undefined;
+    if (pattern.slot !== "microcopy") {
+      const pred = BADGE_SLOT_ITEM[id];
+      const src = pickItem(inventory, pattern.slot, pred);
+      // Re-guard mot pickItems first-item-fallback — samma disciplin som
+      // microcopy-vägen: fel typ av trust-signal får ALDRIG rendera under
+      // det här mönstrets etikett.
+      if (!src?.text || (pred && !pred(src))) return "no_inventory_for_slot";
+      text = src.text;
+    } else {
+      const kind = MICROCOPY_KIND[id];
+      const item = pickItem(inventory, "microcopy", kind ? (i) => i.meta?.kind === kind : undefined);
+      // STRICT kind match — pickItem's first-item fallback would otherwise
+      // inject some OTHER published reassurance under this pattern's name
+      // ("No credit card required" badge showing the setup-time copy). Same
+      // no-arbitrary-fallback rule as clarify_cta's intent match.
+      if (!item?.text || (kind && item.meta?.kind !== kind)) return "no_microcopy";
+      text = item.text;
+    }
+    // W8-E1: målankrat target. Slot-konventionen '[data-angel-slot="cta"]'
+    // finns bara på instrumenterade demosidor — på crawlade sidor no-op:ade
+    // varje badge tyst men loggades som exposure (mätförorening). Med ett
+    // konfigurerat mål ankras badgen vid målet (selector + text-fallback,
+    // samma resolveNodes-mekanik som inject_sticky/inject_secondary); utan
+    // mål behålls slot-konventionen (demosidorna).
+    const anchored = Boolean(goal?.selector || goal?.text);
     return {
       pattern: id,
       op: "inject_badge",
-      target: '[data-angel-slot="cta"]',
+      target: anchored ? goal?.selector ?? "" : '[data-angel-slot="cta"]',
+      ...(anchored && goal?.text ? { anchorText: goal.text } : {}),
       slot: "cta",
-      value: item.text,
-      reason: `Showing "${item.text}" (${pattern.label}).`,
+      value: text,
+      reason: `Showing "${text}" (${pattern.label}).`,
       priority,
     };
   }
