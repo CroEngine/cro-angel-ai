@@ -248,6 +248,10 @@
 
   // ---- conversions ---------------------------------------------------------
   var lastDecisionId = null;
+  // Skörde-spärrens tillstånd: satt av decide-flödet. adaptedThisLoad=true →
+  // laddningen får aldrig skördas (se loadHarvest + kommentaren vid apply).
+  var decideSettled = false;
+  var adaptedThisLoad = false;
   // Public trigger: the customer calls window.AngelAdaptive.convert(value?, meta?)
   // (or configures a URL / selector). Carries visitorHash (via send) + the last
   // decisionId so the conversion can be attributed to what was shown.
@@ -460,7 +464,13 @@
         if (!parent) return;
         var nextSibling = el.nextSibling;
         parent.insertBefore(el, parent.firstChild);
+        // Markören gör flytten SYNLIG för resten av systemet: utan den var
+        // både hydrerings-överlevnadskollen och skörde-spärren blinda för
+        // flytt-enbart-beslut (glutenforum-loopen: skördaren mätte en sida
+        // där FAQ:n redan flyttats och skrev över inventoriet utan FAQ-post).
+        el.setAttribute("data-angel-moved", "");
         record(function () {
+          el.removeAttribute("data-angel-moved");
           parent.insertBefore(el, nextSibling);
         });
       });
@@ -963,6 +973,13 @@
         lastDecisionId = decision.decisionId;
         // Control bucket: withhold the adaptations so their lift can be measured.
         var applied = decision.holdout ? [] : apply(decision);
+        // Skörde-spärren (se loadHarvest): en adapterad laddning får ALDRIG
+        // skördas — annars mäter skördaren vår egen förändring och skriver
+        // över sidans inventory med post-adaptations-DOM:en (feedback-loopen
+        // som raderade FAQ-posten på glutenforum). Kontrollgruppen (holdout)
+        // och laddningar utan adaptationer är de rena skördekällorna.
+        adaptedThisLoad = applied.length > 0;
+        decideSettled = true;
         // Survive framework hydration: a React/Vue re-render can replace the
         // DOM we just adapted, silently wiping our (already-logged) exposure.
         // If every visible trace of the applied ops disappears shortly after
@@ -974,7 +991,7 @@
           var checkSurvival = function () {
             try {
               var residue = document.querySelectorAll(
-                ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected]",
+                ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved]",
               ).length;
               if (residue === 0 && reapplies < 2) {
                 reapplies++;
@@ -1032,6 +1049,8 @@
       })
       .catch(function (err) {
         // Fail open: the customer's page is unchanged if Angel can't decide.
+        // Sidan är då orörd → skörd är säker (adaptedThisLoad förblir false).
+        decideSettled = true;
         if (window.console && console.warn) console.warn("[angel] decide failed:", err);
       });
 
@@ -1121,10 +1140,30 @@
     }
     return Math.random() < 0.1;
   }
+  var harvestWaits = 0;
   function loadHarvest() {
     try {
       // GPC/DNT is a hard opt-out for us everywhere — don't even harvest.
       if (gpcOrDnt()) return;
+      // ALDRIG skörda en adapterad sida — annars mäter skördaren vår egen
+      // förändring och skriver över sidans inventory med post-adaptations-
+      // DOM:en (feedback-loop: FAQ:n flyttas upp → nästa skörd känner inte
+      // igen den som FAQ → posten försvinner → flytten slutar nomineras).
+      // Vänta tills beslutet är avgjort (bounded — decide har egen timeout);
+      // kontrollgrupps- och oadapterade laddningar förblir skördekällorna.
+      if (!decideSettled) {
+        if (harvestWaits++ < 15) setTimeout(loadHarvest, 800);
+        return;
+      }
+      if (adaptedThisLoad) return;
+      // Bälte (täcker fristående harvest-tag mitt i migrering): synliga
+      // Angel-spår i DOM:en betyder adapterad sida oavsett hur vi kom hit.
+      if (
+        document.querySelector(
+          ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved]",
+        )
+      )
+        return;
       // Don't double-load if a standalone harvest tag is still on the page
       // (e.g. mid-migration) or one was already injected.
       if (document.querySelector('script[src*="adaptive-harvest"]')) return;
