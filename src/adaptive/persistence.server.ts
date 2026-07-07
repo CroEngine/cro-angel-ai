@@ -296,6 +296,9 @@ export interface SiteConfig {
   conversionKind: string | null;
   /** Per-site write key; SERVER-ONLY — never include it in a public response. */
   ingestKey: string | null;
+  /** Nivå 3 (layout-mönster) kräver uttrycklig opt-in per sajt — v1-produkten
+   *  är nivå 1–2 (relevans med minsta möjliga ingrepp). Default false. */
+  layoutPatternsEnabled: boolean;
 }
 
 const DEFAULT_SITE_CONFIG: SiteConfig = {
@@ -306,6 +309,7 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   conversionText: null,
   conversionKind: null,
   ingestKey: null,
+  layoutPatternsEnabled: false,
 };
 
 /**
@@ -320,7 +324,7 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
     const { data, error } = await supabaseAdmin
       .from("angel_sites")
       .select(
-        "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key",
+        "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled",
       )
       .eq("slug", slug)
       .maybeSingle();
@@ -334,6 +338,7 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
       conversionText: data.conversion_text ?? null,
       conversionKind: data.conversion_kind ?? null,
       ingestKey: data.ingest_key ?? null,
+      layoutPatternsEnabled: data.layout_patterns_enabled === true,
     };
   } catch (err) {
     console.warn(`[angel] site-config read unavailable:`, err);

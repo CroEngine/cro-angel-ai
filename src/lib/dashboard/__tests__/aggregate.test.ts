@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   aggregate,
+  proofSummary,
   bucketByTime,
   summarizeVisitors,
   MAX_DAY_POINTS,
@@ -494,5 +495,57 @@ describe("attribute — per-segment rows (D4) and non-converter micro stats (D2)
     ).attribution.find((r) => r.pattern === "emphasize_goal" && r.segment === null)!;
     expect(row.adapted.conversions).toBe(1);
     expect(row.adaptedMicro.deepScroll).toBe(1); // v2 only — v1 is a converter
+  });
+});
+
+describe("proofSummary — v1-beviset (adapterad vs hold-out)", () => {
+  const T0 = "2026-07-01T10:00:00Z";
+  const plus = (h: number) => new Date(Date.parse(T0) + h * 3600_000).toISOString();
+
+  it("räknar armar per besökares FÖRSTA exponering med utfall i fönstret", () => {
+    const events: DashEvent[] = [
+      // Adapterad besökare: klickar CTA + konverterar + återkommer dag 2.
+      ev("adaptation_shown", { patterns: ["emphasize_goal"] }, { visitorHash: "a", createdAt: T0 }),
+      ev("cta_click", {}, { visitorHash: "a", createdAt: plus(0.1) }),
+      ev("conversion", {}, { visitorHash: "a", createdAt: plus(0.2) }),
+      ev("pageview", {}, { visitorHash: "a", createdAt: plus(26) }), // återbesök
+      // Kontroll-besökare: tittar, gör inget, kommer inte tillbaka.
+      ev("adaptation_withheld", { patterns: ["emphasize_goal"] }, { visitorHash: "b", createdAt: T0 }),
+      ev("pageview", {}, { visitorHash: "b", createdAt: plus(0.01) }), // < 6h — inte återbesök
+    ];
+    const p = proofSummary(events)!;
+    expect(p.holdoutActive).toBe(true);
+    expect(p.adapted).toMatchObject({ visitors: 1, ctaClicks: 1, conversions: 1, returns: 1 });
+    expect(p.control).toMatchObject({ visitors: 1, ctaClicks: 0, conversions: 0, returns: 0 });
+    // Bayesiansk avläsning: adapterad arm sannolikt bättre (> 0.5), men EN
+    // besökare per arm ska inte ge visshet (< 0.95).
+    expect(p.pWin).toBeGreaterThan(0.5);
+    expect(p.pWin).toBeLessThan(0.95);
+  });
+
+  it("utan hold-out: holdoutActive=false och pWin=null — aldrig låtsas-bevis", () => {
+    const events: DashEvent[] = [
+      ev("adaptation_shown", { patterns: ["emphasize_goal"] }, { visitorHash: "a", createdAt: T0 }),
+      ev("cta_click", {}, { visitorHash: "a", createdAt: plus(0.1) }),
+    ];
+    const p = proofSummary(events)!;
+    expect(p.holdoutActive).toBe(false);
+    expect(p.pWin).toBeNull();
+  });
+
+  it("returnerar null helt utan exponeringar, och mer data ger säkrare pWin", () => {
+    expect(proofSummary([ev("pageview", {}, { visitorHash: "x" })])).toBeNull();
+    // 40/50 adapterade klickar vs 10/50 kontroll → hög visshet.
+    const many: DashEvent[] = [];
+    for (let i = 0; i < 50; i++) {
+      many.push(ev("adaptation_shown", {}, { visitorHash: `a${i}`, createdAt: T0 }));
+      if (i < 40) many.push(ev("cta_click", {}, { visitorHash: `a${i}`, createdAt: plus(0.1) }));
+      many.push(ev("adaptation_withheld", {}, { visitorHash: `c${i}`, createdAt: T0 }));
+      if (i < 10) many.push(ev("cta_click", {}, { visitorHash: `c${i}`, createdAt: plus(0.1) }));
+    }
+    const p = proofSummary(many)!;
+    expect(p.adapted.ctaClickRate).toBeCloseTo(0.8);
+    expect(p.control.ctaClickRate).toBeCloseTo(0.2);
+    expect(p.pWin).toBeGreaterThan(0.99);
   });
 });

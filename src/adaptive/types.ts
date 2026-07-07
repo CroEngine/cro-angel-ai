@@ -179,7 +179,11 @@ export type DeclineReason =
   | "goal_kind_mismatch"
   /** Mönstrets avoidPageTypes exkluderar sidans typ — t.ex. ett flytt-mönster
    *  på en artikel-/bloggsida (content). Se Pattern.avoidPageTypes. */
-  | "page_type_mismatch";
+  | "page_type_mismatch"
+  /** Nivå 3-mönster (layout) på en sajt som inte aktiverat layoutingrepp —
+   *  v1-produkten är nivå 1–2; nivå 3 kräver opt-in efter pre-flight +
+   *  ägargodkännande (angel_sites.layout_patterns_enabled). */
+  | "layout_level_disabled";
 
 export interface Decision {
   /** Deterministic hash of (site + normalized context). Stable for replay. */
@@ -246,6 +250,16 @@ export interface Pattern {
    *  inlägget). Gating i decide() med typad decline (page_type_mismatch) —
    *  skönhetsgrindarna i pre-flighten är sista försvarslinjen, inte första. */
   avoidPageTypes?: PageType[];
+  /** Ingreppsnivå (v1-produktdefinitionen, docs/v1-testdefinition.md):
+   *    1 = emphasis  — paint-only/liten badge vid målet; ändrar aldrig layout.
+   *    2 = guidance  — additiv guidning (chip, sticky, reveal, textvariant).
+   *    3 = layout    — flyttar/omstrukturerar sektioner.
+   *  Nivå 3 är AV som standard (angel_sites.layout_patterns_enabled krävs) —
+   *  evidensgenomgången och glutenforum-incidenten pekar åt samma håll:
+   *  produkten är relevans med minsta möjliga ingrepp, inte ombyggnad. Nivån
+   *  är också tie-break i decide(): vid lika prioritet vinner det mindre
+   *  ingreppet. */
+  level: 1 | 2 | 3;
 }
 
 /** Client-collected signals POSTed to /api/adaptive/decide. */

@@ -29,8 +29,8 @@ function ctx(overrides: Partial<VisitorContext> = {}): VisitorContext {
 const patternsOf = (c: VisitorContext): PatternId[] =>
   decide("demo", c, demo).adaptations.map((a) => a.pattern);
 
-describe("decide — blueprint scenarios", () => {
-  it("Visitor 1: LinkedIn, desktop, first visit → top-3 B2B patterns within the design cap", () => {
+describe("decide — blueprint scenarios (v1: nivå 1–2 som standard)", () => {
+  it("Visitor 1: LinkedIn, desktop, first visit → B2B-guidning utan layoutingrepp", () => {
     const d = decide(
       "demo",
       ctx({ trafficSource: "linkedin", device: "desktop", isReturning: false }),
@@ -38,9 +38,14 @@ describe("decide — blueprint scenarios", () => {
     );
     const patterns = d.adaptations.map((a) => a.pattern);
     // MAX_ADAPTATIONS (3) is a design-integrity contract: the page must stay
-    // the customer's. Equal-priority LinkedIn patterns tie-break by name.
+    // the customer's.
     expect(patterns.length).toBeLessThanOrEqual(3);
-    expect(patterns).toContain("show_customer_logos_early");
+    // v1: logo-flytten är nivå 3 → declined med typat skäl; case study (reveal,
+    // nivå 2) och clarify tar dess plats.
+    expect(patterns).not.toContain("show_customer_logos_early");
+    expect((d.declined ?? []).some(
+      (x) => x.pattern === "show_customer_logos_early" && x.reason === "layout_level_disabled",
+    )).toBe(true);
     expect(patterns).toContain("show_case_study");
 
     const cta = d.adaptations.find((a) => a.pattern === "clarify_cta");
@@ -48,20 +53,31 @@ describe("decide — blueprint scenarios", () => {
     expect(cta?.value).toBe("Book a demo");
   });
 
-  it("Visitor 2: Google, mobile → shorten hero, FAQ up, Start Free Trial", () => {
+  it("Visitor 2: Google, mobile → guidning (clarify) — flyttarna kräver opt-in", () => {
     const d = decide("demo", ctx({ trafficSource: "google", device: "mobile" }), demo);
     const patterns = d.adaptations.map((a) => a.pattern);
-    expect(patterns).toContain("shorten_hero");
-    expect(patterns).toContain("move_faq_up");
+    // v1: shorten_hero/move_faq_up är nivå 3 → declined som standard.
+    expect(patterns).not.toContain("shorten_hero");
+    expect(patterns).not.toContain("move_faq_up");
+    const levelDeclines = (d.declined ?? []).filter((x) => x.reason === "layout_level_disabled");
+    expect(levelDeclines.map((x) => x.pattern)).toEqual(
+      expect.arrayContaining(["shorten_hero", "move_faq_up"]),
+    );
 
     const cta = d.adaptations.find((a) => a.pattern === "clarify_cta");
     expect(cta?.value).toBe("Start Free Trial");
   });
 
-  it("Visitor 3: returning, viewed pricing → surface pricing + continue where left off", () => {
-    const patterns = patternsOf(ctx({ isReturning: true, visitCount: 2, viewedPricing: true }));
-    expect(patterns).toContain("surface_pricing");
-    expect(patterns).toContain("continue_where_left_off");
+  it("Visitor 3: returning + pricing → continue; pris-flytten kräver opt-in men funkar då", () => {
+    const c = ctx({ isReturning: true, visitCount: 2, viewedPricing: true });
+    const narrow = decide("demo", c, demo);
+    expect(narrow.adaptations.map((a) => a.pattern)).toContain("continue_where_left_off");
+    expect(narrow.adaptations.map((a) => a.pattern)).not.toContain("surface_pricing");
+    // Opt-in (angel_sites.layout_patterns_enabled) återställer nivå 3 exakt
+    // som förr — layouten är ett per-sajt-beslut, inte borttagen förmåga.
+    const optIn = decide("demo", c, demo, {}, undefined, { allowLayoutPatterns: true });
+    expect(optIn.adaptations.map((a) => a.pattern)).toContain("surface_pricing");
+    expect(optIn.adaptations.map((a) => a.pattern)).toContain("continue_where_left_off");
   });
 });
 
@@ -104,12 +120,35 @@ describe("decide — safety and invariants", () => {
     expect(d.adaptations).toEqual([]);
   });
 
-  it("still applies content-free ops when the slot has inventory (demo)", () => {
-    const d = decide("demo", ctx({ trafficSource: "linkedin", device: "desktop" }), demo);
-    // demo has customer_logos / testimonial / case_study items → these fire.
+  it("still applies content-free ops when the slot has inventory (isolerad logo-slot)", () => {
+    // v1: logo-flytten (nivå 3) kräver opt-in, och minsta-ingrepps-tiebreaken
+    // rankar den under lättare mönster vid lika prioritet — så för att testa
+    // att slot-inventeringen bär content-fria ops isoleras inventoriet till
+    // ENBART customer_logos (konkurrenterna declinar på no_inventory).
+    const inv = emptyInventory("t");
+    inv.slots.customer_logos = [
+      { id: "logos", slot: "customer_logos", selector: "#logos" },
+    ];
+    const d = decide("t", ctx({ trafficSource: "linkedin", device: "desktop" }), inv, {}, undefined, {
+      allowLayoutPatterns: true,
+    });
     const patterns = d.adaptations.map((a) => a.pattern);
     expect(patterns).toContain("show_customer_logos_early");
     expect(patterns.length).toBeGreaterThan(0);
+  });
+
+  it("minsta-ingrepps-tiebreak: vid lika prioritet vinner lättare op över flytt", () => {
+    // linkedin_b2b nominerar fyra mönster på prio 80. Med layout-opt-in OCH
+    // fullt inventory ska top-3 vara de tre LÄTTASTE (set_text/reveal) — logo-
+    // FLYTTEN (nivå 3, move_up) rankas sist och cap:as ut. "Hur lite behöver
+    // vi förändra sidan?" är kod, inte smak.
+    const d = decide("demo", ctx({ trafficSource: "linkedin", device: "desktop" }), demo, {}, undefined, {
+      allowLayoutPatterns: true,
+    });
+    const patterns = d.adaptations.map((a) => a.pattern);
+    expect(patterns).toContain("clarify_cta");
+    expect(patterns).toContain("show_case_study");
+    expect(patterns).not.toContain("show_customer_logos_early");
   });
 
   it("caps the number of adaptations", () => {
@@ -851,17 +890,27 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
       .toBe("4.8 · 2138 betyg");
   });
 
-  it("S1 (alla köptunga vertikaler): recensionssektionen flyttas upp för förstagångare", () => {
+  it("S1 (alla köptunga vertikaler): recensionsflytten kräver layout-opt-in (nivå 3)", () => {
     const inv = emptyInventory("t");
     inv.slots.testimonial = [
       { id: "t1", slot: "testimonial", selector: "#reviews", text: "Omdömen" },
     ];
-    const d = decide("t", ctx(), inv, {}, { selector: "#kop", text: "Köp nu", kind: "purchase" });
+    // v1-default: declined med typat skäl.
+    const narrow = decide("t", ctx(), inv, {}, { selector: "#kop", text: "Köp nu", kind: "purchase" });
+    expect((narrow.declined ?? []).some(
+      (x) => x.pattern === "move_reviews_up" && x.reason === "layout_level_disabled",
+    )).toBe(true);
+    // Med opt-in: fungerar som designat.
+    const d = decide("t", ctx(), inv, {}, { selector: "#kop", text: "Köp nu", kind: "purchase" }, {
+      allowLayoutPatterns: true,
+    });
     const mv = d.adaptations.find((a) => a.pattern === "move_reviews_up");
     expect(mv?.op).toBe("move_up");
     expect(mv?.target).toBe("#reviews");
     // ...men inte för en donate-sajt (gåvan har ingen produktrecension-motion).
-    const donate = decide("t", ctx(), inv, {}, { selector: "#g", text: "Ge en gåva", kind: "donate" });
+    const donate = decide("t", ctx(), inv, {}, { selector: "#g", text: "Ge en gåva", kind: "donate" }, {
+      allowLayoutPatterns: true,
+    });
     expect((donate.declined ?? []).some(
       (x) => x.pattern === "move_reviews_up" && x.reason === "goal_kind_mismatch",
     )).toBe(true);
@@ -872,12 +921,15 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
     // omordningsmönster är landningsyte-verktyg och gate:as bort på content.
     const inv = emptyInventory("t");
     inv.slots.faq = [{ id: "f", slot: "faq", selector: "#faq", text: "Vanliga frågor" }];
+    // (layout-opt-in påslagen: det som testas här är SIDTYPS-grinden, som
+    // gäller ÄVEN för sajter som aktiverat layoutmönster.)
     const onBlog = decide(
       "t",
       ctx({ trafficSource: "google", pageType: "content" }),
       inv,
       {},
       { selector: "#g", text: "Skapa konto", kind: "signup" },
+      { allowLayoutPatterns: true },
     );
     expect(onBlog.adaptations.map((a) => a.pattern)).not.toContain("move_faq_up");
     expect((onBlog.declined ?? []).some(
@@ -890,6 +942,7 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
       inv,
       {},
       { selector: "#g", text: "Skapa konto", kind: "signup" },
+      { allowLayoutPatterns: true },
     );
     expect(onHome.adaptations.map((a) => a.pattern)).toContain("move_faq_up");
   });

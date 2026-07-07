@@ -44,6 +44,20 @@ export type PatternBoost = Partial<Record<PatternId, number>>;
  *  visual noise fast, and the customer's design must stay theirs. */
 const INJECT_OPS = new Set(["inject_sticky", "inject_secondary", "inject_badge"]);
 
+/** Ingreppsvikt per op — tie-break vid lika prioritet OCH lika nivå: det
+ *  lättaste ingreppet vinner. Ordningen speglar hur mycket av sidan som rörs:
+ *  ren färg < textbyte < visa dolt < liten badge < chip < sticky < flytt. */
+const OP_WEIGHT: Record<string, number> = {
+  emphasize: 0,
+  set_text: 1,
+  reveal: 2,
+  inject_badge: 3,
+  inject_secondary: 4,
+  inject_sticky: 5,
+  move_up: 6,
+  condense: 7,
+};
+
 /** Largest positive nudge a proven winner can earn (keeps rules meaningful). */
 export const PERF_MAX_BOOST = 30;
 /** Delta assigned to a proven loser — drives its effective priority ≤ 0 so the
@@ -553,12 +567,21 @@ export function decisionIdFor(site: string, c: VisitorContext, goal?: SiteGoal):
  * The decision engine. Pure: no IO, no clock, no randomness — so it is trivially
  * testable and the same visitor context always yields the same adaptations.
  */
+/** Per-sajt-inställningar som villkorar beslutet (utöver mål och boosts). */
+export interface DecideOptions {
+  /** Nivå 3 (layout-mönster) kräver uttrycklig opt-in per sajt
+   *  (angel_sites.layout_patterns_enabled) — v1-produkten är nivå 1–2:
+   *  relevans med minsta möjliga ingrepp, aldrig ombyggnad som standard. */
+  allowLayoutPatterns?: boolean;
+}
+
 export function decide(
   site: string,
   context: VisitorContext,
   inventory: ContentInventory,
   boosts: PatternBoost = {},
   goal?: SiteGoal,
+  options?: DecideOptions,
 ): Decision {
   // Collect pattern -> best priority across all matching rules.
   const best = new Map<PatternId, number>();
@@ -608,6 +631,13 @@ export function decide(
         declined.push({ pattern: e.id, reason: "page_type_mismatch" });
         return null;
       }
+      // Nivågrind (v1): layout-mönster (nivå 3) är AV som standard och kräver
+      // per-sajt opt-in efter pre-flight + ägargodkännande. Typad decline —
+      // frånvaron ska vara förklarad, inte tyst.
+      if (getPattern(e.id).level === 3 && !options?.allowLayoutPatterns) {
+        declined.push({ pattern: e.id, reason: "layout_level_disabled" });
+        return null;
+      }
       const result = resolve(e.id, e.priority, context, inventory, goal);
       if (typeof result === "string") {
         declined.push({ pattern: e.id, reason: result });
@@ -616,7 +646,17 @@ export function decide(
       return result;
     })
     .filter((a): a is Adaptation => a !== null)
-    .sort((a, b) => b.priority - a.priority || a.pattern.localeCompare(b.pattern))
+    // Vid lika prioritet vinner det MINSTA ingreppet ("hur lite behöver vi
+    // förändra sidan?" är produktfrågan): lägre nivå före högre, lättare op
+    // före tyngre, och först därefter namn (determinism). Paint slår badge,
+    // badge slår chip, allt slår flytt.
+    .sort(
+      (a, b) =>
+        b.priority - a.priority ||
+        getPattern(a.pattern).level - getPattern(b.pattern).level ||
+        (OP_WEIGHT[a.op] ?? 9) - (OP_WEIGHT[b.op] ?? 9) ||
+        a.pattern.localeCompare(b.pattern),
+    )
     // Injection budget: keep only the highest-priority element-adding op so a
     // visitor never sees more than one thing Angel added to the page.
     .filter(
