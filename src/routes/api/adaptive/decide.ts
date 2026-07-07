@@ -72,12 +72,21 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         // suppress proven losers — per SEGMENT where the segment has its own
         // adequately-powered verdict (D4). Best-effort + cached; {} = defaults.
         const boosts = await loadPatternBoosts(client.site, context.trafficSource);
-        const decision = decide(client.site, context, inventory, boosts, {
-          selector: cfg.conversionSelector,
-          url: cfg.conversionUrl,
-          text: cfg.conversionText,
-          kind: cfg.conversionKind,
-        });
+        const decision = decide(
+          client.site,
+          context,
+          inventory,
+          boosts,
+          {
+            selector: cfg.conversionSelector,
+            url: cfg.conversionUrl,
+            text: cfg.conversionText,
+            kind: cfg.conversionKind,
+          },
+          // v1: nivå 3 (layout) är av tills sajten uttryckligen aktiverat den
+          // (pre-flight + ägargodkännande föregår opt-in:en).
+          { allowLayoutPatterns: cfg.layoutPatternsEnabled },
+        );
 
         // Measurement holdout: deterministically bucket this visitor 0..99 from
         // its id; below holdoutPct → control (snippet withholds the adaptations

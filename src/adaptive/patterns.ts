@@ -19,6 +19,7 @@ import type { Pattern, PatternId } from "./types";
 export const PATTERNS: Record<PatternId, Pattern> = {
   emphasize_goal: {
     id: "emphasize_goal",
+    level: 1,
     label: "Emphasize the conversion goal",
     description:
       "Visually highlight the element the site owner declared as their conversion goal " +
@@ -31,6 +32,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   sticky_goal_cta: {
     id: "sticky_goal_cta",
+    level: 2,
     label: "Sticky goal shortcut on mobile",
     description:
       "A fixed bottom button (no layout shift) that keeps the declared goal one thumb-tap " +
@@ -41,6 +43,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_secondary_cta: {
     id: "show_secondary_cta",
+    level: 2,
     label: "Softer option beside the goal",
     description:
       "For first-time visitors the primary goal can be too big a step. Surfaces a published " +
@@ -51,6 +54,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_customer_logos_early: {
     id: "show_customer_logos_early",
+    level: 3,
     label: "Show customer logos earlier",
     description: "Move the customer-logo wall higher up the page.",
     op: "move_up",
@@ -64,6 +68,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_enterprise_testimonial: {
     id: "show_enterprise_testimonial",
+    level: 2,
     label: "Show an enterprise testimonial",
     description: "Surface an enterprise-flavoured testimonial for high-intent B2B visitors.",
     op: "reveal",
@@ -75,6 +80,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_trust_badge: {
     id: "show_trust_badge",
+    level: 2,
     label: "Show trust badges",
     description: "Reveal compliance / trust badges (GDPR, ISO, SOC2).",
     op: "reveal",
@@ -87,6 +93,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   clarify_cta: {
     id: "clarify_cta",
+    level: 2,
     label: "Clarify the call to action",
     description: "Set the primary CTA label to the published variant that best fits the visitor.",
     op: "set_text",
@@ -94,6 +101,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_guarantee: {
     id: "show_guarantee",
+    level: 2,
     label: "Show the guarantee",
     description: "Reveal a published guarantee (money-back, cancel anytime).",
     op: "reveal",
@@ -104,6 +112,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   move_faq_up: {
     id: "move_faq_up",
+    level: 3,
     label: "Move FAQ up",
     description: "Surface the FAQ earlier for visitors likely to have objections.",
     op: "move_up",
@@ -114,6 +123,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   shorten_hero: {
     id: "shorten_hero",
+    level: 3,
     label: "Shorten the hero",
     description: "Condense the hero to its essentials (helpful on mobile).",
     op: "condense",
@@ -124,6 +134,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_case_study: {
     id: "show_case_study",
+    level: 2,
     label: "Show a case study",
     description: "Reveal a published case study with results.",
     op: "reveal",
@@ -134,6 +145,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_no_credit_card: {
     id: "show_no_credit_card",
+    level: 1,
     label: 'Show "No credit card required"',
     description: 'Inject the published "No credit card required" reassurance near the CTA.',
     op: "inject_badge",
@@ -144,6 +156,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_2min_setup: {
     id: "show_2min_setup",
+    level: 1,
     label: 'Show "2 minute setup"',
     description: 'Inject the published "2 minute setup" reassurance near the CTA.',
     op: "inject_badge",
@@ -155,6 +168,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   surface_pricing: {
     id: "surface_pricing",
+    level: 3,
     label: "Surface pricing",
     description: "Move pricing higher for returning visitors who already evaluated it.",
     op: "move_up",
@@ -167,6 +181,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   continue_where_left_off: {
     id: "continue_where_left_off",
+    level: 1,
     label: 'Show "Continue where you left off"',
     description: "Inject a published continuity prompt for returning visitors.",
     op: "inject_badge",
@@ -178,6 +193,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   // med typad reason i stället för att no-op:a.
   move_reviews_up: {
     id: "move_reviews_up",
+    level: 3,
     label: "Reviews earlier for first-time visitors",
     description:
       "Moves the site's own testimonial/review section up for first-time visitors — " +
@@ -189,6 +205,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_rating_near_goal: {
     id: "show_rating_near_goal",
+    level: 1,
     label: "Published rating beside the goal",
     description:
       "Injects the site's own harvested review rating (e.g. \"4.8 · 2138 betyg\") as a badge " +
@@ -201,6 +218,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_payment_security: {
     id: "show_payment_security",
+    level: 1,
     label: "Published payment-security copy near the goal",
     description:
       "Injects the site's own published payment-security phrase (\"Säker betalning\") beside " +
@@ -211,6 +229,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_monthly_giving_option: {
     id: "show_monthly_giving_option",
+    level: 2,
     label: "Monthly-giving path beside the gift goal",
     description:
       "Surfaces the nonprofit's own recurring-giving CTA (\"Bli månadsgivare\", its real href) " +
@@ -221,6 +240,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_callback_option: {
     id: "show_callback_option",
+    level: 2,
     label: "Callback path beside the goal",
     description:
       "Surfaces the site's own callback CTA (\"Vi ringer upp dig\", its real href) beside the " +
@@ -231,6 +251,7 @@ export const PATTERNS: Record<PatternId, Pattern> = {
   },
   show_cancel_anytime: {
     id: "show_cancel_anytime",
+    level: 1,
     label: "Published cancel-anytime reassurance",
     description:
       "Injects the site's own published no-lock-in phrase (\"Avsluta när du vill\") beside the " +

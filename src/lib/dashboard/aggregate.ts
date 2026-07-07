@@ -155,8 +155,37 @@ export interface VisitorSummary {
   browser: string | null;
 }
 
+/** En arm i v1-beviset (docs/v1-testdefinition.md): distinkta exponerade
+ *  besökare och deras utfall inom attributionsfönstret. */
+export interface ArmProof {
+  visitors: number;
+  ctaClicks: number;
+  conversions: number;
+  /** Återbesök 6h–7d efter exponeringen — retention-proxy (nedströmsmåttet). */
+  returns: number;
+  ctaClickRate: number;
+  conversionRate: number;
+  returnRate: number;
+}
+
+/** Bevis-vyn: adapterad arm vs hold-out på sajtnivå. Success-mätaren är
+ *  CTA-klick per exponerad besökare; avläsningen är BAYESIANSK — på SMB-
+ *  trafik kan fasta test sällan detektera < ~20–30 % relativ lift, så vi
+ *  rapporterar P(adapterad > kontroll) i stället för binära signifikanser. */
+export interface ProofSummary {
+  adapted: ArmProof;
+  control: ArmProof;
+  /** P(adapterad arm > kontroll) på CTA-klickfrekvensen. Beta(1,1)-posterior
+   *  per arm, normalapproximation av differensen. null när endera armen
+   *  saknar exponeringar (ingen hold-out konfigurerad ännu). */
+  pWin: number | null;
+  holdoutActive: boolean;
+}
+
 export interface DashboardMetrics {
   overview: Overview;
+  /** v1-beviset — null tills det finns minst en exponering. */
+  proof: ProofSummary | null;
   segments: {
     byTrafficSource: SegmentBar[];
     byDevice: SegmentBar[];
@@ -237,6 +266,123 @@ const ms = (iso: string): number => {
 
 /** Two-proportion z score for (c1/n1) vs (c2/n2), or null if a group is empty
  *  or the pooled variance is degenerate. */
+/** Standardnormalens CDF via Abramowitz–Stegun-erf — för pWin-avläsningen. */
+function phi(x: number): number {
+  const t = 1 / (1 + 0.3275911 * Math.abs(x) / Math.SQRT2);
+  const erf =
+    1 -
+    (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
+      t *
+      Math.exp(-(x * x) / 2);
+  return x >= 0 ? 0.5 * (1 + erf) : 0.5 * (1 - erf);
+}
+
+/** P(pA > pB) med Beta(1,1)-posterior per arm, normalapproximation av
+ *  differensen. Grov men monoton och deterministisk — pilotavläsning, inte
+ *  publikationsstatistik. */
+function pBetaGreater(sA: number, nA: number, sB: number, nB: number): number {
+  const moments = (s: number, n: number) => {
+    const a = s + 1;
+    const b = n - s + 1;
+    const mean = a / (a + b);
+    const variance = (a * b) / ((a + b) * (a + b) * (a + b + 1));
+    return { mean, variance };
+  };
+  const A = moments(sA, nA);
+  const B = moments(sB, nB);
+  const denom = Math.sqrt(A.variance + B.variance);
+  if (denom === 0) return 0.5;
+  return phi((A.mean - B.mean) / denom);
+}
+
+/** Återbesöksfönstret för retention-proxyn: en NY pageview tidigast 6h och
+ *  senast 7d efter exponeringen räknas som återbesök. */
+const RETURN_MIN_MS = 6 * 60 * 60 * 1000;
+const RETURN_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * v1-beviset (docs/v1-testdefinition.md): sajtnivå-jämförelse adapterad vs
+ * hold-out. Varje besökare tillhör armen från sin FÖRSTA exponering
+ * (deterministisk bucketing gör att arm-byten inte ska förekomma; om de ändå
+ * gör det vinner den första observationen). Utfall räknas i attributions-
+ * fönstret från den exponeringen: cta_click (success-mätaren), conversion,
+ * och återbesök 6h–7d (nedströms/retention-proxyn).
+ */
+export function proofSummary(events: DashEvent[]): ProofSummary | null {
+  const byVisitor = (type: string): Map<string, number[]> => {
+    const m = new Map<string, number[]>();
+    for (const e of events) {
+      if (e.type !== type || !e.visitorHash) continue;
+      const t = ms(e.createdAt);
+      if (Number.isNaN(t)) continue;
+      (m.get(e.visitorHash) ?? m.set(e.visitorHash, []).get(e.visitorHash)!).push(t);
+    }
+    for (const times of m.values()) times.sort((a, b) => a - b);
+    return m;
+  };
+  const clicks = byVisitor("cta_click");
+  const convs = byVisitor("conversion");
+  const views = byVisitor("pageview");
+
+  // Besökare -> {arm, första exponering}.
+  const assignment = new Map<string, { arm: "adapted" | "control"; t: number }>();
+  for (const e of events) {
+    const arm =
+      e.type === "adaptation_shown" ? "adapted" : e.type === "adaptation_withheld" ? "control" : null;
+    if (!arm || !e.visitorHash) continue;
+    const t = ms(e.createdAt);
+    if (Number.isNaN(t)) continue;
+    const prev = assignment.get(e.visitorHash);
+    if (!prev || t < prev.t) assignment.set(e.visitorHash, { arm, t });
+  }
+  if (assignment.size === 0) return null;
+
+  const anyIn = (times: number[] | undefined, from: number, until: number): boolean => {
+    if (!times) return false;
+    for (const t of times) {
+      if (t > until) break;
+      if (t >= from) return true;
+    }
+    return false;
+  };
+
+  const empty = (): ArmProof => ({
+    visitors: 0,
+    ctaClicks: 0,
+    conversions: 0,
+    returns: 0,
+    ctaClickRate: 0,
+    conversionRate: 0,
+    returnRate: 0,
+  });
+  const arms = { adapted: empty(), control: empty() };
+  for (const [visitor, { arm, t }] of assignment) {
+    const a = arms[arm];
+    a.visitors++;
+    if (anyIn(clicks.get(visitor), t, t + ATTRIBUTION_WINDOW_MS)) a.ctaClicks++;
+    if (anyIn(convs.get(visitor), t, t + ATTRIBUTION_WINDOW_MS)) a.conversions++;
+    if (anyIn(views.get(visitor), t + RETURN_MIN_MS, t + RETURN_MAX_MS)) a.returns++;
+  }
+  for (const a of [arms.adapted, arms.control]) {
+    a.ctaClickRate = a.visitors > 0 ? a.ctaClicks / a.visitors : 0;
+    a.conversionRate = a.visitors > 0 ? a.conversions / a.visitors : 0;
+    a.returnRate = a.visitors > 0 ? a.returns / a.visitors : 0;
+  }
+
+  const holdoutActive = arms.control.visitors > 0;
+  const pWin =
+    holdoutActive && arms.adapted.visitors > 0
+      ? pBetaGreater(
+          arms.adapted.ctaClicks,
+          arms.adapted.visitors,
+          arms.control.ctaClicks,
+          arms.control.visitors,
+        )
+      : null;
+
+  return { adapted: arms.adapted, control: arms.control, pWin, holdoutActive };
+}
+
 function twoProportionZ(c1: number, n1: number, c2: number, n2: number): number | null {
   if (n1 <= 0 || n2 <= 0) return null;
   const p1 = c1 / n1;
@@ -631,6 +777,8 @@ export function aggregate(
     conversionRate: visitors.size > 0 ? convertedVisitors.size / visitors.size : 0,
   };
 
+  const proof = proofSummary(events);
+
   const segments = {
     byTrafficSource: tally(pageviewEvents.map((e) => str(e.payload.trafficSource))),
     byDevice: tally(pageviewEvents.map((e) => str(e.payload.device))),
@@ -676,6 +824,7 @@ export function aggregate(
 
   return {
     overview,
+    proof,
     segments,
     timeseries: bucketByTime(events, opts.tzOffsetMinutes ?? 0),
     visitors: summarizeVisitors(events),

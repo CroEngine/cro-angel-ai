@@ -48,7 +48,10 @@ describe("server request path", () => {
     expect(context.country).toBe("US");
 
     const patterns = decision.adaptations.map((a) => a.pattern);
-    expect(patterns).toContain("show_customer_logos_early");
+    // v1: logo-flytten är nivå 3 (layout) → declined som standard; guidnings-
+    // mönstren bär B2B-anpassningen.
+    expect(patterns).not.toContain("show_customer_logos_early");
+    expect(patterns).toContain("show_case_study");
     expect(decision.adaptations.find((a) => a.pattern === "clarify_cta")?.value).toBe(
       "Book a demo",
     );
@@ -65,7 +68,8 @@ describe("server request path", () => {
     expect(context.language).toBe("sv");
 
     const patterns = decision.adaptations.map((a) => a.pattern);
-    expect(patterns).toContain("shorten_hero");
+    // v1: hero-komprimeringen är nivå 3 → declined som standard på mobil.
+    expect(patterns).not.toContain("shorten_hero");
     expect(decision.adaptations.find((a) => a.pattern === "clarify_cta")?.value).toBe(
       "Start Free Trial",
     );

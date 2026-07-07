@@ -263,6 +263,77 @@ function Dashboard() {
                 value={`${(d.metrics.overview.conversionRate * 100).toFixed(1)}%`}
               />
             </div>
+
+            {/* ---- v1-beviset: adapterad arm vs hold-out ---- */}
+            {d.metrics.proof && (
+              <Card className="border-emerald-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">
+                    Bevis: adapterade besökare vs kontrollgrupp
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!d.metrics.proof.holdoutActive ? (
+                    <p className="text-sm text-stone-500">
+                      Ingen kontrollgrupp ännu — sätt en hold-out (t.ex. 20&nbsp;%) i
+                      Measurement-kortet så mäts skillnaden på riktigt.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs text-stone-500">
+                            <th className="py-1 font-medium">Arm</th>
+                            <th className="py-1 font-medium">Besökare</th>
+                            <th className="py-1 font-medium">CTA-klick</th>
+                            <th className="py-1 font-medium">Konvertering</th>
+                            <th className="py-1 font-medium">Återbesök 7d</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(
+                            [
+                              ["Adapterad", d.metrics.proof.adapted],
+                              ["Kontroll", d.metrics.proof.control],
+                            ] as const
+                          ).map(([label, arm]) => (
+                            <tr key={label} className="border-t border-stone-100">
+                              <td className="py-1.5 font-medium">{label}</td>
+                              <td className="py-1.5">{arm.visitors}</td>
+                              <td className="py-1.5">
+                                {(arm.ctaClickRate * 100).toFixed(1)}%{" "}
+                                <span className="text-xs text-stone-400">({arm.ctaClicks})</span>
+                              </td>
+                              <td className="py-1.5">
+                                {(arm.conversionRate * 100).toFixed(1)}%{" "}
+                                <span className="text-xs text-stone-400">({arm.conversions})</span>
+                              </td>
+                              <td className="py-1.5">
+                                {(arm.returnRate * 100).toFixed(1)}%{" "}
+                                <span className="text-xs text-stone-400">({arm.returns})</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {d.metrics.proof.pWin !== null && (
+                        <p className="text-sm text-stone-600">
+                          Sannolikhet att anpassningarna ger fler CTA-klick än kontrollgruppen:{" "}
+                          <span className="font-semibold text-emerald-700">
+                            {(d.metrics.proof.pWin * 100).toFixed(0)}&nbsp;%
+                          </span>
+                          <span className="ml-1 text-xs text-stone-400">
+                            (Bayesiansk avläsning — mer trafik ger säkrare svar; procenttal nära
+                            50&nbsp;% betyder "för tidigt att säga".)
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid gap-4 md:grid-cols-3">
               <Card className="border-stone-200 shadow-none">
                 <CardHeader className="pb-2">
