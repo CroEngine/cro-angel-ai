@@ -267,9 +267,13 @@ export function transformMirrorHtml(html: string, opts: MirrorTransformOptions):
   }
 
   if (opts.angel) {
+    // data-url: motorn ska se kundens RIKTIGA adress (path/pageType/inventory-
+    // uppslag), inte spegel-endpointens — annars klassas varje spegel "other"
+    // och den konfigurerade sajtens skörd hittas aldrig.
     const snippetTag =
       `<script async src="${escAttr(opts.ourOrigin)}/adaptive.js"` +
-      ` data-site="${escAttr(opts.site)}" data-endpoint="${escAttr(opts.ourOrigin)}"></script>`;
+      ` data-site="${escAttr(opts.site)}" data-endpoint="${escAttr(opts.ourOrigin)}"` +
+      ` data-url="${escAttr(opts.pageUrl)}"></script>`;
     // The mirror iframe is opaque-origin, so the dashboard can't read
     // window.AngelAdaptive out of it — the page reports its own result.
     const reporter =

@@ -95,11 +95,6 @@ export function getDemoInventory(): ContentInventory {
   return DEMO_INVENTORY;
 }
 
-/** First inventory item for a slot, or null. */
-export function firstItem(inventory: ContentInventory, slot: InventorySlot): InventoryItem | null {
-  return inventory.slots[slot]?.[0] ?? null;
-}
-
 /** Find an inventory item in a slot matching a meta predicate, else the first. */
 export function pickItem(
   inventory: ContentInventory,

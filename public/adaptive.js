@@ -36,6 +36,12 @@
   // don't present it. Unkeyed (legacy) sites simply omit it.
   var KEY = script.getAttribute("data-key") || "";
   var base = script.getAttribute("data-endpoint") || new URL(script.src).origin;
+  // data-url: vad sidan HETER för motorn, när adressfältet inte är sanningen.
+  // Sandbox-spegeln serverar kundens sida från vår origin (/api/sandbox/…) —
+  // utan overriden klassas varje spegel som "other" och inventory slås upp på
+  // spegel-sökvägen i stället för kundens riktiga path.
+  var URL_ATTR = script.getAttribute("data-url");
+  var PAGE_URL = URL_ATTR || location.href;
   var DECIDE_URL = base + "/api/adaptive/decide";
   var EVENTS_URL = base + "/api/adaptive/events";
   var CONFIG_URL = base + "/api/adaptive/consent-config";
@@ -197,23 +203,27 @@
   // ---- client signals ------------------------------------------------------
   var signals = {
     site: site,
-    url: location.href,
+    url: PAGE_URL,
     key: KEY || undefined,
     referrer: document.referrer || "",
     utmSource: qp.get("utm_source") || qp.get("angel_source") || undefined,
-    utmMedium: qp.get("utm_medium") || qp.get("angel_medium") || undefined,
+    utmMedium: qp.get("utm_medium") || undefined,
     utmCampaign: qp.get("utm_campaign") || undefined,
     screenWidth: deviceOverride ? deviceWidth(deviceOverride) : window.innerWidth || 0,
     language: (navigator.language || "en").split("-")[0],
     hourOfDay: new Date().getHours(),
     isReturning: qp.get("angel_returning") === "1" || prevVisits > 0,
     visitCount: qp.get("angel_returning") === "1" ? Math.max(1, prevVisits) : prevVisits,
-    viewedPricing: qp.get("angel_pricing") === "1" || !!store.viewedPricing,
+    viewedPricing: !!store.viewedPricing,
     lastPath: store.lastPath || null,
     // Omitted (undefined) in anonymous mode so the server withholds holdout
     // bucketing + attribution. holdoutPct is 0 unless consented.
     visitorHash: vid || undefined,
     holdoutPct: consented ? HOLDOUT_PCT : 0,
+    // Skiljer den EXPLICITA per-install-overriden (data-holdout, inkl. "0" som
+    // avstängning) från default-0/config-timeout — servern bucketar annars
+    // från dashboard-värdet (se decide-routens kommentar).
+    holdoutOverride: HOLDOUT_ATTR !== null ? true : undefined,
     consent: consentBasis,
   };
 
@@ -228,8 +238,12 @@
     // application/json would force one and silently drop the beacon. The server
     // parses the JSON body regardless of the declared content type.
     try {
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(EVENTS_URL, new Blob([body], { type: "text/plain;charset=UTF-8" }));
+      // sendBeacon returns false when the UA refuses to queue (quota full) —
+      // fall through to fetch instead of silently dropping the batch.
+      if (
+        navigator.sendBeacon &&
+        navigator.sendBeacon(EVENTS_URL, new Blob([body], { type: "text/plain;charset=UTF-8" }))
+      ) {
         return;
       }
     } catch (e) {
@@ -260,6 +274,21 @@
     if (value !== undefined) payload.value = value;
     track("conversion", payload, lastDecisionId);
   }
+  // Success metric (v1-testdefinitionen): klick på målet eller den förstärkta
+  // vägen. Fires for BOTH arms (control visitors click the real goal too), at
+  // most once per pageload — the proof view counts visitors, not clicks.
+  // "path" says which route was taken: the goal itself, or an Angel shortcut.
+  var ctaClickSent = false;
+  function trackCtaClick(path) {
+    if (ctaClickSent) return;
+    // Konsumera vakten bara när eventet faktiskt går iväg OCH kan attribueras:
+    // utan consent släpper send() eventet, och utan decisionId hamnar klicket
+    // utanför bevisets attributionsfönster ändå. Bägge kan läka senare under
+    // samma sidladdning (CMP-grant, decide-svar) — då ska nästa klick räknas.
+    if (!consented || lastDecisionId === null) return;
+    ctaClickSent = true;
+    track("cta_click", { path: path }, lastDecisionId);
+  }
   // Idempotent: called after decide AND when late-arriving site config fills in
   // a conversion goal — it must only ever register listeners once. A call with
   // nothing configured is a no-op that does NOT consume the guard.
@@ -268,29 +297,61 @@
     if (conversionWired || (!CONVERSION_URL && !CONVERSION_SELECTOR && !CONVERSION_TEXT)) return;
     conversionWired = true;
     try {
-      if (CONVERSION_URL && location.href.indexOf(CONVERSION_URL) !== -1) convert();
+      // URL-mål läses LEVANDE (location.href) om ingen data-url-override
+      // finns: en SPA kan klientnavigera till tacksidan mellan skript-parse
+      // och wireConversion (decide-fönstret är sekunder) — en frusen URL
+      // tappade den konverteringen (granskningsfynd). data-url (sandbox-
+      // spegeln) fryser medvetet: där ÄR adressfältet fel.
+      var urlNow = URL_ATTR ? PAGE_URL : location.href;
+      if (CONVERSION_URL && urlNow.indexOf(CONVERSION_URL) !== -1) convert();
       if (CONVERSION_SELECTOR || CONVERSION_TEXT) {
         document.addEventListener(
           "click",
           function (e) {
             var t = e.target;
             while (t && t.nodeType === 1) {
+              // Angel's injected shortcuts (sticky pill, secondary link) are
+              // the "förstärkta vägen": they count as a cta_click but NEVER as
+              // a conversion — the pill forwards to the REAL goal element whose
+              // own click converts, and the secondary link only leads toward
+              // the goal page. This check runs FIRST so a loose goal selector
+              // (e.g. ".cta-row a" that also matches our injected sibling, or a
+              // bare "button" matching the pill) can't turn Angel's own element
+              // into a false conversion — or double-convert one pill tap.
+              // Interactive elements only, so the decorative badge <span>
+              // never counts.
+              if (
+                (t.tagName === "A" || t.tagName === "BUTTON") &&
+                t.hasAttribute("data-angel-injected")
+              ) {
+                trackCtaClick("assist");
+                return;
+              }
               // Primary: the configured CSS selector. Fallback: the goal's
               // visible label on a link/button — selectors like
               // "a:nth-of-type(2) > button" are structure-dependent and miss on
               // pages whose markup differs; the label survives that.
-              if (CONVERSION_SELECTOR && t.matches && t.matches(CONVERSION_SELECTOR)) {
+              // The owner types the selector freehand in the dashboard, so it
+              // is hostile input: without the try/catch a malformed selector
+              // would throw on EVERY click, page-wide (same reason
+              // resolveNodes guards its querySelectorAll).
+              var selectorHit = false;
+              try {
+                selectorHit = !!(CONVERSION_SELECTOR && t.matches && t.matches(CONVERSION_SELECTOR));
+              } catch (err) {
+                selectorHit = false;
+              }
+              if (selectorHit) {
+                trackCtaClick("goal");
                 convert();
                 return;
               }
               if (
                 CONVERSION_TEXT &&
                 (t.tagName === "A" || t.tagName === "BUTTON") &&
-                // Angel's own injected shortcuts don't count — the sticky pill
-                // forwards the click to the REAL goal element, which does.
-                !t.hasAttribute("data-angel-injected") &&
                 (t.textContent || "").trim() === CONVERSION_TEXT
               ) {
+                trackCtaClick("goal");
                 convert();
                 return;
               }
@@ -402,13 +463,21 @@
   // Elements the current apply() run actually modified, with the pattern that
   // touched them — feeds the debug outline so "what changed" is visible on-page.
   var touchedEls = [];
+  // Kontraktet: varje OPS-funktion returnerar sant bara när den FAKTISKT
+  // ändrade DOM:en. Callbacks här returnerar `false` för "hoppade över noden"
+  // (LCP-vakt, samma-text, redan synlig …). Signalen bär skörde-spärren:
+  // "applied" utan verklig ändring låste skörden på sidor där selectorerna
+  // driftat — precis de sidor som behöver skördas om.
   function each(a, fn) {
     var nodes = resolveNodes(a);
+    var changed = 0;
     for (var i = 0; i < nodes.length; i++) {
       if (isNoTouch(nodes[i])) continue; // never adapt inside a no-touch zone
-      fn(nodes[i]);
+      if (fn(nodes[i]) === false) continue; // op declined this node — no change
       touchedEls.push({ el: nodes[i], pattern: a.pattern });
+      changed++;
     }
+    return changed > 0;
   }
 
   // ---- Core Web Vitals guardrails ------------------------------------------
@@ -442,10 +511,10 @@
 
   var OPS = {
     reveal: function (a) {
-      each(a, function (el) {
+      return each(a, function (el) {
         var hadHidden = el.hasAttribute("data-angel-hidden");
         // Revealing something already visible is a no-op — skip the fake change.
-        if (!hadHidden && el.style.display !== "none") return;
+        if (!hadHidden && el.style.display !== "none") return false;
         var prevDisplay = el.style.display;
         el.removeAttribute("data-angel-hidden");
         el.classList.add("angel-revealed");
@@ -458,10 +527,10 @@
       });
     },
     move_up: function (a) {
-      each(a, function (el) {
-        if (touchesLcp(el)) return; // reordering the LCP element shifts layout
+      return each(a, function (el) {
+        if (touchesLcp(el)) return false; // reordering the LCP element shifts layout
         var parent = el.parentElement;
-        if (!parent) return;
+        if (!parent) return false;
         var nextSibling = el.nextSibling;
         parent.insertBefore(el, parent.firstChild);
         // Markören gör flytten SYNLIG för resten av systemet: utan den var
@@ -476,20 +545,30 @@
       });
     },
     emphasize: function (a) {
-      each(a, function (el) {
-        el.classList.add("angel-emphasized");
-        record(function () {
-          el.classList.remove("angel-emphasized");
-        });
+      // EN emfas per beslut — samma singleton-semantik som injektionerna.
+      // Text-fallbacken i resolveNodes kan matcha varje "Boka"-radknapp på en
+      // listsida (16-badges-incidentklassen, våg 8): halon är paint-only så
+      // ingen automatisk grind fångar svärmen — budgeten är en ring, punkt.
+      var nodes = resolveNodes(a);
+      var el = null;
+      for (var i = 0; i < nodes.length; i++) {
+        if (!isNoTouch(nodes[i])) { el = nodes[i]; break; }
+      }
+      if (!el) return false;
+      el.classList.add("angel-emphasized");
+      touchedEls.push({ el: el, pattern: a.pattern });
+      record(function () {
+        el.classList.remove("angel-emphasized");
       });
+      return true;
     },
     condense: function (a) {
-      each(a, function (el) {
-        if (touchesLcp(el)) return; // collapsing around the LCP element shifts it
+      return each(a, function (el) {
+        if (touchesLcp(el)) return false; // collapsing around the LCP element shifts it
         // The class only hides [data-angel-secondary] children — without any,
         // "condensing" changes nothing. Skip the fake change.
         try {
-          if (!el.querySelector("[data-angel-secondary]")) return;
+          if (!el.querySelector("[data-angel-secondary]")) return false;
         } catch (e) {}
         el.classList.add("angel-condensed");
         record(function () {
@@ -498,15 +577,15 @@
       });
     },
     set_text: function (a) {
-      if (!a.value) return;
-      each(a, function (el) {
-        if (touchesLcp(el)) return; // retexting the LCP element can regress LCP + shift
+      if (!a.value) return false;
+      return each(a, function (el) {
+        if (touchesLcp(el)) return false; // retexting the LCP element can regress LCP + shift
         // Prefer an inner text host so we don't clobber icons/children.
         var host = el.querySelector("[data-angel-text]") || el;
         var prev = host.textContent;
         // Same text = no change: skip the pointless write (and the false
         // "renamed X → X" it would report).
-        if ((prev || "").trim() === String(a.value).trim()) return;
+        if ((prev || "").trim() === String(a.value).trim()) return false;
         host.textContent = a.value;
         record(function () {
           host.textContent = prev;
@@ -518,10 +597,34 @@
       if (document.querySelector(".angel-sticky-cta")) return; // one per page
       // Only when the real goal is on (or reachable from) this page — the pill
       // clicks the genuine element, so navigation and conversion tracking are
-      // the site's own. No resolvable goal → no fake shortcut.
-      var goalNodes = resolveNodes({ target: a.target, anchorText: a.anchorText });
-      if (!goalNodes.length) return;
-      var goalEl = goalNodes[0];
+      // the site's own. No resolvable goal → no fake shortcut. Never adopt a
+      // goal inside a no-touch zone (text-fallbacken kan träffa CMP-knappar).
+      function pickGoalNode() {
+        var nodes = resolveNodes({ target: a.target, anchorText: a.anchorText });
+        for (var i = 0; i < nodes.length; i++) {
+          if (!isNoTouch(nodes[i])) return nodes[i];
+        }
+        return null;
+      }
+      var goalEl = pickGoalNode();
+      if (!goalEl) return;
+      // Självläkning mot SPA/hydrering: ramverket kan byta ut målnoden efter
+      // att pillret skapats. En frånkopplad nod är en död knapp (klicket når
+      // varken sidans handlers eller vår conversion-lyssnare) — så peka om
+      // till den nya noden när det går, göm pillret när målet är borta.
+      function reacquireGoal() {
+        if (goalEl && goalEl.isConnected) return true;
+        var next = pickGoalNode();
+        if (!next) return false;
+        goalEl = next;
+        try {
+          if (observer) {
+            observer.disconnect();
+            observer.observe(goalEl);
+          }
+        } catch (e) {}
+        return true;
+      }
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "angel-sticky-cta";
@@ -529,7 +632,8 @@
       btn.textContent = a.value;
       btn.addEventListener("click", function () {
         try {
-          goalEl.click();
+          if (reacquireGoal()) goalEl.click();
+          else btn.style.display = "none";
         } catch (e) {}
       });
 
@@ -546,13 +650,19 @@
       function pillVictim() {
         var r = btn.getBoundingClientRect();
         if (!r.width || !r.height) return null;
-        var pts = [
-          [r.left + r.width / 2, r.top + r.height / 2],
-          [r.left + 4, r.top + 4],
-          [r.right - 4, r.top + 4],
-          [r.left + 4, r.bottom - 4],
-          [r.right - 4, r.bottom - 4],
-        ];
+        // 3×3-rutnät: fem punkter (mitt + hörn) missade offer vars klickbara
+        // yta låg under pillrets KANTMITTAR — på en mobil flödessida täckte
+        // pillret kortlänkar som hörnproberna inte träffade (interaktions-
+        // grinden fångade det, glutenforum 390×844, 2026-07-08).
+        var pts = [];
+        for (var gx = 0; gx < 3; gx++) {
+          for (var gy = 0; gy < 3; gy++) {
+            pts.push([
+              r.left + 4 + (gx * (r.width - 8)) / 2,
+              r.top + 4 + (gy * (r.height - 8)) / 2,
+            ]);
+          }
+        }
         var prev = btn.style.visibility;
         btn.style.visibility = "hidden"; // elementFromPoint must see through it
         var victim = null;
@@ -595,7 +705,11 @@
         if (window.IntersectionObserver) {
           btn.style.display = "none";
           observer = new IntersectionObserver(function (entries) {
-            goalVisible = !!(entries[0] && entries[0].isIntersecting);
+            // Batchade entries levereras äldst→nyast; bara den SISTA speglar
+            // nuläget (en snabb fling förbi målet och tillbaka gav annars ett
+            // piller ovanpå ett synligt mål).
+            var last = entries[entries.length - 1];
+            goalVisible = !!(last && last.isIntersecting);
             if (goalVisible) {
               btn.style.display = "none";
             } else {
@@ -609,17 +723,55 @@
       }
       document.body.appendChild(btn);
       if (!observer) showPill();
+      function teardown() {
+        try {
+          if (observer) observer.disconnect();
+        } catch (e) {}
+        try {
+          window.removeEventListener("scroll", onViewportChange);
+          window.removeEventListener("resize", onViewportChange);
+        } catch (e) {}
+      }
       // The band under the pill changes as the page scrolls (and when a cookie
       // bar is dismissed) — re-probe on scroll/resize, throttled.
       var lastProbe = 0;
+      // Skild från hiddenByOverlap: gömd-för-att-målet-försvann måste kunna
+      // HÄVAS när målet kommer tillbaka (utan observer är goalVisible alltid
+      // false och display-vakten nedan skulle annars låsa pillret dolt för
+      // alltid — granskningsfynd 2026-07-08).
+      var hiddenByGoalLost = false;
       function onViewportChange() {
+        // Självstädning: rensades pillret bort av en hydrering ska dess
+        // lyssnare/observer inte leva kvar. Och byttes MÅLET ut pekar vi om
+        // (annars fryser goalVisible på det frånkopplade målets sista värde).
+        if (!btn.isConnected) {
+          teardown();
+          return;
+        }
         var now = Date.now();
         if (now - lastProbe < 250) return;
         lastProbe = now;
+        if (goalEl && !goalEl.isConnected && !reacquireGoal()) {
+          btn.style.display = "none"; // målet finns inte längre → ingen genväg
+          hiddenByGoalLost = true;
+          return;
+        }
+        if (hiddenByGoalLost) {
+          // Målet är tillbaka (reacquire lyckades ovan) — återgå till normal
+          // synlighetslogik i stället för att förbli dold.
+          hiddenByGoalLost = false;
+          if (!goalVisible) showPill();
+          return;
+        }
         if (goalVisible) return; // observer owns visibility here
         if (btn.style.display === "none" && !hiddenByOverlap) return;
         showPill();
       }
+      // Innehåll som strömmar in EFTER placeringen (flödeskort, lazy-bilder)
+      // kan hamna under pillret utan att scroll/resize någonsin fyras — proba
+      // om ett par gånger på samma schema som hydrerings-överlevnaden.
+      setTimeout(onViewportChange, 1500);
+      setTimeout(onViewportChange, 4000);
       try {
         window.addEventListener("scroll", onViewportChange, { passive: true });
         window.addEventListener("resize", onViewportChange);
@@ -628,23 +780,23 @@
       }
       touchedEls.push({ el: btn, pattern: a.pattern });
       record(function () {
-        try {
-          if (observer) observer.disconnect();
-        } catch (e) {}
-        try {
-          window.removeEventListener("scroll", onViewportChange);
-          window.removeEventListener("resize", onViewportChange);
-        } catch (e) {}
+        teardown();
         if (btn.parentElement) btn.parentElement.removeChild(btn);
       });
+      return true;
     },
     inject_secondary: function (a) {
       if (!a.value || !a.href) return;
       if (/^javascript:/i.test(a.href)) return; // belt: server already refuses
       if (document.querySelector(".angel-secondary-cta")) return; // one per page
+      // Första noden UTANFÖR no-touch-zonerna — text-fallbacken får aldrig
+      // placera vår länk inne i ägarens [data-angel-ignore] eller en CMP.
       var nodes = resolveNodes({ target: a.target, anchorText: a.anchorText });
-      if (!nodes.length) return;
-      var goalEl = nodes[0];
+      var goalEl = null;
+      for (var i = 0; i < nodes.length; i++) {
+        if (!isNoTouch(nodes[i])) { goalEl = nodes[i]; break; }
+      }
+      if (!goalEl) return;
       var parent = goalEl.parentElement;
       if (!parent) return;
       if (touchesLcp(parent)) return; // a new sibling next to the LCP shifts it
@@ -658,6 +810,7 @@
       record(function () {
         if (link.parentElement) link.parentElement.removeChild(link);
       });
+      return true;
     },
     inject_badge: function (a) {
       if (!a.value) return;
@@ -692,6 +845,7 @@
       record(function () {
         if (badge.parentElement) badge.parentElement.removeChild(badge);
       });
+      return true;
     },
   };
 
@@ -703,8 +857,11 @@
       var op = OPS[a.op];
       if (!op) return;
       try {
-        op(a);
-        applied.push(a.pattern);
+        // "applied" betyder ÄNDRADE — ops returnerar sant bara vid verklig
+        // DOM-förändring. Ett beslut vars selektorer driftat bort ur sidan är
+        // ingen adaptation: sidan är orörd, skörden ska förbli öppen och
+        // debug-läget ska inte peka på element ingen rört.
+        if (op(a)) applied.push(a.pattern);
       } catch (e) {
         /* one bad selector must not break the rest */
       }
@@ -834,9 +991,10 @@
 
   // ---- engagement tracking -------------------------------------------------
   function wireEngagement(decisionId) {
-    // (cta_click removed: it only ever fired on [data-angel-slot] instrumented
-    // markup — a demo leftover that read as a dead metric on real sites. Goal
-    // clicks are the conversion and are wired in wireConversion.)
+    // (cta_click lives in wireConversion's click listener — goal clicks and
+    // Angel-shortcut clicks share the same capture-phase walk. The old
+    // [data-angel-slot]-based cta_click that used to live here was a demo
+    // leftover that never fired on real sites.)
 
     // Scroll depth — fire each 25% bucket once.
     var buckets = { 25: false, 50: false, 75: false, 100: false };
@@ -960,11 +1118,47 @@
   }
 
   // ---- run -----------------------------------------------------------------
+  // The public API exists from init — NOT only after a successful decide. The
+  // header documents window.AngelAdaptive.convert() for customer code; if it
+  // only appeared in decide's .then, a 5xx (or an in-flight decide) would make
+  // the customer's own success-handler throw TypeError. Fail open: decision/
+  // applied fill in later when (if) the decision lands.
+  window.AngelAdaptive = {
+    version: VERSION,
+    site: site,
+    decision: null,
+    applied: [],
+    reset: function () {
+      while (undoStack.length) {
+        try {
+          undoStack.pop()();
+        } catch (e) {
+          /* keep unwinding */
+        }
+      }
+    },
+    track: track,
+    convert: convert,
+  };
+
   function decideAndApply() {
+    // Bounded: skörde-spärren väntar max ~12 s på decideSettled och kommentaren
+    // där förutsätter en decide-timeout — utan den kunde ett hängt svar lämna
+    // ett valt skördefönster oanvänt. 10 s täcker sega mobilnät med marginal.
+    var ctrl = null;
+    try {
+      ctrl = new AbortController();
+      setTimeout(function () {
+        ctrl.abort();
+      }, 10000);
+    } catch (e) {
+      ctrl = null;
+    }
     fetch(DECIDE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(signals),
+      signal: ctrl ? ctrl.signal : undefined,
     })
       .then(function (r) {
         return r.ok ? r.json() : Promise.reject(new Error("decide " + r.status));
@@ -1028,29 +1222,19 @@
         wireConversion();
         if (isDebug()) renderDebug(decision, applied);
 
-        window.AngelAdaptive = {
-          version: VERSION,
-          site: site,
-          decision: decision,
-          applied: applied,
-          reset: function () {
-            while (undoStack.length) {
-              try {
-                undoStack.pop()();
-              } catch (e) {
-                /* keep unwinding */
-              }
-            }
-          },
-          track: track,
-          convert: convert,
-        };
+        window.AngelAdaptive.decision = decision;
+        window.AngelAdaptive.applied = applied;
         document.dispatchEvent(new CustomEvent("angel:applied", { detail: window.AngelAdaptive }));
       })
       .catch(function (err) {
         // Fail open: the customer's page is unchanged if Angel can't decide.
         // Sidan är då orörd → skörd är säker (adaptedThisLoad förblir false).
         decideSettled = true;
+        // Tag-konfigurerade mål (data-conversion-*) ska spåras även när både
+        // config-hämtningen och decide fallerat — annars tappas konverteringar
+        // (inkl. URL-mål på tacksidan) tyst på exakt de laddningar där mätning
+        // vore enda livstecknet. Idempotent — no-op om redan kopplad.
+        wireConversion();
         if (window.console && console.warn) console.warn("[angel] decide failed:", err);
       });
 
@@ -1066,7 +1250,11 @@
   //   conversion — conversion goal, unless the tag set data-conversion-*.
   // GPC/DNT and data-consent="denied" make measurement impossible/forbidden,
   // so they skip the round-trip entirely. Tag attributes always win over
-  // dashboard values (explicit per-install overrides).
+  // dashboard values (explicit per-install overrides). För hold-outen bär
+  // signals.holdoutOverride den distinktionen till servern: ett EXPLICIT
+  // data-holdout (inkl. "0" = avstängning) respekteras, men utan attributet
+  // är dashboard-värdet auktoritativt server-side — annars kunde en config-
+  // timeout här bucketa om besökare mitt i mätningen.
   function applySiteConfig(cfg) {
     if (!cfg) return;
     if (HOLDOUT_ATTR === null && typeof cfg.holdoutPct === "number") {
@@ -1123,7 +1311,11 @@
   // skip the download; the harvester is then told data-force="1" to run without
   // re-electing (which also means it writes no localStorage of its own).
   var HARVEST_URL = base + "/adaptive-harvest.js";
-  function harvestElected() {
+  // Election utan sidoeffekt: returnerar dedupe-nyckeln ("" på samplingsvägen,
+  // null = inte vald). Nyckeln skrivs först när harvester-skriptet faktiskt
+  // LADDATS (onload) — annars konsumerar en adblockad/failad hämtning dagens
+  // enda skördeförsök för sökvägen.
+  function harvestElectionKey() {
     // Consented: dedupe persistently, once per (site,path,UTC-day) — inventory
     // changes slowly. Anonymous: no device storage, so sample ~1/10 loads to
     // still gather inventory cheaply without writing anything.
@@ -1131,14 +1323,13 @@
       if (consented) {
         var day = new Date().toISOString().slice(0, 10);
         var key = "angel_harvest:" + site + ":" + location.pathname + ":" + day;
-        if (localStorage.getItem(key)) return false;
-        localStorage.setItem(key, "1");
-        return true;
+        if (localStorage.getItem(key)) return null;
+        return key;
       }
     } catch (e) {
       /* storage blocked — fall through to sampling */
     }
-    return Math.random() < 0.1;
+    return Math.random() < 0.1 ? "" : null;
   }
   var harvestWaits = 0;
   function loadHarvest() {
@@ -1167,13 +1358,23 @@
       // Don't double-load if a standalone harvest tag is still on the page
       // (e.g. mid-migration) or one was already injected.
       if (document.querySelector('script[src*="adaptive-harvest"]')) return;
-      if (!harvestElected()) return;
+      var electionKey = harvestElectionKey();
+      if (electionKey === null) return;
       var s = document.createElement("script");
       s.src = HARVEST_URL;
       s.async = true;
       s.setAttribute("data-site", site);
       if (KEY) s.setAttribute("data-key", KEY); // gate the inventory POST too
       s.setAttribute("data-force", "1"); // already elected here
+      if (electionKey) {
+        s.onload = function () {
+          try {
+            localStorage.setItem(electionKey, "1");
+          } catch (e) {
+            /* storage blocked — nothing to dedupe against anyway */
+          }
+        };
+      }
       (document.head || document.documentElement).appendChild(s);
     } catch (e) {
       /* never break the host page */

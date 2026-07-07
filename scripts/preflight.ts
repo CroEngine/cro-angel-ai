@@ -6,7 +6,7 @@
 //   bun run scripts/preflight.ts --url=https://kund.se/sida \
 //     [--site=kund.se] [--personas=google_desktop,google_mobile] \
 //     [--goal-selector='...' --goal-text='...' --goal-kind=signup --goal-url=/x] \
-//     [--out=preflight-out]
+//     [--layout=1] [--out=preflight-out]
 //
 // För varje persona: riktig audit → riktig inventory → riktiga snippeten →
 // decide+apply → FÖRE/EFTER-skärmdumpar + hela robustness-mätningen inkl.
@@ -53,23 +53,35 @@ const goal: SiteGoal | null =
       }
     : null;
 
+// --layout=1: släpp igenom nivå 3 i den syntetiska decide:n. Det HÄR är
+// FÖRE/EFTER-underlaget som ska föregå en layout-opt-in (testdefinitionen) —
+// utan flaggan kunde pre-flighten aldrig visa vad opt-in:en skulle göra.
+const allowLayout = arg("layout") === "1";
+
 const snippetSource = readFileSync("public/adaptive.js", "utf8");
 
 mkdirSync(outDir, { recursive: true });
 
 console.log(`[preflight] ${url} · site=${site} · personas=${personas.join(",")}${goal ? ` · goal="${goal.text}" (${goal.kind ?? "?"})` : " · goal=deterministic floor"}`);
 
-const session = await createSession();
 let exitCode = 0;
+const session = await createSession();
 try {
   const { page, close } = await openPage(session.id);
   try {
+    // OBS: sajtens EGEN Angel-installation (pilotsajter kör den skarpa
+    // snippeten live) neutraliseras av runnerns prepare-steg — nätverksblock
+    // via page.route stöds inte av Stagehand-proxyn (verifierat: FÖRE-bilder
+    // med ringen kvar), så runnern städar i DOM:en i stället.
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
     await waitForContent(page);
     await dismissConsent(page);
     await new Promise((r) => setTimeout(r, 1200));
 
     const shots: Shot[] = [];
+    // Per-persona viewport (mobil 390×844) sätts av runnern — Stagehands
+    // setViewportSize är positionell och navigationer nollar överriden, se
+    // kommentaren i runner.server.ts.
     const reports = await runSnippetRobustness(page, {
       url,
       site,
@@ -78,6 +90,7 @@ try {
       goal,
       captureShots: true,
       onShot: (s) => shots.push(s),
+      allowLayoutPatterns: allowLayout,
     });
 
     for (const s of shots) {
@@ -100,6 +113,17 @@ try {
       ].join("  ");
       console.log(line);
       for (const reason of r.reasons) console.log(`      · ${reason}`);
+      // Bevisintegritet: "applicerat" utan en enda ändrad pixel i viewporten
+      // betyder att bilderna inte kan styrka rapporten (adaptationen under
+      // folden, bakom en overlay — eller aldrig synligt applicerad). Rapporten
+      // får inte certifiera arbete som bilderna motsäger (granskningsfynd).
+      const before = shots.find((s) => s.persona === r.persona && s.phase === "before");
+      const after = shots.find((s) => s.persona === r.persona && s.phase === "after");
+      if (r.metrics.targeted > 0 && before && after && before.jpegBase64 === after.jpegBase64) {
+        console.log(
+          `      ! shots identical trots ${r.metrics.targeted} applicerad(e) — ändringen syns inte i viewporten (under folden? bakom overlay?). Bedöm inte estetiken på det här paret.`,
+        );
+      }
       for (const d of r.declined ?? []) console.log(`      ø ${d.pattern}: ${d.reason}`);
       if (r.verdict === "fail") exitCode = 1;
     }

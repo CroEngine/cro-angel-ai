@@ -5,7 +5,7 @@
 // here, so this barrel stays safe to import from client code.
 
 export * from "./types";
-export { PATTERNS, ALL_PATTERNS, getPattern } from "./patterns";
+export { PATTERNS, getPattern } from "./patterns";
 export {
   buildVisitorContext,
   readServerSignals,
@@ -15,7 +15,7 @@ export {
   classifyTrafficSource,
   type ServerSignals,
 } from "./context";
-export { emptyInventory, firstItem, pickItem } from "./inventory";
+export { emptyInventory, pickItem } from "./inventory";
 export {
   mapAuditToInventory,
   mapGoldenToInventory,

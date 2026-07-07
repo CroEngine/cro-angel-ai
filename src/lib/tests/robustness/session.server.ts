@@ -12,9 +12,13 @@ export interface OpenPage {
   close: () => Promise<void>;
 }
 
-/** Click a known consent-banner "accept" control by CMP selector (never by
- *  text — language-agnostic) so consent-gated content renders and any scroll
- *  lock lifts. Best-effort; no-op when nothing matches. */
+/** Click a consent-banner "accept" control: known CMP selectors first, then a
+ *  STRICT text fallback (exakta accepterafraser, sv/en) för egenbyggda banners.
+ *  Selector-only lämnade 3 av 7 sajter bakom cookie-väggar genom hela
+ *  fotograferingen (nattkörningen 2026-07-07) — varje FÖRE/EFTER-bild blev en
+ *  cookie-vägg. Fallbacken är ankrad (^…$), kort (≤40 tecken) och kräver
+ *  synlighet, så den kan inte träffa sidans egna CTA:er.
+ *  Best-effort; no-op when nothing matches. */
 export async function dismissConsent(page: Page): Promise<void> {
   const SELECTORS = [
     "#onetrust-accept-btn-handler",
@@ -27,17 +31,45 @@ export async function dismissConsent(page: Page): Promise<void> {
     ".fc-cta-consent .fc-button",
     "[data-testid='uc-accept-all-button']",
     "[aria-label='Accept all']",
+    '[data-cy="allowCookiesButton"]', // egenbyggd CMP (elgiganten m.fl.)
   ];
+  const ACCEPT_TEXT =
+    "^(acceptera( alla( kakor| cookies)?)?|godkänn( alla( kakor| cookies)?)?|tillåt alla( kakor| cookies)?|jag förstår|accept all( cookies)?|allow all( cookies)?)$";
   try {
-    await page.evaluate((sels: string[]) => {
-      for (const s of sels) {
-        const el = document.querySelector(s) as HTMLElement | null;
-        if (el && el.offsetParent !== null) {
-          el.click();
-          return;
+    await page.evaluate(
+      ({ sels, rx }: { sels: string[]; rx: string }) => {
+        for (const s of sels) {
+          const el = document.querySelector(s) as HTMLElement | null;
+          if (el && el.offsetParent !== null) {
+            el.click();
+            return;
+          }
         }
-      }
-    }, SELECTORS);
+        const re = new RegExp(rx, "i");
+        // Text-fallbacken får BARA klicka inuti något som ser ut som en
+        // consent-container — ett blott "Godkänn" kan annars vara sidans egen
+        // formulärknapp och ett klick där förändrar sidan vi ska mäta
+        // (granskningsfynd: de valfria grupperna gör bara verbet matchande).
+        const CONSENT_CONTAINER =
+          '[class*="cookie" i],[id*="cookie" i],[class*="consent" i],[id*="consent" i],[class*="cmp" i],[id*="cmp" i],[class*="gdpr" i],[id*="gdpr" i],[aria-label*="cookie" i]';
+        const cands = document.querySelectorAll("button,[role='button'],a");
+        for (let i = 0; i < cands.length; i++) {
+          const el = cands[i] as HTMLElement;
+          const t = (el.textContent || "").trim();
+          if (
+            t &&
+            t.length <= 40 &&
+            re.test(t) &&
+            el.offsetParent !== null &&
+            el.closest(CONSENT_CONTAINER)
+          ) {
+            el.click();
+            return;
+          }
+        }
+      },
+      { sels: SELECTORS, rx: ACCEPT_TEXT },
+    );
   } catch {
     /* non-fatal */
   }

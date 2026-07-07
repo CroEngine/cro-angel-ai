@@ -91,10 +91,22 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         // Measurement holdout: deterministically bucket this visitor 0..99 from
         // its id; below holdoutPct → control (snippet withholds the adaptations
         // so their lift can be measured). Off (0) unless the site opts in.
-        const holdoutPct =
+        // Prioritet: (1) EXPLICIT tag-override (data-holdout, holdoutOverride
+        // markerar den — inkl. "0" som per-install-avstängning, dokumenterat
+        // kontrakt), (2) dashboard-värdet, (3) klientens default. Utan
+        // markören kunde en config-timeout i snippetet skicka 0 och bucketa
+        // om besökare mitt i mätningen — dashboard-värdet är auktoritativt
+        // för alla installationer som inte uttryckligen överridit.
+        const clientPct =
           typeof client.holdoutPct === "number"
             ? Math.max(0, Math.min(100, client.holdoutPct))
-            : 0;
+            : null;
+        const holdoutPct =
+          client.holdoutOverride === true && clientPct !== null
+            ? clientPct
+            : cfg.holdoutPct > 0
+              ? cfg.holdoutPct
+              : (clientPct ?? 0);
         const vh = typeof client.visitorHash === "string" ? client.visitorHash : "";
         let holdout = false;
         if (holdoutPct > 0 && vh) {

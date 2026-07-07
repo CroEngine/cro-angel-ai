@@ -20,7 +20,8 @@ import { decide, type SiteGoal } from "@/adaptive/decide";
 import { mapAuditToInventory, rankGoalCandidates } from "@/adaptive/crawler-inventory";
 import type { ContentInventory } from "@/adaptive/types";
 import { runPageAudit } from "../runners/pageAudit.server";
-import { personaContext, type PersonaId } from "./personas";
+import { personaContext, personaDevice, type PersonaId } from "./personas";
+import { dismissConsent } from "./session.server";
 import {
   analyze,
   type AdaptationProbe,
@@ -70,6 +71,10 @@ export interface RobustnessRunOptions {
   /** Capture before/after screenshots for human review (heavier). */
   captureShots?: boolean;
   onShot?: (shot: Shot) => void;
+  /** Släpp igenom nivå 3 (layout) i den syntetiska decide:n — pre-flighten är
+   *  ju precis det FÖRE/EFTER-underlag som ska föregå en layout-opt-in
+   *  (docs/v1-testdefinition.md); utan flaggan kan grinden aldrig visas. */
+  allowLayoutPatterns?: boolean;
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
@@ -143,7 +148,13 @@ async function captureInteractiveBefore(
 }
 
 /** Re-check the previously-clickable elements after apply: how many became
- *  unclickable (covered / hidden / detached). Only regressions are counted. */
+ *  unclickable BECAUSE OF ANGEL. Grinden ska bara fälla det VI täcker: på en
+ *  levande flödessida byter sajtens egen hydrering ut kortnoder (stämpeln
+ *  försvinner → "detached") och strömmar in innehåll som täcker annat — 11
+ *  falska fel på glutenforums mobilflöde (2026-07-08). Angels ops kopplar
+ *  aldrig loss interaktiva element, så en försvunnen stämpel är sajtens egen
+ *  re-render (kan inte bedömas); en täckning räknas bara när täckaren är ett
+ *  Angel-element. */
 async function measureInteractiveAfter(
   page: Page,
   before: { k: number; hittable: boolean }[],
@@ -153,6 +164,8 @@ async function measureInteractiveAfter(
     (b: any) => {
       const vw = window.innerWidth || 1;
       const vh = window.innerHeight || 1;
+      const ANGEL =
+        ".angel-sticky-cta,.angel-badge,.angel-secondary-cta,[data-angel-injected],.angel-debug-tag";
       let checked = 0;
       let broken = 0;
       for (const rec of b as { k: number; hittable: boolean }[]) {
@@ -160,7 +173,7 @@ async function measureInteractiveAfter(
         checked++;
         const el = document.querySelector('[data-angel-ik="' + rec.k + '"]');
         if (!el) {
-          broken++; // detached from the DOM
+          checked--; // node replaced by the site's own re-render — can't judge
           continue;
         }
         const r = el.getBoundingClientRect();
@@ -173,7 +186,12 @@ async function measureInteractiveAfter(
         }
         const hit = document.elementFromPoint(cx, cy);
         const ok = !!hit && (hit === el || el.contains(hit) || hit.contains(el));
-        if (!ok) broken++;
+        if (ok) continue;
+        // Täckt — men av vem? Bara Angels egna element fäller grinden; sajtens
+        // egna overlays/inströmmade kort är ambient rörelse, inte vår skada.
+        const byAngel = !!(hit && hit.closest && hit.closest(ANGEL));
+        if (byAngel) broken++;
+        else checked--;
       }
       return { checked, broken };
     },
@@ -323,7 +341,17 @@ export async function runSnippetRobustness(
 
   // --- prepare: audit + inject snippet (once) ---
   try {
+    // Neutralisera en LIVE Angel-installation FÖRE audit och baseline:
+    // pilotsajter (glutenforum) kör den skarpa snippeten, som hinner applicera
+    // sina adaptationer innan harnessen mäter. Utan städningen (a) skördas den
+    // adapterade DOM:en in i harnessens inventory (samma klass av fel som
+    // harvest-feedback-loopen) och (b) bakas ringen in i FÖRE-bilderna så
+    // paren blir bevislösa. Nätverksblock går inte (Stagehand-proxyn saknar
+    // page.route) — så vi kör den skarpa instansens egen reset() och sopar
+    // därefter residuet fysiskt.
+    await stripLiveAngel(page);
     const audit = await withTimeout(runPageAudit(page), prepareTimeout, "audit");
+    await stripLiveAngel(page); // bälte: den skarpa snippetens sena re-applies
     inventory = mapAuditToInventory(audit, site);
 
     // No stored goal from the caller → the deterministic no-LLM floor, exactly
@@ -385,11 +413,47 @@ export async function runSnippetRobustness(
   }
 
   // --- measure each persona in sequence (reset() between them) ---
+  // Mobil-personor SIST: viewport-flippen 1288→390 får responsiva sajter att
+  // re-rendera sin header/nav, och en desktop-persona som mäts EFTER flippen
+  // ser då "detached" element som inte är Angels fel (falska interaction-
+  // failar, glutenforum 2026-07-08). Stabil ordning inom varje enhetsgrupp.
+  const ordered = [
+    ...personas.filter((p) => personaDevice(p) !== "mobile"),
+    ...personas.filter((p) => personaDevice(p) === "mobile"),
+  ];
   const reports: RobustnessReport[] = [];
-  for (const persona of personas) {
+  for (const persona of ordered) {
     const started = Date.now();
     const errBefore = consoleErrors.length;
     try {
+      // Viewporten ska matcha personans enhet — annars bedöms mobilmönstren
+      // (sticky-pillret framför allt) aldrig i miljön de kör i (varje
+      // "mobil"-bild i nattkörningen var desktop-bredd). OBS anropsformen:
+      // Stagehands page.setViewportSize tar POSITIONELLA argument
+      // (width, height) och sväljer tyst en Playwright-stil {width,height}-
+      // objektfelanvändning (CDP-felet .catch:as bort). Navigationer nollar
+      // dessutom överriden till Stagehands default (1288×711) — därför sätts
+      // den här, EFTER goto, per persona. Signaturerna är strukturella
+      // (textLen/elementCount) så reversibilitetskollen överlever bytet.
+      try {
+        const vp =
+          personaDevice(persona) === "mobile"
+            ? { width: 390, height: 844 }
+            : { width: 1288, height: 711 };
+        await (
+          page as unknown as { setViewportSize: (w: number, h: number) => Promise<void> }
+        ).setViewportSize(vp.width, vp.height);
+        await new Promise((r) => setTimeout(r, 400)); // reflow settle
+      } catch {
+        /* viewport control unsupported — measure in the current viewport */
+      }
+      // Consent-banners kan dyka upp/återuppstå EFTER prepare-steget (sena
+      // CMP:er, per-viewport-varianter) — utan omtag fotograferas FÖRE/EFTER
+      // genom en cookie-vägg och adaptationen syns aldrig (nattkörningen).
+      await dismissConsent(page);
+      // Consent-klicket kan trigga den skarpa snippetens upgrade-väg → ny
+      // apply → kontaminerad FÖRE-bild. Sopa innan varje persona mäter.
+      await stripLiveAngel(page);
       const report = await withTimeout(
         measurePersona(page, {
           url,
@@ -403,6 +467,7 @@ export async function runSnippetRobustness(
           consoleErrors,
           captureShots: opts.captureShots ?? false,
           onShot: opts.onShot,
+          allowLayoutPatterns: opts.allowLayoutPatterns ?? false,
         }),
         personaTimeout,
         `persona ${persona}`,
@@ -441,6 +506,47 @@ async function shoot(page: Page): Promise<string> {
   return buf.toString("base64");
 }
 
+/** Neutralisera en LIVE Angel-installation (pilotsajternas skarpa snippet):
+ *  kör dess reset() och sopa residuet fysiskt. Körs i prepare-steget OCH inför
+ *  varje persona — den skarpa snippeten kan återapplicera långt efter load
+ *  (hydrerings-överlevnad, consent-upgrade när harnessen klickar bort
+ *  cookie-bannern), och varje sådan omgång kontaminerar nästa FÖRE-bild
+ *  (glutenforum 2026-07-08: persona 2:s FÖRE hade ringen inbakad). Idempotent
+ *  och billig; harnessens egen apply sker först efteråt. */
+async function stripLiveAngel(page: Page): Promise<void> {
+  try {
+    await page.evaluate(() => {
+      try {
+        const A = (window as unknown as { AngelAdaptive?: { reset?: () => void } }).AngelAdaptive;
+        if (A && typeof A.reset === "function") A.reset();
+      } catch {
+        /* ingen live-instans */
+      }
+      try {
+        const style = document.getElementById("angel-style");
+        if (style && style.parentElement) style.parentElement.removeChild(style);
+        document
+          .querySelectorAll(
+            "[data-angel-injected],.angel-sticky-cta,.angel-secondary-cta,.angel-badge,.angel-debug-tag",
+          )
+          .forEach((el) => el.remove());
+        document
+          .querySelectorAll(".angel-emphasized,.angel-revealed,.angel-condensed")
+          .forEach((el) =>
+            el.classList.remove("angel-emphasized", "angel-revealed", "angel-condensed"),
+          );
+        document
+          .querySelectorAll("[data-angel-moved]")
+          .forEach((el) => el.removeAttribute("data-angel-moved"));
+      } catch {
+        /* städningen är best-effort */
+      }
+    });
+  } catch {
+    /* aldrig fatal */
+  }
+}
+
 async function measurePersona(
   page: Page,
   args: {
@@ -455,11 +561,19 @@ async function measurePersona(
     consoleErrors: string[];
     captureShots: boolean;
     onShot?: (shot: Shot) => void;
+    allowLayoutPatterns?: boolean;
   },
 ): Promise<RobustnessReport> {
-  const { url, site, persona, inventory, goal, baseline, started, errBefore, consoleErrors } = args;
+  const { url, site, persona, inventory, goal, started, errBefore, consoleErrors } = args;
   const context = personaContext(persona, url);
-  const decision = decide(site, context, inventory, {}, goal ?? undefined);
+  const decision = decide(site, context, inventory, {}, goal ?? undefined, {
+    allowLayoutPatterns: args.allowLayoutPatterns ?? false,
+  });
+  // Baseline PER persona, i personans viewport: prepare-baslinjen togs i
+  // desktop-viewporten, men responsiva sajter monterar/avmonterar DOM vid
+  // 390 px (hamburgermeny m.m.) — en global baslinje ger falska
+  // "irreversibelt"-utslag för mobil-personan (granskningsfynd).
+  const baseline = await signature(page);
   const adaptations = decision.adaptations;
 
   const probes = (await page.evaluate(

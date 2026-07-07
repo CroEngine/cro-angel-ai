@@ -473,54 +473,8 @@ export function curateCtas(raw: CTAEntity[]): CTAEntity[] {
   return deduped.slice(0, MAX_CTAS).map((c) => c.cta);
 }
 
-// Zero-config goal detection: which harvested CTA is most likely the site's
-// conversion goal. Ordered strongest-signal first; the FIRST regex with a match
-// wins, ties broken by curation order (already prominence-scored). EN + SV.
-const GOAL_RX: RegExp[] = [
-  /skapa konto|sign ?up|register|registrera|bli medlem|create (an )?account|join/i,
-  /köp|beställ|add to (cart|basket|bag)|lägg i varukorg|buy|checkout|till kassan/i,
-  /boka|book (a )?|schedule|reservera/i,
-  /prova|trial|get started|kom igång|starta|start free/i,
-  /kontakt|offert|contact|get a quote|demo/i,
-];
-
-/**
- * Pick the best conversion-goal candidate from an inventory's CTAs, or null if
- * none look like a goal. Pure and deterministic — used to auto-fill a site's
- * conversion goal so the owner only has to CONFIRM, not configure.
- */
-/** Fixed goal ranking — the LLM labels intent, but the ORDER is ours. */
-const INTENT_PRIORITY = ["signup", "purchase", "booking", "trial", "quote", "contact"] as const;
-
-export function pickGoalCta(
-  inventory: ContentInventory,
-): { selector: string; text: string } | null {
-  // Support/login/legal/nav items can never be the conversion goal, no matter
-  // how well their label happens to match a goal word in some language.
-  // elementIntent "navigation" likaså: en in-page-flik ("Bilder"/"Betyg") är
-  // harvestad som CTA men är sidnavigering — aldrig ett konverteringsmål.
-  const ctas = (inventory.slots.cta ?? []).filter(
-    (c) => c.selector && c.text && isAcquisition(c) && c.meta?.elementIntent !== "navigation",
-  );
-
-  // LLM-labelled pass first: works in ANY language ("Konto erstellen" carries
-  // llmIntent=signup). The intent ranking stays deterministic and ours.
-  for (const intent of INTENT_PRIORITY) {
-    const hit = ctas.find(
-      (c) =>
-        c.meta?.llmIntent === intent &&
-        Number(c.meta?.llmConfidence ?? "0") >= LLM_CONFIDENCE_FLOOR,
-    );
-    if (hit) return { selector: hit.selector as string, text: hit.text as string };
-  }
-
-  // Deterministic EN+SV word rules — always available, no key required.
-  for (const rx of GOAL_RX) {
-    const hit = ctas.find((c) => rx.test(c.text as string));
-    if (hit) return { selector: hit.selector as string, text: hit.text as string };
-  }
-  return null;
-}
+// (pickGoalCta + GOAL_RX + INTENT_PRIORITY borttagna 2026-07-08: ersatta av
+// rankGoalCandidates + judgeSiteGoals nedan — inga produktionsanrop fanns kvar.)
 
 // ---- goal KIND + ranked candidates (the "propose" side) ---------------------
 //
@@ -666,6 +620,28 @@ const KIND_HREF: { kind: GoalKind; rx: RegExp }[] = [
   { kind: "download", rx: /(apps\.apple\.com|play\.google\.com|\/(download|ladda-ner))/i },
 ];
 
+/** Stark målevidens: etiketten/länken matchar en känd konverteringsregel
+ *  (KIND_TEXT/KIND_HREF). Skild från classifyGoalKind, vars residual-fallback
+ *  också "hittar" en kind för vad som helst — evidens är frågan här, inte
+ *  klassning. Rank-bonusen nedan behöver skillnaden: "Skapa konto" ska slå
+ *  "Skriv ett inlägg" och "Sign up free" ska slå "Read more" vid lika
+ *  prominens. OBS: "prenumerera" ÄR en KIND_TEXT-regel (subscribe) och får
+ *  också bonusen — två verb-CTA:er (BOKA vs PRENUMERERA) avgörs alltjämt av
+ *  prominens, så en dominant nyhetsbrevspopup kan fortfarande vinna golvet
+ *  (backlog: popup-detektion i skörden). */
+function hasGoalEvidence(text?: string, href?: string): boolean {
+  const h = (href ?? "").trim();
+  for (const { rx } of KIND_HREF) if (h && rx.test(h)) return true;
+  const t = (text ?? "").trim();
+  if (t) for (const { rx } of KIND_TEXT) if (rx.test(t)) return true;
+  return false;
+}
+
+/** Evidensbonus i golv-rankningen — kalibrerad mot ctaScore-skalan (~0–165):
+ *  avgör lika-prominens-fall och små gap, välter aldrig en hero-CTA med
+ *  40+ poängs prominensövertag. */
+const GOAL_EVIDENCE_BONUS = 25;
+
 /**
  * Best-effort language-independent-first classification of what CONVERTING via
  * this CTA means. Priority: hard structural signals (form/tel/mailto/off-domain)
@@ -753,7 +729,11 @@ export function rankGoalCandidates(
         c.meta?.elementIntent,
         Number(c.meta?.visualWeight ?? "0") || 0,
         Number(c.meta?.variantCount ?? "0") || 0,
-      ),
+      ) +
+      // Konverterings-verb i etiketten/länken väger tyngre än ren prominens
+      // vid nära lopp — pickGoalCta:s ordregler kunde det här; prominens-
+      // rankningen ensam lät "Read more" slå "Sign up free".
+      (hasGoalEvidence(c.text, c.meta?.href) ? GOAL_EVIDENCE_BONUS : 0),
   }));
   scored.sort((a, b) => b.score - a.score || a.i - b.i);
   return scored.slice(0, MAX_GOAL_CANDIDATES).map((s, idx) => ({
@@ -944,20 +924,29 @@ export function mapGoldenToInventory(golden: unknown, site: string): ContentInve
   }
 
   // Trust slots: golden only carries counts per type, not text/selectors.
+  // source: "harvest" — same stamp as mapAuditToInventory. These are records
+  // of content that was VISIBLE when crawled; without the stamp they slip past
+  // decide's reveal-honesty gate (selector-less → slot-convention target) and
+  // a corpus-fallback site gets reveal adaptations that silently no-op on the
+  // real page yet log exposures (granskningsfynd).
   for (const [type, count] of Object.entries(pa.trustSummary?.byType ?? {})) {
     if (!count) continue;
     const slot = TRUST_SLOT[type as TrustSignalType];
     if (slot)
       b.add(slot, {
         id: `${slot}-present`,
-        meta: { trustType: type, count: String(count), present: "true" },
+        meta: { trustType: type, count: String(count), present: "true", source: "harvest" },
       });
   }
 
   // Section presence (order is meaningful but selectors are stripped here).
   for (const type of pa.sectionOrder ?? []) {
     const slot = SECTION_SLOT[type as SectionType];
-    if (slot) b.add(slot, { id: `${slot}-present`, meta: { sectionType: type, present: "true" } });
+    if (slot)
+      b.add(slot, {
+        id: `${slot}-present`,
+        meta: { sectionType: type, present: "true", source: "harvest" },
+      });
   }
 
   for (const mc of extractMicrocopy(textPool)) b.add("microcopy", mc);

@@ -267,4 +267,3 @@ export function getPattern(id: PatternId): Pattern {
 }
 
 /** All patterns as an array — handy for the dashboard's pattern overview. */
-export const ALL_PATTERNS: Pattern[] = Object.values(PATTERNS);

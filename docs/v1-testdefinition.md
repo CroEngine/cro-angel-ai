@@ -43,7 +43,7 @@ mål. Piloter: glutenforum.se + 1–2 sajter till med högre trafik.
 | Förstagångsbesökare | emphasize_goal + relevant badge (payment_security/no_credit_card/rating per målslag) |
 | Återkommande | continue_where_left_off |
 | Mobil | sticky_goal_cta |
-| B2B-källa (LinkedIn/partner) | show_case_study / show_enterprise_testimonial (reveal) |
+| B2B-källa (LinkedIn/partner) | emphasize_goal + relevant badge. (show_case_study/show_enterprise_testimonial är reveal-mönster och kräver att kunden slot-instrumenterar dolt innehåll — `[data-angel-slot]` + `data-angel-hidden`; på enbart skördade sajter avböjer ärlighetsgrinden dem korrekt. B2B-reveal blir alltså ett instrumenterings-erbjudande till piloten, inte ett default-test.) |
 
 ## Mått
 

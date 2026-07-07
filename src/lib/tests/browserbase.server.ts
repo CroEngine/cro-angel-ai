@@ -24,6 +24,10 @@ export async function createSession(): Promise<BrowserbaseSession> {
     keepAlive: true,
     timeout: 16 * 60,
     proxies: true, // residential proxies — helps past Cloudflare/anti-bot challenges
+    // OBS viewport: sessions-nivåns browserSettings.viewport gäller bara tills
+    // första navigationen — Stagehand återställer sedan sin default (1288×711).
+    // Per-enhet-emulering görs därför i robustness-runnern via Stagehands
+    // POSITIONELLA page.setViewportSize(w, h), efter goto.
   });
   const debug = await client.sessions.debug(session.id);
   return {

@@ -285,9 +285,9 @@ function Dashboard() {
                           <tr className="text-left text-xs text-stone-500">
                             <th className="py-1 font-medium">Arm</th>
                             <th className="py-1 font-medium">Besökare</th>
-                            <th className="py-1 font-medium">CTA-klick</th>
+                            <th className="py-1 font-medium">Mål-klick</th>
                             <th className="py-1 font-medium">Konvertering</th>
-                            <th className="py-1 font-medium">Återbesök 7d</th>
+                            <th className="py-1 font-medium">Återbesök 6h–7d</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -316,16 +316,34 @@ function Dashboard() {
                           ))}
                         </tbody>
                       </table>
-                      {d.metrics.proof.pWin !== null && (
+                      {d.metrics.proof.adapted.assistClicks > 0 && (
+                        <p className="text-xs text-stone-400">
+                          {d.metrics.proof.adapted.assistClicks} adapterade besökare klickade via
+                          Angels genvägar (sticky/sekundär) — kan överlappa mål-klicken ovan.
+                          Genvägar finns inte i kontrollgruppen och räknas aldrig in i jämförelsen.
+                        </p>
+                      )}
+                      {d.metrics.proof.pWin !== null ? (
                         <p className="text-sm text-stone-600">
-                          Sannolikhet att anpassningarna ger fler CTA-klick än kontrollgruppen:{" "}
+                          Sannolikhet att anpassningarna ger fler mål-klick än kontrollgruppen:{" "}
                           <span className="font-semibold text-emerald-700">
-                            {(d.metrics.proof.pWin * 100).toFixed(0)}&nbsp;%
+                            {d.metrics.proof.pWin >= 0.995
+                              ? ">99"
+                              : d.metrics.proof.pWin < 0.005
+                                ? "<1"
+                                : (d.metrics.proof.pWin * 100).toFixed(0)}
+                            &nbsp;%
                           </span>
                           <span className="ml-1 text-xs text-stone-400">
                             (Bayesiansk avläsning — mer trafik ger säkrare svar; procenttal nära
                             50&nbsp;% betyder "för tidigt att säga".)
                           </span>
+                        </p>
+                      ) : (
+                        <p className="text-xs text-stone-400">
+                          För tidigt att säga — sannolikhetssiffran visas först när bägge armarna
+                          har minst 30 besökare och det finns minst 5 mål-klick totalt. Innan dess
+                          skulle siffran spegla antaganden, inte er trafik.
                         </p>
                       )}
                     </div>
@@ -1331,8 +1349,8 @@ function describeEvent(e: TimelineEvent): { label: string; details: string[]; do
       };
     case "cta_click":
       return {
-        label: "Clicked CTA",
-        details: typeof p.text === "string" ? [`“${p.text}”`] : [],
+        label: p.path === "assist" ? "Clicked goal via Angel shortcut" : "Clicked goal CTA",
+        details: [],
         dot: "bg-emerald-600",
       };
     case "scroll_depth":

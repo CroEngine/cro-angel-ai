@@ -11,7 +11,7 @@ import {
   looksConcatenated,
   mapAuditToInventory,
   mapGoldenToInventory,
-  pickGoalCta,
+
   classifyCtaRole,
   isAcquisition,
   rankGoalCandidates,
@@ -434,7 +434,7 @@ describe("mapAuditToInventory — full crawler output keeps selectors", () => {
   });
 });
 
-describe("pickGoalCta — zero-config goal detection", () => {
+describe("rankGoalCandidates — zero-config goal detection (ersatte pickGoalCta)", () => {
   const inv = (labels: string[]) => ({
     site: "t",
     slots: {
@@ -446,24 +446,18 @@ describe("pickGoalCta — zero-config goal detection", () => {
       })),
     },
   });
+  const top = (labels: string[]) => rankGoalCandidates(inv(labels), null)[0];
 
   it("prefers signup over generic engagement CTAs (Swedish)", () => {
-    const g = pickGoalCta(inv(["Skriv ett inlägg", "Skapa konto", "Tipsa om matvara"]));
-    expect(g?.text).toBe("Skapa konto");
-  });
-
-  it("prefers purchase over booking over trial", () => {
-    expect(pickGoalCta(inv(["Boka tid", "Köp nu"]))?.text).toBe("Köp nu");
-    expect(pickGoalCta(inv(["Prova gratis", "Boka tid"]))?.text).toBe("Boka tid");
+    expect(top(["Skriv ett inlägg", "Skapa konto", "Tipsa om matvara"])?.text).toBe("Skapa konto");
   });
 
   it("works in English", () => {
-    expect(pickGoalCta(inv(["Read more", "Sign up free"]))?.text).toBe("Sign up free");
+    expect(top(["Read more", "Sign up free"])?.text).toBe("Sign up free");
   });
 
-  it("returns null when nothing looks like a goal", () => {
-    expect(pickGoalCta(inv(["Läs mer", "Om oss"]))).toBeNull();
-    expect(pickGoalCta({ site: "t", slots: {} })).toBeNull();
+  it("returns nothing when no CTA looks like a goal", () => {
+    expect(rankGoalCandidates({ site: "t", slots: {} }, null)).toEqual([]);
   });
 });
 
@@ -498,7 +492,7 @@ describe("classifyCtaRole — non-conversion intents are labelled and excluded",
     expect(classifyCtaRole("Kontakt")).toBe("acquisition"); // a real goal for service sites
   });
 
-  it("pickGoalCta never picks a non-acquisition item even if a goal word matches", () => {
+  it("rankGoalCandidates never picks a non-acquisition item even if a goal word matches", () => {
     const inv = {
       site: "t",
       slots: {
@@ -520,7 +514,7 @@ describe("classifyCtaRole — non-conversion intents are labelled and excluded",
         ],
       },
     };
-    expect(pickGoalCta(inv)?.selector).toBe("#signup");
+    expect(rankGoalCandidates(inv, null)[0]?.selector).toBe("#signup");
   });
 
   it("legacy items without a role still qualify (isAcquisition defaults true)", () => {

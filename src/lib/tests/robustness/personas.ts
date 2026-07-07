@@ -57,6 +57,14 @@ export function personaContext(persona: PersonaId, url: string): VisitorContext 
   return { ...base, url, pageType: classifyPageType(url) };
 }
 
+/** Personans enhet — harnessen sätter webbläsarens VIEWPORT efter den, inte
+ *  bara kontextflaggan. Utan det renderades varje "mobil"-persona i desktop-
+ *  viewport: sticky-pillret (flaggskeppsmönstret för mobil) gick aldrig att
+ *  bedöma på riktigt (granskningsfynd, nattkörningen 2026-07-07). */
+export function personaDevice(persona: PersonaId): VisitorContext["device"] {
+  return (PERSONAS[persona] ?? PERSONAS[DEFAULT_PERSONA]).device;
+}
+
 export function isPersona(v: string): v is PersonaId {
   return v === "linkedin_desktop" || v === "google_mobile" || v === "returning_pricing" || v === "paid_high_intent";
 }
