@@ -176,7 +176,10 @@ export type DeclineReason =
    *  not include the site's confirmed conversion goal kind — e.g. a "2 minute
    *  setup" SaaS badge nominated for a donate site. Only fires when a goal
    *  kind is confirmed; unconfigured sites are never gated this way. */
-  | "goal_kind_mismatch";
+  | "goal_kind_mismatch"
+  /** Mönstrets avoidPageTypes exkluderar sidans typ — t.ex. ett flytt-mönster
+   *  på en artikel-/bloggsida (content). Se Pattern.avoidPageTypes. */
+  | "page_type_mismatch";
 
 export interface Decision {
   /** Deterministic hash of (site + normalized context). Stable for replay. */
@@ -237,6 +240,12 @@ export interface Pattern {
    *  show_enterprise_testimonial, which reveals ANY testimonial regardless of
    *  whether it's enterprise. */
   appliesTo?: GoalKind[];
+  /** Sidtyper där mönstret ALDRIG nomineras. Flytt-/omordningsmönster är
+   *  designade för landningsytor (hero → sektioner → FAQ) — på en artikel-/
+   *  bloggsida är "FAQ först" alltid fel (glutenforum-incidenten: FAQ ovanför
+   *  inlägget). Gating i decide() med typad decline (page_type_mismatch) —
+   *  skönhetsgrindarna i pre-flighten är sista försvarslinjen, inte första. */
+  avoidPageTypes?: PageType[];
 }
 
 /** Client-collected signals POSTed to /api/adaptive/decide. */

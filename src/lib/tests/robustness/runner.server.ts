@@ -30,6 +30,7 @@ import {
   type RerenderProbe,
   type RobustnessObservation,
   type RobustnessReport,
+  type VisualSanity,
 } from "./analyze";
 
 /** Screenshot emitted for human review when captureShots is on. */
@@ -509,6 +510,17 @@ async function measurePersona(
   // is still at the top here — the re-render provoke that scrolls comes later).
   const interactiveBefore = await captureInteractiveBefore(page);
 
+  // Horisontell overflow FÖRE apply — befintlig overflow är sajtens egen och
+  // ska inte falla på Angel; skönhetsgrinden mäter bara det apply INFÖR.
+  const hOverflowBefore = (await page.evaluate(
+    () =>
+      Math.max(
+        0,
+        (document.documentElement ? document.documentElement.scrollWidth : 0) -
+          (document.documentElement ? document.documentElement.clientWidth : 0),
+      ),
+  )) as number;
+
   const applied = (await page.evaluate(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (d: any) => (window as any).__angel.apply(d),
@@ -519,6 +531,47 @@ async function measurePersona(
   const applyMove = await measureAgainst(page, r1);
   // Did any clickable element become unclickable? (covered / hidden / detached)
   const interaction = await measureInteractiveAfter(page, interactiveBefore);
+
+  // Skönhetsgrindarna (VisualSanity, analyze.ts): flyttat innehåll ovanför
+  // sidans huvudinnehåll (blogg-fallets signatur — FAQ ovanför artikel-
+  // rubriken) och introducerad horisontell overflow. [data-angel-moved]
+  // stämplas av snippetens move_up.
+  const visual = (await page.evaluate((beforePx: number) => {
+    const moved = document.querySelectorAll("[data-angel-moved]");
+    // Huvudinnehålls-ankare: första synliga h1, annars main/article-toppen.
+    let anchorTop: number | null = null;
+    const h1s = document.querySelectorAll("h1");
+    for (let i = 0; i < h1s.length; i++) {
+      const r = h1s[i].getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        anchorTop = r.top + window.scrollY;
+        break;
+      }
+    }
+    if (anchorTop === null) {
+      const main = document.querySelector("main, article, [role='main']");
+      if (main) anchorTop = main.getBoundingClientRect().top + window.scrollY;
+    }
+    let above = 0;
+    for (let i = 0; i < moved.length; i++) {
+      const r = moved[i].getBoundingClientRect();
+      const top = r.top + window.scrollY;
+      // 24px-marginal: "strax ovanför rubriken" (direkt under hero) är inte
+      // trasigt; en flytt som parkerar KLART ovanför huvudinnehållet är det.
+      if (anchorTop !== null && top < anchorTop - 24) above++;
+    }
+    const overflowNow = Math.max(
+      0,
+      (document.documentElement ? document.documentElement.scrollWidth : 0) -
+        (document.documentElement ? document.documentElement.clientWidth : 0),
+    );
+    return {
+      movedCount: moved.length,
+      movedAboveMain: above,
+      mainAnchorFound: anchorTop !== null,
+      hOverflowIntroducedPx: Math.max(0, overflowNow - beforePx),
+    };
+  }, hOverflowBefore)) as VisualSanity;
 
   // Net out the ambient rate: the honest Angel-attributable shift.
   const netFraction = Math.max(0, applyMove.shiftedFraction - control.shiftedFraction);
@@ -561,6 +614,7 @@ async function measurePersona(
     layout,
     rerender,
     interaction,
+    visual,
     residueAfterReset,
     durationMs: Date.now() - started,
   };

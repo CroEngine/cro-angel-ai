@@ -90,12 +90,41 @@ export interface RobustnessObservation {
   layout: LayoutDiff;
   rerender: RerenderProbe;
   interaction: InteractionProbe;
+  /** Skönhetsgrindarna (se VisualSanity). Optional: failReport-vägar och
+   *  äldre observationer saknar den — då bedöms inte grindarna. */
+  visual?: VisualSanity;
   /** Angel residue remaining after reset() (must be 0): leftover classes /
    *  injected badges / hidden markers. The strongest reversibility signal —
    *  robust even on pages that mutate their own DOM. */
   residueAfterReset: number;
   durationMs: number;
 }
+
+/** Visuella sanity-mätningar efter apply — skönhetsgrindarna. Fångar den
+ *  klass av "tekniskt rätt, visuellt fel" som mätningarna ovan är blinda för
+ *  (glutenforum-incidenten: move_faq_up la FAQ:n OVANFÖR blogginläggets
+ *  rubrik — reversibelt, inga fel, ingen interaktion bruten, men trasigt för
+ *  ögat). Regeln "vi får aldrig försämra sidan" behöver strukturella proxies:
+ *  flyttat innehåll får inte hamna ovanför sidans huvudinnehåll, och apply
+ *  får inte introducera horisontell scroll. */
+export interface VisualSanity {
+  /** Element som bär data-angel-moved efter apply. */
+  movedCount: number;
+  /** Flyttade element vars topp hamnat OVANFÖR sidans huvudrubrik (h1/main). */
+  movedAboveMain: number;
+  /** Hittades ett huvudinnehålls-ankare att mäta mot? (utan h1/main: ingen dom) */
+  mainAnchorFound: boolean;
+  /** Horisontell overflow (px) som apply INTRODUCERADE (0 när sidan redan
+   *  hade overflow före — befintlig overflow är sajtens egen). */
+  hOverflowIntroducedPx: number;
+}
+
+export const EMPTY_VISUAL: VisualSanity = {
+  movedCount: 0,
+  movedAboveMain: 0,
+  mainAnchorFound: false,
+  hOverflowIntroducedPx: 0,
+};
 
 export type Verdict = "pass" | "warn" | "fail";
 
@@ -106,6 +135,10 @@ export interface RobustnessReport {
   verdict: Verdict;
   /** Human-readable issues, most severe first. Empty on a clean pass. */
   reasons: string[];
+  /** decide():s typade declines — VARFÖR nominerade mönster inte kördes
+   *  (page_type_mismatch, goal_kind_mismatch, no_inventory_for_slot, …).
+   *  Utan dem kan pre-flight-rapporten bara visa VAD som hände, inte varför. */
+  declined?: { pattern: string; reason: string }[];
   metrics: {
     decided: number;
     applied: number;
@@ -128,6 +161,8 @@ export interface RobustnessReport {
     rerenderStable: boolean;
     /** Interactive elements that became unclickable after apply (0 = good). */
     interactionBroken: number;
+    /** Skönhetsgrindarnas råvärden (absent när observationen saknar dem). */
+    visual?: VisualSanity;
     consoleErrorCount: number;
     durationMs: number;
   };
@@ -223,6 +258,25 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
         `${o.interaction.broken} interactive element(s) became unclickable after apply (covered / hidden / detached)`,
       );
     }
+    // Skönhetsgrindarna: strukturella proxies för "får aldrig se trasigt ut".
+    if (o.visual) {
+      // Flyttat innehåll ovanför sidans huvudinnehåll — blogg-fallets exakta
+      // signatur (FAQ ovanför artikelrubriken). Hårt stopp, inte review.
+      if (o.visual.movedAboveMain > 0) {
+        fail(
+          `${o.visual.movedAboveMain} moved element(s) placed ABOVE the page's main content — would look broken`,
+        );
+      }
+      // Apply skapade horisontell scroll som inte fanns före.
+      if (o.visual.hOverflowIntroducedPx > 8) {
+        fail(`apply introduced ${o.visual.hOverflowIntroducedPx}px of horizontal overflow`);
+      }
+      // Flytt utan mätbart ankare kan inte bedömas maskinellt → mänsklig
+      // granskning av skärmdumparna.
+      if (o.visual.movedCount > 0 && !o.visual.mainAnchorFound) {
+        warn("moved element(s) but no h1/main anchor to judge against — review screenshots");
+      }
+    }
 
     // Soft signals — worth surfacing, not launch-blocking.
     if (o.decidedCount > 0 && !fullyTargeted) {
@@ -281,6 +335,7 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
     persona: o.persona,
     verdict,
     reasons,
+    ...(o.declined && o.declined.length > 0 ? { declined: o.declined } : {}),
     metrics: {
       decided: o.decidedCount,
       applied: o.appliedCount,
@@ -293,6 +348,7 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
       layout: o.layout,
       rerenderStable,
       interactionBroken: o.interaction.broken,
+      ...(o.visual ? { visual: o.visual } : {}),
       consoleErrorCount: o.consoleErrors.length,
       durationMs: o.durationMs,
     },

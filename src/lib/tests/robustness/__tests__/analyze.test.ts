@@ -283,3 +283,65 @@ describe("analyze — zero decisions with decline reasons (C3)", () => {
     expect(report.reasons.join(" ")).toContain("empty inventory");
   });
 });
+
+describe("skönhetsgrindarna (VisualSanity) — 'får aldrig försämra sidan'", () => {
+  const base = (): RobustnessObservation => ({
+    url: "https://x/",
+    site: "s",
+    persona: "linkedin_desktop",
+    reachable: true,
+    snippetRan: true,
+    consoleErrors: [],
+    decidedCount: 2,
+    appliedCount: 2,
+    probes: [
+      { pattern: "emphasize_goal", op: "emphasize", via: "selector", count: 1 },
+      { pattern: "move_faq_up", op: "move_up", via: "selector", count: 1 },
+    ],
+    baseline: sig(1000),
+    afterApply: sig(1000),
+    afterReset: sig(1000),
+    layout: { matched: 100, shiftedCount: 2, shiftedFraction: 0.02, controlShiftedFraction: 0, maxMove: 40 },
+    rerender: { residueAfterApply: 1, residueAfterRerender: 1 },
+    interaction: { checked: 50, broken: 0 },
+    residueAfterReset: 0,
+    durationMs: 10,
+  });
+
+  it("flyttat element OVANFÖR huvudinnehållet → fail (blogg-fallets signatur)", () => {
+    const r = analyze({
+      ...base(),
+      visual: { movedCount: 1, movedAboveMain: 1, mainAnchorFound: true, hOverflowIntroducedPx: 0 },
+    });
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons.join(" ")).toContain("ABOVE the page's main content");
+  });
+
+  it("introducerad horisontell overflow → fail; befintlig overflow friar", () => {
+    const bad = analyze({
+      ...base(),
+      visual: { movedCount: 0, movedAboveMain: 0, mainAnchorFound: true, hOverflowIntroducedPx: 120 },
+    });
+    expect(bad.verdict).toBe("fail");
+    expect(bad.reasons.join(" ")).toContain("horizontal overflow");
+    // 0 introducerad (även om sajten själv har overflow) → grinden tyst.
+    const ok = analyze({
+      ...base(),
+      visual: { movedCount: 1, movedAboveMain: 0, mainAnchorFound: true, hOverflowIntroducedPx: 0 },
+    });
+    expect(ok.verdict).toBe("pass");
+  });
+
+  it("flytt utan mätbart ankare → warn (mänsklig granskning), inte fail", () => {
+    const r = analyze({
+      ...base(),
+      visual: { movedCount: 1, movedAboveMain: 0, mainAnchorFound: false, hOverflowIntroducedPx: 0 },
+    });
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.join(" ")).toContain("review screenshots");
+  });
+
+  it("observation utan visual-fält bedöms som förr (bakåtkompatibelt)", () => {
+    expect(analyze(base()).verdict).toBe("pass");
+  });
+});

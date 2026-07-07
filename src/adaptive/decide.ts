@@ -222,6 +222,14 @@ function patternFitsGoalKind(id: PatternId, kind?: string | null): boolean {
   return (applies as string[]).includes(kind);
 }
 
+/** Är mönstret lämpligt för SIDTYPEN? Flytt-/omordningsmönster är designade
+ *  för landningsytor; på en artikel-/bloggsida är "FAQ/recensioner först"
+ *  alltid fel (glutenforum-incidenten). Se Pattern.avoidPageTypes. */
+function patternFitsPageType(id: PatternId, pageType: string): boolean {
+  const avoid = getPattern(id).avoidPageTypes;
+  return !avoid || !(avoid as string[]).includes(pageType);
+}
+
 /** Microcopy meta.kind a given inject pattern wants. */
 const MICROCOPY_KIND: Partial<Record<PatternId, string>> = {
   show_no_credit_card: "no_credit_card",
@@ -590,6 +598,14 @@ export function decide(
       // confirmed kind → no gating, so unconfigured sites are unaffected.
       if (!patternFitsGoalKind(e.id, goal?.kind)) {
         declined.push({ pattern: e.id, reason: "goal_kind_mismatch" });
+        return null;
+      }
+      // Sidtyps-gating: flytt-/omordningsmönster nomineras aldrig på sidor
+      // där omordning ser trasig ut (artikel/blogg = content, auth). Typad
+      // decline så pre-flight/robustness förklarar VARFÖR i stället för att
+      // tyst sakna mönstret.
+      if (!patternFitsPageType(e.id, context.pageType)) {
+        declined.push({ pattern: e.id, reason: "page_type_mismatch" });
         return null;
       }
       const result = resolve(e.id, e.priority, context, inventory, goal);
