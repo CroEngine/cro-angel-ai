@@ -73,6 +73,10 @@ export interface SiteConfigView {
   conversionKind: string | null;
   /** Per-site write key gating the ingest endpoints. null = unkeyed. */
   ingestKey: string | null;
+  /** Observe-first (croengine-vision.md): false (default) → Angel observerar
+   *  bara, inga synliga adaptationer körs. Bevis-vyn visar då "Observera-läge"
+   *  i st f en tom arm-tabell. */
+  adaptationsEnabled: boolean;
   /** The judged business type, when detected (e.g. "comparison"). */
   businessType: string | null;
   /** Ranked conversion-goal candidates proposed at harvest — the owner confirms
@@ -94,6 +98,7 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   businessType: null,
   goalCandidates: [],
   ingestKey: null,
+  adaptationsEnabled: false,
 };
 
 export interface DashboardResponse {
@@ -141,7 +146,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,goal_candidates",
+          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,goal_candidates",
         )
         .order("slug");
       // `sandbox--<host>` rows are the admin sandbox's private per-host scratch
@@ -212,6 +217,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               conversion_source?: string | null;
               conversion_kind?: string | null;
               ingest_key?: string | null;
+              adaptations_enabled?: boolean;
               goal_candidates?: { businessType?: string; goals?: GoalCandidate[] } | null;
             }
           | undefined;
@@ -229,6 +235,7 @@ export const getDashboard = createServerFn({ method: "POST" })
                 : null,
             conversionKind: current.conversion_kind ?? null,
             ingestKey: current.ingest_key ?? null,
+            adaptationsEnabled: current.adaptations_enabled === true,
             businessType: typeof judged?.businessType === "string" ? judged.businessType : null,
             goalCandidates: Array.isArray(judged?.goals) ? judged.goals.slice(0, 6) : [],
           };

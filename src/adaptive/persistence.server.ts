@@ -341,6 +341,9 @@ export interface SiteConfig {
   /** Nivå 3 (layout-mönster) kräver uttrycklig opt-in per sajt — v1-produkten
    *  är nivå 1–2 (relevans med minsta möjliga ingrepp). Default false. */
   layoutPatternsEnabled: boolean;
+  /** Observe-first (croengine-vision.md): false (default) → Angel gör INGA
+   *  synliga ändringar, bara observerar. Opt-in per sajt slår på apply-vägen. */
+  adaptationsEnabled: boolean;
 }
 
 const DEFAULT_SITE_CONFIG: SiteConfig = {
@@ -352,6 +355,7 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   conversionKind: null,
   ingestKey: null,
   layoutPatternsEnabled: false,
+  adaptationsEnabled: false,
 };
 
 /**
@@ -372,7 +376,18 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
     const real = sandboxRealSlug(slug);
     if (real) {
       const cfg = await fetchSiteConfigRow(real);
-      if (cfg) return { ...cfg, mode: "anonymous", holdoutPct: 0, ingestKey: null };
+      // Previews måste visa apply-vägen även om den riktiga sajten är i observe-
+      // läge (adaptations_enabled=false) — annars kan ägaren aldrig förhands-
+      // granska en adaptation innan hen slår på den. Spegeln tvingar därför på
+      // adaptationsEnabled; det syns bara i sandboxen, aldrig live.
+      if (cfg)
+        return {
+          ...cfg,
+          mode: "anonymous",
+          holdoutPct: 0,
+          ingestKey: null,
+          adaptationsEnabled: true,
+        };
     }
     return (await fetchSiteConfigRow(slug)) ?? DEFAULT_SITE_CONFIG;
   } catch (err) {
@@ -386,7 +401,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
   const { data, error } = await supabaseAdmin
     .from("angel_sites")
     .select(
-      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled",
+      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -401,6 +416,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
     conversionKind: data.conversion_kind ?? null,
     ingestKey: data.ingest_key ?? null,
     layoutPatternsEnabled: data.layout_patterns_enabled === true,
+    adaptationsEnabled: data.adaptations_enabled === true,
   };
 }
 

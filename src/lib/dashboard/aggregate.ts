@@ -225,7 +225,23 @@ export interface DashboardMetrics {
   inventory: InventoryGroup[];
   /** Nivå 2: de senaste anonyma besöksresorna (journey intelligence). */
   sessions: SessionSummary[];
+  /** Frustrationssignaler: mest rage-klickade element (ref → bursts).
+   *  Diagnostik — driver aldrig en automatisk ändring. */
+  rageClicks: RageSignal[];
 }
+
+/** Ett rage-klickat element, upprullat över alla besökare. */
+export interface RageSignal {
+  /** PII-skrubbad elementreferens (samma ref som journey-events, server-skrubbad). */
+  ref: string;
+  /** Antal rage-bursts på elementet (varje burst = ett frustrationstillfälle). */
+  bursts: number;
+  /** Distinkta besökare som rage-klickade elementet. */
+  visitors: number;
+}
+
+/** Hur många rage-signaler dashboarden visar (mest frustrerande först). */
+export const MAX_RAGE_SIGNALS = 15;
 
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
 
@@ -950,6 +966,28 @@ export function summarizeVisitors(events: DashEvent[]): VisitorSummary[] {
     .slice(0, MAX_VISITORS);
 }
 
+/** "Mest rage-klickade element" — rulla upp rage_click-events (ref → bursts).
+ *  Varje event är redan EN burst (snippeten fyrar en per ≥3-klicksfönster);
+ *  vi räknar bursts + distinkta besökare per ref. Diagnostik för ägaren/AI:n
+ *  — driver aldrig en automatisk ändring. Ref:en är redan server-skrubbad
+ *  (scrubPath i buildEventRows), så ingen PII-yta här. */
+export function rageSignals(events: DashEvent[], limit = MAX_RAGE_SIGNALS): RageSignal[] {
+  const byRef = new Map<string, { bursts: number; visitors: Set<string> }>();
+  for (const e of events) {
+    if (e.type !== "rage_click") continue;
+    const ref = str(e.payload.ref);
+    if (!ref) continue;
+    const cur = byRef.get(ref) ?? { bursts: 0, visitors: new Set<string>() };
+    cur.bursts++;
+    if (e.visitorHash) cur.visitors.add(e.visitorHash);
+    byRef.set(ref, cur);
+  }
+  return [...byRef.entries()]
+    .map(([ref, v]) => ({ ref, bursts: v.bursts, visitors: v.visitors.size }))
+    .sort((a, b) => b.bursts - a.bursts || a.ref.localeCompare(b.ref))
+    .slice(0, limit);
+}
+
 export function aggregate(
   events: DashEvent[],
   inventory: InventoryEntry[],
@@ -1036,5 +1074,6 @@ export function aggregate(
     attribution,
     inventory: inventoryGroups,
     sessions: sessionSummaries(events),
+    rageClicks: rageSignals(events),
   };
 }

@@ -1,5 +1,10 @@
 # v1 — testdefinition (styrdokument)
 
+> **SUPERSEDD 2026-07-08 av `docs/croengine-vision.md`.** Produkten pivoterade
+> till observe-first + generativ CRO (osynlig relevans via budskap/struktur, inte
+> highlighting). Detta dokument behålls som fas-referens för mät-/bevis-maskineriet
+> (hold-out, pWin, risk-mått) som fortfarande gäller när adaptationer aktiveras.
+
 > Detta dokument definierar VAD produkten ska bevisa härnäst. Kod som inte
 > tjänar det här beviset byggs inte (fas 0-beslutet, 2026-07-07). Uppdateras
 > när ett bevis är i hamn — inte innan.

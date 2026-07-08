@@ -4,10 +4,12 @@ import {
   aggregate,
   proofSummary,
   sessionSummaries,
+  rageSignals,
   bucketByTime,
   summarizeVisitors,
   MAX_DAY_POINTS,
   MAX_VISITORS,
+  MAX_RAGE_SIGNALS,
   type DashEvent,
   type InventoryEntry,
 } from "../aggregate";
@@ -701,5 +703,37 @@ describe("sessionSummaries — nivå 2 (anonym besöksresa)", () => {
     ];
     const out = sessionSummaries(events);
     expect(out.map((s) => s.sessionId)).toEqual(["new", "old"]);
+  });
+});
+
+describe("rageSignals — frustrationssignaler (diagnostik)", () => {
+  it("rullar upp bursts och distinkta besökare per ref, mest frustrerande först", () => {
+    const events: DashEvent[] = [
+      ev("rage_click", { ref: "button#buy", count: 3 }, { visitorHash: "a" }),
+      ev("rage_click", { ref: "button#buy", count: 4 }, { visitorHash: "b" }),
+      ev("rage_click", { ref: "button#buy", count: 3 }, { visitorHash: "a" }), // samma besökare igen
+      ev("rage_click", { ref: "a[href=/faq]", count: 3 }, { visitorHash: "c" }),
+      ev("cta_click", { text: "Buy" }, { visitorHash: "a" }), // ovidkommande typ ignoreras
+    ];
+    const out = rageSignals(events);
+    expect(out).toEqual([
+      { ref: "button#buy", bursts: 3, visitors: 2 },
+      { ref: "a[href=/faq]", bursts: 1, visitors: 1 },
+    ]);
+  });
+
+  it("hoppar över events utan ref och kapar till MAX_RAGE_SIGNALS", () => {
+    const many: DashEvent[] = [];
+    for (let i = 0; i < MAX_RAGE_SIGNALS + 5; i++) {
+      many.push(ev("rage_click", { ref: `el-${i}`, count: 3 }, { visitorHash: `v${i}` }));
+    }
+    many.push(ev("rage_click", {}, { visitorHash: "x" })); // ingen ref → ignoreras
+    const out = rageSignals(many);
+    expect(out.length).toBe(MAX_RAGE_SIGNALS);
+    expect(out.every((r) => typeof r.ref === "string" && r.ref.length > 0)).toBe(true);
+  });
+
+  it("tom lista när inga rage_click-events finns", () => {
+    expect(rageSignals([ev("pageview", { path: "/" })])).toEqual([]);
   });
 });

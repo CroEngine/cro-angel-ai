@@ -264,8 +264,25 @@ function Dashboard() {
               />
             </div>
 
+            {/* ---- Observera-läge: Angel är osynligt (adaptations_enabled=false) ---- */}
+            {!d.siteConfig.adaptationsEnabled && (
+              <Card className="border-sky-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Observera-läge — inga adaptationer körs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-stone-500">
+                    Angel är osynligt just nu: snippeten observerar bara den anonyma
+                    besöksresan, sidans struktur och prestandan — inga synliga ändringar görs, så
+                    det finns ingen adapterad arm att jämföra mot. Insikterna nedan byggs upp per
+                    segment. När en testad variant finns aktiveras adaptationer per sajt.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* ---- v1-beviset: adapterad arm vs hold-out ---- */}
-            {d.metrics.proof && (
+            {d.siteConfig.adaptationsEnabled && d.metrics.proof && (
               <Card className="border-emerald-200 shadow-none">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">
@@ -429,6 +446,42 @@ function Dashboard() {
                   <p className="mt-2 font-mono text-[10px] tracking-wide text-stone-400">
                     ANONYM RESA PER SESSION — INGA DIREKTA PERSONUPPGIFTER. KLICKORDNINGEN ÄR
                     INTENT-SIGNALEN SOM MOTORN SKA LÄRA SIG AV (NIVÅ 3).
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ---- Frustrationssignaler: mest rage-klickade element (diagnostik) ---- */}
+            {d.metrics.rageClicks.length > 0 && (
+              <Card className="border-amber-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Frustrationssignaler (rage clicks)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-stone-500">
+                          <th className="py-1 font-medium">Element</th>
+                          <th className="py-1 font-medium">Frustrations­tillfällen</th>
+                          <th className="py-1 font-medium">Besökare</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.metrics.rageClicks.map((r) => (
+                          <tr key={r.ref} className="border-t border-stone-100">
+                            <td className="py-1.5 font-mono text-[11px] text-stone-600">{r.ref}</td>
+                            <td className="py-1.5">{r.bursts}</td>
+                            <td className="py-1.5">{r.visitors}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-2 text-xs text-stone-400">
+                    Snabba upprepade klick på samma element = "ser klickbart ut, händer inget".
+                    En diagnos att titta på (trasig länk, otydlig knapp) — Angel ändrar aldrig
+                    något automatiskt utifrån detta.
                   </p>
                 </CardContent>
               </Card>

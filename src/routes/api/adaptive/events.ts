@@ -48,6 +48,9 @@ const VALID_TYPES = new Set([
   "form_submit",
   "form_abandon",
   "page_leave",
+  // Rage-click (croengine-vision.md): ≥3 snabba klick på samma ref = frustrations-
+  // signal. Diagnostik — driver aldrig en automatisk ändring.
+  "rage_click",
 ]);
 
 export const Route = createFileRoute("/api/adaptive/events")({

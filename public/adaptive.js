@@ -1275,20 +1275,50 @@
     var clickSeq = 0;
     var CLICK_CAP = 50; // bounded payload — a human can't out-click this per load
     var INTERACTIVE = 'a[href],button,[role="button"],input[type="submit"],[data-angel-ref]';
+    // Rage-click-detektor (croengine-vision.md): ≥RAGE_MIN snabba klick på SAMMA
+    // ref inom RAGE_WINDOW ms = en äkta frustrationssignal ("ser klickbart ut,
+    // händer inget"). En emit per burst, taket RAGE_CAP mot brus. Ingen ny
+    // PII-yta (samma ref vi redan fångar); driver ALDRIG en ändring — bara
+    // diagnostik för ägaren/AI:n.
+    var RAGE_MIN = 3,
+      RAGE_WINDOW = 1000,
+      RAGE_CAP = 20;
+    var rageRef = null,
+      rageStart = 0,
+      rageCount = 0,
+      rageFired = false,
+      rageEmitted = 0;
     // Klickordning: capture-fas så vi ser klicket även om sidan stoppar det.
     document.addEventListener(
       "click",
       function (e) {
         try {
-          if (clickSeq >= CLICK_CAP) return;
           var t = e.target;
           var el = t && t.closest ? t.closest(INTERACTIVE) : null;
           if (!el || isNoTouch(el)) return; // aldrig CMP-/no-touch-klick
           // Angels egna injicerade element hör inte till sajtens EGNA resa —
           // de fångas redan som "assist" i cta_click. Håll journey ren.
           if (el.hasAttribute && el.hasAttribute("data-angel-injected")) return;
+          var ref = elementRef(el);
+          // Rage-click FÖRE klick-taket: en burst ska räknas även när element_click
+          // nått CLICK_CAP (rage är per definition många snabba klick).
+          var now = Date.now();
+          if (ref === rageRef && now - rageStart <= RAGE_WINDOW) {
+            rageCount++;
+            if (rageCount >= RAGE_MIN && !rageFired && rageEmitted < RAGE_CAP) {
+              rageFired = true;
+              rageEmitted++;
+              track("rage_click", { ref: ref, count: rageCount, path: safePath() }, decisionId);
+            }
+          } else {
+            rageRef = ref;
+            rageStart = now;
+            rageCount = 1;
+            rageFired = false;
+          }
+          if (clickSeq >= CLICK_CAP) return;
           clickSeq++;
-          track("element_click", { seq: clickSeq, ref: elementRef(el), tag: (el.tagName || "").toLowerCase(), path: safePath() }, decisionId);
+          track("element_click", { seq: clickSeq, ref: ref, tag: (el.tagName || "").toLowerCase(), path: safePath() }, decisionId);
         } catch (err) {
           /* aldrig bryta sidan */
         }

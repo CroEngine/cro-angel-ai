@@ -311,7 +311,8 @@ export interface AngelEvent {
     | "form_start"
     | "form_submit"
     | "form_abandon"
-    | "page_leave";
+    | "page_leave"
+    | "rage_click";
   decisionId?: string;
   payload?: Record<string, unknown>;
   /** Client timestamp (ms epoch). */

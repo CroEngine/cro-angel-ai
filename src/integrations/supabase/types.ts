@@ -29,6 +29,7 @@ export type Database = {
           conversion_kind: string | null
           ingest_key: string | null
           layout_patterns_enabled: boolean
+          adaptations_enabled: boolean
           goal_candidates: Json | null
           created_at: string
         }
@@ -46,6 +47,7 @@ export type Database = {
           conversion_kind?: string | null
           ingest_key?: string | null
           layout_patterns_enabled?: boolean
+          adaptations_enabled?: boolean
           goal_candidates?: Json | null
           created_at?: string
         }
@@ -63,6 +65,7 @@ export type Database = {
           conversion_kind?: string | null
           ingest_key?: string | null
           layout_patterns_enabled?: boolean
+          adaptations_enabled?: boolean
           goal_candidates?: Json | null
           created_at?: string
         }
