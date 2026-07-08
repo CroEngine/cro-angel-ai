@@ -166,3 +166,92 @@ export function sanitizeAudit(raw: unknown): Partial<PageAuditData> {
 
   return out as Partial<PageAuditData>;
 }
+
+/** The observe-only structural block (forms / navigation / pricing) is
+ *  diagnostic — it never feeds a pattern, so it does NOT go through the
+ *  inventory mapper. This is its own privacy boundary: field TYPES and counts
+ *  only (never values — the harvester already avoids them), and every text
+ *  field is PII-scrubbed. Returns null when there's nothing worth storing. */
+export interface ObserveStructure {
+  forms: {
+    fieldCount: number;
+    fieldTypes: Record<string, number>;
+    autocomplete: string[];
+    submitText: string;
+    kind: string;
+    aboveFold: boolean;
+  }[];
+  navigation: {
+    primaryLinks: number;
+    footerLinks: number;
+    hasSearch: boolean;
+    hasBreadcrumb: boolean;
+  };
+  pricing: { present: boolean; priceCount: number; samples: string[] };
+}
+
+const int = (v: unknown, max = 100000) =>
+  typeof v === "number" && isFinite(v) ? Math.max(0, Math.min(max, Math.round(v))) : 0;
+
+// Standard HTML autocomplete tokens only — anything off-list is dropped so a
+// hostile DOM can't smuggle free-form strings through this field.
+const AUTOCOMPLETE_TOKENS = new Set([
+  "name", "given-name", "family-name", "email", "username", "new-password",
+  "current-password", "organization", "street-address", "postal-code",
+  "country", "tel", "cc-number", "cc-name", "bday", "sex", "url", "photo",
+  "address-line1", "address-line2", "address-level1", "address-level2",
+]);
+
+export function sanitizeObserve(raw: unknown): ObserveStructure | null {
+  const a = (raw ?? {}) as Record<string, unknown>;
+  const hasAny = a.forms || a.navigation || a.pricing;
+  if (!hasAny) return null;
+
+  const forms = looseArray(a.forms)
+    .slice(0, 10)
+    .map((f) => {
+      const rawTypes = (f.fieldTypes && typeof f.fieldTypes === "object"
+        ? (f.fieldTypes as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
+      const fieldTypes: Record<string, number> = {};
+      for (const k of Object.keys(rawTypes).slice(0, 20)) {
+        // Only short, alnum type keys (input types / tag names) — never text.
+        if (/^[a-z][a-z-]{0,20}$/.test(k)) fieldTypes[k] = int(rawTypes[k], 1000);
+      }
+      const autocomplete = (Array.isArray(f.autocomplete) ? f.autocomplete : [])
+        .filter((t): t is string => typeof t === "string" && AUTOCOMPLETE_TOKENS.has(t))
+        .slice(0, 12);
+      return {
+        fieldCount: int(f.fieldCount, 1000),
+        fieldTypes,
+        autocomplete,
+        submitText: cleanText(f.submitText),
+        kind: typeof f.kind === "string" && /^[a-z]{1,20}$/.test(f.kind) ? f.kind : "other",
+        aboveFold: Boolean(f.aboveFold),
+      };
+    });
+
+  const navRaw = (a.navigation && typeof a.navigation === "object"
+    ? (a.navigation as Record<string, unknown>)
+    : {}) as Record<string, unknown>;
+  const navigation = {
+    primaryLinks: int(navRaw.primaryLinks, 2000),
+    footerLinks: int(navRaw.footerLinks, 2000),
+    hasSearch: Boolean(navRaw.hasSearch),
+    hasBreadcrumb: Boolean(navRaw.hasBreadcrumb),
+  };
+
+  const priceRaw = (a.pricing && typeof a.pricing === "object"
+    ? (a.pricing as Record<string, unknown>)
+    : {}) as Record<string, unknown>;
+  const pricing = {
+    present: Boolean(priceRaw.present),
+    priceCount: int(priceRaw.priceCount, 1000),
+    samples: (Array.isArray(priceRaw.samples) ? priceRaw.samples : [])
+      .slice(0, 8)
+      .map(cleanText)
+      .filter(Boolean),
+  };
+
+  return { forms, navigation, pricing };
+}

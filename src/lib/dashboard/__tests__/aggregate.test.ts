@@ -576,4 +576,32 @@ describe("proofSummary — v1-beviset (adapterad vs hold-out)", () => {
     expect(p.control.ctaClickRate).toBeCloseTo(0.2);
     expect(p.pWin).toBeGreaterThan(0.99);
   });
+
+  it("risk-mätaren: per-arm median-LCP från page_perf (null under tröskeln)", () => {
+    const build = (n: number, armType: string, lcp: number) => {
+      const out: DashEvent[] = [];
+      for (let i = 0; i < n; i++) {
+        const vh = `${armType}${i}`;
+        out.push(ev(armType, {}, { visitorHash: vh, createdAt: T0 }));
+        out.push(ev("page_perf", { lcp }, { visitorHash: vh, createdAt: plus(0.05) }));
+      }
+      return out;
+    };
+    // Under MIN_PERF_SAMPLES (8) → null.
+    const few = proofSummary([
+      ...build(3, "adaptation_shown", 2000),
+      ...build(3, "adaptation_withheld", 1900),
+    ])!;
+    expect(few.adapted.lcpMedianMs).toBeNull();
+
+    // Adapterade armen ~2500ms, kontroll ~1800ms → adapterad median högre.
+    const many = proofSummary([
+      ...build(10, "adaptation_shown", 2500),
+      ...build(10, "adaptation_withheld", 1800),
+    ])!;
+    expect(many.adapted.lcpMedianMs).toBe(2500);
+    expect(many.control.lcpMedianMs).toBe(1800);
+    // page_perf med ogiltig/saknad lcp ignoreras (räknas ej mot medianen).
+    expect(proofSummary([...build(8, "adaptation_shown", 0)])!.adapted.lcpMedianMs).toBeNull();
+  });
 });

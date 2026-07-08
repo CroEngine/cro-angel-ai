@@ -304,7 +304,9 @@ export interface AngelEvent {
     | "adaptation_withheld"
     | "cta_click"
     | "scroll_depth"
-    | "conversion";
+    | "conversion"
+    | "page_perf"
+    | "page_structure";
   decisionId?: string;
   payload?: Record<string, unknown>;
   /** Client timestamp (ms epoch). */

@@ -14,8 +14,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { ingestAudit } from "@/adaptive/ingest.server";
-import { siteWriteAllowed } from "@/adaptive/persistence.server";
-import { sanitizeAudit } from "@/adaptive/harvest/sanitize";
+import { logEvents, siteWriteAllowed } from "@/adaptive/persistence.server";
+import { sanitizeAudit, sanitizeObserve } from "@/adaptive/harvest/sanitize";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -97,6 +97,18 @@ export const Route = createFileRoute("/api/adaptive/inventory")({
         }
 
         const res = await ingestAudit(site, audit, { domain, path });
+
+        // Observe-only strukturskikt (formulär/nav/pris): diagnos, matar aldrig
+        // en mönster-beslut, så det går INTE via inventory-mappern. Skrivs som
+        // en visitor-lös page_structure-händelse (logEvents är redan
+        // sandbox-gatad, så förhandsgranskningar skriver inget). Bäst-i-mån.
+        const observe = sanitizeObserve(body?.audit);
+        if (observe) {
+          await logEvents(site, null, [
+            { type: "page_structure", payload: { path, ...observe } },
+          ]);
+        }
+
         return json({
           ok: true,
           items: res.items,

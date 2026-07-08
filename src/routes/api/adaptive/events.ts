@@ -1,9 +1,10 @@
 // POST /api/adaptive/events
 //
 // Analytics ingest (blueprint Step 8). The snippet posts a batch of events
-// (pageview, adaptation_shown, cta_click, scroll_depth, conversion). We persist
-// them best-effort and always answer 204 quickly — losing an analytics beacon
-// must never break a customer's page. Accepts navigator.sendBeacon payloads.
+// (pageview, adaptation_shown, cta_click, scroll_depth, conversion, page_perf).
+// We persist them best-effort and always answer 204 quickly — losing an
+// analytics beacon must never break a customer's page. Accepts
+// navigator.sendBeacon payloads.
 
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -31,6 +32,12 @@ const VALID_TYPES = new Set([
   "cta_click",
   "scroll_depth",
   "conversion",
+  // Observe-only: fältmätt prestanda (CWV + navigation-timing), en gång per
+  // sidladdning. Diagnos, aldrig behandling.
+  "page_perf",
+  // Observe-only: strukturell diagnos (formulär/nav/pris) — skrivs server-side
+  // av inventory-endpointen, inte av snippeten, men vitlistas här för symmetri.
+  "page_structure",
 ]);
 
 export const Route = createFileRoute("/api/adaptive/events")({

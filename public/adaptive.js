@@ -372,6 +372,19 @@
     undoStack.push(fn);
   }
 
+  // Skönhetsgrindar (steg 2-analysen): respektera besökarens OS-preferenser så
+  // Angel ALDRIG försämrar upplevelsen. Läses för loggning; själva stylingen
+  // sker via @media-block i ensureStyles så webbläsaren applicerar per besökare
+  // utan JS.
+  function prefersReducedMotion() {
+    try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }
+    catch (e) { return false; }
+  }
+  function prefersDark() {
+    try { return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches); }
+    catch (e) { return false; }
+  }
+
   function ensureStyles() {
     if (document.getElementById("angel-style")) return;
     var css =
@@ -387,6 +400,20 @@
       ".angel-sticky-cta{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:2147482000;padding:13px 26px;border-radius:999px;background:#0f172a;color:#fff;font:600 15px/1 -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);border:0;cursor:pointer}" +
       // Secondary lower-commitment link beside the goal — inherits the site's type.
       ".angel-secondary-cta{display:inline-block;margin-left:12px;font:inherit;font-size:14px;color:inherit;opacity:.85;text-decoration:underline;text-underline-offset:3px}" +
+      // Skönhetsgrind — mörkt läge: en ljuslila badge / mörk pill på en mörk
+      // sajt läser som trasig tredjeparts-chrome. Temaanpassa injektionerna
+      // (aldrig ringen — den är palett-neutral). Browsern applicerar per
+      // besökare; noll JS, noll extra data.
+      "@media (prefers-color-scheme:dark){" +
+        ".angel-badge{background:#2e1065;color:#ddd6fe;border-color:#5b21b6}" +
+        ".angel-sticky-cta{background:#f8fafc;color:#0f172a;box-shadow:0 8px 24px rgba(0,0,0,.6)}" +
+      "}" +
+      // Skönhetsgrind — reduced-motion: ingen övergång/puls för besökare som
+      // bett om mindre rörelse. Ringen visas fortfarande, bara utan animation.
+      "@media (prefers-reduced-motion:reduce){" +
+        ".angel-emphasized{transition:none}" +
+        ".angel-debug-touched{animation:none}" +
+      "}" +
       // Debug-only (?angel_debug=1): make what Angel touched IMPOSSIBLE to miss —
       // a pulsing ring plus a floating label chip per touched element.
       ".angel-debug-touched{outline:3px solid #10b981!important;outline-offset:3px!important;animation:angelDebugPulse 1.6s ease-out 4}" +
@@ -486,14 +513,34 @@
   // ops on it (moving/hiding/retexting the largest paint regresses LCP and
   // shifts layout), and we never stack more than one injected badge per anchor.
   var lcpEl = null;
+  // Fältmätta Core Web Vitals för RIKTIGA besökare (inte labb-PageSpeed): LCP-
+  // tiden och kumulativ layout-shift ackumuleras här och skickas i page_perf
+  // (se wirePerf). Samma observer som redan bevakar LCP-elementet för
+  // skyddsvakten — vi läser bara ut tiden också.
+  var lcpMs = null;
+  var clsValue = 0;
   try {
     if (window.PerformanceObserver) {
       var lcpObserver = new PerformanceObserver(function (list) {
         var entries = list.getEntries();
         var last = entries[entries.length - 1];
-        if (last && last.element) lcpEl = last.element;
+        if (last) {
+          if (last.element) lcpEl = last.element;
+          if (typeof last.startTime === "number") lcpMs = Math.round(last.startTime);
+        }
       });
       lcpObserver.observe({ type: "largest-contentful-paint", buffered: true });
+      try {
+        var clsObserver = new PerformanceObserver(function (list) {
+          list.getEntries().forEach(function (e) {
+            // Bara shifts utan nyligt inmatning räknas som CWV-CLS.
+            if (!e.hadRecentInput && typeof e.value === "number") clsValue += e.value;
+          });
+        });
+        clsObserver.observe({ type: "layout-shift", buffered: true });
+      } catch (e2) {
+        /* layout-shift entry type unsupported (Safari/Firefox) — omit CLS */
+      }
     }
   } catch (e) {
     /* no LCP observer — guards below simply no-op */
@@ -1016,6 +1063,56 @@
     );
   }
 
+  // ---- observe-only: real-visitor performance + device depth ---------------
+  // EN page_perf-händelse per sidladdning: fältmätta CWV (LCP/CLS) + navigation-
+  // timing (TTFB, DOMContentLoaded, load) + enhetsdjup (uppkoppling, minne,
+  // kärnor, viewport, preferenser, tidszon). Ren observation — påverkar aldrig
+  // sidan, consent-gatas som allt annat (send() släpper utan samtycke). Skickas
+  // efter load så navigation-timing hunnit bli komplett; LCP/CLS läses vid den
+  // punkten (rimligt fältvärde utan att vänta på hela sidans livstid).
+  var perfSent = false;
+  function wirePerf(decisionId) {
+    function emit() {
+      if (perfSent) return;
+      perfSent = true;
+      var p = {};
+      try {
+        var nav = (performance.getEntriesByType &&
+          performance.getEntriesByType("navigation")[0]) || null;
+        if (nav) {
+          p.ttfb = Math.round(nav.responseStart || 0);
+          p.domContentLoaded = Math.round(nav.domContentLoadedEventEnd || 0);
+          p.load = Math.round(nav.loadEventEnd || 0);
+        } else if (performance.timing) {
+          var t = performance.timing;
+          var base = t.navigationStart || 0;
+          p.ttfb = Math.max(0, (t.responseStart || 0) - base);
+          p.domContentLoaded = Math.max(0, (t.domContentLoadedEventEnd || 0) - base);
+          p.load = Math.max(0, (t.loadEventEnd || 0) - base);
+        }
+      } catch (e) {
+        /* timing best-effort */
+      }
+      if (lcpMs !== null) p.lcp = lcpMs;
+      p.cls = Math.round(clsValue * 1000) / 1000; // 3 decimaler räcker
+      // Preferenser (INTE fingeravtryck): dessa två styr faktiska
+      // skönhetsgrindar — reduced-motion stänger av emfas-pulsen, dark mode
+      // temaanpassar injektionerna (se ensureStyles/prefsClass). Vi loggar
+      // dem också så andelen syns i diagnosen. Enhets-fingeravtryck (minne,
+      // kärnor, uppkoppling, tidszon) samlas MEDVETET INTE — de är
+      // oanvändbara vid SMB-trafik och ren integritetsyta (steg 2-analysen).
+      try {
+        p.reducedMotion = prefersReducedMotion();
+        p.darkMode = prefersDark();
+      } catch (e) {}
+      track("page_perf", p, decisionId);
+    }
+    // Efter load; om load redan skett, skjut till nästa tick så LCP/CLS-
+    // observers hunnit rapportera buffrade poster.
+    if (document.readyState === "complete") setTimeout(emit, 1200);
+    else window.addEventListener("load", function () { setTimeout(emit, 1200); }, { once: true });
+  }
+
   // ---- persist this visit --------------------------------------------------
   // Idempotent per page load: an attestation/CMP upgrade and the post-decision
   // tail can both reach here, but a visit must only be counted once. Anonymous
@@ -1219,6 +1316,7 @@
         // it carries the applied subset rather than the decided set, disagree
         // with the control arm's source. One source keeps the arms symmetric.
         wireEngagement(decision.decisionId);
+        wirePerf(decision.decisionId);
         wireConversion();
         if (isDebug()) renderDebug(decision, applied);
 
@@ -1235,6 +1333,10 @@
         // (inkl. URL-mål på tacksidan) tyst på exakt de laddningar där mätning
         // vore enda livstecknet. Idempotent — no-op om redan kopplad.
         wireConversion();
+        // Observation är oberoende av beslutet: samla sidans prestanda/enhet
+        // även när vi inte ändrar något (decisionId=null). Det är hela poängen
+        // med observe-only — data också på oadapterade laddningar.
+        wirePerf(null);
         if (window.console && console.warn) console.warn("[angel] decide failed:", err);
       });
 

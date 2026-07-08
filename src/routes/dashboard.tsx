@@ -288,6 +288,7 @@ function Dashboard() {
                             <th className="py-1 font-medium">Mål-klick</th>
                             <th className="py-1 font-medium">Konvertering</th>
                             <th className="py-1 font-medium">Återbesök 6h–7d</th>
+                            <th className="py-1 font-medium">Laddtid (LCP)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -312,10 +313,27 @@ function Dashboard() {
                                 {(arm.returnRate * 100).toFixed(1)}%{" "}
                                 <span className="text-xs text-stone-400">({arm.returns})</span>
                               </td>
+                              <td className="py-1.5">
+                                {arm.lcpMedianMs !== null ? (
+                                  `${(arm.lcpMedianMs / 1000).toFixed(2)} s`
+                                ) : (
+                                  <span className="text-xs text-stone-400">–</span>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                      {d.metrics.proof.adapted.lcpMedianMs !== null &&
+                        d.metrics.proof.control.lcpMedianMs !== null &&
+                        d.metrics.proof.adapted.lcpMedianMs >
+                          d.metrics.proof.control.lcpMedianMs * 1.1 && (
+                          <p className="text-xs text-amber-600">
+                            ⚠ Adapterade besökare har mätbart långsammare laddtid än
+                            kontrollgruppen — en injektion kan kosta prestanda. "Vi får inte
+                            försämra sidan": granska mönstren för den här sajten.
+                          </p>
+                        )}
                       {d.metrics.proof.adapted.assistClicks > 0 && (
                         <p className="text-xs text-stone-400">
                           {d.metrics.proof.adapted.assistClicks} adapterade besökare klickade via

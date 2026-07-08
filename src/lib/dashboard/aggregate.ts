@@ -176,6 +176,11 @@ export interface ArmProof {
   assistRate: number;
   conversionRate: number;
   returnRate: number;
+  /** Median fältmätt LCP (ms) för armens besökare — RISK-mätaren "vi får inte
+   *  försämra sidan". Om adapterade armens LCP är påtagligt sämre än
+   *  kontrollens har en injektion kostat prestanda. null när för få page_perf-
+   *  händelser finns. */
+  lcpMedianMs: number | null;
 }
 
 /** Bevis-vyn: adapterad arm vs hold-out på sajtnivå. Success-mätaren är
@@ -265,6 +270,9 @@ export const DEEP_SCROLL_DEPTH = 75;
 // MIN_ARM_OUTCOMES conversions AND non-conversions (the "success–failure" rule).
 export const MIN_ARM_EXPOSURES = 30;
 export const MIN_ARM_OUTCOMES = 5;
+/** Minsta antal page_perf-LCP-mätningar per arm innan medianen visas — under
+ *  detta är enskilda långsamma laddningar för brusiga för en risk-avläsning. */
+export const MIN_PERF_SAMPLES = 8;
 
 function armValid(s: VariantStat): boolean {
   return (
@@ -346,6 +354,17 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
   const assists = byVisitor("cta_click", (e) => e.payload.path === "assist");
   const convs = byVisitor("conversion");
   const views = byVisitor("pageview");
+  // Fältmätt LCP per besökare (risk-mätaren). Alla page_perf-lcp inom
+  // attributionsfönstret samlas; medianen per arm jämförs.
+  const perfLcp = new Map<string, { t: number; lcp: number }[]>();
+  for (const e of events) {
+    if (e.type !== "page_perf" || !e.visitorHash) continue;
+    const lcp = e.payload.lcp;
+    if (typeof lcp !== "number" || !isFinite(lcp) || lcp <= 0) continue;
+    const t = ms(e.createdAt);
+    if (Number.isNaN(t)) continue;
+    (perfLcp.get(e.visitorHash) ?? perfLcp.set(e.visitorHash, []).get(e.visitorHash)!).push({ t, lcp });
+  }
 
   // Besökare -> {arm, första exponering}.
   const assignment = new Map<string, { arm: "adapted" | "control"; t: number }>();
@@ -379,8 +398,15 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
     assistRate: 0,
     conversionRate: 0,
     returnRate: 0,
+    lcpMedianMs: null,
   });
   const arms = { adapted: empty(), control: empty() };
+  const lcpByArm = { adapted: [] as number[], control: [] as number[] };
+  const firstInWindow = (rows: { t: number; lcp: number }[] | undefined, from: number, until: number) => {
+    if (!rows) return null;
+    for (const r of rows) if (r.t >= from && r.t <= until) return r.lcp;
+    return null;
+  };
   for (const [visitor, { arm, t }] of assignment) {
     const a = arms[arm];
     a.visitors++;
@@ -388,13 +414,23 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
     if (anyIn(assists.get(visitor), t, t + ATTRIBUTION_WINDOW_MS)) a.assistClicks++;
     if (anyIn(convs.get(visitor), t, t + ATTRIBUTION_WINDOW_MS)) a.conversions++;
     if (anyIn(views.get(visitor), t + RETURN_MIN_MS, t + RETURN_MAX_MS)) a.returns++;
+    const lcp = firstInWindow(perfLcp.get(visitor), t, t + ATTRIBUTION_WINDOW_MS);
+    if (lcp !== null) lcpByArm[arm].push(lcp);
   }
+  const median = (xs: number[]): number | null => {
+    if (xs.length < MIN_PERF_SAMPLES) return null; // för tunt för att lita på
+    const s = [...xs].sort((x, y) => x - y);
+    const mid = Math.floor(s.length / 2);
+    return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+  };
   for (const a of [arms.adapted, arms.control]) {
     a.ctaClickRate = a.visitors > 0 ? a.ctaClicks / a.visitors : 0;
     a.assistRate = a.visitors > 0 ? a.assistClicks / a.visitors : 0;
     a.conversionRate = a.visitors > 0 ? a.conversions / a.visitors : 0;
     a.returnRate = a.visitors > 0 ? a.returns / a.visitors : 0;
   }
+  arms.adapted.lcpMedianMs = median(lcpByArm.adapted);
+  arms.control.lcpMedianMs = median(lcpByArm.control);
 
   const holdoutActive = arms.control.visitors > 0;
   // Evidensgrind (se ProofSummary.pWin-kommentaren): under de här trösklarna
