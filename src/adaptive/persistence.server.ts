@@ -11,6 +11,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
+import { cleanText } from "./harvest/sanitize";
 import type { GoalJudgment } from "./goal-judge.server";
 import type {
   AngelEvent,
@@ -48,22 +49,52 @@ export const sandboxRealSlug = (slug: string): string | null =>
 /**
  * Persist a batch of analytics events. Returns the number stored, or 0 if the
  * store is unavailable. Never throws.
+ *
+ * sessionId (anonymt, per flik) binder samman en besökares resa och sparas i
+ * varje events payload (payload->>'sessionId') så nivå-2-rollupen kan gruppera
+ * utan en schemaändring. De fritext-bärande journey-fälten (ref/path) PII-
+ * skrubbas här — det enda skrivstället för event-loggen (dubbelt skydd mot
+ * klientens längd-cap).
  */
+/** Pure: AngelEvent[] → EventRow[] with the privacy boundary applied (PII-scrub
+ *  the free-text journey fields, attach the anonymous session id). Exported for
+ *  testing; the DB write below is the only caller in production. */
+export function buildEventRows(
+  site: string,
+  visitorHash: string | null,
+  events: AngelEvent[],
+  sessionId?: string | null,
+): EventRow[] {
+  const sid = typeof sessionId === "string" && sessionId ? sessionId.slice(0, 80) : null;
+  return events.map((e) => {
+    const raw = (e.payload ?? {}) as Record<string, unknown>;
+    const payload: Record<string, unknown> = { ...raw };
+    // PII-skrubba de fritext-bärande journey-fälten (elementets referens /
+    // sidväg) — de kan bära e-post/telefon i sällsynta fall (personaliserad
+    // knapptext, drifted URL). cleanText redigerar bort dem.
+    if (typeof raw.ref === "string") payload.ref = cleanText(raw.ref);
+    if (typeof raw.path === "string") payload.path = cleanText(raw.path);
+    if (sid) payload.sessionId = sid;
+    return {
+      site,
+      type: e.type,
+      decision_id: e.decisionId ?? null,
+      visitor_hash: visitorHash,
+      payload: payload as Json,
+    };
+  });
+}
+
 export async function logEvents(
   site: string,
   visitorHash: string | null,
   events: AngelEvent[],
+  sessionId?: string | null,
 ): Promise<number> {
   if (events.length === 0) return 0;
   // Sandbox previews never write to the event log — see isSandboxSlug.
   if (isSandboxSlug(site)) return 0;
-  const rows: EventRow[] = events.map((e) => ({
-    site,
-    type: e.type,
-    decision_id: e.decisionId ?? null,
-    visitor_hash: visitorHash,
-    payload: (e.payload ?? {}) as Json,
-  }));
+  const rows: EventRow[] = buildEventRows(site, visitorHash, events, sessionId);
 
   try {
     const { error } = await supabaseAdmin.from("angel_events").insert(rows);

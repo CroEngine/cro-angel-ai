@@ -306,7 +306,12 @@ export interface AngelEvent {
     | "scroll_depth"
     | "conversion"
     | "page_perf"
-    | "page_structure";
+    | "page_structure"
+    | "element_click"
+    | "form_start"
+    | "form_submit"
+    | "form_abandon"
+    | "page_leave";
   decisionId?: string;
   payload?: Record<string, unknown>;
   /** Client timestamp (ms epoch). */

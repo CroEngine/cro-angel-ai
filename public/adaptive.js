@@ -194,6 +194,65 @@
   // No persistent id in anonymous mode → server runs no holdout / attribution.
   var vid = consented ? visitorId() : null;
 
+  // ---- anonymous SESSION id (journey backbone) -----------------------------
+  // Per-flik, i sessionStorage → rensas när fliken stängs (mest integritets-
+  // vänligt). Binder ihop en besökares resa (sidordning, klickordning) UTAN
+  // en långlivad identifierare. Slumpat UUID, aldrig person-id. Förnyas efter
+  // 30 min inaktivitet så en glömd öppen flik inte blir en oändlig "session".
+  var SID_KEY = "angel_sid:" + site;
+  var SID_IDLE_MS = 30 * 60 * 1000;
+  function sessionId() {
+    if (!consented) return null;
+    try {
+      var now = Date.now();
+      var raw = sessionStorage.getItem(SID_KEY);
+      var s = raw ? JSON.parse(raw) : null;
+      if (!s || !s.id || typeof s.t !== "number" || now - s.t > SID_IDLE_MS) {
+        s = {
+          id:
+            (window.crypto && crypto.randomUUID && crypto.randomUUID()) ||
+            "s" + now + Math.random().toString(16).slice(2),
+          t: now,
+        };
+      } else {
+        s.t = now; // touch — sliding idle window
+      }
+      sessionStorage.setItem(SID_KEY, JSON.stringify(s));
+      return s.id;
+    } catch (e) {
+      return null; // sessionStorage blocked (private mode / iframe) — no journey id
+    }
+  }
+  var sid = sessionId();
+
+  // ---- URL-minimering (privacy) --------------------------------------------
+  // Känsliga query-parametrar (email, token, order_id …) får aldrig lämna
+  // klienten. En allowlist släpper igenom bara marknadsförings-/Angel-parametrar;
+  // allt annat strippas FÖRE sändning. Servern skrubbar dessutom (dubbelt skydd).
+  var URL_PARAM_ALLOW = /^(utm_|angel_|gclid$|fbclid$|msclkid$|ref$)/i;
+  function safeUrl(raw) {
+    try {
+      var u = new URL(raw, location.href);
+      var kept = [];
+      u.searchParams.forEach(function (v, k) {
+        if (URL_PARAM_ALLOW.test(k)) kept.push([k, v]);
+      });
+      u.search = "";
+      for (var i = 0; i < kept.length; i++) u.searchParams.append(kept[i][0], kept[i][1]);
+      u.hash = "";
+      return u.origin + u.pathname + (u.search || "");
+    } catch (e) {
+      return String(raw || "").split("?")[0].split("#")[0];
+    }
+  }
+  function safePath() {
+    try {
+      return safeUrl(location.href).replace(/^https?:\/\/[^/]+/i, "") || "/";
+    } catch (e) {
+      return location.pathname || "/";
+    }
+  }
+
   // ---- demo simulator overrides (?angel_source=, angel_device=, ...) --------
   function deviceWidth(d) {
     return d === "mobile" ? 375 : d === "tablet" ? 800 : 1440;
@@ -203,9 +262,9 @@
   // ---- client signals ------------------------------------------------------
   var signals = {
     site: site,
-    url: PAGE_URL,
+    url: safeUrl(PAGE_URL),
     key: KEY || undefined,
-    referrer: document.referrer || "",
+    referrer: document.referrer ? safeUrl(document.referrer) : "",
     utmSource: qp.get("utm_source") || qp.get("angel_source") || undefined,
     utmMedium: qp.get("utm_medium") || undefined,
     utmCampaign: qp.get("utm_campaign") || undefined,
@@ -232,7 +291,13 @@
     // Anonymous mode sends no behavioural data (no visitorHash to attribute it
     // to anyway). A later consent grant enables sending from that point on.
     if (!consented) return;
-    var body = JSON.stringify({ site: site, key: KEY || undefined, visitorHash: vid, events: events });
+    var body = JSON.stringify({
+      site: site,
+      key: KEY || undefined,
+      visitorHash: vid,
+      sessionId: sid || undefined,
+      events: events,
+    });
     // Send as text/plain (a CORS-safelisted content type) so cross-origin
     // beacons need NO preflight — navigator.sendBeacon cannot perform one, and
     // application/json would force one and silently drop the beacon. The server
@@ -1113,6 +1178,126 @@
     else window.addEventListener("load", function () { setTimeout(emit, 1200); }, { once: true });
   }
 
+  // ---- journey intelligence (klickordning, form-lifecycle, tid + exit) -----
+  // Anonym beteenderesa (docs/journey-intelligence.md). session_id binder ihop
+  // sidorna; klickordningen är intent-signalen. Allt consent-gatat via send().
+  // Aldrig fältinnehåll, aldrig sidans fulltext — bara elementets referens.
+  function elementRef(el) {
+    try {
+      var r =
+        el.getAttribute("data-angel-ref") ||
+        (el.id && /^[A-Za-z][\w-]{0,60}$/.test(el.id) ? "#" + el.id : "") ||
+        el.getAttribute("aria-label") ||
+        (el.textContent || "").trim();
+      return String(r || el.tagName || "").slice(0, 60);
+    } catch (e) {
+      return "";
+    }
+  }
+  function formKind(form) {
+    try {
+      if (form.getAttribute("role") === "search" || form.querySelector('input[type="search"]'))
+        return "search";
+      var inputs = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"])');
+      if (inputs.length === 1) {
+        var h = ((inputs[0].getAttribute("type") || "") + " " + (inputs[0].getAttribute("name") || "") +
+          " " + (inputs[0].getAttribute("autocomplete") || "")).toLowerCase();
+        if (/email|e-?post|newsletter|nyhetsbrev/.test(h)) return "newsletter";
+      }
+      return "other";
+    } catch (e) {
+      return "other";
+    }
+  }
+  function wireJourney(decisionId) {
+    var clickSeq = 0;
+    var CLICK_CAP = 50; // bounded payload — a human can't out-click this per load
+    var INTERACTIVE = 'a[href],button,[role="button"],input[type="submit"],[data-angel-ref]';
+    // Klickordning: capture-fas så vi ser klicket även om sidan stoppar det.
+    document.addEventListener(
+      "click",
+      function (e) {
+        try {
+          if (clickSeq >= CLICK_CAP) return;
+          var t = e.target;
+          var el = t && t.closest ? t.closest(INTERACTIVE) : null;
+          if (!el || isNoTouch(el)) return; // aldrig CMP-/no-touch-klick
+          // Angels egna injicerade element hör inte till sajtens EGNA resa —
+          // de fångas redan som "assist" i cta_click. Håll journey ren.
+          if (el.hasAttribute && el.hasAttribute("data-angel-injected")) return;
+          clickSeq++;
+          track("element_click", { seq: clickSeq, ref: elementRef(el), tag: (el.tagName || "").toLowerCase(), path: safePath() }, decisionId);
+        } catch (err) {
+          /* aldrig bryta sidan */
+        }
+      },
+      true,
+    );
+    // Form-lifecycle: start (första fokus), submit, abandon (startad utan submit
+    // vid sidbyte). ALDRIG fältvärden — bara formulärets art + referens.
+    var started = {};
+    var submitted = {};
+    document.addEventListener(
+      "focusin",
+      function (e) {
+        try {
+          var form = e.target && e.target.closest ? e.target.closest("form") : null;
+          if (!form || isNoTouch(form)) return;
+          var ref = elementRef(form);
+          if (started[ref]) return;
+          started[ref] = formKind(form);
+          track("form_start", { ref: ref, kind: started[ref], path: safePath() }, decisionId);
+        } catch (err) {}
+      },
+      true,
+    );
+    document.addEventListener(
+      "submit",
+      function (e) {
+        try {
+          var form = e.target;
+          if (!form || isNoTouch(form)) return;
+          var ref = elementRef(form);
+          submitted[ref] = true;
+          track("form_submit", { ref: ref, kind: started[ref] || formKind(form), path: safePath() }, decisionId);
+        } catch (err) {}
+      },
+      true,
+    );
+    // Aktiv tid + exit: räkna bara SYNLIG tid (visibilitychange), skicka vid
+    // pagehide tillsammans med ev. form-abandon. sendBeacon överlever unload.
+    var engagedMs = 0;
+    var lastVisible = document.visibilityState === "visible" ? Date.now() : 0;
+    function accrue() {
+      if (lastVisible) {
+        engagedMs += Date.now() - lastVisible;
+        lastVisible = 0;
+      }
+    }
+    document.addEventListener("visibilitychange", function () {
+      // Endast tidsackumulering — INTE exit: en flikväxling (hidden→visible)
+      // får aldrig felaktigt trigga form_abandon/page_leave.
+      if (document.visibilityState === "visible") lastVisible = Date.now();
+      else accrue();
+    });
+    var left = false;
+    function leave() {
+      if (left) return;
+      left = true;
+      accrue();
+      for (var ref in started) {
+        if (!submitted[ref]) {
+          track("form_abandon", { ref: ref, kind: started[ref], path: safePath() }, decisionId);
+        }
+      }
+      track("page_leave", { engagedMs: engagedMs, path: safePath(), exit: true }, decisionId);
+    }
+    // pagehide är det tillförlitliga "lämnar sidan"-tillfället (navigering +
+    // stängning, desktop + de flesta mobiler). Diagnos — inte mätkritiskt — så
+    // vi accepterar det lilla bortfallet på mobil-Safari framför falska abandons.
+    window.addEventListener("pagehide", leave);
+  }
+
   // ---- persist this visit --------------------------------------------------
   // Idempotent per page load: an attestation/CMP upgrade and the post-decision
   // tail can both reach here, but a visit must only be counted once. Anonymous
@@ -1317,6 +1502,7 @@
         // with the control arm's source. One source keeps the arms symmetric.
         wireEngagement(decision.decisionId);
         wirePerf(decision.decisionId);
+        wireJourney(decision.decisionId);
         wireConversion();
         if (isDebug()) renderDebug(decision, applied);
 
@@ -1333,10 +1519,11 @@
         // (inkl. URL-mål på tacksidan) tyst på exakt de laddningar där mätning
         // vore enda livstecknet. Idempotent — no-op om redan kopplad.
         wireConversion();
-        // Observation är oberoende av beslutet: samla sidans prestanda/enhet
+        // Observation är oberoende av beslutet: samla sidans prestanda + resa
         // även när vi inte ändrar något (decisionId=null). Det är hela poängen
         // med observe-only — data också på oadapterade laddningar.
         wirePerf(null);
+        wireJourney(null);
         if (window.console && console.warn) console.warn("[angel] decide failed:", err);
       });
 
