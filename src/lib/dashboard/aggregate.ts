@@ -223,6 +223,8 @@ export interface DashboardMetrics {
   performance: PatternStat[];
   attribution: PatternAttribution[];
   inventory: InventoryGroup[];
+  /** Nivå 2: de senaste anonyma besöksresorna (journey intelligence). */
+  sessions: SessionSummary[];
 }
 
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
@@ -450,6 +452,108 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
       : null;
 
   return { adapted: arms.adapted, control: arms.control, pWin, holdoutActive };
+}
+
+/** Nivå 2 (docs/journey-intelligence.md): en anonym besöksRESA per session_id,
+ *  rekonstruerad på läs-tid ur rå events (nivå 1). Det här är det motorn ska
+ *  översätta till beslut — kanal, sidordning, klickordning, drop-off, utfall. */
+export interface SessionSummary {
+  sessionId: string;
+  startedAt: string;
+  endedAt: string;
+  /** Kanal (trafficSource) från sessionens första pageview. */
+  channel: string | null;
+  device: string | null;
+  landingPath: string | null;
+  /** Distinkta sidvägar i besöksordning (sidordningen). */
+  pageOrder: string[];
+  /** Element-referenser i klickordning (intent-signalen). */
+  clickOrder: string[];
+  /** Aktiv (synlig) tid summerad över sessionens page_leave. */
+  engagedMs: number;
+  formStarted: boolean;
+  formSubmitted: boolean;
+  formAbandoned: boolean;
+  converted: boolean;
+  /** Såg besökaren en adaptation (adapterad arm)? Best-effort via visitor_hash
+   *  — exponeringar är inte session-taggade, men en session tillhör en hash. */
+  sawAdaptation: boolean;
+}
+
+export const MAX_SESSION_SUMMARIES = 40;
+const JOURNEY_STEP_CAP = 20; // håll sido-/klickordningen bounded i UI:t
+
+/** Rekonstruera de senaste sessionernas resor. Grupperar på payload.sessionId
+ *  (äldre/anonyma events utan id hoppas över). Ren funktion. */
+export function sessionSummaries(
+  events: DashEvent[],
+  limit = MAX_SESSION_SUMMARIES,
+): SessionSummary[] {
+  // Vilka besökare (hash) har sett en adaptation → arm-flagga per session.
+  const adaptedVisitors = new Set<string>();
+  for (const e of events) {
+    if (e.type === "adaptation_shown" && e.visitorHash) adaptedVisitors.add(e.visitorHash);
+  }
+
+  const bySession = new Map<string, DashEvent[]>();
+  for (const e of events) {
+    const sid = typeof e.payload.sessionId === "string" ? e.payload.sessionId : null;
+    if (!sid) continue;
+    (bySession.get(sid) ?? bySession.set(sid, []).get(sid)!).push(e);
+  }
+
+  const summaries: SessionSummary[] = [];
+  for (const [sessionId, evs] of bySession) {
+    evs.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const firstPv = evs.find((e) => e.type === "pageview");
+    const visitorHash = evs.find((e) => e.visitorHash)?.visitorHash ?? null;
+
+    const pageOrder: string[] = [];
+    const clickOrder: string[] = [];
+    let engagedMs = 0;
+    let formStarted = false;
+    let formSubmitted = false;
+    let formAbandoned = false;
+    let converted = false;
+    for (const e of evs) {
+      const path = typeof e.payload.path === "string" ? e.payload.path : null;
+      if (e.type === "pageview" && path) {
+        // Distinkt sidordning: lägg bara till när sidan byts (undvik
+        // hydrerings-dubbletter av samma path i rad).
+        if (pageOrder[pageOrder.length - 1] !== path) pageOrder.push(path);
+      } else if (e.type === "element_click") {
+        const ref = typeof e.payload.ref === "string" ? e.payload.ref : "";
+        if (ref) clickOrder.push(ref);
+      } else if (e.type === "page_leave") {
+        const ms = e.payload.engagedMs;
+        if (typeof ms === "number" && isFinite(ms) && ms > 0) engagedMs += ms;
+      } else if (e.type === "form_start") formStarted = true;
+      else if (e.type === "form_submit") formSubmitted = true;
+      else if (e.type === "form_abandon") formAbandoned = true;
+      else if (e.type === "conversion") converted = true;
+    }
+
+    summaries.push({
+      sessionId,
+      startedAt: evs[0].createdAt,
+      endedAt: evs[evs.length - 1].createdAt,
+      channel: firstPv ? str(firstPv.payload.trafficSource) : null,
+      device: firstPv ? str(firstPv.payload.device) : null,
+      landingPath: pageOrder[0] ?? null,
+      pageOrder: pageOrder.slice(0, JOURNEY_STEP_CAP),
+      clickOrder: clickOrder.slice(0, JOURNEY_STEP_CAP),
+      engagedMs,
+      formStarted,
+      formSubmitted,
+      // Startade men varken submit eller konvertering → övergivet.
+      formAbandoned: formAbandoned || (formStarted && !formSubmitted && !converted && evs.some((e) => e.type === "page_leave")),
+      converted,
+      sawAdaptation: visitorHash ? adaptedVisitors.has(visitorHash) : false,
+    });
+  }
+
+  summaries.sort((a, b) => b.endedAt.localeCompare(a.endedAt));
+  return summaries.slice(0, limit);
 }
 
 function twoProportionZ(c1: number, n1: number, c2: number, n2: number): number | null {
@@ -901,5 +1005,6 @@ export function aggregate(
     performance,
     attribution,
     inventory: inventoryGroups,
+    sessions: sessionSummaries(events),
   };
 }

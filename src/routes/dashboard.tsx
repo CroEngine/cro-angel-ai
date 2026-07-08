@@ -370,6 +370,70 @@ function Dashboard() {
               </Card>
             )}
 
+            {/* ---- nivå 2: senaste anonyma besöksresor (journey intelligence) ---- */}
+            {d.metrics.sessions.length > 0 && (
+              <Card className="border-stone-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Senaste resor (anonyma)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-stone-500">
+                          <th className="py-1 font-medium">Kanal</th>
+                          <th className="py-1 font-medium">Enhet</th>
+                          <th className="py-1 font-medium">Sidresa</th>
+                          <th className="py-1 font-medium">Klickordning</th>
+                          <th className="py-1 font-medium">Tid</th>
+                          <th className="py-1 font-medium">Utfall</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.metrics.sessions.slice(0, 15).map((s) => (
+                          <tr key={s.sessionId} className="border-t border-stone-100 align-top">
+                            <td className="py-1.5">
+                              {s.channel ?? "—"}
+                              {s.sawAdaptation && (
+                                <span className="ml-1 rounded bg-emerald-50 px-1 text-[10px] text-emerald-700">
+                                  adapterad
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-1.5">{s.device ?? "—"}</td>
+                            <td className="py-1.5 font-mono text-[11px] text-stone-600">
+                              {s.pageOrder.length ? s.pageOrder.join(" → ") : "—"}
+                            </td>
+                            <td className="py-1.5 font-mono text-[11px] text-stone-500">
+                              {s.clickOrder.length ? s.clickOrder.join(" → ") : "—"}
+                            </td>
+                            <td className="py-1.5 whitespace-nowrap">
+                              {s.engagedMs > 0 ? `${Math.round(s.engagedMs / 1000)} s` : "—"}
+                            </td>
+                            <td className="py-1.5 whitespace-nowrap">
+                              {s.converted ? (
+                                <span className="text-emerald-700">konverterade</span>
+                              ) : s.formAbandoned ? (
+                                <span className="text-amber-600">form avbrutet</span>
+                              ) : s.formStarted ? (
+                                <span className="text-stone-500">form startat</span>
+                              ) : (
+                                <span className="text-stone-400">ingen</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-2 font-mono text-[10px] tracking-wide text-stone-400">
+                    ANONYM RESA PER SESSION — INGA DIREKTA PERSONUPPGIFTER. KLICKORDNINGEN ÄR
+                    INTENT-SIGNALEN SOM MOTORN SKA LÄRA SIG AV (NIVÅ 3).
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid gap-4 md:grid-cols-3">
               <Card className="border-stone-200 shadow-none">
                 <CardHeader className="pb-2">

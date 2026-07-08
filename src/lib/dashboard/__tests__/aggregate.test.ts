@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   aggregate,
   proofSummary,
+  sessionSummaries,
   bucketByTime,
   summarizeVisitors,
   MAX_DAY_POINTS,
@@ -603,5 +604,61 @@ describe("proofSummary — v1-beviset (adapterad vs hold-out)", () => {
     expect(many.control.lcpMedianMs).toBe(1800);
     // page_perf med ogiltig/saknad lcp ignoreras (räknas ej mot medianen).
     expect(proofSummary([...build(8, "adaptation_shown", 0)])!.adapted.lcpMedianMs).toBeNull();
+  });
+});
+
+describe("sessionSummaries — nivå 2 (anonym besöksresa)", () => {
+  const T0 = "2026-07-08T10:00:00Z";
+  const at = (s: number) => new Date(Date.parse(T0) + s * 1000).toISOString();
+  const sev = (
+    type: string,
+    payload: Record<string, unknown>,
+    over: Partial<DashEvent> = {},
+  ): DashEvent => ev(type, payload, { visitorHash: "v1", ...over });
+
+  it("rekonstruerar kanal, sidordning, klickordning, tid och utfall per session", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/features", trafficSource: "linkedin", device: "mobile" }, { createdAt: at(0) }),
+      sev("element_click", { sessionId: "s1", seq: 1, ref: "Watch demo" }, { createdAt: at(2) }),
+      sev("pageview", { sessionId: "s1", path: "/pricing", trafficSource: "linkedin", device: "mobile" }, { createdAt: at(5) }),
+      sev("element_click", { sessionId: "s1", seq: 1, ref: "Pricing FAQ" }, { createdAt: at(7) }),
+      sev("form_start", { sessionId: "s1", ref: "#book", kind: "other" }, { createdAt: at(9) }),
+      sev("page_leave", { sessionId: "s1", engagedMs: 42000, exit: true }, { createdAt: at(12) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.sessionId).toBe("s1");
+    expect(s.channel).toBe("linkedin");
+    expect(s.device).toBe("mobile");
+    expect(s.landingPath).toBe("/features");
+    expect(s.pageOrder).toEqual(["/features", "/pricing"]);
+    expect(s.clickOrder).toEqual(["Watch demo", "Pricing FAQ"]);
+    expect(s.engagedMs).toBe(42000);
+    expect(s.formStarted).toBe(true);
+    // Startat form, ingen submit, ingen konvertering, page_leave finns → övergivet.
+    expect(s.formAbandoned).toBe(true);
+    expect(s.converted).toBe(false);
+  });
+
+  it("collapsar upprepad path och markerar konvertering + adapterad arm", () => {
+    const events: DashEvent[] = [
+      ev("adaptation_shown", { patterns: ["emphasize_goal"] }, { visitorHash: "v9", createdAt: at(0) }),
+      ev("pageview", { sessionId: "s2", path: "/", trafficSource: "google" }, { visitorHash: "v9", createdAt: at(1) }),
+      ev("pageview", { sessionId: "s2", path: "/" }, { visitorHash: "v9", createdAt: at(2) }), // hydrerings-dubblett
+      ev("conversion", { sessionId: "s2" }, { visitorHash: "v9", createdAt: at(3) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.pageOrder).toEqual(["/"]); // dubbletten collapsad
+    expect(s.converted).toBe(true);
+    expect(s.sawAdaptation).toBe(true); // v9 hade adaptation_shown
+  });
+
+  it("hoppar över events utan sessionId och sorterar nyaste först", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { path: "/a" }, { createdAt: at(0) }), // ingen sessionId → ignoreras
+      sev("pageview", { sessionId: "old", path: "/x" }, { createdAt: at(1) }),
+      sev("pageview", { sessionId: "new", path: "/y" }, { createdAt: at(100) }),
+    ];
+    const out = sessionSummaries(events);
+    expect(out.map((s) => s.sessionId)).toEqual(["new", "old"]);
   });
 });

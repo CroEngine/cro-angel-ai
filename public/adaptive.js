@@ -1484,6 +1484,9 @@
         track(
           "pageview",
           {
+            // path (minimerad) gör sidORDNINGEN direkt rekonstruerbar per
+            // session i nivå 2 — annars måste den härledas ur andra events.
+            path: safePath(),
             trafficSource: ctx.trafficSource,
             device: ctx.device,
             isReturning: ctx.isReturning,

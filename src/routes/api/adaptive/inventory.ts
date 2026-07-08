@@ -6,10 +6,11 @@
 // runs the SAME mapping + drift pipeline the crawler uses (ingestAudit), so
 // drift tracking is source-agnostic.
 //
-// Phase 1: homepage only. The `path` (or url pathname) must be the site root;
-// other pages are accepted but skipped until per-page inventory lands. Nothing
-// ships to the snippet yet — this endpoint is inert until Phase 2 wires it, so
-// it can be deployed and parity-tested against the crawler's audit safely.
+// Per-page: inventory är scopat till (site, path). Skörden på klienten väljs
+// per (site, path, dag), så täckningen byggs upp över HELA sajten allt eftersom
+// besökare hittar olika sidor — inte bara startsidan. (En äldre kommentar
+// sa "Phase 1: homepage only"; det stämmer inte längre — ingestAudit lagrar
+// per path och decide läser per path.)
 
 import { createFileRoute } from "@tanstack/react-router";
 
