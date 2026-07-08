@@ -226,7 +226,7 @@ const STEPS = [
   {
     tag: "[ steer ]",
     title: "Nudges each visitor to your goal",
-    body: "You pick the button or page that counts as a conversion. Angel highlights the path to it — page-aware, per traffic source and device — with small, safe changes.",
+    body: "You pick the button or page that counts as a conversion. Angel makes it the obvious next step for each visitor — the right message per traffic source and device — with small, safe changes that never add visual noise.",
   },
   {
     tag: "[ prove ]",
@@ -326,7 +326,7 @@ function Outcome() {
             [ what&apos;s working ]
           </div>
           <div className="space-y-2.5 p-4">
-            <LiftRow label="Highlight the signup CTA" a="4.8%" b="3.9%" lift="+0.9pp" />
+            <LiftRow label="Clarify the signup CTA" a="4.8%" b="3.9%" lift="+0.9pp" />
             <LiftRow label="Show trust badge" a="4.1%" b="3.8%" lift="+0.3pp" muted />
           </div>
           <p className="border-t border-stone-200 px-4 py-2.5 font-mono text-[10px] leading-relaxed tracking-wide text-stone-400">

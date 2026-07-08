@@ -84,7 +84,10 @@ export interface SiteConfigView {
   goalCandidates: GoalCandidate[];
 }
 
-/** Zero-config default: measurement on from day one, no stats knowledge needed. */
+/** Zero-config default hold-out, applied on attestation so measurement is ready
+ *  with no stats knowledge needed. Note (observe-first): the hold-out only
+ *  measures once the site enables adaptations — until then no adapted arm runs,
+ *  so the bucket withholds nothing. */
 export const DEFAULT_HOLDOUT_PCT = 12;
 
 const DEFAULT_SITE_CONFIG: SiteConfigView = {
@@ -449,10 +452,13 @@ export const setMeasurementConfig = createServerFn({ method: "POST" })
 
 /**
  * Confirm a proposed goal candidate as the site's ACTIVE conversion goal. This
- * is the "commit" half of propose→commit: it sets conversion_source='owner' so
- * the deterministic engine starts highlighting/measuring this goal, and — unlike
- * a raw owner override — keeps the harvested label (conversion_text) so click
- * detection can fall back to it. Only the site's owner/admin may call it.
+ * is the "commit" half of propose→commit: it records the owner's goal
+ * (conversion_source='owner') and — unlike a raw owner override — keeps the
+ * harvested label (conversion_text) so click detection can fall back to it. The
+ * engine only highlights/measures this goal once the site enables adaptations
+ * (angel_sites.adaptations_enabled); under observe-first that flag is off by
+ * default, so confirming a goal alone changes nothing visible. Only the site's
+ * owner/admin may call it.
  */
 export const confirmGoal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

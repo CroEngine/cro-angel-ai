@@ -4,10 +4,13 @@ The adaptive layer that personalizes any website **per visitor, in real time**,
 without changing the customer's codebase. This module is the clean rebuild of the
 core loop described in the product blueprint.
 
-> One snippet → read the visitor's context → decide what to show from a library
-> of **safe patterns** → apply it in the browser → log the outcome. Nothing is
-> invented; only content the site already published is re-surfaced. Every change
-> is reversible and logged.
+> One snippet → read the visitor's context → observe the anonymous journey → (once
+> the site opts in) decide what to show from a library of **safe patterns** → apply
+> it in the browser → log the outcome. **Observe-first** (docs/croengine-vision.md):
+> adaptations are OFF by default (`angel_sites.adaptations_enabled`), so `decide`
+> returns an empty list and the snippet changes nothing until a site enables it.
+> Nothing is invented; only content the site already published is re-surfaced.
+> Every change is reversible and logged.
 
 ## The loop
 
@@ -21,7 +24,7 @@ core loop described in the product blueprint.
                                                         │
                                                  decide() (decide.ts) ──uses──▶ PATTERNS (patterns.ts)
                                                         │
-      ◀──────────────── Decision { adaptations[] } ─────┘
+      ◀──────────────── Decision { adaptations[] } ─────┘   (empty unless adaptations_enabled)
       │
  snippet applies reversible DOM ops ──▶ POST /api/adaptive/events  (persistence.server.ts)
 ```
@@ -42,7 +45,6 @@ core loop described in the product blueprint.
 | `../routes/api/adaptive/decide.ts` | `POST /api/adaptive/decide`                                  | Step 5         |
 | `../routes/api/adaptive/events.ts` | `POST /api/adaptive/events`                                  | Step 8         |
 | `../../public/adaptive.js`         | The customer snippet (vanilla, reversible)                   | Steps 1, 7     |
-| `../routes/demo.tsx`               | `/demo` page proving the loop end-to-end                     | —              |
 
 ## Design choices
 
@@ -63,7 +65,8 @@ core loop described in the product blueprint.
 
 ```bash
 bun run dev
-# open /demo and use the simulator bar to switch visitor scenarios
+# the sandbox (admin) is the visual verification surface — freeze a real page,
+# apply patterns, and compare FÖRE/EFTER (see scripts/preflight.ts). /demo was removed.
 ```
 
 Run the engine tests:
@@ -100,7 +103,7 @@ Both only ever copy published text — CTA intents are inferred from the label
 ## Status
 
 Done: snippet, context, pattern library, decision engine, decide + events
-endpoints, demo page, schema migration, unit tests, and the **crawler →
+endpoints, schema migration, unit tests, and the **crawler →
 inventory** pipeline (mappers + `resolveInventory` + DB save/load), verified
 against the real HubSpot corpus.
 

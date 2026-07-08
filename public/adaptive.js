@@ -4,10 +4,13 @@
  * The single line a customer installs:
  *   <script src="https://app.angel.example/adaptive.js" data-site="acme"></script>
  *
- * It reads the visitor's context, asks the Decision Engine what to show, applies
- * the chosen safe patterns to the live DOM, and reports analytics. Every change
- * is recorded and reversible (window.AngelAdaptive.reset()). The original page
- * is never mutated on the server and nothing is persisted into the DOM.
+ * Observe-first (docs/croengine-vision.md): by default the snippet makes NO
+ * visible change — it reads the visitor's context and reports the anonymous
+ * journey / structure / performance only. It applies adaptations solely once the
+ * site opts in (angel_sites.adaptations_enabled), and then only the safe patterns
+ * the Decision Engine returns, as pure reversible DOM ops
+ * (window.AngelAdaptive.reset()). The original page is never mutated on the
+ * server and nothing is persisted into the DOM.
  *
  * Dependency-free, framework-free. Targets evergreen browsers.
  */
@@ -64,11 +67,12 @@
 
   // ---- consent gate (anonymous-default) ------------------------------------
   // We never render our own banner. We read the site's EXISTING consent; until
-  // we see a positive signal we run in ANONYMOUS mode: still adapt the page
-  // (pure, reversible DOM — no storage), but store no persistent id, run no
-  // holdout bucketing, and send no behavioural events. A later grant (TCF /
-  // Cookiebot) upgrades live. GPC/DNT are hard opt-outs. Config via
-  // data-consent="granted"|"denied" overrides detection.
+  // we see a positive signal we run in ANONYMOUS mode: we still apply whatever
+  // the Decision Engine returns (pure, reversible DOM — no storage; that is
+  // nothing at all under observe-first until the site enables adaptations), but
+  // store no persistent id, run no holdout bucketing, and send no behavioural
+  // events. A later grant (TCF / Cookiebot) upgrades live. GPC/DNT are hard
+  // opt-outs. Config via data-consent="granted"|"denied" overrides detection.
   var CONSENT_OVERRIDE = script.getAttribute("data-consent") || "";
   var consented = false;
   var consentBasis = "anonymous_default";
