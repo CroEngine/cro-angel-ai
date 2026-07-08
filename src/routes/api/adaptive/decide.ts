@@ -9,7 +9,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { buildVisitorContext, readServerSignals } from "@/adaptive/context";
-import { decide } from "@/adaptive/decide";
+import { decide, decisionIdFor } from "@/adaptive/decide";
 import { resolveInventory } from "@/adaptive/inventory.server";
 import { loadPatternBoosts } from "@/adaptive/performance.server";
 import { loadSiteConfig, logDecision } from "@/adaptive/persistence.server";
@@ -60,6 +60,34 @@ export const Route = createFileRoute("/api/adaptive/decide")({
 
         const server = readServerSignals(request);
         const context = buildVisitorContext(server, client);
+
+        // Ägarens deklarerade mål — driver emphasize_goal, badge-matchning och
+        // (via decisionIdFor) den stabila besöks-hashen.
+        const goal = {
+          selector: cfg.conversionSelector,
+          url: cfg.conversionUrl,
+          text: cfg.conversionText,
+          kind: cfg.conversionKind,
+        };
+
+        // Observe-first (croengine-vision.md): Angel är OSYNLIGT som standard
+        // (adaptations_enabled=false). Då kör vi ingen decide-pipeline och
+        // loggar INGEN exponering — bara den anonyma resan/strukturen/
+        // prestandan flödar vidare via /api/adaptive/events. decisionId hålls
+        // deterministiskt så journey-events grupperas stabilt per besökare +
+        // kontext; apply-listan är tom, så snippeten ändrar ingenting synligt.
+        // All nivå 1-2-3-logik nedan bevaras bakom flaggan — substrat för den
+        // generativa fasen.
+        if (!cfg.adaptationsEnabled) {
+          return json({
+            decisionId: decisionIdFor(client.site, context, goal),
+            site: client.site,
+            adaptations: [],
+            holdout: false,
+            context,
+          });
+        }
+
         // Resolve inventory for the specific page being adapted (per-page).
         let path = "/";
         try {
@@ -77,12 +105,7 @@ export const Route = createFileRoute("/api/adaptive/decide")({
           context,
           inventory,
           boosts,
-          {
-            selector: cfg.conversionSelector,
-            url: cfg.conversionUrl,
-            text: cfg.conversionText,
-            kind: cfg.conversionKind,
-          },
+          goal,
           // v1: nivå 3 (layout) är av tills sajten uttryckligen aktiverat den
           // (pre-flight + ägargodkännande föregår opt-in:en).
           { allowLayoutPatterns: cfg.layoutPatternsEnabled },

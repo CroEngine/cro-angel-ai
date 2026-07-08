@@ -264,8 +264,25 @@ function Dashboard() {
               />
             </div>
 
+            {/* ---- Observera-läge: Angel är osynligt (adaptations_enabled=false) ---- */}
+            {!d.siteConfig.adaptationsEnabled && (
+              <Card className="border-sky-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Observera-läge — inga adaptationer körs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-stone-500">
+                    Angel är osynligt just nu: snippeten observerar bara den anonyma
+                    besöksresan, sidans struktur och prestandan — inga synliga ändringar görs, så
+                    det finns ingen adapterad arm att jämföra mot. Insikterna nedan byggs upp per
+                    segment. När en testad variant finns aktiveras adaptationer per sajt.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* ---- v1-beviset: adapterad arm vs hold-out ---- */}
-            {d.metrics.proof && (
+            {d.siteConfig.adaptationsEnabled && d.metrics.proof && (
               <Card className="border-emerald-200 shadow-none">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">
@@ -288,6 +305,7 @@ function Dashboard() {
                             <th className="py-1 font-medium">Mål-klick</th>
                             <th className="py-1 font-medium">Konvertering</th>
                             <th className="py-1 font-medium">Återbesök 6h–7d</th>
+                            <th className="py-1 font-medium">Laddtid (LCP)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -312,10 +330,27 @@ function Dashboard() {
                                 {(arm.returnRate * 100).toFixed(1)}%{" "}
                                 <span className="text-xs text-stone-400">({arm.returns})</span>
                               </td>
+                              <td className="py-1.5">
+                                {arm.lcpMedianMs !== null ? (
+                                  `${(arm.lcpMedianMs / 1000).toFixed(2)} s`
+                                ) : (
+                                  <span className="text-xs text-stone-400">–</span>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                      {d.metrics.proof.adapted.lcpMedianMs !== null &&
+                        d.metrics.proof.control.lcpMedianMs !== null &&
+                        d.metrics.proof.adapted.lcpMedianMs >
+                          d.metrics.proof.control.lcpMedianMs * 1.1 && (
+                          <p className="text-xs text-amber-600">
+                            ⚠ Adapterade besökare har mätbart långsammare laddtid än
+                            kontrollgruppen — en injektion kan kosta prestanda. "Vi får inte
+                            försämra sidan": granska mönstren för den här sajten.
+                          </p>
+                        )}
                       {d.metrics.proof.adapted.assistClicks > 0 && (
                         <p className="text-xs text-stone-400">
                           {d.metrics.proof.adapted.assistClicks} adapterade besökare klickade via
@@ -348,6 +383,106 @@ function Dashboard() {
                       )}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ---- nivå 2: senaste anonyma besöksresor (journey intelligence) ---- */}
+            {d.metrics.sessions.length > 0 && (
+              <Card className="border-stone-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Senaste resor (anonyma)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-stone-500">
+                          <th className="py-1 font-medium">Kanal</th>
+                          <th className="py-1 font-medium">Enhet</th>
+                          <th className="py-1 font-medium">Sidresa</th>
+                          <th className="py-1 font-medium">Klickordning</th>
+                          <th className="py-1 font-medium">Tid</th>
+                          <th className="py-1 font-medium">Utfall</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.metrics.sessions.slice(0, 15).map((s) => (
+                          <tr key={s.sessionId} className="border-t border-stone-100 align-top">
+                            <td className="py-1.5">
+                              {s.channel ?? "—"}
+                              {s.sawAdaptation && (
+                                <span className="ml-1 rounded bg-emerald-50 px-1 text-[10px] text-emerald-700">
+                                  adapterad
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-1.5">{s.device ?? "—"}</td>
+                            <td className="py-1.5 font-mono text-[11px] text-stone-600">
+                              {s.pageOrder.length ? s.pageOrder.join(" → ") : "—"}
+                            </td>
+                            <td className="py-1.5 font-mono text-[11px] text-stone-500">
+                              {s.clickOrder.length ? s.clickOrder.join(" → ") : "—"}
+                            </td>
+                            <td className="py-1.5 whitespace-nowrap">
+                              {s.engagedMs > 0 ? `${Math.round(s.engagedMs / 1000)} s` : "—"}
+                            </td>
+                            <td className="py-1.5 whitespace-nowrap">
+                              {s.converted ? (
+                                <span className="text-emerald-700">konverterade</span>
+                              ) : s.formAbandoned ? (
+                                <span className="text-amber-600">form avbrutet</span>
+                              ) : s.formStarted ? (
+                                <span className="text-stone-500">form startat</span>
+                              ) : (
+                                <span className="text-stone-400">ingen</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-2 font-mono text-[10px] tracking-wide text-stone-400">
+                    ANONYM RESA PER SESSION — INGA DIREKTA PERSONUPPGIFTER. KLICKORDNINGEN ÄR
+                    INTENT-SIGNALEN SOM MOTORN SKA LÄRA SIG AV (NIVÅ 3).
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ---- Frustrationssignaler: mest rage-klickade element (diagnostik) ---- */}
+            {d.metrics.rageClicks.length > 0 && (
+              <Card className="border-amber-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Frustrationssignaler (rage clicks)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-stone-500">
+                          <th className="py-1 font-medium">Element</th>
+                          <th className="py-1 font-medium">Frustrations­tillfällen</th>
+                          <th className="py-1 font-medium">Besökare</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.metrics.rageClicks.map((r) => (
+                          <tr key={r.ref} className="border-t border-stone-100">
+                            <td className="py-1.5 font-mono text-[11px] text-stone-600">{r.ref}</td>
+                            <td className="py-1.5">{r.bursts}</td>
+                            <td className="py-1.5">{r.visitors}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-2 text-xs text-stone-400">
+                    Snabba upprepade klick på samma element = "ser klickbart ut, händer inget".
+                    En diagnos att titta på (trasig länk, otydlig knapp) — Angel ändrar aldrig
+                    något automatiskt utifrån detta.
+                  </p>
                 </CardContent>
               </Card>
             )}

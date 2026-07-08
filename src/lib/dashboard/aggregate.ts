@@ -176,6 +176,11 @@ export interface ArmProof {
   assistRate: number;
   conversionRate: number;
   returnRate: number;
+  /** Median fältmätt LCP (ms) för armens besökare — RISK-mätaren "vi får inte
+   *  försämra sidan". Om adapterade armens LCP är påtagligt sämre än
+   *  kontrollens har en injektion kostat prestanda. null när för få page_perf-
+   *  händelser finns. */
+  lcpMedianMs: number | null;
 }
 
 /** Bevis-vyn: adapterad arm vs hold-out på sajtnivå. Success-mätaren är
@@ -218,7 +223,25 @@ export interface DashboardMetrics {
   performance: PatternStat[];
   attribution: PatternAttribution[];
   inventory: InventoryGroup[];
+  /** Nivå 2: de senaste anonyma besöksresorna (journey intelligence). */
+  sessions: SessionSummary[];
+  /** Frustrationssignaler: mest rage-klickade element (ref → bursts).
+   *  Diagnostik — driver aldrig en automatisk ändring. */
+  rageClicks: RageSignal[];
 }
+
+/** Ett rage-klickat element, upprullat över alla besökare. */
+export interface RageSignal {
+  /** PII-skrubbad elementreferens (samma ref som journey-events, server-skrubbad). */
+  ref: string;
+  /** Antal rage-bursts på elementet (varje burst = ett frustrationstillfälle). */
+  bursts: number;
+  /** Distinkta besökare som rage-klickade elementet. */
+  visitors: number;
+}
+
+/** Hur många rage-signaler dashboarden visar (mest frustrerande först). */
+export const MAX_RAGE_SIGNALS = 15;
 
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
 
@@ -265,6 +288,9 @@ export const DEEP_SCROLL_DEPTH = 75;
 // MIN_ARM_OUTCOMES conversions AND non-conversions (the "success–failure" rule).
 export const MIN_ARM_EXPOSURES = 30;
 export const MIN_ARM_OUTCOMES = 5;
+/** Minsta antal page_perf-LCP-mätningar per arm innan medianen visas — under
+ *  detta är enskilda långsamma laddningar för brusiga för en risk-avläsning. */
+export const MIN_PERF_SAMPLES = 8;
 
 function armValid(s: VariantStat): boolean {
   return (
@@ -346,6 +372,17 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
   const assists = byVisitor("cta_click", (e) => e.payload.path === "assist");
   const convs = byVisitor("conversion");
   const views = byVisitor("pageview");
+  // Fältmätt LCP per besökare (risk-mätaren). Alla page_perf-lcp inom
+  // attributionsfönstret samlas; medianen per arm jämförs.
+  const perfLcp = new Map<string, { t: number; lcp: number }[]>();
+  for (const e of events) {
+    if (e.type !== "page_perf" || !e.visitorHash) continue;
+    const lcp = e.payload.lcp;
+    if (typeof lcp !== "number" || !isFinite(lcp) || lcp <= 0) continue;
+    const t = ms(e.createdAt);
+    if (Number.isNaN(t)) continue;
+    (perfLcp.get(e.visitorHash) ?? perfLcp.set(e.visitorHash, []).get(e.visitorHash)!).push({ t, lcp });
+  }
 
   // Besökare -> {arm, första exponering}.
   const assignment = new Map<string, { arm: "adapted" | "control"; t: number }>();
@@ -379,8 +416,15 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
     assistRate: 0,
     conversionRate: 0,
     returnRate: 0,
+    lcpMedianMs: null,
   });
   const arms = { adapted: empty(), control: empty() };
+  const lcpByArm = { adapted: [] as number[], control: [] as number[] };
+  const firstInWindow = (rows: { t: number; lcp: number }[] | undefined, from: number, until: number) => {
+    if (!rows) return null;
+    for (const r of rows) if (r.t >= from && r.t <= until) return r.lcp;
+    return null;
+  };
   for (const [visitor, { arm, t }] of assignment) {
     const a = arms[arm];
     a.visitors++;
@@ -388,13 +432,23 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
     if (anyIn(assists.get(visitor), t, t + ATTRIBUTION_WINDOW_MS)) a.assistClicks++;
     if (anyIn(convs.get(visitor), t, t + ATTRIBUTION_WINDOW_MS)) a.conversions++;
     if (anyIn(views.get(visitor), t + RETURN_MIN_MS, t + RETURN_MAX_MS)) a.returns++;
+    const lcp = firstInWindow(perfLcp.get(visitor), t, t + ATTRIBUTION_WINDOW_MS);
+    if (lcp !== null) lcpByArm[arm].push(lcp);
   }
+  const median = (xs: number[]): number | null => {
+    if (xs.length < MIN_PERF_SAMPLES) return null; // för tunt för att lita på
+    const s = [...xs].sort((x, y) => x - y);
+    const mid = Math.floor(s.length / 2);
+    return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+  };
   for (const a of [arms.adapted, arms.control]) {
     a.ctaClickRate = a.visitors > 0 ? a.ctaClicks / a.visitors : 0;
     a.assistRate = a.visitors > 0 ? a.assistClicks / a.visitors : 0;
     a.conversionRate = a.visitors > 0 ? a.conversions / a.visitors : 0;
     a.returnRate = a.visitors > 0 ? a.returns / a.visitors : 0;
   }
+  arms.adapted.lcpMedianMs = median(lcpByArm.adapted);
+  arms.control.lcpMedianMs = median(lcpByArm.control);
 
   const holdoutActive = arms.control.visitors > 0;
   // Evidensgrind (se ProofSummary.pWin-kommentaren): under de här trösklarna
@@ -414,6 +468,138 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
       : null;
 
   return { adapted: arms.adapted, control: arms.control, pWin, holdoutActive };
+}
+
+/** Nivå 2 (docs/journey-intelligence.md): en anonym besöksRESA per session_id,
+ *  rekonstruerad på läs-tid ur rå events (nivå 1). Det här är det motorn ska
+ *  översätta till beslut — kanal, sidordning, klickordning, drop-off, utfall. */
+export interface SessionSummary {
+  sessionId: string;
+  startedAt: string;
+  endedAt: string;
+  /** Kanal (trafficSource) från sessionens första pageview. */
+  channel: string | null;
+  device: string | null;
+  landingPath: string | null;
+  /** Distinkta sidvägar i besöksordning (sidordningen). */
+  pageOrder: string[];
+  /** Element-referenser i klickordning (intent-signalen). */
+  clickOrder: string[];
+  /** Aktiv (synlig) tid summerad över sessionens page_leave. */
+  engagedMs: number;
+  formStarted: boolean;
+  formSubmitted: boolean;
+  formAbandoned: boolean;
+  converted: boolean;
+  /** Såg besökaren en adaptation (adapterad arm)? Best-effort via visitor_hash
+   *  — exponeringar är inte session-taggade, men en session tillhör en hash. */
+  sawAdaptation: boolean;
+}
+
+export const MAX_SESSION_SUMMARIES = 40;
+const JOURNEY_STEP_CAP = 20; // håll sido-/klickordningen bounded i UI:t
+
+/** Rekonstruera de senaste sessionernas resor. Grupperar på payload.sessionId
+ *  (äldre/anonyma events utan id hoppas över). Ren funktion. */
+export function sessionSummaries(
+  events: DashEvent[],
+  limit = MAX_SESSION_SUMMARIES,
+): SessionSummary[] {
+  // adaptation_shown-tidsstämplar per besökare — så sawAdaptation kan scopas
+  // till DENNA sessions fönster (exponeringar är inte session-taggade; att bara
+  // flagga "besökaren adapterades någonstans" över-påstår för sessioner där
+  // inget visades, eller som slutade före adaptationen).
+  const shownByVisitor = new Map<string, number[]>();
+  for (const e of events) {
+    if (e.type !== "adaptation_shown" || !e.visitorHash) continue;
+    const t = ms(e.createdAt);
+    if (Number.isNaN(t)) continue;
+    (shownByVisitor.get(e.visitorHash) ?? shownByVisitor.set(e.visitorHash, []).get(e.visitorHash)!).push(t);
+  }
+
+  const bySession = new Map<string, DashEvent[]>();
+  for (const e of events) {
+    const sid = typeof e.payload.sessionId === "string" ? e.payload.sessionId : null;
+    if (!sid) continue;
+    (bySession.get(sid) ?? bySession.set(sid, []).get(sid)!).push(e);
+  }
+
+  // Kronologisk sortering NUMERISKT — localeCompare på ISO-strängar mis-ordnar
+  // PostgREST-tidsstämplar där mikrosekunderna är 0 (bråkdelen utelämnas, så
+  // '…:00+00:00' sorteras efter '…:00.24+00:00' lexikalt). Ostabila events
+  // (oparsbar tid) läggs sist.
+  const sortKey = (e: DashEvent) => {
+    const t = ms(e.createdAt);
+    return Number.isNaN(t) ? Infinity : t;
+  };
+
+  const summaries: SessionSummary[] = [];
+  for (const [sessionId, evs] of bySession) {
+    evs.sort((a, b) => sortKey(a) - sortKey(b));
+    const firstPv = evs.find((e) => e.type === "pageview");
+    const visitorHash = evs.find((e) => e.visitorHash)?.visitorHash ?? null;
+    const startMs = sortKey(evs[0]);
+    const endMs = sortKey(evs[evs.length - 1]);
+
+    const pageOrder: string[] = [];
+    const clickOrder: string[] = [];
+    let engagedMs = 0;
+    let formStarted = false;
+    let formSubmitted = false;
+    let formAbandoned = false;
+    let converted = false;
+    for (const e of evs) {
+      const path = typeof e.payload.path === "string" ? e.payload.path : null;
+      if (e.type === "pageview" && path) {
+        // Distinkt sidordning: lägg bara till när sidan byts (undvik
+        // hydrerings-dubbletter av samma path i rad).
+        if (pageOrder[pageOrder.length - 1] !== path) pageOrder.push(path);
+      } else if (e.type === "element_click") {
+        const ref = typeof e.payload.ref === "string" ? e.payload.ref : "";
+        if (ref) clickOrder.push(ref);
+      } else if (e.type === "page_leave") {
+        const ms = e.payload.engagedMs;
+        if (typeof ms === "number" && isFinite(ms) && ms > 0) engagedMs += ms;
+      } else if (e.type === "form_start") formStarted = true;
+      else if (e.type === "form_submit") formSubmitted = true;
+      else if (e.type === "form_abandon") formAbandoned = true;
+      else if (e.type === "conversion") converted = true;
+    }
+
+    summaries.push({
+      sessionId,
+      startedAt: evs[0].createdAt,
+      endedAt: evs[evs.length - 1].createdAt,
+      channel: firstPv ? str(firstPv.payload.trafficSource) : null,
+      device: firstPv ? str(firstPv.payload.device) : null,
+      landingPath: pageOrder[0] ?? null,
+      pageOrder: pageOrder.slice(0, JOURNEY_STEP_CAP),
+      clickOrder: clickOrder.slice(0, JOURNEY_STEP_CAP),
+      engagedMs,
+      formStarted,
+      formSubmitted,
+      // ENBART klientens form_abandon-flagga (snippeten fyrar den på pagehide
+      // för startat-men-ej-submittat formulär). Den tidigare fallback-
+      // heuristiken kollade page_leave över HELA sessionen och flaggade ett
+      // pågående formulär som övergivet så fort besökaren sett en tidigare
+      // sida (granskningsfynd).
+      formAbandoned,
+      converted,
+      // Adaptation VISAD inom den här sessionens fönster (inte "besökaren
+      // adapterades någonsin").
+      sawAdaptation: visitorHash
+        ? (shownByVisitor.get(visitorHash) ?? []).some((t) => t >= startMs && t <= endMs)
+        : false,
+    });
+  }
+
+  // Nyaste först — numeriskt (samma anledning som per-event-sorteringen).
+  const endKey = (iso: string) => {
+    const t = ms(iso);
+    return Number.isNaN(t) ? -Infinity : t;
+  };
+  summaries.sort((a, b) => endKey(b.endedAt) - endKey(a.endedAt));
+  return summaries.slice(0, limit);
 }
 
 function twoProportionZ(c1: number, n1: number, c2: number, n2: number): number | null {
@@ -780,6 +966,28 @@ export function summarizeVisitors(events: DashEvent[]): VisitorSummary[] {
     .slice(0, MAX_VISITORS);
 }
 
+/** "Mest rage-klickade element" — rulla upp rage_click-events (ref → bursts).
+ *  Varje event är redan EN burst (snippeten fyrar en per ≥3-klicksfönster);
+ *  vi räknar bursts + distinkta besökare per ref. Diagnostik för ägaren/AI:n
+ *  — driver aldrig en automatisk ändring. Ref:en är redan server-skrubbad
+ *  (scrubPath i buildEventRows), så ingen PII-yta här. */
+export function rageSignals(events: DashEvent[], limit = MAX_RAGE_SIGNALS): RageSignal[] {
+  const byRef = new Map<string, { bursts: number; visitors: Set<string> }>();
+  for (const e of events) {
+    if (e.type !== "rage_click") continue;
+    const ref = str(e.payload.ref);
+    if (!ref) continue;
+    const cur = byRef.get(ref) ?? { bursts: 0, visitors: new Set<string>() };
+    cur.bursts++;
+    if (e.visitorHash) cur.visitors.add(e.visitorHash);
+    byRef.set(ref, cur);
+  }
+  return [...byRef.entries()]
+    .map(([ref, v]) => ({ ref, bursts: v.bursts, visitors: v.visitors.size }))
+    .sort((a, b) => b.bursts - a.bursts || a.ref.localeCompare(b.ref))
+    .slice(0, limit);
+}
+
 export function aggregate(
   events: DashEvent[],
   inventory: InventoryEntry[],
@@ -865,5 +1073,7 @@ export function aggregate(
     performance,
     attribution,
     inventory: inventoryGroups,
+    sessions: sessionSummaries(events),
+    rageClicks: rageSignals(events),
   };
 }

@@ -11,6 +11,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
+import { scrubPath } from "./harvest/sanitize";
 import type { GoalJudgment } from "./goal-judge.server";
 import type {
   AngelEvent,
@@ -48,22 +49,53 @@ export const sandboxRealSlug = (slug: string): string | null =>
 /**
  * Persist a batch of analytics events. Returns the number stored, or 0 if the
  * store is unavailable. Never throws.
+ *
+ * sessionId (anonymt, per flik) binder samman en besökares resa och sparas i
+ * varje events payload (payload->>'sessionId') så nivå-2-rollupen kan gruppera
+ * utan en schemaändring. De fritext-bärande journey-fälten (ref/path) PII-
+ * skrubbas här — det enda skrivstället för event-loggen (dubbelt skydd mot
+ * klientens längd-cap).
  */
+/** Pure: AngelEvent[] → EventRow[] with the privacy boundary applied (PII-scrub
+ *  the free-text journey fields, attach the anonymous session id). Exported for
+ *  testing; the DB write below is the only caller in production. */
+export function buildEventRows(
+  site: string,
+  visitorHash: string | null,
+  events: AngelEvent[],
+  sessionId?: string | null,
+): EventRow[] {
+  const sid = typeof sessionId === "string" && sessionId ? sessionId.slice(0, 80) : null;
+  return events.map((e) => {
+    const raw = (e.payload ?? {}) as Record<string, unknown>;
+    const payload: Record<string, unknown> = { ...raw };
+    // PII-skrubba de fritext-bärande journey-fälten (elementets referens /
+    // sidväg): e-post + långa siffror + UUID + långa opaka tokens (reset-
+    // token/order-id i en path-segment eller personaliserad knapptext) —
+    // scrubPath är serverns integritetsgräns, utöver klientens längd-cap.
+    if (typeof raw.ref === "string") payload.ref = scrubPath(raw.ref);
+    if (typeof raw.path === "string") payload.path = scrubPath(raw.path);
+    if (sid) payload.sessionId = sid;
+    return {
+      site,
+      type: e.type,
+      decision_id: e.decisionId ?? null,
+      visitor_hash: visitorHash,
+      payload: payload as Json,
+    };
+  });
+}
+
 export async function logEvents(
   site: string,
   visitorHash: string | null,
   events: AngelEvent[],
+  sessionId?: string | null,
 ): Promise<number> {
   if (events.length === 0) return 0;
   // Sandbox previews never write to the event log — see isSandboxSlug.
   if (isSandboxSlug(site)) return 0;
-  const rows: EventRow[] = events.map((e) => ({
-    site,
-    type: e.type,
-    decision_id: e.decisionId ?? null,
-    visitor_hash: visitorHash,
-    payload: (e.payload ?? {}) as Json,
-  }));
+  const rows: EventRow[] = buildEventRows(site, visitorHash, events, sessionId);
 
   try {
     const { error } = await supabaseAdmin.from("angel_events").insert(rows);
@@ -309,6 +341,9 @@ export interface SiteConfig {
   /** Nivå 3 (layout-mönster) kräver uttrycklig opt-in per sajt — v1-produkten
    *  är nivå 1–2 (relevans med minsta möjliga ingrepp). Default false. */
   layoutPatternsEnabled: boolean;
+  /** Observe-first (croengine-vision.md): false (default) → Angel gör INGA
+   *  synliga ändringar, bara observerar. Opt-in per sajt slår på apply-vägen. */
+  adaptationsEnabled: boolean;
 }
 
 const DEFAULT_SITE_CONFIG: SiteConfig = {
@@ -320,6 +355,7 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   conversionKind: null,
   ingestKey: null,
   layoutPatternsEnabled: false,
+  adaptationsEnabled: false,
 };
 
 /**
@@ -340,7 +376,18 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
     const real = sandboxRealSlug(slug);
     if (real) {
       const cfg = await fetchSiteConfigRow(real);
-      if (cfg) return { ...cfg, mode: "anonymous", holdoutPct: 0, ingestKey: null };
+      // Previews måste visa apply-vägen även om den riktiga sajten är i observe-
+      // läge (adaptations_enabled=false) — annars kan ägaren aldrig förhands-
+      // granska en adaptation innan hen slår på den. Spegeln tvingar därför på
+      // adaptationsEnabled; det syns bara i sandboxen, aldrig live.
+      if (cfg)
+        return {
+          ...cfg,
+          mode: "anonymous",
+          holdoutPct: 0,
+          ingestKey: null,
+          adaptationsEnabled: true,
+        };
     }
     return (await fetchSiteConfigRow(slug)) ?? DEFAULT_SITE_CONFIG;
   } catch (err) {
@@ -354,7 +401,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
   const { data, error } = await supabaseAdmin
     .from("angel_sites")
     .select(
-      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled",
+      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -369,6 +416,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
     conversionKind: data.conversion_kind ?? null,
     ingestKey: data.ingest_key ?? null,
     layoutPatternsEnabled: data.layout_patterns_enabled === true,
+    adaptationsEnabled: data.adaptations_enabled === true,
   };
 }
 

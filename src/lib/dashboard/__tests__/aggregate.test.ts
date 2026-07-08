@@ -3,10 +3,13 @@ import { describe, it, expect } from "vitest";
 import {
   aggregate,
   proofSummary,
+  sessionSummaries,
+  rageSignals,
   bucketByTime,
   summarizeVisitors,
   MAX_DAY_POINTS,
   MAX_VISITORS,
+  MAX_RAGE_SIGNALS,
   type DashEvent,
   type InventoryEntry,
 } from "../aggregate";
@@ -575,5 +578,162 @@ describe("proofSummary — v1-beviset (adapterad vs hold-out)", () => {
     expect(p.adapted.ctaClickRate).toBeCloseTo(0.8);
     expect(p.control.ctaClickRate).toBeCloseTo(0.2);
     expect(p.pWin).toBeGreaterThan(0.99);
+  });
+
+  it("risk-mätaren: per-arm median-LCP från page_perf (null under tröskeln)", () => {
+    const build = (n: number, armType: string, lcp: number) => {
+      const out: DashEvent[] = [];
+      for (let i = 0; i < n; i++) {
+        const vh = `${armType}${i}`;
+        out.push(ev(armType, {}, { visitorHash: vh, createdAt: T0 }));
+        out.push(ev("page_perf", { lcp }, { visitorHash: vh, createdAt: plus(0.05) }));
+      }
+      return out;
+    };
+    // Under MIN_PERF_SAMPLES (8) → null.
+    const few = proofSummary([
+      ...build(3, "adaptation_shown", 2000),
+      ...build(3, "adaptation_withheld", 1900),
+    ])!;
+    expect(few.adapted.lcpMedianMs).toBeNull();
+
+    // Adapterade armen ~2500ms, kontroll ~1800ms → adapterad median högre.
+    const many = proofSummary([
+      ...build(10, "adaptation_shown", 2500),
+      ...build(10, "adaptation_withheld", 1800),
+    ])!;
+    expect(many.adapted.lcpMedianMs).toBe(2500);
+    expect(many.control.lcpMedianMs).toBe(1800);
+    // page_perf med ogiltig/saknad lcp ignoreras (räknas ej mot medianen).
+    expect(proofSummary([...build(8, "adaptation_shown", 0)])!.adapted.lcpMedianMs).toBeNull();
+  });
+});
+
+describe("sessionSummaries — nivå 2 (anonym besöksresa)", () => {
+  const T0 = "2026-07-08T10:00:00Z";
+  const at = (s: number) => new Date(Date.parse(T0) + s * 1000).toISOString();
+  const sev = (
+    type: string,
+    payload: Record<string, unknown>,
+    over: Partial<DashEvent> = {},
+  ): DashEvent => ev(type, payload, { visitorHash: "v1", ...over });
+
+  it("rekonstruerar kanal, sidordning, klickordning, tid och utfall per session", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/features", trafficSource: "linkedin", device: "mobile" }, { createdAt: at(0) }),
+      sev("element_click", { sessionId: "s1", seq: 1, ref: "Watch demo" }, { createdAt: at(2) }),
+      sev("pageview", { sessionId: "s1", path: "/pricing", trafficSource: "linkedin", device: "mobile" }, { createdAt: at(5) }),
+      sev("element_click", { sessionId: "s1", seq: 1, ref: "Pricing FAQ" }, { createdAt: at(7) }),
+      sev("form_start", { sessionId: "s1", ref: "#book", kind: "other" }, { createdAt: at(9) }),
+      sev("form_abandon", { sessionId: "s1", ref: "#book", kind: "other" }, { createdAt: at(12) }),
+      sev("page_leave", { sessionId: "s1", engagedMs: 42000, exit: true }, { createdAt: at(12) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.sessionId).toBe("s1");
+    expect(s.channel).toBe("linkedin");
+    expect(s.device).toBe("mobile");
+    expect(s.landingPath).toBe("/features");
+    expect(s.pageOrder).toEqual(["/features", "/pricing"]);
+    expect(s.clickOrder).toEqual(["Watch demo", "Pricing FAQ"]);
+    expect(s.engagedMs).toBe(42000);
+    expect(s.formStarted).toBe(true);
+    expect(s.formAbandoned).toBe(true); // klientens form_abandon-event
+    expect(s.converted).toBe(false);
+  });
+
+  it("flaggar INTE ett pågående formulär som övergivet pga en tidigare sidas page_leave", () => {
+    // Granskningsfynd: en form_start på sida /b, med en page_leave från /a
+    // tidigare i sessionen, får inte bli formAbandoned (formuläret pågår).
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s", path: "/a" }, { createdAt: at(0) }),
+      sev("page_leave", { sessionId: "s", engagedMs: 5000 }, { createdAt: at(3) }),
+      sev("pageview", { sessionId: "s", path: "/b" }, { createdAt: at(4) }),
+      sev("form_start", { sessionId: "s", ref: "#f", kind: "other" }, { createdAt: at(6) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.formStarted).toBe(true);
+    expect(s.formAbandoned).toBe(false); // inget form_abandon → pågående
+  });
+
+  it("chronologisk ordning även när mikrosekunderna utelämnas (PostgREST-tid)", () => {
+    // '…:00+00:00' (bråkdel utelämnad) är den SANNA landningen men sorteras
+    // lexikalt efter '…:00.240000+00:00'. Numerisk sortering ger rätt.
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s", path: "/a", trafficSource: "google" }, { createdAt: "2026-07-08T10:00:00+00:00" }),
+      sev("element_click", { sessionId: "s", seq: 1, ref: "X" }, { createdAt: "2026-07-08T10:00:00.240000+00:00" }),
+      sev("pageview", { sessionId: "s", path: "/b" }, { createdAt: "2026-07-08T10:00:00.900000+00:00" }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.landingPath).toBe("/a"); // inte "/b"
+    expect(s.pageOrder).toEqual(["/a", "/b"]);
+    expect(s.channel).toBe("google"); // från den RIKTIGA landningen
+  });
+
+  it("sawAdaptation scopas till sessionens fönster, inte hela besökarens historik", () => {
+    // Besökaren adapterades i en TIDIGARE session (t=0) men inte i den här
+    // (t=100..102) → sawAdaptation ska vara false för den nya sessionen.
+    const events: DashEvent[] = [
+      ev("adaptation_shown", { patterns: ["emphasize_goal"] }, { visitorHash: "v", createdAt: at(0) }),
+      ev("pageview", { sessionId: "later", path: "/x", trafficSource: "direct" }, { visitorHash: "v", createdAt: at(100) }),
+      ev("page_leave", { sessionId: "later", engagedMs: 2000 }, { visitorHash: "v", createdAt: at(102) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.sawAdaptation).toBe(false);
+  });
+
+  it("collapsar upprepad path och markerar konvertering + adapterad arm", () => {
+    const events: DashEvent[] = [
+      ev("pageview", { sessionId: "s2", path: "/", trafficSource: "google" }, { visitorHash: "v9", createdAt: at(1) }),
+      // Exponering loggas server-side under sessionen (vid decide på pageview).
+      ev("adaptation_shown", { patterns: ["emphasize_goal"] }, { visitorHash: "v9", createdAt: at(1) }),
+      ev("pageview", { sessionId: "s2", path: "/" }, { visitorHash: "v9", createdAt: at(2) }), // hydrerings-dubblett
+      ev("conversion", { sessionId: "s2" }, { visitorHash: "v9", createdAt: at(3) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.pageOrder).toEqual(["/"]); // dubbletten collapsad
+    expect(s.converted).toBe(true);
+    expect(s.sawAdaptation).toBe(true); // exponering inom sessionens fönster
+  });
+
+  it("hoppar över events utan sessionId och sorterar nyaste först", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { path: "/a" }, { createdAt: at(0) }), // ingen sessionId → ignoreras
+      sev("pageview", { sessionId: "old", path: "/x" }, { createdAt: at(1) }),
+      sev("pageview", { sessionId: "new", path: "/y" }, { createdAt: at(100) }),
+    ];
+    const out = sessionSummaries(events);
+    expect(out.map((s) => s.sessionId)).toEqual(["new", "old"]);
+  });
+});
+
+describe("rageSignals — frustrationssignaler (diagnostik)", () => {
+  it("rullar upp bursts och distinkta besökare per ref, mest frustrerande först", () => {
+    const events: DashEvent[] = [
+      ev("rage_click", { ref: "button#buy", count: 3 }, { visitorHash: "a" }),
+      ev("rage_click", { ref: "button#buy", count: 4 }, { visitorHash: "b" }),
+      ev("rage_click", { ref: "button#buy", count: 3 }, { visitorHash: "a" }), // samma besökare igen
+      ev("rage_click", { ref: "a[href=/faq]", count: 3 }, { visitorHash: "c" }),
+      ev("cta_click", { text: "Buy" }, { visitorHash: "a" }), // ovidkommande typ ignoreras
+    ];
+    const out = rageSignals(events);
+    expect(out).toEqual([
+      { ref: "button#buy", bursts: 3, visitors: 2 },
+      { ref: "a[href=/faq]", bursts: 1, visitors: 1 },
+    ]);
+  });
+
+  it("hoppar över events utan ref och kapar till MAX_RAGE_SIGNALS", () => {
+    const many: DashEvent[] = [];
+    for (let i = 0; i < MAX_RAGE_SIGNALS + 5; i++) {
+      many.push(ev("rage_click", { ref: `el-${i}`, count: 3 }, { visitorHash: `v${i}` }));
+    }
+    many.push(ev("rage_click", {}, { visitorHash: "x" })); // ingen ref → ignoreras
+    const out = rageSignals(many);
+    expect(out.length).toBe(MAX_RAGE_SIGNALS);
+    expect(out.every((r) => typeof r.ref === "string" && r.ref.length > 0)).toBe(true);
+  });
+
+  it("tom lista när inga rage_click-events finns", () => {
+    expect(rageSignals([ev("pageview", { path: "/" })])).toEqual([]);
   });
 });

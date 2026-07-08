@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { sanitizeAudit, cleanText } from "../sanitize";
+import { sanitizeAudit, sanitizeObserve, cleanText, scrubPath } from "../sanitize";
 
 describe("cleanText", () => {
   it("redacts emails and long digit runs, collapses whitespace, caps length", () => {
@@ -95,5 +95,81 @@ describe("sanitizeAudit", () => {
     const many = Array.from({ length: 500 }, (_, i) => ({ text: `cta ${i}`, selector: `#c${i}` }));
     const out = sanitizeAudit({ url: "https://x.se/", ctas: many });
     expect((out.ctas as unknown[]).length).toBe(200);
+  });
+});
+
+describe("scrubPath — journey ref/path privacy boundary", () => {
+  it("redacts UUIDs, long opaque tokens, emails and long digit runs", () => {
+    expect(scrubPath("/reset/9f8b7c6d-1234-4a5b-8c9d-0e1f2a3b4c5d")).toBe("/reset/[id]");
+    expect(scrubPath("/reset/tok_ABCdef123GHIjkl456MNO")).toContain("[id]"); // 20+ opaque run
+    expect(scrubPath("/order/ref?x=1").replace(/\s+/g, "")).toBe("/order/ref?x=1"); // short, kept
+    expect(scrubPath("/account?email=a@b.se")).toBe("/account?email=[redacted]");
+    expect(scrubPath("Ring 070-123 45 67")).toContain("[redacted]");
+  });
+
+  it("preserves readable slugs (no false-positive redaction)", () => {
+    expect(scrubPath("/blogg/den-ultimata-guiden-till-glutenfri-kladdkaka")).toBe(
+      "/blogg/den-ultimata-guiden-till-glutenfri-kladdkaka",
+    );
+    expect(scrubPath("/produkter/iphone-15-pro")).toBe("/produkter/iphone-15-pro");
+    expect(scrubPath("Skapa konto")).toBe("Skapa konto");
+  });
+});
+
+describe("sanitizeObserve — structural observe-only block", () => {
+  it("returns null when there is no observe data", () => {
+    expect(sanitizeObserve(null)).toBeNull();
+    expect(sanitizeObserve({})).toBeNull();
+    expect(sanitizeObserve("nope")).toBeNull();
+  });
+
+  it("keeps field TYPES/counts, drops non-standard autocomplete + PII in submit text", () => {
+    const out = sanitizeObserve({
+      forms: [
+        {
+          fieldCount: 3,
+          fieldTypes: { email: 1, text: 2, "bad key!": 5, veryveryveryveryverylongkeyname123: 1 },
+          autocomplete: ["email", "given-name", "evil-freeform-token", "current-password"],
+          submitText: "Maila oss på a@b.se nu",
+          kind: "newsletter",
+          aboveFold: true,
+        },
+      ],
+    })!;
+    const f = out.forms[0];
+    expect(f.fieldCount).toBe(3);
+    expect(f.fieldTypes).toEqual({ email: 1, text: 2 }); // junk keys dropped
+    expect(f.autocomplete).toEqual(["email", "given-name", "current-password"]); // off-list dropped
+    expect(f.submitText).toBe("Maila oss på [redacted] nu"); // email scrubbed
+    expect(f.kind).toBe("newsletter");
+  });
+
+  it("normalizes navigation to counts + booleans", () => {
+    const out = sanitizeObserve({
+      navigation: { primaryLinks: 42.7, footerLinks: "12", hasSearch: 1, hasBreadcrumb: false },
+    })!;
+    expect(out.navigation).toEqual({
+      primaryLinks: 43,
+      footerLinks: 0, // non-number → 0
+      hasSearch: true,
+      hasBreadcrumb: false,
+    });
+  });
+
+  it("keeps pricing presence + PII-scrubbed samples", () => {
+    const out = sanitizeObserve({
+      pricing: { present: true, priceCount: 3, samples: ["199 kr", "från 49:-", "ring 070-1234567"] },
+    })!;
+    expect(out.pricing.present).toBe(true);
+    expect(out.pricing.priceCount).toBe(3);
+    expect(out.pricing.samples[0]).toBe("199 kr");
+    expect(out.pricing.samples[2]).toContain("[redacted]"); // phone scrubbed
+  });
+
+  it("caps forms at 10 and rejects a kind that isn't a short token", () => {
+    const forms = Array.from({ length: 20 }, () => ({ fieldCount: 1, kind: "<script>" }));
+    const out = sanitizeObserve({ forms })!;
+    expect(out.forms.length).toBe(10);
+    expect(out.forms[0].kind).toBe("other"); // non-token kind rejected
   });
 });
