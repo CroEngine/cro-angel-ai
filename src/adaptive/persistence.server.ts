@@ -11,7 +11,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
-import { cleanText } from "./harvest/sanitize";
+import { scrubPath } from "./harvest/sanitize";
 import type { GoalJudgment } from "./goal-judge.server";
 import type {
   AngelEvent,
@@ -70,10 +70,11 @@ export function buildEventRows(
     const raw = (e.payload ?? {}) as Record<string, unknown>;
     const payload: Record<string, unknown> = { ...raw };
     // PII-skrubba de fritext-bärande journey-fälten (elementets referens /
-    // sidväg) — de kan bära e-post/telefon i sällsynta fall (personaliserad
-    // knapptext, drifted URL). cleanText redigerar bort dem.
-    if (typeof raw.ref === "string") payload.ref = cleanText(raw.ref);
-    if (typeof raw.path === "string") payload.path = cleanText(raw.path);
+    // sidväg): e-post + långa siffror + UUID + långa opaka tokens (reset-
+    // token/order-id i en path-segment eller personaliserad knapptext) —
+    // scrubPath är serverns integritetsgräns, utöver klientens längd-cap.
+    if (typeof raw.ref === "string") payload.ref = scrubPath(raw.ref);
+    if (typeof raw.path === "string") payload.path = scrubPath(raw.path);
     if (sid) payload.sessionId = sid;
     return {
       site,

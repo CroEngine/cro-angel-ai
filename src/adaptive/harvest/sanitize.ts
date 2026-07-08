@@ -21,6 +21,13 @@ const MAX_H1 = 20;
 const EMAIL = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
 // 8+ digits, possibly split by spaces/dashes — phone / card / account-ish.
 const LONG_DIGITS = /\b\d[\d\s-]{6,}\d\b/g;
+// UUID and long opaque alnum runs (reset tokens, session hashes, API keys) —
+// the kind of secret that hides in a URL PATH segment (/reset/{token}) or a
+// personalized element ref, which cleanText's email/digit rules miss. 20+ is
+// safely above readable words/slugs ("glutenfri-kladdkaka" is hyphen-split so
+// no 20-run; "iPhone15Pro" is 11), so this doesn't nuke legitimate slugs.
+const UUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+const OPAQUE_TOKEN = /[A-Za-z0-9]{20,}/g;
 
 /** Collapse whitespace, strip obvious PII, cap length. Non-strings → "". */
 export function cleanText(s: unknown): string {
@@ -31,6 +38,15 @@ export function cleanText(s: unknown): string {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, MAX_TEXT);
+}
+
+/** Stronger scrub for the journey `ref`/`path` fields — cleanText PLUS UUID +
+ *  long-opaque-token redaction. A reset token or order id embedded in a URL
+ *  PATH segment (which the client's query-only allowlist can't strip) or in a
+ *  personalized element ref is redacted here — the server-side privacy
+ *  boundary. Readable slugs survive (no 20-char alnum run, no uuid). */
+export function scrubPath(s: unknown): string {
+  return cleanText(s).replace(UUID, "[id]").replace(OPAQUE_TOKEN, "[id]");
 }
 
 function optText(s: unknown): string | undefined {

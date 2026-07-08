@@ -25,20 +25,22 @@ describe("buildEventRows — journey privacy boundary", () => {
     expect(((long[0].payload as Record<string, unknown>).sessionId as string).length).toBe(80);
   });
 
-  it("PII-scrubs the ref and path free-text fields (email/phone redacted)", () => {
+  it("PII-scrubs ref/path: email, phone, AND path-embedded tokens/UUIDs", () => {
     const events: AngelEvent[] = [
       {
         type: "element_click",
         payload: { seq: 3, ref: "Maila john@doe.com", path: "/tack?email=john@doe.com" },
       },
       { type: "form_abandon", payload: { ref: "Ring 070-123 45 67", kind: "other" } },
+      // Reset-token i en PATH-segment (klientens query-allowlist kan inte
+      // strippa den) → scrubbas server-side.
+      { type: "page_leave", payload: { path: "/reset/tok_ABCdef123GHIjkl456MNO", engagedMs: 100 } },
     ];
     const rows = buildEventRows("acme", "v", events, null);
-    const p0 = rows[0].payload as Record<string, unknown>;
-    expect(p0.ref).toBe("Maila [redacted]");
-    expect(p0.path).toBe("/tack?email=[redacted]");
-    const p1 = rows[1].payload as Record<string, unknown>;
-    expect(p1.ref).toContain("[redacted]");
+    expect((rows[0].payload as Record<string, unknown>).ref).toBe("Maila [redacted]");
+    expect((rows[0].payload as Record<string, unknown>).path).toBe("/tack?email=[redacted]");
+    expect((rows[1].payload as Record<string, unknown>).ref).toContain("[redacted]");
+    expect((rows[2].payload as Record<string, unknown>).path).toContain("[id]");
   });
 
   it("omits sessionId when none is provided (anonymous-safe default)", () => {

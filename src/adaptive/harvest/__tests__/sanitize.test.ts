@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { sanitizeAudit, sanitizeObserve, cleanText } from "../sanitize";
+import { sanitizeAudit, sanitizeObserve, cleanText, scrubPath } from "../sanitize";
 
 describe("cleanText", () => {
   it("redacts emails and long digit runs, collapses whitespace, caps length", () => {
@@ -95,6 +95,24 @@ describe("sanitizeAudit", () => {
     const many = Array.from({ length: 500 }, (_, i) => ({ text: `cta ${i}`, selector: `#c${i}` }));
     const out = sanitizeAudit({ url: "https://x.se/", ctas: many });
     expect((out.ctas as unknown[]).length).toBe(200);
+  });
+});
+
+describe("scrubPath — journey ref/path privacy boundary", () => {
+  it("redacts UUIDs, long opaque tokens, emails and long digit runs", () => {
+    expect(scrubPath("/reset/9f8b7c6d-1234-4a5b-8c9d-0e1f2a3b4c5d")).toBe("/reset/[id]");
+    expect(scrubPath("/reset/tok_ABCdef123GHIjkl456MNO")).toContain("[id]"); // 20+ opaque run
+    expect(scrubPath("/order/ref?x=1").replace(/\s+/g, "")).toBe("/order/ref?x=1"); // short, kept
+    expect(scrubPath("/account?email=a@b.se")).toBe("/account?email=[redacted]");
+    expect(scrubPath("Ring 070-123 45 67")).toContain("[redacted]");
+  });
+
+  it("preserves readable slugs (no false-positive redaction)", () => {
+    expect(scrubPath("/blogg/den-ultimata-guiden-till-glutenfri-kladdkaka")).toBe(
+      "/blogg/den-ultimata-guiden-till-glutenfri-kladdkaka",
+    );
+    expect(scrubPath("/produkter/iphone-15-pro")).toBe("/produkter/iphone-15-pro");
+    expect(scrubPath("Skapa konto")).toBe("Skapa konto");
   });
 });
 

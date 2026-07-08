@@ -489,10 +489,16 @@ export function sessionSummaries(
   events: DashEvent[],
   limit = MAX_SESSION_SUMMARIES,
 ): SessionSummary[] {
-  // Vilka besökare (hash) har sett en adaptation → arm-flagga per session.
-  const adaptedVisitors = new Set<string>();
+  // adaptation_shown-tidsstämplar per besökare — så sawAdaptation kan scopas
+  // till DENNA sessions fönster (exponeringar är inte session-taggade; att bara
+  // flagga "besökaren adapterades någonstans" över-påstår för sessioner där
+  // inget visades, eller som slutade före adaptationen).
+  const shownByVisitor = new Map<string, number[]>();
   for (const e of events) {
-    if (e.type === "adaptation_shown" && e.visitorHash) adaptedVisitors.add(e.visitorHash);
+    if (e.type !== "adaptation_shown" || !e.visitorHash) continue;
+    const t = ms(e.createdAt);
+    if (Number.isNaN(t)) continue;
+    (shownByVisitor.get(e.visitorHash) ?? shownByVisitor.set(e.visitorHash, []).get(e.visitorHash)!).push(t);
   }
 
   const bySession = new Map<string, DashEvent[]>();
@@ -502,11 +508,22 @@ export function sessionSummaries(
     (bySession.get(sid) ?? bySession.set(sid, []).get(sid)!).push(e);
   }
 
+  // Kronologisk sortering NUMERISKT — localeCompare på ISO-strängar mis-ordnar
+  // PostgREST-tidsstämplar där mikrosekunderna är 0 (bråkdelen utelämnas, så
+  // '…:00+00:00' sorteras efter '…:00.24+00:00' lexikalt). Ostabila events
+  // (oparsbar tid) läggs sist.
+  const sortKey = (e: DashEvent) => {
+    const t = ms(e.createdAt);
+    return Number.isNaN(t) ? Infinity : t;
+  };
+
   const summaries: SessionSummary[] = [];
   for (const [sessionId, evs] of bySession) {
-    evs.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    evs.sort((a, b) => sortKey(a) - sortKey(b));
     const firstPv = evs.find((e) => e.type === "pageview");
     const visitorHash = evs.find((e) => e.visitorHash)?.visitorHash ?? null;
+    const startMs = sortKey(evs[0]);
+    const endMs = sortKey(evs[evs.length - 1]);
 
     const pageOrder: string[] = [];
     const clickOrder: string[] = [];
@@ -545,14 +562,27 @@ export function sessionSummaries(
       engagedMs,
       formStarted,
       formSubmitted,
-      // Startade men varken submit eller konvertering → övergivet.
-      formAbandoned: formAbandoned || (formStarted && !formSubmitted && !converted && evs.some((e) => e.type === "page_leave")),
+      // ENBART klientens form_abandon-flagga (snippeten fyrar den på pagehide
+      // för startat-men-ej-submittat formulär). Den tidigare fallback-
+      // heuristiken kollade page_leave över HELA sessionen och flaggade ett
+      // pågående formulär som övergivet så fort besökaren sett en tidigare
+      // sida (granskningsfynd).
+      formAbandoned,
       converted,
-      sawAdaptation: visitorHash ? adaptedVisitors.has(visitorHash) : false,
+      // Adaptation VISAD inom den här sessionens fönster (inte "besökaren
+      // adapterades någonsin").
+      sawAdaptation: visitorHash
+        ? (shownByVisitor.get(visitorHash) ?? []).some((t) => t >= startMs && t <= endMs)
+        : false,
     });
   }
 
-  summaries.sort((a, b) => b.endedAt.localeCompare(a.endedAt));
+  // Nyaste först — numeriskt (samma anledning som per-event-sorteringen).
+  const endKey = (iso: string) => {
+    const t = ms(iso);
+    return Number.isNaN(t) ? -Infinity : t;
+  };
+  summaries.sort((a, b) => endKey(b.endedAt) - endKey(a.endedAt));
   return summaries.slice(0, limit);
 }
 

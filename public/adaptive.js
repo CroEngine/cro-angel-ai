@@ -124,6 +124,13 @@
     try {
       vid = visitorId();
     } catch (e) {}
+    // Session-id:t beräknades vid load när consent saknades (→ null). Efter en
+    // LIVE consent-grant måste det sättas nu — annars bär alla journey-events
+    // som skickas efter grantet sessionId:undefined och kan inte stitchas ihop
+    // till en resa (granskningsfynd).
+    try {
+      sid = sessionId();
+    } catch (e) {}
     // Refresh the consent-dependent signal fields so any decision computed
     // after this upgrade gets holdout bucketing + attribution. A no-op for the
     // fields the server ignores when anonymous.
@@ -1102,7 +1109,12 @@
   }
 
   // ---- engagement tracking -------------------------------------------------
+  var engagementWired = false;
   function wireEngagement(decisionId) {
+    // Idempotent (samma skäl som wireJourney): decides .then→.catch-fall får
+    // inte dubbelregistrera scroll-lyssnaren och dubbla scroll_depth.
+    if (engagementWired) return;
+    engagementWired = true;
     // (cta_click lives in wireConversion's click listener — goal clicks and
     // Angel-shortcut clicks share the same capture-phase walk. The old
     // [data-angel-slot]-based cta_click that used to live here was a demo
@@ -1136,7 +1148,12 @@
   // efter load så navigation-timing hunnit bli komplett; LCP/CLS läses vid den
   // punkten (rimligt fältvärde utan att vänta på hela sidans livstid).
   var perfSent = false;
+  var perfWired = false;
   function wirePerf(decisionId) {
+    // Idempotent registrering (perfSent gatar bara själva utskicket; utan den
+    // här vakten skulle en dubbelkallning lämna en andra load-lyssnare kvar).
+    if (perfWired) return;
+    perfWired = true;
     function emit() {
       if (perfSent) return;
       perfSent = true;
@@ -1182,16 +1199,55 @@
   // Anonym beteenderesa (docs/journey-intelligence.md). session_id binder ihop
   // sidorna; klickordningen är intent-signalen. Allt consent-gatat via send().
   // Aldrig fältinnehåll, aldrig sidans fulltext — bara elementets referens.
-  function elementRef(el) {
+  function hrefPath(href) {
     try {
-      var r =
-        el.getAttribute("data-angel-ref") ||
-        (el.id && /^[A-Za-z][\w-]{0,60}$/.test(el.id) ? "#" + el.id : "") ||
-        el.getAttribute("aria-label") ||
-        (el.textContent || "").trim();
-      return String(r || el.tagName || "").slice(0, 60);
+      var u = new URL(href, location.href);
+      if (u.protocol !== "http:" && u.protocol !== "https:") return "";
+      return u.pathname || "/";
     } catch (e) {
       return "";
+    }
+  }
+  function elementRef(el) {
+    try {
+      // Stabil identifierare först — ALDRIG sidans fulltext (personaliserad
+      // knapptext kan bära namn: "Fortsätt som John Andersson").
+      var explicit =
+        el.getAttribute("data-angel-ref") ||
+        (el.id && /^[A-Za-z][\w-]{0,60}$/.test(el.id) ? "#" + el.id : "") ||
+        el.getAttribute("aria-label");
+      if (explicit) return String(explicit).slice(0, 60);
+      // Länkar: href-PATHEN är renare än ev. personaliserad synlig text.
+      if (el.tagName === "A") {
+        var hp = hrefPath(el.getAttribute("href") || "");
+        if (hp) return hp.slice(0, 60);
+      }
+      // Sista utväg: kort synlig etikett (oftast sajtens egen UI-copy), en rad,
+      // hårt cappad. Servern PII-skrubbar dessutom (scrubPath i buildEventRows).
+      var txt = (el.textContent || "").trim().split("\n")[0];
+      return String(txt || el.tagName || "").slice(0, 40);
+    } catch (e) {
+      return "";
+    }
+  }
+  // Formulär bär mest PII i sin fulltext (förifyllda fält, leveransadress) —
+  // ref hämtas ENBART ur strukturella identifierare, aldrig text.
+  function formRef(form) {
+    try {
+      var r =
+        form.getAttribute("data-angel-ref") ||
+        (form.id && /^[A-Za-z][\w-]{0,60}$/.test(form.id) ? "#" + form.id : "") ||
+        form.getAttribute("name") ||
+        form.getAttribute("aria-label");
+      if (r) return String(r).slice(0, 60);
+      var action = form.getAttribute("action");
+      if (action) {
+        var p = hrefPath(action);
+        if (p) return ("form:" + p).slice(0, 60);
+      }
+      return "form";
+    } catch (e) {
+      return "form";
     }
   }
   function formKind(form) {
@@ -1209,7 +1265,13 @@
       return "other";
     }
   }
+  var journeyWired = false;
   function wireJourney(decisionId) {
+    // Idempotent: decides .then kan köra hit och sedan kasta → .catch kör
+    // wireJourney igen. Utan vakten dubbelregistreras alla lyssnare och varje
+    // journey-event skickas två gånger (granskningsfynd).
+    if (journeyWired) return;
+    journeyWired = true;
     var clickSeq = 0;
     var CLICK_CAP = 50; // bounded payload — a human can't out-click this per load
     var INTERACTIVE = 'a[href],button,[role="button"],input[type="submit"],[data-angel-ref]';
@@ -1243,7 +1305,7 @@
         try {
           var form = e.target && e.target.closest ? e.target.closest("form") : null;
           if (!form || isNoTouch(form)) return;
-          var ref = elementRef(form);
+          var ref = formRef(form);
           if (started[ref]) return;
           started[ref] = formKind(form);
           track("form_start", { ref: ref, kind: started[ref], path: safePath() }, decisionId);
@@ -1257,7 +1319,7 @@
         try {
           var form = e.target;
           if (!form || isNoTouch(form)) return;
-          var ref = elementRef(form);
+          var ref = formRef(form);
           submitted[ref] = true;
           track("form_submit", { ref: ref, kind: started[ref] || formKind(form), path: safePath() }, decisionId);
         } catch (err) {}
