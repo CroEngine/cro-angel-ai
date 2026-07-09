@@ -1,5 +1,11 @@
 # Steg 2 — beteendedata: vad är värt att samla in? (evidensgraderad analys)
 
+> **Delvis reviderad 2026-07-08 (observe-first-pivoten, `docs/croengine-vision.md`):**
+> **rage clicks** samlas nu in som ren DIAGNOSTIK (en frustrationssignal för
+> ägaren/AI:n, driver aldrig en automatisk ändring) — "SKIP"-verdikten nedan gällde
+> en nivå-1–2-RESPONS, som fortfarande inte byggs. Övriga verdikt (musrörelser,
+> heatmaps, koordinater, fingerprint-fält, form-telemetri) står kvar.
+
 > Frågan detta dokument svarar på: för Angel (adaptiv CRO), är det värt att gå
 > djupare på beteendedatainsamling i steg 2 — och i så fall vilka signaler,
 > rangordnade? Grundat i `public/adaptive.js`, `src/adaptive/context.ts`,
@@ -113,7 +119,7 @@ Utgångsläge: `cta_click` (goal/assist) fångas redan i konverterings-lyssnaren
 |---|---|---|---|---|---|---|
 | **Koordinater / heatmap** | var på sidan man klickar | Deskriptiv. Angel är ingen heatmap/session-replay-produkt. | Nej — kräver stor volym | **Hög** (replay-nära) | Hög (global click-logg) | **SKIP**. |
 | **Dead clicks** (klick på icke-klickbart) | felställd förväntan nära målet | Diagnostik för ägaren ("folk tror detta är klickbart") — men ingen *nuvarande* nivå-1–2-spak. | Svagt, aggregerat | Medel | Medel (global capture-lyssnare) | **DEFER** — enda click-signalen med framtida värde, som ägardiagnostik, inte per-besökare-behandling. |
-| **Rage clicks** | upprepade klick på samma punkt | Frustrationsdiagnostik; ingen nivå-1–2-respons. | Nej | Medel | Medel | **SKIP**. |
+| **Rage clicks** | upprepade klick på samma punkt | Frustrationsdiagnostik; ingen nivå-1–2-respons. | Nej | Medel | Medel | **SKIP som behandling** — men samlas nu som diagnostik (reviderat 2026-07-08, se not överst). |
 | **Hover-intent / hover-före-klick** | muspekarväg före klick | Skulle låsa upp en **uttryckligen förbjuden** behandling — styrdokumentet listar "hover-beroende effekter" i vad-vi-INTE-bygger. | — | Medel | Medel (mousemove) | **SKIP** — off-product per design. |
 
 **Click-slutsats:** inget nu. Dead-click är det enda som kan bli en framtida

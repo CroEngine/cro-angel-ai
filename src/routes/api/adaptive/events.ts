@@ -1,10 +1,12 @@
 // POST /api/adaptive/events
 //
-// Analytics ingest (blueprint Step 8). The snippet posts a batch of events
-// (pageview, adaptation_shown, cta_click, scroll_depth, conversion, page_perf).
-// We persist them best-effort and always answer 204 quickly — losing an
-// analytics beacon must never break a customer's page. Accepts
-// navigator.sendBeacon payloads.
+// Analytics ingest (blueprint Step 8). The snippet posts a batch of the events
+// whitelisted in VALID_TYPES below — the anonymous journey (element_click,
+// form lifecycle, page_leave), diagnostics (rage_click), performance (page_perf)
+// and conversions. Exposure (adaptation_shown/withheld) is written authoritatively
+// server-side by logDecision, not by the snippet. We persist best-effort and
+// always answer 204 quickly — losing an analytics beacon must never break a
+// customer's page. Accepts navigator.sendBeacon payloads.
 
 import { createFileRoute } from "@tanstack/react-router";
 
