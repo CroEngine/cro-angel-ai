@@ -1,4 +1,4 @@
-# Fas 2 — segmentgruppering (designnotis, för imorgon)
+# Fas 2 — segmentgruppering (design + status)
 
 > Svar på ägarens fråga: "Google_phone_se är inte samma som Google_phone_usa,
 > men jag är fine om vi kör en Google_phone (generell) om det ens hjälper."
@@ -76,19 +76,28 @@ befintliga `sessionSummaries`, nycklad på dimensionsprefixet, med per-segment
 utfall (konvertering/drop-off) + en tillräcklighetsflagga. Inget snippet-arbete,
 ingen migration för själva grupperingen.
 
-## Föreslagen Fas 2-leverans (bygger imorgon, tillsammans)
+## Fas 2-leverans
 
-1. `segmentSummaries(sessions)` i aggregate.ts: rulla upp sessioner till
-   segment-prefix (grovast→finast), räkna besök/konv/drop-off + `adequate`-flagga
-   per nivå.
-2. En "välj mest specifika adekvata segment"-funktion (fallback uppåt i
-   hierarkin) — ren, testbar, delad med decide senare.
-3. Dashboard: ett segment-kort (grova grupper först; finare expanderbara med
-   tydlig "för tunt för att lita på"-märkning).
-4. INGEN adaptation ännu — Fas 2 producerar bara insikten (substrat för Fas 3).
+**Byggt (denna PR):**
+1. ✅ `segmentSummaries(sessions)` i `aggregate.ts`: rullar upp sessioner till
+   segment-prefix (grovast→finast, dimensionsordning `[kanal, enhet, land,
+   ny/återkommande]`), räknar besök/konv/form-avbrott + `adequate`-flagga
+   (volymgrind `SEGMENT_MIN_VISITS=1000` / `SEGMENT_MIN_CONVERSIONS=100`).
+   Enstaka-besök-brus under `SEGMENT_MIN_DISPLAY=5` döljs. Ren, enhetstestad.
+3. ✅ Dashboard-kort "Segment (besökargrupper)": grova grupper först, kornighets-
+   etikett, `nog data`/`för tunt`-status per grupp + förklarande not.
+4. ✅ INGEN adaptation — Fas 2 producerar bara insikten (substrat för Fas 3).
 
-### Öppna frågor för imorgon
-- Exakt dimensionsordning: är device viktigare än ny/återkommande? (Jag lutar åt
-  kanal → device → land → återkommande, men det är en hypotes.)
-- Tröskeln: 1000/100 som hård gräns, eller glidande konfidens?
-- Ska `campaign` (utm) vara en egen hierari-nivå eller en sido-vy?
+**Uppskjutet till Fas 3 (byggs med sin konsument, ingen död kod nu):**
+2. "Välj mest specifika adekvata segment"-funktionen (fallback uppåt, "låna
+   styrka") — ren och testbar, men används först när `decide` läser segment-
+   insikten. Byggs då, inte innan.
+
+### Öppna frågor (beslutade default nu, ändra fritt)
+- **Dimensionsordning:** valde `kanal → enhet → land → ny/återkommande`. Land sist
+  (dyrast/högst kardinalitet), enhet före återkommande (starkare beteendeskillnad).
+- **Tröskel:** `1000/100` som hård `adequate`-gräns nu; glidande konfidens är en
+  möjlig förfining senare.
+- **`campaign` (utm):** hålls som sido-vy (befintlig `byCampaign`-stapel), inte en
+  hierarki-nivå — annars exploderar kardinaliteten. Kan bli egen dimension för
+  kampanjtunga sajter senare.

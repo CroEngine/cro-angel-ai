@@ -387,6 +387,65 @@ function Dashboard() {
               </Card>
             )}
 
+            {/* ---- Fas 2: besökargrupper (segment, grov→fin + volymgrind) ---- */}
+            {d.metrics.segmentGroups.length > 0 && (
+              <Card className="border-stone-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Segment (besökargrupper)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-stone-500">
+                          <th className="py-1 font-medium">Grupp</th>
+                          <th className="py-1 font-medium">Kornighet</th>
+                          <th className="py-1 font-medium">Besökare</th>
+                          <th className="py-1 font-medium">Konvertering</th>
+                          <th className="py-1 font-medium">Form avbrott</th>
+                          <th className="py-1 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.metrics.segmentGroups.map((s) => (
+                          <tr key={s.key} className="border-t border-stone-100">
+                            <td className="py-1.5 font-mono text-[11px] text-stone-600">{s.label}</td>
+                            <td className="py-1.5 text-xs text-stone-500">
+                              {["Kanal", "Kanal · enhet", "+ land", "+ ny/återk."][s.depth - 1] ??
+                                `nivå ${s.depth}`}
+                            </td>
+                            <td className="py-1.5">{s.visits}</td>
+                            <td className="py-1.5">
+                              {(s.conversionRate * 100).toFixed(1)}%{" "}
+                              <span className="text-xs text-stone-400">({s.conversions})</span>
+                            </td>
+                            <td className="py-1.5">{s.formAbandons}</td>
+                            <td className="py-1.5 whitespace-nowrap">
+                              {s.adequate ? (
+                                <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
+                                  nog data
+                                </span>
+                              ) : (
+                                <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-500">
+                                  för tunt
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-2 text-xs text-stone-400">
+                    Grupper byggs grovt först (kanal → enhet → land → ny/återkommande). En
+                    finare uppdelning (t.ex. per land) blir tillförlitlig först när den egna
+                    gruppen når ~1000 besök / 100 konverteringar — tills dess lånar den styrka
+                    från den grövre gruppen. "För tunt" = ännu inte beslutsunderlag.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* ---- nivå 2: senaste anonyma besöksresor (journey intelligence) ---- */}
             {d.metrics.sessions.length > 0 && (
               <Card className="border-stone-200 shadow-none">

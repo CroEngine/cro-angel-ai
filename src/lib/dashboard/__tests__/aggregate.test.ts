@@ -4,14 +4,19 @@ import {
   aggregate,
   proofSummary,
   sessionSummaries,
+  segmentSummaries,
   rageSignals,
   bucketByTime,
   summarizeVisitors,
   MAX_DAY_POINTS,
   MAX_VISITORS,
   MAX_RAGE_SIGNALS,
+  SEGMENT_MIN_VISITS,
+  SEGMENT_MIN_CONVERSIONS,
+  SEGMENT_MIN_DISPLAY,
   type DashEvent,
   type InventoryEntry,
+  type SessionSummary,
 } from "../aggregate";
 
 function ev(
@@ -735,5 +740,99 @@ describe("rageSignals — frustrationssignaler (diagnostik)", () => {
 
   it("tom lista när inga rage_click-events finns", () => {
     expect(rageSignals([ev("pageview", { path: "/" })])).toEqual([]);
+  });
+});
+
+describe("segmentSummaries — Fas 2 besökargrupper (grov→fin + volymgrind)", () => {
+  let sid = 0;
+  const sess = (over: Partial<SessionSummary> = {}): SessionSummary => ({
+    sessionId: `s${++sid}`,
+    startedAt: "2026-06-27T10:00:00Z",
+    endedAt: "2026-06-27T10:05:00Z",
+    channel: "google",
+    device: "mobile",
+    country: "se",
+    isReturning: false,
+    landingPath: "/",
+    pageOrder: ["/"],
+    clickOrder: [],
+    engagedMs: 1000,
+    formStarted: false,
+    formSubmitted: false,
+    formAbandoned: false,
+    converted: false,
+    sawAdaptation: false,
+    ...over,
+  });
+  const byKey = (out: ReturnType<typeof segmentSummaries>) =>
+    new Map(out.map((s) => [s.key, s]));
+
+  it("varje session bidrar till ALLA sina prefix (grov→fin) med rätt utfall", () => {
+    // 6 google·mobile·se-sessioner, 2 konverterade.
+    const sessions = Array.from({ length: 6 }, (_, i) => sess({ converted: i < 2 }));
+    const m = byKey(segmentSummaries(sessions));
+    for (const key of ["google", "google·mobile", "google·mobile·se", "google·mobile·se·ny"]) {
+      expect(m.get(key)?.visits).toBe(6);
+      expect(m.get(key)?.conversions).toBe(2);
+      expect(m.get(key)?.conversionRate).toBeCloseTo(2 / 6);
+    }
+    expect(m.get("google·mobile")?.depth).toBe(2);
+    expect(m.get("google·mobile")?.device).toBe("mobile");
+    expect(m.get("google·mobile·se·ny")?.returning).toBe(false);
+  });
+
+  it("grov grupp aggregerar finare (låna styrka); för tunna finare grupper döljs", () => {
+    // 5 se + 5 us, alla google·mobile → coarse google·mobile = 10 (visas),
+    // country-splittarna = 5 var (precis på display-tröskeln → visas).
+    const sessions = [
+      ...Array.from({ length: 5 }, () => sess({ country: "se" })),
+      ...Array.from({ length: 5 }, () => sess({ country: "us" })),
+    ];
+    const m = byKey(segmentSummaries(sessions));
+    expect(m.get("google·mobile")?.visits).toBe(10);
+    expect(m.get("google·mobile·se")?.visits).toBe(5);
+    expect(m.get("google·mobile·us")?.visits).toBe(5);
+
+    // En finare grupp under display-tröskeln (< SEGMENT_MIN_DISPLAY) döljs helt.
+    const thin = [
+      ...Array.from({ length: 6 }, () => sess({ country: "se" })),
+      ...Array.from({ length: 2 }, () => sess({ country: "no" })), // 2 < 5 → dold
+    ];
+    const m2 = byKey(segmentSummaries(thin));
+    expect(m2.has("google·mobile·no")).toBe(false);
+    expect(m2.get("google·mobile")?.visits).toBe(8); // men räknas i den grova
+  });
+
+  it("adequate-flaggan följer volymgrinden (SEGMENT_MIN_VISITS/CONVERSIONS)", () => {
+    const big = Array.from({ length: SEGMENT_MIN_VISITS }, (_, i) =>
+      sess({ converted: i < SEGMENT_MIN_CONVERSIONS }),
+    );
+    expect(byKey(segmentSummaries(big)).get("google")?.adequate).toBe(true);
+
+    // Nog besök men för få konverteringar → inte tillräckligt.
+    const fewConv = Array.from({ length: SEGMENT_MIN_VISITS }, (_, i) =>
+      sess({ converted: i < SEGMENT_MIN_CONVERSIONS - 1 }),
+    );
+    expect(byKey(segmentSummaries(fewConv)).get("google")?.adequate).toBe(false);
+
+    // Liten pilot-grupp → aldrig tillräcklig.
+    expect(byKey(segmentSummaries(Array.from({ length: 6 }, () => sess()))).get("google")?.adequate).toBe(
+      false,
+    );
+  });
+
+  it("sorterar grovast först, sedan störst volym; null-dimensioner blir 'okänd'", () => {
+    const sessions = [
+      ...Array.from({ length: 6 }, () => sess({ channel: "google" })),
+      ...Array.from({ length: 8 }, () => sess({ channel: "direct" })),
+      ...Array.from({ length: 5 }, () => sess({ channel: null })), // → "okänd"
+    ];
+    const out = segmentSummaries(sessions);
+    // Alla depth-1 kommer före alla depth-2.
+    const firstDepth2 = out.findIndex((s) => s.depth === 2);
+    expect(out.slice(0, firstDepth2).every((s) => s.depth === 1)).toBe(true);
+    // Inom depth 1: störst volym först (direct 8 > google 6 > okänd 5).
+    const depth1 = out.filter((s) => s.depth === 1).map((s) => s.key);
+    expect(depth1).toEqual(["direct", "google", "okänd"]);
   });
 });
