@@ -19,6 +19,7 @@ import {
   renderRedesignPrompt,
   type RedesignContentModel,
 } from "../../src/adaptive/redesign/context";
+import { generateRedesign } from "../../src/adaptive/redesign/generate";
 
 const REPO = join(import.meta.dir, "../..");
 const PAGE_DIR = "fixtures/breadth-corpus/stripe";
@@ -153,4 +154,49 @@ const ctx = buildRedesignContext({
 console.log(renderRedesignPrompt(ctx));
 console.log(
   "\n---\n[demo] page code + screenshot referenced above are the real frozen artifacts on disk.",
+);
+
+// ---- slice 2: generation + guard --------------------------------------------
+// No ANTHROPIC_API_KEY here, so we STUB Claude's reply to show the flow. In prod
+// `completeWithClaude` (generate.server.ts) does the real vision call. The stub
+// includes one INVENTED op to prove the guard rejects it — the LLM is never
+// trusted.
+const simulatedClaudeReply = async () =>
+  JSON.stringify([
+    {
+      op: "move_up",
+      targetId: "sec-testi",
+      detail: "Social proof section above pricing",
+      why: "Instagram traffic arrives warm on social proof; it currently sits below the fold.",
+    },
+    {
+      op: "move_up",
+      targetId: "sec-logos",
+      detail: "Customer logos into the first viewport",
+      why: "Reinforces trust for cold mobile visitors before the ask.",
+    },
+    {
+      op: "condense",
+      targetId: "hero",
+      detail: "Tighten hero subhead to one line",
+      why: "Mobile fold is scarce; get to the value + CTA faster.",
+    },
+    {
+      op: "inject_testimonial",
+      targetId: "sec-new",
+      detail: "a brand-new glowing quote",
+      why: "(this is INVENTED — should be rejected)",
+    },
+  ]);
+
+const plan = await generateRedesign(ctx, simulatedClaudeReply);
+console.log("\n=== Generated plan (validated) ===");
+for (const op of plan.ops)
+  console.log(`  ✓ ${op.op} ${op.targetId} — ${op.detail}\n      why: ${op.why}`);
+for (const r of plan.rejected)
+  console.log(`  ✗ rejected: ${JSON.stringify(r.op).slice(0, 60)}… — ${r.reason}`);
+if (plan.note) console.log(`  note: ${plan.note}`);
+console.log(
+  "\n[demo] The invented 'inject_testimonial → sec-new' op was rejected by the guard " +
+    "(bad verb AND non-existent target). Only reversible ops on EXISTING sections survive.",
 );
