@@ -107,6 +107,15 @@ describe("scrubPath — journey ref/path privacy boundary", () => {
     expect(scrubPath("Ring 070-123 45 67")).toContain("[redacted]");
   });
 
+  it("redacts a UUID whole even when a group is all-digits (regression: live-verify leak)", () => {
+    // cleanText's LONG_DIGITS eats an all-digit UUID group; UUID redaction must
+    // run FIRST or 3 of 5 groups leak. These fixtures have digit-only groups the
+    // old letter-tailed fixture never exercised.
+    expect(scrubPath("/reset/550e8400-e29b-41d4-a716-446655440000")).toBe("/reset/[id]");
+    expect(scrubPath("/u/12345678-1234-1234-1234-123456789012")).toBe("/u/[id]");
+    expect(scrubPath("a[href=/o/00000000-0000-4000-8000-000000000000]")).not.toContain("0000");
+  });
+
   it("preserves readable slugs (no false-positive redaction)", () => {
     expect(scrubPath("/blogg/den-ultimata-guiden-till-glutenfri-kladdkaka")).toBe(
       "/blogg/den-ultimata-guiden-till-glutenfri-kladdkaka",
