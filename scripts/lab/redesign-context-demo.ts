@@ -20,6 +20,7 @@ import {
   type RedesignContentModel,
 } from "../../src/adaptive/redesign/context";
 import { generateRedesign } from "../../src/adaptive/redesign/generate";
+import { previewPlan, formatOrder } from "../../src/adaptive/redesign/preview";
 
 const REPO = join(import.meta.dir, "../..");
 const PAGE_DIR = "fixtures/breadth-corpus/stripe";
@@ -199,4 +200,22 @@ if (plan.note) console.log(`  note: ${plan.note}`);
 console.log(
   "\n[demo] The invented 'inject_testimonial → sec-new' op was rejected by the guard " +
     "(bad verb AND non-existent target). Only reversible ops on EXISTING sections survive.",
+);
+
+// ---- slice 3a: structural FÖRE/EFTER + safety gates -------------------------
+const preview = previewPlan(content, plan);
+console.log("\n=== Structural preview (FÖRE / EFTER) ===");
+console.log(`  FÖRE:  ${formatOrder(preview.before)}`);
+console.log(`  EFTER: ${formatOrder(preview.after)}`);
+if (preview.revealed.length) console.log(`  revealed: ${preview.revealed.join(", ")}`);
+if (preview.retouched.length) console.log(`  retouched (copy): ${preview.retouched.join(", ")}`);
+console.log(`  reversible: ${preview.reversible}`);
+console.log(
+  preview.warnings.length
+    ? `  ⚠ gates: ${preview.warnings.map((w) => w.code).join(", ")}`
+    : "  ✓ structural gates passed (hero first, footer last, nothing lost)",
+);
+console.log(
+  "\n[demo] This is the cheap deterministic half of 'blir det snyggt' — the ORDER makes sense. " +
+    "The pixel half (render + beauty gates) reuses scripts/preflight.ts next.",
 );
