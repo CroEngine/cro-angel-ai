@@ -166,7 +166,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      angel_segment_rollup: {
+        Args: { p_site: string; p_since?: string }
+        Returns: {
+          channel: string
+          device: string
+          country: string
+          is_returning: boolean
+          visits: number
+          conversions: number
+          form_starts: number
+          form_abandons: number
+          rage_sessions: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

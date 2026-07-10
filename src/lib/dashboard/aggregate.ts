@@ -653,13 +653,28 @@ const segToken = (v: string | null | undefined): string => {
   return s || "okänd";
 };
 
-/** Rulla upp sessioner till segment. Varje session bidrar till ALLA sina prefix
- *  (grov→fin): en google·phone·se-session är också en google·phone- och en
- *  google-session — så grova grupper alltid har mest data att luta sig mot
- *  ("låna styrka"). Ren funktion. Bygg på `sessionSummaries` (en session = ett
- *  besök = ett utfall), aldrig råa pageviews (som räknar en 5-siders-besökare 5x). */
-export function segmentSummaries(
-  sessions: SessionSummary[],
+/** En förskotts-aggregerad segment-lövnod: finaste grain
+ *  (kanal·enhet·land·ny/återkommande) med räknare. Både server-rollupen
+ *  (`angel_segment_rollup`, HELA historiken) och JS-fallbacken
+ *  (`segmentSummaries`, event-fönstret) matar in dessa till `expandSegmentLeaves`
+ *  — en delad kärna, samma resultat oavsett källa. */
+export interface SegmentLeaf {
+  channel: string;
+  device: string;
+  country: string;
+  returning: boolean;
+  visits: number;
+  conversions: number;
+  formStarts: number;
+  formAbandons: number;
+}
+
+/** Expandera finaste-grain-löv till grov→fin-prefix. Varje löv bidrar till ALLA
+ *  sina prefix: en google·mobile·se-nod räknas också i google·mobile och google
+ *  — så grova grupper alltid har mest data ("låna styrka"). Volymgrind +
+ *  display-tröskel + deterministisk sortering. Ren. */
+export function expandSegmentLeaves(
+  leaves: SegmentLeaf[],
   limit = MAX_SEGMENTS,
 ): SegmentSummary[] {
   type Acc = {
@@ -670,12 +685,12 @@ export function segmentSummaries(
     formAbandons: number;
   };
   const byKey = new Map<string, Acc>();
-  for (const s of sessions) {
+  for (const leaf of leaves) {
     const dims = [
-      segToken(s.channel),
-      segToken(s.device),
-      segToken(s.country),
-      s.isReturning ? "återkommande" : "ny",
+      segToken(leaf.channel),
+      segToken(leaf.device),
+      segToken(leaf.country),
+      leaf.returning ? "återkommande" : "ny",
     ];
     for (let d = 1; d <= dims.length; d++) {
       const prefix = dims.slice(0, d);
@@ -685,10 +700,10 @@ export function segmentSummaries(
         (byKey
           .set(key, { dims: prefix, visits: 0, conversions: 0, formStarts: 0, formAbandons: 0 })
           .get(key) as Acc);
-      acc.visits++;
-      if (s.converted) acc.conversions++;
-      if (s.formStarted) acc.formStarts++;
-      if (s.formAbandoned) acc.formAbandons++;
+      acc.visits += leaf.visits;
+      acc.conversions += leaf.conversions;
+      acc.formStarts += leaf.formStarts;
+      acc.formAbandons += leaf.formAbandons;
     }
   }
 
@@ -716,6 +731,30 @@ export function segmentSummaries(
   // volym, sedan nyckel för deterministisk ordning.
   out.sort((x, y) => x.depth - y.depth || y.visits - x.visits || x.key.localeCompare(y.key));
   return out.slice(0, limit);
+}
+
+/** JS-fallback (och testyta): rulla upp sessioner till segment när server-
+ *  rollupen inte är tillgänglig. Varje session = ett löv (visits=1). Samma kärna
+ *  som server-vägen via `expandSegmentLeaves`. OBS: kapat till dashboardens
+ *  event-fönster (EVENT_LIMIT) — server-rollupen ser HELA historiken, vilket är
+ *  det som gör volymgrinden pålitlig vid riktig trafik. */
+export function segmentSummaries(
+  sessions: SessionSummary[],
+  limit = MAX_SEGMENTS,
+): SegmentSummary[] {
+  return expandSegmentLeaves(
+    sessions.map((s) => ({
+      channel: s.channel ?? "",
+      device: s.device ?? "",
+      country: s.country ?? "",
+      returning: s.isReturning,
+      visits: 1,
+      conversions: s.converted ? 1 : 0,
+      formStarts: s.formStarted ? 1 : 0,
+      formAbandons: s.formAbandoned ? 1 : 0,
+    })),
+    limit,
+  );
 }
 
 function twoProportionZ(c1: number, n1: number, c2: number, n2: number): number | null {

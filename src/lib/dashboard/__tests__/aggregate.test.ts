@@ -5,6 +5,7 @@ import {
   proofSummary,
   sessionSummaries,
   segmentSummaries,
+  expandSegmentLeaves,
   rageSignals,
   bucketByTime,
   summarizeVisitors,
@@ -834,5 +835,50 @@ describe("segmentSummaries — Fas 2 besökargrupper (grov→fin + volymgrind)",
     // Inom depth 1: störst volym först (direct 8 > google 6 > okänd 5).
     const depth1 = out.filter((s) => s.depth === 1).map((s) => s.key);
     expect(depth1).toEqual(["direct", "google", "okänd"]);
+  });
+});
+
+describe("expandSegmentLeaves — server-rollup-löv → grov→fin prefix", () => {
+  const leaf = (over: Partial<Parameters<typeof expandSegmentLeaves>[0][number]> = {}) => ({
+    channel: "google",
+    device: "mobile",
+    country: "se",
+    returning: false,
+    visits: 0,
+    conversions: 0,
+    formStarts: 0,
+    formAbandons: 0,
+    ...over,
+  });
+  const byKey = (out: ReturnType<typeof expandSegmentLeaves>) => new Map(out.map((s) => [s.key, s]));
+
+  it("summerar PRE-AGGREGERADE löv (visits>1) till alla prefix (låna styrka)", () => {
+    // Ett löv representerar redan MÅNGA sessioner (server-rollupen aggregerade dem).
+    const m = byKey(
+      expandSegmentLeaves([
+        leaf({ country: "se", visits: 8, conversions: 3, formAbandons: 2 }),
+        leaf({ country: "us", visits: 6, conversions: 1 }),
+      ]),
+    );
+    expect(m.get("google·mobile")?.visits).toBe(14); // 8 + 6, grov grupp får mest data
+    expect(m.get("google·mobile")?.conversions).toBe(4);
+    expect(m.get("google·mobile")?.formAbandons).toBe(2);
+    expect(m.get("google")?.visits).toBe(14);
+    expect(m.get("google·mobile·se")?.visits).toBe(8);
+    expect(m.get("google·mobile·us")?.visits).toBe(6);
+    expect(m.get("google·mobile")?.conversionRate).toBeCloseTo(4 / 14);
+  });
+
+  it("adequate följer volymgrinden på summerade löv", () => {
+    const m = byKey(
+      expandSegmentLeaves([
+        leaf({ visits: SEGMENT_MIN_VISITS, conversions: SEGMENT_MIN_CONVERSIONS }),
+      ]),
+    );
+    expect(m.get("google")?.adequate).toBe(true);
+    // Ett tunt löv under display-tröskeln göms.
+    expect(byKey(expandSegmentLeaves([leaf({ visits: 3, conversions: 1 })])).has("google")).toBe(
+      false,
+    );
   });
 });
