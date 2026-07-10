@@ -228,6 +228,9 @@ export interface DashboardMetrics {
   /** Frustrationssignaler: mest rage-klickade element (ref → bursts).
    *  Diagnostik — driver aldrig en automatisk ändring. */
   rageClicks: RageSignal[];
+  /** Fas 2: besökargrupper (kanal×enhet×land×ny/återkommande), grov→fin, med
+   *  utfall + datatillräcklighet. Insikt-substrat — ingen adaptation. */
+  segmentGroups: SegmentSummary[];
 }
 
 /** Ett rage-klickat element, upprullat över alla besökare. */
@@ -480,6 +483,10 @@ export interface SessionSummary {
   /** Kanal (trafficSource) från sessionens första pageview. */
   channel: string | null;
   device: string | null;
+  /** Land (från första pageviewens kontext) — segmentdimension (Fas 2). */
+  country: string | null;
+  /** Ny vs återkommande besökare — segmentdimension (Fas 2). */
+  isReturning: boolean;
   landingPath: string | null;
   /** Distinkta sidvägar i besöksordning (sidordningen). */
   pageOrder: string[];
@@ -572,6 +579,8 @@ export function sessionSummaries(
       endedAt: evs[evs.length - 1].createdAt,
       channel: firstPv ? str(firstPv.payload.trafficSource) : null,
       device: firstPv ? str(firstPv.payload.device) : null,
+      country: firstPv ? str(firstPv.payload.country) : null,
+      isReturning: firstPv ? firstPv.payload.isReturning === true : false,
       landingPath: pageOrder[0] ?? null,
       pageOrder: pageOrder.slice(0, JOURNEY_STEP_CAP),
       clickOrder: clickOrder.slice(0, JOURNEY_STEP_CAP),
@@ -600,6 +609,113 @@ export function sessionSummaries(
   };
   summaries.sort((a, b) => endKey(b.endedAt) - endKey(a.endedAt));
   return summaries.slice(0, limit);
+}
+
+/** Fas 2 (docs/fas2-segment-grouping.md): en besökargrupp, byggd ur en ORDNAD
+ *  dimensionshierarki [kanal, enhet, land, ny/återkommande]. Ett segment = ett
+ *  PREFIX av den (depth 2 = "google_phone"). Insikt — INGEN adaptation. */
+export interface SegmentSummary {
+  /** Stabil nyckel grov→fin, t.ex. "google" | "google·phone" | "google·phone·se". */
+  key: string;
+  /** Läsbar etikett ("google · phone"). */
+  label: string;
+  /** Antal bundna dimensioner (1..4). 2 = kanal×enhet. */
+  depth: number;
+  channel: string | null;
+  device: string | null;
+  country: string | null;
+  /** null tills ny/återkommande-dimensionen är bunden (depth 4). */
+  returning: boolean | null;
+  visits: number;
+  conversions: number;
+  conversionRate: number;
+  formStarts: number;
+  formAbandons: number;
+  /** Datatillräcklighet mot volymgrinden (SEGMENT_MIN_*). false = "för tunt för
+   *  beslut" — visas ärligt, driver ingen ändring. */
+  adequate: boolean;
+}
+
+/** Volymgrind (riktvärde ur croengine-vision.md): ett segment bär en meningsfull
+ *  avläsning först vid ~1000 besök / 100 konverteringar. Under det är siffrorna
+ *  brus och märks som sådant. */
+export const SEGMENT_MIN_VISITS = 1000;
+export const SEGMENT_MIN_CONVERSIONS = 100;
+/** Dölj enstaka-besök-brus i kortet (ett segment med 2 besök säger inget). */
+export const SEGMENT_MIN_DISPLAY = 5;
+/** Håll segmentlistan bounded i UI:t. */
+export const MAX_SEGMENTS = 30;
+
+/** En dimensions token för segmentnyckeln — null/tom blir "okänd" (ärlig egen
+ *  hink, aldrig påhittad). */
+const segToken = (v: string | null | undefined): string => {
+  const s = typeof v === "string" ? v.trim() : "";
+  return s || "okänd";
+};
+
+/** Rulla upp sessioner till segment. Varje session bidrar till ALLA sina prefix
+ *  (grov→fin): en google·phone·se-session är också en google·phone- och en
+ *  google-session — så grova grupper alltid har mest data att luta sig mot
+ *  ("låna styrka"). Ren funktion. Bygg på `sessionSummaries` (en session = ett
+ *  besök = ett utfall), aldrig råa pageviews (som räknar en 5-siders-besökare 5x). */
+export function segmentSummaries(
+  sessions: SessionSummary[],
+  limit = MAX_SEGMENTS,
+): SegmentSummary[] {
+  type Acc = {
+    dims: string[];
+    visits: number;
+    conversions: number;
+    formStarts: number;
+    formAbandons: number;
+  };
+  const byKey = new Map<string, Acc>();
+  for (const s of sessions) {
+    const dims = [
+      segToken(s.channel),
+      segToken(s.device),
+      segToken(s.country),
+      s.isReturning ? "återkommande" : "ny",
+    ];
+    for (let d = 1; d <= dims.length; d++) {
+      const prefix = dims.slice(0, d);
+      const key = prefix.join("·");
+      const acc =
+        byKey.get(key) ??
+        (byKey
+          .set(key, { dims: prefix, visits: 0, conversions: 0, formStarts: 0, formAbandons: 0 })
+          .get(key) as Acc);
+      acc.visits++;
+      if (s.converted) acc.conversions++;
+      if (s.formStarted) acc.formStarts++;
+      if (s.formAbandoned) acc.formAbandons++;
+    }
+  }
+
+  const out: SegmentSummary[] = [];
+  for (const [key, a] of byKey) {
+    if (a.visits < SEGMENT_MIN_DISPLAY) continue; // dölj enstaka-besök-brus
+    const depth = a.dims.length;
+    out.push({
+      key,
+      label: a.dims.join(" · "),
+      depth,
+      channel: a.dims[0] ?? null,
+      device: depth >= 2 ? a.dims[1] : null,
+      country: depth >= 3 ? a.dims[2] : null,
+      returning: depth >= 4 ? a.dims[3] === "återkommande" : null,
+      visits: a.visits,
+      conversions: a.conversions,
+      conversionRate: a.visits > 0 ? a.conversions / a.visits : 0,
+      formStarts: a.formStarts,
+      formAbandons: a.formAbandons,
+      adequate: a.visits >= SEGMENT_MIN_VISITS && a.conversions >= SEGMENT_MIN_CONVERSIONS,
+    });
+  }
+  // Grovast först (kortet läses top-down: kanal → kanal·enhet → …), sedan störst
+  // volym, sedan nyckel för deterministisk ordning.
+  out.sort((x, y) => x.depth - y.depth || y.visits - x.visits || x.key.localeCompare(y.key));
+  return out.slice(0, limit);
 }
 
 function twoProportionZ(c1: number, n1: number, c2: number, n2: number): number | null {
@@ -995,6 +1111,9 @@ export function aggregate(
 ): DashboardMetrics {
   const pageviewEvents = events.filter((e) => e.type === "pageview");
   const shownEvents = events.filter((e) => e.type === "adaptation_shown");
+  // Alla sessioner rekonstrueras en gång och delas av sessions-kortet (senaste
+  // 40) och segment-rollupen (alla) — undvik dubbel återuppbyggnad.
+  const allSessions = sessionSummaries(events, Number.MAX_SAFE_INTEGER);
 
   const visitors = new Set<string>();
   for (const e of events) if (e.visitorHash) visitors.add(e.visitorHash);
@@ -1073,7 +1192,10 @@ export function aggregate(
     performance,
     attribution,
     inventory: inventoryGroups,
-    sessions: sessionSummaries(events),
+    // Rekonstruera sessionerna EN gång: kortet visar de senaste 40, segment-
+    // rollupen använder alla (annars vore grupperna trunkerade till 40 besök).
+    sessions: allSessions.slice(0, MAX_SESSION_SUMMARIES),
     rageClicks: rageSignals(events),
+    segmentGroups: segmentSummaries(allSessions),
   };
 }
