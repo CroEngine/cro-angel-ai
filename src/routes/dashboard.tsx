@@ -402,6 +402,7 @@ function Dashboard() {
                           <th className="py-1 font-medium">Kornighet</th>
                           <th className="py-1 font-medium">Besökare</th>
                           <th className="py-1 font-medium">Konvertering</th>
+                          <th className="py-1 font-medium">Senaste 30 dgr</th>
                           <th className="py-1 font-medium">Form avbrott</th>
                           <th className="py-1 font-medium">Status</th>
                         </tr>
@@ -418,6 +419,20 @@ function Dashboard() {
                             <td className="py-1.5">
                               {(s.conversionRate * 100).toFixed(1)}%{" "}
                               <span className="text-xs text-stone-400">({s.conversions})</span>
+                            </td>
+                            <td className="py-1.5 whitespace-nowrap">
+                              {s.recent ? (
+                                <>
+                                  {(s.recent.conversionRate * 100).toFixed(1)}%{" "}
+                                  <span className="text-xs text-stone-400">
+                                    ({s.recent.visits}&nbsp;bes.)
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xs text-stone-300" title="för få besök i fönstret">
+                                  —
+                                </span>
+                              )}
                             </td>
                             <td className="py-1.5">{s.formAbandons}</td>
                             <td className="py-1.5 whitespace-nowrap">
@@ -437,10 +452,12 @@ function Dashboard() {
                     </table>
                   </div>
                   <p className="mt-2 text-xs text-stone-400">
-                    Grupper byggs grovt först (kanal → enhet → land → ny/återkommande). En
-                    finare uppdelning (t.ex. per land) blir tillförlitlig först när den egna
-                    gruppen når ~1000 besök / 100 konverteringar — tills dess lånar den styrka
-                    från den grövre gruppen. "För tunt" = ännu inte beslutsunderlag.
+                    Grupper byggs grovt först (kanal → enhet → land → ny/återkommande) och
+                    aggregeras över hela historiken. En finare uppdelning (t.ex. per land) blir
+                    tillförlitlig först när den egna gruppen når ~1000 besök / 100 konverteringar
+                    — tills dess lånar den styrka från den grövre gruppen. "Senaste 30 dgr" visar
+                    samma grupp i ett färskt fönster (över tid); "—" = för få besök där ännu.
+                    "För tunt" = ännu inte beslutsunderlag.
                   </p>
                 </CardContent>
               </Card>
