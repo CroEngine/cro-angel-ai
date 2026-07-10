@@ -15,6 +15,8 @@ import { GOAL_KINDS, type GoalCandidate } from "@/adaptive/crawler-inventory";
 import {
   aggregate,
   expandSegmentLeaves,
+  attachRecent,
+  RECENT_WINDOW_DAYS,
   type DashboardMetrics,
   type DashEvent,
   type InventoryEntry,
@@ -254,26 +256,35 @@ export const getDashboard = createServerFn({ method: "POST" })
       const metrics = aggregate(events, inventory, { tzOffsetMinutes });
       // Fas 2: segment över HELA historiken via angel_segment_rollup, inte
       // dashboardens EVENT_LIMIT-fönster — annars mäter volymgrinden (1000/100)
-      // mot ett glidande färskt fönster och ljuger vid riktig trafik. Bäst-effort:
-      // faller tillbaka på den fönster-baserade rollupen (metrics.segmentGroups)
-      // om RPC:n inte svarar.
+      // mot ett glidande färskt fönster och ljuger vid riktig trafik. Två anrop:
+      // livstid + senaste RECENT_WINDOW_DAYS (för "över tid"-kolumnen). Bäst-
+      // effort: faller tillbaka på den fönster-baserade rollupen om RPC:n dör.
       try {
-        const { data: leaves, error: segErr } = await supabaseAdmin.rpc("angel_segment_rollup", {
-          p_site: site,
-        });
-        if (!segErr && Array.isArray(leaves)) {
-          metrics.segmentGroups = expandSegmentLeaves(
-            leaves.map((r) => ({
-              channel: r.channel,
-              device: r.device,
-              country: r.country,
-              returning: r.is_returning === true,
-              visits: Number(r.visits) || 0,
-              conversions: Number(r.conversions) || 0,
-              formStarts: Number(r.form_starts) || 0,
-              formAbandons: Number(r.form_abandons) || 0,
-            })),
-          );
+        const [allRes, recentRes] = await Promise.all([
+          supabaseAdmin.rpc("angel_segment_rollup", { p_site: site }),
+          supabaseAdmin.rpc("angel_segment_rollup", {
+            p_site: site,
+            p_since: new Date(Date.now() - RECENT_WINDOW_DAYS * 86_400_000).toISOString(),
+          }),
+        ]);
+        const toLeaves = (rows: NonNullable<typeof allRes.data>) =>
+          rows.map((r) => ({
+            channel: r.channel,
+            device: r.device,
+            country: r.country,
+            returning: r.is_returning === true,
+            visits: Number(r.visits) || 0,
+            conversions: Number(r.conversions) || 0,
+            formStarts: Number(r.form_starts) || 0,
+            formAbandons: Number(r.form_abandons) || 0,
+          }));
+        if (!allRes.error && Array.isArray(allRes.data)) {
+          const allTime = expandSegmentLeaves(toLeaves(allRes.data));
+          const recent =
+            !recentRes.error && Array.isArray(recentRes.data)
+              ? expandSegmentLeaves(toLeaves(recentRes.data))
+              : [];
+          metrics.segmentGroups = attachRecent(allTime, recent);
         }
       } catch (segErr) {
         console.warn(`[angel] segment rollup unavailable, using window fallback:`, segErr);

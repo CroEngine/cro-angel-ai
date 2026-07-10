@@ -634,6 +634,18 @@ export interface SegmentSummary {
   /** Datatillräcklighet mot volymgrinden (SEGMENT_MIN_*). false = "för tunt för
    *  beslut" — visas ärligt, driver ingen ändring. */
   adequate: boolean;
+  /** Samma segment över ett NYLIGT fönster (senaste RECENT_WINDOW_DAYS) — så
+   *  ägaren ser om gruppen ändras över tid. null när den nyliga hinken saknas
+   *  eller är under display-tröskeln (ärligt: ingen trend på tunn data). */
+  recent: SegmentWindow | null;
+}
+
+/** En segmentmätning över ett tidsfönster (t.ex. senaste 30 dgr). */
+export interface SegmentWindow {
+  visits: number;
+  conversions: number;
+  conversionRate: number;
+  adequate: boolean;
 }
 
 /** Volymgrind (riktvärde ur croengine-vision.md): ett segment bär en meningsfull
@@ -645,6 +657,8 @@ export const SEGMENT_MIN_CONVERSIONS = 100;
 export const SEGMENT_MIN_DISPLAY = 5;
 /** Håll segmentlistan bounded i UI:t. */
 export const MAX_SEGMENTS = 30;
+/** Tidsfönster för "senaste"-jämförelsen per segment (dagar). */
+export const RECENT_WINDOW_DAYS = 30;
 
 /** En dimensions token för segmentnyckeln — null/tom blir "okänd" (ärlig egen
  *  hink, aldrig påhittad). */
@@ -725,12 +739,40 @@ export function expandSegmentLeaves(
       formStarts: a.formStarts,
       formAbandons: a.formAbandons,
       adequate: a.visits >= SEGMENT_MIN_VISITS && a.conversions >= SEGMENT_MIN_CONVERSIONS,
+      // Nyligt fönster fylls i av attachRecent (server-vägen); null tills dess.
+      recent: null,
     });
   }
   // Grovast först (kortet läses top-down: kanal → kanal·enhet → …), sedan störst
   // volym, sedan nyckel för deterministisk ordning.
   out.sort((x, y) => x.depth - y.depth || y.visits - x.visits || x.key.localeCompare(y.key));
   return out.slice(0, limit);
+}
+
+/** Slå ihop en NYLIG segment-rollup (samma expandSegmentLeaves, men bara events
+ *  inom fönstret) på den livstids-baserade listan: varje livstidssegment får
+ *  `recent` = sitt nyliga motsvarighet per nyckel, eller null om den nyliga
+ *  hinken saknas/är för tunn. Ren — livstidslistan är sanningen för vilka rader
+ *  som visas; recent är bara en extra kolumn. */
+export function attachRecent(
+  allTime: SegmentSummary[],
+  recent: SegmentSummary[],
+): SegmentSummary[] {
+  const byKey = new Map(recent.map((s) => [s.key, s]));
+  return allTime.map((s) => {
+    const r = byKey.get(s.key);
+    return {
+      ...s,
+      recent: r
+        ? {
+            visits: r.visits,
+            conversions: r.conversions,
+            conversionRate: r.conversionRate,
+            adequate: r.adequate,
+          }
+        : null,
+    };
+  });
 }
 
 /** JS-fallback (och testyta): rulla upp sessioner till segment när server-

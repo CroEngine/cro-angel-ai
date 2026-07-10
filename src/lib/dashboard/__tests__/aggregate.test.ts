@@ -6,6 +6,7 @@ import {
   sessionSummaries,
   segmentSummaries,
   expandSegmentLeaves,
+  attachRecent,
   rageSignals,
   bucketByTime,
   summarizeVisitors,
@@ -880,5 +881,46 @@ describe("expandSegmentLeaves — server-rollup-löv → grov→fin prefix", () 
     expect(byKey(expandSegmentLeaves([leaf({ visits: 3, conversions: 1 })])).has("google")).toBe(
       false,
     );
+  });
+
+  it("sätter recent=null (fylls i av attachRecent)", () => {
+    const [s] = expandSegmentLeaves([leaf({ visits: 6, conversions: 1 })]);
+    expect(s.recent).toBeNull();
+  });
+});
+
+describe("attachRecent — livstid + senaste fönster per segment", () => {
+  const leaf = (over: Partial<Parameters<typeof expandSegmentLeaves>[0][number]> = {}) => ({
+    channel: "google",
+    device: "mobile",
+    country: "se",
+    returning: false,
+    visits: 0,
+    conversions: 0,
+    formStarts: 0,
+    formAbandons: 0,
+    ...over,
+  });
+
+  it("kopplar nyligt fönster per nyckel; saknad nyligt → recent=null; visar samma rader", () => {
+    const allTime = expandSegmentLeaves([
+      leaf({ visits: 100, conversions: 10 }),
+      leaf({ channel: "direct", device: "desktop", visits: 50, conversions: 2 }),
+    ]);
+    const recent = expandSegmentLeaves([
+      leaf({ visits: 20, conversions: 4 }), // bara google·mobile·se finns i fönstret
+    ]);
+    const merged = attachRecent(allTime, recent);
+    const m = new Map(merged.map((s) => [s.key, s]));
+
+    expect(m.get("google")?.recent).toEqual({
+      visits: 20,
+      conversions: 4,
+      conversionRate: 4 / 20,
+      adequate: false,
+    });
+    expect(m.get("direct")?.recent).toBeNull(); // saknas i det nyliga fönstret
+    expect(m.get("google")?.visits).toBe(100); // livstidssiffrorna orörda
+    expect(merged.length).toBe(allTime.length); // recent ändrar aldrig VILKA rader som visas
   });
 });
