@@ -44,9 +44,16 @@ export function cleanText(s: unknown): string {
  *  long-opaque-token redaction. A reset token or order id embedded in a URL
  *  PATH segment (which the client's query-only allowlist can't strip) or in a
  *  personalized element ref is redacted here — the server-side privacy
- *  boundary. Readable slugs survive (no 20-char alnum run, no uuid). */
+ *  boundary. Readable slugs survive (no 20-char alnum run, no uuid).
+ *
+ *  UUID redaction runs on the RAW string BEFORE cleanText: cleanText's
+ *  LONG_DIGITS rule otherwise eats a UUID's all-digit group (e.g. a trailing
+ *  "-446655440000"), which breaks the 8-4-4-4-12 pattern so the UUID regex no
+ *  longer matches and the leading 24 hex chars leak. Found via live-verify:
+ *  a partial UUID is still a unique identifier. */
 export function scrubPath(s: unknown): string {
-  return cleanText(s).replace(UUID, "[id]").replace(OPAQUE_TOKEN, "[id]");
+  const uuidSafe = (typeof s === "string" ? s : "").replace(UUID, "[id]");
+  return cleanText(uuidSafe).replace(OPAQUE_TOKEN, "[id]");
 }
 
 function optText(s: unknown): string | undefined {
