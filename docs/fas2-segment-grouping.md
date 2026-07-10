@@ -87,6 +87,12 @@ ingen migration för själva grupperingen.
 3. ✅ Dashboard-kort "Segment (besökargrupper)": grova grupper först, kornighets-
    etikett, `nog data`/`för tunt`-status per grupp + förklarande not.
 4. ✅ INGEN adaptation — Fas 2 producerar bara insikten (substrat för Fas 3).
+5. ✅ **Server-side aggregering** (`angel_segment_rollup`, SECURITY INVOKER RPC):
+   segmenten rullas upp över HELA `angel_events`, inte dashboardens 5000-events-
+   fönster. Utan detta mätte volymgrinden mot ett glidande färskt fönster och
+   ljög vid riktig trafik. Delad kärna `expandSegmentLeaves` (server-löv OCH
+   JS-fallback → samma resultat). `p_since`-parametern öppnar för tidsfönster
+   (trend per segment) som nästa inkrement.
 
 **Uppskjutet till Fas 3 (byggs med sin konsument, ingen död kod nu):**
 2. "Välj mest specifika adekvata segment"-funktionen (fallback uppåt, "låna

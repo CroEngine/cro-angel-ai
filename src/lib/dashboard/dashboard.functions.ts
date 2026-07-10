@@ -12,7 +12,13 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { GOAL_KINDS, type GoalCandidate } from "@/adaptive/crawler-inventory";
-import { aggregate, type DashboardMetrics, type DashEvent, type InventoryEntry } from "./aggregate";
+import {
+  aggregate,
+  expandSegmentLeaves,
+  type DashboardMetrics,
+  type DashEvent,
+  type InventoryEntry,
+} from "./aggregate";
 
 // ---- tenancy helpers (server-only) ------------------------------------------
 
@@ -245,12 +251,40 @@ export const getDashboard = createServerFn({ method: "POST" })
         }
       }
 
+      const metrics = aggregate(events, inventory, { tzOffsetMinutes });
+      // Fas 2: segment över HELA historiken via angel_segment_rollup, inte
+      // dashboardens EVENT_LIMIT-fönster — annars mäter volymgrinden (1000/100)
+      // mot ett glidande färskt fönster och ljuger vid riktig trafik. Bäst-effort:
+      // faller tillbaka på den fönster-baserade rollupen (metrics.segmentGroups)
+      // om RPC:n inte svarar.
+      try {
+        const { data: leaves, error: segErr } = await supabaseAdmin.rpc("angel_segment_rollup", {
+          p_site: site,
+        });
+        if (!segErr && Array.isArray(leaves)) {
+          metrics.segmentGroups = expandSegmentLeaves(
+            leaves.map((r) => ({
+              channel: r.channel,
+              device: r.device,
+              country: r.country,
+              returning: r.is_returning === true,
+              visits: Number(r.visits) || 0,
+              conversions: Number(r.conversions) || 0,
+              formStarts: Number(r.form_starts) || 0,
+              formAbandons: Number(r.form_abandons) || 0,
+            })),
+          );
+        }
+      } catch (segErr) {
+        console.warn(`[angel] segment rollup unavailable, using window fallback:`, segErr);
+      }
+
       return {
         site,
         sites,
         dbAvailable: true,
         generatedAt,
-        metrics: aggregate(events, inventory, { tzOffsetMinutes }),
+        metrics,
         siteConfig,
         isAdmin: admin,
       };
