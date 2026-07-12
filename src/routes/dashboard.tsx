@@ -13,7 +13,6 @@ import { Fragment, useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Activity,
   Eye,
   Users,
   Target,
@@ -62,8 +61,6 @@ import {
 } from "@/lib/dashboard/dashboard.functions";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
 import type {
-  SegmentBar,
-  PatternAttribution,
   DayPoint,
   HourPoint,
   VisitorSummary,
@@ -235,28 +232,23 @@ function Dashboard() {
         )}
 
         <Tabs defaultValue="overview">
-          {/* Three tabs, one owner-question each: How is it going? Who was
-              here and what did they do? Is Angel earning its keep? */}
+          {/* Två flikar, en ägarfråga var: Hur går det? Vem var här?
+              "Vad funkar" bor i Varianter-kortet (A/B per segment) — den gamla
+              mönster-attributionen togs bort som brus under observe-first. */}
           <TabsList className="flex flex-wrap">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="visitors">Visitors</TabsTrigger>
-            <TabsTrigger value="attribution">What&apos;s working</TabsTrigger>
           </TabsList>
 
           {/* ---- Overview ---- */}
           <TabsContent value="overview" className="mt-4 space-y-4">
             <TrafficChart daily={d.metrics.timeseries.daily} hourly={d.metrics.timeseries.hourly} />
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Kpi icon={<Eye />} label="Pageviews" value={d.metrics.overview.pageviews} />
               <Kpi
                 icon={<Users />}
                 label="Identified visitors"
                 value={d.metrics.overview.uniqueVisitors}
-              />
-              <Kpi
-                icon={<Activity />}
-                label="Adaptations shown"
-                value={d.metrics.overview.adaptationsShown}
               />
               <Kpi icon={<Target />} label="Conversions" value={d.metrics.overview.conversions} />
               <Kpi
@@ -282,6 +274,89 @@ function Dashboard() {
                 </CardContent>
               </Card>
             )}
+
+            {/* ---- Fas 2: besökargrupper (segment, grov→fin + volymgrind) ---- */}
+            {d.metrics.segmentGroups.length > 0 && (
+              <Card className="border-stone-200 shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Segment (besökargrupper)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-stone-500">
+                          <th className="py-1 font-medium">Grupp</th>
+                          <th className="py-1 font-medium">Kornighet</th>
+                          <th className="py-1 font-medium">Besökare</th>
+                          <th className="py-1 font-medium">Konvertering</th>
+                          <th className="py-1 font-medium">Senaste 30 dgr</th>
+                          <th className="py-1 font-medium">Form avbrott</th>
+                          <th className="py-1 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {d.metrics.segmentGroups.map((s) => (
+                          <tr key={s.key} className="border-t border-stone-100">
+                            <td className="py-1.5 font-mono text-[11px] text-stone-600">{s.label}</td>
+                            <td className="py-1.5 text-xs text-stone-500">
+                              {["Kanal", "Kanal · enhet", "+ land", "+ ny/återk."][s.depth - 1] ??
+                                `nivå ${s.depth}`}
+                            </td>
+                            <td className="py-1.5">{s.visits}</td>
+                            <td className="py-1.5">
+                              {(s.conversionRate * 100).toFixed(1)}%{" "}
+                              <span className="text-xs text-stone-400">({s.conversions})</span>
+                            </td>
+                            <td className="py-1.5 whitespace-nowrap">
+                              {s.recent ? (
+                                <>
+                                  {(s.recent.conversionRate * 100).toFixed(1)}%{" "}
+                                  <span className="text-xs text-stone-400">
+                                    ({s.recent.visits}&nbsp;bes.)
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xs text-stone-300" title="för få besök i fönstret">
+                                  —
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-1.5">{s.formAbandons}</td>
+                            <td className="py-1.5 whitespace-nowrap">
+                              {s.adequate ? (
+                                <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
+                                  nog data
+                                </span>
+                              ) : (
+                                <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-500">
+                                  för tunt
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-2 text-xs text-stone-400">
+                    Grupper byggs grovt först (kanal → enhet → land → ny/återkommande) och
+                    aggregeras över hela historiken. En finare uppdelning (t.ex. per land) blir
+                    tillförlitlig först när den egna gruppen når ~1000 besök / 100 konverteringar
+                    — tills dess lånar den styrka från den grövre gruppen. "Senaste 30 dgr" visar
+                    samma grupp i ett färskt fönster (över tid); "—" = för få besök där ännu.
+                    "För tunt" = ännu inte beslutsunderlag.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ---- Fas 4: varianter per segment + serverings-master-toggeln ---- */}
+            <VariantsCard
+              site={d.site}
+              servingOn={d.siteConfig.servingEnabled}
+              variants={d.variants ?? []}
+            />
 
             {/* ---- v1-beviset: adapterad arm vs hold-out ---- */}
             {d.siteConfig.adaptationsEnabled && d.metrics.proof && (
@@ -389,88 +464,6 @@ function Dashboard() {
               </Card>
             )}
 
-            {/* ---- Fas 2: besökargrupper (segment, grov→fin + volymgrind) ---- */}
-            {d.metrics.segmentGroups.length > 0 && (
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Segment (besökargrupper)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-xs text-stone-500">
-                          <th className="py-1 font-medium">Grupp</th>
-                          <th className="py-1 font-medium">Kornighet</th>
-                          <th className="py-1 font-medium">Besökare</th>
-                          <th className="py-1 font-medium">Konvertering</th>
-                          <th className="py-1 font-medium">Senaste 30 dgr</th>
-                          <th className="py-1 font-medium">Form avbrott</th>
-                          <th className="py-1 font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {d.metrics.segmentGroups.map((s) => (
-                          <tr key={s.key} className="border-t border-stone-100">
-                            <td className="py-1.5 font-mono text-[11px] text-stone-600">{s.label}</td>
-                            <td className="py-1.5 text-xs text-stone-500">
-                              {["Kanal", "Kanal · enhet", "+ land", "+ ny/återk."][s.depth - 1] ??
-                                `nivå ${s.depth}`}
-                            </td>
-                            <td className="py-1.5">{s.visits}</td>
-                            <td className="py-1.5">
-                              {(s.conversionRate * 100).toFixed(1)}%{" "}
-                              <span className="text-xs text-stone-400">({s.conversions})</span>
-                            </td>
-                            <td className="py-1.5 whitespace-nowrap">
-                              {s.recent ? (
-                                <>
-                                  {(s.recent.conversionRate * 100).toFixed(1)}%{" "}
-                                  <span className="text-xs text-stone-400">
-                                    ({s.recent.visits}&nbsp;bes.)
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-xs text-stone-300" title="för få besök i fönstret">
-                                  —
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-1.5">{s.formAbandons}</td>
-                            <td className="py-1.5 whitespace-nowrap">
-                              {s.adequate ? (
-                                <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
-                                  nog data
-                                </span>
-                              ) : (
-                                <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-500">
-                                  för tunt
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <p className="mt-2 text-xs text-stone-400">
-                    Grupper byggs grovt först (kanal → enhet → land → ny/återkommande) och
-                    aggregeras över hela historiken. En finare uppdelning (t.ex. per land) blir
-                    tillförlitlig först när den egna gruppen når ~1000 besök / 100 konverteringar
-                    — tills dess lånar den styrka från den grövre gruppen. "Senaste 30 dgr" visar
-                    samma grupp i ett färskt fönster (över tid); "—" = för få besök där ännu.
-                    "För tunt" = ännu inte beslutsunderlag.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* ---- Fas 4: varianter per segment + serverings-master-toggeln ---- */}
-            <VariantsCard
-              site={d.site}
-              servingOn={d.siteConfig.servingEnabled}
-              variants={d.variants ?? []}
-            />
 
             {/* ---- nivå 2: senaste anonyma besöksresor (journey intelligence) ---- */}
             {d.metrics.sessions.length > 0 && (
@@ -572,41 +565,6 @@ function Dashboard() {
               </Card>
             )}
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">By traffic source</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BarList
-                    items={d.metrics.segments.byTrafficSource.slice(0, 5)}
-                    empty="No pageviews yet."
-                  />
-                </CardContent>
-              </Card>
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">By device</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BarList
-                    items={d.metrics.segments.byDevice.slice(0, 5)}
-                    empty="No pageviews yet."
-                  />
-                </CardContent>
-              </Card>
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">By country</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BarList
-                    items={d.metrics.segments.byCountry.slice(0, 5)}
-                    empty="No pageviews yet."
-                  />
-                </CardContent>
-              </Card>
-            </div>
           </TabsContent>
 
           {/* ---- Visitors (identified) ---- */}
@@ -620,33 +578,6 @@ function Dashboard() {
             />
           </TabsContent>
 
-          {/* ---- What's working (attribution) ---- */}
-          <TabsContent value="attribution" className="mt-4">
-            <Card className="border-stone-200 shadow-none">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ lift ]</span>
-                  Conversion lift by pattern
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {d.metrics.attribution.length === 0 ? (
-                  <Empty>No attributable exposures yet.</Empty>
-                ) : (
-                  <>
-                    <AttributionTable rows={d.metrics.attribution} />
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Lift compares the adapted group to the automatically held-back control
-                      group. A conversion counts for a pattern when the same visitor
-                      converts within 24 h of being exposed. <strong>sig.</strong> marks a difference at ~95%
-                      confidence.
-                    </p>
-                    <EarlySignals rows={d.metrics.attribution} />
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
 
         </Tabs>
           </>
@@ -2163,177 +2094,6 @@ function Kpi({
         <span className="hidden">{icon}</span>
       </CardContent>
     </Card>
-  );
-}
-
-function BarList({ items, empty }: { items: SegmentBar[]; empty: string }) {
-  if (items.length === 0) return <Empty>{empty}</Empty>;
-  const max = Math.max(...items.map((i) => i.pageviews), 1);
-  return (
-    <div className="space-y-2">
-      {items.map((item) => (
-        <div key={item.key} className="text-sm">
-          <div className="mb-1 flex justify-between">
-            <span className="font-medium text-foreground">{item.key}</span>
-            <span className="text-muted-foreground">{item.pageviews}</span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-emerald-600"
-              style={{ width: `${(item.pageviews / max) * 100}%` }}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function pct(rate: number): string {
-  return `${(rate * 100).toFixed(1)}%`;
-}
-
-function AttributionTable({ rows }: { rows: PatternAttribution[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-xs text-muted-foreground">
-            <th className="py-2 pr-3 font-medium">Pattern</th>
-            <th className="py-2 pr-3 text-right font-medium">Adapted</th>
-            <th className="py-2 pr-3 text-right font-medium">CR</th>
-            <th className="py-2 pr-3 text-right font-medium">Control</th>
-            <th className="py-2 pr-3 text-right font-medium">CR</th>
-            <th className="py-2 pr-3 text-right font-medium">Lift</th>
-            <th className="py-2 text-right font-medium">Sig.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={`${r.pattern}${r.segment ?? ""}`} className="border-b border-border/60">
-              <td className="py-2 pr-3">
-                {r.segment === null ? (
-                  <span className="font-mono text-[13px] text-foreground">{r.pattern}</span>
-                ) : (
-                  // Per-segment sub-row (D4): the doc-specified pattern ×
-                  // segment read — a pattern can win on one source and lose
-                  // on another; the blended row alone would hide that.
-                  <span className="pl-4 font-mono text-[12px] text-muted-foreground">
-                    ↳ {r.segment}
-                  </span>
-                )}
-              </td>
-              <td className="py-2 pr-3 text-right text-muted-foreground">
-                {r.adapted.conversions}/{r.adapted.exposures}
-              </td>
-              <td className="py-2 pr-3 text-right font-medium text-foreground">
-                {r.adapted.exposures > 0 ? pct(r.adapted.rate) : "—"}
-              </td>
-              <td className="py-2 pr-3 text-right text-muted-foreground">
-                {r.control.exposures > 0 ? `${r.control.conversions}/${r.control.exposures}` : "—"}
-              </td>
-              <td className="py-2 pr-3 text-right text-muted-foreground">
-                {r.control.exposures > 0 ? pct(r.control.rate) : "—"}
-              </td>
-              <td className="py-2 pr-3 text-right">
-                {r.lift === null ? (
-                  <span className="text-muted-foreground">no control</span>
-                ) : (
-                  <span
-                    className={
-                      r.lift > 0
-                        ? "font-semibold text-emerald-600"
-                        : r.lift < 0
-                          ? "font-semibold text-rose-600"
-                          : "text-muted-foreground"
-                    }
-                  >
-                    {r.lift > 0 ? "+" : ""}
-                    {(r.lift * 100).toFixed(1)} pp
-                  </span>
-                )}
-              </td>
-              <td className="py-2 text-right">
-                {r.significant ? (
-                  <Badge className="bg-emerald-100 text-[11px] text-emerald-800">95%</Badge>
-                ) : (
-                  <span className="text-xs text-muted-foreground">—</span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/** Micro-conversion direction per pattern (deep scroll / kept browsing /
- *  came back), adapted vs control. Direction only — deliberately separate from
- *  the lift table so early engagement can never be mistaken for proof. */
-function EarlySignals({ rows }: { rows: PatternAttribution[] }) {
-  // Overall rows only — per-segment engagement shares would be noise here.
-  const shown = rows.filter((r) => r.segment === null && r.adapted.exposures > 0);
-  if (shown.length === 0) return null;
-  const cell = (n: number, exposures: number) =>
-    exposures > 0 ? `${((n / exposures) * 100).toFixed(0)}%` : "—";
-  return (
-    <div className="mt-6">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="font-mono text-[11px] tracking-wider text-emerald-700">
-          [ early signals ]
-        </span>
-        <span className="text-xs text-muted-foreground">
-          engagement among not-yet-converted visitors — adapted vs control
-        </span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs text-muted-foreground">
-              <th className="py-2 pr-3 font-medium">Pattern</th>
-              <th className="py-2 pr-3 text-right font-medium">Scrolled ≥75%</th>
-              <th className="py-2 pr-3 text-right font-medium">Kept browsing</th>
-              <th className="py-2 text-right font-medium">Came back</th>
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((r) => (
-              <tr key={r.pattern} className="border-b border-border/60">
-                <td className="py-2 pr-3">
-                  <span className="font-mono text-[13px] text-foreground">{r.pattern}</span>
-                </td>
-                <td className="py-2 pr-3 text-right text-stone-700">
-                  {cell(r.adaptedMicro.deepScroll, r.adapted.exposures)}
-                  <span className="text-muted-foreground">
-                    {" "}
-                    vs {cell(r.controlMicro.deepScroll, r.control.exposures)}
-                  </span>
-                </td>
-                <td className="py-2 pr-3 text-right text-stone-700">
-                  {cell(r.adaptedMicro.multiPage, r.adapted.exposures)}
-                  <span className="text-muted-foreground">
-                    {" "}
-                    vs {cell(r.controlMicro.multiPage, r.control.exposures)}
-                  </span>
-                </td>
-                <td className="py-2 text-right text-stone-700">
-                  {cell(r.adaptedMicro.returned, r.adapted.exposures)}
-                  <span className="text-muted-foreground">
-                    {" "}
-                    vs {cell(r.controlMicro.returned, r.control.exposures)}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="mt-2 font-mono text-[10px] tracking-wide text-stone-400">
-        DIRECTION ONLY — NEVER ENTERS THE LIFT NUMBER. THE ENGINE USES THESE TO LEARN FASTER
-        WHILE CONVERSIONS ACCUMULATE.
-      </p>
-    </div>
   );
 }
 
