@@ -85,11 +85,27 @@ export interface SiteConfigView {
    *  bara, inga synliga adaptationer körs. Bevis-vyn visar då "Observera-läge"
    *  i st f en tom arm-tabell. */
   adaptationsEnabled: boolean;
+  /** Fas 4 master-switch (fas4-per-segment-serving.md): false (default) → inga
+   *  per-segment-varianter serveras, oavsett variantstatus. Manuell dashboard-
+   *  toggle (ägarbeslut 2026-07-12). decide-vägen läser den inte ännu. */
+  servingEnabled: boolean;
   /** The judged business type, when detected (e.g. "comparison"). */
   businessType: string | null;
   /** Ranked conversion-goal candidates proposed at harvest — the owner confirms
    *  one to activate Angel. Empty until the first harvest judges the page. */
   goalCandidates: GoalCandidate[];
+}
+
+/** En redesign-variant i dashboardens livscykelvy (Fas 4). ops visas som antal —
+ *  detaljerna (grind-verdikt, skärmdumpar) bor i evidence och får en egen yta
+ *  när servering kopplas in. */
+export interface VariantView {
+  id: string;
+  path: string;
+  segmentKey: string;
+  status: "candidate" | "verified" | "serving" | "winner" | "retired";
+  opsCount: number;
+  updatedAt: string;
 }
 
 /** Zero-config default hold-out, applied on attestation so measurement is ready
@@ -110,6 +126,7 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   goalCandidates: [],
   ingestKey: null,
   adaptationsEnabled: false,
+  servingEnabled: false,
 };
 
 export interface DashboardResponse {
@@ -120,6 +137,8 @@ export interface DashboardResponse {
   metrics: DashboardMetrics;
   /** Defaults to the anonymous, measurement-off config when unavailable. */
   siteConfig: SiteConfigView;
+  /** Fas 4: sajtens redesign-varianter (alla statusar), nyast först. */
+  variants: VariantView[];
   /** Admin extras (the sandbox link) render only for ANGEL_ADMIN_EMAILS. */
   isAdmin: boolean;
 }
@@ -157,7 +176,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,goal_candidates",
+          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,goal_candidates",
         )
         .order("slug");
       // `sandbox--<host>` rows are the admin sandbox's private per-host scratch
@@ -229,6 +248,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               conversion_kind?: string | null;
               ingest_key?: string | null;
               adaptations_enabled?: boolean;
+              serving_enabled?: boolean;
               goal_candidates?: { businessType?: string; goals?: GoalCandidate[] } | null;
             }
           | undefined;
@@ -247,10 +267,35 @@ export const getDashboard = createServerFn({ method: "POST" })
             conversionKind: current.conversion_kind ?? null,
             ingestKey: current.ingest_key ?? null,
             adaptationsEnabled: current.adaptations_enabled === true,
+            servingEnabled: current.serving_enabled === true,
             businessType: typeof judged?.businessType === "string" ? judged.businessType : null,
             goalCandidates: Array.isArray(judged?.goals) ? judged.goals.slice(0, 6) : [],
           };
         }
+      }
+
+      // Fas 4: sajtens redesign-varianter (alla statusar) för livscykelvyn.
+      // Best-effort — tabellen är ny och tom tills genereringskedjan skriver hit.
+      let variants: VariantView[] = [];
+      try {
+        const { data: vRows, error: vErr } = await supabaseAdmin
+          .from("angel_variants")
+          .select("id,path,segment_key,status,ops,updated_at")
+          .eq("site", site)
+          .order("updated_at", { ascending: false })
+          .limit(50);
+        if (!vErr && Array.isArray(vRows)) {
+          variants = vRows.map((v) => ({
+            id: v.id,
+            path: v.path,
+            segmentKey: v.segment_key,
+            status: v.status as VariantView["status"],
+            opsCount: Array.isArray(v.ops) ? v.ops.length : 0,
+            updatedAt: v.updated_at,
+          }));
+        }
+      } catch (vErr) {
+        console.warn(`[angel] variant list unavailable:`, vErr);
       }
 
       const metrics = aggregate(events, inventory, { tzOffsetMinutes });
@@ -297,6 +342,7 @@ export const getDashboard = createServerFn({ method: "POST" })
         generatedAt,
         metrics,
         siteConfig,
+        variants,
         isAdmin: admin,
       };
     } catch (err) {
@@ -308,6 +354,7 @@ export const getDashboard = createServerFn({ method: "POST" })
         generatedAt,
         metrics: aggregate([], []),
         siteConfig: DEFAULT_SITE_CONFIG,
+        variants: [],
         isAdmin: false,
       };
     }
@@ -490,6 +537,38 @@ export const setMeasurementConfig = createServerFn({ method: "POST" })
     );
     if (error) {
       console.warn(`[angel] setMeasurementConfig failed: ${error.message}`);
+      return { ok: false };
+    }
+    return { ok: true };
+  });
+
+/**
+ * Fas 4 master-toggle: slå på/av per-segment-servering för en sajt (ägarbeslut
+ * 2026-07-12 — aktivering är en manuell dashboard-toggle). AV som standard.
+ * OBS: decide-vägen läser inte flaggan ännu — toggeln styr ingenting live förrän
+ * inkopplingen (steg 3) byggs; den landar först så att kontrollen finns FÖRE
+ * förmågan. Bara sajtens ägare/admin får kalla den.
+ */
+export const setServingEnabled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      site: z.string().min(1),
+      enabled: z.boolean(),
+    }),
+  )
+  .handler(async ({ data, context }): Promise<{ ok: boolean }> => {
+    const { site, enabled } = data;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!(await ownsSite(supabaseAdmin, context as unknown as AuthCtx, site))) {
+      return { ok: false };
+    }
+    const { error } = await supabaseAdmin
+      .from("angel_sites")
+      .update({ serving_enabled: enabled })
+      .eq("slug", site);
+    if (error) {
+      console.warn(`[angel] setServingEnabled failed: ${error.message}`);
       return { ok: false };
     }
     return { ok: true };

@@ -30,6 +30,7 @@ export type Database = {
           ingest_key: string | null
           layout_patterns_enabled: boolean
           adaptations_enabled: boolean
+          serving_enabled: boolean
           goal_candidates: Json | null
           created_at: string
         }
@@ -48,6 +49,7 @@ export type Database = {
           ingest_key?: string | null
           layout_patterns_enabled?: boolean
           adaptations_enabled?: boolean
+          serving_enabled?: boolean
           goal_candidates?: Json | null
           created_at?: string
         }
@@ -66,8 +68,45 @@ export type Database = {
           ingest_key?: string | null
           layout_patterns_enabled?: boolean
           adaptations_enabled?: boolean
+          serving_enabled?: boolean
           goal_candidates?: Json | null
           created_at?: string
+        }
+        Relationships: []
+      }
+      angel_variants: {
+        Row: {
+          id: string
+          site: string
+          path: string
+          segment_key: string
+          status: string
+          ops: Json
+          evidence: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          site: string
+          path?: string
+          segment_key: string
+          status?: string
+          ops?: Json
+          evidence?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          site?: string
+          path?: string
+          segment_key?: string
+          status?: string
+          ops?: Json
+          evidence?: Json
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }

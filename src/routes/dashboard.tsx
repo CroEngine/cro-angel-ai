@@ -53,10 +53,12 @@ import {
   getVisitorTimeline,
   rotateIngestKey,
   setConsentMode,
+  setServingEnabled,
   type ConsentMode,
   type DashboardResponse,
   type SiteConfigView,
   type TimelineEvent,
+  type VariantView,
 } from "@/lib/dashboard/dashboard.functions";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
 import type {
@@ -462,6 +464,13 @@ function Dashboard() {
                 </CardContent>
               </Card>
             )}
+
+            {/* ---- Fas 4: varianter per segment + serverings-master-toggeln ---- */}
+            <VariantsCard
+              site={d.site}
+              servingOn={d.siteConfig.servingEnabled}
+              variants={d.variants ?? []}
+            />
 
             {/* ---- nivå 2: senaste anonyma besöksresor (journey intelligence) ---- */}
             {d.metrics.sessions.length > 0 && (
@@ -1232,6 +1241,108 @@ const GOAL_KIND_LABEL: Record<GoalKind, string> = {
   download: "download",
   donate: "donate",
 };
+
+/** Fas 4: variantlivscykeln + serverings-master-toggeln. Toggeln styr inget live
+ *  ännu (decide-vägen läser inte flaggan) — kontrollen landar FÖRE förmågan, så
+ *  att default-av är ägarens uttryckliga val när inkopplingen byggs. */
+const VARIANT_STATUS_STYLE: Record<VariantView["status"], string> = {
+  candidate: "bg-stone-100 text-stone-500",
+  verified: "bg-sky-50 text-sky-700",
+  serving: "bg-emerald-50 text-emerald-700",
+  winner: "bg-emerald-100 text-emerald-800",
+  retired: "bg-stone-100 text-stone-400 line-through",
+};
+
+function VariantsCard({
+  site,
+  servingOn,
+  variants,
+}: {
+  site: string;
+  servingOn: boolean;
+  variants: VariantView[];
+}) {
+  const queryClient = useQueryClient();
+  const toggle = useMutation({
+    mutationFn: (enabled: boolean) => setServingEnabled({ data: { site, enabled } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
+  });
+
+  return (
+    <Card className="border-stone-200 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-3 text-sm">
+          Varianter per segment
+          <span
+            className={`rounded px-1.5 py-0.5 text-[10px] ${servingOn ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-500"}`}
+          >
+            servering {servingOn ? "PÅ" : "AV"}
+          </span>
+          <button
+            type="button"
+            disabled={toggle.isPending}
+            onClick={() => toggle.mutate(!servingOn)}
+            className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700 disabled:opacity-50"
+          >
+            {servingOn ? "stäng av" : "slå på"}
+          </button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {variants.length === 0 ? (
+          <p className="text-sm text-stone-500">
+            Inga varianter ännu. När genereringskedjan har en variant som passerat alla
+            grindar (struktur, pixlar, claims) dyker den upp här som{" "}
+            <span className="font-mono text-[11px]">verified</span> — och serveras först när
+            både master-switchen ovan och variantens status säger det.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-stone-500">
+                  <th className="py-1 font-medium">Segment</th>
+                  <th className="py-1 font-medium">Sida</th>
+                  <th className="py-1 font-medium">Status</th>
+                  <th className="py-1 font-medium">Ops</th>
+                  <th className="py-1 font-medium">Uppdaterad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {variants.map((v) => (
+                  <tr key={v.id} className="border-t border-stone-100">
+                    <td className="py-1.5 font-mono text-[11px] text-stone-600">{v.segmentKey}</td>
+                    <td className="py-1.5 font-mono text-[11px] text-stone-500">{v.path}</td>
+                    <td className="py-1.5">
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] ${VARIANT_STATUS_STYLE[v.status] ?? "bg-stone-100 text-stone-500"}`}>
+                        {v.status}
+                      </span>
+                    </td>
+                    <td className="py-1.5">{v.opsCount}</td>
+                    <td className="py-1.5 text-xs text-stone-500">
+                      {new Date(v.updatedAt).toLocaleDateString("sv-SE")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="mt-2 text-xs text-stone-400">
+          Livscykel: candidate → verified (alla grindar gröna) → serving (A/B mot kontroll,
+          ramp från 5 %) → winner / retired. Servering är AV som standard och styr inget
+          live förrän inkopplingen är byggd — vinnare rekommenderas bara, baseline byts
+          aldrig utan manuellt godkännande.
+        </p>
+        {toggle.isError && (
+          <span className="font-mono text-[11px] tracking-wider text-amber-600">
+            couldn’t save — try again
+          </span>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function MeasurementControl({
   site,
