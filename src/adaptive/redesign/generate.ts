@@ -10,6 +10,7 @@
 // for the Anthropic adapter) so this stays unit-testable with a stub.
 
 import { renderRedesignPrompt, type RedesignContext } from "./context";
+import { introducedClaims } from "./claims";
 
 export interface RedesignOp {
   op: "move_up" | "set_text" | "condense" | "reveal";
@@ -64,11 +65,32 @@ function validTargets(ctx: RedesignContext): Set<string> {
   return ids;
 }
 
+/** Ops that REWRITE copy (their `detail` is the literal new text) and therefore
+ *  need the semantic claims guard. move_up / reveal only move blocks. */
+const REWRITE_OPS = new Set(["set_text", "condense"]);
+
+/** All the text the page ALREADY publishes — the grounding corpus a rewrite's new
+ *  copy is checked against. A set_text/condense may re-tighten any of this, but
+ *  may not introduce a number / superlative / promise that appears nowhere in it. */
+function groundingCorpus(ctx: RedesignContext): string {
+  const c = ctx.content;
+  return [
+    c.hero?.headline,
+    c.hero?.subheadline,
+    ...c.sections.map((s) => s.heading),
+    ...c.trustSignals.map((t) => t.text),
+    ...c.ctas.map((t) => t.text),
+  ]
+    .filter(Boolean)
+    .join(" \n ");
+}
+
 /** Validate raw LLM ops against the guardrails + content model. Pure. Every
  *  surviving op is expressible as a reversible op on EXISTING content. */
 export function validateOps(rawOps: unknown[], ctx: RedesignContext): RedesignPlan {
   const allowed = new Set(ctx.guardrails.ops);
   const targets = validTargets(ctx);
+  const corpus = groundingCorpus(ctx);
   const ops: RedesignOp[] = [];
   const rejected: { op: unknown; reason: string }[] = [];
 
@@ -84,6 +106,7 @@ export function validateOps(rawOps: unknown[], ctx: RedesignContext): RedesignPl
     const o = raw as Record<string, unknown>;
     const op = typeof o.op === "string" ? o.op : "";
     const targetId = typeof o.targetId === "string" ? o.targetId : "";
+    const detail = typeof o.detail === "string" ? o.detail : "";
     if (!allowed.has(op)) {
       rejected.push({ op: raw, reason: `op "${op}" not in allowed vocabulary` });
       continue;
@@ -95,10 +118,24 @@ export function validateOps(rawOps: unknown[], ctx: RedesignContext): RedesignPl
       });
       continue;
     }
+    // Semantic guard: a rewrite's new copy may re-tighten existing text but must
+    // not fabricate a number / superlative / promise absent from the page.
+    if (REWRITE_OPS.has(op) && detail) {
+      const invented = introducedClaims(detail, corpus);
+      if (invented.length > 0) {
+        rejected.push({
+          op: raw,
+          reason: `"${op}" introduces claim(s) not on the page: ${invented
+            .map((c) => `${c.text} (${c.kind})`)
+            .join(", ")}`,
+        });
+        continue;
+      }
+    }
     ops.push({
       op: op as RedesignOp["op"],
       targetId,
-      detail: typeof o.detail === "string" ? o.detail : "",
+      detail,
       why: typeof o.why === "string" ? o.why : "",
     });
   }
