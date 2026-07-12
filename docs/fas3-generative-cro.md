@@ -53,7 +53,9 @@ faktiska sektionsblocken via säkert syskonbyte), och mäter det bara en webblä
 ser: introducerade `render-gates.ts` återanvänder EXAKT `analyze.ts`-trösklarna —
 ett flyttat block får inte hamna ovanför sidans huvudinnehåll, apply får inte
 introducera >8px horisontell scroll, ingen konverterings-CTA får bli o-klickbar,
-och allt måste gå att reversera. FÖRE/EFTER-skärmdumpar + verdikt.
+apply får inte introducera >100px **vertikal krock** mellan sektioner (ett upplyft
+block som hamnar under hjältens flytande CTA-kort — upptäckt när kedjan kördes
+visuellt), och allt måste gå att reversera. FÖRE/EFTER-skärmdumpar + verdikt.
 
 ## Bevisat på en riktig sida (plausible.io, segment `instagram·mobile·SE`)
 

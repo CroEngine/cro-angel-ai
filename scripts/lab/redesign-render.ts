@@ -160,8 +160,25 @@ async function measureAndApply(page: Page) {
       }
       const ctaBefore = ctaTexts.map((t) => ({ t, ok: ctaClickable(t) }));
 
+      // Max vertical overlap between adjacent main sections (prev.bottom − next.top).
+      // Sections legitimately overlap by design; we compare before vs after so only
+      // the INTRODUCED overlap counts (a moved block landing under a floating CTA).
+      const maxAdjacentOverlap = () => {
+        const kids = Array.from(mainEl.children).filter(
+          (c) => c.getBoundingClientRect().height > 30,
+        );
+        let mx = 0;
+        for (let i = 0; i < kids.length - 1; i++) {
+          const a = kids[i].getBoundingClientRect();
+          const b = kids[i + 1].getBoundingClientRect();
+          mx = Math.max(mx, Math.round(a.bottom - b.top));
+        }
+        return mx;
+      };
+
       const beforeOrder = orderOf();
       const hOverflowBeforePx = Math.max(0, de.scrollWidth - de.clientWidth);
+      const vOverlapBeforePx = maxAdjacentOverlap();
 
       // Snapshot original order of ALL main children for exact reset.
       const originalChildren = Array.from(mainEl.children);
@@ -184,6 +201,7 @@ async function measureAndApply(page: Page) {
 
       const afterOrder = orderOf();
       const hOverflowAfterPx = Math.max(0, de.scrollWidth - de.clientWidth);
+      const vOverlapAfterPx = maxAdjacentOverlap();
       // Moved-above-main: any moved container whose top is now above the anchor.
       let movedAboveMain = 0;
       for (const el of movedEls) {
@@ -212,6 +230,8 @@ async function measureAndApply(page: Page) {
         resetOrder,
         hOverflowBeforePx,
         hOverflowAfterPx,
+        vOverlapBeforePx,
+        vOverlapAfterPx,
         movedCount: movedEls.length,
         movedAboveMain,
         mainAnchorFound: anchorTop !== null,
@@ -269,6 +289,7 @@ try {
     requestedMoves: raw.requestedMoves,
     appliedMoves: raw.appliedMoves,
     reversedOrderMatches: JSON.stringify(raw.resetOrder) === JSON.stringify(raw.beforeOrder),
+    verticalOverlapIntroducedPx: Math.max(0, raw.vOverlapAfterPx - raw.vOverlapBeforePx),
   };
   const gate = evaluateRenderGates(measurements);
 
@@ -278,6 +299,7 @@ try {
   console.log("  EFTER: " + measurements.afterOrder.join(" → "));
   console.log(`  moved: ${measurements.appliedMoves}/${measurements.requestedMoves} · movedAboveMain: ${measurements.movedAboveMain}`);
   console.log(`  hOverflow introduced: ${gate.hOverflowIntroducedPx}px (before ${measurements.hOverflowBeforePx} → after ${measurements.hOverflowAfterPx})`);
+  console.log(`  vertical overlap introduced: ${gate.verticalOverlapIntroducedPx}px (collision gate)`);
   console.log(`  CTAs clickable before/broken after: ${measurements.ctaChecked}/${measurements.ctaBroken}`);
   console.log(`  reversible (order restored): ${measurements.reversedOrderMatches}`);
   console.log(`\n  VERDICT: ${gate.verdict.toUpperCase()}`);
