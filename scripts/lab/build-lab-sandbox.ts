@@ -60,8 +60,11 @@ const VARIANTS = [
     moves: ["People ❤️ Plausible", "People ❤️ Plausible"],
     texts: [
       {
+        // v2 — ägaren dömde v1 ("Easy to use, … that have switched. Start free
+        // trial.") som för lång på mobil (7 rader). Stramare, samma grundade
+        // claim, ~4 rader på 390px. Claims-grind: PASS.
         find: "h1",
-        set: "Easy to use, privacy-friendly Google Analytics alternative — trusted by thousands of companies that have switched. Start free trial.",
+        set: "Privacy-friendly Google Analytics alternative — trusted by thousands of companies.",
       },
       {
         find: "h2:Why use Plausible",
