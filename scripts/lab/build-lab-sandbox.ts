@@ -107,7 +107,10 @@ for (const [path, file] of Object.entries(ASSET_PATHS)) {
   html = html.split(path).join(`data:${media};base64,${data}`);
 }
 
-// ── kontrollpanel + apply/reset ───────────────────────────────────────────────
+// ── kontrollpanel + apply/reset + DIFF-VY ─────────────────────────────────────
+// Diffen är redan förstklassig data (ops-listan) — här visualiseras den direkt
+// på sidan: märken vid varje ändring, numrerad ändringslista (klick → scrolla
+// dit + blink), och auto-scroll till första ändringen när EFTER slås på.
 const controls = `
 <style>
 #angel-lab-bar{position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#10151c;color:#e9edf3;
@@ -119,13 +122,26 @@ const controls = `
 #angel-lab-bar button.on{border-color:#2dd4bf;background:#2dd4bf22;color:#2dd4bf}
 #angel-lab-bar .switch{margin-left:auto;display:flex;gap:6px;align-items:center}
 #angel-lab-bar .switch button.efter.on{background:#2dd4bf;color:#04211d;font-weight:700}
-#angel-lab-info{position:fixed;bottom:56px;left:14px;right:14px;z-index:99998;max-width:560px;
-  background:#111823ee;color:#8a94a3;border:1px solid #2c3744;border-radius:10px;padding:8px 12px;
-  font:11.5px/1.5 ui-monospace,Menlo,monospace;display:none}
+#angel-lab-info{position:fixed;bottom:56px;left:14px;right:14px;z-index:99998;max-width:620px;
+  background:#111823f2;color:#8a94a3;border:1px solid #2c3744;border-radius:10px;padding:10px 12px;
+  font:11.5px/1.5 ui-monospace,Menlo,monospace;display:none;max-height:45vh;overflow-y:auto}
 #angel-lab-info b{color:#e9edf3}
 #angel-lab-info .gates{color:#4ade80}
+#angel-lab-info ol{margin:8px 0 0;padding-left:20px}
+#angel-lab-info li{margin:4px 0;cursor:pointer}
+#angel-lab-info li:hover .difflabel{text-decoration:underline}
+#angel-lab-info .difflabel{color:#2dd4bf;font-weight:600}
+#angel-lab-info .old{color:#8a94a3;text-decoration:line-through}
+#angel-lab-info .new{color:#e9edf3}
 body{padding-bottom:64px !important}
-[data-angel-moved]{outline:2px dashed #2dd4bf88;outline-offset:-2px}
+.angel-badge{position:absolute;z-index:99997;left:8px;top:8px;background:#0d7d72;color:#fff;
+  font:700 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.05em;padding:5px 9px;border-radius:6px;
+  box-shadow:0 2px 10px rgba(0,0,0,.3);pointer-events:none}
+.angel-badge.text{background:#a8560a}
+[data-angel-moved]{outline:3px solid #0d7d72aa;outline-offset:-3px;position:relative}
+[data-angel-retext]{outline:3px solid #a8560aaa;outline-offset:2px;border-radius:4px}
+@keyframes angelflash{0%{box-shadow:0 0 0 6px #2dd4bf88}100%{box-shadow:0 0 0 6px transparent}}
+.angel-flash{animation:angelflash 1.1s ease-out 2}
 </style>
 <div id="angel-lab-info"></div>
 <div id="angel-lab-bar">
@@ -141,7 +157,7 @@ body{padding-bottom:64px !important}
   var VARIANTS = __VARIANTS__;
   var mainEl = document.querySelector("main") || document.body;
   var original = Array.prototype.slice.call(mainEl.children);
-  var textSnapshots = [];
+  var textSnapshots = [], badges = [], diffs = [];
   var current = VARIANTS[0], applied = false;
 
   function heads(){ return Array.prototype.slice.call(document.querySelectorAll("h1,h2")); }
@@ -155,38 +171,98 @@ body{padding-bottom:64px !important}
     }
     return null;
   }
+  // Position bland SYNLIGA sektioner (main-barn högre än 30px), 1-baserad.
+  function sectionIndex(el){
+    var kids = Array.prototype.filter.call(mainEl.children, function(c){ return c.clientHeight>30 || c===el; });
+    return kids.indexOf(el)+1;
+  }
+  function sectionLabel(el){
+    var hs=heads(); for(var i=0;i<hs.length;i++){ if(container(hs[i])===el) return (hs[i].textContent||"").replace(/\\s+/g," ").trim().slice(0,34); }
+    return "(sektion)";
+  }
+  function addBadge(el, text, kind){
+    var b=document.createElement("div"); b.className="angel-badge"+(kind==="text"?" text":""); b.textContent=text;
+    if (getComputedStyle(el).position==="static") el.style.position="relative";
+    el.insertBefore(b, el.firstChild); badges.push(b);
+  }
   function reset(){
+    badges.forEach(function(b){ if(b.parentElement) b.parentElement.removeChild(b); });
     for (var i=0;i<original.length;i++) mainEl.appendChild(original[i]);
     original.forEach(function(el){ el.removeAttribute("data-angel-moved"); });
-    textSnapshots.forEach(function(s){ s.el.textContent = s.text; });
-    textSnapshots = []; applied = false;
+    textSnapshots.forEach(function(s){ s.el.textContent = s.text; s.el.removeAttribute("data-angel-retext"); });
+    textSnapshots = []; badges = []; diffs = []; applied = false;
   }
   function apply(v){
     reset();
+    // 1) Flyttar — mät position före/efter per unikt mål, sätt märke + diffrad.
+    var targets = {};
     v.moves.forEach(function(key){
       var h = findHeading(key); if(!h) return;
-      var t = container(h); var p = t.previousElementSibling;
+      var t = container(h);
+      if (!(key in targets)) targets[key] = { el: t, from: sectionIndex(t) };
+      var p = t.previousElementSibling;
       if (p && t.parentElement===p.parentElement){ t.parentElement.insertBefore(t,p); t.setAttribute("data-angel-moved","1"); }
     });
+    Object.keys(targets).forEach(function(key){
+      var o = targets[key]; var to = sectionIndex(o.el);
+      addBadge(o.el, "↑ FLYTTAD HIT · plats "+o.from+" → "+to, "move");
+      diffs.push({ el:o.el, kind:"move", label:sectionLabel(o.el), detail:"plats "+o.from+" → "+to });
+    });
+    // 2) Text-ändringar — spara gammal text, märk elementet, diffrad gammal→ny.
     v.texts.forEach(function(op){
       var el = op.find==="h1" ? document.querySelector("main h1")||document.querySelector("h1") : findHeading(op.find);
       if(!el) return;
+      var old = el.textContent.replace(/\\s+/g," ").trim();
       textSnapshots.push({el:el, text:el.textContent});
       el.textContent = op.set;
+      el.setAttribute("data-angel-retext","1");
+      addBadge(container(el), "✎ NY TEXT", "text");
+      diffs.push({ el:el, kind:"text", label:"Text ändrad", old:old, detail:op.set });
     });
     applied = true;
-    window.scrollTo({top:0});
+    // 3) Scrolla till FÖRSTA ändringen — inte toppen — så skillnaden syns direkt.
+    if (diffs.length){
+      var first = diffs[0].el;
+      setTimeout(function(){ first.scrollIntoView({behavior:"smooth", block:"start"}); flash(first); }, 60);
+    }
   }
+  function flash(el){ el.classList.remove("angel-flash"); void el.offsetWidth; el.classList.add("angel-flash"); }
   function renderInfo(){
     var info = document.getElementById("angel-lab-info");
     info.style.display = "block";
-    info.innerHTML = "<b>"+current.label+"</b> — "+current.headline+
-      "<br><span class='gates'>grindar: "+current.gates+"</span>"+
-      (applied ? "" : "<br><span style='color:#59636f'>FÖRE — originalsidan. Växla till EFTER för variantens ordning.</span>");
+    var html = "<b>"+current.label+"</b> — "+current.headline+
+      "<br><span class='gates'>grindar: "+current.gates+"</span>";
+    if (!applied){
+      html += "<br><span style='color:#59636f'>FÖRE — originalsidan. Växla till EFTER så visas och märks varje ändring.</span>";
+    } else if (diffs.length){
+      html += "<br><b>"+diffs.length+" ändringar</b> — klicka för att hoppa till var och en:";
+      html += "<ol>";
+      diffs.forEach(function(d,i){
+        html += "<li data-diff='"+i+"'>"+
+          (d.kind==="move"
+            ? "<span class='difflabel'>Flyttad:</span> "+d.label+" <span style='color:#59636f'>("+d.detail+")</span>"
+            : "<span class='difflabel'>Ny text:</span> <span class='old'>"+d.old.slice(0,48)+"</span> → <span class='new'>"+d.detail.slice(0,60)+"</span>")+
+          "</li>";
+      });
+      html += "</ol>";
+    }
+    info.innerHTML = html;
+    Array.prototype.forEach.call(info.querySelectorAll("li[data-diff]"), function(li){
+      li.onclick = function(){
+        var d = diffs[Number(li.getAttribute("data-diff"))];
+        if(d){ d.el.scrollIntoView({behavior:"smooth", block:"center"}); flash(d.el); }
+      };
+    });
   }
   function sync(){
+    // Panelen ovanför baren oavsett hur många rader baren radbryts till (mobil).
+    var bar=document.getElementById("angel-lab-bar");
+    var info=document.getElementById("angel-lab-info");
+    info.style.bottom=(bar.offsetHeight+8)+"px";
+    document.body.style.paddingBottom=(bar.offsetHeight+16)+"px";
     document.getElementById("angel-fore").className = applied?"":"on";
     document.getElementById("angel-efter").className = "efter"+(applied?" on":"");
+    document.getElementById("angel-efter").textContent = applied && diffs.length ? "EFTER · "+diffs.length+" ändringar" : "EFTER";
     var pills = document.querySelectorAll("#angel-segments button");
     pills.forEach(function(b){ b.className = b.dataset.key===current.key?"on":""; });
     renderInfo();
@@ -202,6 +278,7 @@ body{padding-bottom:64px !important}
   var qs=new URLSearchParams(location.search); var want=qs.get("segment");
   if(want){ var m=VARIANTS.filter(function(v){return v.key===want;})[0]; if(m) current=m; }
   if(qs.get("state")==="efter") apply(current);
+  window.addEventListener("resize", sync);
   sync();
 })();
 </script>`;
