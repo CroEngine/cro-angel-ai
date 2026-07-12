@@ -96,9 +96,25 @@ export interface SiteConfigView {
   goalCandidates: GoalCandidate[];
 }
 
-/** En redesign-variant i dashboardens livscykelvy (Fas 4). ops visas som antal —
- *  detaljerna (grind-verdikt, skärmdumpar) bor i evidence och får en egen yta
- *  när servering kopplas in. */
+/** En redesign-variant i dashboardens livscykelvy (Fas 4), inklusive jämförelse-
+ *  underlaget ur evidence så ägaren kan SE vad varianten gör (FÖRE/EFTER +
+ *  grindar + skärmdumpar) innan hen fattar serveringsbeslutet. Skärmdumpar
+ *  refereras som URL/sökväg (same-origin eller Storage) — aldrig inline-bytes. */
+export interface VariantOpView {
+  op: string;
+  targetId: string;
+  detail: string;
+  why: string;
+}
+
+export interface VariantComparison {
+  headline: string | null;
+  orderBefore: string[];
+  orderAfter: string[];
+  movedLabel: string | null;
+  screenshots: { before: string | null; after: string | null; attempt1: string | null };
+}
+
 export interface VariantView {
   id: string;
   path: string;
@@ -106,6 +122,10 @@ export interface VariantView {
   status: "candidate" | "verified" | "serving" | "winner" | "retired";
   opsCount: number;
   updatedAt: string;
+  ops: VariantOpView[];
+  /** Grind-utfall ur evidence.gates (nyckel → tal/boolean), tomt när okänt. */
+  gates: Record<string, number | boolean>;
+  comparison: VariantComparison | null;
 }
 
 /** Zero-config default hold-out, applied on attestation so measurement is ready
@@ -274,25 +294,63 @@ export const getDashboard = createServerFn({ method: "POST" })
         }
       }
 
-      // Fas 4: sajtens redesign-varianter (alla statusar) för livscykelvyn.
-      // Best-effort — tabellen är ny och tom tills genereringskedjan skriver hit.
+      // Fas 4: sajtens redesign-varianter (alla statusar) för livscykelvyn,
+      // inkl. jämförelse-underlaget ur evidence (ordning, grindar, skärmdumps-
+      // referenser). Best-effort — tom tills genereringskedjan skriver hit.
       let variants: VariantView[] = [];
       try {
         const { data: vRows, error: vErr } = await supabaseAdmin
           .from("angel_variants")
-          .select("id,path,segment_key,status,ops,updated_at")
+          .select("id,path,segment_key,status,ops,evidence,updated_at")
           .eq("site", site)
           .order("updated_at", { ascending: false })
           .limit(50);
         if (!vErr && Array.isArray(vRows)) {
-          variants = vRows.map((v) => ({
-            id: v.id,
-            path: v.path,
-            segmentKey: v.segment_key,
-            status: v.status as VariantView["status"],
-            opsCount: Array.isArray(v.ops) ? v.ops.length : 0,
-            updatedAt: v.updated_at,
-          }));
+          const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
+          const strs = (v: unknown): string[] =>
+            Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+          variants = vRows.map((v) => {
+            const ev = (v.evidence ?? {}) as Record<string, unknown>;
+            const cmpRaw = ev.comparison as Record<string, unknown> | undefined;
+            const shots = (cmpRaw?.screenshots ?? {}) as Record<string, unknown>;
+            const gatesRaw = (ev.gates ?? {}) as Record<string, unknown>;
+            const gates: Record<string, number | boolean> = {};
+            for (const [k, val] of Object.entries(gatesRaw)) {
+              if (typeof val === "number" || typeof val === "boolean") gates[k] = val;
+            }
+            const opsArr = Array.isArray(v.ops) ? v.ops : [];
+            return {
+              id: v.id,
+              path: v.path,
+              segmentKey: v.segment_key,
+              status: v.status as VariantView["status"],
+              opsCount: opsArr.length,
+              updatedAt: v.updated_at,
+              ops: opsArr.map((o) => {
+                const r = (o ?? {}) as Record<string, unknown>;
+                return {
+                  op: str(r.op) ?? "",
+                  targetId: str(r.targetId) ?? "",
+                  detail: str(r.detail) ?? "",
+                  why: str(r.why) ?? "",
+                };
+              }),
+              gates,
+              comparison: cmpRaw
+                ? {
+                    headline: str(cmpRaw.headline),
+                    orderBefore: strs(cmpRaw.orderBefore),
+                    orderAfter: strs(cmpRaw.orderAfter),
+                    movedLabel: str(cmpRaw.movedLabel),
+                    screenshots: {
+                      before: str(shots.before),
+                      after: str(shots.after),
+                      attempt1: str(shots.attempt1),
+                    },
+                  }
+                : null,
+            };
+          });
         }
       } catch (vErr) {
         console.warn(`[angel] variant list unavailable:`, vErr);

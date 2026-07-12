@@ -9,7 +9,7 @@
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -1253,6 +1253,107 @@ const VARIANT_STATUS_STYLE: Record<VariantView["status"], string> = {
   retired: "bg-stone-100 text-stone-400 line-through",
 };
 
+/** Grind-nycklarnas läsbara etiketter + hur ett värde bedöms (grönt/flaggat). */
+const GATE_LABELS: Record<string, { label: string; ok: (v: number | boolean) => boolean; fmt?: (v: number | boolean) => string }> = {
+  heroFirst: { label: "Hjälten kvar först", ok: (v) => v === true },
+  hOverflowIntroducedPx: { label: "Horisontell overflow", ok: (v) => Number(v) <= 8, fmt: (v) => `+${v} px` },
+  verticalOverlapIntroducedPx: { label: "Vertikal krock", ok: (v) => Number(v) <= 100, fmt: (v) => `+${v} px` },
+  attempt1VerticalOverlapPx: { label: "Vertikal krock — försök 1", ok: (v) => Number(v) <= 100, fmt: (v) => `+${v} px` },
+  ctaBroken: { label: "CTA brutna", ok: (v) => Number(v) === 0 },
+  reversible: { label: "Reversibel", ok: (v) => v === true },
+};
+
+/** FÖRE/EFTER-jämförelsen för en variant — det ägaren tittar på innan hen sätter
+ *  varianten till serving. Skärmdumparna är samma-origin-sökvägar (eller Storage-
+ *  URL:er när genereringskedjan skriver dem). */
+function VariantComparisonPanel({ v }: { v: VariantView }) {
+  const cmp = v.comparison;
+  const orderRow = (labels: string[]) => (
+    <div className="flex flex-wrap items-center gap-1">
+      {labels.map((l, i) => (
+        <span key={`${l}-${i}`} className="flex items-center gap-1">
+          {i > 0 && <span className="text-stone-300">›</span>}
+          <span
+            className={`rounded border px-1.5 py-0.5 text-[11px] ${
+              l === cmp?.movedLabel
+                ? "border-emerald-600 bg-emerald-600 font-medium text-white"
+                : "border-stone-200 bg-stone-50 text-stone-500"
+            }`}
+          >
+            {l}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+  return (
+    <div className="mt-2 rounded-md border border-stone-200 bg-stone-50/50 p-3">
+      {cmp?.headline && <p className="mb-2 text-sm font-medium text-stone-700">{cmp.headline}</p>}
+      {cmp && cmp.orderBefore.length > 0 && (
+        <div className="mb-3 flex flex-col gap-1.5">
+          <span className="text-[10px] uppercase tracking-wider text-stone-400">Före</span>
+          {orderRow(cmp.orderBefore)}
+          <span className="mt-1 text-[10px] uppercase tracking-wider text-stone-400">Efter</span>
+          {orderRow(cmp.orderAfter)}
+        </div>
+      )}
+      {v.ops.length > 0 && (
+        <ul className="mb-3 flex flex-col gap-1">
+          {v.ops.map((o, i) => (
+            <li key={i} className="text-xs text-stone-600">
+              <span className="mr-1.5 rounded bg-emerald-50 px-1 py-0.5 font-mono text-[10px] text-emerald-700">
+                {o.op}
+              </span>
+              {o.detail}
+              {o.why && <span className="text-stone-400"> — {o.why}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {Object.keys(v.gates).length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {Object.entries(v.gates).map(([k, val]) => {
+            const meta = GATE_LABELS[k];
+            if (!meta) return null;
+            const ok = meta.ok(val);
+            return (
+              <span
+                key={k}
+                className={`rounded px-1.5 py-0.5 text-[10px] ${ok ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
+              >
+                {meta.label}: {meta.fmt ? meta.fmt(val) : String(val)} {ok ? "✓" : "✗"}
+              </span>
+            );
+          })}
+        </div>
+      )}
+      {cmp?.screenshots.before && cmp.screenshots.after && (
+        <div className="flex flex-wrap gap-3">
+          <figure className="w-40">
+            <img src={cmp.screenshots.before} alt="Sidan idag" className="rounded border border-stone-200" loading="lazy" />
+            <figcaption className="mt-1 text-center font-mono text-[10px] text-stone-400">Idag</figcaption>
+          </figure>
+          {cmp.screenshots.attempt1 && (
+            <figure className="w-40">
+              <img src={cmp.screenshots.attempt1} alt="Försök 1 — stoppad av krock-grinden" className="rounded border border-amber-300" loading="lazy" />
+              <figcaption className="mt-1 text-center font-mono text-[10px] text-amber-600">Försök 1 → stoppad</figcaption>
+            </figure>
+          )}
+          <figure className="w-40">
+            <img src={cmp.screenshots.after} alt="Varianten — verifierad" className="rounded border border-emerald-400" loading="lazy" />
+            <figcaption className="mt-1 text-center font-mono text-[10px] text-emerald-700">Varianten ✓</figcaption>
+          </figure>
+        </div>
+      )}
+      {!cmp && (
+        <p className="text-xs text-stone-400">
+          Ingen jämförelse sparad för den här varianten ännu.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function VariantsCard({
   site,
   servingOn,
@@ -1263,6 +1364,7 @@ function VariantsCard({
   variants: VariantView[];
 }) {
   const queryClient = useQueryClient();
+  const [openId, setOpenId] = useState<string | null>(null);
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => setServingEnabled({ data: { site, enabled } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
@@ -1306,23 +1408,42 @@ function VariantsCard({
                   <th className="py-1 font-medium">Status</th>
                   <th className="py-1 font-medium">Ops</th>
                   <th className="py-1 font-medium">Uppdaterad</th>
+                  <th className="py-1" />
                 </tr>
               </thead>
               <tbody>
                 {variants.map((v) => (
-                  <tr key={v.id} className="border-t border-stone-100">
-                    <td className="py-1.5 font-mono text-[11px] text-stone-600">{v.segmentKey}</td>
-                    <td className="py-1.5 font-mono text-[11px] text-stone-500">{v.path}</td>
-                    <td className="py-1.5">
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] ${VARIANT_STATUS_STYLE[v.status] ?? "bg-stone-100 text-stone-500"}`}>
-                        {v.status}
-                      </span>
-                    </td>
-                    <td className="py-1.5">{v.opsCount}</td>
-                    <td className="py-1.5 text-xs text-stone-500">
-                      {new Date(v.updatedAt).toLocaleDateString("sv-SE")}
-                    </td>
-                  </tr>
+                  <Fragment key={v.id}>
+                    <tr className="border-t border-stone-100">
+                      <td className="py-1.5 font-mono text-[11px] text-stone-600">{v.segmentKey}</td>
+                      <td className="py-1.5 font-mono text-[11px] text-stone-500">{v.path}</td>
+                      <td className="py-1.5">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] ${VARIANT_STATUS_STYLE[v.status] ?? "bg-stone-100 text-stone-500"}`}>
+                          {v.status}
+                        </span>
+                      </td>
+                      <td className="py-1.5">{v.opsCount}</td>
+                      <td className="py-1.5 text-xs text-stone-500">
+                        {new Date(v.updatedAt).toLocaleDateString("sv-SE")}
+                      </td>
+                      <td className="py-1.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setOpenId(openId === v.id ? null : v.id)}
+                          className="font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
+                        >
+                          {openId === v.id ? "dölj" : "jämför"}
+                        </button>
+                      </td>
+                    </tr>
+                    {openId === v.id && (
+                      <tr>
+                        <td colSpan={6} className="pb-2">
+                          <VariantComparisonPanel v={v} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
