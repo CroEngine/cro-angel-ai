@@ -45,6 +45,11 @@ fixtures/breadth-50/**/page.mhtml
 fixtures/breadth-50/**/page.pre-embed.mhtml
 fixtures/breadth-50/**/screenshot.jpg
 
+# Visual pre-flight / redesign-render evidence — generated screenshots + report,
+# reproduce via scripts/preflight.ts resp. scripts/lab/redesign-render.ts.
+preflight-out/
+redesign-render-out/
+
 # Repo uses bun (bun.lock); npm lockfile is local-only
 package-lock.json
 # Snapshot-diffens debug-avtryck vid fail — skrivs av snapshot.test.ts, aldrig commitbart.
