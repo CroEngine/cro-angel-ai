@@ -105,7 +105,7 @@ console.log(`  CTAs hit-tested: ${ctaTexts.join(", ") || "(none)"}`);
 // (or body). On plausible the content sections are direct <main> children, so a
 // move_up is a clean, reversible sibling swap. Anything not a clean sibling is
 // reported as "not safely applicable" (never force-moved).
-async function measureAndApply(page: Page) {
+async function measureAndApply(page: Page, headings: string[] = moveUpHeadings) {
   return page.evaluate(
     ({ moveHeadings, ctaTexts }) => {
       const mainEl = document.querySelector("main") || document.body;
@@ -241,7 +241,7 @@ async function measureAndApply(page: Page) {
         appliedMoves: applied,
       };
     },
-    { moveHeadings: moveUpHeadings, ctaTexts },
+    { moveHeadings: headings, ctaTexts },
   );
 }
 
@@ -256,8 +256,56 @@ try {
   await page.waitForTimeout(400);
 
   await page.screenshot({ path: join(outDir, "before.jpg"), type: "jpeg", quality: 60, fullPage: true });
-  const raw = await measureAndApply(page);
-  // The screenshot must capture the APPLIED state; re-apply for the shot, then reset.
+
+  // Generate → verify → RETRY. If the gate fails on a vertical collision, try
+  // once more with each move target lifted ONE step further — same logical
+  // section order, different physical insertion (above whatever block's overhang
+  // caused the collision). This deterministic heuristic stands in for the prod
+  // loop, where the gate's reasons are fed back to the design model for a revised
+  // plan. One retry only — a plan that can't find a clean placement stays held.
+  const attempts: { attempt: number; measurements: RenderMeasurements; gate: ReturnType<typeof evaluateRenderGates> }[] = [];
+  let attemptHeadings = moveUpHeadings;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const raw = await measureAndApply(page, attemptHeadings);
+    const measurements: RenderMeasurements = {
+      beforeOrder: raw.beforeOrder,
+      afterOrder: raw.afterOrder,
+      hOverflowBeforePx: raw.hOverflowBeforePx,
+      hOverflowAfterPx: raw.hOverflowAfterPx,
+      movedCount: raw.movedCount,
+      movedAboveMain: raw.movedAboveMain,
+      mainAnchorFound: raw.mainAnchorFound,
+      ctaChecked: raw.ctaChecked,
+      ctaBroken: raw.ctaBroken,
+      requestedMoves: raw.requestedMoves,
+      appliedMoves: raw.appliedMoves,
+      reversedOrderMatches: JSON.stringify(raw.resetOrder) === JSON.stringify(raw.beforeOrder),
+      verticalOverlapIntroducedPx: Math.max(0, raw.vOverlapAfterPx - raw.vOverlapBeforePx),
+    };
+    const gate = evaluateRenderGates(measurements);
+    attempts.push({ attempt, measurements, gate });
+
+    console.log(`\n  ── attempt ${attempt} ${"─".repeat(50)}`);
+    console.log("  FÖRE:  " + measurements.beforeOrder.join(" → "));
+    console.log("  EFTER: " + measurements.afterOrder.join(" → "));
+    console.log(`  moved: ${measurements.appliedMoves}/${measurements.requestedMoves} · movedAboveMain: ${measurements.movedAboveMain}`);
+    console.log(`  hOverflow introduced: ${gate.hOverflowIntroducedPx}px · vertical overlap introduced: ${gate.verticalOverlapIntroducedPx}px`);
+    console.log(`  CTAs clickable before/broken after: ${measurements.ctaChecked}/${measurements.ctaBroken} · reversible: ${measurements.reversedOrderMatches}`);
+    console.log(`  VERDICT: ${gate.verdict.toUpperCase()}`);
+    for (const r of gate.reasons) console.log(`    · ${r}`);
+    if (!gate.reasons.length) console.log("    ✓ beauty gates passed (no overflow, hero kept, CTAs intact, reversible)");
+
+    const collision =
+      gate.verdict === "fail" && gate.reasons.some((r) => /vertical overlap/.test(r));
+    if (collision && attempt === 1 && attemptHeadings.length > 0) {
+      attemptHeadings = [...attemptHeadings, ...new Set(attemptHeadings)];
+      console.log("  ↻ collision — retrying with each move target lifted one step further");
+      continue;
+    }
+    break;
+  }
+
+  // The after screenshot captures the FINAL attempt's applied state.
   await page.evaluate((moveHeadings) => {
     const mainEl = document.querySelector("main") || document.body;
     const heads = Array.from(document.querySelectorAll("h1,h2"));
@@ -273,39 +321,19 @@ try {
       const prev = target.previousElementSibling;
       if (prev && target.parentElement === prev.parentElement) target.parentElement!.insertBefore(target, prev);
     }
-  }, moveUpHeadings);
+  }, attemptHeadings);
   await page.screenshot({ path: join(outDir, "after.jpg"), type: "jpeg", quality: 60, fullPage: true });
 
-  const measurements: RenderMeasurements = {
-    beforeOrder: raw.beforeOrder,
-    afterOrder: raw.afterOrder,
-    hOverflowBeforePx: raw.hOverflowBeforePx,
-    hOverflowAfterPx: raw.hOverflowAfterPx,
-    movedCount: raw.movedCount,
-    movedAboveMain: raw.movedAboveMain,
-    mainAnchorFound: raw.mainAnchorFound,
-    ctaChecked: raw.ctaChecked,
-    ctaBroken: raw.ctaBroken,
-    requestedMoves: raw.requestedMoves,
-    appliedMoves: raw.appliedMoves,
-    reversedOrderMatches: JSON.stringify(raw.resetOrder) === JSON.stringify(raw.beforeOrder),
-    verticalOverlapIntroducedPx: Math.max(0, raw.vOverlapAfterPx - raw.vOverlapBeforePx),
-  };
-  const gate = evaluateRenderGates(measurements);
+  writeFileSync(join(outDir, "report.json"), JSON.stringify({ attempts }, null, 2));
 
-  writeFileSync(join(outDir, "report.json"), JSON.stringify({ measurements, gate }, null, 2));
-
-  console.log("\n  FÖRE:  " + measurements.beforeOrder.join(" → "));
-  console.log("  EFTER: " + measurements.afterOrder.join(" → "));
-  console.log(`  moved: ${measurements.appliedMoves}/${measurements.requestedMoves} · movedAboveMain: ${measurements.movedAboveMain}`);
-  console.log(`  hOverflow introduced: ${gate.hOverflowIntroducedPx}px (before ${measurements.hOverflowBeforePx} → after ${measurements.hOverflowAfterPx})`);
-  console.log(`  vertical overlap introduced: ${gate.verticalOverlapIntroducedPx}px (collision gate)`);
-  console.log(`  CTAs clickable before/broken after: ${measurements.ctaChecked}/${measurements.ctaBroken}`);
-  console.log(`  reversible (order restored): ${measurements.reversedOrderMatches}`);
-  console.log(`\n  VERDICT: ${gate.verdict.toUpperCase()}`);
-  for (const r of gate.reasons) console.log(`    · ${r}`);
-  if (!gate.reasons.length) console.log("    ✓ beauty gates passed (no overflow, hero kept, CTAs intact, reversible)");
-  console.log(`\n  evidence: ${outDir}/before.jpg · after.jpg · report.json`);
+  const last = attempts[attempts.length - 1];
+  console.log(
+    `\n  FINAL: ${last.gate.verdict.toUpperCase()} after ${attempts.length} attempt(s) — ` +
+      (last.gate.verdict === "pass"
+        ? "candidate for serving (behind the ramp)"
+        : "held back; no visitor sees it"),
+  );
+  console.log(`  evidence: ${outDir}/before.jpg · after.jpg · report.json`);
 } finally {
   await browser.close();
 }
