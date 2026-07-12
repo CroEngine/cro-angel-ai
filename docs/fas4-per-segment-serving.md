@@ -40,16 +40,20 @@ En verifierad variant = `{ site, path, segmentKey, ops[], status, verifiedAt, ev
   spårbart varför varianten släpptes.
 - Lagras i egen tabell (`angel_variants`), RLS/`service_role` som segment-rollupen.
 
-### 2. Matcha besökare → mest specifik verifierad variant
-I `decide.ts`, när `adaptationsEnabled` och serveringen är på:
-- Bygg besökarens segmentnyckel-prefix från `context` (`kanal`, `+enhet`,
-  `+land`, `+retur`) — samma `coarse→fine`-hierarki som Fas 2.
-- Slå upp `serving`-varianter för `(site, path)`; välj den vars `segmentKey` är det
-  **längsta prefix** som matchar besökaren (finaste vinner; annars grövre; annars
-  ingen). "Låna styrka": en `google`-variant täcker `google·phone·se` tills den
-  finkorniga varianten finns.
-- Returnera variantens `ops` som `decision.adaptations` (märkta `source:"variant"`
-  så mätningen skiljer dem från mönstermotorn).
+### 2. Matcha besökare → mest specifik verifierad variant — **BYGGD** (`serve.ts`, gated off)
+Den enda **beslutsoberoende** biten är byggd som en ren funktion och testad, men
+INTE inkopplad i den levande `decide`-vägen (inget dirigeras):
+- `visitorSegmentKey(segment)` bygger besökarens fulla `kanal·enhet·land·retur`-
+  nyckel med EXAKT samma tokenisering som dashboard-rollupen (`aggregate.ts`), så
+  servering och analys delar en nyckel.
+- `matchVariant(variants, visitor)` väljer den `serving`/`winner`-variant vars
+  `segmentKey` är det **längsta prefixet** (dimensions-vis) av besökarens nyckel —
+  finaste vinner; en grövre `google`-variant "lånar styrka" tills `google·mobile·se`
+  finns; ingen match → `null`. Bara `serving`/`winner` serveras (candidate/verified/
+  retired aldrig) → osynlig-som-standard hålls i koden.
+- ÅTERSTÅR (väntar på ägarbeslut + variant-lagret): koppla in i `decide.ts` när
+  `adaptationsEnabled` + servering på, och returnera variantens `ops` som
+  `decision.adaptations` märkta `source:"variant"`.
 
 ### 3. A/B via BEFINTLIG hold-out
 Ingen ny bucketing. `holdoutPct` (t.ex. 50) → halva segmentet får varianten,
