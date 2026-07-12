@@ -77,6 +77,18 @@ Reproducera:
 - `bun run scripts/lab/redesign-real-site.ts` — strukturella kedjan + brief.
 - `bun run scripts/lab/redesign-render.ts` — pixel-halvan + FÖRE/EFTER + verdikt.
 
+## Generaliserar den? (stresstest på fler riktiga sajter)
+
+Loadern + hela strukturella kedjan (loader → generate → båda grindarna →
+strukturell preview) kördes mot fyra olika riktiga SSR-startsidor:
+
+| Sajt | Utfall |
+|---|---|
+| **plausible.io** | ren extraktion + pixel-PASS (primärfallet) |
+| **usefathom.com** | ren extraktion (hero, jämförelse/features/logos, "1,000,000+ websites", "Trusted by IBM, GitHub", "GDPR compliant"); logos-lyft passerar grindarna; fabricerad "#1 fastest, 5,000,000 sites" avvisas av semantikgrinden |
+| **savvycal.com** | fungerar UTAN `<main>` (fallback till hela dokumentet); översegmenterar (varje feature-h2 blir en sektion) — känd begränsning |
+| **basecamp.com** | avslöjade en **bug**: hero + primär-CTA låg i en `<header>` OVANFÖR `<main>` och tappades → **fixat** (hero hämtas nu från dokumentets h1 var den än sitter; CTA:er skannas i hela dokumentet; sektioner stannar `<main>`-skopade) |
+
 ## Ärliga luckor (så roadmapen inte lullar)
 
 - **Servering per segment (steg 4) är inte byggt.** Att dirigera riktig trafik till
@@ -85,7 +97,10 @@ Reproducera:
 - **Loadern är trogen för server-renderad markup.** En JS-skal-SPA vars innehåll
   monteras klient-sida ger tom modell — den måste först frysas (`freeze.server.ts`)
   och matas hit som post-render-HTML. (hibob/posthog var tomma skal vid hämtning;
-  plausible är SSR och funkade rent.)
+  plausible/usefathom/basecamp/savvycal är SSR och funkade.)
+- **Loadern översegmenterar feature-tunga sidor.** En sida med 16 feature-h2:er
+  (savvycal) blir 16 sektioner. Ofarligt (grindarna fångar dålig omordning) men
+  briefen blir brusig — en rollup av småsektioner vore snällare mot designmodellen.
 - ~~**`set_text`-grinden är strukturell, inte semantisk.**~~ **KLART** (`claims.ts`):
   en deterministisk claims-diff grundar en `set_text`/`condense`-op:s nya copy mot
   sidans publicerade text och avvisar den om den inför en SIFFRA, SUPERLATIV eller

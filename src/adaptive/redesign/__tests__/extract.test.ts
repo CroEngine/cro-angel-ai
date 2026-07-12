@@ -95,4 +95,40 @@ describe("extractContentModel — HTML → content model loader", () => {
     expect(noHero.hero).toBeUndefined();
     expect(noHero.sections[0].type).not.toBe("hero");
   });
+
+  // Regression: the hero h1 + primary CTA very often live in a <header> ABOVE
+  // <main> (e.g. Basecamp). Scoping everything to <main> dropped them.
+  it("finds the hero + CTA even when they live in a header OUTSIDE <main>", () => {
+    const page = `
+      <header>
+        <a href="/signup">Try Acme free</a>
+        <h1>The refreshingly simple tool</h1>
+        <p>Hey there — here is the pitch.</p>
+      </header>
+      <main>
+        <section><h2>Big numbers</h2></section>
+        <section><h2>What you get</h2></section>
+      </main>`;
+    const m = extractContentModel(page);
+    expect(m.hero?.headline).toBe("The refreshingly simple tool");
+    expect(m.hero?.subheadline).toContain("here is the pitch");
+    expect(m.sections[0].type).toBe("hero");
+    expect(m.sections[0].heading).toBe("The refreshingly simple tool");
+    // the h2 sections still follow, scoped to <main>
+    expect(m.sections.map((s) => s.heading)).toEqual([
+      "The refreshingly simple tool",
+      "Big numbers",
+      "What you get",
+    ]);
+    expect(m.ctas.map((c) => c.text)).toContain("Try Acme free");
+  });
+
+  it("does not let 'handbook' / 'Books' masquerade as CTAs (\\bbook\\b)", () => {
+    const page = `<header><a>Try it</a></header><main><a>Books we wrote</a><a>Employee handbook</a><a>Book a demo</a></main>`;
+    const texts = extractContentModel(page).ctas.map((c) => c.text);
+    expect(texts).toContain("Try it");
+    expect(texts).toContain("Book a demo");
+    expect(texts).not.toContain("Books we wrote");
+    expect(texts).not.toContain("Employee handbook");
+  });
 });

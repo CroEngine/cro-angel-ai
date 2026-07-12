@@ -61,7 +61,17 @@ function classify(heading: string, isFirst: boolean): string {
  *  model mirrors the page's real block structure rather than every subheading.
  *  The hero exists only when the page has a real h1 — we never fabricate one for a
  *  page that is a bare list of h2 sections. */
-function extractSections(main: string): RedesignContentModel["sections"] {
+/** The document's primary headline text (first h1 anywhere), or null. Sourced
+ *  from the WHOLE document because the hero h1 very often lives in a <header>
+ *  ABOVE <main> (e.g. Basecamp) — scoping it to <main> would drop it. */
+function primaryH1(html: string): string | null {
+  const m = /<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html);
+  const t = m ? stripTags(m[1]) : "";
+  return t || null;
+}
+
+function extractSections(html: string): RedesignContentModel["sections"] {
+  const main = mainRegion(html);
   const heads: { level: number; text: string }[] = [];
   const re = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
@@ -69,13 +79,17 @@ function extractSections(main: string): RedesignContentModel["sections"] {
     const text = stripTags(m[2]);
     if (text) heads.push({ level: Number(m[1][1]), text });
   }
-  const hasH1 = heads.some((h) => h.level === 1);
-  // Position the hero first even if the h1 appears after some h2s in source order.
-  const h1Idx = heads.findIndex((h) => h.level === 1);
-  if (h1Idx > 0) heads.unshift(heads.splice(h1Idx, 1)[0]);
+  // The hero leads. If <main> has the h1, move it to front; if the h1 lives
+  // OUTSIDE <main> (a header hero), prepend it so the hero isn't lost — while the
+  // h2 sections stay scoped to <main> to avoid nav/footer noise.
+  const docH1 = primaryH1(html);
+  const mainH1Idx = heads.findIndex((h) => h.level === 1);
+  if (mainH1Idx > 0) heads.unshift(heads.splice(mainH1Idx, 1)[0]);
+  else if (mainH1Idx < 0 && docH1) heads.unshift({ level: 1, text: docH1 });
+  const heroPresent = heads.some((h) => h.level === 1);
 
   return heads.map((h, i) => {
-    const type = classify(h.text, hasH1 && i === 0);
+    const type = classify(h.text, heroPresent && i === 0);
     return {
       id: `sec-${i + 1}-${type}`,
       type,
@@ -87,17 +101,20 @@ function extractSections(main: string): RedesignContentModel["sections"] {
   });
 }
 
-/** Detect CTAs from anchor/button text that reads like a conversion action. */
-function extractCtas(main: string, seen = new Set<string>()): RedesignContentModel["ctas"] {
+/** Detect CTAs from anchor/button text that reads like a conversion action.
+ *  Scans the WHOLE document: the primary CTA often sits in the header/hero above
+ *  <main> (e.g. Basecamp's "Try Basecamp free"). Deduped by text. */
+function extractCtas(html: string, seen = new Set<string>()): RedesignContentModel["ctas"] {
   const ctas: RedesignContentModel["ctas"] = [];
   const re = /<(a|button)\b[^>]*>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   let order = 0;
-  while ((m = re.exec(main))) {
+  while ((m = re.exec(html))) {
     const t = stripTags(m[2]);
     order++;
     if (!t || t.length > 32 || seen.has(t.toLowerCase())) continue;
-    if (!/(free trial|start|sign up|get started|try |demo|register|buy|subscribe|book)/i.test(t))
+    // \bbook\b so "book a demo" matches but "handbook" / "Books we've written" don't.
+    if (!/(free trial|start|sign up|get started|try |demo|register|buy|subscribe|\bbook\b)/i.test(t))
       continue;
     seen.add(t.toLowerCase());
     const intent = /(demo|tour|learn|watch)/i.test(t) ? "explore" : "conversion";
@@ -137,11 +154,11 @@ function extractTrustSignals(html: string): RedesignContentModel["trustSignals"]
 function extractHero(sections: RedesignContentModel["sections"], html: string): RedesignContentModel["hero"] {
   const hero = sections.find((s) => s.type === "hero");
   if (!hero) return undefined;
-  // Subheadline: the first paragraph that FOLLOWS the h1 (the hero's own intro),
-  // not merely the first <p> in <main> — which may belong to an earlier block.
-  const main = mainRegion(html);
-  const h1 = /<h1\b[^>]*>[\s\S]*?<\/h1>/i.exec(main);
-  const region = h1 ? main.slice(h1.index + h1[0].length) : main;
+  // Subheadline: the first paragraph that FOLLOWS the h1 in the WHOLE document —
+  // the hero h1 may live in a header above <main>, so scoping to <main> would grab
+  // an unrelated section's paragraph (or miss it entirely).
+  const h1 = /<h1\b[^>]*>[\s\S]*?<\/h1>/i.exec(html);
+  const region = h1 ? html.slice(h1.index + h1[0].length) : html;
   const pm = /<p\b[^>]*>([\s\S]*?)<\/p>/i.exec(region);
   const sub = pm ? stripTags(pm[1]) : "";
   return { headline: hero.heading, subheadline: sub ? sub.slice(0, 140) : undefined };
@@ -150,12 +167,11 @@ function extractHero(sections: RedesignContentModel["sections"], html: string): 
 /** Parse a page's HTML into the EXISTING content model the redesign reasons over.
  *  Everything returned is literally present in the markup. */
 export function extractContentModel(html: string): RedesignContentModel {
-  const main = mainRegion(html);
-  const sections = extractSections(main);
+  const sections = extractSections(html);
   return {
     sections,
     trustSignals: extractTrustSignals(html),
-    ctas: extractCtas(main),
+    ctas: extractCtas(html),
     hero: extractHero(sections, html),
   };
 }
