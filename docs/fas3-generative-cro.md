@@ -86,9 +86,13 @@ Reproducera:
   monteras klient-sida ger tom modell — den måste först frysas (`freeze.server.ts`)
   och matas hit som post-render-HTML. (hibob/posthog var tomma skal vid hämtning;
   plausible är SSR och funkade rent.)
-- **`set_text`-grinden är strukturell, inte semantisk.** Den verifierar att målet
-  finns, inte att den nya texten saknar NYA påståenden. En semantisk claims-diff
-  (samma betydelse, färre ord — aldrig nya siffror/löften) återstår.
+- ~~**`set_text`-grinden är strukturell, inte semantisk.**~~ **KLART** (`claims.ts`):
+  en deterministisk claims-diff grundar en `set_text`/`condense`-op:s nya copy mot
+  sidans publicerade text och avvisar den om den inför en SIFFRA, SUPERLATIV eller
+  ETT LÖFTE som inte redan finns på sidan. Verifierat på plausible: "19,000 paying
+  customers" (äkta) passerar, "50,000", "#1" och "money-back guarantee" avvisas.
+  Kvar: heuristiken fångar de tre högvärdeskategorierna, inte godtycklig
+  parafras-drift (medvetet — parafrasbedömning är otillförlitlig).
 - **Live-applicering av omordning** är samma nivå-3-risk vi gatade: syskonbyte är
   säkert när sektionerna är rena `<main>`-barn (som plausible); godtyckliga
   container-strukturer behöver mer arbete innan de rör en LIVE sida.

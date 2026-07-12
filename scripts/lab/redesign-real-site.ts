@@ -99,16 +99,26 @@ const designModelReply = async () =>
       why: "instagram·mobile·SE arrives warm but cautious; real peer proof currently sits below features.",
     },
     {
+      // detail IS the literal new copy for condense — a faithful tightening of the
+      // real hero, introducing no number/superlative/promise that isn't on the page.
       op: "condense",
       targetId: "hero",
-      detail: "Tighten the hero to headline + value + trial CTA for the scarce mobile fold.",
+      detail: "Privacy-friendly Google Analytics alternative. No cookies. Made in the EU.",
       why: "390px mobile fold is scarce; get to the privacy value + ask faster.",
+    },
+    {
+      // Structurally valid target + verb, but the copy FABRICATES a stat — the
+      // semantic guard (claims.ts) rejects it: the page says 19,000, not 50,000.
+      op: "set_text",
+      targetId: "hero",
+      detail: "The #1 analytics — trusted by 50,000 companies with a money-back guarantee",
+      why: "(INVENTED claims — a new number, a superlative and a promise; must be rejected.)",
     },
     {
       op: "inject_badge",
       targetId: "sec-award-2026",
       detail: "Add a shiny 'Best Analytics 2026' award badge.",
-      why: "(INVENTED — no such content on the page; must be rejected by the guard.)",
+      why: "(INVENTED op + target — must be rejected by the structural guard.)",
     },
   ]);
 

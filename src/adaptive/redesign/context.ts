@@ -245,8 +245,11 @@ export function renderRedesignPrompt(ctx: RedesignContext): string {
   L.push(
     '## Output\nA JSON array of ops. Each op: { "op": one of ' +
       `${g.ops.join("/")}, "targetId": existing section/element id, "detail": short, ` +
-      '"why": one line tying it to the segment insight }. If the segment is too thin to ' +
-      "justify a change, return an empty array and say why.",
+      '"why": one line tying it to the segment insight }. For set_text and condense, ' +
+      '"detail" is the EXACT replacement copy — same meaning, fewer words, and it must ' +
+      "not introduce any number, superlative, or promise that is not already on the page " +
+      "(new claims are rejected). If the segment is too thin to justify a change, return " +
+      "an empty array and say why.",
   );
 
   return L.join("\n");

@@ -106,6 +106,44 @@ describe("validateOps — the LLM is never trusted", () => {
   });
 });
 
+describe("validateOps — semantic guard on set_text/condense (no new claims)", () => {
+  // The ctx corpus publishes the number "10k" and the CTA "Start now" — nothing else.
+  it("keeps a set_text that only re-tightens grounded copy", () => {
+    const plan = validateOps(
+      [{ op: "set_text", targetId: "sec-hero", detail: "Start now — trusted by 10k", why: "focus" }],
+      ctx,
+    );
+    expect(plan.ops).toHaveLength(1);
+    expect(plan.rejected).toHaveLength(0);
+  });
+
+  it("rejects a set_text that fabricates a NEW number", () => {
+    const plan = validateOps(
+      [{ op: "set_text", targetId: "sec-hero", detail: "Trusted by 50k users", why: "inflate" }],
+      ctx,
+    );
+    expect(plan.ops).toHaveLength(0);
+    expect(plan.rejected[0].reason).toMatch(/introduces claim.*50k.*number/i);
+  });
+
+  it("rejects a condense that fabricates a superlative", () => {
+    const plan = validateOps(
+      [{ op: "condense", targetId: "hero", detail: "The best analytics", why: "hype" }],
+      ctx,
+    );
+    expect(plan.ops).toHaveLength(0);
+    expect(plan.rejected[0].reason).toMatch(/introduces claim.*best.*superlative/i);
+  });
+
+  it("does NOT apply the claims guard to move_up / reveal (they don't rewrite copy)", () => {
+    const plan = validateOps(
+      [{ op: "move_up", targetId: "sec-testi", detail: "put the 999 award section up", why: "x" }],
+      ctx,
+    );
+    expect(plan.ops).toHaveLength(1); // detail text on a move op is not a claim rewrite
+  });
+});
+
 describe("generateRedesign — brief → ops → validated plan", () => {
   it("runs the injected model, parses + validates its output", async () => {
     // Simulated Claude response for the stripe/instagram case.
