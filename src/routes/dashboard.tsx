@@ -1426,7 +1426,7 @@ function VariantsCard({
                       <td className="py-1.5 text-xs text-stone-500">
                         {new Date(v.updatedAt).toLocaleDateString("sv-SE")}
                       </td>
-                      <td className="py-1.5 text-right">
+                      <td className="py-1.5 text-right whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => setOpenId(openId === v.id ? null : v.id)}
@@ -1434,6 +1434,16 @@ function VariantsCard({
                         >
                           {openId === v.id ? "dölj" : "jämför"}
                         </button>
+                        {site === "synthetic-lab" && (
+                          <a
+                            href={`/lab/plausible/?segment=${encodeURIComponent(v.segmentKey)}&state=efter`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-3 font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
+                          >
+                            sandbox ↗
+                          </a>
+                        )}
                       </td>
                     </tr>
                     {openId === v.id && (
