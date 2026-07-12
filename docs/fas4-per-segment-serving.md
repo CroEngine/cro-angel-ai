@@ -92,18 +92,50 @@ genererad (Fas 3 ops)
 5. **En liten ändring i taget:** `MAX_OPS` (5) gäller varianten; vi servererar inte
    en total-omskrivning, bara den verifierade lilla omflyttningen/omtextningen.
 
-## Öppna frågor för ägaren (innan bygge)
+## Beslutat av ägaren (2026-07-12) — reglerna för en försiktig v1
 
-- **Aktivering:** per-segment-knapp i dashboarden, eller DB-only först (som
-  `adaptations_enabled` idag)?
-- **Split:** fast 50/50, eller rampa (10 % → 50 % när tidiga siffror håller)?
-- **Vinstkriterium:** vilken lift-tröskel + power innan `winner`/baseline-byte?
-- **Baseline-byte:** ska en vinnare AUTOMATISKT bli ny baseline, eller kräva ett
-  ägar-OK (given att baseline-byte förändrar vad alla ser)?
+Standardläge för allt nedan: **helt av**. Inget rör riktig trafik förrän en
+människa aktivt slår på det per segment/experiment.
 
-## Varför detta inte byggs nu
+1. **Aktivering: manuell dashboard-toggle.** Varje kund/experiment måste slås på
+   manuellt i dashboarden (inte DB-only — svårare att förstå operativt).
+2. **Trafikfördelning: ramp.** Börja inte på 50/50. Konfigurerbar ramp, start på
+   **5 %** → 10 % → 25 % → 50 %, så skadan begränsas om en variant är tekniskt OK
+   men dålig för konvertering/UX.
+3. **Vinstkriterium: rekommendation först efter data- OCH konfidensgrindar** — en
+   variant blir aldrig vinnare på ett par besök:
+   - minst **1 000** kvalificerade besök per arm,
+   - minst **50** konverteringar per arm,
+   - minst **95 %** konfidens (frekventist) eller motsvarande Bayesiansk säkerhet,
+   - minst **~5 %** praktiskt relevant relativ förbättring (MDE),
+   - **ingen** tydlig försämring av sekundära skyddsmått.
+   Exakta gränser får variera per kunds trafik/konverteringsnivå. Systemet
+   **rekommenderar** bara — det byter inget självt.
+4. **Baseline-byte: manuellt godkännande.** Systemet får rekommendera en vinnare
+   automatiskt, men ersätter inte baseline utan mänskligt OK (v1).
 
-Att servera = att förändra vad riktiga besökare ser. Alla grindar finns, men
-på-slagningen och vinstkriterierna är affärsbeslut (ägaren). Fas 3-kedjan (generera
-→ verifiera) producerar redan trygga varianter; steg 4 väntar bara på ägarens
-"kör skarpt"-beslut per segment.
+### Implementations-not
+- Grind 3 ska **återanvända** den befintliga signifikans/lift-verdikten i
+  `performance.server.ts` (`MIN_ARM_EXPOSURES`/`MIN_ARM_OUTCOMES` + significant/lift,
+  D4) och lägga ägarens extra trösklar ovanpå — inte uppfinna en ny statistik.
+- Config-fält (default av): `serving_enabled` (per site, som `adaptations_enabled`),
+  `ramp_pct` (start 5), plus variant-`status`. `holdoutPct` styr redan A/B-splitten.
+
+## Vad som byggts hittills (gated off)
+- **Matchningskärnan** (`serve.ts`, PR #96): `visitorSegmentKey` + `matchVariant`
+  (finaste prefix vinner, låna styrka, bara `serving`/`winner`). Ren + testad, INTE
+  inkopplad i den levande `decide`-vägen.
+
+## Nästa steg (väntar på "kör"), i säker ordning
+1. **Vinnar-utvärderaren** (ren, gated off): en funktion som tar variant-armens +
+   kontrollens stats och returnerar `insufficient_data | no_winner |
+   recommend_winner | recommend_stop` enligt grind 3. Rekommendation only.
+2. **Variant-lagret** (`angel_variants`, default av) + dashboard-toggle.
+3. **`decide.ts`-inkoppling** bakom `serving_enabled` + ramp — det första steget
+   som faktiskt rör riktig trafik, byggs sist och bakom toggeln.
+
+## Varför resten inte byggs förrän "kör"
+
+Att servera = att förändra vad riktiga besökare ser. Reglerna finns nu (ovan), men
+steg 3 rör riktig trafik — det byggs bakom toggeln (default av) och först när
+ägaren säger "kör skarpt" per segment.
