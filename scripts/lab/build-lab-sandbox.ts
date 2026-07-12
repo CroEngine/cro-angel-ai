@@ -24,7 +24,7 @@ const OUT_DIR = join(REPO, "public/lab/plausible");
 // som passerat claims-grinden (inga nya siffror/superlativ/löften).
 const VARIANTS = [
   {
-    key: "instagram·mobile·se",
+    key: "instagram·mobile·SE",
     label: "Instagram · mobil · SE",
     headline: "Varm men försiktig — socialt bevis direkt under hjältens CTA.",
     gates: "krock +0px · overflow +0px · hjälten först · reversibel",
@@ -33,7 +33,7 @@ const VARIANTS = [
     viewport: "mobil",
   },
   {
-    key: "google·desktop·us",
+    key: "google·desktop·US",
     label: "Google · desktop · US",
     headline: "Jämför aktivt — 'ditch Google Analytics' direkt under hjälten.",
     gates: "krock +48px (ok) · overflow +0px · hjälten först · reversibel",
@@ -42,7 +42,7 @@ const VARIANTS = [
     viewport: "desktop",
   },
   {
-    key: "okänd·desktop·se·återkommande",
+    key: "direct·desktop·SE·återkommande",
     label: "Återkommande · desktop · SE",
     headline: "Kom tillbaka för priset — pris direkt under hjälten, stramare rubrik.",
     gates: "krock +48px (ok) · overflow +0px · hjälten först · reversibel",
@@ -53,7 +53,7 @@ const VARIANTS = [
     viewport: "desktop",
   },
   {
-    key: "facebook·mobile·us",
+    key: "facebook·mobile·US",
     label: "Facebook · mobil · US",
     headline: "Kall trafik — förtroende i hjälten, bevis ovanför folden, kortare feature-text.",
     gates: "krock +0px (försök 1: +320px stoppad) · overflow +0px · reversibel",
