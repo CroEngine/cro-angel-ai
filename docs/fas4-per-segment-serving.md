@@ -125,11 +125,16 @@ människa aktivt slår på det per segment/experiment.
 - **Matchningskärnan** (`serve.ts`, PR #96): `visitorSegmentKey` + `matchVariant`
   (finaste prefix vinner, låna styrka, bara `serving`/`winner`). Ren + testad, INTE
   inkopplad i den levande `decide`-vägen.
+- **Vinnar-utvärderaren** (`winner.ts`, PR #96): `evaluateWinner(variant, control,
+  sekundärmått)` → `insufficient_data | no_winner | recommend_winner |
+  recommend_stop` enligt grind 3, ovanpå SAMMA signifikansmatematik som
+  mönster-attributionen (`twoProportionZ`, |z| ≥ 1.96, success–failure-regeln — en
+  definition, ingen drift). `recommend_stop` nås medvetet UNDER vinnarvolymen:
+  en variant som är signifikant sämre ska dras tidigt, inte bränna trafik till
+  1000 besök. Rekommendation only — baseline-byte kräver alltid manuellt OK.
 
 ## Nästa steg (väntar på "kör"), i säker ordning
-1. **Vinnar-utvärderaren** (ren, gated off): en funktion som tar variant-armens +
-   kontrollens stats och returnerar `insufficient_data | no_winner |
-   recommend_winner | recommend_stop` enligt grind 3. Rekommendation only.
+1. ~~Vinnar-utvärderaren~~ **KLAR** (ovan).
 2. **Variant-lagret** (`angel_variants`, default av) + dashboard-toggle.
 3. **`decide.ts`-inkoppling** bakom `serving_enabled` + ramp — det första steget
    som faktiskt rör riktig trafik, byggs sist och bakom toggeln.
