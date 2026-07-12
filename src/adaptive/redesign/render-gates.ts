@@ -24,6 +24,13 @@ export interface RenderMeasurements {
   hOverflowBeforePx: number;
   /** …AFTER apply. */
   hOverflowAfterPx: number;
+  /** Vertical overlap (px) the reorder INTRODUCED between adjacent sections —
+   *  the biggest new amount by which one section's box now sits over its
+   *  neighbour's. Sections legitimately overlap by design (rounded cards, negative
+   *  margins), so only the INTRODUCED delta counts. Catches the collision class the
+   *  horizontal-overflow gate is blind to (a floating hero CTA landing on top of a
+   *  block that was moved up under it). Optional: older observations omit it. */
+  verticalOverlapIntroducedPx?: number;
   /** Sections that were actually moved (tagged data-angel-moved). */
   movedCount: number;
   /** Moved sections whose top landed ABOVE the page's main anchor (h1/main) —
@@ -51,12 +58,21 @@ export interface RenderGateResult {
   reasons: string[];
   /** Horizontal overflow (px) apply INTRODUCED (0 when the page already had it). */
   hOverflowIntroducedPx: number;
+  /** Vertical section overlap (px) apply INTRODUCED (0 when unmeasured/none). */
+  verticalOverlapIntroducedPx: number;
   /** Did the applied order differ from before (i.e. a real reorder happened)? */
   reordered: boolean;
 }
 
 /** Same trigger analyze.ts uses: >8px of NEWLY introduced horizontal scroll fails. */
 export const H_OVERFLOW_FAIL_PX = 8;
+
+/** Introduced vertical overlap beyond this is a collision, not a nudge. Heuristic:
+ *  a clean reorder shifts adjacent-section overlap by tens of px (rounded cards
+ *  legitimately tuck); a section landing under a floating hero CTA introduces
+ *  hundreds. Calibrated on plausible.io (clean reorder +48px passes; the collision
+ *  case +320px fails). */
+export const V_OVERLAP_FAIL_PX = 100;
 
 /** Evaluate the beauty gates over one apply's measurements. Pure. */
 export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
@@ -83,6 +99,12 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
   if (hOverflowIntroducedPx > H_OVERFLOW_FAIL_PX) {
     fail(`apply introduced ${hOverflowIntroducedPx}px of horizontal overflow`);
   }
+  const vOverlap = m.verticalOverlapIntroducedPx ?? 0;
+  if (vOverlap > V_OVERLAP_FAIL_PX) {
+    fail(
+      `apply introduced ${vOverlap}px of vertical overlap between sections (a moved block collides with its neighbour)`,
+    );
+  }
   if (m.ctaBroken > 0) {
     fail(
       `${m.ctaBroken} conversion CTA(s) became unclickable after apply (covered / hidden / detached)`,
@@ -108,7 +130,7 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
     warn("apply reported moves but the section order is unchanged");
   }
 
-  return { verdict, reasons, hOverflowIntroducedPx, reordered };
+  return { verdict, reasons, hOverflowIntroducedPx, verticalOverlapIntroducedPx: vOverlap, reordered };
 }
 
 function sameOrder(a: string[], b: string[]): boolean {

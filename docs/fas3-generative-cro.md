@@ -53,7 +53,17 @@ faktiska sektionsblocken via säkert syskonbyte), och mäter det bara en webblä
 ser: introducerade `render-gates.ts` återanvänder EXAKT `analyze.ts`-trösklarna —
 ett flyttat block får inte hamna ovanför sidans huvudinnehåll, apply får inte
 introducera >8px horisontell scroll, ingen konverterings-CTA får bli o-klickbar,
-och allt måste gå att reversera. FÖRE/EFTER-skärmdumpar + verdikt.
+apply får inte introducera >100px **vertikal krock** mellan sektioner (ett upplyft
+block som hamnar under hjältens flytande CTA-kort — upptäckt när kedjan kördes
+visuellt), och allt måste gå att reversera. FÖRE/EFTER-skärmdumpar + verdikt.
+
+**Retry-loopen (generera → verifiera → försök igen):** när krock-grinden fäller en
+flytt provar harnesset EN gång till med målet lyft ett steg längre — samma logiska
+sektionsordning, annan fysisk placering (ovanför blocket vars överhäng orsakade
+krocken). Verifierat på plausible mobil: försök 1 (+320px) FAIL → försök 2 (+0px)
+PASS, och försök 2 uppfyller segmentintentionen bättre (beviset direkt under
+hjältens CTA). I prod är retryn modelldriven — grindens skäl matas tillbaka till
+designmodellen som revisionsprompt; lab-heuristiken är den deterministiska stand-in:en.
 
 ## Bevisat på en riktig sida (plausible.io, segment `instagram·mobile·SE`)
 

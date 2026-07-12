@@ -799,7 +799,9 @@ export function segmentSummaries(
   );
 }
 
-function twoProportionZ(c1: number, n1: number, c2: number, n2: number): number | null {
+/** Exported so the variant winner-evaluator (adaptive/redesign/winner.ts) reuses
+ *  the SAME significance math as pattern attribution — one definition, no drift. */
+export function twoProportionZ(c1: number, n1: number, c2: number, n2: number): number | null {
   if (n1 <= 0 || n2 <= 0) return null;
   const p1 = c1 / n1;
   const p2 = c2 / n2;

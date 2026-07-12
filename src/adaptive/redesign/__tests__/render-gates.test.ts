@@ -48,6 +48,29 @@ describe("evaluateRenderGates — pixel-half beauty gates", () => {
     expect(r.verdict).toBe("pass");
   });
 
+  it("FAILS when the reorder introduces a vertical collision beyond the threshold", () => {
+    // The plausible.io mobile case: a section moved under the hero collides with
+    // the floating CTA card (+320px) — passes every other gate but this one.
+    const r = evaluateRenderGates(clean({ verticalOverlapIntroducedPx: 320 }));
+    expect(r.verdict).toBe("fail");
+    expect(r.verticalOverlapIntroducedPx).toBe(320);
+    expect(r.reasons.some((x) => /vertical overlap|collides/i.test(x))).toBe(true);
+  });
+
+  it("does NOT fail on a small introduced overlap (sections legitimately tuck)", () => {
+    const r = evaluateRenderGates(clean({ verticalOverlapIntroducedPx: 48 }));
+    expect(r.verdict).toBe("pass");
+    expect(r.verticalOverlapIntroducedPx).toBe(48);
+  });
+
+  it("treats a missing vertical-overlap measurement as 0 (older observations)", () => {
+    const m = clean();
+    delete (m as { verticalOverlapIntroducedPx?: number }).verticalOverlapIntroducedPx;
+    const r = evaluateRenderGates(m);
+    expect(r.verdict).toBe("pass");
+    expect(r.verticalOverlapIntroducedPx).toBe(0);
+  });
+
   it("FAILS when a conversion CTA becomes unclickable", () => {
     const r = evaluateRenderGates(clean({ ctaChecked: 2, ctaBroken: 1 }));
     expect(r.verdict).toBe("fail");
