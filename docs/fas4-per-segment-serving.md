@@ -171,7 +171,38 @@ människa aktivt slår på det per segment/experiment.
      bara när serveringen är på. Servering kräver BÅDE `adaptations_enabled`
      och `serving_enabled` (grind 1).
 
-Kvar tills vidare (medvetet): variant-status styrs manuellt (verified → serving
-via ägaren), baseline-byte är alltid manuellt (grind 4), och verifieringskedjan
-ska börja skriva `serve_ops` själv när nästa variant genereras (idag backfyllda
-för labbets fyra).
+## Auto-genereringsloopen (ägarens "kör, och noggrant" 2026-07-13)
+
+Skalningsvägen mot "100 designs" — en design per segment, framvuxen i takt med
+att data bär den, aldrig allt på en gång:
+
+- **Detektorn** (`redesign/earned.ts`, ren + testad): vilka segmentnycklar har
+  FÖRTJÄNAT en egen design? Kandidat = varje grov→fin-prefix av rollup-löven
+  (aldrig genom 'okänd'); nyckeln får inte ha en egen icke-pensionerad variant;
+  TOTALEN under nyckeln måste bära analysen (volymgrinden 1000/100); och det
+  INKREMENTELLA måste vara > 0 — löv som idag inte täcks av någon variant alls.
+  Loopen TÄCKER otäckta besökare; den förfinar inte redan serverade segment
+  (·ny-splittar av befintliga varianter är vinnar-iterationens jobb, annars blir
+  100 förslag utan 100 insikter). Girigt urval med omräkning: en täckning, ett
+  förslag — finaste adekvata nyckeln vinner, så variantens serveringsomfång
+  ligger tätt mot datan som rättfärdigade den. "Låna styrka"-stegen uppstår av
+  sig själv: tunna google·mobile·SE (900 besök) täcks av grova `google`.
+- **Pipelinen** (`scripts/redesign/auto-generate.ts`): `detect` bygger den
+  riktiga designbriefen per förtjänt segment (buildRedesignContext, med ärliga
+  räknade observationer — inkrementets löv, konvertering mot sajtsnitt);
+  `verify` kör designerns plan genom HELA kedjan: validateOps (vokabulär +
+  mål-finns + claims-vakt) → pixelgrindarna i riktig Chromium (overflow,
+  kollision, hjälten först, CTA-hit-test, reversibilitet — nu även med
+  set_text applicerad före mätningen, så text som ändrar layouten syns) med
+  kollisions-retryn → serve_ops-upplösning → FÖRE/EFTER-bevis → `verified`.
+- **Ägarens knappar** (dashboarden): `aktivera A/B` (verified → serving),
+  `gör till vinnare` (bara när utvärderaren rekommenderar det), `stoppa`
+  (serving/winner → retired; kontrollen återtar 100 % direkt). Olagliga
+  övergångar avvisas server-side; det partiella unika indexet gör
+  dubbel-aktivering till ett städat fel. Loopen skriver som mest `verified` —
+  ingenting serveras utan knappen.
+
+Kvar tills vidare (medvetet): baseline-byte är alltid manuellt (grind 4);
+förfining av redan täckta segment (t.ex. splitta ett serverat segment på
+ny/återkommande) väntar på vinnar-iterationen; riktiga kundsidor kopplas in i
+pipelinen via freeze-steget (samma kedja, annan HTML-källa).

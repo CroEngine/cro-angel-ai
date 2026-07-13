@@ -73,6 +73,32 @@ const VARIANTS = [
     ],
     viewport: "mobil",
   },
+  // ── auto-genererade (loopens första två — status verified, väntar på ägaren) ──
+  {
+    key: "google",
+    label: "Google · täckning (mobil SE m.fl.)",
+    headline:
+      "Auto-genererad täcknings-variant: mobila Google-sökare möter 'ditch GA'-caset ett svep under en stramare hjälte.",
+    gates: "krock +0px (försök 1: +320px stoppad av grinden) · overflow +0px · hjälten först · reversibel",
+    moves: [
+      "It's time to ditch Google Analytics",
+      "It's time to ditch Google Analytics",
+      "It's time to ditch Google Analytics",
+      "It's time to ditch Google Analytics",
+    ],
+    texts: [{ find: "h1", set: "Easy, privacy-friendly Google Analytics alternative" }],
+    viewport: "mobil",
+  },
+  {
+    key: "direct·desktop·SE",
+    label: "Direkt · desktop · SE (nya besökare)",
+    headline:
+      "Auto-genererad täcknings-variant: nya varumärkesmedvetna direkt-besökare får VAD → VARFÖR — priset ligger kvar sist.",
+    gates: "krock +0px · overflow +0px · hjälten först · reversibel",
+    moves: ["It's time to ditch Google Analytics"],
+    texts: [],
+    viewport: "desktop",
+  },
 ];
 
 // ── inlinea sidan ─────────────────────────────────────────────────────────────
