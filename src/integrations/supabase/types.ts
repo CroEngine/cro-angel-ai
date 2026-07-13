@@ -31,6 +31,7 @@ export type Database = {
           layout_patterns_enabled: boolean
           adaptations_enabled: boolean
           serving_enabled: boolean
+          ramp_pct: number
           goal_candidates: Json | null
           created_at: string
         }
@@ -50,6 +51,7 @@ export type Database = {
           layout_patterns_enabled?: boolean
           adaptations_enabled?: boolean
           serving_enabled?: boolean
+          ramp_pct?: number
           goal_candidates?: Json | null
           created_at?: string
         }
@@ -69,6 +71,7 @@ export type Database = {
           layout_patterns_enabled?: boolean
           adaptations_enabled?: boolean
           serving_enabled?: boolean
+          ramp_pct?: number
           goal_candidates?: Json | null
           created_at?: string
         }
@@ -82,6 +85,7 @@ export type Database = {
           segment_key: string
           status: string
           ops: Json
+          serve_ops: Json
           evidence: Json
           created_at: string
           updated_at: string
@@ -93,6 +97,7 @@ export type Database = {
           segment_key: string
           status?: string
           ops?: Json
+          serve_ops?: Json
           evidence?: Json
           created_at?: string
           updated_at?: string
@@ -104,6 +109,7 @@ export type Database = {
           segment_key?: string
           status?: string
           ops?: Json
+          serve_ops?: Json
           evidence?: Json
           created_at?: string
           updated_at?: string
@@ -217,6 +223,14 @@ export type Database = {
           form_starts: number
           form_abandons: number
           rage_sessions: number
+        }[]
+      }
+      angel_variant_arms: {
+        Args: { p_site: string; p_variant: string }
+        Returns: {
+          arm: string
+          visits: number
+          conversions: number
         }[]
       }
     }

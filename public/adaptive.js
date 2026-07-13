@@ -986,10 +986,111 @@
     },
   };
 
+  // ---- Fas 4: variant-applicering -------------------------------------------
+  // En serverad variant är en KORT lista verifierade ops med rubrik-lokatorer.
+  // Semantiken SPEGLAR render-harnesset som pixelgranskade planen: move_up
+  // lyfter sektionen ETT steg per op (aldrig "till toppen" som mönster-move_up),
+  // set_text byter rubrikens text mot det exakta verifierade värdet. Allt eller
+  // inget: om någon op inte kan appliceras troget (lokator hittas inte, LCP-
+  // vakten säger nej, sektionen är redan överst) rullas ALLT tillbaka och
+  // besökaren ser baslinjen — en halvt applicerad design är ingen verifierad
+  // design. Exponeringen är redan loggad server-side (intent-to-treat).
+  function applyVariant(v) {
+    if (!v || !v.ops || !v.ops.length) return false;
+    // Hydrerings-omkörning: syns variant-residue redan är designen på plats —
+    // en andra applicering skulle dubbel-lyfta sektionen.
+    try {
+      if (document.querySelector("[data-angel-moved],[data-angel-retext]")) return true;
+    } catch (e) {}
+    var mainEl = document.querySelector("main") || document.body;
+    function findByLocator(loc) {
+      if (!loc || !loc.text) return null;
+      var needle = String(loc.text).replace(/\s+/g, " ").trim().slice(0, 24).toLowerCase();
+      if (!needle) return null;
+      var els = document.querySelectorAll(loc.tag || "h1,h2,h3");
+      for (var i = 0; i < els.length; i++) {
+        var t = (els[i].textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        if (t.indexOf(needle) >= 0) return els[i];
+      }
+      return null;
+    }
+    // Sektionscontainern = närmaste förfader som är direkt barn av main/body —
+    // samma väg som harnesset gick när planen verifierades.
+    function sectionOf(el) {
+      var n = el;
+      while (n.parentElement && n.parentElement !== mainEl && n.parentElement !== document.body) {
+        n = n.parentElement;
+      }
+      return n;
+    }
+    var undos = [];
+    var ok = true;
+    for (var i = 0; i < v.ops.length && ok; i++) {
+      var op = v.ops[i];
+      var el = findByLocator(op.locator);
+      if (!el || isNoTouch(el)) { ok = false; break; }
+      if (op.op === "move_up") {
+        var sec = sectionOf(el);
+        var prev = sec.previousElementSibling;
+        // CWV-vakten gäller varianter också: flytta aldrig LCP-elementet.
+        if (touchesLcp(sec) || !prev || prev.parentElement !== sec.parentElement) { ok = false; break; }
+        var next = sec.nextSibling;
+        sec.parentElement.insertBefore(sec, prev);
+        sec.setAttribute("data-angel-moved", "");
+        undos.push(
+          (function (s, n) {
+            return function () {
+              s.removeAttribute("data-angel-moved");
+              s.parentElement.insertBefore(s, n);
+            };
+          })(sec, next),
+        );
+        touchedEls.push({ el: sec, pattern: "variant" });
+      } else if (op.op === "set_text") {
+        if (!op.value || touchesLcp(el)) { ok = false; break; }
+        // Ångra via innerHTML, inte textContent: en rubrik kan bära egen markup
+        // (spans/radbrytningar) som textContent-skrivningen ersätter — reset
+        // måste ge tillbaka sidan BYTE-exakt, inte bara samma text.
+        var prevHtml = el.innerHTML;
+        if ((el.textContent || "").trim() !== String(op.value).trim()) el.textContent = op.value;
+        // Markören håller skörde-spärren + hydrerings-kollen seende (samma
+        // skäl som data-angel-moved): variant-text får ALDRIG skördas som
+        // sidans egen baslinje — det vore feedback-loopen igen.
+        el.setAttribute("data-angel-retext", "");
+        undos.push(
+          (function (e, h) {
+            return function () {
+              e.removeAttribute("data-angel-retext");
+              e.innerHTML = h;
+            };
+          })(el, prevHtml),
+        );
+        touchedEls.push({ el: el, pattern: "variant" });
+      } else {
+        ok = false; // okänt verb — fail closed
+      }
+    }
+    if (!ok) {
+      for (var u = undos.length - 1; u >= 0; u--) {
+        try { undos[u](); } catch (e) {}
+      }
+      return false;
+    }
+    for (var r = 0; r < undos.length; r++) record(undos[r]);
+    return true;
+  }
+
   function apply(decision) {
     ensureStyles();
     touchedEls = [];
     var applied = [];
+    if (decision.variant) {
+      try {
+        if (applyVariant(decision.variant)) applied.push("variant:" + decision.variant.id);
+      } catch (e) {
+        /* variant must never break the host page */
+      }
+    }
     (decision.adaptations || []).forEach(function (a) {
       var op = OPS[a.op];
       if (!op) return;
@@ -1117,7 +1218,7 @@
       residue: function () {
         try {
           return document.querySelectorAll(
-            ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected]",
+            ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext]",
           ).length;
         } catch (e) {
           return -1;
@@ -1577,7 +1678,7 @@
           var checkSurvival = function () {
             try {
               var residue = document.querySelectorAll(
-                ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved]",
+                ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext]",
               ).length;
               if (residue === 0 && reapplies < 2) {
                 reapplies++;
@@ -1753,7 +1854,7 @@
       // Angel-spår i DOM:en betyder adapterad sida oavsett hur vi kom hit.
       if (
         document.querySelector(
-          ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved]",
+          ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext]",
         )
       )
         return;

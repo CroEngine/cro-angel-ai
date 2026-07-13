@@ -143,14 +143,35 @@ människa aktivt slår på det per segment/experiment.
   varianten (instagram·mobile·se försök 2, verified, med grind-bevis i evidence)
   ligger i lagret för synthetic-lab.
 
-## Nästa steg (väntar på "kör"), i säker ordning
+## Nästa steg, i säker ordning
 1. ~~Vinnar-utvärderaren~~ **KLAR** (ovan).
 2. ~~Variant-lagret + dashboard-toggle~~ **KLAR** (ovan).
-3. **`decide.ts`-inkoppling** bakom `serving_enabled` + ramp — det första steget
-   som faktiskt rör riktig trafik, byggs sist och bakom toggeln.
+3. ~~**`decide.ts`-inkoppling** bakom `serving_enabled` + ramp~~ **KLAR**
+   (ägarens "kör" 2026-07-13). Hela armvalet är en ren, testad funktion
+   (`serveDecision` i `serve.ts`): master-switch av → null; ingen visitorHash →
+   null (ingen stabil arm = ingen mätbarhet); finaste matchande serving/winner-
+   variant; variant utan giltiga `serve_ops` → null (fail closed); deterministisk
+   ramp-bucket (FNV över besökare·variant, saltad så den är dekorrelerad från
+   mät-holdouten). Variant-armen får variantens ops, kontrollarmen ser sidan
+   SOM DEN ÄR; båda loggas med `variant:<id>` i patterns
+   (adaptation_shown/withheld) så `angel_variant_arms`-RPC:n kan räkna armarna
+   och `evaluateWinner` ge rekommendationen i dashboarden.
+   - **`serve_ops`**: planens ops (sektions-id + prosa) är inte applicerbara i
+     en webbläsare; vid verifieringen löses de till DOM-lokatorer
+     (rubriktext + tagg) + exakta textvärden och sparas i
+     `angel_variants.serve_ops`. En variant utan giltiga serve_ops kan aldrig
+     serveras.
+   - **Snippetens variant-applikator** speglar render-harnessets semantik
+     (ett stegs lyft per move_up — INTE mönster-move_upens "till toppen"),
+     allt-eller-inget (halvt applicerad design rullas tillbaka helt),
+     reversibel byte-exakt (innerHTML-ångra för retexter), idempotent vid
+     hydrerings-omkörning, CWV-vakterna (LCP/no-touch) gäller.
+     Chromium-verifierad: full applicering + exakt reset + allt-eller-inget.
+   - **Ramp-kontroll i dashboarden**: 5/10/25/50 % (`setServingRamp`), synlig
+     bara när serveringen är på. Servering kräver BÅDE `adaptations_enabled`
+     och `serving_enabled` (grind 1).
 
-## Varför resten inte byggs förrän "kör"
-
-Att servera = att förändra vad riktiga besökare ser. Reglerna finns nu (ovan), men
-steg 3 rör riktig trafik — det byggs bakom toggeln (default av) och först när
-ägaren säger "kör skarpt" per segment.
+Kvar tills vidare (medvetet): variant-status styrs manuellt (verified → serving
+via ägaren), baseline-byte är alltid manuellt (grind 4), och verifieringskedjan
+ska börja skriva `serve_ops` själv när nästa variant genereras (idag backfyllda
+för labbets fyra).

@@ -53,6 +53,7 @@ import {
   rotateIngestKey,
   setConsentMode,
   setServingEnabled,
+  setServingRamp,
   type ConsentMode,
   type DashboardResponse,
   type SiteConfigView,
@@ -355,6 +356,7 @@ function Dashboard() {
             <VariantsCard
               site={d.site}
               servingOn={d.siteConfig.servingEnabled}
+              rampPct={d.siteConfig.rampPct}
               variants={d.variants ?? []}
             />
 
@@ -1285,19 +1287,51 @@ function VariantComparisonPanel({ v }: { v: VariantView }) {
   );
 }
 
+/** Vinnar-utvärderarens rekommendation, som ägar-läsbar rad. */
+const AB_OUTCOME_STYLE: Record<string, { label: string; cls: string }> = {
+  recommend_winner: { label: "REKOMMENDERAR: gör till vinnare", cls: "bg-emerald-50 text-emerald-700" },
+  recommend_stop: { label: "REKOMMENDERAR: stoppa varianten", cls: "bg-red-50 text-red-700" },
+  no_winner: { label: "ingen vinnare ännu", cls: "bg-stone-100 text-stone-500" },
+  insufficient_data: { label: "för lite data ännu", cls: "bg-stone-100 text-stone-500" },
+};
+
+function VariantAbLine({ ab }: { ab: NonNullable<VariantView["abTest"]> }) {
+  const pct = (r: number) => `${(r * 100).toFixed(1).replace(".", ",")} %`;
+  const o = AB_OUTCOME_STYLE[ab.outcome] ?? AB_OUTCOME_STYLE.insufficient_data;
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-stone-500">
+      <span className="font-mono">
+        A/B: variant {pct(ab.stats.variantRate)} ({ab.variant.conversions}/{ab.variant.visits}) ·
+        kontroll {pct(ab.stats.controlRate)} ({ab.control.conversions}/{ab.control.visits})
+        {ab.stats.relativeLift !== null &&
+          ` · lyft ${ab.stats.relativeLift >= 0 ? "+" : ""}${(ab.stats.relativeLift * 100).toFixed(1).replace(".", ",")} %`}
+      </span>
+      <span className={`rounded px-1.5 py-0.5 text-[10px] ${o.cls}`} title={ab.reasons.join(" · ")}>
+        {o.label}
+      </span>
+    </div>
+  );
+}
+
 function VariantsCard({
   site,
   servingOn,
+  rampPct,
   variants,
 }: {
   site: string;
   servingOn: boolean;
+  rampPct: number;
   variants: VariantView[];
 }) {
   const queryClient = useQueryClient();
   const [openId, setOpenId] = useState<string | null>(null);
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => setServingEnabled({ data: { site, enabled } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
+  });
+  const ramp = useMutation({
+    mutationFn: (pct: 5 | 10 | 25 | 50) => setServingRamp({ data: { site, rampPct: pct } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
   });
 
@@ -1311,6 +1345,26 @@ function VariantsCard({
           >
             servering {servingOn ? "PÅ" : "AV"}
           </span>
+          {servingOn && (
+            <span className="flex items-center gap-1 text-[10px] font-normal text-stone-500">
+              ramp
+              {([5, 10, 25, 50] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  disabled={ramp.isPending}
+                  onClick={() => ramp.mutate(p)}
+                  className={`rounded px-1 py-0.5 font-mono ${
+                    rampPct === p
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "text-stone-400 hover:text-stone-600"
+                  }`}
+                >
+                  {p}%
+                </button>
+              ))}
+            </span>
+          )}
           <button
             type="button"
             disabled={toggle.isPending}
@@ -1346,7 +1400,10 @@ function VariantsCard({
                 {variants.map((v) => (
                   <Fragment key={v.id}>
                     <tr className="border-t border-stone-100">
-                      <td className="py-1.5 font-mono text-[11px] text-stone-600">{v.segmentKey}</td>
+                      <td className="py-1.5 font-mono text-[11px] text-stone-600">
+                        {v.segmentKey}
+                        {v.abTest && <VariantAbLine ab={v.abTest} />}
+                      </td>
                       <td className="py-1.5 font-mono text-[11px] text-stone-500">{v.path}</td>
                       <td className="py-1.5">
                         <span className={`rounded px-1.5 py-0.5 text-[10px] ${VARIANT_STATUS_STYLE[v.status] ?? "bg-stone-100 text-stone-500"}`}>
@@ -1392,9 +1449,9 @@ function VariantsCard({
         )}
         <p className="mt-2 text-xs text-stone-400">
           Livscykel: candidate → verified (alla grindar gröna) → serving (A/B mot kontroll,
-          ramp från 5 %) → winner / retired. Servering är AV som standard och styr inget
-          live förrän inkopplingen är byggd — vinnare rekommenderas bara, baseline byts
-          aldrig utan manuellt godkännande.
+          ramp från 5 %) → winner / retired. Servering är AV som standard — vinnare
+          rekommenderas bara (≥1000 besök + ≥50 konverteringar per arm, ≥95 % konfidens,
+          ≥5 % lyft), baseline byts aldrig utan manuellt godkännande.
         </p>
         {toggle.isError && (
           <span className="font-mono text-[11px] tracking-wider text-amber-600">

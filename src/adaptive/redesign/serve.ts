@@ -33,6 +33,21 @@ export interface VisitorSegment {
   isReturning: boolean;
 }
 
+/** One machine-servable op, resolved at VERIFICATION time. The plan ops
+ *  (RedesignOp) carry section ids + prose — meaningless in a visitor's browser.
+ *  A serve op instead carries a DOM locator (the section's heading text, the
+ *  most drift-tolerant handle a frozen page offers) and the literal new text.
+ *  The apply semantics MIRROR the render harness that verified the plan:
+ *  move_up = lift the located section ONE step earlier (per op — two ops, two
+ *  steps), never "to the top". */
+export interface ServeOp {
+  op: "move_up" | "set_text";
+  locator: { tag?: string; text: string };
+  /** set_text only: the exact verified replacement text. */
+  value?: string;
+  why?: string;
+}
+
 /** A verified redesign variant, keyed to a segment PREFIX. Its ops are the same
  *  reversible vocabulary the snippet already applies. */
 export interface ServableVariant {
@@ -43,6 +58,8 @@ export interface ServableVariant {
   segmentKey: string;
   status: VariantStatus;
   ops: RedesignOp[];
+  /** Browser-applicable ops (see ServeOp). Empty/invalid ⇒ never served. */
+  serveOps?: ServeOp[];
 }
 
 // Same tokenization as aggregate.ts's segToken + returning token, so keys match.
@@ -92,4 +109,65 @@ export function matchVariant(
     return depth !== 0 ? depth : a.id.localeCompare(b.id);
   });
   return servable[0];
+}
+
+// ---- steg 3: ramp + arm-val (pure) -----------------------------------------
+
+/** A serve op the browser can actually perform. Fail closed: anything else
+ *  (unknown verb, missing locator/value) disqualifies the WHOLE variant. */
+function serveOpValid(o: ServeOp): boolean {
+  const text = o?.locator?.text;
+  if (typeof text !== "string" || !text.trim()) return false;
+  if (o.op === "move_up") return true;
+  if (o.op === "set_text") return typeof o.value === "string" && o.value.trim().length > 0;
+  return false;
+}
+
+/** Deterministic 0..99 bucket for the RAMP split — FNV-1a over
+ *  visitorHash·variantId. Salting with the variant id decorrelates this from
+ *  the measurement-holdout bucket (plain visitorHash): a visitor who is
+ *  "always control" there must not be "always control" here too. */
+export function rampBucket(visitorHash: string, variantId: string): number {
+  const s = `${visitorHash}·${variantId}`;
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0) % 100;
+}
+
+export interface ServeVerdict {
+  variant: ServableVariant;
+  /** "variant" ⇒ the visitor gets the ops; "control" ⇒ page as-is, exposure
+   *  logged as withheld so the arms stay comparable. */
+  arm: "variant" | "control";
+}
+
+/**
+ * The whole per-visitor serving decision, pure (owner rules 2026-07-12):
+ *  - master switch off ⇒ null (nothing is even considered),
+ *  - no visitorHash ⇒ null — without a stable id there is no deterministic arm
+ *    and no conversion join, so serving would be unmeasurable noise,
+ *  - no matching variant, or a match whose serveOps are missing/invalid ⇒ null
+ *    (fail closed — a variant the browser can't faithfully apply never serves),
+ *  - otherwise: rampPct % of visitors (deterministic per visitor+variant) get
+ *    the variant, the rest are the control arm. Ramp starts at 5 and is raised
+ *    manually (5 → 10 → 25 → 50) — never 50/50 from day one.
+ */
+export function serveDecision(
+  cfg: { servingEnabled: boolean; rampPct: number },
+  variants: ServableVariant[],
+  visitor: { site: string; path: string; segment: VisitorSegment },
+  visitorHash: string | null | undefined,
+): ServeVerdict | null {
+  if (!cfg.servingEnabled) return null;
+  if (!visitorHash) return null;
+  const match = matchVariant(variants, visitor);
+  if (!match) return null;
+  const ops = match.serveOps ?? [];
+  if (ops.length === 0 || !ops.every(serveOpValid)) return null;
+  const ramp = Math.max(1, Math.min(50, Math.floor(cfg.rampPct) || 5));
+  const arm = rampBucket(visitorHash, match.id) < ramp ? "variant" : "control";
+  return { variant: match, arm };
 }
