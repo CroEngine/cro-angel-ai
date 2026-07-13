@@ -344,6 +344,11 @@ export interface SiteConfig {
   /** Observe-first (croengine-vision.md): false (default) → Angel gör INGA
    *  synliga ändringar, bara observerar. Opt-in per sajt slår på apply-vägen. */
   adaptationsEnabled: boolean;
+  /** Fas 4 master-switch (fas4-per-segment-serving.md): false (default) → inga
+   *  per-segment-varianter serveras, oavsett variantstatus. Manuell dashboard-
+   *  toggle (ägarbeslut 2026-07-12). decide-vägen läser den inte ännu — flaggan
+   *  landar FÖRE inkopplingen så default=false finns innan kod kan servera. */
+  servingEnabled: boolean;
 }
 
 const DEFAULT_SITE_CONFIG: SiteConfig = {
@@ -356,6 +361,7 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   ingestKey: null,
   layoutPatternsEnabled: false,
   adaptationsEnabled: false,
+  servingEnabled: false,
 };
 
 /**
@@ -401,7 +407,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
   const { data, error } = await supabaseAdmin
     .from("angel_sites")
     .select(
-      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled",
+      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled,serving_enabled",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -417,7 +423,41 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
     ingestKey: data.ingest_key ?? null,
     layoutPatternsEnabled: data.layout_patterns_enabled === true,
     adaptationsEnabled: data.adaptations_enabled === true,
+    servingEnabled: data.serving_enabled === true,
   };
+}
+
+/**
+ * Fas 4: läs de varianter som FÅR serveras för (site, path) — status serving/
+ * winner — i den form matchVariant (redesign/serve.ts) konsumerar. Servering är
+ * dessutom master-gatad av SiteConfig.servingEnabled; den kontrollen gör
+ * ANROPAREN (decide-vägen, när den kopplas in) så att detta förblir en ren
+ * läsning. Best-effort: fel → tom lista, aldrig throw.
+ */
+export async function loadServableVariants(
+  site: string,
+  path: string,
+): Promise<import("./redesign/serve").ServableVariant[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("angel_variants")
+      .select("id,site,path,segment_key,status,ops")
+      .eq("site", site)
+      .eq("path", path)
+      .in("status", ["serving", "winner"]);
+    if (error || !data) return [];
+    return data.map((r) => ({
+      id: r.id,
+      site: r.site,
+      path: r.path,
+      segmentKey: r.segment_key,
+      status: r.status as import("./redesign/serve").VariantStatus,
+      ops: (Array.isArray(r.ops) ? r.ops : []) as unknown as import("./redesign/generate").RedesignOp[],
+    }));
+  } catch (err) {
+    console.warn(`[angel] variant read unavailable:`, err);
+    return [];
+  }
 }
 
 /**

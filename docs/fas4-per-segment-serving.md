@@ -133,9 +133,19 @@ människa aktivt slår på det per segment/experiment.
   en variant som är signifikant sämre ska dras tidigt, inte bränna trafik till
   1000 besök. Rekommendation only — baseline-byte kräver alltid manuellt OK.
 
+- **Variant-lagret + master-toggeln** (PR:t efter #96): `angel_variants`-tabellen
+  (livscykel-status, ops, evidence; RLS service-role-only; partiellt unikt index =
+  högst EN serving/winner per (site, path, segment) — verifierat mot prod) +
+  `angel_sites.serving_enabled` (default **false**, 0/9 sajter på). Dashboarden
+  fick ett "Varianter per segment"-kort (livscykelvy + master-toggeln) och
+  `loadServableVariants(site, path)` finns i persistence — men **decide-vägen
+  läser ingetdera ännu**: kontrollen landar före förmågan. Den första äkta
+  varianten (instagram·mobile·se försök 2, verified, med grind-bevis i evidence)
+  ligger i lagret för synthetic-lab.
+
 ## Nästa steg (väntar på "kör"), i säker ordning
 1. ~~Vinnar-utvärderaren~~ **KLAR** (ovan).
-2. **Variant-lagret** (`angel_variants`, default av) + dashboard-toggle.
+2. ~~Variant-lagret + dashboard-toggle~~ **KLAR** (ovan).
 3. **`decide.ts`-inkoppling** bakom `serving_enabled` + ramp — det första steget
    som faktiskt rör riktig trafik, byggs sist och bakom toggeln.
 

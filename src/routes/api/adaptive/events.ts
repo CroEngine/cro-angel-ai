@@ -10,6 +10,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
+import { isBotUserAgent } from "@/adaptive/bot";
 import { logEvents, siteWriteAllowed } from "@/adaptive/persistence.server";
 import type { AngelEvent } from "@/adaptive/types";
 
@@ -60,6 +61,13 @@ export const Route = createFileRoute("/api/adaptive/events")({
     handlers: {
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS_HEADERS }),
       POST: async ({ request }) => {
+        // Auktoritativ bot-exkludering: batchar från bot/crawler/automations-UA
+        // släpps TYST (204, aldrig persistens) — även när klient-gaten i
+        // snippeten missats. En bots events skulle förorena segmenten och skeva
+        // A/B-armarna när servering är på.
+        if (isBotUserAgent(request.headers.get("user-agent"))) {
+          return new Response(null, { status: 204, headers: CORS_HEADERS });
+        }
         let batch: EventBatch;
         try {
           batch = (await request.json()) as EventBatch;
