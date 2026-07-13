@@ -12,6 +12,7 @@ import { buildVisitorContext, readServerSignals } from "@/adaptive/context";
 import { decide, decisionIdFor } from "@/adaptive/decide";
 import { resolveInventory } from "@/adaptive/inventory.server";
 import { loadPatternBoosts } from "@/adaptive/performance.server";
+import { isBotUserAgent } from "@/adaptive/bot";
 import { loadSiteConfig, logDecision } from "@/adaptive/persistence.server";
 import type { ClientSignals } from "@/adaptive/types";
 
@@ -60,6 +61,24 @@ export const Route = createFileRoute("/api/adaptive/decide")({
 
         const server = readServerSignals(request);
         const context = buildVisitorContext(server, client);
+
+        // Bot-exkludering (auktoritativ): en bot får aldrig en adaptation och
+        // loggar aldrig en exponering — annars förorenas armarna och segmenten.
+        // Tomt svar med deterministiskt decisionId, precis som observe-läget.
+        if (isBotUserAgent(server.userAgent)) {
+          return json({
+            decisionId: decisionIdFor(client.site, context, {
+              selector: cfg.conversionSelector,
+              url: cfg.conversionUrl,
+              text: cfg.conversionText,
+              kind: cfg.conversionKind,
+            }),
+            site: client.site,
+            adaptations: [],
+            holdout: false,
+            context,
+          });
+        }
 
         // Ägarens deklarerade mål — driver emphasize_goal, badge-matchning och
         // (via decisionIdFor) den stabila besöks-hashen.

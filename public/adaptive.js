@@ -33,6 +33,20 @@
   var script = findScript();
   if (!script) return;
 
+  // ---- bot gate -------------------------------------------------------------
+  // Botar/automation ska aldrig in i datan eller se adaptationer: Googlebot
+  // RENDERAR JS, och monitorer/headless-verktyg kör sidan som en webbläsare.
+  // navigator.webdriver sätts av Selenium/Puppeteer/Playwright. Vårt eget
+  // test-harness sätter __ANGEL_HARNESS__ uttryckligen före boot och släpps
+  // förbi. CUBOT är ett telefonmärke — inte en bot. Serversidan filtrerar
+  // dessutom auktoritativt på User-Agent (src/adaptive/bot.ts).
+  var UA_STR = (navigator.userAgent || "");
+  var LOOKS_BOT =
+    navigator.webdriver === true ||
+    (/bot|crawl|spider|slurp|headless|lighthouse|prerender|phantomjs|puppeteer|playwright|selenium/i.test(UA_STR) &&
+      !/cubot/i.test(UA_STR));
+  if (LOOKS_BOT && !window.__ANGEL_HARNESS__) return;
+
   var site = script.getAttribute("data-site") || "demo";
   // Per-site write key. Public (it ships in this tag), but it binds this install
   // to its slug so the ingest endpoints reject writes for a keyed site that
