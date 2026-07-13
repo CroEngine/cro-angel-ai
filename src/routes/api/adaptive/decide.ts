@@ -13,7 +13,8 @@ import { decide, decisionIdFor } from "@/adaptive/decide";
 import { resolveInventory } from "@/adaptive/inventory.server";
 import { loadPatternBoosts } from "@/adaptive/performance.server";
 import { isBotUserAgent } from "@/adaptive/bot";
-import { loadSiteConfig, logDecision } from "@/adaptive/persistence.server";
+import { serveDecision } from "@/adaptive/redesign/serve";
+import { loadSiteConfig, loadServableVariants, logDecision } from "@/adaptive/persistence.server";
 import type { ClientSignals } from "@/adaptive/types";
 
 const CORS_HEADERS: Record<string, string> = {
@@ -114,6 +115,67 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         } catch {
           /* keep homepage default */
         }
+
+        // ── Fas 4 steg 3: per-segment variant-servering ─────────────────────
+        // Bakom TVÅ uttryckliga grindar (adaptations_enabled passerades ovan,
+        // serving_enabled är masterswitchen ägaren slår på i dashboarden).
+        // serveDecision (ren, testad) gör hela armvalet: finaste matchande
+        // serving/winner-variant, deterministisk ramp-bucket (start 5 %).
+        // Variant-armen får variantens verifierade serve-ops; kontrollarmen
+        // ser sidan SOM DEN ÄR (inte mönstermotorns ops — armarna måste skilja
+        // sig i exakt EN sak: varianten). Båda armarna loggas med
+        // "variant:<id>" så vinnar-utvärderaren kan räkna dem.
+        if (cfg.servingEnabled) {
+          const vhServe = typeof client.visitorHash === "string" ? client.visitorHash : "";
+          const verdict = serveDecision(
+            { servingEnabled: cfg.servingEnabled, rampPct: cfg.rampPct },
+            await loadServableVariants(client.site, path),
+            {
+              site: client.site,
+              path,
+              segment: {
+                channel: context.trafficSource,
+                device: context.device,
+                country: context.country,
+                isReturning: context.isReturning,
+              },
+            },
+            vhServe,
+          );
+          if (verdict) {
+            const decisionId = decisionIdFor(client.site, context, goal);
+            const inVariantArm = verdict.arm === "variant";
+            const serveOps = verdict.variant.serveOps ?? [];
+            await logDecision(client.site, decisionId, context, [`variant:${verdict.variant.id}`], {
+              referrer: client.referrer || server.referrer,
+              userAgent: server.userAgent,
+              visitorHash: vhServe,
+              withheld: !inVariantArm,
+              consent: typeof client.consent === "string" ? client.consent : null,
+              changes: serveOps.map((o) => ({
+                pattern: `variant:${verdict.variant.id}`,
+                op: o.op,
+                target: o.locator.tag ?? "",
+                anchorText: o.locator.text,
+                value: o.value,
+                reason: o.why ?? `variant ${verdict.variant.segmentKey}`,
+              })),
+            });
+            return json({
+              decisionId,
+              site: client.site,
+              adaptations: [],
+              holdout: !inVariantArm,
+              // Snippeten applicerar variantens ops med harness-semantiken
+              // (ett stegs lyft per move_up) — alla reversibla, allt-eller-inget.
+              variant: inVariantArm
+                ? { id: verdict.variant.id, segmentKey: verdict.variant.segmentKey, ops: serveOps }
+                : null,
+              context,
+            });
+          }
+        }
+
         const inventory = await resolveInventory(client.site, path);
         // Feed measured lift back in (increment 2): prefer proven winners,
         // suppress proven losers — per SEGMENT where the segment has its own

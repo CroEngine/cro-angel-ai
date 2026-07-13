@@ -346,9 +346,13 @@ export interface SiteConfig {
   adaptationsEnabled: boolean;
   /** Fas 4 master-switch (fas4-per-segment-serving.md): false (default) → inga
    *  per-segment-varianter serveras, oavsett variantstatus. Manuell dashboard-
-   *  toggle (ägarbeslut 2026-07-12). decide-vägen läser den inte ännu — flaggan
-   *  landar FÖRE inkopplingen så default=false finns innan kod kan servera. */
+   *  toggle (ägarbeslut 2026-07-12). */
   servingEnabled: boolean;
+  /** Fas 4 steg 3: andel (1–50 %) av segment-matchade besökare som får
+   *  variant-armen; resten är kontrollarm. Ägarbeslut 2026-07-12: manuell ramp
+   *  5 → 10 → 25 → 50, aldrig 50/50 från start. Läses bara när
+   *  servingEnabled=true. */
+  rampPct: number;
 }
 
 const DEFAULT_SITE_CONFIG: SiteConfig = {
@@ -362,6 +366,7 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   layoutPatternsEnabled: false,
   adaptationsEnabled: false,
   servingEnabled: false,
+  rampPct: 5,
 };
 
 /**
@@ -407,7 +412,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
   const { data, error } = await supabaseAdmin
     .from("angel_sites")
     .select(
-      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled,serving_enabled",
+      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled,serving_enabled,ramp_pct",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -424,6 +429,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
     layoutPatternsEnabled: data.layout_patterns_enabled === true,
     adaptationsEnabled: data.adaptations_enabled === true,
     servingEnabled: data.serving_enabled === true,
+    rampPct: typeof data.ramp_pct === "number" ? data.ramp_pct : 5,
   };
 }
 
@@ -441,7 +447,7 @@ export async function loadServableVariants(
   try {
     const { data, error } = await supabaseAdmin
       .from("angel_variants")
-      .select("id,site,path,segment_key,status,ops")
+      .select("id,site,path,segment_key,status,ops,serve_ops")
       .eq("site", site)
       .eq("path", path)
       .in("status", ["serving", "winner"]);
@@ -453,6 +459,9 @@ export async function loadServableVariants(
       segmentKey: r.segment_key,
       status: r.status as import("./redesign/serve").VariantStatus,
       ops: (Array.isArray(r.ops) ? r.ops : []) as unknown as import("./redesign/generate").RedesignOp[],
+      serveOps: (Array.isArray(r.serve_ops)
+        ? r.serve_ops
+        : []) as unknown as import("./redesign/serve").ServeOp[],
     }));
   } catch (err) {
     console.warn(`[angel] variant read unavailable:`, err);

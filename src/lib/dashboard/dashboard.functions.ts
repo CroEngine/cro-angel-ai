@@ -12,6 +12,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { GOAL_KINDS, type GoalCandidate } from "@/adaptive/crawler-inventory";
+import { evaluateWinner } from "@/adaptive/redesign/winner";
 import {
   aggregate,
   expandSegmentLeaves,
@@ -87,8 +88,11 @@ export interface SiteConfigView {
   adaptationsEnabled: boolean;
   /** Fas 4 master-switch (fas4-per-segment-serving.md): false (default) → inga
    *  per-segment-varianter serveras, oavsett variantstatus. Manuell dashboard-
-   *  toggle (ägarbeslut 2026-07-12). decide-vägen läser den inte ännu. */
+   *  toggle (ägarbeslut 2026-07-12). */
   servingEnabled: boolean;
+  /** Fas 4 steg 3: variant-armens trafikandel (%). Manuell ramp 5 → 10 → 25 →
+   *  50 (ägarbeslut 2026-07-12) — aldrig 50/50 från start. */
+  rampPct: number;
   /** The judged business type, when detected (e.g. "comparison"). */
   businessType: string | null;
   /** Ranked conversion-goal candidates proposed at harvest — the owner confirms
@@ -115,6 +119,22 @@ export interface VariantComparison {
   screenshots: { before: string | null; after: string | null; attempt1: string | null };
 }
 
+/** A/B-läget för en SERVERANDE variant: armarnas räknare (hela historiken, via
+ *  angel_variant_arms-RPC:n) + vinnar-utvärderarens rekommendation enligt
+ *  ägarens grindar (≥1000 besök + ≥50 konv per arm, ≥95 %, ≥5 % lyft, inga
+ *  försämrade skyddsmått). Systemet REKOMMENDERAR bara — byter aldrig själv. */
+export interface VariantAbView {
+  variant: { visits: number; conversions: number };
+  control: { visits: number; conversions: number };
+  outcome: "insufficient_data" | "no_winner" | "recommend_winner" | "recommend_stop";
+  reasons: string[];
+  stats: {
+    variantRate: number;
+    controlRate: number;
+    relativeLift: number | null;
+  };
+}
+
 export interface VariantView {
   id: string;
   path: string;
@@ -126,6 +146,8 @@ export interface VariantView {
   /** Grind-utfall ur evidence.gates (nyckel → tal/boolean), tomt när okänt. */
   gates: Record<string, number | boolean>;
   comparison: VariantComparison | null;
+  /** Bara för serving/winner-varianter; null tills exponeringar finns. */
+  abTest: VariantAbView | null;
 }
 
 /** Zero-config default hold-out, applied on attestation so measurement is ready
@@ -147,6 +169,7 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   ingestKey: null,
   adaptationsEnabled: false,
   servingEnabled: false,
+  rampPct: 5,
 };
 
 export interface DashboardResponse {
@@ -196,7 +219,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,goal_candidates",
+          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,ramp_pct,goal_candidates",
         )
         .order("slug");
       // `sandbox--<host>` rows are the admin sandbox's private per-host scratch
@@ -269,6 +292,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               ingest_key?: string | null;
               adaptations_enabled?: boolean;
               serving_enabled?: boolean;
+              ramp_pct?: number;
               goal_candidates?: { businessType?: string; goals?: GoalCandidate[] } | null;
             }
           | undefined;
@@ -288,6 +312,7 @@ export const getDashboard = createServerFn({ method: "POST" })
             ingestKey: current.ingest_key ?? null,
             adaptationsEnabled: current.adaptations_enabled === true,
             servingEnabled: current.serving_enabled === true,
+            rampPct: typeof current.ramp_pct === "number" ? current.ramp_pct : 5,
             businessType: typeof judged?.businessType === "string" ? judged.businessType : null,
             goalCandidates: Array.isArray(judged?.goals) ? judged.goals.slice(0, 6) : [],
           };
@@ -309,6 +334,46 @@ export const getDashboard = createServerFn({ method: "POST" })
           const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
           const strs = (v: unknown): string[] =>
             Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+          // A/B-armar + rekommendation för de varianter som faktiskt serverar.
+          // En RPC per serverande variant (högst 1 per site·path·segment enligt
+          // det partiella unika indexet, så listan är kort). Best-effort.
+          const abById = new Map<string, VariantAbView>();
+          const servingRows = vRows.filter((v) => v.status === "serving" || v.status === "winner");
+          await Promise.all(
+            servingRows.map(async (v) => {
+              try {
+                const { data: arms, error: aErr } = await supabaseAdmin.rpc("angel_variant_arms", {
+                  p_site: site,
+                  p_variant: v.id,
+                });
+                if (aErr || !Array.isArray(arms)) return;
+                const armOf = (name: string) => {
+                  const row = arms.find((a) => a.arm === name);
+                  return {
+                    visits: Number(row?.visits) || 0,
+                    conversions: Number(row?.conversions) || 0,
+                  };
+                };
+                const variantArm = armOf("variant");
+                const controlArm = armOf("control");
+                if (variantArm.visits + controlArm.visits === 0) return;
+                const ev = evaluateWinner(variantArm, controlArm);
+                abById.set(v.id, {
+                  variant: variantArm,
+                  control: controlArm,
+                  outcome: ev.outcome,
+                  reasons: ev.reasons,
+                  stats: {
+                    variantRate: ev.stats.variantRate,
+                    controlRate: ev.stats.controlRate,
+                    relativeLift: ev.stats.relativeLift,
+                  },
+                });
+              } catch {
+                /* arm read is best-effort */
+              }
+            }),
+          );
           variants = vRows.map((v) => {
             const ev = (v.evidence ?? {}) as Record<string, unknown>;
             const cmpRaw = ev.comparison as Record<string, unknown> | undefined;
@@ -349,6 +414,7 @@ export const getDashboard = createServerFn({ method: "POST" })
                     },
                   }
                 : null,
+              abTest: abById.get(v.id) ?? null,
             };
           });
         }
@@ -627,6 +693,37 @@ export const setServingEnabled = createServerFn({ method: "POST" })
       .eq("slug", site);
     if (error) {
       console.warn(`[angel] setServingEnabled failed: ${error.message}`);
+      return { ok: false };
+    }
+    return { ok: true };
+  });
+
+/**
+ * Fas 4 steg 3: sätt variant-armens trafikandel. Ägarbeslut 2026-07-12:
+ * konfigurerbar manuell ramp som börjar på 5 % — bara stegen 5/10/25/50 är
+ * giltiga, så en felklickning aldrig kan skicka 100 % av trafiken till en
+ * ny variant. Bara sajtens ägare/admin får kalla den.
+ */
+export const setServingRamp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      site: z.string().min(1),
+      rampPct: z.union([z.literal(5), z.literal(10), z.literal(25), z.literal(50)]),
+    }),
+  )
+  .handler(async ({ data, context }): Promise<{ ok: boolean }> => {
+    const { site, rampPct } = data;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!(await ownsSite(supabaseAdmin, context as unknown as AuthCtx, site))) {
+      return { ok: false };
+    }
+    const { error } = await supabaseAdmin
+      .from("angel_sites")
+      .update({ ramp_pct: rampPct })
+      .eq("slug", site);
+    if (error) {
+      console.warn(`[angel] setServingRamp failed: ${error.message}`);
       return { ok: false };
     }
     return { ok: true };
