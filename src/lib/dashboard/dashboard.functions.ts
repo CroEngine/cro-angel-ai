@@ -729,6 +729,66 @@ export const setServingRamp = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Variantlivscykelns MANUELLA övergångar — de ägaren gör med en knapp.
+ *  Allt annat (candidate→verified) sätts av verifieringskedjan, aldrig här. */
+const VARIANT_TRANSITIONS: Record<string, string[]> = {
+  serving: ["verified"], // aktivera A/B
+  winner: ["serving"], // följ vinnar-rekommendationen
+  retired: ["serving", "winner"], // stoppa / dra tillbaka
+};
+
+/**
+ * Fas 4: ägarens godkännande-knapp. Systemet genererar och verifierar själv,
+ * men var tredje statusbyte som rör trafik är MANUELLT (ägarbeslut 2026-07-12):
+ * verified→serving (aktivera A/B:t), serving→winner (följ rekommendationen —
+ * systemet byter aldrig själv), serving/winner→retired (stoppa; kontrollen
+ * återtar 100 % direkt, ingen deploy). Olagliga övergångar avvisas, och det
+ * partiella unika indexet (max EN serving/winner per site·path·segment) gör
+ * dubbel-aktivering till ett städat fel i stället för ett odefinierat A/B.
+ */
+export const setVariantStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      site: z.string().min(1),
+      variantId: z.string().uuid(),
+      status: z.enum(["serving", "winner", "retired"]),
+    }),
+  )
+  .handler(async ({ data, context }): Promise<{ ok: boolean; reason?: string }> => {
+    const { site, variantId, status } = data;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!(await ownsSite(supabaseAdmin, context as unknown as AuthCtx, site))) {
+      return { ok: false, reason: "not owner" };
+    }
+    const { data: row, error: readErr } = await supabaseAdmin
+      .from("angel_variants")
+      .select("id,status")
+      .eq("id", variantId)
+      .eq("site", site)
+      .maybeSingle();
+    if (readErr || !row) return { ok: false, reason: "variant not found" };
+    if (!VARIANT_TRANSITIONS[status]?.includes(row.status)) {
+      return { ok: false, reason: `illegal transition ${row.status} → ${status}` };
+    }
+    const { error } = await supabaseAdmin
+      .from("angel_variants")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", variantId)
+      .eq("site", site)
+      .eq("status", row.status); // optimistiskt lås — samtidiga klick blir no-op
+    if (error) {
+      // 23505 = unikt index: en annan variant serverar redan detta segment.
+      const conflict = error.code === "23505";
+      console.warn(`[angel] setVariantStatus failed: ${error.message}`);
+      return {
+        ok: false,
+        reason: conflict ? "en annan variant serverar redan detta segment" : "write failed",
+      };
+    }
+    return { ok: true };
+  });
+
 /**
  * Confirm a proposed goal candidate as the site's ACTIVE conversion goal. This
  * is the "commit" half of propose→commit: it records the owner's goal

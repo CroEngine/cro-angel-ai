@@ -54,6 +54,7 @@ import {
   setConsentMode,
   setServingEnabled,
   setServingRamp,
+  setVariantStatus,
   type ConsentMode,
   type DashboardResponse,
   type SiteConfigView,
@@ -1334,6 +1335,22 @@ function VariantsCard({
     mutationFn: (pct: 5 | 10 | 25 | 50) => setServingRamp({ data: { site, rampPct: pct } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
   });
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const status = useMutation({
+    mutationFn: (args: { variantId: string; status: "serving" | "winner" | "retired" }) =>
+      setVariantStatus({ data: { site, ...args } }),
+    onSuccess: (res) => {
+      setStatusError(res.ok ? null : (res.reason ?? "kunde inte spara"));
+      queryClient.invalidateQueries({ queryKey: ["dashboard", site] });
+    },
+  });
+  // Varje trafikpåverkande statusbyte bekräftas — en felklickning ska inte
+  // starta eller stoppa ett A/B.
+  const askStatus = (v: VariantView, next: "serving" | "winner" | "retired", label: string) => {
+    if (window.confirm(`${label} för ${v.segmentKey}?`)) {
+      status.mutate({ variantId: v.id, status: next });
+    }
+  };
 
   return (
     <Card className="border-stone-200 shadow-none">
@@ -1415,6 +1432,36 @@ function VariantsCard({
                         {new Date(v.updatedAt).toLocaleDateString("sv-SE")}
                       </td>
                       <td className="py-1.5 text-right whitespace-nowrap">
+                        {v.status === "verified" && (
+                          <button
+                            type="button"
+                            disabled={status.isPending}
+                            onClick={() => askStatus(v, "serving", "Aktivera A/B-test")}
+                            className="mr-3 rounded bg-emerald-600 px-2 py-0.5 font-mono text-[11px] tracking-wider text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            aktivera A/B
+                          </button>
+                        )}
+                        {v.status === "serving" && v.abTest?.outcome === "recommend_winner" && (
+                          <button
+                            type="button"
+                            disabled={status.isPending}
+                            onClick={() => askStatus(v, "winner", "Gör till vinnare")}
+                            className="mr-3 rounded bg-emerald-600 px-2 py-0.5 font-mono text-[11px] tracking-wider text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            gör till vinnare
+                          </button>
+                        )}
+                        {(v.status === "serving" || v.status === "winner") && (
+                          <button
+                            type="button"
+                            disabled={status.isPending}
+                            onClick={() => askStatus(v, "retired", "Stoppa varianten (kontrollen återtar 100 %)")}
+                            className="mr-3 font-mono text-[11px] tracking-wider text-red-600 underline decoration-red-300 underline-offset-2 hover:decoration-red-600 disabled:opacity-50"
+                          >
+                            stoppa
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setOpenId(openId === v.id ? null : v.id)}
@@ -1456,6 +1503,11 @@ function VariantsCard({
         {toggle.isError && (
           <span className="font-mono text-[11px] tracking-wider text-amber-600">
             couldn’t save — try again
+          </span>
+        )}
+        {statusError && (
+          <span className="font-mono text-[11px] tracking-wider text-amber-600">
+            {statusError}
           </span>
         )}
       </CardContent>
