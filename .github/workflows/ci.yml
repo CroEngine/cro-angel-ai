@@ -26,6 +26,19 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      # Hela enhetssviten (decide, serve, winner, earned, claims, bot, …) —
+      # den saknades i CI: bara browser-suiterna kördes, så en trasig ren
+      # kärnfunktion kunde passera grönt.
+      - name: Run unit tests
+        run: bunx vitest run --exclude "src/lib/tests/snapshot/**"
+
+      # Serving-vägens smoke: riktiga snippeten (källa + minifierad artefakt)
+      # i riktig Chromium — bot-grind, exakt applicering, idempotens,
+      # byte-exakt reset, allt-eller-inget. Det enda som rör kundens sida
+      # ska aldrig kunna brytas tyst.
+      - name: Serving smoke (source + minified)
+        run: node scripts/ci/serving-smoke.mjs
+
       - name: Run freeze-visibility test
         run: bunx vitest run src/lib/tests/snapshot/__tests__/freeze-visibility.test.ts
 

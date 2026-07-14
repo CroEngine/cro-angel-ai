@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SeoAndPrivacyRouteImport } from './routes/seo-and-privacy'
 import { Route as SandboxRouteImport } from './routes/sandbox'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -29,6 +30,11 @@ import { Route as ApiPublicCorpusSplatRouteImport } from './routes/api/public/co
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeoAndPrivacyRoute = SeoAndPrivacyRouteImport.update({
+  id: '/seo-and-privacy',
+  path: '/seo-and-privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SandboxRoute = SandboxRouteImport.update({
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/sandbox': typeof SandboxRoute
+  '/seo-and-privacy': typeof SeoAndPrivacyRoute
   '/signup': typeof SignupRoute
   '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/sandbox': typeof SandboxRoute
+  '/seo-and-privacy': typeof SeoAndPrivacyRoute
   '/signup': typeof SignupRoute
   '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/sandbox': typeof SandboxRoute
+  '/seo-and-privacy': typeof SeoAndPrivacyRoute
   '/signup': typeof SignupRoute
   '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
@@ -173,6 +182,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/sandbox'
+    | '/seo-and-privacy'
     | '/signup'
     | '/api/adaptive/consent-config'
     | '/api/adaptive/decide'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/sandbox'
+    | '/seo-and-privacy'
     | '/signup'
     | '/api/adaptive/consent-config'
     | '/api/adaptive/decide'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/sandbox'
+    | '/seo-and-privacy'
     | '/signup'
     | '/api/adaptive/consent-config'
     | '/api/adaptive/decide'
@@ -228,6 +240,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   SandboxRoute: typeof SandboxRoute
+  SeoAndPrivacyRoute: typeof SeoAndPrivacyRoute
   SignupRoute: typeof SignupRoute
   ApiAdaptiveConsentConfigRoute: typeof ApiAdaptiveConsentConfigRoute
   ApiAdaptiveDecideRoute: typeof ApiAdaptiveDecideRoute
@@ -247,6 +260,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/seo-and-privacy': {
+      id: '/seo-and-privacy'
+      path: '/seo-and-privacy'
+      fullPath: '/seo-and-privacy'
+      preLoaderRoute: typeof SeoAndPrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sandbox': {
@@ -364,6 +384,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   SandboxRoute: SandboxRoute,
+  SeoAndPrivacyRoute: SeoAndPrivacyRoute,
   SignupRoute: SignupRoute,
   ApiAdaptiveConsentConfigRoute: ApiAdaptiveConsentConfigRoute,
   ApiAdaptiveDecideRoute: ApiAdaptiveDecideRoute,
