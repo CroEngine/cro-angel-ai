@@ -33,16 +33,8 @@ const variants = JSON.parse(readFileSync(variantsPath, "utf8")) as ServableVaria
 const BASE = new Date(baseIso).getTime();
 mkdirSync(outDir, { recursive: true });
 
-// Deterministisk RNG (mulberry32) — samma seed ⇒ samma berättelse, reproducerbart.
-function rng(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+// Deterministisk RNG — delad mulberry32 (scripts/lab/rng.mjs).
+import { mulberry32 as rng } from "./rng.mjs";
 
 // Ramp-schemat över de 14 simulerade dagarna (ägarens beslutade steg).
 const DAYS = 14;

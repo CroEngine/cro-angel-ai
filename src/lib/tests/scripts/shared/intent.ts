@@ -32,7 +32,14 @@
 //      most likely a conversion.
 //
 // Vocabulary provenance: corpus/vocab-harvest-2026-07-06.json (107-site
-// harvest); inclusion bar >= 2 independent sites.
+// harvest); inclusion bar >= 2 independent sites. Two deliberate deltas
+// (2026-07-14): \btry\b added — mining missed it because harvest catches
+// "Try X free" buttons via the position fallback (rule 7), but string-context
+// callers (redesign extract.ts) have no category and need the word; Swedish
+// "prova" was already in the list, the English twin plainly belongs. And
+// bare `book` tightened to \bbook\b — "Employee handbook", "Books we wrote"
+// and aria-labels like "Share on Facebook" are not bookings ("Book a demo"
+// still matches; Swedish "boka" is its own entry).
 export function classifyIntentShared(
   text: string,
   href: string,
@@ -72,7 +79,7 @@ export function classifyIntentShared(
     return "social";
   }
   if (
-    /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ne[dr]|lägg i (varu|kund)?korg(en)?|lägg till|ansök|bidra|donera|teckna|jämför|shoppa|månadsgivare)/i.test(
+    /(\bbook\b|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|\btry\b|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ne[dr]|lägg i (varu|kund)?korg(en)?|lägg till|ansök|bidra|donera|teckna|jämför|shoppa|månadsgivare)/i.test(
       probe,
     )
   ) {
@@ -113,6 +120,34 @@ export function classifyIntentShared(
   // likely conversion.
   if (category === "cta_primary" && aboveFold) return "conversion";
   return "unknown";
+}
+
+/** Same-page anchor (tab/TOC): href resolves to THIS page + a fragment. Feeds
+ *  rule 6 in classifyIntentShared — tabs must never be position-fallbacked to
+ *  conversion. The comparison base is the page's DECLARED URL (canonical/
+ *  og:url) with location as fallback: in MHTML replay location is a file://
+ *  URL while the capture's anchors are absolute https self-URLs — without the
+ *  declared base the rule never flips in replay and live/replay diverge.
+ *  Page-safe contract: touches only its args + document/location, never throws. */
+export function samePageAnchorShared(el: Element, href: string): boolean {
+  if (el.tagName !== "A" || !href) return false;
+  try {
+    let pageUrl = new URL(location.href);
+    const canon = document.querySelector('link[rel="canonical"]');
+    const og = document.querySelector('meta[property="og:url"]');
+    const declared =
+      (canon && canon.getAttribute("href")) || (og && og.getAttribute("content")) || "";
+    if (declared && /^https?:/i.test(declared)) pageUrl = new URL(declared);
+    const u = new URL(href, pageUrl.href);
+    return (
+      !!u.hash &&
+      u.origin === pageUrl.origin &&
+      u.pathname === pageUrl.pathname &&
+      u.search === pageUrl.search
+    );
+  } catch (e) {
+    return false; // trasig href -> ingen flagga
+  }
 }
 
 /** What kind of form does this (submit) element belong to? Same page-safe

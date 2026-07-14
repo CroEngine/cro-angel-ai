@@ -97,6 +97,14 @@ describe("evaluateRenderGates — pixel-half beauty gates", () => {
     expect(r.reasons.some((x) => /no h1\/main anchor/i.test(x))).toBe(true);
   });
 
+  it("WARNS when the CTA hit-test was vacuous (0 CTAs checkable before apply)", () => {
+    // Breadth finding 2: ctaChecked=0 used to read as a silent pass ("0 broken")
+    // even though the gate protected nothing. The vacuity must be visible.
+    const r = evaluateRenderGates(clean({ ctaChecked: 0, ctaBroken: 0 }));
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.some((x) => /vacuous/i.test(x))).toBe(true);
+  });
+
   it("WARNS when nothing could be applied", () => {
     const r = evaluateRenderGates(
       clean({

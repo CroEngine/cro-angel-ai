@@ -22,11 +22,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
-import {
-  evaluateRenderGates,
-  type RenderMeasurements,
-} from "../../src/adaptive/redesign/render-gates";
-import { measurePlan, type MeasureOp } from "./measure";
+import { runGatedAttempts, type MeasureOp } from "./measure";
 
 const EXEC =
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
@@ -82,48 +78,17 @@ for (const t of targets) {
     row.movePlan = `${target.type}: ${target.heading.slice(0, 40)} ×2`;
     const ctaTexts = content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text);
 
-    // Samma delade tvåfas-mätning som verifieringspipelinen (measure.ts) —
-    // ingen egen kopia av semantiken.
+    // Samma delade tvåfas-mätning OCH grind-loop som verifieringspipelinen
+    // (measure.ts runGatedAttempts) — ingen egen kopia av semantiken eller
+    // retry-räkningen.
     const baseOps: MeasureOp[] = [
       { op: "move_up", find: target.heading },
       { op: "move_up", find: target.heading },
     ];
-    let attemptOps = baseOps;
-    let last: { measurements: RenderMeasurements; gate: ReturnType<typeof evaluateRenderGates> } | null = null;
-    let attempts = 0;
-    let unresolvable = false;
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      attempts = attempt;
-      const raw = await measurePlan(page, attemptOps, ctaTexts);
-      if (!raw.resolvedAll) {
-        unresolvable = true;
-        break;
-      }
-      const measurements: RenderMeasurements = {
-        beforeOrder: raw.beforeOrder,
-        afterOrder: raw.afterOrder,
-        hOverflowBeforePx: raw.hOverflowBeforePx,
-        hOverflowAfterPx: raw.hOverflowAfterPx,
-        movedCount: raw.movedCount,
-        movedAboveMain: raw.movedAboveMain,
-        mainAnchorFound: raw.mainAnchorFound,
-        ctaChecked: raw.ctaChecked,
-        ctaBroken: raw.ctaBroken,
-        requestedMoves: raw.requestedMoves,
-        appliedMoves: raw.appliedMoves,
-        reversedOrderMatches: raw.reversedOrderMatches,
-        verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
-      };
-      const gate = evaluateRenderGates(measurements);
-      last = { measurements, gate };
-      const collision = gate.verdict === "fail" && gate.reasons.some((r) => /vertical overlap/.test(r));
-      if (collision && attempt === 1) {
-        attemptOps = [...baseOps, { op: "move_up", find: target.heading }];
-        continue;
-      }
-      break;
-    }
-    if (unresolvable) {
+    const gated = await runGatedAttempts(page, baseOps, ctaTexts);
+    const last = gated.attempts[gated.attempts.length - 1] ?? null;
+    const attempts = gated.attempts.length;
+    if (gated.unresolvable) {
       row.verdict = "not_applicable";
       row.reasons = ["v3-upplösningen vägrade (ingen ren sektionsnivå för målet) — fail closed"];
       await context.close();

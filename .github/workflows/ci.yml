@@ -23,6 +23,15 @@ jobs:
       - name: Install Playwright Chromium (with system deps)
         run: bunx playwright install --with-deps chromium
 
+      # Kodgen-pinne: public/adaptive-harvest.js är GENERERAD ur
+      # src/lib/tests/scripts/* (bun run build:harvest). Utan denna diff kan
+      # källa och incheckad artefakt glida isär tyst — det hände i Fas 1, där
+      # struktur-skannern lades direkt i den genererade filen och nästa
+      # regenerering hade raderat den. Måste köra under bun (samma runtime som
+      # generatorn: toString()-inlining skiljer sig under andra transpilers).
+      - name: Harvest bundle codegen pin
+        run: bun run build:harvest && git diff --exit-code -- public/adaptive-harvest.js
+
       - name: Typecheck
         run: bun run typecheck
 

@@ -11,6 +11,7 @@
 //     whole decision hashes to a stable id for logging and replay.
 
 import { isAcquisition, type GoalKind } from "./crawler-inventory";
+import { fnv1a32 } from "./hash";
 import { getPattern } from "./patterns";
 import { pickItem } from "./inventory";
 import type {
@@ -534,12 +535,7 @@ function resolve(
 
 /** FNV-1a 32-bit hash → 8-char hex. Deterministic, dependency-free. */
 function hashHex(input: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(16).padStart(8, "0");
+  return fnv1a32(input).toString(16).padStart(8, "0");
 }
 
 /** Stable id for a decision — the engine inputs that affect the outcome. */

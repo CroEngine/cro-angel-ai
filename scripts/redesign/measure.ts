@@ -1,7 +1,12 @@
 // Delad tvåfas-mätning — EN implementation för alla harness (auto-generate,
-// breadth-test). Snippeten (public/adaptive.js) bär medvetet en egen kopia av
-// samma semantik (den är fristående JS på kundens sida); CI-smoken bevisar
-// ekvivalensen mellan snippet och denna mätning på fixturer.
+// breadth-test, lab/redesign-render). Snippeten (public/adaptive.js) bär
+// medvetet en egen kopia av samma semantik (den är fristående JS på kundens
+// sida); CI-smoken bevisar ekvivalensen mellan snippet och denna mätning på
+// fixturer. Här bor också den delade grind-loopen (runGatedAttempts): samma
+// kollisions-retry — ETT extra lyft per UNIKT mål — i alla harness, så
+// mätningen och serve_ops alltid räknar samma antal lyft.
+
+import { evaluateRenderGates, type RenderMeasurements } from "../../src/adaptive/redesign/render-gates";
 
 import type { Page } from "playwright-core";
 
@@ -18,9 +23,17 @@ export interface MeasureOp {
  *  ORÖRD, main-scopad DOM; (2) applicera i planordning. keepApplied=true
  *  lämnar sidan applicerad (för EFTER-skärmdumpen) i stället för att en
  *  tredje algoritm återappliceras. */
-export async function measurePlan(page: Page, ops: MeasureOp[], ctaTexts: string[], keepApplied = false) {
+export async function measurePlan(
+  page: Page,
+  ops: MeasureOp[],
+  ctaTexts: string[],
+  keepApplied = false,
+  // Ägarens conversion_selector (rått-override-sajter har text=null) — hit-testas
+  // precis som texterna så vakuum-varningen inte återkommer för dem.
+  ctaSelectors: string[] = [],
+) {
   return page.evaluate(
-    ({ ops, ctaTexts, keepApplied }) => {
+    ({ ops, ctaTexts, ctaSelectors, keepApplied }) => {
       const mainEl = document.querySelector("main") || document.body;
       const de = document.documentElement;
       const norm = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -109,6 +122,14 @@ export async function measurePlan(page: Page, ops: MeasureOp[], ctaTexts: string
       const h1 = mainEl.querySelector("h1");
       const heroBlock = (h1 && blocks.find((b) => b === h1 || b.contains(h1))) ?? blocks.slice().sort(docSort)[0] ?? null;
 
+      function hitTest(el: Element): boolean {
+        el.scrollIntoView({ block: "center" });
+        const r = el.getBoundingClientRect();
+        const cx = Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1);
+        const cy = Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1);
+        const top = document.elementFromPoint(cx, cy);
+        return !!top && (el.contains(top) || top.contains(el));
+      }
       function ctaClickable(text: string): boolean | null {
         const matches = Array.from(document.querySelectorAll("a,button")).filter((n) =>
           norm(n.textContent || "").includes(text),
@@ -118,17 +139,31 @@ export async function measurePlan(page: Page, ops: MeasureOp[], ctaTexts: string
           const r = n.getBoundingClientRect();
           return r.width > 0 && r.height > 0;
         });
-        if (!el) return false;
-        el.scrollIntoView({ block: "center" });
-        const r = el.getBoundingClientRect();
-        const cx = Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1);
-        const cy = Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1);
-        const top = document.elementFromPoint(cx, cy);
-        return !!top && (el.contains(top) || top.contains(el));
+        return el ? hitTest(el) : false;
       }
+      function ctaClickableSel(sel: string): boolean | null {
+        let el: Element | null = null;
+        try {
+          el = document.querySelector(sel);
+        } catch {
+          return null; // ogiltig selektor ≠ trasig sida — bara inget att kontrollera
+        }
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        if (!(r.width > 0 && r.height > 0)) return false;
+        return hitTest(el);
+      }
+      // Text- och selektor-prober i EN lista; paras före/efter via index så
+      // dubblett-nycklar aldrig kan korspara.
+      const ctaProbes: { key: string; bySel: boolean }[] = [
+        ...ctaTexts.map((t) => ({ key: t, bySel: false })),
+        ...ctaSelectors.map((s) => ({ key: s, bySel: true })),
+      ];
+      const probeCta = (p: { key: string; bySel: boolean }) =>
+        p.bySel ? ctaClickableSel(p.key) : ctaClickable(p.key);
 
       // ── FÖRE-mätningar ─────────────────────────────────────────────────
-      const ctaBefore = ctaTexts.map((t) => ({ t, ok: ctaClickable(t) }));
+      const ctaBefore = ctaProbes.map((p) => probeCta(p));
       const beforeIdx = identityOrder();
       const hOverflowBeforePx = Math.max(0, de.scrollWidth - de.clientWidth);
       const overlapBefore = blockPairsOverlap();
@@ -200,14 +235,13 @@ export async function measurePlan(page: Page, ops: MeasureOp[], ctaTexts: string
           }
         }
       }
-      const ctaAfter = ctaTexts.map((t) => ({ t, ok: ctaClickable(t) }));
+      const ctaAfter = ctaProbes.map((p) => probeCta(p));
       let ctaChecked = 0;
       let ctaBroken = 0;
-      for (const b of ctaBefore) {
-        if (b.ok === true) {
+      for (let i = 0; i < ctaBefore.length; i++) {
+        if (ctaBefore[i] === true) {
           ctaChecked++;
-          const a = ctaAfter.find((x) => x.t === b.t);
-          if (a && a.ok !== true) ctaBroken++;
+          if (ctaAfter[i] !== true) ctaBroken++;
         }
       }
 
@@ -242,6 +276,76 @@ export async function measurePlan(page: Page, ops: MeasureOp[], ctaTexts: string
         reversedOrderMatches,
       };
     },
-    { ops, ctaTexts, keepApplied },
+    { ops, ctaTexts, ctaSelectors, keepApplied },
   );
+}
+
+/** measurePlan-råvärden → render-gates-form (inkl. namnbytet
+ *  overlapIntroducedPx → verticalOverlapIntroducedPx). En mappning, tre
+ *  harness — fältlistan kan inte glida isär per skript. */
+export function toRenderMeasurements(
+  raw: Awaited<ReturnType<typeof measurePlan>>,
+): RenderMeasurements {
+  return {
+    beforeOrder: raw.beforeOrder,
+    afterOrder: raw.afterOrder,
+    hOverflowBeforePx: raw.hOverflowBeforePx,
+    hOverflowAfterPx: raw.hOverflowAfterPx,
+    movedCount: raw.movedCount,
+    movedAboveMain: raw.movedAboveMain,
+    mainAnchorFound: raw.mainAnchorFound,
+    ctaChecked: raw.ctaChecked,
+    ctaBroken: raw.ctaBroken,
+    requestedMoves: raw.requestedMoves,
+    appliedMoves: raw.appliedMoves,
+    reversedOrderMatches: raw.reversedOrderMatches,
+    verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
+  };
+}
+
+export interface GatedAttempt {
+  attempt: number;
+  measurements: RenderMeasurements;
+  gate: ReturnType<typeof evaluateRenderGates>;
+}
+
+/** Den delade grind-loopen: mät → grinda → vid vertikal kollision EN retry
+ *  med ett extra lyft per UNIKT flyttmål (prototyp-opens tag följer med).
+ *  Fail-closed: oupplösbart mål ⇒ unresolvable, inga försök rapporteras som
+ *  grindade. attemptOps är exakt de ops som det SISTA försöket körde — samma
+ *  lista ska användas för keepApplied-återappliceringen (efter-skärmdumpen)
+ *  och för serve_ops-räkningen. */
+export async function runGatedAttempts(
+  page: Page,
+  ops: MeasureOp[],
+  ctaTexts: string[],
+  opts: { ctaSelectors?: string[]; onAttempt?: (a: GatedAttempt) => void } = {},
+): Promise<{ attempts: GatedAttempt[]; attemptOps: MeasureOp[]; unresolvable: boolean; extraLiftApplied: boolean }> {
+  const uniqueMoveFinds = [...new Set(ops.filter((o) => o.op === "move_up").map((o) => o.find))];
+  const extraLiftOps: MeasureOp[] = uniqueMoveFinds.map((find) => {
+    const proto = ops.find((o) => o.op === "move_up" && o.find === find)!;
+    return { op: "move_up", tag: proto.tag, find };
+  });
+  const attempts: GatedAttempt[] = [];
+  let attemptOps = ops;
+  let extraLiftApplied = false;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const raw = await measurePlan(page, attemptOps, ctaTexts, false, opts.ctaSelectors ?? []);
+    if (!raw.resolvedAll) {
+      return { attempts, attemptOps, unresolvable: true, extraLiftApplied };
+    }
+    const measurements = toRenderMeasurements(raw);
+    const gate = evaluateRenderGates(measurements);
+    const entry = { attempt, measurements, gate };
+    attempts.push(entry);
+    opts.onAttempt?.(entry);
+    const collision = gate.verdict === "fail" && gate.reasons.some((r) => /vertical overlap/.test(r));
+    if (collision && attempt === 1 && extraLiftOps.length > 0) {
+      attemptOps = [...ops, ...extraLiftOps];
+      extraLiftApplied = true;
+      continue;
+    }
+    break;
+  }
+  return { attempts, attemptOps, unresolvable: false, extraLiftApplied };
 }

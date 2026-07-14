@@ -64,7 +64,9 @@ export interface RenderGateResult {
   reordered: boolean;
 }
 
-/** Same trigger analyze.ts uses: >8px of NEWLY introduced horizontal scroll fails. */
+/** THE overflow threshold: >8px of NEWLY introduced horizontal scroll fails.
+ *  analyze.ts and the dashboard's gate labels import this — one number, three
+ *  judges, no drift. */
 export const H_OVERFLOW_FAIL_PX = 8;
 
 /** Introduced vertical overlap beyond this is a collision, not a nudge. Heuristic:
@@ -114,7 +116,17 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
     fail("reset() did not restore the original section order — change is not reversible");
   }
 
-  // Soft signals — surfaced, not blocking.
+  // Soft signals — surfaced, not blocking (but note: the auto-generate loop
+  // accepts only a clean pass, so these DO hold a variant back there).
+  if (m.ctaChecked === 0) {
+    // The CTA-breakage gate protected NOTHING this run: no conversion CTA was
+    // hit-testable before apply. Either the page truly has none, or extraction/
+    // goal config failed to name it — the gate can't tell the difference, so it
+    // says so instead of passing vacuously (breadth finding 2).
+    warn(
+      "0 conversion CTAs were hit-testable before apply — the CTA gate was vacuous (no extracted CTAs and no goal text/selector present on the page)",
+    );
+  }
   if (m.requestedMoves > 0 && m.appliedMoves < m.requestedMoves) {
     warn(
       `${m.requestedMoves - m.appliedMoves}/${m.requestedMoves} move(s) could not be applied safely (target not a clean sibling)`,

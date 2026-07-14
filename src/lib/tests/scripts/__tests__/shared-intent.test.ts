@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { classifyIntentShared } from "../shared/intent";
+import { classifyIntentShared, samePageAnchorShared } from "../shared/intent";
 import { CTAS_SCRIPT } from "../ctas";
 import { COLLECT_SCRIPT } from "../collect";
 
@@ -99,15 +99,30 @@ describe("classifyIntentShared — same-page anchors (tabs/TOC) are navigation",
   });
 });
 
+describe("\\btry\\b — the English twin of 'prova' (added for string-context callers)", () => {
+  it("'Try Basecamp free' is a conversion even without category/position", () => {
+    expect(classifyIntentShared("Try Basecamp free", "/signup", "", "", false, true)).toBe(
+      "conversion",
+    );
+  });
+  it("'Industry insights' does not smuggle 'try' through the word boundary", () => {
+    expect(classifyIntentShared("Industry insights", "/blog", "", "", false, true)).not.toBe(
+      "conversion",
+    );
+  });
+});
+
 describe("B1 — inline parity: one classifier, two scripts", () => {
   const src = classifyIntentShared.toString();
 
   it("CTAS_SCRIPT inlines the exact shared function source", () => {
     expect(CTAS_SCRIPT).toContain(src);
+    expect(CTAS_SCRIPT).toContain(samePageAnchorShared.toString());
   });
 
   it("COLLECT_SCRIPT inlines the exact shared function source", () => {
     expect(COLLECT_SCRIPT).toContain(src);
+    expect(COLLECT_SCRIPT).toContain(samePageAnchorShared.toString());
   });
 
   it("neither script defines its own intent wordlists anymore", () => {
