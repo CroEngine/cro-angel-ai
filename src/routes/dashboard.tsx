@@ -59,6 +59,7 @@ import {
   type DashboardResponse,
   type SiteConfigView,
   type TimelineEvent,
+  type VariantOpView,
   type VariantView,
 } from "@/lib/dashboard/dashboard.functions";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
@@ -578,6 +579,7 @@ function Dashboard() {
               site={site}
               domain={d.sites.find((s) => s.slug === site)?.domain ?? null}
               visitors={d.metrics.visitors}
+              variantLabels={new Map((d.variants ?? []).map((v) => [v.id, v.segmentKey]))}
             />
           </TabsContent>
 
@@ -1233,15 +1235,28 @@ function VariantComparisonPanel({ v }: { v: VariantView }) {
       )}
       {v.ops.length > 0 && (
         <ul className="mb-3 flex flex-col gap-1">
-          {v.ops.map((o, i) => (
-            <li key={i} className="text-xs text-stone-600">
-              <span className="mr-1.5 rounded bg-emerald-50 px-1 py-0.5 font-mono text-[10px] text-emerald-700">
-                {o.op}
-              </span>
-              {o.detail}
-              {o.why && <span className="text-stone-400"> — {o.why}</span>}
-            </li>
-          ))}
+          {/* Identiska rader (t.ex. kollisions-retryns extra lyft) visas EN
+              gång med ×N — antalet är sant, upprepningen är brus. */}
+          {v.ops
+            .reduce<{ op: VariantOpView; n: number }[]>((acc, o) => {
+              const last = acc[acc.length - 1];
+              if (last && last.op.op === o.op && last.op.detail === o.detail && last.op.why === o.why) {
+                last.n++;
+              } else {
+                acc.push({ op: o, n: 1 });
+              }
+              return acc;
+            }, [])
+            .map(({ op: o, n }, i) => (
+              <li key={i} className="text-xs text-stone-600">
+                <span className="mr-1.5 rounded bg-emerald-50 px-1 py-0.5 font-mono text-[10px] text-emerald-700">
+                  {o.op}
+                  {n > 1 ? ` ×${n}` : ""}
+                </span>
+                {o.detail}
+                {o.why && <span className="text-stone-400"> — {o.why}</span>}
+              </li>
+            ))}
         </ul>
       )}
       {Object.keys(v.gates).length > 0 && (
@@ -2026,14 +2041,27 @@ function DevicePreview({
   );
 }
 
+/** Ett mönster-id som ägaren kan läsa: "variant:<uuid>" blir "variant · <segment>"
+ *  (eller kort-id om varianten inte längre finns i listan). */
+function patternDisplay(pattern: string, variantLabels?: Map<string, string>): string {
+  if (pattern.startsWith("variant:")) {
+    const id = pattern.slice("variant:".length);
+    const seg = variantLabels?.get(id);
+    return seg ? `variant · ${seg}` : `variant · ${id.slice(0, 8)}…`;
+  }
+  return pattern;
+}
+
 function VisitorsPanel({
   site,
   domain,
   visitors,
+  variantLabels,
 }: {
   site: string;
   domain: string | null;
   visitors: VisitorSummary[];
+  variantLabels?: Map<string, string>;
 }) {
   const [selected, setSelected] = useState<VisitorSummary | null>(null);
   const [preview, setPreview] = useState<{ url: string; device: string; withheld: boolean } | null>(
@@ -2155,7 +2183,7 @@ function VisitorsPanel({
                   <DialogDescription>
                     First seen {new Date(selected.firstSeen).toLocaleString()}
                     {selected.patterns.length > 0 &&
-                      ` · exposed to: ${selected.patterns.join(", ")}`}
+                      ` · exposed to: ${selected.patterns.map((p) => patternDisplay(p, variantLabels)).join(", ")}`}
                   </DialogDescription>
                 </DialogHeader>
                 {preview ? (

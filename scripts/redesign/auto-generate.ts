@@ -438,9 +438,9 @@ try {
             ...validated.ops,
             ...validated.ops
               .filter((o) => o.op === "move_up")
-              .map((o) => ({
+              .map((o, i, arr) => ({
                 ...o,
-                detail: "extra lyft — kollisionsgrindens retry fann ren placering ett steg högre",
+                detail: `extra lyft ${i + 1}/${arr.length} — kollisionsgrindens retry fann ren placering ett steg högre`,
                 why: `försök 1 introducerade +${attempts[0].gate.verticalOverlapIntroducedPx}px överlapp; försök 2 +${last.gate.verticalOverlapIntroducedPx}px`,
               })),
           ];

@@ -410,6 +410,12 @@ function Footer() {
         <div className="flex items-center gap-2 font-bold text-stone-800">
           <span className="text-emerald-700">✳</span> Angel
         </div>
+        <Link
+          to="/seo-and-privacy"
+          className="text-stone-500 underline decoration-stone-300 underline-offset-2 hover:text-stone-700"
+        >
+          SEO, performance &amp; privacy
+        </Link>
         <span className="font-mono text-[11px] tracking-wider text-stone-400">
           [ one line of code · provable lift · never worse ]
         </span>
