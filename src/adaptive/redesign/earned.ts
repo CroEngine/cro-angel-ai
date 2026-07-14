@@ -65,6 +65,53 @@ export interface EarnedSegment {
   uncoveredLeaves: string[];
 }
 
+/** En rollup-lövnod med sin sida — det per-sida-detektorn konsumerar
+ *  (angel_page_segment_rollup). */
+export interface PageSegmentLeaf extends SegmentLeaf {
+  path: string;
+}
+
+/** Ett förtjänt (sida × segment)-par — cellen en design genereras för. */
+export interface EarnedCell extends EarnedSegment {
+  path: string;
+}
+
+/**
+ * Per-SIDA-detektorn: gruppera löven per sida, kör findEarnedSegments per sida
+ * mot exakt den sidans befintliga variantnycklar, slå ihop och ranka ÖVER
+ * sidorna (inkrementella konverteringar först — en sidas näst bästa segment
+ * får inte tränga ut en annan sidas bästa), globalt tak. Ren.
+ * `existing` = (path, segmentKey) för sajtens icke-pensionerade varianter.
+ */
+export function findEarnedCells(
+  leaves: PageSegmentLeaf[],
+  existing: { path: string; segmentKey: string }[],
+  cap = 5,
+): EarnedCell[] {
+  const byPath = new Map<string, PageSegmentLeaf[]>();
+  for (const leaf of leaves) {
+    const path = leaf.path || "/";
+    byPath.set(path, [...(byPath.get(path) ?? []), leaf]);
+  }
+  const cells: EarnedCell[] = [];
+  for (const [path, pathLeaves] of byPath) {
+    const keys = existing.filter((e) => e.path === path).map((e) => e.segmentKey);
+    // Per-sida-capet = globala capet: rankningen över sidor sker efteråt.
+    for (const s of findEarnedSegments(pathLeaves, keys, cap)) {
+      cells.push({ ...s, path });
+    }
+  }
+  cells.sort(
+    (a, b) =>
+      b.incremental.conversions - a.incremental.conversions ||
+      b.incremental.visits - a.incremental.visits ||
+      b.depth - a.depth ||
+      a.path.localeCompare(b.path) ||
+      a.key.localeCompare(b.key),
+  );
+  return cells.slice(0, cap);
+}
+
 /**
  * Segment som förtjänat en egen design, mest värdefulla först
  * (inkrementella konverteringar → inkrementella besök → finast → nyckel).

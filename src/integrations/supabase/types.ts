@@ -233,6 +233,18 @@ export type Database = {
           conversions: number
         }[]
       }
+      angel_page_segment_rollup: {
+        Args: { p_site: string; p_since?: string }
+        Returns: {
+          path: string
+          channel: string
+          device: string
+          country: string
+          is_returning: boolean
+          visits: number
+          conversions: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

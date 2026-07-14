@@ -202,7 +202,26 @@ att data bär den, aldrig allt på en gång:
   dubbel-aktivering till ett städat fel. Loopen skriver som mest `verified` —
   ingenting serveras utan knappen.
 
+### Fler sidor + riktiga kundsidor (ägarens "kör" 2026-07-14)
+
+- **Per-sida-detektering:** `angel_page_segment_rollup` (RPC) räknar
+  (sida × kanal·enhet·land·retur) — en session bidrar till varje sida den
+  besökte, konvertering är sessionens utfall var som helst. `findEarnedCells`
+  (ren, testad) kör segment-detektorn per sida mot exakt den sidans
+  variantnycklar och rankar ÖVER sidorna, så en sidas näst bästa segment
+  aldrig tränger ut en annans bästa. Volymgrinden gäller PER sida.
+- **Frysning av riktiga sidor:** `scripts/redesign/freeze-page.ts` fryser en
+  server-renderad sida till en självbärande HTML (stilmallar → <style>,
+  bilder → data-URI:er, skript strippade). Pipelinen konsumerar en KARTA
+  path → fryst fil (`--pages`); celler utan fryst kopia hamnar ärligt i en
+  `needs_freeze`-kö i stället för att gissas. Färskhet: när kundens sida
+  ändras ska kopian frysas om och serverande varianter re-verifieras
+  (staleness-jobbet är kroken).
+- **Gräns (medveten):** frysningen tar vad servern skickar — SPA-sidor som
+  bygger om sin DOM efter laddning kräver browser-frysningsvägen
+  (freeze.server.ts) och är parkerade tills en pilot behöver det.
+
 Kvar tills vidare (medvetet): baseline-byte är alltid manuellt (grind 4);
 förfining av redan täckta segment (t.ex. splitta ett serverat segment på
-ny/återkommande) väntar på vinnar-iterationen; riktiga kundsidor kopplas in i
-pipelinen via freeze-steget (samma kedja, annan HTML-källa).
+ny/återkommande) väntar på vinnar-iterationen; vinnare serverar max rampens
+50 % tills "vinnare → 100 % av segmentet" byggs.

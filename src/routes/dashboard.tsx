@@ -1484,7 +1484,7 @@ function VariantsCard({
                         >
                           {openId === v.id ? "dölj" : "jämför"}
                         </button>
-                        {site === "synthetic-lab" && (
+                        {site === "synthetic-lab" && v.path === "/" && (
                           <a
                             href={`/lab/plausible/?segment=${encodeURIComponent(v.segmentKey)}&state=efter`}
                             target="_blank"

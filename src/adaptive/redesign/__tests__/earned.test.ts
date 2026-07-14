@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import type { SegmentLeaf } from "@/lib/dashboard/aggregate";
-import { findEarnedSegments } from "../earned";
+import { findEarnedCells, findEarnedSegments, type PageSegmentLeaf } from "../earned";
 
 const leaf = (
   channel: string,
@@ -106,5 +106,58 @@ describe("findEarnedSegments — stegen bygger sig själv", () => {
     ];
     const got = findEarnedSegments(leaves, []);
     expect(got.map((s) => s.key)).toEqual(["x·mobile·SE·ny", "y·mobile·SE·ny"]);
+  });
+});
+
+// ── per sida ─────────────────────────────────────────────────────────────────
+
+const pleaf = (path: string, l: SegmentLeaf): PageSegmentLeaf => ({ ...l, path });
+
+describe("findEarnedCells — sida × segment", () => {
+  it("samma segment kan förtjäna designs på OLIKA sidor oberoende av varandra", () => {
+    const leaves = [
+      pleaf("/", leaf("google", "desktop", "US", false, 3000, 200)),
+      pleaf("/pricing", leaf("google", "desktop", "US", false, 1500, 130)),
+    ];
+    const got = findEarnedCells(leaves, []);
+    expect(got.map((c) => `${c.path} ${c.key}`)).toEqual([
+      "/ google·desktop·US·ny",
+      "/pricing google·desktop·US·ny",
+    ]);
+  });
+
+  it("en variant täcker bara SIN sida — samma nyckel på annan sida föreslås ändå", () => {
+    const leaves = [
+      pleaf("/", leaf("google", "desktop", "US", false, 3000, 200)),
+      pleaf("/pricing", leaf("google", "desktop", "US", false, 1500, 130)),
+    ];
+    const got = findEarnedCells(leaves, [{ path: "/", segmentKey: "google·desktop·US·ny" }]);
+    expect(got.map((c) => `${c.path} ${c.key}`)).toEqual(["/pricing google·desktop·US·ny"]);
+  });
+
+  it("rankar över sidorna: en sidas näst bästa tränger inte ut en annans bästa", () => {
+    const leaves = [
+      pleaf("/", leaf("a", "mobile", "SE", false, 2000, 180)),
+      pleaf("/", leaf("b", "mobile", "SE", false, 1800, 150)),
+      pleaf("/pricing", leaf("c", "desktop", "US", false, 1900, 160)),
+    ];
+    const got = findEarnedCells(leaves, [], 2);
+    expect(got.map((c) => `${c.path} ${c.key}`)).toEqual([
+      "/ a·mobile·SE·ny",
+      "/pricing c·desktop·US·ny",
+    ]);
+  });
+
+  it("tomma/saknade paths hamnar på startsidan", () => {
+    const got = findEarnedCells([pleaf("", leaf("google", "mobile", "SE", false, 1500, 120))], []);
+    expect(got[0]?.path).toBe("/");
+  });
+
+  it("volymgrinden gäller PER sida — sajtbred volym räcker inte", () => {
+    const leaves = [
+      pleaf("/", leaf("google", "desktop", "US", false, 700, 60)),
+      pleaf("/pricing", leaf("google", "desktop", "US", false, 600, 55)),
+    ];
+    expect(findEarnedCells(leaves, [])).toEqual([]);
   });
 });
