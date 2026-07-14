@@ -31,15 +31,29 @@
 //   7. position fallback: an above-fold primary with no keyword evidence is
 //      most likely a conversion.
 //
-// Vocabulary provenance: corpus/vocab-harvest-2026-07-06.json (107-site
-// harvest); inclusion bar >= 2 independent sites. Two deliberate deltas
-// (2026-07-14): \btry\b added — mining missed it because harvest catches
-// "Try X free" buttons via the position fallback (rule 7), but string-context
-// callers (redesign extract.ts) have no category and need the word; Swedish
-// "prova" was already in the list, the English twin plainly belongs. And
-// bare `book` tightened to \bbook\b — "Employee handbook", "Books we wrote"
-// and aria-labels like "Share on Facebook" are not bookings ("Book a demo"
-// still matches; Swedish "boka" is its own entry).
+// Vocabulary provenance: EN+SV mined from corpus/vocab-harvest-2026-07-06.json
+// (107-site harvest, inclusion bar >= 2 independent sites) with two deliberate
+// deltas: \btry\b added (English twin of "prova"; harvest caught those via the
+// position fallback so mining missed the word) and `book` tightened to
+// \bbook\b ("Employee handbook"/"Share on Facebook" are not bookings).
+// 2026-07-14, owner decision "alla språk": the DETERMINISTIC floor was
+// widened to ~30 major languages (curated high-precision action verbs, not
+// mined — reviewed per language for substring safety). This floor is what the
+// in-browser scripts can ever have; ALL remaining languages are covered by the
+// LLM layer server-side (labeler.server.ts / goal-judge.server.ts, any
+// language, confidence-floored) — lists are the floor, never the ceiling.
+//
+// Regex safety rules for contributors:
+//   * \b is ASCII-only in JS. Use it ONLY around fully-ASCII words
+//     ("\\bkaufen\\b" — so "verkaufen"/"Einkaufen" never match). A term whose
+//     FIRST or LAST character is non-ASCII must NOT be \b-anchored
+//     (/\bкупить\b/ can never match — both neighbours are non-word chars).
+//   * Non-Latin scripts match as plain substrings, exactly like the Swedish
+//     terms always have.
+//   * Login/anmelden/تسجيل الدخول-style terms belong in the NAVIGATION list,
+//     never conversion — a signup word that doubles as login (German
+//     "anmelden") goes to navigation: conservative exclusion beats wrongly
+//     calling a login button the money action.
 export function classifyIntentShared(
   text: string,
   href: string,
@@ -78,14 +92,55 @@ export function classifyIntentShared(
   ) {
     return "social";
   }
-  if (
-    /(\bbook\b|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|\btry\b|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ne[dr]|lägg i (varu|kund)?korg(en)?|lägg till|ansök|bidra|donera|teckna|jämför|shoppa|månadsgivare)/i.test(
-      probe,
-    )
-  ) {
+  const CONV = [
+    // engelska
+    "\\bbook\\b|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|\\btry\\b|checkout|order|apply|donate|download|add to cart",
+    // svenska
+    "beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ne[dr]|lägg i (varu|kund)?korg(en)?|lägg till|ansök|bidra|donera|teckna|jämför|shoppa|månadsgivare",
+    // tyska ("anmelden" är login-tvetydigt → navigation, inte här)
+    "\\bkaufen\\b|warenkorb|zur kasse|bestellen|registrieren|konto erstellen|kostenlos|ausprobieren|buchen|termin vereinbaren|herunterladen|spenden|abonnieren|angebot anfordern|loslegen",
+    // franska (s.inscrire: punkten matchar båda apostrof-varianterna ' och ’)
+    "acheter|ajouter au panier|commander|s.inscrire|inscription|essai gratuit|essayer|réserver|commencer|télécharger|faire un don|s.abonner|demander un devis|rendez-vous",
+    // spanska + portugisiska
+    "comprar|añadir al carrito|agregar al carrito|registrarse|regístrate|prueba gratis|reservar|comenzar|empieza|descargar|\\bdonar\\b|suscr|solicitar|cotización|adicionar ao carrinho|cadastr|teste grátis|experimente|começar|baixar|\\bdoar\\b|assinar|orçamento",
+    // italienska
+    "acquista|\\bcompra\\b|aggiungi al carrello|\\bordina\\b|registrati|iscriviti|prenota|inizia|scarica|abbonati|richiedi",
+    // nederländska ("boeken" = även "böcker" — bara entydiga boknings-former)
+    "\\bkopen\\b|koop nu|winkelwagen|winkelmand|gratis proberen|proberen|boek nu|te boeken|reserveren|aan de slag|downloaden|doneren|abonneren|offerte|registreren",
+    // danska + norska
+    "\\bkøb\\b|læg i kurv|\\bkjøp\\b|handlekurv|\\bbestil\\b|\\bbestill\\b|tilmeld|prøv|kom i gang|last ned|få tilbud|abonner|reserver",
+    // finska
+    "\\bosta\\b|koriin|\\btilaa\\b|rekisteröidy|kokeile|\\bvaraa\\b|aloita|\\blataa\\b|lahjoita",
+    // polska + tjeckiska
+    "\\bkup\\b|do koszyka|zamów|zarejestruj|wypróbuj|zarezerwuj|rozpocznij|pobierz|zapisz się|koupit|do košíku|objednat|vyzkoušet|rezervovat|stáhnout|začít",
+    // ryska + ukrainska (kyrilliska: rena substrängar — \\b fungerar inte)
+    "купить|в корзину|заказать|зарегистр|регистрация|попробо|забронир|скачать|подписаться|оформить|придбати|замовити|зареєстру|спробувати|завантажити",
+    // grekiska
+    "αγορά|στο καλάθι|παραγγελία|εγγραφή|δοκιμ|κράτηση|ξεκινήστε|λήψη",
+    // turkiska (\\bindir\\b så "indirim" (rea) inte träffar)
+    "satın al|sepete ekle|sipariş|kayıt ol|üye ol|\\bdene\\b|rezervasyon|başla|\\bindir\\b|bağış|abone ol|teklif al",
+    // arabiska + hebreiska ("سجل الآن" registrera; login تسجيل الدخول → navigation)
+    "اشتر|السلة|اطلب|سجل الآن|إنشاء حساب|جرب|احجز|ابدأ|تحميل|تبرع|اشترك|קנה|קנייה|הוסף לסל|הזמן|הרשמה|נסה|התחל|הורד|תרום",
+    // hindi
+    "खरीदें|कार्ट|ऑर्डर करें|रजिस्टर|पंजीकरण|आज़माएं|बुक करें|शुरू करें|डाउनलोड|दान करें",
+    // japanska (bara sammansatta 登録-former — ログイン → navigation)
+    "購入|カートに入れる|カートに追加|注文|会員登録|新規登録|登録する|無料体験|お試し|予約|申し込|資料請求|見積|ダウンロード|寄付",
+    // kinesiska (förenklad + traditionell)
+    "购买|加入购物车|下单|订购|注册|免费试用|试用|预订|预约|下载|捐赠|订阅|購買|加入購物車|註冊|預約|下載|捐款|訂閱",
+    // koreanska
+    "구매|장바구니|주문|회원가입|가입하기|무료 체험|체험하기|예약|시작하기|다운로드|기부|구독|신청",
+    // vietnamesiska + thai + indonesiska/malajiska ("daftar" bara i entydiga
+    // sammansättningar — "Daftar Isi" är en innehållsförteckning)
+    "\\bmua\\b|vào giỏ|đặt hàng|đăng ký|dùng thử|đặt chỗ|bắt đầu|tải xuống|quyên góp|ซื้อ|ตะกร้า|สั่งซื้อ|สมัคร|ทดลอง|จอง|เริ่ม|ดาวน์โหลด|บริจาค|\\bbeli\\b|keranjang|pesan sekarang|pemesanan|daftar sekarang|daftar akun|coba gratis|\\bcoba\\b|unduh|donasi|berlangganan",
+  ].join("|");
+  if (new RegExp(CONV, "i").test(probe)) {
     return "conversion";
   }
-  if (/^(tel:|mailto:)/i.test(h) || /(contact|kontakt)/i.test(probe)) return "contact";
+  // "letişim" utan i: turkiskt İ (U+0130) case-foldar inte till "i" i JS-regex,
+  // så "iletişim" skulle missa rubrikformen "İletişim".
+  const CONTACT =
+    "contact|kontakt|contato|contatto|επικοιν|контакт|связаться|letişim|اتصل|تواصل|צור קשר|संपर्क|問い合わせ|お問合せ|联系|聯絡|문의|liên hệ|ติดต่อ|hubungi";
+  if (/^(tel:|mailto:)/i.test(h) || new RegExp(CONTACT, "i").test(probe)) return "contact";
   if (
     /(like|love|save|bookmark|share|comment|reply|follow|subscribe|upvote|downvote|gilla|spara|kommentar|svara|följ|prenumerera|rösta|röst)/i.test(
       probe,
@@ -93,11 +148,13 @@ export function classifyIntentShared(
   ) {
     return "engagement";
   }
-  if (
-    /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inställningar)/i.test(
-      probe,
-    )
-  ) {
+  const NAV = [
+    "login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inställningar",
+    // inloggning/konto på övriga språk — medvetet FÖRE positions-fallbacken,
+    // och tvetydiga registrera/logga-in-ord (de "anmelden") hör hemma HÄR
+    "einloggen|\\banmelden\\b|mein konto|se connecter|connexion|mon compte|iniciar sesión|mi cuenta|\\bentrar\\b|accedi|il mio account|inloggen|mijn account|log ind|logg inn|min side|kirjaudu|zaloguj|moje konto|войти|вход|личный кабинет|giriş|تسجيل الدخول|התחבר|लॉग ?इन|ログイン|マイページ|登录|登入|로그인|마이페이지|đăng nhập|เข้าสู่ระบบ|\\bmasuk\\b",
+  ].join("|");
+  if (new RegExp(NAV, "i").test(probe)) {
     return "navigation";
   }
   if (/(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i.test(probe)) {

@@ -112,6 +112,110 @@ describe("\\btry\\b — the English twin of 'prova' (added for string-context ca
   });
 });
 
+describe("deterministiska golvet — ~30 storspråk (ägarbeslut 2026-07-14)", () => {
+  const conv = (t: string) => expect(classify(t)).toBe("conversion");
+  const notConv = (t: string) => expect(classify(t)).not.toBe("conversion");
+  const nav = (t: string) => expect(classify(t)).toBe("navigation");
+
+  it("germanska: de/nl/da/no köp-, boknings- och registreringsverb", () => {
+    conv("Jetzt kaufen");
+    conv("In den Warenkorb");
+    conv("Kostenlos testen");
+    conv("Koop nu");
+    conv("Offerte aanvragen");
+    conv("Køb nu");
+    conv("Kjøp tilgang");
+    conv("Bestill time");
+  });
+
+  it("germanska fällor: verkaufen/Einkaufen/boeken(böcker) är INTE konvertering", () => {
+    notConv("Verkaufen Sie mit uns"); // \bkaufen\b
+    notConv("Einkaufen als Thema");
+    notConv("Onze boeken"); // nl "böcker" — bara "boek nu"/"te boeken"
+    nav("Anmelden"); // login-tvetydigt → navigation, aldrig money action
+  });
+
+  it("romanska: fr/es/pt/it", () => {
+    conv("Acheter maintenant");
+    conv("S’inscrire gratuitement"); // typografisk apostrof täcks (s.inscrire)
+    conv("Ajouter au panier");
+    conv("Comprar ahora");
+    conv("Regístrate gratis");
+    conv("Adicionar ao carrinho");
+    conv("Cadastre-se");
+    conv("Aggiungi al carrello");
+    conv("Prenota ora");
+  });
+
+  it("romanska login är navigation, inte konvertering", () => {
+    nav("Se connecter");
+    nav("Iniciar sesión");
+    nav("Accedi");
+  });
+
+  it("slaviska + grekiska + turkiska", () => {
+    conv("Купить сейчас");
+    conv("Добавить в корзину");
+    conv("Зарегистрироваться");
+    conv("Придбати"); // ukrainska
+    conv("Dodaj do koszyka");
+    conv("Kup teraz");
+    conv("Προσθήκη στο καλάθι");
+    conv("Sepete ekle");
+    conv("Ücretsiz dene");
+  });
+
+  it("turkiska fällan: 'İndirim' (rea) är inte 'indir' (ladda ner)", () => {
+    notConv("Indirim fırsatları"); // \bindir\b
+    nav("Войти"); // ryskt login → navigation
+    nav("Giriş yap");
+  });
+
+  it("semitiska + indiska: ar/he/hi", () => {
+    conv("أضف إلى السلة");
+    conv("سجل الآن");
+    conv("הוסף לסל");
+    conv("הרשמה");
+    conv("खरीदें");
+    conv("बुक करें");
+    nav("تسجيل الدخول"); // arabiskt login → navigation
+  });
+
+  it("östasiatiska: ja/zh/ko (substrängar — \\b fungerar inte i CJK)", () => {
+    conv("カートに入れる");
+    conv("会員登録");
+    conv("無料体験");
+    conv("加入购物车");
+    conv("免费试用");
+    conv("立即注册");
+    conv("장바구니 담기");
+    conv("회원가입");
+    conv("무료 체험 시작");
+    nav("ログイン");
+    nav("로그인");
+    nav("登录");
+  });
+
+  it("sydostasiatiska: vi/th/id + id-fällan 'Daftar Isi'", () => {
+    conv("Mua ngay");
+    conv("Đăng ký");
+    conv("สั่งซื้อ");
+    conv("สมัครสมาชิก");
+    conv("Beli sekarang");
+    conv("Daftar sekarang");
+    notConv("Daftar Isi"); // innehållsförteckning — bara entydiga daftar-former
+    nav("Đăng nhập");
+  });
+
+  it("kontakt på övriga språk är contact, inte unknown", () => {
+    expect(classify("お問い合わせ")).toBe("contact");
+    expect(classify("联系我们")).toBe("contact");
+    expect(classify("문의하기")).toBe("contact");
+    expect(classify("İletişim")).toBe("contact");
+    expect(classify("Contato")).toBe("contact");
+  });
+});
+
 describe("B1 — inline parity: one classifier, two scripts", () => {
   const src = classifyIntentShared.toString();
 

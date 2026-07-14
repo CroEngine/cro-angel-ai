@@ -103,18 +103,30 @@ function extractSections(html: string): RedesignContentModel["sections"] {
   });
 }
 
-/** Detect CTAs from anchor/button text. Candidacy AND intent come from THE
- *  shared classifier (shared/intent.ts — corpus-mined EN+SV vocabulary, the same
- *  semantics as the harvest scripts), never a private word list: the old
- *  English-only regex here found 0 CTAs on Swedish pages (breadth finding 2).
- *  Scans the WHOLE document: the primary CTA often sits in the header/hero above
- *  <main> (e.g. Basecamp's "Try Basecamp free"). Deduped by text.
+/** A raw anchor/button candidate before intent classification — the input both
+ *  the deterministic floor (extractCtas) and the any-language LLM layer
+ *  (cta-llm.server.ts) work from. */
+export interface CtaCandidate {
+  text: string;
+  href: string;
+  attrText: string;
+  aboveFold: boolean;
+  samePageAnchor: boolean;
+  /** The deterministic classifier's verdict for this candidate. */
+  intent: ReturnType<typeof classifyIntentShared>;
+}
+
+/** Collect every anchor/button candidate (≤32 chars, deduped by text) with the
+ *  shared classifier's deterministic verdict attached. Scans the WHOLE
+ *  document: the primary CTA often sits in the header/hero above <main>
+ *  (e.g. Basecamp's "Try Basecamp free").
  *  String-parser limits (honest): no form context (isFormSubmit=false) and no
  *  computed category, so the classifier's position fallback never fires here —
  *  a keyword-less primary is instead covered by the owner-goal-text union the
  *  measurement harnesses add to the hit-test list. */
-function extractCtas(html: string, seen = new Set<string>()): RedesignContentModel["ctas"] {
-  const ctas: RedesignContentModel["ctas"] = [];
+export function extractCtaCandidates(html: string): CtaCandidate[] {
+  const out: CtaCandidate[] = [];
+  const seen = new Set<string>();
   const re = /<(a|button)\b([^>]*)>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   let order = 0;
@@ -123,28 +135,46 @@ function extractCtas(html: string, seen = new Set<string>()): RedesignContentMod
     const t = stripTags(m[3]);
     order++;
     if (!t || t.length > 32 || seen.has(t.toLowerCase())) continue;
+    seen.add(t.toLowerCase());
     const attrVal = (name: string): string => {
       const a = new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, "i").exec(attrs);
       return a ? (a[1] ?? a[2] ?? "") : "";
     };
     const href = attrVal("href");
-    const intent = classifyIntentShared(
-      t,
+    const attrText = `${attrVal("aria-label")} ${attrVal("title")}`.trim();
+    out.push({
+      text: t,
       href,
-      `${attrVal("aria-label")} ${attrVal("title")}`.trim(),
-      "", // no category from raw markup — the position fallback stays off
-      false,
-      order < 12, // first handful ~ above fold
-      "",
-      href.startsWith("#"),
-    );
-    // conversion + contact are the model's CTAs (contact IS the goal for
-    // lead-gen — A1); nav/social/utility/engagement links stay out of the brief.
-    if (intent !== "conversion" && intent !== "contact") continue;
-    seen.add(t.toLowerCase());
-    ctas.push({ text: t, intent, aboveFold: order < 12 });
+      attrText,
+      aboveFold: order < 12, // first handful ~ above fold
+      samePageAnchor: href.startsWith("#"),
+      intent: classifyIntentShared(
+        t,
+        href,
+        attrText,
+        "", // no category from raw markup — the position fallback stays off
+        false,
+        order < 12,
+        "",
+        href.startsWith("#"),
+      ),
+    });
   }
-  return ctas;
+  return out;
+}
+
+/** Detect CTAs from anchor/button text. Candidacy AND intent come from THE
+ *  shared classifier (shared/intent.ts — EN+SV mined + ~30 curated major
+ *  languages, the same semantics as the harvest scripts), never a private word
+ *  list: the old English-only regex here found 0 CTAs on Swedish pages
+ *  (breadth finding 2). Languages beyond the deterministic floor are added by
+ *  the LLM layer (cta-llm.server.ts) where the chain runs server-side. */
+function extractCtas(html: string): RedesignContentModel["ctas"] {
+  // conversion + contact are the model's CTAs (contact IS the goal for
+  // lead-gen — A1); nav/social/utility/engagement links stay out of the brief.
+  return extractCtaCandidates(html)
+    .filter((c) => c.intent === "conversion" || c.intent === "contact")
+    .map((c) => ({ text: c.text, intent: c.intent, aboveFold: c.aboveFold }));
 }
 
 /** Trim a captured phrase that got cut mid-word: if the next source char is a word
