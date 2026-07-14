@@ -97,14 +97,18 @@ async function runSuite(label, snippet) {
     if (!ok) failures.push(name);
   };
 
-  // 1) Bot-grinden.
+  // 1) Bot-grinden. OBS: rätt bevis är window.AngelAdaptive — den sätts
+  // OVILLKORLIGT när snippeten bootar (kund-API:t). __angel finns bara under
+  // harness-flaggan och är därför odefinierad här oavsett grind — en assert på
+  // den vore vakuös (granskningsfynd 2026-07-14: den ursprungliga checken
+  // passerade även med borttagen grind).
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await boot(page, snippet, { harness: false });
     const blocked = await page.evaluate(
-      () => navigator.webdriver === true && typeof window.__angel === "undefined",
+      () => navigator.webdriver === true && typeof window.AngelAdaptive === "undefined",
     );
-    check("bot-grind: webdriver blockerar boot", blocked);
+    check("bot-grind: webdriver blockerar boot (AngelAdaptive odefinierad)", blocked);
     await page.close();
   }
 
@@ -114,6 +118,12 @@ async function runSuite(label, snippet) {
     await boot(page, snippet, { harness: true });
     const booted = await page.evaluate(() => typeof window.__angel === "object");
     check("harness-flaggan öppnar test-sömmen", booted);
+    // Positiv kontroll för bot-checken ovan: när booten FÅR gå igenom sätts
+    // AngelAdaptive — så frånvaron i harness-false-fallet bevisar grinden.
+    check(
+      "positiv kontroll: AngelAdaptive definierad när boot tillåts",
+      await page.evaluate(() => typeof window.AngelAdaptive === "object"),
+    );
     const before = await state(page);
     const applied = await page.evaluate((v) => window.__angel.apply({ adaptations: [], variant: v }), VARIANT);
     const after = await state(page);

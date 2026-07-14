@@ -39,6 +39,12 @@ jobs:
       - name: Serving smoke (source + minified)
         run: node scripts/ci/serving-smoke.mjs
 
+      # Hela produktionsbygget inkl. minify-steget — annars möter minifieraren
+      # produktion första gången i Netlifys deploy, där ett fel blockerar
+      # releasen i stället för PR:en.
+      - name: Production build (vite + snippet minify)
+        run: bun run build
+
       - name: Run freeze-visibility test
         run: bunx vitest run src/lib/tests/snapshot/__tests__/freeze-visibility.test.ts
 
