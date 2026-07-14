@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && bun run scripts/build/minify-snippet.ts",
+    "build:harvest": "bun run scripts/build-harvest.ts",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",

@@ -4,6 +4,8 @@
 // did the snippet run cleanly, hit real targets, avoid breaking the page, and
 // fully reverse? No IO, no DOM — unit-testable against synthetic observations.
 
+import { H_OVERFLOW_FAIL_PX } from "@/adaptive/redesign/render-gates";
+
 /** Cheap, layout-independent fingerprint of the DOM at a point in time. */
 export interface DomSignature {
   /** document.body.textContent.length — catches text replacement. */
@@ -268,7 +270,7 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
         );
       }
       // Apply skapade horisontell scroll som inte fanns före.
-      if (o.visual.hOverflowIntroducedPx > 8) {
+      if (o.visual.hOverflowIntroducedPx > H_OVERFLOW_FAIL_PX) {
         fail(`apply introduced ${o.visual.hOverflowIntroducedPx}px of horizontal overflow`);
       }
       // Flytt utan mätbart ankare kan inte bedömas maskinellt → mänsklig

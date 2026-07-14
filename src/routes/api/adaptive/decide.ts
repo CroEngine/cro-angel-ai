@@ -13,6 +13,7 @@ import { decide, decisionIdFor } from "@/adaptive/decide";
 import { resolveInventory } from "@/adaptive/inventory.server";
 import { loadPatternBoosts } from "@/adaptive/performance.server";
 import { isBotUserAgent } from "@/adaptive/bot";
+import { fnv1a32 } from "@/adaptive/hash";
 import { serveDecision } from "@/adaptive/redesign/serve";
 import { loadSiteConfig, loadServableVariants, logDecision } from "@/adaptive/persistence.server";
 import type { ClientSignals } from "@/adaptive/types";
@@ -214,12 +215,9 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         const vh = typeof client.visitorHash === "string" ? client.visitorHash : "";
         let holdout = false;
         if (holdoutPct > 0 && vh) {
-          let h = 0x811c9dc5;
-          for (let i = 0; i < vh.length; i++) {
-            h ^= vh.charCodeAt(i);
-            h = Math.imul(h, 0x01000193);
-          }
-          holdout = (h >>> 0) % 100 < holdoutPct;
+          // Osaltad hash — rampBucket saltar med variant-id just för att
+          // vara okorrelerad med denna hink (se serve.ts).
+          holdout = fnv1a32(vh) % 100 < holdoutPct;
         }
         decision.holdout = holdout;
 

@@ -29,29 +29,30 @@ describe("labelTexts — Anthropic call with strict validation", () => {
       vi.fn(async () =>
         apiResponse([
           { i: 0, role: "support", confidence: 0.95 },
+          // extra fält från modellen (t.ex. gamla v1-promptens intent) ignoreras
           { i: 1, role: "acquisition", intent: "signup", confidence: 0.9 },
         ]),
       ),
     );
     const out = await labelTexts([{ text: "Hilfe" }, { text: "Konto erstellen" }]);
-    expect(out?.[0]).toEqual({ role: "support", intent: undefined, confidence: 0.95 });
-    expect(out?.[1]).toEqual({ role: "acquisition", intent: "signup", confidence: 0.9 });
+    expect(out?.[0]).toEqual({ role: "support", confidence: 0.95 });
+    expect(out?.[1]).toEqual({ role: "acquisition", confidence: 0.9 });
   });
 
-  it("rejects unknown roles/intents and out-of-range indices; clamps confidence", async () => {
+  it("rejects unknown roles and out-of-range indices; clamps confidence", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
         apiResponse([
           { i: 0, role: "evil-role", confidence: 1 },
           { i: 7, role: "support", confidence: 1 },
-          { i: 1, role: "acquisition", intent: "world-domination", confidence: 9 },
+          { i: 1, role: "acquisition", confidence: 9 },
         ]),
       ),
     );
     const out = await labelTexts([{ text: "a" }, { text: "b" }]);
     expect(out?.[0]).toBeNull(); // bad role dropped
-    expect(out?.[1]).toEqual({ role: "acquisition", intent: undefined, confidence: 1 });
+    expect(out?.[1]).toEqual({ role: "acquisition", confidence: 1 });
   });
 
   it("returns null on malformed output and on API errors", async () => {

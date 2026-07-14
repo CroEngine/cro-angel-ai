@@ -15,6 +15,8 @@
 //
 // A structural proxy for a fuzzy property — same spirit as the beauty gates.
 
+import { normalizeLabel } from "../crawler-inventory";
+
 export type ClaimKind = "number" | "superlative" | "promise";
 
 export interface Claim {
@@ -85,7 +87,9 @@ function normNumber(s: string): string {
     .replace(/\.0+(\D|$)/, "$1"); // 99.0% ≈ 99%
 }
 
-const norm = (s: string): string => s.toLowerCase().replace(/\s+/g, " ").trim();
+// Dedup-normaliseringen är crawler-inventoriets normalizeLabel — samma jobb,
+// en implementation (trim/collapse kommuterar; utfallet är byte-identiskt).
+const norm = normalizeLabel;
 
 /** Extract the claim tokens (numbers, superlatives, promises) from a piece of
  *  text. Pure; order-independent. */

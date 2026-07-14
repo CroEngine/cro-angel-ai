@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { classifyIntentShared } from "../shared/intent";
+import { classifyIntentShared, samePageAnchorShared } from "../shared/intent";
 import { CTAS_SCRIPT } from "../ctas";
 import { COLLECT_SCRIPT } from "../collect";
 
@@ -117,10 +117,12 @@ describe("B1 — inline parity: one classifier, two scripts", () => {
 
   it("CTAS_SCRIPT inlines the exact shared function source", () => {
     expect(CTAS_SCRIPT).toContain(src);
+    expect(CTAS_SCRIPT).toContain(samePageAnchorShared.toString());
   });
 
   it("COLLECT_SCRIPT inlines the exact shared function source", () => {
     expect(COLLECT_SCRIPT).toContain(src);
+    expect(COLLECT_SCRIPT).toContain(samePageAnchorShared.toString());
   });
 
   it("neither script defines its own intent wordlists anymore", () => {

@@ -10,6 +10,8 @@
 // later id and would surface as noise. We anchor on a stable signature instead
 // (selector → text → id), so the diff tracks real DOM/content identity.
 
+import { normalizeLabel } from "./crawler-inventory";
+
 import type { ContentInventory, InventoryItem, InventorySlot } from "./types";
 
 export interface InventoryChange {
@@ -29,6 +31,9 @@ export interface InventoryDrift {
   counts: { added: number; removed: number; changed: number; unchanged: number };
 }
 
+// OBS: skiftlägesKÄNSLIG med avsikt — används för ändringsdetektering nedan
+// ("Köp nu" → "KÖP NU" ÄR en ändring). Dedup-nyckeln i itemKey använder den
+// delade, skiftlägesokänsliga normalizeLabel i stället.
 function norm(s: string | undefined): string {
   return (s ?? "").replace(/\s+/g, " ").trim();
 }
@@ -41,7 +46,7 @@ function norm(s: string | undefined): string {
  */
 export function itemKey(item: InventoryItem): string {
   if (item.selector) return JSON.stringify([item.slot, "sel", item.selector]);
-  if (item.text) return JSON.stringify([item.slot, "txt", norm(item.text).toLowerCase()]);
+  if (item.text) return JSON.stringify([item.slot, "txt", normalizeLabel(item.text)]);
   return JSON.stringify([item.slot, "id", item.id]);
 }
 

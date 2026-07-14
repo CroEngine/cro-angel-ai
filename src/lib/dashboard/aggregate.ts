@@ -295,13 +295,19 @@ export const MIN_ARM_OUTCOMES = 5;
  *  detta är enskilda långsamma laddningar för brusiga för en risk-avläsning. */
 export const MIN_PERF_SAMPLES = 8;
 
-function armValid(s: VariantStat): boolean {
+/** Success–failure-regeln som EN exporterad predikat: armen har nog exponeringar
+ *  OCH nog konverteringar OCH nog icke-konverteringar för att normal-
+ *  approximationen ska hålla. winner.ts (A/B-utvärderaren) använder samma
+ *  predikat — en regel, två domare, ingen drift. */
+export function armStatValid(exposures: number, conversions: number): boolean {
   return (
-    s.exposures >= MIN_ARM_EXPOSURES &&
-    s.conversions >= MIN_ARM_OUTCOMES &&
-    s.exposures - s.conversions >= MIN_ARM_OUTCOMES
+    exposures >= MIN_ARM_EXPOSURES &&
+    conversions >= MIN_ARM_OUTCOMES &&
+    exposures - conversions >= MIN_ARM_OUTCOMES
   );
 }
+
+const armValid = (s: VariantStat): boolean => armStatValid(s.exposures, s.conversions);
 
 const ms = (iso: string): number => {
   const t = Date.parse(iso);

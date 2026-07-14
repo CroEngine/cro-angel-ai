@@ -62,6 +62,7 @@ import {
   type VariantOpView,
   type VariantView,
 } from "@/lib/dashboard/dashboard.functions";
+import { H_OVERFLOW_FAIL_PX, V_OVERLAP_FAIL_PX } from "@/adaptive/redesign/render-gates";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
 import type {
   DayPoint,
@@ -1192,9 +1193,9 @@ const VARIANT_STATUS_STYLE: Record<VariantView["status"], string> = {
 /** Grind-nycklarnas läsbara etiketter + hur ett värde bedöms (grönt/flaggat). */
 const GATE_LABELS: Record<string, { label: string; ok: (v: number | boolean) => boolean; fmt?: (v: number | boolean) => string }> = {
   heroFirst: { label: "Hjälten kvar först", ok: (v) => v === true },
-  hOverflowIntroducedPx: { label: "Horisontell overflow", ok: (v) => Number(v) <= 8, fmt: (v) => `+${v} px` },
-  verticalOverlapIntroducedPx: { label: "Vertikal krock", ok: (v) => Number(v) <= 100, fmt: (v) => `+${v} px` },
-  attempt1VerticalOverlapPx: { label: "Vertikal krock — försök 1", ok: (v) => Number(v) <= 100, fmt: (v) => `+${v} px` },
+  hOverflowIntroducedPx: { label: "Horisontell overflow", ok: (v) => Number(v) <= H_OVERFLOW_FAIL_PX, fmt: (v) => `+${v} px` },
+  verticalOverlapIntroducedPx: { label: "Vertikal krock", ok: (v) => Number(v) <= V_OVERLAP_FAIL_PX, fmt: (v) => `+${v} px` },
+  attempt1VerticalOverlapPx: { label: "Vertikal krock — försök 1", ok: (v) => Number(v) <= V_OVERLAP_FAIL_PX, fmt: (v) => `+${v} px` },
   ctaBroken: { label: "CTA brutna", ok: (v) => Number(v) === 0 },
   reversible: { label: "Reversibel", ok: (v) => v === true },
 };

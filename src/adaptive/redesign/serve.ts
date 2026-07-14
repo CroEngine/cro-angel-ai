@@ -15,6 +15,8 @@
 // analysis speak one language and a variant authored for "google·mobile·se" lines
 // up with the same bucket the dashboard reports.
 
+import { fnv1a32 } from "../hash";
+
 import type { RedesignOp } from "./generate";
 
 export type VariantStatus = "candidate" | "verified" | "serving" | "winner" | "retired";
@@ -128,13 +130,7 @@ function serveOpValid(o: ServeOp): boolean {
  *  the measurement-holdout bucket (plain visitorHash): a visitor who is
  *  "always control" there must not be "always control" here too. */
 export function rampBucket(visitorHash: string, variantId: string): number {
-  const s = `${visitorHash}·${variantId}`;
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0) % 100;
+  return fnv1a32(`${visitorHash}·${variantId}`) % 100;
 }
 
 export interface ServeVerdict {

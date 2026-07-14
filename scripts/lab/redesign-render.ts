@@ -23,8 +23,7 @@ import { join } from "node:path";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { generateRedesign } from "../../src/adaptive/redesign/generate";
-import { evaluateRenderGates, type RenderMeasurements } from "../../src/adaptive/redesign/render-gates";
-import { measurePlan, type MeasureOp } from "../redesign/measure";
+import { measurePlan, runGatedAttempts, type GatedAttempt, type MeasureOp } from "../redesign/measure";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 
 const REPO = join(import.meta.dir, "../..");
@@ -128,39 +127,10 @@ try {
 
   await page.screenshot({ path: join(outDir, "before.jpg"), type: "jpeg", quality: 60, fullPage: true });
 
-  // Generate → verify → RETRY. If the gate fails on a vertical collision, try
-  // once more with ONE extra lift per UNIQUE move target — same logical section
-  // order, different physical insertion, and exactly the retry-counting the
-  // verify pipeline uses (measurement == serve_ops). One retry only — a plan
-  // that can't find a clean placement stays held.
-  const uniqueFinds = [...new Set(baseOps.map((o) => o.find))];
-  const attempts: { attempt: number; measurements: RenderMeasurements; gate: ReturnType<typeof evaluateRenderGates> }[] = [];
-  let attemptOps = baseOps;
-  let unresolvable = false;
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const raw = await measurePlan(page, attemptOps, ctaTexts);
-    if (!raw.resolvedAll) {
-      unresolvable = true;
-      break;
-    }
-    const measurements: RenderMeasurements = {
-      beforeOrder: raw.beforeOrder,
-      afterOrder: raw.afterOrder,
-      hOverflowBeforePx: raw.hOverflowBeforePx,
-      hOverflowAfterPx: raw.hOverflowAfterPx,
-      movedCount: raw.movedCount,
-      movedAboveMain: raw.movedAboveMain,
-      mainAnchorFound: raw.mainAnchorFound,
-      ctaChecked: raw.ctaChecked,
-      ctaBroken: raw.ctaBroken,
-      requestedMoves: raw.requestedMoves,
-      appliedMoves: raw.appliedMoves,
-      reversedOrderMatches: raw.reversedOrderMatches,
-      verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
-    };
-    const gate = evaluateRenderGates(measurements);
-    attempts.push({ attempt, measurements, gate });
-
+  // Generate → verify → RETRY — den DELADE grind-loopen (runGatedAttempts):
+  // kollision → en retry med ETT extra lyft per UNIKT flyttmål, samma räkning
+  // som verifieringspipelinen. En plan utan ren placering hålls tillbaka.
+  const logAttempt = ({ attempt, measurements, gate }: GatedAttempt) => {
     console.log(`\n  ── attempt ${attempt} ${"─".repeat(50)}`);
     console.log("  FÖRE:  " + measurements.beforeOrder.join(" → "));
     console.log("  EFTER: " + measurements.afterOrder.join(" → "));
@@ -170,16 +140,10 @@ try {
     console.log(`  VERDICT: ${gate.verdict.toUpperCase()}`);
     for (const r of gate.reasons) console.log(`    · ${r}`);
     if (!gate.reasons.length) console.log("    ✓ beauty gates passed (no overflow, hero kept, CTAs intact, reversible)");
-
-    const collision =
-      gate.verdict === "fail" && gate.reasons.some((r) => /vertical overlap/.test(r));
-    if (collision && attempt === 1 && uniqueFinds.length > 0) {
-      attemptOps = [...baseOps, ...uniqueFinds.map((find): MeasureOp => ({ op: "move_up", find }))];
-      console.log("  ↻ collision — retrying with each unique move target lifted one step further");
-      continue;
-    }
-    break;
-  }
+  };
+  const { attempts, attemptOps, unresolvable } = await runGatedAttempts(page, baseOps, ctaTexts, {
+    onAttempt: logAttempt,
+  });
   if (unresolvable) {
     console.log("\n  FINAL: NOT APPLICABLE — v3-upplösningen vägrade (ingen ren sektionsnivå); fail closed");
     writeFileSync(join(outDir, "report.json"), JSON.stringify({ attempts, unresolvable: true }, null, 2));

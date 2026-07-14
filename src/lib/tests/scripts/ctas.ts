@@ -2,7 +2,7 @@
 // Keep self-contained: no imports of server state; the shared classifier below
 // is inlined into the script string via toString(), never closed over.
 
-import { classifyIntentShared, formKindShared } from "./shared/intent";
+import { classifyIntentShared, formKindShared, samePageAnchorShared } from "./shared/intent";
 import {
   classifyCategoryShared,
   hasMeaningfulSurfaceShared,
@@ -18,6 +18,7 @@ export const CTAS_SCRIPT = `(() => {
   // the wordlists; it no longer defines any.
   ${classifyIntentShared.toString()}
   ${formKindShared.toString()}
+  ${samePageAnchorShared.toString()}
 
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
@@ -145,27 +146,12 @@ export const CTAS_SCRIPT = `(() => {
     for (const a of Array.from(el.attributes)) {
       if (a.name.startsWith('data-')) attrBag.push(a.value || '');
     }
-    // Same-page anchor (flik/TOC) — samma beräkning som collect.ts (regel 6 i
-    // classifyIntentShared): flikar får inte positions-fallbackas till
-    // conversion. Deklarerad URL (canonical/og:url) som bas, location som
-    // fallback — annars flippar regeln aldrig i MHTML-replay (file://-location
-    // vs absoluta https-själv-URL:er) och live/replay divergerar.
-    let samePageAnchor = false;
-    if (el.tagName === 'A' && href) {
-      try {
-        let pageUrl = new URL(location.href);
-        const canon = document.querySelector('link[rel="canonical"]');
-        const og = document.querySelector('meta[property="og:url"]');
-        const declared = (canon && canon.getAttribute('href')) || (og && og.getAttribute('content')) || '';
-        if (declared && /^https?:/i.test(declared)) pageUrl = new URL(declared);
-        const u = new URL(href, pageUrl.href);
-        samePageAnchor = !!u.hash && u.origin === pageUrl.origin &&
-          u.pathname === pageUrl.pathname && u.search === pageUrl.search;
-      } catch (e) { /* trasig href -> ingen flagga */ }
-    }
+    // Same-page anchor (flik/TOC) — delad beräkning (samePageAnchorShared),
+    // regel 6 i classifyIntentShared: flikar får inte positions-fallbackas
+    // till conversion.
     return classifyIntentShared(
       (text || '').trim(), href, attrBag.join(' '), category, isFormSubmit, rect.top < viewportH,
-      isFormSubmit ? formKindShared(el) : '', samePageAnchor,
+      isFormSubmit ? formKindShared(el) : '', samePageAnchorShared(el, href),
     );
   }
 

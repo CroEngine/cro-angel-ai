@@ -122,6 +122,34 @@ export function classifyIntentShared(
   return "unknown";
 }
 
+/** Same-page anchor (tab/TOC): href resolves to THIS page + a fragment. Feeds
+ *  rule 6 in classifyIntentShared — tabs must never be position-fallbacked to
+ *  conversion. The comparison base is the page's DECLARED URL (canonical/
+ *  og:url) with location as fallback: in MHTML replay location is a file://
+ *  URL while the capture's anchors are absolute https self-URLs — without the
+ *  declared base the rule never flips in replay and live/replay diverge.
+ *  Page-safe contract: touches only its args + document/location, never throws. */
+export function samePageAnchorShared(el: Element, href: string): boolean {
+  if (el.tagName !== "A" || !href) return false;
+  try {
+    let pageUrl = new URL(location.href);
+    const canon = document.querySelector('link[rel="canonical"]');
+    const og = document.querySelector('meta[property="og:url"]');
+    const declared =
+      (canon && canon.getAttribute("href")) || (og && og.getAttribute("content")) || "";
+    if (declared && /^https?:/i.test(declared)) pageUrl = new URL(declared);
+    const u = new URL(href, pageUrl.href);
+    return (
+      !!u.hash &&
+      u.origin === pageUrl.origin &&
+      u.pathname === pageUrl.pathname &&
+      u.search === pageUrl.search
+    );
+  } catch (e) {
+    return false; // trasig href -> ingen flagga
+  }
+}
+
 /** What kind of form does this (submit) element belong to? Same page-safe
  *  contract as isVisible: touches only its argument + DOM. Drives the A2
  *  rule in classifyIntentShared — search submits are not conversions, and an

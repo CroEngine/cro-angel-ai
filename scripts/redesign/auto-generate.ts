@@ -60,7 +60,7 @@ import {
   evaluateRenderGates,
   type RenderMeasurements,
 } from "../../src/adaptive/redesign/render-gates";
-import { measurePlan, type MeasureOp } from "./measure";
+import { measurePlan, runGatedAttempts, type MeasureOp } from "./measure";
 import type { ServeOp } from "../../src/adaptive/redesign/serve";
 import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
@@ -306,48 +306,15 @@ try {
     await page.waitForTimeout(400);
     await page.screenshot({ path: join(outDir, `${slug}-before.jpg`), type: "jpeg", quality: 60, fullPage: true });
 
-    // Grindarna + retry-steget: kollision → ETT extra lyft per UNIK måltavla
-    // (granskningsfynd: mätningen och serve_ops måste räkna samma antal lyft).
-    const uniqueMoveFinds = [...new Set(measureOps.filter((o) => o.op === "move_up").map((o) => o.find))];
-    const extraLiftOps: MeasureOp[] = uniqueMoveFinds.map((find) => {
-      const proto = measureOps.find((o) => o.op === "move_up" && o.find === find)!;
-      return { op: "move_up", tag: proto.tag, find };
-    });
-    let attemptOps = measureOps;
-    const attempts: { attempt: number; measurements: RenderMeasurements; gate: ReturnType<typeof evaluateRenderGates> }[] = [];
-    let extraLift = 0;
-    let unresolvable = false;
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      const raw = await measurePlan(page, attemptOps, ctaTexts, false, ctaSelectors);
-      if (!raw.resolvedAll) {
-        unresolvable = true;
-        break;
-      }
-      const measurements: RenderMeasurements = {
-        beforeOrder: raw.beforeOrder,
-        afterOrder: raw.afterOrder,
-        hOverflowBeforePx: raw.hOverflowBeforePx,
-        hOverflowAfterPx: raw.hOverflowAfterPx,
-        movedCount: raw.movedCount,
-        movedAboveMain: raw.movedAboveMain,
-        mainAnchorFound: raw.mainAnchorFound,
-        ctaChecked: raw.ctaChecked,
-        ctaBroken: raw.ctaBroken,
-        requestedMoves: raw.requestedMoves,
-        appliedMoves: raw.appliedMoves,
-        reversedOrderMatches: raw.reversedOrderMatches,
-        verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
-      };
-      const gate = evaluateRenderGates(measurements);
-      attempts.push({ attempt, measurements, gate });
-      const collision = gate.verdict === "fail" && gate.reasons.some((r) => /vertical overlap/.test(r));
-      if (collision && attempt === 1 && extraLiftOps.length > 0) {
-        attemptOps = [...measureOps, ...extraLiftOps];
-        extraLift = 1;
-        continue;
-      }
-      break;
-    }
+    // Grindarna + retry-steget — DELADE (runGatedAttempts i measure.ts):
+    // kollision → ETT extra lyft per UNIK måltavla, och mätningen/serve_ops
+    // räknar per konstruktion samma antal lyft i alla harness.
+    const { attempts, attemptOps, unresolvable, extraLiftApplied } = await runGatedAttempts(
+      page,
+      measureOps,
+      ctaTexts,
+      { ctaSelectors },
+    );
     if (unresolvable) {
       results.push({ path: plan.path, key: plan.key, verdict: "not_applicable", reason: "op-mål/sektion kunde inte upplösas på sidan (v3 fail closed)" });
       console.log(`  ${plan.path} × ${plan.key}: EJ APPLICERBAR — upplösningen vägrade (fail closed)`);
@@ -372,7 +339,7 @@ try {
     // Grindat OK → bygg det serverbara + evidensen.
     // Retry-lyftet blir en extra move_up-op per mål så plan/serve_ops/sanning matchar.
     const finalOps: RedesignOp[] =
-      extraLift === 0
+      !extraLiftApplied
         ? validated.ops
         : [
             ...validated.ops,

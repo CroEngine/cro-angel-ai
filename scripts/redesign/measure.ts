@@ -1,7 +1,12 @@
 // Delad tvåfas-mätning — EN implementation för alla harness (auto-generate,
-// breadth-test). Snippeten (public/adaptive.js) bär medvetet en egen kopia av
-// samma semantik (den är fristående JS på kundens sida); CI-smoken bevisar
-// ekvivalensen mellan snippet och denna mätning på fixturer.
+// breadth-test, lab/redesign-render). Snippeten (public/adaptive.js) bär
+// medvetet en egen kopia av samma semantik (den är fristående JS på kundens
+// sida); CI-smoken bevisar ekvivalensen mellan snippet och denna mätning på
+// fixturer. Här bor också den delade grind-loopen (runGatedAttempts): samma
+// kollisions-retry — ETT extra lyft per UNIKT mål — i alla harness, så
+// mätningen och serve_ops alltid räknar samma antal lyft.
+
+import { evaluateRenderGates, type RenderMeasurements } from "../../src/adaptive/redesign/render-gates";
 
 import type { Page } from "playwright-core";
 
@@ -273,4 +278,74 @@ export async function measurePlan(
     },
     { ops, ctaTexts, ctaSelectors, keepApplied },
   );
+}
+
+/** measurePlan-råvärden → render-gates-form (inkl. namnbytet
+ *  overlapIntroducedPx → verticalOverlapIntroducedPx). En mappning, tre
+ *  harness — fältlistan kan inte glida isär per skript. */
+export function toRenderMeasurements(
+  raw: Awaited<ReturnType<typeof measurePlan>>,
+): RenderMeasurements {
+  return {
+    beforeOrder: raw.beforeOrder,
+    afterOrder: raw.afterOrder,
+    hOverflowBeforePx: raw.hOverflowBeforePx,
+    hOverflowAfterPx: raw.hOverflowAfterPx,
+    movedCount: raw.movedCount,
+    movedAboveMain: raw.movedAboveMain,
+    mainAnchorFound: raw.mainAnchorFound,
+    ctaChecked: raw.ctaChecked,
+    ctaBroken: raw.ctaBroken,
+    requestedMoves: raw.requestedMoves,
+    appliedMoves: raw.appliedMoves,
+    reversedOrderMatches: raw.reversedOrderMatches,
+    verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
+  };
+}
+
+export interface GatedAttempt {
+  attempt: number;
+  measurements: RenderMeasurements;
+  gate: ReturnType<typeof evaluateRenderGates>;
+}
+
+/** Den delade grind-loopen: mät → grinda → vid vertikal kollision EN retry
+ *  med ett extra lyft per UNIKT flyttmål (prototyp-opens tag följer med).
+ *  Fail-closed: oupplösbart mål ⇒ unresolvable, inga försök rapporteras som
+ *  grindade. attemptOps är exakt de ops som det SISTA försöket körde — samma
+ *  lista ska användas för keepApplied-återappliceringen (efter-skärmdumpen)
+ *  och för serve_ops-räkningen. */
+export async function runGatedAttempts(
+  page: Page,
+  ops: MeasureOp[],
+  ctaTexts: string[],
+  opts: { ctaSelectors?: string[]; onAttempt?: (a: GatedAttempt) => void } = {},
+): Promise<{ attempts: GatedAttempt[]; attemptOps: MeasureOp[]; unresolvable: boolean; extraLiftApplied: boolean }> {
+  const uniqueMoveFinds = [...new Set(ops.filter((o) => o.op === "move_up").map((o) => o.find))];
+  const extraLiftOps: MeasureOp[] = uniqueMoveFinds.map((find) => {
+    const proto = ops.find((o) => o.op === "move_up" && o.find === find)!;
+    return { op: "move_up", tag: proto.tag, find };
+  });
+  const attempts: GatedAttempt[] = [];
+  let attemptOps = ops;
+  let extraLiftApplied = false;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const raw = await measurePlan(page, attemptOps, ctaTexts, false, opts.ctaSelectors ?? []);
+    if (!raw.resolvedAll) {
+      return { attempts, attemptOps, unresolvable: true, extraLiftApplied };
+    }
+    const measurements = toRenderMeasurements(raw);
+    const gate = evaluateRenderGates(measurements);
+    const entry = { attempt, measurements, gate };
+    attempts.push(entry);
+    opts.onAttempt?.(entry);
+    const collision = gate.verdict === "fail" && gate.reasons.some((r) => /vertical overlap/.test(r));
+    if (collision && attempt === 1 && extraLiftOps.length > 0) {
+      attemptOps = [...ops, ...extraLiftOps];
+      extraLiftApplied = true;
+      continue;
+    }
+    break;
+  }
+  return { attempts, attemptOps, unresolvable: false, extraLiftApplied };
 }

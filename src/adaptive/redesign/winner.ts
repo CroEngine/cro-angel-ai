@@ -18,7 +18,7 @@
 //            deliberately reachable below the winner-volume bar, so a clearly
 //            losing variant can be pulled early instead of burning traffic).
 
-import { twoProportionZ, MIN_ARM_EXPOSURES, MIN_ARM_OUTCOMES } from "@/lib/dashboard/aggregate";
+import { twoProportionZ, armStatValid as armCountsValid } from "@/lib/dashboard/aggregate";
 
 /** One A/B arm's counts (distinct qualified visitors). */
 export interface VariantArm {
@@ -68,16 +68,9 @@ export const SECONDARY_DEGRADE_REL = 0.1;
 
 const rate = (a: VariantArm): number => (a.visits > 0 ? a.conversions / a.visits : 0);
 
-/** The success–failure validity rule the attribution layer already enforces:
- *  enough exposures AND enough conversions AND non-conversions in the arm for
- *  the normal approximation to hold. */
-function armStatValid(a: VariantArm): boolean {
-  return (
-    a.visits >= MIN_ARM_EXPOSURES &&
-    a.conversions >= MIN_ARM_OUTCOMES &&
-    a.visits - a.conversions >= MIN_ARM_OUTCOMES
-  );
-}
+/** The success–failure validity rule — the attribution layer's exported
+ *  predicate, applied to this evaluator's arm shape. */
+const armStatValid = (a: VariantArm): boolean => armCountsValid(a.visits, a.conversions);
 
 /** Secondary metrics that clearly got worse under the variant. */
 function degradedSecondaries(secondaries: SecondaryMetric[]): SecondaryMetric[] {

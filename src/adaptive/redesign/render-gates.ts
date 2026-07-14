@@ -64,7 +64,9 @@ export interface RenderGateResult {
   reordered: boolean;
 }
 
-/** Same trigger analyze.ts uses: >8px of NEWLY introduced horizontal scroll fails. */
+/** THE overflow threshold: >8px of NEWLY introduced horizontal scroll fails.
+ *  analyze.ts and the dashboard's gate labels import this — one number, three
+ *  judges, no drift. */
 export const H_OVERFLOW_FAIL_PX = 8;
 
 /** Introduced vertical overlap beyond this is a collision, not a nudge. Heuristic:
