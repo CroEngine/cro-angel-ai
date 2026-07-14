@@ -71,6 +71,22 @@ describe("extractContentModel — HTML → content model loader", () => {
     expect(model.ctas.find((c) => c.text === "View live demo")?.intent).toBe("conversion");
   });
 
+  it("extracts CTAs across the deterministic floor's languages (de/ja), login stays out", () => {
+    const page = `
+      <main>
+        <h1>Preise</h1>
+        <a href="/kauf">Jetzt kaufen</a>
+        <a href="/cart">カートに追加</a>
+        <a href="/login">Anmelden</a>
+        <a href="/login-jp">ログイン</a>
+      </main>`;
+    const texts = extractContentModel(page).ctas.map((c) => c.text);
+    expect(texts).toContain("Jetzt kaufen");
+    expect(texts).toContain("カートに追加");
+    expect(texts).not.toContain("Anmelden"); // login-tvetydig → navigation
+    expect(texts).not.toContain("ログイン");
+  });
+
   // Breadth finding 2: the old English-only regex found 0 CTAs on 6/13 real
   // Swedish sites. Candidacy now comes from the shared corpus-mined classifier.
   it("extracts Swedish CTAs (shared classifier, no private word list)", () => {

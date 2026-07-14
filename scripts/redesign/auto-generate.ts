@@ -49,7 +49,8 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { findEarnedCells, type PageSegmentLeaf } from "../../src/adaptive/redesign/earned";
-import { extractContentModel } from "../../src/adaptive/redesign/extract";
+import { extractContentModel, extractCtaCandidates } from "../../src/adaptive/redesign/extract";
+import { addLlmCtas } from "../../src/adaptive/redesign/cta-llm.server";
 import {
   buildRedesignContext,
   renderRedesignPrompt,
@@ -97,12 +98,18 @@ const GOAL = {
 const pages = JSON.parse(readFileSync(arg("pages")!, "utf8")) as Record<string, string>;
 
 const pageCache = new Map<string, { html: string; content: RedesignContentModel }>();
-function pageFor(path: string): { html: string; content: RedesignContentModel } | null {
+async function pageFor(path: string): Promise<{ html: string; content: RedesignContentModel } | null> {
   if (pageCache.has(path)) return pageCache.get(path)!;
   const frozen = pages[path];
   if (!frozen) return null;
   const html = readFileSync(frozen, "utf8");
   const entry = { html, content: extractContentModel(html) };
+  // Språk-universella lagret: kandidater som den deterministiska vokabulären
+  // (EN+SV + ~30 storspråk) inte kände igen LLM-etiketteras (vilket språk som
+  // helst). Utan ANTHROPIC_API_KEY står golvet ensamt — och det SYNS via
+  // ctaChecked/vakuum-varningen i stället för att gissas bort.
+  const llmAdded = await addLlmCtas(entry.content, extractCtaCandidates(html));
+  if (llmAdded > 0) console.log(`  språklagret: +${llmAdded} LLM-klassade CTA:er på ${path}`);
   pageCache.set(path, entry);
   return entry;
 }
@@ -136,13 +143,13 @@ function summaryFor(key: string, total: { visits: number; conversions: number })
   };
 }
 
-function contextFor(
+async function contextFor(
   path: string,
   key: string,
   total: { visits: number; conversions: number },
   observations: string[],
 ) {
-  const page = pageFor(path);
+  const page = await pageFor(path);
   if (!page) return null;
   return buildRedesignContext({
     site,
@@ -178,7 +185,7 @@ if (mode === "detect") {
       `Sidan: ${c.path}. Idag når INGEN variant dessa besökare där: ${c.uncoveredLeaves.join(", ")} (${c.incremental.visits} besök, ${c.incremental.conversions} konverteringar i underlaget).`,
       `Cellens konvertering ${(rate * 100).toFixed(1)} % mot sajtsnittet ${(siteRate * 100).toFixed(1)} %.`,
     ];
-    const ctx = contextFor(c.path, c.key, c.total, observations);
+    const ctx = await contextFor(c.path, c.key, c.total, observations);
     if (!ctx) {
       // Ingen fryst kopia av sidan — ärlig kö i stället för gissad design.
       needsFreeze.push({ ...c, observations });
@@ -246,7 +253,7 @@ const sqlParts: string[] = [];
 
 try {
   for (const plan of plans) {
-    const pg = pageFor(plan.path);
+    const pg = await pageFor(plan.path);
     if (!pg) {
       results.push({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
       console.log(`  ${plan.path} × ${plan.key}: SAKNAR fryst sida — köad`);
@@ -268,7 +275,7 @@ try {
       .replace(/·/g, "-")
       .replace(/[^\p{L}\p{N}-]/gu, "")
       .toLowerCase()}`.replace(/^--/, "");
-    const ctx = contextFor(plan.path, plan.key, plan.total, plan.observations)!;
+    const ctx = (await contextFor(plan.path, plan.key, plan.total, plan.observations))!;
     // Den RIKTIGA valideringen: verb i vokabulären, targetId måste finnas,
     // claims-vakten på varje omtextning. Kedjan litar aldrig på designern.
     const validated = await generateRedesign(ctx, async () => JSON.stringify(plan.ops));

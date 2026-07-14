@@ -136,13 +136,39 @@
   }
   if (/(facebook|instagram|linkedin|twitter|x\.com|youtube|tiktok|pinterest|snapchat|reddit|threads|mastodon)\./i.test(h))
     return "social";
-  if (/(\bbook\b|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|\btry\b|checkout|order|apply|donate|download|add to cart|best\u00E4ll|k\u00F6p|boka|prova|kom ig\u00E5ng|skapa konto|registrera|g\u00E5 med|gratis|ladda ne[dr]|l\u00E4gg i (varu|kund)?korg(en)?|l\u00E4gg till|ans\u00F6k|bidra|donera|teckna|j\u00E4mf\u00F6r|shoppa|m\u00E5nadsgivare)/i.test(probe))
+  const CONV = [
+    "\\bbook\\b|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|\\btry\\b|checkout|order|apply|donate|download|add to cart",
+    "best\xE4ll|k\xF6p|boka|prova|kom ig\xE5ng|skapa konto|registrera|g\xE5 med|gratis|ladda ne[dr]|l\xE4gg i (varu|kund)?korg(en)?|l\xE4gg till|ans\xF6k|bidra|donera|teckna|j\xE4mf\xF6r|shoppa|m\xE5nadsgivare",
+    "\\bkaufen\\b|warenkorb|zur kasse|bestellen|registrieren|konto erstellen|kostenlos|ausprobieren|buchen|termin vereinbaren|herunterladen|spenden|abonnieren|angebot anfordern|loslegen",
+    "acheter|ajouter au panier|commander|s.inscrire|inscription|essai gratuit|essayer|r\xE9server|commencer|t\xE9l\xE9charger|faire un don|s.abonner|demander un devis|rendez-vous",
+    "comprar|a\xF1adir al carrito|agregar al carrito|registrarse|reg\xEDstrate|prueba gratis|reservar|comenzar|empieza|descargar|\\bdonar\\b|suscr|solicitar|cotizaci\xF3n|adicionar ao carrinho|cadastr|teste gr\xE1tis|experimente|come\xE7ar|baixar|\\bdoar\\b|assinar|or\xE7amento",
+    "acquista|\\bcompra\\b|aggiungi al carrello|\\bordina\\b|registrati|iscriviti|prenota|inizia|scarica|abbonati|richiedi",
+    "\\bkopen\\b|koop nu|winkelwagen|winkelmand|gratis proberen|proberen|boek nu|te boeken|reserveren|aan de slag|downloaden|doneren|abonneren|offerte|registreren",
+    "\\bk\xF8b\\b|l\xE6g i kurv|\\bkj\xF8p\\b|handlekurv|\\bbestil\\b|\\bbestill\\b|tilmeld|pr\xF8v|kom i gang|last ned|f\xE5 tilbud|abonner|reserver",
+    "\\bosta\\b|koriin|\\btilaa\\b|rekister\xF6idy|kokeile|\\bvaraa\\b|aloita|\\blataa\\b|lahjoita",
+    "\\bkup\\b|do koszyka|zam\xF3w|zarejestruj|wypr\xF3buj|zarezerwuj|rozpocznij|pobierz|zapisz si\u0119|koupit|do ko\u0161\xEDku|objednat|vyzkou\u0161et|rezervovat|st\xE1hnout|za\u010D\xEDt",
+    "\u043A\u0443\u043F\u0438\u0442\u044C|\u0432 \u043A\u043E\u0440\u0437\u0438\u043D\u0443|\u0437\u0430\u043A\u0430\u0437\u0430\u0442\u044C|\u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440|\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044F|\u043F\u043E\u043F\u0440\u043E\u0431\u043E|\u0437\u0430\u0431\u0440\u043E\u043D\u0438\u0440|\u0441\u043A\u0430\u0447\u0430\u0442\u044C|\u043F\u043E\u0434\u043F\u0438\u0441\u0430\u0442\u044C\u0441\u044F|\u043E\u0444\u043E\u0440\u043C\u0438\u0442\u044C|\u043F\u0440\u0438\u0434\u0431\u0430\u0442\u0438|\u0437\u0430\u043C\u043E\u0432\u0438\u0442\u0438|\u0437\u0430\u0440\u0435\u0454\u0441\u0442\u0440\u0443|\u0441\u043F\u0440\u043E\u0431\u0443\u0432\u0430\u0442\u0438|\u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0438\u0442\u0438",
+    "\u03B1\u03B3\u03BF\u03C1\u03AC|\u03C3\u03C4\u03BF \u03BA\u03B1\u03BB\u03AC\u03B8\u03B9|\u03C0\u03B1\u03C1\u03B1\u03B3\u03B3\u03B5\u03BB\u03AF\u03B1|\u03B5\u03B3\u03B3\u03C1\u03B1\u03C6\u03AE|\u03B4\u03BF\u03BA\u03B9\u03BC|\u03BA\u03C1\u03AC\u03C4\u03B7\u03C3\u03B7|\u03BE\u03B5\u03BA\u03B9\u03BD\u03AE\u03C3\u03C4\u03B5|\u03BB\u03AE\u03C8\u03B7",
+    "sat\u0131n al|sepete ekle|sipari\u015F|kay\u0131t ol|\xFCye ol|\\bdene\\b|rezervasyon|ba\u015Fla|\\bindir\\b|ba\u011F\u0131\u015F|abone ol|teklif al",
+    "\u0627\u0634\u062A\u0631|\u0627\u0644\u0633\u0644\u0629|\u0627\u0637\u0644\u0628|\u0633\u062C\u0644 \u0627\u0644\u0622\u0646|\u0625\u0646\u0634\u0627\u0621 \u062D\u0633\u0627\u0628|\u062C\u0631\u0628|\u0627\u062D\u062C\u0632|\u0627\u0628\u062F\u0623|\u062A\u062D\u0645\u064A\u0644|\u062A\u0628\u0631\u0639|\u0627\u0634\u062A\u0631\u0643|\u05E7\u05E0\u05D4|\u05E7\u05E0\u05D9\u05D9\u05D4|\u05D4\u05D5\u05E1\u05E3 \u05DC\u05E1\u05DC|\u05D4\u05D6\u05DE\u05DF|\u05D4\u05E8\u05E9\u05DE\u05D4|\u05E0\u05E1\u05D4|\u05D4\u05EA\u05D7\u05DC|\u05D4\u05D5\u05E8\u05D3|\u05EA\u05E8\u05D5\u05DD",
+    "\u0916\u0930\u0940\u0926\u0947\u0902|\u0915\u093E\u0930\u094D\u091F|\u0911\u0930\u094D\u0921\u0930 \u0915\u0930\u0947\u0902|\u0930\u091C\u093F\u0938\u094D\u091F\u0930|\u092A\u0902\u091C\u0940\u0915\u0930\u0923|\u0906\u091C\u093C\u092E\u093E\u090F\u0902|\u092C\u0941\u0915 \u0915\u0930\u0947\u0902|\u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902|\u0921\u093E\u0909\u0928\u0932\u094B\u0921|\u0926\u093E\u0928 \u0915\u0930\u0947\u0902",
+    "\u8CFC\u5165|\u30AB\u30FC\u30C8\u306B\u5165\u308C\u308B|\u30AB\u30FC\u30C8\u306B\u8FFD\u52A0|\u6CE8\u6587|\u4F1A\u54E1\u767B\u9332|\u65B0\u898F\u767B\u9332|\u767B\u9332\u3059\u308B|\u7121\u6599\u4F53\u9A13|\u304A\u8A66\u3057|\u4E88\u7D04|\u7533\u3057\u8FBC|\u8CC7\u6599\u8ACB\u6C42|\u898B\u7A4D|\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9|\u5BC4\u4ED8",
+    "\u8D2D\u4E70|\u52A0\u5165\u8D2D\u7269\u8F66|\u4E0B\u5355|\u8BA2\u8D2D|\u6CE8\u518C|\u514D\u8D39\u8BD5\u7528|\u8BD5\u7528|\u9884\u8BA2|\u9884\u7EA6|\u4E0B\u8F7D|\u6350\u8D60|\u8BA2\u9605|\u8CFC\u8CB7|\u52A0\u5165\u8CFC\u7269\u8ECA|\u8A3B\u518A|\u9810\u7D04|\u4E0B\u8F09|\u6350\u6B3E|\u8A02\u95B1",
+    "\uAD6C\uB9E4|\uC7A5\uBC14\uAD6C\uB2C8|\uC8FC\uBB38|\uD68C\uC6D0\uAC00\uC785|\uAC00\uC785\uD558\uAE30|\uBB34\uB8CC \uCCB4\uD5D8|\uCCB4\uD5D8\uD558\uAE30|\uC608\uC57D|\uC2DC\uC791\uD558\uAE30|\uB2E4\uC6B4\uB85C\uB4DC|\uAE30\uBD80|\uAD6C\uB3C5|\uC2E0\uCCAD",
+    "\\bmua\\b|v\xE0o gi\u1ECF|\u0111\u1EB7t h\xE0ng|\u0111\u0103ng k\xFD|d\xF9ng th\u1EED|\u0111\u1EB7t ch\u1ED7|b\u1EAFt \u0111\u1EA7u|t\u1EA3i xu\u1ED1ng|quy\xEAn g\xF3p|\u0E0B\u0E37\u0E49\u0E2D|\u0E15\u0E30\u0E01\u0E23\u0E49\u0E32|\u0E2A\u0E31\u0E48\u0E07\u0E0B\u0E37\u0E49\u0E2D|\u0E2A\u0E21\u0E31\u0E04\u0E23|\u0E17\u0E14\u0E25\u0E2D\u0E07|\u0E08\u0E2D\u0E07|\u0E40\u0E23\u0E34\u0E48\u0E21|\u0E14\u0E32\u0E27\u0E19\u0E4C\u0E42\u0E2B\u0E25\u0E14|\u0E1A\u0E23\u0E34\u0E08\u0E32\u0E04|\\bbeli\\b|keranjang|pesan sekarang|pemesanan|daftar sekarang|daftar akun|coba gratis|\\bcoba\\b|unduh|donasi|berlangganan"
+  ].join("|");
+  if (new RegExp(CONV, "i").test(probe))
     return "conversion";
-  if (/^(tel:|mailto:)/i.test(h) || /(contact|kontakt)/i.test(probe))
+  const CONTACT = "contact|kontakt|contato|contatto|\u03B5\u03C0\u03B9\u03BA\u03BF\u03B9\u03BD|\u043A\u043E\u043D\u0442\u0430\u043A\u0442|\u0441\u0432\u044F\u0437\u0430\u0442\u044C\u0441\u044F|leti\u015Fim|\u0627\u062A\u0635\u0644|\u062A\u0648\u0627\u0635\u0644|\u05E6\u05D5\u05E8 \u05E7\u05E9\u05E8|\u0938\u0902\u092A\u0930\u094D\u0915|\u554F\u3044\u5408\u308F\u305B|\u304A\u554F\u5408\u305B|\u8054\u7CFB|\u806F\u7D61|\uBB38\uC758|li\xEAn h\u1EC7|\u0E15\u0E34\u0E14\u0E15\u0E48\u0E2D|hubungi";
+  if (/^(tel:|mailto:)/i.test(h) || new RegExp(CONTACT, "i").test(probe))
     return "contact";
   if (/(like|love|save|bookmark|share|comment|reply|follow|subscribe|upvote|downvote|gilla|spara|kommentar|svara|f\u00F6lj|prenumerera|r\u00F6sta|r\u00F6st)/i.test(probe))
     return "engagement";
-  if (/(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst\u00E4llningar)/i.test(probe))
+  const NAV = [
+    "login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst\xE4llningar",
+    "einloggen|\\banmelden\\b|mein konto|se connecter|connexion|mon compte|iniciar sesi\xF3n|mi cuenta|\\bentrar\\b|accedi|il mio account|inloggen|mijn account|log ind|logg inn|min side|kirjaudu|zaloguj|moje konto|\u0432\u043E\u0439\u0442\u0438|\u0432\u0445\u043E\u0434|\u043B\u0438\u0447\u043D\u044B\u0439 \u043A\u0430\u0431\u0438\u043D\u0435\u0442|giri\u015F|\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644|\u05D4\u05EA\u05D7\u05D1\u05E8|\u0932\u0949\u0917 ?\u0907\u0928|\u30ED\u30B0\u30A4\u30F3|\u30DE\u30A4\u30DA\u30FC\u30B8|\u767B\u5F55|\u767B\u5165|\uB85C\uADF8\uC778|\uB9C8\uC774\uD398\uC774\uC9C0|\u0111\u0103ng nh\u1EADp|\u0E40\u0E02\u0E49\u0E32\u0E2A\u0E39\u0E48\u0E23\u0E30\u0E1A\u0E1A|\\bmasuk\\b"
+  ].join("|");
+  if (new RegExp(NAV, "i").test(probe))
     return "navigation";
   if (/(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i.test(probe))
     return "social";
