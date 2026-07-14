@@ -23,18 +23,29 @@
 // designern — allt valideras och grindas här.
 //
 //   bun run scripts/redesign/auto-generate.ts --mode=detect \
-//     --leaves=leaves.json --variants=keys.json --out=out [--cap=5]
+//     --leaves=page-leaves.json --variants=variants.json --pages=pages.json \
+//     --site=<slug> --base-url=https://... --goal-text="..." --goal-kind=trial \
+//     --out=out [--cap=5]
 //   bun run scripts/redesign/auto-generate.ts --mode=verify \
-//     --plans=plans.json --site=synthetic-lab --out=out
+//     --plans=plans.json --pages=pages.json --site=<slug> --base-url=... \
+//     --goal-text="..." --out=out
 //
-// Fixtur: plausible.io (labbet). Riktiga kundsidor kopplas in via freeze-steget
-// (frozenHtmlPath) — samma kedja, annan HTML-källa.
+//   leaves    = angel_page_segment_rollup-rader (path + 4 dimensioner + räknare)
+//   variants  = [{path, segmentKey}] för sajtens icke-pensionerade varianter
+//   pages     = {"/": "fixtures/.../home.html", "/pricing": "..."} — frysta kopior
+//   plans     = [{path, key, total, observations, ops}] från designpanelen
+//
+// Sidkällan är en KARTA path → självbärande fryst HTML (--pages=<json>).
+// Producenten kvittar: freeze-steget (riktiga kundsidor, scripts/redesign/
+// freeze-page.ts) eller labbets handbyggda fixtur — kedjan är densamma.
+// Celler vars sida saknar fryst kopia hålls ärligt i en "needs_freeze"-kö
+// i stället för att gissas fram.
 
 import { chromium, type Page } from "playwright-core";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { findEarnedSegments } from "../../src/adaptive/redesign/earned";
+import { findEarnedCells, type PageSegmentLeaf } from "../../src/adaptive/redesign/earned";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import {
   buildRedesignContext,
@@ -47,35 +58,45 @@ import {
   type RenderMeasurements,
 } from "../../src/adaptive/redesign/render-gates";
 import type { ServeOp } from "../../src/adaptive/redesign/serve";
-import type { SegmentLeaf, SegmentSummary } from "../../src/lib/dashboard/aggregate";
+import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
+import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 
-const REPO = join(import.meta.dir, "../..");
-const FIX = join(REPO, "fixtures/real-sites");
-const EXEC = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const EXEC = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 
 const mode = arg("mode");
 const outDir = arg("out") ?? "auto-generate-out";
 mkdirSync(outDir, { recursive: true });
 
-// ── den frysta sidan (labbet: plausible.io) ──────────────────────────────────
-function selfContainedHtml(): string {
-  let html = readFileSync(join(FIX, "plausible-io.html"), "utf8");
-  const style = readFileSync(join(FIX, "plausible-io.style.css"), "utf8");
-  const tooltip = readFileSync(join(FIX, "plausible-io.tooltip.css"), "utf8");
-  html = html.replace(/<link[^>]+rel=["']stylesheet["'][^>]*>/gi, "");
-  return html.replace(/<\/head>/i, `<style>${style}\n${tooltip}</style></head>`);
-}
-const GOAL = { text: "Start free trial", kind: "trial", selector: null };
-const PAGE = {
-  url: "https://plausible.io/",
-  frozenHtmlPath: "fixtures/real-sites/plausible-io.html",
-  screenshotPath: "fixtures/real-sites/plausible-io.jpg",
-  viewport: { width: 390, height: 844 },
+// ── sajtens inputs ────────────────────────────────────────────────────────────
+const site = arg("site") ?? "synthetic-lab";
+const baseUrl = (arg("base-url") ?? "https://plausible.io").replace(/\/$/, "");
+const GOAL = {
+  text: arg("goal-text") ?? "Start free trial",
+  kind: arg("goal-kind") ?? "trial",
+  selector: null,
 };
+/** path → sökväg till självbärande fryst HTML. */
+const pages = JSON.parse(readFileSync(arg("pages")!, "utf8")) as Record<string, string>;
 
-const html = selfContainedHtml();
-const content = extractContentModel(html);
+const pageCache = new Map<string, { html: string; content: RedesignContentModel }>();
+function pageFor(path: string): { html: string; content: RedesignContentModel } | null {
+  if (pageCache.has(path)) return pageCache.get(path)!;
+  const frozen = pages[path];
+  if (!frozen) return null;
+  const html = readFileSync(frozen, "utf8");
+  const entry = { html, content: extractContentModel(html) };
+  pageCache.set(path, entry);
+  return entry;
+}
+function pageRef(path: string) {
+  return {
+    url: `${baseUrl}${path}`,
+    frozenHtmlPath: pages[path] ?? "",
+    screenshotPath: "",
+    viewport: { width: 390, height: 844 },
+  };
+}
 
 /** SegmentSummary ur detektorns fynd — underlaget för briefen. */
 function summaryFor(key: string, total: { visits: number; conversions: number }): SegmentSummary {
@@ -99,48 +120,64 @@ function summaryFor(key: string, total: { visits: number; conversions: number })
 }
 
 function contextFor(
-  site: string,
+  path: string,
   key: string,
   total: { visits: number; conversions: number },
   observations: string[],
 ) {
+  const page = pageFor(path);
+  if (!page) return null;
   return buildRedesignContext({
     site,
     goal: GOAL,
-    page: PAGE,
-    content,
+    page: pageRef(path),
+    content: page.content,
     segment: segmentInsightFrom(summaryFor(key, total), { observations }),
   });
 }
 
 // ═════════════════════════════════ detect ═══════════════════════════════════
 if (mode === "detect") {
-  const leaves = JSON.parse(readFileSync(arg("leaves")!, "utf8")) as SegmentLeaf[];
-  const existing = JSON.parse(readFileSync(arg("variants")!, "utf8")) as string[];
+  // Löven kommer från angel_page_segment_rollup (per sida); befintliga
+  // varianter som (path, segmentKey)-par.
+  const leaves = JSON.parse(readFileSync(arg("leaves")!, "utf8")) as PageSegmentLeaf[];
+  const existing = JSON.parse(readFileSync(arg("variants")!, "utf8")) as {
+    path: string;
+    segmentKey: string;
+  }[];
   const cap = Number(arg("cap") ?? 5);
-  const site = arg("site") ?? "synthetic-lab";
 
-  const earned = findEarnedSegments(leaves, existing, cap);
+  const cells = findEarnedCells(leaves, existing, cap);
   const siteVisits = leaves.reduce((s, l) => s + l.visits, 0);
   const siteConv = leaves.reduce((s, l) => s + l.conversions, 0);
   const siteRate = siteVisits > 0 ? siteConv / siteVisits : 0;
 
-  const out = earned.map((s) => {
-    const rate = s.total.visits > 0 ? s.total.conversions / s.total.visits : 0;
+  const briefed: unknown[] = [];
+  const needsFreeze: unknown[] = [];
+  for (const c of cells) {
+    const rate = c.total.visits > 0 ? c.total.conversions / c.total.visits : 0;
     // Ärliga, datadrivna observationer — inga påhitt, bara räknade fakta.
     const observations = [
-      `Idag når INGEN variant dessa besökare: ${s.uncoveredLeaves.join(", ")} (${s.incremental.visits} besök, ${s.incremental.conversions} konverteringar i underlaget).`,
-      `Segmentets konvertering ${(rate * 100).toFixed(1)} % mot sajtsnittet ${(siteRate * 100).toFixed(1)} %.`,
+      `Sidan: ${c.path}. Idag når INGEN variant dessa besökare där: ${c.uncoveredLeaves.join(", ")} (${c.incremental.visits} besök, ${c.incremental.conversions} konverteringar i underlaget).`,
+      `Cellens konvertering ${(rate * 100).toFixed(1)} % mot sajtsnittet ${(siteRate * 100).toFixed(1)} %.`,
     ];
-    const ctx = contextFor(site, s.key, s.total, observations);
-    return { ...s, observations, brief: renderRedesignPrompt(ctx) };
-  });
+    const ctx = contextFor(c.path, c.key, c.total, observations);
+    if (!ctx) {
+      // Ingen fryst kopia av sidan — ärlig kö i stället för gissad design.
+      needsFreeze.push({ ...c, observations });
+      continue;
+    }
+    briefed.push({ ...c, observations, brief: renderRedesignPrompt(ctx) });
+  }
 
-  writeFileSync(join(outDir, "earned.json"), JSON.stringify(out, null, 2));
-  console.log(`earned segments: ${out.length}`);
-  for (const s of out) {
+  writeFileSync(
+    join(outDir, "earned.json"),
+    JSON.stringify({ briefed, needsFreeze }, null, 2),
+  );
+  console.log(`earned cells: ${cells.length} (briefed ${briefed.length}, needs freeze ${needsFreeze.length})`);
+  for (const c of cells) {
     console.log(
-      `  ${s.key} — total ${s.total.visits}/${s.total.conversions}, inkrement ${s.incremental.visits}/${s.incremental.conversions} (${s.uncoveredLeaves.join(", ")})`,
+      `  ${c.path} × ${c.key} — total ${c.total.visits}/${c.total.conversions}, inkrement ${c.incremental.visits}/${c.incremental.conversions}${pages[c.path] ? "" : "  [SAKNAR FRYST SIDA]"}`,
     );
   }
   process.exit(0);
@@ -153,26 +190,28 @@ if (mode !== "verify") {
 }
 
 interface PlanIn {
+  /** Sidan cellen gäller — måste finnas i --pages-kartan. */
+  path: string;
   key: string;
   total: { visits: number; conversions: number };
   observations: string[];
   ops: RedesignOp[];
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
-const site = arg("site") ?? "synthetic-lab";
 
-/** Sektions-id → DOM-lokator för serve_ops. Hjälte-sektionen bor i h1, allt
- *  annat i h2 — samma struktur extract.ts läste ur sidan. */
-function locatorFor(targetId: string): ServeOp["locator"] | null {
+/** Sektions-id → DOM-lokator för serve_ops, per sidas innehållsmodell.
+ *  Hjälte-sektionen bor i h1, allt annat i h2 — samma struktur extract.ts
+ *  läste ur sidan. */
+function locatorFor(content: RedesignContentModel, targetId: string): ServeOp["locator"] | null {
   const sec = content.sections.find((s) => s.id === targetId);
   if (!sec?.heading) return null;
   return { tag: sec.type === "hero" ? "h1" : "h2", text: sec.heading };
 }
 
-function toServeOps(ops: RedesignOp[]): ServeOp[] | null {
+function toServeOps(content: RedesignContentModel, ops: RedesignOp[]): ServeOp[] | null {
   const out: ServeOp[] = [];
   for (const o of ops) {
-    const locator = locatorFor(o.targetId);
+    const locator = locatorFor(content, o.targetId);
     if (!locator) return null;
     if (o.op === "move_up") out.push({ op: "move_up", locator, why: o.why });
     else if (o.op === "set_text") out.push({ op: "set_text", locator, value: o.detail, why: o.why });
@@ -322,21 +361,31 @@ async function measurePlan(page: Page, moveHeadings: string[], texts: { tag: str
   );
 }
 
-const ctaTexts = content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text);
 const browser = await chromium.launch({ headless: true, executablePath: EXEC });
 const results: unknown[] = [];
 const sqlParts: string[] = [];
 
 try {
   for (const plan of plans) {
-    const slug = plan.key.replace(/·/g, "-").replace(/[^\p{L}\p{N}-]/gu, "").toLowerCase();
-    const ctx = contextFor(site, plan.key, plan.total, plan.observations);
+    const pg = pageFor(plan.path);
+    if (!pg) {
+      results.push({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
+      console.log(`  ${plan.path} × ${plan.key}: SAKNAR fryst sida — köad`);
+      continue;
+    }
+    const { html, content } = pg;
+    const ctaTexts = content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text);
+    const slug = `${plan.path.replace(/\//g, "-").replace(/^-|-$/g, "") || "home"}--${plan.key
+      .replace(/·/g, "-")
+      .replace(/[^\p{L}\p{N}-]/gu, "")
+      .toLowerCase()}`.replace(/^--/, "");
+    const ctx = contextFor(plan.path, plan.key, plan.total, plan.observations)!;
     // Den RIKTIGA valideringen: verb i vokabulären, targetId måste finnas,
     // claims-vakten på varje omtextning. Kedjan litar aldrig på designern.
     const validated = await generateRedesign(ctx, async () => JSON.stringify(plan.ops));
     if (validated.ops.length !== plan.ops.length) {
-      results.push({ key: plan.key, verdict: "rejected_by_validation", dropped: plan.ops.length - validated.ops.length, notes: validated.notes });
-      console.log(`  ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll)`);
+      results.push({ path: plan.path, key: plan.key, verdict: "rejected_by_validation", dropped: plan.ops.length - validated.ops.length, notes: validated.notes });
+      console.log(`  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll)`);
       continue;
     }
 
@@ -347,7 +396,7 @@ try {
     const texts = validated.ops
       .filter((o) => o.op === "set_text")
       .map((o) => {
-        const loc = locatorFor(o.targetId)!;
+        const loc = locatorFor(content, o.targetId)!;
         return { tag: loc.tag ?? "h2", find: loc.text, set: o.detail };
       });
 
@@ -424,8 +473,8 @@ try {
     await context.close();
 
     if (last.gate.verdict !== "pass") {
-      results.push({ key: plan.key, verdict: "gate_fail", attempts });
-      console.log(`  ${plan.key}: GRIND-FAIL efter ${attempts.length} försök — hålls tillbaka`);
+      results.push({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
+      console.log(`  ${plan.path} × ${plan.key}: GRIND-FAIL efter ${attempts.length} försök — hålls tillbaka`);
       continue;
     }
 
@@ -444,15 +493,15 @@ try {
                 why: `försök 1 introducerade +${attempts[0].gate.verticalOverlapIntroducedPx}px överlapp; försök 2 +${last.gate.verticalOverlapIntroducedPx}px`,
               })),
           ];
-    const serveOps = toServeOps(finalOps);
+    const serveOps = toServeOps(content, finalOps);
     if (!serveOps) {
-      results.push({ key: plan.key, verdict: "no_serve_ops" });
+      results.push({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       continue;
     }
 
     const evidence = {
       source: "auto-generate-loop",
-      brief: { key: plan.key, total: plan.total, observations: plan.observations },
+      brief: { path: plan.path, key: plan.key, total: plan.total, observations: plan.observations },
       gates: {
         hOverflowIntroducedPx: last.gate.hOverflowIntroducedPx,
         verticalOverlapIntroducedPx: last.gate.verticalOverlapIntroducedPx,
@@ -476,10 +525,10 @@ try {
     const esc = (s: string) => s.replace(/'/g, "''");
     sqlParts.push(
       `insert into angel_variants (site, path, segment_key, status, ops, serve_ops, evidence)\n` +
-        `values ('${site}', '/', '${esc(plan.key)}', 'verified', '${esc(JSON.stringify(finalOps))}'::jsonb, '${esc(JSON.stringify(serveOps))}'::jsonb, '${esc(JSON.stringify(evidence))}'::jsonb);`,
+        `values ('${site}', '${esc(plan.path)}', '${esc(plan.key)}', 'verified', '${esc(JSON.stringify(finalOps))}'::jsonb, '${esc(JSON.stringify(serveOps))}'::jsonb, '${esc(JSON.stringify(evidence))}'::jsonb);`,
     );
-    results.push({ key: plan.key, verdict: "verified", attempts, serveOps, evidence });
-    console.log(`  ${plan.key}: VERIFIED (${attempts.length} försök) — väntar på ägarens knapp`);
+    results.push({ path: plan.path, key: plan.key, verdict: "verified", attempts, serveOps, evidence });
+    console.log(`  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök) — väntar på ägarens knapp`);
   }
 } finally {
   await browser.close();
