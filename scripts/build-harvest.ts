@@ -146,6 +146,92 @@ const bundle = `${banner}
       var sections = ${SECTIONS_SCRIPT};
       var trust = ${TRUST_SIGNALS_SCRIPT};
       var audit = ${PAGE_AUDIT_SCRIPT};
+      // Observe-only strukturskikt: formulär, navigation, pris. Fristående
+      // scanner (rör aldrig sidan) — ren diagnos av vad sidan ber om och hur
+      // den är byggd. Fält fångas som TYPER/autocomplete-tokens, aldrig
+      // värden; sanitizern skrubbar dessutom all text server-side.
+      var structure = (function () {
+        var CMP = "[data-angel-ignore],#onetrust-consent-sdk,#CybotCookiebotDialog," +
+          "#usercentrics-root,.osano-cm-window,#didomi-host,.cc-window,#cookiescript_injected";
+        function skip(el) {
+          try { return !!(el.closest && el.closest(CMP)); } catch (e) { return false; }
+        }
+        var vh = window.innerHeight || 720;
+        // --- forms ---
+        var forms = [];
+        try {
+          var fEls = document.querySelectorAll("form");
+          for (var i = 0; i < fEls.length && forms.length < 10; i++) {
+            var f = fEls[i];
+            if (skip(f)) continue;
+            var inputs = f.querySelectorAll(
+              'input:not([type="hidden"]):not([type="submit"]):not([type="button"]),select,textarea',
+            );
+            if (!inputs.length) continue;
+            var types = {}, autos = {};
+            for (var j = 0; j < inputs.length; j++) {
+              var t = (inputs[j].getAttribute("type") || inputs[j].tagName || "").toLowerCase();
+              types[t] = (types[t] || 0) + 1;
+              var ac = (inputs[j].getAttribute("autocomplete") || "").toLowerCase();
+              if (ac && ac !== "off" && ac !== "on") autos[ac] = 1;
+            }
+            var submit = f.querySelector('[type="submit"],button');
+            var role = (f.getAttribute("role") || "").toLowerCase();
+            var kind = "other";
+            if (role === "search" || f.querySelector('input[type="search"]')) kind = "search";
+            else if (inputs.length === 1 && (types.email || Object.keys(autos).join(" ").indexOf("email") !== -1))
+              kind = "newsletter";
+            var r = f.getBoundingClientRect ? f.getBoundingClientRect() : { top: 0 };
+            forms.push({
+              fieldCount: inputs.length,
+              fieldTypes: types,
+              autocomplete: Object.keys(autos),
+              submitText: submit ? (submit.textContent || "").trim().slice(0, 60) : "",
+              kind: kind,
+              aboveFold: r.top < vh,
+            });
+          }
+        } catch (e) {}
+        // --- navigation ---
+        var navigation = { primaryLinks: 0, footerLinks: 0, hasSearch: false, hasBreadcrumb: false };
+        try {
+          var primary = document.querySelectorAll(
+            'header a[href], nav a[href], [role="navigation"] a[href]',
+          );
+          navigation.primaryLinks = primary.length;
+          navigation.footerLinks = document.querySelectorAll("footer a[href]").length;
+          navigation.hasSearch = !!document.querySelector(
+            'input[type="search"],form[role="search"],[aria-label*="search" i],[aria-label*="sök" i]',
+          );
+          navigation.hasBreadcrumb = !!document.querySelector(
+            '[aria-label*="breadcrumb" i],.breadcrumb,[class*="breadcrumb" i],nav ol',
+          );
+        } catch (e) {}
+        // --- pricing ---
+        var pricing = { present: false, priceCount: 0, samples: [] };
+        try {
+          var PRICE = /(?:[$€£]|kr\\b|\\bSEK\\b|\\bkr\\/)\\s?\\d[\\d\\s.,]*|\\d[\\d\\s.,]*\\s?(?:kr|:-|SEK|€|\\$|£)/i;
+          var seen = {};
+          var cands = document.querySelectorAll(
+            '[class*="pris" i],[class*="price" i],[class*="cost" i],[data-price],[itemprop="price"]',
+          );
+          var pool = cands.length ? cands : document.querySelectorAll("span,div,p,td,li,strong,b");
+          for (var k = 0; k < pool.length && pricing.samples.length < 8; k++) {
+            if (skip(pool[k])) continue;
+            var txt = (pool[k].textContent || "").trim();
+            if (txt.length > 40) continue; // långa stycken är inte prislappar
+            var m = txt.match(PRICE);
+            if (m && !seen[m[0]]) {
+              seen[m[0]] = 1;
+              pricing.priceCount++;
+              pricing.samples.push(txt.slice(0, 40));
+            }
+          }
+          pricing.present = pricing.priceCount > 0;
+        } catch (e) {}
+        return { forms: forms, navigation: navigation, pricing: pricing };
+      })();
+
       var payload = {
         site: site,
         key: key || undefined,
@@ -157,6 +243,10 @@ const bundle = `${banner}
           sections: sections || [],
           trustSignals: (trust && trust.signals) || [],
           headings: (audit && audit.headings) || undefined,
+          // Observe-only strukturskikt (diagnos, ingen mönster-input än).
+          forms: structure.forms,
+          navigation: structure.navigation,
+          pricing: structure.pricing,
         },
       };
       fetch(base + "/api/adaptive/inventory", {

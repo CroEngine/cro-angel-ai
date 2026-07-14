@@ -19,6 +19,8 @@
 //
 // Pure + framework-free.
 
+import { classifyIntentShared } from "../../lib/tests/scripts/shared/intent";
+
 import type { RedesignContentModel } from "./context";
 
 const stripTags = (s: string): string =>
@@ -101,24 +103,46 @@ function extractSections(html: string): RedesignContentModel["sections"] {
   });
 }
 
-/** Detect CTAs from anchor/button text that reads like a conversion action.
+/** Detect CTAs from anchor/button text. Candidacy AND intent come from THE
+ *  shared classifier (shared/intent.ts — corpus-mined EN+SV vocabulary, the same
+ *  semantics as the harvest scripts), never a private word list: the old
+ *  English-only regex here found 0 CTAs on Swedish pages (breadth finding 2).
  *  Scans the WHOLE document: the primary CTA often sits in the header/hero above
- *  <main> (e.g. Basecamp's "Try Basecamp free"). Deduped by text. */
+ *  <main> (e.g. Basecamp's "Try Basecamp free"). Deduped by text.
+ *  String-parser limits (honest): no form context (isFormSubmit=false) and no
+ *  computed category, so the classifier's position fallback never fires here —
+ *  a keyword-less primary is instead covered by the owner-goal-text union the
+ *  measurement harnesses add to the hit-test list. */
 function extractCtas(html: string, seen = new Set<string>()): RedesignContentModel["ctas"] {
   const ctas: RedesignContentModel["ctas"] = [];
-  const re = /<(a|button)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  const re = /<(a|button)\b([^>]*)>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   let order = 0;
   while ((m = re.exec(html))) {
-    const t = stripTags(m[2]);
+    const attrs = m[2];
+    const t = stripTags(m[3]);
     order++;
     if (!t || t.length > 32 || seen.has(t.toLowerCase())) continue;
-    // \bbook\b so "book a demo" matches but "handbook" / "Books we've written" don't.
-    if (!/(free trial|start|sign up|get started|try |demo|register|buy|subscribe|\bbook\b)/i.test(t))
-      continue;
+    const attrVal = (name: string): string => {
+      const a = new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, "i").exec(attrs);
+      return a ? (a[1] ?? a[2] ?? "") : "";
+    };
+    const href = attrVal("href");
+    const intent = classifyIntentShared(
+      t,
+      href,
+      `${attrVal("aria-label")} ${attrVal("title")}`.trim(),
+      "", // no category from raw markup — the position fallback stays off
+      false,
+      order < 12, // first handful ~ above fold
+      "",
+      href.startsWith("#"),
+    );
+    // conversion + contact are the model's CTAs (contact IS the goal for
+    // lead-gen — A1); nav/social/utility/engagement links stay out of the brief.
+    if (intent !== "conversion" && intent !== "contact") continue;
     seen.add(t.toLowerCase());
-    const intent = /(demo|tour|learn|watch)/i.test(t) ? "explore" : "conversion";
-    ctas.push({ text: t, intent, aboveFold: order < 12 }); // first handful ~ above fold
+    ctas.push({ text: t, intent, aboveFold: order < 12 });
   }
   return ctas;
 }

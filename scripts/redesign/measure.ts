@@ -18,9 +18,17 @@ export interface MeasureOp {
  *  ORÖRD, main-scopad DOM; (2) applicera i planordning. keepApplied=true
  *  lämnar sidan applicerad (för EFTER-skärmdumpen) i stället för att en
  *  tredje algoritm återappliceras. */
-export async function measurePlan(page: Page, ops: MeasureOp[], ctaTexts: string[], keepApplied = false) {
+export async function measurePlan(
+  page: Page,
+  ops: MeasureOp[],
+  ctaTexts: string[],
+  keepApplied = false,
+  // Ägarens conversion_selector (rått-override-sajter har text=null) — hit-testas
+  // precis som texterna så vakuum-varningen inte återkommer för dem.
+  ctaSelectors: string[] = [],
+) {
   return page.evaluate(
-    ({ ops, ctaTexts, keepApplied }) => {
+    ({ ops, ctaTexts, ctaSelectors, keepApplied }) => {
       const mainEl = document.querySelector("main") || document.body;
       const de = document.documentElement;
       const norm = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -109,6 +117,14 @@ export async function measurePlan(page: Page, ops: MeasureOp[], ctaTexts: string
       const h1 = mainEl.querySelector("h1");
       const heroBlock = (h1 && blocks.find((b) => b === h1 || b.contains(h1))) ?? blocks.slice().sort(docSort)[0] ?? null;
 
+      function hitTest(el: Element): boolean {
+        el.scrollIntoView({ block: "center" });
+        const r = el.getBoundingClientRect();
+        const cx = Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1);
+        const cy = Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1);
+        const top = document.elementFromPoint(cx, cy);
+        return !!top && (el.contains(top) || top.contains(el));
+      }
       function ctaClickable(text: string): boolean | null {
         const matches = Array.from(document.querySelectorAll("a,button")).filter((n) =>
           norm(n.textContent || "").includes(text),
@@ -118,17 +134,31 @@ export async function measurePlan(page: Page, ops: MeasureOp[], ctaTexts: string
           const r = n.getBoundingClientRect();
           return r.width > 0 && r.height > 0;
         });
-        if (!el) return false;
-        el.scrollIntoView({ block: "center" });
-        const r = el.getBoundingClientRect();
-        const cx = Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1);
-        const cy = Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1);
-        const top = document.elementFromPoint(cx, cy);
-        return !!top && (el.contains(top) || top.contains(el));
+        return el ? hitTest(el) : false;
       }
+      function ctaClickableSel(sel: string): boolean | null {
+        let el: Element | null = null;
+        try {
+          el = document.querySelector(sel);
+        } catch {
+          return null; // ogiltig selektor ≠ trasig sida — bara inget att kontrollera
+        }
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        if (!(r.width > 0 && r.height > 0)) return false;
+        return hitTest(el);
+      }
+      // Text- och selektor-prober i EN lista; paras före/efter via index så
+      // dubblett-nycklar aldrig kan korspara.
+      const ctaProbes: { key: string; bySel: boolean }[] = [
+        ...ctaTexts.map((t) => ({ key: t, bySel: false })),
+        ...ctaSelectors.map((s) => ({ key: s, bySel: true })),
+      ];
+      const probeCta = (p: { key: string; bySel: boolean }) =>
+        p.bySel ? ctaClickableSel(p.key) : ctaClickable(p.key);
 
       // ── FÖRE-mätningar ─────────────────────────────────────────────────
-      const ctaBefore = ctaTexts.map((t) => ({ t, ok: ctaClickable(t) }));
+      const ctaBefore = ctaProbes.map((p) => probeCta(p));
       const beforeIdx = identityOrder();
       const hOverflowBeforePx = Math.max(0, de.scrollWidth - de.clientWidth);
       const overlapBefore = blockPairsOverlap();
@@ -200,14 +230,13 @@ export async function measurePlan(page: Page, ops: MeasureOp[], ctaTexts: string
           }
         }
       }
-      const ctaAfter = ctaTexts.map((t) => ({ t, ok: ctaClickable(t) }));
+      const ctaAfter = ctaProbes.map((p) => probeCta(p));
       let ctaChecked = 0;
       let ctaBroken = 0;
-      for (const b of ctaBefore) {
-        if (b.ok === true) {
+      for (let i = 0; i < ctaBefore.length; i++) {
+        if (ctaBefore[i] === true) {
           ctaChecked++;
-          const a = ctaAfter.find((x) => x.t === b.t);
-          if (a && a.ok !== true) ctaBroken++;
+          if (ctaAfter[i] !== true) ctaBroken++;
         }
       }
 
@@ -242,6 +271,6 @@ export async function measurePlan(page: Page, ops: MeasureOp[], ctaTexts: string
         reversedOrderMatches,
       };
     },
-    { ops, ctaTexts, keepApplied },
+    { ops, ctaTexts, ctaSelectors, keepApplied },
   );
 }

@@ -66,7 +66,36 @@ describe("extractContentModel — HTML → content model loader", () => {
     expect(texts).toContain("Start free trial");
     expect(texts).toContain("View live demo");
     expect(model.ctas.find((c) => c.text === "Start free trial")?.intent).toBe("conversion");
-    expect(model.ctas.find((c) => c.text === "View live demo")?.intent).toBe("explore");
+    // The shared classifier's semantics: a demo request IS a conversion (the
+    // old private regex here downgraded it to a home-made "explore" intent).
+    expect(model.ctas.find((c) => c.text === "View live demo")?.intent).toBe("conversion");
+  });
+
+  // Breadth finding 2: the old English-only regex found 0 CTAs on 6/13 real
+  // Swedish sites. Candidacy now comes from the shared corpus-mined classifier.
+  it("extracts Swedish CTAs (shared classifier, no private word list)", () => {
+    const page = `
+      <header><a href="/konto">Skapa konto</a></header>
+      <main>
+        <h1>Jämför elpriser</h1>
+        <a href="/start">Kom igång</a>
+        <button>Lägg i varukorgen</button>
+        <a href="/boka">Boka tid</a>
+        <a href="/login">Logga in</a>
+        <a href="/kontakt">Kontakta oss</a>
+        <a href="https://facebook.com/acme">Följ oss på Facebook</a>
+      </main>`;
+    const m = extractContentModel(page);
+    const byText = (t: string) => m.ctas.find((c) => c.text === t);
+    expect(byText("Skapa konto")?.intent).toBe("conversion");
+    expect(byText("Kom igång")?.intent).toBe("conversion");
+    expect(byText("Lägg i varukorgen")?.intent).toBe("conversion");
+    expect(byText("Boka tid")?.intent).toBe("conversion");
+    // contact is a real intent of its own (lead-gen goal — A1), never dropped
+    expect(byText("Kontakta oss")?.intent).toBe("contact");
+    // navigation/social links stay OUT of the model's CTA list
+    expect(byText("Logga in")).toBeUndefined();
+    expect(byText("Följ oss på Facebook")).toBeUndefined();
   });
 
   it("surfaces the count from prose (real digits), not the split stat block", () => {
@@ -126,7 +155,7 @@ describe("extractContentModel — HTML → content model loader", () => {
   it("does not let 'handbook' / 'Books' masquerade as CTAs (\\bbook\\b)", () => {
     const page = `<header><a>Try it</a></header><main><a>Books we wrote</a><a>Employee handbook</a><a>Book a demo</a></main>`;
     const texts = extractContentModel(page).ctas.map((c) => c.text);
-    expect(texts).toContain("Try it");
+    expect(texts).toContain("Try it"); // \btry\b — the corpus list's English twin of "prova"
     expect(texts).toContain("Book a demo");
     expect(texts).not.toContain("Books we wrote");
     expect(texts).not.toContain("Employee handbook");

@@ -32,7 +32,14 @@
 //      most likely a conversion.
 //
 // Vocabulary provenance: corpus/vocab-harvest-2026-07-06.json (107-site
-// harvest); inclusion bar >= 2 independent sites.
+// harvest); inclusion bar >= 2 independent sites. Two deliberate deltas
+// (2026-07-14): \btry\b added — mining missed it because harvest catches
+// "Try X free" buttons via the position fallback (rule 7), but string-context
+// callers (redesign extract.ts) have no category and need the word; Swedish
+// "prova" was already in the list, the English twin plainly belongs. And
+// bare `book` tightened to \bbook\b — "Employee handbook", "Books we wrote"
+// and aria-labels like "Share on Facebook" are not bookings ("Book a demo"
+// still matches; Swedish "boka" is its own entry).
 export function classifyIntentShared(
   text: string,
   href: string,
@@ -72,7 +79,7 @@ export function classifyIntentShared(
     return "social";
   }
   if (
-    /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ne[dr]|lägg i (varu|kund)?korg(en)?|lägg till|ansök|bidra|donera|teckna|jämför|shoppa|månadsgivare)/i.test(
+    /(\bbook\b|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|\btry\b|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ne[dr]|lägg i (varu|kund)?korg(en)?|lägg till|ansök|bidra|donera|teckna|jämför|shoppa|månadsgivare)/i.test(
       probe,
     )
   ) {

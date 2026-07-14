@@ -16,7 +16,7 @@
 //
 //   bun run scripts/lab/redesign-render.ts   [--out=redesign-render-out]
 
-import { chromium, type Page } from "playwright-core";
+import { chromium } from "playwright-core";
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -24,6 +24,7 @@ import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { generateRedesign } from "../../src/adaptive/redesign/generate";
 import { evaluateRenderGates, type RenderMeasurements } from "../../src/adaptive/redesign/render-gates";
+import { measurePlan, type MeasureOp } from "../redesign/measure";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 
 const REPO = join(import.meta.dir, "../..");
@@ -94,156 +95,26 @@ const moveUpHeadings = plan.ops
   .map((o) => content.sections.find((s) => s.id === o.targetId)?.heading)
   .filter((h): h is string => !!h);
 
-const ctaTexts = content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text);
+// Extraherade konverterings-CTA:er ∪ ägarens måltext — samma union som
+// auto-generate, så hit-testet alltid vaktar målets element.
+const ctaTexts = [
+  ...new Set([
+    ...content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text),
+    ...(ctx.goal.text ? [ctx.goal.text] : []),
+  ]),
+];
 
 console.log("=== slice 3b — pixel half on plausible.io (offline render) ===");
 console.log(`  plan: move_up ${moveUpHeadings.length} section(s) — ${moveUpHeadings.join("; ")}`);
 console.log(`  CTAs hit-tested: ${ctaTexts.join(", ") || "(none)"}`);
 
 // ── in-browser apply + measure ───────────────────────────────────────────────
-// Locate a section container: walk up from the heading until the parent is <main>
-// (or body). On plausible the content sections are direct <main> children, so a
-// move_up is a clean, reversible sibling swap. Anything not a clean sibling is
-// reported as "not safely applicable" (never force-moved).
-async function measureAndApply(page: Page, headings: string[] = moveUpHeadings) {
-  return page.evaluate(
-    ({ moveHeadings, ctaTexts }) => {
-      const mainEl = document.querySelector("main") || document.body;
-      const anchor = document.querySelector("h1") || document.querySelector("main");
-      const anchorTop = anchor ? anchor.getBoundingClientRect().top + window.scrollY : null;
-
-      function container(el: Element): Element {
-        let node: Element = el;
-        while (node.parentElement && node.parentElement !== mainEl && node.parentElement !== document.body) {
-          node = node.parentElement;
-        }
-        return node;
-      }
-      const heads = Array.from(document.querySelectorAll("h1,h2"));
-      const de = document.documentElement;
-
-      // Track every content section container we can name, for order reporting.
-      const tracked: { label: string; el: Element }[] = [];
-      for (const h of heads) {
-        const txt = (h.textContent || "").replace(/\s+/g, " ").trim();
-        if (!txt) continue;
-        const c = container(h);
-        if (c.parentElement === mainEl && !tracked.some((t) => t.el === c)) {
-          tracked.push({ label: txt.slice(0, 40), el: c });
-        }
-      }
-      const orderOf = () =>
-        Array.from(mainEl.children)
-          .map((c) => tracked.find((t) => t.el === c)?.label)
-          .filter((l): l is string => !!l);
-
-      // CTA hit-test: pick the first VISIBLE instance of the CTA text, scroll it
-      // into the viewport, and check the CTA (or a descendant) is the topmost
-      // element at its centre. Below-the-fold CTAs are scrolled in first, else the
-      // test would vacuously read "not clickable" for every off-screen button.
-      function ctaClickable(text: string): boolean | null {
-        const matches = Array.from(document.querySelectorAll("a,button")).filter((n) =>
-          (n.textContent || "").replace(/\s+/g, " ").trim().includes(text),
-        );
-        if (!matches.length) return null;
-        const el = matches.find((n) => {
-          const r = n.getBoundingClientRect();
-          return r.width > 0 && r.height > 0;
-        });
-        if (!el) return false; // all instances hidden (0×0)
-        el.scrollIntoView({ block: "center" });
-        const r = el.getBoundingClientRect();
-        const cx = Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1);
-        const cy = Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1);
-        const top = document.elementFromPoint(cx, cy);
-        return !!top && (el.contains(top) || top.contains(el));
-      }
-      const ctaBefore = ctaTexts.map((t) => ({ t, ok: ctaClickable(t) }));
-
-      // Max vertical overlap between adjacent main sections (prev.bottom − next.top).
-      // Sections legitimately overlap by design; we compare before vs after so only
-      // the INTRODUCED overlap counts (a moved block landing under a floating CTA).
-      const maxAdjacentOverlap = () => {
-        const kids = Array.from(mainEl.children).filter(
-          (c) => c.getBoundingClientRect().height > 30,
-        );
-        let mx = 0;
-        for (let i = 0; i < kids.length - 1; i++) {
-          const a = kids[i].getBoundingClientRect();
-          const b = kids[i + 1].getBoundingClientRect();
-          mx = Math.max(mx, Math.round(a.bottom - b.top));
-        }
-        return mx;
-      };
-
-      const beforeOrder = orderOf();
-      const hOverflowBeforePx = Math.max(0, de.scrollWidth - de.clientWidth);
-      const vOverlapBeforePx = maxAdjacentOverlap();
-
-      // Snapshot original order of ALL main children for exact reset.
-      const originalChildren = Array.from(mainEl.children);
-
-      // Apply move_ups: swap the target container with its previous element sibling.
-      let applied = 0;
-      const movedEls: Element[] = [];
-      for (const heading of moveHeadings) {
-        const t = tracked.find((x) => x.label && heading.replace(/\s+/g, " ").trim().startsWith(x.label));
-        const target = t?.el ?? tracked.find((x) => heading.includes(x.label))?.el;
-        if (!target) continue;
-        const prev = target.previousElementSibling;
-        if (prev && target.parentElement === prev.parentElement) {
-          target.parentElement!.insertBefore(target, prev);
-          target.setAttribute("data-angel-moved", "1");
-          movedEls.push(target);
-          applied++;
-        }
-      }
-
-      const afterOrder = orderOf();
-      const hOverflowAfterPx = Math.max(0, de.scrollWidth - de.clientWidth);
-      const vOverlapAfterPx = maxAdjacentOverlap();
-      // Moved-above-main: any moved container whose top is now above the anchor.
-      let movedAboveMain = 0;
-      for (const el of movedEls) {
-        const top = el.getBoundingClientRect().top + window.scrollY;
-        if (anchorTop !== null && top < anchorTop - 1) movedAboveMain++;
-      }
-      const ctaAfter = ctaTexts.map((t) => ({ t, ok: ctaClickable(t) }));
-      let ctaChecked = 0;
-      let ctaBroken = 0;
-      for (const b of ctaBefore) {
-        if (b.ok === true) {
-          ctaChecked++;
-          const a = ctaAfter.find((x) => x.t === b.t);
-          if (a && a.ok !== true) ctaBroken++;
-        }
-      }
-
-      // Reset: restore the original child order exactly, drop markers.
-      for (const el of originalChildren) mainEl.appendChild(el);
-      for (const el of movedEls) el.removeAttribute("data-angel-moved");
-      const resetOrder = orderOf();
-
-      return {
-        beforeOrder,
-        afterOrder,
-        resetOrder,
-        hOverflowBeforePx,
-        hOverflowAfterPx,
-        vOverlapBeforePx,
-        vOverlapAfterPx,
-        movedCount: movedEls.length,
-        movedAboveMain,
-        mainAnchorFound: anchorTop !== null,
-        ctaChecked,
-        ctaBroken,
-        requestedMoves: moveHeadings.length,
-        appliedMoves: applied,
-      };
-    },
-    { moveHeadings: headings, ctaTexts },
-  );
-}
+// SAMMA delade tvåfas-mätning som verifieringspipelinen (scripts/redesign/
+// measure.ts) — den här filen bar tidigare en egen kopia med v2-klättringen
+// (rubrik → förälder under <main>), en egen hit-test och en TREDJE
+// appliceringsalgoritm för efter-skärmdumpen. Återanvändnings-genomgången
+// 2026-07-14 ersatte alltihop med measurePlan.
+const baseOps: MeasureOp[] = moveUpHeadings.map((h) => ({ op: "move_up", find: h }));
 
 // ── drive the browser ─────────────────────────────────────────────────────────
 mkdirSync(outDir, { recursive: true });
@@ -258,15 +129,20 @@ try {
   await page.screenshot({ path: join(outDir, "before.jpg"), type: "jpeg", quality: 60, fullPage: true });
 
   // Generate → verify → RETRY. If the gate fails on a vertical collision, try
-  // once more with each move target lifted ONE step further — same logical
-  // section order, different physical insertion (above whatever block's overhang
-  // caused the collision). This deterministic heuristic stands in for the prod
-  // loop, where the gate's reasons are fed back to the design model for a revised
-  // plan. One retry only — a plan that can't find a clean placement stays held.
+  // once more with ONE extra lift per UNIQUE move target — same logical section
+  // order, different physical insertion, and exactly the retry-counting the
+  // verify pipeline uses (measurement == serve_ops). One retry only — a plan
+  // that can't find a clean placement stays held.
+  const uniqueFinds = [...new Set(baseOps.map((o) => o.find))];
   const attempts: { attempt: number; measurements: RenderMeasurements; gate: ReturnType<typeof evaluateRenderGates> }[] = [];
-  let attemptHeadings = moveUpHeadings;
+  let attemptOps = baseOps;
+  let unresolvable = false;
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const raw = await measureAndApply(page, attemptHeadings);
+    const raw = await measurePlan(page, attemptOps, ctaTexts);
+    if (!raw.resolvedAll) {
+      unresolvable = true;
+      break;
+    }
     const measurements: RenderMeasurements = {
       beforeOrder: raw.beforeOrder,
       afterOrder: raw.afterOrder,
@@ -279,8 +155,8 @@ try {
       ctaBroken: raw.ctaBroken,
       requestedMoves: raw.requestedMoves,
       appliedMoves: raw.appliedMoves,
-      reversedOrderMatches: JSON.stringify(raw.resetOrder) === JSON.stringify(raw.beforeOrder),
-      verticalOverlapIntroducedPx: Math.max(0, raw.vOverlapAfterPx - raw.vOverlapBeforePx),
+      reversedOrderMatches: raw.reversedOrderMatches,
+      verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
     };
     const gate = evaluateRenderGates(measurements);
     attempts.push({ attempt, measurements, gate });
@@ -297,43 +173,33 @@ try {
 
     const collision =
       gate.verdict === "fail" && gate.reasons.some((r) => /vertical overlap/.test(r));
-    if (collision && attempt === 1 && attemptHeadings.length > 0) {
-      attemptHeadings = [...attemptHeadings, ...new Set(attemptHeadings)];
-      console.log("  ↻ collision — retrying with each move target lifted one step further");
+    if (collision && attempt === 1 && uniqueFinds.length > 0) {
+      attemptOps = [...baseOps, ...uniqueFinds.map((find): MeasureOp => ({ op: "move_up", find }))];
+      console.log("  ↻ collision — retrying with each unique move target lifted one step further");
       continue;
     }
     break;
   }
+  if (unresolvable) {
+    console.log("\n  FINAL: NOT APPLICABLE — v3-upplösningen vägrade (ingen ren sektionsnivå); fail closed");
+    writeFileSync(join(outDir, "report.json"), JSON.stringify({ attempts, unresolvable: true }, null, 2));
+  } else {
+    // EFTER-skärmdumpen: SAMMA mätfunktion med keepApplied — aldrig en egen
+    // återappliceringsalgoritm (granskningsfynd 2026-07-14).
+    await measurePlan(page, attemptOps, [], true);
+    await page.screenshot({ path: join(outDir, "after.jpg"), type: "jpeg", quality: 60, fullPage: true });
 
-  // The after screenshot captures the FINAL attempt's applied state.
-  await page.evaluate((moveHeadings) => {
-    const mainEl = document.querySelector("main") || document.body;
-    const heads = Array.from(document.querySelectorAll("h1,h2"));
-    function container(el: Element): Element {
-      let node: Element = el;
-      while (node.parentElement && node.parentElement !== mainEl && node.parentElement !== document.body) node = node.parentElement;
-      return node;
-    }
-    for (const heading of moveHeadings) {
-      const h = heads.find((x) => heading.includes((x.textContent || "").replace(/\s+/g, " ").trim().slice(0, 40)));
-      if (!h) continue;
-      const target = container(h);
-      const prev = target.previousElementSibling;
-      if (prev && target.parentElement === prev.parentElement) target.parentElement!.insertBefore(target, prev);
-    }
-  }, attemptHeadings);
-  await page.screenshot({ path: join(outDir, "after.jpg"), type: "jpeg", quality: 60, fullPage: true });
+    writeFileSync(join(outDir, "report.json"), JSON.stringify({ attempts }, null, 2));
 
-  writeFileSync(join(outDir, "report.json"), JSON.stringify({ attempts }, null, 2));
-
-  const last = attempts[attempts.length - 1];
-  console.log(
-    `\n  FINAL: ${last.gate.verdict.toUpperCase()} after ${attempts.length} attempt(s) — ` +
-      (last.gate.verdict === "pass"
-        ? "candidate for serving (behind the ramp)"
-        : "held back; no visitor sees it"),
-  );
-  console.log(`  evidence: ${outDir}/before.jpg · after.jpg · report.json`);
+    const last = attempts[attempts.length - 1];
+    console.log(
+      `\n  FINAL: ${last.gate.verdict.toUpperCase()} after ${attempts.length} attempt(s) — ` +
+        (last.gate.verdict === "pass"
+          ? "candidate for serving (behind the ramp)"
+          : "held back; no visitor sees it"),
+    );
+    console.log(`  evidence: ${outDir}/before.jpg · after.jpg · report.json`);
+  }
 } finally {
   await browser.close();
 }

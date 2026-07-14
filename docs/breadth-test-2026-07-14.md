@@ -81,3 +81,43 @@ var blind för). v2:s "10 pass" var delvis generositet genom mätblindhet; v3:s
 serve-tidens vakter (LCP-vakten, no-touch-zoner, hydrerings-residue) — en
 verifierad design kan alltså vägras av snippeten hos enskilda besökare
 (intent-to-treat-utspädning; besökaren ser baslinjen, aldrig något trasigt).
+
+## Uppföljning: fynd 2 stängt via ÅTERANVÄNDNING (2026-07-14, samma dag)
+
+Ägarens fråga "har inte vi en lösning för CTA med andra språk redan?" — svar: ja,
+tre stycken, men redesign-extraktionen använde ingen av dem (egen engelsk regex).
+Fixen byggde inga nya listor:
+
+- **`extract.ts` använder nu den delade intent-klassificeraren** (`shared/
+  intent.ts` — korpus-minerad EN+SV + strukturregler, samma semantik som
+  harvest-skripten). Två medvetna deltan i den delade listan: `\btry\b` in
+  (engelska tvillingen till "prova"; mining missade den för att harvest fångar
+  "Try X free" via positions-fallbacken) och `book` → `\bbook\b` ("Employee
+  handbook"/"Share on Facebook" är inte bokningar — buggen fanns även i
+  harvest-skiktet och är lagad på KÄLLAN).
+- **Ägarens mål är hit-testets skyddsobjekt**: auto-generate läser
+  `conversion_text/kind/selector` ur angel_sites (`--site-config`), måltexten
+  unionas in i CTA-listan och `conversion_selector` hit-testas direkt —
+  exakt samma sträng/selektor som snippeten räknar konverteringar på i drift.
+- **Vakuum-grinden**: `ctaChecked === 0` ⇒ WARN i render-gates (blockerar
+  auto-verified) + `ctaChecked` skrivs i evidensbloben. Ett tomt hit-test kan
+  aldrig mer se ut som "0 trasiga, allt väl".
+
+**Breddtest v4 (ärliga siffror):** 4 PASS · 6 WARN · 2 NOT_APPLICABLE · 1 FAIL.
+Färre "pass" än v3 — för att de tre vakuösa passen (bokadirekt, cdon,
+sector-alarm) nu SÄGER att hit-testet inte skyddade något. Svenska vinster:
+elskling 4 CTA:er ("Jämför el…", 4/4 klickbara, PASS), nextory 11 ("Prova
+gratis nu"…, PASS), bokadirekt 7 hittade (men CMP-overlay i frysningen täcker
+dem → ärlig varning). Kvar öppet: cdon (produktlänkar >32 tecken),
+sector-alarm (offert-vokabulär saknas i korpusen) — båda syns nu som varningar
+i stället för att passera tyst. Ingen tidigare grön sajt tappades.
+
+**Bifynd med egen tyngd:** regenerering av `adaptive-harvest.js` avslöjade att
+struktur-skannern (Fas 1, PR #86) lagts direkt i den GENERERADE filen utan att
+generatorn (`scripts/build-harvest.ts`) uppdaterades — en regenerering hade
+raderat levande funktionalitet. Skannern bor nu i generatorns källa och
+artefakten round-trippar byte-exakt (enda diffen mot förr är vokabulär-deltan).
+Dessutom porterades `scripts/lab/redesign-render.ts` från sin egen v2-mätning
+(tre algoritmer, retry-buggen granskningen fällde) till den delade
+`measure.ts` — verifierad mot plausible-fixturen (kollision → retry → PASS,
+4/0 CTA:er, byte-exakt reversibel).

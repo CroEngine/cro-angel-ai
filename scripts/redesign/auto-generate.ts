@@ -24,16 +24,19 @@
 //
 //   bun run scripts/redesign/auto-generate.ts --mode=detect \
 //     --leaves=page-leaves.json --variants=variants.json --pages=pages.json \
-//     --site=<slug> --base-url=https://... --goal-text="..." --goal-kind=trial \
+//     --site=<slug> --base-url=https://... --site-config=site.json \
 //     --out=out [--cap=5]
 //   bun run scripts/redesign/auto-generate.ts --mode=verify \
 //     --plans=plans.json --pages=pages.json --site=<slug> --base-url=... \
-//     --goal-text="..." --out=out
+//     --site-config=site.json --out=out
 //
-//   leaves    = angel_page_segment_rollup-rader (path + 4 dimensioner + räknare)
-//   variants  = [{path, segmentKey}] för sajtens icke-pensionerade varianter
-//   pages     = {"/": "fixtures/.../home.html", "/pricing": "..."} — frysta kopior
-//   plans     = [{path, key, total, observations, ops}] från designpanelen
+//   leaves      = angel_page_segment_rollup-rader (path + 4 dimensioner + räknare)
+//   variants    = [{path, segmentKey}] för sajtens icke-pensionerade varianter
+//   pages       = {"/": "fixtures/.../home.html", "/pricing": "..."} — frysta kopior
+//   plans       = [{path, key, total, observations, ops}] från designpanelen
+//   site-config = ägarens mål ur angel_sites: {conversion_text, conversion_kind,
+//                 conversion_selector} — briefens mål-rad + CTA-hit-testets
+//                 skyddsobjekt. --goal-text/--goal-kind overridar (labbet).
 //
 // Sidkällan är en KARTA path → självbärande fryst HTML (--pages=<json>).
 // Producenten kvittar: freeze-steget (riktiga kundsidor, scripts/redesign/
@@ -72,10 +75,23 @@ mkdirSync(outDir, { recursive: true });
 // ── sajtens inputs ────────────────────────────────────────────────────────────
 const site = arg("site") ?? "synthetic-lab";
 const baseUrl = (arg("base-url") ?? "https://plausible.io").replace(/\/$/, "");
+// Målet är ägarens KONFIGURERADE mål — aldrig en påhittad default. Källa i
+// prioritetsordning: explicit CLI-flagga (labbet) → --site-config=<json> med
+// raden ur angel_sites (conversion_text/conversion_kind/conversion_selector,
+// samma kolumnnamn som DB:n så filen kan produceras av en enda select) → null.
+// Utan mål får briefen ingen mål-rad och hit-testet skyddar bara extraherade
+// CTA:er — vakuum-varningen i render-gates säger till när det inte räcker.
+const siteCfg = arg("site-config")
+  ? (JSON.parse(readFileSync(arg("site-config")!, "utf8")) as {
+      conversion_text?: string | null;
+      conversion_kind?: string | null;
+      conversion_selector?: string | null;
+    })
+  : null;
 const GOAL = {
-  text: arg("goal-text") ?? "Start free trial",
-  kind: arg("goal-kind") ?? "trial",
-  selector: null,
+  text: arg("goal-text") ?? siteCfg?.conversion_text ?? null,
+  kind: arg("goal-kind") ?? siteCfg?.conversion_kind ?? null,
+  selector: siteCfg?.conversion_selector ?? null,
 };
 /** path → sökväg till självbärande fryst HTML. */
 const pages = JSON.parse(readFileSync(arg("pages")!, "utf8")) as Record<string, string>;
@@ -237,7 +253,17 @@ try {
       continue;
     }
     const { html, content } = pg;
-    const ctaTexts = content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text);
+    // Hit-test-listan = extraherade konverterings-CTA:er ∪ ägarens måltext —
+    // måltexten är exakt strängen snippetens conversion_text-fallback matchar
+    // på i drift, så grinden vaktar samma element som räknar konverteringar.
+    // Finns texten inte på sidan blir proben null (inte broken) — ofarlig.
+    const ctaTexts = [
+      ...new Set([
+        ...content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text),
+        ...(GOAL.text ? [GOAL.text] : []),
+      ]),
+    ];
+    const ctaSelectors = GOAL.selector ? [GOAL.selector] : [];
     const slug = `${plan.path.replace(/\//g, "-").replace(/^-|-$/g, "") || "home"}--${plan.key
       .replace(/·/g, "-")
       .replace(/[^\p{L}\p{N}-]/gu, "")
@@ -292,7 +318,7 @@ try {
     let extraLift = 0;
     let unresolvable = false;
     for (let attempt = 1; attempt <= 2; attempt++) {
-      const raw = await measurePlan(page, attemptOps, ctaTexts);
+      const raw = await measurePlan(page, attemptOps, ctaTexts, false, ctaSelectors);
       if (!raw.resolvedAll) {
         unresolvable = true;
         break;
@@ -373,6 +399,9 @@ try {
         hOverflowIntroducedPx: last.gate.hOverflowIntroducedPx,
         verticalOverlapIntroducedPx: last.gate.verticalOverlapIntroducedPx,
         movedAboveMain: last.measurements.movedAboveMain,
+        // BÅDA talen — ctaBroken utan ctaChecked dolde vakuösa hit-test för
+        // ägarknappen (0 kontrollerade såg ut som "0 trasiga, allt väl").
+        ctaChecked: last.measurements.ctaChecked,
         ctaBroken: last.measurements.ctaBroken,
         reversible: last.measurements.reversedOrderMatches,
         attempts: attempts.length,

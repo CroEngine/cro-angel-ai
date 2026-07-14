@@ -99,6 +99,19 @@ describe("classifyIntentShared — same-page anchors (tabs/TOC) are navigation",
   });
 });
 
+describe("\\btry\\b — the English twin of 'prova' (added for string-context callers)", () => {
+  it("'Try Basecamp free' is a conversion even without category/position", () => {
+    expect(classifyIntentShared("Try Basecamp free", "/signup", "", "", false, true)).toBe(
+      "conversion",
+    );
+  });
+  it("'Industry insights' does not smuggle 'try' through the word boundary", () => {
+    expect(classifyIntentShared("Industry insights", "/blog", "", "", false, true)).not.toBe(
+      "conversion",
+    );
+  });
+});
+
 describe("B1 — inline parity: one classifier, two scripts", () => {
   const src = classifyIntentShared.toString();
 

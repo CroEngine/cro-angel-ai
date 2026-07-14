@@ -136,7 +136,7 @@
   }
   if (/(facebook|instagram|linkedin|twitter|x\.com|youtube|tiktok|pinterest|snapchat|reddit|threads|mastodon)\./i.test(h))
     return "social";
-  if (/(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|best\u00E4ll|k\u00F6p|boka|prova|kom ig\u00E5ng|skapa konto|registrera|g\u00E5 med|gratis|ladda ne[dr]|l\u00E4gg i (varu|kund)?korg(en)?|l\u00E4gg till|ans\u00F6k|bidra|donera|teckna|j\u00E4mf\u00F6r|shoppa|m\u00E5nadsgivare)/i.test(probe))
+  if (/(\bbook\b|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|\btry\b|checkout|order|apply|donate|download|add to cart|best\u00E4ll|k\u00F6p|boka|prova|kom ig\u00E5ng|skapa konto|registrera|g\u00E5 med|gratis|ladda ne[dr]|l\u00E4gg i (varu|kund)?korg(en)?|l\u00E4gg till|ans\u00F6k|bidra|donera|teckna|j\u00E4mf\u00F6r|shoppa|m\u00E5nadsgivare)/i.test(probe))
     return "conversion";
   if (/^(tel:|mailto:)/i.test(h) || /(contact|kontakt)/i.test(probe))
     return "contact";
