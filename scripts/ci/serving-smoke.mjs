@@ -156,6 +156,55 @@ async function runSuite(label, snippet) {
     await page.close();
   }
 
+  // 4) Wrapper-nästlade sektioner (v2-upplösningen): flytten ska lyfta EXAKT
+  //    sektionen inne i wrappern — inte wrappern, inte sidan — ett steg,
+  //    reversibelt. Detta var mönstret 8/13 riktiga sajter hade där v1 vägrade.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const nestedHtml = readFileSync("fixtures/synthetic/nested-sections.html", "utf8");
+    await page.route("**/*", (r) => (r.request().url().startsWith("data:") ? r.continue() : r.abort()));
+    await page.setContent(nestedHtml, { waitUntil: "domcontentloaded" });
+    await page.evaluate(
+      ({ src }) => {
+        window.PerformanceObserver = undefined;
+        window.__ANGEL_HARNESS__ = true;
+        const m = document.createElement("script");
+        m.type = "text/plain";
+        m.setAttribute("data-site", "smoke");
+        m.setAttribute("data-endpoint", "https://dead.invalid");
+        m.setAttribute("src", "data:text/plain,adaptive.js");
+        document.head.appendChild(m);
+        (0, eval)(src);
+      },
+      { src: snippet },
+    );
+    const nestedState = () =>
+      page.evaluate(() => ({
+        wrapperOrder: [...document.querySelector(".wrapper").children].map((c) => c.id),
+        heroFirst: document.querySelector(".page").children[0].className === "hero",
+        wrapperIntact: document.querySelector(".wrapper").children.length === 3,
+        movedId: document.querySelector("[data-angel-moved]")?.id ?? null,
+        pageHtml: document.querySelector("main").innerHTML,
+      }));
+    const before = await nestedState();
+    const applied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      { id: "smoke-nested", segmentKey: "x", ops: [{ op: "move_up", locator: { tag: "h2", text: "Gamma Pricing" } }] },
+    );
+    const after = await nestedState();
+    check("nästlad: variant applicerad", applied.includes("variant:smoke-nested"));
+    check(
+      "nästlad: SEKTIONEN lyft ett steg inne i wrappern (inte wrappern)",
+      JSON.stringify(after.wrapperOrder) === JSON.stringify(["sec-alpha", "sec-gamma", "sec-beta"]),
+    );
+    check("nästlad: hjälten kvar först, wrappern intakt", after.heroFirst && after.wrapperIntact);
+    check("nästlad: markören sitter på sektionen", after.movedId === "sec-gamma");
+    await page.evaluate(() => window.__angel.reset());
+    const restored = await nestedState();
+    check("nästlad: reset återställer BYTE-exakt", restored.pageHtml === before.pageHtml);
+    await page.close();
+  }
+
   return failures;
 }
 

@@ -231,25 +231,42 @@ async function measurePlan(page: Page, moveHeadings: string[], texts: { tag: str
       const anchorTop = anchor ? anchor.getBoundingClientRect().top + window.scrollY : null;
       const de = document.documentElement;
 
+      // v2 (wrapper-medveten, SAMMA som snippetens applyVariant): sektionen är
+      // närmaste förfader vars syskon också innehåller sektionsrubriker.
+      const heads = Array.from(mainEl.querySelectorAll("h1,h2"));
       function container(el: Element): Element {
+        const siblingHasHeading = (node: Element): boolean => {
+          const p = node.parentElement;
+          if (!p) return false;
+          for (const sib of Array.from(p.children)) {
+            if (sib === node) continue;
+            if (heads.some((h) => sib === h || sib.contains(h))) return true;
+          }
+          return false;
+        };
         let node: Element = el;
-        while (node.parentElement && node.parentElement !== mainEl && node.parentElement !== document.body)
+        while (node.parentElement && node.parentElement !== document.body) {
+          // Aldrig rubriken själv (platta artikelsidor) — samma spärr som snippeten.
+          if (node !== el && siblingHasHeading(node)) return node;
           node = node.parentElement;
+        }
         return node;
       }
-      const heads = Array.from(document.querySelectorAll("h1,h2"));
       const tracked: { label: string; el: Element }[] = [];
       for (const h of heads) {
         const txt = (h.textContent || "").replace(/\s+/g, " ").trim();
         if (!txt) continue;
         const c = container(h);
-        if (c.parentElement === mainEl && !tracked.some((t) => t.el === c))
-          tracked.push({ label: txt.slice(0, 40), el: c });
+        if (!tracked.some((t) => t.el === c)) tracked.push({ label: txt.slice(0, 40), el: c });
       }
+      // Ordning i DOKUMENT-ordning (sektioner kan bo under olika föräldrar).
       const orderOf = () =>
-        Array.from(mainEl.children)
-          .map((c) => tracked.find((t) => t.el === c)?.label)
-          .filter((l): l is string => !!l);
+        tracked
+          .slice()
+          .sort((a, b) =>
+            a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+          )
+          .map((t) => t.label);
 
       function ctaClickable(text: string): boolean | null {
         const matches = Array.from(document.querySelectorAll("a,button")).filter((n) =>
@@ -268,13 +285,19 @@ async function measurePlan(page: Page, moveHeadings: string[], texts: { tag: str
         const top = document.elementFromPoint(cx, cy);
         return !!top && (el.contains(top) || top.contains(el));
       }
+      // Överlapp mäts inom varje FÖRÄLDRAGRUPP som bär sektioner (v2: de kan
+      // bo i en wrapper, inte direkt under main) — max över grupperna.
+      const sectionParents = [...new Set(tracked.map((t) => t.el.parentElement).filter(Boolean))] as Element[];
+      const overlapParents = sectionParents.length ? sectionParents : [mainEl];
       const maxAdjacentOverlap = () => {
-        const kids = Array.from(mainEl.children).filter((c) => c.getBoundingClientRect().height > 30);
         let mx = 0;
-        for (let i = 0; i < kids.length - 1; i++) {
-          const a = kids[i].getBoundingClientRect();
-          const b = kids[i + 1].getBoundingClientRect();
-          mx = Math.max(mx, Math.round(a.bottom - b.top));
+        for (const parent of overlapParents) {
+          const kids = Array.from(parent.children).filter((c) => c.getBoundingClientRect().height > 30);
+          for (let i = 0; i < kids.length - 1; i++) {
+            const a = kids[i].getBoundingClientRect();
+            const b = kids[i + 1].getBoundingClientRect();
+            mx = Math.max(mx, Math.round(a.bottom - b.top));
+          }
         }
         return mx;
       };
@@ -283,7 +306,8 @@ async function measurePlan(page: Page, moveHeadings: string[], texts: { tag: str
       const beforeOrder = orderOf();
       const hOverflowBeforePx = Math.max(0, de.scrollWidth - de.clientWidth);
       const vOverlapBeforePx = maxAdjacentOverlap();
-      const originalChildren = Array.from(mainEl.children);
+      // Exakt återställning: snapshot av barnlistan i varje sektionsförälder.
+      const parentSnapshots = overlapParents.map((p) => ({ p, kids: Array.from(p.children) }));
 
       // 1) Omtextningar först (samma ordning som servering: ops i planföljd).
       const textSnapshots: { el: Element; html: string }[] = [];
@@ -333,8 +357,8 @@ async function measurePlan(page: Page, moveHeadings: string[], texts: { tag: str
         }
       }
 
-      // Exakt återställning (ordning + text), sedan verifiera.
-      for (const el of originalChildren) mainEl.appendChild(el);
+      // Exakt återställning (ordning + text) per sektionsförälder, sedan verifiera.
+      for (const snap of parentSnapshots) for (const el of snap.kids) snap.p.appendChild(el);
       for (const s of textSnapshots) s.el.innerHTML = s.html;
       const resetOrder = orderOf();
 
@@ -446,10 +470,23 @@ try {
     await page.evaluate(
       ({ moveHeadings, texts }) => {
         const mainEl = document.querySelector("main") || document.body;
-        const heads = Array.from(document.querySelectorAll("h1,h2"));
+        const heads = Array.from(mainEl.querySelectorAll("h1,h2"));
+        // Samma v2-upplösning som mätningen och snippeten.
         function container(el: Element): Element {
+          const siblingHasHeading = (node: Element): boolean => {
+            const p = node.parentElement;
+            if (!p) return false;
+            for (const sib of Array.from(p.children)) {
+              if (sib === node) continue;
+              if (heads.some((h) => sib === h || sib.contains(h))) return true;
+            }
+            return false;
+          };
           let n: Element = el;
-          while (n.parentElement && n.parentElement !== mainEl && n.parentElement !== document.body) n = n.parentElement;
+          while (n.parentElement && n.parentElement !== document.body) {
+            if (n !== el && siblingHasHeading(n)) return n;
+            n = n.parentElement;
+          }
           return n;
         }
         for (const t of texts) {

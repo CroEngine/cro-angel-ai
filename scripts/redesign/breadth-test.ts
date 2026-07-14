@@ -46,25 +46,40 @@ async function measureMoves(page: Page, moveHeadings: string[], ctaTexts: string
       const anchor = document.querySelector("h1") || document.querySelector("main");
       const anchorTop = anchor ? anchor.getBoundingClientRect().top + window.scrollY : null;
       const de = document.documentElement;
+      // v2 (wrapper-medveten) — samma upplösning som snippet + auto-generate.
+      const heads = Array.from(mainEl.querySelectorAll("h1,h2"));
       function container(el: Element): Element {
+        const siblingHasHeading = (node: Element): boolean => {
+          const p = node.parentElement;
+          if (!p) return false;
+          for (const sib of Array.from(p.children)) {
+            if (sib === node) continue;
+            if (heads.some((h) => sib === h || sib.contains(h))) return true;
+          }
+          return false;
+        };
         let n: Element = el;
-        while (n.parentElement && n.parentElement !== mainEl && n.parentElement !== document.body)
+        while (n.parentElement && n.parentElement !== document.body) {
+          // Aldrig rubriken själv (platta artikelsidor) — samma spärr som snippeten.
+          if (n !== el && siblingHasHeading(n)) return n;
           n = n.parentElement;
+        }
         return n;
       }
-      const heads = Array.from(document.querySelectorAll("h1,h2"));
       const tracked: { label: string; el: Element }[] = [];
       for (const h of heads) {
         const txt = (h.textContent || "").replace(/\s+/g, " ").trim();
         if (!txt) continue;
         const c = container(h);
-        if (c.parentElement === mainEl && !tracked.some((t) => t.el === c))
-          tracked.push({ label: txt.slice(0, 40), el: c });
+        if (!tracked.some((t) => t.el === c)) tracked.push({ label: txt.slice(0, 40), el: c });
       }
       const orderOf = () =>
-        Array.from(mainEl.children)
-          .map((c) => tracked.find((t) => t.el === c)?.label)
-          .filter((l): l is string => !!l);
+        tracked
+          .slice()
+          .sort((a, b) =>
+            a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+          )
+          .map((t) => t.label);
       function ctaClickable(text: string): boolean | null {
         const matches = Array.from(document.querySelectorAll("a,button")).filter((n) =>
           (n.textContent || "").replace(/\s+/g, " ").trim().includes(text),
@@ -82,13 +97,17 @@ async function measureMoves(page: Page, moveHeadings: string[], ctaTexts: string
         const top = document.elementFromPoint(cx, cy);
         return !!top && (el.contains(top) || top.contains(el));
       }
+      const sectionParents = [...new Set(tracked.map((t) => t.el.parentElement).filter(Boolean))] as Element[];
+      const overlapParents = sectionParents.length ? sectionParents : [mainEl];
       const maxAdjacentOverlap = () => {
-        const kids = Array.from(mainEl.children).filter((c) => c.getBoundingClientRect().height > 30);
         let mx = 0;
-        for (let i = 0; i < kids.length - 1; i++) {
-          const a = kids[i].getBoundingClientRect();
-          const b = kids[i + 1].getBoundingClientRect();
-          mx = Math.max(mx, Math.round(a.bottom - b.top));
+        for (const parent of overlapParents) {
+          const kids = Array.from(parent.children).filter((c) => c.getBoundingClientRect().height > 30);
+          for (let i = 0; i < kids.length - 1; i++) {
+            const a = kids[i].getBoundingClientRect();
+            const b = kids[i + 1].getBoundingClientRect();
+            mx = Math.max(mx, Math.round(a.bottom - b.top));
+          }
         }
         return mx;
       };
@@ -96,7 +115,7 @@ async function measureMoves(page: Page, moveHeadings: string[], ctaTexts: string
       const beforeOrder = orderOf();
       const hOverflowBeforePx = Math.max(0, de.scrollWidth - de.clientWidth);
       const vOverlapBeforePx = maxAdjacentOverlap();
-      const originalChildren = Array.from(mainEl.children);
+      const parentSnapshots = overlapParents.map((p) => ({ p, kids: Array.from(p.children) }));
       let applied = 0;
       const movedEls: Element[] = [];
       for (const heading of moveHeadings) {
@@ -128,7 +147,7 @@ async function measureMoves(page: Page, moveHeadings: string[], ctaTexts: string
           if (a && a.ok !== true) ctaBroken++;
         }
       }
-      for (const el of originalChildren) mainEl.appendChild(el);
+      for (const snap of parentSnapshots) for (const el of snap.kids) snap.p.appendChild(el);
       const resetOrder = orderOf();
       return {
         beforeOrder, afterOrder, resetOrder,

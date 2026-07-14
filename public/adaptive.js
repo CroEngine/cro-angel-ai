@@ -1014,11 +1014,36 @@
       }
       return null;
     }
-    // Sektionscontainern = närmaste förfader som är direkt barn av main/body —
-    // samma väg som harnesset gick när planen verifierades.
+    // Sektionscontainern (v2, wrapper-medveten): närmaste förfader vars SYSKON
+    // också innehåller sektionsrubriker. Riktiga sajter lägger ofta sektionerna
+    // i wrapper-lådor (main > div > [sec, sec, …]) — "direkt barn av main"
+    // (v1) landade då på hela wrappern och flytten vägrades. v2 klättrar från
+    // rubriken och stannar på den nivå där de ANDRA sektionerna bor — på en
+    // oinkapslad sida (t.ex. plausible) ger det exakt samma element som v1.
+    // Samma algoritm används i verifieringsmätningen (auto-generate) och
+    // CI-smoken bevisar ekvivalensen på en nästlad fixtur.
+    var sectionHeads = mainEl.querySelectorAll("h1,h2");
     function sectionOf(el) {
+      function siblingHasHeading(node) {
+        var p = node.parentElement;
+        if (!p) return false;
+        for (var i = 0; i < p.children.length; i++) {
+          var sib = p.children[i];
+          if (sib === node) continue;
+          for (var j = 0; j < sectionHeads.length; j++) {
+            if (sib === sectionHeads[j] || sib.contains(sectionHeads[j])) return true;
+          }
+        }
+        return false;
+      }
       var n = el;
-      while (n.parentElement && n.parentElement !== mainEl && n.parentElement !== document.body) {
+      while (n.parentElement && n.parentElement !== document.body) {
+        // Aldrig rubriken SJÄLV: på platta artikelsidor (h2:or som direkta
+        // syskon) vore "sektionen" annars bara rubriken — att flytta den utan
+        // sin brödtext förstör innehållet. Då klättrar vi vidare och landar på
+        // ett större block; kan det inte flyttas rent vägrar appliceringen,
+        // vilket är rätt utfall på en sådan struktur.
+        if (n !== el && siblingHasHeading(n)) return n;
         n = n.parentElement;
       }
       return n;
