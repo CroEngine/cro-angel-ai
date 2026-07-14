@@ -57,6 +57,7 @@ import {
   evaluateRenderGates,
   type RenderMeasurements,
 } from "../../src/adaptive/redesign/render-gates";
+import { measurePlan, type MeasureOp } from "./measure";
 import type { ServeOp } from "../../src/adaptive/redesign/serve";
 import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
@@ -223,168 +224,6 @@ function toServeOps(content: RedesignContentModel, ops: RedesignOp[]): ServeOp[]
 /** Applicera en HEL plan (flyttar + omtextningar) i sidan och mät grindarnas
  *  underlag. Samma mätning som slice 3b, plus set_text före mätningen så att
  *  text som ändrar layouten (radbrytningar → overflow/CTA under folden) syns. */
-async function measurePlan(page: Page, moveHeadings: string[], texts: { tag: string; find: string; set: string }[], ctaTexts: string[]) {
-  return page.evaluate(
-    ({ moveHeadings, texts, ctaTexts }) => {
-      const mainEl = document.querySelector("main") || document.body;
-      const anchor = document.querySelector("h1") || document.querySelector("main");
-      const anchorTop = anchor ? anchor.getBoundingClientRect().top + window.scrollY : null;
-      const de = document.documentElement;
-
-      // v2 (wrapper-medveten, SAMMA som snippetens applyVariant): sektionen är
-      // närmaste förfader vars syskon också innehåller sektionsrubriker.
-      const heads = Array.from(mainEl.querySelectorAll("h1,h2"));
-      function container(el: Element): Element {
-        const siblingHasHeading = (node: Element): boolean => {
-          const p = node.parentElement;
-          if (!p) return false;
-          for (const sib of Array.from(p.children)) {
-            if (sib === node) continue;
-            if (heads.some((h) => sib === h || sib.contains(h))) return true;
-          }
-          return false;
-        };
-        let node: Element = el;
-        while (node.parentElement && node.parentElement !== document.body) {
-          // Aldrig rubriken själv (platta artikelsidor) — samma spärr som snippeten.
-          if (node !== el && siblingHasHeading(node)) return node;
-          node = node.parentElement;
-        }
-        return node;
-      }
-      const tracked: { label: string; el: Element }[] = [];
-      for (const h of heads) {
-        const txt = (h.textContent || "").replace(/\s+/g, " ").trim();
-        if (!txt) continue;
-        const c = container(h);
-        if (!tracked.some((t) => t.el === c)) tracked.push({ label: txt.slice(0, 40), el: c });
-      }
-      // Ordning i DOKUMENT-ordning (sektioner kan bo under olika föräldrar).
-      const orderOf = () =>
-        tracked
-          .slice()
-          .sort((a, b) =>
-            a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
-          )
-          .map((t) => t.label);
-
-      function ctaClickable(text: string): boolean | null {
-        const matches = Array.from(document.querySelectorAll("a,button")).filter((n) =>
-          (n.textContent || "").replace(/\s+/g, " ").trim().includes(text),
-        );
-        if (!matches.length) return null;
-        const el = matches.find((n) => {
-          const r = n.getBoundingClientRect();
-          return r.width > 0 && r.height > 0;
-        });
-        if (!el) return false;
-        el.scrollIntoView({ block: "center" });
-        const r = el.getBoundingClientRect();
-        const cx = Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1);
-        const cy = Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1);
-        const top = document.elementFromPoint(cx, cy);
-        return !!top && (el.contains(top) || top.contains(el));
-      }
-      // Överlapp mäts inom varje FÖRÄLDRAGRUPP som bär sektioner (v2: de kan
-      // bo i en wrapper, inte direkt under main) — max över grupperna.
-      const sectionParents = [...new Set(tracked.map((t) => t.el.parentElement).filter(Boolean))] as Element[];
-      const overlapParents = sectionParents.length ? sectionParents : [mainEl];
-      const maxAdjacentOverlap = () => {
-        let mx = 0;
-        for (const parent of overlapParents) {
-          const kids = Array.from(parent.children).filter((c) => c.getBoundingClientRect().height > 30);
-          for (let i = 0; i < kids.length - 1; i++) {
-            const a = kids[i].getBoundingClientRect();
-            const b = kids[i + 1].getBoundingClientRect();
-            mx = Math.max(mx, Math.round(a.bottom - b.top));
-          }
-        }
-        return mx;
-      };
-
-      const ctaBefore = ctaTexts.map((t) => ({ t, ok: ctaClickable(t) }));
-      const beforeOrder = orderOf();
-      const hOverflowBeforePx = Math.max(0, de.scrollWidth - de.clientWidth);
-      const vOverlapBeforePx = maxAdjacentOverlap();
-      // Exakt återställning: snapshot av barnlistan i varje sektionsförälder.
-      const parentSnapshots = overlapParents.map((p) => ({ p, kids: Array.from(p.children) }));
-
-      // 1) Omtextningar först (samma ordning som servering: ops i planföljd).
-      const textSnapshots: { el: Element; html: string }[] = [];
-      let textApplied = 0;
-      for (const t of texts) {
-        const needle = t.find.replace(/\s+/g, " ").trim().slice(0, 24).toLowerCase();
-        const el = Array.from(document.querySelectorAll(t.tag)).find((e) =>
-          (e.textContent || "").replace(/\s+/g, " ").trim().toLowerCase().includes(needle),
-        );
-        if (!el) continue;
-        textSnapshots.push({ el, html: el.innerHTML });
-        el.textContent = t.set;
-        textApplied++;
-      }
-
-      // 2) Flyttar — ett stegs lyft per post, i ordning.
-      let applied = 0;
-      const movedEls: Element[] = [];
-      for (const heading of moveHeadings) {
-        const t = tracked.find((x) => heading.replace(/\s+/g, " ").trim().startsWith(x.label));
-        const target = t?.el ?? tracked.find((x) => heading.includes(x.label))?.el;
-        if (!target) continue;
-        const prev = target.previousElementSibling;
-        if (prev && target.parentElement === prev.parentElement) {
-          target.parentElement!.insertBefore(target, prev);
-          if (!movedEls.includes(target)) movedEls.push(target);
-          applied++;
-        }
-      }
-
-      const afterOrder = orderOf();
-      const hOverflowAfterPx = Math.max(0, de.scrollWidth - de.clientWidth);
-      const vOverlapAfterPx = maxAdjacentOverlap();
-      let movedAboveMain = 0;
-      for (const el of movedEls) {
-        const top = el.getBoundingClientRect().top + window.scrollY;
-        if (anchorTop !== null && top < anchorTop - 1) movedAboveMain++;
-      }
-      const ctaAfter = ctaTexts.map((t) => ({ t, ok: ctaClickable(t) }));
-      let ctaChecked = 0;
-      let ctaBroken = 0;
-      for (const b of ctaBefore) {
-        if (b.ok === true) {
-          ctaChecked++;
-          const a = ctaAfter.find((x) => x.t === b.t);
-          if (a && a.ok !== true) ctaBroken++;
-        }
-      }
-
-      // Exakt återställning (ordning + text) per sektionsförälder, sedan verifiera.
-      for (const snap of parentSnapshots) for (const el of snap.kids) snap.p.appendChild(el);
-      for (const s of textSnapshots) s.el.innerHTML = s.html;
-      const resetOrder = orderOf();
-
-      return {
-        beforeOrder,
-        afterOrder,
-        resetOrder,
-        hOverflowBeforePx,
-        hOverflowAfterPx,
-        vOverlapBeforePx,
-        vOverlapAfterPx,
-        movedCount: movedEls.length,
-        movedAboveMain,
-        mainAnchorFound: anchorTop !== null,
-        ctaChecked,
-        ctaBroken,
-        requestedMoves: moveHeadings.length,
-        appliedMoves: applied,
-        requestedTexts: texts.length,
-        appliedTexts: textApplied,
-      };
-    },
-    { moveHeadings, texts, ctaTexts },
-  );
-}
-
 const browser = await chromium.launch({ headless: true, executablePath: EXEC });
 const results: unknown[] = [];
 const sqlParts: string[] = [];
@@ -413,16 +252,26 @@ try {
       continue;
     }
 
-    const moveHeadings0 = validated.ops
-      .filter((o) => o.op === "move_up")
-      .map((o) => content.sections.find((s) => s.id === o.targetId)?.heading)
-      .filter((h): h is string => !!h);
-    const texts = validated.ops
-      .filter((o) => o.op === "set_text")
-      .map((o) => {
-        const loc = locatorFor(content, o.targetId)!;
-        return { tag: loc.tag ?? "h2", find: loc.text, set: o.detail };
-      });
+    // Serve-formade mät-ops i PLANORDNING — exakt det snippeten kommer att
+    // applicera för riktiga besökare (granskningsfynd: en enda semantik).
+    const measureOps: MeasureOp[] = [];
+    for (const o of validated.ops) {
+      const loc = locatorFor(content, o.targetId);
+      if (!loc) {
+        measureOps.length = 0;
+        break;
+      }
+      measureOps.push(
+        o.op === "move_up"
+          ? { op: "move_up", tag: loc.tag, find: loc.text }
+          : { op: "set_text", tag: loc.tag, find: loc.text, set: o.detail },
+      );
+    }
+    if (measureOps.length !== validated.ops.length) {
+      results.push({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
+      console.log(`  ${plan.path} × ${plan.key}: lokator saknas för op — hålls tillbaka`);
+      continue;
+    }
 
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     await context.route("**/*", (r) => r.abort());
@@ -431,13 +280,23 @@ try {
     await page.waitForTimeout(400);
     await page.screenshot({ path: join(outDir, `${slug}-before.jpg`), type: "jpeg", quality: 60, fullPage: true });
 
-    // Grindarna + det etablerade retry-steget: kollision → varje flyttmål lyfts
-    // ett steg till (samma logiska ordning, annan fysisk placering). En retry.
-    let moveHeadings = moveHeadings0;
+    // Grindarna + retry-steget: kollision → ETT extra lyft per UNIK måltavla
+    // (granskningsfynd: mätningen och serve_ops måste räkna samma antal lyft).
+    const uniqueMoveFinds = [...new Set(measureOps.filter((o) => o.op === "move_up").map((o) => o.find))];
+    const extraLiftOps: MeasureOp[] = uniqueMoveFinds.map((find) => {
+      const proto = measureOps.find((o) => o.op === "move_up" && o.find === find)!;
+      return { op: "move_up", tag: proto.tag, find };
+    });
+    let attemptOps = measureOps;
     const attempts: { attempt: number; measurements: RenderMeasurements; gate: ReturnType<typeof evaluateRenderGates> }[] = [];
     let extraLift = 0;
+    let unresolvable = false;
     for (let attempt = 1; attempt <= 2; attempt++) {
-      const raw = await measurePlan(page, moveHeadings, texts, ctaTexts);
+      const raw = await measurePlan(page, attemptOps, ctaTexts);
+      if (!raw.resolvedAll) {
+        unresolvable = true;
+        break;
+      }
       const measurements: RenderMeasurements = {
         beforeOrder: raw.beforeOrder,
         afterOrder: raw.afterOrder,
@@ -450,62 +309,31 @@ try {
         ctaBroken: raw.ctaBroken,
         requestedMoves: raw.requestedMoves,
         appliedMoves: raw.appliedMoves,
-        reversedOrderMatches: JSON.stringify(raw.resetOrder) === JSON.stringify(raw.beforeOrder),
-        verticalOverlapIntroducedPx: Math.max(0, raw.vOverlapAfterPx - raw.vOverlapBeforePx),
+        reversedOrderMatches: raw.reversedOrderMatches,
+        verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
       };
       const gate = evaluateRenderGates(measurements);
       attempts.push({ attempt, measurements, gate });
       const collision = gate.verdict === "fail" && gate.reasons.some((r) => /vertical overlap/.test(r));
-      if (collision && attempt === 1 && moveHeadings.length > 0) {
-        moveHeadings = [...moveHeadings, ...new Set(moveHeadings)];
+      if (collision && attempt === 1 && extraLiftOps.length > 0) {
+        attemptOps = [...measureOps, ...extraLiftOps];
         extraLift = 1;
         continue;
       }
       break;
     }
+    if (unresolvable) {
+      results.push({ path: plan.path, key: plan.key, verdict: "not_applicable", reason: "op-mål/sektion kunde inte upplösas på sidan (v3 fail closed)" });
+      console.log(`  ${plan.path} × ${plan.key}: EJ APPLICERBAR — upplösningen vägrade (fail closed)`);
+      await context.close();
+      continue;
+    }
     const last = attempts[attempts.length - 1];
 
-    // EFTER-skärmdump av slutliga försöket (applicerat, ej återställt).
-    await measurePlan(page, moveHeadings, texts, []); // mät-appliceringen återställer — applicera om utan reset:
-    await page.evaluate(
-      ({ moveHeadings, texts }) => {
-        const mainEl = document.querySelector("main") || document.body;
-        const heads = Array.from(mainEl.querySelectorAll("h1,h2"));
-        // Samma v2-upplösning som mätningen och snippeten.
-        function container(el: Element): Element {
-          const siblingHasHeading = (node: Element): boolean => {
-            const p = node.parentElement;
-            if (!p) return false;
-            for (const sib of Array.from(p.children)) {
-              if (sib === node) continue;
-              if (heads.some((h) => sib === h || sib.contains(h))) return true;
-            }
-            return false;
-          };
-          let n: Element = el;
-          while (n.parentElement && n.parentElement !== document.body) {
-            if (n !== el && siblingHasHeading(n)) return n;
-            n = n.parentElement;
-          }
-          return n;
-        }
-        for (const t of texts) {
-          const needle = t.find.replace(/\s+/g, " ").trim().slice(0, 24).toLowerCase();
-          const el = Array.from(document.querySelectorAll(t.tag)).find((e) =>
-            (e.textContent || "").replace(/\s+/g, " ").trim().toLowerCase().includes(needle),
-          );
-          if (el) el.textContent = t.set;
-        }
-        for (const heading of moveHeadings) {
-          const h = heads.find((x) => heading.includes((x.textContent || "").replace(/\s+/g, " ").trim().slice(0, 40)));
-          if (!h) continue;
-          const target = container(h);
-          const prev = target.previousElementSibling;
-          if (prev && target.parentElement === prev.parentElement) target.parentElement!.insertBefore(target, prev);
-        }
-      },
-      { moveHeadings, texts },
-    );
+    // EFTER-skärmdump: SAMMA mätfunktion med keepApplied — ingen tredje
+    // appliceringsalgoritm (granskningsfynd: skärmdumpen ägaren godkänner på
+    // måste komma från exakt den applicering som grindades).
+    await measurePlan(page, attemptOps, [], true);
     await page.screenshot({ path: join(outDir, `${slug}-after.jpg`), type: "jpeg", quality: 60, fullPage: true });
     await context.close();
 
@@ -522,13 +350,15 @@ try {
         ? validated.ops
         : [
             ...validated.ops,
-            ...validated.ops
-              .filter((o) => o.op === "move_up")
-              .map((o, i, arr) => ({
+            // ETT extra lyft per UNIK måltavla — exakt vad retry-mätningen
+            // körde (attemptOps), så serve_ops == det grindade antalet lyft.
+            ...[...new Map(validated.ops.filter((o) => o.op === "move_up").map((o) => [o.targetId, o])).values()].map(
+              (o, i, arr) => ({
                 ...o,
                 detail: `extra lyft ${i + 1}/${arr.length} — kollisionsgrindens retry fann ren placering ett steg högre`,
                 why: `försök 1 introducerade +${attempts[0].gate.verticalOverlapIntroducedPx}px överlapp; försök 2 +${last.gate.verticalOverlapIntroducedPx}px`,
-              })),
+              }),
+            ),
           ];
     const serveOps = toServeOps(content, finalOps);
     if (!serveOps) {
@@ -548,10 +378,10 @@ try {
         attempts: attempts.length,
       },
       comparison: {
-        headline: texts.find((t) => t.tag === "h1")?.set ?? null,
+        headline: measureOps.find((o) => o.op === "set_text" && o.tag === "h1")?.set ?? null,
         orderBefore: last.measurements.beforeOrder,
         orderAfter: last.measurements.afterOrder,
-        movedLabel: moveHeadings0[0]?.slice(0, 40) ?? null,
+        movedLabel: measureOps.find((o) => o.op === "move_up")?.find.slice(0, 40) ?? null,
         screenshots: {
           before: `/evidence/${site}/${slug}/before.jpg`,
           after: `/evidence/${site}/${slug}/after.jpg`,

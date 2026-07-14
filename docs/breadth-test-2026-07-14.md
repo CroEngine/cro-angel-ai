@@ -49,3 +49,35 @@ Testet mätte den mekaniska kedjan — inte designkvalitet (inga LLM-designer
 kördes) och inte serving (ingen av sajterna har snippet + data). PASS betyder
 "kedjan kan leverera en verifierad design här"; WARN betyder "text-designs ja,
 flytt-designs kräver motorarbetet i fynd 1".
+
+## Uppföljning samma dag: wrapper-upplösning v3 (efter adversariell granskning)
+
+Fynd 1 byggdes (v2) och granskades adversariellt (20 agenter, 17 fynd varav 14
+bekräftade — flera reproducerade i riktig Chromium). Granskningen fällde v2:s
+naiva klättring ("hela sidan flyttas ovanför headern" på strukturer utan
+sektionsnivå; delrenderade SPA-vyer; divergens mellan harnessets och snippetens
+semantik). **v3** är svaret:
+
+- **Sektionen** = närmaste förfader (aldrig rubriken själv) som innehåller
+  EXAKT EN census-rubrik och har ett census-bärande syskon. Census = h2 i main,
+  aldrig header/nav/footer/aside. Ingen sådan nivå ⇒ **vägran**, aldrig gissning.
+- **Tvåfas-kontraktet**: alla ops mål upplöses mot ORÖRD, main-scopad DOM
+  innan någon mutation; sedan appliceras i planordning. Identiskt i snippet
+  och harness — och harnesset är nu EN delad modul (`scripts/redesign/
+  measure.ts`), skärmdumpen tas med samma applicering som grindades.
+- **Mätningen skärptes**: överlapp per angränsande PAR över föräldergränser,
+  "ovanför hjälten" i dokumentordning (ser in i wrappers), reversibilitet på
+  element-identitet (inte dubblerbara etiketter), retry-lyft räknas lika i
+  mätning och serve_ops.
+
+**Slutresultat (v3, ärliga siffror):** 7 PASS · 3 WARN (mekaniska ×2-planen gav
+ingen synlig ordningsändring över spacer-element — plandjup, inte säkerhet) ·
+2 NOT_APPLICABLE (v3 vägrade — ingen ren sektionsnivå) · 1 FAIL
+(wordpress-news: grinden fångade flytt ovanför sidtiteln — som v2:s mätning
+var blind för). v2:s "10 pass" var delvis generositet genom mätblindhet; v3:s
+7 är pass att lita på, och de 4 ursprungliga passen består.
+
+**Kvarstående känd gräns (dokumenterad, medveten):** harnesset modellerar inte
+serve-tidens vakter (LCP-vakten, no-touch-zoner, hydrerings-residue) — en
+verifierad design kan alltså vägras av snippeten hos enskilda besökare
+(intent-to-treat-utspädning; besökaren ser baslinjen, aldrig något trasigt).

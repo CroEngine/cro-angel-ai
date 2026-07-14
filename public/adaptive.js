@@ -986,15 +986,29 @@
     },
   };
 
-  // ---- Fas 4: variant-applicering -------------------------------------------
+  // ---- Fas 4: variant-applicering (v3, tvåfas) -------------------------------
   // En serverad variant är en KORT lista verifierade ops med rubrik-lokatorer.
-  // Semantiken SPEGLAR render-harnesset som pixelgranskade planen: move_up
-  // lyfter sektionen ETT steg per op (aldrig "till toppen" som mönster-move_up),
-  // set_text byter rubrikens text mot det exakta verifierade värdet. Allt eller
-  // inget: om någon op inte kan appliceras troget (lokator hittas inte, LCP-
-  // vakten säger nej, sektionen är redan överst) rullas ALLT tillbaka och
-  // besökaren ser baslinjen — en halvt applicerad design är ingen verifierad
-  // design. Exponeringen är redan loggad server-side (intent-to-treat).
+  //
+  // TVÅFAS-KONTRAKTET (granskningsfynd 2026-07-14 — samma semantik måste gälla
+  // här och i verifieringsharnesset, annars kan en verifierad design serveras
+  // annorlunda än den granskades):
+  //   FAS 1 — UPPLÖS ALLT MOT ORÖRD DOM: varje ops mål (och för move_up dess
+  //   sektion) slås upp INNAN någon mutation sker. En omtextning kan därför
+  //   aldrig sabotera en senare flytts lokator. Kan något inte upplösas vägras
+  //   HELA varianten före första ändringen.
+  //   FAS 2 — APPLICERA I PLANORDNING på de upplösta elementen: move_up lyfter
+  //   sektionen ETT syskonsteg per op (aldrig "till toppen"), set_text byter
+  //   till det exakta verifierade värdet. Failar något rullas allt tillbaka.
+  //
+  // Sektionsupplösningen (v3): censusen är h2:or i main, UTAN header/nav/
+  // footer/aside (logotyp-h1:or och sidfotsrubriker är inte sektioner).
+  // Sektionen = närmaste FÖRFADER till rubriken som (a) innehåller EXAKT EN
+  // census-rubrik (sin egen — en wrapper med tre sektioner i är ingen sektion)
+  // och (b) har minst ett syskon som bär en census-rubrik (nivån där de andra
+  // sektionerna bor). Ingen sådan nivå ⇒ null ⇒ varianten vägras. Det gör
+  // platta artikelsidor, delrenderade SPA-vyer och sidor utan sektionsstruktur
+  // till ärliga vägranden i stället för att hela innehållet flyttas ovanför
+  // headern (granskningens reproducerade haverier).
   function applyVariant(v) {
     if (!v || !v.ops || !v.ops.length) return false;
     // Hydrerings-omkörning: syns variant-residue redan är designen på plats —
@@ -1003,96 +1017,110 @@
       if (document.querySelector("[data-angel-moved],[data-angel-retext]")) return true;
     } catch (e) {}
     var mainEl = document.querySelector("main") || document.body;
+    // Lokatorer är main-scopade — verifieringen såg bara main-innehållet, så
+    // en dubblettrubrik i header/footer får aldrig stjäla målet.
     function findByLocator(loc) {
       if (!loc || !loc.text) return null;
       var needle = String(loc.text).replace(/\s+/g, " ").trim().slice(0, 24).toLowerCase();
       if (!needle) return null;
-      var els = document.querySelectorAll(loc.tag || "h1,h2,h3");
+      var els = mainEl.querySelectorAll(loc.tag || "h1,h2,h3");
       for (var i = 0; i < els.length; i++) {
         var t = (els[i].textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
         if (t.indexOf(needle) >= 0) return els[i];
       }
       return null;
     }
-    // Sektionscontainern (v2, wrapper-medveten): närmaste förfader vars SYSKON
-    // också innehåller sektionsrubriker. Riktiga sajter lägger ofta sektionerna
-    // i wrapper-lådor (main > div > [sec, sec, …]) — "direkt barn av main"
-    // (v1) landade då på hela wrappern och flytten vägrades. v2 klättrar från
-    // rubriken och stannar på den nivå där de ANDRA sektionerna bor — på en
-    // oinkapslad sida (t.ex. plausible) ger det exakt samma element som v1.
-    // Samma algoritm används i verifieringsmätningen (auto-generate) och
-    // CI-smoken bevisar ekvivalensen på en nästlad fixtur.
-    var sectionHeads = mainEl.querySelectorAll("h1,h2");
-    function sectionOf(el) {
-      function siblingHasHeading(node) {
-        var p = node.parentElement;
-        if (!p) return false;
-        for (var i = 0; i < p.children.length; i++) {
-          var sib = p.children[i];
-          if (sib === node) continue;
-          for (var j = 0; j < sectionHeads.length; j++) {
-            if (sib === sectionHeads[j] || sib.contains(sectionHeads[j])) return true;
+    // Census + förberäknade kartor (linjärt, inga H²-skanningar): för varje
+    // census-h2 vandras förfäderskedjan en gång; censusCount[el] = antal
+    // census-rubriker i el:s underträd.
+    var census = [];
+    var allH2 = mainEl.querySelectorAll("h2");
+    for (var c = 0; c < allH2.length; c++) {
+      if (!allH2[c].closest("header,nav,footer,aside")) census.push(allH2[c]);
+    }
+    var censusCount = new Map();
+    for (var h = 0; h < census.length; h++) {
+      var walk = census[h];
+      while (walk && walk !== document.body.parentElement) {
+        censusCount.set(walk, (censusCount.get(walk) || 0) + 1);
+        walk = walk.parentElement;
+      }
+    }
+    function bearsCensus(el) {
+      return censusCount.has(el);
+    }
+    function sectionOf(headEl) {
+      var n = headEl.parentElement;
+      while (n && n !== document.body && n !== mainEl.parentElement) {
+        if ((censusCount.get(n) || 0) === 1) {
+          var p = n.parentElement;
+          if (p) {
+            for (var i = 0; i < p.children.length; i++) {
+              if (p.children[i] !== n && bearsCensus(p.children[i])) return n;
+            }
           }
         }
-        return false;
-      }
-      var n = el;
-      while (n.parentElement && n.parentElement !== document.body) {
-        // Aldrig rubriken SJÄLV: på platta artikelsidor (h2:or som direkta
-        // syskon) vore "sektionen" annars bara rubriken — att flytta den utan
-        // sin brödtext förstör innehållet. Då klättrar vi vidare och landar på
-        // ett större block; kan det inte flyttas rent vägrar appliceringen,
-        // vilket är rätt utfall på en sådan struktur.
-        if (n !== el && siblingHasHeading(n)) return n;
         n = n.parentElement;
       }
-      return n;
+      return null; // ingen sektionsnivå ⇒ vägra (aldrig "flytta allt")
     }
-    var undos = [];
-    var ok = true;
-    for (var i = 0; i < v.ops.length && ok; i++) {
+
+    // ── FAS 1: upplös allt mot orörd DOM ──────────────────────────────────
+    var resolved = [];
+    for (var i = 0; i < v.ops.length; i++) {
       var op = v.ops[i];
       var el = findByLocator(op.locator);
-      if (!el || isNoTouch(el)) { ok = false; break; }
+      if (!el || isNoTouch(el)) return false;
       if (op.op === "move_up") {
         var sec = sectionOf(el);
-        var prev = sec.previousElementSibling;
-        // CWV-vakten gäller varianter också: flytta aldrig LCP-elementet.
-        if (touchesLcp(sec) || !prev || prev.parentElement !== sec.parentElement) { ok = false; break; }
-        var next = sec.nextSibling;
-        sec.parentElement.insertBefore(sec, prev);
-        sec.setAttribute("data-angel-moved", "");
+        if (!sec || touchesLcp(sec)) return false;
+        resolved.push({ op: "move_up", sec: sec });
+      } else if (op.op === "set_text") {
+        if (!op.value || touchesLcp(el)) return false;
+        resolved.push({ op: "set_text", el: el, value: op.value });
+      } else {
+        return false; // okänt verb — fail closed, före första mutation
+      }
+    }
+
+    // ── FAS 2: applicera i planordning ────────────────────────────────────
+    var undos = [];
+    var ok = true;
+    for (var a = 0; a < resolved.length && ok; a++) {
+      var r0 = resolved[a];
+      if (r0.op === "move_up") {
+        var prev = r0.sec.previousElementSibling;
+        if (!prev || prev.parentElement !== r0.sec.parentElement) { ok = false; break; }
+        var next = r0.sec.nextSibling;
+        r0.sec.parentElement.insertBefore(r0.sec, prev);
+        r0.sec.setAttribute("data-angel-moved", "");
         undos.push(
           (function (s, n) {
             return function () {
               s.removeAttribute("data-angel-moved");
               s.parentElement.insertBefore(s, n);
             };
-          })(sec, next),
+          })(r0.sec, next),
         );
-        touchedEls.push({ el: sec, pattern: "variant" });
-      } else if (op.op === "set_text") {
-        if (!op.value || touchesLcp(el)) { ok = false; break; }
+        touchedEls.push({ el: r0.sec, pattern: "variant" });
+      } else {
         // Ångra via innerHTML, inte textContent: en rubrik kan bära egen markup
         // (spans/radbrytningar) som textContent-skrivningen ersätter — reset
         // måste ge tillbaka sidan BYTE-exakt, inte bara samma text.
-        var prevHtml = el.innerHTML;
-        if ((el.textContent || "").trim() !== String(op.value).trim()) el.textContent = op.value;
-        // Markören håller skörde-spärren + hydrerings-kollen seende (samma
-        // skäl som data-angel-moved): variant-text får ALDRIG skördas som
-        // sidans egen baslinje — det vore feedback-loopen igen.
-        el.setAttribute("data-angel-retext", "");
+        var prevHtml = r0.el.innerHTML;
+        if ((r0.el.textContent || "").trim() !== String(r0.value).trim()) r0.el.textContent = r0.value;
+        // Markören håller skörde-spärren + hydrerings-kollen seende: variant-
+        // text får ALDRIG skördas som sidans egen baslinje (feedback-loopen).
+        r0.el.setAttribute("data-angel-retext", "");
         undos.push(
-          (function (e, h) {
+          (function (e, hh) {
             return function () {
               e.removeAttribute("data-angel-retext");
-              e.innerHTML = h;
+              e.innerHTML = hh;
             };
-          })(el, prevHtml),
+          })(r0.el, prevHtml),
         );
-        touchedEls.push({ el: el, pattern: "variant" });
-      } else {
-        ok = false; // okänt verb — fail closed
+        touchedEls.push({ el: r0.el, pattern: "variant" });
       }
     }
     if (!ok) {
@@ -1101,7 +1129,7 @@
       }
       return false;
     }
-    for (var r = 0; r < undos.length; r++) record(undos[r]);
+    for (var rr = 0; rr < undos.length; rr++) record(undos[rr]);
     return true;
   }
 
