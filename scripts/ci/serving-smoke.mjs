@@ -156,6 +156,136 @@ async function runSuite(label, snippet) {
     await page.close();
   }
 
+  // 4) Wrapper-nästlade sektioner (v2-upplösningen): flytten ska lyfta EXAKT
+  //    sektionen inne i wrappern — inte wrappern, inte sidan — ett steg,
+  //    reversibelt. Detta var mönstret 8/13 riktiga sajter hade där v1 vägrade.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const nestedHtml = readFileSync("fixtures/synthetic/nested-sections.html", "utf8");
+    await page.route("**/*", (r) => (r.request().url().startsWith("data:") ? r.continue() : r.abort()));
+    await page.setContent(nestedHtml, { waitUntil: "domcontentloaded" });
+    await page.evaluate(
+      ({ src }) => {
+        window.PerformanceObserver = undefined;
+        window.__ANGEL_HARNESS__ = true;
+        const m = document.createElement("script");
+        m.type = "text/plain";
+        m.setAttribute("data-site", "smoke");
+        m.setAttribute("data-endpoint", "https://dead.invalid");
+        m.setAttribute("src", "data:text/plain,adaptive.js");
+        document.head.appendChild(m);
+        (0, eval)(src);
+      },
+      { src: snippet },
+    );
+    const nestedState = () =>
+      page.evaluate(() => ({
+        wrapperOrder: [...document.querySelector(".wrapper").children].map((c) => c.id),
+        heroFirst: document.querySelector(".page").children[0].className === "hero",
+        wrapperIntact: document.querySelector(".wrapper").children.length === 3,
+        movedId: document.querySelector("[data-angel-moved]")?.id ?? null,
+        pageHtml: document.querySelector("main").innerHTML,
+      }));
+    const before = await nestedState();
+    const applied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      { id: "smoke-nested", segmentKey: "x", ops: [{ op: "move_up", locator: { tag: "h2", text: "Gamma Pricing" } }] },
+    );
+    const after = await nestedState();
+    check("nästlad: variant applicerad", applied.includes("variant:smoke-nested"));
+    check(
+      "nästlad: SEKTIONEN lyft ett steg inne i wrappern (inte wrappern)",
+      JSON.stringify(after.wrapperOrder) === JSON.stringify(["sec-alpha", "sec-gamma", "sec-beta"]),
+    );
+    check("nästlad: hjälten kvar först, wrappern intakt", after.heroFirst && after.wrapperIntact);
+    check("nästlad: markören sitter på sektionen", after.movedId === "sec-gamma");
+    await page.evaluate(() => window.__angel.reset());
+    const restored = await nestedState();
+    check("nästlad: reset återställer BYTE-exakt", restored.pageHtml === before.pageHtml);
+    await page.close();
+  }
+
+  // 5) Platt artikelsida (granskningens probe: h2:or som direkta syskon) —
+  //    en flytt MÅSTE vägras helt: att flytta en naken rubrik utan sin
+  //    brödtext förstör innehållet, och utan sektionsnivå får INGET flyttas.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.route("**/*", (r) => (r.request().url().startsWith("data:") ? r.continue() : r.abort()));
+    await page.setContent(
+      `<main><article><h1>Article Hero</h1><p>intro</p><h2>Alpha Part</h2><p>alpha body</p><h2>Beta Part</h2><p>beta body</p></article></main>`,
+      { waitUntil: "domcontentloaded" },
+    );
+    await page.evaluate(
+      ({ src }) => {
+        window.PerformanceObserver = undefined;
+        window.__ANGEL_HARNESS__ = true;
+        const m = document.createElement("script");
+        m.type = "text/plain";
+        m.setAttribute("data-site", "smoke");
+        m.setAttribute("data-endpoint", "https://dead.invalid");
+        m.setAttribute("src", "data:text/plain,adaptive.js");
+        document.head.appendChild(m);
+        (0, eval)(src);
+      },
+      { src: snippet },
+    );
+    const before = await page.evaluate(() => document.querySelector("main").innerHTML);
+    const applied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      { id: "smoke-flat", segmentKey: "x", ops: [{ op: "move_up", locator: { tag: "h2", text: "Beta Part" } }] },
+    );
+    const after = await page.evaluate(() => document.querySelector("main").innerHTML);
+    check("platt artikel: flytt VÄGRAS (ingen sektionsnivå)", !applied.includes("variant:smoke-flat"));
+    check("platt artikel: DOM byte-identisk", after === before);
+    await page.close();
+  }
+
+  // 6) Retext + flytt på SAMMA mål i planordning (granskningens probe:
+  //    tvåfas-upplösningen gör att omtextningen aldrig saboterar flyttens
+  //    lokator — allt upplöses mot orörd DOM innan något ändras).
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const nestedHtml = readFileSync("fixtures/synthetic/nested-sections.html", "utf8");
+    await page.route("**/*", (r) => (r.request().url().startsWith("data:") ? r.continue() : r.abort()));
+    await page.setContent(nestedHtml, { waitUntil: "domcontentloaded" });
+    await page.evaluate(
+      ({ src }) => {
+        window.PerformanceObserver = undefined;
+        window.__ANGEL_HARNESS__ = true;
+        const m = document.createElement("script");
+        m.type = "text/plain";
+        m.setAttribute("data-site", "smoke");
+        m.setAttribute("data-endpoint", "https://dead.invalid");
+        m.setAttribute("src", "data:text/plain,adaptive.js");
+        document.head.appendChild(m);
+        (0, eval)(src);
+      },
+      { src: snippet },
+    );
+    const applied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      {
+        id: "smoke-2phase",
+        segmentKey: "x",
+        ops: [
+          { op: "set_text", locator: { tag: "h2", text: "Gamma Pricing" }, value: "Pricing that scales" },
+          { op: "move_up", locator: { tag: "h2", text: "Gamma Pricing" } },
+        ],
+      },
+    );
+    const state6 = await page.evaluate(() => ({
+      order: [...document.querySelector(".wrapper").children].map((c) => c.id),
+      gammaText: document.querySelector("#sec-gamma h2").textContent,
+    }));
+    check("tvåfas: BÅDA ops applicerade trots samma mål (retext före flytt)", applied.includes("variant:smoke-2phase"));
+    check(
+      "tvåfas: sektionen flyttad OCH omtextad",
+      JSON.stringify(state6.order) === JSON.stringify(["sec-alpha", "sec-gamma", "sec-beta"]) &&
+        state6.gammaText === "Pricing that scales",
+    );
+    await page.close();
+  }
+
   return failures;
 }
 
