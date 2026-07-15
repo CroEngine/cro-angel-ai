@@ -11,6 +11,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
+import { originVerdict } from "./domain";
 import { scrubPath } from "./harvest/sanitize";
 import type { GoalJudgment } from "./goal-judge.server";
 import type {
@@ -353,6 +354,12 @@ export interface SiteConfig {
    *  5 → 10 → 25 → 50, aldrig 50/50 från start. Läses bara när
    *  servingEnabled=true. */
   rampPct: number;
+  /** Sajtens registrerade domän (normaliserad). null = legacy/labb. */
+  domain: string | null;
+  /** Stämplas av första domän-bevisade snippet-signalen (Origin matchar).
+   *  Serving av varianter kräver stämpeln när en domän är registrerad —
+   *  nyckeln i publika HTML:en bevisar inget, trafiken från rätt domän gör. */
+  domainVerifiedAt: string | null;
 }
 
 const DEFAULT_SITE_CONFIG: SiteConfig = {
@@ -367,6 +374,8 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   adaptationsEnabled: false,
   servingEnabled: false,
   rampPct: 5,
+  domain: null,
+  domainVerifiedAt: null,
 };
 
 /**
@@ -412,7 +421,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
   const { data, error } = await supabaseAdmin
     .from("angel_sites")
     .select(
-      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled,serving_enabled,ramp_pct",
+      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled,serving_enabled,ramp_pct,domain,domain_verified_at",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -430,6 +439,8 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
     adaptationsEnabled: data.adaptations_enabled === true,
     servingEnabled: data.serving_enabled === true,
     rampPct: typeof data.ramp_pct === "number" ? data.ramp_pct : 5,
+    domain: data.domain ?? null,
+    domainVerifiedAt: data.domain_verified_at ?? null,
   };
 }
 
@@ -471,27 +482,53 @@ export async function loadServableVariants(
 
 /**
  * Gate a write to the public ingest endpoints (decide / events / inventory).
- * Returns true if the write is allowed:
- *   - site has no key set (NULL) → allowed (unkeyed / auto-registration path),
- *   - site has a key → allowed only if `providedKey` matches it exactly.
- * Fail-open on an infra error, consistent with the best-effort persistence
- * ethos (a DB hiccup that hides the key would also fail the write itself).
- * Never throws.
+ * Two independent checks:
+ *   1. Nyckeln (identifierar): keyed site → providedKey must match exactly;
+ *      unkeyed → allowed (legacy/auto-registration path).
+ *   2. Domänen (bevisar): a registered domain + a MISMATCHING Origin/Referer
+ *      → denied (the key sits in the site's public HTML — anyone has it; the
+ *      browser's Origin is the thing an attacker can't fake). Absent headers
+ *      allow but never PROVE; the first genuinely matching request stamps
+ *      domain_verified_at and fires the day-0 "installed" notification.
+ * Fail-open on infra errors, consistent with the best-effort persistence
+ * ethos. Never throws.
  */
 export async function siteWriteAllowed(
   slug: string,
   providedKey: string | null | undefined,
+  req?: { origin?: string | null; referer?: string | null },
 ): Promise<boolean> {
   try {
     const { data, error } = await supabaseAdmin
       .from("angel_sites")
-      .select("ingest_key")
+      .select("ingest_key,domain,domain_verified_at")
       .eq("slug", slug)
       .maybeSingle();
     if (error) return true; // transient read failure → don't block legit traffic
     const key = data?.ingest_key ?? null;
-    if (!key) return true; // unkeyed site
-    return typeof providedKey === "string" && providedKey.length > 0 && providedKey === key;
+    if (key && !(typeof providedKey === "string" && providedKey.length > 0 && providedKey === key)) {
+      return false;
+    }
+    const verdict = originVerdict(data?.domain ?? null, req?.origin ?? null, req?.referer ?? null);
+    if (!verdict.allowed) return false;
+    if (verdict.proved && data && !data.domain_verified_at) {
+      // Första domän-bevisade signalen: stämpla + dag-0-mejlet. Fire-and-forget
+      // — verifieringen får aldrig kosta latens eller fel i ingest-vägen.
+      void (async () => {
+        try {
+          await supabaseAdmin
+            .from("angel_sites")
+            .update({ domain_verified_at: new Date().toISOString() })
+            .eq("slug", slug)
+            .is("domain_verified_at", null);
+          const { notifyInstalled } = await import("./notify.server");
+          await notifyInstalled(slug, data.domain as string);
+        } catch (err) {
+          console.warn(`[angel] domänstämpel/notis föll (${slug}):`, err);
+        }
+      })();
+    }
+    return true;
   } catch (err) {
     console.warn(`[angel] site-key check unavailable:`, err);
     return true;

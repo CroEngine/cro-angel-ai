@@ -69,10 +69,22 @@ export const Route = createFileRoute("/api/adaptive/inventory")({
 
         // Keyed sites must present the matching write key, else the harvested
         // inventory (which decide serves back onto the live page) could be
-        // spoofed for an arbitrary slug.
-        if (!(await siteWriteAllowed(site, body?.key))) {
+        // spoofed for an arbitrary slug. Domän-registrerade sajter måste
+        // dessutom ha en Origin som inte motsäger domänen.
+        if (
+          !(await siteWriteAllowed(site, body?.key, {
+            origin: request.headers.get("origin"),
+            referer: request.headers.get("referer"),
+          }))
+        ) {
           return json({ ok: false, reason: "unauthorized" }, 403);
         }
+        // Inventeringen är sajtens ~dagliga hjärtslag — passa på att svepa
+        // efter varianter som väntar på ägarens knapp utan skickad notis
+        // (idempotent; schemalagd loop tar över i block 5). Fire-and-forget.
+        void import("@/adaptive/notify.server")
+          .then((m) => m.sweepVariantNotifications(site))
+          .catch(() => {});
 
         // Prefer an explicit path; fall back to the URL's pathname. Any page is
         // accepted now — inventory is stored per (site, path).

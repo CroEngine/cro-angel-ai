@@ -93,6 +93,11 @@ export interface SiteConfigView {
   /** Fas 4 steg 3: variant-armens trafikandel (%). Manuell ramp 5 → 10 → 25 →
    *  50 (ägarbeslut 2026-07-12) — aldrig 50/50 från start. */
   rampPct: number;
+  /** Sajtens registrerade domän (normaliserad). null = legacy/labb. */
+  domain: string | null;
+  /** Stämplad av första domän-bevisade snippet-signalen — installations- och
+   *  ägarskaps-kvittot i ett. Serving kräver stämpeln när domän finns. */
+  domainVerifiedAt: string | null;
   /** The judged business type, when detected (e.g. "comparison"). */
   businessType: string | null;
   /** Ranked conversion-goal candidates proposed at harvest — the owner confirms
@@ -164,6 +169,8 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   conversionText: null,
   conversionSource: null,
   conversionKind: null,
+  domain: null,
+  domainVerifiedAt: null,
   businessType: null,
   goalCandidates: [],
   ingestKey: null,
@@ -219,7 +226,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,ramp_pct,goal_candidates",
+          "slug,name,domain,domain_verified_at,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,ramp_pct,goal_candidates",
         )
         .order("slug");
       // `sandbox--<host>` rows are the admin sandbox's private per-host scratch
@@ -289,6 +296,8 @@ export const getDashboard = createServerFn({ method: "POST" })
               conversion_text?: string | null;
               conversion_source?: string | null;
               conversion_kind?: string | null;
+              domain?: string | null;
+              domain_verified_at?: string | null;
               ingest_key?: string | null;
               adaptations_enabled?: boolean;
               serving_enabled?: boolean;
@@ -313,6 +322,8 @@ export const getDashboard = createServerFn({ method: "POST" })
             adaptationsEnabled: current.adaptations_enabled === true,
             servingEnabled: current.serving_enabled === true,
             rampPct: typeof current.ramp_pct === "number" ? current.ramp_pct : 5,
+            domain: current.domain ?? null,
+            domainVerifiedAt: current.domain_verified_at ?? null,
             businessType: typeof judged?.businessType === "string" ? judged.businessType : null,
             goalCandidates: Array.isArray(judged?.goals) ? judged.goals.slice(0, 6) : [],
           };
@@ -924,7 +935,25 @@ export const createSite = createServerFn({ method: "POST" })
     }): Promise<{ ok: boolean; reason?: string; slug?: string; ingestKey?: string }> => {
       const ctx = context as unknown as AuthCtx;
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { normalizeDomain } = await import("@/adaptive/domain");
       const slug = data.slug.toLowerCase();
+
+      // Domänen normaliseras (URL/www./versaler → "exempel.se") och är UNIK
+      // över alla sajter: två konton kan aldrig registrera samma domän, och
+      // Origin-grinden + verifieringsstämpeln binder sedan trafiken till den.
+      const domain = normalizeDomain(data.domain) ?? null;
+      if (data.domain && !domain) {
+        return { ok: false, reason: "bad_domain" };
+      }
+      if (domain) {
+        const { data: taken } = await supabaseAdmin
+          .from("angel_sites")
+          .select("slug")
+          .ilike("domain", domain)
+          .neq("slug", slug)
+          .maybeSingle();
+        if (taken) return { ok: false, reason: "domain_taken" };
+      }
 
       // Refuse a slug already owned by a DIFFERENT user.
       const { data: members } = await supabaseAdmin
@@ -953,7 +982,7 @@ export const createSite = createServerFn({ method: "POST" })
           .insert({
             slug,
             name: data.name ?? null,
-            domain: data.domain ?? null,
+            domain,
             ingest_key: key,
             // Consent-by-default: a new site starts ANONYMOUS (the DB default —
             // no persistent visitor id, no behavioural events) and with no

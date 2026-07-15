@@ -216,7 +216,7 @@ function Dashboard() {
             when the store is unreachable — "no data" isn't "not installed",
             and the fallback config would render the wrong (keyless) tag. */}
         {d.dbAvailable && !installed && (
-          <InstallCard site={site} ingestKey={d.siteConfig.ingestKey} />
+          <InstallCard site={site} ingestKey={d.siteConfig.ingestKey} domain={d.siteConfig.domain} />
         )}
 
         <MeasurementControl
@@ -1034,6 +1034,7 @@ function AddSiteControl({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [slug, setSlug] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -1043,7 +1044,15 @@ function AddSiteControl({
       createSite({ data: { slug: slug.trim(), name: name.trim(), domain: domain.trim() } }),
     onSuccess: (res) => {
       if (!res.ok) {
-        setError(res.reason === "taken" ? "That id is already taken." : "Couldn't create the site.");
+        setError(
+          res.reason === "taken"
+            ? "That id is already taken."
+            : res.reason === "domain_taken"
+              ? "That domain is already connected to another account."
+              : res.reason === "bad_domain"
+                ? "That doesn't look like a website address (e.g. acme.com)."
+                : "Couldn't create the site.",
+        );
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -1067,19 +1076,34 @@ function AddSiteControl({
         <DialogHeader>
           <DialogTitle>Add a site</DialogTitle>
           <DialogDescription>
-            Pick a short id (letters, digits, . _ -). If a snippet already reported this id, you&apos;ll claim it.
+            Enter your website address. The domain is bound to your account — the first visit from
+            it verifies the installation automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="new-slug" className="text-xs">
-              Site id
+            <Label htmlFor="new-domain" className="text-xs">
+              Your website
             </Label>
             <Input
-              id="new-slug"
+              id="new-domain"
               placeholder="acme.com"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              value={domain}
+              onChange={(e) => {
+                const v = e.target.value;
+                setDomain(v);
+                // Härled id:t ur domänen tills användaren själv rört id-fältet.
+                if (!slugTouched) {
+                  setSlug(
+                    v
+                      .trim()
+                      .toLowerCase()
+                      .replace(/^https?:\/\//, "")
+                      .replace(/^www\./, "")
+                      .replace(/[/?#].*$/, ""),
+                  );
+                }
+              }}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -1090,14 +1114,17 @@ function AddSiteControl({
               <Input id="new-name" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="new-domain" className="text-xs">
-                Domain (optional)
+              <Label htmlFor="new-slug" className="text-xs">
+                Site id
               </Label>
               <Input
-                id="new-domain"
+                id="new-slug"
                 placeholder="acme.com"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
+                value={slug}
+                onChange={(e) => {
+                  setSlugTouched(true);
+                  setSlug(e.target.value);
+                }}
               />
             </div>
           </div>
@@ -1123,7 +1150,15 @@ function AddSiteControl({
 /** Onboarding-only card: shown until the snippet reports its first traffic,
  *  then the tag retires to Settings. Copy is the only action — key rotation is
  *  a security operation and lives behind the password check in Settings. */
-function InstallCard({ site, ingestKey }: { site: string; ingestKey: string | null }) {
+function InstallCard({
+  site,
+  ingestKey,
+  domain,
+}: {
+  site: string;
+  ingestKey: string | null;
+  domain?: string | null;
+}) {
   const [copied, setCopied] = useState(false);
   const snippet = buildSnippet(site, ingestKey);
 
@@ -1159,6 +1194,13 @@ function InstallCard({ site, ingestKey }: { site: string; ingestKey: string | nu
             It never needs updating — changes in the dashboard apply automatically.
           </p>
         </div>
+        {domain && (
+          <p className="text-xs text-muted-foreground">
+            The first visit from <span className="font-mono">{domain}</span> verifies your domain
+            automatically — nothing is ever shown to visitors before that, and you approve every
+            change first.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

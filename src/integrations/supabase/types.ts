@@ -14,11 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      angel_notifications: {
+        Row: {
+          id: string
+          site: string
+          kind: string
+          dedupe_key: string
+          email: string
+          channel: string
+          payload: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          site: string
+          kind: string
+          dedupe_key: string
+          email: string
+          channel?: string
+          payload?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          site?: string
+          kind?: string
+          dedupe_key?: string
+          email?: string
+          channel?: string
+          payload?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
       angel_sites: {
         Row: {
           id: string
           slug: string
           domain: string | null
+          domain_verified_at: string | null
           name: string | null
           consent_mode: string
           holdout_pct: number
@@ -39,6 +73,7 @@ export type Database = {
           id?: string
           slug: string
           domain?: string | null
+          domain_verified_at?: string | null
           name?: string | null
           consent_mode?: string
           holdout_pct?: number
@@ -59,6 +94,7 @@ export type Database = {
           id?: string
           slug?: string
           domain?: string | null
+          domain_verified_at?: string | null
           name?: string | null
           consent_mode?: string
           holdout_pct?: number
