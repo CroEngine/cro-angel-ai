@@ -30,6 +30,17 @@ const stripTags = (s: string): string =>
     .replace(/&amp;/g, "&")
     .replace(/&#39;|&rsquo;|&lsquo;/g, "'")
     .replace(/&quot;|&ldquo;|&rdquo;/g, '"')
+    // Numeriska entiteter — många riktiga sajter kodar åäö som &#xE5;/&#229;.
+    // Utan avkodning matchar varken vokabulären ("Tr&#xE4;ningsklubb") eller
+    // DOM-lokatorerna (DOM:ens textContent är alltid avkodad).
+    .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => {
+      const cp = parseInt(h, 16);
+      return cp >= 32 && cp <= 0x10ffff ? String.fromCodePoint(cp) : " ";
+    })
+    .replace(/&#(\d+);/g, (_, d: string) => {
+      const cp = Number(d);
+      return cp >= 32 && cp <= 0x10ffff ? String.fromCodePoint(cp) : " ";
+    })
     .replace(/&[a-z]+;/gi, " ")
     .replace(/\s+/g, " ")
     .trim();

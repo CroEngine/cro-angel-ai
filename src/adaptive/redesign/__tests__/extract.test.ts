@@ -71,6 +71,15 @@ describe("extractContentModel — HTML → content model loader", () => {
     expect(model.ctas.find((c) => c.text === "View live demo")?.intent).toBe("conversion");
   });
 
+  it("decodes numeric HTML entities — real sites encode åäö as &#xE5;/&#229;", () => {
+    const page = `<main><h1>Tr&#xE4;na med oss</h1><section><h2>H&#229;ll ig&#xE5;ng</h2></section><a href="/k">K&#xF6;p nu</a></main>`;
+    const m = extractContentModel(page);
+    expect(m.sections[0].heading).toBe("Träna med oss");
+    expect(m.sections[1].heading).toBe("Håll igång");
+    // avkodningen gör att vokabulären träffar: "Köp nu" är en konvertering
+    expect(m.ctas.find((c) => c.text === "Köp nu")?.intent).toBe("conversion");
+  });
+
   it("extracts CTAs across the deterministic floor's languages (de/ja), login stays out", () => {
     const page = `
       <main>
