@@ -1,13 +1,21 @@
 #!/usr/bin/env bun
-// Plausible Lab — interaktiv FÖRE/EFTER-sandbox på den RIKTIGA sidan.
+// Plausible Lab — interaktiv BEFORE/AFTER-sandbox på den RIKTIGA sidan.
 //
-// Bygger en helt självbärande HTML (riktig markup + CSS + bilder inlinade) av
-// plausible.io-fixturen och injicerar en kontrollpanel: välj segment → växla
-// FÖRE/EFTER → sidan omordnas live med exakt samma reversibla ops som
-// varianterna i angel_variants. Ingen nätverksåtkomst behövs; sidan är fryst.
+// Bygger en självbärande HTML (riktig markup + CSS + bilder inlinade) av
+// plausible.io-fixturen och injicerar en kontrollpanel. Appliceringen görs
+// av SNIPPETENS EGEN applyVariant via harness-sömmen (task #88): sidan
+// laddar /adaptive.js från dashboard-origin med __ANGEL_HARNESS__ satt före
+// boot, och panelen anropar window.__angel.apply/reset med riktiga
+// serve-ops. Ingen egen appliceringsalgoritm — demon kan per konstruktion
+// inte visa en flytt som produktionen skulle vägra; en vägrad variant visas
+// ärligt som vägrad. data-endpoint pekar på en void-path (404) så inga
+// events/decides någonsin når riktiga datat.
 //
 // Output: public/lab/plausible/index.html → deployas på dashboardens origin,
-// så "öppna i sandbox"-länken i variant-kortet bara fungerar.
+// så "öppna i sandbox"-länken i variant-kortet bara fungerar (och
+// /adaptive.js finns på samma origin). Öppnad via file:// saknas snippeten
+// — panelen säger det i klartext i stället för att falla tillbaka på en
+// egen kopia.
 //
 //   bun run scripts/lab/build-lab-sandbox.ts
 
@@ -133,10 +141,37 @@ for (const [path, file] of Object.entries(ASSET_PATHS)) {
   html = html.split(path).join(`data:${media};base64,${data}`);
 }
 
-// ── kontrollpanel + apply/reset + DIFF-VY ─────────────────────────────────────
-// Diffen är redan förstklassig data (ops-listan) — här visualiseras den direkt
-// på sidan: märken vid varje ändring, numrerad ändringslista (klick → scrolla
-// dit + blink), och auto-scroll till första ändringen när EFTER slås på.
+// ── moves/texts → snippetens serve-ops (byggs här, appliceras av snippeten) ──
+// Samma form som angel_variants.serve_ops: move_up per lyft (ett steg per op),
+// set_text med exakt verifierat värde. h1-retexter matchas på fixturens
+// faktiska h1-inledning — samma lokator-semantik som decide-vägen serverar.
+const H1_NEEDLE = "Easy to use and privacy-friendly";
+function toServeOps(v: (typeof VARIANTS)[number]) {
+  const ops: { op: string; locator: { tag?: string; text: string }; value?: string }[] = [];
+  for (const key of v.moves) {
+    const [tag, text] = key.includes(":") ? (key.split(":") as [string, string]) : [undefined, key];
+    ops.push({ op: "move_up", locator: { ...(tag ? { tag } : {}), text } });
+  }
+  for (const t of v.texts) {
+    const [tag, text] =
+      t.find === "h1" ? (["h1", H1_NEEDLE] as const) : (t.find.split(":") as [string, string]);
+    ops.push({ op: "set_text", locator: { tag, text }, value: t.set });
+  }
+  return ops;
+}
+const PANEL_VARIANTS = VARIANTS.map((v) => ({
+  key: v.key,
+  label: v.label,
+  headline: v.headline,
+  gates: v.gates,
+  variant: { id: v.key, segmentKey: v.key, ops: toServeOps(v) },
+}));
+
+// ── kontrollpanel + seam-apply + DIFF-VY ─────────────────────────────────────
+// Panelen MUTERAR aldrig sidan själv: apply/reset går genom window.__angel
+// (snippetens riktiga applyVariant + byte-exakta undo). Panelen mäter bara —
+// före/efter-positioner läses ur main-barnens ordning + data-angel-moved,
+// textdiffar ur h1/h2-snapshots — och ritar märken/diffraden.
 const controls = `
 <style>
 #angel-lab-bar{position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#10151c;color:#e9edf3;
@@ -165,88 +200,100 @@ body{padding-bottom:64px !important}
   box-shadow:0 2px 10px rgba(0,0,0,.3);pointer-events:none}
 .angel-badge.text{background:#a8560a}
 [data-angel-moved]{outline:3px solid #0d7d72aa;outline-offset:-3px;position:relative}
-[data-angel-retext]{outline:3px solid #a8560aaa;outline-offset:2px;border-radius:4px}
+[data-lab-retext]{outline:3px solid #a8560aaa;outline-offset:2px;border-radius:4px}
 @keyframes angelflash{0%{box-shadow:0 0 0 6px #2dd4bf88}100%{box-shadow:0 0 0 6px transparent}}
 .angel-flash{animation:angelflash 1.1s ease-out 2}
 </style>
 <div id="angel-lab-info"></div>
 <div id="angel-lab-bar">
-  <span class="brand">ANGEL·LAB</span><span style="color:#59636f">plausible.io (fryst)</span>
+  <span class="brand">ANGEL·LAB</span><span style="color:#59636f">plausible.io (frozen)</span>
   <span id="angel-segments"></span>
   <span class="switch">
-    <button id="angel-fore" class="on">FÖRE</button>
-    <button id="angel-efter" class="efter">EFTER</button>
+    <button id="angel-fore" class="on">BEFORE</button>
+    <button id="angel-efter" class="efter">AFTER</button>
   </span>
 </div>
+<script>window.__ANGEL_HARNESS__ = true;</script>
+<script async src="/adaptive.js" data-site="sandbox--lab-plausible" data-endpoint="/angel-lab-void" data-url="https://plausible.io/"></script>
 <script>
 (function(){
   var VARIANTS = __VARIANTS__;
   var mainEl = document.querySelector("main") || document.body;
-  var original = Array.prototype.slice.call(mainEl.children);
-  var textSnapshots = [], badges = [], diffs = [];
-  var current = VARIANTS[0], applied = false;
+  var badges = [], diffs = [];
+  var current = VARIANTS[0], applied = false, applyRefused = false, seamMissing = false;
 
-  function heads(){ return Array.prototype.slice.call(document.querySelectorAll("h1,h2")); }
-  function container(el){ var n=el; while(n.parentElement && n.parentElement!==mainEl && n.parentElement!==document.body) n=n.parentElement; return n; }
-  function findHeading(key){
-    var sel = key.split(":"); var tag = sel.length>1?sel[0]:null; var needle=(sel[1]||sel[0]).slice(0,18);
-    var hs = heads();
-    for (var i=0;i<hs.length;i++){
-      var h=hs[i]; if(tag && h.tagName.toLowerCase()!==tag) continue;
-      if((h.textContent||"").indexOf(needle)>=0) return h;
-    }
-    return null;
-  }
-  // Position bland SYNLIGA sektioner (main-barn högre än 30px), 1-baserad.
+  function heads(){ return Array.prototype.slice.call(mainEl.querySelectorAll("h1,h2")); }
+  // 1-baserad position bland SYNLIGA main-barn — endast MÄTNING/presentation;
+  // all mutation görs av snippetens applyVariant via window.__angel.
   function sectionIndex(el){
     var kids = Array.prototype.filter.call(mainEl.children, function(c){ return c.clientHeight>30 || c===el; });
     return kids.indexOf(el)+1;
   }
   function sectionLabel(el){
-    var hs=heads(); for(var i=0;i<hs.length;i++){ if(container(hs[i])===el) return (hs[i].textContent||"").replace(/\\s+/g," ").trim().slice(0,34); }
-    return "(sektion)";
+    var hs=heads();
+    for (var i=0;i<hs.length;i++){ if(el.contains(hs[i])) return (hs[i].textContent||"").replace(/\\s+/g," ").trim().slice(0,34); }
+    return "(section)";
   }
+  var panelMarks = [];
   function addBadge(el, text, kind){
     var b=document.createElement("div"); b.className="angel-badge"+(kind==="text"?" text":""); b.textContent=text;
-    if (getComputedStyle(el).position==="static") el.style.position="relative";
+    if (getComputedStyle(el).position==="static"){
+      panelMarks.push({ el: el, prop: "position", prev: el.style.position });
+      el.style.position = "relative";
+    }
     el.insertBefore(b, el.firstChild); badges.push(b);
   }
-  function reset(){
+  function clearBadges(){
     badges.forEach(function(b){ if(b.parentElement) b.parentElement.removeChild(b); });
-    for (var i=0;i<original.length;i++) mainEl.appendChild(original[i]);
-    original.forEach(function(el){ el.removeAttribute("data-angel-moved"); });
-    textSnapshots.forEach(function(s){ s.el.textContent = s.text; s.el.removeAttribute("data-angel-retext"); });
-    textSnapshots = []; badges = []; diffs = []; applied = false;
+    // Panelen får inte lämna spår: snippetens reset är byte-exakt, så allt
+    // panelen själv rört (inline-stil, markörattribut) återställs här.
+    panelMarks.forEach(function(m){ m.el.style[m.prop] = m.prev; if(!m.el.getAttribute("style")) m.el.removeAttribute("style"); });
+    panelMarks = [];
+    Array.prototype.forEach.call(document.querySelectorAll("[data-lab-retext]"), function(el){ el.removeAttribute("data-lab-retext"); });
+    Array.prototype.forEach.call(document.querySelectorAll(".angel-flash"), function(el){
+      el.classList.remove("angel-flash");
+      if(!el.getAttribute("class")) el.removeAttribute("class");
+    });
+    badges = []; diffs = [];
+  }
+  function seam(){ return window.__angel || null; }
+  function reset(){
+    clearBadges();
+    var s = seam();
+    if (s) s.reset(); // snippetens byte-exakta undo-stack
+    applied = false; applyRefused = false;
   }
   function apply(v){
     reset();
-    // 1) Flyttar — mät position före/efter per unikt mål, sätt märke + diffrad.
-    var targets = {};
-    v.moves.forEach(function(key){
-      var h = findHeading(key); if(!h) return;
-      var t = container(h);
-      if (!(key in targets)) targets[key] = { el: t, from: sectionIndex(t) };
-      var p = t.previousElementSibling;
-      if (p && t.parentElement===p.parentElement){ t.parentElement.insertBefore(t,p); t.setAttribute("data-angel-moved","1"); }
+    var s = seam();
+    if (!s){ seamMissing = true; return; }
+    // FÖRE-mätning (read-only): main-barnens ordning + alla rubriktexter.
+    var beforeOrder = Array.prototype.slice.call(mainEl.children);
+    var beforeTexts = heads().map(function(h){ return { el:h, text:(h.textContent||"").replace(/\\s+/g," ").trim() }; });
+    // Appliceringen: snippetens riktiga applyVariant (v3, fail-closed) via
+    // sömmen — exakt samma kod som serverar riktiga besökare. apply()
+    // returnerar listan över applicerat; varianten är med bara när HELA
+    // ops-listan gick igenom (fail closed ⇒ tom lista = vägrad).
+    var res = s.apply({ decisionId: "lab", adaptations: [], holdout: false, variant: v.variant });
+    var okVariant = res && res.indexOf("variant:" + v.variant.id) >= 0;
+    if (!okVariant){ applyRefused = true; applied = true; return; }
+    // EFTER-mätning: flyttar via snippetens data-angel-moved-markör.
+    var afterOrder = Array.prototype.slice.call(mainEl.children);
+    var moved = Array.prototype.slice.call(mainEl.querySelectorAll("[data-angel-moved]"));
+    moved.forEach(function(el){
+      var from = beforeOrder.indexOf(el)+1, to = afterOrder.indexOf(el)+1;
+      addBadge(el, "↑ MOVED HERE · position "+from+" → "+to, "move");
+      diffs.push({ el:el, kind:"move", label:sectionLabel(el), detail:"position "+from+" → "+to });
     });
-    Object.keys(targets).forEach(function(key){
-      var o = targets[key]; var to = sectionIndex(o.el);
-      addBadge(o.el, "↑ FLYTTAD HIT · plats "+o.from+" → "+to, "move");
-      diffs.push({ el:o.el, kind:"move", label:sectionLabel(o.el), detail:"plats "+o.from+" → "+to });
-    });
-    // 2) Text-ändringar — spara gammal text, märk elementet, diffrad gammal→ny.
-    v.texts.forEach(function(op){
-      var el = op.find==="h1" ? document.querySelector("main h1")||document.querySelector("h1") : findHeading(op.find);
-      if(!el) return;
-      var old = el.textContent.replace(/\\s+/g," ").trim();
-      textSnapshots.push({el:el, text:el.textContent});
-      el.textContent = op.set;
-      el.setAttribute("data-angel-retext","1");
-      addBadge(container(el), "✎ NY TEXT", "text");
-      diffs.push({ el:el, kind:"text", label:"Text ändrad", old:old, detail:op.set });
+    // Textdiffar: rubriker vars text ändrades av snippetens retext.
+    beforeTexts.forEach(function(snap){
+      var now = (snap.el.textContent||"").replace(/\\s+/g," ").trim();
+      if (now === snap.text) return;
+      snap.el.setAttribute("data-lab-retext","1");
+      addBadge(snap.el.closest("section,div,main") || snap.el, "✎ NEW TEXT", "text");
+      diffs.push({ el:snap.el, kind:"text", label:"Text changed", old:snap.text, detail:now });
     });
     applied = true;
-    // 3) Scrolla till FÖRSTA ändringen — inte toppen — så skillnaden syns direkt.
     if (diffs.length){
       var first = diffs[0].el;
       setTimeout(function(){ first.scrollIntoView({behavior:"smooth", block:"start"}); flash(first); }, 60);
@@ -257,20 +304,26 @@ body{padding-bottom:64px !important}
     var info = document.getElementById("angel-lab-info");
     info.style.display = "block";
     var html = "<b>"+current.label+"</b> — "+current.headline+
-      "<br><span class='gates'>grindar: "+current.gates+"</span>";
-    if (!applied){
-      html += "<br><span style='color:#59636f'>FÖRE — originalsidan. Växla till EFTER så visas och märks varje ändring.</span>";
+      "<br><span class='gates'>gates: "+current.gates+"</span>";
+    if (seamMissing){
+      html += "<br><span style='color:#f87171'>The Angel snippet did not load — open this page on the dashboard origin (/lab/plausible/); the panel never applies with its own copy.</span>";
+    } else if (!applied){
+      html += "<br><span style='color:#59636f'>BEFORE — the original page. Switch to AFTER and every change is applied by the real snippet and marked.</span>";
+    } else if (applyRefused){
+      html += "<br><span style='color:#f87171'>The snippet REFUSED this variant (fail closed) — exactly what protects a real page when a target cannot be resolved safely.</span>";
     } else if (diffs.length){
-      html += "<br><b>"+diffs.length+" ändringar</b> — klicka för att hoppa till var och en:";
+      html += "<br><b>"+diffs.length+" changes</b> — click to jump to each one:";
       html += "<ol>";
       diffs.forEach(function(d,i){
         html += "<li data-diff='"+i+"'>"+
           (d.kind==="move"
-            ? "<span class='difflabel'>Flyttad:</span> "+d.label+" <span style='color:#59636f'>("+d.detail+")</span>"
-            : "<span class='difflabel'>Ny text:</span> <span class='old'>"+d.old.slice(0,48)+"</span> → <span class='new'>"+d.detail.slice(0,60)+"</span>")+
+            ? "<span class='difflabel'>Moved:</span> "+d.label+" <span style='color:#59636f'>("+d.detail+")</span>"
+            : "<span class='difflabel'>New text:</span> <span class='old'>"+d.old.slice(0,48)+"</span> → <span class='new'>"+d.detail.slice(0,60)+"</span>")+
           "</li>";
       });
       html += "</ol>";
+    } else {
+      html += "<br><span style='color:#59636f'>Applied, but nothing changed on this page (targets already in place).</span>";
     }
     info.innerHTML = html;
     Array.prototype.forEach.call(info.querySelectorAll("li[data-diff]"), function(li){
@@ -288,7 +341,7 @@ body{padding-bottom:64px !important}
     document.body.style.paddingBottom=(bar.offsetHeight+16)+"px";
     document.getElementById("angel-fore").className = applied?"":"on";
     document.getElementById("angel-efter").className = "efter"+(applied?" on":"");
-    document.getElementById("angel-efter").textContent = applied && diffs.length ? "EFTER · "+diffs.length+" ändringar" : "EFTER";
+    document.getElementById("angel-efter").textContent = applied && diffs.length ? "AFTER · "+diffs.length+" changes" : "AFTER";
     var pills = document.querySelectorAll("#angel-segments button");
     pills.forEach(function(b){ b.className = b.dataset.key===current.key?"on":""; });
     renderInfo();
@@ -301,15 +354,22 @@ body{padding-bottom:64px !important}
   });
   document.getElementById("angel-fore").onclick=function(){ reset(); sync(); };
   document.getElementById("angel-efter").onclick=function(){ apply(current); sync(); };
+  // Sömmen laddas async — vänta in window.__angel innan URL-styrd auto-apply,
+  // och visa ärligt fel om den aldrig dyker upp (t.ex. file://-öppning).
+  function whenSeam(cb, tries){
+    if (seam()) return cb();
+    if ((tries||0) > 100){ seamMissing = true; sync(); return; }
+    setTimeout(function(){ whenSeam(cb, (tries||0)+1); }, 50);
+  }
   var qs=new URLSearchParams(location.search); var want=qs.get("segment");
   if(want){ var m=VARIANTS.filter(function(v){return v.key===want;})[0]; if(m) current=m; }
-  if(qs.get("state")==="efter") apply(current);
+  if(qs.get("state")==="efter") whenSeam(function(){ apply(current); sync(); });
   window.addEventListener("resize", sync);
   sync();
 })();
 </script>`;
 
-html = html.replace(/<\/body>/i, controls.replace("__VARIANTS__", JSON.stringify(VARIANTS)) + "</body>");
+html = html.replace(/<\/body>/i, controls.replace("__VARIANTS__", JSON.stringify(PANEL_VARIANTS)) + "</body>");
 
 mkdirSync(OUT_DIR, { recursive: true });
 writeFileSync(join(OUT_DIR, "index.html"), html);
