@@ -59,14 +59,14 @@ function CorpusPage() {
         <header>
           <h1 className="font-heading text-[23px] font-bold tracking-tight">Corpus inspector</h1>
           <p className="mt-2 text-sm text-stone-500">
-            {sites.length} sajt{sites.length === 1 ? "" : "er"} i <code>corpus/</code>. Ladda ner artefakter eller bläddra i JSON inline.
+            {sites.length} site{sites.length === 1 ? "" : "s"} in <code>corpus/</code>. Download artifacts or browse the JSON inline.
           </p>
         </header>
 
         {sites.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-sm text-muted-foreground">
-              Inga frysta sajter ännu. Kör <code>bun run freeze --url=... --name=...</code>.
+              No frozen sites yet. Run <code>bun run freeze --url=... --name=...</code>.
             </CardContent>
           </Card>
         ) : (
@@ -111,7 +111,7 @@ function SiteCard({ site }: { site: CorpusSite }) {
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (error) {
       console.error(error);
-      window.alert(`Kunde inte ladda ner ${file}.`);
+      window.alert(`Couldn't download ${file}.`);
     } finally {
       setDownloading(null);
     }
@@ -167,7 +167,7 @@ function SiteCard({ site }: { site: CorpusSite }) {
           <div className="grid grid-cols-2 gap-3 rounded-md border border-border bg-muted/30 p-3 text-sm sm:grid-cols-3">
             {summaryQuery.isLoading || !g ? (
               <div className="sm:col-span-3 text-xs text-muted-foreground">
-                {summaryQuery.isLoading ? "laddar snabbsiffror…" : "—"}
+                {summaryQuery.isLoading ? "loading quick stats…" : "—"}
               </div>
             ) : (
               <>
@@ -291,7 +291,7 @@ function JsonInline({ site, file }: { site: string; file: ArtifactFile }) {
           <FileJson className="h-4 w-4 text-muted-foreground" />
           <span className="font-mono">{file}</span>
         </span>
-        <span className="text-xs text-muted-foreground">{open ? "dölj" : "visa"}</span>
+        <span className="text-xs text-muted-foreground">{open ? "hide" : "show"}</span>
       </button>
       {open && (
         <pre className="max-h-96 overflow-auto border-t border-border bg-muted/30 p-3 font-mono text-xs leading-relaxed text-foreground">
