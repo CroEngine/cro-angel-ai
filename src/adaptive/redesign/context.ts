@@ -39,6 +39,10 @@ export const DEFAULT_REDESIGN_GUARDRAILS: RedesignGuardrails = {
     "New colors, blinking, pulsing, automatic hover effects, color explosions.",
     "Popups without a clear reason, large overlays, elements that jump.",
     "Anything that changes the brand's visual identity.",
+    // Task #105: snippetens CWV-vakt vägrar ops på LCP-elementet i drift och
+    // fäller hela varianten — designern ska veta det INNAN den planerar, inte
+    // få planen underkänd i pixelgrinden efteråt.
+    "Move or rewrite the page's largest-paint (LCP) element — usually the hero image or hero headline. The serve-time performance guard blocks such an op for every real visitor, so the verifier rejects the whole variant.",
   ],
   ops: ["move_up", "set_text", "condense", "reveal"],
 };

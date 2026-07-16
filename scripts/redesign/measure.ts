@@ -18,6 +18,47 @@ export interface MeasureOp {
   set?: string;
 }
 
+/** Fånga sidans LCP-element och märk det med data-angel-lcp — måste anropas
+ *  DIREKT efter sidladdningen, före första skärmdumpen: fullPage-skärmdumpar
+ *  scrollar sidan och får Chromium att emittera nya LCP-entries för element
+ *  under folden, som en riktig besökares laddning aldrig ser. Markören läses
+ *  sedan av measurePlan i varje mätning (task #105 — servbarhets-kollen).
+ *  Buffrade entries levereras asynkront efter observe(); timeouten ger
+ *  observern en task att hinna på. Returnerar diagnostik för loggning. */
+export async function captureLcpElement(
+  page: Page,
+): Promise<{ found: boolean; tag: string | null; text: string | null }> {
+  return page.evaluate(async () => {
+    for (const el of Array.from(document.querySelectorAll("[data-angel-lcp]"))) {
+      el.removeAttribute("data-angel-lcp");
+    }
+    const lcpEl: Element | null = await new Promise((resolve) => {
+      try {
+        let found: Element | null = null;
+        const po = new PerformanceObserver((list) => {
+          const es = list.getEntries();
+          const last = es[es.length - 1] as { element?: Element } | undefined;
+          if (last && last.element) found = last.element;
+        });
+        po.observe({ type: "largest-contentful-paint", buffered: true });
+        setTimeout(() => {
+          po.disconnect();
+          resolve(found);
+        }, 120);
+      } catch {
+        resolve(null);
+      }
+    });
+    if (!lcpEl) return { found: false, tag: null, text: null };
+    lcpEl.setAttribute("data-angel-lcp", "1");
+    return {
+      found: true,
+      tag: lcpEl.tagName.toLowerCase(),
+      text: (lcpEl.textContent || "").replace(/\s+/g, " ").trim().slice(0, 60) || null,
+    };
+  });
+}
+
 /** Tvåfas-mätningen — SAMMA kontrakt som snippetens applyVariant v3
  *  (granskningsfynd 2026-07-14): (1) upplös varje ops mål (och sektion) mot
  *  ORÖRD, main-scopad DOM; (2) applicera i planordning. keepApplied=true
@@ -37,6 +78,26 @@ export async function measurePlan(
       const mainEl = document.querySelector("main") || document.body;
       const de = document.documentElement;
       const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+
+      // ── LCP-elementet — samma vakt-semantik som snippeten ──────────────
+      // Fångas EN gång per sidladdning av captureLcpElement (direkt efter
+      // load, FÖRE skärmdumpar): fullPage-skärmdumpen scrollar sidan och får
+      // Chromium att emittera nya LCP-entries för element under folden —
+      // något en riktig besökares laddning aldrig gör (LCP-prob 2026-07-16).
+      // Markören är sanningen; utan markör (inte anropad, eller elementet
+      // föll ur DOM:en vid en reset) blir lcpFound=false och render-gates
+      // säger ärligt att servbarhets-kollen var vakuös — fail closed.
+      const lcpEl: Element | null = document.querySelector("[data-angel-lcp]");
+      // Exakt snippet-semantik (touchesLcp i public/adaptive.js): målet ÄR
+      // LCP-elementet, omsluter det, eller bor i det.
+      const touchesLcp = (el: Element | null): boolean => {
+        if (!lcpEl || !el) return false;
+        try {
+          return el === lcpEl || el.contains(lcpEl) || lcpEl.contains(el);
+        } catch {
+          return false;
+        }
+      };
 
       // ── v3-upplösning (identisk med snippeten) ──────────────────────────
       // Census: h2 i main, aldrig header/nav/footer/aside. Förberäknade
@@ -190,6 +251,16 @@ export async function measurePlan(
           resolved.push({ op: "set_text", el, set: o.set });
         }
       }
+      // Servbarhets-kollen (task #105): snippetens vakt fäller HELA varianten
+      // fail-closed när ett upplöst mål (sektionen för move_up, elementet för
+      // set_text) rör LCP-elementet — en sådan variant når aldrig en riktig
+      // besökare. Räknas mot exakt de mål appliceringen använder.
+      let opsTouchingLcp = 0;
+      if (resolvedAll) {
+        for (const r of resolved) {
+          if (touchesLcp(r.op === "move_up" ? r.sec : r.el)) opsTouchingLcp++;
+        }
+      }
 
       // ── FAS 2: applicera i planordning ─────────────────────────────────
       let appliedMoves = 0;
@@ -302,6 +373,8 @@ export async function measurePlan(
         requestedTexts: ops.filter((o) => o.op === "set_text").length,
         appliedTexts,
         reversedOrderMatches,
+        lcpFound: lcpEl !== null,
+        opsTouchingLcp,
       };
     },
     { ops, ctaTexts, ctaSelectors, keepApplied },
@@ -328,6 +401,8 @@ export function toRenderMeasurements(
     appliedMoves: raw.appliedMoves,
     reversedOrderMatches: raw.reversedOrderMatches,
     verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
+    lcpFound: raw.lcpFound,
+    opsTouchingLcp: raw.opsTouchingLcp,
   };
 }
 

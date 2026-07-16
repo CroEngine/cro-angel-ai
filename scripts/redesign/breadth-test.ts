@@ -22,7 +22,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
-import { runGatedAttempts, type MeasureOp } from "./measure";
+import { captureLcpElement, runGatedAttempts, type MeasureOp } from "./measure";
 
 const EXEC =
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
@@ -53,6 +53,9 @@ for (const t of targets) {
       await page.setContent(readFileSync(t.path, "utf8"), { waitUntil: "domcontentloaded", timeout: 30_000 });
     }
     await page.waitForTimeout(600);
+    // Direkt efter load, före ev. skärmdump — annars förorenas LCP-entries
+    // av scroll och servbarhets-kollen mäter fel element (task #105).
+    await captureLcpElement(page);
 
     // Extraktion mot den RENDERADE dom:en (mhtml kan skilja sig från rå html).
     const html = await page.evaluate(() => document.documentElement.outerHTML);

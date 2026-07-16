@@ -118,6 +118,34 @@ describe("evaluateRenderGates — pixel-half beauty gates", () => {
     expect(r.reasons.some((x) => /no moves were applied/i.test(x))).toBe(true);
   });
 
+  it("FAILS when an op targets the page's LCP element (unservable live)", () => {
+    // Task #105: the snippet's serve-time CWV guard rolls the whole variant
+    // back for every real visitor when any op touches the LCP element — the
+    // lab's hero-retext variants are living examples. Verification must say
+    // no BEFORE such a variant reaches 'verified'.
+    const r = evaluateRenderGates(clean({ lcpFound: true, opsTouchingLcp: 1 }));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons.some((x) => /LCP element.*unservable/i.test(x))).toBe(true);
+  });
+
+  it("passes when the LCP element was found and no op touches it", () => {
+    const r = evaluateRenderGates(clean({ lcpFound: true, opsTouchingLcp: 0 }));
+    expect(r.verdict).toBe("pass");
+  });
+
+  it("WARNS when no LCP element could be observed (servability check vacuous)", () => {
+    const r = evaluateRenderGates(clean({ lcpFound: false, opsTouchingLcp: 0 }));
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.some((x) => /LCP.*vacuous/i.test(x))).toBe(true);
+  });
+
+  it("leaves older observations without the LCP fields unaffected", () => {
+    const m = clean();
+    expect("lcpFound" in m).toBe(false);
+    const r = evaluateRenderGates(m);
+    expect(r.verdict).toBe("pass");
+  });
+
   it("stacks the most severe verdict when several gates trip", () => {
     const r = evaluateRenderGates(
       clean({ movedAboveMain: 1, hOverflowAfterPx: 50, ctaBroken: 1, requestedMoves: 2, appliedMoves: 1 }),

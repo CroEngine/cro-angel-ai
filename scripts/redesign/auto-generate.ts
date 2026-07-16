@@ -61,7 +61,7 @@ import {
   evaluateRenderGates,
   type RenderMeasurements,
 } from "../../src/adaptive/redesign/render-gates";
-import { measurePlan, runGatedAttempts, type MeasureOp } from "./measure";
+import { captureLcpElement, measurePlan, runGatedAttempts, type MeasureOp } from "./measure";
 import type { ServeOp } from "../../src/adaptive/redesign/serve";
 import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
@@ -311,6 +311,12 @@ try {
     const page = await context.newPage();
     await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
     await page.waitForTimeout(400);
+    // LCP-elementet måste fångas FÖRE fullPage-skärmdumpen — dumpen scrollar
+    // sidan och förorenar LCP-entries med element under folden (task #105).
+    const lcp = await captureLcpElement(page);
+    console.log(
+      `  ${plan.path} × ${plan.key}: LCP-element ${lcp.found ? `<${lcp.tag}> "${lcp.text ?? ""}"` : "EJ observerat — servbarhets-kollen blir vakuös"}`,
+    );
     await page.screenshot({ path: join(outDir, `${slug}-before.jpg`), type: "jpeg", quality: 60, fullPage: true });
 
     // Grindarna + retry-steget — DELADE (runGatedAttempts i measure.ts):
@@ -378,6 +384,10 @@ try {
         ctaChecked: last.measurements.ctaChecked,
         ctaBroken: last.measurements.ctaBroken,
         reversible: last.measurements.reversedOrderMatches,
+        // Servbarhets-kollen (task #105) — hit kommer bara pass (0 träffar),
+        // men lcpFound dokumenterar att kollen faktiskt kördes mot ett element.
+        lcpFound: last.measurements.lcpFound ?? null,
+        opsTouchingLcp: last.measurements.opsTouchingLcp ?? null,
         attempts: attempts.length,
       },
       comparison: {

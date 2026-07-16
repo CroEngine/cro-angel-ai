@@ -48,6 +48,15 @@ export interface RenderMeasurements {
   appliedMoves: number;
   /** After reset(), does the DOM order equal beforeOrder exactly? */
   reversedOrderMatches: boolean;
+  /** Did the harness observe an LCP element to check ops against? Optional:
+   *  older observations omit it (absent = check not run, no verdict impact). */
+  lcpFound?: boolean;
+  /** Resolved ops whose target IS / wraps / lives inside the page's LCP
+   *  element. The snippet's serve-time CWV guard (touchesLcp) rolls the WHOLE
+   *  variant back, fail closed, when any op touches it — so >0 means the
+   *  variant can never reach a real visitor (only sandbox mirrors bypass the
+   *  guard). Optional as above. */
+  opsTouchingLcp?: number;
 }
 
 export type RenderVerdict = "pass" | "warn" | "fail";
@@ -93,6 +102,16 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
   };
 
   // Hard failures — a customer would see these as damage.
+  // Unservable beats everything: the snippet's serve-time CWV guard refuses
+  // any op touching the LCP element and rolls the whole variant back for
+  // every real visitor — a "verified" variant that can never serve would
+  // make the A/B test measure original vs original (task #105).
+  const lcpTouches = m.opsTouchingLcp ?? 0;
+  if (lcpTouches > 0) {
+    fail(
+      `${lcpTouches} op(s) target the page's LCP element — the serve-time CWV guard rolls the whole variant back for every real visitor (unservable)`,
+    );
+  }
   if (m.movedAboveMain > 0) {
     fail(
       `${m.movedAboveMain} moved section(s) placed ABOVE the page's main content — would look broken`,
@@ -125,6 +144,15 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
     // says so instead of passing vacuously (breadth finding 2).
     warn(
       "0 conversion CTAs were hit-testable before apply — the CTA gate was vacuous (no extracted CTAs and no goal text/selector present on the page)",
+    );
+  }
+  if (m.lcpFound === false) {
+    // Explicit false (the harness looked and found nothing) — absent means an
+    // older observation where the check didn't exist. Without an LCP element
+    // we cannot prove the serve-time guard would let this variant through, so
+    // the vacuity must be visible instead of passing silently.
+    warn(
+      "no LCP element was observed — the LCP servability check was vacuous (cannot prove the serve-time CWV guard would allow this variant)",
     );
   }
   if (m.requestedMoves > 0 && m.appliedMoves < m.requestedMoves) {
