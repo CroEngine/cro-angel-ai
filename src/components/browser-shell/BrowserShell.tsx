@@ -182,7 +182,7 @@ export function BrowserShell() {
   }, [handleRun, url]);
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-full flex-col bg-background">
       <TabStrip title={hostname} />
       <UrlBar
         value={url}

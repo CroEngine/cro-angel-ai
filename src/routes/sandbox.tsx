@@ -6,10 +6,11 @@
 // carries CSP `sandbox allow-scripts`), so mirrored-site scripts can't touch
 // the admin's session.
 
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { AppNav } from "@/components/app-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -201,24 +202,15 @@ function SandboxPage() {
     : null;
 
   return (
-    <div className="min-h-screen bg-[#fafaf9] px-4 py-8 text-stone-900">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold">
-              <span className="text-2xl leading-none text-emerald-700">✳</span> Angel sandbox
-            </h1>
-            <p className="mt-1 font-mono text-[11px] tracking-wider text-stone-400">
-              [ testa Angel på vilken sajt som helst — privat spegel, inget installeras,
-              ingen mätdata skapas ]
-            </p>
-          </div>
-          <Link
-            to="/dashboard"
-            className="font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
-          >
-            ← dashboard
-          </Link>
+    <div className="min-h-screen bg-[#fafaf9] text-stone-900">
+      <AppNav active="/sandbox" isAdmin />
+      <main className="mx-auto max-w-6xl space-y-6 px-6 pb-16 pt-7">
+        <header>
+          <h1 className="font-heading text-[23px] font-bold tracking-tight">Sandbox</h1>
+          <p className="mt-2 max-w-[640px] text-sm text-stone-500">
+            Testa Angel på vilken sajt som helst — en privat spegel. Inget installeras och ingen
+            mätdata skapas.
+          </p>
         </header>
 
         <Card className="border-stone-200 shadow-none">
@@ -323,7 +315,7 @@ function SandboxPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }
