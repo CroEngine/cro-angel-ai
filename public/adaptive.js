@@ -309,6 +309,9 @@
     // från dashboard-värdet (se decide-routens kommentar).
     holdoutOverride: HOLDOUT_ATTR !== null ? true : undefined,
     consent: consentBasis,
+    // Sandbox-spegelns "se live" (?angel_variant=<id>): servern honorerar
+    // fältet bara för sandbox-slugs — på riktiga sajter är det inert.
+    forceVariant: qp.get("angel_variant") || undefined,
   };
 
   // ---- analytics -----------------------------------------------------------

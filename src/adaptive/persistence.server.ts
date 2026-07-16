@@ -11,7 +11,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
-import { originVerdict } from "./domain";
+import { hostMatchesDomain, normalizeDomain, originVerdict } from "./domain";
 import { scrubPath } from "./harvest/sanitize";
 import type { GoalJudgment } from "./goal-judge.server";
 import type {
@@ -483,6 +483,53 @@ export async function loadServableVariants(
   } catch (err) {
     console.warn(`[angel] variant read unavailable:`, err);
     return [];
+  }
+}
+
+/**
+ * Sandbox-spegelns "se live": läs EN specifik variant för förhandsvisning.
+ * Två villkor, båda hårda:
+ *   1. Varianten finns och är i ett tittbart tillstånd (verified — det ägaren
+ *      granskar FÖRE godkännande — eller serving/winner).
+ *   2. Variantens sajt ÄGER den speglade domänen (mirrorHost) — annars kunde
+ *      vilken sida som helst med snippeten begära ut en annan kunds serve-ops
+ *      genom att gissa variant-id:n. Id:t är ett UUID, men vi gissar inte.
+ * Best-effort: fel/mismatch → null (spegeln visar sidan som vanligt).
+ */
+export async function loadPreviewVariant(
+  variantId: string,
+  mirrorHost: string,
+): Promise<{
+  id: string;
+  segmentKey: string;
+  serveOps: import("./redesign/serve").ServeOp[];
+} | null> {
+  try {
+    const { data: v, error } = await supabaseAdmin
+      .from("angel_variants")
+      .select("id,site,segment_key,status,serve_ops")
+      .eq("id", variantId)
+      .in("status", ["verified", "serving", "winner"])
+      .maybeSingle();
+    if (error || !v) return null;
+    const { data: siteRow } = await supabaseAdmin
+      .from("angel_sites")
+      .select("domain")
+      .eq("slug", v.site)
+      .maybeSingle();
+    const domain = normalizeDomain(siteRow?.domain ?? null);
+    const host = normalizeDomain(mirrorHost);
+    if (!domain || !host || !hostMatchesDomain(host, domain)) return null;
+    return {
+      id: v.id,
+      segmentKey: v.segment_key,
+      serveOps: (Array.isArray(v.serve_ops)
+        ? v.serve_ops
+        : []) as unknown as import("./redesign/serve").ServeOp[],
+    };
+  } catch (err) {
+    console.warn(`[angel] preview-variant read unavailable:`, err);
+    return null;
   }
 }
 

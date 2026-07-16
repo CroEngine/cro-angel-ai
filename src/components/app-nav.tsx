@@ -1,7 +1,9 @@
 // Delad app-navigation för inloggade ytor (design-handoffen 2026-07-16):
 // sticky vit header, ✳ Angel-ordmärke, flikar (aktiv = emerald på #f0fdf7-
 // pill), högerställd plats för sidans kontroller (sajtväljare etc) + Sign out.
-// Kund-konton ser bara Dashboard; Sandbox/Corpus/Agent är admin-ytor.
+// Kund-konton ser bara Dashboard; Sandbox är admin (demo-/säljverktyget).
+// Corpus/Agent är bakgrundsverktyg utan flik — nås via URL när de behövs
+// (ägarbeslut 2026-07-16: färre ytor att hålla isär).
 
 import { Link, useNavigate } from "@tanstack/react-router";
 
@@ -10,8 +12,6 @@ import { supabase } from "@/integrations/supabase/client";
 const TABS = [
   { to: "/dashboard", label: "Dashboard", admin: false },
   { to: "/sandbox", label: "Sandbox", admin: true },
-  { to: "/corpus", label: "Corpus", admin: true },
-  { to: "/agent", label: "Agent", admin: true },
 ] as const;
 
 export function AppNav({

@@ -294,6 +294,11 @@ export interface ClientSignals {
   /** Consent basis the snippet resolved (anonymous_default | gpc_dnt | tcf |
    *  cookiebot | site_signal | …). Stamped on the decision for auditability. */
   consent?: string;
+  /** Variant-id från ?angel_variant= i sid-URL:en — sandbox-spegelns "se live"-
+   *  förhandsvisning av EN specifik variant. Servern honorerar den bara för
+   *  sandbox-slugs och bara när variantens sajt äger den speglade domänen;
+   *  på riktiga sajter är fältet inert. */
+  forceVariant?: string;
 }
 
 /** A single analytics event POSTed to /api/adaptive/events. */

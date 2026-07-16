@@ -17,7 +17,14 @@ import { originVerdict } from "@/adaptive/domain";
 import { servingAllowedForBilling } from "@/lib/billing/billing";
 import { fnv1a32 } from "@/adaptive/hash";
 import { serveDecision } from "@/adaptive/redesign/serve";
-import { loadSiteConfig, loadServableVariants, logDecision } from "@/adaptive/persistence.server";
+import {
+  isSandboxSlug,
+  loadPreviewVariant,
+  loadServableVariants,
+  loadSiteConfig,
+  logDecision,
+  sandboxRealSlug,
+} from "@/adaptive/persistence.server";
 import type { ClientSignals } from "@/adaptive/types";
 
 const CORS_HEADERS: Record<string, string> = {
@@ -104,6 +111,28 @@ export const Route = createFileRoute("/api/adaptive/decide")({
           text: cfg.conversionText,
           kind: cfg.conversionKind,
         };
+
+        // Sandbox-spegelns "se live": ägaren tittar på EN specifik variant i
+        // spegeln innan hen godkänner den — snippetens riktiga apply-väg, inga
+        // skärmdumpar. BARA för sandbox-slugs (event-loggen är avstängd där,
+        // så en förhandsvisning kan aldrig bli en exponering) och bara när
+        // variantens sajt äger den speglade domänen (loadPreviewVariant).
+        // Ingen logDecision: en titt är inte en mätpunkt. Okänd/otillåten
+        // variant → falla vidare till de vanliga vägarna.
+        if (typeof client.forceVariant === "string" && isSandboxSlug(client.site)) {
+          const mirrorHost = sandboxRealSlug(client.site);
+          const pv = mirrorHost ? await loadPreviewVariant(client.forceVariant, mirrorHost) : null;
+          if (pv) {
+            return json({
+              decisionId: decisionIdFor(client.site, context, goal),
+              site: client.site,
+              adaptations: [],
+              holdout: false,
+              variant: { id: pv.id, segmentKey: pv.segmentKey, ops: pv.serveOps },
+              context,
+            });
+          }
+        }
 
         // Observe-first (croengine-vision.md): Angel är OSYNLIGT som standard
         // (adaptations_enabled=false). Då kör vi ingen decide-pipeline och
