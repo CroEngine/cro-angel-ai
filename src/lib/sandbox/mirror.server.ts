@@ -107,14 +107,17 @@ export function blockedIpReason(ip: string): string | null {
  * public-name-to-private-IP are closed at connect time by safeMirrorFetch,
  * which resolves + range-checks + pins the IP.
  */
-export function guardTargetUrl(raw: string): { ok: true; url: URL } | { ok: false; reason: string } {
+export function guardTargetUrl(
+  raw: string,
+): { ok: true; url: URL } | { ok: false; reason: string } {
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
     return { ok: false, reason: "invalid_url" };
   }
-  if (url.protocol !== "http:" && url.protocol !== "https:") return { ok: false, reason: "protocol" };
+  if (url.protocol !== "http:" && url.protocol !== "https:")
+    return { ok: false, reason: "protocol" };
   if (url.username || url.password) return { ok: false, reason: "credentials" };
   const host = normalizeHost(url.hostname);
   if (!host || BLOCKED_HOST_RX.test(host)) return { ok: false, reason: "host" };
@@ -167,7 +170,8 @@ export async function safeMirrorFetch(
 
   for (let hop = 0; hop <= maxHops; hop++) {
     const guard = guardTargetUrl(current);
-    if (!guard.ok) return { ok: false, reason: hop === 0 ? guard.reason : "redirect_" + guard.reason };
+    if (!guard.ok)
+      return { ok: false, reason: hop === 0 ? guard.reason : "redirect_" + guard.reason };
     const host = guard.url.hostname;
 
     // Resolve + range-check EVERY address the host maps to. This closes the
@@ -213,7 +217,8 @@ export async function safeMirrorFetch(
     }
 
     const contentType = res.headers.get("content-type") || "";
-    if (res.status !== 200) return { ok: true, result: { status: res.status, contentType, finalUrl: guard.url.href } };
+    if (res.status !== 200)
+      return { ok: true, result: { status: res.status, contentType, finalUrl: guard.url.href } };
     if (!contentType.includes("text/html")) {
       return { ok: false, reason: "not_html" };
     }
@@ -238,6 +243,10 @@ export interface MirrorTransformOptions {
   site: string;
   /** false → the FÖRE view: serve the page untouched (no snippet). */
   angel: boolean;
+  /** true → injicera en liten höjdrapportör (postMessage till föräldern) så
+   *  dashboardens heatmap kan skala spegeln till sidans FULLA dokumenthöjd —
+   *  klickens y-koordinat är % av dokumentet, så backdroppen måste visa allt. */
+  reportHeight?: boolean;
 }
 
 /**
@@ -287,6 +296,17 @@ export function transformMirrorHtml(html: string, opts: MirrorTransformOptions):
       ",applied:[],timedOut:true},'*')}catch(e){}}},250)})();</script>";
     const inject = snippetTag + reporter;
     out = out.includes("</head>") ? out.replace("</head>", `${inject}</head>`) : out + inject;
+  }
+  if (opts.reportHeight) {
+    // Spegel-iframen är opak origin — föräldern kan inte läsa höjden själv.
+    // Sidan rapporterar den (flera försök: layouten sätter sig efter load).
+    const heightReporter =
+      "<script>(function(){function r(){try{parent.postMessage({type:'angel-mirror-height'," +
+      "h:Math.max(document.documentElement.scrollHeight||0,document.body?document.body.scrollHeight:0)},'*')}catch(e){}}" +
+      "addEventListener('load',r);setTimeout(r,800);setTimeout(r,2500);setTimeout(r,5000)})();</script>";
+    out = out.includes("</body>")
+      ? out.replace("</body>", `${heightReporter}</body>`)
+      : out + heightReporter;
   }
   return out;
 }
