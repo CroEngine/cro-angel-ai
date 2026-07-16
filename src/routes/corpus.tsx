@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
 import { useState } from "react";
+
+import { AppNav } from "@/components/app-nav";
 import { Download, FileJson, ChevronDown, ChevronRight, ExternalLink, Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -51,16 +53,14 @@ function CorpusPage() {
   const { sites } = data;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Corpus inspector</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {sites.length} sajt{sites.length === 1 ? "" : "er"} i <code>corpus/</code>. Ladda ner artefakter eller bläddra i JSON inline.
-            </p>
-          </div>
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Tillbaka</Link>
+    <div className="min-h-screen bg-[#fafaf9] text-stone-900">
+      <AppNav active="/corpus" isAdmin />
+      <main className="mx-auto max-w-5xl space-y-6 px-6 pb-16 pt-7">
+        <header>
+          <h1 className="font-heading text-[23px] font-bold tracking-tight">Corpus inspector</h1>
+          <p className="mt-2 text-sm text-stone-500">
+            {sites.length} sajt{sites.length === 1 ? "" : "er"} i <code>corpus/</code>. Ladda ner artefakter eller bläddra i JSON inline.
+          </p>
         </header>
 
         {sites.length === 0 ? (
@@ -72,7 +72,7 @@ function CorpusPage() {
         ) : (
           sites.map((site) => <SiteCard key={site.name} site={site} />)
         )}
-      </div>
+      </main>
     </div>
   );
 }

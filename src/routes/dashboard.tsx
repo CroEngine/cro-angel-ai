@@ -7,13 +7,14 @@
 // aggregated by src/lib/dashboard. When the DB is unavailable the dashboard
 // renders a clean empty state.
 
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, TrendingUp, ShieldCheck, Shield } from "lucide-react";
 
+import { AppNav } from "@/components/app-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,14 +113,8 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function Dashboard() {
-  const navigate = useNavigate();
   const [site, setSite] = useState("hubspot");
   const { data, isFetching } = useQuery(dashboardQuery(site));
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/login" });
-  }
 
   // If the selected site isn't in the list (the seed is just a fallback),
   // fall over to the first real site so the picker never shows a ghost.
@@ -140,55 +135,42 @@ function Dashboard() {
     d.metrics.timeseries.daily.some((p) => p.visits > 0) || d.metrics.overview.pageviews > 0;
 
   return (
-    <div className="min-h-screen bg-[#fafaf9] px-4 py-8 text-stone-900">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
-              <span className="text-2xl leading-none text-emerald-700">✳</span> Angel
-            </h1>
-            <p className="mt-1 font-mono text-[11px] tracking-wider text-stone-400">
-              [ per-site performance of the adaptive layer ]
-              {isFetching && <span className="ml-2 animate-pulse">updating…</span>}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {d.sites.length > 0 && (
-              <Select value={site} onValueChange={setSite}>
-                <SelectTrigger className="w-56">
-                  <SelectValue placeholder="Select site" />
-                </SelectTrigger>
-                <SelectContent>
-                  {d.sites.map((s) => (
-                    <SelectItem key={s.slug} value={s.slug}>
-                      {s.name ?? s.slug}
-                      {s.domain ? ` (${s.domain})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <AddSiteControl onCreated={(slug) => setSite(slug)} />
-            {d.sites.length > 0 && (
-              <SettingsControl
-                site={site}
-                config={d.siteConfig}
-                inventory={d.metrics.inventory}
-                disabled={!d.dbAvailable}
-              />
-            )}
-            <AccountControl />
-            {d.isAdmin && (
-              <Button variant="outline" size="sm" asChild>
-                <a href="/sandbox">Sandbox</a>
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={signOut}>
-              Sign out
-            </Button>
-          </div>
-        </header>
-
+    <div className="min-h-screen bg-[#fafaf9] text-stone-900">
+      {/* Delade app-naven (design-handoffen): wordmark + flikar till vänster,
+          sidans kontroller (sajtväljare, inställningar, konto) som children. */}
+      <AppNav active="/dashboard" isAdmin={d.isAdmin}>
+        {isFetching && (
+          <span className="animate-pulse font-mono text-[11px] tracking-wider text-stone-400">
+            updating…
+          </span>
+        )}
+        {d.sites.length > 0 && (
+          <Select value={site} onValueChange={setSite}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Select site" />
+            </SelectTrigger>
+            <SelectContent>
+              {d.sites.map((s) => (
+                <SelectItem key={s.slug} value={s.slug}>
+                  {s.name ?? s.slug}
+                  {s.domain ? ` (${s.domain})` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <AddSiteControl onCreated={(slug) => setSite(slug)} />
+        {d.sites.length > 0 && (
+          <SettingsControl
+            site={site}
+            config={d.siteConfig}
+            inventory={d.metrics.inventory}
+            disabled={!d.dbAvailable}
+          />
+        )}
+        <AccountControl />
+      </AppNav>
+      <main className="mx-auto max-w-6xl space-y-6 px-6 pb-16 pt-7">
         {d.sites.length === 0 ? (
           <Card className="border-stone-200 shadow-none">
             <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
@@ -420,7 +402,7 @@ function Dashboard() {
         </Tabs>
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }
