@@ -106,6 +106,10 @@ export interface SiteConfigView {
   /** Ranked conversion-goal candidates proposed at harvest — the owner confirms
    *  one to activate Angel. Empty until the first harvest judges the page. */
   goalCandidates: GoalCandidate[];
+  /** Day-0-granskningen (task #98): länk till sajtens automatiska
+   *  onboarding-rapport i angel-evidence. null tills runnern producerat den
+   *  (eller om den föll). Dashboardkortet visas tills första varianten finns. */
+  day0ReportUrl: string | null;
 }
 
 /** En redesign-variant i dashboardens livscykelvy (Fas 4), inklusive jämförelse-
@@ -181,6 +185,7 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   adaptationsEnabled: false,
   servingEnabled: false,
   rampPct: 5,
+  day0ReportUrl: null,
 };
 
 export interface DashboardResponse {
@@ -230,7 +235,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,domain_verified_at,billing_status,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,ramp_pct,goal_candidates",
+          "slug,name,domain,domain_verified_at,billing_status,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,ramp_pct,goal_candidates,day0_report_url",
         )
         .order("slug");
       // `sandbox--<host>` rows are the admin sandbox's private per-host scratch
@@ -308,6 +313,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               serving_enabled?: boolean;
               ramp_pct?: number;
               goal_candidates?: { businessType?: string; goals?: GoalCandidate[] } | null;
+              day0_report_url?: string | null;
             }
           | undefined;
         if (current) {
@@ -332,6 +338,7 @@ export const getDashboard = createServerFn({ method: "POST" })
             billingStatus: typeof current.billing_status === "string" ? current.billing_status : "exempt",
             businessType: typeof judged?.businessType === "string" ? judged.businessType : null,
             goalCandidates: Array.isArray(judged?.goals) ? judged.goals.slice(0, 6) : [],
+            day0ReportUrl: current.day0_report_url ?? null,
           };
         }
       }

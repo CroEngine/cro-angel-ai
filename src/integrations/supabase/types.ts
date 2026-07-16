@@ -98,6 +98,10 @@ export type Database = {
           serving_enabled: boolean
           ramp_pct: number
           goal_candidates: Json | null
+          day0_report_url: string | null
+          day0_report_at: string | null
+          day0_report_status: string | null
+          day0_findings: Json | null
           created_at: string
         }
         Insert: {
@@ -120,6 +124,10 @@ export type Database = {
           serving_enabled?: boolean
           ramp_pct?: number
           goal_candidates?: Json | null
+          day0_report_url?: string | null
+          day0_report_at?: string | null
+          day0_report_status?: string | null
+          day0_findings?: Json | null
           created_at?: string
         }
         Update: {
@@ -142,6 +150,10 @@ export type Database = {
           serving_enabled?: boolean
           ramp_pct?: number
           goal_candidates?: Json | null
+          day0_report_url?: string | null
+          day0_report_at?: string | null
+          day0_report_status?: string | null
+          day0_findings?: Json | null
           created_at?: string
         }
         Relationships: []

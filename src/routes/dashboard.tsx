@@ -238,6 +238,31 @@ function Dashboard() {
 
             <BillingCard status={d.siteConfig.billingStatus} />
 
+            {/* Day-0-granskningen (task #98): dag-0-värdet medan mätdatat
+            samlas — kortet drar sig tillbaka när sajtens första variant
+            finns, då har produkten tagit över berättelsen. */}
+            {d.siteConfig.day0ReportUrl && (d.variants ?? []).length === 0 && (
+              <Card className="shadow-none border-stone-200">
+                <CardContent className="flex flex-wrap items-center gap-3 py-4">
+                  <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+                    [ day-0 review ]
+                  </span>
+                  <p className="text-sm text-foreground">
+                    A measured look at your page from the day you joined — while Angel collects live
+                    visitor data.
+                  </p>
+                  <a
+                    href={d.siteConfig.day0ReportUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto text-sm font-medium text-emerald-700 hover:text-emerald-800"
+                  >
+                    View report ↗
+                  </a>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Mål-kortet drar sig tillbaka till Settings när målet är bekräftat
             och mätningen rullar — det syns bara när det behöver ägaren. */}
             {(d.siteConfig.conversionSource !== "owner" ||
