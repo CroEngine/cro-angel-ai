@@ -150,6 +150,10 @@ export interface ServeVerdict {
  *  - otherwise: rampPct % of visitors (deterministic per visitor+variant) get
  *    the variant, the rest are the control arm. Ramp starts at 5 and is raised
  *    manually (5 → 10 → 25 → 50) — never 50/50 from day one.
+ *  - status "winner" ⇒ 100 %: ägarens "gör till ny standard"-knapp ÄR beslutet
+ *    att sluta mäta för det segmentet — alla segment-matchade besökare får
+ *    varianten, ingen kontrollarm. A/B-läsningen för vinnaren fryser vid de
+ *    siffror som avgjorde den (kontrollarmen slutar fyllas på) — by design.
  */
 export function serveDecision(
   cfg: { servingEnabled: boolean; rampPct: number },
@@ -163,6 +167,7 @@ export function serveDecision(
   if (!match) return null;
   const ops = match.serveOps ?? [];
   if (ops.length === 0 || !ops.every(serveOpValid)) return null;
+  if (match.status === "winner") return { variant: match, arm: "variant" };
   const ramp = Math.max(1, Math.min(50, Math.floor(cfg.rampPct) || 5));
   const arm = rampBucket(visitorHash, match.id) < ramp ? "variant" : "control";
   return { variant: match, arm };

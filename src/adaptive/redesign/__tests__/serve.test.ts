@@ -91,6 +91,34 @@ describe("matchVariant — finest verified variant wins", () => {
     expect(matchVariant(vs, visitor("google", "desktop", "se"))).toBeNull();
   });
 
+  it("winner serveras till 100 % — ägarens knapp ÄR beslutet att sluta mäta", () => {
+    const v = variant("google", "winner", { serveOps });
+    // Alla besökare, oavsett ramp-bucket, hamnar i variant-armen.
+    for (const vh of ["a", "b", "c", "visitor-42", "xyz"]) {
+      const verdict = serveDecision(
+        { servingEnabled: true, rampPct: 5 },
+        [v],
+        visitor("google", "mobile", "se"),
+        vh,
+      );
+      expect(verdict?.arm).toBe("variant");
+    }
+    // …medan en 'serving'-variant med samma besökare fortfarande ramp-delas.
+    const s = variant("google", "serving", { serveOps });
+    const arms = new Set(
+      ["a", "b", "c", "visitor-42", "xyz"].map(
+        (vh) =>
+          serveDecision(
+            { servingEnabled: true, rampPct: 5 },
+            [s],
+            visitor("google", "mobile", "se"),
+            vh,
+          )?.arm,
+      ),
+    );
+    expect(arms.has("control")).toBe(true);
+  });
+
   it("only serves 'serving' / 'winner' — never candidate/verified/retired", () => {
     for (const status of ["candidate", "verified", "retired"] as VariantStatus[]) {
       expect(matchVariant([variant("google", status)], visitor("google", "mobile", "se"))).toBeNull();

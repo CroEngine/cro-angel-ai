@@ -1504,10 +1504,16 @@ function VariantsCard({
                           <button
                             type="button"
                             disabled={status.isPending}
-                            onClick={() => askStatus(v, "winner", "Gör till vinnare")}
+                            onClick={() =>
+                              askStatus(
+                                v,
+                                "winner",
+                                "Gör till vinnare — serveras till 100 % av segmentet och mätningen för varianten avslutas",
+                              )
+                            }
                             className="mr-3 rounded bg-emerald-600 px-2 py-0.5 font-mono text-[11px] tracking-wider text-white hover:bg-emerald-700 disabled:opacity-50"
                           >
-                            gör till vinnare
+                            gör till vinnare (100 %)
                           </button>
                         )}
                         {(v.status === "serving" || v.status === "winner") && (

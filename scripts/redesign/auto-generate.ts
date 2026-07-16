@@ -397,7 +397,9 @@ try {
       `insert into angel_variants (site, path, segment_key, status, ops, serve_ops, evidence)\n` +
         `values ('${site}', '${esc(plan.path)}', '${esc(plan.key)}', 'verified', '${esc(JSON.stringify(finalOps))}'::jsonb, '${esc(JSON.stringify(serveOps))}'::jsonb, '${esc(JSON.stringify(evidence))}'::jsonb);`,
     );
-    results.push({ path: plan.path, key: plan.key, verdict: "verified", attempts, serveOps, evidence });
+    // ops med i resultatet så en orkestrerare (nattloopen) kan göra direkta
+    // inserts via service-klienten i stället för att köra SQL-filen.
+    results.push({ path: plan.path, key: plan.key, verdict: "verified", attempts, ops: finalOps, serveOps, evidence, slug });
     console.log(`  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök) — väntar på ägarens knapp`);
   }
 } finally {

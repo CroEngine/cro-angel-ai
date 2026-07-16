@@ -1,0 +1,58 @@
+# Nattloopen — "loopen utan mig" (lanserings-block 2).
+#
+# Varje natt: för varje kundsajt med adaptations_enabled → frys → detektera →
+# designa → verifiera i riktig Chromium → skriv verifierade varianter (status
+# 'verified', ALDRIG serving — det är ägarens knapp) → skicka dag-10-notiser.
+#
+# Kräver repo-secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+# ANTHROPIC_API_KEY (+ ev. RESEND_API_KEY/NOTIFY_FROM för riktiga mejl).
+# Saknas de är körningen en loggad no-op — aldrig röd av fel anledning.
+
+name: Nightly loop
+on:
+  schedule:
+    - cron: "30 2 * * *" # 02:30 UTC varje natt
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Kör bara denna sajt-slug (tomt = alla)"
+        required: false
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      NOTIFY_FROM: ${{ secrets.NOTIFY_FROM }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium (with system deps)
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run the loop
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.site }}" ]; then ARGS="--site=${{ github.event.inputs.site }}"; fi
+          bun run scripts/loop/nightly.ts $ARGS --out=nightly-out
+
+      - name: Upload run artifacts (evidens/loggar, 14 dagar)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-out
+          path: nightly-out
+          retention-days: 14
+          if-no-files-found: ignore
