@@ -24,6 +24,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
+import { EVIDENCE_SECTION_TYPES } from "../../src/adaptive/redesign/vocab";
 import { measurePlan, runGatedAttempts, type MeasureOp } from "../redesign/measure";
 
 const EXEC =
@@ -154,16 +155,12 @@ if (content.trustSignals.length === 0) {
   });
 }
 
-// Bevis-sektionen (social proof/jämförelse/FAQ) under folden → flytt-förslaget.
-// Typ-klassificeringen av rubriker är EN-bara tills vidare (uppgift #90) —
-// svensk rubrik-fallback här så svenska sajter också får sitt före/efter.
-const prefer = ["testimonials", "logos", "comparison", "pricing", "faq"];
-const SV_EVIDENCE =
-  /omdöm|recension|kunder (säger|tycker)|medlemmar|därför|varför|fördelar|vanliga frågor|priser|betyg|referens/i;
+// Bevis-sektionen (social proof/jämförelse/priser/FAQ) under folden →
+// flytt-förslaget. Typerna kommer ur den delade EN+SV-vokabulären (task #90)
+// — den lokala svenska fallback-regexen behövs inte längre: classify()
+// förstår svenska rubriker direkt.
 const sections = content.sections;
-const targetIdx = sections.findIndex(
-  (s, i) => i >= 2 && (prefer.includes(s.type) || SV_EVIDENCE.test(s.heading)),
-);
+const targetIdx = sections.findIndex((s, i) => i >= 2 && EVIDENCE_SECTION_TYPES.includes(s.type));
 let beforeShot: string | null = null;
 let afterShot: string | null = null;
 let flyttStatus: "pass" | "refused" | "held" | null = null;

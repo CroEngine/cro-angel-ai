@@ -1,5 +1,11 @@
 // Auto-extracted from engine.server.ts — runs inside the browser via page.evaluate.
 // Keep self-contained: no imports, no closures over server state.
+//
+// AVSIKTLIG DUBBLETT (task #90 / återanvändnings-auditen): PATTERNS nedan är
+// den rika EN+SV-trustvokabulären; redesign-kedjans enklare HTML-skanning
+// delar kärnan via src/adaptive/redesign/vocab.ts (SOCIAL_PROOF_NOUNS_SRC,
+// TRUSTED_BY_LEADINS_SRC). Skriptet kan inte importera (självbärande sträng,
+// kodgen-pinnad harvest-bundle) — utöka BÅDA när vokabulären växer.
 
 export const TRUST_SIGNALS_SCRIPT = `(() => {
   const viewportH = window.innerHeight || 720;
