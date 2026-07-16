@@ -15,6 +15,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { MirrorFrame } from "@/components/mirror-frame";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { createPagePreview, createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { setVariantStatus } from "@/lib/dashboard/dashboard.functions";
 import { armStatValid, twoProportionZ } from "@/lib/dashboard/aggregate";
@@ -26,7 +32,7 @@ import type {
   SegmentSummary,
   SessionSummary,
 } from "@/lib/dashboard/aggregate";
-import type { VariantOpView, VariantView } from "@/lib/dashboard/dashboard.functions";
+import type { VariantView } from "@/lib/dashboard/dashboard.functions";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 const pct = (r: number, digits = 1) => `${(r * 100).toFixed(digits)}%`;
@@ -133,6 +139,16 @@ const STATUS_PILL: Record<string, { bg: string; color: string }> = {
   winner: { bg: "#d1fae5", color: "#065f46" },
 };
 
+/** Visningsöversättning av segment-tokens: nycklarna (lagrade i variant-
+ *  segment_keys och byggda av aggregatets rollup) behåller sina tokens —
+ *  bara ETIKETTEN blir engelska. */
+const TOKEN_EN: Record<string, string> = { okänd: "unknown", ny: "new", återkommande: "returning" };
+const enLabel = (label: string) =>
+  label
+    .split(" · ")
+    .map((t) => TOKEN_EN[t] ?? t)
+    .join(" · ");
+
 const liftFmt = (liftRel: number | null) =>
   liftRel != null ? `${liftRel > 0 ? "+" : ""}${(liftRel * 100).toFixed(0)}%` : "—";
 
@@ -195,11 +211,12 @@ function HeatMirror({ src, overlay }: { src: string; overlay: React.ReactNode })
   );
 }
 
-/** "Se live" för en variant: sidan i sandbox-spegeln FÖRE (orörd) och EFTER
- *  (exakt den här variantens ops, genom snippetens riktiga apply-väg). Ingen
- *  skärmdump — ägaren ser sidan som en besökare ser den. Spegeln skriver
- *  aldrig events, så en titt blir aldrig en mätpunkt. */
-function VariantLivePanel({ site, v }: { site: string; v: VariantView }) {
+/** Compare för en variant: sidan i sandbox-spegeln FÖRE (orörd) och EFTER
+ *  (exakt den här variantens ops, genom snippetens riktiga apply-väg) — med
+ *  angel_debug=1 så varje ändrat element MARKERAS på sidan (ring + tagg
+ *  "moved up"/"rewrote this text"). Textlistan utgick (designbeslut): sidan
+ *  själv är ändringslistan. Spegeln skriver aldrig events. */
+function VariantComparePanel({ site, v }: { site: string; v: VariantView }) {
   const preview = useQuery({
     queryKey: ["variantPreview", site, v.id],
     queryFn: () => createVariantPreview({ data: { site, variantId: v.id } }),
@@ -213,57 +230,36 @@ function VariantLivePanel({ site, v }: { site: string; v: VariantView }) {
       {v.comparison?.headline && (
         <p className="text-sm font-medium text-stone-700">{v.comparison.headline}</p>
       )}
-      {v.ops.length > 0 && (
-        <ul className="flex flex-col gap-1">
-          {/* Identiska rader (t.ex. kollisions-retryns extra lyft) visas EN
-              gång med ×N — antalet är sant, upprepningen är brus. */}
-          {v.ops
-            .reduce<{ op: VariantOpView; n: number }[]>((acc, o) => {
-              const last = acc[acc.length - 1];
-              if (
-                last &&
-                last.op.op === o.op &&
-                last.op.detail === o.detail &&
-                last.op.why === o.why
-              ) {
-                last.n++;
-              } else {
-                acc.push({ op: o, n: 1 });
-              }
-              return acc;
-            }, [])
-            .map(({ op: o, n }, i) => (
-              <li key={i} className="text-xs text-stone-600">
-                <span className="mr-1.5 rounded bg-emerald-50 px-1 py-0.5 font-mono text-[10px] text-emerald-700">
-                  {o.op}
-                  {n > 1 ? ` ×${n}` : ""}
-                </span>
-                {o.detail}
-                {o.why && <span className="text-stone-400"> — {o.why}</span>}
-              </li>
-            ))}
-        </ul>
-      )}
-      {preview.isPending && <p className="text-xs text-stone-400">Speglar sidan …</p>}
+      {preview.isPending && <p className="text-xs text-stone-400">Mirroring the page…</p>}
       {preview.data?.ok && preview.data.mirrorPath && preview.data.mirrorOffPath && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <MirrorFrame
-            src={preview.data.mirrorOffPath}
-            frameW={frameW}
-            label="[ FÖRE — sidan orörd ]"
-          />
-          <MirrorFrame
-            src={preview.data.mirrorPath}
-            frameW={frameW}
-            label="[ EFTER — den här varianten ]"
-          />
-        </div>
+        <>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <MirrorFrame
+              src={preview.data.mirrorOffPath}
+              frameW={frameW}
+              label="[ BEFORE — untouched ]"
+            />
+            <MirrorFrame
+              src={`${preview.data.mirrorPath}&angel_debug=1`}
+              frameW={frameW}
+              label="[ AFTER — this variant ]"
+            />
+          </div>
+          <p className="flex items-center gap-2 text-[11px] text-stone-500">
+            <span
+              className="inline-block h-3 w-3 flex-none rounded-[3px]"
+              style={{ outline: "2px solid #10b981", outlineOffset: 1 }}
+            />
+            Highlighted elements in AFTER are what this variant changes — each carries a tag
+            (&quot;moved up&quot; / &quot;rewrote this text&quot;).
+          </p>
+        </>
       )}
       {(preview.isError || (preview.data && !preview.data.ok)) && (
         <p className="text-xs text-stone-400">
           {preview.data?.reason === "no_domain"
-            ? "Live-förhandsvisningen behöver sajtens domän — lägg till den i Settings så speglas sidan här."
-            : "Live-förhandsvisningen är inte tillgänglig just nu — försök igen om en stund."}
+            ? "The live preview needs the site's domain — add it in Settings and the page mirrors here."
+            : "The live preview isn't available right now — try again in a moment."}
         </p>
       )}
     </div>
@@ -310,7 +306,7 @@ export function OverviewPanel({
   const [q, setQ] = useState("");
   const [view, setView] = useState<"dash" | "detail">("dash");
   const [heatMode, setHeatMode] = useState<"clicks" | "rage" | "both">("clicks");
-  const [liveId, setLiveId] = useState<string | null>(null);
+  const [compareId, setCompareId] = useState<string | null>(null);
 
   const sel = selected === "all" ? null : (byKey.get(selected) ?? null);
 
@@ -332,7 +328,7 @@ export function OverviewPanel({
 
   const activate = (s: SegmentSummary) => {
     setSelected(s.key);
-    setLiveId(null);
+    setCompareId(null);
     if ((children.get(s.key) ?? []).length > 0) {
       setOpen((prev) => {
         const next = new Set(prev);
@@ -350,14 +346,14 @@ export function OverviewPanel({
     mutationFn: (args: { variantId: string; status: "serving" | "winner" | "retired" }) =>
       setVariantStatus({ data: { site, ...args } }),
     onSuccess: (res) => {
-      setStatusError(res.ok ? null : (res.reason ?? "kunde inte spara"));
+      setStatusError(res.ok ? null : (res.reason ?? "couldn't save"));
       queryClient.invalidateQueries({ queryKey: ["dashboard", site] });
     },
   });
   // Varje trafikpåverkande statusbyte bekräftas — en felklickning ska inte
   // starta eller stoppa ett A/B.
   const askStatus = (v: VariantView, next: "serving" | "winner" | "retired", label: string) => {
-    if (window.confirm(`${label} för ${v.segmentKey}?`)) {
+    if (window.confirm(`${label} for ${v.segmentKey}?`)) {
       status.mutate({ variantId: v.id, status: next });
     }
   };
@@ -496,7 +492,7 @@ export function OverviewPanel({
             Journeys &amp; signals
           </h2>
           <span className="font-mono text-[12px] text-stone-400">
-            {sel ? sel.label : "All sources"} · {heat.path}
+            {sel ? enLabel(sel.label) : "All sources"} · {heat.path}
           </span>
         </div>
 
@@ -822,7 +818,7 @@ export function OverviewPanel({
             type="button"
             onClick={() => {
               setSelected("all");
-              setLiveId(null);
+              setCompareId(null);
             }}
             className="mt-3 flex items-center gap-2.5 rounded-[10px] px-2.5 py-[11px] text-left hover:bg-[#f7f6f4]"
             style={{ background: selected === "all" ? "#f0fdf7" : undefined }}
@@ -870,7 +866,7 @@ export function OverviewPanel({
                     style={{ paddingLeft: depth * 22 }}
                   >
                     <span className="w-[11px] flex-none text-[10px] text-stone-400">{caret}</span>
-                    <span className="truncate text-[13px] font-semibold">{s.label}</span>
+                    <span className="truncate text-[13px] font-semibold">{enLabel(s.label)}</span>
                   </div>
                   <span className="w-14 text-right text-[12.5px] tabular-nums text-stone-500">
                     {fmt(s.visits)}
@@ -958,7 +954,9 @@ export function OverviewPanel({
                           onClick={() => activate(c)}
                           className="flex w-full items-center gap-3 border-t border-[#f4f2ef] px-4 py-3 text-left first:border-t-0 hover:bg-[#faf9f7]"
                         >
-                          <span className="flex-1 text-[13px] font-semibold">{c.label}</span>
+                          <span className="flex-1 text-[13px] font-semibold">
+                            {enLabel(c.label)}
+                          </span>
                           <span className="w-[70px] text-right text-[12.5px] tabular-nums text-stone-500">
                             {fmt(c.visits)}
                           </span>
@@ -987,7 +985,7 @@ export function OverviewPanel({
                 {KIND_BY_DEPTH[sel.depth - 1] ?? "Segment"}
               </div>
               <div className="mt-1 font-heading text-[25px] font-bold tracking-tight">
-                {sel.label}
+                {enLabel(sel.label)}
               </div>
               <div className="mt-1.5 text-[13px] text-stone-500">
                 {sel.adequate
@@ -1037,7 +1035,7 @@ export function OverviewPanel({
               <div className="mt-6">
                 <div className="mb-2.5 flex items-baseline gap-2">
                   <div className="font-heading text-sm font-semibold">Variants</div>
-                  <div className="text-[11.5px] text-stone-400">in {sel.label}</div>
+                  <div className="text-[11.5px] text-stone-400">in {enLabel(sel.label)}</div>
                 </div>
                 {selScoped.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-stone-200 px-[18px] py-5 text-[13px] text-stone-400">
@@ -1095,17 +1093,20 @@ export function OverviewPanel({
                             >
                               {v.status === "winner" ? "winner · 100%" : v.status}
                             </span>
-                            {v.status === "verified" && (
+                            {/* EN primär åtgärd per rad (design v3):
+                                verified → Start A/B; rekommenderad vinnare →
+                                Make winner; annars Compare. Resten bor i ···. */}
+                            {v.status === "verified" ? (
                               <button
                                 type="button"
                                 disabled={status.isPending}
-                                onClick={() => askStatus(v, "serving", "Aktivera A/B-test")}
+                                onClick={() => askStatus(v, "serving", "Start the A/B test")}
                                 className="flex-none rounded-lg border border-stone-300 bg-white px-[13px] py-1.5 text-[12.5px] font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-50"
                               >
                                 Start A/B
                               </button>
-                            )}
-                            {v.status === "serving" && v.abTest?.outcome === "recommend_winner" && (
+                            ) : v.status === "serving" &&
+                              v.abTest?.outcome === "recommend_winner" ? (
                               <button
                                 type="button"
                                 disabled={status.isPending}
@@ -1113,41 +1114,82 @@ export function OverviewPanel({
                                   askStatus(
                                     v,
                                     "winner",
-                                    "Gör till vinnare — serveras till 100 % av segmentet och mätningen för varianten avslutas",
+                                    "Make winner — serves 100% of the segment and ends the measurement",
                                   )
                                 }
                                 className="flex-none rounded-lg bg-emerald-700 px-[13px] py-1.5 text-[12.5px] font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
                               >
                                 Make winner
                               </button>
-                            )}
-                            {(v.status === "serving" || v.status === "winner") && (
+                            ) : (
                               <button
                                 type="button"
-                                disabled={status.isPending}
-                                onClick={() =>
-                                  askStatus(
-                                    v,
-                                    "retired",
-                                    "Stoppa varianten (kontrollen återtar 100 %)",
-                                  )
-                                }
-                                className="flex-none text-[12px] text-red-600 underline decoration-red-300 underline-offset-2 hover:decoration-red-600 disabled:opacity-50"
+                                onClick={() => setCompareId(compareId === v.id ? null : v.id)}
+                                className="flex-none rounded-lg border border-stone-200 bg-white px-[13px] py-1.5 text-[12.5px] font-semibold text-stone-600 hover:bg-stone-50"
                               >
-                                stop
+                                {compareId === v.id ? "Hide" : "Compare"}
                               </button>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => setLiveId(liveId === v.id ? null : v.id)}
-                              className="flex-none font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
-                            >
-                              {liveId === v.id ? "hide" : "see live"}
-                            </button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  title="More actions"
+                                  className="flex-none px-1 text-[16px] leading-none text-stone-400 hover:text-stone-600"
+                                >
+                                  ···
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onSelect={() => setCompareId(compareId === v.id ? null : v.id)}
+                                >
+                                  {compareId === v.id ? "Hide comparison" : "Compare"}
+                                </DropdownMenuItem>
+                                {v.status === "verified" && (
+                                  <DropdownMenuItem
+                                    disabled={status.isPending}
+                                    onSelect={() => askStatus(v, "serving", "Start the A/B test")}
+                                  >
+                                    Start A/B
+                                  </DropdownMenuItem>
+                                )}
+                                {v.status === "serving" &&
+                                  v.abTest?.outcome === "recommend_winner" && (
+                                    <DropdownMenuItem
+                                      disabled={status.isPending}
+                                      onSelect={() =>
+                                        askStatus(
+                                          v,
+                                          "winner",
+                                          "Make winner — serves 100% of the segment and ends the measurement",
+                                        )
+                                      }
+                                    >
+                                      Make winner
+                                    </DropdownMenuItem>
+                                  )}
+                                {(v.status === "serving" || v.status === "winner") && (
+                                  <DropdownMenuItem
+                                    disabled={status.isPending}
+                                    className="text-red-600"
+                                    onSelect={() =>
+                                      askStatus(
+                                        v,
+                                        "retired",
+                                        "Stop the variant (control takes back 100%)",
+                                      )
+                                    }
+                                  >
+                                    Stop variant
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                          {liveId === v.id && (
+                          {compareId === v.id && (
                             <div className="px-4 pb-4">
-                              <VariantLivePanel site={site} v={v} />
+                              <VariantComparePanel site={site} v={v} />
                             </div>
                           )}
                         </div>

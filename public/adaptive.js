@@ -40,10 +40,12 @@
   // test-harness sätter __ANGEL_HARNESS__ uttryckligen före boot och släpps
   // förbi. CUBOT är ett telefonmärke — inte en bot. Serversidan filtrerar
   // dessutom auktoritativt på User-Agent (src/adaptive/bot.ts).
-  var UA_STR = (navigator.userAgent || "");
+  var UA_STR = navigator.userAgent || "";
   var LOOKS_BOT =
     navigator.webdriver === true ||
-    (/bot|crawl|spider|slurp|headless|lighthouse|prerender|phantomjs|puppeteer|playwright|selenium/i.test(UA_STR) &&
+    (/bot|crawl|spider|slurp|headless|lighthouse|prerender|phantomjs|puppeteer|playwright|selenium/i.test(
+      UA_STR,
+    ) &&
       !/cubot/i.test(UA_STR));
   if (LOOKS_BOT && !window.__ANGEL_HARNESS__) return;
 
@@ -267,7 +269,9 @@
       u.hash = "";
       return u.origin + u.pathname + (u.search || "");
     } catch (e) {
-      return String(raw || "").split("?")[0].split("#")[0];
+      return String(raw || "")
+        .split("?")[0]
+        .split("#")[0];
     }
   }
   function safePath() {
@@ -430,7 +434,11 @@
               // resolveNodes guards its querySelectorAll).
               var selectorHit = false;
               try {
-                selectorHit = !!(CONVERSION_SELECTOR && t.matches && t.matches(CONVERSION_SELECTOR));
+                selectorHit = !!(
+                  CONVERSION_SELECTOR &&
+                  t.matches &&
+                  t.matches(CONVERSION_SELECTOR)
+                );
               } catch (err) {
                 selectorHit = false;
               }
@@ -470,12 +478,18 @@
   // sker via @media-block i ensureStyles så webbläsaren applicerar per besökare
   // utan JS.
   function prefersReducedMotion() {
-    try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }
-    catch (e) { return false; }
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) {
+      return false;
+    }
   }
   function prefersDark() {
-    try { return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches); }
-    catch (e) { return false; }
+    try {
+      return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    } catch (e) {
+      return false;
+    }
   }
 
   function ensureStyles() {
@@ -498,14 +512,14 @@
       // (aldrig ringen — den är palett-neutral). Browsern applicerar per
       // besökare; noll JS, noll extra data.
       "@media (prefers-color-scheme:dark){" +
-        ".angel-badge{background:#2e1065;color:#ddd6fe;border-color:#5b21b6}" +
-        ".angel-sticky-cta{background:#f8fafc;color:#0f172a;box-shadow:0 8px 24px rgba(0,0,0,.6)}" +
+      ".angel-badge{background:#2e1065;color:#ddd6fe;border-color:#5b21b6}" +
+      ".angel-sticky-cta{background:#f8fafc;color:#0f172a;box-shadow:0 8px 24px rgba(0,0,0,.6)}" +
       "}" +
       // Skönhetsgrind — reduced-motion: ingen övergång/puls för besökare som
       // bett om mindre rörelse. Ringen visas fortfarande, bara utan animation.
       "@media (prefers-reduced-motion:reduce){" +
-        ".angel-emphasized{transition:none}" +
-        ".angel-debug-touched{animation:none}" +
+      ".angel-emphasized{transition:none}" +
+      ".angel-debug-touched{animation:none}" +
       "}" +
       // Debug-only (?angel_debug=1): make what Angel touched IMPOSSIBLE to miss —
       // a pulsing ring plus a floating label chip per touched element.
@@ -542,7 +556,9 @@
   // selector matches, behavior is exactly as before.
   function resolveNodes(a) {
     var nodes = [];
-    try { if (a.target) nodes = document.querySelectorAll(a.target); } catch (e) {}
+    try {
+      if (a.target) nodes = document.querySelectorAll(a.target);
+    } catch (e) {}
     if (nodes.length) return nodes;
     if (a.slot) {
       try {
@@ -692,7 +708,10 @@
       var nodes = resolveNodes(a);
       var el = null;
       for (var i = 0; i < nodes.length; i++) {
-        if (!isNoTouch(nodes[i])) { el = nodes[i]; break; }
+        if (!isNoTouch(nodes[i])) {
+          el = nodes[i];
+          break;
+        }
       }
       if (!el) return false;
       el.classList.add("angel-emphasized");
@@ -934,7 +953,10 @@
       var nodes = resolveNodes({ target: a.target, anchorText: a.anchorText });
       var goalEl = null;
       for (var i = 0; i < nodes.length; i++) {
-        if (!isNoTouch(nodes[i])) { goalEl = nodes[i]; break; }
+        if (!isNoTouch(nodes[i])) {
+          goalEl = nodes[i];
+          break;
+        }
       }
       if (!goalEl) return;
       var parent = goalEl.parentElement;
@@ -965,7 +987,10 @@
       var nodes = resolveNodes({ target: a.target, anchorText: a.anchorText });
       var el = null;
       for (var i = 0; i < nodes.length; i++) {
-        if (!isNoTouch(nodes[i])) { el = nodes[i]; break; }
+        if (!isNoTouch(nodes[i])) {
+          el = nodes[i];
+          break;
+        }
       }
       if (!el) return;
       var anchor = el.parentElement || el;
@@ -974,7 +999,7 @@
       // hydration re-apply from duplicating a badge that survived.
       if (touchesLcp(anchor)) return;
       try {
-        if (anchor.querySelector('[data-angel-injected]')) return;
+        if (anchor.querySelector("[data-angel-injected]")) return;
       } catch (e) {}
       var badge = document.createElement("span");
       badge.className = "angel-badge";
@@ -1093,7 +1118,10 @@
       var r0 = resolved[a];
       if (r0.op === "move_up") {
         var prev = r0.sec.previousElementSibling;
-        if (!prev || prev.parentElement !== r0.sec.parentElement) { ok = false; break; }
+        if (!prev || prev.parentElement !== r0.sec.parentElement) {
+          ok = false;
+          break;
+        }
         var next = r0.sec.nextSibling;
         r0.sec.parentElement.insertBefore(r0.sec, prev);
         r0.sec.setAttribute("data-angel-moved", "");
@@ -1105,13 +1133,14 @@
             };
           })(r0.sec, next),
         );
-        touchedEls.push({ el: r0.sec, pattern: "variant" });
+        touchedEls.push({ el: r0.sec, pattern: "variant_moved" });
       } else {
         // Ångra via innerHTML, inte textContent: en rubrik kan bära egen markup
         // (spans/radbrytningar) som textContent-skrivningen ersätter — reset
         // måste ge tillbaka sidan BYTE-exakt, inte bara samma text.
         var prevHtml = r0.el.innerHTML;
-        if ((r0.el.textContent || "").trim() !== String(r0.value).trim()) r0.el.textContent = r0.value;
+        if ((r0.el.textContent || "").trim() !== String(r0.value).trim())
+          r0.el.textContent = r0.value;
         // Markören håller skörde-spärren + hydrerings-kollen seende: variant-
         // text får ALDRIG skördas som sidans egen baslinje (feedback-loopen).
         r0.el.setAttribute("data-angel-retext", "");
@@ -1123,12 +1152,14 @@
             };
           })(r0.el, prevHtml),
         );
-        touchedEls.push({ el: r0.el, pattern: "variant" });
+        touchedEls.push({ el: r0.el, pattern: "variant_retext" });
       }
     }
     if (!ok) {
       for (var u = undos.length - 1; u >= 0; u--) {
-        try { undos[u](); } catch (e) {}
+        try {
+          undos[u]();
+        } catch (e) {}
       }
       return false;
     }
@@ -1169,12 +1200,15 @@
   }
 
   var DEBUG_LABEL = {
-    emphasize_goal: "lyfte fram målknappen",
-    sticky_goal_cta: "la till sticky-genväg",
-    show_secondary_cta: "la till mjukare alternativ",
-    clarify_cta: "bytte knapptext",
-    shorten_hero: "kortade hjälten",
-    show_trust_badge: "visade förtroendemärke",
+    emphasize_goal: "emphasized the goal button",
+    sticky_goal_cta: "added a sticky shortcut",
+    show_secondary_cta: "added a softer path",
+    clarify_cta: "rewrote the button text",
+    shorten_hero: "tightened the hero",
+    show_trust_badge: "surfaced a trust badge",
+    // Variant-ops (Compare-vyn): taggen ska säga VAD som hände per element.
+    variant_moved: "moved up",
+    variant_retext: "rewrote this text",
   };
   function markTouched() {
     // Old tags from a previous apply (hydration re-run) are stale — clear them.
@@ -1334,8 +1368,8 @@
       perfSent = true;
       var p = {};
       try {
-        var nav = (performance.getEntriesByType &&
-          performance.getEntriesByType("navigation")[0]) || null;
+        var nav =
+          (performance.getEntriesByType && performance.getEntriesByType("navigation")[0]) || null;
         if (nav) {
           p.ttfb = Math.round(nav.responseStart || 0);
           p.domContentLoaded = Math.round(nav.domContentLoadedEventEnd || 0);
@@ -1367,7 +1401,14 @@
     // Efter load; om load redan skett, skjut till nästa tick så LCP/CLS-
     // observers hunnit rapportera buffrade poster.
     if (document.readyState === "complete") setTimeout(emit, 1200);
-    else window.addEventListener("load", function () { setTimeout(emit, 1200); }, { once: true });
+    else
+      window.addEventListener(
+        "load",
+        function () {
+          setTimeout(emit, 1200);
+        },
+        { once: true },
+      );
   }
 
   // ---- journey intelligence (klickordning, form-lifecycle, tid + exit) -----
@@ -1431,8 +1472,13 @@
         return "search";
       var inputs = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"])');
       if (inputs.length === 1) {
-        var h = ((inputs[0].getAttribute("type") || "") + " " + (inputs[0].getAttribute("name") || "") +
-          " " + (inputs[0].getAttribute("autocomplete") || "")).toLowerCase();
+        var h = (
+          (inputs[0].getAttribute("type") || "") +
+          " " +
+          (inputs[0].getAttribute("name") || "") +
+          " " +
+          (inputs[0].getAttribute("autocomplete") || "")
+        ).toLowerCase();
         if (/email|e-?post|newsletter|nyhetsbrev/.test(h)) return "newsletter";
       }
       return "other";
@@ -1487,7 +1533,10 @@
             );
             xPct = Math.max(
               0,
-              Math.min(100, Math.round(((e.clientX || 0) / Math.max(1, window.innerWidth || 1)) * 100)),
+              Math.min(
+                100,
+                Math.round(((e.clientX || 0) / Math.max(1, window.innerWidth || 1)) * 100),
+              ),
             );
             yPct = Math.max(
               0,
@@ -1504,7 +1553,11 @@
             if (rageCount >= RAGE_MIN && !rageFired && rageEmitted < RAGE_CAP) {
               rageFired = true;
               rageEmitted++;
-              track("rage_click", { ref: ref, count: rageCount, path: safePath(), x: xPct, y: yPct }, decisionId);
+              track(
+                "rage_click",
+                { ref: ref, count: rageCount, path: safePath(), x: xPct, y: yPct },
+                decisionId,
+              );
             }
           } else {
             rageRef = ref;
@@ -1514,7 +1567,18 @@
           }
           if (clickSeq >= CLICK_CAP) return;
           clickSeq++;
-          track("element_click", { seq: clickSeq, ref: ref, tag: (el.tagName || "").toLowerCase(), path: safePath(), x: xPct, y: yPct }, decisionId);
+          track(
+            "element_click",
+            {
+              seq: clickSeq,
+              ref: ref,
+              tag: (el.tagName || "").toLowerCase(),
+              path: safePath(),
+              x: xPct,
+              y: yPct,
+            },
+            decisionId,
+          );
         } catch (err) {
           /* aldrig bryta sidan */
         }
@@ -1547,7 +1611,11 @@
           if (!form || isNoTouch(form)) return;
           var ref = formRef(form);
           submitted[ref] = true;
-          track("form_submit", { ref: ref, kind: started[ref] || formKind(form), path: safePath() }, decisionId);
+          track(
+            "form_submit",
+            { ref: ref, kind: started[ref] || formKind(form), path: safePath() },
+            decisionId,
+          );
         } catch (err) {}
       },
       true,

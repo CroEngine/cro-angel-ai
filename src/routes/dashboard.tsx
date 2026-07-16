@@ -7,14 +7,13 @@
 // aggregated by src/lib/dashboard. When the DB is unavailable the dashboard
 // renders a clean empty state.
 
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, TrendingUp, ShieldCheck, Shield } from "lucide-react";
+import { Sparkles, ShieldCheck, Shield } from "lucide-react";
 
-import { AppNav } from "@/components/app-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,14 +21,6 @@ import { OverviewPanel } from "@/components/overview-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -37,15 +28,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   confirmGoal,
   createSite,
   startCheckout,
   openBillingPortal,
   getDashboard,
-  getVisitorTimeline,
   rotateIngestKey,
   setConsentMode,
   setServingEnabled,
@@ -53,13 +49,11 @@ import {
   type ConsentMode,
   type DashboardResponse,
   type SiteConfigView,
-  type TimelineEvent,
   type VariantView,
 } from "@/lib/dashboard/dashboard.functions";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
 import { RECENT_WINDOW_DAYS } from "@/lib/dashboard/aggregate";
-import type { VisitorSummary, InventoryGroup } from "@/lib/dashboard/aggregate";
-import type { Json } from "@/integrations/supabase/types";
+import type { InventoryGroup } from "@/lib/dashboard/aggregate";
 
 const dashboardQuery = (site: string) => {
   // Buckets read as the owner's local wall-clock, not UTC. Part of the key so a
@@ -93,8 +87,17 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [site, setSite] = useState("hubspot");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const { data, isFetching } = useQuery(dashboardQuery(site));
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    navigate({ to: "/login" });
+  }
 
   // If the selected site isn't in the list (the seed is just a fallback),
   // fall over to the first real site so the picker never shows a ghost.
@@ -114,43 +117,95 @@ function Dashboard() {
   const installed =
     d.metrics.timeseries.daily.some((p) => p.visits > 0) || d.metrics.overview.pageviews > 0;
 
+  const cur = d.sites.find((s) => s.slug === site);
+  const siteLabel = cur?.domain ?? cur?.name ?? site;
+
   return (
     <div className="min-h-screen bg-[#fafaf9] text-stone-900">
-      {/* Delade app-naven (design-handoffen): wordmark + flikar till vänster,
-          sidans kontroller (sajtväljare, inställningar, konto) som children. */}
-      <AppNav active="/dashboard" isAdmin={d.isAdmin}>
-        {isFetching && (
-          <span className="animate-pulse font-mono text-[11px] tracking-wider text-stone-400">
-            updating…
-          </span>
-        )}
-        {d.sites.length > 0 && (
-          <Select value={site} onValueChange={setSite}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Select site" />
-            </SelectTrigger>
-            <SelectContent>
-              {d.sites.map((s) => (
-                <SelectItem key={s.slug} value={s.slug}>
-                  {s.name ?? s.slug}
-                  {s.domain ? ` (${s.domain})` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        <AddSiteControl onCreated={(slug) => setSite(slug)} />
+      <main className="mx-auto max-w-6xl space-y-6 px-6 pb-16 pt-7">
+        {/* Kontroll-raden (Dashboard-1B v3): ingen produktbranding inne i
+            dashboarden — mono-etiketten till vänster, TVÅ kontroller till
+            höger: Account & settings (inkl. site settings + admin-sandbox)
+            och sajtmenyn (byt sajt, Add site, Sign out). */}
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="font-mono text-[10.5px] uppercase tracking-[.14em] text-stone-400">
+            Adaptive layer · last {RECENT_WINDOW_DAYS} days
+            {isFetching && <span className="ml-2 animate-pulse">updating…</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-9 items-center gap-1.5 rounded-[10px] border border-stone-200 bg-white px-3.5 text-[13px] text-stone-600 hover:bg-stone-50"
+                >
+                  Account &amp; settings <span className="text-[10px] text-stone-400">▾</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {d.sites.length > 0 && (
+                  <DropdownMenuItem
+                    disabled={!d.dbAvailable}
+                    onSelect={() => setSettingsOpen(true)}
+                  >
+                    Site settings…
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={() => setAccountOpen(true)}>Account…</DropdownMenuItem>
+                {d.isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <a href="/sandbox">Sandbox</a>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-9 items-center gap-1.5 rounded-[10px] border border-stone-200 bg-white px-3.5 text-[13px] font-semibold text-stone-800 hover:bg-stone-50"
+                >
+                  {d.sites.length > 0 ? siteLabel : "No site yet"}{" "}
+                  <span className="text-[10px] font-normal text-stone-400">▾</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {d.sites.map((s) => (
+                  <DropdownMenuItem key={s.slug} onSelect={() => setSite(s.slug)}>
+                    {s.name ?? s.slug}
+                    {s.domain ? ` (${s.domain})` : ""}
+                    {s.slug === site ? " ✓" : ""}
+                  </DropdownMenuItem>
+                ))}
+                {d.sites.length > 0 && <DropdownMenuSeparator />}
+                <DropdownMenuItem onSelect={() => setAddOpen(true)}>Add site…</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={signOut}>Sign out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        {/* Menyernas dialoger — kontrollerade, utan egna triggers. */}
         {d.sites.length > 0 && (
           <SettingsControl
             site={site}
             config={d.siteConfig}
             inventory={d.metrics.inventory}
             disabled={!d.dbAvailable}
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
           />
         )}
-        <AccountControl />
-      </AppNav>
-      <main className="mx-auto max-w-6xl space-y-6 px-6 pb-16 pt-7">
+        <AccountControl open={accountOpen} onOpenChange={setAccountOpen} />
+        <AddSiteControl
+          onCreated={(slug) => setSite(slug)}
+          open={addOpen}
+          onOpenChange={setAddOpen}
+        />
         {d.sites.length === 0 ? (
           <Card className="border-stone-200 shadow-none">
             <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
@@ -160,70 +215,53 @@ function Dashboard() {
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Add your first site</h2>
                 <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-                  Give your site a short id. You&apos;ll get an install snippet to paste once —
-                  then this dashboard fills with its adaptations and measured lift.
+                  Give your site a short id. You&apos;ll get an install snippet to paste once — then
+                  this dashboard fills with its adaptations and measured lift.
                 </p>
               </div>
-              <AddSiteControl onCreated={(slug) => setSite(slug)} primary />
+              <Button onClick={() => setAddOpen(true)}>Add site</Button>
             </CardContent>
           </Card>
         ) : (
           <>
-        {/* Onboarding only: once the snippet reports traffic the install card
+            {/* Onboarding only: once the snippet reports traffic the install card
             retires to Settings and the dashboard is just the product. Hidden
             when the store is unreachable — "no data" isn't "not installed",
             and the fallback config would render the wrong (keyless) tag. */}
-        {d.dbAvailable && !installed && (
-          <InstallCard site={site} ingestKey={d.siteConfig.ingestKey} domain={d.siteConfig.domain} />
-        )}
-
-        <BillingCard status={d.siteConfig.billingStatus} />
-
-        {/* Mål-kortet drar sig tillbaka till Settings när målet är bekräftat
-            och mätningen rullar — det syns bara när det behöver ägaren. */}
-        {(d.siteConfig.conversionSource !== "owner" ||
-          d.siteConfig.consentMode !== "attested") && (
-          <MeasurementControl
-            site={site}
-            config={d.siteConfig}
-            ctas={(d.metrics.inventory.find((g) => g.slot === "cta")?.items ?? []).filter(
-              (i) => i.text && i.selector,
+            {d.dbAvailable && !installed && (
+              <InstallCard
+                site={site}
+                ingestKey={d.siteConfig.ingestKey}
+                domain={d.siteConfig.domain}
+              />
             )}
-          />
-        )}
 
-        {!d.dbAvailable && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            No analytics store reached — showing an empty state. Events populate once the snippet
-            runs and the server has <code>SUPABASE_SERVICE_ROLE_KEY</code> set (Netlify →
-            Environment variables).
-          </div>
-        )}
+            <BillingCard status={d.siteConfig.billingStatus} />
 
-        <Tabs defaultValue="overview">
-          {/* Två flikar, en ägarfråga var: Hur går det? Vem var här?
-              "Vad funkar" bor i Varianter-kortet (A/B per segment) — den gamla
-              mönster-attributionen togs bort som brus under observe-first. */}
-          <TabsList className="flex flex-wrap">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="visitors">Visitors</TabsTrigger>
-          </TabsList>
+            {/* Mål-kortet drar sig tillbaka till Settings när målet är bekräftat
+            och mätningen rullar — det syns bara när det behöver ägaren. */}
+            {(d.siteConfig.conversionSource !== "owner" ||
+              d.siteConfig.consentMode !== "attested") && (
+              <MeasurementControl
+                site={site}
+                config={d.siteConfig}
+                ctas={(d.metrics.inventory.find((g) => g.slot === "cta")?.items ?? []).filter(
+                  (i) => i.text && i.selector,
+                )}
+              />
+            )}
 
-          {/* ---- Overview ---- */}
-          <TabsContent value="overview" className="mt-4 space-y-4">
-            {/* 1B-layouten ur design-handoffen: sidtitel → svarskort + KPI:er →
-                källutforskaren (ersätter gamla KPI-raden, segmenttabellen,
-                resetabellen och rage-tabellen — samma data, kurerad). */}
-            <div>
-              <h2 className="font-heading text-[23px] font-bold tracking-tight">Overview</h2>
-              <div className="mt-1 font-mono text-[10.5px] uppercase tracking-[.14em] text-stone-400">
-                Adaptive layer · last {RECENT_WINDOW_DAYS} days
+            {!d.dbAvailable && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                No analytics store reached — showing an empty state. Events populate once the
+                snippet runs and the server has <code>SUPABASE_SERVICE_ROLE_KEY</code> set (Netlify
+                → Environment variables).
               </div>
-            </div>
-            {/* Dashboard-1B v2: hela Overview-berättelsen bor i panelen —
-                trafikgrafen, observe-kortet, varianter-kortet och bevis-kortet
-                utgick (ägarbeslut: designbundlen är hela vyn; serving-toggeln
-                + rampen flyttade till Settings). */}
+            )}
+
+            {/* Dashboard-1B v3: EN vy — hela berättelsen bor i panelen. Visitors-
+            taben utgick (ersatt av källutforskaren + Journeys & signals);
+            kontroll-raden ovanför bär perioden, så ingen sidtitel behövs. */}
             <OverviewPanel
               site={d.site}
               overview={d.metrics.overview}
@@ -234,23 +272,6 @@ function Dashboard() {
               variants={d.variants ?? []}
               servingOn={d.siteConfig.servingEnabled}
             />
-
-          </TabsContent>
-
-          {/* ---- Visitors (identified) ---- */}
-          <TabsContent value="visitors" className="mt-4">
-            {/* key: switching sites resets the selected-visitor dialog state */}
-            <VisitorsPanel
-              key={site}
-              site={site}
-              domain={d.sites.find((s) => s.slug === site)?.domain ?? null}
-              visitors={d.metrics.visitors}
-              variantLabels={new Map((d.variants ?? []).map((v) => [v.id, v.segmentKey]))}
-            />
-          </TabsContent>
-
-
-        </Tabs>
           </>
         )}
       </main>
@@ -277,20 +298,19 @@ function SettingsControl({
   config,
   inventory,
   disabled,
+  open,
+  onOpenChange,
 }: {
   site: string;
   config: SiteConfigView;
   inventory: InventoryGroup[];
   disabled: boolean;
+  /* Styrs av Account & settings-menyn — dialogen har ingen egen trigger. */
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          Settings
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -299,9 +319,7 @@ function SettingsControl({
             </span>
             {site}
           </DialogTitle>
-          <DialogDescription>
-            Install tag, security and data terms for this site.
-          </DialogDescription>
+          <DialogDescription>Install tag, security and data terms for this site.</DialogDescription>
         </DialogHeader>
         {disabled ? (
           // The fallback config is a default, not this site's truth — showing
@@ -456,8 +474,7 @@ function InstallSection({ site, ingestKey }: { site: string; ingestKey: string |
         </form>
       )}
       <p className="text-xs text-muted-foreground">
-        Paste once on the site — it never needs updating. Changes you make here apply
-        automatically.
+        Paste once on the site — it never needs updating. Changes you make here apply automatically.
       </p>
     </section>
   );
@@ -494,11 +511,11 @@ function ServingSection({
       >
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium">
-            {servingOn ? "Varianter kan serveras" : "Servering AV — besökare ser originalsidan"}
+            {servingOn ? "Variants can serve" : "Serving is OFF — visitors see the original page"}
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Mastern för alla varianter på sajten. Varje variant kräver dessutom ditt eget
-            godkännande (Start A/B) innan den når någon besökare.
+            The master switch for every variant on this site. Each variant also needs your explicit
+            go-ahead (Start A/B) before it reaches any visitor.
           </p>
         </div>
         <Switch
@@ -508,7 +525,9 @@ function ServingSection({
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Ramp (andel av segmentet i testet):</span>
+        <span className="text-xs text-muted-foreground">
+          Ramp (share of the segment in the test):
+        </span>
         {([5, 10, 25, 50] as const).map((p) => (
           <button
             key={p}
@@ -521,7 +540,7 @@ function ServingSection({
                 : "border-stone-200 text-stone-600 hover:bg-stone-50"
             }`}
           >
-            {p} %
+            {p}%
           </button>
         ))}
       </div>
@@ -576,7 +595,9 @@ function ConsentSection({ site, mode }: { site: string; mode: ConsentMode }) {
         </div>
         <div className="flex items-center gap-2">
           {mutation.isPending && <span className="text-xs text-muted-foreground">saving…</span>}
-          {mutation.data?.ok === false && <span className="text-xs text-rose-600">save failed</span>}
+          {mutation.data?.ok === false && (
+            <span className="text-xs text-rose-600">save failed</span>
+          )}
           <Switch
             className="data-[state=checked]:bg-emerald-700"
             checked={on}
@@ -657,15 +678,21 @@ function ContentSection({ inventory }: { inventory: InventoryGroup[] }) {
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        What Angel found on your pages. Adaptations only ever reuse this published content —
-        nothing is invented.
+        What Angel found on your pages. Adaptations only ever reuse this published content — nothing
+        is invented.
       </p>
     </section>
   );
 }
 
-function AccountControl() {
-  const [open, setOpen] = useState(false);
+function AccountControl({
+  open,
+  onOpenChange,
+}: {
+  /* Styrs av Account & settings-menyn — dialogen har ingen egen trigger. */
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const [email, setEmail] = useState<string | null>(null);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -674,9 +701,11 @@ function AccountControl() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }: { data: { user: { email?: string } | null } }) =>
-      setEmail(data.user?.email ?? null),
-    );
+    supabase.auth
+      .getUser()
+      .then(({ data }: { data: { user: { email?: string } | null } }) =>
+        setEmail(data.user?.email ?? null),
+      );
   }, []);
 
   async function changePassword(e: React.FormEvent) {
@@ -702,17 +731,12 @@ function AccountControl() {
     setPw2("");
     setTimeout(() => {
       setDone(false);
-      setOpen(false);
+      onOpenChange(false);
     }, 1200);
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => (setOpen(o), setError(null), setDone(false))}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          Account
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={(o) => (onOpenChange(o), setError(null), setDone(false))}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -771,13 +795,15 @@ function AccountControl() {
 
 function AddSiteControl({
   onCreated,
-  primary,
+  open,
+  onOpenChange,
 }: {
   onCreated: (slug: string) => void;
-  primary?: boolean;
+  /* Styrs av sajtmenyn ("Add site…") — dialogen har ingen egen trigger. */
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
 }) {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [name, setName] = useState("");
@@ -802,7 +828,7 @@ function AddSiteControl({
       }
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       onCreated(res.slug!);
-      setOpen(false);
+      onOpenChange(false);
       setSlug("");
       setName("");
       setDomain("");
@@ -811,12 +837,7 @@ function AddSiteControl({
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant={primary ? "default" : "outline"}>
-          Add site
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add a site</DialogTitle>
@@ -915,14 +936,16 @@ function BillingCard({ status }: { status: string }) {
 
   const paused = status === "past_due" || status === "canceled";
   return (
-    <Card className={`shadow-none ${paused ? "border-amber-300 bg-amber-50/50" : "border-stone-200"}`}>
+    <Card
+      className={`shadow-none ${paused ? "border-amber-300 bg-amber-50/50" : "border-stone-200"}`}
+    >
       <CardContent className="flex flex-wrap items-center gap-3 py-4">
         <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ plan ]</span>
         {status === "none" && (
           <>
             <p className="text-sm text-foreground">
-              <strong>$399/month — first month free.</strong> Card required; cancel anytime.
-              Serving of approved variants starts with your subscription; observation is always on.
+              <strong>$399/month — first month free.</strong> Card required; cancel anytime. Serving
+              of approved variants starts with your subscription; observation is always on.
             </p>
             <Button
               size="sm"
@@ -939,7 +962,13 @@ function BillingCard({ status }: { status: string }) {
             <p className="text-sm text-foreground">
               Subscription <strong>{status === "trialing" ? "trial" : "active"}</strong>.
             </p>
-            <Button size="sm" variant="outline" disabled={busy} className="ml-auto" onClick={() => go(openBillingPortal)}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              className="ml-auto"
+              onClick={() => go(openBillingPortal)}
+            >
               Manage billing
             </Button>
           </>
@@ -950,7 +979,12 @@ function BillingCard({ status }: { status: string }) {
               <strong>Serving is paused</strong> — your visitors see the original page and your data
               is preserved. Resume your subscription to continue testing.
             </p>
-            <Button size="sm" disabled={busy} className="ml-auto bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => go(openBillingPortal)}>
+            <Button
+              size="sm"
+              disabled={busy}
+              className="ml-auto bg-emerald-700 text-white hover:bg-emerald-600"
+              onClick={() => go(openBillingPortal)}
+            >
               Resume
             </Button>
           </>
@@ -1076,79 +1110,79 @@ function GoalSection({
 
   return (
     <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="font-mono text-[11px] tracking-wider text-emerald-700">
-            [ conversion goal ]
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-mono text-[11px] tracking-wider text-emerald-700">
+          [ conversion goal ]
+        </span>
+        {config.businessType && (
+          <span className="font-mono text-[10px] tracking-wider text-stone-400">
+            detected: {config.businessType}
           </span>
-          {config.businessType && (
-            <span className="font-mono text-[10px] tracking-wider text-stone-400">
-              detected: {config.businessType}
-            </span>
-          )}
-          {confirmed ? (
-            <span className="text-sm text-stone-700">
-              Angel is working toward <strong>“{activeText}”</strong>, measured against a{" "}
-              {config.holdoutPct || 12}% control group.
-            </span>
-          ) : activeSelector ? (
-            <span className="text-sm text-stone-600">
-              Auto-detected goal <strong>“{activeText}”</strong> — confirm it (or pick another) to
-              lock it in.
-            </span>
-          ) : candidates.length > 0 ? (
-            <span className="text-sm text-stone-600">
-              Confirm your conversion goal to activate Angel — it won’t change or measure anything
-              until you do.
-            </span>
-          ) : (
-            <span className="text-sm text-stone-500">
-              Angel is learning your page — goal candidates appear here after the first visits.
-            </span>
-          )}
-          {paused && confirmed && (
-            <span className="font-mono text-[11px] tracking-wider text-amber-600">
-              · paused — turn on visitor information in Settings to measure
-            </span>
-          )}
-        </div>
-
-        {candidates.length > 0 && (
-          <ul className="space-y-1.5">
-            {candidates.map((c) => {
-              const isActive = c.selector === activeSelector;
-              return (
-                <li
-                  key={`${c.rank}-${c.selector}`}
-                  className="flex flex-wrap items-center gap-2 rounded-md border border-stone-100 bg-stone-50/60 px-2.5 py-1.5"
-                >
-                  <span className="font-mono text-[10px] tracking-wider text-stone-400">
-                    {c.rank === 1 ? "primary" : `#${c.rank}`}
-                  </span>
-                  <span className="text-sm text-stone-800">{c.text}</span>
-                  <span className="rounded-full border border-stone-200 bg-white px-2 py-0.5 font-mono text-[10px] tracking-wider text-stone-500">
-                    {GOAL_KIND_LABEL[c.kind] ?? c.kind}
-                  </span>
-                  {isActive && confirmed ? (
-                    <span className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700">
-                      · active
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={confirm.isPending}
-                      onClick={() =>
-                        confirm.mutate({ selector: c.selector, text: c.text, kind: c.kind })
-                      }
-                      className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700 disabled:opacity-50"
-                    >
-                      {isActive ? "confirm" : "set as goal"}
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
         )}
+        {confirmed ? (
+          <span className="text-sm text-stone-700">
+            Angel is working toward <strong>“{activeText}”</strong>, measured against a{" "}
+            {config.holdoutPct || 12}% control group.
+          </span>
+        ) : activeSelector ? (
+          <span className="text-sm text-stone-600">
+            Auto-detected goal <strong>“{activeText}”</strong> — confirm it (or pick another) to
+            lock it in.
+          </span>
+        ) : candidates.length > 0 ? (
+          <span className="text-sm text-stone-600">
+            Confirm your conversion goal to activate Angel — it won’t change or measure anything
+            until you do.
+          </span>
+        ) : (
+          <span className="text-sm text-stone-500">
+            Angel is learning your page — goal candidates appear here after the first visits.
+          </span>
+        )}
+        {paused && confirmed && (
+          <span className="font-mono text-[11px] tracking-wider text-amber-600">
+            · paused — turn on visitor information in Settings to measure
+          </span>
+        )}
+      </div>
+
+      {candidates.length > 0 && (
+        <ul className="space-y-1.5">
+          {candidates.map((c) => {
+            const isActive = c.selector === activeSelector;
+            return (
+              <li
+                key={`${c.rank}-${c.selector}`}
+                className="flex flex-wrap items-center gap-2 rounded-md border border-stone-100 bg-stone-50/60 px-2.5 py-1.5"
+              >
+                <span className="font-mono text-[10px] tracking-wider text-stone-400">
+                  {c.rank === 1 ? "primary" : `#${c.rank}`}
+                </span>
+                <span className="text-sm text-stone-800">{c.text}</span>
+                <span className="rounded-full border border-stone-200 bg-white px-2 py-0.5 font-mono text-[10px] tracking-wider text-stone-500">
+                  {GOAL_KIND_LABEL[c.kind] ?? c.kind}
+                </span>
+                {isActive && confirmed ? (
+                  <span className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700">
+                    · active
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={confirm.isPending}
+                    onClick={() =>
+                      confirm.mutate({ selector: c.selector, text: c.text, kind: c.kind })
+                    }
+                    className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700 disabled:opacity-50"
+                  >
+                    {isActive ? "confirm" : "set as goal"}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
       {confirm.isError && (
         <span className="font-mono text-[11px] tracking-wider text-amber-600">
           couldn’t save — try again
@@ -1156,442 +1190,4 @@ function GoalSection({
       )}
     </div>
   );
-}
-
-/** One concrete change from an exposure payload → a human sentence.
- *  "Emphasized 'Skapa konto'", "Renamed 'Läs mer' → 'Se priser'", … */
-function changeLine(c: Record<string, Json | undefined>): string {
-  const s = (v: Json | undefined) => (typeof v === "string" && v ? v : null);
-  const label = s(c.anchorText) ?? s(c.target) ?? "";
-  switch (s(c.op)) {
-    case "emphasize":
-      return `Emphasized “${label}”`;
-    case "set_text":
-      return s(c.anchorText)
-        ? `Renamed “${s(c.anchorText)}” → “${s(c.value) ?? ""}”`
-        : `Set text to “${s(c.value) ?? ""}”`;
-    case "inject_badge":
-      return `Added “${s(c.value) ?? ""}” next to “${label}”`;
-    case "inject_sticky":
-      return `Added a sticky “${s(c.value) ?? ""}” shortcut (mobile)`;
-    case "inject_secondary":
-      return `Added softer option “${s(c.value) ?? ""}” beside the goal`;
-    case "reveal":
-      return `Revealed “${label}”`;
-    case "move_up":
-      return `Moved “${label}” up the page`;
-    case "condense":
-      return `Condensed “${label}”`;
-    default:
-      return s(c.pattern) ?? "adaptation";
-  }
-}
-
-/** The concrete changes on an exposure event, one sentence each. Older events
- *  (before changes were persisted) fall back to bare pattern ids. */
-function changeLines(p: Record<string, Json | undefined>): string[] {
-  if (Array.isArray(p.changes) && p.changes.length > 0) {
-    return (p.changes as unknown[])
-      .filter((c): c is Record<string, Json | undefined> => !!c && typeof c === "object")
-      .map(changeLine);
-  }
-  return Array.isArray(p.patterns)
-    ? (p.patterns as unknown[]).filter((x): x is string => typeof x === "string")
-    : [];
-}
-
-/** "Open the page as this visitor saw it": the demo-override query params make
- *  the deterministic engine reproduce the same decision, and angel_debug=1
- *  outlines exactly what changed. Only exposure events carry the context. */
-function previewUrl(domain: string | null, p: Record<string, Json | undefined>): string | null {
-  if (!domain) return null;
-  const path = typeof p.path === "string" && p.path.startsWith("/") ? p.path : "/";
-  const params = new URLSearchParams({ angel_debug: "1" });
-  if (typeof p.trafficSource === "string" && p.trafficSource) params.set("angel_source", p.trafficSource);
-  if (typeof p.device === "string" && p.device) params.set("angel_device", p.device);
-  if (p.isReturning === true) params.set("angel_returning", "1");
-  return `https://${domain}${path}?${params.toString()}`;
-}
-
-/** Human lines for one timeline event; tone picks the dot colour. */
-function describeEvent(e: TimelineEvent): { label: string; details: string[]; dot: string } {
-  const p = e.payload;
-  switch (e.type) {
-    case "pageview": {
-      const bits = [p.trafficSource, p.device, p.browser, p.country]
-        .map((v) => (typeof v === "string" && v ? v : null))
-        .filter((v): v is string => !!v);
-      return { label: "Page view", details: bits.length ? [bits.join(" · ")] : [], dot: "bg-stone-400" };
-    }
-    case "adaptation_shown": {
-      const lines = changeLines(p);
-      return {
-        label: "Adaptations applied",
-        details: lines.length ? lines : ["(none this page)"],
-        dot: "bg-emerald-500",
-      };
-    }
-    case "adaptation_withheld":
-      return {
-        label: "Control group — adaptations withheld",
-        details: changeLines(p),
-        dot: "bg-amber-400",
-      };
-    case "cta_click":
-      return {
-        label: p.path === "assist" ? "Clicked goal via Angel shortcut" : "Clicked goal CTA",
-        details: [],
-        dot: "bg-emerald-600",
-      };
-    case "scroll_depth":
-      return {
-        label: `Scrolled ${typeof p.depth === "number" ? p.depth : "?"}% of the page`,
-        details: [],
-        dot: "bg-stone-300",
-      };
-    case "conversion":
-      // The server already strips owner-supplied conversion meta down to the
-      // numeric value; only that is shown.
-      return {
-        label: "Converted",
-        details: typeof p.value === "number" ? [`value ${p.value}`] : [],
-        dot: "bg-emerald-700",
-      };
-    default:
-      return { label: e.type, details: [], dot: "bg-stone-300" };
-  }
-}
-
-function ArmBadge({ arm }: { arm: VisitorSummary["arm"] }) {
-  if (!arm) return <span className="text-xs text-stone-400">—</span>;
-  if (arm === "control")
-    return (
-      <Badge variant="outline" className="font-mono text-[10px] tracking-wider text-amber-700">
-        control
-      </Badge>
-    );
-  return (
-    <Badge className="bg-emerald-50 font-mono text-[10px] tracking-wider text-emerald-800 hover:bg-emerald-50">
-      {arm}
-    </Badge>
-  );
-}
-
-function VisitorTimeline({
-  site,
-  domain,
-  visitor,
-  onPreview,
-}: {
-  site: string;
-  domain: string | null;
-  visitor: VisitorSummary;
-  onPreview: (p: { url: string; device: string; withheld: boolean }) => void;
-}) {
-  const { data, isPending } = useQuery({
-    queryKey: ["visitor-timeline", site, visitor.hash],
-    queryFn: () => getVisitorTimeline({ data: { site, visitorHash: visitor.hash } }),
-  });
-
-  if (isPending) {
-    return <p className="py-6 text-center text-sm text-stone-400">loading history…</p>;
-  }
-  if (!data?.ok) {
-    return <p className="py-6 text-center text-sm text-rose-600">Couldn&apos;t load this visitor.</p>;
-  }
-  return (
-    <ol className="max-h-[55vh] space-y-0 overflow-y-auto pr-1">
-      {data.events.map((e) => {
-        const { label, details, dot } = describeEvent(e);
-        const isExposure = e.type === "adaptation_shown" || e.type === "adaptation_withheld";
-        const url = isExposure ? previewUrl(domain, e.payload) : null;
-        return (
-          <li key={e.id} className="relative flex gap-3 pb-4 pl-1 last:pb-0">
-            <span className="relative flex flex-col items-center">
-              <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} />
-              <span className="mt-1 w-px flex-1 bg-stone-200" />
-            </span>
-            <div className="min-w-0 flex-1 pb-1">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                <span className="text-sm font-medium text-stone-800">{label}</span>
-                <span className="font-mono text-[10px] tracking-wider text-stone-400">
-                  {new Date(e.createdAt).toLocaleString()}
-                </span>
-                {url && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onPreview({
-                        url,
-                        device:
-                          typeof e.payload.device === "string" ? e.payload.device : "desktop",
-                        withheld: e.type === "adaptation_withheld",
-                      })
-                    }
-                    className="font-mono text-[10px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
-                  >
-                    {e.type === "adaptation_withheld"
-                      ? "see what was withheld ↗"
-                      : "see it as this visitor ↗"}
-                  </button>
-                )}
-              </div>
-              {details.map((d, i) => (
-                <p key={i} className="mt-0.5 text-xs text-stone-500">
-                  {d}
-                </p>
-              ))}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-/** Device-true preview: the iframe's own CSS width IS its layout viewport, so
- *  a 1440px frame renders the site's desktop layout even on a phone (and a
- *  375px frame renders mobile on a desktop), scaled to fit the dialog. */
-function DevicePreview({
-  url,
-  device,
-  withheld,
-  onBack,
-}: {
-  url: string;
-  device: string;
-  withheld: boolean;
-  onBack: () => void;
-}) {
-  const frameW = device === "mobile" ? 375 : device === "tablet" ? 800 : 1440;
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(0.3);
-
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const update = () => setScale(Math.min(1, el.clientWidth / frameW));
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [frameW]);
-
-  const wrapH = Math.round(
-    typeof window !== "undefined" ? Math.min(560, window.innerHeight * 0.6) : 480,
-  );
-
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="ghost" className="text-stone-500" onClick={onBack}>
-          ← Back
-        </Button>
-        <span className="font-mono text-[11px] tracking-wider text-stone-400">
-          [ {device} view {withheld ? "· what the control visitor was denied" : "· changes ringed in green"} ]
-        </span>
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
-        >
-          open in new tab ↗
-        </a>
-      </div>
-      <div
-        ref={wrapRef}
-        className="overflow-hidden rounded-md border border-stone-200 bg-white"
-        style={{ height: wrapH }}
-      >
-        <iframe
-          src={url}
-          title="Visitor preview"
-          sandbox="allow-scripts allow-same-origin"
-          style={{
-            width: frameW,
-            height: Math.round(wrapH / scale),
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
-            border: "0",
-          }}
-        />
-      </div>
-      <p className="font-mono text-[10px] tracking-wide text-stone-400">
-        SOME SITES BLOCK EMBEDDING — IF THE FRAME STAYS BLANK, USE “OPEN IN NEW TAB”
-      </p>
-    </div>
-  );
-}
-
-/** Ett mönster-id som ägaren kan läsa: "variant:<uuid>" blir "variant · <segment>"
- *  (eller kort-id om varianten inte längre finns i listan). */
-function patternDisplay(pattern: string, variantLabels?: Map<string, string>): string {
-  if (pattern.startsWith("variant:")) {
-    const id = pattern.slice("variant:".length);
-    const seg = variantLabels?.get(id);
-    return seg ? `variant · ${seg}` : `variant · ${id.slice(0, 8)}…`;
-  }
-  return pattern;
-}
-
-function VisitorsPanel({
-  site,
-  domain,
-  visitors,
-  variantLabels,
-}: {
-  site: string;
-  domain: string | null;
-  visitors: VisitorSummary[];
-  variantLabels?: Map<string, string>;
-}) {
-  const [selected, setSelected] = useState<VisitorSummary | null>(null);
-  const [preview, setPreview] = useState<{ url: string; device: string; withheld: boolean } | null>(
-    null,
-  );
-
-  return (
-    <Card className="border-stone-200 shadow-none">
-      <CardHeader>
-        <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-          <span className="font-mono text-[11px] tracking-wider text-emerald-700">
-            [ visitors ]
-          </span>
-          Identified visitors
-          <span className="text-xs font-normal text-muted-foreground">
-            — consented visitors with a visitor id. Anonymous visitors are unlinkable by design.
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {visitors.length === 0 ? (
-          <Empty>
-            No identified visitors yet — they appear once visitor information is on and the
-            snippet runs.
-          </Empty>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="py-2 pr-3 font-medium">Visitor</th>
-                  <th className="py-2 pr-3 font-medium">Last seen</th>
-                  <th className="py-2 pr-3 font-medium">Context</th>
-                  <th className="py-2 pr-3 text-right font-medium">Pages</th>
-                  <th className="py-2 pr-3 text-right font-medium">Scroll</th>
-                  <th className="py-2 pr-3 font-medium">Arm</th>
-                  <th className="py-2 text-right font-medium">Converted</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visitors.map((v) => (
-                  <tr
-                    key={v.hash}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Open activity for visitor ${v.hash.slice(0, 8)}`}
-                    onClick={() => setSelected(v)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setSelected(v);
-                      }
-                    }}
-                    className="cursor-pointer border-b border-border/60 transition hover:bg-stone-50 focus-visible:bg-stone-50 focus-visible:outline-none"
-                  >
-                    <td className="py-2 pr-3">
-                      <span className="font-mono text-[12px] text-emerald-800">
-                        {v.hash.slice(0, 8)}…
-                      </span>
-                    </td>
-                    <td className="py-2 pr-3 text-xs text-muted-foreground">
-                      {new Date(v.lastSeen).toLocaleString()}
-                    </td>
-                    <td className="py-2 pr-3 text-xs text-muted-foreground">
-                      {[v.trafficSource, v.device, v.country].filter(Boolean).join(" · ") || "—"}
-                    </td>
-                    <td className="py-2 pr-3 text-right text-stone-700">{v.pageviews}</td>
-                    <td className="py-2 pr-3 text-right text-stone-700">
-                      {v.maxScroll > 0 ? `${v.maxScroll}%` : "—"}
-                    </td>
-                    <td className="py-2 pr-3">
-                      <ArmBadge arm={v.arm} />
-                    </td>
-                    <td className="py-2 text-right">
-                      {v.conversions > 0 ? (
-                        <Badge className="bg-emerald-700 font-mono text-[10px] text-white hover:bg-emerald-700">
-                          ✓ {v.conversions}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-stone-400">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="mt-3 font-mono text-[10px] tracking-wide text-stone-400">
-              CLICK A ROW TO REPLAY THAT VISITOR&apos;S EXACT ACTIVITY · RANDOM PSEUDONYMOUS IDS —
-              ANGEL NEVER COLLECTS NAMES, EMAILS OR IP ADDRESSES ITSELF
-            </p>
-          </div>
-        )}
-
-        <Dialog
-          open={!!selected}
-          onOpenChange={(o) => {
-            if (!o) {
-              setSelected(null);
-              setPreview(null);
-            }
-          }}
-        >
-          <DialogContent className={preview ? "max-w-3xl" : "max-w-lg"}>
-            {selected && (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-[11px] tracking-wider text-emerald-700">
-                      [ visitor ]
-                    </span>
-                    <span className="font-mono text-sm">{selected.hash.slice(0, 12)}…</span>
-                    <ArmBadge arm={selected.arm} />
-                    {selected.conversions > 0 && (
-                      <Badge className="bg-emerald-700 font-mono text-[10px] text-white hover:bg-emerald-700">
-                        converted
-                      </Badge>
-                    )}
-                  </DialogTitle>
-                  <DialogDescription>
-                    First seen {new Date(selected.firstSeen).toLocaleString()}
-                    {selected.patterns.length > 0 &&
-                      ` · exposed to: ${selected.patterns.map((p) => patternDisplay(p, variantLabels)).join(", ")}`}
-                  </DialogDescription>
-                </DialogHeader>
-                {preview ? (
-                  <DevicePreview
-                    url={preview.url}
-                    device={preview.device}
-                    withheld={preview.withheld}
-                    onBack={() => setPreview(null)}
-                  />
-                ) : (
-                  <VisitorTimeline
-                    site={site}
-                    domain={domain}
-                    visitor={selected}
-                    onPreview={setPreview}
-                  />
-                )}
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="py-4 text-center text-sm text-muted-foreground">{children}</p>;
 }
