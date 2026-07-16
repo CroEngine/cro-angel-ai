@@ -62,11 +62,24 @@ export function classifyOS(userAgent: string): string {
  * Classify the traffic source. UTM parameters win over referrer because they
  * are explicit; referrer host matching is the fallback.
  */
+/** Värdnamn utan ledande www. — för intern-referrer-jämförelsen. */
+function bareHost(input: string): string | null {
+  try {
+    return new URL(input).hostname.toLowerCase().replace(/^www\./, "") || null;
+  } catch {
+    return null;
+  }
+}
+
 export function classifyTrafficSource(opts: {
   utmSource?: string;
   utmMedium?: string;
   referrer?: string;
   userAgent?: string;
+  /** Sidans egen URL — en referrer från SAMMA sajt är intern navigation, inte
+   *  en förvärvskälla, och får aldrig bli "other" (levande fynd: pilotens
+   *  största "kanal" var sajtens egna sidbyten). */
+  pageUrl?: string;
 }): TrafficSource {
   const src = (opts.utmSource ?? "").toLowerCase().trim();
   const medium = (opts.utmMedium ?? "").toLowerCase().trim();
@@ -86,13 +99,27 @@ export function classifyTrafficSource(opts: {
     if (src.includes("pinterest")) return "pinterest";
     if (src.includes("twitter") || src === "x") return "twitter";
     if (src.includes("bing")) return "bing";
+    if (/duckduckgo|ecosia|yahoo|yandex|qwant|startpage|seznam/.test(src)) return "search";
     if (src.includes("newsletter") || medium.includes("email")) return "newsletter";
     if (src.includes("partner")) return "partner";
   }
   if (medium.includes("email") || medium.includes("newsletter")) return "newsletter";
 
-  // 2. Referrer host — the classic signal when one survives.
-  const ref = (opts.referrer ?? "").toLowerCase();
+  // 2. Referrer host — the classic signal when one survives. En referrer från
+  //    sajtens EGEN domän (inkl. subdomäner) är intern navigation — ingen
+  //    förvärvskälla alls; behandla som frånvarande referrer → "direct".
+  let ref = (opts.referrer ?? "").toLowerCase();
+  const pageHost = opts.pageUrl ? bareHost(opts.pageUrl) : null;
+  const refHost0 = ref ? bareHost(opts.referrer as string) : null;
+  if (
+    pageHost &&
+    refHost0 &&
+    (refHost0 === pageHost ||
+      refHost0.endsWith(`.${pageHost}`) ||
+      pageHost.endsWith(`.${refHost0}`))
+  ) {
+    ref = "";
+  }
   if (ref) {
     let host = ref;
     try {
@@ -109,9 +136,20 @@ export function classifyTrafficSource(opts: {
     if (host.includes("youtube.") || host.includes("youtu.be")) return "youtube";
     if (host.includes("snapchat.")) return "snapchat";
     if (host.includes("pinterest.")) return "pinterest";
-    if (host.includes("twitter.") || host === "x.com" || host.includes(".x.com") || host.includes("t.co"))
+    if (
+      host.includes("twitter.") ||
+      host === "x.com" ||
+      host.includes(".x.com") ||
+      host.includes("t.co")
+    )
       return "twitter";
     if (host.includes("bing.")) return "bing";
+    if (
+      /duckduckgo\.|ecosia\.|search\.yahoo\.|yandex\.|qwant\.|startpage\.|search\.brave\.|seznam\./.test(
+        host,
+      )
+    )
+      return "search";
     // Unknown host — fall through to the User-Agent check before giving up.
   }
 
@@ -188,6 +226,7 @@ export function buildVisitorContext(server: ServerSignals, client: ClientSignals
       utmMedium: client.utmMedium,
       referrer,
       userAgent: server.userAgent,
+      pageUrl: client.url,
     }),
     device: classifyDevice(server.userAgent, client.screenWidth),
     browser: classifyBrowser(server.userAgent),

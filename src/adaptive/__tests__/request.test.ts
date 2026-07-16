@@ -136,3 +136,60 @@ describe("classifyCtaIntent — Swedish", () => {
     expect(classifyCtaIntent("Prova gratis")).toBe("trial");
   });
 });
+
+describe("classifyTrafficSource — intern navigation + sökmotorer", () => {
+  it("referrer från sajtens egen domän är intern navigation → direct, inte other", async () => {
+    const { classifyTrafficSource } = await import("../context");
+    expect(
+      classifyTrafficSource({
+        referrer: "https://glutenforum.se/recept",
+        pageUrl: "https://glutenforum.se/",
+      }),
+    ).toBe("direct");
+    // www-varianten och subdomäner räknas som samma sajt
+    expect(
+      classifyTrafficSource({
+        referrer: "https://www.glutenforum.se/",
+        pageUrl: "https://glutenforum.se/om",
+      }),
+    ).toBe("direct");
+    expect(
+      classifyTrafficSource({
+        referrer: "https://shop.glutenforum.se/",
+        pageUrl: "https://glutenforum.se/",
+      }),
+    ).toBe("direct");
+  });
+
+  it("extern okänd referrer förblir other; utan referrer direct", async () => {
+    const { classifyTrafficSource } = await import("../context");
+    expect(
+      classifyTrafficSource({
+        referrer: "https://nagon-blogg.se/",
+        pageUrl: "https://glutenforum.se/",
+      }),
+    ).toBe("other");
+    expect(classifyTrafficSource({ pageUrl: "https://glutenforum.se/" })).toBe("direct");
+  });
+
+  it("sökmotorer utanför google/bing klassas som search", async () => {
+    const { classifyTrafficSource } = await import("../context");
+    expect(classifyTrafficSource({ referrer: "https://duckduckgo.com/" })).toBe("search");
+    expect(classifyTrafficSource({ referrer: "https://www.ecosia.org/search?q=x" })).toBe("search");
+    expect(classifyTrafficSource({ referrer: "https://search.yahoo.com/search" })).toBe("search");
+    expect(classifyTrafficSource({ utmSource: "duckduckgo" })).toBe("search");
+    // "elakexempel": sajt vars namn INNEHÅLLER en sökmotor får inte matcha
+    expect(classifyTrafficSource({ referrer: "https://notduckduckgood.com/" })).toBe("other");
+  });
+
+  it("UTM vinner över intern referrer", async () => {
+    const { classifyTrafficSource } = await import("../context");
+    expect(
+      classifyTrafficSource({
+        utmSource: "newsletter",
+        referrer: "https://glutenforum.se/",
+        pageUrl: "https://glutenforum.se/kampanj",
+      }),
+    ).toBe("newsletter");
+  });
+});
