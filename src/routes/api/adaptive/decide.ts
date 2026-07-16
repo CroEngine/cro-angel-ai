@@ -14,6 +14,7 @@ import { resolveInventory } from "@/adaptive/inventory.server";
 import { loadPatternBoosts } from "@/adaptive/performance.server";
 import { isBotUserAgent } from "@/adaptive/bot";
 import { originVerdict } from "@/adaptive/domain";
+import { servingAllowedForBilling } from "@/lib/billing/billing";
 import { fnv1a32 } from "@/adaptive/hash";
 import { serveDecision } from "@/adaptive/redesign/serve";
 import { loadSiteConfig, loadServableVariants, logDecision } from "@/adaptive/persistence.server";
@@ -141,9 +142,11 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         // "variant:<id>" så vinnar-utvärderaren kan räkna dem.
         // Domän-registrerad sajt utan verifieringsstämpel serverar ALDRIG
         // varianter: nyckeln bevisar inte kontroll, det gör bara trafik från
-        // rätt domän. Legacy/labb (ingen domän) påverkas inte.
+        // rätt domän. Legacy/labb (ingen domän) påverkas inte. Betalningen
+        // gate:ar på samma ställe: pausad prenumeration ⇒ besökarna ser
+        // originalsidan; observationen fortsätter (datan bevaras).
         const domainOkForServing = !cfg.domain || cfg.domainVerifiedAt !== null;
-        if (cfg.servingEnabled && domainOkForServing) {
+        if (cfg.servingEnabled && domainOkForServing && servingAllowedForBilling(cfg.billingStatus)) {
           const vhServe = typeof client.visitorHash === "string" ? client.visitorHash : "";
           const verdict = serveDecision(
             { servingEnabled: cfg.servingEnabled, rampPct: cfg.rampPct },

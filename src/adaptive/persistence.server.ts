@@ -354,6 +354,10 @@ export interface SiteConfig {
    *  5 → 10 → 25 → 50, aldrig 50/50 från start. Läses bara när
    *  servingEnabled=true. */
   rampPct: number;
+  /** Betalstatus (synkas av Stripe-webhooken): exempt/none/trialing/active/
+   *  past_due/canceled. Serving kräver exempt|trialing|active — observation
+   *  gate:as ALDRIG av betalning. */
+  billingStatus: string;
   /** Sajtens registrerade domän (normaliserad). null = legacy/labb. */
   domain: string | null;
   /** Stämplas av första domän-bevisade snippet-signalen (Origin matchar).
@@ -374,6 +378,7 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   adaptationsEnabled: false,
   servingEnabled: false,
   rampPct: 5,
+  billingStatus: "exempt",
   domain: null,
   domainVerifiedAt: null,
 };
@@ -421,7 +426,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
   const { data, error } = await supabaseAdmin
     .from("angel_sites")
     .select(
-      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled,serving_enabled,ramp_pct,domain,domain_verified_at",
+      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled,serving_enabled,ramp_pct,domain,domain_verified_at,billing_status",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -439,6 +444,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
     adaptationsEnabled: data.adaptations_enabled === true,
     servingEnabled: data.serving_enabled === true,
     rampPct: typeof data.ramp_pct === "number" ? data.ramp_pct : 5,
+    billingStatus: typeof data.billing_status === "string" ? data.billing_status : "exempt",
     domain: data.domain ?? null,
     domainVerifiedAt: data.domain_verified_at ?? null,
   };

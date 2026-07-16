@@ -17,6 +17,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as AgentRouteImport } from './routes/agent'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiSandboxMirrorRouteImport } from './routes/api/sandbox/mirror'
 import { Route as ApiAdaptiveInventoryRouteImport } from './routes/api/adaptive/inventory'
 import { Route as ApiAdaptiveEventsRouteImport } from './routes/api/adaptive/events'
@@ -65,6 +66,11 @@ const AgentRoute = AgentRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe/webhook',
+  path: '/api/stripe/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSandboxMirrorRoute = ApiSandboxMirrorRouteImport.update({
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
   '/api/tests/crawl/stream': typeof ApiTestsCrawlStreamRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
   '/api/tests/crawl/stream': typeof ApiTestsCrawlStreamRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
   '/api/tests/crawl/stream': typeof ApiTestsCrawlStreamRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/api/adaptive/events'
     | '/api/adaptive/inventory'
     | '/api/sandbox/mirror'
+    | '/api/stripe/webhook'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
     | '/api/tests/crawl/stream'
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/api/adaptive/events'
     | '/api/adaptive/inventory'
     | '/api/sandbox/mirror'
+    | '/api/stripe/webhook'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
     | '/api/tests/crawl/stream'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/api/adaptive/events'
     | '/api/adaptive/inventory'
     | '/api/sandbox/mirror'
+    | '/api/stripe/webhook'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
     | '/api/tests/crawl/stream'
@@ -247,6 +259,7 @@ export interface RootRouteChildren {
   ApiAdaptiveEventsRoute: typeof ApiAdaptiveEventsRoute
   ApiAdaptiveInventoryRoute: typeof ApiAdaptiveInventoryRoute
   ApiSandboxMirrorRoute: typeof ApiSandboxMirrorRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiPublicCorpusSplatRoute: typeof ApiPublicCorpusSplatRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
   ApiTestsCrawlStreamRoute: typeof ApiTestsCrawlStreamRoute
@@ -309,6 +322,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stripe/webhook': {
+      id: '/api/stripe/webhook'
+      path: '/api/stripe/webhook'
+      fullPath: '/api/stripe/webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/sandbox/mirror': {
@@ -391,6 +411,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdaptiveEventsRoute: ApiAdaptiveEventsRoute,
   ApiAdaptiveInventoryRoute: ApiAdaptiveInventoryRoute,
   ApiSandboxMirrorRoute: ApiSandboxMirrorRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiPublicCorpusSplatRoute: ApiPublicCorpusSplatRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
   ApiTestsCrawlStreamRoute: ApiTestsCrawlStreamRoute,

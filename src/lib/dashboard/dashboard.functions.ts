@@ -98,6 +98,9 @@ export interface SiteConfigView {
   /** Stämplad av första domän-bevisade snippet-signalen — installations- och
    *  ägarskaps-kvittot i ett. Serving kräver stämpeln när domän finns. */
   domainVerifiedAt: string | null;
+  /** Betalstatus (Stripe-webhooken synkar): exempt/none/trialing/active/
+   *  past_due/canceled. Serving kräver exempt|trialing|active. */
+  billingStatus: string;
   /** The judged business type, when detected (e.g. "comparison"). */
   businessType: string | null;
   /** Ranked conversion-goal candidates proposed at harvest — the owner confirms
@@ -171,6 +174,7 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   conversionKind: null,
   domain: null,
   domainVerifiedAt: null,
+  billingStatus: "exempt",
   businessType: null,
   goalCandidates: [],
   ingestKey: null,
@@ -226,7 +230,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,domain_verified_at,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,ramp_pct,goal_candidates",
+          "slug,name,domain,domain_verified_at,billing_status,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,ramp_pct,goal_candidates",
         )
         .order("slug");
       // `sandbox--<host>` rows are the admin sandbox's private per-host scratch
@@ -298,6 +302,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               conversion_kind?: string | null;
               domain?: string | null;
               domain_verified_at?: string | null;
+              billing_status?: string;
               ingest_key?: string | null;
               adaptations_enabled?: boolean;
               serving_enabled?: boolean;
@@ -324,6 +329,7 @@ export const getDashboard = createServerFn({ method: "POST" })
             rampPct: typeof current.ramp_pct === "number" ? current.ramp_pct : 5,
             domain: current.domain ?? null,
             domainVerifiedAt: current.domain_verified_at ?? null,
+            billingStatus: typeof current.billing_status === "string" ? current.billing_status : "exempt",
             businessType: typeof judged?.businessType === "string" ? judged.businessType : null,
             goalCandidates: Array.isArray(judged?.goals) ? judged.goals.slice(0, 6) : [],
           };
@@ -983,6 +989,9 @@ export const createSite = createServerFn({ method: "POST" })
             slug,
             name: data.name ?? null,
             domain,
+            // Nya sajter kräver prenumeration för SERVING (observation är
+            // alltid fri). exempt sätts bara manuellt (pilot/labb).
+            billing_status: "none",
             ingest_key: key,
             // Consent-by-default: a new site starts ANONYMOUS (the DB default —
             // no persistent visitor id, no behavioural events) and with no
@@ -1015,3 +1024,32 @@ export const createSite = createServerFn({ method: "POST" })
       return { ok: true, slug, ingestKey: key ?? undefined };
     },
   );
+
+/**
+ * Betalning (block 3, ägarbeslut 2026-07-16: 399 USD/mån, 30 dagars trial med
+ * kort). Startar en Stripe Checkout-session för det inloggade kontot.
+ * Returnerar checkout-URL:en, eller ok:false när Stripe inte är konfigurerat
+ * (produkten fungerar i observe-läge utan betalning).
+ */
+export const startCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ returnUrl: z.string().url() }))
+  .handler(async ({ data, context }): Promise<{ ok: boolean; url?: string; reason?: string }> => {
+    const ctx = context as unknown as AuthCtx;
+    const email = ctx.claims?.email;
+    if (!email) return { ok: false, reason: "no_email" };
+    const { createCheckoutUrl } = await import("@/lib/billing/stripe.server");
+    const url = await createCheckoutUrl(ctx.userId, email, data.returnUrl);
+    return url ? { ok: true, url } : { ok: false, reason: "not_configured" };
+  });
+
+/** Stripe-kundportalen (hantera kort, säga upp). */
+export const openBillingPortal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ returnUrl: z.string().url() }))
+  .handler(async ({ data, context }): Promise<{ ok: boolean; url?: string; reason?: string }> => {
+    const ctx = context as unknown as AuthCtx;
+    const { createPortalUrl } = await import("@/lib/billing/stripe.server");
+    const url = await createPortalUrl(ctx.userId, data.returnUrl);
+    return url ? { ok: true, url } : { ok: false, reason: "not_configured" };
+  });
