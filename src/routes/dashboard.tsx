@@ -48,6 +48,8 @@ import {
 import {
   confirmGoal,
   createSite,
+  startCheckout,
+  openBillingPortal,
   getDashboard,
   getVisitorTimeline,
   rotateIngestKey,
@@ -218,6 +220,8 @@ function Dashboard() {
         {d.dbAvailable && !installed && (
           <InstallCard site={site} ingestKey={d.siteConfig.ingestKey} domain={d.siteConfig.domain} />
         )}
+
+        <BillingCard status={d.siteConfig.billingStatus} />
 
         <MeasurementControl
           site={site}
@@ -1144,6 +1148,74 @@ function AddSiteControl({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Betalkortet (block 3): syns för sajter som inte är exempt (pilot/labb).
+ *  none → starta prenumerationen (399 USD/mån, 30 dagar gratis, kort krävs);
+ *  trialing/active → status + portal-länk; past_due/canceled → ärligt besked
+ *  att serving är pausad (besökarna ser originalsidan, datan bevaras). */
+function BillingCard({ status }: { status: string }) {
+  const [busy, setBusy] = useState(false);
+  if (status === "exempt") return null;
+  const returnUrl = typeof window !== "undefined" ? `${window.location.origin}/dashboard` : "";
+
+  async function go(fn: typeof startCheckout | typeof openBillingPortal) {
+    setBusy(true);
+    try {
+      const res = await fn({ data: { returnUrl } });
+      if (res.ok && res.url) window.location.href = res.url;
+      else if (res.reason === "not_configured")
+        alert("Billing isn't configured yet — running in free mode.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const paused = status === "past_due" || status === "canceled";
+  return (
+    <Card className={`shadow-none ${paused ? "border-amber-300 bg-amber-50/50" : "border-stone-200"}`}>
+      <CardContent className="flex flex-wrap items-center gap-3 py-4">
+        <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ plan ]</span>
+        {status === "none" && (
+          <>
+            <p className="text-sm text-foreground">
+              <strong>$399/month — first month free.</strong> Card required; cancel anytime.
+              Serving of approved variants starts with your subscription; observation is always on.
+            </p>
+            <Button
+              size="sm"
+              disabled={busy}
+              className="ml-auto bg-emerald-700 text-white hover:bg-emerald-600"
+              onClick={() => go(startCheckout)}
+            >
+              {busy ? "Opening…" : "Start free month"}
+            </Button>
+          </>
+        )}
+        {(status === "trialing" || status === "active") && (
+          <>
+            <p className="text-sm text-foreground">
+              Subscription <strong>{status === "trialing" ? "trial" : "active"}</strong>.
+            </p>
+            <Button size="sm" variant="outline" disabled={busy} className="ml-auto" onClick={() => go(openBillingPortal)}>
+              Manage billing
+            </Button>
+          </>
+        )}
+        {paused && (
+          <>
+            <p className="text-sm text-amber-900">
+              <strong>Serving is paused</strong> — your visitors see the original page and your data
+              is preserved. Resume your subscription to continue testing.
+            </p>
+            <Button size="sm" disabled={busy} className="ml-auto bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => go(openBillingPortal)}>
+              Resume
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

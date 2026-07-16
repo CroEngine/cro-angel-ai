@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      angel_billing: {
+        Row: {
+          user_id: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          status: string
+          trial_end: string | null
+          current_period_end: string | null
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          status?: string
+          trial_end?: string | null
+          current_period_end?: string | null
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          status?: string
+          trial_end?: string | null
+          current_period_end?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       angel_notifications: {
         Row: {
           id: string
@@ -53,6 +83,7 @@ export type Database = {
           slug: string
           domain: string | null
           domain_verified_at: string | null
+          billing_status: string
           name: string | null
           consent_mode: string
           holdout_pct: number
@@ -74,6 +105,7 @@ export type Database = {
           slug: string
           domain?: string | null
           domain_verified_at?: string | null
+          billing_status?: string
           name?: string | null
           consent_mode?: string
           holdout_pct?: number
@@ -95,6 +127,7 @@ export type Database = {
           slug?: string
           domain?: string | null
           domain_verified_at?: string | null
+          billing_status?: string
           name?: string | null
           consent_mode?: string
           holdout_pct?: number
