@@ -29,6 +29,9 @@ export type TrafficSource =
   | "pinterest"
   | "twitter"
   | "bing"
+  /** Övriga sökmotorer (DuckDuckGo, Ecosia, Yahoo, Yandex …) — riktig sök-
+   *  trafik ska inte drunkna i "other". */
+  | "search"
   | "partner"
   | "newsletter"
   | "direct"
