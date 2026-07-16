@@ -8,6 +8,7 @@ import {
   expandSegmentLeaves,
   attachRecent,
   rageSignals,
+  clickHeat,
   bucketByTime,
   summarizeVisitors,
   MAX_DAY_POINTS,
@@ -742,6 +743,52 @@ describe("rageSignals — frustrationssignaler (diagnostik)", () => {
 
   it("tom lista när inga rage_click-events finns", () => {
     expect(rageSignals([ev("pageview", { path: "/" })])).toEqual([]);
+  });
+});
+
+describe("clickHeat — klick-heatmapens rollup", () => {
+  it("bucketar positionsbärande klick i 5%-rutor på mest klickade sidan", () => {
+    const events: DashEvent[] = [
+      ev("element_click", { path: "/", x: 51, y: 42 }),
+      ev("element_click", { path: "/", x: 52, y: 43 }), // samma 5%-ruta (50-54, 40-44)
+      ev("element_click", { path: "/", x: 12, y: 80 }),
+      ev("element_click", { path: "/pricing", x: 10, y: 10 }), // annan sida — färre klick
+      ev("element_click", { path: "/" }), // gammalt event utan koordinater → ignoreras
+    ];
+    const heat = clickHeat(events);
+    expect(heat.path).toBe("/");
+    expect(heat.sampled).toBe(3);
+    expect(heat.clicks[0]).toEqual({ x: 52, y: 42, n: 2 }); // ruta 10:8 → center 52,42
+    expect(heat.clicks).toHaveLength(2);
+  });
+
+  it("grupperar rage-punkter per element med medelposition + bursts", () => {
+    const events: DashEvent[] = [
+      ev("element_click", { path: "/", x: 50, y: 50 }),
+      ev("rage_click", { path: "/", ref: "button#buy", x: 40, y: 60 }),
+      ev("rage_click", { path: "/", ref: "button#buy", x: 60, y: 80 }),
+      ev("rage_click", { path: "/", ref: "a.nav", x: 10, y: 5 }),
+    ];
+    const heat = clickHeat(events);
+    expect(heat.rage).toEqual([
+      { ref: "button#buy", x: 50, y: 70, n: 2 },
+      { ref: "a.nav", x: 10, y: 5, n: 1 },
+    ]);
+  });
+
+  it("ärligt tomt läge: inga koordinater → sampled 0 och inga punkter", () => {
+    const heat = clickHeat([
+      ev("element_click", { path: "/", ref: "a" }),
+      ev("rage_click", { path: "/", ref: "b", count: 3 }),
+    ]);
+    expect(heat.sampled).toBe(0);
+    expect(heat.clicks).toEqual([]);
+    expect(heat.rage).toEqual([]);
+  });
+
+  it("avvisar koordinater utanför 0–100", () => {
+    const heat = clickHeat([ev("element_click", { path: "/", x: 120, y: 50 })]);
+    expect(heat.sampled).toBe(0);
   });
 });
 
