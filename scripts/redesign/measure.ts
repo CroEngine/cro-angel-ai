@@ -207,7 +207,35 @@ export async function measurePlan(
             }
           } else {
             textSnapshots.push({ el: r.el, html: r.el.innerHTML });
-            if (norm(r.el.textContent || "") !== norm(r.set)) r.el.textContent = r.set;
+            // Behåll inline-formatet (färgad <span>, responsiv <br>): fördela
+            // nya texten över befintliga textfragment proportionellt — samma
+            // semantik som snippetens retextPreserve (public/adaptive.js);
+            // håll i synk, annars ljuger evidensbilderna om live-utseendet.
+            if (norm(r.el.textContent || "") !== norm(r.set)) {
+              const texts: Text[] = [];
+              const w = document.createTreeWalker(r.el, NodeFilter.SHOW_TEXT, null);
+              let t: Node | null;
+              while ((t = w.nextNode())) {
+                if (((t as Text).data || "").trim()) texts.push(t as Text);
+              }
+              if (texts.length <= 1) {
+                if (texts.length === 1) texts[0].data = r.set;
+                else r.el.textContent = r.set;
+              } else {
+                const total = texts.reduce((a, x) => a + x.data.trim().length, 0);
+                const words = r.set.split(/\s+/).filter(Boolean);
+                let cum = 0;
+                let wi = 0;
+                texts.forEach((node, j) => {
+                  const isLast = j === texts.length - 1;
+                  cum += node.data.trim().length;
+                  const upto = isLast ? words.length : Math.round((cum / total) * words.length);
+                  const frag = words.slice(wi, Math.max(wi, upto));
+                  wi = Math.max(wi, upto);
+                  node.data = frag.length ? frag.join(" ") + (isLast ? "" : " ") : "";
+                });
+              }
+            }
             appliedTexts++;
           }
         }

@@ -50,6 +50,11 @@
   if (LOOKS_BOT && !window.__ANGEL_HARNESS__) return;
 
   var site = script.getAttribute("data-site") || "demo";
+  // Sandbox-speglar (site "sandbox--…") är förhandsvisningar utan riktiga
+  // besökare. CWV-vakterna (touchesLcp) skyddar riktiga sidladdningar — i
+  // spegeln stängs de av, annars kan en variant som rör sidans LCP-element
+  // (t.ex. hero-rubriken) aldrig förhandsgranskas i Compare.
+  var IS_SANDBOX = site.indexOf("sandbox--") === 0;
   // Per-site write key. Public (it ships in this tag), but it binds this install
   // to its slug so the ingest endpoints reject writes for a keyed site that
   // don't present it. Unkeyed (legacy) sites simply omit it.
@@ -657,6 +662,7 @@
   // True when an op on `el` would move/hide/retext the LCP element (it IS the
   // LCP element, or wraps it, or sits inside it).
   function touchesLcp(el) {
+    if (IS_SANDBOX) return false; // förhandsvisning — ingen riktig besökare att skydda
     if (!lcpEl || !el) return false;
     try {
       return el === lcpEl || el.contains(lcpEl) || lcpEl.contains(el);
@@ -1037,6 +1043,42 @@
   // platta artikelsidor, delrenderade SPA-vyer och sidor utan sektionsstruktur
   // till ärliga vägranden i stället för att hela innehållet flyttas ovanför
   // headern (granskningens reproducerade haverier).
+  // Behåll rubrikens inline-format vid retext (ägarfynd: plausible-hemsidans
+  // h1 bär en färgad <span> + responsiv <br> som textContent plattade bort).
+  // Nya texten fördelas över befintliga textfragment proportionellt mot deras
+  // gamla längd (hela ord) — färger, brytningar och struktur följer med.
+  // SPEGELVÄND implementation i scripts/redesign/measure.ts — håll i synk.
+  function retextPreserve(el, value) {
+    var texts = [];
+    try {
+      var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+      var t;
+      while ((t = w.nextNode())) {
+        if ((t.data || "").trim()) texts.push(t);
+      }
+    } catch (e) {
+      /* TreeWalker saknas → platta som förut */
+    }
+    if (texts.length <= 1) {
+      if (texts.length === 1) texts[0].data = String(value);
+      else el.textContent = value;
+      return;
+    }
+    var total = 0;
+    for (var i = 0; i < texts.length; i++) total += texts[i].data.trim().length;
+    var words = String(value).split(/\s+/).filter(Boolean);
+    var cum = 0;
+    var wi = 0;
+    for (var j = 0; j < texts.length; j++) {
+      var isLast = j === texts.length - 1;
+      cum += texts[j].data.trim().length;
+      var upto = isLast ? words.length : Math.round((cum / total) * words.length);
+      var frag = words.slice(wi, Math.max(wi, upto));
+      wi = Math.max(wi, upto);
+      texts[j].data = frag.length ? frag.join(" ") + (isLast ? "" : " ") : "";
+    }
+  }
+
   function applyVariant(v) {
     if (!v || !v.ops || !v.ops.length) return false;
     // Hydrerings-omkörning: syns variant-residue redan är designen på plats —
@@ -1139,8 +1181,9 @@
         // (spans/radbrytningar) som textContent-skrivningen ersätter — reset
         // måste ge tillbaka sidan BYTE-exakt, inte bara samma text.
         var prevHtml = r0.el.innerHTML;
-        if ((r0.el.textContent || "").trim() !== String(r0.value).trim())
-          r0.el.textContent = r0.value;
+        var normA = (r0.el.textContent || "").replace(/\s+/g, " ").trim();
+        var normB = String(r0.value).replace(/\s+/g, " ").trim();
+        if (normA !== normB) retextPreserve(r0.el, r0.value);
         // Markören håller skörde-spärren + hydrerings-kollen seende: variant-
         // text får ALDRIG skördas som sidans egen baslinje (feedback-loopen).
         r0.el.setAttribute("data-angel-retext", "");
