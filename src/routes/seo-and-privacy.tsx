@@ -83,7 +83,9 @@ function SeoAndPrivacy() {
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="text-3xl font-bold tracking-tight">SEO, performance &amp; privacy</h1>
+        <h1 className="font-heading text-[32px] font-bold tracking-[-0.02em]">
+          SEO, performance &amp; privacy
+        </h1>
         <p className="mt-3 text-stone-600">
           Exactly what Angel sends to your site, what it stores, and why search engines always
           see your original page. Every claim below is enforced by code, not policy.
@@ -95,7 +97,7 @@ function SeoAndPrivacy() {
                 [ {String(i + 1).padStart(2, "0")} / {String(SECTIONS.length).padStart(2, "0")} ] ·{" "}
                 {s.kicker}
               </div>
-              <h2 className="mt-2 text-xl font-semibold">{s.title}</h2>
+              <h2 className="mt-2 font-heading text-[21px] font-semibold">{s.title}</h2>
               {s.body.map((p, j) => (
                 <p key={j} className="mt-3 text-[15px] leading-relaxed text-stone-600">
                   {p}
