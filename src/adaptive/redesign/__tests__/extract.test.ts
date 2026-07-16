@@ -186,3 +186,42 @@ describe("extractContentModel — HTML → content model loader", () => {
     expect(texts).not.toContain("Employee handbook");
   });
 });
+
+// Task #90: den delade EN+SV-vokabulären — en svensk sida ska klassificeras
+// och ge trust-signaler precis som en engelsk. Innan delningen fick svenska
+// rubriker "section" på allt och trust-skanningen hittade ingenting.
+describe("extractContentModel — svensk sida genom samma vokabulär", () => {
+  const SIDA = `
+<!doctype html><html><head><title>Acme</title></head><body>
+  <main>
+    <h1>Bokföring som sköter sig själv</h1>
+    <p>Över 12 000 kunder litar på Acme varje dag.</p>
+    <a href="/skapa-konto">Skapa konto</a>
+    <section><h2>Därför väljer företag Acme</h2><p>Det går fort.</p></section>
+    <section><h2>Vad våra kunder säger</h2><p>"Bäst i klassen" — Anna, Byrån AB</p>
+      <p>Används av 300 företag i Norden</p></section>
+    <section><h2>Priser</h2><p>En plan, avsluta när du vill.</p></section>
+    <section><h2>Vanliga frågor</h2><p>Hur funkar det?</p></section>
+  </main>
+</body></html>`;
+  const model = extractContentModel(SIDA);
+
+  it("klassificerar svenska rubriker till samma typvokabulär", () => {
+    const byHeading = new Map(model.sections.map((s) => [s.heading, s.type]));
+    expect(byHeading.get("Därför väljer företag Acme")).toBe("features");
+    expect(byHeading.get("Vad våra kunder säger")).toBe("testimonials");
+    expect(byHeading.get("Priser")).toBe("pricing");
+    expect(byHeading.get("Vanliga frågor")).toBe("faq");
+  });
+
+  it("hittar svenskt socialt bevis — mellanslag som tusentalsavgränsare", () => {
+    const counts = model.trustSignals.filter((t) => t.type === "social_proof_count");
+    expect(counts.length).toBeGreaterThan(0);
+    expect(counts[0].text).toMatch(/12 000 kunder/);
+  });
+
+  it("hittar 'används av …' som trusted_by", () => {
+    const tb = model.trustSignals.find((t) => t.type === "trusted_by");
+    expect(tb?.text).toMatch(/Används av 300 företag/i);
+  });
+});

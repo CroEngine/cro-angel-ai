@@ -20,6 +20,7 @@
 // Pure + framework-free.
 
 import { classifyIntentShared } from "../../lib/tests/scripts/shared/intent";
+import { SOCIAL_PROOF_NOUNS_SRC, TRUSTED_BY_LEADINS_SRC, classifySectionHeading } from "./vocab";
 
 import type { RedesignContentModel } from "./context";
 
@@ -52,22 +53,10 @@ function mainRegion(html: string): string {
   return m ? m[1] : html;
 }
 
-/** Classify a section from its heading text — deterministic keyword mapping onto
- *  the section vocabulary the preview gates understand (hero/features/…/footer). */
-function classify(heading: string, isFirst: boolean): string {
-  const h = heading.toLowerCase();
-  if (isFirst) return "hero";
-  if (/(pricing|plans?|\/mo|per month|traffic based|growth)/.test(h)) return "pricing";
-  if (/(love|❤|people|testimonial|review|say about|customers think)/.test(h)) return "testimonials";
-  if (/(trusted|companies|logos|as seen|featured in)/.test(h)) return "logos";
-  if (/(why|benefit|feature|how it works|what you get|simple|lightweight|no need)/.test(h))
-    return "features";
-  if (/(compare|vs\b|ditch|switch|alternative|migrate)/.test(h)) return "comparison";
-  if (/(ready|start|try|get started|sign up|free trial|today)/.test(h)) return "cta";
-  if (/(faq|question|frequently)/.test(h)) return "faq";
-  if (/(follow|footer|©|copyright|all rights)/.test(h)) return "footer";
-  return "section";
-}
+// Sektionsklassificeringen bor i den delade vokabulären (vocab.ts, task #90)
+// — EN+SV, samma typlista som granska-sitens bevis-sektioner. Var tidigare
+// engelsk-bara här: svenska sajter fick "section" på allt och briefen blev blind.
+const classify = classifySectionHeading;
 
 /** Extract top-level sections from the h1/h2 headings in document order. h3s are
  *  treated as sub-content of the current section (not their own sections) so the
@@ -203,11 +192,23 @@ function tidy(flat: string, m: RegExpExecArray): string {
 function extractTrustSignals(html: string): RedesignContentModel["trustSignals"] {
   const flat = stripTags(html);
   const signals: RedesignContentModel["trustSignals"] = [];
+  // Substantiv/inledningar ur den delade vokabulären (vocab.ts, task #90):
+  // EN+SV, samma ordlista som webbläsar-harvestern. Sifferdelen tillåter
+  // mellanslag som tusentalsavgränsare — "12 000 kunder" är socialt bevis.
   const patterns: { type: string; re: RegExp }[] = [
-    { type: "social_proof_count", re: /(\d[\d,.]*\+?\s*(?:paying |happy |active )?(?:customers|companies|users|subscribers|businesses|sites|websites))/i },
-    { type: "trusted_by", re: /(trusted by [^.<]{3,70})/i },
-    { type: "independence", re: /(independent[,\s][^.<]{3,70})/i },
-    { type: "compliance", re: /((?:GDPR|CCPA|PECR)[^.<]{0,40}(?:compliant|consent|ready))/i },
+    {
+      type: "social_proof_count",
+      re: new RegExp(
+        `(\\d[\\d\\s,.]*\\+?\\s*(?:paying |happy |active |n[öo]jda )?(?:${SOCIAL_PROOF_NOUNS_SRC}))`,
+        "i",
+      ),
+    },
+    { type: "trusted_by", re: new RegExp(`((?:${TRUSTED_BY_LEADINS_SRC})\\s[^.<]{3,70})`, "i") },
+    { type: "independence", re: /((?:independent|oberoende)[,\s][^.<]{3,70})/i },
+    {
+      type: "compliance",
+      re: /((?:GDPR|CCPA|PECR)[^.<]{0,40}(?:compliant|consent|ready|anpassa\w*|s[äa]kra\w*)|GDPR-?(?:s[äa]ker|v[äa]nlig)\w*)/i,
+    },
   ];
   for (const p of patterns) {
     const m = p.re.exec(flat);
