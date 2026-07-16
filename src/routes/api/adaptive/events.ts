@@ -81,9 +81,18 @@ export const Route = createFileRoute("/api/adaptive/events")({
           ? batch.events.filter((e) => e && VALID_TYPES.has(e.type)).slice(0, 100)
           : [];
 
-        // Reject writes for a keyed site that doesn't present the matching key.
-        // Still answer 204 (never leak which slugs are keyed, never break beacons).
-        if (site && events.length > 0 && (await siteWriteAllowed(site, batch.key))) {
+        // Reject writes for a keyed site without matching key, eller en
+        // domän-registrerad sajt vars Origin motsäger domänen (nyckeln står i
+        // publika HTML:en — Origin är beviset). Svara ändå 204 (läck aldrig
+        // vilka sluggar som är skyddade, bryt aldrig beacons).
+        if (
+          site &&
+          events.length > 0 &&
+          (await siteWriteAllowed(site, batch.key, {
+            origin: request.headers.get("origin"),
+            referer: request.headers.get("referer"),
+          }))
+        ) {
           await logEvents(site, batch.visitorHash ?? null, events, batch.sessionId ?? null);
         }
 

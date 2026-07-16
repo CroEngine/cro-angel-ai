@@ -13,6 +13,7 @@ import { decide, decisionIdFor } from "@/adaptive/decide";
 import { resolveInventory } from "@/adaptive/inventory.server";
 import { loadPatternBoosts } from "@/adaptive/performance.server";
 import { isBotUserAgent } from "@/adaptive/bot";
+import { originVerdict } from "@/adaptive/domain";
 import { fnv1a32 } from "@/adaptive/hash";
 import { serveDecision } from "@/adaptive/redesign/serve";
 import { loadSiteConfig, loadServableVariants, logDecision } from "@/adaptive/persistence.server";
@@ -58,6 +59,18 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         // means this isn't the legit install, so we neither decide nor log a
         // (poisonable) exposure. The snippet fails open → page unchanged.
         if (cfg.ingestKey && client.key !== cfg.ingestKey) {
+          return json({ error: "unauthorized" }, 403);
+        }
+        // Domän-registrerade sajter: en Origin som MOTSÄGER domänen är inte
+        // den legitima installationen (nyckeln står i publika HTML:en och
+        // bevisar inget — webbläsarens Origin gör). Frånvaro tillåts;
+        // motbevis nekas. Stämpling av domain_verified_at sker i events-vägen.
+        const dv = originVerdict(
+          cfg.domain,
+          request.headers.get("origin"),
+          request.headers.get("referer"),
+        );
+        if (!dv.allowed) {
           return json({ error: "unauthorized" }, 403);
         }
 
@@ -126,7 +139,11 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         // ser sidan SOM DEN ÄR (inte mönstermotorns ops — armarna måste skilja
         // sig i exakt EN sak: varianten). Båda armarna loggas med
         // "variant:<id>" så vinnar-utvärderaren kan räkna dem.
-        if (cfg.servingEnabled) {
+        // Domän-registrerad sajt utan verifieringsstämpel serverar ALDRIG
+        // varianter: nyckeln bevisar inte kontroll, det gör bara trafik från
+        // rätt domän. Legacy/labb (ingen domän) påverkas inte.
+        const domainOkForServing = !cfg.domain || cfg.domainVerifiedAt !== null;
+        if (cfg.servingEnabled && domainOkForServing) {
           const vhServe = typeof client.visitorHash === "string" ? client.visitorHash : "";
           const verdict = serveDecision(
             { servingEnabled: cfg.servingEnabled, rampPct: cfg.rampPct },
