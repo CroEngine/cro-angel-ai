@@ -9,14 +9,12 @@
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, TrendingUp, ShieldCheck, Shield } from "lucide-react";
 
 import { AppNav } from "@/components/app-nav";
-import { MirrorFrame } from "@/components/mirror-frame";
-import { createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,35 +50,16 @@ import {
   setConsentMode,
   setServingEnabled,
   setServingRamp,
-  setVariantStatus,
   type ConsentMode,
   type DashboardResponse,
   type SiteConfigView,
   type TimelineEvent,
-  type VariantOpView,
   type VariantView,
 } from "@/lib/dashboard/dashboard.functions";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
 import { RECENT_WINDOW_DAYS } from "@/lib/dashboard/aggregate";
-import type {
-  DayPoint,
-  HourPoint,
-  VisitorSummary,
-  InventoryGroup,
-} from "@/lib/dashboard/aggregate";
+import type { VisitorSummary, InventoryGroup } from "@/lib/dashboard/aggregate";
 import type { Json } from "@/integrations/supabase/types";
-import {
-  Area,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip as ChartTooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 const dashboardQuery = (site: string) => {
   // Buckets read as the owner's local wall-clock, not UTC. Part of the key so a
@@ -241,147 +220,20 @@ function Dashboard() {
                 Adaptive layer · last {RECENT_WINDOW_DAYS} days
               </div>
             </div>
+            {/* Dashboard-1B v2: hela Overview-berättelsen bor i panelen —
+                trafikgrafen, observe-kortet, varianter-kortet och bevis-kortet
+                utgick (ägarbeslut: designbundlen är hela vyn; serving-toggeln
+                + rampen flyttade till Settings). */}
             <OverviewPanel
+              site={d.site}
               overview={d.metrics.overview}
               segments={d.metrics.segmentGroups}
               sessions={d.metrics.sessions}
               rageClicks={d.metrics.rageClicks}
+              heat={d.metrics.heat}
               variants={d.variants ?? []}
-              rampPct={d.siteConfig.rampPct}
-            />
-            <TrafficChart daily={d.metrics.timeseries.daily} hourly={d.metrics.timeseries.hourly} />
-
-            {/* ---- Observera-läge: Angel är osynligt (adaptations_enabled=false) ---- */}
-            {!d.siteConfig.adaptationsEnabled && (
-              <Card className="border-sky-200 shadow-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Observera-läge — inga adaptationer körs</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-stone-500">
-                    Angel är osynligt just nu: snippeten observerar bara den anonyma
-                    besöksresan, sidans struktur och prestandan — inga synliga ändringar görs, så
-                    det finns ingen adapterad arm att jämföra mot. Insikterna nedan byggs upp per
-                    segment. När en testad variant finns aktiveras adaptationer per sajt.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* ---- Fas 4: varianter per segment + serverings-master-toggeln ---- */}
-            <VariantsCard
-              site={d.site}
               servingOn={d.siteConfig.servingEnabled}
-              rampPct={d.siteConfig.rampPct}
-              variants={d.variants ?? []}
             />
-
-            {/* ---- v1-beviset: adapterad arm vs hold-out ---- */}
-            {d.siteConfig.adaptationsEnabled && d.metrics.proof && (
-              <Card className="border-emerald-200 shadow-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">
-                    Bevis: adapterade besökare vs kontrollgrupp
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!d.metrics.proof.holdoutActive ? (
-                    <p className="text-sm text-stone-500">
-                      Ingen kontrollgrupp ännu — sätt en hold-out (t.ex. 20&nbsp;%) i
-                      Measurement-kortet så mäts skillnaden på riktigt.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="text-left text-xs text-stone-500">
-                            <th className="py-1 font-medium">Arm</th>
-                            <th className="py-1 font-medium">Besökare</th>
-                            <th className="py-1 font-medium">Mål-klick</th>
-                            <th className="py-1 font-medium">Konvertering</th>
-                            <th className="py-1 font-medium">Återbesök 6h–7d</th>
-                            <th className="py-1 font-medium">Laddtid (LCP)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(
-                            [
-                              ["Adapterad", d.metrics.proof.adapted],
-                              ["Kontroll", d.metrics.proof.control],
-                            ] as const
-                          ).map(([label, arm]) => (
-                            <tr key={label} className="border-t border-stone-100">
-                              <td className="py-1.5 font-medium">{label}</td>
-                              <td className="py-1.5">{arm.visitors}</td>
-                              <td className="py-1.5">
-                                {(arm.ctaClickRate * 100).toFixed(1)}%{" "}
-                                <span className="text-xs text-stone-400">({arm.ctaClicks})</span>
-                              </td>
-                              <td className="py-1.5">
-                                {(arm.conversionRate * 100).toFixed(1)}%{" "}
-                                <span className="text-xs text-stone-400">({arm.conversions})</span>
-                              </td>
-                              <td className="py-1.5">
-                                {(arm.returnRate * 100).toFixed(1)}%{" "}
-                                <span className="text-xs text-stone-400">({arm.returns})</span>
-                              </td>
-                              <td className="py-1.5">
-                                {arm.lcpMedianMs !== null ? (
-                                  `${(arm.lcpMedianMs / 1000).toFixed(2)} s`
-                                ) : (
-                                  <span className="text-xs text-stone-400">–</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {d.metrics.proof.adapted.lcpMedianMs !== null &&
-                        d.metrics.proof.control.lcpMedianMs !== null &&
-                        d.metrics.proof.adapted.lcpMedianMs >
-                          d.metrics.proof.control.lcpMedianMs * 1.1 && (
-                          <p className="text-xs text-amber-600">
-                            ⚠ Adapterade besökare har mätbart långsammare laddtid än
-                            kontrollgruppen — en injektion kan kosta prestanda. "Vi får inte
-                            försämra sidan": granska mönstren för den här sajten.
-                          </p>
-                        )}
-                      {d.metrics.proof.adapted.assistClicks > 0 && (
-                        <p className="text-xs text-stone-400">
-                          {d.metrics.proof.adapted.assistClicks} adapterade besökare klickade via
-                          Angels genvägar (sticky/sekundär) — kan överlappa mål-klicken ovan.
-                          Genvägar finns inte i kontrollgruppen och räknas aldrig in i jämförelsen.
-                        </p>
-                      )}
-                      {d.metrics.proof.pWin !== null ? (
-                        <p className="text-sm text-stone-600">
-                          Sannolikhet att anpassningarna ger fler mål-klick än kontrollgruppen:{" "}
-                          <span className="font-semibold text-emerald-700">
-                            {d.metrics.proof.pWin >= 0.995
-                              ? ">99"
-                              : d.metrics.proof.pWin < 0.005
-                                ? "<1"
-                                : (d.metrics.proof.pWin * 100).toFixed(0)}
-                            &nbsp;%
-                          </span>
-                          <span className="ml-1 text-xs text-stone-400">
-                            (Bayesiansk avläsning — mer trafik ger säkrare svar; procenttal nära
-                            50&nbsp;% betyder "för tidigt att säga".)
-                          </span>
-                        </p>
-                      ) : (
-                        <p className="text-xs text-stone-400">
-                          För tidigt att säga — sannolikhetssiffran visas först när bägge armarna
-                          har minst 30 besökare och det finns minst 5 mål-klick totalt. Innan dess
-                          skulle siffran spegla antaganden, inte er trafik.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
 
           </TabsContent>
 
@@ -469,6 +321,11 @@ function SettingsControl({
               ctas={(inventory.find((g) => g.slot === "cta")?.items ?? []).filter(
                 (i) => i.text && i.selector,
               )}
+            />
+            <ServingSection
+              site={site}
+              servingOn={config.servingEnabled}
+              rampPct={config.rampPct}
             />
             <ConsentSection site={site} mode={config.consentMode} />
             <ContentSection inventory={inventory} />
@@ -602,6 +459,72 @@ function InstallSection({ site, ingestKey }: { site: string; ingestKey: string |
         Paste once on the site — it never needs updating. Changes you make here apply
         automatically.
       </p>
+    </section>
+  );
+}
+
+/** Serverings-mastern + rampen — flyttade hit från gamla varianter-kortet
+ *  (Dashboard-1B v2: dashboarden berättar, Settings styr). AV som default;
+ *  besökare ser varianter först när ägaren slår på den här. */
+function ServingSection({
+  site,
+  servingOn,
+  rampPct,
+}: {
+  site: string;
+  servingOn: boolean;
+  rampPct: number;
+}) {
+  const queryClient = useQueryClient();
+  const toggle = useMutation({
+    mutationFn: (enabled: boolean) => setServingEnabled({ data: { site, enabled } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
+  });
+  const ramp = useMutation({
+    mutationFn: (pct: 5 | 10 | 25 | 50) => setServingRamp({ data: { site, rampPct: pct } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
+  });
+  return (
+    <section className="space-y-2">
+      <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ serving ]</span>
+      <div
+        className={`flex flex-wrap items-center gap-3 rounded-md border p-3 ${
+          servingOn ? "border-emerald-300 bg-emerald-50/50" : "border-stone-200"
+        }`}
+      >
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium">
+            {servingOn ? "Varianter kan serveras" : "Servering AV — besökare ser originalsidan"}
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Mastern för alla varianter på sajten. Varje variant kräver dessutom ditt eget
+            godkännande (Start A/B) innan den når någon besökare.
+          </p>
+        </div>
+        <Switch
+          checked={servingOn}
+          disabled={toggle.isPending}
+          onCheckedChange={(v) => toggle.mutate(v === true)}
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">Ramp (andel av segmentet i testet):</span>
+        {([5, 10, 25, 50] as const).map((p) => (
+          <button
+            key={p}
+            type="button"
+            disabled={ramp.isPending}
+            onClick={() => ramp.mutate(p)}
+            className={`rounded-md border px-2.5 py-1 font-mono text-[11px] tracking-wider disabled:opacity-50 ${
+              rampPct === p
+                ? "border-emerald-700 bg-emerald-700 text-white"
+                : "border-stone-200 text-stone-600 hover:bg-stone-50"
+            }`}
+          >
+            {p} %
+          </button>
+        ))}
+      </div>
     </section>
   );
 }
@@ -1111,321 +1034,6 @@ const GOAL_KIND_LABEL: Record<GoalKind, string> = {
   donate: "donate",
 };
 
-/** Fas 4: variantlivscykeln + serverings-master-toggeln. Toggeln styr inget live
- *  ännu (decide-vägen läser inte flaggan) — kontrollen landar FÖRE förmågan, så
- *  att default-av är ägarens uttryckliga val när inkopplingen byggs. */
-const VARIANT_STATUS_STYLE: Record<VariantView["status"], string> = {
-  candidate: "bg-stone-100 text-stone-500",
-  verified: "bg-sky-50 text-sky-700",
-  serving: "bg-emerald-50 text-emerald-700",
-  winner: "bg-emerald-100 text-emerald-800",
-  retired: "bg-stone-100 text-stone-400 line-through",
-};
-
-/** "Se live" för en variant: sidan i sandbox-spegeln FÖRE (orörd) och EFTER
- *  (exakt den här variantens ops, genom snippetens riktiga apply-väg). Ingen
- *  skärmdump — ägaren ser sidan som en besökare ser den. Spegeln skriver
- *  aldrig events, så en titt blir aldrig en mätpunkt. Ägarens beslut (ändrings-
- *  listan + den levande sidan) ryms i EN panel — resten var brus. */
-function VariantLivePanel({ site, v }: { site: string; v: VariantView }) {
-  const preview = useQuery({
-    queryKey: ["variantPreview", site, v.id],
-    queryFn: () => createVariantPreview({ data: { site, variantId: v.id } }),
-    // Spegel-tokens lever 30 min — återanvänd svaret medan panelen togglas.
-    staleTime: 5 * 60 * 1000,
-  });
-  const frameW = preview.data?.mobile ? 390 : 1280;
-
-  return (
-    <div className="mt-2 space-y-3 rounded-md border border-stone-200 bg-stone-50/50 p-3">
-      {v.comparison?.headline && (
-        <p className="text-sm font-medium text-stone-700">{v.comparison.headline}</p>
-      )}
-      {v.ops.length > 0 && (
-        <ul className="flex flex-col gap-1">
-          {/* Identiska rader (t.ex. kollisions-retryns extra lyft) visas EN
-              gång med ×N — antalet är sant, upprepningen är brus. */}
-          {v.ops
-            .reduce<{ op: VariantOpView; n: number }[]>((acc, o) => {
-              const last = acc[acc.length - 1];
-              if (last && last.op.op === o.op && last.op.detail === o.detail && last.op.why === o.why) {
-                last.n++;
-              } else {
-                acc.push({ op: o, n: 1 });
-              }
-              return acc;
-            }, [])
-            .map(({ op: o, n }, i) => (
-              <li key={i} className="text-xs text-stone-600">
-                <span className="mr-1.5 rounded bg-emerald-50 px-1 py-0.5 font-mono text-[10px] text-emerald-700">
-                  {o.op}
-                  {n > 1 ? ` ×${n}` : ""}
-                </span>
-                {o.detail}
-                {o.why && <span className="text-stone-400"> — {o.why}</span>}
-              </li>
-            ))}
-        </ul>
-      )}
-      {preview.isPending && <p className="text-xs text-stone-400">Speglar sidan …</p>}
-      {preview.data?.ok && preview.data.mirrorPath && preview.data.mirrorOffPath && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <MirrorFrame
-            src={preview.data.mirrorOffPath}
-            frameW={frameW}
-            label="[ FÖRE — sidan orörd ]"
-          />
-          <MirrorFrame
-            src={preview.data.mirrorPath}
-            frameW={frameW}
-            label="[ EFTER — den här varianten ]"
-          />
-        </div>
-      )}
-      {(preview.isError || (preview.data && !preview.data.ok)) && (
-        <p className="text-xs text-stone-400">
-          {preview.data?.reason === "no_domain"
-            ? "Live-förhandsvisningen behöver sajtens domän — lägg till den i Settings så speglas sidan här."
-            : "Live-förhandsvisningen är inte tillgänglig just nu — försök igen om en stund."}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/** Vinnar-utvärderarens rekommendation, som ägar-läsbar rad. */
-const AB_OUTCOME_STYLE: Record<string, { label: string; cls: string }> = {
-  recommend_winner: { label: "REKOMMENDERAR: gör till vinnare", cls: "bg-emerald-50 text-emerald-700" },
-  recommend_stop: { label: "REKOMMENDERAR: stoppa varianten", cls: "bg-red-50 text-red-700" },
-  no_winner: { label: "ingen vinnare ännu", cls: "bg-stone-100 text-stone-500" },
-  insufficient_data: { label: "för lite data ännu", cls: "bg-stone-100 text-stone-500" },
-};
-
-function VariantAbLine({ ab }: { ab: NonNullable<VariantView["abTest"]> }) {
-  const pct = (r: number) => `${(r * 100).toFixed(1).replace(".", ",")} %`;
-  const o = AB_OUTCOME_STYLE[ab.outcome] ?? AB_OUTCOME_STYLE.insufficient_data;
-  return (
-    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-stone-500">
-      <span className="font-mono">
-        A/B: variant {pct(ab.stats.variantRate)} ({ab.variant.conversions}/{ab.variant.visits}) ·
-        kontroll {pct(ab.stats.controlRate)} ({ab.control.conversions}/{ab.control.visits})
-        {ab.stats.relativeLift !== null &&
-          ` · lyft ${ab.stats.relativeLift >= 0 ? "+" : ""}${(ab.stats.relativeLift * 100).toFixed(1).replace(".", ",")} %`}
-      </span>
-      <span className={`rounded px-1.5 py-0.5 text-[10px] ${o.cls}`} title={ab.reasons.join(" · ")}>
-        {o.label}
-      </span>
-    </div>
-  );
-}
-
-function VariantsCard({
-  site,
-  servingOn,
-  rampPct,
-  variants,
-}: {
-  site: string;
-  servingOn: boolean;
-  rampPct: number;
-  variants: VariantView[];
-}) {
-  const queryClient = useQueryClient();
-  const [openId, setOpenId] = useState<string | null>(null);
-  const toggle = useMutation({
-    mutationFn: (enabled: boolean) => setServingEnabled({ data: { site, enabled } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
-  });
-  const ramp = useMutation({
-    mutationFn: (pct: 5 | 10 | 25 | 50) => setServingRamp({ data: { site, rampPct: pct } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard", site] }),
-  });
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const status = useMutation({
-    mutationFn: (args: { variantId: string; status: "serving" | "winner" | "retired" }) =>
-      setVariantStatus({ data: { site, ...args } }),
-    onSuccess: (res) => {
-      setStatusError(res.ok ? null : (res.reason ?? "kunde inte spara"));
-      queryClient.invalidateQueries({ queryKey: ["dashboard", site] });
-    },
-  });
-  // Varje trafikpåverkande statusbyte bekräftas — en felklickning ska inte
-  // starta eller stoppa ett A/B.
-  const askStatus = (v: VariantView, next: "serving" | "winner" | "retired", label: string) => {
-    if (window.confirm(`${label} för ${v.segmentKey}?`)) {
-      status.mutate({ variantId: v.id, status: next });
-    }
-  };
-
-  return (
-    <Card className="border-stone-200 shadow-none">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-3 text-sm">
-          Varianter per segment
-          <span
-            className={`rounded px-1.5 py-0.5 text-[10px] ${servingOn ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-500"}`}
-          >
-            servering {servingOn ? "PÅ" : "AV"}
-          </span>
-          {servingOn && (
-            <span className="flex items-center gap-1 text-[10px] font-normal text-stone-500">
-              ramp
-              {([5, 10, 25, 50] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  disabled={ramp.isPending}
-                  onClick={() => ramp.mutate(p)}
-                  className={`rounded px-1 py-0.5 font-mono ${
-                    rampPct === p
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "text-stone-400 hover:text-stone-600"
-                  }`}
-                >
-                  {p}%
-                </button>
-              ))}
-            </span>
-          )}
-          <button
-            type="button"
-            disabled={toggle.isPending}
-            onClick={() => toggle.mutate(!servingOn)}
-            className="ml-auto font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700 disabled:opacity-50"
-          >
-            {servingOn ? "stäng av" : "slå på"}
-          </button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {variants.length === 0 ? (
-          <p className="text-sm text-stone-500">
-            Inga varianter ännu. När genereringskedjan har en variant som passerat alla
-            grindar (struktur, pixlar, claims) dyker den upp här som{" "}
-            <span className="font-mono text-[11px]">verified</span> — och serveras först när
-            både master-switchen ovan och variantens status säger det.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-stone-500">
-                  <th className="py-1 font-medium">Segment</th>
-                  <th className="py-1 font-medium">Sida</th>
-                  <th className="py-1 font-medium">Status</th>
-                  <th className="py-1 font-medium">Ops</th>
-                  <th className="py-1 font-medium">Uppdaterad</th>
-                  <th className="py-1" />
-                </tr>
-              </thead>
-              <tbody>
-                {variants.map((v) => (
-                  <Fragment key={v.id}>
-                    <tr className="border-t border-stone-100">
-                      <td className="py-1.5 font-mono text-[11px] text-stone-600">
-                        {v.segmentKey}
-                        {v.abTest && <VariantAbLine ab={v.abTest} />}
-                      </td>
-                      <td className="py-1.5 font-mono text-[11px] text-stone-500">{v.path}</td>
-                      <td className="py-1.5">
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] ${VARIANT_STATUS_STYLE[v.status] ?? "bg-stone-100 text-stone-500"}`}>
-                          {v.status}
-                        </span>
-                      </td>
-                      <td className="py-1.5">{v.opsCount}</td>
-                      <td className="py-1.5 text-xs text-stone-500">
-                        {new Date(v.updatedAt).toLocaleDateString("sv-SE")}
-                      </td>
-                      <td className="py-1.5 text-right whitespace-nowrap">
-                        {v.status === "verified" && (
-                          <button
-                            type="button"
-                            disabled={status.isPending}
-                            onClick={() => askStatus(v, "serving", "Aktivera A/B-test")}
-                            className="mr-3 rounded bg-emerald-600 px-2 py-0.5 font-mono text-[11px] tracking-wider text-white hover:bg-emerald-700 disabled:opacity-50"
-                          >
-                            aktivera A/B
-                          </button>
-                        )}
-                        {v.status === "serving" && v.abTest?.outcome === "recommend_winner" && (
-                          <button
-                            type="button"
-                            disabled={status.isPending}
-                            onClick={() =>
-                              askStatus(
-                                v,
-                                "winner",
-                                "Gör till vinnare — serveras till 100 % av segmentet och mätningen för varianten avslutas",
-                              )
-                            }
-                            className="mr-3 rounded bg-emerald-600 px-2 py-0.5 font-mono text-[11px] tracking-wider text-white hover:bg-emerald-700 disabled:opacity-50"
-                          >
-                            gör till vinnare (100 %)
-                          </button>
-                        )}
-                        {(v.status === "serving" || v.status === "winner") && (
-                          <button
-                            type="button"
-                            disabled={status.isPending}
-                            onClick={() => askStatus(v, "retired", "Stoppa varianten (kontrollen återtar 100 %)")}
-                            className="mr-3 font-mono text-[11px] tracking-wider text-red-600 underline decoration-red-300 underline-offset-2 hover:decoration-red-600 disabled:opacity-50"
-                          >
-                            stoppa
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setOpenId(openId === v.id ? null : v.id)}
-                          className="font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
-                        >
-                          {openId === v.id ? "dölj" : "se live"}
-                        </button>
-                        {site === "synthetic-lab" && v.path === "/" && (
-                          <a
-                            href={`/lab/plausible/?segment=${encodeURIComponent(v.segmentKey)}&state=efter`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-3 font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
-                          >
-                            sandbox ↗
-                          </a>
-                        )}
-                      </td>
-                    </tr>
-                    {openId === v.id && (
-                      <tr>
-                        <td colSpan={6} className="pb-2">
-                          <VariantLivePanel site={site} v={v} />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="mt-2 text-xs text-stone-400">
-          Livscykel: candidate → verified (alla grindar gröna) → serving (A/B mot kontroll,
-          ramp från 5 %) → winner / retired. Servering är AV som standard — vinnare
-          rekommenderas bara (≥1000 besök + ≥50 konverteringar per arm, ≥95 % konfidens,
-          ≥5 % lyft), baseline byts aldrig utan manuellt godkännande.
-        </p>
-        {toggle.isError && (
-          <span className="font-mono text-[11px] tracking-wider text-amber-600">
-            couldn’t save — try again
-          </span>
-        )}
-        {statusError && (
-          <span className="font-mono text-[11px] tracking-wider text-amber-600">
-            {statusError}
-          </span>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 /** Mål-kortet på dashboardens yta — visas bara när det behöver ägaren
  *  (obekräftat mål eller pausad mätning). Bekräftat + mätande → målet bor i
  *  Settings via GoalSection, samma reträtt-mönster som install-kortet. */
@@ -1549,143 +1157,6 @@ function GoalSection({
     </div>
   );
 }
-
-// ---- visitors over time -------------------------------------------------------
-
-const CHART_TICK = { fontSize: 11, fontFamily: "ui-monospace, monospace", fill: "#a8a29e" };
-const CHART_TOOLTIP_STYLE = {
-  fontSize: 11,
-  fontFamily: "ui-monospace, monospace",
-  border: "1px solid #e7e5e4",
-  borderRadius: 8,
-  background: "#fff",
-  boxShadow: "none",
-};
-
-function LegendChip({ swatch, label }: { swatch: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1.5 font-mono text-[11px] tracking-wider text-stone-500">
-      <span className={`h-2 w-2 rounded-full ${swatch}`} />
-      {label}
-    </span>
-  );
-}
-
-function TrafficChart({ daily, hourly }: { daily: DayPoint[]; hourly: HourPoint[] }) {
-  const [mode, setMode] = useState<"day" | "hour">("day");
-  const hasData = daily.some((p) => p.visits > 0 || p.identified > 0 || p.conversions > 0);
-  // A 1–2 point line/area is invisible without dots.
-  const showDots = daily.length < 3;
-
-  return (
-    <Card className="border-stone-200 shadow-none">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex flex-wrap items-center gap-x-4 gap-y-2 text-base">
-          <span className="font-mono text-[11px] tracking-wider text-emerald-700">
-            [ visitors over time ]
-          </span>
-          <span className="flex flex-wrap items-center gap-3">
-            <LegendChip swatch="bg-stone-300" label="page loads" />
-            <LegendChip swatch="bg-emerald-300" label="identified visitors" />
-            <LegendChip swatch="bg-emerald-700" label="conversions" />
-          </span>
-          <span className="ml-auto flex overflow-hidden rounded-md border border-stone-200">
-            {(["day", "hour"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={`px-2.5 py-1 font-mono text-[11px] tracking-wider transition ${
-                  mode === m
-                    ? "bg-stone-900 text-white"
-                    : "bg-white text-stone-500 hover:bg-stone-50"
-                }`}
-              >
-                {m === "day" ? "by day" : "time of day"}
-              </button>
-            ))}
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {!hasData ? (
-          <Empty>No traffic recorded yet — the chart fills as the snippet runs.</Empty>
-        ) : mode === "day" ? (
-          <ResponsiveContainer width="100%" height={240}>
-            <ComposedChart data={daily} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-              <XAxis
-                dataKey="day"
-                tick={CHART_TICK}
-                tickFormatter={(day: string) => day.slice(5)}
-                tickLine={false}
-                axisLine={{ stroke: "#e7e5e4" }}
-              />
-              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
-              <ChartTooltip contentStyle={CHART_TOOLTIP_STYLE} />
-              <Area
-                type="monotone"
-                dataKey="visits"
-                name="page loads"
-                stroke="#a8a29e"
-                fill="#e7e5e4"
-                fillOpacity={0.6}
-                strokeWidth={1.5}
-                dot={showDots}
-              />
-              <Area
-                type="monotone"
-                dataKey="identified"
-                name="identified visitors"
-                stroke="#059669"
-                fill="#a7f3d0"
-                fillOpacity={0.45}
-                strokeWidth={1.5}
-                dot={showDots}
-              />
-              <Line
-                type="monotone"
-                dataKey="conversions"
-                name="conversions"
-                stroke="#047857"
-                strokeWidth={2}
-                dot={showDots}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        ) : (
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={hourly} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-              <XAxis
-                dataKey="hour"
-                tick={CHART_TICK}
-                tickFormatter={(h: number) => `${h}`}
-                tickLine={false}
-                axisLine={{ stroke: "#e7e5e4" }}
-              />
-              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
-              <ChartTooltip
-                contentStyle={CHART_TOOLTIP_STYLE}
-                labelFormatter={(h) => `${String(h).padStart(2, "0")}:00–${String(h).padStart(2, "0")}:59`}
-              />
-              <Bar dataKey="visits" name="page loads" fill="#d6d3d1" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="identified" name="identified visitors" fill="#059669" radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-        {hasData && mode === "day" && (
-          <p className="mt-2 font-mono text-[10px] tracking-wide text-stone-400">
-            PAGE LOADS COUNT ALL TRAFFIC · IDENTIFIED VISITORS ARE THE CONSENTED SUBSET WITH A
-            VISITOR ID · TIMES IN YOUR LOCAL TIMEZONE
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ---- per-visitor drilldown ------------------------------------------------------
 
 /** One concrete change from an exposure payload → a human sentence.
  *  "Emphasized 'Skapa konto'", "Renamed 'Läs mer' → 'Se priser'", … */

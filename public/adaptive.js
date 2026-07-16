@@ -1475,6 +1475,27 @@
           // de fångas redan som "assist" i cta_click. Håll journey ren.
           if (el.hasAttribute && el.hasAttribute("data-angel-injected")) return;
           var ref = elementRef(el);
+          // Klickposition som heltals-% av sidan (x av viewportbredd, y av
+          // dokumenthöjd inkl. scroll) — driver ägarens klick-heatmap. Ingen
+          // ny PII-yta: två avrundade procenttal, inga pixlar, inga fält.
+          var xPct = 0,
+            yPct = 0;
+          try {
+            var docH = Math.max(
+              1,
+              (document.documentElement && document.documentElement.scrollHeight) || 1,
+            );
+            xPct = Math.max(
+              0,
+              Math.min(100, Math.round(((e.clientX || 0) / Math.max(1, window.innerWidth || 1)) * 100)),
+            );
+            yPct = Math.max(
+              0,
+              Math.min(100, Math.round((((e.clientY || 0) + (window.scrollY || 0)) / docH) * 100)),
+            );
+          } catch (posErr) {
+            /* position är bäst-effort */
+          }
           // Rage-click FÖRE klick-taket: en burst ska räknas även när element_click
           // nått CLICK_CAP (rage är per definition många snabba klick).
           var now = Date.now();
@@ -1483,7 +1504,7 @@
             if (rageCount >= RAGE_MIN && !rageFired && rageEmitted < RAGE_CAP) {
               rageFired = true;
               rageEmitted++;
-              track("rage_click", { ref: ref, count: rageCount, path: safePath() }, decisionId);
+              track("rage_click", { ref: ref, count: rageCount, path: safePath(), x: xPct, y: yPct }, decisionId);
             }
           } else {
             rageRef = ref;
@@ -1493,7 +1514,7 @@
           }
           if (clickSeq >= CLICK_CAP) return;
           clickSeq++;
-          track("element_click", { seq: clickSeq, ref: ref, tag: (el.tagName || "").toLowerCase(), path: safePath() }, decisionId);
+          track("element_click", { seq: clickSeq, ref: ref, tag: (el.tagName || "").toLowerCase(), path: safePath(), x: xPct, y: yPct }, decisionId);
         } catch (err) {
           /* aldrig bryta sidan */
         }
