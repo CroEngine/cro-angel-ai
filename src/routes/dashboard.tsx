@@ -199,13 +199,18 @@ function Dashboard() {
 
         <BillingCard status={d.siteConfig.billingStatus} />
 
-        <MeasurementControl
-          site={site}
-          config={d.siteConfig}
-          ctas={(d.metrics.inventory.find((g) => g.slot === "cta")?.items ?? []).filter(
-            (i) => i.text && i.selector,
-          )}
-        />
+        {/* Mål-kortet drar sig tillbaka till Settings när målet är bekräftat
+            och mätningen rullar — det syns bara när det behöver ägaren. */}
+        {(d.siteConfig.conversionSource !== "owner" ||
+          d.siteConfig.consentMode !== "attested") && (
+          <MeasurementControl
+            site={site}
+            config={d.siteConfig}
+            ctas={(d.metrics.inventory.find((g) => g.slot === "cta")?.items ?? []).filter(
+              (i) => i.text && i.selector,
+            )}
+          />
+        )}
 
         {!d.dbAvailable && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -462,6 +467,15 @@ function SettingsControl({
         ) : (
           <div className="max-h-[70vh] space-y-6 overflow-y-auto pr-1">
             <InstallSection site={site} ingestKey={config.ingestKey} />
+            {/* Målet är alltid nåbart här — kortet på dashboarden visas bara
+                när det behöver ägaren (obekräftat eller pausat). */}
+            <GoalSection
+              site={site}
+              config={config}
+              ctas={(inventory.find((g) => g.slot === "cta")?.items ?? []).filter(
+                (i) => i.text && i.selector,
+              )}
+            />
             <ConsentSection site={site} mode={config.consentMode} />
             <ContentSection inventory={inventory} />
           </div>
@@ -1461,7 +1475,24 @@ function VariantsCard({
   );
 }
 
-function MeasurementControl({
+/** Mål-kortet på dashboardens yta — visas bara när det behöver ägaren
+ *  (obekräftat mål eller pausad mätning). Bekräftat + mätande → målet bor i
+ *  Settings via GoalSection, samma reträtt-mönster som install-kortet. */
+function MeasurementControl(props: {
+  site: string;
+  config: SiteConfigView;
+  ctas: { id: string; text: string | null; selector: string | null }[];
+}) {
+  return (
+    <Card className="border-stone-200 shadow-none">
+      <CardContent className="py-4">
+        <GoalSection {...props} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function GoalSection({
   site,
   config,
   ctas,
@@ -1485,8 +1516,7 @@ function MeasurementControl({
   const paused = config.consentMode !== "attested";
 
   return (
-    <Card className="border-stone-200 shadow-none">
-      <CardContent className="space-y-3 py-4">
+    <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="font-mono text-[11px] tracking-wider text-emerald-700">
             [ conversion goal ]
@@ -1560,13 +1590,12 @@ function MeasurementControl({
             })}
           </ul>
         )}
-        {confirm.isError && (
-          <span className="font-mono text-[11px] tracking-wider text-amber-600">
-            couldn’t save — try again
-          </span>
-        )}
-      </CardContent>
-    </Card>
+      {confirm.isError && (
+        <span className="font-mono text-[11px] tracking-wider text-amber-600">
+          couldn’t save — try again
+        </span>
+      )}
+    </div>
   );
 }
 

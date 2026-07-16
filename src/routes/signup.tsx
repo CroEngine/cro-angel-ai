@@ -68,9 +68,9 @@ function Signup() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#fafaf9] px-4 text-stone-900">
-      <Card className="w-full max-w-sm border-stone-200 shadow-none">
+      <Card className="w-full max-w-sm rounded-2xl border-stone-200 shadow-none">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2 font-heading text-[18px] font-bold">
             <span className="text-xl leading-none text-emerald-700">✳</span> Create your account
           </CardTitle>
           <p className="text-sm text-muted-foreground">Start measuring lift on your site.</p>
