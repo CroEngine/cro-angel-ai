@@ -12,9 +12,9 @@
 // ärligt när underlaget saknas. Ingen yta visar ett tal vi inte kan försvara.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { MirrorFrame } from "@/components/mirror-frame";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -211,58 +211,194 @@ function HeatMirror({ src, overlay }: { src: string; overlay: React.ReactNode })
   );
 }
 
-/** Compare för en variant: sidan i sandbox-spegeln FÖRE (orörd) och EFTER
- *  (exakt den här variantens ops, genom snippetens riktiga apply-väg) — med
- *  angel_debug=1 så varje ändrat element MARKERAS på sidan (ring + tagg
- *  "moved up"/"rewrote this text"). Textlistan utgick (designbeslut): sidan
- *  själv är ändringslistan. Spegeln skriver aldrig events. */
-function VariantComparePanel({ site, v }: { site: string; v: VariantView }) {
+/** Mänskligt läsbara ändrings-chips för Compare-toppraden: "Moved 'X' #4 → #2"
+ *  ur comparison-ordningen, "Rewrote a heading" för retext. Max 3 + "+N". */
+function changeChips(v: VariantView): { shown: string[]; more: number } {
+  const cmp = v.comparison;
+  const out: string[] = [];
+  for (const o of v.ops) {
+    if (o.op === "move_up") {
+      if (cmp?.movedLabel) {
+        const from = cmp.orderBefore.indexOf(cmp.movedLabel) + 1;
+        const to = cmp.orderAfter.indexOf(cmp.movedLabel) + 1;
+        out.push(
+          from > 0 && to > 0
+            ? `Moved "${cmp.movedLabel}" #${from} → #${to}`
+            : `Moved "${cmp.movedLabel}" up`,
+        );
+      } else {
+        out.push("Moved a section up");
+      }
+    } else if (o.op === "set_text") {
+      out.push("Rewrote a heading");
+    } else {
+      out.push(o.op);
+    }
+  }
+  const dedup = out.filter((c, i) => out.indexOf(c) === i);
+  return { shown: dedup.slice(0, 3), more: Math.max(0, dedup.length - 3) };
+}
+
+/** Compare i HELSKÄRM (ägarbeslut: panelen blev för liten): EN stor spegel av
+ *  den riktiga sidan med en Variant/Original-växel — variantläget öppnas med
+ *  angel_debug=1 så varje ändrat element ringmarkeras med tagg ("moved up" /
+ *  "rewrote this text") och sidan scrollar till första ändringen. Bägge
+ *  lägena hålls monterade så växlingen är omedelbar. Spegeln skriver aldrig
+ *  events; Esc stänger; body-scrollen låses medan vyn är öppen. */
+function CompareOverlay({
+  site,
+  v,
+  onClose,
+}: {
+  site: string;
+  v: VariantView;
+  onClose: () => void;
+}) {
   const preview = useQuery({
     queryKey: ["variantPreview", site, v.id],
     queryFn: () => createVariantPreview({ data: { site, variantId: v.id } }),
-    // Spegel-tokens lever 30 min — återanvänd svaret medan panelen togglas.
+    // Spegel-tokens lever 30 min — återanvänd svaret medan vyn togglas.
     staleTime: 5 * 60 * 1000,
   });
-  const frameW = preview.data?.mobile ? 390 : 1280;
+  const [mode, setMode] = useState<"variant" | "original">("variant");
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stage, setStage] = useState({ w: 1280, h: 800 });
 
-  return (
-    <div className="space-y-3 rounded-xl border border-[#f0eee9] bg-[#faf9f7] p-4">
-      {v.comparison?.headline && (
-        <p className="text-sm font-medium text-stone-700">{v.comparison.headline}</p>
-      )}
-      {preview.isPending && <p className="text-xs text-stone-400">Mirroring the page…</p>}
-      {preview.data?.ok && preview.data.mirrorPath && preview.data.mirrorOffPath && (
-        <>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <MirrorFrame
-              src={preview.data.mirrorOffPath}
-              frameW={frameW}
-              label="[ BEFORE — untouched ]"
-            />
-            <MirrorFrame
-              src={`${preview.data.mirrorPath}&angel_debug=1`}
-              frameW={frameW}
-              label="[ AFTER — this variant ]"
-            />
-          </div>
-          <p className="flex items-center gap-2 text-[11px] text-stone-500">
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const update = () => setStage({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [preview.data?.ok]);
+
+  const frameW = preview.data?.mobile ? 390 : 1280;
+  const scale = stage.w > 0 ? Math.min(1, stage.w / frameW) : 1;
+  const chips = changeChips(v);
+  const pill = STATUS_PILL[v.status] ?? STATUS_PILL.verified;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#faf9f7]">
+      {/* topprad: identitet till vänster, ändrings-chips i mitten, växeln till höger */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-stone-200 bg-white px-5 py-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex items-center gap-1.5 text-[13px] text-stone-600 hover:text-stone-900"
+        >
+          ← Back
+        </button>
+        <span className="truncate font-mono text-[12px] text-stone-800">
+          {v.segmentKey} <span className="text-[#c4beb6]">·</span>{" "}
+          <span className="text-stone-400">{v.path}</span>
+        </span>
+        <span
+          className="rounded-full px-[9px] py-[3px] text-[11px] font-semibold"
+          style={{ background: pill.bg, color: pill.color }}
+        >
+          {v.status === "winner" ? "winner · 100%" : v.status}
+        </span>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1.5 max-md:hidden">
+          {chips.shown.map((c) => (
             <span
-              className="inline-block h-3 w-3 flex-none rounded-[3px]"
-              style={{ outline: "2px solid #10b981", outlineOffset: 1 }}
+              key={c}
+              className="truncate rounded-full border border-[#d1fae5] bg-[#ecfdf5] px-[11px] py-[3px] font-mono text-[11px] text-emerald-700"
+            >
+              {c}
+            </span>
+          ))}
+          {chips.more > 0 && (
+            <span className="font-mono text-[11px] text-stone-400">+{chips.more} more</span>
+          )}
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          {mode === "variant" && (
+            <span className="flex items-center gap-1.5 text-[11px] text-stone-400 max-md:hidden">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-[3px]"
+                style={{ outline: "2px solid #10b981", outlineOffset: 1 }}
+              />
+              changes are marked on the page
+            </span>
+          )}
+          <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
+            {(
+              [
+                ["variant", "Variant"],
+                ["original", "Original"],
+              ] as const
+            ).map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className="rounded-[7px] px-[13px] py-[5px] text-[12.5px] font-semibold"
+                style={mode === m ? { background: "#161513", color: "#fff" } : { color: "#57534e" }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* scenen: hela resterande höjden — sidan scrollar inne i spegeln */}
+      <div ref={stageRef} className="relative min-h-0 flex-1 overflow-hidden bg-white">
+        {preview.isPending && (
+          <div className="flex h-full items-center justify-center text-[13px] text-stone-400">
+            Mirroring the page…
+          </div>
+        )}
+        {preview.data?.ok &&
+          preview.data.mirrorPath &&
+          preview.data.mirrorOffPath &&
+          (
+            [
+              ["variant", `${preview.data.mirrorPath}&angel_debug=1`],
+              ["original", preview.data.mirrorOffPath],
+            ] as const
+          ).map(([m, src]) => (
+            <iframe
+              key={m}
+              src={src}
+              title={m === "variant" ? "This variant" : "Original page"}
+              sandbox="allow-scripts"
+              className="absolute left-0 top-0"
+              style={{
+                width: frameW,
+                height: Math.round(stage.h / scale),
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+                border: 0,
+                // Bägge monterade → växlingen är omedelbar (ingen omladdning).
+                visibility: mode === m ? "visible" : "hidden",
+              }}
             />
-            Highlighted elements in AFTER are what this variant changes — each carries a tag
-            (&quot;moved up&quot; / &quot;rewrote this text&quot;).
-          </p>
-        </>
-      )}
-      {(preview.isError || (preview.data && !preview.data.ok)) && (
-        <p className="text-xs text-stone-400">
-          {preview.data?.reason === "no_domain"
-            ? "The live preview needs the site's domain — add it in Settings and the page mirrors here."
-            : "The live preview isn't available right now — try again in a moment."}
-        </p>
-      )}
-    </div>
+          ))}
+        {(preview.isError || (preview.data && !preview.data.ok)) && (
+          <div className="flex h-full items-center justify-center p-8 text-center text-[13px] text-stone-400">
+            {preview.data?.reason === "no_domain"
+              ? "The live preview needs the site's domain — add it in Settings and the page mirrors here."
+              : "The live preview isn't available right now — try again in a moment."}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1188,9 +1324,7 @@ export function OverviewPanel({
                             </DropdownMenu>
                           </div>
                           {compareId === v.id && (
-                            <div className="px-4 pb-4">
-                              <VariantComparePanel site={site} v={v} />
-                            </div>
+                            <CompareOverlay site={site} v={v} onClose={() => setCompareId(null)} />
                           )}
                         </div>
                       );
