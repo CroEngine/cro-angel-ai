@@ -16,8 +16,14 @@
 // up with the same bucket the dashboard reports.
 
 import { fnv1a32 } from "../hash";
+import { fullSegmentKey, isSegmentPrefix, segmentDepth } from "../../lib/segment-key";
 
 import type { RedesignOp } from "./generate";
+
+// Nyckelsemantiken bor i src/lib/segment-key.ts (task #89) — samma byggare/
+// matchare som rollupen och dashboarden. Re-exporteras här för serve-vägens
+// befintliga importörer (serve.test.ts pinnar beteendet).
+export { isSegmentPrefix };
 
 export type VariantStatus = "candidate" | "verified" | "serving" | "winner" | "retired";
 
@@ -64,29 +70,10 @@ export interface ServableVariant {
   serveOps?: ServeOp[];
 }
 
-// Same tokenization as aggregate.ts's segToken + returning token, so keys match.
-const token = (v: string | null | undefined): string => {
-  const s = typeof v === "string" ? v.trim() : "";
-  return s || "okänd";
-};
-
 /** Build the FULL coarse→fine segment key for a visitor — identical format to the
  *  dashboard rollup, so a variant's prefix key can be matched against it. */
 export function visitorSegmentKey(seg: VisitorSegment): string {
-  return [token(seg.channel), token(seg.device), token(seg.country), seg.isReturning ? "återkommande" : "ny"].join(
-    "·",
-  );
-}
-
-/** Is `prefix` a coarse→fine prefix of `full` — compared DIMENSION-WISE (not raw
- *  string prefix, so "go" never matches "google" and "google" matches only the
- *  whole "google" token). */
-export function isSegmentPrefix(prefix: string, full: string): boolean {
-  if (!prefix) return false;
-  const p = prefix.split("·");
-  const f = full.split("·");
-  if (p.length > f.length) return false;
-  return p.every((tok, i) => tok === f[i]);
+  return fullSegmentKey(seg.channel, seg.device, seg.country, seg.isReturning);
 }
 
 /** The variant to serve a visitor, or null. Among the site+path's SERVABLE
@@ -107,7 +94,7 @@ export function matchVariant(
   );
   if (servable.length === 0) return null;
   servable.sort((a, b) => {
-    const depth = b.segmentKey.split("·").length - a.segmentKey.split("·").length;
+    const depth = segmentDepth(b.segmentKey) - segmentDepth(a.segmentKey);
     return depth !== 0 ? depth : a.id.localeCompare(b.id);
   });
   return servable[0];

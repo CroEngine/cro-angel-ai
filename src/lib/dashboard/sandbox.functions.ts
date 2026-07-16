@@ -17,6 +17,7 @@ import {
   SANDBOX_TOKEN_TTL_MS,
 } from "@/lib/sandbox/mirror.server";
 import { isAdminEmail, ownsSite, type AuthCtx } from "./dashboard.functions";
+import { segmentDims } from "@/lib/segment-key";
 
 export interface SandboxPreview {
   ok: boolean;
@@ -111,7 +112,7 @@ export const createVariantPreview = createServerFn({ method: "POST" })
     const exp = Date.now() + SANDBOX_TOKEN_TTL_MS;
     const t = signSandboxToken(url, exp, secret);
     // Segmentnyckelns dimensioner skiljs med "·" (t.ex. "instagram·mobile·SE").
-    const mobile = v.segment_key.split("·").includes("mobile");
+    const mobile = segmentDims(v.segment_key).includes("mobile");
     const qs =
       `url=${encodeURIComponent(url)}&exp=${exp}&t=${t}` + (mobile ? "&angel_device=mobile" : "");
     return {

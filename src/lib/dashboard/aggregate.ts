@@ -6,6 +6,8 @@
 // thing is unit-tested against synthetic events. The server function in
 // dashboard.functions.ts feeds it real rows from Supabase.
 
+import { RETURNING_TOKEN, returningToken, segToken, segmentKeyOf } from "../segment-key";
+
 /** A minimal projection of an angel_events row. */
 export interface DashEvent {
   type: string;
@@ -695,12 +697,9 @@ export const MAX_SEGMENTS = 30;
 /** Tidsfönster för "senaste"-jämförelsen per segment (dagar). */
 export const RECENT_WINDOW_DAYS = 30;
 
-/** En dimensions token för segmentnyckeln — null/tom blir "okänd" (ärlig egen
- *  hink, aldrig påhittad). */
-const segToken = (v: string | null | undefined): string => {
-  const s = typeof v === "string" ? v.trim() : "";
-  return s || "okänd";
-};
+// Nyckelsemantiken (segToken/returningToken/segmentKeyOf) bor i
+// src/lib/segment-key.ts (task #89) — samma byggare som serve-vägen, så
+// rollupens nycklar och variantmatchningen aldrig kan glida isär.
 
 /** En förskotts-aggregerad segment-lövnod: finaste grain
  *  (kanal·enhet·land·ny/återkommande) med räknare. Både server-rollupen
@@ -739,11 +738,11 @@ export function expandSegmentLeaves(
       segToken(leaf.channel),
       segToken(leaf.device),
       segToken(leaf.country),
-      leaf.returning ? "återkommande" : "ny",
+      returningToken(leaf.returning),
     ];
     for (let d = 1; d <= dims.length; d++) {
       const prefix = dims.slice(0, d);
-      const key = prefix.join("·");
+      const key = segmentKeyOf(prefix);
       const acc =
         byKey.get(key) ??
         (byKey
@@ -767,7 +766,7 @@ export function expandSegmentLeaves(
       channel: a.dims[0] ?? null,
       device: depth >= 2 ? a.dims[1] : null,
       country: depth >= 3 ? a.dims[2] : null,
-      returning: depth >= 4 ? a.dims[3] === "återkommande" : null,
+      returning: depth >= 4 ? a.dims[3] === RETURNING_TOKEN : null,
       visits: a.visits,
       conversions: a.conversions,
       conversionRate: a.visits > 0 ? a.conversions / a.visits : 0,
