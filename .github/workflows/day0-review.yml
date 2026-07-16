@@ -1,0 +1,55 @@
+# Day-0-granskningen (task #98) — dag-0-värdet i onboardingen.
+#
+# Varannan timme: sveper kundsajter med domän som saknar dag-0-stämpel,
+# kör granska-site.ts i onboarding-läge (deterministisk — ingen LLM), laddar
+# upp rapporten till angel-evidence och stämplar sajtraden. Dashboarden visar
+# kortet tills sajtens första variant finns.
+#
+# Kräver repo-secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
+# Saknas de är körningen en loggad no-op — aldrig röd av fel anledning.
+
+name: Day-0 review
+on:
+  schedule:
+    - cron: "17 */2 * * *" # varannan timme — "day 0" ska betyda samma dag
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Kör om denna sajt-slug (ignorerar dag-0-stämpeln)"
+        required: false
+
+jobs:
+  day0:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium (with system deps)
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run the day-0 sweep
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.site }}" ]; then ARGS="--site=${{ github.event.inputs.site }}"; fi
+          bun run scripts/loop/day0.ts $ARGS --out=day0-out
+
+      - name: Upload run artifacts (loggar/rapporter, 14 dagar)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: day0-out
+          path: day0-out
+          retention-days: 14
+          if-no-files-found: ignore
