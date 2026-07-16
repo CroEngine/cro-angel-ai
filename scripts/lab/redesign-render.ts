@@ -23,7 +23,7 @@ import { join } from "node:path";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { generateRedesign } from "../../src/adaptive/redesign/generate";
-import { measurePlan, runGatedAttempts, type GatedAttempt, type MeasureOp } from "../redesign/measure";
+import { captureLcpElement, measurePlan, runGatedAttempts, type GatedAttempt, type MeasureOp } from "../redesign/measure";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 
 const REPO = join(import.meta.dir, "../..");
@@ -124,6 +124,8 @@ try {
   const page = await context.newPage();
   await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
   await page.waitForTimeout(400);
+  // FÖRE fullPage-skärmdumpen — den scrollar och förorenar LCP-entries (task #105).
+  await captureLcpElement(page);
 
   await page.screenshot({ path: join(outDir, "before.jpg"), type: "jpeg", quality: 60, fullPage: true });
 
