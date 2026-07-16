@@ -24,6 +24,7 @@ import { generateRedesign } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
+import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const CAP = Number(arg("cap") ?? 3); // max nya varianter per sajt och natt
@@ -153,7 +154,7 @@ for (const site of targets) {
       const page = pages[b.path];
       if (!page) continue;
       const content = extractContentModel(readFileSync(page, "utf8"));
-      const dims = b.key.split("·");
+      const dims = segmentDims(b.key);
       const summary: SegmentSummary = {
         key: b.key,
         label: dims.join(" · "),
@@ -161,7 +162,7 @@ for (const site of targets) {
         channel: dims[0] ?? null,
         device: dims[1] ?? null,
         country: dims[2] ?? null,
-        returning: dims.length >= 4 ? dims[3] === "återkommande" : null,
+        returning: dims.length >= 4 ? dims[3] === RETURNING_TOKEN : null,
         visits: b.total.visits,
         conversions: b.total.conversions,
         conversionRate: b.total.visits > 0 ? b.total.conversions / b.total.visits : 0,

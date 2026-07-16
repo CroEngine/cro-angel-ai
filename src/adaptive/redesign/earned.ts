@@ -35,23 +35,23 @@ import {
   SEGMENT_MIN_CONVERSIONS,
   type SegmentLeaf,
 } from "@/lib/dashboard/aggregate";
+import {
+  UNKNOWN_TOKEN,
+  isDimsPrefix,
+  returningToken,
+  segToken,
+  segmentDims,
+  segmentKeyOf,
+} from "@/lib/segment-key";
 
-/** Samma tokenisering som rollupen (aggregate.ts segToken) och serve.ts — en
- *  nyckel, tre platser, medvetet identisk. */
-const token = (v: string | null | undefined): string => {
-  const s = typeof v === "string" ? v.trim() : "";
-  return s || "okänd";
-};
-
+// Nyckelsemantiken bor i src/lib/segment-key.ts (task #89) — samma tokenisering
+// som rollupen och serve-vägen, per konstruktion i stället för per disciplin.
 const leafDims = (l: SegmentLeaf): string[] => [
-  token(l.channel),
-  token(l.device),
-  token(l.country),
-  l.returning ? "återkommande" : "ny",
+  segToken(l.channel),
+  segToken(l.device),
+  segToken(l.country),
+  returningToken(l.returning),
 ];
-
-const isPrefix = (prefix: string[], full: string[]): boolean =>
-  prefix.length <= full.length && prefix.every((t, i) => t === full[i]);
 
 export interface EarnedSegment {
   /** Segmentnyckeln en ny variant ska genereras för. */
@@ -122,7 +122,7 @@ export function findEarnedSegments(
   existingKeys: string[],
   cap = 5,
 ): EarnedSegment[] {
-  const existing = existingKeys.map((k) => k.split("·"));
+  const existing = existingKeys.map(segmentDims);
   const leafList = leaves
     .filter((l) => l.visits > 0)
     .map((l) => ({ dims: leafDims(l), visits: l.visits, conversions: l.conversions }));
@@ -132,8 +132,8 @@ export function findEarnedSegments(
   for (const leaf of leafList) {
     for (let d = 1; d <= leaf.dims.length; d++) {
       const dims = leaf.dims.slice(0, d);
-      if (dims.includes("okänd")) break; // djupare prefix bär också 'okänd'
-      const key = dims.join("·");
+      if (dims.includes(UNKNOWN_TOKEN)) break; // djupare prefix bär också 'okänd'
+      const key = segmentKeyOf(dims);
       const acc = candidates.get(key) ?? { dims, visits: 0, conversions: 0 };
       acc.visits += leaf.visits;
       acc.conversions += leaf.conversions;
@@ -144,16 +144,16 @@ export function findEarnedSegments(
   // Ett löv är täckt när NÅGON befintlig/vald nyckel matchar det (oavsett djup)
   // — matchVariant hittar alltid den, grov som fin.
   const covered = (leafDims: string[], keys: string[][]): boolean =>
-    keys.some((k) => isPrefix(k, leafDims));
+    keys.some((k) => isDimsPrefix(k, leafDims));
 
   const incrementalOf = (dims: string[], keys: string[][]) => {
     const inc = { visits: 0, conversions: 0, leaves: [] as string[] };
     for (const leaf of leafList) {
-      if (!isPrefix(dims, leaf.dims)) continue;
+      if (!isDimsPrefix(dims, leaf.dims)) continue;
       if (covered(leaf.dims, keys)) continue;
       inc.visits += leaf.visits;
       inc.conversions += leaf.conversions;
-      inc.leaves.push(leaf.dims.join("·"));
+      inc.leaves.push(segmentKeyOf(leaf.dims));
     }
     return inc;
   };
@@ -188,15 +188,14 @@ export function findEarnedSegments(
         (cand.incremental.conversions === best.incremental.conversions &&
           (cand.incremental.visits > best.incremental.visits ||
             (cand.incremental.visits === best.incremental.visits &&
-              (cand.depth > best.depth ||
-                (cand.depth === best.depth && cand.key < best.key)))))
+              (cand.depth > best.depth || (cand.depth === best.depth && cand.key < best.key)))))
       ) {
         best = cand;
       }
     }
     if (!best) break;
     chosen.push(best);
-    coveringKeys.push(best.key.split("·"));
+    coveringKeys.push(segmentDims(best.key));
   }
   return chosen;
 }

@@ -24,6 +24,7 @@ import {
 import { createPagePreview, createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { setVariantStatus } from "@/lib/dashboard/dashboard.functions";
 import { armStatValid, twoProportionZ } from "@/lib/dashboard/aggregate";
+import { isDimsPrefix, parentSegmentKey, segmentDims, segmentKeysRelated } from "@/lib/segment-key";
 
 import type {
   ClickHeat,
@@ -99,14 +100,13 @@ function judgeArms(arms: Arms | null): ArmVerdict {
 /** Finaste servande/vinnande variant vars segmentnyckel är prefix av `key`
  *  (samma lån-styrka-regel som serve-vägen). */
 function variantFor(variants: VariantView[], key: string): VariantView | null {
-  const dims = key.split("·");
+  const dims = segmentDims(key);
   let best: VariantView | null = null;
   for (const v of variants) {
     if (v.status !== "serving" && v.status !== "winner") continue;
-    const vd = v.segmentKey.split("·");
-    if (vd.length > dims.length) continue;
-    if (!vd.every((d, i) => d === dims[i])) continue;
-    if (!best || vd.length > best.segmentKey.split("·").length) best = v;
+    const vd = segmentDims(v.segmentKey);
+    if (!isDimsPrefix(vd, dims)) continue;
+    if (!best || vd.length > segmentDims(best.segmentKey).length) best = v;
   }
   return best;
 }
@@ -123,11 +123,7 @@ function liftForKey(variants: VariantView[], key: string): number | null {
 function scopedVariants(variants: VariantView[], key: string): VariantView[] {
   return variants.filter((v) => {
     if (v.status !== "verified" && v.status !== "serving" && v.status !== "winner") return false;
-    return (
-      v.segmentKey === key ||
-      v.segmentKey.startsWith(`${key}·`) ||
-      key.startsWith(`${v.segmentKey}·`)
-    );
+    return segmentKeysRelated(v.segmentKey, key);
   });
 }
 
@@ -439,7 +435,7 @@ export function OverviewPanel({
   const children = useMemo(() => {
     const m = new Map<string | null, SegmentSummary[]>();
     for (const s of segments) {
-      const parent = s.depth === 1 ? null : s.key.split("·").slice(0, -1).join("·");
+      const parent = s.depth === 1 ? null : parentSegmentKey(s.key);
       const list = m.get(parent) ?? [];
       list.push(s);
       m.set(parent, list);
@@ -524,7 +520,7 @@ export function OverviewPanel({
   const selArms = selVariant?.abTest
     ? judgeArms({ variant: selVariant.abTest.variant, control: selVariant.abTest.control })
     : judgeArms(null);
-  const selDims = sel?.key.split("·") ?? [];
+  const selDims = sel ? segmentDims(sel.key) : [];
   const journeyMatches = (j: SessionSummary) => {
     if (!sel) return true;
     if (selDims[0] && (j.channel ?? "okänd") !== selDims[0]) return false;

@@ -65,6 +65,7 @@ import { captureLcpElement, measurePlan, runGatedAttempts, type MeasureOp } from
 import type { ServeOp } from "../../src/adaptive/redesign/serve";
 import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
+import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
 
 const EXEC = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
@@ -124,7 +125,7 @@ function pageRef(path: string) {
 
 /** SegmentSummary ur detektorns fynd — underlaget för briefen. */
 function summaryFor(key: string, total: { visits: number; conversions: number }): SegmentSummary {
-  const dims = key.split("·");
+  const dims = segmentDims(key);
   return {
     key,
     label: dims.join(" · "),
@@ -132,7 +133,7 @@ function summaryFor(key: string, total: { visits: number; conversions: number })
     channel: dims[0] ?? null,
     device: dims[1] ?? null,
     country: dims[2] ?? null,
-    returning: dims.length >= 4 ? dims[3] === "återkommande" : null,
+    returning: dims.length >= 4 ? dims[3] === RETURNING_TOKEN : null,
     visits: total.visits,
     conversions: total.conversions,
     conversionRate: total.visits > 0 ? total.conversions / total.visits : 0,
