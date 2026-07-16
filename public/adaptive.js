@@ -50,6 +50,11 @@
   if (LOOKS_BOT && !window.__ANGEL_HARNESS__) return;
 
   var site = script.getAttribute("data-site") || "demo";
+  // Sandbox-speglar (site "sandbox--…") är förhandsvisningar utan riktiga
+  // besökare. CWV-vakterna (touchesLcp) skyddar riktiga sidladdningar — i
+  // spegeln stängs de av, annars kan en variant som rör sidans LCP-element
+  // (t.ex. hero-rubriken) aldrig förhandsgranskas i Compare.
+  var IS_SANDBOX = site.indexOf("sandbox--") === 0;
   // Per-site write key. Public (it ships in this tag), but it binds this install
   // to its slug so the ingest endpoints reject writes for a keyed site that
   // don't present it. Unkeyed (legacy) sites simply omit it.
@@ -657,6 +662,7 @@
   // True when an op on `el` would move/hide/retext the LCP element (it IS the
   // LCP element, or wraps it, or sits inside it).
   function touchesLcp(el) {
+    if (IS_SANDBOX) return false; // förhandsvisning — ingen riktig besökare att skydda
     if (!lcpEl || !el) return false;
     try {
       return el === lcpEl || el.contains(lcpEl) || lcpEl.contains(el);
