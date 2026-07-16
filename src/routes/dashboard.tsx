@@ -15,6 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, TrendingUp, ShieldCheck, Shield } from "lucide-react";
 
 import { AppNav } from "@/components/app-nav";
+import { MirrorFrame } from "@/components/mirror-frame";
+import { createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,7 +60,6 @@ import {
   type VariantOpView,
   type VariantView,
 } from "@/lib/dashboard/dashboard.functions";
-import { H_OVERFLOW_FAIL_PX, V_OVERLAP_FAIL_PX } from "@/adaptive/redesign/render-gates";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
 import { RECENT_WINDOW_DAYS } from "@/lib/dashboard/aggregate";
 import type {
@@ -234,18 +235,11 @@ function Dashboard() {
             {/* 1B-layouten ur design-handoffen: sidtitel → svarskort + KPI:er →
                 källutforskaren (ersätter gamla KPI-raden, segmenttabellen,
                 resetabellen och rage-tabellen — samma data, kurerad). */}
-            <div className="flex items-baseline justify-between gap-4">
-              <div>
-                <h2 className="font-heading text-[23px] font-bold tracking-tight">Overview</h2>
-                <div className="mt-1 font-mono text-[10.5px] uppercase tracking-[.14em] text-stone-400">
-                  Adaptive layer · last {RECENT_WINDOW_DAYS} days
-                </div>
+            <div>
+              <h2 className="font-heading text-[23px] font-bold tracking-tight">Overview</h2>
+              <div className="mt-1 font-mono text-[10.5px] uppercase tracking-[.14em] text-stone-400">
+                Adaptive layer · last {RECENT_WINDOW_DAYS} days
               </div>
-              {d.isAdmin && (
-                <a href="/sandbox" className="text-[13px] text-emerald-700 hover:text-emerald-600">
-                  Open sandbox →
-                </a>
-              )}
             </div>
             <OverviewPanel
               overview={d.metrics.overview}
@@ -1128,52 +1122,27 @@ const VARIANT_STATUS_STYLE: Record<VariantView["status"], string> = {
   retired: "bg-stone-100 text-stone-400 line-through",
 };
 
-/** Grind-nycklarnas läsbara etiketter + hur ett värde bedöms (grönt/flaggat). */
-const GATE_LABELS: Record<string, { label: string; ok: (v: number | boolean) => boolean; fmt?: (v: number | boolean) => string }> = {
-  heroFirst: { label: "Hjälten kvar först", ok: (v) => v === true },
-  hOverflowIntroducedPx: { label: "Horisontell overflow", ok: (v) => Number(v) <= H_OVERFLOW_FAIL_PX, fmt: (v) => `+${v} px` },
-  verticalOverlapIntroducedPx: { label: "Vertikal krock", ok: (v) => Number(v) <= V_OVERLAP_FAIL_PX, fmt: (v) => `+${v} px` },
-  attempt1VerticalOverlapPx: { label: "Vertikal krock — försök 1", ok: (v) => Number(v) <= V_OVERLAP_FAIL_PX, fmt: (v) => `+${v} px` },
-  ctaBroken: { label: "CTA brutna", ok: (v) => Number(v) === 0 },
-  reversible: { label: "Reversibel", ok: (v) => v === true },
-};
+/** "Se live" för en variant: sidan i sandbox-spegeln FÖRE (orörd) och EFTER
+ *  (exakt den här variantens ops, genom snippetens riktiga apply-väg). Ingen
+ *  skärmdump — ägaren ser sidan som en besökare ser den. Spegeln skriver
+ *  aldrig events, så en titt blir aldrig en mätpunkt. Ägarens beslut (ändrings-
+ *  listan + den levande sidan) ryms i EN panel — resten var brus. */
+function VariantLivePanel({ site, v }: { site: string; v: VariantView }) {
+  const preview = useQuery({
+    queryKey: ["variantPreview", site, v.id],
+    queryFn: () => createVariantPreview({ data: { site, variantId: v.id } }),
+    // Spegel-tokens lever 30 min — återanvänd svaret medan panelen togglas.
+    staleTime: 5 * 60 * 1000,
+  });
+  const frameW = preview.data?.mobile ? 390 : 1280;
 
-/** FÖRE/EFTER-jämförelsen för en variant — det ägaren tittar på innan hen sätter
- *  varianten till serving. Skärmdumparna är samma-origin-sökvägar (eller Storage-
- *  URL:er när genereringskedjan skriver dem). */
-function VariantComparisonPanel({ v }: { v: VariantView }) {
-  const cmp = v.comparison;
-  const orderRow = (labels: string[]) => (
-    <div className="flex flex-wrap items-center gap-1">
-      {labels.map((l, i) => (
-        <span key={`${l}-${i}`} className="flex items-center gap-1">
-          {i > 0 && <span className="text-stone-300">›</span>}
-          <span
-            className={`rounded border px-1.5 py-0.5 text-[11px] ${
-              l === cmp?.movedLabel
-                ? "border-emerald-600 bg-emerald-600 font-medium text-white"
-                : "border-stone-200 bg-stone-50 text-stone-500"
-            }`}
-          >
-            {l}
-          </span>
-        </span>
-      ))}
-    </div>
-  );
   return (
-    <div className="mt-2 rounded-md border border-stone-200 bg-stone-50/50 p-3">
-      {cmp?.headline && <p className="mb-2 text-sm font-medium text-stone-700">{cmp.headline}</p>}
-      {cmp && cmp.orderBefore.length > 0 && (
-        <div className="mb-3 flex flex-col gap-1.5">
-          <span className="text-[10px] uppercase tracking-wider text-stone-400">Före</span>
-          {orderRow(cmp.orderBefore)}
-          <span className="mt-1 text-[10px] uppercase tracking-wider text-stone-400">Efter</span>
-          {orderRow(cmp.orderAfter)}
-        </div>
+    <div className="mt-2 space-y-3 rounded-md border border-stone-200 bg-stone-50/50 p-3">
+      {v.comparison?.headline && (
+        <p className="text-sm font-medium text-stone-700">{v.comparison.headline}</p>
       )}
       {v.ops.length > 0 && (
-        <ul className="mb-3 flex flex-col gap-1">
+        <ul className="flex flex-col gap-1">
           {/* Identiska rader (t.ex. kollisions-retryns extra lyft) visas EN
               gång med ×N — antalet är sant, upprepningen är brus. */}
           {v.ops
@@ -1198,44 +1167,26 @@ function VariantComparisonPanel({ v }: { v: VariantView }) {
             ))}
         </ul>
       )}
-      {Object.keys(v.gates).length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {Object.entries(v.gates).map(([k, val]) => {
-            const meta = GATE_LABELS[k];
-            if (!meta) return null;
-            const ok = meta.ok(val);
-            return (
-              <span
-                key={k}
-                className={`rounded px-1.5 py-0.5 text-[10px] ${ok ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
-              >
-                {meta.label}: {meta.fmt ? meta.fmt(val) : String(val)} {ok ? "✓" : "✗"}
-              </span>
-            );
-          })}
+      {preview.isPending && <p className="text-xs text-stone-400">Speglar sidan …</p>}
+      {preview.data?.ok && preview.data.mirrorPath && preview.data.mirrorOffPath && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <MirrorFrame
+            src={preview.data.mirrorOffPath}
+            frameW={frameW}
+            label="[ FÖRE — sidan orörd ]"
+          />
+          <MirrorFrame
+            src={preview.data.mirrorPath}
+            frameW={frameW}
+            label="[ EFTER — den här varianten ]"
+          />
         </div>
       )}
-      {cmp?.screenshots.before && cmp.screenshots.after && (
-        <div className="flex flex-wrap gap-3">
-          <figure className="w-40">
-            <img src={cmp.screenshots.before} alt="Sidan idag" className="rounded border border-stone-200" loading="lazy" />
-            <figcaption className="mt-1 text-center font-mono text-[10px] text-stone-400">Idag</figcaption>
-          </figure>
-          {cmp.screenshots.attempt1 && (
-            <figure className="w-40">
-              <img src={cmp.screenshots.attempt1} alt="Försök 1 — stoppad av krock-grinden" className="rounded border border-amber-300" loading="lazy" />
-              <figcaption className="mt-1 text-center font-mono text-[10px] text-amber-600">Försök 1 → stoppad</figcaption>
-            </figure>
-          )}
-          <figure className="w-40">
-            <img src={cmp.screenshots.after} alt="Varianten — verifierad" className="rounded border border-emerald-400" loading="lazy" />
-            <figcaption className="mt-1 text-center font-mono text-[10px] text-emerald-700">Varianten ✓</figcaption>
-          </figure>
-        </div>
-      )}
-      {!cmp && (
+      {(preview.isError || (preview.data && !preview.data.ok)) && (
         <p className="text-xs text-stone-400">
-          Ingen jämförelse sparad för den här varianten ännu.
+          {preview.data?.reason === "no_domain"
+            ? "Live-förhandsvisningen behöver sajtens domän — lägg till den i Settings så speglas sidan här."
+            : "Live-förhandsvisningen är inte tillgänglig just nu — försök igen om en stund."}
         </p>
       )}
     </div>
@@ -1427,7 +1378,7 @@ function VariantsCard({
                           onClick={() => setOpenId(openId === v.id ? null : v.id)}
                           className="font-mono text-[11px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
                         >
-                          {openId === v.id ? "dölj" : "jämför"}
+                          {openId === v.id ? "dölj" : "se live"}
                         </button>
                         {site === "synthetic-lab" && v.path === "/" && (
                           <a
@@ -1444,7 +1395,7 @@ function VariantsCard({
                     {openId === v.id && (
                       <tr>
                         <td colSpan={6} className="pb-2">
-                          <VariantComparisonPanel v={v} />
+                          <VariantLivePanel site={site} v={v} />
                         </td>
                       </tr>
                     )}

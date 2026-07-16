@@ -37,10 +37,10 @@ export function isAdminEmail(email: unknown): boolean {
   return set.has(email.toLowerCase());
 }
 
-type AuthCtx = { userId: string; claims: { email?: string } };
+export type AuthCtx = { userId: string; claims: { email?: string } };
 
 /** True if the caller may see/configure `slug`: an admin, or a member of it. */
-async function ownsSite(
+export async function ownsSite(
   admin: { from: (t: string) => any },
   ctx: AuthCtx,
   slug: string,
