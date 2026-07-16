@@ -75,6 +75,8 @@ export const Route = createFileRoute("/api/sandbox/mirror")({
           ourOrigin,
           site,
           angel,
+          // h=1: heatmap-backdroppen behöver sidans fulla dokumenthöjd.
+          reportHeight: q.get("h") === "1",
         });
         return new Response(body, {
           status: 200,

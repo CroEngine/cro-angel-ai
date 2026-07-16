@@ -121,3 +121,55 @@ export const createVariantPreview = createServerFn({ method: "POST" })
       mobile,
     };
   });
+
+export interface PagePreview {
+  ok: boolean;
+  /** "not_owner" | "no_domain" | "unavailable" | guard reason. */
+  reason?: string;
+  /** Spegeln av sidan ORÖRD (utan Angel) + höjdrapportören (h=1) — heatmap-
+   *  backdroppen. */
+  mirrorPath?: string;
+}
+
+/**
+ * Heatmap-backdroppen: minta en spegel-URL för EN sida på sajtens riktiga
+ * domän, utan Angel (orörd) och med höjdrapportören så dashboarden kan skala
+ * spegeln till hela dokumentet — klickens y-koordinat är % av dokumenthöjden.
+ * Ägar-gatad; sandbox-slugs skriver aldrig events, så en titt lämnar inga spår.
+ */
+export const createPagePreview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      site: z.string().min(1),
+      path: z
+        .string()
+        .regex(/^\/\S*$/)
+        .max(500),
+    }),
+  )
+  .handler(async ({ data, context }): Promise<PagePreview> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!(await ownsSite(supabaseAdmin, context as unknown as AuthCtx, data.site))) {
+      return { ok: false, reason: "not_owner" };
+    }
+    const { data: siteRow } = await supabaseAdmin
+      .from("angel_sites")
+      .select("domain")
+      .eq("slug", data.site)
+      .maybeSingle();
+    if (!siteRow?.domain) return { ok: false, reason: "no_domain" };
+
+    const guarded = guardTargetUrl(`https://${siteRow.domain}${data.path}`);
+    if (!guarded.ok) return { ok: false, reason: guarded.reason };
+    const secret = sandboxSecret();
+    if (!secret) return { ok: false, reason: "unavailable" };
+
+    const url = guarded.url.href;
+    const exp = Date.now() + SANDBOX_TOKEN_TTL_MS;
+    const t = signSandboxToken(url, exp, secret);
+    return {
+      ok: true,
+      mirrorPath: `/api/sandbox/mirror?url=${encodeURIComponent(url)}&exp=${exp}&t=${t}&angel=0&h=1`,
+    };
+  });

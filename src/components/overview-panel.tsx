@@ -11,11 +11,11 @@
 // klick (samlas från och med snippet-versionen med koordinater) och säger
 // ärligt när underlaget saknas. Ingen yta visar ett tal vi inte kan försvara.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { MirrorFrame } from "@/components/mirror-frame";
-import { createVariantPreview } from "@/lib/dashboard/sandbox.functions";
+import { createPagePreview, createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { setVariantStatus } from "@/lib/dashboard/dashboard.functions";
 import { armStatValid, twoProportionZ } from "@/lib/dashboard/aggregate";
 
@@ -135,6 +135,65 @@ const STATUS_PILL: Record<string, { bg: string; color: string }> = {
 
 const liftFmt = (liftRel: number | null) =>
   liftRel != null ? `${liftRel > 0 ? "+" : ""}${(liftRel * 100).toFixed(0)}%` : "—";
+
+/** Heatmapens backdrop: den RIKTIGA sidan i spegeln (orörd, utan Angel),
+ *  skalad till hela dokumenthöjden så klickens y-% träffar rätt. Spegeln är
+ *  opak origin och kan inte läsas — sidan rapporterar sin egen höjd via
+ *  postMessage (höjdrapportören injiceras av mirror-endpointen när h=1). */
+function HeatMirror({ src, overlay }: { src: string; overlay: React.ReactNode }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [wrapW, setWrapW] = useState(700);
+  const [docH, setDocH] = useState(2200);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const update = () => setWrapW(el.clientWidth);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      const d = e.data as { type?: string; h?: number } | null;
+      if (d && d.type === "angel-mirror-height" && typeof d.h === "number") {
+        // Klampad: en fientlig speglad sida kan bara flytta punkter i ägarens
+        // egen vy av just den sidan — men vi tar inga orimliga värden.
+        setDocH(Math.min(20000, Math.max(600, Math.round(d.h))));
+      }
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+
+  const scale = wrapW > 0 ? Math.min(1, wrapW / 1280) : 0.5;
+  return (
+    <div
+      ref={wrapRef}
+      className="max-h-[560px] overflow-y-auto overflow-x-hidden rounded-[10px] border border-[#f0eee9] bg-white"
+    >
+      <div className="relative" style={{ height: Math.round(docH * scale) }}>
+        <iframe
+          src={src}
+          title="Click heatmap backdrop"
+          sandbox="allow-scripts"
+          style={{
+            width: 1280,
+            height: docH,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            border: 0,
+            // Backdroppen är en karta, inte en sida att klicka på — pekaren
+            // ska scrolla/hovra lagret ovanpå.
+            pointerEvents: "none",
+          }}
+        />
+        <div className="absolute inset-0">{overlay}</div>
+      </div>
+    </div>
+  );
+}
 
 /** "Se live" för en variant: sidan i sandbox-spegeln FÖRE (orörd) och EFTER
  *  (exakt den här variantens ops, genom snippetens riktiga apply-väg). Ingen
@@ -303,6 +362,15 @@ export function OverviewPanel({
     }
   };
 
+  // Heatmap-backdroppen (den riktiga sidan i spegeln) hämtas bara när detalj-
+  // vyn är öppen — hooken bor på toppnivån (hooks-regeln), grinden är enabled.
+  const backdrop = useQuery({
+    queryKey: ["pagePreview", site, heat.path],
+    queryFn: () => createPagePreview({ data: { site, path: heat.path } }),
+    enabled: view === "detail",
+    staleTime: 5 * 60 * 1000,
+  });
+
   // ── svarskortet: summerade armar över allt som serverar ───────────────────
   const siteVerdict = judgeArms(sumArms(variants));
 
@@ -467,77 +535,88 @@ export function OverviewPanel({
               </div>
             </div>
             <div className="bg-[#faf9f7] p-5">
-              <div className="relative h-[460px] overflow-hidden rounded-[10px] border border-[#f0eee9] bg-white p-[22px]">
-                {/* abstrakt sid-siluett — kartan visar VAR, inte en skärmdump */}
-                <div className="flex items-center justify-between">
-                  <div className="h-4 w-20 rounded-[5px] bg-[#eae7e2]" />
-                  <div className="flex gap-2.5">
-                    <div className="h-3 w-[52px] rounded bg-[#f0eee9]" />
-                    <div className="h-3 w-[52px] rounded bg-[#f0eee9]" />
-                    <div className="h-3 w-[66px] rounded bg-[#f0eee9]" />
-                  </div>
-                </div>
-                <div className="mt-11 text-center">
-                  <div className="mx-auto h-[30px] w-[58%] rounded-[7px] bg-[#eae7e2]" />
-                  <div className="mx-auto mt-3.5 h-[13px] w-[44%] rounded bg-[#f0eee9]" />
-                  <div className="mx-auto mt-2 h-[13px] w-[36%] rounded bg-[#f0eee9]" />
-                  <div className="mx-auto mt-6 h-10 w-[170px] rounded-[9px] bg-stone-200" />
-                </div>
-                <div className="mt-12 grid grid-cols-3 gap-3.5">
-                  <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
-                  <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
-                  <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
-                </div>
-
-                {heat.sampled === 0 ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-8 text-center">
-                    <p className="max-w-sm text-[13px] text-stone-500">
-                      Click positions start collecting from your visitors&apos; next page loads —
-                      the map draws itself as real data arrives. Nothing here is simulated.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {showClicks &&
-                      heat.clicks.map((c, i) => {
-                        const st = spotStyle(c.n);
-                        return (
+              {(() => {
+                // Punkterna + "samlar in"-läget delas mellan backdropparna:
+                // den levande spegeln av RIKTIGA sidan (när domänen finns)
+                // och siluett-fallbacken (labb/utan domän).
+                const overlay =
+                  heat.sampled === 0 ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-8 text-center">
+                      <p className="max-w-sm text-[13px] text-stone-500">
+                        Click positions start collecting from your visitors&apos; next page loads —
+                        the map draws itself as real data arrives. Nothing here is simulated.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {showClicks &&
+                        heat.clicks.map((c, i) => {
+                          const st = spotStyle(c.n);
+                          return (
+                            <div
+                              key={`c${i}`}
+                              className="pointer-events-none absolute rounded-full"
+                              style={{
+                                top: `${c.y}%`,
+                                left: `${c.x}%`,
+                                width: st.size,
+                                height: st.size,
+                                transform: "translate(-50%,-50%)",
+                                background: st.bg,
+                                filter: "blur(7px)",
+                              }}
+                            />
+                          );
+                        })}
+                      {showRage &&
+                        heat.rage.map((r, i) => (
                           <div
-                            key={`c${i}`}
-                            className="pointer-events-none absolute rounded-full"
+                            key={`r${i}`}
+                            title={r.ref}
+                            className="absolute flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-bold text-white"
                             style={{
-                              top: `${c.y}%`,
-                              left: `${c.x}%`,
-                              width: st.size,
-                              height: st.size,
+                              top: `${r.y}%`,
+                              left: `${r.x}%`,
                               transform: "translate(-50%,-50%)",
-                              background: st.bg,
-                              filter: "blur(7px)",
+                              background: "rgba(220,38,38,.92)",
+                              boxShadow:
+                                "0 0 0 6px rgba(220,38,38,.26), 0 0 0 13px rgba(220,38,38,.13)",
                             }}
-                          />
-                        );
-                      })}
-                    {showRage &&
-                      heat.rage.map((r, i) => (
-                        <div
-                          key={`r${i}`}
-                          title={r.ref}
-                          className="absolute flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-bold text-white"
-                          style={{
-                            top: `${r.y}%`,
-                            left: `${r.x}%`,
-                            transform: "translate(-50%,-50%)",
-                            background: "rgba(220,38,38,.92)",
-                            boxShadow:
-                              "0 0 0 6px rgba(220,38,38,.26), 0 0 0 13px rgba(220,38,38,.13)",
-                          }}
-                        >
-                          {r.n}
-                        </div>
-                      ))}
-                  </>
-                )}
-              </div>
+                          >
+                            {r.n}
+                          </div>
+                        ))}
+                    </>
+                  );
+                if (backdrop.data?.ok && backdrop.data.mirrorPath) {
+                  return <HeatMirror src={backdrop.data.mirrorPath} overlay={overlay} />;
+                }
+                return (
+                  <div className="relative h-[460px] overflow-hidden rounded-[10px] border border-[#f0eee9] bg-white p-[22px]">
+                    {/* siluett-fallback — utan domän finns ingen sida att spegla */}
+                    <div className="flex items-center justify-between">
+                      <div className="h-4 w-20 rounded-[5px] bg-[#eae7e2]" />
+                      <div className="flex gap-2.5">
+                        <div className="h-3 w-[52px] rounded bg-[#f0eee9]" />
+                        <div className="h-3 w-[52px] rounded bg-[#f0eee9]" />
+                        <div className="h-3 w-[66px] rounded bg-[#f0eee9]" />
+                      </div>
+                    </div>
+                    <div className="mt-11 text-center">
+                      <div className="mx-auto h-[30px] w-[58%] rounded-[7px] bg-[#eae7e2]" />
+                      <div className="mx-auto mt-3.5 h-[13px] w-[44%] rounded bg-[#f0eee9]" />
+                      <div className="mx-auto mt-2 h-[13px] w-[36%] rounded bg-[#f0eee9]" />
+                      <div className="mx-auto mt-6 h-10 w-[170px] rounded-[9px] bg-stone-200" />
+                    </div>
+                    <div className="mt-12 grid grid-cols-3 gap-3.5">
+                      <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
+                      <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
+                      <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
+                    </div>
+                    {overlay}
+                  </div>
+                );
+              })()}
               <div className="mt-3 flex items-center gap-4 text-[11px] text-stone-500">
                 {showClicks && (
                   <span className="flex items-center gap-2">
@@ -562,6 +641,11 @@ export function OverviewPanel({
                 )}
                 {heat.sampled > 0 && (
                   <span className="ml-auto">{fmt(heat.sampled)} sampled clicks</span>
+                )}
+                {backdrop.data && !backdrop.data.ok && backdrop.data.reason === "no_domain" && (
+                  <span className={heat.sampled > 0 ? "" : "ml-auto"}>
+                    Set the site&apos;s domain in Settings to draw the map over the real page.
+                  </span>
                 )}
               </div>
             </div>
