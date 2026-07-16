@@ -27,7 +27,7 @@ if (!url || !out) {
 }
 
 const IMG_CAP = 400_000; // bytes — större bilder länkas absolut i stället
-const UA = "Mozilla/5.0 (compatible; CROENGINE-freeze/1.0; +https://croengine.netlify.app)";
+const UA = `Mozilla/5.0 (compatible; CROENGINE-freeze/1.0; +${process.env.APP_ORIGIN ?? "https://croengine.netlify.app"})`;
 
 // Hämtning via curl-subprocess, inte fetch(): curl följer miljöns proxy- och
 // CA-konfiguration überallt (inkl. sandlådor med egen TLS-terminering) och

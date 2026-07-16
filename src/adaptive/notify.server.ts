@@ -18,6 +18,10 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import type { Json } from "@/integrations/supabase/types";
 
+/** Appens publika bas-URL — EN inställning vid domänbyte (APP_ORIGIN i
+ *  Netlify-miljön), aldrig hårdkodade länkar i mejlen. */
+const APP_ORIGIN = (process.env.APP_ORIGIN ?? "https://croengine.netlify.app").replace(/\/$/, "");
+
 export type NotificationKind = "installed" | "variant_ready" | "test_result";
 
 /** Ägarnas e-postadresser för en sajt (medlemmar → auth-användare). */
@@ -121,7 +125,7 @@ export function notifyInstalled(site: string, domain: string): Promise<number> {
       `Data börjar nu samlas — inga ändringar visas för era besökare förrän ni själva godkänt dem.`,
       ``,
       `Logga in på dashboarden för att bekräfta ert konverteringsmål (2 minuter):`,
-      `https://croengine.netlify.app/dashboard`,
+      `${APP_ORIGIN}/dashboard`,
       ``,
       `— CROENGINE`,
     ].join("\n"),
@@ -143,7 +147,7 @@ export function notifyVariantReady(site: string, variantId: string, label: strin
       `Den har klarat alla kontroller — men ingen besökare ser den förrän ni godkänt.`,
       ``,
       `Titta på före/efter och godkänn med en knapp (2 minuter):`,
-      `https://croengine.netlify.app/dashboard`,
+      `${APP_ORIGIN}/dashboard`,
       ``,
       `— CROENGINE`,
     ].join("\n"),
