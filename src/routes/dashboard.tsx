@@ -12,19 +12,12 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/r
 import { Fragment, useEffect, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Eye,
-  Users,
-  Target,
-  Sparkles,
-  TrendingUp,
-  ShieldCheck,
-  Shield,
-} from "lucide-react";
+import { Sparkles, TrendingUp, ShieldCheck, Shield } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OverviewPanel } from "@/components/overview-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -66,6 +59,7 @@ import {
 } from "@/lib/dashboard/dashboard.functions";
 import { H_OVERFLOW_FAIL_PX, V_OVERLAP_FAIL_PX } from "@/adaptive/redesign/render-gates";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
+import { RECENT_WINDOW_DAYS } from "@/lib/dashboard/aggregate";
 import type {
   DayPoint,
   HourPoint,
@@ -250,21 +244,31 @@ function Dashboard() {
 
           {/* ---- Overview ---- */}
           <TabsContent value="overview" className="mt-4 space-y-4">
-            <TrafficChart daily={d.metrics.timeseries.daily} hourly={d.metrics.timeseries.hourly} />
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Kpi icon={<Eye />} label="Pageviews" value={d.metrics.overview.pageviews} />
-              <Kpi
-                icon={<Users />}
-                label="Identified visitors"
-                value={d.metrics.overview.uniqueVisitors}
-              />
-              <Kpi icon={<Target />} label="Conversions" value={d.metrics.overview.conversions} />
-              <Kpi
-                icon={<Sparkles />}
-                label="Conversion rate"
-                value={`${(d.metrics.overview.conversionRate * 100).toFixed(1)}%`}
-              />
+            {/* 1B-layouten ur design-handoffen: sidtitel → svarskort + KPI:er →
+                källutforskaren (ersätter gamla KPI-raden, segmenttabellen,
+                resetabellen och rage-tabellen — samma data, kurerad). */}
+            <div className="flex items-baseline justify-between gap-4">
+              <div>
+                <h2 className="font-heading text-[23px] font-bold tracking-tight">Overview</h2>
+                <div className="mt-1 font-mono text-[10.5px] uppercase tracking-[.14em] text-stone-400">
+                  Adaptive layer · last {RECENT_WINDOW_DAYS} days
+                </div>
+              </div>
+              {d.isAdmin && (
+                <a href="/sandbox" className="text-[13px] text-emerald-700 hover:text-emerald-600">
+                  Open sandbox →
+                </a>
+              )}
             </div>
+            <OverviewPanel
+              overview={d.metrics.overview}
+              segments={d.metrics.segmentGroups}
+              sessions={d.metrics.sessions}
+              rageClicks={d.metrics.rageClicks}
+              variants={d.variants ?? []}
+              rampPct={d.siteConfig.rampPct}
+            />
+            <TrafficChart daily={d.metrics.timeseries.daily} hourly={d.metrics.timeseries.hourly} />
 
             {/* ---- Observera-läge: Angel är osynligt (adaptations_enabled=false) ---- */}
             {!d.siteConfig.adaptationsEnabled && (
@@ -278,82 +282,6 @@ function Dashboard() {
                     besöksresan, sidans struktur och prestandan — inga synliga ändringar görs, så
                     det finns ingen adapterad arm att jämföra mot. Insikterna nedan byggs upp per
                     segment. När en testad variant finns aktiveras adaptationer per sajt.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* ---- Fas 2: besökargrupper (segment, grov→fin + volymgrind) ---- */}
-            {d.metrics.segmentGroups.length > 0 && (
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Segment (besökargrupper)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-xs text-stone-500">
-                          <th className="py-1 font-medium">Grupp</th>
-                          <th className="py-1 font-medium">Kornighet</th>
-                          <th className="py-1 font-medium">Besökare</th>
-                          <th className="py-1 font-medium">Konvertering</th>
-                          <th className="py-1 font-medium">Senaste 30 dgr</th>
-                          <th className="py-1 font-medium">Form avbrott</th>
-                          <th className="py-1 font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {d.metrics.segmentGroups.map((s) => (
-                          <tr key={s.key} className="border-t border-stone-100">
-                            <td className="py-1.5 font-mono text-[11px] text-stone-600">{s.label}</td>
-                            <td className="py-1.5 text-xs text-stone-500">
-                              {["Kanal", "Kanal · enhet", "+ land", "+ ny/återk."][s.depth - 1] ??
-                                `nivå ${s.depth}`}
-                            </td>
-                            <td className="py-1.5">{s.visits}</td>
-                            <td className="py-1.5">
-                              {(s.conversionRate * 100).toFixed(1)}%{" "}
-                              <span className="text-xs text-stone-400">({s.conversions})</span>
-                            </td>
-                            <td className="py-1.5 whitespace-nowrap">
-                              {s.recent ? (
-                                <>
-                                  {(s.recent.conversionRate * 100).toFixed(1)}%{" "}
-                                  <span className="text-xs text-stone-400">
-                                    ({s.recent.visits}&nbsp;bes.)
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-xs text-stone-300" title="för få besök i fönstret">
-                                  —
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-1.5">{s.formAbandons}</td>
-                            <td className="py-1.5 whitespace-nowrap">
-                              {s.adequate ? (
-                                <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
-                                  nog data
-                                </span>
-                              ) : (
-                                <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-500">
-                                  för tunt
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <p className="mt-2 text-xs text-stone-400">
-                    Grupper byggs grovt först (kanal → enhet → land → ny/återkommande) och
-                    aggregeras över hela historiken. En finare uppdelning (t.ex. per land) blir
-                    tillförlitlig först när den egna gruppen når ~1000 besök / 100 konverteringar
-                    — tills dess lånar den styrka från den grövre gruppen. "Senaste 30 dgr" visar
-                    samma grupp i ett färskt fönster (över tid); "—" = för få besök där ännu.
-                    "För tunt" = ännu inte beslutsunderlag.
                   </p>
                 </CardContent>
               </Card>
@@ -473,106 +401,6 @@ function Dashboard() {
               </Card>
             )}
 
-
-            {/* ---- nivå 2: senaste anonyma besöksresor (journey intelligence) ---- */}
-            {d.metrics.sessions.length > 0 && (
-              <Card className="border-stone-200 shadow-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Senaste resor (anonyma)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-xs text-stone-500">
-                          <th className="py-1 font-medium">Kanal</th>
-                          <th className="py-1 font-medium">Enhet</th>
-                          <th className="py-1 font-medium">Sidresa</th>
-                          <th className="py-1 font-medium">Klickordning</th>
-                          <th className="py-1 font-medium">Tid</th>
-                          <th className="py-1 font-medium">Utfall</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {d.metrics.sessions.slice(0, 15).map((s) => (
-                          <tr key={s.sessionId} className="border-t border-stone-100 align-top">
-                            <td className="py-1.5">
-                              {s.channel ?? "—"}
-                              {s.sawAdaptation && (
-                                <span className="ml-1 rounded bg-emerald-50 px-1 text-[10px] text-emerald-700">
-                                  adapterad
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-1.5">{s.device ?? "—"}</td>
-                            <td className="py-1.5 font-mono text-[11px] text-stone-600">
-                              {s.pageOrder.length ? s.pageOrder.join(" → ") : "—"}
-                            </td>
-                            <td className="py-1.5 font-mono text-[11px] text-stone-500">
-                              {s.clickOrder.length ? s.clickOrder.join(" → ") : "—"}
-                            </td>
-                            <td className="py-1.5 whitespace-nowrap">
-                              {s.engagedMs > 0 ? `${Math.round(s.engagedMs / 1000)} s` : "—"}
-                            </td>
-                            <td className="py-1.5 whitespace-nowrap">
-                              {s.converted ? (
-                                <span className="text-emerald-700">konverterade</span>
-                              ) : s.formAbandoned ? (
-                                <span className="text-amber-600">form avbrutet</span>
-                              ) : s.formStarted ? (
-                                <span className="text-stone-500">form startat</span>
-                              ) : (
-                                <span className="text-stone-400">ingen</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <p className="mt-2 font-mono text-[10px] tracking-wide text-stone-400">
-                    ANONYM RESA PER SESSION — INGA DIREKTA PERSONUPPGIFTER. KLICKORDNINGEN ÄR
-                    INTENT-SIGNALEN SOM MOTORN SKA LÄRA SIG AV (NIVÅ 3).
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* ---- Frustrationssignaler: mest rage-klickade element (diagnostik) ---- */}
-            {d.metrics.rageClicks.length > 0 && (
-              <Card className="border-amber-200 shadow-none">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Frustrationssignaler (rage clicks)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-xs text-stone-500">
-                          <th className="py-1 font-medium">Element</th>
-                          <th className="py-1 font-medium">Frustrations­tillfällen</th>
-                          <th className="py-1 font-medium">Besökare</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {d.metrics.rageClicks.map((r) => (
-                          <tr key={r.ref} className="border-t border-stone-100">
-                            <td className="py-1.5 font-mono text-[11px] text-stone-600">{r.ref}</td>
-                            <td className="py-1.5">{r.bursts}</td>
-                            <td className="py-1.5">{r.visitors}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <p className="mt-2 text-xs text-stone-400">
-                    Snabba upprepade klick på samma element = "ser klickbart ut, händer inget".
-                    En diagnos att titta på (trasig länk, otydlig knapp) — Angel ändrar aldrig
-                    något automatiskt utifrån detta.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
 
           </TabsContent>
 
@@ -2326,30 +2154,6 @@ function VisitorsPanel({
             )}
           </DialogContent>
         </Dialog>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Kpi({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <Card className="border-stone-200 shadow-none">
-      <CardContent className="py-5">
-        <div className="font-['Sora','Manrope',sans-serif] text-2xl font-semibold text-emerald-700">
-          {value}
-        </div>
-        <div className="mt-1 font-mono text-[11px] uppercase tracking-wider text-stone-400">
-          {label}
-        </div>
-        <span className="hidden">{icon}</span>
       </CardContent>
     </Card>
   );
