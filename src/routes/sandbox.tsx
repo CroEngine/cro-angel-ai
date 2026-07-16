@@ -15,17 +15,11 @@ import { MirrorFrame } from "@/components/mirror-frame";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  createSandboxPreview,
-  type SandboxPreview,
-} from "@/lib/dashboard/sandbox.functions";
+import { createSandboxPreview, type SandboxPreview } from "@/lib/dashboard/sandbox.functions";
 
 export const Route = createFileRoute("/sandbox")({
   head: () => ({
-    meta: [
-      { title: "Angel Adaptive — Sandbox" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Angel Adaptive — Sandbox" }, { name: "robots", content: "noindex" }],
   }),
   // Client-only UX gate like /dashboard; the real gate is the admin check in
   // createSandboxPreview (server-side) — non-admins get a friendly refusal.
@@ -39,40 +33,40 @@ export const Route = createFileRoute("/sandbox")({
   component: SandboxPage,
 });
 
-/** Swedish one-liners for the applied-pattern chips; raw id as fallback. */
+/** One-liners for the applied-pattern chips; raw id as fallback. */
 const PATTERN_LABEL: Record<string, string> = {
-  emphasize_goal: "målknappen framhävd",
-  sticky_goal_cta: "sticky målknapp (mobil)",
-  show_secondary_cta: "mjuk sekundär väg",
-  clarify_cta: "CTA-text förtydligad",
-  shorten_hero: "hero komprimerad",
-  move_faq_up: "FAQ flyttad upp",
-  surface_pricing: "priser lyfta",
-  continue_where_left_off: "fortsätt där du var",
-  show_customer_logos_early: "kundlogotyper tidigt",
-  show_enterprise_testimonial: "kundcitat framlyft",
-  show_trust_badge: "trust-signal synlig",
-  show_guarantee: "garanti synlig",
-  show_case_study: "case study framlyft",
-  show_no_credit_card: "”inget kort krävs”-badge",
-  show_2min_setup: "”igång på minuter”-badge",
+  emphasize_goal: "goal button emphasized",
+  sticky_goal_cta: "sticky goal button (mobile)",
+  show_secondary_cta: "softer secondary path",
+  clarify_cta: "CTA text clarified",
+  shorten_hero: "hero tightened",
+  move_faq_up: "FAQ moved up",
+  surface_pricing: "pricing surfaced",
+  continue_where_left_off: "continue where you left off",
+  show_customer_logos_early: "customer logos early",
+  show_enterprise_testimonial: "testimonial surfaced",
+  show_trust_badge: "trust signal visible",
+  show_guarantee: "guarantee visible",
+  show_case_study: "case study surfaced",
+  show_no_credit_card: '"no credit card" badge',
+  show_2min_setup: '"set up in minutes" badge',
   // Våg 8 — vertikala mönster (docs/wave8-pattern-spec.md):
-  move_reviews_up: "recensioner flyttade upp",
-  show_rating_near_goal: "sajtens betyg vid målet",
-  show_payment_security: "betaltrygghet vid målet",
-  show_monthly_giving_option: "månadsgivar-väg bredvid gåvan",
-  show_callback_option: "bli-uppringd-väg vid målet",
-  show_cancel_anytime: "”avsluta när du vill”-badge",
+  move_reviews_up: "reviews moved up",
+  show_rating_near_goal: "site rating near the goal",
+  show_payment_security: "payment security near the goal",
+  show_monthly_giving_option: "monthly-giving path beside the gift",
+  show_callback_option: "callback path near the goal",
+  show_cancel_anytime: '"cancel anytime" badge',
 };
 
 const REASON_TEXT: Record<string, string> = {
-  admin: "Sandboxen är bara tillgänglig för admin-konton.",
-  invalid_url: "Det där ser inte ut som en giltig adress.",
-  protocol: "Bara http(s)-adresser kan förhandsgranskas.",
-  ip_literal: "IP-adresser kan inte förhandsgranskas — ange ett domännamn.",
-  host: "Den här adressen kan inte förhandsgranskas.",
-  credentials: "Adresser med inbäddade inloggningsuppgifter stöds inte.",
-  unavailable: "Sandboxen är inte konfigurerad i den här miljön.",
+  admin: "The sandbox is only available to admin accounts.",
+  invalid_url: "That doesn't look like a valid address.",
+  protocol: "Only http(s) addresses can be previewed.",
+  ip_literal: "IP addresses can't be previewed — enter a domain name.",
+  host: "This address can't be previewed.",
+  credentials: "Addresses with embedded credentials aren't supported.",
+  unavailable: "The sandbox isn't configured in this environment.",
 };
 
 function SandboxPage() {
@@ -146,8 +140,8 @@ function SandboxPage() {
         <header>
           <h1 className="font-heading text-[23px] font-bold tracking-tight">Sandbox</h1>
           <p className="mt-2 max-w-[640px] text-sm text-stone-500">
-            Testa Angel på vilken sajt som helst — en privat spegel. Inget installeras och ingen
-            mätdata skapas.
+            Test Angel on any site — a private mirror. Nothing is installed and no measurement data
+            is created.
           </p>
         </header>
 
@@ -163,12 +157,12 @@ function SandboxPage() {
               <Input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://kundens-sajt.se"
+                placeholder="https://your-customers-site.com"
                 className="max-w-md"
                 autoFocus
               />
               <Button type="submit" disabled={loading || !url.trim()}>
-                {loading ? "Speglar…" : "Förhandsgranska"}
+                {loading ? "Mirroring…" : "Preview"}
               </Button>
               <div className="ml-auto flex items-center gap-1">
                 {(["mobile", "desktop"] as const).map((dv) => (
@@ -192,14 +186,14 @@ function SandboxPage() {
                     markera ? "bg-emerald-700 text-white" : "text-stone-500 hover:text-stone-900"
                   }`}
                 >
-                  [ markera ändringar ]
+                  [ highlight changes ]
                 </button>
               </div>
             </form>
 
             {preview && !preview.ok && (
               <p className="font-mono text-[11px] tracking-wider text-amber-600">
-                {REASON_TEXT[preview.reason ?? ""] ?? "Kunde inte förhandsgranska adressen."}
+                {REASON_TEXT[preview.reason ?? ""] ?? "Couldn't preview the address."}
               </p>
             )}
 
@@ -211,11 +205,11 @@ function SandboxPage() {
                   </span>
                   {applied === null ? (
                     <span className="font-mono text-[11px] tracking-wider text-stone-400 animate-pulse">
-                      väntar på beslut…
+                      waiting for the decision…
                     </span>
                   ) : applied.length === 0 ? (
                     <span className="font-mono text-[11px] tracking-wider text-stone-400">
-                      inga ändringar ännu — första besöket lär sig sidan, laddar om strax…
+                      no changes yet — the first visit learns the page, reloading shortly…
                     </span>
                   ) : (
                     applied.map((p) => (
@@ -233,21 +227,21 @@ function SandboxPage() {
                   <MirrorFrame
                     src={`${preview.mirrorOffPath}&r=${reloadKey}`}
                     frameW={frameW}
-                    label="[ FÖRE — sidan orörd ]"
+                    label="[ BEFORE — untouched ]"
                   />
                   {afterSrc && (
                     <MirrorFrame
                       key={`after-${reloadKey}-${markera}`}
                       src={afterSrc}
                       frameW={frameW}
-                      label="[ EFTER — med Angel ]"
+                      label="[ AFTER — with Angel ]"
                       iframeRef={afterFrameRef}
                     />
                   )}
                 </div>
                 <p className="font-mono text-[10px] tracking-wide text-stone-400">
-                  SPEGELN ÄR PRIVAT OCH KÖR ANONYMT LÄGE — INGA HÄNDELSER SKRIVS, SÅ STATISTIKEN
-                  FÅR ALDRIG BRUS FRÅN SANDBOXEN. SAJTER MED TUNGA APPAR KAN RENDERA DELVIS.
+                  THE MIRROR IS PRIVATE AND RUNS ANONYMOUS MODE — NO EVENTS ARE WRITTEN, SO YOUR
+                  STATS NEVER GET NOISE FROM THE SANDBOX. HEAVY APP SITES MAY RENDER PARTIALLY.
                 </p>
               </>
             )}

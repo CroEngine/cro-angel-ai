@@ -43,7 +43,7 @@ export function MirrorFrame({
           rel="noreferrer"
           className="font-mono text-[10px] tracking-wider text-emerald-700 underline decoration-emerald-300 underline-offset-2 hover:decoration-emerald-700"
         >
-          öppna i ny flik ↗
+          open in new tab ↗
         </a>
       </div>
       <div
