@@ -17,6 +17,7 @@ import {
   SANDBOX_TOKEN_TTL_MS,
 } from "@/lib/sandbox/mirror.server";
 import { isAdminEmail, ownsSite, type AuthCtx } from "./dashboard.functions";
+import { mirrorStorageKey } from "@/lib/sandbox/mirror-key";
 import { segmentDims } from "@/lib/segment-key";
 
 export interface SandboxPreview {
@@ -165,9 +166,26 @@ export const createPagePreview = createServerFn({ method: "POST" })
     if (!guarded.ok) return { ok: false, reason: guarded.reason };
     const secret = sandboxSecret();
     if (!secret) return { ok: false, reason: "unavailable" };
+    const exp = Date.now() + SANDBOX_TOKEN_TTL_MS;
+
+    // Fryst kopia först (nattloppens browser-frysning i angel-evidence):
+    // för en SPA är live-spegeln blank — routern ser spegel-URL:en och
+    // datahämtningen går mot fel origin — men den frysta kopian ÄR den
+    // färdigrenderade sidan. Live-spegeln blir fallback för sidor som
+    // ännu inte frysts.
+    const frozenKey = mirrorStorageKey(data.site, data.path);
+    const { data: frozenList } = await supabaseAdmin.storage
+      .from("angel-evidence")
+      .list(`mirrors/${data.site}`, { search: frozenKey.split("/").pop(), limit: 1 });
+    if (frozenList?.some((f) => `mirrors/${data.site}/${f.name}` === frozenKey)) {
+      const t = signSandboxToken(`frozen:${frozenKey}`, exp, secret);
+      return {
+        ok: true,
+        mirrorPath: `/api/sandbox/mirror?frozen=${encodeURIComponent(frozenKey)}&exp=${exp}&t=${t}&h=1`,
+      };
+    }
 
     const url = guarded.url.href;
-    const exp = Date.now() + SANDBOX_TOKEN_TTL_MS;
     const t = signSandboxToken(url, exp, secret);
     return {
       ok: true,

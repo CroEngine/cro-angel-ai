@@ -24,6 +24,7 @@ import { generateRedesign } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
+import { mirrorStorageKey } from "../../src/lib/sandbox/mirror-key";
 import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
@@ -121,8 +122,29 @@ for (const site of targets) {
           // Snabb SPA-koll: en fryst kopia utan rubriker kan inte designas mot.
           try {
             const model = extractContentModel(readFileSync(file, "utf8"));
-            if (model.sections.length >= 2) pages[p] = file;
-            else console.log(`[loop] ${site.slug}${p}: för få sektioner i fryst kopia (SPA?) — needs_freeze`);
+            if (model.sections.length >= 2) {
+              pages[p] = file;
+              // Dela kopian med dashboarden: heatmap-backdroppen serverar den
+              // via mirror-endpointens frozen-läge — live-spegeln kan inte
+              // rendera en SPA, men den frysta kopian ÄR den renderade sidan.
+              // Bäst-effort: ett uppladdningsfel fäller aldrig loopen.
+              const mirrorKey = mirrorStorageKey(site.slug, p);
+              const { error: mirrorErr } = await db.storage
+                .from("angel-evidence")
+                .upload(mirrorKey, readFileSync(file), {
+                  contentType: "text/html; charset=utf-8",
+                  upsert: true,
+                });
+              if (mirrorErr) {
+                console.warn(
+                  `[loop] ${site.slug}${p}: backdrop-uppladdning föll: ${mirrorErr.message}`,
+                );
+              }
+            } else {
+              console.log(
+                `[loop] ${site.slug}${p}: för få sektioner i fryst kopia (SPA?) — needs_freeze`,
+              );
+            }
           } catch {
             /* trasig frysning → utelämna */
           }

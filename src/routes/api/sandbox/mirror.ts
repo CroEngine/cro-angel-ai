@@ -9,6 +9,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import {
+  frozenBackdropHtml,
   guardTargetUrl,
   safeMirrorFetch,
   sandboxSecret,
@@ -43,6 +44,38 @@ export const Route = createFileRoute("/api/sandbox/mirror")({
         const exp = Number(q.get("exp") ?? "");
         const token = q.get("t") ?? "";
         const angel = q.get("angel") !== "0";
+
+        // Fryst backdrop (SPA-sajternas väg): servera nattloppens browser-
+        // frysta kopia ur angel-evidence i stället för att spegla live —
+        // live-spegeln kan inte rendera en SPA (routern ser spegel-URL:en).
+        // Token är bunden till "frozen:"-prefixad nyckel så url-tokens och
+        // frozen-tokens aldrig är utbytbara.
+        const frozenKey = q.get("frozen");
+        if (frozenKey) {
+          if (!/^mirrors\/[a-z0-9][a-z0-9.-]*\/[A-Za-z0-9._-]+\.html$/.test(frozenKey)) {
+            return deny(400, "bad_frozen_key");
+          }
+          if (!verifySandboxToken(`frozen:${frozenKey}`, exp, token, secret)) {
+            return deny(403, "bad_token");
+          }
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const dl = await supabaseAdmin.storage.from("angel-evidence").download(frozenKey);
+          if (dl.error || !dl.data) return deny(502, "frozen_missing");
+          const body = frozenBackdropHtml(await dl.data.text());
+          return new Response(body, {
+            status: 200,
+            headers: {
+              "content-type": "text/html; charset=utf-8",
+              "cache-control": "no-store",
+              "x-robots-tag": "noindex, nofollow",
+              "referrer-policy": "no-referrer",
+              // Samma opaka sandlåda som spegelvägen — kopian är script-
+              // strippad, men höjdrapportören vi injicerar ska inte kunna
+              // mer än postMessage ändå.
+              "content-security-policy": "sandbox allow-scripts; frame-ancestors 'self'",
+            },
+          });
+        }
 
         const guarded = guardTargetUrl(rawUrl);
         if (!guarded.ok) return deny(400, guarded.reason);

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   blockedIpReason,
+  frozenBackdropHtml,
   guardTargetUrl,
   normalizeHost,
   sandboxSiteSlug,
@@ -9,6 +10,7 @@ import {
   transformMirrorHtml,
   verifySandboxToken,
 } from "../mirror.server";
+import { mirrorPathKey, mirrorStorageKey } from "../mirror-key";
 
 const SECRET = "test-secret";
 
@@ -172,5 +174,33 @@ describe("transformMirrorHtml", () => {
 describe("sandboxSiteSlug", () => {
   it("derives the isolated per-host slug", () => {
     expect(sandboxSiteSlug(new URL("https://www.example.com/a"))).toBe("sandbox--www.example.com");
+  });
+});
+
+describe("frozenBackdropHtml — fryst kopia som heatmap-backdrop", () => {
+  it("injicerar höjdrapportören före </body>", () => {
+    const out = frozenBackdropHtml("<html><body><h1>Fryst</h1></body></html>");
+    expect(out).toContain("angel-mirror-height");
+    expect(out.indexOf("angel-mirror-height")).toBeLessThan(out.indexOf("</body>"));
+  });
+
+  it("klarar body-lösa dokument (rapportören appendas)", () => {
+    const out = frozenBackdropHtml("<h1>Fryst</h1>");
+    expect(out).toContain("angel-mirror-height");
+  });
+});
+
+describe("mirrorPathKey/mirrorStorageKey — delad nyckelhärledning", () => {
+  it("roten blir 'home'; query/hash strippas; osäkra tecken blir bindestreck", () => {
+    expect(mirrorPathKey("/")).toBe("home");
+    expect(mirrorPathKey("/blogg/x?fbclid=abc#top")).toBe("blogg-x");
+    expect(mirrorPathKey("/forum/trad/hur-lang-tid")).toBe("forum-trad-hur-lang-tid");
+  });
+
+  it("uppladdare och läsare härleder samma lagringsnyckel", () => {
+    expect(mirrorStorageKey("glutenforum.se", "/matvaror")).toBe(
+      "mirrors/glutenforum.se/matvaror.html",
+    );
+    expect(mirrorStorageKey("glutenforum.se", "/")).toBe("mirrors/glutenforum.se/home.html");
   });
 });
