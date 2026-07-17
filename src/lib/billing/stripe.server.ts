@@ -3,15 +3,18 @@
 // Utan STRIPE_SECRET_KEY är allt en artig no-op — produkten fungerar i
 // observe-läge utan betalning konfigurerad.
 //
-// Flöde: Checkout Session (subscription, 30 dagars trial, kort krävs — det är
-// Checkouts default i subscription-läge) → webhook (checkout.session.completed
-// + customer.subscription.*) → angel_billing per användare → billing_status
-// synkas ut på användarens sajter (serving-grinden läser den via SiteConfig).
+// Flöde: Checkout Session (subscription, kort krävs, trial = "gratis tills
+// första verifierade varianten" med maxTrialDays som tak) → webhook
+// (checkout.session.completed + customer.subscription.*) → angel_billing per
+// användare → billing_status synkas ut på användarens sajter (serving-grinden
+// läser den via SiteConfig). När en sajts FÖRSTA verifierade variant finns
+// kortar sweepProvenBilling ägarnas trial till graceDays varsel — det är
+// prismodellens hela poäng: betala först när roboten bevisat sig.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { mapSubscriptionStatus } from "./billing";
+import { initialTrialEnd, mapSubscriptionStatus, PLAN, provenTrialEnd } from "./billing";
 
 const API = "https://api.stripe.com/v1";
 
@@ -66,8 +69,10 @@ async function customerFor(userId: string, email: string): Promise<string | null
   return id;
 }
 
-/** Skapa en Checkout-session: prenumeration, 30 dagars trial, kort krävs.
- *  Returnerar checkout-URL:en eller null (okonfigurerat/fel). */
+/** Skapa en Checkout-session: prenumeration, kort krävs, trial = "gratis
+ *  tills första verifierade varianten" (trial_end vid maxTrialDays-taket;
+ *  sweepProvenBilling kortar den när beviset finns). Returnerar
+ *  checkout-URL:en eller null (okonfigurerat/fel). */
 export async function createCheckoutUrl(
   userId: string,
   email: string,
@@ -83,11 +88,93 @@ export async function createCheckoutUrl(
     client_reference_id: userId,
     "line_items[0][price]": priceId,
     "line_items[0][quantity]": "1",
-    "subscription_data[trial_period_days]": "30",
+    "subscription_data[trial_end]": String(initialTrialEnd(Date.now())),
     success_url: `${returnUrl}?billing=success`,
     cancel_url: `${returnUrl}?billing=cancelled`,
   });
   return typeof session?.url === "string" ? session.url : null;
+}
+
+/**
+ * Prismodellens trigger, som SVEP (idempotent, självläkande): sajter med
+ * minst en variant i verified/serving/winner stämplas first_verified_at;
+ * deras ägare med trialing-prenumeration och trial_end bortom varselfönstret
+ * får trial_end kortad till graceDays varsel (proration av — första fakturan
+ * kommer vid trial-slutet). Sveper man utan STRIPE_SECRET_KEY stämplas bara
+ * first_verified_at — nästa svep med nyckel armerar i efterhand. exempt-
+ * sajter (pilot/labb) startar ALDRIG någons klocka.
+ */
+export async function sweepProvenBilling(): Promise<void> {
+  // 1) Stämpla first_verified_at där bevis finns men stämpel saknas.
+  const { data: unstamped } = await supabaseAdmin
+    .from("angel_sites")
+    .select("slug")
+    .is("first_verified_at", null)
+    .neq("billing_status", "exempt");
+  for (const site of unstamped ?? []) {
+    const { data: firstVar } = await supabaseAdmin
+      .from("angel_variants")
+      .select("created_at")
+      .eq("site", site.slug)
+      .in("status", ["verified", "serving", "winner"])
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (firstVar?.created_at) {
+      await supabaseAdmin
+        .from("angel_sites")
+        .update({ first_verified_at: firstVar.created_at })
+        .eq("slug", site.slug);
+      console.log(
+        `[billing] ${site.slug}: första verifierade varianten stämplad (${firstVar.created_at})`,
+      );
+    }
+  }
+  if (!secretKey()) {
+    console.log("[billing] STRIPE_SECRET_KEY saknas — trial-armering väntar (stämplar bara)");
+    return;
+  }
+  // 2) Armera ägare: trialing-prenumeration + ägd bevisad sajt + trial_end
+  //    bortom varselfönstret ⇒ korta till graceDays varsel.
+  const { data: proven } = await supabaseAdmin
+    .from("angel_sites")
+    .select("slug")
+    .not("first_verified_at", "is", null)
+    .neq("billing_status", "exempt");
+  if (!proven?.length) return;
+  const graceCutoff = new Date((provenTrialEnd(Date.now()) + 86400) * 1000).toISOString();
+  for (const site of proven) {
+    const { data: members } = await supabaseAdmin
+      .from("angel_site_members")
+      .select("user_id")
+      .eq("site_slug", site.slug);
+    for (const m of members ?? []) {
+      const { data: bill } = await supabaseAdmin
+        .from("angel_billing")
+        .select("stripe_subscription_id,status,trial_end")
+        .eq("user_id", m.user_id)
+        .maybeSingle();
+      if (
+        !bill?.stripe_subscription_id ||
+        bill.status !== "trialing" ||
+        !bill.trial_end ||
+        bill.trial_end <= graceCutoff
+      ) {
+        continue;
+      }
+      const updated = await stripeFetch(`/subscriptions/${bill.stripe_subscription_id}`, {
+        trial_end: String(provenTrialEnd(Date.now())),
+        proration_behavior: "none",
+      });
+      if (updated) {
+        console.log(
+          `[billing] ${site.slug}: trial kortad till ${PLAN.graceDays} dagars varsel för ägare ${m.user_id}`,
+        );
+        // Webhooken (customer.subscription.updated) synkar angel_billing +
+        // sajternas billing_status — vi rör inte statusen här.
+      }
+    }
+  }
 }
 
 /** Kundportalen (hantera kort, säga upp). */
