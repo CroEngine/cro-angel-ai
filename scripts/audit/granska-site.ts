@@ -27,9 +27,10 @@ import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { EVIDENCE_SECTION_TYPES } from "../../src/adaptive/redesign/vocab";
 import { measurePlan, runGatedAttempts, type MeasureOp } from "../redesign/measure";
 
-const EXEC =
-  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
-  "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+// Env-var eller undefined — playwright-core hittar sin egen installation
+// (bunx playwright install) på Actions-runnern; den hårdkodade dev-sökvägen
+// fällde day-0-svepet i generalrepetitionen 2026-07-17.
+const EXEC = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 
 const url = arg("url");
