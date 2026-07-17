@@ -100,13 +100,38 @@ for (const site of targets) {
     // Query/hash strippas defensivt även här (rollupen normaliserar numera,
     // men ett ?fbclid-filnamn fällde artefakt-uppladdningen i generalrepet
     // 2026-07-17 — filnamn får bara innehålla säkra tecken).
-    const paths = [
+    // Heatmapens sidor fryses OCKSÅ: dashboardens backdrop hämtar frysta
+    // kopior, och de mest positions-klickade sidorna kan ligga utanför
+    // rollup-toppen (ägarfynd 2026-07-17: heatmapens sida saknade kopia och
+    // föll på den blanka live-spegeln).
+    const { data: clickRows } = await db
+      .from("angel_events")
+      .select("payload")
+      .eq("site", site.slug)
+      .eq("type", "element_click")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    const clickCounts = new Map<string, number>();
+    for (const r of (clickRows ?? []) as { payload: { x?: unknown; path?: unknown } }[]) {
+      if (typeof r.payload?.x !== "number") continue;
+      const raw = typeof r.payload.path === "string" ? r.payload.path : "/";
+      const p = raw.split("#")[0].split("?")[0] || "/";
+      clickCounts.set(p, (clickCounts.get(p) ?? 0) + 1);
+    }
+    const clickPaths = [...clickCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([p]) => p);
+    // Löv-toppen kapas FÖRST (10) och unionen därefter (15) — klick-sidorna
+    // (max 5) får aldrig trängas ut av en lång rollup-topp.
+    const leafPaths = [
       ...new Set(
         (leaves as { path?: string }[]).map(
           (l) => (l.path || "/").split("#")[0].split("?")[0] || "/",
         ),
       ),
     ].slice(0, 10);
+    const paths = [...new Set([...leafPaths, ...clickPaths])].slice(0, 15);
     const pages: Record<string, string> = {};
     if (site.domain) {
       for (const p of paths) {
