@@ -83,17 +83,27 @@ const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
  *  Lazy-svepet scrollar genom sidan så under-folden-innehåll renderas, och
  *  scrollar tillbaka så frysta dokumentet börjar vid toppen. */
 async function browserRenderedHtml(u: string): Promise<string> {
-  const { chromium } = await import("playwright-core");
+  const { chromium, errors } = await import("playwright-core");
   const exec = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
   const browser = await chromium.launch({ headless: true, executablePath: exec });
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, userAgent: UA });
     // Tunga SPA:er fyrar ibland aldrig load (öppna connections) — samma
     // degradera-och-fortsätt som korpus-frysaren (freeze.server.ts): fånga
-    // timeouten och jobba vidare på det som renderats.
-    await page.goto(u, { waitUntil: "load", timeout: 45_000 }).catch((err) => {
+    // TIMEOUTEN och jobba vidare på det som renderats. Bara timeouten: ett
+    // hårt navigationsfel (net::ERR_...) har ingen DOM — att fortsätta där
+    // fryser Chromiums egen felsida som vore den sajten.
+    const resp = await page.goto(u, { waitUntil: "load", timeout: 45_000 }).catch((err) => {
+      if (!(err instanceof errors.TimeoutError)) throw err;
       console.warn(`[freeze-page] load-event uteblev (${err}) — fortsätter på renderat läge`);
+      return null;
     });
+    // Samma ärlighetsgräns som statiska vägen (curl-hjälparen): ≥400 är
+    // ingen sida att frysa — en WAF-utmaning eller felsida får aldrig
+    // bli "den frysta kopian".
+    if (resp && resp.status() >= 400) {
+      throw new Error(`HTTP ${resp.status()} från servern — ingen sida att frysa`);
+    }
     // networkidle kan aldrig nås på sidor med long-polling — försök, ge upp tyst.
     await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
     // Innehålls-poll (korpus-frysarens mönster): hydreringen kan släpa efter
@@ -121,12 +131,22 @@ async function browserRenderedHtml(u: string): Promise<string> {
 }
 
 // ── hämta: static först, browser-rendering när skalet är tomt ────────────────
-let html = RENDER === "browser" ? "" : await fetchText(url);
+let html = "";
+if (RENDER !== "browser") {
+  try {
+    html = await fetchText(url);
+  } catch (err) {
+    // I auto-läge är en fallen curl-hämtning (WAF, nätverkshicka) ingen
+    // dödsdom — browservägen kan fortfarande lyckas. Bara static-läget fäller.
+    if (RENDER === "static") throw err;
+    console.warn(`[freeze-page] statisk hämtning föll (${err}) — provar browser-rendering`);
+  }
+}
 let renderedVia: "static" | "browser" = "static";
 const isShell = (h: string) => extractContentModel(h).sections.length < 2;
 if (RENDER === "browser" || (RENDER === "auto" && isShell(html))) {
   try {
-    if (RENDER === "auto") {
+    if (RENDER === "auto" && html) {
       console.log("[freeze-page] statisk kopia är ett SPA-skal (<2 sektioner) → browser-rendering");
     }
     html = await browserRenderedHtml(url);
