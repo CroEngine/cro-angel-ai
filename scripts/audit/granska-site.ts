@@ -12,7 +12,8 @@
 //
 //   bun run scripts/audit/granska-site.ts --url=https://exempel.se \
 //     --namn="Exempel AB" --out=audit-out/exempel \
-//     [--pris="5 000 kr"] [--kontakt="hello@croengine.se"] [--mode=onboarding]
+//     [--pris="5 000 kr"] [--kontakt="hello@croengine.se"] [--mode=onboarding] \
+//     [--goal="Skapa konto"]   ← ägarens konfigurerade mål; slår gissningen
 //
 // --mode=onboarding (task #98): samma mätningar och grindar, men rapporten
 // blir kundens dag-0-granskning i dashboarden — engelsk copy (produktens
@@ -40,6 +41,10 @@ const pris = arg("pris") ?? "5 000 kr";
 const kontakt = arg("kontakt") ?? "hello@croengine.se";
 const MODE = (arg("mode") ?? "outreach") as "outreach" | "onboarding";
 const EN = MODE === "onboarding";
+// Ägarens konfigurerade mål (onboardingens målbekräftelse, angel_sites.
+// conversion_text). Vinner alltid över extraktionens gissning — gissningen
+// träffade logga-länken "GlutenForum" i skarpa provet 2026-07-17.
+const ownerGoal = arg("goal")?.trim() || null;
 if (!url || !outDir) {
   console.error(
     "usage: granska-site.ts --url=... --out=dir [--namn=...] [--pris=...] [--kontakt=...] [--mode=onboarding]",
@@ -79,8 +84,10 @@ await page.waitForTimeout(600);
 const rendered = await page.evaluate(() => document.documentElement.outerHTML);
 const content = extractContentModel(rendered);
 const convCtas = content.ctas.filter((c) => c.intent === "conversion");
-const goalGuess = convCtas.find((c) => c.aboveFold)?.text ?? convCtas[0]?.text ?? null;
-const ctaTexts = [...new Set(convCtas.map((c) => c.text))];
+const goalGuess = ownerGoal ?? convCtas.find((c) => c.aboveFold)?.text ?? convCtas[0]?.text ?? null;
+// Extraherade konverterings-CTA:er ∪ ägarens måltext — samma union som
+// auto-generate, så mätningarna alltid vaktar målets element.
+const ctaTexts = [...new Set([...convCtas.map((c) => c.text), ...(ownerGoal ? [ownerGoal] : [])])];
 
 // Basmätning (inga ops): overflow + CTA-klickbarhet i mobilviewport.
 const base = await measurePlan(page, [], ctaTexts);
@@ -248,9 +255,13 @@ const rapport = `<!doctype html><html lang="${EN ? "en" : "sv"}"><head><meta cha
 <div class="meta">${esc(url!)} · ${datum} · ${EN ? "measured on a frozen copy of your page — your live site was not touched" : "gjord på en fryst kopia av er sida — er riktiga sajt har inte rörts"}</div>
 ${
   goalGuess
-    ? EN
-      ? `<p class="meta">We assume <b>“${esc(goalGuess)}”</b> is your most important action — correct it in Settings if not.</p>`
-      : `<p class="meta">Vi antar att <b>“${esc(goalGuess)}”</b> är er viktigaste handling — rätta oss gärna.</p>`
+    ? ownerGoal
+      ? EN
+        ? `<p class="meta">Your goal: <b>“${esc(ownerGoal)}”</b> — as configured in your settings.</p>`
+        : `<p class="meta">Ert mål: <b>“${esc(ownerGoal)}”</b> — enligt era inställningar.</p>`
+      : EN
+        ? `<p class="meta">We assume <b>“${esc(goalGuess)}”</b> is your most important action — correct it in Settings if not.</p>`
+        : `<p class="meta">Vi antar att <b>“${esc(goalGuess)}”</b> är er viktigaste handling — rätta oss gärna.</p>`
     : ""
 }
 
@@ -305,7 +316,17 @@ writeFileSync(join(outDir, "rapport.html"), rapport);
 writeFileSync(
   join(outDir, "fynd.json"),
   JSON.stringify(
-    { url, namn, datum, goalGuess, fynd, flyttStatus, sektioner: sections.length, ctas: ctaTexts },
+    {
+      url,
+      namn,
+      datum,
+      goalGuess,
+      goalSource: ownerGoal ? "configured" : goalGuess ? "guessed" : null,
+      fynd,
+      flyttStatus,
+      sektioner: sections.length,
+      ctas: ctaTexts,
+    },
     null,
     2,
   ),

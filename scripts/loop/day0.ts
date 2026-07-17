@@ -39,7 +39,7 @@ const outRoot = arg("out") ?? "day0-out";
 // ── kön: kundsajter med domän som saknar dag-0-stämpel ───────────────────────
 let query = db
   .from("angel_sites")
-  .select("slug,domain,name")
+  .select("slug,domain,name,conversion_text")
   .not("domain", "is", null)
   .not("slug", "like", "sandbox--%")
   .neq("slug", "synthetic-lab");
@@ -78,6 +78,9 @@ for (const site of sites) {
       `--namn=${site.name ?? site.domain}`,
       `--out=${dir}`,
       "--mode=onboarding",
+      // Ägarens konfigurerade mål (onboardingens målbekräftelse) — utan det
+      // gissar granskningen från sidans länkar och kan träffa logga-länken.
+      ...(site.conversion_text ? [`--goal=${site.conversion_text}`] : []),
     ],
     { stdout: "inherit", stderr: "inherit" },
   );
