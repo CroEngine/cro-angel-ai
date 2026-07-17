@@ -321,4 +321,14 @@ for (const site of targets) {
     console.error(`[loop] ${site.slug} föll:`, err);
   }
 }
+
+// 8. Prismodellens svep (globalt, idempotent): stämpla first_verified_at och
+//    korta trialing-ägares trial till graceDays varsel — "gratis tills
+//    bevisad" (ägarbeslut 2026-07-17). Fail-open utan STRIPE_SECRET_KEY.
+try {
+  const { sweepProvenBilling } = await import("../../src/lib/billing/stripe.server");
+  await sweepProvenBilling();
+} catch (err) {
+  console.warn("[loop] billing-svepet föll (fail-open):", err);
+}
 console.log("\n[loop] klar");

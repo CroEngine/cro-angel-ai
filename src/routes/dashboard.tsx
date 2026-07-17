@@ -969,8 +969,9 @@ function BillingCard({ status }: { status: string }) {
         {status === "none" && (
           <>
             <p className="text-sm text-foreground">
-              <strong>$399/month — first month free.</strong> Card required; cancel anytime. Serving
-              of approved variants starts with your subscription; observation is always on.
+              <strong>$399/month — free until your first verified variant.</strong> Card required;
+              you pay nothing until the system has produced a verified improvement for your site,
+              then billing starts with 7 days notice. Cancel anytime; observation is always on.
             </p>
             <Button
               size="sm"
@@ -978,7 +979,7 @@ function BillingCard({ status }: { status: string }) {
               className="ml-auto bg-emerald-700 text-white hover:bg-emerald-600"
               onClick={() => go(startCheckout)}
             >
-              {busy ? "Opening…" : "Start free month"}
+              {busy ? "Opening…" : "Start — free until proven"}
             </Button>
           </>
         )}

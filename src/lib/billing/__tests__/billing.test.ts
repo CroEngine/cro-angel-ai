@@ -1,7 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { createHmac } from "node:crypto";
 
-import { mapSubscriptionStatus, servingAllowedForBilling, PLAN } from "../billing";
+import {
+  initialTrialEnd,
+  mapSubscriptionStatus,
+  PLAN,
+  provenTrialEnd,
+  servingAllowedForBilling,
+} from "../billing";
 import { verifyStripeSignature } from "../stripe.server";
 
 describe("mapSubscriptionStatus — konservativ mappning", () => {
@@ -48,10 +54,25 @@ describe("verifyStripeSignature — HMAC + färskhetsfönster", () => {
   });
 });
 
-describe("PLAN — ägarbeslutet 2026-07-16", () => {
-  it("399 USD/mån, 30 dagars trial", () => {
+describe("PLAN — ägarbeslut 2026-07-16 (pris) + 2026-07-17 (gratis tills bevisad)", () => {
+  it("399 USD/mån, gratis tills första verifierade varianten", () => {
     expect(PLAN.currency).toBe("usd");
     expect(PLAN.amountCents).toBe(39900);
-    expect(PLAN.trialDays).toBe(30);
+    expect(PLAN.graceDays).toBe(7);
+    expect(PLAN.maxTrialDays).toBe(730);
+    expect(PLAN.label).toContain("free until your first verified variant");
+  });
+});
+
+describe("trial-datummatte (prismodellens trigger)", () => {
+  const now = Date.UTC(2026, 6, 17, 12, 0, 0);
+  it("initial trial_end ligger vid maxTrialDays-taket", () => {
+    expect(initialTrialEnd(now)).toBe(Math.floor(now / 1000) + 730 * 86400);
+  });
+  it("bevisad trial_end ger graceDays varsel", () => {
+    expect(provenTrialEnd(now)).toBe(Math.floor(now / 1000) + 7 * 86400);
+  });
+  it("varslet är alltid kortare än initiala taket (armering kortar, förlänger aldrig)", () => {
+    expect(provenTrialEnd(now)).toBeLessThan(initialTrialEnd(now));
   });
 });

@@ -102,6 +102,7 @@ export type Database = {
           day0_report_at: string | null
           day0_report_status: string | null
           day0_findings: Json | null
+          first_verified_at: string | null
           created_at: string
         }
         Insert: {
@@ -128,6 +129,7 @@ export type Database = {
           day0_report_at?: string | null
           day0_report_status?: string | null
           day0_findings?: Json | null
+          first_verified_at?: string | null
           created_at?: string
         }
         Update: {
@@ -154,6 +156,7 @@ export type Database = {
           day0_report_at?: string | null
           day0_report_status?: string | null
           day0_findings?: Json | null
+          first_verified_at?: string | null
           created_at?: string
         }
         Relationships: []
