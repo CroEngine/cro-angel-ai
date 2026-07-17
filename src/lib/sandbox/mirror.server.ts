@@ -298,15 +298,32 @@ export function transformMirrorHtml(html: string, opts: MirrorTransformOptions):
     out = out.includes("</head>") ? out.replace("</head>", `${inject}</head>`) : out + inject;
   }
   if (opts.reportHeight) {
-    // Spegel-iframen är opak origin — föräldern kan inte läsa höjden själv.
-    // Sidan rapporterar den (flera försök: layouten sätter sig efter load).
-    const heightReporter =
-      "<script>(function(){function r(){try{parent.postMessage({type:'angel-mirror-height'," +
-      "h:Math.max(document.documentElement.scrollHeight||0,document.body?document.body.scrollHeight:0)},'*')}catch(e){}}" +
-      "addEventListener('load',r);setTimeout(r,800);setTimeout(r,2500);setTimeout(r,5000)})();</script>";
-    out = out.includes("</body>")
-      ? out.replace("</body>", `${heightReporter}</body>`)
-      : out + heightReporter;
+    out = withHeightReporter(out);
   }
   return out;
+}
+
+// Spegel-iframen är opak origin — föräldern kan inte läsa höjden själv.
+// Sidan rapporterar den (flera försök: layouten sätter sig efter load).
+const HEIGHT_REPORTER =
+  "<script>(function(){function r(){try{parent.postMessage({type:'angel-mirror-height'," +
+  "h:Math.max(document.documentElement.scrollHeight||0,document.body?document.body.scrollHeight:0)},'*')}catch(e){}}" +
+  "addEventListener('load',r);setTimeout(r,800);setTimeout(r,2500);setTimeout(r,5000)})();</script>";
+
+function withHeightReporter(html: string): string {
+  return html.includes("</body>")
+    ? html.replace("</body>", `${HEIGHT_REPORTER}</body>`)
+    : html + HEIGHT_REPORTER;
+}
+
+/**
+ * Backdrop ur en FRYST kopia (nattloppens browser-frysning, lagrad i
+ * angel-evidence). Kopian är script-strippad och självbärande — den behöver
+ * ingen omskrivning och kan inte rapportera sin höjd själv, så bara
+ * höjdrapportören injiceras. Detta är SPA-sajternas backdrop-väg: live-
+ * spegeln kan inte rendera dem (routern ser spegel-URL:en, datahämtningen
+ * går mot fel origin), men den frysta kopian ÄR den färdigrenderade sidan.
+ */
+export function frozenBackdropHtml(html: string): string {
+  return withHeightReporter(html);
 }
