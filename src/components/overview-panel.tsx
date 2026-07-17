@@ -445,6 +445,7 @@ function JourneysOverlay({
   journeys,
   rageClicks,
   contextLabel,
+  lockedDevice,
   onClose,
 }: {
   site: string;
@@ -452,6 +453,11 @@ function JourneysOverlay({
   journeys: SessionSummary[];
   rageClicks: RageSignal[];
   contextLabel: string;
+  /** Satt när segmentvalet redan pinnar enheten (google·desktop → "desktop"):
+   *  vyn låses dit och Mobile/Desktop-växeln döljs — att kunna växla till en
+   *  annan enhet än den man borrat in i vore motsägelsefullt (ägarfynd
+   *  2026-07-17). */
+  lockedDevice?: "mobile" | "desktop" | null;
   onClose: () => void;
 }) {
   const [heatMode, setHeatMode] = useState<"clicks" | "rage" | "both">("clicks");
@@ -460,7 +466,9 @@ function JourneysOverlay({
   // (mobil 390 / desktop 1280) och default är den med mest underlag.
   const [deviceChoice, setDeviceChoice] = useState<"mobile" | "desktop" | null>(null);
   const device =
-    deviceChoice ?? (heat.desktop.sampled > heat.mobile.sampled ? "desktop" : "mobile");
+    lockedDevice ??
+    deviceChoice ??
+    (heat.desktop.sampled > heat.mobile.sampled ? "desktop" : "mobile");
   const view = device === "mobile" ? heat.mobile : heat.desktop;
   const frameW = device === "mobile" ? 390 : 1280;
   // Backdroppen (riktiga sidan i spegeln) hämtas när modalen monteras — den
@@ -506,7 +514,7 @@ function JourneysOverlay({
     view.sampled === 0 ? (
       <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-8 text-center">
         <p className="max-w-sm text-[13px] text-stone-500">
-          {otherSampled > 0
+          {otherSampled > 0 && !lockedDevice
             ? `No positioned clicks from ${device} visitors on this page yet — switch to ${device === "mobile" ? "Desktop" : "Mobile"} above.`
             : "Click positions start collecting from your visitors' next page loads — the map draws itself as real data arrives. Nothing here is simulated."}
         </p>
@@ -583,27 +591,31 @@ function JourneysOverlay({
               </span>
             )}
             {/* Layoutväxeln: klicken ritas bara mot spegeln i samma bredd som
-                besökarens layout — siffrorna säger var underlaget finns. */}
-            <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
-              {(
-                [
-                  ["mobile", `Mobile (${heat.mobile.sampled})`],
-                  ["desktop", `Desktop (${heat.desktop.sampled})`],
-                ] as const
-              ).map(([d, label]) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDeviceChoice(d)}
-                  className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
-                  style={
-                    device === d ? { background: "#161513", color: "#fff" } : { color: "#57534e" }
-                  }
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+                besökarens layout — siffrorna säger var underlaget finns.
+                Pinnar segmentvalet redan enheten är växeln meningslös och
+                döljs (vyn är låst dit). */}
+            {!lockedDevice && (
+              <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
+                {(
+                  [
+                    ["mobile", `Mobile (${heat.mobile.sampled})`],
+                    ["desktop", `Desktop (${heat.desktop.sampled})`],
+                  ] as const
+                ).map(([d, label]) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDeviceChoice(d)}
+                    className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
+                    style={
+                      device === d ? { background: "#161513", color: "#fff" } : { color: "#57534e" }
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
               {(
                 [
@@ -1542,6 +1554,16 @@ export function OverviewPanel({
           journeys={selJourneys}
           rageClicks={rageClicks}
           contextLabel={sel ? enLabel(sel.label) : "All sources"}
+          // Segmentets enhetsdimension låser heatmap-vyn (tablet ⇒ desktop-
+          // layouten, samma bucketing som attributionen); okänd enhet låser
+          // inte — då är växeln fortfarande meningsfull.
+          lockedDevice={
+            selDims[1] === "mobile"
+              ? "mobile"
+              : selDims[1] === "desktop" || selDims[1] === "tablet"
+                ? "desktop"
+                : null
+          }
           onClose={() => setJourneysOpen(false)}
         />
       )}
