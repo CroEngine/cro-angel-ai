@@ -2,7 +2,9 @@
 // svarskort + KPI:er → tvåpanels källutforskare med KOLLAPSAT träd + filter,
 // "All sources"-översikt som default (rankade kanaler), scopad variantlista
 // med riktiga åtgärder + "se live", hopslagna Recent journeys med rage-bursts
-// som EN siffra, och en separat "Journeys & signals"-vy med klick-heatmap.
+// som EN siffra, och "Journeys & signals" med klick-heatmap som POPUP i samma
+// idiom som Compare (ägarbeslut 2026-07-17: "exakt så som vi ser compare, ska
+// vi se journey och rageclicks — ett popupfönster med sandbox-spegeln").
 //
 // Prototypens siffror var demo. Här driver RIKTIG data varje yta, med ärliga
 // lägen i stället för påhitt: inga servande varianter ⇒ "Observing"; för tunt
@@ -152,7 +154,15 @@ const liftFmt = (liftRel: number | null) =>
  *  skalad till hela dokumenthöjden så klickens y-% träffar rätt. Spegeln är
  *  opak origin och kan inte läsas — sidan rapporterar sin egen höjd via
  *  postMessage (höjdrapportören injiceras av mirror-endpointen när h=1). */
-function HeatMirror({ src, overlay }: { src: string; overlay: React.ReactNode }) {
+function HeatMirror({
+  src,
+  overlay,
+  maxHeight = 560,
+}: {
+  src: string;
+  overlay: React.ReactNode;
+  maxHeight?: number | string;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [wrapW, setWrapW] = useState(700);
   const [docH, setDocH] = useState(2200);
@@ -183,7 +193,8 @@ function HeatMirror({ src, overlay }: { src: string; overlay: React.ReactNode })
   return (
     <div
       ref={wrapRef}
-      className="max-h-[560px] overflow-y-auto overflow-x-hidden rounded-[10px] border border-[#f0eee9] bg-white"
+      className="overflow-y-auto overflow-x-hidden rounded-[10px] border border-[#f0eee9] bg-white"
+      style={{ maxHeight }}
     >
       <div className="relative" style={{ height: Math.round(docH * scale) }}>
         <iframe
@@ -411,6 +422,296 @@ function CompareOverlay({
   );
 }
 
+/** Journeys & signals i SAMMA popup-idiom som Compare (ägarbeslut 2026-07-17):
+ *  centrerad modal med sandbox-spegeln av riktiga sidan som scen, klick-
+ *  heatmapen + rage-markörerna ritade ovanpå, Clicks/Rage/Both-växeln i topp-
+ *  raden där Compares Variant/Original-växel bor, resorna + frustrations-
+ *  signalerna i sidokolumnen. Esc stänger; body-scrollen låses; spegeln
+ *  skriver aldrig events. Samma ärliga lägen som förut: "samlar in"-overlay
+ *  när positionsdata saknas, siluett-fallback när domänen inte är satt. */
+function JourneysOverlay({
+  site,
+  heat,
+  journeys,
+  rageClicks,
+  contextLabel,
+  onClose,
+}: {
+  site: string;
+  heat: ClickHeat;
+  journeys: SessionSummary[];
+  rageClicks: RageSignal[];
+  contextLabel: string;
+  onClose: () => void;
+}) {
+  const [heatMode, setHeatMode] = useState<"clicks" | "rage" | "both">("clicks");
+  // Backdroppen (riktiga sidan i spegeln) hämtas när modalen monteras — den
+  // ÄR öppen-grinden; tokens lever 30 min så växlingar återanvänder svaret.
+  const backdrop = useQuery({
+    queryKey: ["pagePreview", site, heat.path],
+    queryFn: () => createPagePreview({ data: { site, path: heat.path } }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const showClicks = heatMode === "clicks" || heatMode === "both";
+  const showRage = heatMode === "rage" || heatMode === "both";
+  const maxN = Math.max(1, ...heat.clicks.map((c) => c.n));
+  const spotStyle = (n: number) => {
+    const rel = n / maxN;
+    const size = Math.round(48 + rel * 112);
+    const bg =
+      rel > 0.66
+        ? "radial-gradient(circle, rgba(220,38,38,.55), rgba(220,38,38,0) 70%)"
+        : rel > 0.33
+          ? "radial-gradient(circle, rgba(245,158,11,.5), rgba(245,158,11,0) 70%)"
+          : "radial-gradient(circle, rgba(16,185,129,.4), rgba(16,185,129,0) 70%)";
+    return { size, bg };
+  };
+
+  // Punkterna + "samlar in"-läget delas mellan backdropparna: den levande
+  // spegeln av RIKTIGA sidan (när domänen finns) och siluett-fallbacken.
+  const overlay =
+    heat.sampled === 0 ? (
+      <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-8 text-center">
+        <p className="max-w-sm text-[13px] text-stone-500">
+          Click positions start collecting from your visitors&apos; next page loads — the map draws
+          itself as real data arrives. Nothing here is simulated.
+        </p>
+      </div>
+    ) : (
+      <>
+        {showClicks &&
+          heat.clicks.map((c, i) => {
+            const st = spotStyle(c.n);
+            return (
+              <div
+                key={`c${i}`}
+                className="pointer-events-none absolute rounded-full"
+                style={{
+                  top: `${c.y}%`,
+                  left: `${c.x}%`,
+                  width: st.size,
+                  height: st.size,
+                  transform: "translate(-50%,-50%)",
+                  background: st.bg,
+                  filter: "blur(7px)",
+                }}
+              />
+            );
+          })}
+        {showRage &&
+          heat.rage.map((r, i) => (
+            <div
+              key={`r${i}`}
+              title={r.ref}
+              className="absolute flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-bold text-white"
+              style={{
+                top: `${r.y}%`,
+                left: `${r.x}%`,
+                transform: "translate(-50%,-50%)",
+                background: "rgba(220,38,38,.92)",
+                boxShadow: "0 0 0 6px rgba(220,38,38,.26), 0 0 0 13px rgba(220,38,38,.13)",
+              }}
+            >
+              {r.n}
+            </div>
+          ))}
+      </>
+    );
+
+  return createPortal(
+    // Samma centrerade modal som Compare — dimmad bakgrund, klick utanför
+    // stänger, panelen nästan hela vyn så spegeln får plats.
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4 md:p-8"
+      onClick={onClose}
+    >
+      <div
+        className="flex h-[min(88vh,900px)] w-full max-w-[1160px] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-[#faf9f7]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* topprad: identitet till vänster, växeln till höger — Compare-idiomet */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-stone-200 bg-white px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1.5 text-[13px] text-stone-600 hover:text-stone-900"
+          >
+            ← Back
+          </button>
+          <span className="font-heading text-[14px] font-semibold">Journeys &amp; signals</span>
+          <span className="truncate font-mono text-[12px] text-stone-400">
+            {contextLabel} <span className="text-[#c4beb6]">·</span> {heat.path}
+          </span>
+          <div className="ml-auto flex items-center gap-3">
+            {heat.sampled > 0 && (
+              <span className="text-[11px] text-stone-400 max-md:hidden">
+                {fmt(heat.sampled)} sampled clicks
+              </span>
+            )}
+            <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
+              {(
+                [
+                  ["clicks", "Clicks"],
+                  ["rage", "Rage clicks"],
+                  ["both", "Both"],
+                ] as const
+              ).map(([m, label]) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setHeatMode(m)}
+                  className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
+                  style={
+                    heatMode === m ? { background: "#161513", color: "#fff" } : { color: "#57534e" }
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* scenen: heatmapen över spegeln + resorna/frustrationen i sidokolumn */}
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr]">
+            <div>
+              {backdrop.data?.ok && backdrop.data.mirrorPath ? (
+                <HeatMirror
+                  src={backdrop.data.mirrorPath}
+                  overlay={overlay}
+                  maxHeight="calc(88vh - 190px)"
+                />
+              ) : (
+                <div className="relative h-[460px] overflow-hidden rounded-[10px] border border-[#f0eee9] bg-white p-[22px]">
+                  {/* siluett-fallback — utan domän finns ingen sida att spegla */}
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 w-20 rounded-[5px] bg-[#eae7e2]" />
+                    <div className="flex gap-2.5">
+                      <div className="h-3 w-[52px] rounded bg-[#f0eee9]" />
+                      <div className="h-3 w-[52px] rounded bg-[#f0eee9]" />
+                      <div className="h-3 w-[66px] rounded bg-[#f0eee9]" />
+                    </div>
+                  </div>
+                  <div className="mt-11 text-center">
+                    <div className="mx-auto h-[30px] w-[58%] rounded-[7px] bg-[#eae7e2]" />
+                    <div className="mx-auto mt-3.5 h-[13px] w-[44%] rounded bg-[#f0eee9]" />
+                    <div className="mx-auto mt-2 h-[13px] w-[36%] rounded bg-[#f0eee9]" />
+                    <div className="mx-auto mt-6 h-10 w-[170px] rounded-[9px] bg-stone-200" />
+                  </div>
+                  <div className="mt-12 grid grid-cols-3 gap-3.5">
+                    <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
+                    <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
+                    <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
+                  </div>
+                  {overlay}
+                </div>
+              )}
+              <div className="mt-3 flex items-center gap-4 text-[11px] text-stone-500">
+                {showClicks && (
+                  <span className="flex items-center gap-2">
+                    low
+                    <span
+                      className="h-2 w-24 rounded-[5px]"
+                      style={{
+                        background: "linear-gradient(90deg, rgba(16,185,129,.5), #f59e0b, #dc2626)",
+                      }}
+                    />
+                    high click density
+                  </span>
+                )}
+                {showRage && (
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className="h-3 w-3 rounded-full"
+                      style={{ background: "rgba(220,38,38,.92)" }}
+                    />
+                    rage clicks (n)
+                  </span>
+                )}
+                {backdrop.data && !backdrop.data.ok && backdrop.data.reason === "no_domain" && (
+                  <span className="ml-auto">
+                    Set the site&apos;s domain in Settings to draw the map over the real page.
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* resor + frustrationssignaler */}
+            <div className="flex flex-col gap-4">
+              <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+                <div className="font-heading text-sm font-semibold">Recent journeys</div>
+                {journeys.length === 0 && (
+                  <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
+                    No recorded journeys for this group in the window.
+                  </div>
+                )}
+                {journeys.slice(0, 5).map((j) => (
+                  <div key={j.sessionId} className="border-t border-[#f4f2ef] py-[11px]">
+                    <div className="truncate font-mono text-[11.5px] text-stone-600">
+                      {(j.pageOrder.length ? j.pageOrder : [j.landingPath ?? "/"]).join(" → ")}
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-[11px] text-stone-400">
+                        {Math.round(j.engagedMs / 1000)}s engaged
+                      </span>
+                      <span
+                        className="text-[11.5px] font-semibold"
+                        style={{
+                          color: j.converted ? "#047857" : j.formAbandoned ? "#d97706" : "#78716c",
+                        }}
+                      >
+                        {j.converted ? "converted" : j.formAbandoned ? "abandoned form" : "browsed"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+                <div className="font-heading text-sm font-semibold">Frustration signals</div>
+                {rageClicks.length === 0 && (
+                  <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
+                    No rage clicks recorded. Good.
+                  </div>
+                )}
+                {rageClicks.map((g) => (
+                  <div
+                    key={g.ref}
+                    className="flex items-center justify-between border-t border-[#f4f2ef] py-[11px]"
+                  >
+                    <span className="truncate font-mono text-[11.5px] text-stone-600">{g.ref}</span>
+                    <span className="ml-3 flex-none text-[12px] font-semibold text-amber-600">
+                      {g.bursts} rage bursts
+                    </span>
+                  </div>
+                ))}
+                <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
+                  Site-wide diagnostics — Angel never changes anything automatically from these.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function OverviewPanel({
   site,
   overview,
@@ -449,8 +750,7 @@ export function OverviewPanel({
   const [open, setOpen] = useState<Set<string>>(() => new Set());
   const [selected, setSelected] = useState<string>("all");
   const [q, setQ] = useState("");
-  const [view, setView] = useState<"dash" | "detail">("dash");
-  const [heatMode, setHeatMode] = useState<"clicks" | "rage" | "both">("clicks");
+  const [journeysOpen, setJourneysOpen] = useState(false);
   const [compareId, setCompareId] = useState<string | null>(null);
 
   const sel = selected === "all" ? null : (byKey.get(selected) ?? null);
@@ -502,15 +802,6 @@ export function OverviewPanel({
       status.mutate({ variantId: v.id, status: next });
     }
   };
-
-  // Heatmap-backdroppen (den riktiga sidan i spegeln) hämtas bara när detalj-
-  // vyn är öppen — hooken bor på toppnivån (hooks-regeln), grinden är enabled.
-  const backdrop = useQuery({
-    queryKey: ["pagePreview", site, heat.path],
-    queryFn: () => createPagePreview({ data: { site, path: heat.path } }),
-    enabled: view === "detail",
-    staleTime: 5 * 60 * 1000,
-  });
 
   // ── svarskortet: summerade armar över allt som serverar ───────────────────
   const siteVerdict = judgeArms(sumArms(variants));
@@ -606,249 +897,6 @@ export function OverviewPanel({
       )}
     </div>
   );
-
-  // ── detaljvyn: Journeys & signals med klick-heatmapen ─────────────────────
-  if (view === "detail") {
-    const showClicks = heatMode === "clicks" || heatMode === "both";
-    const showRage = heatMode === "rage" || heatMode === "both";
-    const maxN = Math.max(1, ...heat.clicks.map((c) => c.n));
-    const spotStyle = (n: number) => {
-      const rel = n / maxN;
-      const size = Math.round(48 + rel * 112);
-      const bg =
-        rel > 0.66
-          ? "radial-gradient(circle, rgba(220,38,38,.55), rgba(220,38,38,0) 70%)"
-          : rel > 0.33
-            ? "radial-gradient(circle, rgba(245,158,11,.5), rgba(245,158,11,0) 70%)"
-            : "radial-gradient(circle, rgba(16,185,129,.4), rgba(16,185,129,0) 70%)";
-      return { size, bg };
-    };
-    return (
-      <div>
-        <button
-          type="button"
-          onClick={() => setView("dash")}
-          className="inline-flex items-center gap-1.5 text-[13px] text-stone-600 hover:text-stone-900"
-        >
-          ← Back to dashboard
-        </button>
-        <div className="mt-2.5 flex flex-wrap items-baseline gap-2.5">
-          <h2 className="font-heading text-[22px] font-bold tracking-tight">
-            Journeys &amp; signals
-          </h2>
-          <span className="font-mono text-[12px] text-stone-400">
-            {sel ? enLabel(sel.label) : "All sources"} · {heat.path}
-          </span>
-        </div>
-
-        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[1.6fr_1fr]">
-          {/* klick-heatmapen */}
-          <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
-            <div className="flex items-center justify-between gap-2.5 border-b border-[#f0eee9] px-[18px] py-3.5">
-              <div>
-                <div className="font-heading text-sm font-semibold">Click heatmap</div>
-                <div className="mt-0.5 text-[11.5px] text-stone-400">
-                  Where visitors tapped on {heat.path} — all traffic
-                </div>
-              </div>
-              <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
-                {(
-                  [
-                    ["clicks", "Clicks"],
-                    ["rage", "Rage clicks"],
-                    ["both", "Both"],
-                  ] as const
-                ).map(([m, label]) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setHeatMode(m)}
-                    className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
-                    style={
-                      heatMode === m
-                        ? { background: "#161513", color: "#fff" }
-                        : { color: "#57534e" }
-                    }
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="bg-[#faf9f7] p-5">
-              {(() => {
-                // Punkterna + "samlar in"-läget delas mellan backdropparna:
-                // den levande spegeln av RIKTIGA sidan (när domänen finns)
-                // och siluett-fallbacken (labb/utan domän).
-                const overlay =
-                  heat.sampled === 0 ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-8 text-center">
-                      <p className="max-w-sm text-[13px] text-stone-500">
-                        Click positions start collecting from your visitors&apos; next page loads —
-                        the map draws itself as real data arrives. Nothing here is simulated.
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {showClicks &&
-                        heat.clicks.map((c, i) => {
-                          const st = spotStyle(c.n);
-                          return (
-                            <div
-                              key={`c${i}`}
-                              className="pointer-events-none absolute rounded-full"
-                              style={{
-                                top: `${c.y}%`,
-                                left: `${c.x}%`,
-                                width: st.size,
-                                height: st.size,
-                                transform: "translate(-50%,-50%)",
-                                background: st.bg,
-                                filter: "blur(7px)",
-                              }}
-                            />
-                          );
-                        })}
-                      {showRage &&
-                        heat.rage.map((r, i) => (
-                          <div
-                            key={`r${i}`}
-                            title={r.ref}
-                            className="absolute flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-bold text-white"
-                            style={{
-                              top: `${r.y}%`,
-                              left: `${r.x}%`,
-                              transform: "translate(-50%,-50%)",
-                              background: "rgba(220,38,38,.92)",
-                              boxShadow:
-                                "0 0 0 6px rgba(220,38,38,.26), 0 0 0 13px rgba(220,38,38,.13)",
-                            }}
-                          >
-                            {r.n}
-                          </div>
-                        ))}
-                    </>
-                  );
-                if (backdrop.data?.ok && backdrop.data.mirrorPath) {
-                  return <HeatMirror src={backdrop.data.mirrorPath} overlay={overlay} />;
-                }
-                return (
-                  <div className="relative h-[460px] overflow-hidden rounded-[10px] border border-[#f0eee9] bg-white p-[22px]">
-                    {/* siluett-fallback — utan domän finns ingen sida att spegla */}
-                    <div className="flex items-center justify-between">
-                      <div className="h-4 w-20 rounded-[5px] bg-[#eae7e2]" />
-                      <div className="flex gap-2.5">
-                        <div className="h-3 w-[52px] rounded bg-[#f0eee9]" />
-                        <div className="h-3 w-[52px] rounded bg-[#f0eee9]" />
-                        <div className="h-3 w-[66px] rounded bg-[#f0eee9]" />
-                      </div>
-                    </div>
-                    <div className="mt-11 text-center">
-                      <div className="mx-auto h-[30px] w-[58%] rounded-[7px] bg-[#eae7e2]" />
-                      <div className="mx-auto mt-3.5 h-[13px] w-[44%] rounded bg-[#f0eee9]" />
-                      <div className="mx-auto mt-2 h-[13px] w-[36%] rounded bg-[#f0eee9]" />
-                      <div className="mx-auto mt-6 h-10 w-[170px] rounded-[9px] bg-stone-200" />
-                    </div>
-                    <div className="mt-12 grid grid-cols-3 gap-3.5">
-                      <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
-                      <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
-                      <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
-                    </div>
-                    {overlay}
-                  </div>
-                );
-              })()}
-              <div className="mt-3 flex items-center gap-4 text-[11px] text-stone-500">
-                {showClicks && (
-                  <span className="flex items-center gap-2">
-                    low
-                    <span
-                      className="h-2 w-24 rounded-[5px]"
-                      style={{
-                        background: "linear-gradient(90deg, rgba(16,185,129,.5), #f59e0b, #dc2626)",
-                      }}
-                    />
-                    high click density
-                  </span>
-                )}
-                {showRage && (
-                  <span className="flex items-center gap-1.5">
-                    <span
-                      className="h-3 w-3 rounded-full"
-                      style={{ background: "rgba(220,38,38,.92)" }}
-                    />
-                    rage clicks (n)
-                  </span>
-                )}
-                {heat.sampled > 0 && (
-                  <span className="ml-auto">{fmt(heat.sampled)} sampled clicks</span>
-                )}
-                {backdrop.data && !backdrop.data.ok && backdrop.data.reason === "no_domain" && (
-                  <span className={heat.sampled > 0 ? "" : "ml-auto"}>
-                    Set the site&apos;s domain in Settings to draw the map over the real page.
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* resor + frustrationssignaler */}
-          <div className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
-              <div className="font-heading text-sm font-semibold">Recent journeys</div>
-              {selJourneys.length === 0 && (
-                <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
-                  No recorded journeys for this group in the window.
-                </div>
-              )}
-              {selJourneys.slice(0, 5).map((j) => (
-                <div key={j.sessionId} className="border-t border-[#f4f2ef] py-[11px]">
-                  <div className="truncate font-mono text-[11.5px] text-stone-600">
-                    {(j.pageOrder.length ? j.pageOrder : [j.landingPath ?? "/"]).join(" → ")}
-                  </div>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="text-[11px] text-stone-400">
-                      {Math.round(j.engagedMs / 1000)}s engaged
-                    </span>
-                    <span
-                      className="text-[11.5px] font-semibold"
-                      style={{
-                        color: j.converted ? "#047857" : j.formAbandoned ? "#d97706" : "#78716c",
-                      }}
-                    >
-                      {j.converted ? "converted" : j.formAbandoned ? "abandoned form" : "browsed"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
-              <div className="font-heading text-sm font-semibold">Frustration signals</div>
-              {rageClicks.length === 0 && (
-                <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
-                  No rage clicks recorded. Good.
-                </div>
-              )}
-              {rageClicks.map((g) => (
-                <div
-                  key={g.ref}
-                  className="flex items-center justify-between border-t border-[#f4f2ef] py-[11px]"
-                >
-                  <span className="truncate font-mono text-[11.5px] text-stone-600">{g.ref}</span>
-                  <span className="ml-3 flex-none text-[12px] font-semibold text-amber-600">
-                    {g.bursts} rage bursts
-                  </span>
-                </div>
-              ))}
-              <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
-                Site-wide diagnostics — Angel never changes anything automatically from these.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // ── dashboardvyn ───────────────────────────────────────────────────────────
   return (
@@ -1355,7 +1403,7 @@ export function OverviewPanel({
                   <div className="font-heading text-sm font-semibold">Recent journeys</div>
                   <button
                     type="button"
-                    onClick={() => setView("detail")}
+                    onClick={() => setJourneysOpen(true)}
                     title="View journeys & frustration heatmap"
                     className="inline-flex items-center gap-[7px] rounded-full border px-[11px] py-1 text-[12px] font-semibold"
                     style={{
@@ -1381,7 +1429,7 @@ export function OverviewPanel({
                   <button
                     key={j.sessionId}
                     type="button"
-                    onClick={() => setView("detail")}
+                    onClick={() => setJourneysOpen(true)}
                     className="-mx-2.5 flex w-[calc(100%+20px)] items-center gap-2.5 rounded-lg border-t border-[#f4f2ef] px-2.5 py-2.5 text-left hover:bg-[#faf9f7]"
                   >
                     <div className="min-w-0 flex-1">
@@ -1418,6 +1466,17 @@ export function OverviewPanel({
           )}
         </div>
       </div>
+
+      {journeysOpen && (
+        <JourneysOverlay
+          site={site}
+          heat={heat}
+          journeys={selJourneys}
+          rageClicks={rageClicks}
+          contextLabel={sel ? enLabel(sel.label) : "All sources"}
+          onClose={() => setJourneysOpen(false)}
+        />
+      )}
     </div>
   );
 }
