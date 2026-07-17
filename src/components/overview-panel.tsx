@@ -495,17 +495,13 @@ function JourneysOverlay({
   const showClicks = heatMode === "clicks" || heatMode === "both";
   const showRage = heatMode === "rage" || heatMode === "both";
   const maxN = Math.max(1, ...view.clicks.map((c) => c.n));
-  const spotStyle = (n: number) => {
-    const rel = n / maxN;
-    const size = Math.round(48 + rel * 112);
-    const bg =
-      rel > 0.66
-        ? "radial-gradient(circle, rgba(220,38,38,.55), rgba(220,38,38,0) 70%)"
-        : rel > 0.33
-          ? "radial-gradient(circle, rgba(245,158,11,.5), rgba(245,158,11,0) 70%)"
-          : "radial-gradient(circle, rgba(16,185,129,.4), rgba(16,185,129,0) 70%)";
-    return { size, bg };
-  };
+  // Klicktäthet är MAGNITUD → sekventiell EN-tons ramp (blå, ljus→mörk) —
+  // inte grön→amber→röd (regnbågs- och CVD-fällan, och rött är reserverat
+  // för rage-markörerna/status). Varje punkt är en skarp 14px-kärna med vit
+  // ring (syns mot vilket sidinnehåll som helst) + en mjuk gloria via
+  // gradient — de gamla blur-suddarna var oläsliga (ägarfynd 2026-07-17).
+  const RAMP = ["#86b6ef", "#2a78d6", "#0d366b"] as const;
+  const rampAt = (rel: number) => (rel > 0.66 ? RAMP[2] : rel > 0.33 ? RAMP[1] : RAMP[0]);
 
   // Punkterna + "samlar in"-läget delas mellan backdropparna: den levande
   // spegeln av RIKTIGA sidan (när domänen finns) och siluett-fallbacken.
@@ -523,21 +519,33 @@ function JourneysOverlay({
       <>
         {showClicks &&
           view.clicks.map((c, i) => {
-            const st = spotStyle(c.n);
+            const rel = c.n / maxN;
+            const hue = rampAt(rel);
+            const halo = Math.round(40 + rel * 80);
             return (
               <div
                 key={`c${i}`}
-                className="pointer-events-none absolute rounded-full"
-                style={{
-                  top: `${c.y}%`,
-                  left: `${c.x}%`,
-                  width: st.size,
-                  height: st.size,
-                  transform: "translate(-50%,-50%)",
-                  background: st.bg,
-                  filter: "blur(7px)",
-                }}
-              />
+                className="pointer-events-none absolute"
+                style={{ top: `${c.y}%`, left: `${c.x}%` }}
+              >
+                <div
+                  className="absolute rounded-full"
+                  style={{
+                    width: halo,
+                    height: halo,
+                    transform: "translate(-50%,-50%)",
+                    background: `radial-gradient(circle, ${hue}47, transparent 70%)`,
+                  }}
+                />
+                <div
+                  className="absolute h-[14px] w-[14px] rounded-full border-2 border-white"
+                  style={{
+                    transform: "translate(-50%,-50%)",
+                    background: hue,
+                    boxShadow: `0 0 0 1px ${hue}33`,
+                  }}
+                />
+              </div>
             );
           })}
         {showRage &&
@@ -686,7 +694,7 @@ function JourneysOverlay({
                     <span
                       className="h-2 w-24 rounded-[5px]"
                       style={{
-                        background: "linear-gradient(90deg, rgba(16,185,129,.5), #f59e0b, #dc2626)",
+                        background: "linear-gradient(90deg, #b7d3f6, #2a78d6, #0d366b)",
                       }}
                     />
                     high click density
