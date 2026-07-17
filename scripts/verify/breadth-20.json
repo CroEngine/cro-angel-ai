@@ -1,0 +1,23 @@
+[
+  { "name": "stripe", "url": "https://stripe.com" },
+  { "name": "linear", "url": "https://linear.app" },
+  { "name": "supabase", "url": "https://supabase.com" },
+  { "name": "hibob", "url": "https://www.hibob.com" },
+  { "name": "loom", "url": "https://www.loom.com" },
+  { "name": "allbirds", "url": "https://www.allbirds.com" },
+  { "name": "everlane", "url": "https://www.everlane.com" },
+  { "name": "casper", "url": "https://casper.com" },
+  { "name": "ikea-se", "url": "https://www.ikea.com/se/sv/" },
+  { "name": "airbnb", "url": "https://www.airbnb.com" },
+  { "name": "trello", "url": "https://trello.com" },
+  { "name": "discord", "url": "https://discord.com" },
+  { "name": "klarna", "url": "https://www.klarna.com/se/" },
+  { "name": "tradera", "url": "https://www.tradera.com" },
+  { "name": "booking", "url": "https://www.booking.com" },
+  { "name": "dn", "url": "https://www.dn.se" },
+  { "name": "aftonbladet", "url": "https://www.aftonbladet.se" },
+  { "name": "medium", "url": "https://medium.com" },
+  { "name": "dev-to", "url": "https://dev.to" },
+  { "name": "plausible", "url": "https://plausible.io" },
+  { "name": "glutenforum", "url": "https://glutenforum.se" }
+]
