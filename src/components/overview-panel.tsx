@@ -788,6 +788,22 @@ export function OverviewPanel({
   const children = useMemo(() => {
     const m = new Map<string | null, SegmentSummary[]>();
     for (const s of segments) {
+      // Djup 4 (besökartyp new/returning) förtjänar sin plats i trädet
+      // (ägarbeslut 2026-07-17): raden visas bara när splitten bär egen
+      // volym eller en variant riktar sig mot exakt den nyckeln — tunna
+      // rader fälls in i föräldern. DATAT är orört: dimensionen finns kvar
+      // i rollup, detektor och serving; det här gäller bara radvisningen.
+      if (
+        s.depth === 4 &&
+        !s.adequate &&
+        !variants.some(
+          (v) =>
+            v.segmentKey === s.key &&
+            (v.status === "verified" || v.status === "serving" || v.status === "winner"),
+        )
+      ) {
+        continue;
+      }
       const parent = s.depth === 1 ? null : parentSegmentKey(s.key);
       const list = m.get(parent) ?? [];
       list.push(s);
@@ -795,7 +811,7 @@ export function OverviewPanel({
     }
     for (const list of m.values()) list.sort((a, b) => b.visits - a.visits);
     return m;
-  }, [segments]);
+  }, [segments, variants]);
   const roots = children.get(null) ?? [];
 
   // Designens default: ALLT hopfällt, "All sources" valt — översikten är tyst.
