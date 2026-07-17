@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Frys EN server-renderad sida till en självbärande HTML-fil — det format
+// Frys EN sida till en självbärande HTML-fil — det format
 // auto-genereringspipelinen konsumerar (--pages-kartan).
 //
 // "Fryst" = designen och pixelgrindarna arbetar mot exakt den här kopian,
@@ -8,21 +8,32 @@
 // (upp till en storleksgräns — layouten behöver bildens yta, inte dess pixlar
 // i full kvalitet). Skript strippas: kopian ska vara statisk.
 //
-// Gräns (medveten): detta fryser vad SERVERN skickar. En SPA som bygger om sin
-// DOM efter laddning ger en tom/fel kopia — de sidorna kräver browser-frysning
-// (freeze.server.ts-vägen) och är parkerade tills en pilot behöver det.
+// Två hämtvägar (--render=auto|static|browser, default auto):
+//   static  — vad SERVERN skickar (curl). Räcker för server-renderade sidor.
+//   browser — sidan renderas färdigt i headless Chromium (JS får bygga DOM:en)
+//             och den RENDERADE DOM:en fryses. Krävs för SPA-sajter.
+//   auto    — static först; ger den ett SPA-skal (extractContentModel hittar
+//             < 2 sektioner — samma etablerade tröskel som nattloopen och
+//             breadth-testet) renderas sidan i browser i stället. Piloten
+//             glutenforum.se var exakt det fallet (generalrepet 2026-07-17):
+//             alla sidor gav samma 97 990-bytes JS-skal och kedjan stod still.
 //
 //   bun run scripts/redesign/freeze-page.ts --url=https://example.com/pricing \
-//     --out=fixtures/real-sites/example-pricing.html
+//     --out=fixtures/real-sites/example-pricing.html [--render=auto]
 
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
+import { extractContentModel } from "../../src/adaptive/redesign/extract";
+
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const url = arg("url");
 const out = arg("out");
-if (!url || !out) {
-  console.error("usage: freeze-page.ts --url=<page url> --out=<self-contained.html>");
+const RENDER = (arg("render") ?? "auto") as "auto" | "static" | "browser";
+if (!url || !out || !["auto", "static", "browser"].includes(RENDER)) {
+  console.error(
+    "usage: freeze-page.ts --url=<page url> --out=<self-contained.html> [--render=auto|static|browser]",
+  );
   process.exit(1);
 }
 
@@ -62,9 +73,85 @@ async function fetchBytes(u: string): Promise<{ bytes: Uint8Array; type: string 
 const abs = (href: string) => new URL(href, url).toString();
 const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
 
-let html = await fetchText(url);
+/** Rendera sidan färdigt i headless Chromium och returnera den RENDERADE
+ *  DOM:ens HTML. Chromium: env-var eller playwrights egen installation
+ *  (Actions-runnern) — samma mönster som serving-smoke. Viewport 390×844 =
+ *  pipelinens verifierings-viewport. Sidans egna skript (inkl. en ev.
+ *  installerad Angel-snippet) får köra under renderingen — snippeten
+ *  självdeaktiveras på navigator.webdriver (bot-gaten) och serversidan
+ *  UA-filtrerar auktoritativt, så frysningen kan aldrig förorena mätdatat.
+ *  Lazy-svepet scrollar genom sidan så under-folden-innehåll renderas, och
+ *  scrollar tillbaka så frysta dokumentet börjar vid toppen. */
+async function browserRenderedHtml(u: string): Promise<string> {
+  const { chromium } = await import("playwright-core");
+  const exec = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+  const browser = await chromium.launch({ headless: true, executablePath: exec });
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, userAgent: UA });
+    // Tunga SPA:er fyrar ibland aldrig load (öppna connections) — samma
+    // degradera-och-fortsätt som korpus-frysaren (freeze.server.ts): fånga
+    // timeouten och jobba vidare på det som renderats.
+    await page.goto(u, { waitUntil: "load", timeout: 45_000 }).catch((err) => {
+      console.warn(`[freeze-page] load-event uteblev (${err}) — fortsätter på renderat läge`);
+    });
+    // networkidle kan aldrig nås på sidor med long-polling — försök, ge upp tyst.
+    await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
+    // Innehålls-poll (korpus-frysarens mönster): hydreringen kan släpa efter
+    // load-eventet — vänta tills body bär riktig text, max 10 s, fortsätt
+    // sedan ändå (konsumenternas sections<2-grind är ärlig backstop).
+    for (let waited = 0; waited < 10_000; waited += 500) {
+      const chars = await page.evaluate(() => (document.body.innerText || "").length);
+      if (chars >= 400) break;
+      await page.waitForTimeout(500);
+    }
+    await page.waitForTimeout(1_200);
+    await page.evaluate(async () => {
+      const step = window.innerHeight;
+      for (let y = 0; y < document.body.scrollHeight; y += step) {
+        window.scrollTo(0, y);
+        await new Promise((r) => setTimeout(r, 120));
+      }
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(500);
+    return await page.evaluate(() => "<!doctype html>\n" + document.documentElement.outerHTML);
+  } finally {
+    await browser.close();
+  }
+}
 
-// 1) Skript bort — kopian är statisk (design + grindar behöver DOM:en, inte JS).
+// ── hämta: static först, browser-rendering när skalet är tomt ────────────────
+let html = RENDER === "browser" ? "" : await fetchText(url);
+let renderedVia: "static" | "browser" = "static";
+const isShell = (h: string) => extractContentModel(h).sections.length < 2;
+if (RENDER === "browser" || (RENDER === "auto" && isShell(html))) {
+  try {
+    if (RENDER === "auto") {
+      console.log("[freeze-page] statisk kopia är ett SPA-skal (<2 sektioner) → browser-rendering");
+    }
+    html = await browserRenderedHtml(url);
+    // Frysta filen skrivs som UTF-8 och läses utan HTTP-huvuden — dokumentet
+    // måste själv deklarera charset, och en gammal deklaration (t.ex.
+    // iso-8859-1) skulle mojibakea åäö vid omrendering. Normalisera.
+    html = html.replace(/<meta[^>]+charset[^>]*>/gi, "");
+    html = /<head[^>]*>/i.test(html)
+      ? html.replace(/<head([^>]*)>/i, `<head$1><meta charset="utf-8">`)
+      : `<meta charset="utf-8">${html}`;
+    renderedVia = "browser";
+  } catch (err) {
+    if (RENDER === "browser" || !html) {
+      console.error(`[freeze-page] browser-rendering föll: ${err}`);
+      process.exit(1);
+    }
+    // auto med fungerande statisk kopia: behåll den hellre än att fälla
+    // körningen — konsumenternas sections<2-grind säger ärligt ifrån ändå.
+    console.warn(`[freeze-page] browser-rendering föll (${err}) — behåller statiska kopian`);
+  }
+}
+
+// 1) Skript bort — kopian är statisk (design + grindar behöver DOM:en, inte
+//    JS; en renderad SPA-kopia får ALDRIG hydrera om sig i verifierings-
+//    renderingen, och en ev. Angel-tag följer med bort här).
 html = html.replace(/<script[\s\S]*?<\/script>/gi, "");
 
 // 2) Länkade stilmallar → <style>-block (layoutens sanning).
@@ -113,5 +200,5 @@ for (const src of imgSrcs) {
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, html);
 console.log(
-  `[freeze-page] ${url} → ${out} (${html.length} bytes, ${links.length} stilmallar inlinade, ${inlined}/${imgSrcs.size} bilder inlinade)`,
+  `[freeze-page] ${url} → ${out} (${renderedVia}, ${html.length} bytes, ${links.length} stilmallar inlinade, ${inlined}/${imgSrcs.size} bilder inlinade)`,
 );
