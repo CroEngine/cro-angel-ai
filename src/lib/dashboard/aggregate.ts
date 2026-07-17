@@ -6,6 +6,7 @@
 // thing is unit-tested against synthetic events. The server function in
 // dashboard.functions.ts feeds it real rows from Supabase.
 
+import { stripQueryHash } from "../../adaptive/harvest/sanitize";
 import { RETURNING_TOKEN, returningToken, segToken, segmentKeyOf } from "../segment-key";
 
 /** A minimal projection of an angel_events row. */
@@ -254,14 +255,26 @@ export interface RageSpot {
   n: number;
 }
 
-/** Klick-heatmapens underlag för sajtens mest klickade sida. `sampled` = antal
- *  positionsbärande klick — 0 tills snippet-versionen med koordinater rullat
- *  ut, då visar sidan ett ärligt "samlar in"-läge i stället för påhitt. */
-export interface ClickHeat {
-  path: string;
+/** Ena layoutvyn av heatmapen: punkter + rage för EN enhetsklass. `sampled` =
+ *  antal positionsbärande klick i vyn — 0 ger ett ärligt "samlar in"-läge. */
+export interface ClickHeatView {
   clicks: HeatSpot[];
   rage: RageSpot[];
   sampled: number;
+}
+
+/** Klick-heatmapens underlag för sajtens mest klickade sida, delat per
+ *  layoutklass. x är % av BESÖKARENS viewportbredd och y % av DERAS dokument-
+ *  höjd — punkterna är bara meningsfulla mot en spegel i samma layoutbredd,
+ *  därför attribueras varje klick till mobil/desktop via besökarens pageview-
+ *  enhet (tablet ⇒ desktop, närmast den layoutbredden). Klick vars besökare
+ *  saknar pageview i fönstret kan inte placeras ärligt — de räknas i
+ *  `unattributed` och ritas inte. */
+export interface ClickHeat {
+  path: string;
+  mobile: ClickHeatView;
+  desktop: ClickHeatView;
+  unattributed: number;
 }
 
 /** Ett rage-klickat element, upprullat över alla besökare. */
@@ -1222,13 +1235,24 @@ export function rageSignals(events: DashEvent[], limit = MAX_RAGE_SIGNALS): Rage
 }
 
 /** Klick-heatmapens rollup. Positionsbärande klick (x/y-heltals-% ur snippeten)
- *  på sajtens mest klickade sida bucketas i 5 %-rutor; rage-punkter grupperas
- *  per element med medelposition. Gamla events utan koordinater ignoreras —
- *  `sampled` säger ärligt hur mycket underlag som finns. Ren; aldrig throw. */
+ *  på sajtens mest klickade sida bucketas i 5 %-rutor per layoutklass (mobil/
+ *  desktop via besökarens pageview-enhet); rage-punkter grupperas per element
+ *  med medelposition. Sidvägen query-strippas — klick-events lagrade före
+ *  sidvägs-normaliseringen (#126) bär ?fbclid och skulle annars fragmentera
+ *  sidräkningen. Gamla events utan koordinater ignoreras — `sampled` säger
+ *  ärligt hur mycket underlag varje vy har. Ren; aldrig throw. */
 export function clickHeat(events: DashEvent[], maxSpots = 60, maxRage = 8): ClickHeat {
   const num = (v: unknown): number | null =>
     typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 100 ? v : null;
-  type Pos = { x: number; y: number; path: string };
+  // Besökare → layoutklass, ur pageview-events (klick-events bär ingen enhet).
+  const deviceOf = new Map<string, "mobile" | "desktop">();
+  for (const e of events) {
+    if (e.type !== "pageview" || !e.visitorHash) continue;
+    const d = str(e.payload.device);
+    if (!d) continue;
+    deviceOf.set(e.visitorHash, d === "mobile" ? "mobile" : "desktop");
+  }
+  type Pos = { x: number; y: number; path: string; dev: "mobile" | "desktop" | null };
   const clicks: Pos[] = [];
   const rageRaw: (Pos & { ref: string })[] = [];
   for (const e of events) {
@@ -1236,9 +1260,10 @@ export function clickHeat(events: DashEvent[], maxSpots = 60, maxRage = 8): Clic
     const x = num(e.payload.x);
     const y = num(e.payload.y);
     if (x === null || y === null) continue;
-    const path = str(e.payload.path) || "/";
-    if (e.type === "element_click") clicks.push({ x, y, path });
-    else rageRaw.push({ x, y, path, ref: str(e.payload.ref) || "?" });
+    const path = stripQueryHash(str(e.payload.path)) || "/";
+    const dev = (e.visitorHash && deviceOf.get(e.visitorHash)) || null;
+    if (e.type === "element_click") clicks.push({ x, y, path, dev });
+    else rageRaw.push({ x, y, path, dev, ref: str(e.payload.ref) || "?" });
   }
   // Mest klickade sida vinner — heatmapen visar EN sida i taget, ärligt namngiven.
   const byPath = new Map<string, number>();
@@ -1246,36 +1271,41 @@ export function clickHeat(events: DashEvent[], maxSpots = 60, maxRage = 8): Clic
   const path =
     [...byPath.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? "/";
 
-  const grid = new Map<string, { x: number; y: number; n: number }>();
-  let sampled = 0;
-  for (const c of clicks) {
-    if (c.path !== path) continue;
-    sampled++;
-    const bx = Math.min(19, Math.floor(c.x / 5));
-    const by = Math.min(19, Math.floor(c.y / 5));
-    const k = `${bx}:${by}`;
-    const cur = grid.get(k) ?? { x: bx * 5 + 2, y: by * 5 + 2, n: 0 };
-    cur.n++;
-    grid.set(k, cur);
-  }
-  const byRef = new Map<string, { sx: number; sy: number; n: number }>();
-  for (const r of rageRaw) {
-    if (r.path !== path) continue;
-    const cur = byRef.get(r.ref) ?? { sx: 0, sy: 0, n: 0 };
-    cur.sx += r.x;
-    cur.sy += r.y;
-    cur.n++;
-    byRef.set(r.ref, cur);
-  }
-  return {
-    path,
-    clicks: [...grid.values()].sort((a, b) => b.n - a.n).slice(0, maxSpots),
-    rage: [...byRef.entries()]
-      .map(([ref, v]) => ({ ref, x: Math.round(v.sx / v.n), y: Math.round(v.sy / v.n), n: v.n }))
-      .sort((a, b) => b.n - a.n || a.ref.localeCompare(b.ref))
-      .slice(0, maxRage),
-    sampled,
+  const view = (dev: "mobile" | "desktop"): ClickHeatView => {
+    const grid = new Map<string, { x: number; y: number; n: number }>();
+    let sampled = 0;
+    for (const c of clicks) {
+      if (c.path !== path || c.dev !== dev) continue;
+      sampled++;
+      const bx = Math.min(19, Math.floor(c.x / 5));
+      const by = Math.min(19, Math.floor(c.y / 5));
+      const k = `${bx}:${by}`;
+      const cur = grid.get(k) ?? { x: bx * 5 + 2, y: by * 5 + 2, n: 0 };
+      cur.n++;
+      grid.set(k, cur);
+    }
+    const byRef = new Map<string, { sx: number; sy: number; n: number }>();
+    for (const r of rageRaw) {
+      if (r.path !== path || r.dev !== dev) continue;
+      const cur = byRef.get(r.ref) ?? { sx: 0, sy: 0, n: 0 };
+      cur.sx += r.x;
+      cur.sy += r.y;
+      cur.n++;
+      byRef.set(r.ref, cur);
+    }
+    return {
+      clicks: [...grid.values()].sort((a, b) => b.n - a.n).slice(0, maxSpots),
+      rage: [...byRef.entries()]
+        .map(([ref, v]) => ({ ref, x: Math.round(v.sx / v.n), y: Math.round(v.sy / v.n), n: v.n }))
+        .sort((a, b) => b.n - a.n || a.ref.localeCompare(b.ref))
+        .slice(0, maxRage),
+      sampled,
+    };
   };
+  const unattributed =
+    clicks.filter((c) => c.path === path && c.dev === null).length +
+    rageRaw.filter((r) => r.path === path && r.dev === null).length;
+  return { path, mobile: view("mobile"), desktop: view("desktop"), unattributed };
 }
 
 export function aggregate(

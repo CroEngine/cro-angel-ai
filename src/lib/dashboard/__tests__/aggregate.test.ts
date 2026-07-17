@@ -747,33 +747,75 @@ describe("rageSignals — frustrationssignaler (diagnostik)", () => {
 });
 
 describe("clickHeat — klick-heatmapens rollup", () => {
-  it("bucketar positionsbärande klick i 5%-rutor på mest klickade sidan", () => {
+  // Enhets-attributionen går via besökarens pageview (klick bär ingen enhet).
+  const mobVisit = ev("pageview", { path: "/", device: "mobile" }, { visitorHash: "v-mob" });
+  const deskVisit = ev("pageview", { path: "/", device: "desktop" }, { visitorHash: "v-desk" });
+
+  it("bucketar positionsbärande klick i 5%-rutor per layoutklass på mest klickade sidan", () => {
     const events: DashEvent[] = [
-      ev("element_click", { path: "/", x: 51, y: 42 }),
-      ev("element_click", { path: "/", x: 52, y: 43 }), // samma 5%-ruta (50-54, 40-44)
-      ev("element_click", { path: "/", x: 12, y: 80 }),
-      ev("element_click", { path: "/pricing", x: 10, y: 10 }), // annan sida — färre klick
+      mobVisit,
+      deskVisit,
+      ev("element_click", { path: "/", x: 51, y: 42 }, { visitorHash: "v-mob" }),
+      ev("element_click", { path: "/", x: 52, y: 43 }, { visitorHash: "v-mob" }), // samma 5%-ruta
+      ev("element_click", { path: "/", x: 12, y: 80 }, { visitorHash: "v-desk" }),
+      ev("element_click", { path: "/pricing", x: 10, y: 10 }, { visitorHash: "v-mob" }), // annan sida — färre klick
       ev("element_click", { path: "/" }), // gammalt event utan koordinater → ignoreras
     ];
     const heat = clickHeat(events);
     expect(heat.path).toBe("/");
-    expect(heat.sampled).toBe(3);
-    expect(heat.clicks[0]).toEqual({ x: 52, y: 42, n: 2 }); // ruta 10:8 → center 52,42
-    expect(heat.clicks).toHaveLength(2);
+    expect(heat.mobile.sampled).toBe(2);
+    expect(heat.mobile.clicks[0]).toEqual({ x: 52, y: 42, n: 2 }); // ruta 10:8 → center 52,42
+    expect(heat.desktop.sampled).toBe(1);
+    expect(heat.desktop.clicks).toEqual([{ x: 12, y: 82, n: 1 }]);
+    expect(heat.unattributed).toBe(0);
   });
 
-  it("grupperar rage-punkter per element med medelposition + bursts", () => {
+  it("query-strippar sidvägen — klick lagrade före sidvägs-normaliseringen bär ?fbclid", () => {
     const events: DashEvent[] = [
-      ev("element_click", { path: "/", x: 50, y: 50 }),
-      ev("rage_click", { path: "/", ref: "button#buy", x: 40, y: 60 }),
-      ev("rage_click", { path: "/", ref: "button#buy", x: 60, y: 80 }),
-      ev("rage_click", { path: "/", ref: "a.nav", x: 10, y: 5 }),
+      mobVisit,
+      ev("element_click", { path: "/blogg/x?fbclid=abc", x: 10, y: 10 }, { visitorHash: "v-mob" }),
+      ev("element_click", { path: "/blogg/x?fbclid=def", x: 11, y: 11 }, { visitorHash: "v-mob" }),
+      ev("element_click", { path: "/", x: 50, y: 50 }, { visitorHash: "v-mob" }),
     ];
     const heat = clickHeat(events);
-    expect(heat.rage).toEqual([
+    // De två fbclid-varianterna räknas ihop och vinner över "/" (1 klick).
+    expect(heat.path).toBe("/blogg/x");
+    expect(heat.mobile.sampled).toBe(2);
+  });
+
+  it("grupperar rage-punkter per element med medelposition + bursts, i besökarens layoutvy", () => {
+    const events: DashEvent[] = [
+      mobVisit,
+      ev("element_click", { path: "/", x: 50, y: 50 }, { visitorHash: "v-mob" }),
+      ev("rage_click", { path: "/", ref: "button#buy", x: 40, y: 60 }, { visitorHash: "v-mob" }),
+      ev("rage_click", { path: "/", ref: "button#buy", x: 60, y: 80 }, { visitorHash: "v-mob" }),
+      ev("rage_click", { path: "/", ref: "a.nav", x: 10, y: 5 }, { visitorHash: "v-mob" }),
+    ];
+    const heat = clickHeat(events);
+    expect(heat.mobile.rage).toEqual([
       { ref: "button#buy", x: 50, y: 70, n: 2 },
       { ref: "a.nav", x: 10, y: 5, n: 1 },
     ]);
+    expect(heat.desktop.rage).toEqual([]);
+  });
+
+  it("klick utan enhets-attribution räknas i unattributed och ritas inte", () => {
+    const heat = clickHeat([
+      ev("element_click", { path: "/", x: 50, y: 50 }), // ingen visitorHash
+      ev("element_click", { path: "/", x: 10, y: 10 }, { visitorHash: "v-okänd" }), // ingen pageview
+    ]);
+    expect(heat.mobile.sampled).toBe(0);
+    expect(heat.desktop.sampled).toBe(0);
+    expect(heat.unattributed).toBe(2);
+  });
+
+  it("tablet räknas till desktop-layouten (närmast den layoutbredden)", () => {
+    const heat = clickHeat([
+      ev("pageview", { path: "/", device: "tablet" }, { visitorHash: "v-tab" }),
+      ev("element_click", { path: "/", x: 50, y: 50 }, { visitorHash: "v-tab" }),
+    ]);
+    expect(heat.desktop.sampled).toBe(1);
+    expect(heat.mobile.sampled).toBe(0);
   });
 
   it("ärligt tomt läge: inga koordinater → sampled 0 och inga punkter", () => {
@@ -781,14 +823,17 @@ describe("clickHeat — klick-heatmapens rollup", () => {
       ev("element_click", { path: "/", ref: "a" }),
       ev("rage_click", { path: "/", ref: "b", count: 3 }),
     ]);
-    expect(heat.sampled).toBe(0);
-    expect(heat.clicks).toEqual([]);
-    expect(heat.rage).toEqual([]);
+    expect(heat.mobile.sampled).toBe(0);
+    expect(heat.desktop.sampled).toBe(0);
+    expect(heat.mobile.clicks).toEqual([]);
+    expect(heat.desktop.rage).toEqual([]);
+    expect(heat.unattributed).toBe(0);
   });
 
   it("avvisar koordinater utanför 0–100", () => {
     const heat = clickHeat([ev("element_click", { path: "/", x: 120, y: 50 })]);
-    expect(heat.sampled).toBe(0);
+    expect(heat.mobile.sampled + heat.desktop.sampled).toBe(0);
+    expect(heat.unattributed).toBe(0);
   });
 });
 

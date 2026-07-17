@@ -158,10 +158,14 @@ function HeatMirror({
   src,
   overlay,
   maxHeight = 560,
+  frameW = 1280,
 }: {
   src: string;
   overlay: React.ReactNode;
   maxHeight?: number | string;
+  /** Spegelns viewportbredd — MÅSTE matcha layouten klicken mättes i
+   *  (390 = mobil, 1280 = desktop); x är % av besökarens viewportbredd. */
+  frameW?: number;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [wrapW, setWrapW] = useState(700);
@@ -189,20 +193,26 @@ function HeatMirror({
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
-  const scale = wrapW > 0 ? Math.min(1, wrapW / 1280) : 0.5;
+  const scale = wrapW > 0 ? Math.min(1, wrapW / frameW) : 0.5;
   return (
     <div
       ref={wrapRef}
       className="overflow-y-auto overflow-x-hidden rounded-[10px] border border-[#f0eee9] bg-white"
       style={{ maxHeight }}
     >
-      <div className="relative" style={{ height: Math.round(docH * scale) }}>
+      {/* Inner-boxen har EXAKT spegelns visuella bredd (centrerad när smalare
+          än wrappen — mobilvyn) så overlay-punkternas % mappar mot iframe-
+          boxen, inte mot wrappens fulla bredd. */}
+      <div
+        className="relative mx-auto"
+        style={{ height: Math.round(docH * scale), width: Math.round(frameW * scale) }}
+      >
         <iframe
           src={src}
           title="Click heatmap backdrop"
           sandbox="allow-scripts"
           style={{
-            width: 1280,
+            width: frameW,
             height: docH,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
@@ -445,6 +455,14 @@ function JourneysOverlay({
   onClose: () => void;
 }) {
   const [heatMode, setHeatMode] = useState<"clicks" | "rage" | "both">("clicks");
+  // Layoutvyn: x/y är % av BESÖKARENS viewport/dokument — punkterna är bara
+  // meningsfulla mot en spegel i samma layoutbredd, så vyn väljer enhetsklass
+  // (mobil 390 / desktop 1280) och default är den med mest underlag.
+  const [deviceChoice, setDeviceChoice] = useState<"mobile" | "desktop" | null>(null);
+  const device =
+    deviceChoice ?? (heat.desktop.sampled > heat.mobile.sampled ? "desktop" : "mobile");
+  const view = device === "mobile" ? heat.mobile : heat.desktop;
+  const frameW = device === "mobile" ? 390 : 1280;
   // Backdroppen (riktiga sidan i spegeln) hämtas när modalen monteras — den
   // ÄR öppen-grinden; tokens lever 30 min så växlingar återanvänder svaret.
   const backdrop = useQuery({
@@ -468,7 +486,7 @@ function JourneysOverlay({
 
   const showClicks = heatMode === "clicks" || heatMode === "both";
   const showRage = heatMode === "rage" || heatMode === "both";
-  const maxN = Math.max(1, ...heat.clicks.map((c) => c.n));
+  const maxN = Math.max(1, ...view.clicks.map((c) => c.n));
   const spotStyle = (n: number) => {
     const rel = n / maxN;
     const size = Math.round(48 + rel * 112);
@@ -483,18 +501,20 @@ function JourneysOverlay({
 
   // Punkterna + "samlar in"-läget delas mellan backdropparna: den levande
   // spegeln av RIKTIGA sidan (när domänen finns) och siluett-fallbacken.
+  const otherSampled = device === "mobile" ? heat.desktop.sampled : heat.mobile.sampled;
   const overlay =
-    heat.sampled === 0 ? (
+    view.sampled === 0 ? (
       <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-8 text-center">
         <p className="max-w-sm text-[13px] text-stone-500">
-          Click positions start collecting from your visitors&apos; next page loads — the map draws
-          itself as real data arrives. Nothing here is simulated.
+          {otherSampled > 0
+            ? `No positioned clicks from ${device} visitors on this page yet — switch to ${device === "mobile" ? "Desktop" : "Mobile"} above.`
+            : "Click positions start collecting from your visitors' next page loads — the map draws itself as real data arrives. Nothing here is simulated."}
         </p>
       </div>
     ) : (
       <>
         {showClicks &&
-          heat.clicks.map((c, i) => {
+          view.clicks.map((c, i) => {
             const st = spotStyle(c.n);
             return (
               <div
@@ -513,7 +533,7 @@ function JourneysOverlay({
             );
           })}
         {showRage &&
-          heat.rage.map((r, i) => (
+          view.rage.map((r, i) => (
             <div
               key={`r${i}`}
               title={r.ref}
@@ -557,11 +577,33 @@ function JourneysOverlay({
             {contextLabel} <span className="text-[#c4beb6]">·</span> {heat.path}
           </span>
           <div className="ml-auto flex items-center gap-3">
-            {heat.sampled > 0 && (
+            {view.sampled > 0 && (
               <span className="text-[11px] text-stone-400 max-md:hidden">
-                {fmt(heat.sampled)} sampled clicks
+                {fmt(view.sampled)} sampled clicks
               </span>
             )}
+            {/* Layoutväxeln: klicken ritas bara mot spegeln i samma bredd som
+                besökarens layout — siffrorna säger var underlaget finns. */}
+            <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
+              {(
+                [
+                  ["mobile", `Mobile (${heat.mobile.sampled})`],
+                  ["desktop", `Desktop (${heat.desktop.sampled})`],
+                ] as const
+              ).map(([d, label]) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDeviceChoice(d)}
+                  className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
+                  style={
+                    device === d ? { background: "#161513", color: "#fff" } : { color: "#57534e" }
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
               {(
                 [
@@ -591,10 +633,14 @@ function JourneysOverlay({
           <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr]">
             <div>
               {backdrop.data?.ok && backdrop.data.mirrorPath ? (
+                // key: breddbyte remountar spegeln — höjdrapportören fyrar
+                // bara vid load, och mobil-/desktoplayouten har olika höjd.
                 <HeatMirror
+                  key={device}
                   src={backdrop.data.mirrorPath}
                   overlay={overlay}
                   maxHeight="calc(88vh - 190px)"
+                  frameW={frameW}
                 />
               ) : (
                 <div className="relative h-[460px] overflow-hidden rounded-[10px] border border-[#f0eee9] bg-white p-[22px]">
@@ -643,8 +689,14 @@ function JourneysOverlay({
                     rage clicks (n)
                   </span>
                 )}
-                {backdrop.data && !backdrop.data.ok && backdrop.data.reason === "no_domain" && (
+                {heat.unattributed > 0 && (
                   <span className="ml-auto">
+                    {heat.unattributed} click{heat.unattributed === 1 ? "" : "s"} without a known
+                    device layout — not drawn.
+                  </span>
+                )}
+                {backdrop.data && !backdrop.data.ok && backdrop.data.reason === "no_domain" && (
+                  <span className={heat.unattributed > 0 ? "" : "ml-auto"}>
                     Set the site&apos;s domain in Settings to draw the map over the real page.
                   </span>
                 )}
