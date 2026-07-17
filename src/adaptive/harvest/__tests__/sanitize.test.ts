@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { sanitizeAudit, sanitizeObserve, cleanText, scrubPath } from "../sanitize";
+import { sanitizeAudit, sanitizeObserve, cleanText, scrubPath, stripQueryHash } from "../sanitize";
 
 describe("cleanText", () => {
   it("redacts emails and long digit runs, collapses whitespace, caps length", () => {
@@ -180,5 +180,25 @@ describe("sanitizeObserve — structural observe-only block", () => {
     const out = sanitizeObserve({ forms })!;
     expect(out.forms.length).toBe(10);
     expect(out.forms[0].kind).toBe("other"); // non-token kind rejected
+  });
+});
+
+// Pilotfyndet 2026-07-17: ?fbclid fragmenterade rollupen och fällde
+// artefakt-uppladdningen — sidvägen är sididentitet, aldrig spårning.
+describe("stripQueryHash — sidvägen utan query/hash", () => {
+  it("strippar querystring och fragment", () => {
+    expect(stripQueryHash("/blogg/korskontaminering?fbclid=AbC123_xyz")).toBe(
+      "/blogg/korskontaminering",
+    );
+    expect(stripQueryHash("/?angel_debug=1&angel_device=desktop")).toBe("/");
+    expect(stripQueryHash("/sida#avsnitt")).toBe("/sida");
+    expect(stripQueryHash("/sida?x=1#y")).toBe("/sida");
+  });
+
+  it("lämnar rena vägar orörda och tål icke-strängar", () => {
+    expect(stripQueryHash("/matvaror/butik/knackebrod-481861")).toBe(
+      "/matvaror/butik/knackebrod-481861",
+    );
+    expect(stripQueryHash(undefined)).toBe("");
   });
 });

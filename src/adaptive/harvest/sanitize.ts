@@ -56,6 +56,18 @@ export function scrubPath(s: unknown): string {
   return cleanText(uuidSafe).replace(OPAQUE_TOKEN, "[id]");
 }
 
+/** Sidvägen utan query/hash — sidIDENTITET, aldrig spårningsparametrar.
+ *  Generalrepetitionen på piloten (2026-07-17) visade varför: ?fbclid=…
+ *  fragmenterade samma bloggsida till dussintals "sidor" i rollupen och gav
+ *  ogiltiga artefaktfilnamn i nattloopen; även angel_debug-parametrar läckte
+ *  in som egna sidvägar. Query läses för klassificering (utm → kanal) från
+ *  FULLA url:en innan detta — den LAGRADE sidvägen är alltid ren. Gäller
+ *  journey-path; element-refs (scrubPath ovan) rörs inte. */
+export function stripQueryHash(s: unknown): string {
+  const t = typeof s === "string" ? s : "";
+  return t.split("#")[0].split("?")[0];
+}
+
 function optText(s: unknown): string | undefined {
   const t = cleanText(s);
   return t || undefined;

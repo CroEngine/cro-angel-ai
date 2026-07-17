@@ -38,7 +38,9 @@ describe("buildEventRows — journey privacy boundary", () => {
     ];
     const rows = buildEventRows("acme", "v", events, null);
     expect((rows[0].payload as Record<string, unknown>).ref).toBe("Maila [redacted]");
-    expect((rows[0].payload as Record<string, unknown>).path).toBe("/tack?email=[redacted]");
+    // Sedan pilotfyndet 2026-07-17 strippas HELA queryn (sididentitet, aldrig
+    // spårning) — e-posten lagras inte ens i redigerad form.
+    expect((rows[0].payload as Record<string, unknown>).path).toBe("/tack");
     expect((rows[1].payload as Record<string, unknown>).ref).toContain("[redacted]");
     expect((rows[2].payload as Record<string, unknown>).path).toContain("[id]");
   });

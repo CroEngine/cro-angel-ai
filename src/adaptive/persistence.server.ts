@@ -12,7 +12,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 import { hostMatchesDomain, normalizeDomain, originVerdict } from "./domain";
-import { scrubPath } from "./harvest/sanitize";
+import { scrubPath, stripQueryHash } from "./harvest/sanitize";
 import type { GoalJudgment } from "./goal-judge.server";
 import type {
   AngelEvent,
@@ -75,7 +75,9 @@ export function buildEventRows(
     // token/order-id i en path-segment eller personaliserad knapptext) —
     // scrubPath är serverns integritetsgräns, utöver klientens längd-cap.
     if (typeof raw.ref === "string") payload.ref = scrubPath(raw.ref);
-    if (typeof raw.path === "string") payload.path = scrubPath(raw.path);
+    // Sidvägen är sidIDENTITET: query/hash bort FÖRE skrubben (?fbclid m.fl.
+    // fragmenterade rollupen till en "sida" per klick-id — pilotfynd 2026-07-17).
+    if (typeof raw.path === "string") payload.path = scrubPath(stripQueryHash(raw.path)) || "/";
     if (sid) payload.sessionId = sid;
     return {
       site,

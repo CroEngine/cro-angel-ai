@@ -96,11 +96,24 @@ for (const site of targets) {
 
     // 2. Frys lövens sidor (curl-vägen). SPA/frysfel ⇒ sidan utelämnas ur
     //    kartan och detect köar cellen ärligt som needs_freeze.
-    const paths = [...new Set((leaves as { path?: string }[]).map((l) => l.path || "/"))].slice(0, 10);
+    // Query/hash strippas defensivt även här (rollupen normaliserar numera,
+    // men ett ?fbclid-filnamn fällde artefakt-uppladdningen i generalrepet
+    // 2026-07-17 — filnamn får bara innehålla säkra tecken).
+    const paths = [
+      ...new Set(
+        (leaves as { path?: string }[]).map(
+          (l) => (l.path || "/").split("#")[0].split("?")[0] || "/",
+        ),
+      ),
+    ].slice(0, 10);
     const pages: Record<string, string> = {};
     if (site.domain) {
       for (const p of paths) {
-        const file = join(dir, `frozen${p.replace(/\//g, "-") || "-home"}.html`);
+        const safe = p.replace(/[^A-Za-z0-9._-]/g, "-").replace(/-+/g, "-");
+        const file = join(
+          dir,
+          `frozen${safe === "-" || !safe ? "-home" : `-${safe.replace(/^-|-$/g, "")}`}.html`,
+        );
         if (
           existsSync(file) ||
           spawnBun(["scripts/redesign/freeze-page.ts", `--url=https://${site.domain}${p}`, `--out=${file}`])

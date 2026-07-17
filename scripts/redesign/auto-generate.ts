@@ -67,7 +67,9 @@ import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
 
-const EXEC = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+// Env-var eller undefined — playwright-core hittar sin egen installation på
+// Actions-runnern (samma mönster som serving-smoke; pilotfynd 2026-07-17).
+const EXEC = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 
 const mode = arg("mode");

@@ -28,7 +28,7 @@ import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 
 const REPO = join(import.meta.dir, "../..");
 const FIX = join(REPO, "fixtures/real-sites");
-const EXEC = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const EXEC = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const outDir = join(REPO, arg("out") ?? "redesign-render-out");
 

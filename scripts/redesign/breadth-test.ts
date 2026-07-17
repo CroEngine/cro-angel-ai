@@ -24,8 +24,7 @@ import { join } from "node:path";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { captureLcpElement, runGatedAttempts, type MeasureOp } from "./measure";
 
-const EXEC =
-  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const EXEC = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const targets = JSON.parse(readFileSync(arg("targets")!, "utf8")) as {
   name: string;
