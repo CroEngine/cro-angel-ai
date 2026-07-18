@@ -1232,7 +1232,14 @@
     for (var a = 0; a < resolved.length && ok; a++) {
       var r0 = resolved[a];
       if (r0.op === "move_up") {
+        // Breddfynd 1: kliv över triviala syskon (census-fria OCH < 8px höga
+        // dekor-dividers) så flytten landar ovanför närmsta RIKTIGA syskon i
+        // stället för att byta plats med en osynlig linje. SPEGELVÄND regel i
+        // mätharnesset (scripts/redesign/measure.ts) — håll i synk.
         var prev = r0.sec.previousElementSibling;
+        while (prev && !bearsCensus(prev) && prev.getBoundingClientRect().height < 8) {
+          prev = prev.previousElementSibling;
+        }
         if (!prev || prev.parentElement !== r0.sec.parentElement) {
           ok = false;
           break;

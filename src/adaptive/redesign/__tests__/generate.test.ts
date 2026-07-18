@@ -290,3 +290,51 @@ describe("validateOps — insert_snippet (korssid-lyftet: ordagrant · hjälten 
     expect(plan.rejected[0].reason).toMatch(/not in allowed vocabulary/);
   });
 });
+
+describe("validateOps — netto-nolla-vakten på flyttar (breddfynd 1)", () => {
+  // Sektionslistan i simuleringen är ["hero", "sec-hero", "sec-testi"].
+  it("rejects a move pair that cancels out (Booking-obduktionen)", () => {
+    const plan = validateOps(
+      [
+        { op: "move_up", targetId: "sec-testi", detail: "", why: "w" },
+        { op: "move_up", targetId: "sec-hero", detail: "", why: "w" },
+      ],
+      ctx,
+    );
+    expect(plan.ops).toHaveLength(0);
+    expect(plan.rejected).toHaveLength(2);
+    expect(plan.rejected[0].reason).toMatch(/net no-op/);
+  });
+
+  it("keeps a move pair whose net order actually changes", () => {
+    const plan = validateOps(
+      [
+        { op: "move_up", targetId: "sec-hero", detail: "", why: "w" },
+        { op: "move_up", targetId: "sec-testi", detail: "", why: "w" },
+      ],
+      ctx,
+    );
+    expect(plan.ops).toHaveLength(2);
+    expect(plan.rejected).toHaveLength(0);
+  });
+
+  it("rejects a single move_up on the topmost target (nothing above it)", () => {
+    const plan = validateOps([{ op: "move_up", targetId: "hero", detail: "", why: "w" }], ctx);
+    expect(plan.ops).toHaveLength(0);
+    expect(plan.rejected[0].reason).toMatch(/net no-op/);
+  });
+
+  it("keeps non-move ops when the move set is rejected as a no-op", () => {
+    const plan = validateOps(
+      [
+        { op: "condense", targetId: "hero", detail: "H", why: "w" },
+        { op: "move_up", targetId: "sec-testi", detail: "", why: "w" },
+        { op: "move_up", targetId: "sec-hero", detail: "", why: "w" },
+      ],
+      ctx,
+    );
+    expect(plan.ops).toHaveLength(1);
+    expect(plan.ops[0].op).toBe("condense");
+    expect(plan.rejected).toHaveLength(2);
+  });
+});

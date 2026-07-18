@@ -78,6 +78,11 @@ export interface RenderMeasurements {
   /** Did reset() actually detach every inserted node? The section-identity
    *  order check cannot see a stray inserted node — this can. */
   insertedRemoved?: boolean;
+  /** Largest absolute distance (px) any moved section actually travelled.
+   *  The order lists only see census sections — a move across a HEADING-LESS
+   *  neighbour (breadth finding 1, the Trello autopsy) is a real visual change
+   *  the lists are blind to. Optional: older observations omit it. */
+  movedShiftPx?: number;
 }
 
 export type RenderVerdict = "pass" | "warn" | "fail";
@@ -117,6 +122,12 @@ export const LCP_SHIFT_FAIL_PX = 8;
  *  sid-omslutande wrapper och blocket i praktiken landade långt ner. En mobil
  *  hjälte (390×844-viewporten) är sällan högre än ~1,5 skärmar. */
 export const INSERT_GAP_WARN_PX = 1200;
+
+/** En flytt som förflyttade sektionen mindre än så här är i praktiken en
+ *  no-op (platsbyte med en divider, eller flyttar som tog ut varandra) — men
+ *  har den rest längre än så är förändringen visuellt äkta även när census-
+ *  ordningen står still (flytt över rubriklös grannsektion, breddfynd 1). */
+export const MOVE_SHIFT_MIN_PX = 40;
 
 /** Evaluate the beauty gates over one apply's measurements. Pure. */
 export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
@@ -227,12 +238,27 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
   }
   if (m.requestedMoves > 0 && m.appliedMoves === 0) {
     warn("no moves were applied — nothing to preview");
-  } else if (m.appliedMoves > 0 && !reordered && verdict === "pass") {
-    // Applied a move but the order is unchanged (e.g. moved to its own slot).
+  } else if (
+    m.appliedMoves > 0 &&
+    !reordered &&
+    (m.movedShiftPx ?? 0) < MOVE_SHIFT_MIN_PX &&
+    verdict === "pass"
+  ) {
+    // Applied a move but nothing actually travelled: order lists unchanged AND
+    // the moved section barely shifted. A big movedShiftPx with unchanged lists
+    // is a REAL move across a heading-less neighbour — not warned (breadth
+    // finding 1). Older observations without movedShiftPx keep the old, purely
+    // order-based semantics via the ?? 0.
     warn("apply reported moves but the section order is unchanged");
   }
 
-  return { verdict, reasons, hOverflowIntroducedPx, verticalOverlapIntroducedPx: vOverlap, reordered };
+  return {
+    verdict,
+    reasons,
+    hOverflowIntroducedPx,
+    verticalOverlapIntroducedPx: vOverlap,
+    reordered,
+  };
 }
 
 function sameOrder(a: string[], b: string[]): boolean {

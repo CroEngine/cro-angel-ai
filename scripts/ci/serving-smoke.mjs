@@ -241,6 +241,61 @@ async function runSuite(label, snippet) {
     await page.close();
   }
 
+  // 4b) Divider-hoppet (breddfynd 1, linear-obduktionen 2026-07-18): syskonet
+  //     närmast ovanför sektionen är en 2px dekor-divider — flytten ska landa
+  //     OVANFÖR närmsta riktiga sektion, inte byta plats med en osynlig linje.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.route("**/*", (r) =>
+      r.request().url().startsWith("data:") ? r.continue() : r.abort(),
+    );
+    await page.setContent(
+      `<main><div class="page"><div class="hero"><h1>Hero</h1><p>intro</p></div>` +
+        `<div class="wrapper"><section id="sec-a"><h2>Alpha Sec</h2><p>a</p></section>` +
+        `<div id="divider" style="height:2px"></div>` +
+        `<section id="sec-b"><h2>Beta Sec</h2><p>b</p></section></div></div></main>`,
+      { waitUntil: "domcontentloaded" },
+    );
+    await page.evaluate(
+      ({ src }) => {
+        window.PerformanceObserver = undefined;
+        window.__ANGEL_HARNESS__ = true;
+        const m = document.createElement("script");
+        m.type = "text/plain";
+        m.setAttribute("data-site", "smoke");
+        m.setAttribute("data-endpoint", "https://dead.invalid");
+        m.setAttribute("src", "data:text/plain,adaptive.js");
+        document.head.appendChild(m);
+        (0, eval)(src);
+      },
+      { src: snippet },
+    );
+    const dividerState = () =>
+      page.evaluate(() => ({
+        order: [...document.querySelector(".wrapper").children].map((c) => c.id),
+        pageHtml: document.querySelector("main").innerHTML,
+      }));
+    const before = await dividerState();
+    const applied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      {
+        id: "smoke-divider",
+        segmentKey: "x",
+        ops: [{ op: "move_up", locator: { tag: "h2", text: "Beta Sec" } }],
+      },
+    );
+    const after = await dividerState();
+    check("divider: variant applicerad", applied.includes("variant:smoke-divider"));
+    check(
+      "divider: sektionen landar OVANFÖR riktiga grannen (inte platsbyte med dividern)",
+      JSON.stringify(after.order) === JSON.stringify(["sec-b", "sec-a", "divider"]),
+    );
+    await page.evaluate(() => window.__angel.reset());
+    const restored = await dividerState();
+    check("divider: reset återställer BYTE-exakt", restored.pageHtml === before.pageHtml);
+    await page.close();
+  }
+
   // 5) Platt artikelsida (granskningens probe: h2:or som direkta syskon) —
   //    en flytt MÅSTE vägras helt: att flytta en naken rubrik utan sin
   //    brödtext förstör innehållet, och utan sektionsnivå får INGET flyttas.
