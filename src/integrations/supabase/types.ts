@@ -329,6 +329,19 @@ export type Database = {
           conversions: number
         }[]
       }
+      angel_page_flow_rollup: {
+        Args: { p_site: string; p_since?: string }
+        Returns: {
+          landing_path: string
+          dest_path: string
+          channel: string
+          device: string
+          country: string
+          is_returning: boolean
+          sessions: number
+          reached: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
