@@ -154,6 +154,9 @@ export interface VariantView {
   status: "candidate" | "verified" | "serving" | "winner" | "retired";
   opsCount: number;
   updatedAt: string;
+  /** Maskinellt serveringsstopp (drift-svepet, slice 3) — null = serverbar
+   *  enligt status. Ägarens status är orörd; självläkningen släpper flaggan. */
+  heldReason: string | null;
   ops: VariantOpView[];
   /** Grind-utfall ur evidence.gates (nyckel → tal/boolean), tomt när okänt. */
   gates: Record<string, number | boolean>;
@@ -350,7 +353,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       try {
         const { data: vRows, error: vErr } = await supabaseAdmin
           .from("angel_variants")
-          .select("id,path,segment_key,status,ops,evidence,updated_at")
+          .select("id,path,segment_key,status,ops,evidence,held_reason,updated_at")
           .eq("site", site)
           .order("updated_at", { ascending: false })
           .limit(50);
@@ -415,6 +418,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               status: v.status as VariantView["status"],
               opsCount: opsArr.length,
               updatedAt: v.updated_at,
+              heldReason: typeof v.held_reason === "string" ? v.held_reason : null,
               ops: opsArr.map((o) => {
                 const r = (o ?? {}) as Record<string, unknown>;
                 return {

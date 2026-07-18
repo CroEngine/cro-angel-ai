@@ -469,7 +469,11 @@ export async function loadServableVariants(
       .select("id,site,path,segment_key,status,ops,serve_ops")
       .eq("site", site)
       .eq("path", path)
-      .in("status", ["serving", "winner"]);
+      .in("status", ["serving", "winner"])
+      // Maskinellt serveringsstopp (drift-svepet, slice 3): en hållen variant
+      // serveras aldrig — men ägarens status står orörd och förhandsvisningen
+      // (loadPreviewVariant) ser den fortfarande.
+      .is("held_reason", null);
     if (error || !data) return [];
     return data.map((r) => ({
       id: r.id,

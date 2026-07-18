@@ -171,6 +171,8 @@ export type Database = {
           ops: Json
           serve_ops: Json
           evidence: Json
+          held_reason: string | null
+          held_at: string | null
           created_at: string
           updated_at: string
         }
@@ -183,6 +185,8 @@ export type Database = {
           ops?: Json
           serve_ops?: Json
           evidence?: Json
+          held_reason?: string | null
+          held_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -195,6 +199,8 @@ export type Database = {
           ops?: Json
           serve_ops?: Json
           evidence?: Json
+          held_reason?: string | null
+          held_at?: string | null
           created_at?: string
           updated_at?: string
         }

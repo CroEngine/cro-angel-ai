@@ -22,7 +22,7 @@ import type { Json } from "@/integrations/supabase/types";
  *  Netlify-miljön), aldrig hårdkodade länkar i mejlen. */
 const APP_ORIGIN = (process.env.APP_ORIGIN ?? "https://croengine.netlify.app").replace(/\/$/, "");
 
-export type NotificationKind = "installed" | "variant_ready" | "test_result";
+export type NotificationKind = "installed" | "variant_ready" | "test_result" | "variant_held";
 
 /** Ägarnas e-postadresser för en sajt (medlemmar → auth-användare). */
 async function ownerEmails(site: string): Promise<string[]> {
@@ -155,6 +155,41 @@ export function notifyVariantReady(site: string, variantId: string, label: strin
       `— CROENGINE`,
     ].join("\n"),
     { variantId, label },
+  );
+}
+
+/** Självläkningen (korssid-lyftet slice 3): ett insatt citats källtext ändrades
+ *  — varianten är maskinellt pausad tills nya texten passerat grindarna igen.
+ *  Ägaren informeras men behöver inte göra något (ägarbeslut 2026-07-18).
+ *  Dedupe per (variant, hold-ögonblick) så en NY prisändring ger ett nytt mejl
+ *  men samma pågående hold aldrig spammar. */
+export function notifyVariantHeld(
+  site: string,
+  variantId: string,
+  label: string,
+  reason: string,
+  heldAtIso: string,
+): Promise<number> {
+  return notifyOwners(
+    site,
+    "variant_held",
+    `${variantId}:${heldAtIso}`,
+    `We paused one of your page variants — no action needed`,
+    [
+      `Hi!`,
+      ``,
+      `The source content behind one of your page variants changed`,
+      `(${label}), so we paused it automatically rather than show`,
+      `outdated information: ${reason}`,
+      ``,
+      `The system will re-verify the updated content and resume the`,
+      `variant on its own — you don't need to do anything.`,
+      ``,
+      `You can review it any time: ${APP_ORIGIN}/dashboard`,
+      ``,
+      `— CROENGINE`,
+    ].join("\n"),
+    { variantId, label, reason },
   );
 }
 
