@@ -88,6 +88,32 @@ export async function measurePlan(
       const de = document.documentElement;
       const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 
+      // ── CMP-dialoger bort FÖRE mätning ─────────────────────────────────
+      // En fryst kopia bär ofta samtyckesdialogen i öppet läge (ingen JS som
+      // stänger den) — den la sig över Trellos signup-knapp och fällde
+      // CTA-hit-testet trots att sidans egen design är hel (retestfynd
+      // 2026-07-18). Snippeten rör aldrig dessa live (NO_TOUCH-listan i
+      // public/adaptive.js — SPEGELVÄND selektorlista, håll i synk); harnesset
+      // mäter SIDAN, inte tredjeparts-CMP:n. Borttagningen sker i sidkopians
+      // DOM och påverkar aldrig något live.
+      const CMP_ROOTS =
+        "#CybotCookiebotDialog,#CybotCookiebotDialogBodyUnderlay," +
+        "#onetrust-consent-sdk,#onetrust-banner-sdk," +
+        "#usercentrics-root,#uc-center-container," +
+        ".osano-cm-window,.osano-cm-dialog," +
+        "#didomi-host,#didomi-notice," +
+        ".cc-window,.cc-banner," +
+        "#cookiescript_injected," +
+        "[data-lovable-cookie-root]," +
+        // Atlassian/Trello-klassen: generiska consent-rot-id:n som inte täcks
+        // av leverantörslistan men alltid är overlays i fryst läge.
+        "[id*='cookie-consent' i],[class*='cookie-banner' i],[id*='consent-banner' i]";
+      try {
+        for (const el of Array.from(document.querySelectorAll(CMP_ROOTS))) el.remove();
+      } catch {
+        /* trasig selektor i någon motor — mätningen fortsätter utan strippning */
+      }
+
       // ── LCP-elementet — samma vakt-semantik som snippeten ──────────────
       // Fångas EN gång per sidladdning av captureLcpElement (direkt efter
       // load, FÖRE skärmdumpar): fullPage-skärmdumpen scrollar sidan och får
