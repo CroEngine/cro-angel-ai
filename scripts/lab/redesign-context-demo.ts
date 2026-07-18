@@ -159,7 +159,7 @@ console.log(
 
 // ---- slice 2: generation + guard --------------------------------------------
 // No ANTHROPIC_API_KEY here, so we STUB Claude's reply to show the flow. In prod
-// `completeWithClaude` (generate.server.ts) does the real vision call. The stub
+// `anthropicDesigner` (scripts/loop/designer.ts) does the real call. The stub
 // includes one INVENTED op to prove the guard rejects it — the LLM is never
 // trusted.
 const simulatedClaudeReply = async () =>

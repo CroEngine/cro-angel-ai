@@ -24,6 +24,7 @@ import { personaContext, personaDevice, type PersonaId } from "./personas";
 import { dismissConsent } from "./session.server";
 import {
   analyze,
+  failReport,
   type AdaptationProbe,
   type DomSignature,
   type InteractionProbe,
@@ -103,16 +104,6 @@ async function signature(page: Page): Promise<DomSignature> {
 }
 
 const EMPTY_SIG: DomSignature = { textLen: 0, elementCount: 0, bodyChildCount: 0 };
-const EMPTY_LAYOUT: LayoutDiff = {
-  matched: 0,
-  shiftedCount: 0,
-  shiftedFraction: 0,
-  controlShiftedFraction: 0,
-  maxMove: 0,
-};
-
-const EMPTY_RERENDER: RerenderProbe = { residueAfterApply: 0, residueAfterRerender: 0 };
-const EMPTY_INTERACTION: InteractionProbe = { checked: 0, broken: 0 };
 
 /** Selector for elements a visitor is meant to be able to click / use. */
 const INTERACTIVE_SELECTOR =
@@ -254,34 +245,6 @@ async function measureAgainst(page: Page, baseRects: RectSet): Promise<Movement>
     },
     baseRects,
   )) as Movement;
-}
-
-function failReport(
-  url: string,
-  site: string,
-  persona: string,
-  reason: string,
-  opts: { reachable?: boolean; snippetRan?: boolean } = {},
-): RobustnessReport {
-  return analyze({
-    url,
-    site,
-    persona,
-    reachable: opts.reachable ?? false,
-    snippetRan: opts.snippetRan ?? false,
-    consoleErrors: [reason],
-    decidedCount: 0,
-    appliedCount: 0,
-    probes: [],
-    baseline: EMPTY_SIG,
-    afterApply: EMPTY_SIG,
-    afterReset: EMPTY_SIG,
-    layout: EMPTY_LAYOUT,
-    rerender: EMPTY_RERENDER,
-    interaction: EMPTY_INTERACTION,
-    residueAfterReset: -1,
-    durationMs: 0,
-  });
 }
 
 /** Provoke the kinds of things that make a framework re-render, without
