@@ -284,6 +284,13 @@ if (UPLOAD) {
     const db = createClient(SUPABASE_URL, SERVICE_KEY);
     const files = ["report.html", "breadth-report.json"].concat(
       rows.flatMap((r) => [r.shots?.before, r.shots?.after].filter((x): x is string => !!x)),
+      // Frysta kopiorna följer med (retestfynd 2026-07-18): utan dem går
+      // runnerns grind-utfall inte att obducera — lokala omfrysningar av
+      // samma sajt ger andra varianter (geo/AB/consent) och ledde fel.
+      rows
+        .filter((r) => typeof r.frozenBytes === "number")
+        .map((r) => `frozen-${r.name}.html`)
+        .filter((f) => existsSync(join(outDir, f))),
     );
     for (const f of files) {
       const type = f.endsWith(".json")
