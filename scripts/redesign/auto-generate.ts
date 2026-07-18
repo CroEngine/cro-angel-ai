@@ -45,10 +45,11 @@
 // i stället för att gissas fram.
 
 import { chromium, type Page } from "playwright-core";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { findEarnedCells, type PageSegmentLeaf } from "../../src/adaptive/redesign/earned";
+import { isSegmentPrefix, returningToken, segToken, segmentKeyOf } from "../../src/lib/segment-key";
 import { extractContentModel, extractCtaCandidates } from "../../src/adaptive/redesign/extract";
 import { addLlmCtas } from "../../src/adaptive/redesign/cta-llm.server";
 import {
@@ -179,6 +180,71 @@ if (mode === "detect") {
   const siteConv = leaves.reduce((s, l) => s + l.conversions, 0);
   const siteRate = siteVisits > 0 ? siteConv / siteVisits : 0;
 
+  // Sidflödet (korssid-lyftets signal, task #117 slice 1): "X % av segmentet
+  // som landar på P går vidare till Q". Volymgrindad (min 30 nådda + minst
+  // dubbla sajtandelen + minst 25 %) — under det skrivs INGEN observation;
+  // tomt flows-underlag (t.ex. ensidiga sessioner) är ett ärligt noll-utfall.
+  interface FlowRow {
+    landing_path: string;
+    dest_path: string;
+    channel: string;
+    device: string;
+    country: string;
+    is_returning: boolean;
+    sessions: number;
+    reached: number;
+  }
+  const flowsPath = arg("flows");
+  const flows: FlowRow[] =
+    flowsPath && existsSync(flowsPath) ? JSON.parse(readFileSync(flowsPath, "utf8")) : [];
+  const FLOW_MIN_REACHED = 30;
+  const FLOW_MIN_SHARE = 0.25;
+  const flowKeyOf = (r: FlowRow) =>
+    segmentKeyOf([
+      segToken(r.channel),
+      segToken(r.device),
+      segToken(r.country),
+      returningToken(r.is_returning),
+    ]);
+  /** Bästa dest-flödet för (sida, segmentnyckel) — eller null under grinden. */
+  function flowObservation(path: string, cellKey: string): string | null {
+    const landed = flows.filter((r) => r.landing_path === path);
+    if (landed.length === 0) return null;
+    // Nämnare räknas EN gång per dim-kombo (sessions upprepas per dest-rad).
+    const denom = (rows: FlowRow[]) => {
+      const seen = new Map<string, number>();
+      for (const r of rows) seen.set(flowKeyOf(r), r.sessions);
+      return [...seen.values()].reduce((a, b) => a + b, 0);
+    };
+    const segRows = landed.filter((r) => isSegmentPrefix(cellKey, flowKeyOf(r)));
+    const segSessions = denom(segRows);
+    if (segSessions === 0) return null;
+    const siteSessions = denom(landed);
+    const byDest = new Map<string, { seg: number; site: number }>();
+    for (const r of landed) {
+      const cur = byDest.get(r.dest_path) ?? { seg: 0, site: 0 };
+      cur.site += r.reached;
+      if (isSegmentPrefix(cellKey, flowKeyOf(r))) cur.seg += r.reached;
+      byDest.set(r.dest_path, cur);
+    }
+    let best: { dest: string; segShare: number; siteShare: number; seg: number } | null = null;
+    for (const [dest, v] of byDest) {
+      const segShare = v.seg / segSessions;
+      const siteShare = siteSessions > 0 ? v.site / siteSessions : 0;
+      if (v.seg < FLOW_MIN_REACHED || segShare < FLOW_MIN_SHARE || segShare < 2 * siteShare) {
+        continue;
+      }
+      if (!best || segShare > best.segShare) best = { dest, segShare, siteShare, seg: v.seg };
+    }
+    if (!best) return null;
+    return (
+      `Sidflödet: ${(best.segShare * 100).toFixed(0)} % av segmentets besökare som landar här ` +
+      `går vidare till ${best.dest} (sajtsnitt ${(best.siteShare * 100).toFixed(0)} %, ` +
+      `${best.seg} sessioner) — deras fråga verkar besvaras där; prioritera innehåll som ` +
+      `svarar på det redan på den här sidan.`
+    );
+  }
+
   const briefed: unknown[] = [];
   const needsFreeze: unknown[] = [];
   for (const c of cells) {
@@ -188,6 +254,8 @@ if (mode === "detect") {
       `Sidan: ${c.path}. Idag når INGEN variant dessa besökare där: ${c.uncoveredLeaves.join(", ")} (${c.incremental.visits} besök, ${c.incremental.conversions} konverteringar i underlaget).`,
       `Cellens konvertering ${(rate * 100).toFixed(1)} % mot sajtsnittet ${(siteRate * 100).toFixed(1)} %.`,
     ];
+    const flowObs = flowObservation(c.path, c.key);
+    if (flowObs) observations.push(flowObs);
     const ctx = await contextFor(c.path, c.key, c.total, observations);
     if (!ctx) {
       // Ingen fryst kopia av sidan — ärlig kö i stället för gissad design.

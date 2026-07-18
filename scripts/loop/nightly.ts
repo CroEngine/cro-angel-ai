@@ -81,6 +81,11 @@ for (const site of targets) {
       .select("path,segment_key,status")
       .eq("site", site.slug)
       .neq("status", "retired");
+    // Sidflödet (korssid-lyftets signal, task #117): "andel av segmentet som
+    // landar på P och senare når Q". Tomt är ett ÄRLIGT utfall (ensidiga
+    // sessioner) — detect-steget kräver volym innan observationen skrivs.
+    const { data: flows } = await db.rpc("angel_page_flow_rollup", { p_site: site.slug });
+    writeFileSync(join(dir, "flows.json"), JSON.stringify(flows ?? []));
     writeFileSync(join(dir, "leaves.json"), JSON.stringify(leaves));
     writeFileSync(
       join(dir, "variants.json"),
@@ -186,6 +191,7 @@ for (const site of targets) {
         "--mode=detect",
         `--leaves=${join(dir, "leaves.json")}`,
         `--variants=${join(dir, "variants.json")}`,
+        `--flows=${join(dir, "flows.json")}`,
         `--pages=${join(dir, "pages.json")}`,
         `--site=${site.slug}`,
         `--base-url=${base}`,
