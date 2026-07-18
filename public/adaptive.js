@@ -1198,7 +1198,29 @@
               return false;
           } catch (e) {}
         }
-        resolved.push({ op: "insert_snippet", anchor: anchor, value: op.value });
+        // Klickväg + stil-donator (ägarbeslut 2026-07-18 alt. D). Klienten
+        // OMVALIDERAR href trots serverns grind — försvarsdjup: bara en
+        // sajt-egen absolut path ("/priser") släpps igenom, allt annat
+        // renderas som ren text utan länk.
+        var insHref =
+          typeof op.href === "string" &&
+          op.href.charAt(0) === "/" &&
+          op.href.indexOf("//") !== 0 &&
+          op.href.indexOf(":") < 0 &&
+          !/\s/.test(op.href)
+            ? op.href
+            : null;
+        var insClass =
+          typeof op.styleClass === "string" && /^[\w -]{1,120}$/.test(op.styleClass)
+            ? op.styleClass
+            : null;
+        resolved.push({
+          op: "insert_snippet",
+          anchor: anchor,
+          value: op.value,
+          href: insHref,
+          styleClass: insClass,
+        });
       } else {
         return false; // okänt verb — fail closed, före första mutation
       }
@@ -1234,7 +1256,20 @@
           var insNode = document.createElement("p");
           // ALLTID textContent, aldrig innerHTML — värdet är data, inte markup;
           // en komprometterad DB-rad kan därför aldrig bli en skriptkanal.
-          insNode.textContent = String(r0.value);
+          // Med giltig href blir citatet en LÄNK till källsidan, klädd i
+          // landningssidans egen donatorklass (sajtens stilmall bestämmer
+          // utseendet). Wrappern centreras — samma neutrala layout-nivå som
+          // badge/pill-injektionerna, aldrig färg/typografi från oss.
+          if (r0.href) {
+            var insLink = document.createElement("a");
+            insLink.href = r0.href;
+            insLink.textContent = String(r0.value);
+            if (r0.styleClass) insLink.className = r0.styleClass;
+            insNode.appendChild(insLink);
+            insNode.style.textAlign = "center";
+          } else {
+            insNode.textContent = String(r0.value);
+          }
           insNode.setAttribute("data-angel-inserted", "");
           r0.anchor.parentElement.insertBefore(insNode, r0.anchor.nextSibling);
           undos.push(

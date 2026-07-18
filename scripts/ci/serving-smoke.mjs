@@ -429,6 +429,73 @@ async function runSuite(label, snippet) {
       "insert: noll residue efter reset",
       (await page.evaluate(() => window.__angel.residue())) === 0,
     );
+
+    // 7b) Klickväg + stil-donator (slice 4, ägarbeslut alt. D): giltig href ⇒
+    //     citatet renderas som LÄNK i donatorklassen; ogiltig href (extern/
+    //     protokoll) ⇒ ren text utan länk — klientens försvarsdjup.
+    const linkedApplied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      {
+        id: "smoke-insert-link",
+        segmentKey: "x",
+        ops: [
+          {
+            op: "insert_snippet",
+            locator: { tag: "h1", text: "Nested Fixture Hero" },
+            value: QUOTE,
+            href: "/priser",
+            styleClass: "t-text-s",
+          },
+        ],
+      },
+    );
+    const linked = await page.evaluate(() => {
+      const ins = document.querySelector("[data-angel-inserted]");
+      const a = ins ? ins.querySelector("a") : null;
+      return {
+        hasLink: !!a,
+        href: a ? a.getAttribute("href") : null,
+        cls: a ? a.getAttribute("class") : null,
+        text: a ? a.textContent : null,
+      };
+    });
+    check(
+      "insert-länk: giltig href ⇒ <a> till källsidan i donatorklassen",
+      linkedApplied.includes("variant:smoke-insert-link") &&
+        linked.hasLink &&
+        linked.href === "/priser" &&
+        linked.cls === "t-text-s" &&
+        linked.text === QUOTE,
+    );
+    await page.evaluate(() => window.__angel.reset());
+    const badApplied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      {
+        id: "smoke-insert-badhref",
+        segmentKey: "x",
+        ops: [
+          {
+            op: "insert_snippet",
+            locator: { tag: "h1", text: "Nested Fixture Hero" },
+            value: QUOTE,
+            href: "javascript:alert(1)",
+          },
+        ],
+      },
+    );
+    const bad = await page.evaluate(() => {
+      const ins = document.querySelector("[data-angel-inserted]");
+      return { hasLink: !!(ins && ins.querySelector("a")), text: ins ? ins.textContent : null };
+    });
+    check(
+      "insert-länk: ogiltig href ⇒ ren text, ALDRIG länk (försvarsdjup)",
+      badApplied.includes("variant:smoke-insert-badhref") && !bad.hasLink && bad.text === QUOTE,
+    );
+    await page.evaluate(() => window.__angel.reset());
+    check(
+      "insert-länk: noll residue efter reset",
+      (await page.evaluate(() => window.__angel.residue())) === 0,
+    );
     await page.close();
   }
 

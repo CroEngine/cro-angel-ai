@@ -53,7 +53,9 @@ import { isSegmentPrefix, returningToken, segToken, segmentKeyOf } from "../../s
 import {
   extractContentModel,
   extractCtaCandidates,
+  extractLinkStyleDonor,
   extractPriceSnippets,
+  extractQuotables,
 } from "../../src/adaptive/redesign/extract";
 import { addLlmCtas } from "../../src/adaptive/redesign/cta-llm.server";
 import {
@@ -169,8 +171,10 @@ async function contextFor(
   for (const sp of sourcePaths) {
     const srcPage = await pageFor(sp);
     if (!srcPage) continue;
-    const snippets = extractPriceSnippets(srcPage.html);
-    if (snippets.length > 0) sourcePages.push({ path: sp, snippets });
+    // Priser när de finns — annars offert-fallbacken (sidans egen huvudutsaga,
+    // ägarbeslut 2026-07-18). kind låter prompten förklara länk-renderingen.
+    const q = extractQuotables(srcPage.html);
+    if (q.snippets.length > 0) sourcePages.push({ path: sp, snippets: q.snippets, kind: q.kind });
   }
   return buildRedesignContext({
     site,
@@ -284,8 +288,19 @@ if (mode === "detect") {
     let sourcePaths: string[] = [];
     if (flowObs && flowObs.dest !== c.path) {
       const landing = await pageFor(c.path);
+      const dest = await pageFor(flowObs.dest);
       if (landing && extractPriceSnippets(landing.html).length === 0) {
-        sourcePaths = [flowObs.dest];
+        // Offert-fallet (kind "answer"): erbjud inte frasen om landningssidan
+        // redan bär den ordagrant — samma aldrig-dubbelt-regel som för priser.
+        const q = dest ? extractQuotables(dest.html) : null;
+        const landingText = landing.html
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .toLowerCase();
+        const duplicated =
+          q?.kind === "answer" &&
+          q.snippets.some((sn) => landingText.includes(sn.text.toLowerCase()));
+        if (!duplicated) sourcePaths = [flowObs.dest];
       }
     }
     const ctx = await contextFor(c.path, c.key, c.total, observations, sourcePaths);
@@ -354,13 +369,27 @@ function heroLocatorFor(content: RedesignContentModel): ServeOp["locator"] | nul
   return text ? { tag: "h1", text } : null;
 }
 
-function toServeOps(content: RedesignContentModel, ops: RedesignOp[]): ServeOp[] | null {
+function toServeOps(
+  content: RedesignContentModel,
+  ops: RedesignOp[],
+  // Klickväg + stil-donator (ägarbeslut 2026-07-18 alt. D): citatet länkar
+  // till sin källsida och klär sig i landningssidans egen mest använda
+  // länkklass — sajtens stilmall bestämmer utseendet, aldrig vår.
+  styleDonor: string | null = null,
+): ServeOp[] | null {
   const out: ServeOp[] = [];
   for (const o of ops) {
     if (o.op === "insert_snippet") {
       const locator = heroLocatorFor(content);
       if (!locator) return null;
-      out.push({ op: "insert_snippet", locator, value: o.detail, why: o.why });
+      out.push({
+        op: "insert_snippet",
+        locator,
+        value: o.detail,
+        ...(o.sourcePath ? { href: o.sourcePath } : {}),
+        ...(styleDonor ? { styleClass: styleDonor } : {}),
+        why: o.why,
+      });
       continue;
     }
     const locator = locatorFor(content, o.targetId);
@@ -430,6 +459,8 @@ try {
 
     // Serve-formade mät-ops i PLANORDNING — exakt det snippeten kommer att
     // applicera för riktiga besökare (granskningsfynd: en enda semantik).
+    // Stil-donatorn kommer från LANDNINGSSIDANS egen markup (alt. D).
+    const styleDonor = extractLinkStyleDonor(html);
     const measureOps: MeasureOp[] = [];
     for (const o of validated.ops) {
       const loc =
@@ -442,7 +473,14 @@ try {
         o.op === "move_up"
           ? { op: "move_up", tag: loc.tag, find: loc.text }
           : o.op === "insert_snippet"
-            ? { op: "insert_snippet", tag: loc.tag, find: loc.text, set: o.detail }
+            ? {
+                op: "insert_snippet",
+                tag: loc.tag,
+                find: loc.text,
+                set: o.detail,
+                ...(o.sourcePath ? { href: o.sourcePath } : {}),
+                ...(styleDonor ? { styleClass: styleDonor } : {}),
+              }
             : { op: "set_text", tag: loc.tag, find: loc.text, set: o.detail },
       );
     }
@@ -532,7 +570,7 @@ try {
             why: `försök 1 introducerade +${attempts[0].gate.verticalOverlapIntroducedPx}px överlapp; försök 2 +${last.gate.verticalOverlapIntroducedPx}px`,
           })),
         ];
-    const serveOps = toServeOps(content, finalOps);
+    const serveOps = toServeOps(content, finalOps, styleDonor);
     if (!serveOps) {
       results.push({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       continue;

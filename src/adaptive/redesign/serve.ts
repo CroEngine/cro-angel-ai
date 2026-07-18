@@ -58,7 +58,28 @@ export interface ServeOp {
   /** set_text: the exact verified replacement text.
    *  insert_snippet: the exact verbatim quote from the source page. */
   value?: string;
+  /** insert_snippet: citatets källsida som klickväg — ALLTID en sajt-egen
+   *  absolut path ("/priser"), aldrig extern URL eller protokoll (validerat
+   *  hårt i serveOpValid; ogiltig ⇒ hela varianten vägras). */
+  href?: string;
+  /** insert_snippet: stil-donatorn (ägarbeslut 2026-07-18 alt. D) — en
+   *  klass som redan finns på landningssidan; sajtens egen stilmall klär
+   *  blocket. Utseendet grindas + ägargodkänns per variant. */
+  styleClass?: string;
   why?: string;
+}
+
+/** Sajt-egen absolut path: börjar med EXAKT ett "/", bär inget protokoll och
+ *  ingen möjlighet att bli extern ("//host") eller aktiv ("javascript:"). */
+export function isSameSitePath(href: string): boolean {
+  return (
+    typeof href === "string" &&
+    href.startsWith("/") &&
+    !href.startsWith("//") &&
+    !href.includes(":") &&
+    !/\s/.test(href) &&
+    href.length <= 300
+  );
 }
 
 /** A verified redesign variant, keyed to a segment PREFIX. Its ops are the same
@@ -114,7 +135,19 @@ function serveOpValid(o: ServeOp): boolean {
   if (typeof text !== "string" || !text.trim()) return false;
   if (o.op === "move_up") return true;
   if (o.op === "set_text") return typeof o.value === "string" && o.value.trim().length > 0;
-  if (o.op === "insert_snippet") return typeof o.value === "string" && o.value.trim().length > 0;
+  if (o.op === "insert_snippet") {
+    if (typeof o.value !== "string" || o.value.trim().length === 0) return false;
+    // href/styleClass är frivilliga — men FINNS de måste de vara säkra:
+    // en ogiltig klickväg eller en misstänkt klass fäller HELA varianten.
+    if (o.href !== undefined && !isSameSitePath(o.href)) return false;
+    if (
+      o.styleClass !== undefined &&
+      !(typeof o.styleClass === "string" && /^[\w -]{1,120}$/.test(o.styleClass))
+    ) {
+      return false;
+    }
+    return true;
+  }
   return false;
 }
 

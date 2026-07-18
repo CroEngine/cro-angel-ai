@@ -324,3 +324,38 @@ describe("serveDecision — insert_snippet (korssid-lyftet, task #117)", () => {
     ).toBeNull();
   });
 });
+
+describe("serveDecision — insert_snippet med klickväg + stil-donator (slice 4)", () => {
+  const linked = (href: string, styleClass?: string): ServeOp[] => [
+    {
+      op: "insert_snippet",
+      locator: { tag: "h1", text: "Easy to use" },
+      value: "Låt oss ge dig en offert",
+      href,
+      ...(styleClass !== undefined ? { styleClass } : {}),
+    },
+  ];
+  const decide = (ops: ServeOp[]) =>
+    serveDecision(
+      { servingEnabled: true, rampPct: 50 },
+      [servable({ serveOps: ops })],
+      visitor("google", "mobile", "se"),
+      "vh-in-arm-1",
+    );
+
+  it("serves a valid same-site path with a sane donor class", () => {
+    expect(decide(linked("/sv/pricing", "t-text-s"))).not.toBeNull();
+    expect(decide(linked("/priser"))).not.toBeNull();
+  });
+
+  it("fail closed: external, protocol or malformed hrefs never serve", () => {
+    expect(decide(linked("https://ond.example/phish"))).toBeNull();
+    expect(decide(linked("//ond.example"))).toBeNull();
+    expect(decide(linked("javascript:alert(1)"))).toBeNull();
+    expect(decide(linked("/har mellanslag"))).toBeNull();
+  });
+
+  it("fail closed: a suspicious styleClass disqualifies the variant", () => {
+    expect(decide(linked("/priser", 'x" onmouseover="alert(1)'))).toBeNull();
+  });
+});

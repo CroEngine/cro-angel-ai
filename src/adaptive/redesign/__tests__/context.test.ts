@@ -203,3 +203,25 @@ describe("sourcePages — korssid-lyftets citerbara material (task #117)", () =>
     expect(renderRedesignPrompt(single)).not.toContain("Quotable content");
   });
 });
+
+describe("sourcePages — offert-fallbackens kind i prompten (slice 4)", () => {
+  it("explains the link rendering for answer-kind source pages", () => {
+    const ctx = buildRedesignContext({
+      site: "example",
+      goal: { text: null, kind: null, selector: null },
+      page,
+      content,
+      segment: segmentInsightFrom(seg(), {}),
+      sourcePages: [
+        {
+          path: "/sv/pricing",
+          kind: "answer",
+          snippets: [{ text: "Låt oss ge dig en offert", tag: "h1" }],
+        },
+      ],
+    });
+    const prompt = renderRedesignPrompt(ctx);
+    expect(prompt).toContain("publishes no prices");
+    expect(prompt).toContain("Låt oss ge dig en offert");
+  });
+});

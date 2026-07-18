@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-import { extractContentModel, extractPriceSnippets } from "../extract";
+import {
+  extractContentModel,
+  extractLinkStyleDonor,
+  extractPriceSnippets,
+  extractQuotables,
+} from "../extract";
 
 // A small page in the SHAPE of a real SSR homepage: nav + footer headings that
 // must NOT become sections, an h1 that appears after some h2s (hero must still be
@@ -270,5 +275,47 @@ describe("extractPriceSnippets — sammansatta inline-utsagor (plausible-fyndet)
   it("never composes across block-level boundaries (would not be ONE statement)", () => {
     const html = `<main><div><p>Priser från</p><p>99 kr/mån</p></div></main>`;
     expect(extractPriceSnippets(html).map((s) => s.text)).toEqual(["99 kr/mån"]);
+  });
+});
+
+describe("extractQuotables — offert-fallbacken (ägarbeslut 2026-07-18)", () => {
+  it("prefers price statements when they exist", () => {
+    const q = extractQuotables("<main><h1>Om priser</h1><p>Från 99 kr/mån</p></main>");
+    expect(q.kind).toBe("price");
+    expect(q.snippets.map((s) => s.text)).toEqual(["Från 99 kr/mån"]);
+  });
+
+  it("falls back to the page's own main statement when no amounts are published", () => {
+    const q = extractQuotables(
+      "<main><h1>Låt oss ge dig en offert</h1><p>Vi återkommer inom en dag.</p></main>",
+    );
+    expect(q.kind).toBe("answer");
+    expect(q.snippets).toEqual([{ text: "Låt oss ge dig en offert", tag: "h1" }]);
+  });
+
+  it("returns an EMPTY answer when the page has no usable heading (never invents)", () => {
+    const q = extractQuotables("<main><p>Bara brödtext.</p></main>");
+    expect(q.kind).toBe("answer");
+    expect(q.snippets).toEqual([]);
+  });
+});
+
+describe("extractLinkStyleDonor — stil-donatorn (alternativ D)", () => {
+  it("picks the page's most used text-link class, requiring at least two uses", () => {
+    const html = `<main>
+      <a class="button w-button">Boka demo</a>
+      <a class="t-text-s">Läs mer</a>
+      <a class="t-text-s">Se kunder</a>
+      <a class="t-text-s">Om oss</a>
+    </main>`;
+    expect(extractLinkStyleDonor(html)).toBe("t-text-s");
+  });
+
+  it("returns null for singleton classes, icon links and classless pages", () => {
+    expect(extractLinkStyleDonor('<main><a class="unik">En gång</a></main>')).toBeNull();
+    expect(
+      extractLinkStyleDonor('<main><a class="ikon"></a><a class="ikon"></a></main>'),
+    ).toBeNull();
+    expect(extractLinkStyleDonor("<main><a>utan klass</a></main>")).toBeNull();
   });
 });
