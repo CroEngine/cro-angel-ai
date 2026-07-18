@@ -23,6 +23,11 @@ import { anthropicDesigner } from "./designer";
 import { generateRedesign } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { extractContentModel, extractPriceSnippets } from "../../src/adaptive/redesign/extract";
+import {
+  DRIFT_HOLD_PREFIX,
+  dependenciesOf,
+  planDependencySweep,
+} from "../../src/adaptive/redesign/drift";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 import { mirrorStorageKey } from "../../src/lib/sandbox/mirror-key";
 import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
@@ -33,11 +38,15 @@ const CAP = Number(arg("cap") ?? 3); // max nya varianter per sajt och natt
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.log("[loop] SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY saknas — no-op (lägg secrets i Actions).");
+  console.log(
+    "[loop] SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY saknas — no-op (lägg secrets i Actions).",
+  );
   process.exit(0);
 }
 if (!process.env.ANTHROPIC_API_KEY) {
-  console.log("[loop] ANTHROPIC_API_KEY saknas — detektering körs men inga designs kan skapas; no-op.");
+  console.log(
+    "[loop] ANTHROPIC_API_KEY saknas — detektering körs men inga designs kan skapas; no-op.",
+  );
   process.exit(0);
 }
 const db = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -76,9 +85,11 @@ for (const site of targets) {
       console.log(`[loop] ${site.slug}: inga rollup-löv — hoppar över`);
       continue;
     }
+    // id/held/evidence/ops behövs för drift-svepet (slice 3) — variants.json
+    // till detect behåller sin gamla smala form (path + segmentKey).
     const { data: variants } = await db
       .from("angel_variants")
-      .select("path,segment_key,status")
+      .select("id,path,segment_key,status,held_reason,ops,evidence")
       .eq("site", site.slug)
       .neq("status", "retired");
     // Sidflödet (korssid-lyftets signal, task #117): "andel av segmentet som
@@ -147,7 +158,22 @@ for (const site of targets) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([p]) => p);
-    const paths = [...new Set([...leafPaths, ...clickPaths, ...flowDests])].slice(0, 15);
+    // Beroende-sidorna fryses ALLTID (utanför 15-taket): drift-svepet agerar
+    // bara på en lyckad omfrysning, och en variants landningssida behövs för
+    // omverifieringen. Mängden är liten (max en källa + en landning per
+    // beroende-variant), så taket behåller sin mening för rullnings-toppen.
+    const depVariants = (variants ?? []).filter((v) => dependenciesOf(v.evidence).length > 0);
+    const depPaths = [
+      ...new Set(
+        depVariants.flatMap((v) => [v.path, ...dependenciesOf(v.evidence).map((d) => d.path)]),
+      ),
+    ];
+    const paths = [
+      ...new Set([
+        ...[...new Set([...leafPaths, ...clickPaths, ...flowDests])].slice(0, 15),
+        ...depPaths,
+      ]),
+    ];
     const pages: Record<string, string> = {};
     if (site.domain) {
       for (const p of paths) {
@@ -158,7 +184,11 @@ for (const site of targets) {
         );
         if (
           existsSync(file) ||
-          spawnBun(["scripts/redesign/freeze-page.ts", `--url=https://${site.domain}${p}`, `--out=${file}`])
+          spawnBun([
+            "scripts/redesign/freeze-page.ts",
+            `--url=https://${site.domain}${p}`,
+            `--out=${file}`,
+          ])
         ) {
           // Snabb SPA-koll: en fryst kopia utan rubriker kan inte designas mot.
           try {
@@ -194,6 +224,174 @@ for (const site of targets) {
     }
     writeFileSync(join(dir, "pages.json"), JSON.stringify(pages));
 
+    // 2b. Självläkningen (korssid-lyftet slice 3, ägarbeslut 2026-07-18):
+    //     varianter vars insatta citat pekar på en källsida kontrolleras mot
+    //     nattens NYFRYSTA kopia. Källtext kvar → inget händer (eller vårt
+    //     eget drift-hold släpps). Priset ändrat → nya texten genom EXAKT
+    //     samma grindkedja som första gången; passerar den uppdateras
+    //     varianten och håll-flaggan släpps — kunden gör ingenting. Går det
+    //     inte att verifiera i natt → maskinellt hold + ägarnotis. Ägarens
+    //     STATUS rörs aldrig (policyn 2026-07-12) — bara held_reason/held_at.
+    try {
+      const sweepable = depVariants.filter(
+        (v) => v.status === "verified" || v.status === "serving" || v.status === "winner",
+      );
+      const sweepInput = sweepable.map((v) => ({
+        id: v.id,
+        heldReason: v.held_reason ?? null,
+        dependencies: dependenciesOf(v.evidence),
+      }));
+      const freshSnippets: Record<string, string[] | null> = {};
+      for (const sv of sweepInput) {
+        for (const d of sv.dependencies) {
+          if (freshSnippets[d.path] !== undefined) continue;
+          freshSnippets[d.path] = pages[d.path]
+            ? extractPriceSnippets(readFileSync(pages[d.path], "utf8")).map((s) => s.text)
+            : null;
+        }
+      }
+      const holdVariant = async (id: string, label: string, reason: string) => {
+        const heldAt = new Date().toISOString();
+        await db
+          .from("angel_variants")
+          .update({ held_reason: reason, held_at: heldAt })
+          .eq("id", id);
+        const { notifyVariantHeld } = await import("../../src/adaptive/notify.server");
+        await notifyVariantHeld(site.slug, id, label, reason, heldAt);
+        console.log(`[loop] ${site.slug} ${label}: HÅLLS maskinellt — ${reason}`);
+      };
+      for (const action of planDependencySweep(sweepInput, freshSnippets)) {
+        const row = sweepable.find((v) => v.id === action.id)!;
+        const label = `${row.path} · ${row.segment_key}`;
+        if (action.action === "keep") continue;
+        if (action.action === "release") {
+          await db
+            .from("angel_variants")
+            .update({ held_reason: null, held_at: null })
+            .eq("id", action.id);
+          console.log(`[loop] ${site.slug} ${label}: källan läkt — drift-hold släppt`);
+          continue;
+        }
+        if (action.action === "hold") {
+          await holdVariant(action.id, label, action.reason);
+          continue;
+        }
+        // refresh — kräver att LANDNINGSSIDAN också frystes i natt; annars kan
+        // grindarna inte köras och hellre paus än overifierad text.
+        if (!pages[row.path]) {
+          await holdVariant(
+            action.id,
+            label,
+            `${DRIFT_HOLD_PREFIX}priset ändrades på ${action.path} men landningssidan kunde inte frysas om i natt`,
+          );
+          continue;
+        }
+        const oldOps = (Array.isArray(row.ops) ? row.ops : []) as {
+          op: string;
+          detail?: string;
+          sourcePath?: string;
+          [k: string]: unknown;
+        }[];
+        const refreshedOps = oldOps.map((o) =>
+          o.op === "insert_snippet" && o.sourcePath === action.path
+            ? { ...o, detail: action.newText }
+            : o,
+        );
+        const ev = (row.evidence ?? {}) as {
+          brief?: { total?: { visits: number; conversions: number }; observations?: string[] };
+        };
+        const refreshDir = join(dir, `refresh-${action.id}`);
+        mkdirSync(refreshDir, { recursive: true });
+        writeFileSync(
+          join(refreshDir, "plans.json"),
+          JSON.stringify([
+            {
+              path: row.path,
+              key: row.segment_key,
+              total: ev.brief?.total ?? { visits: 0, conversions: 0 },
+              observations: ev.brief?.observations ?? [],
+              sourcePaths: [action.path],
+              ops: refreshedOps,
+            },
+          ]),
+        );
+        const ok = spawnBun([
+          "scripts/redesign/auto-generate.ts",
+          "--mode=verify",
+          `--plans=${join(refreshDir, "plans.json")}`,
+          `--pages=${join(dir, "pages.json")}`,
+          `--site=${site.slug}`,
+          `--base-url=${site.domain ? `https://${site.domain}` : "https://example.invalid"}`,
+          `--site-config=${join(dir, "site.json")}`,
+          `--out=${refreshDir}`,
+        ]);
+        const refreshed = ok
+          ? (
+              JSON.parse(readFileSync(join(refreshDir, "verify-report.json"), "utf8")) as {
+                verdict: string;
+                ops?: unknown;
+                serveOps?: unknown;
+                evidence?: Record<string, unknown>;
+                slug?: string;
+              }[]
+            )[0]
+          : null;
+        if (!refreshed || refreshed.verdict !== "verified") {
+          await holdVariant(
+            action.id,
+            label,
+            `${DRIFT_HOLD_PREFIX}nya priset ("${action.newText.slice(0, 60)}") på ${action.path} föll i grindkedjan i natt`,
+          );
+          continue;
+        }
+        // Nya texten grindad OK → uppdatera varianten och släpp hållningen.
+        // Skärmdumparna laddas upp på SAMMA nycklar som originalet (slug är
+        // härledd ur path+key) så dashboardens bevisbilder visar nya läget.
+        const shots: { before: string | null; after: string | null; attempt1: null } = {
+          before: null,
+          after: null,
+          attempt1: null,
+        };
+        if (refreshed.slug) {
+          for (const which of ["before", "after"] as const) {
+            const local = join(refreshDir, `${refreshed.slug}-${which}.jpg`);
+            if (!existsSync(local)) continue;
+            const key = `${site.slug}/${refreshed.slug}/${which}.jpg`;
+            const { error: upErr } = await db.storage
+              .from("angel-evidence")
+              .upload(key, readFileSync(local), { contentType: "image/jpeg", upsert: true });
+            if (!upErr)
+              shots[which] = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
+          }
+        }
+        const newEvidence = {
+          ...(refreshed.evidence ?? {}),
+          comparison: {
+            ...((refreshed.evidence as { comparison?: object } | undefined)?.comparison ?? {}),
+            screenshots: shots,
+          },
+        };
+        const { error: updErr } = await db
+          .from("angel_variants")
+          .update({
+            ops: refreshed.ops ?? [],
+            serve_ops: refreshed.serveOps ?? [],
+            evidence: newEvidence,
+            held_reason: null,
+            held_at: null,
+          })
+          .eq("id", action.id);
+        if (updErr)
+          console.warn(`[loop] ${site.slug} ${label}: refresh-uppdatering föll: ${updErr.message}`);
+        else
+          console.log(
+            `[loop] ${site.slug} ${label}: källpriset ändrat → ny text grindad OK → varianten uppdaterad + släppt`,
+          );
+      }
+    } catch (err) {
+      console.warn(`[loop] ${site.slug}: drift-svepet föll (fail-open):`, err);
+    }
+
     // 3. Detektera förtjänta celler + bygg briefs (auto-generate --mode=detect).
     const base = site.domain ? `https://${site.domain}` : "https://example.invalid";
     if (
@@ -215,11 +413,20 @@ for (const site of targets) {
       continue;
     }
     const earned = JSON.parse(readFileSync(join(dir, "earned.json"), "utf8")) as {
-      briefed: { path: string; key: string; total: { visits: number; conversions: number }; observations: string[]; sourcePaths?: string[]; brief: string }[];
+      briefed: {
+        path: string;
+        key: string;
+        total: { visits: number; conversions: number };
+        observations: string[];
+        sourcePaths?: string[];
+        brief: string;
+      }[];
       needsFreeze: unknown[];
     };
     if (earned.needsFreeze.length) {
-      console.log(`[loop] ${site.slug}: ${earned.needsFreeze.length} cell(er) väntar på browser-frysning (needs_freeze)`);
+      console.log(
+        `[loop] ${site.slug}: ${earned.needsFreeze.length} cell(er) väntar på browser-frysning (needs_freeze)`,
+      );
     }
     if (earned.briefed.length === 0) continue;
 
@@ -264,17 +471,31 @@ for (const site of targets) {
           kind: site.conversion_kind ?? null,
           selector: site.conversion_selector ?? null,
         },
-        page: { url: `${base}${b.path}`, frozenHtmlPath: page, screenshotPath: "", viewport: { width: 390, height: 844 } },
+        page: {
+          url: `${base}${b.path}`,
+          frozenHtmlPath: page,
+          screenshotPath: "",
+          viewport: { width: 390, height: 844 },
+        },
         content,
         segment: segmentInsightFrom(summary, { observations: b.observations }),
         sourcePages,
       });
       const plan = await generateRedesign(ctx, anthropicDesigner);
       if (plan.ops.length === 0) {
-        console.log(`[loop] ${site.slug} ${b.path}×${b.key}: designern gav ingen giltig plan (${plan.note ?? "tomt"})`);
+        console.log(
+          `[loop] ${site.slug} ${b.path}×${b.key}: designern gav ingen giltig plan (${plan.note ?? "tomt"})`,
+        );
         continue;
       }
-      plans.push({ path: b.path, key: b.key, total: b.total, observations: b.observations, sourcePaths: b.sourcePaths ?? [], ops: plan.ops });
+      plans.push({
+        path: b.path,
+        key: b.key,
+        total: b.total,
+        observations: b.observations,
+        sourcePaths: b.sourcePaths ?? [],
+        ops: plan.ops,
+      });
     }
     if (plans.length === 0) continue;
     writeFileSync(join(dir, "plans.json"), JSON.stringify(plans));
@@ -324,7 +545,8 @@ for (const site of targets) {
           const { error: upErr } = await db.storage
             .from("angel-evidence")
             .upload(key, readFileSync(local), { contentType: "image/jpeg", upsert: true });
-          if (!upErr) shots[which] = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
+          if (!upErr)
+            shots[which] = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
         }
       }
       const evidence = {
@@ -341,7 +563,8 @@ for (const site of targets) {
         evidence,
       });
       if (insErr) console.warn(`[loop] ${site.slug}: insert föll: ${insErr.message}`);
-      else console.log(`[loop] ${site.slug} ${r.path}×${r.key}: VERIFIED — väntar på ägarens knapp`);
+      else
+        console.log(`[loop] ${site.slug} ${r.path}×${r.key}: VERIFIED — väntar på ägarens knapp`);
     }
 
     // 7. Dag-10-mejlet: svep varianter som väntar utan skickad notis.

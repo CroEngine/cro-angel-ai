@@ -1374,6 +1374,18 @@ export function OverviewPanel({
                             >
                               {v.status === "winner" ? "winner · 100%" : v.status}
                             </span>
+                            {v.heldReason ? (
+                              // Självläkningen (slice 3): maskinellt pausad tills
+                              // källans nya text passerat grindarna — ägarens
+                              // status orörd, ingen åtgärd krävs av ägaren.
+                              <span
+                                className="flex-none rounded-full px-[9px] py-[3px] text-[11px] font-semibold"
+                                style={{ background: "#fffbeb", color: "#b45309" }}
+                                title={v.heldReason}
+                              >
+                                paused — source changed
+                              </span>
+                            ) : null}
                             {/* EN primär åtgärd per rad (design v3):
                                 verified → Start A/B; rekommenderad vinnare →
                                 Make winner; annars Compare. Resten bor i ···. */}
