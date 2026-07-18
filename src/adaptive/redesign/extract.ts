@@ -212,12 +212,21 @@ function extractTrustSignals(html: string): RedesignContentModel["trustSignals"]
   ];
   for (const p of patterns) {
     const m = p.re.exec(flat);
-    if (m) signals.push({ type: p.type, text: tidy(flat, m).slice(0, 90), aboveFold: false, section: "body" });
+    if (m)
+      signals.push({
+        type: p.type,
+        text: tidy(flat, m).slice(0, 90),
+        aboveFold: false,
+        section: "body",
+      });
   }
   return signals;
 }
 
-function extractHero(sections: RedesignContentModel["sections"], html: string): RedesignContentModel["hero"] {
+function extractHero(
+  sections: RedesignContentModel["sections"],
+  html: string,
+): RedesignContentModel["hero"] {
   const hero = sections.find((s) => s.type === "hero");
   if (!hero) return undefined;
   // Subheadline: the first paragraph that FOLLOWS the h1 in the WHOLE document —
@@ -240,4 +249,65 @@ export function extractContentModel(html: string): RedesignContentModel {
     ctas: extractCtas(html),
     hero: extractHero(sections, html),
   };
+}
+
+// ── Prisutsagor för korssid-lyftet (task #117, ägarbeslut 2026-07-18) ─────────
+// "Pris först": det ENDA innehåll som får citeras från en annan sida i v1 är
+// prisliknande utsagor, och citatet måste vara ORDAGRANT. Extraktorn är därför
+// hela whitelisten: bara det den hittar erbjuds designern, och validateOps
+// kräver exakt matchning mot listan. En utsaga = texten i ett LÖV-element
+// (inga nästlade taggar — priser bor i <p>/<li>/<td>/<span>-löv i praktiken)
+// som bär ett belopp med valuta eller en per-månad/per-år-konstruktion.
+
+/** Element vars textinnehåll kan bära en prisutsaga. */
+const PRICE_LEAF_TAGS = "p|li|td|th|h2|h3|h4|span|strong|b|div|dt|dd";
+
+/** Inline-taggar som får förekomma INUTI en utsaga utan att bryta ordagrannheten
+ *  — riktiga prissidor delar ofta frasen i spans (<span>$14</span><span>/month</span>,
+ *  plausible-fyndet 2026-07-18). Blocknivå-taggar bryter fortfarande: en
+ *  sammansättning över sektionsgränser vore inte längre EN utsaga från sidan. */
+const PRICE_INLINE_TAGS = "(?:span|b|strong|em|i|u|sup|sub|small|abbr|br)";
+
+/** Prisliknande: valutasymbol/kod intill en siffra, eller "/mån"-mönster.
+ *  Kräver alltid en siffra — "gratis"/"free" ensamt är för brusigt för en
+ *  ordagrann-whitelist. EN+SV, samma tvåspråkiga golv som vokabulären. */
+const PRICE_RE =
+  /(?:[$€£]\s?\d|\d[\d\s.,]*\s?(?:kr|:-|sek|usd|eur|kronor|dollar|euro)(?![a-z])|\d\s?\/\s?(?:m[åa]n(?:ad)?|mo(?:nth)?|yr|year|[åa]r)\b|per\s+(?:m[åa]nad|month|user|anv[äa]ndare))/i;
+
+export interface PriceSnippet {
+  /** Ordagrann text ur källsidans markup (stripTags-normaliserad). */
+  text: string;
+  /** Lövtaggen texten bodde i — diagnostik, inte serveringsform (serveras som <p>). */
+  tag: string;
+}
+
+/** Extract verbatim price-like statements from a page's HTML. Every entry is the
+ *  literal text of one leaf element — never assembled, never paraphrased. */
+export function extractPriceSnippets(html: string): PriceSnippet[] {
+  const region = mainRegion(html);
+  const collected: PriceSnippet[] = [];
+  const seen = new Set<string>();
+  // Innehållet får bära inline-markup (frasen "<span>$14</span><span>/month</span>"
+  // ÄR en utsaga) men aldrig blocknivå-taggar — bakreferensen + inline-vitlistan
+  // gör att en div aldrig kan sluka en annan div och producera en trunkerad
+  // "utsaga" som inte ordagrant står på sidan.
+  const content = `(?:[^<]|<${PRICE_INLINE_TAGS}\\b[^>]*/?>|</${PRICE_INLINE_TAGS}>)`;
+  const re = new RegExp(`<(${PRICE_LEAF_TAGS})\\b[^>]*>(${content}{3,360}?)</\\1>`, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(region)) && collected.length < 24) {
+    const text = stripTags(m[2]);
+    if (text.length < 3 || text.length > 140 || !PRICE_RE.test(text)) continue;
+    const key = text.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    collected.push({ text, tag: m[1].toLowerCase() });
+  }
+  // Föredra den FULLASTE utsagan: "$14" ensamt erbjuds inte när "$14 /month"
+  // också fångades — delsträngar av en annan post faller bort.
+  const out: PriceSnippet[] = [];
+  for (const s of [...collected].sort((a, b) => b.text.length - a.text.length)) {
+    if (out.some((k) => k.text.toLowerCase().includes(s.text.toLowerCase()))) continue;
+    out.push(s);
+  }
+  return out.slice(0, 8);
 }

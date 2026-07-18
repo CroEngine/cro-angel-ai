@@ -155,3 +155,51 @@ describe("evaluateRenderGates — pixel-half beauty gates", () => {
     expect(r.reasons.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe("evaluateRenderGates — insert_snippet-grindarna (task #117)", () => {
+  it("passes a clean insert below the hero (visible, reversible, LCP unmoved)", () => {
+    const r = evaluateRenderGates(
+      clean({
+        requestedInserts: 1,
+        appliedInserts: 1,
+        insertedAboveMain: 0,
+        insertedGapToHeroPx: 320,
+        insertedVisible: true,
+        insertedRemoved: true,
+        lcpShiftPx: 0,
+      }),
+    );
+    expect(r.verdict).toBe("pass");
+  });
+
+  it("FAILS when apply SHIFTS the LCP element beyond the threshold", () => {
+    const r = evaluateRenderGates(clean({ lcpShiftPx: 120 }));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons.join(" ")).toMatch(/shifted the page's LCP element by 120px/);
+  });
+
+  it("tolerates sub-threshold LCP jitter and absent fields (older observations)", () => {
+    expect(evaluateRenderGates(clean({ lcpShiftPx: 4 })).verdict).toBe("pass");
+    expect(evaluateRenderGates(clean()).verdict).toBe("pass");
+  });
+
+  it("FAILS an insert above the hero, a covered insert, and a non-removed insert", () => {
+    expect(evaluateRenderGates(clean({ insertedAboveMain: 1 })).verdict).toBe("fail");
+    expect(evaluateRenderGates(clean({ insertedVisible: false })).verdict).toBe("fail");
+    expect(evaluateRenderGates(clean({ insertedRemoved: false })).verdict).toBe("fail");
+  });
+
+  it("WARNS (holds back) when the insert landed far below the hero (wrapper anchor)", () => {
+    const r = evaluateRenderGates(
+      clean({ requestedInserts: 1, appliedInserts: 1, insertedGapToHeroPx: 4200 }),
+    );
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.join(" ")).toMatch(/below the hero headline/);
+  });
+
+  it("WARNS when a requested insert could not be applied", () => {
+    const r = evaluateRenderGates(clean({ requestedInserts: 1, appliedInserts: 0 }));
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.join(" ")).toMatch(/insert\(s\) could not be applied/);
+  });
+});

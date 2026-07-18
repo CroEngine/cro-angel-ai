@@ -13,11 +13,16 @@ import { renderRedesignPrompt, type RedesignContext } from "./context";
 import { introducedClaims } from "./claims";
 
 export interface RedesignOp {
-  op: "move_up" | "set_text" | "condense" | "reveal";
-  /** An EXISTING section id from the content model (the [bracketed] ids). */
+  op: "move_up" | "set_text" | "condense" | "reveal" | "insert_snippet";
+  /** An EXISTING section id from the content model (the [bracketed] ids).
+   *  insert_snippet: always the synthetic "hero" — the block lands below it. */
   targetId: string;
+  /** set_text/condense: the exact replacement copy. insert_snippet: the exact
+   *  verbatim quote from the source page. */
   detail: string;
   why: string;
+  /** insert_snippet only: which offered source page the quote comes from. */
+  sourcePath?: string;
 }
 
 export interface RedesignPlan {
@@ -87,6 +92,10 @@ function groundingCorpus(ctx: RedesignContext): string {
 
 /** Validate raw LLM ops against the guardrails + content model. Pure. Every
  *  surviving op is expressible as a reversible op on EXISTING content. */
+/** Whitespace-normalisering för ordagrann-jämförelsen — radbrytningar i markup
+ *  ändrar inte vad som ORDAGRANT står på källsidan. */
+const normQuote = (s: string) => s.replace(/\s+/g, " ").trim();
+
 export function validateOps(rawOps: unknown[], ctx: RedesignContext): RedesignPlan {
   const allowed = new Set(ctx.guardrails.ops);
   const targets = validTargets(ctx);
@@ -115,6 +124,45 @@ export function validateOps(rawOps: unknown[], ctx: RedesignContext): RedesignPl
       rejected.push({
         op: raw,
         reason: `targetId "${targetId}" is not an existing section (invented)`,
+      });
+      continue;
+    }
+    // insert_snippet (korssid-lyftet, ägarbeslut 2026-07-18): STRIKTARE än
+    // claims-vakten — texten måste vara en ORDAGRANN post i en erbjuden
+    // källsidas snippet-lista (whitespace-normaliserad exakt likhet, aldrig
+    // substräng), målet är alltid hjälten (blocket landar under den), och max
+    // EN insättning per plan ("en liten ändring i taget" gäller dubbelt här).
+    if (op === "insert_snippet") {
+      if (ops.some((x) => x.op === "insert_snippet")) {
+        rejected.push({ op: raw, reason: "only ONE insert_snippet per plan" });
+        continue;
+      }
+      if (targetId !== "hero") {
+        rejected.push({ op: raw, reason: 'insert_snippet must target "hero" (lands below it)' });
+        continue;
+      }
+      const sourcePath = typeof o.sourcePath === "string" ? o.sourcePath : "";
+      const src = (ctx.sourcePages ?? []).find((p) => p.path === sourcePath);
+      if (!src) {
+        rejected.push({
+          op: raw,
+          reason: `sourcePath "${sourcePath}" is not an offered source page`,
+        });
+        continue;
+      }
+      if (!detail || !src.snippets.some((s) => normQuote(s.text) === normQuote(detail))) {
+        rejected.push({
+          op: raw,
+          reason: `insert text is not a VERBATIM quote from ${sourcePath} (paraphrases are invented content)`,
+        });
+        continue;
+      }
+      ops.push({
+        op: "insert_snippet",
+        targetId,
+        detail,
+        why: typeof o.why === "string" ? o.why : "",
+        sourcePath,
       });
       continue;
     }

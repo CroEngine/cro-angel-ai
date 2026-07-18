@@ -50,7 +50,11 @@ import { join } from "node:path";
 
 import { findEarnedCells, type PageSegmentLeaf } from "../../src/adaptive/redesign/earned";
 import { isSegmentPrefix, returningToken, segToken, segmentKeyOf } from "../../src/lib/segment-key";
-import { extractContentModel, extractCtaCandidates } from "../../src/adaptive/redesign/extract";
+import {
+  extractContentModel,
+  extractCtaCandidates,
+  extractPriceSnippets,
+} from "../../src/adaptive/redesign/extract";
 import { addLlmCtas } from "../../src/adaptive/redesign/cta-llm.server";
 import {
   buildRedesignContext,
@@ -102,7 +106,9 @@ const GOAL = {
 const pages = JSON.parse(readFileSync(arg("pages")!, "utf8")) as Record<string, string>;
 
 const pageCache = new Map<string, { html: string; content: RedesignContentModel }>();
-async function pageFor(path: string): Promise<{ html: string; content: RedesignContentModel } | null> {
+async function pageFor(
+  path: string,
+): Promise<{ html: string; content: RedesignContentModel } | null> {
   if (pageCache.has(path)) return pageCache.get(path)!;
   const frozen = pages[path];
   if (!frozen) return null;
@@ -152,15 +158,27 @@ async function contextFor(
   key: string,
   total: { visits: number; conversions: number },
   observations: string[],
+  sourcePaths: string[] = [],
 ) {
   const page = await pageFor(path);
   if (!page) return null;
+  // Korssid-lyftets citerbara material (task #117): källsidornas ordagranna
+  // prisutsagor. Bara frysta källsidor med faktiska utsagor erbjuds — och
+  // buildRedesignContext lägger till insert_snippet i vokabulären endast då.
+  const sourcePages = [];
+  for (const sp of sourcePaths) {
+    const srcPage = await pageFor(sp);
+    if (!srcPage) continue;
+    const snippets = extractPriceSnippets(srcPage.html);
+    if (snippets.length > 0) sourcePages.push({ path: sp, snippets });
+  }
   return buildRedesignContext({
     site,
     goal: GOAL,
     page: pageRef(path),
     content: page.content,
     segment: segmentInsightFrom(summaryFor(key, total), { observations }),
+    sourcePages,
   });
 }
 
@@ -206,8 +224,9 @@ if (mode === "detect") {
       segToken(r.country),
       returningToken(r.is_returning),
     ]);
-  /** Bästa dest-flödet för (sida, segmentnyckel) — eller null under grinden. */
-  function flowObservation(path: string, cellKey: string): string | null {
+  /** Bästa dest-flödet för (sida, segmentnyckel) — eller null under grinden.
+   *  Returnerar även destinationen: den blir insert_snippet-opens källsida. */
+  function flowObservation(path: string, cellKey: string): { text: string; dest: string } | null {
     const landed = flows.filter((r) => r.landing_path === path);
     if (landed.length === 0) return null;
     // Nämnare räknas EN gång per dim-kombo (sessions upprepas per dest-rad).
@@ -237,12 +256,14 @@ if (mode === "detect") {
       if (!best || segShare > best.segShare) best = { dest, segShare, siteShare, seg: v.seg };
     }
     if (!best) return null;
-    return (
-      `Sidflödet: ${(best.segShare * 100).toFixed(0)} % av segmentets besökare som landar här ` +
-      `går vidare till ${best.dest} (sajtsnitt ${(best.siteShare * 100).toFixed(0)} %, ` +
-      `${best.seg} sessioner) — deras fråga verkar besvaras där; prioritera innehåll som ` +
-      `svarar på det redan på den här sidan.`
-    );
+    return {
+      text:
+        `Sidflödet: ${(best.segShare * 100).toFixed(0)} % av segmentets besökare som landar här ` +
+        `går vidare till ${best.dest} (sajtsnitt ${(best.siteShare * 100).toFixed(0)} %, ` +
+        `${best.seg} sessioner) — deras fråga verkar besvaras där; prioritera innehåll som ` +
+        `svarar på det redan på den här sidan.`,
+      dest: best.dest,
+    };
   }
 
   const briefed: unknown[] = [];
@@ -255,21 +276,40 @@ if (mode === "detect") {
       `Cellens konvertering ${(rate * 100).toFixed(1)} % mot sajtsnittet ${(siteRate * 100).toFixed(1)} %.`,
     ];
     const flowObs = flowObservation(c.path, c.key);
-    if (flowObs) observations.push(flowObs);
-    const ctx = await contextFor(c.path, c.key, c.total, observations);
+    if (flowObs) observations.push(flowObs.text);
+    // Källsidor för korssid-lyftet — MED ägarens dubbelvisningsvakt
+    // (2026-07-18): visar landningssidan redan egna prisutsagor erbjuds
+    // ingen källsida — designern jobbar då med sidans befintliga innehåll
+    // (lyft/omformulera), aldrig en dublett av priset.
+    let sourcePaths: string[] = [];
+    if (flowObs && flowObs.dest !== c.path) {
+      const landing = await pageFor(c.path);
+      if (landing && extractPriceSnippets(landing.html).length === 0) {
+        sourcePaths = [flowObs.dest];
+      }
+    }
+    const ctx = await contextFor(c.path, c.key, c.total, observations, sourcePaths);
     if (!ctx) {
       // Ingen fryst kopia av sidan — ärlig kö i stället för gissad design.
       needsFreeze.push({ ...c, observations });
       continue;
     }
-    briefed.push({ ...c, observations, brief: renderRedesignPrompt(ctx) });
+    // sourcePaths i earned.json = de källsidor kontexten FAKTISKT fick (fryst
+    // + med utsagor) — nattloopens steg 4 och verify-läget bygger om exakt
+    // samma kontext från dem.
+    const usedSourcePaths = (ctx.sourcePages ?? []).map((p) => p.path);
+    briefed.push({
+      ...c,
+      observations,
+      sourcePaths: usedSourcePaths,
+      brief: renderRedesignPrompt(ctx),
+    });
   }
 
-  writeFileSync(
-    join(outDir, "earned.json"),
-    JSON.stringify({ briefed, needsFreeze }, null, 2),
+  writeFileSync(join(outDir, "earned.json"), JSON.stringify({ briefed, needsFreeze }, null, 2));
+  console.log(
+    `earned cells: ${cells.length} (briefed ${briefed.length}, needs freeze ${needsFreeze.length})`,
   );
-  console.log(`earned cells: ${cells.length} (briefed ${briefed.length}, needs freeze ${needsFreeze.length})`);
   for (const c of cells) {
     console.log(
       `  ${c.path} × ${c.key} — total ${c.total.visits}/${c.total.conversions}, inkrement ${c.incremental.visits}/${c.incremental.conversions}${pages[c.path] ? "" : "  [SAKNAR FRYST SIDA]"}`,
@@ -290,6 +330,9 @@ interface PlanIn {
   key: string;
   total: { visits: number; conversions: number };
   observations: string[];
+  /** Källsidor för insert_snippet (korssid-lyftet) — samma lista som detect
+   *  byggde kontexten med, så valideringen ser samma whitelist. */
+  sourcePaths?: string[];
   ops: RedesignOp[];
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
@@ -303,13 +346,28 @@ function locatorFor(content: RedesignContentModel, targetId: string): ServeOp["l
   return { tag: sec.type === "hero" ? "h1" : "h2", text: sec.heading };
 }
 
+/** Hjältens h1-lokator — insert_snippet-opens ankare. "hero" är ett syntetiskt
+ *  targetId (ingen sektionsrad), så locatorFor kan inte slå upp det. */
+function heroLocatorFor(content: RedesignContentModel): ServeOp["locator"] | null {
+  const heroSec = content.sections.find((s) => s.type === "hero");
+  const text = heroSec?.heading || content.hero?.headline;
+  return text ? { tag: "h1", text } : null;
+}
+
 function toServeOps(content: RedesignContentModel, ops: RedesignOp[]): ServeOp[] | null {
   const out: ServeOp[] = [];
   for (const o of ops) {
+    if (o.op === "insert_snippet") {
+      const locator = heroLocatorFor(content);
+      if (!locator) return null;
+      out.push({ op: "insert_snippet", locator, value: o.detail, why: o.why });
+      continue;
+    }
     const locator = locatorFor(content, o.targetId);
     if (!locator) return null;
     if (o.op === "move_up") out.push({ op: "move_up", locator, why: o.why });
-    else if (o.op === "set_text") out.push({ op: "set_text", locator, value: o.detail, why: o.why });
+    else if (o.op === "set_text")
+      out.push({ op: "set_text", locator, value: o.detail, why: o.why });
     else return null; // condense/reveal serveras inte i v1 — fail closed
   }
   return out;
@@ -346,13 +404,27 @@ try {
       .replace(/·/g, "-")
       .replace(/[^\p{L}\p{N}-]/gu, "")
       .toLowerCase()}`.replace(/^--/, "");
-    const ctx = (await contextFor(plan.path, plan.key, plan.total, plan.observations))!;
+    const ctx = (await contextFor(
+      plan.path,
+      plan.key,
+      plan.total,
+      plan.observations,
+      plan.sourcePaths ?? [],
+    ))!;
     // Den RIKTIGA valideringen: verb i vokabulären, targetId måste finnas,
     // claims-vakten på varje omtextning. Kedjan litar aldrig på designern.
     const validated = await generateRedesign(ctx, async () => JSON.stringify(plan.ops));
     if (validated.ops.length !== plan.ops.length) {
-      results.push({ path: plan.path, key: plan.key, verdict: "rejected_by_validation", dropped: plan.ops.length - validated.ops.length, notes: validated.notes });
-      console.log(`  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll)`);
+      results.push({
+        path: plan.path,
+        key: plan.key,
+        verdict: "rejected_by_validation",
+        dropped: plan.ops.length - validated.ops.length,
+        notes: validated.notes,
+      });
+      console.log(
+        `  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll)`,
+      );
       continue;
     }
 
@@ -360,7 +432,8 @@ try {
     // applicera för riktiga besökare (granskningsfynd: en enda semantik).
     const measureOps: MeasureOp[] = [];
     for (const o of validated.ops) {
-      const loc = locatorFor(content, o.targetId);
+      const loc =
+        o.op === "insert_snippet" ? heroLocatorFor(content) : locatorFor(content, o.targetId);
       if (!loc) {
         measureOps.length = 0;
         break;
@@ -368,7 +441,9 @@ try {
       measureOps.push(
         o.op === "move_up"
           ? { op: "move_up", tag: loc.tag, find: loc.text }
-          : { op: "set_text", tag: loc.tag, find: loc.text, set: o.detail },
+          : o.op === "insert_snippet"
+            ? { op: "insert_snippet", tag: loc.tag, find: loc.text, set: o.detail }
+            : { op: "set_text", tag: loc.tag, find: loc.text, set: o.detail },
       );
     }
     if (measureOps.length !== validated.ops.length) {
@@ -388,7 +463,12 @@ try {
     console.log(
       `  ${plan.path} × ${plan.key}: LCP-element ${lcp.found ? `<${lcp.tag}> "${lcp.text ?? ""}"` : "EJ observerat — servbarhets-kollen blir vakuös"}`,
     );
-    await page.screenshot({ path: join(outDir, `${slug}-before.jpg`), type: "jpeg", quality: 60, fullPage: true });
+    await page.screenshot({
+      path: join(outDir, `${slug}-before.jpg`),
+      type: "jpeg",
+      quality: 60,
+      fullPage: true,
+    });
 
     // Grindarna + retry-steget — DELADE (runGatedAttempts i measure.ts):
     // kollision → ETT extra lyft per UNIK måltavla, och mätningen/serve_ops
@@ -400,8 +480,15 @@ try {
       { ctaSelectors },
     );
     if (unresolvable) {
-      results.push({ path: plan.path, key: plan.key, verdict: "not_applicable", reason: "op-mål/sektion kunde inte upplösas på sidan (v3 fail closed)" });
-      console.log(`  ${plan.path} × ${plan.key}: EJ APPLICERBAR — upplösningen vägrade (fail closed)`);
+      results.push({
+        path: plan.path,
+        key: plan.key,
+        verdict: "not_applicable",
+        reason: "op-mål/sektion kunde inte upplösas på sidan (v3 fail closed)",
+      });
+      console.log(
+        `  ${plan.path} × ${plan.key}: EJ APPLICERBAR — upplösningen vägrade (fail closed)`,
+      );
       await context.close();
       continue;
     }
@@ -411,32 +498,40 @@ try {
     // appliceringsalgoritm (granskningsfynd: skärmdumpen ägaren godkänner på
     // måste komma från exakt den applicering som grindades).
     await measurePlan(page, attemptOps, [], true);
-    await page.screenshot({ path: join(outDir, `${slug}-after.jpg`), type: "jpeg", quality: 60, fullPage: true });
+    await page.screenshot({
+      path: join(outDir, `${slug}-after.jpg`),
+      type: "jpeg",
+      quality: 60,
+      fullPage: true,
+    });
     await context.close();
 
     if (last.gate.verdict !== "pass") {
       results.push({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
-      console.log(`  ${plan.path} × ${plan.key}: GRIND-FAIL efter ${attempts.length} försök — hålls tillbaka`);
+      console.log(
+        `  ${plan.path} × ${plan.key}: GRIND-FAIL efter ${attempts.length} försök — hålls tillbaka`,
+      );
       continue;
     }
 
     // Grindat OK → bygg det serverbara + evidensen.
     // Retry-lyftet blir en extra move_up-op per mål så plan/serve_ops/sanning matchar.
-    const finalOps: RedesignOp[] =
-      !extraLiftApplied
-        ? validated.ops
-        : [
-            ...validated.ops,
-            // ETT extra lyft per UNIK måltavla — exakt vad retry-mätningen
-            // körde (attemptOps), så serve_ops == det grindade antalet lyft.
-            ...[...new Map(validated.ops.filter((o) => o.op === "move_up").map((o) => [o.targetId, o])).values()].map(
-              (o, i, arr) => ({
-                ...o,
-                detail: `extra lyft ${i + 1}/${arr.length} — kollisionsgrindens retry fann ren placering ett steg högre`,
-                why: `försök 1 introducerade +${attempts[0].gate.verticalOverlapIntroducedPx}px överlapp; försök 2 +${last.gate.verticalOverlapIntroducedPx}px`,
-              }),
-            ),
-          ];
+    const finalOps: RedesignOp[] = !extraLiftApplied
+      ? validated.ops
+      : [
+          ...validated.ops,
+          // ETT extra lyft per UNIK måltavla — exakt vad retry-mätningen
+          // körde (attemptOps), så serve_ops == det grindade antalet lyft.
+          ...[
+            ...new Map(
+              validated.ops.filter((o) => o.op === "move_up").map((o) => [o.targetId, o]),
+            ).values(),
+          ].map((o, i, arr) => ({
+            ...o,
+            detail: `extra lyft ${i + 1}/${arr.length} — kollisionsgrindens retry fann ren placering ett steg högre`,
+            why: `försök 1 introducerade +${attempts[0].gate.verticalOverlapIntroducedPx}px överlapp; försök 2 +${last.gate.verticalOverlapIntroducedPx}px`,
+          })),
+        ];
     const serveOps = toServeOps(content, finalOps);
     if (!serveOps) {
       results.push({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
@@ -459,8 +554,19 @@ try {
         // men lcpFound dokumenterar att kollen faktiskt kördes mot ett element.
         lcpFound: last.measurements.lcpFound ?? null,
         opsTouchingLcp: last.measurements.opsTouchingLcp ?? null,
+        // Insättnings-grindarna (task #117) — null när planen saknar inserts.
+        lcpShiftPx: last.measurements.lcpShiftPx ?? null,
+        insertedVisible: last.measurements.insertedVisible ?? null,
+        insertedRemoved: last.measurements.insertedRemoved ?? null,
         attempts: attempts.length,
       },
+      // Självläkningens krok (ägarbeslut 2026-07-18): varje insatt citat
+      // deklarerar sin källsida + exakta text, så drift-svepet kan hålla/
+      // uppdatera varianten när källan ändras. Tom lista för planer utan
+      // inserts — fältet är kontraktet, inte innehållet.
+      dependencies: finalOps
+        .filter((o) => o.op === "insert_snippet" && o.sourcePath)
+        .map((o) => ({ path: o.sourcePath!, textSnapshot: o.detail })),
       comparison: {
         headline: measureOps.find((o) => o.op === "set_text" && o.tag === "h1")?.set ?? null,
         orderBefore: last.measurements.beforeOrder,
@@ -480,13 +586,27 @@ try {
     );
     // ops med i resultatet så en orkestrerare (nattloopen) kan göra direkta
     // inserts via service-klienten i stället för att köra SQL-filen.
-    results.push({ path: plan.path, key: plan.key, verdict: "verified", attempts, ops: finalOps, serveOps, evidence, slug });
-    console.log(`  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök) — väntar på ägarens knapp`);
+    results.push({
+      path: plan.path,
+      key: plan.key,
+      verdict: "verified",
+      attempts,
+      ops: finalOps,
+      serveOps,
+      evidence,
+      slug,
+    });
+    console.log(
+      `  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök) — väntar på ägarens knapp`,
+    );
   }
 } finally {
   await browser.close();
 }
 
 writeFileSync(join(outDir, "verify-report.json"), JSON.stringify(results, null, 2));
-if (sqlParts.length) writeFileSync(join(outDir, "insert-variants.sql"), sqlParts.join("\n\n") + "\n");
-console.log(`\nreport: ${outDir}/verify-report.json${sqlParts.length ? ` · sql: ${outDir}/insert-variants.sql` : ""}`);
+if (sqlParts.length)
+  writeFileSync(join(outDir, "insert-variants.sql"), sqlParts.join("\n\n") + "\n");
+console.log(
+  `\nreport: ${outDir}/verify-report.json${sqlParts.length ? ` · sql: ${outDir}/insert-variants.sql` : ""}`,
+);
