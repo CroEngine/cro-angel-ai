@@ -258,3 +258,17 @@ describe("extractPriceSnippets — ordagrann pris-whitelist (task #117)", () => 
     );
   });
 });
+
+describe("extractPriceSnippets — sammansatta inline-utsagor (plausible-fyndet)", () => {
+  it("captures a statement split across inline spans and drops its bare substrings", () => {
+    const html = `<main><h1>Hero</h1><section><h2>Pricing</h2>
+      <div class="price"><span>$14</span> <span>/month</span></div>
+    </section></main>`;
+    expect(extractPriceSnippets(html).map((s) => s.text)).toEqual(["$14 /month"]);
+  });
+
+  it("never composes across block-level boundaries (would not be ONE statement)", () => {
+    const html = `<main><div><p>Priser från</p><p>99 kr/mån</p></div></main>`;
+    expect(extractPriceSnippets(html).map((s) => s.text)).toEqual(["99 kr/mån"]);
+  });
+});

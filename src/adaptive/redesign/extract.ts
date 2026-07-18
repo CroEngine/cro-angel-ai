@@ -259,8 +259,14 @@ export function extractContentModel(html: string): RedesignContentModel {
 // (inga nästlade taggar — priser bor i <p>/<li>/<td>/<span>-löv i praktiken)
 // som bär ett belopp med valuta eller en per-månad/per-år-konstruktion.
 
-/** Element vars rena textinnehåll kan bära en prisutsaga. */
+/** Element vars textinnehåll kan bära en prisutsaga. */
 const PRICE_LEAF_TAGS = "p|li|td|th|h2|h3|h4|span|strong|b|div|dt|dd";
+
+/** Inline-taggar som får förekomma INUTI en utsaga utan att bryta ordagrannheten
+ *  — riktiga prissidor delar ofta frasen i spans (<span>$14</span><span>/month</span>,
+ *  plausible-fyndet 2026-07-18). Blocknivå-taggar bryter fortfarande: en
+ *  sammansättning över sektionsgränser vore inte längre EN utsaga från sidan. */
+const PRICE_INLINE_TAGS = "(?:span|b|strong|em|i|u|sup|sub|small|abbr|br)";
 
 /** Prisliknande: valutasymbol/kod intill en siffra, eller "/mån"-mönster.
  *  Kräver alltid en siffra — "gratis"/"free" ensamt är för brusigt för en
@@ -279,17 +285,29 @@ export interface PriceSnippet {
  *  literal text of one leaf element — never assembled, never paraphrased. */
 export function extractPriceSnippets(html: string): PriceSnippet[] {
   const region = mainRegion(html);
-  const out: PriceSnippet[] = [];
+  const collected: PriceSnippet[] = [];
   const seen = new Set<string>();
-  const re = new RegExp(`<(${PRICE_LEAF_TAGS})\\b[^>]*>([^<]{3,240})</\\1>`, "gi");
+  // Innehållet får bära inline-markup (frasen "<span>$14</span><span>/month</span>"
+  // ÄR en utsaga) men aldrig blocknivå-taggar — bakreferensen + inline-vitlistan
+  // gör att en div aldrig kan sluka en annan div och producera en trunkerad
+  // "utsaga" som inte ordagrant står på sidan.
+  const content = `(?:[^<]|<${PRICE_INLINE_TAGS}\\b[^>]*/?>|</${PRICE_INLINE_TAGS}>)`;
+  const re = new RegExp(`<(${PRICE_LEAF_TAGS})\\b[^>]*>(${content}{3,360}?)</\\1>`, "gi");
   let m: RegExpExecArray | null;
-  while ((m = re.exec(region)) && out.length < 8) {
+  while ((m = re.exec(region)) && collected.length < 24) {
     const text = stripTags(m[2]);
     if (text.length < 3 || text.length > 140 || !PRICE_RE.test(text)) continue;
     const key = text.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ text, tag: m[1].toLowerCase() });
+    collected.push({ text, tag: m[1].toLowerCase() });
   }
-  return out;
+  // Föredra den FULLASTE utsagan: "$14" ensamt erbjuds inte när "$14 /month"
+  // också fångades — delsträngar av en annan post faller bort.
+  const out: PriceSnippet[] = [];
+  for (const s of [...collected].sort((a, b) => b.text.length - a.text.length)) {
+    if (out.some((k) => k.text.toLowerCase().includes(s.text.toLowerCase()))) continue;
+    out.push(s);
+  }
+  return out.slice(0, 8);
 }

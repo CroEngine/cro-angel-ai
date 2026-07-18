@@ -1167,6 +1167,27 @@
           anchor = anchor.parentElement;
         }
         if (!anchor.parentElement || isNoTouch(anchor)) return false;
+        // Artikelsidor: LCP-elementet är ofta intro-stycket DIREKT under
+        // rubriken. Ligger LCP-elementet NEDANFÖR insättningspunkten omankras
+        // till LCP-elementets EGEN högsta census-fria förfader — citatet
+        // landar då under hela hjälte-regionen (rubrik + intro) och largest
+        // paint står stilla. SPEGELVÄND i measure.ts — håll i synk.
+        if (lcpEl && !anchor.contains(lcpEl)) {
+          try {
+            if (anchor.compareDocumentPosition(lcpEl) & Node.DOCUMENT_POSITION_FOLLOWING) {
+              var re = lcpEl;
+              while (
+                re.parentElement &&
+                re.parentElement !== mainEl &&
+                re.parentElement !== document.body &&
+                !bearsCensus(re.parentElement)
+              ) {
+                re = re.parentElement;
+              }
+              if (re.parentElement) anchor = re;
+            }
+          } catch (e) {}
+        }
         // CWV-vakt för insättning: touchesLcp räcker inte här — hjälten FÅR
         // omsluta LCP-elementet (det ligger då OVANFÖR insättningspunkten och
         // rörs inte). Men bor LCP-elementet NEDANFÖR punkten skjuts det när

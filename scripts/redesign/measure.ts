@@ -300,6 +300,29 @@ export async function measurePlan(
             resolvedAll = false;
             break;
           }
+          // Artikelsidor: LCP-elementet är ofta intro-stycket DIREKT under
+          // rubriken (plausible-fyndet 2026-07-18: +24px LCP-skjuts). Ligger
+          // LCP-elementet NEDANFÖR insättningspunkten omankras till LCP-
+          // elementets EGEN högsta census-fria förfader — citatet landar då
+          // under hela hjälte-regionen (rubrik + intro) och largest paint
+          // står stilla. Djupt liggande LCP ger stora gap som gap-varningen
+          // håller tillbaka. SPEGELVÄND i snippeten — håll i synk.
+          if (
+            lcpEl &&
+            !anchor.contains(lcpEl) &&
+            anchor.compareDocumentPosition(lcpEl) & Node.DOCUMENT_POSITION_FOLLOWING
+          ) {
+            let re: Element = lcpEl;
+            while (
+              re.parentElement &&
+              re.parentElement !== mainEl &&
+              re.parentElement !== document.body &&
+              !censusCount.has(re.parentElement)
+            ) {
+              re = re.parentElement;
+            }
+            if (re.parentElement) anchor = re;
+          }
           resolved.push({ op: "insert_snippet", anchor, set: o.set });
         } else {
           if (!o.set) {
