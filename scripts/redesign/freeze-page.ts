@@ -171,9 +171,30 @@ async function browserRenderedHtml(
         ? { top: Math.min(prev.top, m.top), area: Math.max(prev.area, m.area) }
         : { top: m.top, area: m.area };
     }
-    const outHtml = await page.evaluate(
-      () => "<!doctype html>\n" + document.documentElement.outerHTML,
-    );
+    const outHtml = await page.evaluate(() => {
+      // CSSOM-serialisering (Trello-obduktionen 2026-07-18, varv 2):
+      // styled-components m.fl. injicerar i produktionsläge sina regler via
+      // insertRule — <style data-styled>-taggarna är TOMMA i outerHTML och
+      // kopian blir ostylad trots browser-rendering. Skriv därför varje
+      // stylesheets faktiska CSSOM-regler tillbaka in i sin <style>-tagg
+      // (cross-origin-länkade ark kastar vid läsning och lämnas orörda —
+      // de inlinas redan av stilmalls-steget efteråt).
+      for (const sheet of Array.from(document.styleSheets)) {
+        const owner = sheet.ownerNode;
+        if (!owner || (owner as Element).tagName !== "STYLE") continue;
+        try {
+          const rules = Array.from(sheet.cssRules)
+            .map((r) => r.cssText)
+            .join("\n");
+          if (rules && rules.length > ((owner as Element).textContent || "").length) {
+            (owner as Element).textContent = rules;
+          }
+        } catch {
+          /* oläsbart ark — lämna som det är */
+        }
+      }
+      return "<!doctype html>\n" + document.documentElement.outerHTML;
+    });
     return { html: outHtml, imgPriority: priority };
   } finally {
     await browser.close();
@@ -196,10 +217,40 @@ let renderedVia: "static" | "browser" = "static";
 // Renderad bildgeometri (browser-vägen) — styr inline-budgetens prioritering.
 let imgPriority: Record<string, { top: number; area: number }> | null = null;
 const isShell = (h: string) => extractContentModel(h).sections.length < 2;
-if (RENDER === "browser" || (RENDER === "auto" && isShell(html))) {
+// CSS-in-JS-detektorn (Trello-obduktionen 2026-07-18): styled-components m.fl.
+// injicerar sina stilar med JavaScript i drift — en statisk kopia får aldrig
+// med dem, layouten kollapsar och element hamnar på varandra (signup-knappen
+// täcktes av en banner-länk ⇒ CTA-grinden föll trots hel siddesign). Signalen:
+// klass-tokens i markupen som de inlinade stilmallarna aldrig nämner. Låg
+// täckning ⇒ kopian saknar sina stilar ⇒ webbläsarvägen (som får med runtime-
+// injicerade <style>-taggar). Trösklarna: minst 12 samplade tokens (småsidor
+// bedöms inte) och < 35 % täckning (riktiga statiska sajter ligger nära 100 %).
+const isUnstyled = (h: string): boolean => {
+  const bodyIdx = h.search(/<body\b/i);
+  const body = bodyIdx >= 0 ? h.slice(bodyIdx) : h;
+  const css = [...h.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join("\n");
+  if (!css) return false; // inga stilmallar alls är SPA-skalets signal, inte denna
+  const tokens = new Set<string>();
+  for (const m of body.matchAll(/\bclass\s*=\s*"([^"]{1,200})"/gi)) {
+    for (const t of m[1].split(/\s+/)) {
+      if (/^[A-Za-z][\w-]{5,}$/.test(t)) tokens.add(t);
+      if (tokens.size >= 40) break;
+    }
+    if (tokens.size >= 40) break;
+  }
+  if (tokens.size < 12) return false;
+  let covered = 0;
+  for (const t of tokens) if (css.includes(`.${t}`)) covered++;
+  return covered / tokens.size < 0.35;
+};
+if (RENDER === "browser" || (RENDER === "auto" && (isShell(html) || isUnstyled(html)))) {
   try {
     if (RENDER === "auto" && html) {
-      console.log("[freeze-page] statisk kopia är ett SPA-skal (<2 sektioner) → browser-rendering");
+      console.log(
+        isShell(html)
+          ? "[freeze-page] statisk kopia är ett SPA-skal (<2 sektioner) → browser-rendering"
+          : "[freeze-page] statisk kopia saknar sina stilar (CSS-in-JS) → browser-rendering",
+      );
     }
     const rendered = await browserRenderedHtml(url);
     html = rendered.html;

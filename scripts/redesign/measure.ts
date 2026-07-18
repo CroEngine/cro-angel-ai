@@ -250,7 +250,10 @@ export async function measurePlan(
           const r = n.getBoundingClientRect();
           return r.width > 0 && r.height > 0;
         });
-        if (visible) return hitTest(visible);
+        // Träffar direktkandidaten är vi klara — men faller hit-testet
+        // (overlay över knappen, Trello-obduktionen) provas ÄVEN bärarvägen
+        // innan domen: en annan markup-form av samma CTA kan vara träffbar.
+        if (visible && hitTest(visible)) return true;
         // Cover-link-mönstret: den SYNLIGA knappen är en ren text-div
         // (aria-hidden) och länken ett tomt absolut-positionerat syskon
         // OVANPÅ — ingen klickbar förfader finns, och a/button-kandidaterna
@@ -281,7 +284,17 @@ export async function measurePlan(
           const cx = Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1);
           const cy = Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1);
           const top = document.elementFromPoint(cx, cy);
-          if (top && top.closest("a,button,[role=button]")) return true;
+          const clickable = top ? top.closest("a,button,[role=button]") : null;
+          if (!clickable) continue;
+          // SAMMA komponent-krav: klickmottagaren måste bo i bärarens närmsta
+          // komponent-förfäder (≤3 nivåer upp) — cover-länken i Teamtailors
+          // knapp-widget gör det; en främmande overlay-länk ovanpå (Trellos
+          // ostylade kollaps) gör det INTE och får aldrig räknas som träff.
+          let anc: Element | null = el;
+          for (let i = 0; i < 4 && anc; i++) {
+            if (anc.contains(clickable)) return true;
+            anc = anc.parentElement;
+          }
         }
         return false;
       }
