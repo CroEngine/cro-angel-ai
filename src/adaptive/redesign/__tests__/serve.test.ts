@@ -42,18 +42,23 @@ const visitor = (
 
 describe("visitorSegmentKey — matches the dashboard rollup format", () => {
   it("builds channel·device·country·returning, coarse→fine", () => {
-    expect(visitorSegmentKey({ channel: "google", device: "mobile", country: "se", isReturning: false })).toBe(
-      "google·mobile·se·ny",
-    );
-    expect(visitorSegmentKey({ channel: "instagram", device: "mobile", country: "SE", isReturning: true })).toBe(
-      "instagram·mobile·SE·återkommande",
-    );
+    expect(
+      visitorSegmentKey({ channel: "google", device: "mobile", country: "se", isReturning: false }),
+    ).toBe("google·mobile·se·ny");
+    expect(
+      visitorSegmentKey({
+        channel: "instagram",
+        device: "mobile",
+        country: "SE",
+        isReturning: true,
+      }),
+    ).toBe("instagram·mobile·SE·återkommande");
   });
 
   it("uses the honest 'okänd' bucket for missing dimensions (never fabricates)", () => {
-    expect(visitorSegmentKey({ channel: null, device: "", country: "us", isReturning: false })).toBe(
-      "okänd·okänd·us·ny",
-    );
+    expect(
+      visitorSegmentKey({ channel: null, device: "", country: "us", isReturning: false }),
+    ).toBe("okänd·okänd·us·ny");
   });
 });
 
@@ -121,17 +126,21 @@ describe("matchVariant — finest verified variant wins", () => {
 
   it("only serves 'serving' / 'winner' — never candidate/verified/retired", () => {
     for (const status of ["candidate", "verified", "retired"] as VariantStatus[]) {
-      expect(matchVariant([variant("google", status)], visitor("google", "mobile", "se"))).toBeNull();
+      expect(
+        matchVariant([variant("google", status)], visitor("google", "mobile", "se")),
+      ).toBeNull();
     }
-    expect(matchVariant([variant("google", "winner")], visitor("google", "mobile", "se"))?.status).toBe("winner");
+    expect(
+      matchVariant([variant("google", "winner")], visitor("google", "mobile", "se"))?.status,
+    ).toBe("winner");
   });
 
   it("scopes to the visitor's site and path", () => {
     const vs = [variant("google", "serving", { path: "/pricing" })];
     expect(matchVariant(vs, visitor("google", "mobile", "se"))).toBeNull(); // path "/" ≠ "/pricing"
-    expect(matchVariant(vs, visitor("google", "mobile", "se", false, { path: "/pricing" }))?.segmentKey).toBe(
-      "google",
-    );
+    expect(
+      matchVariant(vs, visitor("google", "mobile", "se", false, { path: "/pricing" }))?.segmentKey,
+    ).toBe("google");
     const other = [variant("google", "serving", { site: "other" })];
     expect(matchVariant(other, visitor("google", "mobile", "se"))).toBeNull();
   });
@@ -149,7 +158,9 @@ describe("matchVariant — finest verified variant wins", () => {
       "google·mobile·se·återkommande",
     );
     // a NEW visitor doesn't match the returning-only fine variant → falls back to coarser
-    expect(matchVariant(vs, visitor("google", "mobile", "se", false))?.segmentKey).toBe("google·mobile·se");
+    expect(matchVariant(vs, visitor("google", "mobile", "se", false))?.segmentKey).toBe(
+      "google·mobile·se",
+    );
   });
 });
 
@@ -191,7 +202,14 @@ describe("rampBucket — deterministic, variant-salted", () => {
 
 describe("serveDecision — the owner's cautious-v1 rules, fail closed", () => {
   it("serves nothing when the master switch is off", () => {
-    expect(serveDecision({ ...CFG, servingEnabled: false }, [servable()], visitor("google", "mobile", "se"), "vh")).toBeNull();
+    expect(
+      serveDecision(
+        { ...CFG, servingEnabled: false },
+        [servable()],
+        visitor("google", "mobile", "se"),
+        "vh",
+      ),
+    ).toBeNull();
   });
 
   it("serves nothing without a visitorHash (no stable arm ⇒ no measurement)", () => {
@@ -204,8 +222,17 @@ describe("serveDecision — the owner's cautious-v1 rules, fail closed", () => {
   });
 
   it("fail closed: a match without valid serveOps never serves", () => {
-    expect(serveDecision(CFG, [servable({ serveOps: [] })], visitor("google", "mobile", "se"), "vh")).toBeNull();
-    expect(serveDecision(CFG, [servable({ serveOps: undefined })], visitor("google", "mobile", "se"), "vh")).toBeNull();
+    expect(
+      serveDecision(CFG, [servable({ serveOps: [] })], visitor("google", "mobile", "se"), "vh"),
+    ).toBeNull();
+    expect(
+      serveDecision(
+        CFG,
+        [servable({ serveOps: undefined })],
+        visitor("google", "mobile", "se"),
+        "vh",
+      ),
+    ).toBeNull();
     // set_text utan value, okänt verb, tom lokator — allt diskvalificerar HELA varianten
     const bad: ServeOp[][] = [
       [{ op: "set_text", locator: { text: "x" } }],
@@ -214,14 +241,18 @@ describe("serveDecision — the owner's cautious-v1 rules, fail closed", () => {
       [serveOps[0], { op: "set_text", locator: { text: "x" } }],
     ];
     for (const ops of bad) {
-      expect(serveDecision(CFG, [servable({ serveOps: ops })], visitor("google", "mobile", "se"), "vh")).toBeNull();
+      expect(
+        serveDecision(CFG, [servable({ serveOps: ops })], visitor("google", "mobile", "se"), "vh"),
+      ).toBeNull();
     }
   });
 
   it("assigns ~rampPct% to the variant arm, deterministically per visitor", () => {
     const vs = [servable()];
     const hashes = Array.from({ length: 1000 }, (_, i) => `visitor-${i}`);
-    const arms = hashes.map((vh) => serveDecision(CFG, vs, visitor("google", "mobile", "se"), vh)!.arm);
+    const arms = hashes.map(
+      (vh) => serveDecision(CFG, vs, visitor("google", "mobile", "se"), vh)!.arm,
+    );
     const inVariant = arms.filter((a) => a === "variant").length;
     expect(inVariant).toBeGreaterThan(10); // ~50 av 1000 vid 5 %
     expect(inVariant).toBeLessThan(120);
@@ -235,7 +266,11 @@ describe("serveDecision — the owner's cautious-v1 rules, fail closed", () => {
     const vs = [servable()];
     const hashes = Array.from({ length: 1000 }, (_, i) => `visitor-${i}`);
     const at = (rampPct: number) =>
-      hashes.filter((vh) => serveDecision({ ...CFG, rampPct }, vs, visitor("google", "mobile", "se"), vh)!.arm === "variant").length;
+      hashes.filter(
+        (vh) =>
+          serveDecision({ ...CFG, rampPct }, vs, visitor("google", "mobile", "se"), vh)!.arm ===
+          "variant",
+      ).length;
     expect(at(50)).toBeGreaterThan(at(5));
     expect(at(50)).toBeGreaterThan(400);
     expect(at(50)).toBeLessThan(600);
@@ -245,7 +280,9 @@ describe("serveDecision — the owner's cautious-v1 rules, fail closed", () => {
     const vs = [servable()];
     const hashes = Array.from({ length: 400 }, (_, i) => `v${i}`);
     const armsAt100 = hashes.filter(
-      (vh) => serveDecision({ ...CFG, rampPct: 100 }, vs, visitor("google", "mobile", "se"), vh)!.arm === "variant",
+      (vh) =>
+        serveDecision({ ...CFG, rampPct: 100 }, vs, visitor("google", "mobile", "se"), vh)!.arm ===
+        "variant",
     ).length;
     expect(armsAt100).toBeLessThan(300); // klampat till 50 % — aldrig alla
   });
@@ -255,5 +292,35 @@ describe("serveDecision — the owner's cautious-v1 rules, fail closed", () => {
     const fine = variant("google·mobile·se", "serving", { id: "fine", serveOps });
     const verdict = serveDecision(CFG, [coarse, fine], visitor("google", "mobile", "se"), "vh");
     expect(verdict?.variant.id).toBe("fine");
+  });
+});
+
+describe("serveDecision — insert_snippet (korssid-lyftet, task #117)", () => {
+  const insertOps: ServeOp[] = [
+    {
+      op: "insert_snippet",
+      locator: { tag: "h1", text: "Easy to use" },
+      value: "Från 99 kr/mån — alla funktioner ingår.",
+      why: "segmentet söker pris",
+    },
+  ];
+
+  it("serves a variant whose insert op carries a locator + verbatim text", () => {
+    const v = serveDecision(
+      { servingEnabled: true, rampPct: 50 },
+      [servable({ serveOps: insertOps })],
+      visitor("google", "mobile", "se"),
+      "vh-in-arm-1",
+    );
+    expect(v).not.toBeNull();
+  });
+
+  it("fail closed: an insert op without text never serves", () => {
+    const bad: ServeOp[] = [
+      { op: "insert_snippet", locator: { tag: "h1", text: "Easy to use" }, value: "  " },
+    ];
+    expect(
+      serveDecision(CFG, [servable({ serveOps: bad })], visitor("google", "mobile", "se"), "vh"),
+    ).toBeNull();
   });
 });

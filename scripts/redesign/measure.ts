@@ -6,13 +6,18 @@
 // kollisions-retry — ETT extra lyft per UNIKT mål — i alla harness, så
 // mätningen och serve_ops alltid räknar samma antal lyft.
 
-import { evaluateRenderGates, type RenderMeasurements } from "../../src/adaptive/redesign/render-gates";
+import {
+  evaluateRenderGates,
+  type RenderMeasurements,
+} from "../../src/adaptive/redesign/render-gates";
 
 import type { Page } from "playwright-core";
 
-/** En mät-op i PLANORDNING — samma form som snippetens serve-ops. */
+/** En mät-op i PLANORDNING — samma form som snippetens serve-ops.
+ *  insert_snippet: `find` lokaliserar hjältens h1, `set` är det ordagranna
+ *  citatet som sätts in som <p> direkt efter hjältens toppnivå-block. */
 export interface MeasureOp {
-  op: "move_up" | "set_text";
+  op: "move_up" | "set_text" | "insert_snippet";
   tag?: string;
   find: string;
   set?: string;
@@ -132,7 +137,12 @@ export async function measurePlan(
         const needle = norm(find).slice(0, 24).toLowerCase();
         if (!needle) return null;
         for (const el of Array.from(mainEl.querySelectorAll(tag || "h1,h2,h3"))) {
-          if (norm(el.textContent || "").toLowerCase().includes(needle)) return el;
+          if (
+            norm(el.textContent || "")
+              .toLowerCase()
+              .includes(needle)
+          )
+            return el;
         }
         return null;
       }
@@ -163,9 +173,14 @@ export async function measurePlan(
       // nesting-fri (ett block som INNEHÅLLER ett annat block utesluts — annars
       // jämförs wrappern mot sin egen sektion). Granskningens fynd: överlapp
       // ska ses ÖVER föräldragränser (lyft sektion mot hjälte i annan låda).
-      const parents = [...new Set(tracked.map((t) => t.el.parentElement).filter(Boolean))] as Element[];
+      const parents = [
+        ...new Set(tracked.map((t) => t.el.parentElement).filter(Boolean)),
+      ] as Element[];
       const rawBlocks = [
-        ...new Set([...Array.from(mainEl.children), ...parents.flatMap((p) => Array.from(p.children))]),
+        ...new Set([
+          ...Array.from(mainEl.children),
+          ...parents.flatMap((p) => Array.from(p.children)),
+        ]),
       ].filter((b) => b.getBoundingClientRect().height > 30);
       const blocks = rawBlocks.filter((b) => !rawBlocks.some((o) => o !== b && b.contains(o)));
       const blockPairsOverlap = () => {
@@ -181,7 +196,10 @@ export async function measurePlan(
       // Hjälten = blocket som bär sidans h1 (finns alltid en h1 på sidorna vi
       // designar för; annars första blocket).
       const h1 = mainEl.querySelector("h1");
-      const heroBlock = (h1 && blocks.find((b) => b === h1 || b.contains(h1))) ?? blocks.slice().sort(docSort)[0] ?? null;
+      const heroBlock =
+        (h1 && blocks.find((b) => b === h1 || b.contains(h1))) ??
+        blocks.slice().sort(docSort)[0] ??
+        null;
 
       function hitTest(el: Element): boolean {
         el.scrollIntoView({ block: "center" });
@@ -229,6 +247,12 @@ export async function measurePlan(
       const hOverflowBeforePx = Math.max(0, de.scrollWidth - de.clientWidth);
       const overlapBefore = blockPairsOverlap();
       const vOverlapBeforePx = Math.max(0, ...overlapBefore.values());
+      // LCP-elementets ABSOLUTA dokumentposition (scroll-invariant — CTA-
+      // proberna scrollar). touchesLcp fångar bara ops PÅ elementet; en
+      // insättning/flytt OVANFÖR det skjuter det utan att röra det, och det
+      // är exakt vad lcpShiftPx mäter (task #117: grinden LCP-förskjutning).
+      const lcpTop = () => (lcpEl ? lcpEl.getBoundingClientRect().top + window.scrollY : null);
+      const lcpTopBefore = lcpTop();
       // Byte-exakt reset: ALLA noder (även textnoder) per berörd förälder.
       const resetParents = [...new Set([mainEl, ...parents])];
       const parentSnapshots = resetParents.map((p) => ({ p, nodes: Array.from(p.childNodes) }));
@@ -236,18 +260,52 @@ export async function measurePlan(
       // ── FAS 1: upplös allt mot orörd DOM ───────────────────────────────
       type Resolved =
         | { op: "move_up"; sec: Element }
-        | { op: "set_text"; el: Element; set: string };
+        | { op: "set_text"; el: Element; set: string }
+        | { op: "insert_snippet"; anchor: Element; set: string };
       const resolved: Resolved[] = [];
       let resolvedAll = true;
       for (const o of ops) {
         const el = findByLocator(o.tag, o.find);
-        if (!el) { resolvedAll = false; break; }
+        if (!el) {
+          resolvedAll = false;
+          break;
+        }
         if (o.op === "move_up") {
           const sec = sectionOf(el);
-          if (!sec) { resolvedAll = false; break; }
+          if (!sec) {
+            resolvedAll = false;
+            break;
+          }
           resolved.push({ op: "move_up", sec });
+        } else if (o.op === "insert_snippet") {
+          // Hjälte-ankaret: h1:ans HÖGSTA förfader som inte bär någon census-h2
+          // — i wrapper-mönstret (main > .page > .hero + .wrapper) blir det
+          // .hero, aldrig sid-wrappern ("under hjälten" får inte bli sidbotten).
+          // SPEGELVÄND regel i snippetens applyVariant (public/adaptive.js) —
+          // håll i synk.
+          if (!o.set) {
+            resolvedAll = false;
+            break;
+          }
+          let anchor: Element = el;
+          while (
+            anchor.parentElement &&
+            anchor.parentElement !== mainEl &&
+            anchor.parentElement !== document.body &&
+            !censusCount.has(anchor.parentElement)
+          ) {
+            anchor = anchor.parentElement;
+          }
+          if (!anchor.parentElement) {
+            resolvedAll = false;
+            break;
+          }
+          resolved.push({ op: "insert_snippet", anchor, set: o.set });
         } else {
-          if (!o.set) { resolvedAll = false; break; }
+          if (!o.set) {
+            resolvedAll = false;
+            break;
+          }
           resolved.push({ op: "set_text", el, set: o.set });
         }
       }
@@ -255,9 +313,14 @@ export async function measurePlan(
       // fail-closed när ett upplöst mål (sektionen för move_up, elementet för
       // set_text) rör LCP-elementet — en sådan variant når aldrig en riktig
       // besökare. Räknas mot exakt de mål appliceringen använder.
+      // insert_snippet räknas MEDVETET inte här: ankaret (hjälten) omsluter
+      // nästan alltid LCP-elementet men muteras inte — insättningens verkliga
+      // CWV-effekt mäts geometriskt av lcpShiftPx nedan (och snippetens
+      // klient-vakt vägrar insättningar OVANFÖR LCP-elementet).
       let opsTouchingLcp = 0;
       if (resolvedAll) {
         for (const r of resolved) {
+          if (r.op === "insert_snippet") continue;
           if (touchesLcp(r.op === "move_up" ? r.sec : r.el)) opsTouchingLcp++;
         }
       }
@@ -265,7 +328,9 @@ export async function measurePlan(
       // ── FAS 2: applicera i planordning ─────────────────────────────────
       let appliedMoves = 0;
       let appliedTexts = 0;
+      let appliedInserts = 0;
       const movedEls: Element[] = [];
+      const insertedEls: Element[] = [];
       const textSnapshots: { el: Element; html: string }[] = [];
       if (resolvedAll) {
         for (const r of resolved) {
@@ -276,6 +341,15 @@ export async function measurePlan(
               if (!movedEls.includes(r.sec)) movedEls.push(r.sec);
               appliedMoves++;
             }
+          } else if (r.op === "insert_snippet") {
+            // Samma applicering som snippeten: <p> med textContent (aldrig
+            // innerHTML), markör, direkt efter hjälte-blocket.
+            const node = document.createElement("p");
+            node.textContent = r.set;
+            node.setAttribute("data-angel-inserted", "");
+            r.anchor.parentElement!.insertBefore(node, r.anchor.nextSibling);
+            insertedEls.push(node);
+            appliedInserts++;
           } else {
             textSnapshots.push({ el: r.el, html: r.el.innerHTML });
             // Behåll inline-formatet (färgad <span>, responsiv <br>): fördela
@@ -329,9 +403,47 @@ export async function measurePlan(
       let movedAboveMain = 0;
       if (heroBlock) {
         for (const el of movedEls) {
-          if (el !== heroBlock && !(heroBlock.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+          if (
+            el !== heroBlock &&
+            !(heroBlock.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)
+          ) {
             movedAboveMain++;
           }
+        }
+      }
+      // Insättningens egna mått (task #117): LCP-förskjutningen fångar det
+      // touchesLcp inte kan (elementet skjuts utan att röras); ovanför-hjälten
+      // speglar movedAboveMain; gapet till h1:an avslöjar wrapper-ankare där
+      // "efter hjälte-blocket" i praktiken blev "sidans botten"; hit-testet
+      // bevisar att det insatta blocket faktiskt SYNS (inte täckt/dolt).
+      const lcpTopAfter = lcpTop();
+      const lcpShiftPx =
+        lcpTopBefore !== null && lcpTopAfter !== null
+          ? Math.round(Math.abs(lcpTopAfter - lcpTopBefore))
+          : null;
+      let insertedAboveMain = 0;
+      let insertedGapToHeroPx = 0;
+      let insertedVisible = true;
+      if (insertedEls.length > 0) {
+        const h1El = mainEl.querySelector("h1");
+        for (const el of insertedEls) {
+          // Referensen är H1:AN, inte heroBlock: i wrapper-mönstret är hjälten
+          // inget block (main > .page > .hero + .wrapper) och heroBlock-
+          // fallbacken blir FÖRSTA SEKTIONEN — en korrekt insättning under
+          // hjälten men ovanför sektionerna hade false-fällts (labbfynd
+          // 2026-07-18). "Under hjälten" betyder efter hjälterubriken.
+          if (h1El && !(h1El.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+            insertedAboveMain++;
+          }
+          if (h1El) {
+            const gap = Math.round(
+              el.getBoundingClientRect().top +
+                window.scrollY -
+                (h1El.getBoundingClientRect().bottom + window.scrollY),
+            );
+            insertedGapToHeroPx = Math.max(insertedGapToHeroPx, gap);
+          }
+          if (!hitTest(el)) insertedVisible = false;
         }
       }
       const ctaAfter = ctaProbes.map((p) => probeCta(p));
@@ -346,11 +458,17 @@ export async function measurePlan(
 
       // ── reset (om inte EFTER-läget ska behållas för skärmdump) ─────────
       let reversedOrderMatches = true;
+      let insertedRemoved = true;
       if (!keepApplied) {
+        // Insatta noder tas bort FÖRE snapshot-återuppspelningen: snapshots
+        // återappenderar bara ORIGINALETS noder — en kvarglömd insättning
+        // överlever annars osynlig för sektions-identitetsjämförelsen.
+        for (const el of insertedEls) el.remove();
         for (const snap of parentSnapshots) for (const n of snap.nodes) snap.p.appendChild(n);
         for (const s of textSnapshots) s.el.innerHTML = s.html;
         for (const el of movedEls) el.removeAttribute("data-angel-moved");
         reversedOrderMatches = JSON.stringify(identityOrder()) === JSON.stringify(beforeIdx);
+        insertedRemoved = insertedEls.every((el) => !document.contains(el));
       }
 
       return {
@@ -372,6 +490,13 @@ export async function measurePlan(
         appliedMoves,
         requestedTexts: ops.filter((o) => o.op === "set_text").length,
         appliedTexts,
+        requestedInserts: ops.filter((o) => o.op === "insert_snippet").length,
+        appliedInserts,
+        insertedAboveMain,
+        insertedGapToHeroPx,
+        insertedVisible,
+        insertedRemoved,
+        lcpShiftPx,
         reversedOrderMatches,
         lcpFound: lcpEl !== null,
         opsTouchingLcp,
@@ -403,6 +528,13 @@ export function toRenderMeasurements(
     verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
     lcpFound: raw.lcpFound,
     opsTouchingLcp: raw.opsTouchingLcp,
+    requestedInserts: raw.requestedInserts,
+    appliedInserts: raw.appliedInserts,
+    insertedAboveMain: raw.insertedAboveMain,
+    insertedGapToHeroPx: raw.insertedGapToHeroPx,
+    insertedVisible: raw.insertedVisible,
+    insertedRemoved: raw.insertedRemoved,
+    lcpShiftPx: raw.lcpShiftPx ?? undefined,
   };
 }
 
@@ -423,7 +555,12 @@ export async function runGatedAttempts(
   ops: MeasureOp[],
   ctaTexts: string[],
   opts: { ctaSelectors?: string[]; onAttempt?: (a: GatedAttempt) => void } = {},
-): Promise<{ attempts: GatedAttempt[]; attemptOps: MeasureOp[]; unresolvable: boolean; extraLiftApplied: boolean }> {
+): Promise<{
+  attempts: GatedAttempt[];
+  attemptOps: MeasureOp[];
+  unresolvable: boolean;
+  extraLiftApplied: boolean;
+}> {
   const uniqueMoveFinds = [...new Set(ops.filter((o) => o.op === "move_up").map((o) => o.find))];
   const extraLiftOps: MeasureOp[] = uniqueMoveFinds.map((find) => {
     const proto = ops.find((o) => o.op === "move_up" && o.find === find)!;
@@ -442,7 +579,8 @@ export async function runGatedAttempts(
     const entry = { attempt, measurements, gate };
     attempts.push(entry);
     opts.onAttempt?.(entry);
-    const collision = gate.verdict === "fail" && gate.reasons.some((r) => /vertical overlap/.test(r));
+    const collision =
+      gate.verdict === "fail" && gate.reasons.some((r) => /vertical overlap/.test(r));
     if (collision && attempt === 1 && extraLiftOps.length > 0) {
       attemptOps = [...ops, ...extraLiftOps];
       extraLiftApplied = true;

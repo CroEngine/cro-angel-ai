@@ -160,3 +160,46 @@ describe("renderRedesignPrompt", () => {
     expect(ctx.guardrails).toBe(DEFAULT_REDESIGN_GUARDRAILS);
   });
 });
+
+describe("sourcePages — korssid-lyftets citerbara material (task #117)", () => {
+  const withSources = buildRedesignContext({
+    site: "example",
+    goal: { text: "Skapa konto", kind: "signup", selector: "#kop" },
+    page,
+    content,
+    segment: segmentInsightFrom(seg(), {}),
+    sourcePages: [
+      {
+        path: "/priser",
+        snippets: [{ text: "Från 99 kr/mån — alla funktioner ingår.", tag: "p" }],
+      },
+      { path: "/tom", snippets: [] },
+    ],
+  });
+
+  it("keeps only source pages with actual snippets and extends the vocabulary", () => {
+    expect(withSources.sourcePages?.map((p) => p.path)).toEqual(["/priser"]);
+    expect(withSources.guardrails.ops).toContain("insert_snippet");
+  });
+
+  it("renders the quotes verbatim in the prompt with the verbatim-only rule", () => {
+    const prompt = renderRedesignPrompt(withSources);
+    expect(prompt).toContain("Quotable content from OTHER pages");
+    expect(prompt).toContain("Från 99 kr/mån — alla funktioner ingår.");
+    expect(prompt).toContain("insert_snippet");
+    expect(prompt).toMatch(/VERBATIM/);
+  });
+
+  it("leaves a single-page context untouched (no section, no verb)", () => {
+    const single = buildRedesignContext({
+      site: "example",
+      goal: { text: null, kind: null, selector: null },
+      page,
+      content,
+      segment: segmentInsightFrom(seg(), {}),
+    });
+    expect(single.sourcePages).toBeUndefined();
+    expect(single.guardrails.ops).not.toContain("insert_snippet");
+    expect(renderRedesignPrompt(single)).not.toContain("Quotable content");
+  });
+});

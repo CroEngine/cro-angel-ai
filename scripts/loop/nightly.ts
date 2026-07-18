@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { anthropicDesigner } from "./designer";
 import { generateRedesign } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
-import { extractContentModel } from "../../src/adaptive/redesign/extract";
+import { extractContentModel, extractPriceSnippets } from "../../src/adaptive/redesign/extract";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 import { mirrorStorageKey } from "../../src/lib/sandbox/mirror-key";
 import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
@@ -136,7 +136,18 @@ for (const site of targets) {
         ),
       ),
     ].slice(0, 10);
-    const paths = [...new Set([...leafPaths, ...clickPaths])].slice(0, 15);
+    // Flödesdestinationerna fryses också (korssid-lyftet): en insert_snippet-op
+    // kan bara citera en FRYST källsida — utan kopian tappas signalen tyst.
+    const destCounts = new Map<string, number>();
+    for (const f of (flows ?? []) as { dest_path?: string; reached?: number }[]) {
+      if (typeof f.dest_path !== "string" || typeof f.reached !== "number") continue;
+      destCounts.set(f.dest_path, (destCounts.get(f.dest_path) ?? 0) + f.reached);
+    }
+    const flowDests = [...destCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([p]) => p);
+    const paths = [...new Set([...leafPaths, ...clickPaths, ...flowDests])].slice(0, 15);
     const pages: Record<string, string> = {};
     if (site.domain) {
       for (const p of paths) {
@@ -204,7 +215,7 @@ for (const site of targets) {
       continue;
     }
     const earned = JSON.parse(readFileSync(join(dir, "earned.json"), "utf8")) as {
-      briefed: { path: string; key: string; total: { visits: number; conversions: number }; observations: string[]; brief: string }[];
+      briefed: { path: string; key: string; total: { visits: number; conversions: number }; observations: string[]; sourcePaths?: string[]; brief: string }[];
       needsFreeze: unknown[];
     };
     if (earned.needsFreeze.length) {
@@ -237,6 +248,15 @@ for (const site of targets) {
         adequate: true,
         recent: null,
       };
+      // Källsidorna (korssid-lyftet): samma frysta kopior + prisextraktion som
+      // detect-steget använde — kontexten designern ser ÄR den verify grindar.
+      const sourcePages = [];
+      for (const sp of b.sourcePaths ?? []) {
+        const srcFile = pages[sp];
+        if (!srcFile) continue;
+        const snippets = extractPriceSnippets(readFileSync(srcFile, "utf8"));
+        if (snippets.length > 0) sourcePages.push({ path: sp, snippets });
+      }
       const ctx = buildRedesignContext({
         site: site.slug,
         goal: {
@@ -247,13 +267,14 @@ for (const site of targets) {
         page: { url: `${base}${b.path}`, frozenHtmlPath: page, screenshotPath: "", viewport: { width: 390, height: 844 } },
         content,
         segment: segmentInsightFrom(summary, { observations: b.observations }),
+        sourcePages,
       });
       const plan = await generateRedesign(ctx, anthropicDesigner);
       if (plan.ops.length === 0) {
         console.log(`[loop] ${site.slug} ${b.path}×${b.key}: designern gav ingen giltig plan (${plan.note ?? "tomt"})`);
         continue;
       }
-      plans.push({ path: b.path, key: b.key, total: b.total, observations: b.observations, ops: plan.ops });
+      plans.push({ path: b.path, key: b.key, total: b.total, observations: b.observations, sourcePaths: b.sourcePaths ?? [], ops: plan.ops });
     }
     if (plans.length === 0) continue;
     writeFileSync(join(dir, "plans.json"), JSON.stringify(plans));
@@ -274,7 +295,10 @@ for (const site of targets) {
       console.warn(`[loop] ${site.slug}: verify föll`);
       continue;
     }
-    const results = JSON.parse(readFileSync(join(dir, "results.json"), "utf8")) as {
+    // OBS filnamnet: verify-steget skriver verify-report.json — "results.json"
+    // här var en latent ENOENT som per-sajt-catchen svalde (fixad 2026-07-18;
+    // ingen sajt hade ännu nått hit med planer).
+    const results = JSON.parse(readFileSync(join(dir, "verify-report.json"), "utf8")) as {
       verdict: string;
       path: string;
       key: string;

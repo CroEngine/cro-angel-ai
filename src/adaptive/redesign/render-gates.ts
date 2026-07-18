@@ -57,6 +57,27 @@ export interface RenderMeasurements {
    *  variant can never reach a real visitor (only sandbox mirrors bypass the
    *  guard). Optional as above. */
   opsTouchingLcp?: number;
+  /** How far (px) the LCP element's absolute document position moved between
+   *  BEFORE and AFTER apply. touchesLcp only sees ops ON the element — an
+   *  insert/move ABOVE it shifts it without touching it, and that shift is a
+   *  real layout-shift for every visitor. Optional: older observations omit
+   *  it (and pages without an observed LCP element report nothing). */
+  lcpShiftPx?: number;
+  /** insert_snippet ops the plan requested / actually applied (task #117).
+   *  All optional — absent on observations from before the op existed. */
+  requestedInserts?: number;
+  appliedInserts?: number;
+  /** Inserted blocks whose position landed ABOVE the hero block. */
+  insertedAboveMain?: number;
+  /** Largest gap (px) between the hero h1's bottom and an inserted block's top
+   *  — thousands means the anchor was a page-wrapping div and "below the hero"
+   *  silently became "bottom of the page". */
+  insertedGapToHeroPx?: number;
+  /** Was every inserted block hit-testable after apply (not covered/hidden)? */
+  insertedVisible?: boolean;
+  /** Did reset() actually detach every inserted node? The section-identity
+   *  order check cannot see a stray inserted node — this can. */
+  insertedRemoved?: boolean;
 }
 
 export type RenderVerdict = "pass" | "warn" | "fail";
@@ -84,6 +105,18 @@ export const H_OVERFLOW_FAIL_PX = 8;
  *  hundreds. Calibrated on plausible.io (clean reorder +48px passes; the collision
  *  case +320px fails). */
 export const V_OVERLAP_FAIL_PX = 100;
+
+/** LCP-elementet får inte SKJUTAS av en applicering (task #117): serve-vaktens
+ *  touchesLcp ser bara ops på själva elementet, men en insättning/flytt ovanför
+ *  det förskjuter largest paint för varje riktig besökare — layout-shift på det
+ *  viktigaste elementet. Samma stränghetsklass som overflow-grinden. */
+export const LCP_SHIFT_FAIL_PX = 8;
+
+/** "Direkt under hjälten" ska betyda just det: större gap mellan hjälte-h1:ans
+ *  botten och det insatta blockets topp än så här betyder att ankaret var en
+ *  sid-omslutande wrapper och blocket i praktiken landade långt ner. En mobil
+ *  hjälte (390×844-viewporten) är sällan högre än ~1,5 skärmar. */
+export const INSERT_GAP_WARN_PX = 1200;
 
 /** Evaluate the beauty gates over one apply's measurements. Pure. */
 export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
@@ -134,6 +167,25 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
   if (!m.reversedOrderMatches) {
     fail("reset() did not restore the original section order — change is not reversible");
   }
+  // Insättnings-grindarna (task #117) — alla fält frivilliga: en äldre
+  // observation (eller en plan utan inserts) påverkas inte; bara explicit
+  // dåliga värden fäller.
+  if ((m.lcpShiftPx ?? 0) > LCP_SHIFT_FAIL_PX) {
+    fail(
+      `apply shifted the page's LCP element by ${m.lcpShiftPx}px — a layout shift on the largest paint for every visitor`,
+    );
+  }
+  if ((m.insertedAboveMain ?? 0) > 0) {
+    fail(
+      `${m.insertedAboveMain} inserted block(s) landed ABOVE the hero — inserts only ever go below it`,
+    );
+  }
+  if (m.insertedVisible === false) {
+    fail("an inserted block is not hit-testable after apply (covered or hidden) — it helps no one");
+  }
+  if (m.insertedRemoved === false) {
+    fail("reset() left an inserted node in the DOM — change is not reversible");
+  }
 
   // Soft signals — surfaced, not blocking (but note: the auto-generate loop
   // accepts only a clean pass, so these DO hold a variant back there).
@@ -162,6 +214,16 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
   }
   if (m.movedCount > 0 && !m.mainAnchorFound) {
     warn("section(s) moved but no h1/main anchor to judge against — review screenshots");
+  }
+  if ((m.requestedInserts ?? 0) > 0 && (m.appliedInserts ?? 0) < (m.requestedInserts ?? 0)) {
+    warn(
+      `${(m.requestedInserts ?? 0) - (m.appliedInserts ?? 0)}/${m.requestedInserts} insert(s) could not be applied`,
+    );
+  }
+  if ((m.insertedGapToHeroPx ?? 0) > INSERT_GAP_WARN_PX) {
+    warn(
+      `inserted block landed ${m.insertedGapToHeroPx}px below the hero headline — the anchor was likely a page-wrapping container, review screenshots`,
+    );
   }
   if (m.requestedMoves > 0 && m.appliedMoves === 0) {
     warn("no moves were applied — nothing to preview");

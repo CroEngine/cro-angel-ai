@@ -1084,7 +1084,8 @@
     // Hydrerings-omkörning: syns variant-residue redan är designen på plats —
     // en andra applicering skulle dubbel-lyfta sektionen.
     try {
-      if (document.querySelector("[data-angel-moved],[data-angel-retext]")) return true;
+      if (document.querySelector("[data-angel-moved],[data-angel-retext],[data-angel-inserted]"))
+        return true;
     } catch (e) {}
     var mainEl = document.querySelector("main") || document.body;
     // Lokatorer är main-scopade — verifieringen såg bara main-innehållet, så
@@ -1148,6 +1149,35 @@
       } else if (op.op === "set_text") {
         if (!op.value || touchesLcp(el)) return false;
         resolved.push({ op: "set_text", el: el, value: op.value });
+      } else if (op.op === "insert_snippet") {
+        // Korssid-lyftet (task #117): lokatorn pekar på hjältens h1; det
+        // verifierade citatet sätts in som ett <p> DIREKT EFTER hjälte-blocket.
+        // Ankaret = h1:ans HÖGSTA förfader som inte bär någon census-h2 — i
+        // wrapper-mönstret (main > .page > .hero + .wrapper) blir det .hero,
+        // aldrig sid-wrappern (då hade "under hjälten" blivit sidbotten).
+        // SPEGELVÄND regel i measure.ts — håll i synk.
+        if (!op.value) return false;
+        var anchor = el;
+        while (
+          anchor.parentElement &&
+          anchor.parentElement !== mainEl &&
+          anchor.parentElement !== document.body &&
+          !bearsCensus(anchor.parentElement)
+        ) {
+          anchor = anchor.parentElement;
+        }
+        if (!anchor.parentElement || isNoTouch(anchor)) return false;
+        // CWV-vakt för insättning: touchesLcp räcker inte här — hjälten FÅR
+        // omsluta LCP-elementet (det ligger då OVANFÖR insättningspunkten och
+        // rörs inte). Men bor LCP-elementet NEDANFÖR punkten skjuts det när
+        // blocket tar plats — vägra, fail closed.
+        if (!IS_SANDBOX && lcpEl && !anchor.contains(lcpEl)) {
+          try {
+            if (anchor.compareDocumentPosition(lcpEl) & Node.DOCUMENT_POSITION_FOLLOWING)
+              return false;
+          } catch (e) {}
+        }
+        resolved.push({ op: "insert_snippet", anchor: anchor, value: op.value });
       } else {
         return false; // okänt verb — fail closed, före första mutation
       }
@@ -1176,6 +1206,25 @@
           })(r0.sec, next),
         );
         touchedEls.push({ el: r0.sec, pattern: "variant_moved" });
+      } else if (r0.op === "insert_snippet") {
+        // Hydrerings-dedupe (DOM-koll, badge-precedens): finns vårt block redan
+        // är designen på plats — hoppa i stället för att skapa en dubblett.
+        if (!document.querySelector("[data-angel-inserted]")) {
+          var insNode = document.createElement("p");
+          // ALLTID textContent, aldrig innerHTML — värdet är data, inte markup;
+          // en komprometterad DB-rad kan därför aldrig bli en skriptkanal.
+          insNode.textContent = String(r0.value);
+          insNode.setAttribute("data-angel-inserted", "");
+          r0.anchor.parentElement.insertBefore(insNode, r0.anchor.nextSibling);
+          undos.push(
+            (function (n) {
+              return function () {
+                if (n.parentElement) n.parentElement.removeChild(n);
+              };
+            })(insNode),
+          );
+          touchedEls.push({ el: insNode, pattern: "variant_inserted" });
+        }
       } else {
         // Ångra via innerHTML, inte textContent: en rubrik kan bära egen markup
         // (spans/radbrytningar) som textContent-skrivningen ersätter — reset
@@ -1252,6 +1301,7 @@
     // Variant-ops (Compare-vyn): taggen ska säga VAD som hände per element.
     variant_moved: "moved up",
     variant_retext: "rewrote this text",
+    variant_inserted: "surfaced info from another page",
   };
   function markTouched() {
     // Old tags from a previous apply (hydration re-run) are stale — clear them.
@@ -1351,7 +1401,7 @@
       residue: function () {
         try {
           return document.querySelectorAll(
-            ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext]",
+            ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext],[data-angel-inserted]",
           ).length;
         } catch (e) {
           return -1;
@@ -1866,7 +1916,7 @@
           var checkSurvival = function () {
             try {
               var residue = document.querySelectorAll(
-                ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext]",
+                ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext],[data-angel-inserted]",
               ).length;
               if (residue === 0 && reapplies < 2) {
                 reapplies++;
@@ -2042,7 +2092,7 @@
       // Angel-spår i DOM:en betyder adapterad sida oavsett hur vi kom hit.
       if (
         document.querySelector(
-          ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext]",
+          ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext],[data-angel-inserted]",
         )
       )
         return;

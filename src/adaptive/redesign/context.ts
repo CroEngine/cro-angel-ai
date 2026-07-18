@@ -74,6 +74,17 @@ export interface RedesignContentModel {
   hero?: { headline: string; subheadline?: string };
 }
 
+/** Verbatim-quotable content from ANOTHER page on the same site (korssid-lyftet,
+ *  task #117; ägarbeslut 2026-07-18: ordagrant · pris först · under hjälten).
+ *  Snippets come from extractPriceSnippets over the source page's frozen HTML —
+ *  the list IS the whitelist: validateOps rejects any insert whose text is not
+ *  an exact entry here. Assemblers only attach source pages when the LANDING
+ *  page lacks price info of its own (aldrig dubbelvisning). */
+export interface SourcePageContent {
+  path: string;
+  snippets: { text: string; tag: string }[];
+}
+
 /** The segment we optimize for + the actionable WHY. */
 export interface RedesignSegmentInsight {
   key: string;
@@ -99,6 +110,9 @@ export interface RedesignContext {
   content: RedesignContentModel;
   segment: RedesignSegmentInsight;
   guardrails: RedesignGuardrails;
+  /** Present ⇒ insert_snippet is in the vocabulary and these are its ONLY
+   *  legal quotes. Absent ⇒ single-page context, exactly as before. */
+  sourcePages?: SourcePageContent[];
 }
 
 /** Classify a lifetime→recent conversion move. `minRel` guards against calling a
@@ -151,14 +165,32 @@ export function buildRedesignContext(inputs: {
   content: RedesignContentModel;
   segment: RedesignSegmentInsight;
   guardrails?: RedesignGuardrails;
+  sourcePages?: SourcePageContent[];
 }): RedesignContext {
+  const sourcePages = (inputs.sourcePages ?? []).filter((p) => p.snippets.length > 0);
+  // insert_snippet finns i vokabulären ENDAST när det finns citerbara källsidor
+  // — en enkelsidig kontext behåller exakt den gamla vokabulären, så inget
+  // befintligt flöde ändrar beteende av misstag.
+  const guardrails =
+    inputs.guardrails ??
+    (sourcePages.length === 0
+      ? DEFAULT_REDESIGN_GUARDRAILS
+      : {
+          ...DEFAULT_REDESIGN_GUARDRAILS,
+          allowed: [
+            ...DEFAULT_REDESIGN_GUARDRAILS.allowed,
+            "Insert ONE of the listed verbatim quotes from another page of the SAME site as a new block directly below the hero (op insert_snippet) — exact text only, never paraphrased.",
+          ],
+          ops: [...DEFAULT_REDESIGN_GUARDRAILS.ops, "insert_snippet"],
+        });
   return {
     site: inputs.site,
     goal: inputs.goal,
     page: inputs.page,
     content: inputs.content,
     segment: inputs.segment,
-    guardrails: inputs.guardrails ?? DEFAULT_REDESIGN_GUARDRAILS,
+    guardrails,
+    ...(sourcePages.length > 0 ? { sourcePages } : {}),
   };
 }
 
@@ -223,6 +255,21 @@ export function renderRedesignPrompt(ctx: RedesignContext): string {
   }
   L.push("");
 
+  if (ctx.sourcePages?.length) {
+    L.push("## Quotable content from OTHER pages on the same site (verbatim ONLY)");
+    L.push(
+      "This page's segment disproportionately navigates onward (see the segment " +
+        "observations). You may surface ONE of these statements on this page with an " +
+        "insert_snippet op — the exact text below, character for character. Any " +
+        "paraphrase, combination, or other off-page text is rejected.",
+    );
+    for (const sp of ctx.sourcePages) {
+      L.push(`From ${sp.path}:`);
+      for (const s of sp.snippets) L.push(`  - “${s.text}”`);
+    }
+    L.push("");
+  }
+
   L.push(`## The segment — ${seg.label}`);
   L.push(
     `- Volume: ${seg.visitsLifetime} visits · conversion ${pct(seg.conversionRateLifetime)} lifetime, ` +
@@ -253,7 +300,13 @@ export function renderRedesignPrompt(ctx: RedesignContext): string {
       '"detail" is the EXACT replacement copy — same meaning, fewer words, and it must ' +
       "not introduce any number, superlative, or promise that is not already on the page " +
       "(new claims are rejected). If the segment is too thin to justify a change, return " +
-      "an empty array and say why.",
+      "an empty array and say why." +
+      (ctx.sourcePages?.length
+        ? ' For insert_snippet: { "op": "insert_snippet", "targetId": "hero", ' +
+          '"sourcePath": the listed page the quote comes from, "detail": one quote from ' +
+          'the list above VERBATIM, "why": ... }. At most ONE insert per plan; it is ' +
+          "placed directly below the hero."
+        : ""),
   );
 
   return L.join("\n");

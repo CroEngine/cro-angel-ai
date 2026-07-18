@@ -49,9 +49,14 @@ export interface VisitorSegment {
  *  move_up = lift the located section ONE step earlier (per op — two ops, two
  *  steps), never "to the top". */
 export interface ServeOp {
-  op: "move_up" | "set_text";
+  op: "move_up" | "set_text" | "insert_snippet";
+  /** insert_snippet: locates the HERO heading (h1) — the verified block is
+   *  inserted directly after the hero's top-level block, as plain text in a
+   *  <p> styled by the page's own cascade (aldrig rå HTML — texten är data,
+   *  inte markup, så DB-raden kan aldrig bli en injektionskanal). */
   locator: { tag?: string; text: string };
-  /** set_text only: the exact verified replacement text. */
+  /** set_text: the exact verified replacement text.
+   *  insert_snippet: the exact verbatim quote from the source page. */
   value?: string;
   why?: string;
 }
@@ -109,6 +114,7 @@ function serveOpValid(o: ServeOp): boolean {
   if (typeof text !== "string" || !text.trim()) return false;
   if (o.op === "move_up") return true;
   if (o.op === "set_text") return typeof o.value === "string" && o.value.trim().length > 0;
+  if (o.op === "insert_snippet") return typeof o.value === "string" && o.value.trim().length > 0;
   return false;
 }
 

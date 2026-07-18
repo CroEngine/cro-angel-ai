@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { extractContentModel } from "../extract";
+import { extractContentModel, extractPriceSnippets } from "../extract";
 
 // A small page in the SHAPE of a real SSR homepage: nav + footer headings that
 // must NOT become sections, an h1 that appears after some h2s (hero must still be
@@ -56,9 +56,7 @@ describe("extractContentModel — HTML → content model loader", () => {
   it("gives every section a stable, unique id and monotonic positions", () => {
     const ids = model.sections.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(model.sections.map((s) => s.position)).toEqual(
-      model.sections.map((_, i) => i + 1),
-    );
+    expect(model.sections.map((s) => s.position)).toEqual(model.sections.map((_, i) => i + 1));
   });
 
   it("extracts conversion CTAs from real anchor text", () => {
@@ -223,5 +221,40 @@ describe("extractContentModel — svensk sida genom samma vokabulär", () => {
   it("hittar 'används av …' som trusted_by", () => {
     const tb = model.trustSignals.find((t) => t.type === "trusted_by");
     expect(tb?.text).toMatch(/Används av 300 företag/i);
+  });
+});
+
+describe("extractPriceSnippets — ordagrann pris-whitelist (task #117)", () => {
+  const html = `<!doctype html><html><body><main>
+    <div class="hero"><h1>Verktyget</h1><p>Allt du behöver.</p></div>
+    <section><h2>Priser</h2>
+      <p>Från 99 kr/mån — alla funktioner ingår.</p>
+      <li>$399/month for teams</li>
+      <p>Från 99 kr/mån — alla funktioner ingår.</p>
+      <p>Vi älskar transparens.</p>
+    </section>
+    <footer><p>© 2026 — 12 000 kunder</p></footer>
+  </main></body></html>`;
+
+  it("finds verbatim price statements in leaf elements, deduped", () => {
+    const snippets = extractPriceSnippets(html);
+    expect(snippets.map((s) => s.text)).toEqual([
+      "Från 99 kr/mån — alla funktioner ingår.",
+      "$399/month for teams",
+    ]);
+    expect(snippets[0].tag).toBe("p");
+    expect(snippets[1].tag).toBe("li");
+  });
+
+  it("requires a digit — bare marketing text is never a price statement", () => {
+    expect(
+      extractPriceSnippets("<main><p>Gratis och grymt bra!</p><p>Prisvärt för alla.</p></main>"),
+    ).toEqual([]);
+  });
+
+  it("returns [] for a page without price info (dubbelvisningsvaktens signal)", () => {
+    expect(extractPriceSnippets("<main><h1>Om oss</h1><p>Vi grundades 2019.</p></main>")).toEqual(
+      [],
+    );
   });
 });

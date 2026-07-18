@@ -25,7 +25,9 @@ import { readFileSync } from "node:fs";
 import { transform } from "esbuild";
 
 const source = readFileSync("public/adaptive.js", "utf8");
-const minified = (await transform(source, { minify: true, target: "es2017", legalComments: "none" })).code;
+const minified = (
+  await transform(source, { minify: true, target: "es2017", legalComments: "none" })
+).code;
 
 let html = readFileSync("fixtures/real-sites/plausible-io.html", "utf8");
 html = html.replace(/<script[\s\S]*?<\/script>/gi, "");
@@ -56,7 +58,9 @@ const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefi
 const browser = await chromium.launch({ headless: true, executablePath });
 
 async function boot(page, snippet, { harness }) {
-  await page.route("**/*", (r) => (r.request().url().startsWith("data:") ? r.continue() : r.abort()));
+  await page.route("**/*", (r) =>
+    r.request().url().startsWith("data:") ? r.continue() : r.abort(),
+  );
   await page.setContent(html, { waitUntil: "domcontentloaded" });
   await page.evaluate(
     ({ src, harness }) => {
@@ -77,12 +81,21 @@ async function boot(page, snippet, { harness }) {
 const state = (page) =>
   page.evaluate(() => {
     const main = document.querySelector("main") || document.body;
-    const h = [...document.querySelectorAll("h2")].find((x) => (x.textContent || "").includes("People ❤️ Plausible"));
+    const h = [...document.querySelectorAll("h2")].find((x) =>
+      (x.textContent || "").includes("People ❤️ Plausible"),
+    );
     let sec = h;
-    while (sec && sec.parentElement && sec.parentElement !== main && sec.parentElement !== document.body)
+    while (
+      sec &&
+      sec.parentElement &&
+      sec.parentElement !== main &&
+      sec.parentElement !== document.body
+    )
       sec = sec.parentElement;
     return {
-      h1: (document.querySelector("main h1") || document.querySelector("h1")).textContent.replace(/\s+/g, " ").trim(),
+      h1: (document.querySelector("main h1") || document.querySelector("h1")).textContent
+        .replace(/\s+/g, " ")
+        .trim(),
       peopleIdx: [...main.children].indexOf(sec),
       moved: document.querySelectorAll("[data-angel-moved]").length,
       retext: document.querySelectorAll("[data-angel-retext]").length,
@@ -125,17 +138,28 @@ async function runSuite(label, snippet) {
       await page.evaluate(() => typeof window.AngelAdaptive === "object"),
     );
     const before = await state(page);
-    const applied = await page.evaluate((v) => window.__angel.apply({ adaptations: [], variant: v }), VARIANT);
+    const applied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      VARIANT,
+    );
     const after = await state(page);
     check("variant rapporterad applicerad", applied.includes("variant:smoke"));
     check("sektionen lyft EXAKT två steg", before.peopleIdx - after.peopleIdx === 2);
-    check("rubriken bytt till verifierat värde", after.h1.startsWith("Privacy-friendly Google Analytics"));
+    check(
+      "rubriken bytt till verifierat värde",
+      after.h1.startsWith("Privacy-friendly Google Analytics"),
+    );
     check("markörer satta (moved+retext)", after.moved === 1 && after.retext === 1);
-    const applied2 = await page.evaluate((v) => window.__angel.apply({ adaptations: [], variant: v }), VARIANT);
+    const applied2 = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      VARIANT,
+    );
     const afterRe = await state(page);
     check(
       "omkörning idempotent (hydrerings-skydd)",
-      applied2.includes("variant:smoke") && afterRe.peopleIdx === after.peopleIdx && afterRe.moved === 1,
+      applied2.includes("variant:smoke") &&
+        afterRe.peopleIdx === after.peopleIdx &&
+        afterRe.moved === 1,
     );
     await page.evaluate(() => window.__angel.reset());
     const restored = await state(page);
@@ -149,9 +173,15 @@ async function runSuite(label, snippet) {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await boot(page, snippet, { harness: true });
     const before = await state(page);
-    const applied = await page.evaluate((v) => window.__angel.apply({ adaptations: [], variant: v }), BROKEN_VARIANT);
+    const applied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      BROKEN_VARIANT,
+    );
     const after = await state(page);
-    check("trasig lokator ⇒ varianten rapporteras EJ applicerad", !applied.includes("variant:smoke-broken"));
+    check(
+      "trasig lokator ⇒ varianten rapporteras EJ applicerad",
+      !applied.includes("variant:smoke-broken"),
+    );
     check("trasig lokator ⇒ DOM byte-identisk med baslinjen", after.mainHtml === before.mainHtml);
     await page.close();
   }
@@ -162,7 +192,9 @@ async function runSuite(label, snippet) {
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     const nestedHtml = readFileSync("fixtures/synthetic/nested-sections.html", "utf8");
-    await page.route("**/*", (r) => (r.request().url().startsWith("data:") ? r.continue() : r.abort()));
+    await page.route("**/*", (r) =>
+      r.request().url().startsWith("data:") ? r.continue() : r.abort(),
+    );
     await page.setContent(nestedHtml, { waitUntil: "domcontentloaded" });
     await page.evaluate(
       ({ src }) => {
@@ -189,7 +221,11 @@ async function runSuite(label, snippet) {
     const before = await nestedState();
     const applied = await page.evaluate(
       (v) => window.__angel.apply({ adaptations: [], variant: v }),
-      { id: "smoke-nested", segmentKey: "x", ops: [{ op: "move_up", locator: { tag: "h2", text: "Gamma Pricing" } }] },
+      {
+        id: "smoke-nested",
+        segmentKey: "x",
+        ops: [{ op: "move_up", locator: { tag: "h2", text: "Gamma Pricing" } }],
+      },
     );
     const after = await nestedState();
     check("nästlad: variant applicerad", applied.includes("variant:smoke-nested"));
@@ -210,7 +246,9 @@ async function runSuite(label, snippet) {
   //    brödtext förstör innehållet, och utan sektionsnivå får INGET flyttas.
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-    await page.route("**/*", (r) => (r.request().url().startsWith("data:") ? r.continue() : r.abort()));
+    await page.route("**/*", (r) =>
+      r.request().url().startsWith("data:") ? r.continue() : r.abort(),
+    );
     await page.setContent(
       `<main><article><h1>Article Hero</h1><p>intro</p><h2>Alpha Part</h2><p>alpha body</p><h2>Beta Part</h2><p>beta body</p></article></main>`,
       { waitUntil: "domcontentloaded" },
@@ -232,10 +270,17 @@ async function runSuite(label, snippet) {
     const before = await page.evaluate(() => document.querySelector("main").innerHTML);
     const applied = await page.evaluate(
       (v) => window.__angel.apply({ adaptations: [], variant: v }),
-      { id: "smoke-flat", segmentKey: "x", ops: [{ op: "move_up", locator: { tag: "h2", text: "Beta Part" } }] },
+      {
+        id: "smoke-flat",
+        segmentKey: "x",
+        ops: [{ op: "move_up", locator: { tag: "h2", text: "Beta Part" } }],
+      },
     );
     const after = await page.evaluate(() => document.querySelector("main").innerHTML);
-    check("platt artikel: flytt VÄGRAS (ingen sektionsnivå)", !applied.includes("variant:smoke-flat"));
+    check(
+      "platt artikel: flytt VÄGRAS (ingen sektionsnivå)",
+      !applied.includes("variant:smoke-flat"),
+    );
     check("platt artikel: DOM byte-identisk", after === before);
     await page.close();
   }
@@ -246,7 +291,9 @@ async function runSuite(label, snippet) {
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     const nestedHtml = readFileSync("fixtures/synthetic/nested-sections.html", "utf8");
-    await page.route("**/*", (r) => (r.request().url().startsWith("data:") ? r.continue() : r.abort()));
+    await page.route("**/*", (r) =>
+      r.request().url().startsWith("data:") ? r.continue() : r.abort(),
+    );
     await page.setContent(nestedHtml, { waitUntil: "domcontentloaded" });
     await page.evaluate(
       ({ src }) => {
@@ -268,7 +315,11 @@ async function runSuite(label, snippet) {
         id: "smoke-2phase",
         segmentKey: "x",
         ops: [
-          { op: "set_text", locator: { tag: "h2", text: "Gamma Pricing" }, value: "Pricing that scales" },
+          {
+            op: "set_text",
+            locator: { tag: "h2", text: "Gamma Pricing" },
+            value: "Pricing that scales",
+          },
           { op: "move_up", locator: { tag: "h2", text: "Gamma Pricing" } },
         ],
       },
@@ -277,11 +328,106 @@ async function runSuite(label, snippet) {
       order: [...document.querySelector(".wrapper").children].map((c) => c.id),
       gammaText: document.querySelector("#sec-gamma h2").textContent,
     }));
-    check("tvåfas: BÅDA ops applicerade trots samma mål (retext före flytt)", applied.includes("variant:smoke-2phase"));
+    check(
+      "tvåfas: BÅDA ops applicerade trots samma mål (retext före flytt)",
+      applied.includes("variant:smoke-2phase"),
+    );
     check(
       "tvåfas: sektionen flyttad OCH omtextad",
       JSON.stringify(state6.order) === JSON.stringify(["sec-alpha", "sec-gamma", "sec-beta"]) &&
         state6.gammaText === "Pricing that scales",
+    );
+    await page.close();
+  }
+
+  // 7) insert_snippet (korssid-lyftet, task #117): det ordagranna citatet
+  //    sätts in som <p> DIREKT EFTER hjälte-blocket (.hero — ankarregeln är
+  //    "h1:ans högsta census-h2-fria förfader", ALDRIG sid-wrappern),
+  //    idempotent vid omkörning, spårlöst borta efter reset.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const nestedHtml = readFileSync("fixtures/synthetic/nested-sections.html", "utf8");
+    await page.route("**/*", (r) =>
+      r.request().url().startsWith("data:") ? r.continue() : r.abort(),
+    );
+    await page.setContent(nestedHtml, { waitUntil: "domcontentloaded" });
+    await page.evaluate(
+      ({ src }) => {
+        window.PerformanceObserver = undefined;
+        window.__ANGEL_HARNESS__ = true;
+        const m = document.createElement("script");
+        m.type = "text/plain";
+        m.setAttribute("data-site", "smoke");
+        m.setAttribute("data-endpoint", "https://dead.invalid");
+        m.setAttribute("src", "data:text/plain,adaptive.js");
+        document.head.appendChild(m);
+        (0, eval)(src);
+      },
+      { src: snippet },
+    );
+    const QUOTE = "Från 99 kr/mån — alla funktioner ingår.";
+    const insertState = () =>
+      page.evaluate(() => {
+        const hero = document.querySelector(".hero");
+        const ins = document.querySelectorAll("[data-angel-inserted]");
+        return {
+          count: ins.length,
+          afterHero: ins.length === 1 && hero.nextElementSibling === ins[0],
+          text: ins.length === 1 ? ins[0].textContent : null,
+          tag: ins.length === 1 ? ins[0].tagName.toLowerCase() : null,
+          mainHtml: document.querySelector("main").innerHTML,
+        };
+      });
+    const before = await insertState();
+    const applied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      {
+        id: "smoke-insert",
+        segmentKey: "x",
+        ops: [
+          {
+            op: "insert_snippet",
+            locator: { tag: "h1", text: "Nested Fixture Hero" },
+            value: QUOTE,
+          },
+        ],
+      },
+    );
+    const after = await insertState();
+    check("insert: variant applicerad", applied.includes("variant:smoke-insert"));
+    check(
+      "insert: <p> DIREKT efter hjälte-blocket (inte wrappern, inte sidbotten)",
+      after.afterHero && after.tag === "p",
+    );
+    check("insert: texten ordagrann via textContent", after.text === QUOTE);
+    const applied2 = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      {
+        id: "smoke-insert",
+        segmentKey: "x",
+        ops: [
+          {
+            op: "insert_snippet",
+            locator: { tag: "h1", text: "Nested Fixture Hero" },
+            value: QUOTE,
+          },
+        ],
+      },
+    );
+    const afterRe = await insertState();
+    check(
+      "insert: omkörning idempotent (exakt EN nod)",
+      applied2.includes("variant:smoke-insert") && afterRe.count === 1,
+    );
+    await page.evaluate(() => window.__angel.reset());
+    const restored = await insertState();
+    check(
+      "insert: reset tar bort noden BYTE-exakt",
+      restored.count === 0 && restored.mainHtml === before.mainHtml,
+    );
+    check(
+      "insert: noll residue efter reset",
+      (await page.evaluate(() => window.__angel.residue())) === 0,
     );
     await page.close();
   }
