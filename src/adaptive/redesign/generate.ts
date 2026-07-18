@@ -187,6 +187,36 @@ export function validateOps(rawOps: unknown[], ctx: RedesignContext): RedesignPl
       why: typeof o.why === "string" ? o.why : "",
     });
   }
+  // Netto-nolla-vakten (breddfynd 1, Booking-obduktionen 2026-07-18): två
+  // move_up på ANGRÄNSANDE sektioner i plan-ordningen "flytta B, flytta A"
+  // tar ut varandra — varje flytt applicerar korrekt men sidan slutar
+  // identisk. Simulera flyttarna på sektionslistan; blir nettoresultatet
+  // ursprungsordningen är flyttarna meningslösa och avvisas som grupp, så
+  // designern får feedback i stället för att en nolla preflightas.
+  const moveOps = ops.filter((o) => o.op === "move_up");
+  if (moveOps.length > 0) {
+    const initial = [
+      ...(ctx.content.hero ? ["hero"] : []),
+      ...ctx.content.sections.map((s) => s.id),
+    ];
+    const order = [...initial];
+    for (const mv of moveOps) {
+      const i = order.indexOf(mv.targetId);
+      if (i > 0) {
+        [order[i - 1], order[i]] = [order[i], order[i - 1]];
+      }
+    }
+    if (order.every((id, i) => id === initial[i])) {
+      for (const mv of moveOps) {
+        rejected.push({
+          op: mv,
+          reason:
+            "move set is a net no-op — the moves cancel each other out and the page ends unchanged",
+        });
+      }
+      return { ops: ops.filter((o) => o.op !== "move_up"), rejected };
+    }
+  }
   return { ops, rejected };
 }
 

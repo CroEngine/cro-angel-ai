@@ -445,10 +445,31 @@ export async function measurePlan(
       const movedEls: Element[] = [];
       const insertedEls: Element[] = [];
       const textSnapshots: { el: Element; html: string }[] = [];
+      // Flytt-målens absoluta topp FÖRE apply: ordnings-jämförelsen ser bara
+      // census-sektioner, men en flytt över en rubriklös GRANNSEKTION (Trello-
+      // obduktionen, breddfynd 1) är visuellt äkta — förskjutningen i px är
+      // beviset metriken annars är blind för.
+      const moveTopsBefore = new Map<Element, number>();
+      if (resolvedAll) {
+        for (const r of resolved) {
+          if (r.op === "move_up" && !moveTopsBefore.has(r.sec)) {
+            moveTopsBefore.set(r.sec, r.sec.getBoundingClientRect().top + window.scrollY);
+          }
+        }
+      }
       if (resolvedAll) {
         for (const r of resolved) {
           if (r.op === "move_up") {
-            const prev = r.sec.previousElementSibling;
+            // Breddfynd 1 (linear-obduktionen 2026-07-18): syskonet närmast
+            // ovanför är ofta en 1-2px dekor-divider — en-stegsflytten byter
+            // då bara plats med en osynlig linje och sidan står still. Kliv
+            // över triviala syskon (census-fria OCH < 8px höga) och landa
+            // ovanför närmsta RIKTIGA syskon. SPEGELVÄND i snippetens
+            // applyVariant (public/adaptive.js) — håll i synk.
+            let prev = r.sec.previousElementSibling;
+            while (prev && !censusCount.has(prev) && prev.getBoundingClientRect().height < 8) {
+              prev = prev.previousElementSibling;
+            }
             if (prev && r.sec.parentElement === prev.parentElement) {
               r.sec.parentElement!.insertBefore(r.sec, prev);
               if (!movedEls.includes(r.sec)) movedEls.push(r.sec);
@@ -546,6 +567,19 @@ export async function measurePlan(
         lcpTopBefore !== null && lcpTopAfter !== null
           ? Math.round(Math.abs(lcpTopAfter - lcpTopBefore))
           : null;
+      // Största faktiska förflyttningen (px) bland flyttade sektioner —
+      // avblindar "order unchanged"-varningen när flytten korsade en
+      // rubriklös sektion som ordnings-listan inte kan se.
+      let movedShiftPx = 0;
+      for (const el of movedEls) {
+        const b = moveTopsBefore.get(el);
+        if (b !== undefined) {
+          movedShiftPx = Math.max(
+            movedShiftPx,
+            Math.round(Math.abs(el.getBoundingClientRect().top + window.scrollY - b)),
+          );
+        }
+      }
       let insertedAboveMain = 0;
       let insertedGapToHeroPx = 0;
       let insertedVisible = true;
@@ -622,6 +656,7 @@ export async function measurePlan(
         insertedVisible,
         insertedRemoved,
         lcpShiftPx,
+        movedShiftPx,
         reversedOrderMatches,
         lcpFound: lcpEl !== null,
         opsTouchingLcp,
@@ -660,6 +695,7 @@ export function toRenderMeasurements(
     insertedVisible: raw.insertedVisible,
     insertedRemoved: raw.insertedRemoved,
     lcpShiftPx: raw.lcpShiftPx ?? undefined,
+    movedShiftPx: raw.movedShiftPx,
   };
 }
 

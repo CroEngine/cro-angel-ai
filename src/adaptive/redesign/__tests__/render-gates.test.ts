@@ -148,7 +148,13 @@ describe("evaluateRenderGates — pixel-half beauty gates", () => {
 
   it("stacks the most severe verdict when several gates trip", () => {
     const r = evaluateRenderGates(
-      clean({ movedAboveMain: 1, hOverflowAfterPx: 50, ctaBroken: 1, requestedMoves: 2, appliedMoves: 1 }),
+      clean({
+        movedAboveMain: 1,
+        hOverflowAfterPx: 50,
+        ctaBroken: 1,
+        requestedMoves: 2,
+        appliedMoves: 1,
+      }),
     );
     expect(r.verdict).toBe("fail");
     // fail reasons come before the soft warn about unapplied moves
@@ -201,5 +207,35 @@ describe("evaluateRenderGates — insert_snippet-grindarna (task #117)", () => {
     const r = evaluateRenderGates(clean({ requestedInserts: 1, appliedInserts: 0 }));
     expect(r.verdict).toBe("warn");
     expect(r.reasons.join(" ")).toMatch(/insert\(s\) could not be applied/);
+  });
+});
+
+describe("evaluateRenderGates — flytt-no-op-varningen (breddfynd 1)", () => {
+  // Order lists unchanged in every case below — the question is whether the
+  // moved section actually TRAVELLED.
+  const unmoved = (over: Partial<RenderMeasurements> = {}) =>
+    clean({
+      afterOrder: ["hero", "features", "testimonials", "comparison", "pricing"],
+      ...over,
+    });
+
+  it("WARNS when the order is unchanged and the section barely shifted (divider swap)", () => {
+    const r = evaluateRenderGates(unmoved({ movedShiftPx: 2 }));
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.join(" ")).toMatch(/section order is unchanged/);
+  });
+
+  it("does NOT warn when the section travelled far despite unchanged census order (heading-less neighbour)", () => {
+    // The Trello autopsy: the section moved 281px above a real section whose
+    // heading is not an h2 — invisible to the order lists, real to a visitor.
+    const r = evaluateRenderGates(unmoved({ movedShiftPx: 281 }));
+    expect(r.verdict).toBe("pass");
+    expect(r.reasons).toEqual([]);
+  });
+
+  it("keeps the old order-only semantics when movedShiftPx is absent (older observations)", () => {
+    const r = evaluateRenderGates(unmoved());
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.join(" ")).toMatch(/section order is unchanged/);
   });
 });
