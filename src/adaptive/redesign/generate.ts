@@ -6,8 +6,9 @@
 // is a section THAT EXISTS on the page. That structurally enforces "never
 // invent": you cannot move / retext / reveal something that isn't already there.
 //
-// Pure + framework-free. The actual model call is injected (see generate.server.ts
-// for the Anthropic adapter) so this stays unit-testable with a stub.
+// Pure + framework-free. The actual model call is injected (the production
+// Anthropic adapter is scripts/loop/designer.ts) so this stays unit-testable
+// with a stub.
 
 import { renderRedesignPrompt, type RedesignContext } from "./context";
 import { introducedClaims } from "./claims";

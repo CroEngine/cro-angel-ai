@@ -12,7 +12,7 @@
 // is parsed off the real DOM, and the ops only rearrange/condense existing blocks.
 //
 // On generation: there is no ANTHROPIC_API_KEY in this lab, so `complete` returns
-// the ops the design model (the same class of model that runs `completeWithClaude`
+// the ops the design model (the same class of model that runs `anthropicDesigner`
 // in prod) reasons out from the real brief. They are then validated + previewed by
 // the SAME code that runs in production — the guard and gates are not simulated.
 //
@@ -88,7 +88,7 @@ console.log(renderRedesignPrompt(ctx));
 
 // ── 3. Generation — the design model proposes reversible ops ──────────────────
 // No API key in the lab → `complete` returns the ops reasoned from the real brief
-// above. In prod this is completeWithClaude (vision + screenshot). One op is
+// above. In prod this is anthropicDesigner (scripts/loop/designer.ts). One op is
 // deliberately INVENTED to demonstrate the guard rejects it on a real page too.
 const designModelReply = async () =>
   JSON.stringify([
