@@ -171,9 +171,30 @@ async function browserRenderedHtml(
         ? { top: Math.min(prev.top, m.top), area: Math.max(prev.area, m.area) }
         : { top: m.top, area: m.area };
     }
-    const outHtml = await page.evaluate(
-      () => "<!doctype html>\n" + document.documentElement.outerHTML,
-    );
+    const outHtml = await page.evaluate(() => {
+      // CSSOM-serialisering (Trello-obduktionen 2026-07-18, varv 2):
+      // styled-components m.fl. injicerar i produktionsläge sina regler via
+      // insertRule — <style data-styled>-taggarna är TOMMA i outerHTML och
+      // kopian blir ostylad trots browser-rendering. Skriv därför varje
+      // stylesheets faktiska CSSOM-regler tillbaka in i sin <style>-tagg
+      // (cross-origin-länkade ark kastar vid läsning och lämnas orörda —
+      // de inlinas redan av stilmalls-steget efteråt).
+      for (const sheet of Array.from(document.styleSheets)) {
+        const owner = sheet.ownerNode;
+        if (!owner || (owner as Element).tagName !== "STYLE") continue;
+        try {
+          const rules = Array.from(sheet.cssRules)
+            .map((r) => r.cssText)
+            .join("\n");
+          if (rules && rules.length > ((owner as Element).textContent || "").length) {
+            (owner as Element).textContent = rules;
+          }
+        } catch {
+          /* oläsbart ark — lämna som det är */
+        }
+      }
+      return "<!doctype html>\n" + document.documentElement.outerHTML;
+    });
     return { html: outHtml, imgPriority: priority };
   } finally {
     await browser.close();
