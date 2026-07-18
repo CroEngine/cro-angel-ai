@@ -214,15 +214,50 @@ export async function measurePlan(
         return !!top && (el.contains(top) || top.contains(el));
       }
       function ctaClickable(text: string): boolean | null {
-        const matches = Array.from(document.querySelectorAll("a,button")).filter((n) =>
-          norm(n.textContent || "").includes(text),
+        // Snabbvägen: a/button som bär texten i INNEHÅLL eller ARIA-LABEL —
+        // cover-/ikonlänkar är ofta tomma element med namnet i aria
+        // (Teamtailor-fyndet 2026-07-18: <a aria-label="Boka en demo"></a>).
+        const direct = Array.from(document.querySelectorAll("a,button")).filter((n) =>
+          norm(`${n.textContent || ""} ${n.getAttribute("aria-label") || ""}`).includes(text),
         );
-        if (!matches.length) return null;
-        const el = matches.find((n) => {
+        const visible = direct.find((n) => {
           const r = n.getBoundingClientRect();
           return r.width > 0 && r.height > 0;
         });
-        return el ? hitTest(el) : false;
+        if (visible) return hitTest(visible);
+        // Cover-link-mönstret: den SYNLIGA knappen är en ren text-div
+        // (aria-hidden) och länken ett tomt absolut-positionerat syskon
+        // OVANPÅ — ingen klickbar förfader finns, och a/button-kandidaterna
+        // är gömda nav-dubbletter (0×0). Semantiken en användare bryr sig om:
+        // träffar ett klick där TEXTEN står en länk/knapp? Djupaste synliga
+        // textbärare (top-down så stora sidor inte skannas kvadratiskt),
+        // klickpunkt i centrum, närmaste klickbara i det som tar emot klicket.
+        const bearers: Element[] = [];
+        const stack: Element[] = [document.body];
+        while (stack.length && bearers.length < 8) {
+          const el = stack.pop()!;
+          const kids = Array.from(el.children).filter((c) =>
+            norm(c.textContent || "").includes(text),
+          );
+          if (kids.length === 0) {
+            if (el !== document.body && norm(el.textContent || "").includes(text)) {
+              const r = el.getBoundingClientRect();
+              if (r.width > 0 && r.height > 0) bearers.push(el);
+            }
+          } else {
+            for (const k of kids) stack.push(k);
+          }
+        }
+        if (!direct.length && !bearers.length) return null;
+        for (const el of bearers) {
+          el.scrollIntoView({ block: "center" });
+          const r = el.getBoundingClientRect();
+          const cx = Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1);
+          const cy = Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1);
+          const top = document.elementFromPoint(cx, cy);
+          if (top && top.closest("a,button,[role=button]")) return true;
+        }
+        return false;
       }
       function ctaClickableSel(sel: string): boolean | null {
         let el: Element | null = null;

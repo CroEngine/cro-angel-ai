@@ -319,3 +319,27 @@ describe("extractLinkStyleDonor — stil-donatorn (alternativ D)", () => {
     expect(extractLinkStyleDonor("<main><a>utan klass</a></main>")).toBeNull();
   });
 });
+
+describe("extractCtaCandidates — cover-länkar med aria-label (Teamtailor-fyndet)", () => {
+  it("uses the accessible name when the anchor itself is empty", () => {
+    const page = `
+      <main>
+        <h1>Få ditt team att växa</h1>
+        <div class="button_main_wrap">
+          <div class="clickable_wrap u-cover-absolute">
+            <a aria-label="Boka en demo" href="/sv/demo/" class="clickable_link"></a>
+          </div>
+          <div aria-hidden="true" class="button_main_text">Boka demo</div>
+        </div>
+      </main>`;
+    const m = extractContentModel(page);
+    const cta = m.ctas.find((c) => c.text === "Boka en demo");
+    expect(cta).toBeDefined();
+    expect(cta?.intent).toBe("conversion");
+  });
+
+  it("still skips anchors with neither text nor accessible name", () => {
+    const m = extractContentModel('<main><h1>X</h1><a href="/x" class="ikon"></a></main>');
+    expect(m.ctas).toEqual([]);
+  });
+});
