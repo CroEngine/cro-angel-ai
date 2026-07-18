@@ -9,6 +9,7 @@ import {
   type FindingCategory,
   type PageReport,
 } from "./findings";
+import { downloadJson } from "./download";
 
 const CATEGORY_LABELS: Record<FindingCategory, string> = {
   seo: "SEO Analysis",
@@ -20,18 +21,6 @@ const CATEGORY_LABELS: Record<FindingCategory, string> = {
 const CATEGORY_ORDER: FindingCategory[] = ["seo", "cro", "ux", "interaction"];
 
 const ACCENT = "#3b82f6";
-
-function downloadJson(filename: string, payload: unknown) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
 
 function hostnameOf(url: string): string {
   try { return new URL(url).hostname; } catch { return url; }
