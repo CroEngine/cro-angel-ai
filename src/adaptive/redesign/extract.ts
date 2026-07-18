@@ -132,14 +132,18 @@ export function extractCtaCandidates(html: string): CtaCandidate[] {
   let order = 0;
   while ((m = re.exec(html))) {
     const attrs = m[2];
-    const t = stripTags(m[3]);
     order++;
-    if (!t || t.length > 32 || seen.has(t.toLowerCase())) continue;
-    seen.add(t.toLowerCase());
     const attrVal = (name: string): string => {
       const a = new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, "i").exec(attrs);
       return a ? (a[1] ?? a[2] ?? "") : "";
     };
+    // Cover-/ikonlänkar (Teamtailor-fyndet 2026-07-18): ett TOMT ankare med
+    // namnet i aria-label ÄR sidans riktiga CTA — den synliga texten bor i en
+    // aria-hidden syskon-div. Tillgänglighetsnamnet är lika ordagrant som
+    // innehållet; utan det ser briefen 0 CTA:er på cover-link-sajter.
+    const t = stripTags(m[3]) || stripTags(attrVal("aria-label"));
+    if (!t || t.length > 32 || seen.has(t.toLowerCase())) continue;
+    seen.add(t.toLowerCase());
     const href = attrVal("href");
     const attrText = `${attrVal("aria-label")} ${attrVal("title")}`.trim();
     out.push({
