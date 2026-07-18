@@ -83,6 +83,10 @@ export interface RedesignContentModel {
 export interface SourcePageContent {
   path: string;
   snippets: { text: string; tag: string }[];
+  /** "price" = beloppsutsagor; "answer" = offert-fallbacken (ägarbeslut
+   *  2026-07-18): sidan publicerar inga belopp, så dess EGEN huvudutsaga
+   *  ("Låt oss ge dig en offert") är svaret — serverat som länk till sidan. */
+  kind?: "price" | "answer";
 }
 
 /** The segment we optimize for + the actionable WHY. */
@@ -264,7 +268,11 @@ export function renderRedesignPrompt(ctx: RedesignContext): string {
         "paraphrase, combination, or other off-page text is rejected.",
     );
     for (const sp of ctx.sourcePages) {
-      L.push(`From ${sp.path}:`);
+      L.push(
+        sp.kind === "answer"
+          ? `From ${sp.path} (this page publishes no prices — its own answer below is shown as a LINK to the page):`
+          : `From ${sp.path}:`,
+      );
       for (const s of sp.snippets) L.push(`  - “${s.text}”`);
     }
     L.push("");

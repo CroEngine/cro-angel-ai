@@ -281,6 +281,15 @@ export interface PriceSnippet {
   tag: string;
 }
 
+/** Källsidans citerbara innehåll: prisutsagor när de finns, annars sidans EGEN
+ *  huvudutsaga (offert-fallbacken, ägarbeslut 2026-07-18: "vi visar exakt som
+ *  dem gör" — en offert-sajts svar på prisfrågan ÄR t.ex. "Låt oss ge dig en
+ *  offert"). kind låter prompten förklara skillnaden för designern. */
+export interface QuotableContent {
+  kind: "price" | "answer";
+  snippets: PriceSnippet[];
+}
+
 /** Extract verbatim price-like statements from a page's HTML. Every entry is the
  *  literal text of one leaf element — never assembled, never paraphrased. */
 export function extractPriceSnippets(html: string): PriceSnippet[] {
@@ -310,4 +319,57 @@ export function extractPriceSnippets(html: string): PriceSnippet[] {
     out.push(s);
   }
   return out.slice(0, 8);
+}
+
+/** Källsidans HUVUDUTSAGA — h1:an, annars första census-h2:an. Offert-
+ *  fallbackens citat: ordagrant sidans eget svar när den inte publicerar
+ *  belopp. null när sidan saknar användbar rubrik (⇒ inget att citera,
+ *  aldrig-hitta-på-regeln vinner). */
+export function extractQuoteAnswer(html: string): PriceSnippet | null {
+  const h1 = primaryH1(html);
+  if (h1 && h1.length >= 3 && h1.length <= 140) return { text: h1, tag: "h1" };
+  const main = mainRegion(html);
+  const m = /<h2\b[^>]*>([\s\S]*?)<\/h2>/i.exec(main);
+  const t = m ? stripTags(m[1]) : "";
+  return t.length >= 3 && t.length <= 140 ? { text: t, tag: "h2" } : null;
+}
+
+/** Prisutsagor om de finns, annars offert-svaret. EN läsning för detect,
+ *  verify och nattens drift-svep — whitelisten kan inte glida isär. */
+export function extractQuotables(html: string): QuotableContent {
+  const prices = extractPriceSnippets(html);
+  if (prices.length > 0) return { kind: "price", snippets: prices };
+  const answer = extractQuoteAnswer(html);
+  return { kind: "answer", snippets: answer ? [answer] : [] };
+}
+
+/** Stil-donatorn (ägarbeslut 2026-07-18, alternativ D): det insatta blocket
+ *  klär sig i LANDNINGSSIDANS egen mest använda länkklass — sajtens stilmall
+ *  bestämmer utseendet, aldrig vår. Deterministiskt: flest förekomster vinner,
+ *  först-i-dokumentet vid lika. null ⇒ blocket serveras i grundtypografin.
+ *  Grindarna + ägarens FÖRE/EFTER-bild verifierar resultatet per variant. */
+export function extractLinkStyleDonor(html: string): string | null {
+  const region = mainRegion(html);
+  const counts = new Map<string, number>();
+  const order: string[] = [];
+  const re = /<a\b[^>]*\bclass\s*=\s*"([^"]{1,120})"[^>]*>([\s\S]{0,200}?)<\/a>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(region))) {
+    const cls = m[1].trim();
+    const text = stripTags(m[2]);
+    // Bara TEXT-länkar är donatorer — tomma/ikon-länkar och långa kort ratas.
+    if (!cls || !text || text.length > 60) continue;
+    if (!counts.has(cls)) order.push(cls);
+    counts.set(cls, (counts.get(cls) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestN = 1; // kräver ≥2 förekomster — en engångsklass är ingen "stil"
+  for (const cls of order) {
+    const n = counts.get(cls)!;
+    if (n > bestN) {
+      bestN = n;
+      best = cls;
+    }
+  }
+  return best;
 }

@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { anthropicDesigner } from "./designer";
 import { generateRedesign } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
-import { extractContentModel, extractPriceSnippets } from "../../src/adaptive/redesign/extract";
+import { extractContentModel, extractQuotables } from "../../src/adaptive/redesign/extract";
 import {
   DRIFT_HOLD_PREFIX,
   dependenciesOf,
@@ -245,8 +245,10 @@ for (const site of targets) {
       for (const sv of sweepInput) {
         for (const d of sv.dependencies) {
           if (freshSnippets[d.path] !== undefined) continue;
+          // SAMMA läsning som detect/verify (extractQuotables): priser när de
+          // finns, annars offert-svaret — svepet vaktar det som citerades.
           freshSnippets[d.path] = pages[d.path]
-            ? extractPriceSnippets(readFileSync(pages[d.path], "utf8")).map((s) => s.text)
+            ? extractQuotables(readFileSync(pages[d.path], "utf8")).snippets.map((s) => s.text)
             : null;
         }
       }

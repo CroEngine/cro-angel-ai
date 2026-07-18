@@ -21,6 +21,10 @@ export interface MeasureOp {
   tag?: string;
   find: string;
   set?: string;
+  /** insert_snippet: klickväg (sajt-egen path) + stil-donator — speglar
+   *  snippetens rendering exakt, annars ljuger evidensbilderna. */
+  href?: string;
+  styleClass?: string;
 }
 
 /** Fånga sidans LCP-element och märk det med data-angel-lcp — måste anropas
@@ -261,7 +265,13 @@ export async function measurePlan(
       type Resolved =
         | { op: "move_up"; sec: Element }
         | { op: "set_text"; el: Element; set: string }
-        | { op: "insert_snippet"; anchor: Element; set: string };
+        | {
+            op: "insert_snippet";
+            anchor: Element;
+            set: string;
+            href?: string;
+            styleClass?: string;
+          };
       const resolved: Resolved[] = [];
       let resolvedAll = true;
       for (const o of ops) {
@@ -323,7 +333,13 @@ export async function measurePlan(
             }
             if (re.parentElement) anchor = re;
           }
-          resolved.push({ op: "insert_snippet", anchor, set: o.set });
+          resolved.push({
+            op: "insert_snippet",
+            anchor,
+            set: o.set,
+            href: o.href,
+            styleClass: o.styleClass,
+          });
         } else {
           if (!o.set) {
             resolvedAll = false;
@@ -368,7 +384,19 @@ export async function measurePlan(
             // Samma applicering som snippeten: <p> med textContent (aldrig
             // innerHTML), markör, direkt efter hjälte-blocket.
             const node = document.createElement("p");
-            node.textContent = r.set;
+            // SPEGELVÄND rendering mot snippeten (håll i synk): giltig href ⇒
+            // länk i landningssidans donatorklass, centrerad wrapper; annars
+            // ren text. Alltid textContent — aldrig markup ur data.
+            if (r.href) {
+              const link = document.createElement("a");
+              link.href = r.href;
+              link.textContent = r.set;
+              if (r.styleClass) link.className = r.styleClass;
+              node.appendChild(link);
+              node.style.textAlign = "center";
+            } else {
+              node.textContent = r.set;
+            }
             node.setAttribute("data-angel-inserted", "");
             r.anchor.parentElement!.insertBefore(node, r.anchor.nextSibling);
             insertedEls.push(node);
