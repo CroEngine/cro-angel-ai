@@ -4,18 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { runPsiMobile, runPsiDesktop } from "@/lib/tests/pagespeed.functions";
 import type { PsiStrategyResult } from "@/lib/tests/pagespeed.functions";
-
-function downloadJson(filename: string, payload: unknown) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+import { downloadJson } from "./download";
 
 function scoreColor(score: number | null): string {
   if (score === null) return "text-muted-foreground";
