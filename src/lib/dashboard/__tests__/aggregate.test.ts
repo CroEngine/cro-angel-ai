@@ -1104,10 +1104,10 @@ describe("sessionSummaries — sidsteg med klick (Journeys v2, personläget)", (
     ];
     const [s] = sessionSummaries(events);
     expect(s.steps.map((x) => x.path)).toEqual(["/", "/pricing"]);
-    expect(s.steps[0].clicks).toEqual([{ ref: "Hero CTA", x: 50, y: 12 }]);
+    expect(s.steps[0].clicks).toEqual([{ ref: "Hero CTA", x: 50, y: 12, tMs: 1000 }]);
     expect(s.steps[0].engagedMs).toBe(8000);
     expect(s.steps[1].clicks.map((c) => c.ref)).toEqual(["Buy", "FAQ"]);
-    expect(s.steps[1].clicks[1]).toEqual({ ref: "FAQ", x: null, y: null });
+    expect(s.steps[1].clicks[1]).toEqual({ ref: "FAQ", x: null, y: null, tMs: 2000 });
     expect(s.steps[1].engagedMs).toBe(12000);
   });
 
@@ -1137,6 +1137,19 @@ describe("sessionSummaries — sidsteg med klick (Journeys v2, personläget)", (
     const [s] = sessionSummaries(events);
     expect(s.engagedMs).toBe(30000);
     expect(s.steps.map((x) => x.engagedMs)).toEqual([0, 0]);
+  });
+
+  it("klicken bär tMs-offset från stegets start — reprisens verkliga rytm", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/a" }, { createdAt: at(0) }),
+      sev("element_click", { sessionId: "s1", ref: "A", path: "/a" }, { createdAt: at(2) }),
+      sev("element_click", { sessionId: "s1", ref: "B", path: "/a" }, { createdAt: at(9) }),
+      sev("pageview", { sessionId: "s1", path: "/b" }, { createdAt: at(12) }),
+      // sent klick som hör till /a — offset ändå mot /a-stegets start
+      sev("element_click", { sessionId: "s1", ref: "Late", path: "/a" }, { createdAt: at(14) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.steps[0].clicks.map((c) => c.tMs)).toEqual([2000, 9000, 14000]);
   });
 
   it("scroll_depth med path sätter stegets djupaste scroll — legacy utan path hoppas", () => {
