@@ -57,6 +57,7 @@ function HeatMirror({
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  const gotHeightRef = useRef(false);
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       // Bara VÅR egen iframe får rapportera — annars kan en annan spegel
@@ -66,6 +67,7 @@ function HeatMirror({
       if (d && d.type === "angel-mirror-height" && typeof d.h === "number") {
         // Klampad: en fientlig speglad sida kan bara flytta punkter i ägarens
         // egen vy av just den sidan — men vi tar inga orimliga värden.
+        gotHeightRef.current = true;
         setDocH(Math.min(20000, Math.max(600, Math.round(d.h))));
         onRawHeight?.(Math.round(d.h));
       }
@@ -73,6 +75,18 @@ function HeatMirror({
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [onRawHeight]);
+  useEffect(() => {
+    // Tyst spegel = blank spegel (ägarfynd 2026-07-19: vitt hål UTAN skylt i
+    // personläget). En spegel som misslyckas helt injicerar aldrig höjd-
+    // rapportören och skickar inget message — rapportera då 0 så skal-
+    // detekteringen ovanpå kan visa sin ärliga skylt i stället för vitt.
+    // Kommer en riktig höjd senare vinner den (skylten släcks av sig själv).
+    gotHeightRef.current = false;
+    const t = setTimeout(() => {
+      if (!gotHeightRef.current) onRawHeight?.(0);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [src, onRawHeight]);
 
   const scale = wrapW > 0 ? Math.min(1, wrapW / frameW) : 0.5;
   return (
@@ -847,8 +861,12 @@ export function JourneysOverlay({
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {person ? (
             // ── PERSONLÄGET: steg-för-steg-spelaren ──────────────────────────
+            // min-w-0 på BÅDA kolumnerna: gridbarn har min-width:auto, så de
+            // långa mono-sökvägarna (inga mellanslag) sväller annars kolumnen
+            // förbi popup-ramen och truncate får aldrig verka (ägarfynd
+            // 2026-07-19: Next-knappen hamnade utanför bild).
             <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr]">
-              <div>
+              <div className="min-w-0">
                 {personStep && personBackdrop.data?.ok && personBackdrop.data.mirrorPath ? (
                   <div className="relative">
                     <HeatMirror
@@ -866,9 +884,9 @@ export function JourneysOverlay({
                       <div className="absolute inset-0 flex items-center justify-center bg-white/80 p-8 text-center">
                         <p className="max-w-sm text-[13px] leading-relaxed text-stone-500">
                           This page renders with JavaScript and can&apos;t be mirrored live. The
-                          nightly loop freezes a browsable copy of visited pages — this step will
-                          get its backdrop after the next run. The visitor&apos;s pages and clicks
-                          are listed on the right.
+                          nightly loop freezes browsable copies of the site&apos;s most-visited
+                          pages — steps on those pages get a real backdrop. The visitor&apos;s
+                          pages and clicks are listed on the right.
                         </p>
                       </div>
                     )}
@@ -904,7 +922,7 @@ export function JourneysOverlay({
               </div>
 
               {/* stegen + navigeringen */}
-              <div className="flex flex-col gap-4">
+              <div className="flex min-w-0 flex-col gap-4">
                 <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
                   <div className="flex items-center justify-between">
                     <div className="font-heading text-sm font-semibold">
@@ -942,7 +960,13 @@ export function JourneysOverlay({
                       }}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate font-mono text-[11.5px] text-stone-700">
+                        {/* Förkortad väg, hela vägen vid hover (title) —
+                            slutet av slugen är oftast bara ett id, så
+                            slut-trunkering behåller den läsbara delen. */}
+                        <span
+                          className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-stone-700"
+                          title={s.path}
+                        >
                           {i + 1}. {s.path}
                         </span>
                         <span className="flex-none text-[11px] text-stone-400">
@@ -950,7 +974,10 @@ export function JourneysOverlay({
                         </span>
                       </div>
                       {s.clicks.length > 0 && (
-                        <div className="mt-1 truncate text-[11px] text-stone-500">
+                        <div
+                          className="mt-1 truncate text-[11px] text-stone-500"
+                          title={s.clicks.map((c) => c.ref).join(" · ")}
+                        >
                           {s.clicks.map((c) => c.ref).join(" · ")}
                         </div>
                       )}
@@ -966,7 +993,7 @@ export function JourneysOverlay({
           ) : view === "flow" ? (
             // ── FLÖDET: rankat vägträd + sessionslistan ──────────────────────
             <div className="grid items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
-              <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+              <div className="min-w-0 rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
                 <div className="font-heading text-sm font-semibold">Where visitors go</div>
                 <div className="mt-1 text-[11.5px] text-stone-400">
                   Entry page → next step → after that, ranked by volume. Share of the level above; ✓
@@ -995,7 +1022,7 @@ export function JourneysOverlay({
                 )}
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex min-w-0 flex-col gap-4">
                 <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
                   <div className="font-heading text-sm font-semibold">
                     Sessions{" "}
@@ -1016,7 +1043,12 @@ export function JourneysOverlay({
                         onClick={() => openPerson(j)}
                         className="block w-full border-t border-[#f4f2ef] py-[11px] text-left hover:bg-[#faf9f7]"
                       >
-                        <div className="truncate font-mono text-[11.5px] text-stone-600">
+                        <div
+                          className="truncate font-mono text-[11.5px] text-stone-600"
+                          title={(j.pageOrder.length ? j.pageOrder : [j.landingPath ?? "/"]).join(
+                            " → ",
+                          )}
+                        >
                           {(j.pageOrder.length ? j.pageOrder : [j.landingPath ?? "/"]).join(" → ")}
                         </div>
                         <div className="mt-1 flex items-center gap-2">
@@ -1057,7 +1089,10 @@ export function JourneysOverlay({
                       key={g.ref}
                       className="flex items-center justify-between border-t border-[#f4f2ef] py-[11px]"
                     >
-                      <span className="truncate font-mono text-[11.5px] text-stone-600">
+                      <span
+                        className="min-w-0 truncate font-mono text-[11.5px] text-stone-600"
+                        title={g.ref}
+                      >
                         {g.ref}
                       </span>
                       <span className="ml-3 flex-none text-[12px] font-semibold text-amber-600">
@@ -1164,6 +1199,7 @@ function FlowRow({ node, base, depth }: { node: FlowNode; base: number; depth: n
       <span
         className="min-w-0 flex-none truncate font-mono text-[11.5px]"
         style={{ maxWidth: "40%", color: node.path ? "#44403c" : "#a8a29e" }}
+        title={node.path ?? undefined}
       >
         {node.path ?? "other pages"}
       </span>
