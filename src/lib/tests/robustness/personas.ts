@@ -59,8 +59,8 @@ export function personaContext(persona: PersonaId, url: string): VisitorContext 
 
 /** Personans enhet — harnessen sätter webbläsarens VIEWPORT efter den, inte
  *  bara kontextflaggan. Utan det renderades varje "mobil"-persona i desktop-
- *  viewport: sticky-pillret (flaggskeppsmönstret för mobil) gick aldrig att
- *  bedöma på riktigt (granskningsfynd, nattkörningen 2026-07-07). */
+ *  viewport och mobilmönstren gick aldrig att bedöma på riktigt
+ *  (granskningsfynd, nattkörningen 2026-07-07). */
 export function personaDevice(persona: PersonaId): VisitorContext["device"] {
   return (PERSONAS[persona] ?? PERSONAS[DEFAULT_PERSONA]).device;
 }

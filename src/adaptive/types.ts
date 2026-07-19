@@ -126,12 +126,13 @@ export interface ContentInventory {
 export type AdaptationOp =
   | "reveal" // un-hide / de-suppress an existing element
   | "move_up" // reorder a slot earlier within its parent
-  | "emphasize" // visually highlight an existing element
   | "set_text" // replace a target's text with published inventory text
   | "condense" // collapse a slot to its essentials (e.g. shorten hero)
   | "inject_badge" // insert published microcopy near a target
-  | "inject_sticky" // fixed bottom shortcut to the goal (mobile) — no layout shift
   | "inject_secondary"; // published lower-commitment CTA link beside the goal
+// BORTTAGNA ops (ägarregeln 2026-07-20 — "Angel flyttar aldrig målknappen och
+// ändrar aldrig dess utseende"): "emphasize" (ringen runt målet) och
+// "inject_sticky" (flytande målgenväg) — bägge fanns FÖR att röra målet.
 
 /** One concrete change selected for this specific visitor. */
 export interface Adaptation {
@@ -185,7 +186,11 @@ export type DeclineReason =
   /** Nivå 3-mönster (layout) på en sajt som inte aktiverat layoutingrepp —
    *  v1-produkten är nivå 1–2; nivå 3 kräver opt-in efter pre-flight +
    *  ägargodkännande (angel_sites.layout_patterns_enabled). */
-  | "layout_level_disabled";
+  | "layout_level_disabled"
+  /** Ägarregeln (2026-07-20): sajtens egen målknapp är orörbar — en op som
+   *  muterar sitt målelement (text/flytt/kollaps/reveal) får aldrig träffa
+   *  det deklarerade målet. Injektioner ankrar bredvid utan att röra det. */
+  | "goal_element_untouchable";
 
 export interface Decision {
   /** Deterministic hash of (site + normalized context). Stable for replay. */
@@ -205,8 +210,6 @@ export interface Decision {
 
 /** Identifiers for the safe-pattern catalog (blueprint Step 6). */
 export type PatternId =
-  | "emphasize_goal"
-  | "sticky_goal_cta"
   | "show_secondary_cta"
   | "show_customer_logos_early"
   | "show_enterprise_testimonial"

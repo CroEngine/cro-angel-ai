@@ -224,30 +224,56 @@ describe("decide — performance feedback (bandit)", () => {
   });
 });
 
-describe("decide — goal-first (emphasize_goal)", () => {
-  const goal = { selector: "#register-btn", url: null };
+describe("decide — ägarregeln: målknappen är orörbar (2026-07-20)", () => {
+  const goal = { selector: "#register-btn", text: "Skapa konto", url: null };
 
-  it("emphasizes the owner's declared conversion goal, even with EMPTY inventory", () => {
-    const d = decide("forum", ctx(), emptyInventory("forum"), {}, goal);
-    const g = d.adaptations.find((a) => a.pattern === "emphasize_goal");
-    expect(g).toBeDefined();
-    expect(g!.op).toBe("emphasize");
-    expect(g!.target).toBe("#register-btn");
-  });
-
-  it("does nothing when no goal is configured (unconfigured sites unaffected)", () => {
-    const d = decide("forum", ctx(), emptyInventory("forum"));
-    expect(d.adaptations.map((a) => a.pattern)).not.toContain("emphasize_goal");
-  });
-
-  it("fires for every visitor context (goal-first, not playbook-gated)", () => {
+  it("emitterar ALDRIG borttagna mål-ops (emphasize/inject_sticky), oavsett kontext", () => {
     for (const c of [
+      ctx(),
       ctx({ trafficSource: "google_ads", device: "mobile" }),
-      ctx({ isReturning: true }),
-      ctx({ trafficSource: "linkedin" }),
+      ctx({ isReturning: true, viewedPricing: true }),
+      ctx({ trafficSource: "linkedin", pageType: "content" }),
+      ctx({ device: "mobile", pageType: "home" }),
     ]) {
-      const d = decide("forum", c, emptyInventory("forum"), {}, goal);
-      expect(d.adaptations.map((a) => a.pattern)).toContain("emphasize_goal");
+      const d = decide("forum", c, demo, {}, goal);
+      for (const a of d.adaptations) {
+        expect(["emphasize", "inject_sticky"]).not.toContain(a.op);
+      }
+    }
+  });
+
+  it("en muterande op som resolvar till målet grindas bort (goal_element_untouchable)", () => {
+    // move_faq_up resolvar till faq-slottens selector — pekar ägarens mål på
+    // SAMMA element ska flytten vägras, inte flytta målknappens sektion.
+    const inv: ReturnType<typeof emptyInventory> = {
+      site: "t",
+      slots: {
+        faq: [{ id: "f1", slot: "faq" as const, text: "Vanliga frågor", selector: "#faq" }],
+      },
+    };
+    const d = decide(
+      "t",
+      ctx({ trafficSource: "google", device: "mobile", pageType: "home" }),
+      inv,
+      {},
+      { selector: "#faq", text: "Vanliga frågor" },
+      // Nivå 3 på — annars stannar mönstret redan i layout_level_disabled
+      // och grinden vi vill bevisa nås aldrig.
+      { allowLayoutPatterns: true },
+    );
+    expect(d.adaptations.find((a) => a.target === "#faq")).toBeUndefined();
+    expect(d.declined).toContainEqual({
+      pattern: "move_faq_up",
+      reason: "goal_element_untouchable",
+    });
+  });
+
+  it("injektioner får fortfarande ANKRA vid målet (badge/secondary rör det inte)", () => {
+    const d = decide("t", ctx({ isReturning: false, visitCount: 0, pageType: "home" }), demo, {}, goal);
+    for (const a of d.adaptations) {
+      if (a.target === goal.selector) {
+        expect(["inject_badge", "inject_secondary"]).toContain(a.op);
+      }
     }
   });
 
@@ -255,28 +281,6 @@ describe("decide — goal-first (emphasize_goal)", () => {
     const withGoal = decide("forum", ctx(), emptyInventory("forum"), {}, goal);
     const without = decide("forum", ctx(), emptyInventory("forum"));
     expect(withGoal.decisionId).not.toBe(without.decisionId);
-  });
-});
-
-describe("decide — page-aware goal", () => {
-  const goal = { selector: "#register-btn", url: null };
-
-  it("suppresses emphasize_goal on a conversion page (visitor is already there)", () => {
-    const d = decide(
-      "forum",
-      ctx({ pageType: "conversion", url: "https://example.com/skapa-konto" }),
-      emptyInventory("forum"),
-      {},
-      goal,
-    );
-    expect(d.adaptations.map((a) => a.pattern)).not.toContain("emphasize_goal");
-  });
-
-  it("keeps emphasize_goal on home and content pages", () => {
-    for (const pageType of ["home", "content"] as const) {
-      const d = decide("forum", ctx({ pageType }), emptyInventory("forum"), {}, goal);
-      expect(d.adaptations.map((a) => a.pattern)).toContain("emphasize_goal");
-    }
   });
 
   it("pageType changes the decisionId", () => {
@@ -286,22 +290,7 @@ describe("decide — page-aware goal", () => {
   });
 });
 
-describe("emphasize_goal — label rides along as cross-page locator", () => {
-  it("sets anchorText from the goal text so subpages resolve by label", () => {
-    const d = decide(
-      "t",
-      ctx({ trafficSource: "google", device: "mobile", pageType: "content" }),
-      emptyInventory("t"),
-      {},
-      { selector: "a:nth-of-type(2) > button", text: "Skapa konto" },
-    );
-    const emph = d.adaptations.find((a) => a.pattern === "emphasize_goal");
-    expect(emph?.target).toBe("a:nth-of-type(2) > button");
-    expect(emph?.anchorText).toBe("Skapa konto");
-  });
-});
-
-describe("levers — sticky goal shortcut and softer secondary CTA", () => {
+describe("levers — softer secondary CTA", () => {
   const goal = { selector: "#signup", text: "Skapa konto" };
   const invWithAlt = (): ReturnType<typeof emptyInventory> => ({
     site: "t",
@@ -323,25 +312,6 @@ describe("levers — sticky goal shortcut and softer secondary CTA", () => {
         },
       ],
     },
-  });
-
-  it("mobile visitors get the sticky goal shortcut, desktop does not", () => {
-    const mobile = decide("t", ctx({ device: "mobile", pageType: "content" }), emptyInventory("t"), {}, goal);
-    const sticky = mobile.adaptations.find((a) => a.pattern === "sticky_goal_cta");
-    expect(sticky?.op).toBe("inject_sticky");
-    expect(sticky?.value).toBe("Skapa konto");
-    expect(sticky?.anchorText).toBe("Skapa konto");
-
-    const desktop = decide("t", ctx({ device: "desktop", pageType: "content" }), emptyInventory("t"), {}, goal);
-    expect(desktop.adaptations.find((a) => a.pattern === "sticky_goal_cta")).toBeUndefined();
-  });
-
-  it("sticky requires a labelled goal and steps aside on conversion pages", () => {
-    const noText = decide("t", ctx({ device: "mobile" }), emptyInventory("t"), {}, { selector: "#x" });
-    expect(noText.adaptations.find((a) => a.pattern === "sticky_goal_cta")).toBeUndefined();
-
-    const convPage = decide("t", ctx({ device: "mobile", pageType: "conversion" }), emptyInventory("t"), {}, goal);
-    expect(convPage.adaptations.find((a) => a.pattern === "sticky_goal_cta")).toBeUndefined();
   });
 
   it("cold first-time visitors get a published softer option with its own href", () => {
@@ -441,7 +411,7 @@ describe("design integrity — the page stays the customer's", () => {
     expect(d.adaptations.length).toBeLessThanOrEqual(3);
   });
 
-  it("injects at most ONE added element per page (sticky beats secondary by priority)", () => {
+  it("injects at most ONE added element per page", () => {
     const d = decide(
       "t",
       ctx({ device: "mobile", isReturning: false, visitCount: 0, pageType: "content" }),
@@ -450,10 +420,9 @@ describe("design integrity — the page stays the customer's", () => {
       goal,
     );
     const injects = d.adaptations.filter((a) =>
-      ["inject_sticky", "inject_secondary", "inject_badge"].includes(a.op),
+      ["inject_secondary", "inject_badge"].includes(a.op),
     );
     expect(injects.length).toBe(1);
-    expect(injects[0].pattern).toBe("sticky_goal_cta"); // highest-priority injection wins
   });
 
   it("desktop cold visitors get the secondary link as their single injection", () => {
@@ -549,7 +518,10 @@ describe("clarify_cta — goal-kind-aware label preference (one goal vocabulary)
 describe("decide — auth pages are not conversion pages (A3)", () => {
   const goal = { selector: "#signup", text: "Skapa konto" };
 
-  it("keeps goal decoration on auth pages — the mis-clicked visitor needs it most", () => {
+  it("auth grindas INTE blankt: mönster nomineras fortfarande (bara flyttar utesluts via avoidPageTypes)", () => {
+    // Med ägarregeln finns ingen måldekoration längre — men A3-beslutet står:
+    // /login är inte en konverteringssida, så auth får inga conversion_page-
+    // declines (den blanketten är reserverad för riktiga målsidor).
     const d = decide(
       "t",
       ctx({ pageType: "auth", url: "https://example.com/logga-in" }),
@@ -557,10 +529,10 @@ describe("decide — auth pages are not conversion pages (A3)", () => {
       {},
       goal,
     );
-    expect(d.adaptations.map((a) => a.pattern)).toContain("emphasize_goal");
+    expect((d.declined ?? []).some((x) => x.reason === "conversion_page")).toBe(false);
   });
 
-  it("still suppresses goal decoration on real conversion pages", () => {
+  it("real conversion pages blanket-decline every nominated pattern", () => {
     const d = decide(
       "t",
       ctx({ pageType: "conversion", url: "https://example.com/skapa-konto" }),
@@ -568,7 +540,9 @@ describe("decide — auth pages are not conversion pages (A3)", () => {
       {},
       goal,
     );
-    expect(d.adaptations.map((a) => a.pattern)).not.toContain("emphasize_goal");
+    expect(d.adaptations).toEqual([]);
+    expect((d.declined ?? []).length).toBeGreaterThan(0);
+    expect((d.declined ?? []).every((x) => x.reason === "conversion_page")).toBe(true);
   });
 });
 
@@ -700,10 +674,17 @@ describe("decide — goal-conditioned pattern eligibility (target arch step 4)",
     expect(noKind.adaptations.map((a) => a.pattern)).toContain("show_2min_setup");
   });
 
-  it("agnostic patterns (emphasize_goal) fire regardless of goal kind", () => {
+  it("agnostiska mönster grindas ALDRIG på goal-kind, oavsett kind", () => {
+    // (emphasize_goal var förr testets vittne — borttaget av ägarregeln.
+    // Samma invariant bevisas nu via declines: inga goal_kind_mismatch för
+    // mönster utan appliesTo, t.ex. show_secondary_cta/clarify_cta.)
+    const AGNOSTIC = ["show_secondary_cta", "clarify_cta", "move_faq_up", "shorten_hero"];
     for (const kind of ["donate", "purchase", "subscribe", "booking"] as const) {
       const d = decide("t", ctx(), emptyInventory("t"), {}, { selector: "#g", text: "x", kind });
-      expect(d.adaptations.map((a) => a.pattern)).toContain("emphasize_goal");
+      const kindDeclines = (d.declined ?? []).filter((x) => x.reason === "goal_kind_mismatch");
+      for (const p of AGNOSTIC) {
+        expect(kindDeclines.some((x) => x.pattern === p)).toBe(false);
+      }
     }
   });
 });

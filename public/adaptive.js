@@ -412,16 +412,13 @@
           function (e) {
             var t = e.target;
             while (t && t.nodeType === 1) {
-              // Angel's injected shortcuts (sticky pill, secondary link) are
-              // the "förstärkta vägen": they count as a cta_click but NEVER as
-              // a conversion — the pill forwards to the REAL goal element whose
-              // own click converts, and the secondary link only leads toward
-              // the goal page. This check runs FIRST so a loose goal selector
-              // (e.g. ".cta-row a" that also matches our injected sibling, or a
-              // bare "button" matching the pill) can't turn Angel's own element
-              // into a false conversion — or double-convert one pill tap.
-              // Interactive elements only, so the decorative badge <span>
-              // never counts.
+              // Angel's injected secondary link is the "förstärkta vägen": it
+              // counts as a cta_click but NEVER as a conversion — it only
+              // leads toward the goal page. This check runs FIRST so a loose
+              // goal selector (e.g. ".cta-row a" that also matches our
+              // injected sibling) can't turn Angel's own element into a false
+              // conversion. Interactive elements only, so the decorative
+              // badge <span> never counts.
               if (
                 (t.tagName === "A" || t.tagName === "BUTTON") &&
                 t.hasAttribute("data-angel-injected")
@@ -502,28 +499,20 @@
     var css =
       "[data-angel-hidden]{display:none!important}" +
       ".angel-revealed{display:revert!important}" +
-      // Brand-neutral emphasis: a soft dark ring + lift shadow reads as "this
-      // matters" on any palette — no Angel colours on the customer's page.
-      ".angel-emphasized{box-shadow:0 0 0 3px rgba(15,23,42,.2),0 10px 28px rgba(15,23,42,.22);border-radius:10px;transition:box-shadow .2s}" +
       ".angel-condensed [data-angel-secondary]{display:none!important}" +
       ".angel-badge{display:inline-flex;align-items:center;gap:6px;margin:8px 8px 0 0;padding:4px 10px;font-size:12px;font-weight:600;line-height:1;border-radius:999px;background:#f3f0ff;color:#5b21b6;border:1px solid #ddd6fe}" +
       ".angel-badge::before{content:'\\2713';font-weight:700}" +
-      // Sticky goal shortcut (mobile): fixed → zero layout shift by construction.
-      ".angel-sticky-cta{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:2147482000;padding:13px 26px;border-radius:999px;background:#0f172a;color:#fff;font:600 15px/1 -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);border:0;cursor:pointer}" +
       // Secondary lower-commitment link beside the goal — inherits the site's type.
       ".angel-secondary-cta{display:inline-block;margin-left:12px;font:inherit;font-size:14px;color:inherit;opacity:.85;text-decoration:underline;text-underline-offset:3px}" +
-      // Skönhetsgrind — mörkt läge: en ljuslila badge / mörk pill på en mörk
-      // sajt läser som trasig tredjeparts-chrome. Temaanpassa injektionerna
-      // (aldrig ringen — den är palett-neutral). Browsern applicerar per
-      // besökare; noll JS, noll extra data.
+      // Skönhetsgrind — mörkt läge: en ljuslila badge på en mörk sajt läser
+      // som trasig tredjeparts-chrome. Temaanpassa injektionerna. Browsern
+      // applicerar per besökare; noll JS, noll extra data.
       "@media (prefers-color-scheme:dark){" +
       ".angel-badge{background:#2e1065;color:#ddd6fe;border-color:#5b21b6}" +
-      ".angel-sticky-cta{background:#f8fafc;color:#0f172a;box-shadow:0 8px 24px rgba(0,0,0,.6)}" +
       "}" +
-      // Skönhetsgrind — reduced-motion: ingen övergång/puls för besökare som
-      // bett om mindre rörelse. Ringen visas fortfarande, bara utan animation.
+      // Skönhetsgrind — reduced-motion: ingen puls för besökare som bett om
+      // mindre rörelse.
       "@media (prefers-reduced-motion:reduce){" +
-      ".angel-emphasized{transition:none}" +
       ".angel-debug-touched{animation:none}" +
       "}" +
       // Debug-only (?angel_debug=1): make what Angel touched IMPOSSIBLE to miss —
@@ -724,27 +713,10 @@
         });
       });
     },
-    emphasize: function (a) {
-      // EN emfas per beslut — samma singleton-semantik som injektionerna.
-      // Text-fallbacken i resolveNodes kan matcha varje "Boka"-radknapp på en
-      // listsida (16-badges-incidentklassen, våg 8): halon är paint-only så
-      // ingen automatisk grind fångar svärmen — budgeten är en ring, punkt.
-      var nodes = resolveNodes(a);
-      var el = null;
-      for (var i = 0; i < nodes.length; i++) {
-        if (!isNoTouch(nodes[i])) {
-          el = nodes[i];
-          break;
-        }
-      }
-      if (!el) return false;
-      el.classList.add("angel-emphasized");
-      touchedEls.push({ el: el, pattern: a.pattern });
-      record(function () {
-        el.classList.remove("angel-emphasized");
-      });
-      return true;
-    },
+    // BORTTAGET (ägarregeln 2026-07-20): "emphasize" (ringen runt målet) och
+    // "inject_sticky" (flytande målgenväg) — Angel flyttar aldrig målknappen
+    // och ändrar aldrig dess utseende. Okända ops ignoreras tyst nedströms,
+    // så ev. cachad gammal decide-respons är ofarlig.
     condense: function (a) {
       return each(a, function (el) {
         if (touchesLcp(el)) return false; // collapsing around the LCP element shifts it
@@ -774,199 +746,6 @@
           host.textContent = prev;
         });
       });
-    },
-    inject_sticky: function (a) {
-      if (!a.value) return;
-      if (document.querySelector(".angel-sticky-cta")) return; // one per page
-      // Only when the real goal is on (or reachable from) this page — the pill
-      // clicks the genuine element, so navigation and conversion tracking are
-      // the site's own. No resolvable goal → no fake shortcut. Never adopt a
-      // goal inside a no-touch zone (text-fallbacken kan träffa CMP-knappar).
-      function pickGoalNode() {
-        var nodes = resolveNodes({ target: a.target, anchorText: a.anchorText });
-        for (var i = 0; i < nodes.length; i++) {
-          if (!isNoTouch(nodes[i])) return nodes[i];
-        }
-        return null;
-      }
-      var goalEl = pickGoalNode();
-      if (!goalEl) return;
-      // Självläkning mot SPA/hydrering: ramverket kan byta ut målnoden efter
-      // att pillret skapats. En frånkopplad nod är en död knapp (klicket når
-      // varken sidans handlers eller vår conversion-lyssnare) — så peka om
-      // till den nya noden när det går, göm pillret när målet är borta.
-      function reacquireGoal() {
-        if (goalEl && goalEl.isConnected) return true;
-        var next = pickGoalNode();
-        if (!next) return false;
-        goalEl = next;
-        try {
-          if (observer) {
-            observer.disconnect();
-            observer.observe(goalEl);
-          }
-        } catch (e) {}
-        return true;
-      }
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "angel-sticky-cta";
-      btn.setAttribute("data-angel-injected", "");
-      btn.textContent = a.value;
-      btn.addEventListener("click", function () {
-        try {
-          if (reacquireGoal()) goalEl.click();
-          else btn.style.display = "none";
-        } catch (e) {}
-      });
-
-      // Good-tenant placement: a fixed bottom-centre pill can sit exactly where
-      // pages put their own chrome — cookie-bar accept buttons, sticky navs,
-      // chat launchers. The pill must never make something clickable
-      // unclickable (the same rule the robustness launch gate enforces), so
-      // before it shows we probe what is underneath: covered interactive
-      // element → lift the pill a step and re-probe; no clear band within a
-      // few steps → keep the pill hidden rather than cover the page's own UI.
-      var PILL_LIFT_STEP = 56; // px per lift ≈ one row of touch-target chrome
-      var PILL_MAX_LIFTS = 3; // beyond ~3 rows the pill stops being "bottom"
-      var INTERACTIVE = 'a[href],button,[role="button"],input,select,textarea';
-      function pillVictim() {
-        var r = btn.getBoundingClientRect();
-        if (!r.width || !r.height) return null;
-        // 3×3-rutnät: fem punkter (mitt + hörn) missade offer vars klickbara
-        // yta låg under pillrets KANTMITTAR — på en mobil flödessida täckte
-        // pillret kortlänkar som hörnproberna inte träffade (interaktions-
-        // grinden fångade det, glutenforum 390×844, 2026-07-08).
-        var pts = [];
-        for (var gx = 0; gx < 3; gx++) {
-          for (var gy = 0; gy < 3; gy++) {
-            pts.push([
-              r.left + 4 + (gx * (r.width - 8)) / 2,
-              r.top + 4 + (gy * (r.height - 8)) / 2,
-            ]);
-          }
-        }
-        var prev = btn.style.visibility;
-        btn.style.visibility = "hidden"; // elementFromPoint must see through it
-        var victim = null;
-        try {
-          for (var i = 0; i < pts.length && !victim; i++) {
-            var hit = document.elementFromPoint(pts[i][0], pts[i][1]);
-            if (!hit || btn.contains(hit)) continue;
-            var inter = hit.closest ? hit.closest(INTERACTIVE) : null;
-            if (inter && !btn.contains(inter)) victim = inter;
-          }
-        } catch (e) {
-          /* probing must never break the page */
-        }
-        btn.style.visibility = prev;
-        return victim;
-      }
-      function placePill() {
-        btn.style.bottom = ""; // base position from the stylesheet
-        for (var lift = 1; lift <= PILL_MAX_LIFTS + 1; lift++) {
-          if (!pillVictim()) return true;
-          if (lift > PILL_MAX_LIFTS) return false;
-          btn.style.bottom =
-            "calc(" + (14 + lift * PILL_LIFT_STEP) + "px + env(safe-area-inset-bottom,0px))";
-        }
-        return false;
-      }
-      var goalVisible = false;
-      var hiddenByOverlap = false;
-      function showPill() {
-        btn.style.display = "";
-        hiddenByOverlap = !placePill();
-        if (hiddenByOverlap) btn.style.display = "none";
-      }
-
-      // Design integrity: the pill exists only while the REAL goal is
-      // off-screen. When the site's own button is visible the page stays
-      // exactly the customer's — no duplicate floating chrome.
-      var observer = null;
-      try {
-        if (window.IntersectionObserver) {
-          btn.style.display = "none";
-          observer = new IntersectionObserver(function (entries) {
-            // Batchade entries levereras äldst→nyast; bara den SISTA speglar
-            // nuläget (en snabb fling förbi målet och tillbaka gav annars ett
-            // piller ovanpå ett synligt mål).
-            var last = entries[entries.length - 1];
-            goalVisible = !!(last && last.isIntersecting);
-            if (goalVisible) {
-              btn.style.display = "none";
-            } else {
-              showPill();
-            }
-          });
-          observer.observe(goalEl);
-        }
-      } catch (e) {
-        /* no observer → pill simply stays visible */
-      }
-      document.body.appendChild(btn);
-      if (!observer) showPill();
-      function teardown() {
-        try {
-          if (observer) observer.disconnect();
-        } catch (e) {}
-        try {
-          window.removeEventListener("scroll", onViewportChange);
-          window.removeEventListener("resize", onViewportChange);
-        } catch (e) {}
-      }
-      // The band under the pill changes as the page scrolls (and when a cookie
-      // bar is dismissed) — re-probe on scroll/resize, throttled.
-      var lastProbe = 0;
-      // Skild från hiddenByOverlap: gömd-för-att-målet-försvann måste kunna
-      // HÄVAS när målet kommer tillbaka (utan observer är goalVisible alltid
-      // false och display-vakten nedan skulle annars låsa pillret dolt för
-      // alltid — granskningsfynd 2026-07-08).
-      var hiddenByGoalLost = false;
-      function onViewportChange() {
-        // Självstädning: rensades pillret bort av en hydrering ska dess
-        // lyssnare/observer inte leva kvar. Och byttes MÅLET ut pekar vi om
-        // (annars fryser goalVisible på det frånkopplade målets sista värde).
-        if (!btn.isConnected) {
-          teardown();
-          return;
-        }
-        var now = Date.now();
-        if (now - lastProbe < 250) return;
-        lastProbe = now;
-        if (goalEl && !goalEl.isConnected && !reacquireGoal()) {
-          btn.style.display = "none"; // målet finns inte längre → ingen genväg
-          hiddenByGoalLost = true;
-          return;
-        }
-        if (hiddenByGoalLost) {
-          // Målet är tillbaka (reacquire lyckades ovan) — återgå till normal
-          // synlighetslogik i stället för att förbli dold.
-          hiddenByGoalLost = false;
-          if (!goalVisible) showPill();
-          return;
-        }
-        if (goalVisible) return; // observer owns visibility here
-        if (btn.style.display === "none" && !hiddenByOverlap) return;
-        showPill();
-      }
-      // Innehåll som strömmar in EFTER placeringen (flödeskort, lazy-bilder)
-      // kan hamna under pillret utan att scroll/resize någonsin fyras — proba
-      // om ett par gånger på samma schema som hydrerings-överlevnaden.
-      setTimeout(onViewportChange, 1500);
-      setTimeout(onViewportChange, 4000);
-      try {
-        window.addEventListener("scroll", onViewportChange, { passive: true });
-        window.addEventListener("resize", onViewportChange);
-      } catch (e) {
-        /* listeners are best-effort */
-      }
-      touchedEls.push({ el: btn, pattern: a.pattern });
-      record(function () {
-        teardown();
-        if (btn.parentElement) btn.parentElement.removeChild(btn);
-      });
-      return true;
     },
     inject_secondary: function (a) {
       if (!a.value || !a.href) return;

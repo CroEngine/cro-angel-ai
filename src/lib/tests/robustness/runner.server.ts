@@ -59,12 +59,13 @@ export interface RobustnessRunOptions {
   snippetSource: string;
   /**
    * The conversion goal to decide() with — the stored owner-confirmed goal
-   * when the caller has one. Without a goal every goal-decoration pattern
-   * (emphasize_goal / sticky_goal_cta / show_secondary_cta) resolves to null,
-   * so the launch gate never exercised the patterns most likely to trip it
-   * (the fixed mobile pill covering a cookie bar, the injected secondary
+   * when the caller has one. Without a goal every goal-anchored pattern
+   * (show_secondary_cta, badges) resolves to null, so the launch gate never
+   * exercised the patterns most likely to trip it (the injected secondary
    * link). When absent, the runner derives the same deterministic floor the
    * goal judge falls back to: rankGoalCandidates()'s top candidate.
+   * (emphasize_goal/sticky_goal_cta fanns också här — borttagna 2026-07-20
+   * av ägarregeln: Angel rör aldrig målknappen.)
    */
   goal?: SiteGoal | null;
   prepareTimeoutMs?: number;
@@ -390,7 +391,7 @@ export async function runSnippetRobustness(
     const errBefore = consoleErrors.length;
     try {
       // Viewporten ska matcha personans enhet — annars bedöms mobilmönstren
-      // (sticky-pillret framför allt) aldrig i miljön de kör i (varje
+      // aldrig i miljön de kör i (varje
       // "mobil"-bild i nattkörningen var desktop-bredd). OBS anropsformen:
       // Stagehands page.setViewportSize tar POSITIONELLA argument
       // (width, height) och sväljer tyst en Playwright-stil {width,height}-

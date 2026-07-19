@@ -3,9 +3,13 @@
 // The decision engine may ONLY choose from this fixed catalog. Each entry maps
 // a pattern to (a) the DOM op the snippet performs and (b) the inventory slot
 // it draws from. resolve() in decide.ts drops ANY pattern whose slot has no
-// harvested inventory item (emphasize_goal excepted — its target is the
-// owner's declared goal) — that uniform rule is what guarantees Angel never
+// harvested inventory item — that uniform rule is what guarantees Angel never
 // fabricates copy, only re-surfaces what the customer published.
+//
+// Ägarregeln (2026-07-20): sajtens egen målknapp är ORÖRBAR. Mönstren som
+// fanns för att röra den — emphasize_goal (ringen) och sticky_goal_cta
+// (flytande pill-dubblett) — är borttagna ur katalogen; decide-grinden
+// goal_element_untouchable täcker resten av opsen.
 
 import type { Pattern, PatternId } from "./types";
 
@@ -13,34 +17,10 @@ import type { Pattern, PatternId } from "./types";
 // WITHOUT appliesTo are goal-agnostic. The lists below exclude the goal kinds
 // a pattern would be wrong or irrelevant for; see docs/contradictions-audit.md
 // "target architecture" step 4. Only set on the SaaS/vertical-flavored
-// patterns — the goal-first patterns (emphasize/sticky/secondary/clarify) and
-// universal UX patterns (faq/hero/continuity) stay agnostic.
+// patterns — the goal-first patterns (secondary/clarify) and universal UX
+// patterns (faq/hero/continuity) stay agnostic.
 
 export const PATTERNS: Record<PatternId, Pattern> = {
-  emphasize_goal: {
-    id: "emphasize_goal",
-    level: 1,
-    label: "Emphasize the conversion goal",
-    description:
-      "Visually highlight the element the site owner declared as their conversion goal " +
-      "(the Measurement card's conversion selector). Site-type agnostic, language-free, " +
-      "and paint-only (outline/shadow) so it can never shift layout.",
-    op: "emphasize",
-    // Nominal slot — the target comes from the owner's goal config, not the
-    // inventory (see the emphasize_goal branch in resolve()).
-    slot: "cta",
-  },
-  sticky_goal_cta: {
-    id: "sticky_goal_cta",
-    level: 2,
-    label: "Sticky goal shortcut on mobile",
-    description:
-      "A fixed bottom button (no layout shift) that keeps the declared goal one thumb-tap " +
-      "away on mobile. Clicking it triggers the real goal element, so navigation and " +
-      "conversion tracking are the site's own.",
-    op: "inject_sticky",
-    slot: "cta",
-  },
   show_secondary_cta: {
     id: "show_secondary_cta",
     level: 2,
