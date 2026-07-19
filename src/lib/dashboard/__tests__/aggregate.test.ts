@@ -1222,3 +1222,47 @@ describe("clickHeatPages — heatmap per sida med sidväljare", () => {
     expect(pages[0].mobile.sampled + pages[0].desktop.sampled).toBe(0);
   });
 });
+
+describe("sessionSummaries — klick-räddningen (SPA-resor från äldre snippets)", () => {
+  const T0 = "2026-07-19T10:00:00Z";
+  const at = (s: number) => new Date(Date.parse(T0) + s * 1000).toISOString();
+  const sev = (
+    type: string,
+    payload: Record<string, unknown>,
+    over: Partial<DashEvent> = {},
+  ): DashEvent => ev(type, payload, { visitorHash: "v1", ...over });
+
+  it("klick på en osedd path skapar ett nytt steg — resan följer klickspåret", () => {
+    // Äldre snippet: EN pageview, sedan klientruttbyten som bara syns i klicken.
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/" }, { createdAt: at(0) }),
+      sev("element_click", { sessionId: "s1", ref: "Nav Blogg", path: "/" }, { createdAt: at(1) }),
+      sev(
+        "element_click",
+        { sessionId: "s1", ref: "Läs mer", path: "/blogg" },
+        { createdAt: at(5) },
+      ),
+      sev(
+        "element_click",
+        { sessionId: "s1", ref: "Boka", path: "/restauranger" },
+        { createdAt: at(9) },
+      ),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.steps.map((x) => x.path)).toEqual(["/", "/blogg", "/restauranger"]);
+    expect(s.pageOrder).toEqual(["/", "/blogg", "/restauranger"]);
+    expect(s.landingPath).toBe("/");
+    expect(s.steps[1].clicks.map((c) => c.ref)).toEqual(["Läs mer"]);
+  });
+
+  it("klick på en TIDIGARE sedd path återanvänder steget (ingen dubblett)", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/" }, { createdAt: at(0) }),
+      sev("pageview", { sessionId: "s1", path: "/blogg" }, { createdAt: at(3) }),
+      sev("element_click", { sessionId: "s1", ref: "Sen", path: "/" }, { createdAt: at(6) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.steps.map((x) => x.path)).toEqual(["/", "/blogg"]);
+    expect(s.steps[0].clicks.map((c) => c.ref)).toEqual(["Sen"]);
+  });
+});

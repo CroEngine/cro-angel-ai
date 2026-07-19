@@ -1808,6 +1808,50 @@
     // stängning, desktop + de flesta mobiler). Diagnos — inte mätkritiskt — så
     // vi accepterar det lilla bortfallet på mobil-Safari framför falska abandons.
     window.addEventListener("pagehide", leave);
+
+    // SPA-resor (ägarfynd 2026-07-19): klientruttbyten laddar aldrig om sidan,
+    // så utan detta blir varje SPA-besök EN pageview och resan går inte att
+    // följa i personläget ("Step 1 of 1" med död Next-knapp — 21 av 197
+    // pilotsessioner hade klick på flera sidor men bara 3 hade flera
+    // pageviews). Hooka history-API:t + popstate och skicka en minimal
+    // pageview vid PATH-byte. Kontexten (källa/enhet/land) läses ur besökets
+    // FÖRSTA pageview av rollupen, så SPA-pageviewen behöver bara pathen.
+    var lastJourneyPath = safePath();
+    var routePageviews = 0;
+    var ROUTE_PV_CAP = 60; // bounded — en människa navigerar inte förbi detta
+    function onRouteChange() {
+      try {
+        var p = safePath();
+        if (p === lastJourneyPath || routePageviews >= ROUTE_PV_CAP) return;
+        lastJourneyPath = p;
+        routePageviews++;
+        track("pageview", { path: p, spa: true }, decisionId);
+      } catch (err) {
+        /* aldrig bryta sidan */
+      }
+    }
+    try {
+      var origPush = window.history && window.history.pushState;
+      var origReplace = window.history && window.history.replaceState;
+      if (origPush) {
+        window.history.pushState = function () {
+          var r = origPush.apply(this, arguments);
+          onRouteChange();
+          return r;
+        };
+      }
+      if (origReplace) {
+        window.history.replaceState = function () {
+          var r = origReplace.apply(this, arguments);
+          onRouteChange();
+          return r;
+        };
+      }
+      window.addEventListener("popstate", onRouteChange);
+      window.addEventListener("hashchange", onRouteChange);
+    } catch (err) {
+      /* history-API saknas/låst — fullsideladdningar täcker ändå */
+    }
   }
 
   // ---- persist this visit --------------------------------------------------

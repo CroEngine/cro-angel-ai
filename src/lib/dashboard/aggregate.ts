@@ -635,7 +635,6 @@ export function sessionSummaries(
     const startMs = sortKey(evs[0]);
     const endMs = sortKey(evs[evs.length - 1]);
 
-    const pageOrder: string[] = [];
     const clickOrder: string[] = [];
     const steps: SessionStep[] = [];
     let engagedMs = 0;
@@ -646,10 +645,9 @@ export function sessionSummaries(
     for (const e of evs) {
       const path = typeof e.payload.path === "string" ? e.payload.path : null;
       if (e.type === "pageview" && path) {
-        // Distinkt sidordning: lägg bara till när sidan byts (undvik
-        // hydrerings-dubbletter av samma path i rad).
-        if (pageOrder[pageOrder.length - 1] !== path) pageOrder.push(path);
         // Nytt sidsteg på sidbyte — dubblett-pageviews fortsätter samma steg.
+        // (Sidordningen härleds ur stegen efter loopen — EN sanning för
+        // träd/lista/spelare.)
         if (steps[steps.length - 1]?.path !== path && steps.length < JOURNEY_STEP_CAP) {
           steps.push({ path, clicks: [], engagedMs: 0 });
         }
@@ -659,8 +657,18 @@ export function sessionSummaries(
           clickOrder.push(ref);
           // Klicket hör till sitt EGET path när det finns (sena events kan
           // anlända efter nästa pageview), annars pågående steget.
-          const step =
-            (path && [...steps].reverse().find((s) => s.path === path)) ?? steps[steps.length - 1];
+          let step = path
+            ? [...steps].reverse().find((s) => s.path === path)
+            : steps[steps.length - 1];
+          // Klick-räddningen (SPA-fyndet 2026-07-19): äldre snippets skickar
+          // ingen pageview vid klientruttbyte — ett klick på en OSEDD path är
+          // beviset på att besökaren navigerat dit. Nytt steg i klickordning,
+          // så resan går att följa även i historisk data.
+          if (!step && path && steps.length < JOURNEY_STEP_CAP) {
+            step = { path, clicks: [], engagedMs: 0 };
+            steps.push(step);
+          }
+          if (!step) step = steps[steps.length - 1];
           if (step && step.clicks.length < JOURNEY_STEP_CAP) {
             const x = e.payload.x;
             const y = e.payload.y;
@@ -693,8 +701,8 @@ export function sessionSummaries(
       device: firstPv ? str(firstPv.payload.device) : null,
       country: firstPv ? str(firstPv.payload.country) : null,
       isReturning: firstPv ? firstPv.payload.isReturning === true : false,
-      landingPath: pageOrder[0] ?? null,
-      pageOrder: pageOrder.slice(0, JOURNEY_STEP_CAP),
+      landingPath: steps[0]?.path ?? null,
+      pageOrder: steps.map((st) => st.path),
       clickOrder: clickOrder.slice(0, JOURNEY_STEP_CAP),
       steps,
       engagedMs,
