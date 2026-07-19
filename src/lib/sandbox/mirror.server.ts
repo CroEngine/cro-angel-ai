@@ -300,7 +300,30 @@ export function transformMirrorHtml(html: string, opts: MirrorTransformOptions):
   if (opts.reportHeight) {
     out = withHeightReporter(out);
   }
-  return out;
+  return withCmpHidden(out);
+}
+
+// Cookiebanners/CMP-dialoger göms i ALLA spegel-backdroppar (ägarfynd
+// 2026-07-19: en fryst kopia bär ofta dialogen i ÖPPET läge — besökaren
+// tryckte bort den, så spegeln ska visa sidan som besökaren såg den; i
+// live-spegeln kör tredjeparts-CMP:n och öppnar sig själv). SPEGELVÄND
+// selektorlista mot scripts/redesign/measure.ts (CMP_ROOTS) — håll i synk.
+const CMP_HIDE_SELECTORS =
+  "#CybotCookiebotDialog,#CybotCookiebotDialogBodyUnderlay," +
+  "#onetrust-consent-sdk,#onetrust-banner-sdk," +
+  "#usercentrics-root,#uc-center-container," +
+  ".osano-cm-window,.osano-cm-dialog," +
+  "#didomi-host,#didomi-notice," +
+  ".cc-window,.cc-banner," +
+  "#cookiescript_injected," +
+  "[data-lovable-cookie-root]," +
+  "[id*='cookie-consent' i],[class*='cookie-banner' i],[id*='consent-banner' i]";
+const CMP_HIDE_STYLE = `<style>${CMP_HIDE_SELECTORS}{display:none!important;visibility:hidden!important}</style>`;
+
+function withCmpHidden(html: string): string {
+  return html.includes("</head>")
+    ? html.replace("</head>", `${CMP_HIDE_STYLE}</head>`)
+    : CMP_HIDE_STYLE + html;
 }
 
 // Spegel-iframen är opak origin — föräldern kan inte läsa höjden själv.
@@ -316,14 +339,67 @@ function withHeightReporter(html: string): string {
     : html + HEIGHT_REPORTER;
 }
 
+export interface FrozenBackdropOptions {
+  /** Sajtens host (slug — för domän-sluggade sajter är de samma sak):
+   *  absoluta interna länkar känns igen mot den. */
+  siteHost?: string;
+  /** Sidväg → spegel-URL för sajtens ANDRA frysta kopior. Satt ⇒ interna
+   *  länkar skrivs om så kopian blir BROWSBAR (sandbox i stället för
+   *  skärmdump — ägarorder 2026-07-19). Returnera null för sidor utan
+   *  fryst kopia — länken avväpnas då (hellre död än 404 i backdroppen). */
+  siblingUrl?: (path: string) => string | null;
+}
+
+/** Skriv om <a href> i en fryst kopia: interna länkar med fryst syskonkopia
+ *  pekas mot spegel-endpointen (navigering stannar i iframen — target bort),
+ *  allt annat (extern länk, ofryst sida, mailto/javascript) avväpnas. Rena
+ *  #ankare lämnas — de scrollar bara kopian. */
+function rewriteFrozenLinks(
+  html: string,
+  siteHost: string,
+  siblingUrl: (path: string) => string | null,
+): string {
+  const bareHost = siteHost.replace(/^www\./, "");
+  return html.replace(/<a\b[^>]*>/gi, (tag) => {
+    const m = tag.match(/\shref\s*=\s*("([^"]*)"|'([^']*)')/i);
+    if (!m) return tag;
+    const href = m[2] ?? m[3] ?? "";
+    if (href.startsWith("#")) return tag;
+    let path: string | null = null;
+    if (href.startsWith("/") && !href.startsWith("//")) {
+      path = href;
+    } else if (/^https?:\/\//i.test(href)) {
+      try {
+        const u = new URL(href);
+        if (u.host.replace(/^www\./, "") === bareHost) path = u.pathname;
+      } catch {
+        /* ogiltig URL → avväpnas nedan */
+      }
+    }
+    const target = path ? siblingUrl(path) : null;
+    if (target) {
+      return tag
+        .replace(m[0], ` href="${target.replace(/"/g, "&quot;")}"`)
+        .replace(/\starget\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+    }
+    return tag.replace(m[0], ` data-angel-dead-link=""`);
+  });
+}
+
 /**
  * Backdrop ur en FRYST kopia (nattloppens browser-frysning, lagrad i
- * angel-evidence). Kopian är script-strippad och självbärande — den behöver
- * ingen omskrivning och kan inte rapportera sin höjd själv, så bara
- * höjdrapportören injiceras. Detta är SPA-sajternas backdrop-väg: live-
- * spegeln kan inte rendera dem (routern ser spegel-URL:en, datahämtningen
- * går mot fel origin), men den frysta kopian ÄR den färdigrenderade sidan.
+ * angel-evidence). Kopian är script-strippad och självbärande och kan inte
+ * rapportera sin höjd själv — höjdrapportören injiceras, CMP-dialoger göms
+ * (besökaren tryckte bort dem — spegeln ska visa sidan som de såg den), och
+ * med siblingUrl blir kopian browsbar via sina interna länkar. Detta är
+ * SPA-sajternas backdrop-väg: live-spegeln kan inte rendera dem (routern ser
+ * spegel-URL:en, datahämtningen går mot fel origin), men den frysta kopian
+ * ÄR den färdigrenderade sidan.
  */
-export function frozenBackdropHtml(html: string): string {
-  return withHeightReporter(html);
+export function frozenBackdropHtml(html: string, opts: FrozenBackdropOptions = {}): string {
+  let out = withCmpHidden(withHeightReporter(html));
+  if (opts.siblingUrl) {
+    out = rewriteFrozenLinks(out, opts.siteHost ?? "", opts.siblingUrl);
+  }
+  return out;
 }

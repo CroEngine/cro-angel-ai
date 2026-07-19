@@ -8,12 +8,14 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
+import { mirrorPathKey } from "@/lib/sandbox/mirror-key";
 import {
   frozenBackdropHtml,
   guardTargetUrl,
   safeMirrorFetch,
   sandboxSecret,
   sandboxSiteSlug,
+  signSandboxToken,
   transformMirrorHtml,
   verifySandboxToken,
 } from "@/lib/sandbox/mirror.server";
@@ -61,7 +63,26 @@ export const Route = createFileRoute("/api/sandbox/mirror")({
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const dl = await supabaseAdmin.storage.from("angel-evidence").download(frozenKey);
           if (dl.error || !dl.data) return deny(502, "frozen_missing");
-          const body = frozenBackdropHtml(await dl.data.text());
+          // Browsbar kopia (ägarorder 2026-07-19: sandbox i stället för
+          // skärmdump): interna länkar med fryst syskonkopia skrivs om till
+          // tokenade spegel-URL:er — navigering stannar i iframen. Länkar
+          // utan kopia avväpnas. Ett storage-list, tokens mintas per länk
+          // med SAMMA exp som den redan verifierade förfrågan.
+          const slug = frozenKey.split("/")[1];
+          const { data: sibs } = await supabaseAdmin.storage
+            .from("angel-evidence")
+            .list(`mirrors/${slug}`, { limit: 100 });
+          const sibNames = new Set((sibs ?? []).map((f) => f.name));
+          const body = frozenBackdropHtml(await dl.data.text(), {
+            siteHost: slug,
+            siblingUrl: (path) => {
+              const name = `${mirrorPathKey(path)}.html`;
+              if (!sibNames.has(name)) return null;
+              const key = `mirrors/${slug}/${name}`;
+              const t = signSandboxToken(`frozen:${key}`, exp, secret);
+              return `/api/sandbox/mirror?frozen=${encodeURIComponent(key)}&exp=${exp}&t=${t}&h=1`;
+            },
+          });
           return new Response(body, {
             status: 200,
             headers: {
