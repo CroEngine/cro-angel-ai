@@ -3,14 +3,15 @@
 // HeatMirror-backdroppen (utbrutna ur overview-panel.tsx i sajt-genomgången
 // 2026-07-18; ren flytt, ingen semantikändring).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 
+import { journeyFlow } from "@/lib/dashboard/aggregate";
 import { createPagePreview, createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { fmt, STATUS_PILL } from "./variant-stats";
 
-import type { ClickHeat, RageSignal, SessionSummary } from "@/lib/dashboard/aggregate";
+import type { ClickHeat, FlowNode, RageSignal, SessionSummary } from "@/lib/dashboard/aggregate";
 import type { VariantView } from "@/lib/dashboard/dashboard.functions";
 
 /** Heatmapens backdrop: den RIKTIGA sidan i spegeln (orörd, utan Angel),
@@ -295,13 +296,21 @@ export function CompareOverlay({
   );
 }
 
-/** Journeys & signals i SAMMA popup-idiom som Compare (ägarbeslut 2026-07-17):
- *  centrerad modal med sandbox-spegeln av riktiga sidan som scen, klick-
- *  heatmapen + rage-markörerna ritade ovanpå, Clicks/Rage/Both-växeln i topp-
- *  raden där Compares Variant/Original-växel bor, resorna + frustrations-
- *  signalerna i sidokolumnen. Esc stänger; body-scrollen låses; spegeln
- *  skriver aldrig events. Samma ärliga lägen som förut: "samlar in"-overlay
- *  när positionsdata saknas, siluett-fallback när domänen inte är satt. */
+/** Journeys v2 (ägarorder 2026-07-18, efter Hotjar/Clarity-research): samma
+ *  popup-idiom som Compare, nu i tre lägen med en gemensam filterrad
+ *  (kanal · enhet · utfall) som definierar kohorten:
+ *
+ *  - FLOW (default): det rankade vägträdet (Clarity-formen, ägarens val) —
+ *    entrésidor → nästa steg → utfall med procent och konverterade per väg.
+ *    Tål tunn data: tio sessioner ger ett litet men korrekt träd.
+ *  - HEATMAP: klick-/rage-kartan över sandbox-spegeln (oförändrad mekanik).
+ *  - PERSON: klicka en session i listan → steg-för-steg-spelare på spegel-
+ *    backdrops med personens klick som numrerade punkter, Prev/Next steg och
+ *    Prev/Next person genom hela den filtrerade kohorten (Hotjar-mönstret).
+ *
+ *  MEDVETET ingen videoinspelning/musspårning — integritetsbeslutet från
+ *  pivoten står: sidsekvens + klick räcker för att förstå resan. Spegeln
+ *  skriver aldrig events; Esc stänger; body-scrollen låses. */
 export function JourneysOverlay({
   site,
   heat,
@@ -317,25 +326,79 @@ export function JourneysOverlay({
   rageClicks: RageSignal[];
   contextLabel: string;
   /** Satt när segmentvalet redan pinnar enheten (google·desktop → "desktop"):
-   *  vyn låses dit och Mobile/Desktop-växeln döljs — att kunna växla till en
-   *  annan enhet än den man borrat in i vore motsägelsefullt (ägarfynd
-   *  2026-07-17). */
+   *  vyn låses dit och enhetsväxlarna döljs — att kunna växla till en annan
+   *  enhet än den man borrat in i vore motsägelsefullt (ägarfynd 2026-07-17). */
   lockedDevice?: "mobile" | "desktop" | null;
   onClose: () => void;
 }) {
+  const [view, setView] = useState<"flow" | "heatmap">("flow");
   const [heatMode, setHeatMode] = useState<"clicks" | "rage" | "both">("clicks");
-  // Layoutvyn: x/y är % av BESÖKARENS viewport/dokument — punkterna är bara
-  // meningsfulla mot en spegel i samma layoutbredd, så vyn väljer enhetsklass
-  // (mobil 390 / desktop 1280) och default är den med mest underlag.
+
+  // ── kohort-filtren (Hotjar-mönstret: ETT filter, tre zoomnivåer) ─────────
+  const [channelFilter, setChannelFilter] = useState<string | null>(null);
+  const [outcomeFilter, setOutcomeFilter] = useState<"all" | "converted" | "left">("all");
+  const [deviceFilter, setDeviceFilter] = useState<"mobile" | "desktop" | null>(
+    lockedDevice ?? null,
+  );
+  const channels = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const j of journeys) if (j.channel) n.set(j.channel, (n.get(j.channel) ?? 0) + 1);
+    return [...n.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
+  }, [journeys]);
+  const filtered = useMemo(
+    () =>
+      journeys.filter((j) => {
+        if (channelFilter && j.channel !== channelFilter) return false;
+        if (outcomeFilter === "converted" && !j.converted) return false;
+        if (outcomeFilter === "left" && j.converted) return false;
+        if (deviceFilter) {
+          // Samma enhetsattribution som heatmapen: tablet räknas till desktop.
+          const d = j.device === "mobile" ? "mobile" : "desktop";
+          if (d !== deviceFilter) return false;
+        }
+        return true;
+      }),
+    [journeys, channelFilter, outcomeFilter, deviceFilter],
+  );
+  const flow = useMemo(() => journeyFlow(filtered), [filtered]);
+
+  // ── personläget: index i den FILTRERADE listan + aktuellt sidsteg ────────
+  const [personIdx, setPersonIdx] = useState<number | null>(null);
+  const [stepIdx, setStepIdx] = useState(0);
+  useEffect(() => {
+    // Filterbyte definierar om kohorten — en öppen person kan peka fel.
+    setPersonIdx(null);
+    setStepIdx(0);
+  }, [channelFilter, outcomeFilter, deviceFilter]);
+  const person = personIdx != null ? (filtered[personIdx] ?? null) : null;
+  const personSteps = person?.steps ?? [];
+  const personStep = personSteps[stepIdx] ?? null;
+  const personDevice = person?.device === "mobile" ? "mobile" : "desktop";
+  const personFrameW = personDevice === "mobile" ? 390 : 1280;
+  const openPerson = (idx: number) => {
+    setPersonIdx(idx);
+    setStepIdx(0);
+  };
+  const movePerson = (delta: number) => {
+    if (personIdx == null || filtered.length === 0) return;
+    const next = (personIdx + delta + filtered.length) % filtered.length;
+    openPerson(next);
+  };
+  const personBackdrop = useQuery({
+    queryKey: ["pagePreview", site, personStep?.path ?? ""],
+    queryFn: () => createPagePreview({ data: { site, path: personStep!.path } }),
+    enabled: personStep != null,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // ── heatmap-läget (oförändrad mekanik från v1) ───────────────────────────
   const [deviceChoice, setDeviceChoice] = useState<"mobile" | "desktop" | null>(null);
   const device =
     lockedDevice ??
     deviceChoice ??
     (heat.desktop.sampled > heat.mobile.sampled ? "desktop" : "mobile");
-  const view = device === "mobile" ? heat.mobile : heat.desktop;
+  const heatView = device === "mobile" ? heat.mobile : heat.desktop;
   const frameW = device === "mobile" ? 390 : 1280;
-  // Backdroppen (riktiga sidan i spegeln) hämtas när modalen monteras — den
-  // ÄR öppen-grinden; tokens lever 30 min så växlingar återanvänder svaret.
   const backdrop = useQuery({
     queryKey: ["pagePreview", site, heat.path],
     queryFn: () => createPagePreview({ data: { site, path: heat.path } }),
@@ -357,7 +420,7 @@ export function JourneysOverlay({
 
   const showClicks = heatMode === "clicks" || heatMode === "both";
   const showRage = heatMode === "rage" || heatMode === "both";
-  const maxN = Math.max(1, ...view.clicks.map((c) => c.n));
+  const maxN = Math.max(1, ...heatView.clicks.map((c) => c.n));
   // Klicktäthet är MAGNITUD → sekventiell EN-tons ramp (blå, ljus→mörk) —
   // inte grön→amber→röd (regnbågs- och CVD-fällan, och rött är reserverat
   // för rage-markörerna/status). Varje punkt är en skarp 14px-kärna med vit
@@ -366,11 +429,9 @@ export function JourneysOverlay({
   const RAMP = ["#86b6ef", "#2a78d6", "#0d366b"] as const;
   const rampAt = (rel: number) => (rel > 0.66 ? RAMP[2] : rel > 0.33 ? RAMP[1] : RAMP[0]);
 
-  // Punkterna + "samlar in"-läget delas mellan backdropparna: den levande
-  // spegeln av RIKTIGA sidan (när domänen finns) och siluett-fallbacken.
   const otherSampled = device === "mobile" ? heat.desktop.sampled : heat.mobile.sampled;
-  const overlay =
-    view.sampled === 0 ? (
+  const heatOverlay =
+    heatView.sampled === 0 ? (
       <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-8 text-center">
         <p className="max-w-sm text-[13px] text-stone-500">
           {otherSampled > 0 && !lockedDevice
@@ -381,7 +442,7 @@ export function JourneysOverlay({
     ) : (
       <>
         {showClicks &&
-          view.clicks.map((c, i) => {
+          heatView.clicks.map((c, i) => {
             const rel = c.n / maxN;
             const hue = rampAt(rel);
             const halo = Math.round(40 + rel * 80);
@@ -412,7 +473,7 @@ export function JourneysOverlay({
             );
           })}
         {showRage &&
-          view.rage.map((r, i) => (
+          heatView.rage.map((r, i) => (
             <div
               key={`r${i}`}
               title={r.ref}
@@ -431,9 +492,36 @@ export function JourneysOverlay({
       </>
     );
 
+  // Personens klick som NUMRERADE punkter i klickordning — bara positions-
+  // bärande klick kan ritas; resten listas som chips under spegeln.
+  const personOverlay = personStep ? (
+    <>
+      {personStep.clicks.map((c, i) =>
+        c.x != null && c.y != null ? (
+          <div
+            key={i}
+            title={c.ref}
+            className="absolute flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 border-white text-[11px] font-bold text-white"
+            style={{
+              top: `${c.y}%`,
+              left: `${c.x}%`,
+              transform: "translate(-50%,-50%)",
+              background: "#2a78d6",
+              boxShadow: "0 0 0 4px rgba(42,120,214,.25)",
+            }}
+          >
+            {i + 1}
+          </div>
+        ) : null,
+      )}
+    </>
+  ) : null;
+  const unpositioned = personStep ? personStep.clicks.filter((c) => c.x == null) : [];
+
+  const pill = (active: boolean) =>
+    active ? { background: "#161513", color: "#fff" } : { color: "#57534e" };
+
   return createPortal(
-    // Samma centrerade modal som Compare — dimmad bakgrund, klick utanför
-    // stänger, panelen nästan hela vyn så spegeln får plats.
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4 md:p-8"
       onClick={onClose}
@@ -442,45 +530,157 @@ export function JourneysOverlay({
         className="flex h-[min(88vh,900px)] w-full max-w-[1160px] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-[#faf9f7]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* topprad: identitet till vänster, växeln till höger — Compare-idiomet */}
+        {/* topprad: identitet till vänster, lägesväxlarna till höger */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-stone-200 bg-white px-5 py-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => (person ? setPersonIdx(null) : onClose())}
             className="flex items-center gap-1.5 text-[13px] text-stone-600 hover:text-stone-900"
           >
-            ← Back
+            ← {person ? "All journeys" : "Back"}
           </button>
           <span className="font-heading text-[14px] font-semibold">Journeys &amp; signals</span>
           <span className="truncate font-mono text-[12px] text-stone-400">
-            {contextLabel} <span className="text-[#c4beb6]">·</span> {heat.path}
+            {contextLabel}
+            {view === "heatmap" && !person && (
+              <>
+                {" "}
+                <span className="text-[#c4beb6]">·</span> {heat.path}
+              </>
+            )}
           </span>
           <div className="ml-auto flex items-center gap-3">
-            {view.sampled > 0 && (
-              <span className="text-[11px] text-stone-400 max-md:hidden">
-                {fmt(view.sampled)} sampled clicks
-              </span>
+            {person ? (
+              // Hotjar-mönstret: bläddra vidare till nästa person i kohorten
+              // utan att gå tillbaka till listan.
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-stone-400">
+                  Visitor {(personIdx ?? 0) + 1} of {filtered.length}
+                </span>
+                <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
+                  <button
+                    type="button"
+                    onClick={() => movePerson(-1)}
+                    className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold text-stone-600"
+                  >
+                    ← Prev
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => movePerson(1)}
+                    className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
+                    style={{ background: "#161513", color: "#fff" }}
+                  >
+                    Next visitor →
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
+                  {(
+                    [
+                      ["flow", "Flow"],
+                      ["heatmap", "Heatmap"],
+                    ] as const
+                  ).map(([v, label]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setView(v)}
+                      className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
+                      style={pill(view === v)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {view === "heatmap" && !lockedDevice && (
+                  <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
+                    {(
+                      [
+                        ["mobile", `Mobile (${heat.mobile.sampled})`],
+                        ["desktop", `Desktop (${heat.desktop.sampled})`],
+                      ] as const
+                    ).map(([d, label]) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDeviceChoice(d)}
+                        className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
+                        style={pill(device === d)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {view === "heatmap" && (
+                  <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
+                    {(
+                      [
+                        ["clicks", "Clicks"],
+                        ["rage", "Rage clicks"],
+                        ["both", "Both"],
+                      ] as const
+                    ).map(([m, label]) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setHeatMode(m)}
+                        className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
+                        style={pill(heatMode === m)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
-            {/* Layoutväxeln: klicken ritas bara mot spegeln i samma bredd som
-                besökarens layout — siffrorna säger var underlaget finns.
-                Pinnar segmentvalet redan enheten är växeln meningslös och
-                döljs (vyn är låst dit). */}
+          </div>
+        </div>
+
+        {/* kohort-filterraden (flödet + listan; personläget ärver kohorten) */}
+        {!person && view === "flow" && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 bg-white px-5 py-2.5">
+            <span className="font-mono text-[10px] tracking-wider text-stone-400">[ filter ]</span>
+            <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
+              <button
+                type="button"
+                onClick={() => setChannelFilter(null)}
+                className="rounded-[7px] px-[9px] py-[4px] text-[11.5px] font-semibold"
+                style={pill(channelFilter === null)}
+              >
+                All sources
+              </button>
+              {channels.slice(0, 5).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setChannelFilter(channelFilter === c ? null : c)}
+                  className="rounded-[7px] px-[9px] py-[4px] text-[11.5px] font-semibold"
+                  style={pill(channelFilter === c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
             {!lockedDevice && (
               <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
                 {(
                   [
-                    ["mobile", `Mobile (${heat.mobile.sampled})`],
-                    ["desktop", `Desktop (${heat.desktop.sampled})`],
+                    [null, "All devices"],
+                    ["mobile", "Mobile"],
+                    ["desktop", "Desktop"],
                   ] as const
                 ).map(([d, label]) => (
                   <button
-                    key={d}
+                    key={label}
                     type="button"
-                    onClick={() => setDeviceChoice(d)}
-                    className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
-                    style={
-                      device === d ? { background: "#161513", color: "#fff" } : { color: "#57534e" }
-                    }
+                    onClick={() => setDeviceFilter(d)}
+                    className="rounded-[7px] px-[9px] py-[4px] text-[11.5px] font-semibold"
+                    style={pill(deviceFilter === d)}
                   >
                     {label}
                   </button>
@@ -490,38 +690,249 @@ export function JourneysOverlay({
             <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
               {(
                 [
-                  ["clicks", "Clicks"],
-                  ["rage", "Rage clicks"],
-                  ["both", "Both"],
+                  ["all", "All outcomes"],
+                  ["converted", "Converted"],
+                  ["left", "Did not convert"],
                 ] as const
-              ).map(([m, label]) => (
+              ).map(([o, label]) => (
                 <button
-                  key={m}
+                  key={o}
                   type="button"
-                  onClick={() => setHeatMode(m)}
-                  className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
-                  style={
-                    heatMode === m ? { background: "#161513", color: "#fff" } : { color: "#57534e" }
-                  }
+                  onClick={() => setOutcomeFilter(o)}
+                  className="rounded-[7px] px-[9px] py-[4px] text-[11.5px] font-semibold"
+                  style={pill(outcomeFilter === o)}
                 >
                   {label}
                 </button>
               ))}
             </div>
+            <span className="ml-auto text-[11px] text-stone-400">
+              {filtered.length} of {journeys.length} sessions in the window
+            </span>
           </div>
-        </div>
+        )}
 
-        {/* scenen: heatmapen över spegeln + resorna/frustrationen i sidokolumn */}
+        {/* scenen */}
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr]">
+          {person ? (
+            // ── PERSONLÄGET: steg-för-steg-spelaren ──────────────────────────
+            <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr]">
+              <div>
+                {personStep && personBackdrop.data?.ok && personBackdrop.data.mirrorPath ? (
+                  <HeatMirror
+                    key={`${person.sessionId}:${stepIdx}`}
+                    src={personBackdrop.data.mirrorPath}
+                    overlay={personOverlay}
+                    maxHeight="calc(88vh - 230px)"
+                    frameW={personFrameW}
+                  />
+                ) : (
+                  <div className="flex h-[420px] items-center justify-center rounded-[10px] border border-[#f0eee9] bg-white p-8 text-center text-[13px] text-stone-500">
+                    {personStep
+                      ? "Loading the page mirror…"
+                      : "This session has no page steps to replay."}
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-stone-500">
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                      style={{ background: "#2a78d6" }}
+                    >
+                      1
+                    </span>
+                    clicks in order
+                  </span>
+                  {unpositioned.length > 0 && (
+                    <span>
+                      {unpositioned.length} click{unpositioned.length === 1 ? "" : "s"} without a
+                      position (older snippet) — listed in the steps.
+                    </span>
+                  )}
+                  <span className="ml-auto font-mono text-stone-400">
+                    {person.channel ?? "unknown"} · {personDevice} ·{" "}
+                    {person.converted ? "converted" : "did not convert"}
+                  </span>
+                </div>
+              </div>
+
+              {/* stegen + navigeringen */}
+              <div className="flex flex-col gap-4">
+                <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+                  <div className="flex items-center justify-between">
+                    <div className="font-heading text-sm font-semibold">
+                      Step {Math.min(stepIdx + 1, Math.max(personSteps.length, 1))} of{" "}
+                      {personSteps.length}
+                    </div>
+                    <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
+                      <button
+                        type="button"
+                        disabled={stepIdx === 0}
+                        onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
+                        className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold text-stone-600 disabled:opacity-40"
+                      >
+                        ← Prev
+                      </button>
+                      <button
+                        type="button"
+                        disabled={stepIdx >= personSteps.length - 1}
+                        onClick={() => setStepIdx((i) => Math.min(personSteps.length - 1, i + 1))}
+                        className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold disabled:opacity-40"
+                        style={{ background: "#161513", color: "#fff" }}
+                      >
+                        Next step →
+                      </button>
+                    </div>
+                  </div>
+                  {personSteps.map((s, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setStepIdx(i)}
+                      className="mt-2 block w-full rounded-[9px] border px-3 py-2 text-left"
+                      style={{
+                        borderColor: i === stepIdx ? "#161513" : "#f0eee9",
+                        background: i === stepIdx ? "#faf9f7" : "#fff",
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate font-mono text-[11.5px] text-stone-700">
+                          {i + 1}. {s.path}
+                        </span>
+                        <span className="flex-none text-[11px] text-stone-400">
+                          {s.engagedMs > 0 ? `${Math.round(s.engagedMs / 1000)}s` : ""}
+                        </span>
+                      </div>
+                      {s.clicks.length > 0 && (
+                        <div className="mt-1 truncate text-[11px] text-stone-500">
+                          {s.clicks.map((c) => c.ref).join(" · ")}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                  <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
+                    Page sequence and clicks only — Angel never records screens, mouse movement or
+                    keystrokes.
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : view === "flow" ? (
+            // ── FLÖDET: rankat vägträd + sessionslistan ──────────────────────
+            <div className="grid items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
+              <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+                <div className="font-heading text-sm font-semibold">Where visitors go</div>
+                <div className="mt-1 text-[11.5px] text-stone-400">
+                  Entry page → next step → after that, ranked by volume. Share of the level above; ✓
+                  = sessions that converted at some point, ⏏ = journeys that ended there.
+                </div>
+                {flow.totalSessions === 0 ? (
+                  <div className="border-t border-[#f4f2ef] py-3 text-[12px] text-stone-400">
+                    No sessions match the filter in this window.
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    {flow.entries.map((entry, i) => (
+                      <div key={i} className="border-t border-[#f4f2ef] py-2">
+                        <FlowRow node={entry} base={flow.totalSessions} depth={0} />
+                        {entry.children.map((c2, j) => (
+                          <div key={j}>
+                            <FlowRow node={c2} base={entry.sessions} depth={1} />
+                            {c2.children.map((c3, k) => (
+                              <FlowRow key={k} node={c3} base={c2.sessions} depth={2} />
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+                  <div className="font-heading text-sm font-semibold">
+                    Sessions{" "}
+                    <span className="font-sans text-[11px] font-normal text-stone-400">
+                      — click one to follow that visitor
+                    </span>
+                  </div>
+                  {filtered.length === 0 && (
+                    <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
+                      No recorded journeys for this group in the window.
+                    </div>
+                  )}
+                  <div className="max-h-[420px] overflow-y-auto">
+                    {filtered.map((j, idx) => (
+                      <button
+                        key={j.sessionId}
+                        type="button"
+                        onClick={() => openPerson(idx)}
+                        className="block w-full border-t border-[#f4f2ef] py-[11px] text-left hover:bg-[#faf9f7]"
+                      >
+                        <div className="truncate font-mono text-[11.5px] text-stone-600">
+                          {(j.pageOrder.length ? j.pageOrder : [j.landingPath ?? "/"]).join(" → ")}
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="text-[11px] text-stone-400">
+                            {j.channel ?? "unknown"} · {j.device ?? "?"} ·{" "}
+                            {Math.round(j.engagedMs / 1000)}s
+                          </span>
+                          <span
+                            className="text-[11.5px] font-semibold"
+                            style={{
+                              color: j.converted
+                                ? "#047857"
+                                : j.formAbandoned
+                                  ? "#d97706"
+                                  : "#78716c",
+                            }}
+                          >
+                            {j.converted
+                              ? "converted"
+                              : j.formAbandoned
+                                ? "abandoned form"
+                                : "browsed"}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+                  <div className="font-heading text-sm font-semibold">Frustration signals</div>
+                  {rageClicks.length === 0 && (
+                    <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
+                      No rage clicks recorded. Good.
+                    </div>
+                  )}
+                  {rageClicks.map((g) => (
+                    <div
+                      key={g.ref}
+                      className="flex items-center justify-between border-t border-[#f4f2ef] py-[11px]"
+                    >
+                      <span className="truncate font-mono text-[11.5px] text-stone-600">
+                        {g.ref}
+                      </span>
+                      <span className="ml-3 flex-none text-[12px] font-semibold text-amber-600">
+                        {g.bursts} rage bursts
+                      </span>
+                    </div>
+                  ))}
+                  <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
+                    Site-wide diagnostics — Angel never changes anything automatically from these.
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // ── HEATMAPEN (oförändrad mekanik, nu i full bredd) ──────────────
             <div>
               {backdrop.data?.ok && backdrop.data.mirrorPath ? (
-                // key: breddbyte remountar spegeln — höjdrapportören fyrar
-                // bara vid load, och mobil-/desktoplayouten har olika höjd.
                 <HeatMirror
                   key={device}
                   src={backdrop.data.mirrorPath}
-                  overlay={overlay}
+                  overlay={heatOverlay}
                   maxHeight="calc(88vh - 190px)"
                   frameW={frameW}
                 />
@@ -547,10 +958,13 @@ export function JourneysOverlay({
                     <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
                     <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
                   </div>
-                  {overlay}
+                  {heatOverlay}
                 </div>
               )}
               <div className="mt-3 flex items-center gap-4 text-[11px] text-stone-500">
+                {heatView.sampled > 0 && (
+                  <span className="text-stone-400">{fmt(heatView.sampled)} sampled clicks</span>
+                )}
                 {showClicks && (
                   <span className="flex items-center gap-2">
                     low
@@ -585,64 +999,45 @@ export function JourneysOverlay({
                 )}
               </div>
             </div>
-
-            {/* resor + frustrationssignaler */}
-            <div className="flex flex-col gap-4">
-              <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
-                <div className="font-heading text-sm font-semibold">Recent journeys</div>
-                {journeys.length === 0 && (
-                  <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
-                    No recorded journeys for this group in the window.
-                  </div>
-                )}
-                {journeys.slice(0, 5).map((j) => (
-                  <div key={j.sessionId} className="border-t border-[#f4f2ef] py-[11px]">
-                    <div className="truncate font-mono text-[11.5px] text-stone-600">
-                      {(j.pageOrder.length ? j.pageOrder : [j.landingPath ?? "/"]).join(" → ")}
-                    </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className="text-[11px] text-stone-400">
-                        {Math.round(j.engagedMs / 1000)}s engaged
-                      </span>
-                      <span
-                        className="text-[11.5px] font-semibold"
-                        style={{
-                          color: j.converted ? "#047857" : j.formAbandoned ? "#d97706" : "#78716c",
-                        }}
-                      >
-                        {j.converted ? "converted" : j.formAbandoned ? "abandoned form" : "browsed"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
-                <div className="font-heading text-sm font-semibold">Frustration signals</div>
-                {rageClicks.length === 0 && (
-                  <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
-                    No rage clicks recorded. Good.
-                  </div>
-                )}
-                {rageClicks.map((g) => (
-                  <div
-                    key={g.ref}
-                    className="flex items-center justify-between border-t border-[#f4f2ef] py-[11px]"
-                  >
-                    <span className="truncate font-mono text-[11.5px] text-stone-600">{g.ref}</span>
-                    <span className="ml-3 flex-none text-[12px] font-semibold text-amber-600">
-                      {g.bursts} rage bursts
-                    </span>
-                  </div>
-                ))}
-                <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
-                  Site-wide diagnostics — Angel never changes anything automatically from these.
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** En rad i vägträdet: indrag per nivå, volymstapel relativt nivån ovanför,
+ *  procent + konverterade + avslut. "Övriga"-hinken (path null) får kursiv
+ *  etikett och ingen vidare förgrening. */
+function FlowRow({ node, base, depth }: { node: FlowNode; base: number; depth: number }) {
+  const share = base > 0 ? node.sessions / base : 0;
+  return (
+    <div className="flex items-center gap-2 py-[5px]" style={{ paddingLeft: depth * 22 }}>
+      {depth > 0 && <span className="flex-none font-mono text-[11px] text-[#c4beb6]">→</span>}
+      <span
+        className="min-w-0 flex-none truncate font-mono text-[11.5px]"
+        style={{ maxWidth: "40%", color: node.path ? "#44403c" : "#a8a29e" }}
+      >
+        {node.path ?? "other pages"}
+      </span>
+      <span className="h-[7px] flex-1 overflow-hidden rounded-[4px] bg-[#f4f2ef]">
+        <span
+          className="block h-full rounded-[4px]"
+          style={{
+            width: `${Math.max(2, Math.round(share * 100))}%`,
+            background: depth === 0 ? "#0d366b" : depth === 1 ? "#2a78d6" : "#86b6ef",
+          }}
+        />
+      </span>
+      <span className="flex-none text-right font-mono text-[11px] text-stone-500">
+        {node.sessions} · {Math.round(share * 100)}%
+      </span>
+      <span className="w-[74px] flex-none text-right text-[11px]">
+        {node.converted > 0 && <span style={{ color: "#047857" }}>✓ {node.converted}</span>}
+        {node.converted > 0 && node.exited > 0 && <span className="text-stone-300"> · </span>}
+        {node.exited > 0 && <span className="text-stone-400">⏏ {node.exited}</span>}
+      </span>
+    </div>
   );
 }
