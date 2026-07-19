@@ -3,7 +3,7 @@
 // HeatMirror-backdroppen (utbrutna ur overview-panel.tsx i sajt-genomgången
 // 2026-07-18; ren flytt, ingen semantikändring).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -31,6 +31,7 @@ function HeatMirror({
   overlay,
   maxHeight = 560,
   frameW = 1280,
+  onRawHeight,
 }: {
   src: string;
   overlay: React.ReactNode;
@@ -38,6 +39,9 @@ function HeatMirror({
   /** Spegelns viewportbredd — MÅSTE matcha layouten klicken mättes i
    *  (390 = mobil, 1280 = desktop); x är % av besökarens viewportbredd. */
   frameW?: number;
+  /** Rå (o-klampad) rapporterad dokumenthöjd — skal-detekteringen i person-
+   *  läget läser den: en live-speglad SPA rapporterar ~0 (blankt skal). */
+  onRawHeight?: (h: number) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [wrapW, setWrapW] = useState(700);
@@ -59,11 +63,12 @@ function HeatMirror({
         // Klampad: en fientlig speglad sida kan bara flytta punkter i ägarens
         // egen vy av just den sidan — men vi tar inga orimliga värden.
         setDocH(Math.min(20000, Math.max(600, Math.round(d.h))));
+        onRawHeight?.(Math.round(d.h));
       }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, []);
+  }, [onRawHeight]);
 
   const scale = wrapW > 0 ? Math.min(1, wrapW / frameW) : 0.5;
   return (
@@ -421,6 +426,14 @@ export function JourneysOverlay({
     enabled: personStep != null,
     staleTime: 5 * 60 * 1000,
   });
+  // Skal-detektering (ägarfynd 2026-07-19: blank vit spegel i personläget):
+  // en LIVE-speglad SPA-sida rapporterar ~0 i dokumenthöjd — då visas en
+  // ärlig skylt i stället för ett tyst vitt hål. Frysta kopior berörs inte.
+  const [personRawH, setPersonRawH] = useState<number | null>(null);
+  useEffect(() => setPersonRawH(null), [personStep?.path, personIdx]);
+  const onPersonRawHeight = useCallback((h: number) => setPersonRawH(h), []);
+  const personMirrorBlank =
+    personBackdrop.data?.mirrorKind === "live" && personRawH !== null && personRawH < 300;
 
   // ── heatmap-läget (oförändrad mekanik från v1) ───────────────────────────
   const [deviceChoice, setDeviceChoice] = useState<"mobile" | "desktop" | null>(null);
@@ -731,13 +744,29 @@ export function JourneysOverlay({
             <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr]">
               <div>
                 {personStep && personBackdrop.data?.ok && personBackdrop.data.mirrorPath ? (
-                  <HeatMirror
-                    key={`${person.sessionId}:${stepIdx}`}
-                    src={personBackdrop.data.mirrorPath}
-                    overlay={personOverlay}
-                    maxHeight="calc(88vh - 230px)"
-                    frameW={personFrameW}
-                  />
+                  <div className="relative">
+                    <HeatMirror
+                      key={`${person.sessionId}:${stepIdx}`}
+                      src={personBackdrop.data.mirrorPath}
+                      overlay={personOverlay}
+                      maxHeight="calc(88vh - 230px)"
+                      frameW={personFrameW}
+                      onRawHeight={onPersonRawHeight}
+                    />
+                    {personMirrorBlank && (
+                      // Ärlig skylt i stället för ett tyst vitt hål: sidan är
+                      // JS-renderad och kan inte live-speglas — nattloopen
+                      // fryser besökta sidor, så kopian kommer.
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/80 p-8 text-center">
+                        <p className="max-w-sm text-[13px] leading-relaxed text-stone-500">
+                          This page renders with JavaScript and can&apos;t be mirrored live. The
+                          nightly loop freezes a browsable copy of visited pages — this step will
+                          get its backdrop after the next run. The visitor&apos;s pages and clicks
+                          are listed on the right.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="flex h-[420px] items-center justify-center rounded-[10px] border border-[#f0eee9] bg-white p-8 text-center text-[13px] text-stone-500">
                     {personStep
