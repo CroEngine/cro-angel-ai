@@ -293,7 +293,7 @@ function Dashboard() {
               segments={d.metrics.segmentGroups}
               sessions={d.metrics.sessions}
               rageClicks={d.metrics.rageClicks}
-              heat={d.metrics.heat}
+              heatPages={d.metrics.heatPages}
               variants={d.variants ?? []}
               servingOn={d.siteConfig.servingEnabled}
             />

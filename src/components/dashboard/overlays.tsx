@@ -326,7 +326,7 @@ export function CompareOverlay({
  *  skriver aldrig events; Esc stänger; body-scrollen låses. */
 export function JourneysOverlay({
   site,
-  heat,
+  heatPages,
   journeys,
   rageClicks,
   contextLabel,
@@ -334,7 +334,7 @@ export function JourneysOverlay({
   onClose,
 }: {
   site: string;
-  heat: ClickHeat;
+  heatPages: ClickHeat[];
   journeys: SessionSummary[];
   rageClicks: RageSignal[];
   contextLabel: string;
@@ -346,6 +346,16 @@ export function JourneysOverlay({
 }) {
   const [view, setView] = useState<"flow" | "heatmap">("flow");
   const [heatMode, setHeatMode] = useState<"clicks" | "rage" | "both">("clicks");
+  // Sidväljaren (ägarfynd 2026-07-19: kartan "drog mot restauranger" — den
+  // var låst till sajtens mest klickade sida). Default = klick-toppen.
+  const [heatPathChoice, setHeatPathChoice] = useState<string | null>(null);
+  const heat = (heatPathChoice && heatPages.find((h) => h.path === heatPathChoice)) ||
+    heatPages[0] || {
+      path: "/",
+      mobile: { clicks: [], rage: [], sampled: 0 },
+      desktop: { clicks: [], rage: [], sampled: 0 },
+      unattributed: 0,
+    };
 
   // ── kohort-filtren (Hotjar-mönstret: ETT filter, tre zoomnivåer) ─────────
   // Källor + enheter är FÄLLBARA menyer med kryss (ägarfynd 2026-07-19: en
@@ -643,6 +653,52 @@ export function JourneysOverlay({
                     </button>
                   ))}
                 </div>
+                {view === "heatmap" && heatPages.length > 1 && (
+                  // Sidväljaren: kartan visar EN sida i taget — välj vilken av
+                  // de mest klickade (rankade, med antal), i stället för att
+                  // alltid låsas till sajtens klick-topp.
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex max-w-[280px] items-center gap-1.5 rounded-[9px] border border-stone-200 bg-[#faf9f7] px-[11px] py-[5px] text-[12px] font-semibold text-stone-700"
+                      >
+                        <span className="text-stone-400">Page:</span>
+                        <span className="truncate font-mono text-[11.5px]">{heat.path}</span>
+                        <svg
+                          width="9"
+                          height="6"
+                          viewBox="0 0 9 6"
+                          className="flex-none text-stone-400"
+                        >
+                          <path
+                            d="M1 1l3.5 3.5L8 1"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            fill="none"
+                          />
+                        </svg>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="max-w-[360px]">
+                      {heatPages.map((h) => (
+                        <DropdownMenuItem
+                          key={h.path}
+                          onSelect={() => setHeatPathChoice(h.path)}
+                          className="text-[12px]"
+                          style={h.path === heat.path ? { background: "#f4f2ef" } : undefined}
+                        >
+                          <span className="min-w-0 flex-1 truncate font-mono text-[11.5px]">
+                            {h.path}
+                          </span>
+                          <span className="ml-3 flex-none font-mono text-[11px] text-stone-400">
+                            {h.mobile.sampled + h.desktop.sampled}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
                 {view === "heatmap" && !lockedDevice && (
                   <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
                     {(
