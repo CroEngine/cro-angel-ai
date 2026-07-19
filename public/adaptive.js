@@ -1623,8 +1623,18 @@
       }
       // Sista utväg: kort synlig etikett (oftast sajtens egen UI-copy), en rad,
       // hårt cappad. Servern PII-skrubbar dessutom (scrubPath i buildEventRows).
+      // Kedjan vässad för IKONKNAPPAR (berättelse-tidslinjen 2026-07-19:
+      // "klickade på BUTTON" är en dålig mening): title → bild-alt →
+      // svg-title innan taggnamnet får bli namnet.
       var txt = (el.textContent || "").trim().split("\n")[0];
-      return String(txt || el.tagName || "").slice(0, 40);
+      if (txt) return String(txt).slice(0, 40);
+      var ttl = el.getAttribute("title");
+      if (ttl) return String(ttl).slice(0, 40);
+      var img = el.querySelector ? el.querySelector("img[alt]") : null;
+      if (img && img.getAttribute("alt")) return String(img.getAttribute("alt")).slice(0, 40);
+      var svgT = el.querySelector ? el.querySelector("svg title") : null;
+      if (svgT && svgT.textContent) return String(svgT.textContent).trim().slice(0, 40);
+      return String(el.tagName || "").slice(0, 40);
     } catch (e) {
       return "";
     }
@@ -1891,6 +1901,76 @@
       },
       true,
     );
+    // Videosignalen (ägarbeslut 2026-07-19, berättelse-tidslinjen): EN
+    // summerad video_watch per video och sidväg — aldrig innehåll, aldrig
+    // positioner, bara "tittade N sekunder". Flushas vid ruttbyte + pagehide.
+    var videoWatch = [];
+    var VIDEO_CAP = 10;
+    function videoEntry(el) {
+      for (var i = 0; i < videoWatch.length; i++) {
+        if (videoWatch[i].el === el) return videoWatch[i];
+      }
+      if (videoWatch.length >= VIDEO_CAP) return null;
+      var e = { el: el, ref: elementRef(el), path: safePath(), ms: 0, startedAt: 0 };
+      videoWatch.push(e);
+      return e;
+    }
+    function pauseVideo(t) {
+      try {
+        if (!t || t.tagName !== "VIDEO") return;
+        for (var i = 0; i < videoWatch.length; i++) {
+          var e = videoWatch[i];
+          if (e.el === t && e.startedAt) {
+            e.ms += Date.now() - e.startedAt;
+            e.startedAt = 0;
+          }
+        }
+      } catch (err) {}
+    }
+    function flushVideos() {
+      try {
+        var now = Date.now();
+        for (var i = 0; i < videoWatch.length; i++) {
+          var e = videoWatch[i];
+          var playing = !!e.startedAt;
+          if (playing) e.ms += now - e.startedAt;
+          e.startedAt = 0;
+          if (e.ms >= 1000) {
+            track("video_watch", { ref: e.ref, path: e.path, watchedMs: e.ms }, decisionId);
+            e.ms = 0;
+          }
+          // En video som fortfarande spelar (t.ex. över ett SPA-ruttbyte)
+          // fortsätter klockas — annars tappas allt efter första flushen.
+          if (playing) e.startedAt = now;
+        }
+      } catch (err) {}
+    }
+    document.addEventListener(
+      "play",
+      function (ev) {
+        try {
+          var t = ev.target;
+          if (!t || t.tagName !== "VIDEO" || isNoTouch(t)) return;
+          var e = videoEntry(t);
+          if (e && !e.startedAt) e.startedAt = Date.now();
+        } catch (err) {}
+      },
+      true,
+    );
+    document.addEventListener(
+      "pause",
+      function (ev) {
+        pauseVideo(ev.target);
+      },
+      true,
+    );
+    document.addEventListener(
+      "ended",
+      function (ev) {
+        pauseVideo(ev.target);
+      },
+      true,
+    );
     // Aktiv tid + exit: räkna bara SYNLIG tid (visibilitychange), skicka vid
     // pagehide tillsammans med ev. form-abandon. sendBeacon överlever unload.
     var engagedMs = 0;
@@ -1912,6 +1992,7 @@
       if (left) return;
       left = true;
       accrue();
+      flushVideos();
       for (var ref in started) {
         if (!submitted[ref]) {
           track("form_abandon", { ref: ref, kind: started[ref], path: safePath() }, decisionId);
@@ -1940,6 +2021,9 @@
         if (p === lastJourneyPath || routePageviews >= ROUTE_PV_CAP) return;
         lastJourneyPath = p;
         routePageviews++;
+        // Videotid flushas per rutt — posternas path sattes när videon hittades,
+        // så en sen flush attribuerar ändå till rätt sida.
+        flushVideos();
         track("pageview", { path: p, spa: true }, decisionId);
       } catch (err) {
         /* aldrig bryta sidan */
