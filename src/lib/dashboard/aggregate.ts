@@ -580,6 +580,10 @@ export interface SessionStep {
   path: string;
   clicks: StepClick[];
   engagedMs: number;
+  /** Djupaste scrollbucket (25/50/75/100) besökaren nådde på steget —
+   *  personlägets "Scrolled to here"-linje. Saknas för events från äldre
+   *  snippets (scroll_depth utan path kan inte placeras per steg). */
+  scrollPct?: number | null;
 }
 
 export interface SessionSummary {
@@ -683,7 +687,9 @@ export function sessionSummaries(
         }
       } else if (e.type === "element_click") {
         const ref = typeof e.payload.ref === "string" ? e.payload.ref : "";
-        if (ref) {
+        // Samtyckes-klick är bannerns UX, inte sajtens — bort ur resan
+        // (retro-filtret; nya snippets skickar dem inte alls).
+        if (ref && !isConsentRef(ref)) {
           clickOrder.push(ref);
           // Klicket hör till sitt EGET path när det finns (sena events kan
           // anlända efter nästa pageview), annars pågående steget.
@@ -710,6 +716,14 @@ export function sessionSummaries(
               y: typeof y === "number" && isFinite(y) ? y : null,
             });
           }
+        }
+      } else if (e.type === "scroll_depth") {
+        // Besökarens djupaste scroll per steg — samma path-matchning som
+        // klick/page_leave; legacy-events utan path hoppas ärligt.
+        const depth = e.payload.depth;
+        if (path && (depth === 25 || depth === 50 || depth === 75 || depth === 100)) {
+          const step = [...steps].reverse().find((s) => s.path === path);
+          if (step) step.scrollPct = Math.max(step.scrollPct ?? 0, depth);
         }
       } else if (e.type === "page_leave") {
         const ms = e.payload.engagedMs;
@@ -1404,6 +1418,9 @@ export function rageSignals(events: DashEvent[], limit = MAX_RAGE_SIGNALS): Rage
     if (e.type !== "rage_click") continue;
     const ref = str(e.payload.ref);
     if (!ref) continue;
+    // Frustration på cookiebannern är bannerns problem, inte sajtens —
+    // ägaren kan inte åtgärda den via Angel (retro-filtret).
+    if (isConsentRef(ref)) continue;
     const cur = byRef.get(ref) ?? { bursts: 0, visitors: new Set<string>() };
     cur.bursts++;
     if (e.visitorHash) cur.visitors.add(e.visitorHash);
@@ -1475,6 +1492,9 @@ export function clickHeatPages(
     const x = num(e.payload.x);
     const y = num(e.payload.y);
     if (x === null || y === null) continue;
+    // Samtyckes-klick ritas aldrig: bannern är fast-positionerad så punkten
+    // kan inte mappas mot dokumentet — och det är bannerns UX, inte sidans.
+    if (isConsentRef(str(e.payload.ref) ?? "")) continue;
     const path = stripQueryHash(str(e.payload.path)) || "/";
     const dev = (e.visitorHash && deviceOf.get(e.visitorHash)) || null;
     if (e.type === "element_click") clicks.push({ x, y, path, dev });
@@ -1634,6 +1654,22 @@ export function aggregate(
     searches: siteSearches(events),
     segmentGroups: segmentSummaries(allSessions),
   };
+}
+
+/** Samtyckes-knapptexter (pilotfynd 2026-07-19: Lovable-byggda banners saknar
+ *  igenkännbara id:n — snippetens selektor-spärr kan inte se dem, men
+ *  knapptexten är omisskännlig). EXAKTA fraser, aldrig delsträngar — "Kakor"
+ *  är en receptkategori på pilotsajten. Spegelvänd lista i snippetens
+ *  CONSENT_TEXT (framåt-spärren) — håll i synk. Detta är RETRO-filtret: det
+ *  städar events som redan lagrats och events från gamla cachade snippets. */
+const CONSENT_REF =
+  /^(acceptera alla|godkänn alla|tillåt alla|endast nödvändiga|neka alla|avvisa alla|accept all( cookies)?|allow all( cookies)?|reject all( cookies)?|only necessary|necessary only|accept cookies|acceptera cookies|cookie settings|cookieinställningar|hantera cookies|manage cookies|jag förstår|got it)$/;
+
+/** Är elementreferensen ett samtyckes-klick (cookiebannerns UX, inte sajtens)?
+ *  Ren; används av stegbyggaren, klickordningen och heatmapen. */
+export function isConsentRef(ref: string): boolean {
+  const t = ref.replace(/\s+/g, " ").trim().toLowerCase();
+  return t.length <= 40 && CONSENT_REF.test(t);
 }
 
 /** Sajtsökningar upprullade per term, mest sökta först. Enbart SKICKADE

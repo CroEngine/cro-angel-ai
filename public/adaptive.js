@@ -592,7 +592,25 @@
     ".cc-window,.cc-banner," + // cookieconsent
     "#cookiescript_injected," + // CookieScript
     "[data-lovable-cookie-root]," + // Lovable-marked custom banners
+    // Generiska consent-rötter (SPEGELVÄND lista mot measure.ts CMP_ROOTS —
+    // håll i synk): banners utan leverantörs-id men med ärliga namn.
+    "[id*='cookie-consent' i],[class*='cookie-banner' i],[id*='consent-banner' i]," +
     ".angel-badge"; // our own injections are never re-targeted
+  // Samtyckes-KNAPPTEXTER (pilotfynd 2026-07-19): Lovable bygger custom
+  // banners utan igenkännbara id:n/klasser alls — men knapptexten är
+  // omisskännlig. EXAKTA fraser, aldrig delsträngar: "Kakor" är en recept-
+  // kategori på pilotsajten och får ALDRIG träffas. Spegelvänd lista i
+  // aggregatets isConsentRef (retro-filtret) — håll i synk.
+  var CONSENT_TEXT =
+    /^(acceptera alla|godkänn alla|tillåt alla|endast nödvändiga|neka alla|avvisa alla|accept all( cookies)?|allow all( cookies)?|reject all( cookies)?|only necessary|necessary only|accept cookies|acceptera cookies|cookie settings|cookieinställningar|hantera cookies|manage cookies|jag förstår|got it)$/;
+  function isConsentText(el) {
+    try {
+      var t = (el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+      return t.length <= 40 && CONSENT_TEXT.test(t);
+    } catch (e) {
+      return false;
+    }
+  }
   function isNoTouch(el) {
     try {
       return !!(el && el.closest && el.closest(NO_TOUCH));
@@ -1688,6 +1706,10 @@
           var t = e.target;
           var el = t && t.closest ? t.closest(INTERACTIVE) : null;
           if (!el || isNoTouch(el)) return; // aldrig CMP-/no-touch-klick
+          // Custom consent-banners utan igenkännbart id (pilotfyndet):
+          // samtyckes-klick är bannerns UX, inte sajtens — och bannern är
+          // fast-positionerad så punkten kan aldrig ritas rätt på kartan.
+          if (isConsentText(el)) return;
           // Angels egna injicerade element hör inte till sajtens EGNA resa —
           // de fångas redan som "assist" i cta_click. Håll journey ren.
           if (el.hasAttribute && el.hasAttribute("data-angel-injected")) return;

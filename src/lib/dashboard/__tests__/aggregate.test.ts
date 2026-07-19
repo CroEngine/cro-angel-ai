@@ -11,6 +11,7 @@ import {
   rageSignals,
   clickHeat,
   clickHeatPages,
+  isConsentRef,
   siteSearches,
   bucketByTime,
   summarizeVisitors,
@@ -1138,6 +1139,19 @@ describe("sessionSummaries — sidsteg med klick (Journeys v2, personläget)", (
     expect(s.steps.map((x) => x.engagedMs)).toEqual([0, 0]);
   });
 
+  it("scroll_depth med path sätter stegets djupaste scroll — legacy utan path hoppas", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/a" }, { createdAt: at(0) }),
+      sev("scroll_depth", { sessionId: "s1", path: "/a", depth: 25 }, { createdAt: at(1) }),
+      sev("scroll_depth", { sessionId: "s1", path: "/a", depth: 75 }, { createdAt: at(2) }),
+      sev("scroll_depth", { sessionId: "s1", depth: 100 }, { createdAt: at(3) }),
+      sev("pageview", { sessionId: "s1", path: "/b" }, { createdAt: at(5) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.steps[0].scrollPct).toBe(75);
+    expect(s.steps[1].scrollPct).toBeUndefined();
+  });
+
   it("path-lös page_leave (äldre snippet) faller till pågående steget", () => {
     const events: DashEvent[] = [
       sev("pageview", { sessionId: "s1", path: "/a" }, { createdAt: at(0) }),
@@ -1274,6 +1288,53 @@ describe("clickHeatPages — heatmap per sida med sidväljare", () => {
     expect(page.path).toBe("/a");
     expect(page.mobile.reach).toEqual({ views: 2, p25: 1, p50: 1, p75: 0, p100: 0 });
     expect(page.desktop.reach.views).toBe(0);
+  });
+});
+
+describe("isConsentRef — samtyckes-klick bort ur resa, heatmap och rage", () => {
+  it("stegbyggaren och klickordningen hoppar samtyckes-klick men behåller sajtens egna", () => {
+    const events: DashEvent[] = [
+      ev("pageview", { sessionId: "s1", path: "/" }, { visitorHash: "v1" }),
+      ev(
+        "element_click",
+        { sessionId: "s1", ref: "Acceptera alla", path: "/", x: 62, y: 40 },
+        { visitorHash: "v1" },
+      ),
+      ev(
+        "element_click",
+        { sessionId: "s1", ref: "Kakor", path: "/", x: 30, y: 20 },
+        { visitorHash: "v1" },
+      ),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.clickOrder).toEqual(["Kakor"]);
+    expect(s.steps[0].clicks.map((c) => c.ref)).toEqual(["Kakor"]);
+  });
+
+  it("heatmapen ritar aldrig samtyckes-klick (fast-positionerad banner mappar inte)", () => {
+    const events: DashEvent[] = [
+      ev("pageview", { device: "mobile", path: "/" }, { visitorHash: "v1" }),
+      ev("element_click", { ref: "Endast nödvändiga", path: "/", x: 50, y: 50 }, { visitorHash: "v1" }),
+      ev("element_click", { ref: "Köp kakor", path: "/", x: 40, y: 30 }, { visitorHash: "v1" }),
+    ];
+    const [page] = clickHeatPages(events);
+    expect(page.mobile.sampled).toBe(1);
+  });
+
+  it("rage på consent-knappen listas inte som sajtens frustrationssignal", () => {
+    const events: DashEvent[] = [
+      ev("rage_click", { ref: "Acceptera alla", count: 4 }, { visitorHash: "v1" }),
+      ev("rage_click", { ref: "Boka bord", count: 3 }, { visitorHash: "v1" }),
+    ];
+    expect(rageSignals(events).map((r) => r.ref)).toEqual(["Boka bord"]);
+  });
+
+  it("exakta fraser — receptkategorin 'Kakor' och 'cookiepolicy-länken' träffas aldrig", () => {
+    expect(isConsentRef("Acceptera alla")).toBe(true);
+    expect(isConsentRef("  acceptera   ALLA ")).toBe(true);
+    expect(isConsentRef("Kakor")).toBe(false);
+    expect(isConsentRef("Läs mer i vår cookiepolicy")).toBe(false);
+    expect(isConsentRef("Acceptera alla villkor och fortsätt till betalning")).toBe(false);
   });
 });
 
