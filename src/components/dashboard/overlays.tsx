@@ -7,6 +7,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { journeyFlow } from "@/lib/dashboard/aggregate";
 import { createPagePreview, createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { fmt, STATUS_PILL } from "./variant-stats";
@@ -335,30 +343,53 @@ export function JourneysOverlay({
   const [heatMode, setHeatMode] = useState<"clicks" | "rage" | "both">("clicks");
 
   // ── kohort-filtren (Hotjar-mönstret: ETT filter, tre zoomnivåer) ─────────
-  const [channelFilter, setChannelFilter] = useState<string | null>(null);
+  // Källor + enheter är FÄLLBARA menyer med kryss (ägarfynd 2026-07-19: en
+  // chip-rad med en ensam källa ser ut som att det ÄR den enda källan) —
+  // alternativen byggs ur datan, så linkedin dyker upp den dag linkedin-
+  // sessioner finns. Tom mängd = alla. "unknown" listas när källösa
+  // sessioner finns, annars vore de o-filtrerbara.
+  const [channelSel, setChannelSel] = useState<ReadonlySet<string>>(new Set());
   const [outcomeFilter, setOutcomeFilter] = useState<"all" | "converted" | "left">("all");
-  const [deviceFilter, setDeviceFilter] = useState<"mobile" | "desktop" | null>(
-    lockedDevice ?? null,
+  const [deviceSel, setDeviceSel] = useState<ReadonlySet<"mobile" | "desktop">>(
+    () => new Set(lockedDevice ? [lockedDevice] : []),
   );
-  const channels = useMemo(() => {
+  // Samma enhetsattribution som heatmapen: tablet räknas till desktop.
+  const deviceOf = (j: SessionSummary): "mobile" | "desktop" =>
+    j.device === "mobile" ? "mobile" : "desktop";
+  const channelOptions = useMemo(() => {
     const n = new Map<string, number>();
-    for (const j of journeys) if (j.channel) n.set(j.channel, (n.get(j.channel) ?? 0) + 1);
-    return [...n.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
+    for (const j of journeys) {
+      const key = j.channel ?? "unknown";
+      n.set(key, (n.get(key) ?? 0) + 1);
+    }
+    return [...n.entries()].sort((a, b) => b[1] - a[1]);
   }, [journeys]);
+  const deviceOptions = useMemo(() => {
+    const n = new Map<"mobile" | "desktop", number>();
+    for (const j of journeys) {
+      const d = deviceOf(j);
+      n.set(d, (n.get(d) ?? 0) + 1);
+    }
+    return (["mobile", "desktop"] as const)
+      .filter((d) => (n.get(d) ?? 0) > 0)
+      .map((d) => [d, n.get(d)!] as const);
+  }, [journeys]);
+  const toggleIn = <T,>(set: ReadonlySet<T>, v: T): Set<T> => {
+    const next = new Set(set);
+    if (next.has(v)) next.delete(v);
+    else next.add(v);
+    return next;
+  };
   const filtered = useMemo(
     () =>
       journeys.filter((j) => {
-        if (channelFilter && j.channel !== channelFilter) return false;
+        if (channelSel.size > 0 && !channelSel.has(j.channel ?? "unknown")) return false;
         if (outcomeFilter === "converted" && !j.converted) return false;
         if (outcomeFilter === "left" && j.converted) return false;
-        if (deviceFilter) {
-          // Samma enhetsattribution som heatmapen: tablet räknas till desktop.
-          const d = j.device === "mobile" ? "mobile" : "desktop";
-          if (d !== deviceFilter) return false;
-        }
+        if (deviceSel.size > 0 && !deviceSel.has(deviceOf(j))) return false;
         return true;
       }),
-    [journeys, channelFilter, outcomeFilter, deviceFilter],
+    [journeys, channelSel, outcomeFilter, deviceSel],
   );
   const flow = useMemo(() => journeyFlow(filtered), [filtered]);
 
@@ -369,7 +400,7 @@ export function JourneysOverlay({
     // Filterbyte definierar om kohorten — en öppen person kan peka fel.
     setPersonIdx(null);
     setStepIdx(0);
-  }, [channelFilter, outcomeFilter, deviceFilter]);
+  }, [channelSel, outcomeFilter, deviceSel]);
   const person = personIdx != null ? (filtered[personIdx] ?? null) : null;
   const personSteps = person?.steps ?? [];
   const personStep = personSteps[stepIdx] ?? null;
@@ -645,47 +676,28 @@ export function JourneysOverlay({
         {!person && view === "flow" && (
           <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 bg-white px-5 py-2.5">
             <span className="font-mono text-[10px] tracking-wider text-stone-400">[ filter ]</span>
-            <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
-              <button
-                type="button"
-                onClick={() => setChannelFilter(null)}
-                className="rounded-[7px] px-[9px] py-[4px] text-[11.5px] font-semibold"
-                style={pill(channelFilter === null)}
-              >
-                All sources
-              </button>
-              {channels.slice(0, 5).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setChannelFilter(channelFilter === c ? null : c)}
-                  className="rounded-[7px] px-[9px] py-[4px] text-[11.5px] font-semibold"
-                  style={pill(channelFilter === c)}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
+            {/* Fällbara kryssmenyer (ägarfynd 2026-07-19): alternativen är
+                exakt de som FINNS i datan, med antal — en ensam chip-rad
+                antydde att den enda synliga källan var den enda möjliga. */}
+            <FilterMenu
+              label="Sources"
+              options={channelOptions.map(([c, n]) => ({ key: c, label: c, count: n }))}
+              selected={channelSel}
+              onToggle={(c) => setChannelSel((s) => toggleIn(s, c))}
+              onClear={() => setChannelSel(new Set())}
+            />
             {!lockedDevice && (
-              <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
-                {(
-                  [
-                    [null, "All devices"],
-                    ["mobile", "Mobile"],
-                    ["desktop", "Desktop"],
-                  ] as const
-                ).map(([d, label]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setDeviceFilter(d)}
-                    className="rounded-[7px] px-[9px] py-[4px] text-[11.5px] font-semibold"
-                    style={pill(deviceFilter === d)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <FilterMenu
+                label="Devices"
+                options={deviceOptions.map(([d, n]) => ({
+                  key: d,
+                  label: d === "mobile" ? "Mobile" : "Desktop",
+                  count: n,
+                }))}
+                selected={deviceSel}
+                onToggle={(d) => setDeviceSel((s) => toggleIn(s, d as "mobile" | "desktop"))}
+                onClear={() => setDeviceSel(new Set())}
+              />
             )}
             <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
               {(
@@ -1039,5 +1051,69 @@ function FlowRow({ node, base, depth }: { node: FlowNode; base: number; depth: n
         {node.exited > 0 && <span className="text-stone-400">⏏ {node.exited}</span>}
       </span>
     </div>
+  );
+}
+
+/** Fällbar kryssfilter-meny (ägarfynd 2026-07-19): triggern visar valet
+ *  ("Sources: All" / "Sources: google +2"), innehållet listar exakt de
+ *  alternativ som finns i datan med antal — tom markering betyder alla.
+ *  Nya källor/enheter dyker upp av sig själva när sessioner med dem finns. */
+function FilterMenu({
+  label,
+  options,
+  selected,
+  onToggle,
+  onClear,
+}: {
+  label: string;
+  options: { key: string; label: string; count: number }[];
+  selected: ReadonlySet<string>;
+  onToggle: (key: string) => void;
+  onClear: () => void;
+}) {
+  const chosen = options.filter((o) => selected.has(o.key));
+  const summary =
+    chosen.length === 0
+      ? "All"
+      : chosen.length === 1
+        ? chosen[0].label
+        : `${chosen[0].label} +${chosen.length - 1}`;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-1.5 rounded-[9px] border border-stone-200 bg-[#faf9f7] px-[11px] py-[5px] text-[11.5px] font-semibold text-stone-700"
+        >
+          <span className="text-stone-400">{label}:</span> {summary}
+          <svg width="9" height="6" viewBox="0 0 9 6" className="text-stone-400">
+            <path d="M1 1l3.5 3.5L8 1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+          </svg>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[190px]">
+        {options.map((o) => (
+          <DropdownMenuCheckboxItem
+            key={o.key}
+            checked={selected.has(o.key)}
+            // Håll menyn öppen så flera val kan kryssas i en öppning.
+            onSelect={(e) => e.preventDefault()}
+            onCheckedChange={() => onToggle(o.key)}
+            className="text-[12.5px]"
+          >
+            <span className="flex-1">{o.label}</span>
+            <span className="ml-3 font-mono text-[11px] text-stone-400">{o.count}</span>
+          </DropdownMenuCheckboxItem>
+        ))}
+        {selected.size > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-[12.5px] text-stone-500" onSelect={onClear}>
+              Clear — show all
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
