@@ -339,67 +339,17 @@ function withHeightReporter(html: string): string {
     : html + HEIGHT_REPORTER;
 }
 
-export interface FrozenBackdropOptions {
-  /** Sajtens host (slug — för domän-sluggade sajter är de samma sak):
-   *  absoluta interna länkar känns igen mot den. */
-  siteHost?: string;
-  /** Sidväg → spegel-URL för sajtens ANDRA frysta kopior. Satt ⇒ interna
-   *  länkar skrivs om så kopian blir BROWSBAR (sandbox i stället för
-   *  skärmdump — ägarorder 2026-07-19). Returnera null för sidor utan
-   *  fryst kopia — länken avväpnas då (hellre död än 404 i backdroppen). */
-  siblingUrl?: (path: string) => string | null;
-}
-
-/** Skriv om <a href> i en fryst kopia: interna länkar med fryst syskonkopia
- *  pekas mot spegel-endpointen (navigering stannar i iframen — target bort),
- *  allt annat (extern länk, ofryst sida, mailto/javascript) avväpnas. Rena
- *  #ankare lämnas — de scrollar bara kopian. */
-function rewriteFrozenLinks(
-  html: string,
-  siteHost: string,
-  siblingUrl: (path: string) => string | null,
-): string {
-  const bareHost = siteHost.replace(/^www\./, "");
-  return html.replace(/<a\b[^>]*>/gi, (tag) => {
-    const m = tag.match(/\shref\s*=\s*("([^"]*)"|'([^']*)')/i);
-    if (!m) return tag;
-    const href = m[2] ?? m[3] ?? "";
-    if (href.startsWith("#")) return tag;
-    let path: string | null = null;
-    if (href.startsWith("/") && !href.startsWith("//")) {
-      path = href;
-    } else if (/^https?:\/\//i.test(href)) {
-      try {
-        const u = new URL(href);
-        if (u.host.replace(/^www\./, "") === bareHost) path = u.pathname;
-      } catch {
-        /* ogiltig URL → avväpnas nedan */
-      }
-    }
-    const target = path ? siblingUrl(path) : null;
-    if (target) {
-      return tag
-        .replace(m[0], ` href="${target.replace(/"/g, "&quot;")}"`)
-        .replace(/\starget\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
-    }
-    return tag.replace(m[0], ` data-angel-dead-link=""`);
-  });
-}
-
 /**
  * Backdrop ur en FRYST kopia (nattloppens browser-frysning, lagrad i
  * angel-evidence). Kopian är script-strippad och självbärande och kan inte
- * rapportera sin höjd själv — höjdrapportören injiceras, CMP-dialoger göms
- * (besökaren tryckte bort dem — spegeln ska visa sidan som de såg den), och
- * med siblingUrl blir kopian browsbar via sina interna länkar. Detta är
- * SPA-sajternas backdrop-väg: live-spegeln kan inte rendera dem (routern ser
- * spegel-URL:en, datahämtningen går mot fel origin), men den frysta kopian
- * ÄR den färdigrenderade sidan.
+ * rapportera sin höjd själv — höjdrapportören injiceras och CMP-dialoger
+ * göms (besökaren tryckte bort dem — spegeln ska visa sidan som de såg den).
+ * Detta är SPA-sajternas backdrop-väg: live-spegeln kan inte rendera dem
+ * (routern ser spegel-URL:en, datahämtningen går mot fel origin), men den
+ * frysta kopian ÄR den färdigrenderade sidan. Backdroppen är en KARTA —
+ * en klickbar/browsbar spegel prövades 2026-07-19 och backades samma dag
+ * (ägaren klickar inte runt på sin egen sajt i en återgivningsvy).
  */
-export function frozenBackdropHtml(html: string, opts: FrozenBackdropOptions = {}): string {
-  let out = withCmpHidden(withHeightReporter(html));
-  if (opts.siblingUrl) {
-    out = rewriteFrozenLinks(out, opts.siteHost ?? "", opts.siblingUrl);
-  }
-  return out;
+export function frozenBackdropHtml(html: string): string {
+  return withCmpHidden(withHeightReporter(html));
 }
