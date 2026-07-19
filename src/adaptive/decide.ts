@@ -41,23 +41,37 @@ export const MAX_ADAPTATIONS = 3;
 export type PatternBoost = Partial<Record<PatternId, number>>;
 
 /** Ops that ADD an element to the page. Design-integrity rule: at most ONE
- *  of these per decision — floating pills, extra links and badges stack into
- *  visual noise fast, and the customer's design must stay theirs. */
-const INJECT_OPS = new Set(["inject_sticky", "inject_secondary", "inject_badge"]);
+ *  of these per decision — extra links and badges stack into visual noise
+ *  fast, and the customer's design must stay theirs. */
+const INJECT_OPS = new Set(["inject_secondary", "inject_badge"]);
 
 /** Ingreppsvikt per op — tie-break vid lika prioritet OCH lika nivå: det
  *  lättaste ingreppet vinner. Ordningen speglar hur mycket av sidan som rörs:
- *  ren färg < textbyte < visa dolt < liten badge < chip < sticky < flytt. */
+ *  textbyte < visa dolt < liten badge < chip < flytt. */
 const OP_WEIGHT: Record<string, number> = {
-  emphasize: 0,
   set_text: 1,
   reveal: 2,
   inject_badge: 3,
   inject_secondary: 4,
-  inject_sticky: 5,
   move_up: 6,
   condense: 7,
 };
+
+/** Ägarregeln (2026-07-20, sticky-pill-fyndet på glutenforum): sajtens egen
+ *  målknapp är ORÖRBAR — Angel flyttar den aldrig, stylar aldrig om den och
+ *  skriver aldrig om dess text. Mönstren som fanns FÖR att röra målet
+ *  (emphasize_goal, sticky_goal_cta) är borttagna ur katalogen; den här
+ *  grinden täcker resten: en op som MUTERAR sitt målelement får aldrig träffa
+ *  det deklarerade målet. Injektioner (badge/secondary) ankrar BREDVID målet
+ *  utan att röra det — de släpps igenom. */
+const MUTATING_OPS = new Set(["set_text", "move_up", "condense", "reveal"]);
+function touchesGoalElement(a: Adaptation, goal?: SiteGoal): boolean {
+  if (!goal || !MUTATING_OPS.has(a.op)) return false;
+  if (goal.selector && a.target && a.target === goal.selector) return true;
+  const goalText = (goal.text ?? "").trim().toLowerCase();
+  const anchor = (a.anchorText ?? "").trim().toLowerCase();
+  return Boolean(goalText && anchor && goalText === anchor);
+}
 
 /** Largest positive nudge a proven winner can earn (keeps rules meaningful). */
 export const PERF_MAX_BOOST = 30;
@@ -78,15 +92,6 @@ interface Rule {
  * encode the three worked examples from the blueprint plus sensible defaults.
  */
 const RULES: Rule[] = [
-  {
-    // Goal-first: whenever the owner has declared a conversion goal in the
-    // dashboard, highlight it. Resolves to nothing when no goal is configured,
-    // so it costs unconfigured sites zero adaptation slots.
-    id: "goal_focus",
-    priority: 65,
-    when: () => true,
-    patterns: ["emphasize_goal"],
-  },
   {
     id: "returning_evaluated_pricing",
     priority: 90,
@@ -109,14 +114,6 @@ const RULES: Rule[] = [
     priority: 75,
     when: (c) => c.trafficSource === "google_ads",
     patterns: ["clarify_cta", "show_no_credit_card", "show_guarantee", "show_trust_badge"],
-  },
-  {
-    // Mobile: the goal is often buried behind a hamburger — keep it one
-    // thumb-tap away. Fixed-position, so it can never shift layout.
-    id: "mobile_sticky_goal",
-    priority: 72,
-    when: (c) => c.device === "mobile",
-    patterns: ["sticky_goal_cta"],
   },
   {
     // Cold first-time visitors: the primary goal can be too big a first step —
@@ -311,43 +308,6 @@ function resolve(
   const pattern = getPattern(id);
   const slotSelector = `[data-angel-slot="${pattern.slot}"]`;
 
-  if (id === "emphasize_goal") {
-    // Goal-first: the target is the owner's declared conversion element, not an
-    // inventory item. Emphasize is paint-only (no layout, no content), so the
-    // "never invent content" rule is trivially satisfied.
-    if (!goal?.selector) return "no_goal_configured";
-    // (Konverterings-/auth-sidor grindas för ALLA mönster i decide-kedjan —
-    // resolve behöver inte längre egna conversion_page-vakter.)
-    return {
-      pattern: id,
-      op: "emphasize",
-      target: goal.selector,
-      // The label is the cross-page locator: selectors like
-      // "a:nth-of-type(2) > button" are structure-dependent and miss on pages
-      // whose markup differs — the snippet then falls back to finding the
-      // button by its visible text (seen live: "emphasized" logged with
-      // nothing visible on the page).
-      anchorText: goal.text ?? undefined,
-      reason: "Highlighting the site's declared conversion goal.",
-      priority,
-    };
-  }
-
-  if (id === "sticky_goal_cta") {
-    // Needs a labelled goal: the pill shows the goal's own text and clicks the
-    // real element, so both navigation and conversion tracking stay the site's.
-    if (!goal?.text) return "no_goal_configured";
-    return {
-      pattern: id,
-      op: "inject_sticky",
-      target: goal.selector ?? "",
-      anchorText: goal.text,
-      value: goal.text,
-      reason: "Keeping the goal one thumb-tap away on mobile.",
-      priority,
-    };
-  }
-
   if (pattern.op === "inject_secondary") {
     // show_secondary_cta (ofiltrerad) + våg 8:s specialiserade varianter
     // (W8-E2): samma guards ordagrant, plus ett textkrav när mönstret bär en
@@ -494,7 +454,7 @@ function resolve(
     };
   }
 
-  // reveal / move_up / emphasize / condense — operate on an EXISTING element.
+  // reveal / move_up / condense — operate on an EXISTING element.
   // If we harvested nothing for this slot we have no real locator (only the
   // [data-angel-slot] convention, which un-instrumented sites lack), so the op
   // would silently no-op AND consume one of the MAX_ADAPTATIONS slots, crowding
@@ -648,6 +608,13 @@ export function decide(
       const result = resolve(e.id, e.priority, context, inventory, goal);
       if (typeof result === "string") {
         declined.push({ pattern: e.id, reason: result });
+        return null;
+      }
+      // Ägarregeln: målknappen är orörbar — t.ex. clarify_cta som råkar
+      // resolva till sajtens egen målknapp (den ligger i inventoriet som
+      // vilken CTA som helst) får aldrig skriva om just den.
+      if (touchesGoalElement(result, goal)) {
+        declined.push({ pattern: e.id, reason: "goal_element_untouchable" });
         return null;
       }
       return result;

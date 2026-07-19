@@ -87,6 +87,16 @@ Blinkande element · pulserande knappar · automatiska hover-effekter ·
 färgexplosioner · stora overlays · popups utan tydlig anledning · element som
 hoppar. Kortsiktiga trick som urholkar varumärkesförtroendet.
 
+**Målknappen är orörbar (ägarregel 2026-07-20).** Angel flyttar aldrig sajtens
+egen målknapp ("Skapa konto" o.dyl.), stylar aldrig om den och duplicerar den
+aldrig som flytande genväg. Bakgrund: gamla adaptationsmotorn injicerade en
+sticky "Skapa konto"-pill på pilotsajten (skärmdumpsfynd). Mönstren
+`emphasize_goal` och `sticky_goal_cta` (och opsen `emphasize`/`inject_sticky`)
+är borttagna ur repertoaren, och decide-grinden `goal_element_untouchable`
+vägrar varje kvarvarande muterande op (text/flytt/kollaps/reveal) som resolvar
+till det deklarerade målet. Varianter får ändra budskap och struktur RUNT
+knappen — aldrig knappen själv.
+
 ## Två risk-hanteringsmekanismer (ägarbeslut 2026-07-08)
 
 - **Volym-override:** SMB-sajter når sällan 1000 besök/segment. Ägaren får trycka
