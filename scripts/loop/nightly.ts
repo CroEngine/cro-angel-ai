@@ -138,6 +138,27 @@ for (const site of targets) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([p]) => p);
+    // Personbläddrarens sidor fryses OCKSÅ (ägarfynd 2026-07-19: en SPA-sida
+    // utan fryst kopia blir en blank live-spegel i steg-för-steg-spelaren).
+    // Mest BESÖKTA sidor (pageviews) — en resa går ofta genom sidor som ingen
+    // positions-klickar på, så klick-toppen räcker inte.
+    const { data: pvRows } = await db
+      .from("angel_events")
+      .select("payload")
+      .eq("site", site.slug)
+      .eq("type", "pageview")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    const pvCounts = new Map<string, number>();
+    for (const r of (pvRows ?? []) as { payload: { path?: unknown } }[]) {
+      const raw = typeof r.payload?.path === "string" ? r.payload.path : "/";
+      const p = raw.split("#")[0].split("?")[0] || "/";
+      pvCounts.set(p, (pvCounts.get(p) ?? 0) + 1);
+    }
+    const journeyPaths = [...pvCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([p]) => p);
     // Löv-toppen kapas FÖRST (10) och unionen därefter (15) — klick-sidorna
     // (max 5) får aldrig trängas ut av en lång rollup-topp.
     const leafPaths = [
@@ -168,9 +189,13 @@ for (const site of targets) {
         depVariants.flatMap((v) => [v.path, ...dependenciesOf(v.evidence).map((d) => d.path)]),
       ),
     ];
+    // Taket höjt 15 → 20 när resesidorna kom in (spelarens backdrops) —
+    // resesidorna står SIST i prioritetsordningen och tar bara platser som
+    // löv/klick/flödes-topparna lämnar. Beroende-sidorna ligger kvar utanför
+    // taket som förut.
     const paths = [
       ...new Set([
-        ...[...new Set([...leafPaths, ...clickPaths, ...flowDests])].slice(0, 15),
+        ...[...new Set([...leafPaths, ...clickPaths, ...flowDests, ...journeyPaths])].slice(0, 20),
         ...depPaths,
       ]),
     ];

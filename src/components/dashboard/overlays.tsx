@@ -3,10 +3,18 @@
 // HeatMirror-backdroppen (utbrutna ur overview-panel.tsx i sajt-genomgången
 // 2026-07-18; ren flytt, ingen semantikändring).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { journeyFlow } from "@/lib/dashboard/aggregate";
 import { createPagePreview, createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { fmt, STATUS_PILL } from "./variant-stats";
@@ -23,6 +31,7 @@ function HeatMirror({
   overlay,
   maxHeight = 560,
   frameW = 1280,
+  onRawHeight,
 }: {
   src: string;
   overlay: React.ReactNode;
@@ -30,6 +39,9 @@ function HeatMirror({
   /** Spegelns viewportbredd — MÅSTE matcha layouten klicken mättes i
    *  (390 = mobil, 1280 = desktop); x är % av besökarens viewportbredd. */
   frameW?: number;
+  /** Rå (o-klampad) rapporterad dokumenthöjd — skal-detekteringen i person-
+   *  läget läser den: en live-speglad SPA rapporterar ~0 (blankt skal). */
+  onRawHeight?: (h: number) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [wrapW, setWrapW] = useState(700);
@@ -51,11 +63,12 @@ function HeatMirror({
         // Klampad: en fientlig speglad sida kan bara flytta punkter i ägarens
         // egen vy av just den sidan — men vi tar inga orimliga värden.
         setDocH(Math.min(20000, Math.max(600, Math.round(d.h))));
+        onRawHeight?.(Math.round(d.h));
       }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, []);
+  }, [onRawHeight]);
 
   const scale = wrapW > 0 ? Math.min(1, wrapW / frameW) : 0.5;
   return (
@@ -335,54 +348,81 @@ export function JourneysOverlay({
   const [heatMode, setHeatMode] = useState<"clicks" | "rage" | "both">("clicks");
 
   // ── kohort-filtren (Hotjar-mönstret: ETT filter, tre zoomnivåer) ─────────
-  const [channelFilter, setChannelFilter] = useState<string | null>(null);
+  // Källor + enheter är FÄLLBARA menyer med kryss (ägarfynd 2026-07-19: en
+  // chip-rad med en ensam källa ser ut som att det ÄR den enda källan) —
+  // alternativen byggs ur datan, så linkedin dyker upp den dag linkedin-
+  // sessioner finns. Tom mängd = alla. "unknown" listas när källösa
+  // sessioner finns, annars vore de o-filtrerbara.
+  const [channelSel, setChannelSel] = useState<ReadonlySet<string>>(new Set());
   const [outcomeFilter, setOutcomeFilter] = useState<"all" | "converted" | "left">("all");
-  const [deviceFilter, setDeviceFilter] = useState<"mobile" | "desktop" | null>(
-    lockedDevice ?? null,
+  const [deviceSel, setDeviceSel] = useState<ReadonlySet<"mobile" | "desktop">>(
+    () => new Set(lockedDevice ? [lockedDevice] : []),
   );
-  const channels = useMemo(() => {
+  // Samma enhetsattribution som heatmapen: tablet räknas till desktop.
+  const deviceOf = (j: SessionSummary): "mobile" | "desktop" =>
+    j.device === "mobile" ? "mobile" : "desktop";
+  const channelOptions = useMemo(() => {
     const n = new Map<string, number>();
-    for (const j of journeys) if (j.channel) n.set(j.channel, (n.get(j.channel) ?? 0) + 1);
-    return [...n.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
+    for (const j of journeys) {
+      const key = j.channel ?? "unknown";
+      n.set(key, (n.get(key) ?? 0) + 1);
+    }
+    return [...n.entries()].sort((a, b) => b[1] - a[1]);
   }, [journeys]);
+  const deviceOptions = useMemo(() => {
+    const n = new Map<"mobile" | "desktop", number>();
+    for (const j of journeys) {
+      const d = deviceOf(j);
+      n.set(d, (n.get(d) ?? 0) + 1);
+    }
+    return (["mobile", "desktop"] as const)
+      .filter((d) => (n.get(d) ?? 0) > 0)
+      .map((d) => [d, n.get(d)!] as const);
+  }, [journeys]);
+  const toggleIn = <T,>(set: ReadonlySet<T>, v: T): Set<T> => {
+    const next = new Set(set);
+    if (next.has(v)) next.delete(v);
+    else next.add(v);
+    return next;
+  };
   const filtered = useMemo(
     () =>
       journeys.filter((j) => {
-        if (channelFilter && j.channel !== channelFilter) return false;
+        if (channelSel.size > 0 && !channelSel.has(j.channel ?? "unknown")) return false;
         if (outcomeFilter === "converted" && !j.converted) return false;
         if (outcomeFilter === "left" && j.converted) return false;
-        if (deviceFilter) {
-          // Samma enhetsattribution som heatmapen: tablet räknas till desktop.
-          const d = j.device === "mobile" ? "mobile" : "desktop";
-          if (d !== deviceFilter) return false;
-        }
+        if (deviceSel.size > 0 && !deviceSel.has(deviceOf(j))) return false;
         return true;
       }),
-    [journeys, channelFilter, outcomeFilter, deviceFilter],
+    [journeys, channelSel, outcomeFilter, deviceSel],
   );
   const flow = useMemo(() => journeyFlow(filtered), [filtered]);
 
-  // ── personläget: index i den FILTRERADE listan + aktuellt sidsteg ────────
-  const [personIdx, setPersonIdx] = useState<number | null>(null);
+  // ── personläget: valet lagras som SESSIONS-ID, aldrig radindex ───────────
+  // (ägarfynd 2026-07-19: dashboarddatan hämtas om i bakgrunden och nya
+  // sessioner läggs ÖVERST — ett sparat index gled då till en annan besökare
+  // än raden man klickade; /blogg-raden öppnade restaurangsessionen.)
+  const [personId, setPersonId] = useState<string | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
   useEffect(() => {
     // Filterbyte definierar om kohorten — en öppen person kan peka fel.
-    setPersonIdx(null);
+    setPersonId(null);
     setStepIdx(0);
-  }, [channelFilter, outcomeFilter, deviceFilter]);
-  const person = personIdx != null ? (filtered[personIdx] ?? null) : null;
+  }, [channelSel, outcomeFilter, deviceSel]);
+  const personIdx = personId != null ? filtered.findIndex((s) => s.sessionId === personId) : -1;
+  const person = personIdx >= 0 ? filtered[personIdx] : null;
   const personSteps = person?.steps ?? [];
   const personStep = personSteps[stepIdx] ?? null;
   const personDevice = person?.device === "mobile" ? "mobile" : "desktop";
   const personFrameW = personDevice === "mobile" ? 390 : 1280;
-  const openPerson = (idx: number) => {
-    setPersonIdx(idx);
+  const openPerson = (s: SessionSummary) => {
+    setPersonId(s.sessionId);
     setStepIdx(0);
   };
   const movePerson = (delta: number) => {
-    if (personIdx == null || filtered.length === 0) return;
+    if (personIdx < 0 || filtered.length === 0) return;
     const next = (personIdx + delta + filtered.length) % filtered.length;
-    openPerson(next);
+    openPerson(filtered[next]);
   };
   const personBackdrop = useQuery({
     queryKey: ["pagePreview", site, personStep?.path ?? ""],
@@ -390,6 +430,14 @@ export function JourneysOverlay({
     enabled: personStep != null,
     staleTime: 5 * 60 * 1000,
   });
+  // Skal-detektering (ägarfynd 2026-07-19: blank vit spegel i personläget):
+  // en LIVE-speglad SPA-sida rapporterar ~0 i dokumenthöjd — då visas en
+  // ärlig skylt i stället för ett tyst vitt hål. Frysta kopior berörs inte.
+  const [personRawH, setPersonRawH] = useState<number | null>(null);
+  useEffect(() => setPersonRawH(null), [personStep?.path, personId]);
+  const onPersonRawHeight = useCallback((h: number) => setPersonRawH(h), []);
+  const personMirrorBlank =
+    personBackdrop.data?.mirrorKind === "live" && personRawH !== null && personRawH < 300;
 
   // ── heatmap-läget (oförändrad mekanik från v1) ───────────────────────────
   const [deviceChoice, setDeviceChoice] = useState<"mobile" | "desktop" | null>(null);
@@ -534,7 +582,7 @@ export function JourneysOverlay({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-stone-200 bg-white px-5 py-3">
           <button
             type="button"
-            onClick={() => (person ? setPersonIdx(null) : onClose())}
+            onClick={() => (person ? setPersonId(null) : onClose())}
             className="flex items-center gap-1.5 text-[13px] text-stone-600 hover:text-stone-900"
           >
             ← {person ? "All journeys" : "Back"}
@@ -555,7 +603,7 @@ export function JourneysOverlay({
               // utan att gå tillbaka till listan.
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-stone-400">
-                  Visitor {(personIdx ?? 0) + 1} of {filtered.length}
+                  Visitor {personIdx + 1} of {filtered.length}
                 </span>
                 <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
                   <button
@@ -645,47 +693,28 @@ export function JourneysOverlay({
         {!person && view === "flow" && (
           <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 bg-white px-5 py-2.5">
             <span className="font-mono text-[10px] tracking-wider text-stone-400">[ filter ]</span>
-            <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
-              <button
-                type="button"
-                onClick={() => setChannelFilter(null)}
-                className="rounded-[7px] px-[9px] py-[4px] text-[11.5px] font-semibold"
-                style={pill(channelFilter === null)}
-              >
-                All sources
-              </button>
-              {channels.slice(0, 5).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setChannelFilter(channelFilter === c ? null : c)}
-                  className="rounded-[7px] px-[9px] py-[4px] text-[11.5px] font-semibold"
-                  style={pill(channelFilter === c)}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
+            {/* Fällbara kryssmenyer (ägarfynd 2026-07-19): alternativen är
+                exakt de som FINNS i datan, med antal — en ensam chip-rad
+                antydde att den enda synliga källan var den enda möjliga. */}
+            <FilterMenu
+              label="Sources"
+              options={channelOptions.map(([c, n]) => ({ key: c, label: c, count: n }))}
+              selected={channelSel}
+              onToggle={(c) => setChannelSel((s) => toggleIn(s, c))}
+              onClear={() => setChannelSel(new Set())}
+            />
             {!lockedDevice && (
-              <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
-                {(
-                  [
-                    [null, "All devices"],
-                    ["mobile", "Mobile"],
-                    ["desktop", "Desktop"],
-                  ] as const
-                ).map(([d, label]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setDeviceFilter(d)}
-                    className="rounded-[7px] px-[9px] py-[4px] text-[11.5px] font-semibold"
-                    style={pill(deviceFilter === d)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <FilterMenu
+                label="Devices"
+                options={deviceOptions.map(([d, n]) => ({
+                  key: d,
+                  label: d === "mobile" ? "Mobile" : "Desktop",
+                  count: n,
+                }))}
+                selected={deviceSel}
+                onToggle={(d) => setDeviceSel((s) => toggleIn(s, d as "mobile" | "desktop"))}
+                onClear={() => setDeviceSel(new Set())}
+              />
             )}
             <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
               {(
@@ -719,13 +748,29 @@ export function JourneysOverlay({
             <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr]">
               <div>
                 {personStep && personBackdrop.data?.ok && personBackdrop.data.mirrorPath ? (
-                  <HeatMirror
-                    key={`${person.sessionId}:${stepIdx}`}
-                    src={personBackdrop.data.mirrorPath}
-                    overlay={personOverlay}
-                    maxHeight="calc(88vh - 230px)"
-                    frameW={personFrameW}
-                  />
+                  <div className="relative">
+                    <HeatMirror
+                      key={`${person.sessionId}:${stepIdx}`}
+                      src={personBackdrop.data.mirrorPath}
+                      overlay={personOverlay}
+                      maxHeight="calc(88vh - 230px)"
+                      frameW={personFrameW}
+                      onRawHeight={onPersonRawHeight}
+                    />
+                    {personMirrorBlank && (
+                      // Ärlig skylt i stället för ett tyst vitt hål: sidan är
+                      // JS-renderad och kan inte live-speglas — nattloopen
+                      // fryser besökta sidor, så kopian kommer.
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/80 p-8 text-center">
+                        <p className="max-w-sm text-[13px] leading-relaxed text-stone-500">
+                          This page renders with JavaScript and can&apos;t be mirrored live. The
+                          nightly loop freezes a browsable copy of visited pages — this step will
+                          get its backdrop after the next run. The visitor&apos;s pages and clicks
+                          are listed on the right.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="flex h-[420px] items-center justify-center rounded-[10px] border border-[#f0eee9] bg-white p-8 text-center text-[13px] text-stone-500">
                     {personStep
@@ -863,11 +908,11 @@ export function JourneysOverlay({
                     </div>
                   )}
                   <div className="max-h-[420px] overflow-y-auto">
-                    {filtered.map((j, idx) => (
+                    {filtered.map((j) => (
                       <button
                         key={j.sessionId}
                         type="button"
-                        onClick={() => openPerson(idx)}
+                        onClick={() => openPerson(j)}
                         className="block w-full border-t border-[#f4f2ef] py-[11px] text-left hover:bg-[#faf9f7]"
                       >
                         <div className="truncate font-mono text-[11.5px] text-stone-600">
@@ -1039,5 +1084,69 @@ function FlowRow({ node, base, depth }: { node: FlowNode; base: number; depth: n
         {node.exited > 0 && <span className="text-stone-400">⏏ {node.exited}</span>}
       </span>
     </div>
+  );
+}
+
+/** Fällbar kryssfilter-meny (ägarfynd 2026-07-19): triggern visar valet
+ *  ("Sources: All" / "Sources: google +2"), innehållet listar exakt de
+ *  alternativ som finns i datan med antal — tom markering betyder alla.
+ *  Nya källor/enheter dyker upp av sig själva när sessioner med dem finns. */
+function FilterMenu({
+  label,
+  options,
+  selected,
+  onToggle,
+  onClear,
+}: {
+  label: string;
+  options: { key: string; label: string; count: number }[];
+  selected: ReadonlySet<string>;
+  onToggle: (key: string) => void;
+  onClear: () => void;
+}) {
+  const chosen = options.filter((o) => selected.has(o.key));
+  const summary =
+    chosen.length === 0
+      ? "All"
+      : chosen.length === 1
+        ? chosen[0].label
+        : `${chosen[0].label} +${chosen.length - 1}`;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-1.5 rounded-[9px] border border-stone-200 bg-[#faf9f7] px-[11px] py-[5px] text-[11.5px] font-semibold text-stone-700"
+        >
+          <span className="text-stone-400">{label}:</span> {summary}
+          <svg width="9" height="6" viewBox="0 0 9 6" className="text-stone-400">
+            <path d="M1 1l3.5 3.5L8 1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+          </svg>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[190px]">
+        {options.map((o) => (
+          <DropdownMenuCheckboxItem
+            key={o.key}
+            checked={selected.has(o.key)}
+            // Håll menyn öppen så flera val kan kryssas i en öppning.
+            onSelect={(e) => e.preventDefault()}
+            onCheckedChange={() => onToggle(o.key)}
+            className="text-[12.5px]"
+          >
+            <span className="flex-1">{o.label}</span>
+            <span className="ml-3 font-mono text-[11px] text-stone-400">{o.count}</span>
+          </DropdownMenuCheckboxItem>
+        ))}
+        {selected.size > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-[12.5px] text-stone-500" onSelect={onClear}>
+              Clear — show all
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

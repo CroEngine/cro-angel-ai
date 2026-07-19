@@ -131,6 +131,10 @@ export interface PagePreview {
   /** Spegeln av sidan ORÖRD (utan Angel) + höjdrapportören (h=1) — heatmap-
    *  backdroppen. */
   mirrorPath?: string;
+  /** "frozen" = nattloopens färdigrenderade kopia; "live" = live-spegeln.
+   *  En live-spegel av en SPA-sida renderar blankt (ägarfynd 2026-07-19) —
+   *  klienten använder detta + skal-detektering för en ärlig skylt. */
+  mirrorKind?: "frozen" | "live";
 }
 
 /**
@@ -182,6 +186,7 @@ export const createPagePreview = createServerFn({ method: "POST" })
       return {
         ok: true,
         mirrorPath: `/api/sandbox/mirror?frozen=${encodeURIComponent(frozenKey)}&exp=${exp}&t=${t}&h=1`,
+        mirrorKind: "frozen",
       };
     }
 
@@ -190,5 +195,6 @@ export const createPagePreview = createServerFn({ method: "POST" })
     return {
       ok: true,
       mirrorPath: `/api/sandbox/mirror?url=${encodeURIComponent(url)}&exp=${exp}&t=${t}&angel=0&h=1`,
+      mirrorKind: "live",
     };
   });
