@@ -38,6 +38,7 @@ function HeatMirror({
   maxHeight = 560,
   frameW = 1280,
   onRawHeight,
+  scrollTopPct = null,
 }: {
   src: string;
   overlay: React.ReactNode;
@@ -48,6 +49,9 @@ function HeatMirror({
   /** Rå (o-klampad) rapporterad dokumenthöjd — skal-detekteringen i person-
    *  läget läser den: en live-speglad SPA rapporterar ~0 (blankt skal). */
   onRawHeight?: (h: number) => void;
+  /** Play-reprisen: mjuk-scrolla wrappen så denna %-punkt av dokumentet
+   *  hamnar i blickfånget. null = ingen styrning (användaren scrollar själv). */
+  scrollTopPct?: number | null;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -95,6 +99,16 @@ function HeatMirror({
   }, [src, onRawHeight]);
 
   const scale = wrapW > 0 ? Math.min(1, wrapW / frameW) : 0.5;
+  useEffect(() => {
+    if (scrollTopPct == null) return;
+    const el = wrapRef.current;
+    if (!el) return;
+    const target = Math.max(
+      0,
+      (scrollTopPct / 100) * Math.round(docH * scale) - el.clientHeight / 2,
+    );
+    el.scrollTo({ top: target, behavior: "smooth" });
+  }, [scrollTopPct, docH, scale]);
   return (
     <div
       ref={wrapRef}
@@ -653,11 +667,56 @@ export function JourneysOverlay({
       </>
     );
 
+  // ── Play-reprisen (ägarorder 2026-07-19: "visa allt som en video") ───────
+  // Besökarens klick spelas upp i ordning med auto-scroll, steg för steg
+  // genom hela resan — filmkänslan ur data vi redan har, utan inspelning.
+  // Fast kadens: klick-tidsstämplar per steg sparas medvetet inte.
+  const [playing, setPlaying] = useState(false);
+  const [revealed, setRevealed] = useState<number | null>(null);
+  const stopPlay = useCallback(() => {
+    setPlaying(false);
+    setRevealed(null);
+  }, []);
+  const startPlay = () => {
+    setStepIdx(0);
+    setRevealed(0);
+    setPlaying(true);
+  };
+  useEffect(() => {
+    if (!playing || !person || revealed === null) return;
+    const clicks = personSteps[safeStepIdx]?.clicks.length ?? 0;
+    if (revealed < clicks) {
+      const t = setTimeout(() => setRevealed((r) => (r ?? 0) + 1), 900);
+      return () => clearTimeout(t);
+    }
+    if (safeStepIdx < personSteps.length - 1) {
+      const t = setTimeout(() => {
+        setStepIdx(safeStepIdx + 1);
+        setRevealed(0);
+      }, 1400);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(stopPlay, 1200);
+    return () => clearTimeout(t);
+  }, [playing, revealed, safeStepIdx, personSteps, person, stopPlay]);
+  useEffect(() => {
+    // Person- eller kohortbyte stannar alltid reprisen.
+    stopPlay();
+  }, [personId, stopPlay]);
+
   // Personens klick som NUMRERADE punkter i klickordning — bara positions-
-  // bärande klick kan ritas; resten listas som chips under spegeln.
+  // bärande klick kan ritas; resten listas som chips under spegeln. Under
+  // reprisen visas bara de klick som hunnit "hända".
+  const visibleClicks = personStep
+    ? playing && revealed !== null
+      ? personStep.clicks.slice(0, revealed)
+      : personStep.clicks
+    : [];
+  const lastDot = [...visibleClicks].reverse().find((c) => c.x != null && c.y != null);
+  const followPct = playing ? (lastDot?.y ?? 6) : null;
   const personOverlay = personStep ? (
     <>
-      {personStep.clicks.map((c, i) =>
+      {visibleClicks.map((c, i) =>
         c.x != null && c.y != null ? (
           <div
             key={i}
@@ -674,6 +733,21 @@ export function JourneysOverlay({
             {i + 1}
           </div>
         ) : null,
+      )}
+      {personStep.scrollPct != null && (
+        // Besökarens djupaste scroll på steget — "hit ner kom hen".
+        <div
+          className="pointer-events-none absolute inset-x-0"
+          style={{ top: `${personStep.scrollPct}%` }}
+        >
+          <div className="border-t border-dashed border-[#0d366b]/45" />
+          <span
+            className="absolute right-2 rounded-full px-2 py-[1px] text-[10px] font-semibold text-white"
+            style={{ top: -9, background: "rgba(13,54,107,.78)" }}
+          >
+            Scrolled to here
+          </span>
+        </div>
       )}
     </>
   ) : null;
@@ -919,6 +993,7 @@ export function JourneysOverlay({
                       maxHeight="calc(88vh - 230px)"
                       frameW={personFrameW}
                       onRawHeight={onPersonRawHeight}
+                      scrollTopPct={followPct}
                     />
                     {personMirrorBlank && (
                       // Ärlig skylt i stället för ett tyst vitt hål: sidan är
@@ -974,8 +1049,19 @@ export function JourneysOverlay({
                     <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
                       <button
                         type="button"
+                        onClick={() => (playing ? stopPlay() : startPlay())}
+                        className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold text-stone-600"
+                        title="Replay the visit: clicks appear in order with the page scrolling along"
+                      >
+                        {playing ? "◼ Stop" : "▶ Play"}
+                      </button>
+                      <button
+                        type="button"
                         disabled={safeStepIdx === 0}
-                        onClick={() => setStepIdx(Math.max(0, safeStepIdx - 1))}
+                        onClick={() => {
+                          stopPlay();
+                          setStepIdx(Math.max(0, safeStepIdx - 1));
+                        }}
                         className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold text-stone-600 disabled:opacity-40"
                       >
                         ← Prev
@@ -983,7 +1069,10 @@ export function JourneysOverlay({
                       <button
                         type="button"
                         disabled={safeStepIdx >= personSteps.length - 1}
-                        onClick={() => setStepIdx(Math.min(personSteps.length - 1, safeStepIdx + 1))}
+                        onClick={() => {
+                          stopPlay();
+                          setStepIdx(Math.min(personSteps.length - 1, safeStepIdx + 1));
+                        }}
                         className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold disabled:opacity-40"
                         style={{ background: "#161513", color: "#fff" }}
                       >
@@ -995,7 +1084,10 @@ export function JourneysOverlay({
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setStepIdx(i)}
+                      onClick={() => {
+                        stopPlay();
+                        setStepIdx(i);
+                      }}
                       className="mt-2 block w-full rounded-[9px] border px-3 py-2 text-left"
                       style={{
                         borderColor: i === safeStepIdx ? "#161513" : "#f0eee9",
@@ -1220,6 +1312,8 @@ export function JourneysOverlay({
                 {attentionLines.length > 0 && (
                   <span className="text-stone-400">
                     scroll reach from {fmt(reach.views)} page views
+                    {reach.views > reach.p25 &&
+                      ` · ${Math.min(100, Math.round(((reach.views - reach.p25) / reach.views) * 100))}% never scrolled past 25%`}
                   </span>
                 )}
                 {showClicks && (

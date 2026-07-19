@@ -1139,6 +1139,19 @@ describe("sessionSummaries — sidsteg med klick (Journeys v2, personläget)", (
     expect(s.steps.map((x) => x.engagedMs)).toEqual([0, 0]);
   });
 
+  it("scroll_depth med path sätter stegets djupaste scroll — legacy utan path hoppas", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/a" }, { createdAt: at(0) }),
+      sev("scroll_depth", { sessionId: "s1", path: "/a", depth: 25 }, { createdAt: at(1) }),
+      sev("scroll_depth", { sessionId: "s1", path: "/a", depth: 75 }, { createdAt: at(2) }),
+      sev("scroll_depth", { sessionId: "s1", depth: 100 }, { createdAt: at(3) }),
+      sev("pageview", { sessionId: "s1", path: "/b" }, { createdAt: at(5) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.steps[0].scrollPct).toBe(75);
+    expect(s.steps[1].scrollPct).toBeUndefined();
+  });
+
   it("path-lös page_leave (äldre snippet) faller till pågående steget", () => {
     const events: DashEvent[] = [
       sev("pageview", { sessionId: "s1", path: "/a" }, { createdAt: at(0) }),

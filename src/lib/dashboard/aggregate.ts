@@ -580,6 +580,10 @@ export interface SessionStep {
   path: string;
   clicks: StepClick[];
   engagedMs: number;
+  /** Djupaste scrollbucket (25/50/75/100) besökaren nådde på steget —
+   *  personlägets "Scrolled to here"-linje. Saknas för events från äldre
+   *  snippets (scroll_depth utan path kan inte placeras per steg). */
+  scrollPct?: number | null;
 }
 
 export interface SessionSummary {
@@ -712,6 +716,14 @@ export function sessionSummaries(
               y: typeof y === "number" && isFinite(y) ? y : null,
             });
           }
+        }
+      } else if (e.type === "scroll_depth") {
+        // Besökarens djupaste scroll per steg — samma path-matchning som
+        // klick/page_leave; legacy-events utan path hoppas ärligt.
+        const depth = e.payload.depth;
+        if (path && (depth === 25 || depth === 50 || depth === 75 || depth === 100)) {
+          const step = [...steps].reverse().find((s) => s.path === path);
+          if (step) step.scrollPct = Math.max(step.scrollPct ?? 0, depth);
         }
       } else if (e.type === "page_leave") {
         const ms = e.payload.engagedMs;
