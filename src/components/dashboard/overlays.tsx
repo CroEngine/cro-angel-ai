@@ -398,27 +398,31 @@ export function JourneysOverlay({
   );
   const flow = useMemo(() => journeyFlow(filtered), [filtered]);
 
-  // ── personläget: index i den FILTRERADE listan + aktuellt sidsteg ────────
-  const [personIdx, setPersonIdx] = useState<number | null>(null);
+  // ── personläget: valet lagras som SESSIONS-ID, aldrig radindex ───────────
+  // (ägarfynd 2026-07-19: dashboarddatan hämtas om i bakgrunden och nya
+  // sessioner läggs ÖVERST — ett sparat index gled då till en annan besökare
+  // än raden man klickade; /blogg-raden öppnade restaurangsessionen.)
+  const [personId, setPersonId] = useState<string | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
   useEffect(() => {
     // Filterbyte definierar om kohorten — en öppen person kan peka fel.
-    setPersonIdx(null);
+    setPersonId(null);
     setStepIdx(0);
   }, [channelSel, outcomeFilter, deviceSel]);
-  const person = personIdx != null ? (filtered[personIdx] ?? null) : null;
+  const personIdx = personId != null ? filtered.findIndex((s) => s.sessionId === personId) : -1;
+  const person = personIdx >= 0 ? filtered[personIdx] : null;
   const personSteps = person?.steps ?? [];
   const personStep = personSteps[stepIdx] ?? null;
   const personDevice = person?.device === "mobile" ? "mobile" : "desktop";
   const personFrameW = personDevice === "mobile" ? 390 : 1280;
-  const openPerson = (idx: number) => {
-    setPersonIdx(idx);
+  const openPerson = (s: SessionSummary) => {
+    setPersonId(s.sessionId);
     setStepIdx(0);
   };
   const movePerson = (delta: number) => {
-    if (personIdx == null || filtered.length === 0) return;
+    if (personIdx < 0 || filtered.length === 0) return;
     const next = (personIdx + delta + filtered.length) % filtered.length;
-    openPerson(next);
+    openPerson(filtered[next]);
   };
   const personBackdrop = useQuery({
     queryKey: ["pagePreview", site, personStep?.path ?? ""],
@@ -430,7 +434,7 @@ export function JourneysOverlay({
   // en LIVE-speglad SPA-sida rapporterar ~0 i dokumenthöjd — då visas en
   // ärlig skylt i stället för ett tyst vitt hål. Frysta kopior berörs inte.
   const [personRawH, setPersonRawH] = useState<number | null>(null);
-  useEffect(() => setPersonRawH(null), [personStep?.path, personIdx]);
+  useEffect(() => setPersonRawH(null), [personStep?.path, personId]);
   const onPersonRawHeight = useCallback((h: number) => setPersonRawH(h), []);
   const personMirrorBlank =
     personBackdrop.data?.mirrorKind === "live" && personRawH !== null && personRawH < 300;
@@ -578,7 +582,7 @@ export function JourneysOverlay({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-stone-200 bg-white px-5 py-3">
           <button
             type="button"
-            onClick={() => (person ? setPersonIdx(null) : onClose())}
+            onClick={() => (person ? setPersonId(null) : onClose())}
             className="flex items-center gap-1.5 text-[13px] text-stone-600 hover:text-stone-900"
           >
             ← {person ? "All journeys" : "Back"}
@@ -599,7 +603,7 @@ export function JourneysOverlay({
               // utan att gå tillbaka till listan.
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-stone-400">
-                  Visitor {(personIdx ?? 0) + 1} of {filtered.length}
+                  Visitor {personIdx + 1} of {filtered.length}
                 </span>
                 <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
                   <button
@@ -904,11 +908,11 @@ export function JourneysOverlay({
                     </div>
                   )}
                   <div className="max-h-[420px] overflow-y-auto">
-                    {filtered.map((j, idx) => (
+                    {filtered.map((j) => (
                       <button
                         key={j.sessionId}
                         type="button"
-                        onClick={() => openPerson(idx)}
+                        onClick={() => openPerson(j)}
                         className="block w-full border-t border-[#f4f2ef] py-[11px] text-left hover:bg-[#faf9f7]"
                       >
                         <div className="truncate font-mono text-[11.5px] text-stone-600">
