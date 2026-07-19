@@ -489,6 +489,8 @@ export function JourneysOverlay({
     // Filterbyte definierar om kohorten — en öppen person kan peka fel.
     setPersonId(null);
     setStepIdx(0);
+    setPlaying(false);
+    setRevealed(null);
   }, [channelSel, outcomeFilter, deviceSel]);
   const personIdx = personId != null ? filtered.findIndex((s) => s.sessionId === personId) : -1;
   const person = personIdx >= 0 ? filtered[personIdx] : null;
@@ -499,6 +501,8 @@ export function JourneysOverlay({
     if (personId != null && !filtered.some((s) => s.sessionId === personId)) {
       setPersonId(null);
       setStepIdx(0);
+      setPlaying(false);
+      setRevealed(null);
     }
   }, [personId, filtered]);
   const personSteps = person?.steps ?? [];
@@ -512,6 +516,10 @@ export function JourneysOverlay({
   const openPerson = (s: SessionSummary) => {
     setPersonId(s.sessionId);
     setStepIdx(0);
+    // Autoplay (ägar-ok 2026-07-19): man klickar en rad för att FÖLJA
+    // besökaren — reprisen börjar direkt. All manuell navigering stoppar den.
+    setRevealed(0);
+    setPlaying(true);
   };
   const movePerson = (delta: number) => {
     if (personIdx < 0 || filtered.length === 0) return;
@@ -709,10 +717,6 @@ export function JourneysOverlay({
     const t = setTimeout(stopPlay, 1200);
     return () => clearTimeout(t);
   }, [playing, revealed, safeStepIdx, personSteps, person, stopPlay]);
-  useEffect(() => {
-    // Person- eller kohortbyte stannar alltid reprisen.
-    stopPlay();
-  }, [personId, stopPlay]);
 
   // Personens klick som NUMRERADE punkter i klickordning — bara positions-
   // bärande klick kan ritas; resten listas som chips under spegeln. Under
@@ -765,6 +769,29 @@ export function JourneysOverlay({
 
   const pill = (active: boolean) =>
     active ? { background: "#161513", color: "#fff" } : { color: "#57534e" };
+  const fmtDur = (ms: number) => {
+    const s = Math.round(ms / 1000);
+    return s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
+  };
+  // Stegradens klicklista: upprepningar i följd slås ihop ("BUTTON ×4 ·
+  // Stäng ×2") — avbrusning 2026-07-19; hela listan finns i title-tooltipen.
+  const collapsedRefs = (clicks: { ref: string }[]) => {
+    const runs: { ref: string; n: number }[] = [];
+    for (const c of clicks) {
+      const last = runs[runs.length - 1];
+      if (last && last.ref === c.ref) last.n++;
+      else runs.push({ ref: c.ref, n: 1 });
+    }
+    return runs.map((r) => (r.n > 1 ? `${r.ref} ×${r.n}` : r.ref)).join(" · ");
+  };
+  const outcomeBadge = (j: SessionSummary) => (
+    <span
+      className="flex-none text-[11.5px] font-semibold"
+      style={{ color: j.converted ? "#047857" : j.formAbandoned ? "#d97706" : "#78716c" }}
+    >
+      {j.converted ? "converted" : j.formAbandoned ? "abandoned form" : "browsed"}
+    </span>
+  );
 
   return createPortal(
     <div
@@ -1026,27 +1053,6 @@ export function JourneysOverlay({
                       : "This session has no page steps to replay."}
                   </div>
                 )}
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-stone-500">
-                  <span className="flex items-center gap-1.5">
-                    <span
-                      className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                      style={{ background: "#2a78d6" }}
-                    >
-                      1
-                    </span>
-                    clicks in order
-                  </span>
-                  {unpositioned.length > 0 && (
-                    <span>
-                      {unpositioned.length} click{unpositioned.length === 1 ? "" : "s"} without a
-                      position (older snippet) — listed in the steps.
-                    </span>
-                  )}
-                  <span className="ml-auto font-mono text-stone-400">
-                    {person.channel ?? "unknown"} · {personDevice} ·{" "}
-                    {person.converted ? "converted" : "did not convert"}
-                  </span>
-                </div>
               </div>
 
               {/* stegen + navigeringen */}
@@ -1063,7 +1069,7 @@ export function JourneysOverlay({
                         className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold text-stone-600"
                         title="Replay the visit: clicks appear in order with the page scrolling along"
                       >
-                        {playing ? "◼ Stop" : "▶ Play"}
+                        {playing ? "◼ Stop" : "▶ Replay"}
                       </button>
                       <button
                         type="button"
@@ -1089,6 +1095,11 @@ export function JourneysOverlay({
                         Next step →
                       </button>
                     </div>
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-stone-400">
+                    {person.channel ?? "unknown"} · {personDevice} ·{" "}
+                    {person.converted ? "converted" : "did not convert"}
+                    {unpositioned.length > 0 && ` · ${unpositioned.length} clicks not shown`}
                   </div>
                   {personSteps.map((s, i) => (
                     <button
@@ -1123,15 +1134,11 @@ export function JourneysOverlay({
                           className="mt-1 truncate text-[11px] text-stone-500"
                           title={s.clicks.map((c) => c.ref).join(" · ")}
                         >
-                          {s.clicks.map((c) => c.ref).join(" · ")}
+                          {collapsedRefs(s.clicks)}
                         </div>
                       )}
                     </button>
                   ))}
-                  <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
-                    Page sequence, clicks, scroll depth and submitted site-search terms — Angel
-                    never records screens, mouse movement or keystrokes.
-                  </div>
                 </div>
               </div>
             </div>
@@ -1141,26 +1148,34 @@ export function JourneysOverlay({
               <div className="min-w-0 rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
                 <div className="font-heading text-sm font-semibold">Where visitors go</div>
                 <div className="mt-1 text-[11.5px] text-stone-400">
-                  Entry page → next step → after that, ranked by volume. Share of the level above; ✓
-                  = sessions that converted at some point, ⏏ = journeys that ended there.
+                  The most common paths, step by step. Bar width = share of the step above.
                 </div>
                 {flow.totalSessions === 0 ? (
                   <div className="border-t border-[#f4f2ef] py-3 text-[12px] text-stone-400">
                     No sessions match the filter in this window.
                   </div>
                 ) : (
+                  // Avbrusning 2026-07-19 ("svårt att förstå vad man tittar
+                  // på"): grenar med EN besökare viks ihop till en summarad —
+                  // trädet visar bara vägar som mer än en person tagit.
                   <div className="mt-2">
                     {flow.entries.map((entry, i) => (
                       <div key={i} className="border-t border-[#f4f2ef] py-2">
                         <FlowRow node={entry} base={flow.totalSessions} depth={0} />
-                        {entry.children.map((c2, j) => (
+                        {strongNodes(entry.children).map((c2, j) => (
                           <div key={j}>
                             <FlowRow node={c2} base={entry.sessions} depth={1} />
-                            {c2.children.map((c3, k) => (
+                            {strongNodes(c2.children).map((c3, k) => (
                               <FlowRow key={k} node={c3} base={c2.sessions} depth={2} />
                             ))}
+                            {foldedCount(c2.children) > 0 && (
+                              <FoldedLine n={foldedCount(c2.children)} depth={2} />
+                            )}
                           </div>
                         ))}
+                        {foldedCount(entry.children) > 0 && (
+                          <FoldedLine n={foldedCount(entry.children)} depth={1} />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1181,54 +1196,63 @@ export function JourneysOverlay({
                     </div>
                   )}
                   <div className="max-h-[420px] overflow-y-auto">
-                    {filtered.map((j) => (
-                      <button
-                        key={j.sessionId}
-                        type="button"
-                        onClick={() => openPerson(j)}
-                        className="block w-full border-t border-[#f4f2ef] py-[11px] text-left hover:bg-[#faf9f7]"
-                      >
-                        <div
-                          className="truncate font-mono text-[11.5px] text-stone-600"
-                          title={(j.pageOrder.length ? j.pageOrder : [j.landingPath ?? "/"]).join(
-                            " → ",
-                          )}
+                    {/* Avbrusning 2026-07-19: flersidesresor visar entré →
+                        exit + omfång (hela kedjan finns i spelaren och i
+                        tooltipen); ensidiga besök får en tunn enradare så
+                        de intressanta resorna sticker ut. */}
+                    {filtered.map((j) => {
+                      const pages = j.pageOrder.length ? j.pageOrder : [j.landingPath ?? "/"];
+                      const multi = pages.length > 1;
+                      return multi ? (
+                        <button
+                          key={j.sessionId}
+                          type="button"
+                          onClick={() => openPerson(j)}
+                          className="block w-full border-t border-[#f4f2ef] py-[11px] text-left hover:bg-[#faf9f7]"
                         >
-                          {(j.pageOrder.length ? j.pageOrder : [j.landingPath ?? "/"]).join(" → ")}
-                        </div>
-                        <div className="mt-1 flex items-center gap-2">
-                          <span className="text-[11px] text-stone-400">
-                            {j.channel ?? "unknown"} · {j.device ?? "?"} ·{" "}
-                            {Math.round(j.engagedMs / 1000)}s
-                          </span>
-                          <span
-                            className="text-[11.5px] font-semibold"
-                            style={{
-                              color: j.converted
-                                ? "#047857"
-                                : j.formAbandoned
-                                  ? "#d97706"
-                                  : "#78716c",
-                            }}
+                          <div
+                            className="truncate font-mono text-[11.5px] text-stone-600"
+                            title={pages.join(" → ")}
                           >
-                            {j.converted
-                              ? "converted"
-                              : j.formAbandoned
-                                ? "abandoned form"
-                                : "browsed"}
+                            {pages[0]} → {pages[pages.length - 1]}
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className="text-[11px] text-stone-400">
+                              {pages.length} pages · {j.channel ?? "unknown"} · {j.device ?? "?"} ·{" "}
+                              {fmtDur(j.engagedMs)}
+                            </span>
+                            {outcomeBadge(j)}
+                          </div>
+                        </button>
+                      ) : (
+                        <button
+                          key={j.sessionId}
+                          type="button"
+                          onClick={() => openPerson(j)}
+                          className="flex w-full items-center gap-2 border-t border-[#f4f2ef] py-[7px] text-left hover:bg-[#faf9f7]"
+                        >
+                          <span
+                            className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-stone-500"
+                            title={pages[0]}
+                          >
+                            {pages[0]}
                           </span>
-                        </div>
-                      </button>
-                    ))}
+                          <span className="flex-none text-[11px] text-stone-400">
+                            {fmtDur(j.engagedMs)}
+                            {j.steps[0]?.scrollPct != null &&
+                              ` · scrolled ${j.steps[0].scrollPct}%`}
+                          </span>
+                          {outcomeBadge(j)}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
+                {/* Avbrusning 2026-07-19: tomma diagnostikkort tystnar helt —
+                    lugnande första gången, brus var gång därefter. */}
+                {rageClicks.length > 0 && (
                 <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
                   <div className="font-heading text-sm font-semibold">Frustration signals</div>
-                  {rageClicks.length === 0 && (
-                    <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
-                      No rage clicks recorded. Good.
-                    </div>
-                  )}
                   {rageClicks.map((g) => (
                     <div
                       key={g.ref}
@@ -1249,14 +1273,10 @@ export function JourneysOverlay({
                     Site-wide diagnostics — Angel never changes anything automatically from these.
                   </div>
                 </div>
+                )}
+                {searches.length > 0 && (
                 <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
                   <div className="font-heading text-sm font-semibold">Site search</div>
-                  {searches.length === 0 && (
-                    <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
-                      No site searches recorded yet — terms appear as visitors use the
-                      site&apos;s search.
-                    </div>
-                  )}
                   {searches.map((s) => (
                     <div
                       key={s.term}
@@ -1273,10 +1293,8 @@ export function JourneysOverlay({
                       </span>
                     </div>
                   ))}
-                  <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
-                    Submitted search terms only — never keystrokes, never other form fields.
-                  </div>
                 </div>
+                )}
               </div>
             </div>
           ) : (
@@ -1361,6 +1379,12 @@ export function JourneysOverlay({
               </div>
             </div>
           )}
+          {/* Integritetsraden EN gång för hela popupen (avbrusning 2026-07-19
+              — stod tidigare i både listvyn och spelaren). */}
+          <div className="mt-4 pb-1 text-center text-[10.5px] text-stone-300">
+            Page sequence, clicks, scroll depth and submitted site-search terms — Angel never
+            records screens, mouse movement or keystrokes.
+          </div>
         </div>
       </div>
     </div>,
@@ -1368,9 +1392,31 @@ export function JourneysOverlay({
   );
 }
 
+/** Grenar som mer än EN besökare tagit — resten viks ihop till en summarad
+ *  (avbrusning 2026-07-19: ett träd av "1 · 100%"-rader säger ingenting). */
+function strongNodes(nodes: FlowNode[]): FlowNode[] {
+  return nodes.filter((n) => n.path === null || n.sessions >= 2);
+}
+function foldedCount(nodes: FlowNode[]): number {
+  return nodes
+    .filter((n) => n.path !== null && n.sessions < 2)
+    .reduce((sum, n) => sum + n.sessions, 0);
+}
+function FoldedLine({ n, depth }: { n: number; depth: number }) {
+  return (
+    <div
+      className="py-[3px] text-[11px] text-stone-400"
+      style={{ paddingLeft: depth * 22 }}
+    >
+      + {n} visitor{n === 1 ? "" : "s"} continued to different pages (one each)
+    </div>
+  );
+}
+
 /** En rad i vägträdet: indrag per nivå, volymstapel relativt nivån ovanför,
- *  procent + konverterade + avslut. "Övriga"-hinken (path null) får kursiv
- *  etikett och ingen vidare förgrening. */
+ *  antal besökare i klartext ("22 ended here" i stället för glyfer —
+ *  avbrusning 2026-07-19). "Övriga"-hinken (path null) får grå etikett och
+ *  ingen vidare förgrening. */
 function FlowRow({ node, base, depth }: { node: FlowNode; base: number; depth: number }) {
   const share = base > 0 ? node.sessions / base : 0;
   return (
@@ -1381,7 +1427,7 @@ function FlowRow({ node, base, depth }: { node: FlowNode; base: number; depth: n
         style={{ maxWidth: "40%", color: node.path ? "#44403c" : "#a8a29e" }}
         title={node.path ?? undefined}
       >
-        {node.path ?? "other pages"}
+        {node.path ?? (depth === 0 ? "other entry pages" : "other pages")}
       </span>
       <span className="h-[7px] flex-1 overflow-hidden rounded-[4px] bg-[#f4f2ef]">
         <span
@@ -1392,14 +1438,18 @@ function FlowRow({ node, base, depth }: { node: FlowNode; base: number; depth: n
           }}
         />
       </span>
-      <span className="flex-none text-right font-mono text-[11px] text-stone-500">
-        {node.sessions} · {Math.round(share * 100)}%
+      <span className="flex-none text-right text-[11px] text-stone-500">
+        {node.sessions} visitor{node.sessions === 1 ? "" : "s"}
       </span>
-      <span className="w-[74px] flex-none text-right text-[11px]">
-        {node.converted > 0 && <span style={{ color: "#047857" }}>✓ {node.converted}</span>}
-        {node.converted > 0 && node.exited > 0 && <span className="text-stone-300"> · </span>}
-        {node.exited > 0 && <span className="text-stone-400">⏏ {node.exited}</span>}
-      </span>
+      {(node.converted > 0 || node.exited > 0) && (
+        <span className="flex-none text-right text-[11px] text-stone-400">
+          {node.converted > 0 && (
+            <span style={{ color: "#047857" }}>{node.converted} converted</span>
+          )}
+          {node.converted > 0 && node.exited > 0 && " · "}
+          {node.exited > 0 && `${node.exited} ended here`}
+        </span>
+      )}
     </div>
   );
 }
