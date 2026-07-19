@@ -362,10 +362,10 @@ const ms = (iso: string): number => {
  *  or the pooled variance is degenerate. */
 /** Standardnormalens CDF via Abramowitz–Stegun-erf — för pWin-avläsningen. */
 function phi(x: number): number {
-  const t = 1 / (1 + 0.3275911 * Math.abs(x) / Math.SQRT2);
+  const t = 1 / (1 + (0.3275911 * Math.abs(x)) / Math.SQRT2);
   const erf =
     1 -
-    (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
+    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
       t *
       Math.exp(-(x * x) / 2);
   return x >= 0 ? 0.5 * (1 + erf) : 0.5 * (1 - erf);
@@ -434,14 +434,21 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
     if (typeof lcp !== "number" || !isFinite(lcp) || lcp <= 0) continue;
     const t = ms(e.createdAt);
     if (Number.isNaN(t)) continue;
-    (perfLcp.get(e.visitorHash) ?? perfLcp.set(e.visitorHash, []).get(e.visitorHash)!).push({ t, lcp });
+    (perfLcp.get(e.visitorHash) ?? perfLcp.set(e.visitorHash, []).get(e.visitorHash)!).push({
+      t,
+      lcp,
+    });
   }
 
   // Besökare -> {arm, första exponering}.
   const assignment = new Map<string, { arm: "adapted" | "control"; t: number }>();
   for (const e of events) {
     const arm =
-      e.type === "adaptation_shown" ? "adapted" : e.type === "adaptation_withheld" ? "control" : null;
+      e.type === "adaptation_shown"
+        ? "adapted"
+        : e.type === "adaptation_withheld"
+          ? "control"
+          : null;
     if (!arm || !e.visitorHash) continue;
     const t = ms(e.createdAt);
     if (Number.isNaN(t)) continue;
@@ -473,7 +480,11 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
   });
   const arms = { adapted: empty(), control: empty() };
   const lcpByArm = { adapted: [] as number[], control: [] as number[] };
-  const firstInWindow = (rows: { t: number; lcp: number }[] | undefined, from: number, until: number) => {
+  const firstInWindow = (
+    rows: { t: number; lcp: number }[] | undefined,
+    from: number,
+    until: number,
+  ) => {
     if (!rows) return null;
     for (const r of rows) if (r.t >= from && r.t <= until) return r.lcp;
     return null;
@@ -526,6 +537,24 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
 /** Nivå 2 (docs/journey-intelligence.md): en anonym besöksRESA per session_id,
  *  rekonstruerad på läs-tid ur rå events (nivå 1). Det här är det motorn ska
  *  översätta till beslut — kanal, sidordning, klickordning, drop-off, utfall. */
+/** Ett klick i ett sidsteg. x är % av besökarens viewportbredd, y % av
+ *  dokumenthöjden (samma koordinatsemantik som heatmapens HeatSpot) — null
+ *  för klick från snippet-versioner utan koordinater. */
+export interface StepClick {
+  ref: string;
+  x: number | null;
+  y: number | null;
+}
+
+/** Ett sidsteg i en enskild besökares resa: sidan, klicken som föll på den
+ *  och aktiv tid. Grunden för personläget i Journeys (steg-för-steg-spelaren,
+ *  ägarorder 2026-07-18). */
+export interface SessionStep {
+  path: string;
+  clicks: StepClick[];
+  engagedMs: number;
+}
+
 export interface SessionSummary {
   sessionId: string;
   startedAt: string;
@@ -542,6 +571,8 @@ export interface SessionSummary {
   pageOrder: string[];
   /** Element-referenser i klickordning (intent-signalen). */
   clickOrder: string[];
+  /** Sidsteg i ordning med klick + aktiv tid per steg (personläget). */
+  steps: SessionStep[];
   /** Aktiv (synlig) tid summerad över sessionens page_leave. */
   engagedMs: number;
   formStarted: boolean;
@@ -553,7 +584,10 @@ export interface SessionSummary {
   sawAdaptation: boolean;
 }
 
-export const MAX_SESSION_SUMMARIES = 40;
+// Höjd 40 → 150 för Journeys v2: vägträdet + personbläddraren beräknas i
+// klienten över listan, och 40 sessioner var för tunt underlag för flödet.
+// Kortet i översikten visar fortfarande bara de 3 senaste.
+export const MAX_SESSION_SUMMARIES = 150;
 const JOURNEY_STEP_CAP = 20; // håll sido-/klickordningen bounded i UI:t
 
 /** Rekonstruera de senaste sessionernas resor. Grupperar på payload.sessionId
@@ -571,7 +605,9 @@ export function sessionSummaries(
     if (e.type !== "adaptation_shown" || !e.visitorHash) continue;
     const t = ms(e.createdAt);
     if (Number.isNaN(t)) continue;
-    (shownByVisitor.get(e.visitorHash) ?? shownByVisitor.set(e.visitorHash, []).get(e.visitorHash)!).push(t);
+    (
+      shownByVisitor.get(e.visitorHash) ?? shownByVisitor.set(e.visitorHash, []).get(e.visitorHash)!
+    ).push(t);
   }
 
   const bySession = new Map<string, DashEvent[]>();
@@ -600,6 +636,7 @@ export function sessionSummaries(
 
     const pageOrder: string[] = [];
     const clickOrder: string[] = [];
+    const steps: SessionStep[] = [];
     let engagedMs = 0;
     let formStarted = false;
     let formSubmitted = false;
@@ -611,12 +648,36 @@ export function sessionSummaries(
         // Distinkt sidordning: lägg bara till när sidan byts (undvik
         // hydrerings-dubbletter av samma path i rad).
         if (pageOrder[pageOrder.length - 1] !== path) pageOrder.push(path);
+        // Nytt sidsteg på sidbyte — dubblett-pageviews fortsätter samma steg.
+        if (steps[steps.length - 1]?.path !== path && steps.length < JOURNEY_STEP_CAP) {
+          steps.push({ path, clicks: [], engagedMs: 0 });
+        }
       } else if (e.type === "element_click") {
         const ref = typeof e.payload.ref === "string" ? e.payload.ref : "";
-        if (ref) clickOrder.push(ref);
+        if (ref) {
+          clickOrder.push(ref);
+          // Klicket hör till sitt EGET path när det finns (sena events kan
+          // anlända efter nästa pageview), annars pågående steget.
+          const step =
+            (path && [...steps].reverse().find((s) => s.path === path)) ?? steps[steps.length - 1];
+          if (step && step.clicks.length < JOURNEY_STEP_CAP) {
+            const x = e.payload.x;
+            const y = e.payload.y;
+            step.clicks.push({
+              ref,
+              x: typeof x === "number" && isFinite(x) ? x : null,
+              y: typeof y === "number" && isFinite(y) ? y : null,
+            });
+          }
+        }
       } else if (e.type === "page_leave") {
         const ms = e.payload.engagedMs;
-        if (typeof ms === "number" && isFinite(ms) && ms > 0) engagedMs += ms;
+        if (typeof ms === "number" && isFinite(ms) && ms > 0) {
+          engagedMs += ms;
+          const step =
+            (path && [...steps].reverse().find((s) => s.path === path)) ?? steps[steps.length - 1];
+          if (step) step.engagedMs += ms;
+        }
       } else if (e.type === "form_start") formStarted = true;
       else if (e.type === "form_submit") formSubmitted = true;
       else if (e.type === "form_abandon") formAbandoned = true;
@@ -634,6 +695,7 @@ export function sessionSummaries(
       landingPath: pageOrder[0] ?? null,
       pageOrder: pageOrder.slice(0, JOURNEY_STEP_CAP),
       clickOrder: clickOrder.slice(0, JOURNEY_STEP_CAP),
+      steps,
       engagedMs,
       formStarted,
       formSubmitted,
@@ -734,10 +796,7 @@ export interface SegmentLeaf {
  *  sina prefix: en google·mobile·se-nod räknas också i google·mobile och google
  *  — så grova grupper alltid har mest data ("låna styrka"). Volymgrind +
  *  display-tröskel + deterministisk sortering. Ren. */
-export function expandSegmentLeaves(
-  leaves: SegmentLeaf[],
-  limit = MAX_SEGMENTS,
-): SegmentSummary[] {
+export function expandSegmentLeaves(leaves: SegmentLeaf[], limit = MAX_SEGMENTS): SegmentSummary[] {
   type Acc = {
     dims: string[];
     visits: number;
@@ -820,6 +879,68 @@ export function attachRecent(
         : null,
     };
   });
+}
+
+/** En nod i Journeys-flödets rankade vägträd. */
+export interface FlowNode {
+  /** Sidväg — eller null för "övriga"-hinken (svansen bortom topplistan). */
+  path: string | null;
+  /** Sessioner vars resa passerade noden (via prefixet ovanför den). */
+  sessions: number;
+  /** ...varav sessioner som någon gång under besöket konverterade. */
+  converted: number;
+  /** ...varav sessioner vars resa SLUTADE här (inga fler sidsteg). */
+  exited: number;
+  /** Nästa sidsteg rankade efter volym. Tom på maxdjup och i övriga-hinken. */
+  children: FlowNode[];
+}
+
+export interface JourneyFlow {
+  /** Sessioner med minst ett sidsteg (basen för procenttalen). */
+  totalSessions: number;
+  /** Entrésidor rankade efter volym (+ ev. övriga-hink sist). */
+  entries: FlowNode[];
+}
+
+export const FLOW_DEPTH = 3;
+export const FLOW_TOP_PER_LEVEL = 5;
+
+/** Journeys v2 (ägarorder 2026-07-18, Clarity-formen vald): rulla upp
+ *  sessionernas sidordningar till ett rankat vägträd — entrésidor → nästa
+ *  steg → utfall, topp-N per nivå med en ärlig "övriga"-hink för svansen.
+ *  Tål tunn data: tio sessioner ger ett litet men korrekt träd, aldrig en
+ *  trasig graf. Ren funktion. */
+export function journeyFlow(
+  sessions: SessionSummary[],
+  depth = FLOW_DEPTH,
+  top = FLOW_TOP_PER_LEVEL,
+): JourneyFlow {
+  const build = (group: SessionSummary[], level: number): FlowNode[] => {
+    const byPath = new Map<string, SessionSummary[]>();
+    for (const s of group) {
+      const p = s.pageOrder[level];
+      if (!p) continue;
+      (byPath.get(p) ?? byPath.set(p, []).get(p)!).push(s);
+    }
+    const ranked = [...byPath.entries()].sort(
+      (a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]),
+    );
+    const node = (path: string | null, g: SessionSummary[], recurse: boolean): FlowNode => ({
+      path,
+      sessions: g.length,
+      converted: g.filter((s) => s.converted).length,
+      exited: g.filter((s) => s.pageOrder.length === level + 1).length,
+      children: recurse && level + 1 < depth ? build(g, level + 1) : [],
+    });
+    const nodes = ranked.slice(0, top).map(([p, g]) => node(p, g, true));
+    const tail = ranked.slice(top).flatMap(([, g]) => g);
+    if (tail.length > 0) nodes.push(node(null, tail, false));
+    return nodes;
+  };
+  return {
+    totalSessions: sessions.filter((s) => s.pageOrder.length > 0).length,
+    entries: build(sessions, 0),
+  };
 }
 
 /** JS-fallback (och testyta): rulla upp sessioner till segment när server-
@@ -912,7 +1033,11 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
   const segExposures = new Map<string, Map<string, Arms>>();
   for (const e of events) {
     const variant: VariantKey | null =
-      e.type === "adaptation_shown" ? "adapted" : e.type === "adaptation_withheld" ? "control" : null;
+      e.type === "adaptation_shown"
+        ? "adapted"
+        : e.type === "adaptation_withheld"
+          ? "control"
+          : null;
     if (!variant || !e.visitorHash) continue;
     const t = ms(e.createdAt);
     if (Number.isNaN(t)) continue;
@@ -973,7 +1098,12 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
     const control = stat(arms.control);
     const hasBoth = adapted.exposures > 0 && control.exposures > 0;
     const z = hasBoth
-      ? twoProportionZ(adapted.conversions, adapted.exposures, control.conversions, control.exposures)
+      ? twoProportionZ(
+          adapted.conversions,
+          adapted.exposures,
+          control.conversions,
+          control.exposures,
+        )
       : null;
     return {
       pattern,
@@ -986,8 +1116,7 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
       z,
       // Require a valid, adequately-powered sample in BOTH arms, not just a
       // z-crossing — otherwise tiny-n noise reads as a proven win/loss.
-      significant:
-        z !== null && Math.abs(z) >= 1.96 && armValid(adapted) && armValid(control),
+      significant: z !== null && Math.abs(z) >= 1.96 && armValid(adapted) && armValid(control),
     };
   };
 
@@ -1005,7 +1134,9 @@ export function attribute(events: DashEvent[]): PatternAttribution[] {
       }
     }
     segRows.sort(
-      (a, b) => b.adapted.exposures - a.adapted.exposures || (a.segment ?? "").localeCompare(b.segment ?? ""),
+      (a, b) =>
+        b.adapted.exposures - a.adapted.exposures ||
+        (a.segment ?? "").localeCompare(b.segment ?? ""),
     );
     out.push(...segRows);
   }
@@ -1055,10 +1186,10 @@ export function bucketByTime(
 ): { daily: DayPoint[]; hourly: HourPoint[] } {
   type DayAcc = { visits: number; identified: Set<string>; conversions: number };
   const days = new Map<string, DayAcc>();
-  const hours: { visits: number; identified: Set<string> }[] = Array.from(
-    { length: 24 },
-    () => ({ visits: 0, identified: new Set<string>() }),
-  );
+  const hours: { visits: number; identified: Set<string> }[] = Array.from({ length: 24 }, () => ({
+    visits: 0,
+    identified: new Set<string>(),
+  }));
 
   for (const e of events) {
     const d = shifted(e.createdAt, tzOffsetMinutes);

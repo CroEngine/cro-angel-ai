@@ -4,6 +4,7 @@ import {
   aggregate,
   proofSummary,
   sessionSummaries,
+  journeyFlow,
   segmentSummaries,
   expandSegmentLeaves,
   attachRecent,
@@ -205,7 +206,11 @@ describe("aggregate — attribution (what's working)", () => {
     const pre = aggregate(
       [
         ev("conversion", {}, { visitorHash: "z", createdAt: T(8) }),
-        ev("adaptation_shown", { patterns: ["clarify_cta"] }, { visitorHash: "z", createdAt: T(9) }),
+        ev(
+          "adaptation_shown",
+          { patterns: ["clarify_cta"] },
+          { visitorHash: "z", createdAt: T(9) },
+        ),
       ],
       [],
     );
@@ -521,7 +526,11 @@ describe("proofSummary — v1-beviset (adapterad vs hold-out)", () => {
       ev("conversion", {}, { visitorHash: "a", createdAt: plus(0.2) }),
       ev("pageview", {}, { visitorHash: "a", createdAt: plus(26) }), // återbesök
       // Kontroll-besökare: tittar, gör inget, kommer inte tillbaka.
-      ev("adaptation_withheld", { patterns: ["emphasize_goal"] }, { visitorHash: "b", createdAt: T0 }),
+      ev(
+        "adaptation_withheld",
+        { patterns: ["emphasize_goal"] },
+        { visitorHash: "b", createdAt: T0 },
+      ),
       ev("pageview", {}, { visitorHash: "b", createdAt: plus(0.01) }), // < 6h — inte återbesök
     ];
     const p = proofSummary(events)!;
@@ -628,9 +637,17 @@ describe("sessionSummaries — nivå 2 (anonym besöksresa)", () => {
 
   it("rekonstruerar kanal, sidordning, klickordning, tid och utfall per session", () => {
     const events: DashEvent[] = [
-      sev("pageview", { sessionId: "s1", path: "/features", trafficSource: "linkedin", device: "mobile" }, { createdAt: at(0) }),
+      sev(
+        "pageview",
+        { sessionId: "s1", path: "/features", trafficSource: "linkedin", device: "mobile" },
+        { createdAt: at(0) },
+      ),
       sev("element_click", { sessionId: "s1", seq: 1, ref: "Watch demo" }, { createdAt: at(2) }),
-      sev("pageview", { sessionId: "s1", path: "/pricing", trafficSource: "linkedin", device: "mobile" }, { createdAt: at(5) }),
+      sev(
+        "pageview",
+        { sessionId: "s1", path: "/pricing", trafficSource: "linkedin", device: "mobile" },
+        { createdAt: at(5) },
+      ),
       sev("element_click", { sessionId: "s1", seq: 1, ref: "Pricing FAQ" }, { createdAt: at(7) }),
       sev("form_start", { sessionId: "s1", ref: "#book", kind: "other" }, { createdAt: at(9) }),
       sev("form_abandon", { sessionId: "s1", ref: "#book", kind: "other" }, { createdAt: at(12) }),
@@ -667,9 +684,21 @@ describe("sessionSummaries — nivå 2 (anonym besöksresa)", () => {
     // '…:00+00:00' (bråkdel utelämnad) är den SANNA landningen men sorteras
     // lexikalt efter '…:00.240000+00:00'. Numerisk sortering ger rätt.
     const events: DashEvent[] = [
-      sev("pageview", { sessionId: "s", path: "/a", trafficSource: "google" }, { createdAt: "2026-07-08T10:00:00+00:00" }),
-      sev("element_click", { sessionId: "s", seq: 1, ref: "X" }, { createdAt: "2026-07-08T10:00:00.240000+00:00" }),
-      sev("pageview", { sessionId: "s", path: "/b" }, { createdAt: "2026-07-08T10:00:00.900000+00:00" }),
+      sev(
+        "pageview",
+        { sessionId: "s", path: "/a", trafficSource: "google" },
+        { createdAt: "2026-07-08T10:00:00+00:00" },
+      ),
+      sev(
+        "element_click",
+        { sessionId: "s", seq: 1, ref: "X" },
+        { createdAt: "2026-07-08T10:00:00.240000+00:00" },
+      ),
+      sev(
+        "pageview",
+        { sessionId: "s", path: "/b" },
+        { createdAt: "2026-07-08T10:00:00.900000+00:00" },
+      ),
     ];
     const [s] = sessionSummaries(events);
     expect(s.landingPath).toBe("/a"); // inte "/b"
@@ -681,9 +710,21 @@ describe("sessionSummaries — nivå 2 (anonym besöksresa)", () => {
     // Besökaren adapterades i en TIDIGARE session (t=0) men inte i den här
     // (t=100..102) → sawAdaptation ska vara false för den nya sessionen.
     const events: DashEvent[] = [
-      ev("adaptation_shown", { patterns: ["emphasize_goal"] }, { visitorHash: "v", createdAt: at(0) }),
-      ev("pageview", { sessionId: "later", path: "/x", trafficSource: "direct" }, { visitorHash: "v", createdAt: at(100) }),
-      ev("page_leave", { sessionId: "later", engagedMs: 2000 }, { visitorHash: "v", createdAt: at(102) }),
+      ev(
+        "adaptation_shown",
+        { patterns: ["emphasize_goal"] },
+        { visitorHash: "v", createdAt: at(0) },
+      ),
+      ev(
+        "pageview",
+        { sessionId: "later", path: "/x", trafficSource: "direct" },
+        { visitorHash: "v", createdAt: at(100) },
+      ),
+      ev(
+        "page_leave",
+        { sessionId: "later", engagedMs: 2000 },
+        { visitorHash: "v", createdAt: at(102) },
+      ),
     ];
     const [s] = sessionSummaries(events);
     expect(s.sawAdaptation).toBe(false);
@@ -691,9 +732,17 @@ describe("sessionSummaries — nivå 2 (anonym besöksresa)", () => {
 
   it("collapsar upprepad path och markerar konvertering + adapterad arm", () => {
     const events: DashEvent[] = [
-      ev("pageview", { sessionId: "s2", path: "/", trafficSource: "google" }, { visitorHash: "v9", createdAt: at(1) }),
+      ev(
+        "pageview",
+        { sessionId: "s2", path: "/", trafficSource: "google" },
+        { visitorHash: "v9", createdAt: at(1) },
+      ),
       // Exponering loggas server-side under sessionen (vid decide på pageview).
-      ev("adaptation_shown", { patterns: ["emphasize_goal"] }, { visitorHash: "v9", createdAt: at(1) }),
+      ev(
+        "adaptation_shown",
+        { patterns: ["emphasize_goal"] },
+        { visitorHash: "v9", createdAt: at(1) },
+      ),
       ev("pageview", { sessionId: "s2", path: "/" }, { visitorHash: "v9", createdAt: at(2) }), // hydrerings-dubblett
       ev("conversion", { sessionId: "s2" }, { visitorHash: "v9", createdAt: at(3) }),
     ];
@@ -850,6 +899,7 @@ describe("segmentSummaries — Fas 2 besökargrupper (grov→fin + volymgrind)",
     landingPath: "/",
     pageOrder: ["/"],
     clickOrder: [],
+    steps: [{ path: "/", clicks: [], engagedMs: 1000 }],
     engagedMs: 1000,
     formStarted: false,
     formSubmitted: false,
@@ -858,8 +908,7 @@ describe("segmentSummaries — Fas 2 besökargrupper (grov→fin + volymgrind)",
     sawAdaptation: false,
     ...over,
   });
-  const byKey = (out: ReturnType<typeof segmentSummaries>) =>
-    new Map(out.map((s) => [s.key, s]));
+  const byKey = (out: ReturnType<typeof segmentSummaries>) => new Map(out.map((s) => [s.key, s]));
 
   it("varje session bidrar till ALLA sina prefix (grov→fin) med rätt utfall", () => {
     // 6 google·mobile·se-sessioner, 2 konverterade.
@@ -910,9 +959,9 @@ describe("segmentSummaries — Fas 2 besökargrupper (grov→fin + volymgrind)",
     expect(byKey(segmentSummaries(fewConv)).get("google")?.adequate).toBe(false);
 
     // Liten pilot-grupp → aldrig tillräcklig.
-    expect(byKey(segmentSummaries(Array.from({ length: 6 }, () => sess()))).get("google")?.adequate).toBe(
-      false,
-    );
+    expect(
+      byKey(segmentSummaries(Array.from({ length: 6 }, () => sess()))).get("google")?.adequate,
+    ).toBe(false);
   });
 
   it("sorterar grovast först, sedan störst volym; null-dimensioner blir 'okänd'", () => {
@@ -943,7 +992,8 @@ describe("expandSegmentLeaves — server-rollup-löv → grov→fin prefix", () 
     formAbandons: 0,
     ...over,
   });
-  const byKey = (out: ReturnType<typeof expandSegmentLeaves>) => new Map(out.map((s) => [s.key, s]));
+  const byKey = (out: ReturnType<typeof expandSegmentLeaves>) =>
+    new Map(out.map((s) => [s.key, s]));
 
   it("summerar PRE-AGGREGERADE löv (visits>1) till alla prefix (låna styrka)", () => {
     // Ett löv representerar redan MÅNGA sessioner (server-rollupen aggregerade dem).
@@ -1014,5 +1064,136 @@ describe("attachRecent — livstid + senaste fönster per segment", () => {
     expect(m.get("direct")?.recent).toBeNull(); // saknas i det nyliga fönstret
     expect(m.get("google")?.visits).toBe(100); // livstidssiffrorna orörda
     expect(merged.length).toBe(allTime.length); // recent ändrar aldrig VILKA rader som visas
+  });
+});
+
+describe("sessionSummaries — sidsteg med klick (Journeys v2, personläget)", () => {
+  const T0 = "2026-07-18T10:00:00Z";
+  const at = (s: number) => new Date(Date.parse(T0) + s * 1000).toISOString();
+  const sev = (
+    type: string,
+    payload: Record<string, unknown>,
+    over: Partial<DashEvent> = {},
+  ): DashEvent => ev(type, payload, { visitorHash: "v1", ...over });
+
+  it("bygger steg per sidbyte, attribuerar klick (med koordinater) och tid till rätt steg", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/" }, { createdAt: at(0) }),
+      sev(
+        "element_click",
+        { sessionId: "s1", ref: "Hero CTA", path: "/", x: 50, y: 12 },
+        { createdAt: at(1) },
+      ),
+      sev("page_leave", { sessionId: "s1", path: "/", engagedMs: 8000 }, { createdAt: at(4) }),
+      sev("pageview", { sessionId: "s1", path: "/pricing" }, { createdAt: at(5) }),
+      sev(
+        "element_click",
+        { sessionId: "s1", ref: "Buy", path: "/pricing", x: 48, y: 30 },
+        { createdAt: at(6) },
+      ),
+      // koordinatlöst klick (äldre snippet) — hamnar på pågående steget med null-koordinater
+      sev("element_click", { sessionId: "s1", ref: "FAQ" }, { createdAt: at(7) }),
+      sev(
+        "page_leave",
+        { sessionId: "s1", path: "/pricing", engagedMs: 12000 },
+        { createdAt: at(9) },
+      ),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.steps.map((x) => x.path)).toEqual(["/", "/pricing"]);
+    expect(s.steps[0].clicks).toEqual([{ ref: "Hero CTA", x: 50, y: 12 }]);
+    expect(s.steps[0].engagedMs).toBe(8000);
+    expect(s.steps[1].clicks.map((c) => c.ref)).toEqual(["Buy", "FAQ"]);
+    expect(s.steps[1].clicks[1]).toEqual({ ref: "FAQ", x: null, y: null });
+    expect(s.steps[1].engagedMs).toBe(12000);
+  });
+
+  it("sena klick-events efter nästa pageview hör ändå till SITT path", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/" }, { createdAt: at(0) }),
+      sev("pageview", { sessionId: "s1", path: "/next" }, { createdAt: at(5) }),
+      // klicket bär path="/" men anländer efter /next-pageviewen
+      sev("element_click", { sessionId: "s1", ref: "Late", path: "/" }, { createdAt: at(6) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.steps[0].clicks.map((c) => c.ref)).toEqual(["Late"]);
+    expect(s.steps[1].clicks).toEqual([]);
+  });
+});
+
+describe("journeyFlow — rankat vägträd (Journeys v2)", () => {
+  let sid = 0;
+  const sess = (pageOrder: string[], converted = false): SessionSummary => ({
+    sessionId: `f${++sid}`,
+    startedAt: "2026-07-18T10:00:00Z",
+    endedAt: "2026-07-18T10:05:00Z",
+    channel: "google",
+    device: "mobile",
+    country: "se",
+    isReturning: false,
+    landingPath: pageOrder[0] ?? null,
+    pageOrder,
+    clickOrder: [],
+    steps: pageOrder.map((p) => ({ path: p, clicks: [], engagedMs: 1000 })),
+    engagedMs: 1000,
+    formStarted: false,
+    formSubmitted: false,
+    formAbandoned: false,
+    converted,
+    sawAdaptation: false,
+  });
+
+  it("rankar entréer efter volym och räknar konverterade + avslut per nod", () => {
+    const flow = journeyFlow([
+      sess(["/", "/pricing"], true),
+      sess(["/", "/pricing", "/signup"], true),
+      sess(["/", "/about"]),
+      sess(["/blog"]),
+    ]);
+    expect(flow.totalSessions).toBe(4);
+    expect(flow.entries.map((e) => e.path)).toEqual(["/", "/blog"]);
+    const home = flow.entries[0];
+    expect(home.sessions).toBe(3);
+    expect(home.converted).toBe(2);
+    expect(home.exited).toBe(0);
+    expect(home.children.map((c) => c.path)).toEqual(["/pricing", "/about"]);
+    const pricing = home.children[0];
+    expect(pricing.sessions).toBe(2);
+    expect(pricing.exited).toBe(1); // en resa slutade på /pricing
+    expect(pricing.children.map((c) => c.path)).toEqual(["/signup"]);
+    const blog = flow.entries[1];
+    expect(blog.sessions).toBe(1);
+    expect(blog.exited).toBe(1);
+  });
+
+  it("svansen bortom topplistan hamnar i en övriga-hink (path null) utan barn", () => {
+    const entries = [
+      ...Array.from({ length: 4 }, () => sess(["/a"])),
+      ...Array.from({ length: 3 }, () => sess(["/b"])),
+      sess(["/c"]),
+      sess(["/d"]),
+      sess(["/e"], true),
+    ];
+    const flow = journeyFlow(entries, 3, 2);
+    expect(flow.entries.map((e) => e.path)).toEqual(["/a", "/b", null]);
+    const other = flow.entries[2];
+    expect(other.sessions).toBe(3);
+    expect(other.converted).toBe(1);
+    expect(other.children).toEqual([]);
+  });
+
+  it("tål tunn data: en enda session ger ett en-vägs-träd", () => {
+    const flow = journeyFlow([sess(["/", "/pricing", "/signup", "/done"])]);
+    expect(flow.totalSessions).toBe(1);
+    expect(flow.entries).toHaveLength(1);
+    // djupet kapas vid FLOW_DEPTH nivåer
+    const l3 = flow.entries[0].children[0].children[0];
+    expect(l3.path).toBe("/signup");
+    expect(l3.children).toEqual([]);
+  });
+
+  it("sessioner utan sidsteg räknas inte in i basen", () => {
+    const flow = journeyFlow([sess([]), sess(["/"])]);
+    expect(flow.totalSessions).toBe(1);
   });
 });
