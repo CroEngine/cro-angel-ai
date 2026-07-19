@@ -1670,6 +1670,12 @@
       "click",
       function (e) {
         try {
+          // Ruttbyte-katch-up: ramverk som HÅRT ersätter history.pushState
+          // efter boot (utan att delegera) tappar vår hook — men en människa
+          // interagerar EFTER navigeringen. Första klicket på en ny path
+          // skickar då SPA-pageviewen först, så resan förblir följbar.
+          // No-op när hooken lever (pathen är redan bokförd).
+          onRouteChange();
           var t = e.target;
           var el = t && t.closest ? t.closest(INTERACTIVE) : null;
           if (!el || isNoTouch(el)) return; // aldrig CMP-/no-touch-klick
@@ -1848,7 +1854,11 @@
         };
       }
       window.addEventListener("popstate", onRouteChange);
-      window.addEventListener("hashchange", onRouteChange);
+      // MEDVETET ingen hashchange-lyssnare: safeUrl strippar alltid hashen
+      // (integritetsvalet — hashen lämnar aldrig klienten), så ett rent
+      // hashbyte kan per definition aldrig ge en ny path. Hash-routade
+      // SPA:er (#/rutt) är en känd lucka — hellre ärligt osynlig än en
+      // lyssnare som ser ut att täcka den men aldrig kan fyra.
     } catch (err) {
       /* history-API saknas/låst — fullsideladdningar täcker ändå */
     }

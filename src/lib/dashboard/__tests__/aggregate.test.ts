@@ -1120,6 +1120,31 @@ describe("sessionSummaries — sidsteg med klick (Journeys v2, personläget)", (
     expect(s.steps[0].clicks.map((c) => c.ref)).toEqual(["Late"]);
     expect(s.steps[1].clicks).toEqual([]);
   });
+
+  it("page_leave med path som inte matchar något steg bokförs BARA på sessionstotalen", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/a" }, { createdAt: at(0) }),
+      sev("pageview", { sessionId: "s1", path: "/b" }, { createdAt: at(5) }),
+      // spöksida — får inte hamna på /b bara för att det råkar vara sista steget
+      sev(
+        "page_leave",
+        { sessionId: "s1", path: "/ghost", engagedMs: 30000 },
+        { createdAt: at(9) },
+      ),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.engagedMs).toBe(30000);
+    expect(s.steps.map((x) => x.engagedMs)).toEqual([0, 0]);
+  });
+
+  it("path-lös page_leave (äldre snippet) faller till pågående steget", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/a" }, { createdAt: at(0) }),
+      sev("page_leave", { sessionId: "s1", engagedMs: 4000 }, { createdAt: at(3) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.steps[0].engagedMs).toBe(4000);
+  });
 });
 
 describe("journeyFlow — rankat vägträd (Journeys v2)", () => {
@@ -1197,6 +1222,15 @@ describe("journeyFlow — rankat vägträd (Journeys v2)", () => {
     const flow = journeyFlow([sess([]), sess(["/"])]);
     expect(flow.totalSessions).toBe(1);
   });
+
+  it("tomsträngs-path räknas varken i basen eller trädet — Σ entries === basen", () => {
+    // Latent för framtida producenter: dagens sessionSummaries släpper aldrig
+    // igenom "", men den exporterade rena funktionen ska hålla kontraktet själv.
+    const flow = journeyFlow([sess([""]), sess(["", "/a"]), sess(["/b"])]);
+    expect(flow.totalSessions).toBe(1);
+    expect(flow.entries.map((e) => e.path)).toEqual(["/b"]);
+    expect(flow.entries.reduce((n, e) => n + e.sessions, 0)).toBe(flow.totalSessions);
+  });
 });
 
 describe("clickHeatPages — heatmap per sida med sidväljare", () => {
@@ -1264,5 +1298,20 @@ describe("sessionSummaries — klick-räddningen (SPA-resor från äldre snippet
     const [s] = sessionSummaries(events);
     expect(s.steps.map((x) => x.path)).toEqual(["/", "/blogg"]);
     expect(s.steps[0].clicks.map((c) => c.ref)).toEqual(["Sen"]);
+  });
+
+  it("klick bortom steg-taket med känd path droppas ur stegen — aldrig på fel sida", () => {
+    // 25 sidbyten kapar steps till 20; klicket på /p23 får då INGET steg
+    // (klick-räddningen är blockerad av taket) men finns kvar i clickOrder.
+    const events: DashEvent[] = Array.from({ length: 25 }, (_, i) =>
+      sev("pageview", { sessionId: "s1", path: `/p${i + 1}` }, { createdAt: at(i) }),
+    );
+    events.push(
+      sev("element_click", { sessionId: "s1", ref: "Sen23", path: "/p23" }, { createdAt: at(30) }),
+    );
+    const [s] = sessionSummaries(events);
+    expect(s.steps).toHaveLength(20);
+    expect(s.steps.flatMap((x) => x.clicks)).toEqual([]);
+    expect(s.clickOrder).toEqual(["Sen23"]);
   });
 });

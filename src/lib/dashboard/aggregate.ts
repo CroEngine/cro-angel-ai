@@ -568,7 +568,8 @@ export interface SessionSummary {
   /** Ny vs återkommande besökare — segmentdimension (Fas 2). */
   isReturning: boolean;
   landingPath: string | null;
-  /** Distinkta sidvägar i besöksordning (sidordningen). */
+  /** Sidvägar i stegordning — en per sidsteg, härledd ur `steps`; samma sida
+   *  kan återkomma senare i resan (bara direkta dubbletter slås ihop). */
   pageOrder: string[];
   /** Element-referenser i klickordning (intent-signalen). */
   clickOrder: string[];
@@ -643,7 +644,10 @@ export function sessionSummaries(
     let formAbandoned = false;
     let converted = false;
     for (const e of evs) {
-      const path = typeof e.payload.path === "string" ? e.payload.path : null;
+      // Normalisera till pathname — heatmapen, frysnycklarna och nattloopens
+      // frysurval strippar redan query/hash, och ett allowlistat query-byte
+      // (utm_source=fb → tw) på samma sida är inte ett sidsteg.
+      const path = typeof e.payload.path === "string" ? stripQueryHash(e.payload.path) : null;
       if (e.type === "pageview" && path) {
         // Nytt sidsteg på sidbyte — dubblett-pageviews fortsätter samma steg.
         // (Sidordningen härleds ur stegen efter loopen — EN sanning för
@@ -668,7 +672,9 @@ export function sessionSummaries(
             step = { path, clicks: [], engagedMs: 0 };
             steps.push(step);
           }
-          if (!step) step = steps[steps.length - 1];
+          // Klick med känd path som ändå saknar steg (steg-taket nått) lämnas
+          // utan stegattribuering — det finns kvar i clickOrder, men bokförs
+          // ALDRIG på en sida payloaden uttryckligen motsäger.
           if (step && step.clicks.length < JOURNEY_STEP_CAP) {
             const x = e.payload.x;
             const y = e.payload.y;
@@ -683,8 +689,13 @@ export function sessionSummaries(
         const ms = e.payload.engagedMs;
         if (typeof ms === "number" && isFinite(ms) && ms > 0) {
           engagedMs += ms;
-          const step =
-            (path && [...steps].reverse().find((s) => s.path === path)) ?? steps[steps.length - 1];
+          // Samma semantik som klick-grenen: tiden hör till sitt EGET sidsteg
+          // när path finns; bara path-lösa page_leave faller till pågående
+          // steget. Matchar inget steg bokförs tiden inte per steg (den ingår
+          // ändå i sessionens total) — hellre tappad än på fel sida.
+          const step = path
+            ? [...steps].reverse().find((s) => s.path === path)
+            : steps[steps.length - 1];
           if (step) step.engagedMs += ms;
         }
       } else if (e.type === "form_start") formStarted = true;
@@ -931,8 +942,10 @@ export function journeyFlow(
       if (!p) continue;
       (byPath.get(p) ?? byPath.set(p, []).get(p)!).push(s);
     }
+    // Tiebreak på kodpunkter, INTE localeCompare — funktionen kör i besökarens
+    // browser och topp-N/övriga-gränsen får inte bero på betraktarens locale.
     const ranked = [...byPath.entries()].sort(
-      (a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]),
+      (a, b) => b[1].length - a[1].length || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0),
     );
     const node = (path: string | null, g: SessionSummary[], recurse: boolean): FlowNode => ({
       path,
@@ -947,7 +960,9 @@ export function journeyFlow(
     return nodes;
   };
   return {
-    totalSessions: sessions.filter((s) => s.pageOrder.length > 0).length,
+    // SAMMA predikat som build-loopens truthy-filter — en session som inte kan
+    // hamna i någon entry-nod får inte heller räknas in i procentbasen.
+    totalSessions: sessions.filter((s) => !!s.pageOrder[0]).length,
     entries: build(sessions, 0),
   };
 }
