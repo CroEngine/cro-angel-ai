@@ -12,7 +12,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 import { hostMatchesDomain, normalizeDomain, originVerdict } from "./domain";
-import { scrubPath, stripQueryHash } from "./harvest/sanitize";
+import { cleanText, scrubPath, stripQueryHash } from "./harvest/sanitize";
 import type { GoalJudgment } from "./goal-judge.server";
 import type {
   AngelEvent,
@@ -78,6 +78,10 @@ export function buildEventRows(
     // Sidvägen är sidIDENTITET: query/hash bort FÖRE skrubben (?fbclid m.fl.
     // fragmenterade rollupen till en "sida" per klick-id — pilotfynd 2026-07-17).
     if (typeof raw.path === "string") payload.path = scrubPath(stripQueryHash(raw.path)) || "/";
+    // Söktermen (site_search) är användarskriven fritext — cleanText redakterar
+    // mejl + långa siffror och kapar längden. Serverns gräns utöver snippetens
+    // egna vakter (bara kvalade sökfält, bara skickade termer).
+    if (typeof raw.term === "string") payload.term = cleanText(raw.term).slice(0, 80);
     if (sid) payload.sessionId = sid;
     return {
       site,

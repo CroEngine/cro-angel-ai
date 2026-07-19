@@ -46,17 +46,26 @@ standard (observe-first) och blir substrat för den generativa fasen.
 ## Vad snippeten SAMLAR (allt consent-gatat)
 
 Acquisition (referrer, utm, källa), session (anonymt id, device, land, språk,
-tid, scroll), beteende (sidordning, **klickordning**, CTA-klick, formulär-
-lifecycle, exit, **rage clicks** — se nedan), prestanda (CWV), och sidans
-struktur (CTA/formulär/nav/pris/trust). Detaljerad datamodell + integritetsgränser:
-`docs/journey-intelligence.md`.
+tid, scroll — scrolldjup per sidväg sedan 2026-07-19), beteende (sidordning,
+**klickordning**, CTA-klick, formulär-lifecycle, exit, **rage clicks** — se
+nedan, samt **skickade sajtsökningar** — se undantaget nedan), prestanda (CWV),
+och sidans struktur (CTA/formulär/nav/pris/trust). Detaljerad datamodell +
+integritetsgränser: `docs/journey-intelligence.md`.
+
+**Sajtsök-undantaget (ägarbeslut 2026-07-19).** Skickade söktermer från
+DEDIKERADE sökfält samlas — vad besökarna letar efter men inte hittar är en av
+de starkaste CRO-signalerna. Vakterna: bara fält som kvalar som sökfält, bara
+vid submit/Enter/blur (aldrig tangent för tangent), mejl-/nummerliknande termer
+skickas aldrig, klient-cap per sidladdning, cleanText-skrubb på servern.
+Undantaget är öppet dokumenterat på den publika integritetssidan.
 
 ## Vad snippeten ALDRIG SAMLAR
 
-Namn · e-post · telefon · fritext från formulärfält · **musrörelser** ·
-tangenttryck · full IP · full raw user-agent · **session recordings** · känsliga
-URL-parametrar. Musrörelser och recordings är medvetet uteslutna: o-aktionerbara
-vid SMB-volym och den värsta integritetsytan (se `docs/step2-behavioral-analysis.md`).
+Namn · e-post · telefon · fritext från formulärfält (utom sajtsök-undantaget
+ovan) · **musrörelser** · tangenttryck · full IP · full raw user-agent ·
+**session recordings** · känsliga URL-parametrar. Musrörelser och recordings är
+medvetet uteslutna: o-aktionerbara vid SMB-volym och den värsta integritetsytan
+(se `docs/step2-behavioral-analysis.md`).
 
 **Rage clicks JA — men bara som diagnostik.** En äkta frustrationssignal
 ("ser klickbart ut, händer inget") = ≥N snabba klick på samma element inom ett

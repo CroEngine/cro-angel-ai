@@ -1485,11 +1485,20 @@
     // [data-angel-slot]-based cta_click that used to live here was a demo
     // leftover that never fired on real sites.)
 
-    // Scroll depth — fire each 25% bucket once.
+    // Scroll depth — fire each 25% bucket once PER SIDVÄG. Path i payloaden
+    // gör per-sida attention map möjlig (ägarbeslut 2026-07-19), och SPA-
+    // ruttbyten upptäcks lat vid nästa scroll: nytt path ⇒ nollställ buckets,
+    // annars smetas ett djup från förra sidan över på nästa.
     var buckets = { 25: false, 50: false, 75: false, 100: false };
+    var scrollPath = safePath();
     window.addEventListener(
       "scroll",
       function () {
+        var p = safePath();
+        if (p !== scrollPath) {
+          scrollPath = p;
+          buckets = { 25: false, 50: false, 75: false, 100: false };
+        }
         var doc = document.documentElement;
         var max = doc.scrollHeight - doc.clientHeight;
         if (max <= 0) return;
@@ -1497,7 +1506,7 @@
         [25, 50, 75, 100].forEach(function (b) {
           if (pct >= b && !buckets[b]) {
             buckets[b] = true;
-            track("scroll_depth", { depth: b }, decisionId);
+            track("scroll_depth", { depth: b, path: scrollPath }, decisionId);
           }
         });
       },
@@ -1779,6 +1788,84 @@
             decisionId,
           );
         } catch (err) {}
+      },
+      true,
+    );
+    // Sajtsök (ägarbeslut 2026-07-19, dokumenterat undantag på integritets-
+    // sidan): enbart SKICKADE söktermer från DEDIKERADE sökfält — aldrig
+    // tangent för tangent, aldrig andra formulärfält. Vakterna i ordning:
+    // fältet måste kvala som sökfält, termen läses bara vid submit/Enter/
+    // change (blur), mejl-/nummerliknande termer hoppas, dubblett-skydd,
+    // hårt tak per sidladdning. Servern cleanText-skrubbar dessutom termen.
+    var searchesSent = 0;
+    var SEARCH_CAP = 20;
+    var lastSearchTerm = "";
+    function isSearchField(el) {
+      if (!el || el.tagName !== "INPUT" || isNoTouch(el)) return false;
+      var type = (el.getAttribute("type") || "text").toLowerCase();
+      if (type === "search") return true;
+      if (type !== "text") return false;
+      var name = (
+        (el.getAttribute("name") || "") +
+        " " +
+        (el.getAttribute("id") || "") +
+        " " +
+        (el.getAttribute("placeholder") || "")
+      ).toLowerCase();
+      if (/(^|[^a-z])(q|s|query|search|sok|sök)([^a-z]|$)/.test(name)) return true;
+      var form = el.form;
+      return !!(
+        form &&
+        (form.getAttribute("role") === "search" ||
+          /search|sok/i.test(form.getAttribute("action") || ""))
+      );
+    }
+    function emitSearch(el) {
+      try {
+        if (searchesSent >= SEARCH_CAP || !isSearchField(el)) return;
+        var term = String(el.value || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 80);
+        if (term.length < 2 || term === lastSearchTerm) return;
+        // Aldrig personuppgifter: termer som ser ut som mejl eller långa tal
+        // skickas inte alls (servern skrubbar dessutom en gång till).
+        if (term.indexOf("@") !== -1 || /\d{6,}/.test(term)) return;
+        lastSearchTerm = term;
+        searchesSent++;
+        track("site_search", { term: term, path: safePath() }, decisionId);
+      } catch (err) {
+        /* aldrig bryta sidan */
+      }
+    }
+    document.addEventListener(
+      "submit",
+      function (e) {
+        try {
+          var f = e.target;
+          if (!f || !f.querySelector) return;
+          emitSearch(
+            f.querySelector('input[type="search"]') || f.querySelector('input[type="text"]'),
+          );
+        } catch (err) {}
+      },
+      true,
+    );
+    document.addEventListener(
+      "keydown",
+      function (e) {
+        // Läser ALDRIG tangenten i sig — Enter är bara "skicka"-signalen för
+        // sökfält utan form (vanligt i klientsidiga SPA-sök).
+        if (e.key === "Enter") emitSearch(e.target);
+      },
+      true,
+    );
+    document.addEventListener(
+      "change",
+      function (e) {
+        // change fyrar vid blur när värdet ändrats — fångar type-to-filter-sök
+        // utan submit/Enter. Fortfarande bara kvalade sökfält, aldrig annat.
+        emitSearch(e.target);
       },
       true,
     );

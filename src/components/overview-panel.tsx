@@ -45,6 +45,7 @@ import type {
   ClickHeat,
   Overview,
   RageSignal,
+  SearchTerm,
   SegmentSummary,
   SessionSummary,
 } from "@/lib/dashboard/aggregate";
@@ -58,6 +59,7 @@ export function OverviewPanel({
   sessions,
   rageClicks,
   heatPages,
+  searches,
   variants,
   servingOn,
 }: {
@@ -67,6 +69,7 @@ export function OverviewPanel({
   sessions: SessionSummary[];
   rageClicks: RageSignal[];
   heatPages: ClickHeat[];
+  searches: SearchTerm[];
   variants: VariantView[];
   servingOn: boolean;
 }) {
@@ -840,6 +843,7 @@ export function OverviewPanel({
           heatPages={heatPages}
           journeys={selJourneys}
           rageClicks={rageClicks}
+          searches={searches}
           contextLabel={sel ? enLabel(sel.label) : "All sources"}
           // Segmentets enhetsdimension låser heatmap-vyn (tablet ⇒ desktop-
           // layouten, samma bucketing som attributionen); okänd enhet låser

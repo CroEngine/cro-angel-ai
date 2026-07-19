@@ -19,7 +19,13 @@ import { journeyFlow } from "@/lib/dashboard/aggregate";
 import { createPagePreview, createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { fmt, STATUS_PILL } from "./variant-stats";
 
-import type { ClickHeat, FlowNode, RageSignal, SessionSummary } from "@/lib/dashboard/aggregate";
+import type {
+  ClickHeat,
+  FlowNode,
+  RageSignal,
+  SearchTerm,
+  SessionSummary,
+} from "@/lib/dashboard/aggregate";
 import type { VariantView } from "@/lib/dashboard/dashboard.functions";
 
 /** Heatmapens backdrop: den RIKTIGA sidan i spegeln (orörd, utan Angel),
@@ -348,6 +354,7 @@ export function JourneysOverlay({
   heatPages,
   journeys,
   rageClicks,
+  searches,
   contextLabel,
   lockedDevice,
   onClose,
@@ -356,6 +363,8 @@ export function JourneysOverlay({
   heatPages: ClickHeat[];
   journeys: SessionSummary[];
   rageClicks: RageSignal[];
+  /** Sajtsökningar per term (ägarbeslut 2026-07-19) — sajtvid rollup. */
+  searches: SearchTerm[];
   contextLabel: string;
   /** Satt när segmentvalet redan pinnar enheten (google·desktop → "desktop"):
    *  vyn låses dit och enhetsväxlarna döljs — att kunna växla till en annan
@@ -368,11 +377,12 @@ export function JourneysOverlay({
   // Sidväljaren (ägarfynd 2026-07-19: kartan "drog mot restauranger" — den
   // var låst till sajtens mest klickade sida). Default = klick-toppen.
   const [heatPathChoice, setHeatPathChoice] = useState<string | null>(null);
+  const emptyReach = { views: 0, p25: 0, p50: 0, p75: 0, p100: 0 };
   const heat = (heatPathChoice && heatPages.find((h) => h.path === heatPathChoice)) ||
     heatPages[0] || {
       path: "/",
-      mobile: { clicks: [], rage: [], sampled: 0 },
-      desktop: { clicks: [], rage: [], sampled: 0 },
+      mobile: { clicks: [], rage: [], sampled: 0, reach: emptyReach },
+      desktop: { clicks: [], rage: [], sampled: 0, reach: emptyReach },
       unattributed: 0,
     };
   // Ett sidval som åldrats ur topp-8 släpps ärligt — annars filtrerar det
@@ -548,6 +558,36 @@ export function JourneysOverlay({
   const rampAt = (rel: number) => (rel > 0.66 ? RAMP[2] : rel > 0.33 ? RAMP[1] : RAMP[0]);
 
   const otherSampled = device === "mobile" ? heat.desktop.sampled : heat.mobile.sampled;
+  // Attention map (ägarbeslut 2026-07-19): scrolldjups-räckvidden som subtila
+  // linjer över kartan — "X % scrollade förbi här". Ritas först när sidan har
+  // ett ärligt underlag (≥3 attribuerade sidvisningar). Djupet är % av
+  // scrollsträckan; linjen läggs på samma % av dokumenthöjden (approximation,
+  // etiketten säger vad den betyder).
+  const reach = heatView.reach;
+  const attentionLines =
+    reach.views >= 3
+      ? ([
+          [25, reach.p25],
+          [50, reach.p50],
+          [75, reach.p75],
+        ] as const)
+          .filter(([, n]) => n > 0)
+          .map(([depth, n]) => (
+            <div
+              key={depth}
+              className="pointer-events-none absolute inset-x-0"
+              style={{ top: `${depth}%` }}
+            >
+              <div className="border-t border-dashed border-[#0d366b]/35" />
+              <span
+                className="absolute right-2 rounded-full px-2 py-[1px] text-[10px] font-semibold text-white"
+                style={{ top: -9, background: "rgba(13,54,107,.78)" }}
+              >
+                {Math.min(100, Math.round((n / reach.views) * 100))}% scrolled past here
+              </span>
+            </div>
+          ))
+      : [];
   const heatOverlay =
     heatView.sampled === 0 ? (
       <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-8 text-center">
@@ -559,6 +599,7 @@ export function JourneysOverlay({
       </div>
     ) : (
       <>
+        {attentionLines}
         {showClicks &&
           heatView.clicks.map((c, i) => {
             const rel = c.n / maxN;
@@ -984,8 +1025,8 @@ export function JourneysOverlay({
                     </button>
                   ))}
                   <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
-                    Page sequence and clicks only — Angel never records screens, mouse movement or
-                    keystrokes.
+                    Page sequence, clicks, scroll depth and submitted site-search terms — Angel
+                    never records screens, mouse movement or keystrokes.
                   </div>
                 </div>
               </div>
@@ -1104,6 +1145,34 @@ export function JourneysOverlay({
                     Site-wide diagnostics — Angel never changes anything automatically from these.
                   </div>
                 </div>
+                <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+                  <div className="font-heading text-sm font-semibold">Site search</div>
+                  {searches.length === 0 && (
+                    <div className="border-t border-[#f4f2ef] py-2.5 text-[12px] text-stone-400">
+                      No site searches recorded yet — terms appear as visitors use the
+                      site&apos;s search.
+                    </div>
+                  )}
+                  {searches.map((s) => (
+                    <div
+                      key={s.term}
+                      className="flex items-center justify-between border-t border-[#f4f2ef] py-[9px]"
+                    >
+                      <span
+                        className="min-w-0 truncate text-[12.5px] text-stone-700"
+                        title={s.term}
+                      >
+                        {s.term}
+                      </span>
+                      <span className="ml-3 flex-none font-mono text-[11.5px] text-stone-400">
+                        ×{s.count}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
+                    Submitted search terms only — never keystrokes, never other form fields.
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -1145,6 +1214,11 @@ export function JourneysOverlay({
               <div className="mt-3 flex items-center gap-4 text-[11px] text-stone-500">
                 {heatView.sampled > 0 && (
                   <span className="text-stone-400">{fmt(heatView.sampled)} sampled clicks</span>
+                )}
+                {attentionLines.length > 0 && (
+                  <span className="text-stone-400">
+                    scroll reach from {fmt(reach.views)} page views
+                  </span>
                 )}
                 {showClicks && (
                   <span className="flex items-center gap-2">

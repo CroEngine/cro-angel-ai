@@ -62,4 +62,24 @@ describe("buildEventRows — journey privacy boundary", () => {
     expect(p.seq).toBe(2);
     expect(p.ref).toBe("#newsletter"); // no PII → unchanged
   });
+
+  it("cleanText-skrubbar söktermen (site_search): mejl + långa tal redakteras, längden kapas", () => {
+    const rows = buildEventRows(
+      "acme",
+      "v",
+      [
+        {
+          type: "site_search",
+          payload: { term: "boka bord anna@example.com 0701234567 " + "x".repeat(200) },
+        },
+      ],
+      "s1",
+    );
+    const term = (rows[0].payload as Record<string, unknown>).term as string;
+    expect(term).not.toContain("anna@example.com");
+    expect(term).not.toContain("0701234567");
+    expect(term).toContain("[redacted]");
+    expect(term.length).toBeLessThanOrEqual(80);
+    expect(term).toContain("boka bord");
+  });
 });
