@@ -3,7 +3,7 @@
 // HeatMirror-backdroppen (utbrutna ur overview-panel.tsx i sajt-genomgången
 // 2026-07-18; ren flytt, ingen semantikändring).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -44,6 +44,7 @@ function HeatMirror({
   onRawHeight?: (h: number) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLIFrameElement>(null);
   const [wrapW, setWrapW] = useState(700);
   const [docH, setDocH] = useState(2200);
 
@@ -58,6 +59,9 @@ function HeatMirror({
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
+      // Bara VÅR egen iframe får rapportera — annars kan en annan spegel
+      // (eller vilken inbäddad sida som helst) styra höjden/skal-skylten.
+      if (e.source !== frameRef.current?.contentWindow) return;
       const d = e.data as { type?: string; h?: number } | null;
       if (d && d.type === "angel-mirror-height" && typeof d.h === "number") {
         // Klampad: en fientlig speglad sida kan bara flytta punkter i ägarens
@@ -85,6 +89,7 @@ function HeatMirror({
         style={{ height: Math.round(docH * scale), width: Math.round(frameW * scale) }}
       >
         <iframe
+          ref={frameRef}
           src={src}
           title="Click heatmap backdrop"
           sandbox="allow-scripts"
@@ -356,6 +361,14 @@ export function JourneysOverlay({
       desktop: { clicks: [], rage: [], sampled: 0 },
       unattributed: 0,
     };
+  // Ett sidval som åldrats ur topp-8 släpps ärligt — annars filtrerar det
+  // tyst mot klick-toppen och SNÄPPER TILLBAKA av sig själv om sidan
+  // återkommer i en senare refetch.
+  useEffect(() => {
+    if (heatPathChoice && !heatPages.some((h) => h.path === heatPathChoice)) {
+      setHeatPathChoice(null);
+    }
+  }, [heatPages, heatPathChoice]);
 
   // ── kohort-filtren (Hotjar-mönstret: ETT filter, tre zoomnivåer) ─────────
   // Källor + enheter är FÄLLBARA menyer med kryss (ägarfynd 2026-07-19: en
@@ -389,6 +402,24 @@ export function JourneysOverlay({
       .filter((d) => (n.get(d) ?? 0) > 0)
       .map((d) => [d, n.get(d)!] as const);
   }, [journeys]);
+  // Självläkning: ett valt alternativ som åldrats ur datafönstret får inte
+  // fortsätta filtrera osynligt — menyn summerar valet som "All" (snittet
+  // mot options) medan RÅA mängden nollställer listan, och krysset finns
+  // inte längre att bocka ur. Pinnad enhet (lockedDevice) är ett medvetet
+  // val och beskärs aldrig.
+  useEffect(() => {
+    const avail = new Set(channelOptions.map(([k]) => k));
+    if ([...channelSel].some((k) => !avail.has(k))) {
+      setChannelSel(new Set([...channelSel].filter((k) => avail.has(k))));
+    }
+  }, [channelOptions, channelSel]);
+  useEffect(() => {
+    if (lockedDevice) return;
+    const avail = new Set(deviceOptions.map(([k]) => k));
+    if ([...deviceSel].some((k) => !avail.has(k))) {
+      setDeviceSel(new Set([...deviceSel].filter((k) => avail.has(k))));
+    }
+  }, [deviceOptions, deviceSel, lockedDevice]);
   const toggleIn = <T,>(set: ReadonlySet<T>, v: T): Set<T> => {
     const next = new Set(set);
     if (next.has(v)) next.delete(v);
@@ -421,8 +452,21 @@ export function JourneysOverlay({
   }, [channelSel, outcomeFilter, deviceSel]);
   const personIdx = personId != null ? filtered.findIndex((s) => s.sessionId === personId) : -1;
   const person = personIdx >= 0 ? filtered[personIdx] : null;
+  // Sessionen kan åldras ur eventfönstret vid bakgrundsrefetch — släpp valet
+  // ärligt då, annars återöppnas spelaren SPONTANT på gammalt steg om
+  // sessionen råkar komma tillbaka i en senare refetch.
+  useEffect(() => {
+    if (personId != null && !filtered.some((s) => s.sessionId === personId)) {
+      setPersonId(null);
+      setStepIdx(0);
+    }
+  }, [personId, filtered]);
   const personSteps = person?.steps ?? [];
-  const personStep = personSteps[stepIdx] ?? null;
+  // Refetchen kan också KRYMPA samma sessions steps (fönstret glider) —
+  // klampa alltid mot AKTUELLA listan så spelaren aldrig pekar utanför
+  // ("Step 3 of 3" med tomt innehåll och till synes död Prev-knapp).
+  const safeStepIdx = Math.max(0, Math.min(stepIdx, personSteps.length - 1));
+  const personStep = personSteps[safeStepIdx] ?? null;
   const personDevice = person?.device === "mobile" ? "mobile" : "desktop";
   const personFrameW = personDevice === "mobile" ? 390 : 1280;
   const openPerson = (s: SessionSummary) => {
@@ -444,7 +488,9 @@ export function JourneysOverlay({
   // en LIVE-speglad SPA-sida rapporterar ~0 i dokumenthöjd — då visas en
   // ärlig skylt i stället för ett tyst vitt hål. Frysta kopior berörs inte.
   const [personRawH, setPersonRawH] = useState<number | null>(null);
-  useEffect(() => setPersonRawH(null), [personStep?.path, personId]);
+  // Layout-effekt, inte passiv: resetten måste hinna FÖRE paint så förra
+  // stegets skal-skylt aldrig blinkar till över det nya stegets spegel.
+  useLayoutEffect(() => setPersonRawH(null), [personStep?.path, personId]);
   const onPersonRawHeight = useCallback((h: number) => setPersonRawH(h), []);
   const personMirrorBlank =
     personBackdrop.data?.mirrorKind === "live" && personRawH !== null && personRawH < 300;
@@ -806,7 +852,7 @@ export function JourneysOverlay({
                 {personStep && personBackdrop.data?.ok && personBackdrop.data.mirrorPath ? (
                   <div className="relative">
                     <HeatMirror
-                      key={`${person.sessionId}:${stepIdx}`}
+                      key={`${person.sessionId}:${safeStepIdx}`}
                       src={personBackdrop.data.mirrorPath}
                       overlay={personOverlay}
                       maxHeight="calc(88vh - 230px)"
@@ -862,22 +908,21 @@ export function JourneysOverlay({
                 <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
                   <div className="flex items-center justify-between">
                     <div className="font-heading text-sm font-semibold">
-                      Step {Math.min(stepIdx + 1, Math.max(personSteps.length, 1))} of{" "}
-                      {personSteps.length}
+                      Step {safeStepIdx + 1} of {Math.max(personSteps.length, 1)}
                     </div>
                     <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
                       <button
                         type="button"
-                        disabled={stepIdx === 0}
-                        onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
+                        disabled={safeStepIdx === 0}
+                        onClick={() => setStepIdx(Math.max(0, safeStepIdx - 1))}
                         className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold text-stone-600 disabled:opacity-40"
                       >
                         ← Prev
                       </button>
                       <button
                         type="button"
-                        disabled={stepIdx >= personSteps.length - 1}
-                        onClick={() => setStepIdx((i) => Math.min(personSteps.length - 1, i + 1))}
+                        disabled={safeStepIdx >= personSteps.length - 1}
+                        onClick={() => setStepIdx(Math.min(personSteps.length - 1, safeStepIdx + 1))}
                         className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold disabled:opacity-40"
                         style={{ background: "#161513", color: "#fff" }}
                       >
@@ -892,8 +937,8 @@ export function JourneysOverlay({
                       onClick={() => setStepIdx(i)}
                       className="mt-2 block w-full rounded-[9px] border px-3 py-2 text-left"
                       style={{
-                        borderColor: i === stepIdx ? "#161513" : "#f0eee9",
-                        background: i === stepIdx ? "#faf9f7" : "#fff",
+                        borderColor: i === safeStepIdx ? "#161513" : "#f0eee9",
+                        background: i === safeStepIdx ? "#faf9f7" : "#fff",
                       }}
                     >
                       <div className="flex items-center justify-between gap-2">
