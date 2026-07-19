@@ -197,44 +197,7 @@ describe("frozenBackdropHtml — fryst kopia som heatmap-backdrop", () => {
     expect(out).toContain("display:none!important");
   });
 
-  it("browsbar kopia: intern länk med fryst syskonkopia skrivs om, target strippas", () => {
-    const out = frozenBackdropHtml(
-      '<html><body><a href="/blogg" target="_blank">Blogg</a></body></html>',
-      {
-        siteHost: "glutenforum.se",
-        siblingUrl: (path) => (path === "/blogg" ? "/api/sandbox/mirror?frozen=X&t=Y" : null),
-      },
-    );
-    expect(out).toContain('href="/api/sandbox/mirror?frozen=X&t=Y"');
-    expect(out).not.toContain("_blank");
-  });
-
-  it("absolut länk till sajtens egen host skrivs om; www-prefix jämnas ut", () => {
-    const out = frozenBackdropHtml(
-      '<html><body><a href="https://www.glutenforum.se/blogg?utm=x">B</a></body></html>',
-      { siteHost: "glutenforum.se", siblingUrl: () => "/api/sandbox/mirror?frozen=B" },
-    );
-    expect(out).toContain('href="/api/sandbox/mirror?frozen=B"');
-  });
-
-  it("extern länk, ofryst sida och javascript: avväpnas — rena #ankare lämnas", () => {
-    const out = frozenBackdropHtml(
-      "<html><body>" +
-        '<a href="https://evil.example/x">ut</a>' +
-        '<a href="/ofryst">saknas</a>' +
-        "<a href=\"javascript:alert(1)\">js</a>" +
-        '<a href="#sektion">ankare</a>' +
-        "</body></html>",
-      { siteHost: "glutenforum.se", siblingUrl: () => null },
-    );
-    expect(out).not.toContain("https://evil.example/x");
-    expect(out).not.toContain('href="/ofryst"');
-    expect(out).not.toContain("javascript:alert");
-    expect(out).toContain('href="#sektion"');
-    expect((out.match(/data-angel-dead-link/g) ?? []).length).toBe(3);
-  });
-
-  it("utan siblingUrl lämnas länkarna orörda (bakåtkompatibelt kartläge)", () => {
+  it("länkar lämnas orörda — backdroppen är en karta, inte en browsbar sida", () => {
     const out = frozenBackdropHtml('<html><body><a href="/blogg">B</a></body></html>');
     expect(out).toContain('href="/blogg"');
   });

@@ -38,7 +38,6 @@ function HeatMirror({
   maxHeight = 560,
   frameW = 1280,
   onRawHeight,
-  interactive = false,
 }: {
   src: string;
   overlay: React.ReactNode;
@@ -49,11 +48,6 @@ function HeatMirror({
   /** Rå (o-klampad) rapporterad dokumenthöjd — skal-detekteringen i person-
    *  läget läser den: en live-speglad SPA rapporterar ~0 (blankt skal). */
   onRawHeight?: (h: number) => void;
-  /** Sandbox i stället för skärmdump (ägarorder 2026-07-19): spegeln är
-   *  klickbar — frysta kopiors interna länkar navigerar mellan syskonkopior
-   *  i iframen. Heatmapen förblir en KARTA (false): klick där skulle
-   *  navigera bort sidan punkterna mättes på. */
-  interactive?: boolean;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -125,16 +119,14 @@ function HeatMirror({
             transform: `scale(${scale})`,
             transformOrigin: "top left",
             border: 0,
-            // Kartläge: pekaren ska scrolla/hovra lagret ovanpå. Interaktivt
-            // läge (personläget): sidan ÄR klickbar — sandboxkänslan.
-            pointerEvents: interactive ? "auto" : "none",
+            // Backdroppen är en karta, inte en sida att klicka på — pekaren
+            // ska scrolla/hovra lagret ovanpå. (Interaktiv spegel prövades
+            // 2026-07-19 och backades samma dag: ägaren klickar inte runt på
+            // sin egen sajt i en vy vars jobb är att återge besökarens.)
+            pointerEvents: "none",
           }}
         />
-        {/* I interaktivt läge släpper overlay-lagret igenom pekaren till
-            sidan — punkterna själva behåller pointer-events för tooltips. */}
-        <div className={interactive ? "pointer-events-none absolute inset-0" : "absolute inset-0"}>
-          {overlay}
-        </div>
+        <div className="absolute inset-0">{overlay}</div>
       </div>
     </div>
   );
@@ -670,7 +662,7 @@ export function JourneysOverlay({
           <div
             key={i}
             title={c.ref}
-            className="pointer-events-auto absolute flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 border-white text-[11px] font-bold text-white"
+            className="absolute flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 border-white text-[11px] font-bold text-white"
             style={{
               top: `${c.y}%`,
               left: `${c.x}%`,
@@ -927,7 +919,6 @@ export function JourneysOverlay({
                       maxHeight="calc(88vh - 230px)"
                       frameW={personFrameW}
                       onRawHeight={onPersonRawHeight}
-                      interactive
                     />
                     {personMirrorBlank && (
                       // Ärlig skylt i stället för ett tyst vitt hål: sidan är
