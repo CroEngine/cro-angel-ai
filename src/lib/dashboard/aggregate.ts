@@ -571,6 +571,10 @@ export interface StepClick {
   ref: string;
   x: number | null;
   y: number | null;
+  /** Ms sedan stegets början (ur eventens tidsstämplar) — Play-reprisens
+   *  verkliga rytm: snabba klick i följd och tvekan syns som de var.
+   *  Saknas när tidsstämpeln inte gick att tolka. */
+  tMs?: number;
 }
 
 /** Ett sidsteg i en enskild besökares resa: sidan, klicken som föll på den
@@ -673,17 +677,24 @@ export function sessionSummaries(
     let formSubmitted = false;
     let formAbandoned = false;
     let converted = false;
+    // Stegens starttider (eventets tidsstämpel när steget skapades) — ger
+    // klickens tMs-offset så Play-reprisen kan spela besökarens VERKLIGA
+    // rytm. Lokal karta, aldrig del av resultatet.
+    const stepStart = new Map<SessionStep, number>();
     for (const e of evs) {
       // Normalisera till pathname — heatmapen, frysnycklarna och nattloopens
       // frysurval strippar redan query/hash, och ett allowlistat query-byte
       // (utm_source=fb → tw) på samma sida är inte ett sidsteg.
       const path = typeof e.payload.path === "string" ? stripQueryHash(e.payload.path) : null;
+      const eMs = Date.parse(e.createdAt);
       if (e.type === "pageview" && path) {
         // Nytt sidsteg på sidbyte — dubblett-pageviews fortsätter samma steg.
         // (Sidordningen härleds ur stegen efter loopen — EN sanning för
         // träd/lista/spelare.)
         if (steps[steps.length - 1]?.path !== path && steps.length < JOURNEY_STEP_CAP) {
-          steps.push({ path, clicks: [], engagedMs: 0 });
+          const st: SessionStep = { path, clicks: [], engagedMs: 0 };
+          steps.push(st);
+          if (Number.isFinite(eMs)) stepStart.set(st, eMs);
         }
       } else if (e.type === "element_click") {
         const ref = typeof e.payload.ref === "string" ? e.payload.ref : "";
@@ -703,6 +714,7 @@ export function sessionSummaries(
           if (!step && path && steps.length < JOURNEY_STEP_CAP) {
             step = { path, clicks: [], engagedMs: 0 };
             steps.push(step);
+            if (Number.isFinite(eMs)) stepStart.set(step, eMs);
           }
           // Klick med känd path som ändå saknar steg (steg-taket nått) lämnas
           // utan stegattribuering — det finns kvar i clickOrder, men bokförs
@@ -710,10 +722,14 @@ export function sessionSummaries(
           if (step && step.clicks.length < JOURNEY_STEP_CAP) {
             const x = e.payload.x;
             const y = e.payload.y;
+            const start = stepStart.get(step);
             step.clicks.push({
               ref,
               x: typeof x === "number" && isFinite(x) ? x : null,
               y: typeof y === "number" && isFinite(y) ? y : null,
+              ...(start !== undefined && Number.isFinite(eMs)
+                ? { tMs: Math.max(0, eMs - start) }
+                : {}),
             });
           }
         }

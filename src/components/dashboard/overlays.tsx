@@ -684,9 +684,19 @@ export function JourneysOverlay({
   };
   useEffect(() => {
     if (!playing || !person || revealed === null) return;
-    const clicks = personSteps[safeStepIdx]?.clicks.length ?? 0;
-    if (revealed < clicks) {
-      const t = setTimeout(() => setRevealed((r) => (r ?? 0) + 1), 900);
+    const stepClicks = personSteps[safeStepIdx]?.clicks ?? [];
+    if (revealed < stepClicks.length) {
+      // Verklig rytm (ägarorder 2026-07-19: "måste ändå vara bra"): gapet
+      // mellan klicken kommer ur eventens tidsstämplar — snabba klick i
+      // följd spelas snabbt, tvekan syns som paus. Klampat till 350ms–4s
+      // så reprisen förblir tittbar; äldre events utan tMs får fast kadens.
+      const cur = stepClicks[revealed]?.tMs;
+      const prev = revealed > 0 ? stepClicks[revealed - 1]?.tMs : 0;
+      const gap =
+        typeof cur === "number" && typeof prev === "number"
+          ? Math.min(4000, Math.max(350, cur - prev))
+          : 900;
+      const t = setTimeout(() => setRevealed((r) => (r ?? 0) + 1), gap);
       return () => clearTimeout(t);
     }
     if (safeStepIdx < personSteps.length - 1) {
