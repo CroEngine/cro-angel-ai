@@ -235,9 +235,21 @@ export interface DashboardMetrics {
    *  en post per sida rankad efter klickvolym (sidväljaren). Diagnostik,
    *  aldrig behandling. */
   heatPages: ClickHeat[];
+  /** Sajtsökningar per term (ägarbeslut 2026-07-19) — vad besökarna letar
+   *  efter men kanske inte hittar. Tom lista tills sajten har sökningar. */
+  searches: SearchTerm[];
   /** Fas 2: besökargrupper (kanal×enhet×land×ny/återkommande), grov→fin, med
    *  utfall + datatillräcklighet. Insikt-substrat — ingen adaptation. */
   segmentGroups: SegmentSummary[];
+}
+
+/** En upprullad sajtsökning. Termen är server-skrubbad (cleanText: mejl +
+ *  långa siffror redakterade, längd-kapad) innan den når event-loggen —
+ *  rollupen normaliserar bara till gemener. */
+export interface SearchTerm {
+  term: string;
+  count: number;
+  lastSeen: string;
 }
 
 /** En klick-täthetspunkt för heatmapen: sid-relativ position (heltals-%,
@@ -258,10 +270,24 @@ export interface RageSpot {
 
 /** Ena layoutvyn av heatmapen: punkter + rage för EN enhetsklass. `sampled` =
  *  antal positionsbärande klick i vyn — 0 ger ett ärligt "samlar in"-läge. */
+/** Scrolldjups-räckvidd för en sida+layoutklass (attention map-underlaget):
+ *  hur många besök som nådde 25/50/75/100 % av sidans scroll. `views` är
+ *  nämnaren — pageviews attribuerade till sidan+enheten. Bygger på
+ *  scroll_depth-events MED path (äldre snippets skickade utan — de kan inte
+ *  placeras per sida och räknas ärligt inte). */
+export interface ScrollReach {
+  views: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p100: number;
+}
+
 export interface ClickHeatView {
   clicks: HeatSpot[];
   rage: RageSpot[];
   sampled: number;
+  reach: ScrollReach;
 }
 
 /** Klick-heatmapens underlag för sajtens mest klickade sida, delat per
@@ -1423,7 +1449,28 @@ export function clickHeatPages(
   type Pos = { x: number; y: number; path: string; dev: "mobile" | "desktop" | null };
   const clicks: Pos[] = [];
   const rageRaw: (Pos & { ref: string })[] = [];
+  // Attention map-underlaget: sidvisningar (nämnaren) + scrolldjups-buckets
+  // per sida+enhet. Samma enhetsattribution som klicken (besökarens pageview).
+  const views = new Map<string, number>();
+  const depths = new Map<string, { p25: number; p50: number; p75: number; p100: number }>();
+  const key = (path: string, dev: "mobile" | "desktop") => `${dev}|${path}`;
   for (const e of events) {
+    if (e.type === "pageview" || e.type === "scroll_depth") {
+      const path = stripQueryHash(str(e.payload.path)) || (e.type === "pageview" ? "/" : "");
+      const dev = (e.visitorHash && deviceOf.get(e.visitorHash)) || null;
+      if (!path || !dev) continue;
+      if (e.type === "pageview") {
+        views.set(key(path, dev), (views.get(key(path, dev)) ?? 0) + 1);
+      } else {
+        const depth = e.payload.depth;
+        if (depth === 25 || depth === 50 || depth === 75 || depth === 100) {
+          const cur = depths.get(key(path, dev)) ?? { p25: 0, p50: 0, p75: 0, p100: 0 };
+          cur[`p${depth}`]++;
+          depths.set(key(path, dev), cur);
+        }
+      }
+      continue;
+    }
     if (e.type !== "element_click" && e.type !== "rage_click") continue;
     const x = num(e.payload.x);
     const y = num(e.payload.y);
@@ -1465,6 +1512,7 @@ export function clickHeatPages(
       cur.n++;
       byRef.set(r.ref, cur);
     }
+    const d = depths.get(key(path, dev)) ?? { p25: 0, p50: 0, p75: 0, p100: 0 };
     return {
       clicks: [...grid.values()].sort((a, b) => b.n - a.n).slice(0, maxSpots),
       rage: [...byRef.entries()]
@@ -1472,6 +1520,7 @@ export function clickHeatPages(
         .sort((a, b) => b.n - a.n || a.ref.localeCompare(b.ref))
         .slice(0, maxRage),
       sampled,
+      reach: { views: views.get(key(path, dev)) ?? 0, ...d },
     };
   };
   return rankedPaths.map((path) => ({
@@ -1582,6 +1631,29 @@ export function aggregate(
     sessions: allSessions.slice(0, MAX_SESSION_SUMMARIES),
     rageClicks: rageSignals(events),
     heatPages: clickHeatPages(events),
+    searches: siteSearches(events),
     segmentGroups: segmentSummaries(allSessions),
   };
+}
+
+/** Sajtsökningar upprullade per term, mest sökta först. Enbart SKICKADE
+ *  söktermer från dedikerade sökfält når hit (snippetens vakter + serverns
+ *  cleanText-skrubb) — aldrig tangenttryckningar, aldrig andra formulärfält.
+ *  Undantaget är dokumenterat på integritetssidan. Ren; aldrig throw. */
+export function siteSearches(events: DashEvent[], cap = 15): SearchTerm[] {
+  const byTerm = new Map<string, { count: number; lastSeen: string }>();
+  for (const e of events) {
+    if (e.type !== "site_search") continue;
+    const raw = typeof e.payload.term === "string" ? e.payload.term : "";
+    const term = raw.replace(/\s+/g, " ").trim().toLowerCase().slice(0, 80);
+    if (!term) continue;
+    const cur = byTerm.get(term) ?? { count: 0, lastSeen: e.createdAt };
+    cur.count++;
+    if (e.createdAt > cur.lastSeen) cur.lastSeen = e.createdAt;
+    byTerm.set(term, cur);
+  }
+  return [...byTerm.entries()]
+    .map(([term, v]) => ({ term, count: v.count, lastSeen: v.lastSeen }))
+    .sort((a, b) => b.count - a.count || (a.term < b.term ? -1 : a.term > b.term ? 1 : 0))
+    .slice(0, cap);
 }

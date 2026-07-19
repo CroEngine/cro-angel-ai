@@ -320,7 +320,8 @@ export interface AngelEvent {
     | "form_submit"
     | "form_abandon"
     | "page_leave"
-    | "rage_click";
+    | "rage_click"
+    | "site_search";
   decisionId?: string;
   payload?: Record<string, unknown>;
   /** Client timestamp (ms epoch). */

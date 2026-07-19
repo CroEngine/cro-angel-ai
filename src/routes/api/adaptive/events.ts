@@ -54,6 +54,10 @@ const VALID_TYPES = new Set([
   // Rage-click (croengine-vision.md): ≥3 snabba klick på samma ref = frustrations-
   // signal. Diagnostik — driver aldrig en automatisk ändring.
   "rage_click",
+  // Sajtsök (ägarbeslut 2026-07-19, dokumenterat undantag på integritetssidan):
+  // enbart SKICKADE söktermer från dedikerade sökfält — aldrig tangenttryckningar,
+  // aldrig andra formulärfält. Termen cleanText-skrubbas i buildEventRows.
+  "site_search",
 ]);
 
 export const Route = createFileRoute("/api/adaptive/events")({

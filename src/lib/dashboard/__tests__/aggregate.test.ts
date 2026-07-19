@@ -11,6 +11,7 @@ import {
   rageSignals,
   clickHeat,
   clickHeatPages,
+  siteSearches,
   bucketByTime,
   summarizeVisitors,
   MAX_DAY_POINTS,
@@ -1254,6 +1255,48 @@ describe("clickHeatPages — heatmap per sida med sidväljare", () => {
     expect(pages).toHaveLength(1);
     expect(pages[0].path).toBe("/");
     expect(pages[0].mobile.sampled + pages[0].desktop.sampled).toBe(0);
+    expect(pages[0].mobile.reach).toEqual({ views: 0, p25: 0, p50: 0, p75: 0, p100: 0 });
+  });
+
+  it("scroll-räckvidden räknas per sida+enhet — legacy-events utan path ignoreras ärligt", () => {
+    const events: DashEvent[] = [
+      ev("pageview", { device: "mobile", path: "/a" }, { visitorHash: "v1" }),
+      ev("pageview", { device: "mobile", path: "/a" }, { visitorHash: "v1" }),
+      ev("element_click", { path: "/a", x: 50, y: 10 }, { visitorHash: "v1" }),
+      ev("scroll_depth", { depth: 25, path: "/a" }, { visitorHash: "v1" }),
+      ev("scroll_depth", { depth: 50, path: "/a" }, { visitorHash: "v1" }),
+      // legacy: inget path — kan inte placeras per sida
+      ev("scroll_depth", { depth: 75 }, { visitorHash: "v1" }),
+      // annan sida — får inte blandas in i /a
+      ev("scroll_depth", { depth: 25, path: "/b" }, { visitorHash: "v1" }),
+    ];
+    const [page] = clickHeatPages(events);
+    expect(page.path).toBe("/a");
+    expect(page.mobile.reach).toEqual({ views: 2, p25: 1, p50: 1, p75: 0, p100: 0 });
+    expect(page.desktop.reach.views).toBe(0);
+  });
+});
+
+describe("siteSearches — sajtsökningar per term", () => {
+  it("normaliserar (gemener/whitespace), rankar på volym och bär lastSeen", () => {
+    const events: DashEvent[] = [
+      ev("site_search", { term: "Glutenfritt Bröd" }, { createdAt: "2026-07-19T10:00:00Z" }),
+      ev("site_search", { term: "  glutenfritt   bröd " }, { createdAt: "2026-07-19T11:00:00Z" }),
+      ev("site_search", { term: "pizza" }, { createdAt: "2026-07-19T09:00:00Z" }),
+    ];
+    const terms = siteSearches(events);
+    expect(terms.map((t) => t.term)).toEqual(["glutenfritt bröd", "pizza"]);
+    expect(terms[0].count).toBe(2);
+    expect(terms[0].lastSeen).toBe("2026-07-19T11:00:00Z");
+  });
+
+  it("tom term och icke-sträng hoppas; listan kapas till taket", () => {
+    const events: DashEvent[] = [
+      ev("site_search", { term: "   " }),
+      ev("site_search", { term: 42 }),
+      ...Array.from({ length: 20 }, (_, i) => ev("site_search", { term: `term-${i}` })),
+    ];
+    expect(siteSearches(events, 5)).toHaveLength(5);
   });
 });
 
