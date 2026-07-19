@@ -10,6 +10,7 @@ import {
   attachRecent,
   rageSignals,
   clickHeat,
+  clickHeatPages,
   bucketByTime,
   summarizeVisitors,
   MAX_DAY_POINTS,
@@ -1195,5 +1196,29 @@ describe("journeyFlow — rankat vägträd (Journeys v2)", () => {
   it("sessioner utan sidsteg räknas inte in i basen", () => {
     const flow = journeyFlow([sess([]), sess(["/"])]);
     expect(flow.totalSessions).toBe(1);
+  });
+});
+
+describe("clickHeatPages — heatmap per sida med sidväljare", () => {
+  it("rankar sidorna efter klickvolym och bygger en karta per sida", () => {
+    const events: DashEvent[] = [
+      ev("pageview", { device: "mobile" }, { visitorHash: "v1" }),
+      ev("element_click", { path: "/restauranger", x: 50, y: 10 }, { visitorHash: "v1" }),
+      ev("element_click", { path: "/restauranger", x: 52, y: 12 }, { visitorHash: "v1" }),
+      ev("element_click", { path: "/blogg", x: 30, y: 40 }, { visitorHash: "v1" }),
+    ];
+    const pages = clickHeatPages(events);
+    expect(pages.map((p) => p.path)).toEqual(["/restauranger", "/blogg"]);
+    expect(pages[0].mobile.sampled).toBe(2);
+    expect(pages[1].mobile.sampled).toBe(1);
+    // bakåtkompatibla ytan är sidväljarens default (klick-toppen)
+    expect(clickHeat(events).path).toBe("/restauranger");
+  });
+
+  it("utan positionsklick finns ändå en tom '/'-post", () => {
+    const pages = clickHeatPages([]);
+    expect(pages).toHaveLength(1);
+    expect(pages[0].path).toBe("/");
+    expect(pages[0].mobile.sampled + pages[0].desktop.sampled).toBe(0);
   });
 });

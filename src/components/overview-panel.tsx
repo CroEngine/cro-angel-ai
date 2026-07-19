@@ -57,7 +57,7 @@ export function OverviewPanel({
   segments,
   sessions,
   rageClicks,
-  heat,
+  heatPages,
   variants,
   servingOn,
 }: {
@@ -66,7 +66,7 @@ export function OverviewPanel({
   segments: SegmentSummary[];
   sessions: SessionSummary[];
   rageClicks: RageSignal[];
-  heat: ClickHeat;
+  heatPages: ClickHeat[];
   variants: VariantView[];
   servingOn: boolean;
 }) {
@@ -837,7 +837,7 @@ export function OverviewPanel({
       {journeysOpen && (
         <JourneysOverlay
           site={site}
-          heat={heat}
+          heatPages={heatPages}
           journeys={selJourneys}
           rageClicks={rageClicks}
           contextLabel={sel ? enLabel(sel.label) : "All sources"}

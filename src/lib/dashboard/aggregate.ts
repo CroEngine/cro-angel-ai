@@ -231,9 +231,10 @@ export interface DashboardMetrics {
   /** Frustrationssignaler: mest rage-klickade element (ref → bursts).
    *  Diagnostik — driver aldrig en automatisk ändring. */
   rageClicks: RageSignal[];
-  /** Klick-heatmapen (Journeys & signals): täthet + rage-punkter per position
-   *  på sajtens mest klickade sida. Diagnostik, aldrig behandling. */
-  heat: ClickHeat;
+  /** Klick-heatmapen (Journeys & signals): täthet + rage-punkter per position,
+   *  en post per sida rankad efter klickvolym (sidväljaren). Diagnostik,
+   *  aldrig behandling. */
+  heatPages: ClickHeat[];
   /** Fas 2: besökargrupper (kanal×enhet×land×ny/återkommande), grov→fin, med
    *  utfall + datatillräcklighet. Insikt-substrat — ingen adaptation. */
   segmentGroups: SegmentSummary[];
@@ -1372,7 +1373,20 @@ export function rageSignals(events: DashEvent[], limit = MAX_RAGE_SIGNALS): Rage
  *  sidvägs-normaliseringen (#126) bär ?fbclid och skulle annars fragmentera
  *  sidräkningen. Gamla events utan koordinater ignoreras — `sampled` säger
  *  ärligt hur mycket underlag varje vy har. Ren; aldrig throw. */
-export function clickHeat(events: DashEvent[], maxSpots = 60, maxRage = 8): ClickHeat {
+/** Hur många sidor heatmapen erbjuder i sidväljaren (mest klickade först).
+ *  Ägarfynd 2026-07-19: en enda sajtvid toppsida "drog mot restauranger" —
+ *  kartan behöver kunna visas per sida. */
+export const MAX_HEAT_PAGES = 8;
+
+/** Klick-heatmap för de mest positions-klickade sidorna (upp till maxPages),
+ *  rankade efter klickvolym. Alltid minst en post (tom "/" utan underlag) så
+ *  konsumenterna slipper null-vägar. */
+export function clickHeatPages(
+  events: DashEvent[],
+  maxPages = MAX_HEAT_PAGES,
+  maxSpots = 60,
+  maxRage = 8,
+): ClickHeat[] {
   const num = (v: unknown): number | null =>
     typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 100 ? v : null;
   // Besökare → layoutklass, ur pageview-events (klick-events bär ingen enhet).
@@ -1396,13 +1410,17 @@ export function clickHeat(events: DashEvent[], maxSpots = 60, maxRage = 8): Clic
     if (e.type === "element_click") clicks.push({ x, y, path, dev });
     else rageRaw.push({ x, y, path, dev, ref: str(e.payload.ref) || "?" });
   }
-  // Mest klickade sida vinner — heatmapen visar EN sida i taget, ärligt namngiven.
+  // Sidorna rankas efter klickvolym — heatmapen visar EN sida i taget,
+  // ärligt namngiven, och sidväljaren erbjuder toppen.
   const byPath = new Map<string, number>();
   for (const c of clicks) byPath.set(c.path, (byPath.get(c.path) ?? 0) + 1);
-  const path =
-    [...byPath.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? "/";
+  const rankedPaths = [...byPath.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, maxPages)
+    .map(([p]) => p);
+  if (rankedPaths.length === 0) rankedPaths.push("/");
 
-  const view = (dev: "mobile" | "desktop"): ClickHeatView => {
+  const view = (path: string, dev: "mobile" | "desktop"): ClickHeatView => {
     const grid = new Map<string, { x: number; y: number; n: number }>();
     let sampled = 0;
     for (const c of clicks) {
@@ -1433,10 +1451,19 @@ export function clickHeat(events: DashEvent[], maxSpots = 60, maxRage = 8): Clic
       sampled,
     };
   };
-  const unattributed =
-    clicks.filter((c) => c.path === path && c.dev === null).length +
-    rageRaw.filter((r) => r.path === path && r.dev === null).length;
-  return { path, mobile: view("mobile"), desktop: view("desktop"), unattributed };
+  return rankedPaths.map((path) => ({
+    path,
+    mobile: view(path, "mobile"),
+    desktop: view(path, "desktop"),
+    unattributed:
+      clicks.filter((c) => c.path === path && c.dev === null).length +
+      rageRaw.filter((r) => r.path === path && r.dev === null).length,
+  }));
+}
+
+/** Bakåtkompatibel yta: sajtens mest klickade sida (sidväljarens default). */
+export function clickHeat(events: DashEvent[], maxSpots = 60, maxRage = 8): ClickHeat {
+  return clickHeatPages(events, 1, maxSpots, maxRage)[0];
 }
 
 export function aggregate(
@@ -1531,7 +1558,7 @@ export function aggregate(
     // rollupen använder alla (annars vore grupperna trunkerade till 40 besök).
     sessions: allSessions.slice(0, MAX_SESSION_SUMMARIES),
     rageClicks: rageSignals(events),
-    heat: clickHeat(events),
+    heatPages: clickHeatPages(events),
     segmentGroups: segmentSummaries(allSessions),
   };
 }
