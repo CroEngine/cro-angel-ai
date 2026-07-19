@@ -1173,6 +1173,59 @@ describe("sessionSummaries — sidsteg med klick (Journeys v2, personläget)", (
     const [s] = sessionSummaries(events);
     expect(s.steps[0].engagedMs).toBe(4000);
   });
+
+  it("sök, video och rage attribueras till sitt steg (berättelse-tidslinjen)", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/a" }, { createdAt: at(0) }),
+      sev(
+        "site_search",
+        { sessionId: "s1", path: "/a", term: "glutenfritt bröd" },
+        { createdAt: at(2) },
+      ),
+      sev("pageview", { sessionId: "s1", path: "/b" }, { createdAt: at(5) }),
+      // sen video_watch som bär /a-path — hör till /a-steget, inte pågående
+      sev(
+        "video_watch",
+        { sessionId: "s1", path: "/a", ref: "Hero video", watchedMs: 4000 },
+        { createdAt: at(6) },
+      ),
+      // andra flushen för SAMMA video (ruttbyte + pagehide) — summeras, inte dubblas
+      sev(
+        "video_watch",
+        { sessionId: "s1", path: "/a", ref: "Hero video", watchedMs: 2500 },
+        { createdAt: at(9) },
+      ),
+      sev("rage_click", { sessionId: "s1", path: "/b", ref: "Menu" }, { createdAt: at(7) }),
+      sev("rage_click", { sessionId: "s1", path: "/b", ref: "Menu" }, { createdAt: at(8) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.steps[0].searches).toEqual([{ term: "glutenfritt bröd", tMs: 2000 }]);
+    expect(s.steps[0].videos).toEqual([{ ref: "Hero video", watchedMs: 6500 }]);
+    expect(s.steps[0].rageRefs).toBeUndefined();
+    expect(s.steps[1].rageRefs).toEqual(["Menu"]); // dedupad
+    expect(s.steps[1].searches).toBeUndefined();
+  });
+
+  it("samtyckes-rage filtreras och ogiltig videotid hoppas i stegextras", () => {
+    const events: DashEvent[] = [
+      sev("pageview", { sessionId: "s1", path: "/a" }, { createdAt: at(0) }),
+      sev(
+        "rage_click",
+        { sessionId: "s1", path: "/a", ref: "Acceptera alla" },
+        { createdAt: at(1) },
+      ),
+      sev(
+        "video_watch",
+        { sessionId: "s1", path: "/a", ref: "V", watchedMs: "nope" },
+        { createdAt: at(2) },
+      ),
+      sev("site_search", { sessionId: "s1", path: "/a", term: 42 }, { createdAt: at(3) }),
+    ];
+    const [s] = sessionSummaries(events);
+    expect(s.steps[0].rageRefs).toBeUndefined();
+    expect(s.steps[0].videos).toBeUndefined();
+    expect(s.steps[0].searches).toBeUndefined();
+  });
 });
 
 describe("journeyFlow — rankat vägträd (Journeys v2)", () => {

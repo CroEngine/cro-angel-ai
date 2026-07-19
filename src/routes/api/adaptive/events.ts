@@ -58,6 +58,9 @@ const VALID_TYPES = new Set([
   // enbart SKICKADE söktermer från dedikerade sökfält — aldrig tangenttryckningar,
   // aldrig andra formulärfält. Termen cleanText-skrubbas i buildEventRows.
   "site_search",
+  // Videotittande (ägarbeslut 2026-07-19, berättelse-tidslinjen): en summerad
+  // "tittade N ms"-signal per video och sidväg — aldrig innehåll eller position.
+  "video_watch",
 ]);
 
 export const Route = createFileRoute("/api/adaptive/events")({

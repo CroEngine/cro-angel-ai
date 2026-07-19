@@ -588,6 +588,13 @@ export interface SessionStep {
    *  personlägets "Scrolled to here"-linje. Saknas för events från äldre
    *  snippets (scroll_depth utan path kan inte placeras per steg). */
   scrollPct?: number | null;
+  /** Sökningar på steget (berättelse-tidslinjen): term + ms sedan stegstart. */
+  searches?: { term: string; tMs?: number }[];
+  /** Videotittande på steget: elementref + summerad tittartid (flera flushar
+   *  för samma video slås ihop). */
+  videos?: { ref: string; watchedMs: number }[];
+  /** Rage-klickade element på steget (samtyckesfiltrerade, dedupade). */
+  rageRefs?: string[];
 }
 
 export interface SessionSummary {
@@ -740,6 +747,46 @@ export function sessionSummaries(
         if (path && (depth === 25 || depth === 50 || depth === 75 || depth === 100)) {
           const step = [...steps].reverse().find((s) => s.path === path);
           if (step) step.scrollPct = Math.max(step.scrollPct ?? 0, depth);
+        }
+      } else if (e.type === "site_search") {
+        // Söksteg i berättelsen — samma path-attribuering som klicken (eventet
+        // bär sitt eget path; path-lösa faller till pågående steget).
+        const term = typeof e.payload.term === "string" ? e.payload.term : "";
+        const step = path
+          ? [...steps].reverse().find((s) => s.path === path)
+          : steps[steps.length - 1];
+        if (term && step && (step.searches?.length ?? 0) < JOURNEY_STEP_CAP) {
+          const start = stepStart.get(step);
+          (step.searches ??= []).push({
+            term,
+            ...(start !== undefined && Number.isFinite(eMs)
+              ? { tMs: Math.max(0, eMs - start) }
+              : {}),
+          });
+        }
+      } else if (e.type === "video_watch") {
+        // Videotid per steg — snippeten flushar per ruttbyte + pagehide, så
+        // samma video kan ge flera events; summera per ref.
+        const ref = typeof e.payload.ref === "string" ? e.payload.ref : "";
+        const w = e.payload.watchedMs;
+        const step = path
+          ? [...steps].reverse().find((s) => s.path === path)
+          : steps[steps.length - 1];
+        if (ref && step && typeof w === "number" && isFinite(w) && w > 0) {
+          const vids = (step.videos ??= []);
+          const existing = vids.find((v) => v.ref === ref);
+          if (existing) existing.watchedMs += w;
+          else if (vids.length < JOURNEY_STEP_CAP) vids.push({ ref, watchedMs: w });
+        }
+      } else if (e.type === "rage_click") {
+        // Frustrationsraden i berättelsen — samtyckesfiltrerad som klicken.
+        const ref = typeof e.payload.ref === "string" ? e.payload.ref : "";
+        const step = path
+          ? [...steps].reverse().find((s) => s.path === path)
+          : steps[steps.length - 1];
+        if (ref && !isConsentRef(ref) && step) {
+          const rr = (step.rageRefs ??= []);
+          if (!rr.includes(ref) && rr.length < JOURNEY_STEP_CAP) rr.push(ref);
         }
       } else if (e.type === "page_leave") {
         const ms = e.payload.engagedMs;

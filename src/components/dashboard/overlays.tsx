@@ -38,7 +38,6 @@ function HeatMirror({
   maxHeight = 560,
   frameW = 1280,
   onRawHeight,
-  scrollTopPct = null,
 }: {
   src: string;
   overlay: React.ReactNode;
@@ -49,9 +48,6 @@ function HeatMirror({
   /** Rå (o-klampad) rapporterad dokumenthöjd — skal-detekteringen i person-
    *  läget läser den: en live-speglad SPA rapporterar ~0 (blankt skal). */
   onRawHeight?: (h: number) => void;
-  /** Play-reprisen: mjuk-scrolla wrappen så denna %-punkt av dokumentet
-   *  hamnar i blickfånget. null = ingen styrning (användaren scrollar själv). */
-  scrollTopPct?: number | null;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -99,16 +95,6 @@ function HeatMirror({
   }, [src, onRawHeight]);
 
   const scale = wrapW > 0 ? Math.min(1, wrapW / frameW) : 0.5;
-  useEffect(() => {
-    if (scrollTopPct == null) return;
-    const el = wrapRef.current;
-    if (!el) return;
-    const target = Math.max(
-      0,
-      (scrollTopPct / 100) * Math.round(docH * scale) - el.clientHeight / 2,
-    );
-    el.scrollTo({ top: target, behavior: "smooth" });
-  }, [scrollTopPct, docH, scale]);
   return (
     <div
       ref={wrapRef}
@@ -489,8 +475,6 @@ export function JourneysOverlay({
     // Filterbyte definierar om kohorten — en öppen person kan peka fel.
     setPersonId(null);
     setStepIdx(0);
-    setPlaying(false);
-    setRevealed(null);
   }, [channelSel, outcomeFilter, deviceSel]);
   const personIdx = personId != null ? filtered.findIndex((s) => s.sessionId === personId) : -1;
   const person = personIdx >= 0 ? filtered[personIdx] : null;
@@ -501,8 +485,6 @@ export function JourneysOverlay({
     if (personId != null && !filtered.some((s) => s.sessionId === personId)) {
       setPersonId(null);
       setStepIdx(0);
-      setPlaying(false);
-      setRevealed(null);
     }
   }, [personId, filtered]);
   const personSteps = person?.steps ?? [];
@@ -516,10 +498,6 @@ export function JourneysOverlay({
   const openPerson = (s: SessionSummary) => {
     setPersonId(s.sessionId);
     setStepIdx(0);
-    // Autoplay (ägar-ok 2026-07-19): man klickar en rad för att FÖLJA
-    // besökaren — reprisen börjar direkt. All manuell navigering stoppar den.
-    setRevealed(0);
-    setPlaying(true);
   };
   const movePerson = (delta: number) => {
     if (personIdx < 0 || filtered.length === 0) return;
@@ -675,97 +653,12 @@ export function JourneysOverlay({
       </>
     );
 
-  // ── Play-reprisen (ägarorder 2026-07-19: "visa allt som en video") ───────
-  // Besökarens klick spelas upp i ordning med auto-scroll, steg för steg
-  // genom hela resan — filmkänslan ur data vi redan har, utan inspelning.
-  // Fast kadens: klick-tidsstämplar per steg sparas medvetet inte.
-  const [playing, setPlaying] = useState(false);
-  const [revealed, setRevealed] = useState<number | null>(null);
-  const stopPlay = useCallback(() => {
-    setPlaying(false);
-    setRevealed(null);
-  }, []);
-  const startPlay = () => {
-    setStepIdx(0);
-    setRevealed(0);
-    setPlaying(true);
-  };
-  useEffect(() => {
-    if (!playing || !person || revealed === null) return;
-    const stepClicks = personSteps[safeStepIdx]?.clicks ?? [];
-    if (revealed < stepClicks.length) {
-      // Verklig rytm (ägarorder 2026-07-19: "måste ändå vara bra"): gapet
-      // mellan klicken kommer ur eventens tidsstämplar — snabba klick i
-      // följd spelas snabbt, tvekan syns som paus. Klampat till 350ms–4s
-      // så reprisen förblir tittbar; äldre events utan tMs får fast kadens.
-      const cur = stepClicks[revealed]?.tMs;
-      const prev = revealed > 0 ? stepClicks[revealed - 1]?.tMs : 0;
-      const gap =
-        typeof cur === "number" && typeof prev === "number"
-          ? Math.min(4000, Math.max(350, cur - prev))
-          : 900;
-      const t = setTimeout(() => setRevealed((r) => (r ?? 0) + 1), gap);
-      return () => clearTimeout(t);
-    }
-    if (safeStepIdx < personSteps.length - 1) {
-      const t = setTimeout(() => {
-        setStepIdx(safeStepIdx + 1);
-        setRevealed(0);
-      }, 1400);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(stopPlay, 1200);
-    return () => clearTimeout(t);
-  }, [playing, revealed, safeStepIdx, personSteps, person, stopPlay]);
-
-  // Personens klick som NUMRERADE punkter i klickordning — bara positions-
-  // bärande klick kan ritas; resten listas som chips under spegeln. Under
-  // reprisen visas bara de klick som hunnit "hända".
-  const visibleClicks = personStep
-    ? playing && revealed !== null
-      ? personStep.clicks.slice(0, revealed)
-      : personStep.clicks
-    : [];
-  const lastDot = [...visibleClicks].reverse().find((c) => c.x != null && c.y != null);
-  const followPct = playing ? (lastDot?.y ?? 6) : null;
-  const personOverlay = personStep ? (
-    <>
-      {visibleClicks.map((c, i) =>
-        c.x != null && c.y != null ? (
-          <div
-            key={i}
-            title={c.ref}
-            className="absolute flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 border-white text-[11px] font-bold text-white"
-            style={{
-              top: `${c.y}%`,
-              left: `${c.x}%`,
-              transform: "translate(-50%,-50%)",
-              background: "#2a78d6",
-              boxShadow: "0 0 0 4px rgba(42,120,214,.25)",
-            }}
-          >
-            {i + 1}
-          </div>
-        ) : null,
-      )}
-      {personStep.scrollPct != null && (
-        // Besökarens djupaste scroll på steget — "hit ner kom hen".
-        <div
-          className="pointer-events-none absolute inset-x-0"
-          style={{ top: `${personStep.scrollPct}%` }}
-        >
-          <div className="border-t border-dashed border-[#0d366b]/45" />
-          <span
-            className="absolute right-2 rounded-full px-2 py-[1px] text-[10px] font-semibold text-white"
-            style={{ top: -9, background: "rgba(13,54,107,.78)" }}
-          >
-            Scrolled to here
-          </span>
-        </div>
-      )}
-    </>
-  ) : null;
-  const unpositioned = personStep ? personStep.clicks.filter((c) => c.x == null) : [];
+  // ── Berättelse-tidslinjen (ägarbeslut 2026-07-19: "presentera datan i
+  // stället — skippa playback"): personens resa berättas i ord — kom från,
+  // gick hit, scrollade, klickade, sökte, tittade på video, utfall. Play-
+  // reprisen och punktöverlägget togs bort medvetet: en berättelse kan
+  // aldrig "se fel ut" oavsett hur sajten är byggd; den lilla sidbilden
+  // till höger ger igenkänning utan att låtsas vara en inspelning.
 
   const pill = (active: boolean) =>
     active ? { background: "#161513", color: "#fff" } : { color: "#57534e" };
@@ -1014,23 +907,147 @@ export function JourneysOverlay({
         {/* scenen */}
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {person ? (
-            // ── PERSONLÄGET: steg-för-steg-spelaren ──────────────────────────
-            // min-w-0 på BÅDA kolumnerna: gridbarn har min-width:auto, så de
-            // långa mono-sökvägarna (inga mellanslag) sväller annars kolumnen
-            // förbi popup-ramen och truncate får aldrig verka (ägarfynd
-            // 2026-07-19: Next-knappen hamnade utanför bild).
-            <div className="grid items-start gap-4 lg:grid-cols-[1.6fr_1fr]">
-              <div className="min-w-0">
+            // ── PERSONLÄGET: berättelsen + liten sidbild ─────────────────────
+            // Berättelsen är huvudinnehållet (vänster, bredare); den statiska
+            // sidbilden ger igenkänning för det valda steget. min-w-0 på BÅDA
+            // kolumnerna: gridbarn har min-width:auto, så de långa mono-
+            // sökvägarna sväller annars kolumnen förbi popup-ramen.
+            <div className="grid items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
+              <div className="min-w-0 rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className="font-heading text-sm font-semibold">This visit, step by step</div>
+                  {person.engagedMs > 0 && (
+                    <span className="flex-none text-[11px] text-stone-400">
+                      {fmtDur(person.engagedMs)} active
+                    </span>
+                  )}
+                </div>
+                <div className="relative mt-3">
+                  {/* tidslinjens lodräta tråd — knyter ihop entré → steg → utfall */}
+                  <div className="absolute bottom-4 left-[8px] top-1 w-px bg-[#eae7e2]" />
+                  <div className="relative flex items-start gap-3 pb-3">
+                    <span className="mt-[2px] h-[17px] w-[17px] flex-none rounded-full border-2 border-white bg-stone-400 shadow-[0_0_0_1px_#e7e5e4]" />
+                    <div className="min-w-0 text-[12.5px] leading-snug text-stone-700">
+                      Came from{" "}
+                      <span className="font-semibold">{person.channel ?? "an unknown source"}</span>{" "}
+                      on {personDevice}
+                      {person.isReturning ? " — returning visitor" : " — first visit"}
+                    </div>
+                  </div>
+                  {personSteps.map((s, i) => (
+                    <div key={i} className="relative flex items-start gap-3 pb-2">
+                      <span className="mt-[10px] flex h-[17px] w-[17px] flex-none items-center justify-center rounded-full border-2 border-white bg-[#2a78d6] text-[9px] font-bold leading-none text-white shadow-[0_0_0_1px_#dbeafe]">
+                        {i + 1}
+                      </span>
+                      {/* Stegkortet är klickbart: väljer vilken sida bilden
+                          till höger visar. Förkortad väg, hela vid hover. */}
+                      <button
+                        type="button"
+                        onClick={() => setStepIdx(i)}
+                        className="block min-w-0 flex-1 rounded-[9px] border px-3 py-2 text-left"
+                        style={{
+                          borderColor: i === safeStepIdx ? "#161513" : "#f0eee9",
+                          background: i === safeStepIdx ? "#faf9f7" : "#fff",
+                        }}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-stone-700"
+                            title={s.path}
+                          >
+                            {s.path}
+                          </span>
+                          {s.engagedMs > 0 && (
+                            <span className="flex-none text-[11px] text-stone-400">
+                              {fmtDur(s.engagedMs)}
+                            </span>
+                          )}
+                        </div>
+                        {s.scrollPct != null && (
+                          <div className="mt-1 text-[11.5px] text-stone-500">
+                            Scrolled{" "}
+                            {s.scrollPct === 100 ? "to the bottom" : `${s.scrollPct}% of the page`}
+                          </div>
+                        )}
+                        {s.clicks.length > 0 && (
+                          <div
+                            className="mt-1 truncate text-[11.5px] text-stone-500"
+                            title={s.clicks.map((c) => c.ref).join(" · ")}
+                          >
+                            Clicked {collapsedRefs(s.clicks)}
+                          </div>
+                        )}
+                        {(s.searches ?? []).map((q, k) => (
+                          <div
+                            key={k}
+                            className="mt-1 truncate text-[11.5px] text-stone-600"
+                            title={q.term}
+                          >
+                            Searched for &ldquo;{q.term}&rdquo;
+                          </div>
+                        ))}
+                        {(s.videos ?? []).map((v, k) => (
+                          <div
+                            key={k}
+                            className="mt-1 truncate text-[11.5px] text-stone-600"
+                            title={v.ref}
+                          >
+                            Watched a video for {fmtDur(v.watchedMs)}
+                          </div>
+                        ))}
+                        {(s.rageRefs ?? []).length > 0 && (
+                          <div
+                            className="mt-1 truncate text-[11.5px] font-semibold text-amber-600"
+                            title={(s.rageRefs ?? []).join(" · ")}
+                          >
+                            Frustrated clicking on {(s.rageRefs ?? []).join(" · ")}
+                          </div>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                  <div className="relative flex items-start gap-3 pt-1">
+                    <span
+                      className="mt-[1px] h-[17px] w-[17px] flex-none rounded-full border-2 border-white shadow-[0_0_0_1px_#e7e5e4]"
+                      style={{
+                        background: person.converted
+                          ? "#047857"
+                          : person.formAbandoned
+                            ? "#d97706"
+                            : "#a8a29e",
+                      }}
+                    />
+                    <div
+                      className="min-w-0 text-[12.5px] font-semibold leading-snug"
+                      style={{
+                        color: person.converted
+                          ? "#047857"
+                          : person.formAbandoned
+                            ? "#d97706"
+                            : "#57534e",
+                      }}
+                    >
+                      {person.converted
+                        ? "Converted on this visit"
+                        : person.formAbandoned
+                          ? "Left with an unfinished form"
+                          : "Left without converting"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* liten statisk sidbild för det valda steget */}
+              <div className="flex min-w-0 flex-col gap-2">
                 {personStep && personBackdrop.data?.ok && personBackdrop.data.mirrorPath ? (
                   <div className="relative">
                     <HeatMirror
                       key={`${person.sessionId}:${safeStepIdx}`}
                       src={personBackdrop.data.mirrorPath}
-                      overlay={personOverlay}
-                      maxHeight="calc(88vh - 230px)"
+                      overlay={null}
+                      maxHeight="calc(88vh - 250px)"
                       frameW={personFrameW}
                       onRawHeight={onPersonRawHeight}
-                      scrollTopPct={followPct}
                     />
                     {personMirrorBlank && (
                       // Ärlig skylt i stället för ett tyst vitt hål: sidan är
@@ -1039,107 +1056,25 @@ export function JourneysOverlay({
                       <div className="absolute inset-0 flex items-center justify-center bg-white/80 p-8 text-center">
                         <p className="max-w-sm text-[13px] leading-relaxed text-stone-500">
                           This page renders with JavaScript and can&apos;t be mirrored live. The
-                          nightly loop freezes browsable copies of the site&apos;s most-visited
-                          pages — steps on those pages get a real backdrop. The visitor&apos;s
-                          pages and clicks are listed on the right.
+                          nightly loop freezes browsable copies of the most-visited pages — the
+                          story on the left is complete either way.
                         </p>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="flex h-[420px] items-center justify-center rounded-[10px] border border-[#f0eee9] bg-white p-8 text-center text-[13px] text-stone-500">
-                    {personStep
-                      ? "Loading the page mirror…"
-                      : "This session has no page steps to replay."}
+                  <div className="flex h-[320px] items-center justify-center rounded-[10px] border border-[#f0eee9] bg-white p-8 text-center text-[13px] text-stone-500">
+                    {personStep ? "Loading the page…" : "This session has no page steps."}
                   </div>
                 )}
-              </div>
-
-              {/* stegen + navigeringen */}
-              <div className="flex min-w-0 flex-col gap-4">
-                <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
-                  <div className="flex items-center justify-between">
-                    <div className="font-heading text-sm font-semibold">
-                      Step {safeStepIdx + 1} of {Math.max(personSteps.length, 1)}
-                    </div>
-                    <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
-                      <button
-                        type="button"
-                        onClick={() => (playing ? stopPlay() : startPlay())}
-                        className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold text-stone-600"
-                        title="Replay the visit: clicks appear in order with the page scrolling along"
-                      >
-                        {playing ? "◼ Stop" : "▶ Replay"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={safeStepIdx === 0}
-                        onClick={() => {
-                          stopPlay();
-                          setStepIdx(Math.max(0, safeStepIdx - 1));
-                        }}
-                        className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold text-stone-600 disabled:opacity-40"
-                      >
-                        ← Prev
-                      </button>
-                      <button
-                        type="button"
-                        disabled={safeStepIdx >= personSteps.length - 1}
-                        onClick={() => {
-                          stopPlay();
-                          setStepIdx(Math.min(personSteps.length - 1, safeStepIdx + 1));
-                        }}
-                        className="rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold disabled:opacity-40"
-                        style={{ background: "#161513", color: "#fff" }}
-                      >
-                        Next step →
-                      </button>
-                    </div>
+                {personStep && (
+                  <div
+                    className="truncate text-center font-mono text-[10.5px] text-stone-400"
+                    title={personStep.path}
+                  >
+                    Step {safeStepIdx + 1} · {personStep.path}
                   </div>
-                  <div className="mt-0.5 text-[11px] text-stone-400">
-                    {person.channel ?? "unknown"} · {personDevice} ·{" "}
-                    {person.converted ? "converted" : "did not convert"}
-                    {unpositioned.length > 0 && ` · ${unpositioned.length} clicks not shown`}
-                  </div>
-                  {personSteps.map((s, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => {
-                        stopPlay();
-                        setStepIdx(i);
-                      }}
-                      className="mt-2 block w-full rounded-[9px] border px-3 py-2 text-left"
-                      style={{
-                        borderColor: i === safeStepIdx ? "#161513" : "#f0eee9",
-                        background: i === safeStepIdx ? "#faf9f7" : "#fff",
-                      }}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        {/* Förkortad väg, hela vägen vid hover (title) —
-                            slutet av slugen är oftast bara ett id, så
-                            slut-trunkering behåller den läsbara delen. */}
-                        <span
-                          className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-stone-700"
-                          title={s.path}
-                        >
-                          {i + 1}. {s.path}
-                        </span>
-                        <span className="flex-none text-[11px] text-stone-400">
-                          {s.engagedMs > 0 ? `${Math.round(s.engagedMs / 1000)}s` : ""}
-                        </span>
-                      </div>
-                      {s.clicks.length > 0 && (
-                        <div
-                          className="mt-1 truncate text-[11px] text-stone-500"
-                          title={s.clicks.map((c) => c.ref).join(" · ")}
-                        >
-                          {collapsedRefs(s.clicks)}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                )}
               </div>
             </div>
           ) : view === "flow" ? (
@@ -1382,8 +1317,8 @@ export function JourneysOverlay({
           {/* Integritetsraden EN gång för hela popupen (avbrusning 2026-07-19
               — stod tidigare i både listvyn och spelaren). */}
           <div className="mt-4 pb-1 text-center text-[10.5px] text-stone-300">
-            Page sequence, clicks, scroll depth and submitted site-search terms — Angel never
-            records screens, mouse movement or keystrokes.
+            Page sequence, clicks, scroll depth, video watch time and submitted site-search
+            terms — Angel never records screens, mouse movement or keystrokes.
           </div>
         </div>
       </div>

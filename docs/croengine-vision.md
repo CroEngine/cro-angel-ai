@@ -48,7 +48,9 @@ standard (observe-first) och blir substrat för den generativa fasen.
 Acquisition (referrer, utm, källa), session (anonymt id, device, land, språk,
 tid, scroll — scrolldjup per sidväg sedan 2026-07-19), beteende (sidordning,
 **klickordning**, CTA-klick, formulär-lifecycle, exit, **rage clicks** — se
-nedan, samt **skickade sajtsökningar** — se undantaget nedan), prestanda (CWV),
+nedan, **videotittartid** — summerad "tittade N s" per video och sidväg sedan
+2026-07-19, aldrig innehåll eller position — samt **skickade sajtsökningar** —
+se undantaget nedan), prestanda (CWV),
 och sidans struktur (CTA/formulär/nav/pris/trust). Detaljerad datamodell +
 integritetsgränser: `docs/journey-intelligence.md`.
 
