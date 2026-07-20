@@ -1,5 +1,17 @@
 # `collect` — Angel Adaptive collector
 
+> ⚠️ **Status (2026-07-20): reference implementation — do NOT deploy to the live project.**
+> The production Angel system on `upvthvbhqzqqimsyjpxw` runs on a different,
+> slug-keyed schema — `angel_sites` / `angel_events` / `angel_content_inventory` —
+> and is already collecting live (27k+ events; `glutenforum.se` domain-verified and
+> serving adaptations). This function targets the **parallel, empty** M0/M2 schema
+> (`sites` / `events` / `content_inventory`) on that same project, so deploying it
+> as-is would create a second, orphaned data store that nothing reads. It stays here
+> as a reference and a possible migration target; connecting this repo's engine to
+> the live product is a separate, planned effort (would mean repointing this function
+> and the snippet at the `angel_*` schema). The deploy/register steps below are kept
+> for that future, **not** for the live project today.
+
 The backend half of **"först samlar vi data"**. The snippet (`adaptive.js`) POSTs
 each page's Content Inventory + the visitor's behavior events here; this function
 persists them to the M0/M2 schema, keyed by site → visitor → session.
@@ -28,6 +40,10 @@ deploying. (The migration SQL itself — `…_m0_adaptive_foundation.sql`,
 > CLI deploys there without touching `config.toml`.
 
 ## Deploy
+
+> **Do not run this against the live project today** — see the status banner at the
+> top. These steps apply only if/when this repo's engine is intentionally wired into
+> the live `angel_*` product.
 
 ```bash
 # point the CLI at the self-managed collector project (leaves config.toml alone)

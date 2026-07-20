@@ -1,5 +1,9 @@
 -- Register a customer site for the Angel Adaptive collector.
 --
+-- ⚠️ Do NOT run against the live project today. The production system uses the
+-- angel_* schema; this inserts into the parallel, empty M0/M2 `sites` table. See
+-- README.md "Status" banner. Kept for a future, intentional migration only.
+--
 -- Paste into the Supabase SQL editor for the collector project
 -- (upvthvbhqzqqimsyjpxw). Idempotent — safe to run more than once.
 --

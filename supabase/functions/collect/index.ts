@@ -1,5 +1,9 @@
 // Angel Adaptive — collector Edge Function (the "samlar vi data" backend).
 //
+// ⚠️ Reference implementation — NOT deployed to the live project. Production runs
+// on the slug-keyed angel_* schema and already collects live; this targets the
+// parallel, empty M0/M2 tables. See README.md "Status" banner. (Decision 2026-07-20.)
+//
 // Receives the snippet's POST (content inventory + behavior events) and persists
 // it to the M0/M2 schema: resolves the site by its public key, upserts the
 // pseudonymous visitor + session, flattens the inventory into content_inventory
