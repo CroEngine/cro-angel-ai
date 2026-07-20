@@ -1,6 +1,8 @@
 # Migration plan — put this repo's detection engine behind the live product
 
-**Status:** proposal, awaiting go/no-go on Phase 0
+**Status:** ⛔ **Phase 0 ran 2026-07-20 and FAILED the decision gate** — do not
+proceed on this evidence. See [`migration-detection-engine-phase0.md`](./migration-detection-engine-phase0.md).
+The rest of this plan is retained as the design that Phase 0 was gating.
 **Author:** engineering (Claude Code session)
 **Date:** 2026-07-20
 
