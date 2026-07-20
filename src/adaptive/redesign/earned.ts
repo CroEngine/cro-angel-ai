@@ -33,8 +33,17 @@
 import {
   SEGMENT_MIN_VISITS,
   SEGMENT_MIN_CONVERSIONS,
+  SEGMENT_MIN_VISITS_ENGAGEMENT,
   type SegmentLeaf,
 } from "@/lib/dashboard/aggregate";
+
+/** Sajtens mätmål (ägarbeslut 2026-07-20): 'conversion' är default; sajter
+ *  med sällsynta konverteringar (piloten: ~91 % bounce, 0 organiska konton)
+ *  mäter 'continuation' — gick besökaren vidare till en andra sida? Grinden
+ *  byter då krav: SEGMENT_MIN_VISITS_ENGAGEMENT besök, inget konverteringskrav
+ *  (utfallet finns i varje session). Nordstjärnemålet ändras INTE — designen
+ *  siktar fortfarande mot ägarens mål; det är måttstocken för testet som byts. */
+export type TestMetric = "conversion" | "continuation";
 import {
   UNKNOWN_TOKEN,
   isDimsPrefix,
@@ -87,6 +96,7 @@ export function findEarnedCells(
   leaves: PageSegmentLeaf[],
   existing: { path: string; segmentKey: string }[],
   cap = 5,
+  metric: TestMetric = "conversion",
 ): EarnedCell[] {
   const byPath = new Map<string, PageSegmentLeaf[]>();
   for (const leaf of leaves) {
@@ -97,7 +107,7 @@ export function findEarnedCells(
   for (const [path, pathLeaves] of byPath) {
     const keys = existing.filter((e) => e.path === path).map((e) => e.segmentKey);
     // Per-sida-capet = globala capet: rankningen över sidor sker efteråt.
-    for (const s of findEarnedSegments(pathLeaves, keys, cap)) {
+    for (const s of findEarnedSegments(pathLeaves, keys, cap, metric)) {
       cells.push({ ...s, path });
     }
   }
@@ -121,6 +131,7 @@ export function findEarnedSegments(
   leaves: SegmentLeaf[],
   existingKeys: string[],
   cap = 5,
+  metric: TestMetric = "conversion",
 ): EarnedSegment[] {
   const existing = existingKeys.map(segmentDims);
   const leafList = leaves
@@ -159,11 +170,14 @@ export function findEarnedSegments(
   };
 
   // Grundfilter: inte redan en egen variant + totalen bär analysen.
+  // Continuation-läget kräver bara besöksvolym — utfallet ("gick vidare")
+  // finns i varje session, så konverteringskravet vore ett kategorifel.
   const pool = [...candidates.entries()].filter(
     ([key, c]) =>
       !existingKeys.includes(key) &&
-      c.visits >= SEGMENT_MIN_VISITS &&
-      c.conversions >= SEGMENT_MIN_CONVERSIONS,
+      (metric === "continuation"
+        ? c.visits >= SEGMENT_MIN_VISITS_ENGAGEMENT
+        : c.visits >= SEGMENT_MIN_VISITS && c.conversions >= SEGMENT_MIN_CONVERSIONS),
   );
 
   // Girigt urval med omräkning efter varje val.

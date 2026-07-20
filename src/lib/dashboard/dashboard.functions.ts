@@ -12,7 +12,11 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { GOAL_KINDS, type GoalCandidate } from "@/adaptive/crawler-inventory";
-import { evaluateWinner } from "@/adaptive/redesign/winner";
+import {
+  ENGAGEMENT_MIN_SUCCESSES,
+  ENGAGEMENT_MIN_VISITS,
+  evaluateWinner,
+} from "@/adaptive/redesign/winner";
 import { cleanEvents } from "./data-hygiene";
 import {
   aggregate,
@@ -94,6 +98,10 @@ export interface SiteConfigView {
   /** Fas 4 steg 3: variant-armens trafikandel (%). Manuell ramp 5 → 10 → 25 →
    *  50 (ägarbeslut 2026-07-12) — aldrig 50/50 från start. */
   rampPct: number;
+  /** Testets mätmål (ägarbeslut 2026-07-20): 'conversion' (default) eller
+   *  'continuation' — gick besökaren vidare till en andra sida? Nordstjärne-
+   *  målet (conversionText) ändras inte; bara måttstocken för A/B-testet. */
+  testMetric: "conversion" | "continuation";
   /** Sajtens registrerade domän (normaliserad). null = legacy/labb. */
   domain: string | null;
   /** Stämplad av första domän-bevisade snippet-signalen — installations- och
@@ -137,6 +145,9 @@ export interface VariantComparison {
  *  ägarens grindar (≥1000 besök + ≥50 konv per arm, ≥95 %, ≥5 % lyft, inga
  *  försämrade skyddsmått). Systemet REKOMMENDERAR bara — byter aldrig själv. */
 export interface VariantAbView {
+  /** Vad `conversions`-fälten räknar: konverteringar eller "gick vidare till
+   *  en andra sida" (test_metric='continuation', ägarbeslut 2026-07-20). */
+  metric: "conversion" | "continuation";
   variant: { visits: number; conversions: number };
   control: { visits: number; conversions: number };
   outcome: "insufficient_data" | "no_winner" | "recommend_winner" | "recommend_stop";
@@ -189,6 +200,7 @@ const DEFAULT_SITE_CONFIG: SiteConfigView = {
   adaptationsEnabled: false,
   servingEnabled: false,
   rampPct: 5,
+  testMetric: "conversion",
   day0ReportUrl: null,
 };
 
@@ -239,7 +251,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       const { data: siteRows } = await supabaseAdmin
         .from("angel_sites")
         .select(
-          "slug,name,domain,domain_verified_at,billing_status,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,ramp_pct,goal_candidates,day0_report_url",
+          "slug,name,domain,domain_verified_at,billing_status,consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_source,conversion_kind,ingest_key,adaptations_enabled,serving_enabled,ramp_pct,goal_candidates,day0_report_url,test_metric",
         )
         .order("slug");
       // `sandbox--<host>` rows are the admin sandbox's private per-host scratch
@@ -322,6 +334,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               adaptations_enabled?: boolean;
               serving_enabled?: boolean;
               ramp_pct?: number;
+              test_metric?: string | null;
               goal_candidates?: { businessType?: string; goals?: GoalCandidate[] } | null;
               day0_report_url?: string | null;
             }
@@ -343,6 +356,7 @@ export const getDashboard = createServerFn({ method: "POST" })
             adaptationsEnabled: current.adaptations_enabled === true,
             servingEnabled: current.serving_enabled === true,
             rampPct: typeof current.ramp_pct === "number" ? current.ramp_pct : 5,
+            testMetric: current.test_metric === "continuation" ? "continuation" : "conversion",
             domain: current.domain ?? null,
             domainVerifiedAt: current.domain_verified_at ?? null,
             billingStatus: typeof current.billing_status === "string" ? current.billing_status : "exempt",
@@ -381,18 +395,32 @@ export const getDashboard = createServerFn({ method: "POST" })
                   p_variant: v.id,
                 });
                 if (aErr || !Array.isArray(arms)) return;
+                // Mätmålet styr vilken kolumn som är "framgång": continuation-
+                // läget räknar besökare som gick vidare till en andra sida.
+                const metric = siteConfig.testMetric;
                 const armOf = (name: string) => {
                   const row = arms.find((a) => a.arm === name);
                   return {
                     visits: Number(row?.visits) || 0,
-                    conversions: Number(row?.conversions) || 0,
+                    conversions:
+                      metric === "continuation"
+                        ? Number(row?.continuations) || 0
+                        : Number(row?.conversions) || 0,
                   };
                 };
                 const variantArm = armOf("variant");
                 const controlArm = armOf("control");
                 if (variantArm.visits + controlArm.visits === 0) return;
-                const ev = evaluateWinner(variantArm, controlArm);
+                const ev = evaluateWinner(
+                  variantArm,
+                  controlArm,
+                  [],
+                  metric === "continuation"
+                    ? { minVisits: ENGAGEMENT_MIN_VISITS, minSuccesses: ENGAGEMENT_MIN_SUCCESSES }
+                    : undefined,
+                );
                 abById.set(v.id, {
+                  metric,
                   variant: variantArm,
                   control: controlArm,
                   outcome: ev.outcome,
