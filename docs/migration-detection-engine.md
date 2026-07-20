@@ -1,11 +1,13 @@
 # Migration plan — put this repo's detection engine behind the live product
 
-**Status:** ⚠️ **conditional** (updated 2026-07-20). Phase 0 on glutenforum FAILED
-the gate (content-SPA — engine adds no edge there). Phase 0b on plausible.io
-showed the **CTA-precision edge is real on SaaS pages** (deriveHero = live LLM
-rank-1, zero junk primaries) but **trust recall missed a quote-less testimonial
-wall** — fix that in this repo's benchmark loop before any live integration.
-See [`migration-detection-engine-phase0.md`](./migration-detection-engine-phase0.md).
+**Status:** ✅ **detection precondition met — SaaS-conditional as a product call**
+(updated 2026-07-20, v1.19.0). Phase 0 on glutenforum FAILED the gate (content-SPA —
+engine adds no edge there; its lever is bounce/continuation). Phase 0b on
+plausible.io now **passes both dimensions**: CTA (deriveHero = live LLM rank-1,
+zero junk primaries) and, after the v1.19.0 quote-less card-wall detector, trust
+(1 → 7 signals on the live page, wall auto-typed `testimonials`). Whether to
+integrate remains a product decision driven by customer mix (SaaS vs content
+sites). See [`migration-detection-engine-phase0.md`](./migration-detection-engine-phase0.md).
 **Author:** engineering (Claude Code session)
 **Date:** 2026-07-20
 

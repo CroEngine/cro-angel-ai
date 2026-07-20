@@ -33,7 +33,8 @@
     "dev-to": "fixtures/drift-survey/iframe-heavy/dev-to/page.mhtml",
     "aftonbladet": "fixtures/drift-survey/cookie-wall-eu/aftonbladet/page.mhtml",
     "spiegel": "fixtures/drift-survey/cookie-wall-eu/spiegel/page.mhtml",
-    "github-blog": "fixtures/drift-survey/iframe-heavy/github-blog/page.mhtml"
+    "github-blog": "fixtures/drift-survey/iframe-heavy/github-blog/page.mhtml",
+    "plausible": "fixtures/drift-survey/saas-landing/plausible/page.mhtml"
   },
   "labels": {
     "hubspot":      {"testimonial":1,"customer_logos":1,"rating":0,"certification":0,"guarantee":0,"secure_payment":0,"press_mention":0,"trusted_by":0,"social_proof_count":1,"review_badges":1,
@@ -99,6 +100,8 @@
     "spiegel":      {"testimonial":0,"customer_logos":0,"rating":0,"certification":0,"guarantee":0,"secure_payment":0,"press_mention":0,"trusted_by":0,"social_proof_count":0,"review_badges":0,
       "_note":"DE news (Der Spiegel). Article headlines only -> false-positive control."},
     "github-blog":  {"testimonial":0,"customer_logos":0,"rating":0,"certification":0,"guarantee":0,"secure_payment":0,"press_mention":0,"trusted_by":0,"social_proof_count":0,"review_badges":0,
-      "_note":"GitHub BLOG (not the product homepage). Post cards + a text Gartner-Leader mention (not a badge image). Nav tiles != customer logos -> controls."}
+      "_note":"GitHub BLOG (not the product homepage). Post cards + a text Gartner-Leader mention (not a badge image). Nav tiles != customer logos -> controls."},
+    "plausible":    {"testimonial":1,"customer_logos":0,"rating":0,"certification":1,"guarantee":0,"secure_payment":0,"press_mention":0,"trusted_by":1,"social_proof_count":1,"review_badges":0,
+      "_note":"SaaS (Phase 0b follow-up, labeled from full-page screenshot + DOM probe 2026-07-20 BEFORE any detector change). Six QUOTE-LESS tweet-style testimonial cards (avatar + name + role line, class tweet-text, no quote marks, no links) in a grid-cols-3 -> the motivating case for structural card detection. <dl> stats row '19k Paying subscribers / 260B pageviews / 99.99% uptime' (social_proof_count; '19k' is K-suffix). GDPR/no-cookie-banner compliance copy (certification). 'trusted by thousands of companies' exists ONLY mid-sentence in a long paragraph -> counted as present on the page, expected FN under the long-prose anchor policy (documented tradeoff, do NOT loosen the anchor for it). No logo wall, no ratings, no badges."}
   }
 }

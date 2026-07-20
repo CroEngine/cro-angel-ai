@@ -37,16 +37,25 @@ class already labeled `1` on hubspot/loom/hibob/dev-to. Labels are corrected onl
 when the rendered page is independently verified to disagree with the mark —
 never to make a number look better.
 
-## Latest results (extractor v1.14.0)
+## Latest results (extractor v1.19.0)
 
-Scored over all 32 captures present on disk:
+Scored over all 33 captures present on disk (32 + plausible, added as a
+hold-out in the v1.19.0 wave — labeled from the rendered page *before* the fix):
 
-| metric | v1.13.0 | v1.14.0 |
-|---|---|---|
-| precision | 90.0% | **98.0%** |
-| recall | 80.4% | **84.2%** |
-| F1 | 84.9% | **90.6%** |
-| TP / FP / FN | 45 / 5 / 11 | 48 / 1 / 9 |
+| metric | v1.14.0 (32 sites) | v1.18.0 (33 sites) | v1.19.0 (33 sites) |
+|---|---|---|---|
+| precision | 98.0% | 98.0% | **98.1%** |
+| recall | 84.2% | 80.3% | **83.6%** |
+| F1 | 90.6% | 88.3% | **90.3%** |
+| TP / FP / FN | 48 / 1 / 9 | 49 / 1 / 12 | 51 / 1 / 10 |
+
+v1.19.0 added structural detection of QUOTE-LESS avatar-card testimonial walls
+(plausible.io's tweet-style endorsement grid — no quote marks, no
+testimonial/quote class, no blockquote, no stars) and K/M/B-suffix stat rows
+("19k paying subscribers" in a `<dl>`), with zero new false positives — the
+news/e-commerce/blog control sites stay clean. plausible's remaining FN
+(`trusted_by`) is the documented long-prose-anchor tradeoff, noted inline in
+`labels.json`.
 
 v1.14.0 fixed the five defects the 32-site wave exposed: testimonial FPs from
 quote-marked news headlines (Der Spiegel) and "- Title" music slides (Spotify),
@@ -70,16 +79,17 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=<chrome> bun run src/lib/tests/trust-eval/ru
 bun run src/lib/tests/trust-eval/run.ts hubspot linear
 ```
 
-**CI coverage: 30 of the 32 sites.** The `corpus/{hubspot,linear,hibob}` captures
+**CI coverage: 31 of the 33 sites.** The `corpus/{hubspot,linear,hibob}` captures
 *and* the tracked `fixtures/drift-survey/**` captures are committed, so the gate
-(`trust-eval.test.ts`, P ≥ 0.92 / R ≥ 0.77) scores all 30 of them in CI — not
+(`trust-eval.test.ts`, P ≥ 0.92 / R ≥ 0.77) scores all 31 of them in CI — not
 just the corpus three. Only the two `fixtures/angel-sample/` captures
-(everlane, figma) are gitignored, so a local run scores all 32; the runner
+(everlane, figma) are gitignored, so a local run scores all 33; the runner
 **skips any capture not on disk**. The `drift-survey` `.gitignore` rule only
 stops *new* large freezes from being committed by accident — the existing
-captures predate it and stay tracked. The CI floor is calibrated ~6 pts under
-the measured 30-site result (P 97.8% / R 83.3% at v1.14.0); re-tighten it when
-the numbers climb.
+captures predate it and stay tracked, and the plausible capture (266 KB, the
+v1.19.0 card-wall regression case) was deliberately force-added so CI exercises
+the new pass. The CI floor is calibrated ~6 pts under the measured result;
+re-tighten it when the numbers climb.
 
 ## Extending the gate
 

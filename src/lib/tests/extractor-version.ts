@@ -321,8 +321,36 @@
 //           hero alongside the 2 banner sections); linear byte-identical (its
 //           hero was already typed). Snippet unaffected (deriveHero is audit-only;
 //           the snippet's hero.headline already falls back to the page h1).
+//   1.19.0 — quote-less avatar-card testimonial WALLS + K/M/B-suffix stats
+//           (trustSignals.ts). Surfaced by Phase 0b on live plausible.io: its six
+//           tweet-style endorsement cards (avatar + name + role + prose, class
+//           "tweet-text") carry NO quote mark, NO testimonial/quote class, NO
+//           blockquote, NO stars — invisible to every existing pass, so the page
+//           scored testimonial=0 while visibly carrying DHH / Hugging Face / Ghost
+//           endorsements. New structural pass detects a WALL of >=3 sibling cards,
+//           each: compact box (220-760 x 90-700, text 60-600), not link-dominated
+//           (no single >=60-char link, links <40% of text — article/product cards
+//           link out with their titles), no commerce/date/engagement tokens
+//           (anchored: "\d+ likes", "\d+ days ago" — bare "like"/"ago" are prose
+//           words), a NAME-shaped line (1-4 Capitalized words / initials, <=32
+//           chars) PLUS a role/company line (CEO/founder/"at X"/@handle) or a
+//           small square avatar image, and >=50 chars of prose beyond them. Also:
+//           the <dl>/stat-container pass accepts K/M/B/T-suffix numbers ("19k",
+//           "260B") with the unit keyword required CELL-LOCALLY (parent element)
+//           so a row-wide fallback can't stamp "subscribers" onto the sibling
+//           pageviews cell; suffix counts scale to real magnitude (19k -> 19000);
+//           +subscribers/prenumeranter as stat units. Measured on the 33-site
+//           benchmark (plausible added as hold-out with labels marked from the
+//           rendered page BEFORE the fix): P 98.0->98.1%, R 80.3->83.6%, F1
+//           88.3->90.3% (TP 49->51, FP 1->1 — zero new false positives; the news/
+//           e-com/blog control sites stay clean). plausible testimonial FN->TP
+//           (5 of 6 cards; the 6th has an emoji-bearing name line) and
+//           social_proof_count FN->TP; its trusted_by stays a documented FN (the
+//           claim exists only mid-sentence in long prose — the long-prose anchor
+//           is a deliberate precision tradeoff, v1.8.0a). Corpus goldens
+//           byte-identical (hubspot/linear/hibob have no quote-less card walls).
 
-export const EXTRACTOR_VERSION = "1.18.0" as const;
+export const EXTRACTOR_VERSION = "1.19.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

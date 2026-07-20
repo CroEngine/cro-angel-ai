@@ -149,3 +149,24 @@ markup — the benchmark corpus under-represents quote-less card testimonials.
    any migration.
 4. **glutenforum:** unchanged — its lever is bounce/continuation, not CTA
    precision; neither engine addresses that today.
+
+## v1.19.0 follow-up (same day): the trust gap is CLOSED
+
+Step 2 above was executed immediately (extractor v1.19.0): a structural
+detector for quote-less avatar-card testimonial walls + K/M/B-suffix stat rows,
+with plausible frozen into the trust-eval benchmark as a hold-out (labeled
+before the fix; capture force-added so CI exercises the new pass).
+
+- **33-site benchmark:** P 98.0→98.1%, R 80.3→83.6%, F1 88.3→90.3% — **zero new
+  false positives**; news/e-commerce/blog controls stay clean; corpus goldens
+  byte-identical; all 192 tests pass.
+- **Phase 0b re-run on live plausible.io:** home trust **1 → 7 signals**
+  (5 testimonial cards + "19k paying subscribers" + certification), and
+  sectionOrder now types the wall as `testimonials` automatically (v1.17
+  structural attribution). CTA layer unchanged: rank-1 match, zero junk.
+- Remaining plausible FN: `trusted_by` mid-prose — the documented long-prose
+  anchor tradeoff, kept deliberately.
+
+**Phase 0b now passes on both dimensions on the engine's home turf.** The
+migration remains SaaS-conditional as a product decision (customer mix), but
+the detection-quality precondition is met.

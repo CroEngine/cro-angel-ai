@@ -1332,11 +1332,129 @@ export const trustSignalsRun: () => any = () => ((() => {
     push('testimonial', text, el, 'text', meta);
   });
 
+  // Quote-less avatar-card testimonial WALLS (structural, v1.19). The modern
+  // tweet-style endorsement grid (plausible.io: 6 cards, avatar + name + role +
+  // prose, class "tweet-text") carries NO quote marks, NO testimonial/quote
+  // class, NO blockquote and NO stars — invisible to every pass above. Detect
+  // the STRUCTURE instead, precision-gated hard so article/product/team/comment
+  // cards can't ride along:
+  //   card   — compact box, text 60–600 chars, NOT inside <a>, no link with
+  //            >=30 chars of text inside (article/product cards link out;
+  //            testimonial cards don't), no commerce/price tokens, no
+  //            news/comment tokens (dates, "min read", reply/like/subscribe);
+  //   author — a NAME-shaped line (1–4 words, each Capitalized/initials, <=32
+  //            chars, no terminal punctuation) in the card's first/last lines,
+  //            PLUS a role/company line (CEO/founder/"at Acme"/@handle) or a
+  //            small square avatar image;
+  //   prose  — >=50 chars beyond the name/role lines (team-directory cards
+  //            have name+role but no prose);
+  //   wall   — >=3 qualifying sibling cards under one parent/grandparent (a
+  //            lone match is more likely a bio or press blurb than a wall).
+  (function cardTestimonialWalls() {
+    // Regex LITERAL on purpose: a new RegExp(string) here would add a third
+    // escaping layer under the outer template literal ("\\w") — the exact
+    // trap that cooked /\s+/ into /s+/ in v1.16. Literals have only two.
+    const NAME_LINE_RX = /^(?:[A-Z][\w\u00c0-\u017f.'\u2019&-]{0,19}|[A-Z]{2,5})(?:\s+(?:[A-Z][\w\u00c0-\u017f.'\u2019&-]{0,19}|&|[A-Z]{2,5})){0,3}$/;
+    const ROLE_LINE_RX = /\b(ceo|cto|cfo|coo|cmo|founder|co-?founder|medgrundare|director|head of|vp\b|vice president|president|manager|lead|engineer|architect|designer|marketer|owner|creator|author|analyst|consultant|developer|advocate|evangelist|scientist|specialist|strategist|grundare|vd|chef)\b|\bat\s+[A-Z0-9]|@\w{2,}/i;
+    // Noise tokens are ANCHORED (\d+ likes, \d+ days ago, follow us/@) — bare
+    // "like"/"ago"/"follow" are ordinary prose words and killed the motivating
+    // DHH card ("domains like web stats") on the first cut.
+    const CARD_NOISE_RX = /\b(\d+\s*(?:min|minutes?)\s+read|read more|l[äa]s mer|repl(?:y|ies)\b|svara|\d+\s*likes?\b|gilla|upvotes?|\d+\s*(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago|posted (?:on|by)|published (?:on|by|in)|publicerad|kommentarer?|comments?\b|subscribe|prenumerera|follow (?:us|me|@)|f[öo]lj (?:oss|p[åa])|sign up|view profile)\b/i;
+    const CARD_COMMERCE_RX = /[$\u20ac\u00a3\u00a5]\s?\d|\b\d[\d  .,]*\s?(?:kr|sek|usd|eur|gbp|nok|dkk)\b|\d+\s*:\-|\b(?:add to (?:cart|bag|basket)|buy now|shop now|in stock|out of stock|sold out|free shipping|fri frakt|k[öo]p\b|l[äa]gg i|rea\b|sale\b)/i;
+    const CARD_DATE_RX = /\b\d{1,2}\s+(jan|feb|mar|apr|maj|may|jun|jul|aug|sep|okt|oct|nov|dec)\w*\b|\b20\d{2}-\d{2}-\d{2}\b/i;
+
+    function smallAvatar(card) {
+      for (const img of card.querySelectorAll('img')) {
+        const r = img.getBoundingClientRect();
+        if (r.width >= 16 && r.width <= 120 && r.height >= 16 && r.height <= 120) {
+          const ar = r.width / Math.max(1, r.height);
+          if (ar >= 0.6 && ar <= 1.6) return true;
+        }
+      }
+      return false;
+    }
+    // Article/product cards link out with their TITLE (long link, dominant
+    // share of the card's text). A testimonial card may still carry a short
+    // author-attribution link ("DHH / Co-founder and CTO at 37signals", 35
+    // chars) — so gate on a single ≥60-char link OR links covering ≥40% of the
+    // card text, not on any ≥30-char link (which killed the motivating card).
+    function linkDominated(card, totalLen) {
+      let linkLen = 0;
+      for (const a of card.querySelectorAll('a')) {
+        const t = ((a.innerText || '').trim());
+        if (t.length >= 60) return true;
+        linkLen += t.length;
+      }
+      return totalLen > 0 && linkLen / totalLen >= 0.4;
+    }
+    const isRoleLine = (l) => l.length <= 90 && ROLE_LINE_RX.test(l);
+
+    const cands = [];
+    for (const el of document.querySelectorAll('div, li, article, figure')) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 220 || r.width > 760 || r.height < 90 || r.height > 700) continue;
+      const raw = (el.innerText || '').trim();
+      if (raw.length < 60 || raw.length > 600) continue;
+      if (el.closest('a')) continue;
+      if (linkDominated(el, raw.length)) continue;
+      if (CARD_COMMERCE_RX.test(raw) || CARD_NOISE_RX.test(raw) || CARD_DATE_RX.test(raw)) continue;
+      const lines = raw.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+      if (lines.length < 2) continue;
+      const edge = lines.slice(0, 3).concat(lines.slice(-3));
+      let nameLine = null;
+      for (const l of edge) {
+        if (l.length >= 2 && l.length <= 32 && !/[.!?]$/.test(l) && NAME_LINE_RX.test(l)) { nameLine = l; break; }
+      }
+      if (!nameLine) continue;
+      const hasRole = lines.some((l) => l !== nameLine && isRoleLine(l));
+      const hasAvatar = smallAvatar(el);
+      if (!hasRole && !hasAvatar) continue;
+      const proseLen = lines.filter((l) => l !== nameLine && !isRoleLine(l)).join(' ').length;
+      if (proseLen < 50) continue;
+      cands.push({ el: el, text: raw.replace(/\s+/g, ' '), nameLine: nameLine, hasRole: hasRole, hasAvatar: hasAvatar, lines: lines });
+    }
+    // Innermost candidates only (a card and its wrapper can both size-qualify).
+    const inner = cands.filter((c) => !cands.some((o) => o !== c && c.el !== o.el && c.el.contains(o.el)));
+    // Wall requirement: >=3 members under one parent OR grandparent.
+    const groups = new Map();
+    for (const c of inner) {
+      const p1 = c.el.parentElement;
+      const p2 = p1 && p1.parentElement;
+      for (const key of [p1, p2]) {
+        if (!key) continue;
+        const arr = groups.get(key) || [];
+        arr.push(c);
+        groups.set(key, arr);
+      }
+    }
+    const accepted = new Set();
+    for (const members of groups.values()) {
+      const uniq = Array.from(new Set(members));
+      if (uniq.length < 3) continue;
+      for (const c of uniq) accepted.add(c);
+    }
+    for (const c of accepted) {
+      const roleLine = c.lines.find((l) => l !== c.nameLine && isRoleLine(l)) || null;
+      const meta = { personName: c.nameLine, hasImage: c.hasAvatar };
+      if (roleLine) {
+        const atM = roleLine.match(/\bat\s+(.+)$/i);
+        meta.company = (atM ? atM[1] : roleLine).trim().slice(0, 60);
+      }
+      logDecision('card-wall', 'accepted', 'name/role card in 3+ wall', c.el, c.text, {
+        personName: meta.personName, company: meta.company, hasImage: c.hasAvatar, hasRole: c.hasRole,
+      });
+      push('testimonial', c.text, c.el, 'card', meta);
+    }
+  })();
+
 
   // Big-number stat blocks (dl/dt/dd or stat/metric/counter containers where
   // the number and label live in separate sibling elements).
-  const STAT_KEYWORDS = /\b(customers|users|members|downloads|reviews|recensioner|kunder|anv[äa]ndare|medlemmar|nedladdningar|rekryteringar|rekryterare|f[öo]retag|projekt|jobb|tj[äa]nster|ordrar|leveranser)\b/i;
-  const NUM_RX = /^\s*\d{1,3}(?:[ ,.\u00a0]\d{3})+\+?\s*$|^\s*\d{4,}\+?\s*$/;
+  const STAT_KEYWORDS = /\b(customers|users|members|downloads|reviews|recensioner|kunder|anv[äa]ndare|medlemmar|nedladdningar|rekryteringar|rekryterare|f[öo]retag|projekt|jobb|tj[äa]nster|ordrar|leveranser|subscribers|prenumeranter)\b/i;
+  // Third branch (v1.19): compact K/M/B/T-suffix stats ("19k", "4.5M", "260B")
+  // — the plausible-style <dl> stats row writes them this way. Case-insensitive
+  // for the lowercase "19k" form.
+  const NUM_RX = /^\s*\d{1,3}(?:[ ,.\u00a0]\d{3})+\+?\s*$|^\s*\d{4,}\+?\s*$|^\s*\d+(?:[.,]\d+)?\s?[kmbt]\+?\s*$/i;
   const statSeen = new Set();
   document.querySelectorAll('dl, [class*="stat" i], [class*="metric" i], [class*="counter" i]').forEach((container) => {
     const containerText = (container.innerText || '').toLowerCase();
@@ -1354,13 +1472,27 @@ export const trustSignalsRun: () => any = () => ((() => {
       const p1 = numEl.parentElement;
       const p2 = p1 && p1.parentElement;
       const m1 = p1 && (p1.innerText || '').match(STAT_KEYWORDS);
-      const m2 = !m1 && p2 ? (p2.innerText || '').match(STAT_KEYWORDS) : null;
-      const m3 = (!m1 && !m2) ? containerText.match(STAT_KEYWORDS) : null;
+      // K/M/B-suffix stats must find their keyword CELL-LOCALLY (parent). The
+      // grandparent/container fallbacks span the whole stats row, which would
+      // stamp e.g. "subscribers" onto the sibling "260B pageviews" cell.
+      const isSuffixNum = /[kmbt]\s*\+?\s*$/i.test(numText);
+      const m2 = (!m1 && !isSuffixNum && p2) ? (p2.innerText || '').match(STAT_KEYWORDS) : null;
+      const m3 = (!m1 && !isSuffixNum && !m2) ? containerText.match(STAT_KEYWORDS) : null;
       const km = m1 || m2 || m3;
+      if (isSuffixNum && !m1) continue;
       const label = km ? km[0] : '';
+      // Suffix stats scale to their real magnitude ("19k" -> 19000, "4.5M" ->
+      // 4500000); safeInt would strip the decimal point and the suffix.
+      let cnt = safeInt(numText);
+      if (isSuffixNum) {
+        const sf = (numText.match(/([kmbt])\s*\+?\s*$/i) || [])[1];
+        const base = parseFloat(numText.replace(',', '.'));
+        const mult = sf ? { k: 1e3, m: 1e6, b: 1e9, t: 1e12 }[sf.toLowerCase()] : 1;
+        if (!isNaN(base) && mult) cnt = Math.round(base * mult);
+      }
       const display = label ? numText + ' — ' + label : numText;
       push('social_proof_count', display, numEl, 'text', {
-        reviewCount: safeInt(numText),
+        reviewCount: cnt,
       });
     }
   });
