@@ -200,11 +200,16 @@ export function deriveSegment(
 ): Segment {
   const maxScroll = Math.max(0, ...events.filter((e) => e.type === "scroll_depth").map((e) => e.value ?? 0));
   const ctaClicks = events.filter((e) => e.type === "cta_click").length;
-  const timeOnPage = Math.max(0, ...events.filter((e) => e.type === "time_on_page").map((e) => e.value ?? 0));
+  // The tracker emits time_on_page in MILLISECONDS (Date.now() - started); the
+  // thresholds here think in seconds. Normalize: anything over 1000 is ms.
+  // (v0.4 compared raw ms against 15 — new_skimmer could never fire on real
+  // tracker data and fired always on empty data.)
+  const timeRaw = Math.max(0, ...events.filter((e) => e.type === "time_on_page").map((e) => e.value ?? 0));
+  const timeSec = timeRaw > 1000 ? timeRaw / 1000 : timeRaw;
   const hasPricing = inv.sections.some((s) => s.type === "pricing");
   if (hasPricing && maxScroll >= 60 && ctaClicks === 0) return "price_hesitant";
   if (maxScroll >= 70 && ctaClicks === 0) return "engaged_no_click";
-  if (maxScroll <= 25 && timeOnPage <= 15) return "new_skimmer";
+  if (maxScroll <= 25 && timeSec <= 15) return "new_skimmer";
   return "default";
 }
 
