@@ -142,7 +142,35 @@ type PersonaRun = {
   derived: string;
   matchesExpectation: boolean;
   applied: Array<{ patternId: string; detail: string }>;
+  visualIssues: string[];
 };
+
+// Automated visual acceptance — "nothing may look off" as CODE, not eyeballs:
+// every applied bar must be full-width, sanely sized, actually VISIBLE at its
+// own midpoint (elementFromPoint — catches fixed-header cover, overlap, and
+// offscreen placement); an emphasized CTA must still be hit-testable at its
+// center (not clipped or covered after the transform).
+const VISUAL_CHECK = `(() => {
+  const issues = [];
+  for (const bar of document.querySelectorAll('[data-angel-adaptation]')) {
+    const r = bar.getBoundingClientRect();
+    if (r.height > 90) issues.push(bar.getAttribute('data-angel-adaptation') + ':bar-too-tall');
+    if (r.width < window.innerWidth * 0.9) issues.push(bar.getAttribute('data-angel-adaptation') + ':bar-not-fullwidth');
+    if (r.bottom <= 0 || r.top >= window.innerHeight) continue; // scrolled out — fine
+    const hit = document.elementFromPoint(Math.floor(window.innerWidth / 2), Math.max(1, Math.floor(r.top + r.height / 2)));
+    if (hit !== bar && !bar.contains(hit)) {
+      issues.push(bar.getAttribute('data-angel-adaptation') + ':bar-covered-by-' + (hit ? hit.tagName.toLowerCase() : 'nothing'));
+    }
+  }
+  for (const el of document.querySelectorAll('[data-angel-emphasis]')) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) { issues.push('emphasis:collapsed'); continue; }
+    if (r.bottom <= 0 || r.top >= window.innerHeight) continue;
+    const hit = document.elementFromPoint(Math.floor(r.left + r.width / 2), Math.floor(r.top + r.height / 2));
+    if (hit !== el && !el.contains(hit) && !(hit && hit.contains(el))) issues.push('emphasis:covered-by-' + (hit ? hit.tagName.toLowerCase() : 'nothing'));
+  }
+  return issues;
+})()`;
 
 type SiteReport = {
   name: string;
@@ -200,11 +228,15 @@ async function runSite(page: Page, site: { name: string; url: string }): Promise
         const applied = a.adapt(); // segment DERIVED from the fabricated data
         return { derived: a.segment, applied };
       }, persona)) as { derived: string; applied: Array<{ patternId: string; detail: string }> };
+      const visualIssues = run.applied.length
+        ? ((await page.evaluate(VISUAL_CHECK).catch(() => ["check-failed"])) as string[])
+        : [];
       rep.runs!.push({
         persona: persona.name,
         derived: run.derived,
         matchesExpectation: new RegExp(`^(${persona.expect})$`).test(run.derived),
         applied: run.applied.map((a) => ({ patternId: a.patternId, detail: (a as any).detail ?? "" })),
+        visualIssues,
       });
       const shotPersona = process.argv.includes("--set=pricing") ? "price_checker" : "reader_no_click";
       if (persona.name === shotPersona) {
@@ -261,7 +293,10 @@ async function main() {
         reports.push(r);
         if (r.ok) {
           const segs = r.runs!.map((x) => `${x.persona}→${x.derived}${x.matchesExpectation ? "" : "(!)"}`).join(" ");
-          console.log(`ok · restored=${r.restoredClean ? "clean" : "DIRTY"} · ${segs}`);
+          const vis = r.runs!.flatMap((x) => x.visualIssues ?? []);
+          console.log(
+            `ok · restored=${r.restoredClean ? "clean" : "DIRTY"} · visual=${vis.length ? "ISSUES[" + vis.slice(0, 3).join(",") + "]" : "clean"} · ${segs}`,
+          );
         } else console.log(`FAIL ${r.error}`);
       }
     } finally {

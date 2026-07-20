@@ -64,6 +64,29 @@ function pageIsDark(): boolean {
   // Relative-luminance approximation is plenty for a binary theme choice.
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.45;
 }
+// A position:FIXED top header does not participate in flow: a prepended bar
+// pushes the page down but not the header, which then paints OVER the bar —
+// the exact "something looks off" failure the product must never ship. Sticky
+// and static headers are pushed down correctly (monday, deel — verified in
+// screenshots). Detect a viewport-wide fixed bar hugging the top; when one
+// exists the bar patterns REFUSE (refusal beats weirdness).
+export function hasFixedTopHeader(): boolean {
+  const cands = new Set<Element>([
+    ...Array.from(document.querySelectorAll("header, nav, [role='banner']")),
+    ...Array.from(document.body?.children ?? []),
+  ]);
+  for (const el of cands) {
+    if (!(el instanceof HTMLElement)) continue;
+    const cs = window.getComputedStyle(el);
+    if (cs.position !== "fixed") continue;
+    const r = el.getBoundingClientRect();
+    if (r.top <= 2 && r.height >= 24 && r.height <= 200 && r.width >= window.innerWidth * 0.8) {
+      return true;
+    }
+  }
+  return false;
+}
+
 type BarKind = "trust" | "risk";
 function barPalette(kind: BarKind): { bg: string; fg: string; border: string } {
   if (pageIsDark()) {
@@ -144,6 +167,7 @@ const trustBar: Pattern = (inv, ctx) => {
     .sort((a, b) => b.score - a.score);
   const best = cands[0];
   if (!best) return null;
+  if (hasFixedTopHeader()) return null; // bar would paint under the fixed header
   const text = truncateBarText(best.text);
 
   const bar = makeBar("trust_bar", text, "trust");
@@ -176,7 +200,12 @@ const emphasizePrimaryCta: Pattern = (inv, ctx) => {
   el.style.boxShadow = "0 0 0 3px rgba(37,99,235,.55), 0 12px 30px rgba(37,99,235,.35)";
   el.style.transform = "scale(1.04)";
   el.style.transition = "transform .15s ease";
-  ctx.reverts.push(() => el.setAttribute("style", prev));
+  // Tagged so visual-acceptance checks can find the emphasized element.
+  el.setAttribute("data-angel-emphasis", "1");
+  ctx.reverts.push(() => {
+    el.setAttribute("style", prev);
+    el.removeAttribute("data-angel-emphasis");
+  });
   return {
     patternId: "emphasize_primary_cta",
     label: "Emphasise primary CTA",
@@ -222,6 +251,7 @@ const riskReducerBar: Pattern = (inv, ctx) => {
     .filter((c) => c.text.length >= 8 && c.score >= 0)
     .sort((a, b) => b.score - a.score)[0];
   if (!best) return null;
+  if (hasFixedTopHeader()) return null; // bar would paint under the fixed header
   const text = truncateBarText(best.text, 120);
   const bar = makeBar("risk_reducer_bar", text, "risk");
   document.body.insertBefore(bar, document.body.firstChild);
