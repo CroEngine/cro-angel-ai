@@ -86,6 +86,31 @@
 
   var qp = new URLSearchParams(location.search);
 
+  // ---- ägar-/admin-exkludering (revisionen 2026-07-20) ---------------------
+  // ?angel_ignore=1 sätter en PERMANENT flagga i webbläsaren: därefter är
+  // Angel helt av här — ingen decide, inga events, inget besök. Ägaren öppnar
+  // länken en gång per webbläsare. Flaggan är en opt-OUT (som GPC) och lagras
+  // därför medvetet utan consent-grind. Admin-ytor trackas aldrig alls —
+  // /admin-trafik är ägaren per definition (revisionsfynd: inloggningar och
+  // adminklick låg som vanliga besök i pilotdatan).
+  try {
+    if (qp.get("angel_ignore") === "1") localStorage.setItem("angel_ignore", "1");
+    if (localStorage.getItem("angel_ignore") === "1") return;
+  } catch (e) {
+    /* private mode: flaggan kan inte läsas — kör vidare */
+  }
+  if (/^\/admin(\/|$)/.test(location.pathname)) return;
+
+  // Demo-simulatorns overrides (?angel_source= osv) märker ALLT som skickas
+  // med simulated:true — läslagret exkluderar; inget syntetiskt smyger in som
+  // riktig besökardata (revisionsfynd: twitter/bing-källorna var 100 % demo).
+  var SIMULATED = !!(
+    qp.get("angel_source") ||
+    qp.get("angel_device") ||
+    qp.get("angel_returning") ||
+    qp.get("angel_debug")
+  );
+
   // ---- consent gate (anonymous-default) ------------------------------------
   // We never render our own banner. We read the site's EXISTING consent; until
   // we see a positive signal we run in ANONYMOUS mode: we still apply whatever
@@ -162,6 +187,21 @@
     signals.visitorHash = vid || undefined;
     signals.holdoutPct = HOLDOUT_PCT;
     signals.consent = consentBasis;
+    // isReturning-lagningen (revisionsfynd 2026-07-20: ALLA pageviews sa "ny
+    // besökare"): prevVisits lästes vid boot INNAN async-consenten gav
+    // lagringsrätt (readStore → {} → 0) och uppdaterades aldrig efter
+    // uppgraderingen. Läs om räknaren nu — FÖRE recordVisit nedan, annars
+    // räknar besöket sig självt och första besöket blir "återkommande".
+    try {
+      var upgraded = readStore();
+      signals.isReturning = qp.get("angel_returning") === "1" || (upgraded.visits || 0) > 0;
+      signals.visitCount =
+        qp.get("angel_returning") === "1"
+          ? Math.max(1, upgraded.visits || 0)
+          : upgraded.visits || 0;
+      signals.viewedPricing = signals.viewedPricing || !!upgraded.viewedPricing;
+      signals.lastPath = upgraded.lastPath || signals.lastPath;
+    } catch (e) {}
     try {
       recordVisit();
     } catch (e) {}
@@ -261,7 +301,10 @@
   // Känsliga query-parametrar (email, token, order_id …) får aldrig lämna
   // klienten. En allowlist släpper igenom bara marknadsförings-/Angel-parametrar;
   // allt annat strippas FÖRE sändning. Servern skrubbar dessutom (dubbelt skydd).
-  var URL_PARAM_ALLOW = /^(utm_|angel_|gclid$|fbclid$|msclkid$|ref$)/i;
+  // angel_-params rapporteras ALDRIG i url/path (revisionsfynd: simulator-
+  // params låg kvar i pilotens sidvägar) — de läses ur qp vid boot och ska
+  // inte synas i datan. utm/klick-id:n behålls för källattribution.
+  var URL_PARAM_ALLOW = /^(utm_|gclid$|fbclid$|msclkid$|ref$)/i;
   function safeUrl(raw) {
     try {
       var u = new URL(raw, location.href);
@@ -359,7 +402,9 @@
     }).catch(function () {});
   }
   function track(type, payload, decisionId) {
-    send([{ type: type, decisionId: decisionId, payload: payload || {}, ts: Date.now() }]);
+    payload = payload || {};
+    if (SIMULATED) payload.simulated = true;
+    send([{ type: type, decisionId: decisionId, payload: payload, ts: Date.now() }]);
   }
 
   // ---- conversions ---------------------------------------------------------
@@ -371,7 +416,13 @@
   // Public trigger: the customer calls window.AngelAdaptive.convert(value?, meta?)
   // (or configures a URL / selector). Carries visitorHash (via send) + the last
   // decisionId so the conversion can be attributed to what was shown.
+  // EN conversion per sidladdning (revisionsfynd EI-1: ett klick gav två
+  // rader när både klickmåls-lyssnaren och URL-målet träffade). Sessionens
+  // konverteringsmått är booleskt, så vakten kostar ingen sanning.
+  var convertedThisLoad = false;
   function convert(value, meta) {
+    if (convertedThisLoad) return;
+    convertedThisLoad = true;
     var payload = meta && typeof meta === "object" ? meta : {};
     if (value !== undefined) payload.value = value;
     track("conversion", payload, lastDecisionId);
