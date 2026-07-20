@@ -177,7 +177,7 @@ type SiteReport = {
   url: string;
   ok: boolean;
   error?: string;
-  inventory?: { trust: number; ctas: number; sections: number; hasPricing: boolean };
+  inventory?: { trust: number; ctas: number; sections: number; hasPricing: boolean; testimonialsIndex?: number; reorderEligible?: boolean };
   runs?: PersonaRun[];
   restoredClean?: boolean;
 };
@@ -205,14 +205,20 @@ async function runSite(page: Page, site: { name: string; url: string }): Promise
     }
     const inv = await page.evaluate(() => {
       const a = (window as any).__angelAdaptive;
-      return a?.inventory
-        ? {
-            trust: a.inventory.trust.total,
-            ctas: a.inventory.ctas.length,
-            sections: a.inventory.sections.length,
-            hasPricing: a.inventory.sections.some((s: any) => s.type === "pricing"),
-          }
-        : null;
+      if (!a?.inventory) return null;
+      const secs = a.inventory.sections as Array<{ type: string }>;
+      const ti = secs.findIndex((s) => s.type === "testimonials");
+      const hi = secs.findIndex((s) => s.type === "hero");
+      return {
+        trust: a.inventory.trust.total,
+        ctas: a.inventory.ctas.length,
+        sections: secs.length,
+        hasPricing: secs.some((s) => s.type === "pricing"),
+        // Reorder eligibility: a testimonials section sitting late enough that
+        // reorder_proof_first would ATTEMPT the move (ti > anchor+2).
+        testimonialsIndex: ti,
+        reorderEligible: ti > (hi >= 0 ? hi : 0) + 2,
+      };
     });
     if (!inv) throw new Error("snippet produced no inventory");
     rep.inventory = inv;
@@ -240,13 +246,23 @@ async function runSite(page: Page, site: { name: string; url: string }): Promise
       });
       const shotPersona = process.argv.includes("--set=pricing") ? "price_checker" : "reader_no_click";
       if (persona.name === shotPersona) {
-        await page.screenshot({ path: `${OUT_DIR}/asweep-${site.name}-after.jpg`, type: "jpeg", quality: 55 });
+        // Full-page when a reorder applied — the proof that the moved section
+        // "fell into place" lives below the fold.
+        const reordered = run.applied.some((a) => a.patternId === "reorder_proof_first");
+        await page.screenshot({
+          path: `${OUT_DIR}/asweep-${site.name}-after.jpg`,
+          type: "jpeg",
+          quality: reordered ? 45 : 55,
+          fullPage: reordered,
+        });
       }
       await page.evaluate(() => (window as any).__angelAdaptive.revert());
       await sleep(120);
     }
     rep.restoredClean = await page.evaluate(
-      () => document.querySelectorAll("[data-angel-adaptation]").length === 0,
+      () =>
+        document.querySelectorAll("[data-angel-adaptation], [data-angel-reorder], [data-angel-emphasis]")
+          .length === 0,
     );
     rep.ok = true;
   } catch (err) {

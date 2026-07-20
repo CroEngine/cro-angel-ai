@@ -278,11 +278,104 @@ const pricingSpotlight: Pattern = (inv, ctx) => {
   };
 };
 
+// ── v0.6: visual REORDERING without touching the DOM ────────────────────────
+// "Flytta runt" done safely: CSS `order` changes what the visitor SEES while
+// the DOM (and the site's framework) never changes. On flex/grid parents the
+// property just works; block-stacked parents are promoted to flex-column,
+// which CAN shift spacing (margin collapsing differs) — so the pattern
+// SELF-CHECKS: it snapshots every sibling's rect, applies, re-measures, and
+// ROLLS ITSELF BACK unless everything landed within tight tolerances (same
+// width/left, same height, no overlaps, total page height within 3%). A
+// reorder that can't be proven invisible-but-for-the-order does not ship —
+// the pattern refuses instead. The move itself: bring the social-proof
+// (testimonials) section up to sit right after the hero — the classic
+// "skeptical reader needs proof early" play.
+const reorderProofFirst: Pattern = (inv, ctx) => {
+  const secs = inv.sections;
+  const ti = secs.findIndex((s) => s.type === "testimonials" && s.selector);
+  if (ti < 0) return null;
+  const heroI = secs.findIndex((s) => s.type === "hero" && s.selector);
+  const anchorI = heroI >= 0 ? heroI : 0;
+  if (ti <= anchorI + 2) return null; // proof already sits early — nothing to gain
+  const testiEl = q(secs[ti].selector);
+  const anchorEl = q(secs[anchorI].selector);
+  if (!testiEl || !anchorEl) return null;
+  const parent = testiEl.parentElement;
+  if (!parent || anchorEl.parentElement !== parent) return null; // must be siblings
+  const kids = Array.from(parent.children).filter((c): c is HTMLElement => c instanceof HTMLElement);
+  if (kids.length < 3 || kids.length > 40) return null;
+
+  const before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
+  const docH = document.documentElement.scrollHeight;
+  const parentPrev = parent.getAttribute("style") ?? "";
+  const kidPrev = new Map(kids.map((k) => [k, k.getAttribute("style") ?? ""]));
+  const undo = () => {
+    parent.setAttribute("style", parentPrev);
+    parent.removeAttribute("data-angel-reorder");
+    for (const k of kids) k.setAttribute("style", kidPrev.get(k) ?? "");
+  };
+
+  try {
+    const cs = window.getComputedStyle(parent);
+    const isFlexCol =
+      cs.display.indexOf("flex") !== -1 &&
+      (cs.flexDirection === "column" || cs.flexDirection === "column-reverse");
+    const isGrid = cs.display.indexOf("grid") !== -1;
+    if (!isFlexCol && !isGrid) {
+      // Block-stacked: promote to flex-column so `order` takes effect. Any
+      // margin-collapse spacing drift is caught by the self-check below.
+      parent.style.display = "flex";
+      parent.style.flexDirection = "column";
+    }
+    kids.forEach((k, i) => {
+      k.style.order = String(i * 2);
+    });
+    testiEl.style.order = String(kids.indexOf(anchorEl) * 2 + 1);
+    parent.setAttribute("data-angel-reorder", "1");
+
+    // SELF-CHECK — every sibling must land where flow says it should, changed
+    // only in vertical order. Tolerances: width/left ±2px, own height ±12px,
+    // no vertical overlap beyond 8px, document height within max(48px, 3%).
+    let bad = false;
+    const after = kids.map((k) => ({ k, r: k.getBoundingClientRect() }));
+    for (const { k, r } of after) {
+      const b = before.get(k)!;
+      if (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2) { bad = true; break; }
+      if (Math.abs(r.height - b.height) > 12) { bad = true; break; }
+    }
+    if (!bad) {
+      const dh = Math.abs(document.documentElement.scrollHeight - docH);
+      if (dh > Math.max(48, docH * 0.03)) bad = true;
+    }
+    if (!bad) {
+      const vis = after.filter((x) => x.r.height > 1).sort((a, b) => a.r.top - b.r.top);
+      for (let i = 1; i < vis.length; i++) {
+        if (vis[i].r.top < vis[i - 1].r.bottom - 8) { bad = true; break; }
+      }
+    }
+    if (bad) {
+      undo();
+      return null; // provably-clean reorder not possible here — refuse
+    }
+  } catch {
+    undo();
+    return null;
+  }
+
+  ctx.reverts.push(undo);
+  return {
+    patternId: "reorder_proof_first",
+    label: "Move social proof up",
+    detail: `"${(secs[ti].heading || "testimonials").slice(0, 40)}" → after ${secs[anchorI].type}`,
+  };
+};
+
 const ALL_PATTERNS: Record<string, Pattern> = {
   trust_bar: trustBar,
   emphasize_primary_cta: emphasizePrimaryCta,
   risk_reducer_bar: riskReducerBar,
   pricing_spotlight: pricingSpotlight,
+  reorder_proof_first: reorderProofFirst,
 };
 
 // ── The decision layer (v3): which visitor sees which patterns ──────────────
@@ -296,8 +389,9 @@ export const SEGMENT_PATTERNS: Record<Segment, string[]> = {
   // First-time visitor bouncing along the surface: earn trust immediately.
   new_skimmer: ["trust_bar"],
   // Read deep, clicked nothing: the offer is interesting but the action isn't
-  // landing — emphasise it and back it with proof.
-  engaged_no_click: ["emphasize_primary_cta", "trust_bar"],
+  // landing — bring the proof up (v0.6 reorder), emphasise the action, and
+  // back it with the trust bar.
+  engaged_no_click: ["reorder_proof_first", "emphasize_primary_cta", "trust_bar"],
   // Interested in price but hesitant: answer the risk objection with the
   // page's own guarantee copy and light the pricing section up.
   price_hesitant: ["risk_reducer_bar", "pricing_spotlight"],
