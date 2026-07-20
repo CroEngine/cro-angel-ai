@@ -888,6 +888,11 @@ export interface SegmentWindow {
  *  brus och märks som sådant. */
 export const SEGMENT_MIN_VISITS = 1000;
 export const SEGMENT_MIN_CONVERSIONS = 100;
+/** Engagemangsmålet (ägarbeslut 2026-07-20): när sajtens test_metric är
+ *  'continuation' ("gick vidare till en andra sida") bär en cell analysen
+ *  redan vid denna volym — utfallet finns i varje session, till skillnad från
+ *  konverteringar som är sällsynta på pilotskala. Inget konverteringskrav. */
+export const SEGMENT_MIN_VISITS_ENGAGEMENT = 100;
 /** Dölj enstaka-besök-brus i kortet (ett segment med 2 besök säger inget). */
 export const SEGMENT_MIN_DISPLAY = 5;
 /** Håll segmentlistan bounded i UI:t. */

@@ -96,6 +96,7 @@ export type Database = {
           layout_patterns_enabled: boolean
           adaptations_enabled: boolean
           serving_enabled: boolean
+          test_metric: string
           ramp_pct: number
           goal_candidates: Json | null
           day0_report_url: string | null
@@ -123,6 +124,7 @@ export type Database = {
           layout_patterns_enabled?: boolean
           adaptations_enabled?: boolean
           serving_enabled?: boolean
+          test_metric?: string
           ramp_pct?: number
           goal_candidates?: Json | null
           day0_report_url?: string | null
@@ -150,6 +152,7 @@ export type Database = {
           layout_patterns_enabled?: boolean
           adaptations_enabled?: boolean
           serving_enabled?: boolean
+          test_metric?: string
           ramp_pct?: number
           goal_candidates?: Json | null
           day0_report_url?: string | null
@@ -321,6 +324,7 @@ export type Database = {
           arm: string
           visits: number
           conversions: number
+          continuations: number
         }[]
       }
       angel_page_segment_rollup: {

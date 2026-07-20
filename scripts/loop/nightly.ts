@@ -61,7 +61,9 @@ mkdirSync(outRoot, { recursive: true });
 const onlySite = arg("site");
 const { data: sites, error: sitesErr } = await db
   .from("angel_sites")
-  .select("slug,domain,conversion_text,conversion_kind,conversion_selector,adaptations_enabled")
+  .select(
+    "slug,domain,conversion_text,conversion_kind,conversion_selector,adaptations_enabled,test_metric",
+  )
   .eq("adaptations_enabled", true)
   .not("slug", "like", "sandbox--%");
 if (sitesErr) {
@@ -438,6 +440,7 @@ for (const site of targets) {
         `--site-config=${join(dir, "site.json")}`,
         `--out=${dir}`,
         `--cap=${CAP}`,
+        `--metric=${site.test_metric === "continuation" ? "continuation" : "conversion"}`,
       ])
     ) {
       console.warn(`[loop] ${site.slug}: detect föll — hoppar över`);

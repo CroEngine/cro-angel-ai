@@ -60,6 +60,11 @@ export interface WinnerEvaluation {
 // May be tuned per customer later; these are the defaults.
 export const WINNER_MIN_VISITS = 1000;
 export const WINNER_MIN_CONVERSIONS = 50;
+/** Engagemangsmålet (test_metric='continuation', ägarbeslut 2026-07-20):
+ *  utfallet finns i varje session, så armarna bär statistiken långt tidigare
+ *  — men samma z-krav, lyftkrav och sekundärvakter gäller oförändrat. */
+export const ENGAGEMENT_MIN_VISITS = 200;
+export const ENGAGEMENT_MIN_SUCCESSES = 20;
 export const WINNER_Z = 1.96; // ≥95% confidence — same bar attribution uses
 export const WINNER_MIN_REL_LIFT = 0.05;
 /** A secondary guard metric counts as degraded when it worsens by more than this
@@ -87,6 +92,12 @@ export function evaluateWinner(
   variant: VariantArm,
   control: VariantArm,
   secondaries: SecondaryMetric[] = [],
+  // Volymtrösklar per mätmål — continuation-läget skickar ENGAGEMENT_-paren.
+  // Betydelsen av `conversions` i armarna är då "fortsatte till andra sidan".
+  thresholds: { minVisits: number; minSuccesses: number } = {
+    minVisits: WINNER_MIN_VISITS,
+    minSuccesses: WINNER_MIN_CONVERSIONS,
+  },
 ): WinnerEvaluation {
   const vRate = rate(variant);
   const cRate = rate(control);
@@ -111,10 +122,10 @@ export function evaluateWinner(
   // Owner's volume gates for a WINNER call.
   const lacking: string[] = [];
   for (const [label, arm] of [["variant", variant], ["control", control]] as const) {
-    if (arm.visits < WINNER_MIN_VISITS)
-      lacking.push(`${label} has ${arm.visits}/${WINNER_MIN_VISITS} qualified visits`);
-    if (arm.conversions < WINNER_MIN_CONVERSIONS)
-      lacking.push(`${label} has ${arm.conversions}/${WINNER_MIN_CONVERSIONS} conversions`);
+    if (arm.visits < thresholds.minVisits)
+      lacking.push(`${label} has ${arm.visits}/${thresholds.minVisits} qualified visits`);
+    if (arm.conversions < thresholds.minSuccesses)
+      lacking.push(`${label} has ${arm.conversions}/${thresholds.minSuccesses} successes`);
   }
   if (lacking.length > 0) {
     return { outcome: "insufficient_data", reasons: lacking, stats };

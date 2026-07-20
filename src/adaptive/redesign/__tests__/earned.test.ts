@@ -161,3 +161,35 @@ describe("findEarnedCells — sida × segment", () => {
     expect(findEarnedCells(leaves, [])).toEqual([]);
   });
 });
+
+describe("continuation-läget (test_metric, ägarbeslut 2026-07-20)", () => {
+  // Pilotens form: en stark cell långt under konverteringsgrinden.
+  const PILOT: PageSegmentLeaf[] = [
+    { ...leaf("google", "mobile", "SE", false, 118, 0), path: "/" },
+    { ...leaf("google", "desktop", "SE", false, 13, 0), path: "/" },
+    { ...leaf("instagram", "mobile", "SE", false, 9, 0), path: "/" },
+  ];
+
+  it("konverteringsläget säger ärligt nej på pilotvolym", () => {
+    expect(findEarnedCells(PILOT, [], 5, "conversion")).toEqual([]);
+  });
+
+  it("continuation-läget kvalar cellen på besöksvolym utan konverteringskrav", () => {
+    const got = findEarnedCells(PILOT, [], 5, "continuation");
+    expect(got.length).toBeGreaterThan(0);
+    expect(got[0].path).toBe("/");
+    // Grövsta adekvata nyckeln som täcker de otäckta löven vinner (som vanligt).
+    expect(got[0].key).toBe("google");
+    expect(got[0].total.visits).toBeGreaterThanOrEqual(100);
+  });
+
+  it("engagemangströskeln gäller fortfarande — 99 besök kvalar inte", () => {
+    const thin: PageSegmentLeaf[] = [{ ...leaf("google", "mobile", "SE", false, 99, 0), path: "/" }];
+    expect(findEarnedCells(thin, [], 5, "continuation")).toEqual([]);
+  });
+
+  it("befintlig variant blockerar som vanligt även i continuation-läget", () => {
+    const got = findEarnedCells(PILOT, [{ path: "/", segmentKey: "google" }], 5, "continuation");
+    expect(got.map((c) => c.key)).not.toContain("google");
+  });
+});

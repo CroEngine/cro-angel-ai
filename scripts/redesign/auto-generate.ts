@@ -48,7 +48,11 @@ import { chromium, type Page } from "playwright-core";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { findEarnedCells, type PageSegmentLeaf } from "../../src/adaptive/redesign/earned";
+import {
+  findEarnedCells,
+  type PageSegmentLeaf,
+  type TestMetric,
+} from "../../src/adaptive/redesign/earned";
 import { isSegmentPrefix, returningToken, segToken, segmentKeyOf } from "../../src/lib/segment-key";
 import {
   extractContentModel,
@@ -196,8 +200,11 @@ if (mode === "detect") {
     segmentKey: string;
   }[];
   const cap = Number(arg("cap") ?? 5);
+  // Sajtens mätmål (ägarbeslut 2026-07-20): continuation-läget sänker
+  // volymgrinden till engagemangströskeln — utfallet finns i varje session.
+  const metric: TestMetric = arg("metric") === "continuation" ? "continuation" : "conversion";
 
-  const cells = findEarnedCells(leaves, existing, cap);
+  const cells = findEarnedCells(leaves, existing, cap, metric);
   const siteVisits = leaves.reduce((s, l) => s + l.visits, 0);
   const siteConv = leaves.reduce((s, l) => s + l.conversions, 0);
   const siteRate = siteVisits > 0 ? siteConv / siteVisits : 0;
