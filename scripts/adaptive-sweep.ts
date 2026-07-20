@@ -82,7 +82,7 @@ function arg(name: string): string | undefined {
 async function dismissConsent(page: Page) {
   await page
     .evaluate(() => {
-      const RX = /^(accept( all)?( cookies)?|allow all|godk[äa]nn( alla)?( cookies)?|acceptera( alla)?|accept all cookies|jag f[öo]rst[åa]r|ok(ay)?|got it)$/i;
+      const RX = /^(accept( all)?( cookies)?|allow all( cookies)?|godk[äa]nn( alla)?( cookies)?|acceptera( alla)?( cookies)?|jag f[öo]rst[åa]r|ok(ay)?|got it)$/i;
       const els = Array.from(document.querySelectorAll("button, [role=button], a"));
       for (const el of els) {
         const t = ((el as HTMLElement).innerText || "").trim();
@@ -122,10 +122,22 @@ async function runSite(page: Page, site: { name: string; url: string }): Promise
   try {
     await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 60_000 });
     await sleep(1500);
+    // Dismiss consent BEFORE injecting: some CMPs reload the page on accept
+    // (oneflow), which would wipe an already-injected snippet mid-run.
+    await dismissConsent(page);
+    await sleep(800);
     await page.evaluate(BUNDLE);
     await page
-      .waitForFunction(() => (window as any).__angelAdaptive?.inventory != null, undefined, { timeout: 20_000 })
+      .waitForFunction(() => (window as any).__angelAdaptive?.inventory != null, undefined, { timeout: 30_000 })
       .catch(() => {});
+    // If a late consent-reload still nuked the global, inject once more.
+    const alive = await page.evaluate(() => !!(window as any).__angelAdaptive).catch(() => false);
+    if (!alive) {
+      await page.evaluate(BUNDLE);
+      await page
+        .waitForFunction(() => (window as any).__angelAdaptive?.inventory != null, undefined, { timeout: 20_000 })
+        .catch(() => {});
+    }
     const inv = await page.evaluate(() => {
       const a = (window as any).__angelAdaptive;
       return a?.inventory
