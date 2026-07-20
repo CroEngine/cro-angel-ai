@@ -133,3 +133,44 @@ DOM nodes and broke real grids (HubSpot), so v2 restricted primitives to
 style-in-place + one isolated top bar. If reordering returns it will be as
 CSS `order` swaps *inside flex/grid parents only* (no DOM moves), gated by
 the same visual acceptance checks — roadmap, not shipped.
+
+---
+
+# Addendum (night 3): the reorder primitive across all 101 sites
+
+**v0.6 → v0.6.1** (`reorder_proof_first`): the testimonials section is moved
+to sit right after the hero for the engaged_no_click segment — CSS `order`
+only, never DOM moves. Block parents are promoted to flex-column; v0.6.1
+generalized targeting to the nearest COMMON ANCESTOR (sections usually sit in
+per-section wrappers). The pattern self-checks every sibling rect after
+applying and ROLLS ITSELF BACK on any deviation (width/left ±2px, height
+±12px, no overlaps, page height ±3%); every refusal reports a named reason.
+
+## Numbers (95/101 sites ran; 0 dirty restores anywhere)
+
+| | count |
+|---|---|
+| reorder-eligible (testimonials detected, sitting late) | 42 |
+| **applied, provably clean** | **13** (monday, asana, zapier, deel, fortnox 🇸🇪, funnel 🇸🇪, sanity, amplitude, semrush, surferseo, mercury, framer, calcom) |
+| refused: wrapper carries other sections (structurally impossible without DOM surgery) | 10 |
+| refused: sections share one wrapper child | 9 |
+| refused: self-check caught visual deviation → auto-rollback | 8 |
+| selector miss | 1 |
+
+31% of eligible sites reorder cleanly; the rest REFUSE with named reasons —
+the two wrapper classes (19) are the honest boundary of what CSS `order` can
+do safely; crossing it means framework-aware DOM moves (future work, E4+).
+
+## Gallery (user-facing proof)
+
+`scripts/showcase-reorder.ts` produced identical-condition full-page
+BEFORE/AFTER pairs — consent dismissed/hidden (photo rig only), lazy sections
+scroll-rendered: zapier (Superhuman quote + 42%/87% stats now directly after
+hero), funnel 🇸🇪, framer, semrush, surferseo, mercury. Screenshot-verified:
+same design, no banner, only the order differs.
+
+Honest note: 7 of the sweep's 13 applied sites refused in the showcase pass —
+post-scroll animation state (translateY transitions) makes the self-check
+extra conservative right after scrolling. Correct behavior (refusal beats
+risk), logged as a calibration item: settle-wait before adapt in post-scroll
+contexts.
