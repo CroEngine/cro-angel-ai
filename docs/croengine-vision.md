@@ -87,6 +87,15 @@ Blinkande element · pulserande knappar · automatiska hover-effekter ·
 färgexplosioner · stora overlays · popups utan tydlig anledning · element som
 hoppar. Kortsiktiga trick som urholkar varumärkesförtroendet.
 
+**Legacy-livevägen pensionerad (2026-07-20).** Gamla regelmotorns förmåga att
+servera mönster-adaptationer live ur decide-routen är borttagen — den bröt mot
+observe-first (synliga ändringar utan ägargodkännande) och delade flagga med
+variant-serveringen så att godkända varianter inte kunde serveras utan att
+också väcka regelmotorn. Det enda synliga Angel kan göra live är en ägargodkänd
+variant bakom `serving_enabled`. `adaptations_enabled` betyder numera enbart
+"generativa lagret på" (nattloopens sajturval). Motorn + mönsterkatalogen
+lever kvar som kvalitetsharness (robustness/preflight/day-0).
+
 **Målknappen är orörbar (ägarregel 2026-07-20).** Angel flyttar aldrig sajtens
 egen målknapp ("Skapa konto" o.dyl.), stylar aldrig om den och duplicerar den
 aldrig som flytande genväg. Bakgrund: gamla adaptationsmotorn injicerade en

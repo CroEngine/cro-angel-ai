@@ -1,21 +1,28 @@
 // POST /api/adaptive/decide
 //
 // The snippet posts the visitor's client signals; we enrich them with
-// header-derived server signals, load the site's content inventory, run the
-// decision engine, log the decision (best-effort), and return the adaptations
-// for the browser to apply. CORS-open: customers call this from their own
+// header-derived server signals and answer with EXACTLY ONE of two things:
+// an owner-approved variant (Fas 4-serveringen, bakom ägarens grindar) or an
+// observe-only empty response. CORS-open: customers call this from their own
 // origin via the snippet.
+//
+// Legacy-livevägen PENSIONERAD (2026-07-20): den gamla regelmotorn serverade
+// synliga mönster-adaptationer direkt ur decide() utan ägargodkännande —
+// det bröt mot observe-first ("inga synliga ändringar förrän en testad
+// variant finns") och krockade med variant-flödet: bägge låg bakom samma
+// adaptations_enabled-flagga, så en godkänd variant kunde inte serveras utan
+// att också väcka regelmotorn (sticky-pill-fyndet). Den rena decide()-motorn
+// + mönsterkatalogen lever kvar som kvalitetsharness (robustness/preflight/
+// day-0) — bara LIVE-vägen är borta. adaptations_enabled betyder numera
+// enbart "generativa lagret på" (nattloopens sajturval).
 
 import { createFileRoute } from "@tanstack/react-router";
 
 import { buildVisitorContext, readServerSignals } from "@/adaptive/context";
-import { decide, decisionIdFor } from "@/adaptive/decide";
-import { resolveInventory } from "@/adaptive/inventory.server";
-import { loadPatternBoosts } from "@/adaptive/performance.server";
+import { decisionIdFor } from "@/adaptive/decide";
 import { isBotUserAgent } from "@/adaptive/bot";
 import { originVerdict } from "@/adaptive/domain";
 import { servingAllowedForBilling } from "@/lib/billing/billing";
-import { fnv1a32 } from "@/adaptive/hash";
 import { serveDecision } from "@/adaptive/redesign/serve";
 import {
   isSandboxSlug,
@@ -60,8 +67,9 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         }
 
         // One site-config read serves three needs: the write-key check, the
-        // owner's declared conversion goal (drives emphasize_goal), and keeps
-        // decide at a single angel_sites read per request.
+        // owner's declared conversion goal (driver decisionIdFor + badge-
+        // matchning i harnesserna), and keeps decide at a single
+        // angel_sites read per request.
         const cfg = await loadSiteConfig(client.site);
         // Keyed sites must present the matching write key; a wrong/absent key
         // means this isn't the legit install, so we neither decide nor log a
@@ -134,25 +142,7 @@ export const Route = createFileRoute("/api/adaptive/decide")({
           }
         }
 
-        // Observe-first (croengine-vision.md): Angel är OSYNLIGT som standard
-        // (adaptations_enabled=false). Då kör vi ingen decide-pipeline och
-        // loggar INGEN exponering — bara den anonyma resan/strukturen/
-        // prestandan flödar vidare via /api/adaptive/events. decisionId hålls
-        // deterministiskt så journey-events grupperas stabilt per besökare +
-        // kontext; apply-listan är tom, så snippeten ändrar ingenting synligt.
-        // All nivå 1-2-3-logik nedan bevaras bakom flaggan — substrat för den
-        // generativa fasen.
-        if (!cfg.adaptationsEnabled) {
-          return json({
-            decisionId: decisionIdFor(client.site, context, goal),
-            site: client.site,
-            adaptations: [],
-            holdout: false,
-            context,
-          });
-        }
-
-        // Resolve inventory for the specific page being adapted (per-page).
+        // Sidan besökaren står på (per-page variantnycklar).
         let path = "/";
         try {
           path = new URL(client.url).pathname || "/";
@@ -161,8 +151,9 @@ export const Route = createFileRoute("/api/adaptive/decide")({
         }
 
         // ── Fas 4 steg 3: per-segment variant-servering ─────────────────────
-        // Bakom TVÅ uttryckliga grindar (adaptations_enabled passerades ovan,
-        // serving_enabled är masterswitchen ägaren slår på i dashboarden).
+        // Det ENDA synliga Angel kan göra live, bakom ägarens uttryckliga
+        // grindar (serving_enabled är masterswitchen i dashboarden, varje
+        // variant är dessutom individuellt godkänd av ägaren).
         // serveDecision (ren, testad) gör hela armvalet: finaste matchande
         // serving/winner-variant, deterministisk ramp-bucket (start 5 %).
         // Variant-armen får variantens verifierade serve-ops; kontrollarmen
@@ -226,76 +217,18 @@ export const Route = createFileRoute("/api/adaptive/decide")({
           }
         }
 
-        const inventory = await resolveInventory(client.site, path);
-        // Feed measured lift back in (increment 2): prefer proven winners,
-        // suppress proven losers — per SEGMENT where the segment has its own
-        // adequately-powered verdict (D4). Best-effort + cached; {} = defaults.
-        const boosts = await loadPatternBoosts(client.site, context.trafficSource);
-        const decision = decide(
-          client.site,
+        // Observe-only (croengine-vision.md): ingen servbar variant för den
+        // här besökaren ⇒ Angel är osynligt. Ingen exponering loggas — bara
+        // den anonyma resan/strukturen/prestandan flödar via /api/adaptive/
+        // events. decisionId hålls deterministiskt så journey-events grupperas
+        // stabilt per besökare + kontext.
+        return json({
+          decisionId: decisionIdFor(client.site, context, goal),
+          site: client.site,
+          adaptations: [],
+          holdout: false,
           context,
-          inventory,
-          boosts,
-          goal,
-          // v1: nivå 3 (layout) är av tills sajten uttryckligen aktiverat den
-          // (pre-flight + ägargodkännande föregår opt-in:en).
-          { allowLayoutPatterns: cfg.layoutPatternsEnabled },
-        );
-
-        // Measurement holdout: deterministically bucket this visitor 0..99 from
-        // its id; below holdoutPct → control (snippet withholds the adaptations
-        // so their lift can be measured). Off (0) unless the site opts in.
-        // Prioritet: (1) EXPLICIT tag-override (data-holdout, holdoutOverride
-        // markerar den — inkl. "0" som per-install-avstängning, dokumenterat
-        // kontrakt), (2) dashboard-värdet, (3) klientens default. Utan
-        // markören kunde en config-timeout i snippetet skicka 0 och bucketa
-        // om besökare mitt i mätningen — dashboard-värdet är auktoritativt
-        // för alla installationer som inte uttryckligen överridit.
-        const clientPct =
-          typeof client.holdoutPct === "number"
-            ? Math.max(0, Math.min(100, client.holdoutPct))
-            : null;
-        const holdoutPct =
-          client.holdoutOverride === true && clientPct !== null
-            ? clientPct
-            : cfg.holdoutPct > 0
-              ? cfg.holdoutPct
-              : (clientPct ?? 0);
-        const vh = typeof client.visitorHash === "string" ? client.visitorHash : "";
-        let holdout = false;
-        if (holdoutPct > 0 && vh) {
-          // Osaltad hash — rampBucket saltar med variant-id just för att
-          // vara okorrelerad med denna hink (se serve.ts).
-          holdout = fnv1a32(vh) % 100 < holdoutPct;
-        }
-        decision.holdout = holdout;
-
-        // Best-effort log; never blocks or fails the decision.
-        await logDecision(
-          decision.site,
-          decision.decisionId,
-          context,
-          decision.adaptations.map((a) => a.pattern),
-          {
-            referrer: client.referrer || server.referrer,
-            userAgent: server.userAgent,
-            visitorHash: vh || null,
-            withheld: holdout,
-            consent: typeof client.consent === "string" ? client.consent : null,
-            // The concrete changes, so the dashboard can show exactly what this
-            // visitor saw (or what the control arm was denied).
-            changes: decision.adaptations.map((a) => ({
-              pattern: a.pattern,
-              op: a.op,
-              target: a.target,
-              anchorText: a.anchorText,
-              value: a.value,
-              reason: a.reason,
-            })),
-          },
-        );
-
-        return json(decision);
+        });
       },
     },
   },
