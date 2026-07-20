@@ -231,7 +231,11 @@ const HERO_CTA_CONVERSION =
 // in the hero region: hubspot's lone cta_primary was "Learn more about Revenue
 // Hub" while the real "Get a demo" sat in cta_secondary; gymshark's was "search"
 // (utility); patagonia's were "Women's"/"Men's" category tabs scored conversion.
-const HERO_CTA_WEAK = /^(learn|read|see|view|explore|discover|find out)\b|\b(learn|read) more\b/i;
+// "^more options?$" (v1.20g): moz.com's custom privacy bar isn't stamped by any
+// vendor selector and its "More Options" button won the pick — a standalone
+// "More Options" is never a real hero action, banner or not.
+const HERO_CTA_WEAK =
+  /^(learn|read|see|view|explore|discover|find out)\b|\b(learn|read) more\b|^more options?$|^options$/i;
 // v1.20: also match bare accept/reject-all phrasing (Piwik PRO's buttons say
 // "Accept all" / "Reject all" — no "cookie"/"consent" word, so fortnox's
 // consent overlay button won deriveHero) + the Swedish CMP vocabulary.

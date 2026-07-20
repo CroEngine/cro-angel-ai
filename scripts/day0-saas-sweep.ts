@@ -341,8 +341,11 @@ async function main() {
     console.log(`     sections: ${(r.sectionOrder ?? []).join(" › ")}`);
   }
 
+  // Named-run filenames carry the set size + first name so two different
+  // named runs can never clobber each other (a retry once overwrote the main
+  // validation re-run's JSON — silent data loss in the merge).
   const outPath = names
-    ? `${OUT_DIR}/day0-sweep-rerun-v${EXTRACTOR_VERSION}.json`
+    ? `${OUT_DIR}/day0-sweep-rerun-${names.length}x-${targets[0]?.name ?? "none"}-v${EXTRACTOR_VERSION}.json`
     : from === 0 && to === SITES.length
       ? `${OUT_DIR}/day0-sweep.json`
       : `${OUT_DIR}/day0-sweep-${from}-${to}.json`;
