@@ -1,8 +1,10 @@
-# Phase 0 findings — shadow measurement on glutenforum.se
+# Phase 0 findings — shadow measurement on glutenforum.se (+ Phase 0b SaaS rerun)
 
 **Date:** 2026-07-20
-**Verdict: gate FAILED on both criteria → do NOT proceed with the migration on this evidence.**
-**Reproduce:** `scripts/phase0-glutenforum.ts` (see its header for the Node/Browserbase run).
+**Verdict (glutenforum): gate FAILED on both criteria → do NOT migrate on this evidence.**
+**Verdict (Phase 0b, plausible.io): PARTIAL — the CTA-precision edge is real on SaaS;
+trust recall missed a textbook testimonial wall.** See [Phase 0b](#phase-0b--saas-rerun-on-plausibleio) below.
+**Reproduce:** `scripts/phase0-glutenforum.ts` / `scripts/phase0-saas.ts` (see headers for the Node/Browserbase run).
 
 ## What ran
 
@@ -71,7 +73,7 @@ This repo's whole edge is CTA/trust *precision*, which is largely **orthogonal t
 the metric that matters for this customer**. Even a flawless CTA detector would do
 little for glutenforum's bounce rate.
 
-## Recommendation
+## Recommendation (superseded by Phase 0b below — kept for the record)
 
 **Stop.** The decision gate exists to prevent sunk cost, and it says no: the
 detection edge that justified the migration is not present on the actual live
@@ -88,3 +90,62 @@ If the idea is still worth exploring later, do it in this order, cheapest first:
    captures most of the observable quality gap.
 3. For glutenforum specifically, invest in **engagement/bounce** signals, not CTA
    precision — that's where its `continuation` goal actually moves.
+
+---
+
+# Phase 0b — SaaS rerun on plausible.io
+
+Step 1 of the recommendation, executed same day. plausible.io is the live
+product's own "Plausible Lab" site, so the live LLM baseline exists
+(`angel_sites.goal_candidates`, 2026-07-20): rank 1 **"Start free trial"**,
+rank 2 "View live demo", rank 3 "Contact us". Engine run: 3 live pages
+(`/`, `/vs-google-analytics`, `/register`) via Browserbase, read-only, with
+full-page screenshots as ground truth (`scripts/phase0-saas.ts`).
+
+## CTA / hero — PASS, convincingly
+
+| page | engine hero headline | engine `deriveHero` pick | junk in `cta_primary` |
+|---|---|---|---|
+| `/` | "Easy to use and privacy-friendly Google Analytics alternative" (clean parse) | **"Start free trial"** = live LLM rank 1 | **none** (9 primaries, all genuine: trial/demo/contact) |
+| `/vs-google-analytics` | clean | "Start free trial" | none |
+| `/register` | "Start your 30-day free trial" | "Start my free trial" (the form submit — correct) | none |
+
+On its home turf the engine matches the live LLM's top goal **deterministically
+and per-page** (no LLM call, no cost), with zero cookie/nav/social junk in the
+primary set — the exact failure class the live system shows on glutenforum. The
+CTA-precision edge is **real for SaaS-type pages**.
+
+## Trust — FAIL on recall, and the evidence trail says why
+
+The homepage visibly carries (verified in the full-page screenshot):
+a **"People ❤️ Plausible" section with six testimonial cards** (DHH/37signals,
+Clem Delangue/Hugging Face, John O'Nolan/Ghost, Cyrus Shepard, Rob Hope, Laura
+Roeder) and a **stats row: 19k paying subscribers · 260B pageviews · 99.99%
+uptime**.
+
+The engine found **1** trust signal (`certification` — the "Made and hosted in
+the EU" badge). The trust-debug trail shows the testimonial cards **never became
+candidates at all** (only two prose paragraphs reached the text-pattern stage;
+both correctly rejected). Root cause: plausible's testimonials are **quote-less
+avatar cards** (no quotation marks / blockquote), a markup shape the detector
+doesn't key on. Consistently, the section classifier typed that section `content`,
+not `testimonials`.
+
+So the 98%/84% benchmark numbers do **not** transfer to this common modern
+markup — the benchmark corpus under-represents quote-less card testimonials.
+
+## Refined conclusion (replaces "stop")
+
+1. **The migration idea is alive but conditional.** The engine's CTA layer beats
+   the live system's known failure modes on SaaS pages and matches the LLM's top
+   goal without an LLM. Its trust layer is **not** ready to claim superiority in
+   the wild.
+2. **Next engineering step is in THIS repo, not the live product:** add
+   quote-less avatar-card testimonial detection (and the stats-row pattern), put
+   plausible.io in the trust-eval + structure-eval corpora, fix, re-measure —
+   the same CI-gated hardening loop used for v1.12–v1.18.
+3. **The live product's cheap win stands:** fix `intent:"trial"`-on-everything
+   and cookie/zoom-links-as-primary directly in the live codebase regardless of
+   any migration.
+4. **glutenforum:** unchanged — its lever is bounce/continuation, not CTA
+   precision; neither engine addresses that today.

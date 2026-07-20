@@ -1,8 +1,11 @@
 # Migration plan — put this repo's detection engine behind the live product
 
-**Status:** ⛔ **Phase 0 ran 2026-07-20 and FAILED the decision gate** — do not
-proceed on this evidence. See [`migration-detection-engine-phase0.md`](./migration-detection-engine-phase0.md).
-The rest of this plan is retained as the design that Phase 0 was gating.
+**Status:** ⚠️ **conditional** (updated 2026-07-20). Phase 0 on glutenforum FAILED
+the gate (content-SPA — engine adds no edge there). Phase 0b on plausible.io
+showed the **CTA-precision edge is real on SaaS pages** (deriveHero = live LLM
+rank-1, zero junk primaries) but **trust recall missed a quote-less testimonial
+wall** — fix that in this repo's benchmark loop before any live integration.
+See [`migration-detection-engine-phase0.md`](./migration-detection-engine-phase0.md).
 **Author:** engineering (Claude Code session)
 **Date:** 2026-07-20
 
