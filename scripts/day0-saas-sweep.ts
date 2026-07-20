@@ -125,6 +125,23 @@ const SITES: Array<{ name: string; url: string }> = [
   { name: "pandadoc", url: "https://www.pandadoc.com/" },
   { name: "chargebee", url: "https://www.chargebee.com/" },
   { name: "paddle", url: "https://www.paddle.com/" },
+  // ── Overnight wave 2 (88+): more Nordic + modern PLG ──────────────────────
+  { name: "bokio", url: "https://www.bokio.se/" },
+  { name: "mynewsdesk", url: "https://www.mynewsdesk.com/" },
+  { name: "upsales", url: "https://www.upsales.com/" },
+  { name: "sanalabs", url: "https://sanalabs.com/" },
+  { name: "framer", url: "https://www.framer.com/" },
+  { name: "lemlist", url: "https://www.lemlist.com/" },
+  { name: "apollo", url: "https://www.apollo.io/" },
+  { name: "attio", url: "https://attio.com/" },
+  { name: "clay", url: "https://www.clay.com/" },
+  { name: "loops", url: "https://loops.so/" },
+  { name: "savvycal", url: "https://savvycal.com/" },
+  { name: "postmark", url: "https://postmarkapp.com/" },
+  { name: "lucid", url: "https://lucid.co/" },
+  { name: "coda", url: "https://coda.io/" },
+  { name: "planetscale", url: "https://planetscale.com/" },
+  { name: "clickhouse", url: "https://clickhouse.com/" },
 ];
 const CHUNK = 5; // sites per Browserbase session (limits blast radius of a dying session)
 

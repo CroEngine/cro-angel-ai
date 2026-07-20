@@ -236,7 +236,7 @@ const HERO_CTA_WEAK = /^(learn|read|see|view|explore|discover|find out)\b|\b(lea
 // "Accept all" / "Reject all" — no "cookie"/"consent" word, so fortnox's
 // consent overlay button won deriveHero) + the Swedish CMP vocabulary.
 const HERO_CTA_COOKIE =
-  /\bcookies?\b|\bconsent\b|let me choose|essential cookies|only essential|manage preferences|\b(accept|allow|reject|decline|deny)\s+all\b|godk[äa]nn(\s+alla)?$|acceptera(\s+alla)?$|avvisa(\s+alla)?$|neka(\s+alla)?$|till[åa]t\s+alla|endast\s+n[öo]dv[äa]ndiga|hantera\s+(cookies|inst[äa]llningar)/i;
+  /\bcookies?\b|\bconsent\b|let me choose|essential cookies|only essential|manage preferences|\b(accept|allow|reject|decline|deny)\s+(all|optional|necessary|essential)\b|godk[äa]nn(\s+alla)?$|acceptera(\s+alla)?$|avvisa(\s+alla)?$|neka(\s+alla)?$|till[åa]t\s+alla|endast\s+n[öo]dv[äa]ndiga|hantera\s+(cookies|inst[äa]llningar)/i;
 // v1.20: search/menu chrome by TEXT, not only intent. The utility-intent gate
 // misses aria-label variants — quinyx's hero CTA came back "Search Button"
 // (intent unknown) because INTENT_RX matches "search" phrasing, not the label.
@@ -315,8 +315,11 @@ export function deriveHero(
     // a "LATEST" nav tab don't.
     ctas.find((c) => c.category === "cta_primary" && c.section === "hero" && isFallbackAction(c)) ??
     ctas.find((c) => c.category === "cta_primary" && c.aboveFold && isFallbackAction(c)) ??
-    ctas.find((c) => c.category === "form_submit" && c.section === "hero") ??
-    ctas.find((c) => c.category === "form_submit" && c.aboveFold);
+    // form_submit fallbacks are gated like everything else (v1.20f): quinyx's
+    // hero "CTA" was its search form's submit button ("Search Button") — the
+    // only ungated steps in this chain. A real signup submit still passes.
+    ctas.find((c) => c.category === "form_submit" && c.section === "hero" && isCleanAction(c)) ??
+    ctas.find((c) => c.category === "form_submit" && c.aboveFold && isCleanAction(c));
 
   // Last resort: the page has a real h1 but no section anchored to it — e.g. a
   // landmark-less SPA whose content the walker collapsed into a single nav

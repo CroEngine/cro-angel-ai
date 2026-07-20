@@ -381,6 +381,19 @@
 //               "account" — epidemicsound.se's visible hero CTA "Create free
 //               account" missed the adjacent-only "create account" wording
 //               and the hero came back with no CTA asserted.
+//           (f) the form_submit fallbacks in deriveHero's pick chain are gated
+//               by isCleanAction like every other step — they were the only
+//               ungated steps, so quinyx.com's hero CTA came back "Search
+//               Button" (its search form's submit) even after (b). The
+//               consent-button variant vocabulary also widened to
+//               (accept|allow|reject|decline|deny) (all|optional|necessary|
+//               essential) — remote.com's overlay button "Reject optional".
+//               Overnight validation: 192 tests green, corpus goldens
+//               byte-identical, trust-eval P 98.1 / R 83.6 / F1 90.3 and
+//               structure-eval CTA pick 85.7% both unchanged vs v1.19. On the
+//               88-site day-0 sweep's 14 flagged sites, the v1.20 re-run fixed
+//               7 outright (typeform, fortnox, epidemicsound, netlify,
+//               mailerlite, bamboohr, contentful) with zero new junk picks.
 //           Measured results (33-site trust-eval, snapshot goldens,
 //           structure-eval, sweep re-runs of the affected sites) land in the
 //           validation commit the same night — this bump precedes them so any
