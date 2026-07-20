@@ -13,6 +13,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 import { GOAL_KINDS, type GoalCandidate } from "@/adaptive/crawler-inventory";
 import { evaluateWinner } from "@/adaptive/redesign/winner";
+import { cleanEvents } from "./data-hygiene";
 import {
   aggregate,
   expandSegmentLeaves,
@@ -284,13 +285,19 @@ export const getDashboard = createServerFn({ method: "POST" })
           .eq("site_slug", site);
         if (invError) throw invError;
 
-        events = (eventRows ?? []).map((r) => ({
-          type: r.type,
-          payload: (r.payload as Record<string, unknown>) ?? {},
-          visitorHash: r.visitor_hash,
-          decisionId: r.decision_id,
-          createdAt: r.created_at,
-        }));
+        // Datahygien (revisionen 2026-07-20): känd förorening (lasttest-
+        // burstar, ägartrafik, simulatorkörningar, /admin) filtreras vid
+        // läsning — EN gång här så alla konsumenter räknar på samma rena data.
+        events = cleanEvents(
+          site,
+          (eventRows ?? []).map((r) => ({
+            type: r.type,
+            payload: (r.payload as Record<string, unknown>) ?? {},
+            visitorHash: r.visitor_hash,
+            decisionId: r.decision_id,
+            createdAt: r.created_at,
+          })),
+        );
         inventory = (invRows ?? []).map((r) => ({
           slot: r.slot,
           id: r.item_id,

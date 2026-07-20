@@ -11,6 +11,7 @@
 // the last good value (or nothing), and the engine simply runs on its defaults.
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { cleanEvents } from "@/lib/dashboard/data-hygiene";
 import {
   attribute,
   MIN_ARM_EXPOSURES,
@@ -141,13 +142,18 @@ export async function loadPatternBoosts(
       .order("created_at", { ascending: false })
       .limit(EVENT_LIMIT);
 
-    const events: DashEvent[] = (data ?? []).map((r) => ({
-      type: r.type,
-      payload: (r.payload as Record<string, unknown>) ?? {},
-      visitorHash: r.visitor_hash,
-      decisionId: r.decision_id,
-      createdAt: r.created_at,
-    }));
+    // Datahygien (revisionen 2026-07-20): ägar-/testkonverteringar får aldrig
+    // driva pattern-boosts — samma rensning som dashboardens läsväg.
+    const events: DashEvent[] = cleanEvents(
+      site,
+      (data ?? []).map((r) => ({
+        type: r.type,
+        payload: (r.payload as Record<string, unknown>) ?? {},
+        visitorHash: r.visitor_hash,
+        decisionId: r.decision_id,
+        createdAt: r.created_at,
+      })),
+    );
 
     const boosts: BoostSet = { overall: {}, bySegment: {} };
     for (const row of attribute(events)) {
