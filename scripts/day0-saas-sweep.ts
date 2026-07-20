@@ -279,9 +279,14 @@ async function runChunk(sites: Array<{ name: string; url: string }>, results: Si
 async function main() {
   const from = Math.max(0, Number(arg("from") ?? "0"));
   const to = Math.min(Number(arg("to") ?? String(SITES.length)), SITES.length);
-  const targets = SITES.slice(from, to);
+  // --names=a,b,c overrides --from/--to — used for targeted re-runs (e.g. the
+  // v1.20 validation pass over the sites the v1.19 sweep flagged).
+  const names = arg("names")?.split(",").map((s) => s.trim()).filter(Boolean);
+  const targets = names ? SITES.filter((s) => names.includes(s.name)) : SITES.slice(from, to);
   console.log(
-    `Day-0 cold-start sweep — engine v${EXTRACTOR_VERSION}, sites ${from}..${to - 1} of ${SITES.length} (${targets.length} this run), no data`,
+    `Day-0 cold-start sweep — engine v${EXTRACTOR_VERSION}, ` +
+      (names ? `named re-run [${targets.map((s) => s.name).join(", ")}]` : `sites ${from}..${to - 1} of ${SITES.length} (${targets.length} this run)`) +
+      `, no data`,
   );
   mkdirSync(OUT_DIR, { recursive: true });
   const results: SiteResult[] = [];
@@ -319,11 +324,12 @@ async function main() {
     console.log(`     sections: ${(r.sectionOrder ?? []).join(" › ")}`);
   }
 
-  const outPath =
-    from === 0 && to === SITES.length
+  const outPath = names
+    ? `${OUT_DIR}/day0-sweep-rerun-v${EXTRACTOR_VERSION}.json`
+    : from === 0 && to === SITES.length
       ? `${OUT_DIR}/day0-sweep.json`
       : `${OUT_DIR}/day0-sweep-${from}-${to}.json`;
-  writeFileSync(outPath, JSON.stringify({ extractorVersion: EXTRACTOR_VERSION, from, to, results }, null, 2));
+  writeFileSync(outPath, JSON.stringify({ extractorVersion: EXTRACTOR_VERSION, from, to, names: names ?? null, results }, null, 2));
   console.log(`\nfull JSON → ${outPath}`);
 }
 
