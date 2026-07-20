@@ -73,6 +73,26 @@ vocabulary. Rejected-by-schema = regenerate; the model never free-hands DOM.
 integration; use the latest model tier for design quality.)
 *Effort ~3-4 nights. Depends on E1 (vocabulary) + E2 (cohort data).*
 
+### E4b — Owner approval & consent tiers (the trust chain)
+
+A proposal may only go live after the SITE OWNER approves it. The approval
+unit is the RULE, not the pageview: the owner sees a concrete card —
+before/after screenshots, the cohort ("visitors arriving from LinkedIn"), the
+data rationale ("proof-early converts better for this cohort, N visits"), and
+after launch the measured result — and one click approves the rule, which then
+serves every matching visitor without further asks. Consent is tiered and
+owner-controlled: per-proposal approval (default for reorders and anything
+layout-affecting) → auto-approve within pattern classes the owner whitelists
+(bars/emphasis) → full autopilot per site. Maps directly onto the live
+product's existing flags (adaptations_enabled, serving_enabled, ramp_pct).
+
+An approval is NOT forever-valid: the per-pageview self-checks keep running
+(a site redesign that makes an approved reorder unsafe → that view refuses
+automatically and the rule is flagged for re-review), and detected inventory
+drift (the live product already emits inventory_drift events) pauses the rule
+until re-validated. "Use it as much as we want" = unlimited within the
+approved rule, never a day past it still provably holding.
+
 ### E4 — Validate → store → serve → measure
 Each generated plan auto-runs through the visual-acceptance harness against
 the live page (the night-2 harness, productized): reject on any visual issue.
