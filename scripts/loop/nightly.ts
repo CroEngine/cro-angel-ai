@@ -54,6 +54,10 @@ const outRoot = arg("out") ?? "nightly-out";
 mkdirSync(outRoot, { recursive: true });
 
 // ── sajturval: kundsajter som uttryckligen slagit på generativa lagret ───────
+// adaptations_enabled betyder sedan 2026-07-20 ENBART detta (nattloopens
+// opt-in). Legacy-livevägen i decide-routen — som samma flagga tidigare också
+// väckte — är pensionerad: inget synligt kan hända live utan en ägargodkänd
+// variant bakom serving_enabled.
 const onlySite = arg("site");
 const { data: sites, error: sitesErr } = await db
   .from("angel_sites")
