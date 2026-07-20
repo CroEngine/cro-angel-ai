@@ -142,6 +142,7 @@ type PersonaRun = {
   derived: string;
   matchesExpectation: boolean;
   applied: Array<{ patternId: string; detail: string }>;
+  reorderWhy?: string | null;
   visualIssues: string[];
 };
 
@@ -229,11 +230,16 @@ async function runSite(page: Page, site: { name: string; url: string }): Promise
     for (const persona of PERSONAS) {
       const run = (await page.evaluate((p) => {
         const a = (window as any).__angelAdaptive;
+        (window as any).__angelReorderWhy = undefined;
         a.events.length = 0;
         for (const e of p.events) a.events.push(e);
         const applied = a.adapt(); // segment DERIVED from the fabricated data
-        return { derived: a.segment, applied };
-      }, persona)) as { derived: string; applied: Array<{ patternId: string; detail: string }> };
+        return { derived: a.segment, applied, reorderWhy: (window as any).__angelReorderWhy ?? null };
+      }, persona)) as {
+        derived: string;
+        applied: Array<{ patternId: string; detail: string }>;
+        reorderWhy: string | null;
+      };
       const visualIssues = run.applied.length
         ? ((await page.evaluate(VISUAL_CHECK).catch(() => ["check-failed"])) as string[])
         : [];
@@ -242,6 +248,7 @@ async function runSite(page: Page, site: { name: string; url: string }): Promise
         derived: run.derived,
         matchesExpectation: new RegExp(`^(${persona.expect})$`).test(run.derived),
         applied: run.applied.map((a) => ({ patternId: a.patternId, detail: (a as any).detail ?? "" })),
+        reorderWhy: run.reorderWhy,
         visualIssues,
       });
       const shotPersona = process.argv.includes("--set=pricing") ? "price_checker" : "reader_no_click";
@@ -285,9 +292,12 @@ async function runSiteWithRetry(page: Page, site: { name: string; url: string })
 
 async function main() {
   const list = arg("set") === "pricing" ? PRICING_SITES : SITES;
+  const names = arg("names")?.split(",").map((s) => s.trim()).filter(Boolean);
   const from = Math.max(0, Number(arg("from") ?? "0"));
   const to = Math.min(Number(arg("to") ?? String(list.length)), list.length);
-  const targets = list.slice(from, to).filter((s) => !SKIP.has(s.name));
+  const targets = (names ? list.filter((s) => names.includes(s.name)) : list.slice(from, to)).filter(
+    (s) => !SKIP.has(s.name),
+  );
   console.log(
     `Adaptive sweep${arg("set") === "pricing" ? " [PRICING SET]" : ""} — fabricated personas → derived segments → patterns · sites ${from}..${to - 1} (${targets.length})`,
   );
@@ -324,7 +334,9 @@ async function main() {
       await closeSession(session.id).catch(() => {});
     }
   }
-  const outPath = `${OUT_DIR}/adaptive-sweep-${arg("set") === "pricing" ? "pricing-" : ""}${from}-${to}.json`;
+  const outPath = names
+    ? `${OUT_DIR}/adaptive-sweep-names-${targets.length}x-${targets[0]?.name ?? "none"}.json`
+    : `${OUT_DIR}/adaptive-sweep-${arg("set") === "pricing" ? "pricing-" : ""}${from}-${to}.json`;
   writeFileSync(outPath, JSON.stringify({ from, to, reports }, null, 1));
   const ok = reports.filter((r) => r.ok);
   console.log(`\n${ok.length}/${reports.length} ok · JSON → ${outPath}`);

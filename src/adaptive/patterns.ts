@@ -297,13 +297,55 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
   const heroI = secs.findIndex((s) => s.type === "hero" && s.selector);
   const anchorI = heroI >= 0 ? heroI : 0;
   if (ti <= anchorI + 2) return null; // proof already sits early — nothing to gain
+  const why = (reason: string): null => {
+    try {
+      (window as unknown as { __angelReorderWhy?: string }).__angelReorderWhy = reason;
+    } catch {
+      /* ignore */
+    }
+    return null;
+  };
   const testiEl = q(secs[ti].selector);
   const anchorEl = q(secs[anchorI].selector);
-  if (!testiEl || !anchorEl) return null;
-  const parent = testiEl.parentElement;
-  if (!parent || anchorEl.parentElement !== parent) return null; // must be siblings
+  if (!testiEl || !anchorEl) return why("selector-miss");
+  // v0.6.1: sections often sit in per-section WRAPPERS (main > div > section),
+  // so direct siblinghood is too strict. Find the nearest common ancestor and
+  // operate on ITS direct children that contain each section — the wrappers
+  // are what visually stack, so they are what `order` must move.
+  const chain = (el: HTMLElement): HTMLElement[] => {
+    const out: HTMLElement[] = [];
+    let p: HTMLElement | null = el;
+    while (p && p !== document.body) {
+      out.push(p);
+      p = p.parentElement;
+    }
+    return out;
+  };
+  const tChain = chain(testiEl);
+  const aChain = new Set(chain(anchorEl));
+  let common: HTMLElement | null = null;
+  for (const el of tChain) {
+    if (el.parentElement && aChain.has(el.parentElement)) {
+      common = el.parentElement;
+      break;
+    }
+  }
+  if (!common) common = testiEl.parentElement;
+  const parent = common;
+  if (!parent) return why("no-common-parent");
   const kids = Array.from(parent.children).filter((c): c is HTMLElement => c instanceof HTMLElement);
-  if (kids.length < 3 || kids.length > 40) return null;
+  const testiKid = kids.find((k) => k === testiEl || k.contains(testiEl));
+  const anchorKid = kids.find((k) => k === anchorEl || k.contains(anchorEl));
+  if (!testiKid || !anchorKid || testiKid === anchorKid) return why("no-distinct-wrapper-kids");
+  // The testimonials wrapper must not drag unrelated sections along with it.
+  const testiWrapsOthers = secs.some(
+    (s, i) => i !== ti && s.selector && (() => {
+      const el = q(s.selector);
+      return !!el && testiKid.contains(el) && !testiEl.contains(el);
+    })(),
+  );
+  if (testiWrapsOthers) return why("wrapper-carries-other-sections");
+  if (kids.length < 3 || kids.length > 40) return why("kid-count-" + kids.length);
 
   const before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
   const docH = document.documentElement.scrollHeight;
@@ -330,36 +372,36 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
     kids.forEach((k, i) => {
       k.style.order = String(i * 2);
     });
-    testiEl.style.order = String(kids.indexOf(anchorEl) * 2 + 1);
+    testiKid.style.order = String(kids.indexOf(anchorKid) * 2 + 1);
     parent.setAttribute("data-angel-reorder", "1");
 
     // SELF-CHECK — every sibling must land where flow says it should, changed
     // only in vertical order. Tolerances: width/left ±2px, own height ±12px,
     // no vertical overlap beyond 8px, document height within max(48px, 3%).
-    let bad = false;
+    let bad = "";
     const after = kids.map((k) => ({ k, r: k.getBoundingClientRect() }));
     for (const { k, r } of after) {
       const b = before.get(k)!;
-      if (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2) { bad = true; break; }
-      if (Math.abs(r.height - b.height) > 12) { bad = true; break; }
+      if (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2) { bad = "check-width-left"; break; }
+      if (Math.abs(r.height - b.height) > 12) { bad = "check-height"; break; }
     }
     if (!bad) {
       const dh = Math.abs(document.documentElement.scrollHeight - docH);
-      if (dh > Math.max(48, docH * 0.03)) bad = true;
+      if (dh > Math.max(48, docH * 0.03)) bad = "check-docheight";
     }
     if (!bad) {
       const vis = after.filter((x) => x.r.height > 1).sort((a, b) => a.r.top - b.r.top);
       for (let i = 1; i < vis.length; i++) {
-        if (vis[i].r.top < vis[i - 1].r.bottom - 8) { bad = true; break; }
+        if (vis[i].r.top < vis[i - 1].r.bottom - 8) { bad = "check-overlap"; break; }
       }
     }
     if (bad) {
       undo();
-      return null; // provably-clean reorder not possible here — refuse
+      return why(bad); // provably-clean reorder not possible here — refuse
     }
   } catch {
     undo();
-    return null;
+    return why("apply-threw");
   }
 
   ctx.reverts.push(undo);
