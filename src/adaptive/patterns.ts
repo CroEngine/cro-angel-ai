@@ -112,16 +112,113 @@ const emphasizePrimaryCta: Pattern = (inv, ctx) => {
   };
 };
 
-const PATTERNS: Pattern[] = [trustBar, emphasizePrimaryCta];
+// Risk-reducer bar (v3): surface the page's OWN risk-killing copy — a
+// money-back / free-trial / no-card guarantee or a compliance cert — as the
+// top bar. The price-hesitant visitor's objection is risk; the copy that
+// answers it usually sits below the fold. Same isolated-prepend primitive as
+// trustBar (one bar max per page — the applier ensures the slot is free).
+const riskReducerBar: Pattern = (inv, ctx) => {
+  if (document.querySelector('[data-angel-adaptation]')) return null; // one bar max
+  const sig = inv.trust.guarantees[0] ?? inv.trust.certifications[0];
+  if (!sig) return null;
+  const text = (sig.text || "").replace(/\s+/g, " ").trim().slice(0, 120);
+  if (text.length < 3) return null;
+  const bar = document.createElement("div");
+  bar.setAttribute("data-angel-adaptation", "risk_reducer_bar");
+  bar.textContent = text;
+  bar.style.cssText = [
+    "all:initial",
+    "display:block",
+    "box-sizing:border-box",
+    "width:100%",
+    "font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif",
+    "font-size:14px",
+    "font-weight:600",
+    "color:#0a3d1f",
+    "background:#e8f8ee",
+    "border-bottom:1px solid #bfe8cd",
+    "text-align:center",
+    "padding:9px 16px",
+    "line-height:1.35",
+  ].join(";");
+  document.body.insertBefore(bar, document.body.firstChild);
+  ctx.reverts.push(() => bar.remove());
+  return { patternId: "risk_reducer_bar", label: "Surface risk-reducer", detail: text.slice(0, 60) };
+};
+
+// Pricing spotlight (v3): STYLE-only emphasis on the page's existing pricing
+// section — soft tinted ring, no reflow — so the price-curious visitor finds
+// it instantly. First version deliberately coarse (whole section, not a plan
+// card); plan-card targeting needs card-level inventory (v4).
+const pricingSpotlight: Pattern = (inv, ctx) => {
+  const sec = inv.sections.find((s) => s.type === "pricing" && s.selector);
+  const el = q(sec?.selector);
+  if (!el || !sec) return null;
+  const prev = el.getAttribute("style") ?? "";
+  el.style.boxShadow = "0 0 0 3px rgba(16,122,66,.45), 0 10px 34px rgba(16,122,66,.18)";
+  el.style.borderRadius = "12px";
+  ctx.reverts.push(() => el.setAttribute("style", prev));
+  return {
+    patternId: "pricing_spotlight",
+    label: "Spotlight pricing section",
+    detail: sec.heading || sec.selector || "",
+  };
+};
+
+const ALL_PATTERNS: Record<string, Pattern> = {
+  trust_bar: trustBar,
+  emphasize_primary_cta: emphasizePrimaryCta,
+  risk_reducer_bar: riskReducerBar,
+  pricing_spotlight: pricingSpotlight,
+};
+
+// ── The decision layer (v3): which visitor sees which patterns ──────────────
+// A segment names a visitor situation the behavior data can support; each maps
+// to an ordered pattern set. "default" preserves the v2 behavior (trust bar +
+// CTA emphasis) so existing installs are unchanged.
+export type Segment = "default" | "new_skimmer" | "engaged_no_click" | "price_hesitant";
+
+export const SEGMENT_PATTERNS: Record<Segment, string[]> = {
+  default: ["trust_bar", "emphasize_primary_cta"],
+  // First-time visitor bouncing along the surface: earn trust immediately.
+  new_skimmer: ["trust_bar"],
+  // Read deep, clicked nothing: the offer is interesting but the action isn't
+  // landing — emphasise it and back it with proof.
+  engaged_no_click: ["emphasize_primary_cta", "trust_bar"],
+  // Interested in price but hesitant: answer the risk objection with the
+  // page's own guarantee copy and light the pricing section up.
+  price_hesitant: ["risk_reducer_bar", "pricing_spotlight"],
+};
+
+// Derive a segment from THIS session's real behavior events. Deliberately
+// conservative: only patterns the events can actually support; anything murky
+// stays "default". (Cross-session signals — returning visitor, pricing-page
+// revisits — arrive with the collector-backed profile in a later milestone.)
+export function deriveSegment(
+  events: Array<{ type: string; value?: number }>,
+  inv: ContentInventory,
+): Segment {
+  const maxScroll = Math.max(0, ...events.filter((e) => e.type === "scroll_depth").map((e) => e.value ?? 0));
+  const ctaClicks = events.filter((e) => e.type === "cta_click").length;
+  const timeOnPage = Math.max(0, ...events.filter((e) => e.type === "time_on_page").map((e) => e.value ?? 0));
+  const hasPricing = inv.sections.some((s) => s.type === "pricing");
+  if (hasPricing && maxScroll >= 60 && ctaClicks === 0) return "price_hesitant";
+  if (maxScroll >= 70 && ctaClicks === 0) return "engaged_no_click";
+  if (maxScroll <= 25 && timeOnPage <= 15) return "new_skimmer";
+  return "default";
+}
 
 /**
- * Apply every applicable pattern once. Returns what changed and a single
- * `revert()` that undoes all of them (in reverse order). Never throws.
+ * Apply the pattern set for a segment (default: the v2 set). Returns what
+ * changed and a single `revert()` that undoes all of it. Never throws.
  */
-export function applyAdaptations(inv: ContentInventory): AdaptationResult {
+export function applyAdaptations(inv: ContentInventory, segment: Segment = "default"): AdaptationResult {
   const ctx: ApplyCtx = { reverts: [] };
   const applied: AppliedChange[] = [];
-  for (const pattern of PATTERNS) {
+  const ids = SEGMENT_PATTERNS[segment] ?? SEGMENT_PATTERNS.default;
+  for (const id of ids) {
+    const pattern = ALL_PATTERNS[id];
+    if (!pattern) continue;
     try {
       const change = pattern(inv, ctx);
       if (change) applied.push(change);

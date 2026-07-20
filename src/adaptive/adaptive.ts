@@ -14,7 +14,14 @@
 // they are the per-site "CRO-bank" the decision engine will read.
 
 import { collectInventory, type ContentInventory } from "./inventory";
-import { applyAdaptations, type AppliedChange, type AdaptationResult } from "./patterns";
+import {
+  applyAdaptations,
+  deriveSegment,
+  SEGMENT_PATTERNS,
+  type AppliedChange,
+  type AdaptationResult,
+  type Segment,
+} from "./patterns";
 import { trackBehavior, type BehaviorEvent, type BehaviorTracker } from "./behavior";
 import { visitorKey, sessionId, sendInventory, installEventCollector } from "./collector";
 
@@ -27,8 +34,10 @@ type AngelGlobal = {
   inventory: ContentInventory | null;
   events: BehaviorEvent[];
   applied: AppliedChange[];
+  segment: Segment | null;
+  segments: string[];
   collect: () => ContentInventory;
-  adapt: () => AppliedChange[];
+  adapt: (segment?: Segment) => AppliedChange[];
   revert: () => void;
 };
 
@@ -56,16 +65,25 @@ let activeAdaptation: AdaptationResult | null = null;
 let tracker: BehaviorTracker | null = null;
 let collectorInstalled = false;
 
-// Apply the safe patterns to the page. Idempotent: reverts any prior run first.
-// Exposed as window.__angelAdaptive.adapt() so it works from the console too.
-function adapt(): AppliedChange[] {
+// Apply the safe patterns for a segment. Idempotent: reverts any prior run
+// first. Segment resolution order: explicit argument (console/harness) →
+// data-angel-segment attribute (demo/QA override) → derived from this
+// session's real behavior events → "default".
+// Exposed as window.__angelAdaptive.adapt(segment?) so it works from the console.
+function adapt(segmentArg?: Segment): AppliedChange[] {
   if (!angel || !angel.inventory) return [];
   revertAdaptation();
-  activeAdaptation = applyAdaptations(angel.inventory);
+  const attr = currentScript()?.getAttribute("data-angel-segment") as Segment | null;
+  const segment: Segment =
+    segmentArg ??
+    (attr && attr in SEGMENT_PATTERNS ? attr : null) ??
+    deriveSegment(angel.events, angel.inventory);
+  angel.segment = segment;
+  activeAdaptation = applyAdaptations(angel.inventory, segment);
   angel.applied = activeAdaptation.applied;
   if (activeAdaptation.applied.length) {
     console.info(
-      `[Angel Adaptive] applied ${activeAdaptation.applied.length} adaptation(s): ` +
+      `[Angel Adaptive] segment "${segment}" — applied ${activeAdaptation.applied.length} adaptation(s): ` +
         activeAdaptation.applied.map((a) => a.label).join(", "),
     );
   }
@@ -95,6 +113,8 @@ function init(): void {
     inventory: null,
     events: [],
     applied: [],
+    segment: null,
+    segments: Object.keys(SEGMENT_PATTERNS),
     collect: collectInventory,
     adapt,
     revert: revertAdaptation,
