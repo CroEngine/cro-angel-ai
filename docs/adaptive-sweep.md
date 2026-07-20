@@ -90,3 +90,46 @@ NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt \
 2. Bar-text quality gate (cheap, high demo value).
 3. Navigation-aware harness retry for the 4-site class.
 4. Free-trial copy as a risk_reducer source (plausible's "30-day free trial").
+
+---
+
+# Addendum (night 2): pricing pages, visual acceptance as code, site-aware theming
+
+## Pricing insight — proven on the right surface
+
+31 real /pricing pages (27 audited; 4 network-class failures incl. bokio's
+self-navigating page). **price_hesitant now fires: 12/27** (vs 0/97 on
+homepages) — airtable, webflow, posthog, hotjar, amplitude, ahrefs, front,
+dropbox, todoist, smartsheet, mercury, mentimeter-plans. pricing_spotlight
+applied 24 times, risk_reducer_bar 8.
+
+**New honest findings:** (a) the section classifier detects a pricing section
+on only 12/27 genuine pricing PAGES — plan-card grids without a "pricing"
+label heading are a recall gap (next classifier fix); (b) risk-bar sources
+picked weak texts ("HIPAA Compliance", a FAQ *question* "What is your refund
+policy?") — FAQ-headings must be excluded (trailing "?") and plan-card
+microcopy ("No credit card required" — visible on posthog's cards) must become
+a source; the hero/heading fields alone miss it.
+
+## "Nothing may look off" — now enforced by code, not eyeballs
+
+Every applied adaptation is hit-tested in-page (bars: full-width, sane
+height, visible at own midpoint via elementFromPoint; emphasized CTAs:
+hit-testable at center). Plus a new guard: bar patterns REFUSE when a
+viewport-wide position:fixed top header would paint over the bar (sticky/
+static headers are pushed correctly — screenshot-verified on monday/deel).
+
+Results: pricing runs 52/56 visually clean; homepage QA sample (incl. dark
+sites sentry/railway/posthog with the new theme palette) 38/44 clean. The
+checks CAUGHT real issues: mercury + mailchimp emphasis covered by overlay
+elements; mentimeter/deel late-mounting cookie modals covering the page
+(harness dismiss timing, not a pattern bug). Dark-theme bars render natively
+on all three dark sites.
+
+## Section REORDERING — the direct answer
+
+Angel deliberately does NOT reorder sections today: pattern-library v1 moved
+DOM nodes and broke real grids (HubSpot), so v2 restricted primitives to
+style-in-place + one isolated top bar. If reordering returns it will be as
+CSS `order` swaps *inside flex/grid parents only* (no DOM moves), gated by
+the same visual acceptance checks — roadmap, not shipped.
