@@ -179,16 +179,23 @@ export async function runPageAudit(
         '[id*="truste" i]', '[class*="truste" i]',
         '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
         '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
+        '[id*="ppms" i]', '[class*="ppms" i]', '[id*="piwik" i]', '[class*="piwik" i]',
       ].join(',');
-      const ROOT_SEL = '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i]';
+      const ROOT_SEL = '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i], [id*="ppms" i], [class*="ppms" i]';
       const deadline = Date.now() + 2500;
       while (Date.now() < deadline) {
         const found = Array.from(document.querySelectorAll(SEL)).find(el => el.tagName !== 'STYLE' && el.tagName !== 'SCRIPT' && el.tagName !== 'LINK');
         if (found) {
           const r = found.getBoundingClientRect();
-          const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano/i.test(found.id || '');
+          const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano|ppms|piwik/i.test(found.id || '');
           if (isKnownVendor || (r.width > 50 && r.height > 30)) {
-            const root = (found.closest && found.closest(ROOT_SEL)) || found;
+            let root = (found.closest && found.closest(ROOT_SEL)) || found;
+            // v1.20 guard: closest() can land on a page-enveloping wrapper (a
+            // body/html carrying a "…cookie…"/"…consent…" state class), and a
+            // stamped wrapper makes downstream filters (ctas.ts) skip EVERY CTA
+            // on the page — typeform's audit came back with 0 CTAs this way.
+            // Never stamp body/html; fall back to the found element itself.
+            if (root === document.body || root === document.documentElement) root = found;
             try { root.setAttribute('data-lovable-cookie-root', '1'); } catch (_) {}
             return;
           }

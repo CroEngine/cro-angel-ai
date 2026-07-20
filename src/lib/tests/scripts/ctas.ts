@@ -185,10 +185,20 @@ export const CTAS_SCRIPT = `(() => {
 
   const SEL = 'button, a[href], input[type=submit], input[type=button], [role="button"]';
   const nodes = Array.from(document.querySelectorAll(SEL));
+  // v1.20 defense: a stamped cookie root that ENVELOPS the page (a wrapper /
+  // state-classed container rather than the banner itself) would make the
+  // ancestor filter below skip EVERY CTA — typeform's audit returned 0 CTAs
+  // while the collect layer saw them all. Only honor cookie roots that hold a
+  // minority of the page's CTA candidates; an enveloping stamp is ignored.
+  const cookieRoots = Array.from(document.querySelectorAll('[data-lovable-cookie-root="1"]')).filter((r) => {
+    if (r === document.body || r === document.documentElement) return false;
+    const inside = r.querySelectorAll(SEL).length;
+    return inside <= Math.max(8, nodes.length * 0.5);
+  });
   const raw = [];
   for (const el of nodes) {
     if (!isVisible(el)) continue;
-    if (el.closest && el.closest('[data-lovable-cookie-root="1"]')) {
+    if (cookieRoots.some((r) => r.contains(el))) {
       continue;
     }
     const rect = el.getBoundingClientRect();

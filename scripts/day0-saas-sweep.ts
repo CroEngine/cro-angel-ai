@@ -29,7 +29,9 @@ import { createSession, closeSession } from "../src/lib/tests/browserbase.server
 const OUT_DIR = "/tmp/claude-0/-home-user-cro-angel-ai/c11460d4-452b-5901-aaf1-829bf613facc/scratchpad";
 
 // Hold-out set: none of these are in trust-eval/structure-eval corpora.
-// mentimeter + fortnox = Swedish SaaS (the home market).
+// Indices 0-12 = the original 2026-07-20 daytime sweep; 13+ = the overnight
+// expansion (Nordic SaaS cluster for the home market + global PLG/sales-led
+// mix). Run a slice with --from/--to (defaults: everything).
 const SITES: Array<{ name: string; url: string }> = [
   { name: "monday", url: "https://monday.com/" },
   { name: "asana", url: "https://asana.com/" },
@@ -44,8 +46,93 @@ const SITES: Array<{ name: string; url: string }> = [
   { name: "deel", url: "https://www.deel.com/" },
   { name: "mentimeter", url: "https://www.mentimeter.com/" },
   { name: "fortnox", url: "https://www.fortnox.se/" },
+  // ── Nordic SaaS (SE/DK/NO — the home market) ──────────────────────────────
+  { name: "teamtailor", url: "https://www.teamtailor.com/" },
+  { name: "quinyx", url: "https://www.quinyx.com/" },
+  { name: "getaccept", url: "https://www.getaccept.com/" },
+  { name: "oneflow", url: "https://oneflow.com/" },
+  { name: "scrive", url: "https://www.scrive.com/" },
+  { name: "voyado", url: "https://voyado.com/" },
+  { name: "funnel", url: "https://funnel.io/" },
+  { name: "epidemicsound", url: "https://www.epidemicsound.com/" },
+  { name: "pleo", url: "https://www.pleo.io/" },
+  { name: "dixa", url: "https://www.dixa.com/" },
+  { name: "whereby", url: "https://whereby.com/" },
+  { name: "kahoot", url: "https://kahoot.com/" },
+  { name: "unleash", url: "https://www.getunleash.io/" },
+  { name: "juni", url: "https://juni.co/" },
+  { name: "trustly", url: "https://www.trustly.com/" },
+  // ── PLG dev-tools ─────────────────────────────────────────────────────────
+  { name: "sentry", url: "https://sentry.io/" },
+  { name: "retool", url: "https://retool.com/" },
+  { name: "railway", url: "https://railway.app/" },
+  { name: "render", url: "https://render.com/" },
+  { name: "flyio", url: "https://fly.io/" },
+  { name: "netlify", url: "https://www.netlify.com/" },
+  { name: "neon", url: "https://neon.tech/" },
+  { name: "clerk", url: "https://clerk.com/" },
+  { name: "auth0", url: "https://auth0.com/" },
+  { name: "algolia", url: "https://www.algolia.com/" },
+  { name: "contentful", url: "https://www.contentful.com/" },
+  { name: "sanity", url: "https://www.sanity.io/" },
+  { name: "strapi", url: "https://strapi.io/" },
+  { name: "ghost", url: "https://ghost.org/" },
+  { name: "resend", url: "https://resend.com/" },
+  { name: "n8n", url: "https://n8n.io/" },
+  // ── Marketing / sales SaaS ────────────────────────────────────────────────
+  { name: "mailchimp", url: "https://mailchimp.com/" },
+  { name: "klaviyo", url: "https://www.klaviyo.com/" },
+  { name: "activecampaign", url: "https://www.activecampaign.com/" },
+  { name: "mailerlite", url: "https://www.mailerlite.com/" },
+  { name: "beehiiv", url: "https://www.beehiiv.com/" },
+  { name: "hotjar", url: "https://www.hotjar.com/" },
+  { name: "mixpanel", url: "https://mixpanel.com/" },
+  { name: "amplitude", url: "https://amplitude.com/" },
+  { name: "segment", url: "https://segment.com/" },
+  { name: "customerio", url: "https://customer.io/" },
+  { name: "semrush", url: "https://www.semrush.com/" },
+  { name: "ahrefs", url: "https://ahrefs.com/" },
+  { name: "moz", url: "https://moz.com/" },
+  { name: "surferseo", url: "https://surferseo.com/" },
+  { name: "pipedrive", url: "https://www.pipedrive.com/" },
+  { name: "close", url: "https://www.close.com/" },
+  { name: "gorgias", url: "https://www.gorgias.com/" },
+  { name: "helpscout", url: "https://www.helpscout.com/" },
+  { name: "front", url: "https://front.com/" },
+  { name: "aircall", url: "https://aircall.io/" },
+  // ── Productivity / HR / fintech ───────────────────────────────────────────
+  { name: "slack", url: "https://slack.com/" },
+  { name: "dropbox", url: "https://www.dropbox.com/" },
+  { name: "miro", url: "https://miro.com/" },
+  { name: "canva", url: "https://www.canva.com/" },
+  { name: "grammarly", url: "https://www.grammarly.com/" },
+  { name: "todoist", url: "https://todoist.com/" },
+  { name: "superhuman", url: "https://superhuman.com/" },
+  { name: "calcom", url: "https://cal.com/" },
+  { name: "toggl", url: "https://toggl.com/" },
+  { name: "wrike", url: "https://www.wrike.com/" },
+  { name: "smartsheet", url: "https://www.smartsheet.com/" },
+  { name: "gusto", url: "https://gusto.com/" },
+  { name: "rippling", url: "https://www.rippling.com/" },
+  { name: "bamboohr", url: "https://www.bamboohr.com/" },
+  { name: "personio", url: "https://www.personio.com/" },
+  { name: "remotecom", url: "https://remote.com/" },
+  { name: "ramp", url: "https://ramp.com/" },
+  { name: "mercury", url: "https://mercury.com/" },
+  { name: "onepassword", url: "https://1password.com/" },
+  { name: "vanta", url: "https://www.vanta.com/" },
+  { name: "docusign", url: "https://www.docusign.com/" },
+  { name: "pandadoc", url: "https://www.pandadoc.com/" },
+  { name: "chargebee", url: "https://www.chargebee.com/" },
+  { name: "paddle", url: "https://www.paddle.com/" },
 ];
 const CHUNK = 5; // sites per Browserbase session (limits blast radius of a dying session)
+
+function arg(name: string): string | undefined {
+  const p = `--${name}=`;
+  const f = process.argv.find((a) => a.startsWith(p));
+  return f?.slice(p.length);
+}
 
 // Junk classes that must never be "primary" (the failure modes seen in the wild).
 const HARD_JUNK = /cookie|privacy policy|godkänn|förstora|instagram|facebook|twitter|linkedin|follow us/i;
@@ -190,11 +277,16 @@ async function runChunk(sites: Array<{ name: string; url: string }>, results: Si
 }
 
 async function main() {
-  console.log(`Day-0 cold-start sweep — engine v${EXTRACTOR_VERSION}, ${SITES.length} hold-out SaaS sites, no data`);
+  const from = Math.max(0, Number(arg("from") ?? "0"));
+  const to = Math.min(Number(arg("to") ?? String(SITES.length)), SITES.length);
+  const targets = SITES.slice(from, to);
+  console.log(
+    `Day-0 cold-start sweep — engine v${EXTRACTOR_VERSION}, sites ${from}..${to - 1} of ${SITES.length} (${targets.length} this run), no data`,
+  );
   mkdirSync(OUT_DIR, { recursive: true });
   const results: SiteResult[] = [];
-  for (let i = 0; i < SITES.length; i += CHUNK) {
-    await runChunk(SITES.slice(i, i + CHUNK), results);
+  for (let i = 0; i < targets.length; i += CHUNK) {
+    await runChunk(targets.slice(i, i + CHUNK), results);
   }
 
   const ok = results.filter((r) => r.ok && !r.suspectBlocked);
@@ -207,7 +299,7 @@ async function main() {
   const withTrust = ok.filter((r) => (r.trust?.total ?? 0) > 0);
 
   console.log("\n================ DAY-0 SWEEP SUMMARY ================");
-  console.log(`audited cleanly      ${ok.length}/${SITES.length}  (blocked: ${blocked.length}, failed: ${failed.length})`);
+  console.log(`audited cleanly      ${ok.length}/${targets.length}  (blocked: ${blocked.length}, failed: ${failed.length})`);
   console.log(`hero CTA asserted    ${withHeroCta.length}/${ok.length}`);
   console.log(`junk-free primaries  ${junkFree.length}/${ok.length}`);
   console.log(`trust signals found  ${withTrust.length}/${ok.length}`);
@@ -227,8 +319,11 @@ async function main() {
     console.log(`     sections: ${(r.sectionOrder ?? []).join(" › ")}`);
   }
 
-  const outPath = `${OUT_DIR}/day0-sweep.json`;
-  writeFileSync(outPath, JSON.stringify({ extractorVersion: EXTRACTOR_VERSION, results }, null, 2));
+  const outPath =
+    from === 0 && to === SITES.length
+      ? `${OUT_DIR}/day0-sweep.json`
+      : `${OUT_DIR}/day0-sweep-${from}-${to}.json`;
+  writeFileSync(outPath, JSON.stringify({ extractorVersion: EXTRACTOR_VERSION, from, to, results }, null, 2));
   console.log(`\nfull JSON → ${outPath}`);
 }
 

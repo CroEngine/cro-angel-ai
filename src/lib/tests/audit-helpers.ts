@@ -232,8 +232,15 @@ const HERO_CTA_CONVERSION =
 // Hub" while the real "Get a demo" sat in cta_secondary; gymshark's was "search"
 // (utility); patagonia's were "Women's"/"Men's" category tabs scored conversion.
 const HERO_CTA_WEAK = /^(learn|read|see|view|explore|discover|find out)\b|\b(learn|read) more\b/i;
+// v1.20: also match bare accept/reject-all phrasing (Piwik PRO's buttons say
+// "Accept all" / "Reject all" — no "cookie"/"consent" word, so fortnox's
+// consent overlay button won deriveHero) + the Swedish CMP vocabulary.
 const HERO_CTA_COOKIE =
-  /\bcookies?\b|\bconsent\b|let me choose|essential cookies|allow all|only essential|manage preferences/i;
+  /\bcookies?\b|\bconsent\b|let me choose|essential cookies|only essential|manage preferences|\b(accept|allow|reject|decline|deny)\s+all\b|godk[äa]nn(\s+alla)?$|acceptera(\s+alla)?$|avvisa(\s+alla)?$|neka(\s+alla)?$|till[åa]t\s+alla|endast\s+n[öo]dv[äa]ndiga|hantera\s+(cookies|inst[äa]llningar)/i;
+// v1.20: search/menu chrome by TEXT, not only intent. The utility-intent gate
+// misses aria-label variants — quinyx's hero CTA came back "Search Button"
+// (intent unknown) because INTENT_RX matches "search" phrasing, not the label.
+const HERO_CTA_CHROME = /\bsearch\b|\bs[öo]k\b|\bmenu\b|\bmeny\b|toggle navigation/i;
 // Disqualifies a CTA from being the hero action regardless of category: a weak
 // "learn/read more" content link, a cookie-consent button, or a pure search/
 // utility control (gymshark's "search"). Applied to BOTH the conversion-worded
@@ -241,7 +248,7 @@ const HERO_CTA_COOKIE =
 const isCleanAction = (c: CTAEntity): boolean => {
   const t = (c.text || "").trim();
   if (!t) return false;
-  if (HERO_CTA_WEAK.test(t) || HERO_CTA_COOKIE.test(t)) return false;
+  if (HERO_CTA_WEAK.test(t) || HERO_CTA_COOKIE.test(t) || HERO_CTA_CHROME.test(t)) return false;
   return c.intent !== "utility";
 };
 // The fallback (no conversion-worded CTA found) is stricter: a non-conversion

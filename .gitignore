@@ -52,3 +52,6 @@ fixtures/angel-sample/
 .env
 .env.*
 !.env.example
+
+# local Node bundles for the sandbox Browserbase runners (rebuilt on demand)
+*.node.mjs

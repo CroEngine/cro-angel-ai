@@ -161,17 +161,24 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
           '[id*="usercentrics" i]',
           '[id*="didomi" i]',
           '[class*="didomi" i]',
+          '[id*="ppms" i]',
+          '[class*="ppms" i]',
+          '[id*="piwik" i]',
+          '[class*="piwik" i]',
         ].join(",");
         const ROOT_SEL =
-          '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i]';
+          '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i], [id*="ppms" i], [class*="ppms" i]';
         const found = Array.from(document.querySelectorAll(SEL)).find(
           (el) => el.tagName !== "STYLE" && el.tagName !== "SCRIPT" && el.tagName !== "LINK",
         );
         if (!found) return false;
         const r = found.getBoundingClientRect();
-        const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano/i.test(found.id || "");
+        const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano|ppms|piwik/i.test(found.id || "");
         if (!(isKnownVendor || (r.width > 50 && r.height > 30))) return false;
-        const root = (found.closest && found.closest(ROOT_SEL)) || found;
+        // v1.20: never stamp a page-enveloping root (body/html state class) —
+        // see the identical guard + rationale in pageAudit.server.ts.
+        let root = (found.closest && found.closest(ROOT_SEL)) || found;
+        if (root === document.body || root === document.documentElement) root = found;
         try {
           root.setAttribute("data-lovable-cookie-root", "1");
         } catch {

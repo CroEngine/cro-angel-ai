@@ -350,7 +350,32 @@
 //           is a deliberate precision tradeoff, v1.8.0a). Corpus goldens
 //           byte-identical (hubspot/linear/hibob have no quote-less card walls).
 
-export const EXTRACTOR_VERSION = "1.19.0" as const;
+//   1.20.0 — consent/chrome hero-CTA hardening + cookie-root stamp guards,
+//           surfaced by the 2026-07-20 day-0 cold-start sweep (88 unseen SaaS
+//           sites; see docs/day0-saas-sweep.md):
+//           (a) HERO_CTA_COOKIE also matches bare "Accept all"/"Reject all"/
+//               "Decline all"/"Deny all" + the Swedish CMP vocabulary (godkänn/
+//               acceptera/avvisa/neka [alla], "endast nödvändiga", "hantera
+//               cookies/inställningar"). Piwik PRO's buttons carry no "cookie"/
+//               "consent" word, so fortnox.se's consent overlay button
+//               ("Reject all") won deriveHero as the hero CTA.
+//           (b) NEW HERO_CTA_CHROME text gate (search/sök/menu/meny/toggle
+//               navigation): quinyx.com's hero CTA came back "Search Button" —
+//               the utility-INTENT gate misses aria-label variants.
+//           (c) Piwik PRO (ppms/piwik ids+classes) added to the cookie-banner
+//               vendor lists in BOTH stamping paths (pageAudit poll + replay
+//               harness), and the stamped root may never be body/html (a
+//               state-classed page wrapper would neutralize the whole page).
+//           (d) ctas.ts defense-in-depth: a stamped cookie root that envelops
+//               the page (holds the majority of CTA candidates) is ignored —
+//               typeform.com's audit returned 0 CTAs while the collect layer
+//               saw them all, exactly this failure shape.
+//           Measured results (33-site trust-eval, snapshot goldens,
+//           structure-eval, sweep re-runs of the affected sites) land in the
+//           validation commit the same night — this bump precedes them so any
+//           result produced by this tree is distinguishable from v1.19.0.
+
+export const EXTRACTOR_VERSION = "1.20.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;
