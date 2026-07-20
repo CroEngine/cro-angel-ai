@@ -27,6 +27,43 @@ const CHUNK = 5;
 // Known remote-tab crashers from the day-0 sweep — skip, don't burn time.
 const SKIP = new Set(["attio", "clay", "loops"]);
 
+// --set=pricing: the /pricing surfaces where price_hesitant belongs (the
+// 101-homepage sweep found 0/97 pricing sections — pricing lives on subpages).
+// Paths are best guesses; 404s/redirects fail soft and are reported honestly.
+const PRICING_SITES: Array<{ name: string; url: string }> = [
+  { name: "monday-pricing", url: "https://monday.com/pricing" },
+  { name: "asana-pricing", url: "https://asana.com/pricing" },
+  { name: "clickup-pricing", url: "https://clickup.com/pricing" },
+  { name: "calendly-pricing", url: "https://calendly.com/pricing" },
+  { name: "zapier-pricing", url: "https://zapier.com/pricing" },
+  { name: "airtable-pricing", url: "https://www.airtable.com/pricing" },
+  { name: "webflow-pricing", url: "https://webflow.com/pricing" },
+  { name: "typeform-pricing", url: "https://www.typeform.com/pricing/" },
+  { name: "posthog-pricing", url: "https://posthog.com/pricing" },
+  { name: "deel-pricing", url: "https://www.deel.com/pricing/" },
+  { name: "pipedrive-pricing", url: "https://www.pipedrive.com/en/prices" },
+  { name: "hotjar-pricing", url: "https://www.hotjar.com/pricing/" },
+  { name: "mixpanel-pricing", url: "https://mixpanel.com/pricing/" },
+  { name: "amplitude-pricing", url: "https://amplitude.com/pricing" },
+  { name: "ahrefs-pricing", url: "https://ahrefs.com/pricing" },
+  { name: "close-pricing", url: "https://www.close.com/pricing" },
+  { name: "helpscout-pricing", url: "https://www.helpscout.com/pricing/" },
+  { name: "front-pricing", url: "https://front.com/pricing" },
+  { name: "aircall-pricing", url: "https://aircall.io/pricing/" },
+  { name: "slack-pricing", url: "https://slack.com/pricing" },
+  { name: "dropbox-plans", url: "https://www.dropbox.com/plans" },
+  { name: "miro-pricing", url: "https://miro.com/pricing/" },
+  { name: "todoist-pricing", url: "https://todoist.com/pricing" },
+  { name: "wrike-pricing", url: "https://www.wrike.com/price/" },
+  { name: "smartsheet-pricing", url: "https://www.smartsheet.com/pricing" },
+  { name: "mercury-pricing", url: "https://mercury.com/pricing" },
+  { name: "mailchimp-pricing", url: "https://mailchimp.com/pricing/marketing/" },
+  { name: "mentimeter-plans", url: "https://www.mentimeter.com/plans" },
+  { name: "bokio-priser", url: "https://www.bokio.se/priser/" },
+  { name: "fortnox-pris", url: "https://www.fortnox.se/pris" },
+  { name: "plausible-home-ctl", url: "https://plausible.io/" },
+];
+
 // The improvised visitor data: realistic event streams (tracker shapes — note
 // time_on_page is MILLISECONDS, like the real tracker emits).
 const PERSONAS: Array<{ name: string; expect: string; events: Array<Record<string, unknown>> }> = [
@@ -169,8 +206,9 @@ async function runSite(page: Page, site: { name: string; url: string }): Promise
         matchesExpectation: new RegExp(`^(${persona.expect})$`).test(run.derived),
         applied: run.applied.map((a) => ({ patternId: a.patternId, detail: (a as any).detail ?? "" })),
       });
-      if (persona.name === "reader_no_click") {
-        await page.screenshot({ path: `${OUT_DIR}/asweep-${site.name}-after-reader.jpg`, type: "jpeg", quality: 55 });
+      const shotPersona = process.argv.includes("--set=pricing") ? "price_checker" : "reader_no_click";
+      if (persona.name === shotPersona) {
+        await page.screenshot({ path: `${OUT_DIR}/asweep-${site.name}-after.jpg`, type: "jpeg", quality: 55 });
       }
       await page.evaluate(() => (window as any).__angelAdaptive.revert());
       await sleep(120);
@@ -185,11 +223,26 @@ async function runSite(page: Page, site: { name: string; url: string }): Promise
   return rep;
 }
 
+// Navigation-aware retry: consent-accepts that reload the page (oneflow,
+// bokio) and mid-run navigations destroy the evaluate context — a fresh
+// attempt right after usually lands, because the consent cookie is now set.
+async function runSiteWithRetry(page: Page, site: { name: string; url: string }): Promise<SiteReport> {
+  let rep = await runSite(page, site);
+  if (!rep.ok && /context was destroyed|reading 'events'|no inventory/i.test(rep.error ?? "")) {
+    process.stdout.write("retry… ");
+    rep = await runSite(page, site);
+  }
+  return rep;
+}
+
 async function main() {
+  const list = arg("set") === "pricing" ? PRICING_SITES : SITES;
   const from = Math.max(0, Number(arg("from") ?? "0"));
-  const to = Math.min(Number(arg("to") ?? String(SITES.length)), SITES.length);
-  const targets = SITES.slice(from, to).filter((s) => !SKIP.has(s.name));
-  console.log(`Adaptive sweep — fabricated personas → derived segments → patterns · sites ${from}..${to - 1} (${targets.length})`);
+  const to = Math.min(Number(arg("to") ?? String(list.length)), list.length);
+  const targets = list.slice(from, to).filter((s) => !SKIP.has(s.name));
+  console.log(
+    `Adaptive sweep${arg("set") === "pricing" ? " [PRICING SET]" : ""} — fabricated personas → derived segments → patterns · sites ${from}..${to - 1} (${targets.length})`,
+  );
   mkdirSync(OUT_DIR, { recursive: true });
   const reports: SiteReport[] = [];
   for (let i = 0; i < targets.length; i += CHUNK) {
@@ -204,7 +257,7 @@ async function main() {
       await page.setViewportSize({ width: 1280, height: 720 }).catch(() => {});
       for (const site of chunk) {
         process.stdout.write(`  ${site.name.padEnd(14)} `);
-        const r = await runSite(page, site);
+        const r = await runSiteWithRetry(page, site);
         reports.push(r);
         if (r.ok) {
           const segs = r.runs!.map((x) => `${x.persona}→${x.derived}${x.matchesExpectation ? "" : "(!)"}`).join(" ");
@@ -220,7 +273,7 @@ async function main() {
       await closeSession(session.id).catch(() => {});
     }
   }
-  const outPath = `${OUT_DIR}/adaptive-sweep-${from}-${to}.json`;
+  const outPath = `${OUT_DIR}/adaptive-sweep-${arg("set") === "pricing" ? "pricing-" : ""}${from}-${to}.json`;
   writeFileSync(outPath, JSON.stringify({ from, to, reports }, null, 1));
   const ok = reports.filter((r) => r.ok);
   console.log(`\n${ok.length}/${reports.length} ok · JSON → ${outPath}`);
