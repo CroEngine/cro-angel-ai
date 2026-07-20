@@ -223,7 +223,7 @@ const HERO_LABEL_BLOCKLIST =
 // PREFER; the original any-primary pick stays as the fallback, so a legitimate
 // non-matching CTA like "Contact sales" still wins when it's the only primary.
 const HERO_CTA_CONVERSION =
-  /\b(get started|start|sign\s?up|signup|try|book|buy|order|checkout|subscribe|register|download|demo|request|trial|join|create account|add to cart|get \w+ (free|now))\b/i;
+  /\b(get started|start|sign\s?up|signup|try|book|buy|order|checkout|subscribe|register|download|demo|request|trial|join|create\s+(?:\w+\s+)?account|add to cart|get \w+ (free|now))\b/i;
 
 // A hero CTA must be a real conversion ACTION — never a weak "learn more"/"read
 // more" content link, page chrome (search/login), a nav/category tab, or a

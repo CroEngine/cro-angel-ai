@@ -180,8 +180,10 @@ export async function runPageAudit(
         '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
         '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
         '[id*="ppms" i]', '[class*="ppms" i]', '[id*="piwik" i]', '[class*="piwik" i]',
+        '[id*="hs-eu-cookie" i]', '[id*="cookie-confirmation" i]', '[id*="cookie-notice" i]', '[class*="cookie-notice" i]',
+        '[id*="cookieconsent" i]', '[class*="cookieconsent" i]', '[id*="coi-banner" i]', '[class*="coi-banner" i]', '[class*="cky-consent" i]',
       ].join(',');
-      const ROOT_SEL = '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i], [id*="ppms" i], [class*="ppms" i]';
+      const ROOT_SEL = '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i], [id*="ppms" i], [class*="ppms" i], [id*="coi-banner" i], [class*="coi-banner" i], [class*="cky-consent" i]';
       const deadline = Date.now() + 2500;
       while (Date.now() < deadline) {
         const found = Array.from(document.querySelectorAll(SEL)).find(el => el.tagName !== 'STYLE' && el.tagName !== 'SCRIPT' && el.tagName !== 'LINK');

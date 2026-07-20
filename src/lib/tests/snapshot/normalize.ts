@@ -25,8 +25,13 @@ const sig1 = (n: number) => {
 // and ordering are pure noise for regression purposes — strip them before
 // diffing. Real cookie-policy footer links stay in (they don't match
 // "accept/decline/reject all" etc).
+// v1.20 additions from the overnight Nordic sweep's real banner strings:
+// "Accept Cookies" (oneflow), "Customize cookies" (quinyx), "Disable
+// non-necessary cookies" (teamtailor), "Cookies settings" (kahoot — plural),
+// "Close GDPR Cookie Banner" (oneflow). Plain "cookie policy" footer links
+// stay deliberately unmatched.
 const COOKIE_BANNER_RX =
-  /\b(accept all|decline all|reject all|allow all|deny all|manage cookies|cookie settings|cookie preferences|consent preferences)\b/i;
+  /\b(accept all|decline all|reject all|allow all|deny all|accept cookies|customize cookies|disable non-?necessary|manage cookies|cookies? settings|cookie preferences|consent preferences|close gdpr)\b/i;
 
 function isCookieBannerElement(e: any): boolean {
   const text = (e?.text || "").trim();

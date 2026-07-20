@@ -165,9 +165,18 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
           '[class*="ppms" i]',
           '[id*="piwik" i]',
           '[class*="piwik" i]',
+          '[id*="hs-eu-cookie" i]',
+          '[id*="cookie-confirmation" i]',
+          '[id*="cookie-notice" i]',
+          '[class*="cookie-notice" i]',
+          '[id*="cookieconsent" i]',
+          '[class*="cookieconsent" i]',
+          '[id*="coi-banner" i]',
+          '[class*="coi-banner" i]',
+          '[class*="cky-consent" i]',
         ].join(",");
         const ROOT_SEL =
-          '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i], [id*="ppms" i], [class*="ppms" i]';
+          '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i], [id*="ppms" i], [class*="ppms" i], [id*="coi-banner" i], [class*="coi-banner" i], [class*="cky-consent" i]';
         const found = Array.from(document.querySelectorAll(SEL)).find(
           (el) => el.tagName !== "STYLE" && el.tagName !== "SCRIPT" && el.tagName !== "LINK",
         );

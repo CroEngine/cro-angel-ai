@@ -362,14 +362,25 @@
 //           (b) NEW HERO_CTA_CHROME text gate (search/sök/menu/meny/toggle
 //               navigation): quinyx.com's hero CTA came back "Search Button" —
 //               the utility-INTENT gate misses aria-label variants.
-//           (c) Piwik PRO (ppms/piwik ids+classes) added to the cookie-banner
-//               vendor lists in BOTH stamping paths (pageAudit poll + replay
-//               harness), and the stamped root may never be body/html (a
-//               state-classed page wrapper would neutralize the whole page).
+//           (c) CMP vendor lists in BOTH stamping paths (pageAudit poll +
+//               replay harness) extended with the vendors the sweep actually
+//               hit: Piwik PRO (ppms/piwik — fortnox), HubSpot CMS
+//               hs-eu-cookie-confirmation (quinyx), Cookie Information
+//               (coi-banner, common in the Nordics), cookieconsent.js,
+//               CookieYes (cky-consent), generic cookie-notice/-confirmation.
+//               The stamped root may never be body/html (a state-classed page
+//               wrapper would neutralize the whole page). normalize's
+//               COOKIE_BANNER_RX learns the sweep's real banner strings
+//               ("Accept Cookies", "Customize cookies", "Disable non-necessary
+//               cookies", "Cookies settings", "Close GDPR Cookie Banner").
 //           (d) ctas.ts defense-in-depth: a stamped cookie root that envelops
 //               the page (holds the majority of CTA candidates) is ignored —
 //               typeform.com's audit returned 0 CTAs while the collect layer
 //               saw them all, exactly this failure shape.
+//           (e) HERO_CTA_CONVERSION tolerates a word between "create" and
+//               "account" — epidemicsound.se's visible hero CTA "Create free
+//               account" missed the adjacent-only "create account" wording
+//               and the hero came back with no CTA asserted.
 //           Measured results (33-site trust-eval, snapshot goldens,
 //           structure-eval, sweep re-runs of the affected sites) land in the
 //           validation commit the same night — this bump precedes them so any
