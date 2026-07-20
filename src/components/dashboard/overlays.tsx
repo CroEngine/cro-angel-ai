@@ -37,7 +37,6 @@ function HeatMirror({
   overlay,
   maxHeight = 560,
   frameW = 1280,
-  onRawHeight,
 }: {
   src: string;
   overlay: React.ReactNode;
@@ -45,9 +44,6 @@ function HeatMirror({
   /** Spegelns viewportbredd — MÅSTE matcha layouten klicken mättes i
    *  (390 = mobil, 1280 = desktop); x är % av besökarens viewportbredd. */
   frameW?: number;
-  /** Rå (o-klampad) rapporterad dokumenthöjd — skal-detekteringen i person-
-   *  läget läser den: en live-speglad SPA rapporterar ~0 (blankt skal). */
-  onRawHeight?: (h: number) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -63,36 +59,21 @@ function HeatMirror({
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  const gotHeightRef = useRef(false);
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       // Bara VÅR egen iframe får rapportera — annars kan en annan spegel
-      // (eller vilken inbäddad sida som helst) styra höjden/skal-skylten.
+      // (eller vilken inbäddad sida som helst) styra höjden.
       if (e.source !== frameRef.current?.contentWindow) return;
       const d = e.data as { type?: string; h?: number } | null;
       if (d && d.type === "angel-mirror-height" && typeof d.h === "number") {
         // Klampad: en fientlig speglad sida kan bara flytta punkter i ägarens
         // egen vy av just den sidan — men vi tar inga orimliga värden.
-        gotHeightRef.current = true;
         setDocH(Math.min(20000, Math.max(600, Math.round(d.h))));
-        onRawHeight?.(Math.round(d.h));
       }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [onRawHeight]);
-  useEffect(() => {
-    // Tyst spegel = blank spegel (ägarfynd 2026-07-19: vitt hål UTAN skylt i
-    // personläget). En spegel som misslyckas helt injicerar aldrig höjd-
-    // rapportören och skickar inget message — rapportera då 0 så skal-
-    // detekteringen ovanpå kan visa sin ärliga skylt i stället för vitt.
-    // Kommer en riktig höjd senare vinner den (skylten släcks av sig själv).
-    gotHeightRef.current = false;
-    const t = setTimeout(() => {
-      if (!gotHeightRef.current) onRawHeight?.(0);
-    }, 2500);
-    return () => clearTimeout(t);
-  }, [src, onRawHeight]);
+  }, []);
 
   const scale = wrapW > 0 ? Math.min(1, wrapW / frameW) : 0.5;
   return (
@@ -470,56 +451,32 @@ export function JourneysOverlay({
   // sessioner läggs ÖVERST — ett sparat index gled då till en annan besökare
   // än raden man klickade; /blogg-raden öppnade restaurangsessionen.)
   const [personId, setPersonId] = useState<string | null>(null);
-  const [stepIdx, setStepIdx] = useState(0);
   useEffect(() => {
     // Filterbyte definierar om kohorten — en öppen person kan peka fel.
     setPersonId(null);
-    setStepIdx(0);
   }, [channelSel, outcomeFilter, deviceSel]);
   const personIdx = personId != null ? filtered.findIndex((s) => s.sessionId === personId) : -1;
   const person = personIdx >= 0 ? filtered[personIdx] : null;
   // Sessionen kan åldras ur eventfönstret vid bakgrundsrefetch — släpp valet
-  // ärligt då, annars återöppnas spelaren SPONTANT på gammalt steg om
-  // sessionen råkar komma tillbaka i en senare refetch.
+  // ärligt då, annars återöppnas vyn SPONTANT om sessionen råkar komma
+  // tillbaka i en senare refetch.
   useEffect(() => {
     if (personId != null && !filtered.some((s) => s.sessionId === personId)) {
       setPersonId(null);
-      setStepIdx(0);
     }
   }, [personId, filtered]);
   const personSteps = person?.steps ?? [];
-  // Refetchen kan också KRYMPA samma sessions steps (fönstret glider) —
-  // klampa alltid mot AKTUELLA listan så spelaren aldrig pekar utanför
-  // ("Step 3 of 3" med tomt innehåll och till synes död Prev-knapp).
-  const safeStepIdx = Math.max(0, Math.min(stepIdx, personSteps.length - 1));
-  const personStep = personSteps[safeStepIdx] ?? null;
   const personDevice = person?.device === "mobile" ? "mobile" : "desktop";
-  const personFrameW = personDevice === "mobile" ? 390 : 1280;
-  const openPerson = (s: SessionSummary) => {
-    setPersonId(s.sessionId);
-    setStepIdx(0);
-  };
+  const openPerson = (s: SessionSummary) => setPersonId(s.sessionId);
   const movePerson = (delta: number) => {
     if (personIdx < 0 || filtered.length === 0) return;
     const next = (personIdx + delta + filtered.length) % filtered.length;
     openPerson(filtered[next]);
   };
-  const personBackdrop = useQuery({
-    queryKey: ["pagePreview", site, personStep?.path ?? ""],
-    queryFn: () => createPagePreview({ data: { site, path: personStep!.path } }),
-    enabled: personStep != null,
-    staleTime: 5 * 60 * 1000,
-  });
-  // Skal-detektering (ägarfynd 2026-07-19: blank vit spegel i personläget):
-  // en LIVE-speglad SPA-sida rapporterar ~0 i dokumenthöjd — då visas en
-  // ärlig skylt i stället för ett tyst vitt hål. Frysta kopior berörs inte.
-  const [personRawH, setPersonRawH] = useState<number | null>(null);
-  // Layout-effekt, inte passiv: resetten måste hinna FÖRE paint så förra
-  // stegets skal-skylt aldrig blinkar till över det nya stegets spegel.
-  useLayoutEffect(() => setPersonRawH(null), [personStep?.path, personId]);
-  const onPersonRawHeight = useCallback((h: number) => setPersonRawH(h), []);
-  const personMirrorBlank =
-    personBackdrop.data?.mirrorKind === "live" && personRawH !== null && personRawH < 300;
+  // Sidbilden togs BORT (ägarbeslut 2026-07-20): 42 % av stegen saknade fryst
+  // kopia och fick ett vitt JS-skal — "bild ibland" inom samma session ser
+  // trasigt ut. Berättelsen bär sig själv; ev. återinförande kräver först
+  // ~100 % frysning av besökta sidor (parkerat som senare-jobb).
 
   // ── heatmap-läget (oförändrad mekanik från v1) ───────────────────────────
   const [deviceChoice, setDeviceChoice] = useState<"mobile" | "desktop" | null>(null);
@@ -907,12 +864,11 @@ export function JourneysOverlay({
         {/* scenen */}
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {person ? (
-            // ── PERSONLÄGET: berättelsen + liten sidbild ─────────────────────
-            // Berättelsen är huvudinnehållet (vänster, bredare); den statiska
-            // sidbilden ger igenkänning för det valda steget. min-w-0 på BÅDA
-            // kolumnerna: gridbarn har min-width:auto, så de långa mono-
-            // sökvägarna sväller annars kolumnen förbi popup-ramen.
-            <div className="grid items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
+            // ── PERSONLÄGET: berättelsen, hela scenen ────────────────────────
+            // Enkolumn med läsbredd (max-w + centrerad) — sidbilden är
+            // borttagen (ägarbeslut 2026-07-20), så tidslinjen ÄR vyn.
+            // min-w-0 så långa mono-sökvägar aldrig sväller förbi ramen.
+            <div className="mx-auto w-full max-w-[640px]">
               <div className="min-w-0 rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
                 <div className="flex items-baseline justify-between gap-2">
                   <div className="font-heading text-sm font-semibold">This visit, step by step</div>
@@ -939,17 +895,9 @@ export function JourneysOverlay({
                       <span className="mt-[10px] flex h-[17px] w-[17px] flex-none items-center justify-center rounded-full border-2 border-white bg-[#2a78d6] text-[9px] font-bold leading-none text-white shadow-[0_0_0_1px_#dbeafe]">
                         {i + 1}
                       </span>
-                      {/* Stegkortet är klickbart: väljer vilken sida bilden
-                          till höger visar. Förkortad väg, hela vid hover. */}
-                      <button
-                        type="button"
-                        onClick={() => setStepIdx(i)}
-                        className="block min-w-0 flex-1 rounded-[9px] border px-3 py-2 text-left"
-                        style={{
-                          borderColor: i === safeStepIdx ? "#161513" : "#f0eee9",
-                          background: i === safeStepIdx ? "#faf9f7" : "#fff",
-                        }}
-                      >
+                      {/* Rent läskort — inget stegval längre (valet fanns bara
+                          för sidbilden). Förkortad väg, hela vid hover. */}
+                      <div className="min-w-0 flex-1 rounded-[9px] border border-[#f0eee9] bg-white px-3 py-2">
                         <div className="flex items-center justify-between gap-2">
                           <span
                             className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-stone-700"
@@ -1003,7 +951,7 @@ export function JourneysOverlay({
                             Frustrated clicking on {(s.rageRefs ?? []).join(" · ")}
                           </div>
                         )}
-                      </button>
+                      </div>
                     </div>
                   ))}
                   <div className="relative flex items-start gap-3 pt-1">
@@ -1035,46 +983,6 @@ export function JourneysOverlay({
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* liten statisk sidbild för det valda steget */}
-              <div className="flex min-w-0 flex-col gap-2">
-                {personStep && personBackdrop.data?.ok && personBackdrop.data.mirrorPath ? (
-                  <div className="relative">
-                    <HeatMirror
-                      key={`${person.sessionId}:${safeStepIdx}`}
-                      src={personBackdrop.data.mirrorPath}
-                      overlay={null}
-                      maxHeight="calc(88vh - 250px)"
-                      frameW={personFrameW}
-                      onRawHeight={onPersonRawHeight}
-                    />
-                    {personMirrorBlank && (
-                      // Ärlig skylt i stället för ett tyst vitt hål: sidan är
-                      // JS-renderad och kan inte live-speglas — nattloopen
-                      // fryser besökta sidor, så kopian kommer.
-                      <div className="absolute inset-0 flex items-center justify-center bg-white/80 p-8 text-center">
-                        <p className="max-w-sm text-[13px] leading-relaxed text-stone-500">
-                          This page renders with JavaScript and can&apos;t be mirrored live. The
-                          nightly loop freezes browsable copies of the most-visited pages — the
-                          story on the left is complete either way.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex h-[320px] items-center justify-center rounded-[10px] border border-[#f0eee9] bg-white p-8 text-center text-[13px] text-stone-500">
-                    {personStep ? "Loading the page…" : "This session has no page steps."}
-                  </div>
-                )}
-                {personStep && (
-                  <div
-                    className="truncate text-center font-mono text-[10.5px] text-stone-400"
-                    title={personStep.path}
-                  >
-                    Step {safeStepIdx + 1} · {personStep.path}
-                  </div>
-                )}
               </div>
             </div>
           ) : view === "flow" ? (
