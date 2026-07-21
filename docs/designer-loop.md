@@ -113,3 +113,16 @@ NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt \
 node dsolve.node.mjs --transport=api --names=<sites> [--round=N]
 node dvalidate.node.mjs --names=<sites> --round=N
 ```
+
+## Post-review breadth gate: the full corpus
+
+Step-review gate, full 101-site sweep on the final build (envelope checks,
+stretch semantics, capped overlap allowance): **100/101 ok** (bokio = the
+known consent-reload harness class), **zero dirty restores anywhere**, one
+visual note (pleo: emphasis under a sticky header at post-scroll harness
+time — a load-time runtime check cannot guard scrolled states; calibration
+note, not a regression). **18 sites now reorder via the automatic ladder**
+(v0.6.1: 13) — including oneflow, toggl and clerk, night-3 refusals that the
+truer envelope measurement unlocked. The applied roster naturally varies a
+few sites per load (live pages A/B-test and lazy-load); every pageview's
+self-checks decide fresh, which is the product's designed behavior.
