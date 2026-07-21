@@ -26,11 +26,12 @@ import {
   type Segment,
 } from "./patterns";
 import { trackBehavior, type BehaviorEvent, type BehaviorTracker } from "./behavior";
+import { deriveViewMetrics } from "./metrics";
 import { updateProfile, deriveCohorts, type AngelProfile } from "./profile";
 import { serveRules, validateRules, type AngelRule, type RuleOutcome } from "./rules";
 import { visitorKey, sessionId, sendInventory, installEventCollector } from "./collector";
 
-const VERSION = "0.11.0";
+const VERSION = "0.12.0";
 
 type AngelGlobal = {
   version: string;
@@ -54,6 +55,10 @@ type AngelGlobal = {
   // E4: serve owner-approved rules to this visitor (cohort-matched, holdout-
   // assigned, per-view self-checked). Explicit call or data-rules-src only.
   serve: (rules?: unknown) => RuleOutcome[];
+  // v0.12: what this pageview looks like in the metric catalog's terms —
+  // the client-decidable half of the success contract (QA/console aid; the
+  // collector derives the same from the shipped events).
+  metrics: () => Record<string, boolean>;
   revert: () => void;
 };
 
@@ -219,6 +224,7 @@ function init(): void {
     adapt,
     planReorder,
     serve,
+    metrics: () => deriveViewMetrics(angel?.events ?? [], angel?.profile),
     revert: revertAdaptation,
   };
   (window as unknown as { __angelAdaptive: AngelGlobal }).__angelAdaptive = angel;
@@ -247,11 +253,17 @@ function crawl(): void {
   }
 
   // Learn-mode (default): start passive behavior tracking once. This is the
-  // "collect data" half — scroll depth, CTA clicks, time on page — and it runs
-  // in BOTH modes (adaptation needs the same telemetry to learn from). Read-only.
+  // "collect data" half — scroll depth, CTA clicks, form submits, time on
+  // page, plus the owner-declared goal (data-goal-click / data-goal-url) —
+  // and it runs in BOTH modes (adaptation needs the same telemetry to learn
+  // from). Read-only.
   if (!tracker) {
     try {
-      tracker = trackBehavior(inventory);
+      const script = currentScript();
+      tracker = trackBehavior(inventory, undefined, {
+        clickSelector: script?.getAttribute("data-goal-click"),
+        urlPattern: script?.getAttribute("data-goal-url"),
+      });
       angel.events = tracker.events;
     } catch (err) {
       console.error("[Angel Adaptive] behavior tracking failed to start:", err);

@@ -19,14 +19,13 @@
 
 import { writeFileSync, mkdirSync } from "node:fs";
 
-import { assignBucket, ruleMatches, type AngelRule } from "../src/adaptive/rules";
+import { assignBucket, ruleMatches, validateRules, type AngelRule } from "../src/adaptive/rules";
+import { evaluateRuleWithSpec } from "../src/adaptive/metrics";
 import {
   ALPHA,
   GUARDRAIL_ALPHA,
-  evaluateRuleMetrics,
   measureRule,
   type ArmStats,
-  type MetricDirection,
   type RuleRuling,
 } from "../src/adaptive/measure";
 
@@ -72,13 +71,18 @@ const COHORT_MIX = [
   },
 ] as const;
 
-const RULES: AngelRule[] = [
+// The success definition rides ON the rule — the exact shape the approval
+// card shows and validateRules enforces. The trap rule's primary is a PROXY
+// (cta_click), with conversion demoted to a guardrail: exactly the
+// configuration that needs protecting. Directions come from METRIC_CATALOG.
+const RULES: AngelRule[] = validateRules([
   {
     id: "proof-first-linkedin",
     cohorts: ["src:linkedin"],
     action: { kind: "pattern", patternId: "reorder_proof_first" },
     status: "approved",
     ramp: 50,
+    success: { primary: "conversion", guardrails: ["bounce", "engaged"] },
   },
   {
     id: "null-control-google",
@@ -86,6 +90,7 @@ const RULES: AngelRule[] = [
     action: { kind: "pattern", patternId: "trust_bar" },
     status: "approved",
     ramp: 50,
+    success: { primary: "conversion", guardrails: ["bounce", "engaged"] },
   },
   {
     id: "popup-teaser-direct",
@@ -93,39 +98,10 @@ const RULES: AngelRule[] = [
     action: { kind: "pattern", patternId: "emphasize_primary_cta" },
     status: "approved",
     ramp: 50,
+    success: { primary: "cta_click", guardrails: ["bounce", "engaged", "conversion"] },
   },
-];
-
-// The success definition PER RULE — declared up front, as it would be on the
-// approval card. The trap rule's primary is a PROXY, with conversion demoted
-// to a guardrail: exactly the configuration that needs protecting.
-const SPEC: Record<
-  string,
-  { primary: MetricId; guardrails: Array<{ metric: MetricId; direction: MetricDirection }> }
-> = {
-  "proof-first-linkedin": {
-    primary: "conversion",
-    guardrails: [
-      { metric: "bounce", direction: "down" },
-      { metric: "engaged", direction: "up" },
-    ],
-  },
-  "null-control-google": {
-    primary: "conversion",
-    guardrails: [
-      { metric: "bounce", direction: "down" },
-      { metric: "engaged", direction: "up" },
-    ],
-  },
-  "popup-teaser-direct": {
-    primary: "cta_click",
-    guardrails: [
-      { metric: "bounce", direction: "down" },
-      { metric: "engaged", direction: "up" },
-      { metric: "conversion", direction: "up" },
-    ],
-  },
-};
+]);
+if (RULES.length !== 3) throw new Error("sim rules failed validateRules — format drift");
 
 // PLANTED TRUTH — relative effect on served visitors, per rule per metric.
 const TRUE_EFFECT: Record<string, Partial<Record<MetricId, number>>> = {
@@ -203,11 +179,7 @@ function runOnce(seed: number): SimOutcome {
 
   const rulings: Record<string, RuleRuling> = {};
   for (const rule of RULES) {
-    const spec = SPEC[rule.id];
-    const arms = metricArms.get(rule.id)!;
-    rulings[rule.id] = evaluateRuleMetrics(spec.primary, arms[spec.primary], [
-      ...spec.guardrails.map((g) => ({ ...g, ...arms[g.metric] })),
-    ]);
+    rulings[rule.id] = evaluateRuleWithSpec(rule.success!, metricArms.get(rule.id)!);
   }
   const trapArms = metricArms.get("popup-teaser-direct")!;
   const trapPrimaryAlone = measureRule(trapArms.cta_click.served, trapArms.cta_click.holdout).verdict;
@@ -363,7 +335,6 @@ function main() {
   if (narrativeSeed === 42) {
     const ruled = RULES.map((rule) => ({
       ...rule,
-      successSpec: SPEC[rule.id],
       ruling: {
         verdict: one.rulings[rule.id].verdict,
         action: one.rulings[rule.id].action,

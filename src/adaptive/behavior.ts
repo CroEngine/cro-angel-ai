@@ -9,12 +9,21 @@
 import type { ContentInventory } from "./inventory";
 
 export type BehaviorEvent = {
-  type: "pageview" | "cta_click" | "scroll_depth" | "time_on_page";
+  type: "pageview" | "cta_click" | "scroll_depth" | "time_on_page" | "form_submit" | "goal";
   ts: number;
   url: string;
   selector?: string;
   text?: string;
   value?: number; // scroll %, or ms on page
+};
+
+// Owner-declared goal (v0.12): what THIS site counts as conversion, straight
+// on the script tag — a click target (data-goal-click) and/or a thank-you
+// URL substring (data-goal-url). URL goals match at page load, which covers
+// classic thank-you pages; SPA checkouts should use the click form.
+export type GoalConfig = {
+  clickSelector?: string | null;
+  urlPattern?: string | null;
 };
 
 export type BehaviorTracker = {
@@ -29,6 +38,7 @@ export type BehaviorTracker = {
 export function trackBehavior(
   inv: ContentInventory,
   onEvent?: (e: BehaviorEvent) => void,
+  goal?: GoalConfig,
 ): BehaviorTracker {
   const events: BehaviorEvent[] = [];
   const url = location.href;
@@ -67,6 +77,11 @@ export function trackBehavior(
       /* bad selector — skip */
     }
   }
+  // Owner-declared goal, click form: any click landing inside a match emits
+  // one `goal` per pageview. Selector failures are the site's typo, never an
+  // error into the host page.
+  let goalHit = false;
+  const goalSelector = goal?.clickSelector || null;
   const onClick = (ev: Event) => {
     const target = ev.target as Node | null;
     if (!target) return;
@@ -76,8 +91,36 @@ export function trackBehavior(
         break;
       }
     }
+    if (goalSelector && !goalHit && target instanceof Element) {
+      try {
+        const hit = target.closest(goalSelector);
+        if (hit) {
+          goalHit = true;
+          emit({ type: "goal", ts: Date.now(), url, selector: goalSelector });
+        }
+      } catch {
+        /* invalid selector — ignore */
+      }
+    }
   };
   document.addEventListener("click", onClick, true);
+
+  // Owner-declared goal, URL form: the thank-you page itself IS the goal.
+  if (goal?.urlPattern && url.indexOf(goal.urlPattern) !== -1) {
+    goalHit = true;
+    emit({ type: "goal", ts: started, url, text: goal.urlPattern });
+  }
+
+  // Form submits (leadgen's primary metric): passive capture listener, one
+  // event per submitted form element.
+  const submittedForms = new Set<EventTarget>();
+  const onSubmit = (ev: Event) => {
+    const form = ev.target;
+    if (!form || submittedForms.has(form)) return;
+    submittedForms.add(form);
+    emit({ type: "form_submit", ts: Date.now(), url });
+  };
+  document.addEventListener("submit", onSubmit, true);
 
   // Flush engagement (scroll depth + time) when the page is hidden/unloaded.
   let flushed = false;
@@ -98,6 +141,7 @@ export function trackBehavior(
     stop: () => {
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("click", onClick, true);
+      document.removeEventListener("submit", onSubmit, true);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", flush);
     },

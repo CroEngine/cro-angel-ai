@@ -23,6 +23,7 @@
 // calls serve() or configures a rules source. Learn mode stays inert.
 
 import type { ContentInventory } from "./inventory";
+import { validateSuccessSpec, type SuccessSpec } from "./metrics";
 import {
   applyPlannedReorder,
   applyAdaptations,
@@ -50,6 +51,11 @@ export type AngelRule = {
   // Percentage of matching visitors who receive the change; the rest are the
   // holdout. 0..100, default 100.
   ramp?: number;
+  // The success definition the owner approves TOGETHER with the change: which
+  // metric may judge the rule (primary) and which metrics can only pause it
+  // (guardrails). Serving ignores it; measurement is bound by it. Absent →
+  // the site-type default is applied at approval time.
+  success?: SuccessSpec;
   evidence?: { before?: string; after?: string; rationale?: string };
 };
 
@@ -109,6 +115,11 @@ export function validateRules(raw: unknown): AngelRule[] {
     if (r.segment !== undefined && !(typeof r.segment === "string" && r.segment in SEGMENT_PATTERNS))
       continue;
     if (r.ramp !== undefined && (typeof r.ramp !== "number" || r.ramp < 0 || r.ramp > 100)) continue;
+    if (r.success !== undefined) {
+      const s = validateSuccessSpec(r.success);
+      if (!s) continue; // a malformed success contract invalidates the rule
+      r.success = s; // keep the normalized form
+    }
     out.push(r as unknown as AngelRule);
   }
   return out;

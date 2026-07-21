@@ -104,4 +104,18 @@ describe("validateRules", () => {
     expect(validateRules({ rules: [good] })).toEqual([]);
     expect(validateRules("[]")).toEqual([]);
   });
+
+  it("accepts + normalizes a success spec; a malformed one invalidates the rule", () => {
+    const out = validateRules([
+      {
+        ...good,
+        id: "r-success",
+        success: { primary: "conversion", guardrails: ["bounce", "conversion", "bounce"] },
+      },
+      { ...good, id: "r-bad-success", success: { primary: "revenue", guardrails: [] } },
+      { ...good, id: "r-no-success" },
+    ]);
+    expect(out.map((r) => r.id)).toEqual(["r-success", "r-no-success"]);
+    expect(out[0].success).toEqual({ primary: "conversion", guardrails: ["bounce"] });
+  });
 });

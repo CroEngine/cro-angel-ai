@@ -10,17 +10,11 @@
   },
   "status": "approved",
   "ramp": 50,
-  "successSpec": {
+  "success": {
    "primary": "conversion",
    "guardrails": [
-    {
-     "metric": "bounce",
-     "direction": "down"
-    },
-    {
-     "metric": "engaged",
-     "direction": "up"
-    }
+    "bounce",
+    "engaged"
    ]
   },
   "ruling": {
@@ -56,17 +50,11 @@
   },
   "status": "approved",
   "ramp": 50,
-  "successSpec": {
+  "success": {
    "primary": "conversion",
    "guardrails": [
-    {
-     "metric": "bounce",
-     "direction": "down"
-    },
-    {
-     "metric": "engaged",
-     "direction": "up"
-    }
+    "bounce",
+    "engaged"
    ]
   },
   "ruling": {
@@ -102,21 +90,12 @@
   },
   "status": "approved",
   "ramp": 50,
-  "successSpec": {
+  "success": {
    "primary": "cta_click",
    "guardrails": [
-    {
-     "metric": "bounce",
-     "direction": "down"
-    },
-    {
-     "metric": "engaged",
-     "direction": "up"
-    },
-    {
-     "metric": "conversion",
-     "direction": "up"
-    }
+    "bounce",
+    "engaged",
+    "conversion"
    ]
   },
   "ruling": {

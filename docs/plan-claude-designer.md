@@ -110,13 +110,18 @@ drift (the live product already emits inventory_drift events) pauses the rule
 until re-validated. "Use it as much as we want" = unlimited within the
 approved rule, never a day past it still provably holding.
 
-**E4b STATUS: chain executable (v0.11).** Rule format + approval state
-machine (`approve-rule.ts`, card queue via `approval-cards.ts` — published
-as the E4b artifact), cohort-AND matching, deterministic holdout, per-view
-self-checks re-run on every serve, `rule_*` measurement events. Live-proven
-on sentry (all five gates). See `docs/serving-e4.md`. Remaining: the product
-UI for the button and the server-side plan store/goal join (integration
-decision).
+**E4b STATUS: chain executable (v0.11), success contract on the card
+(v0.12).** Rule format + approval state machine (`approve-rule.ts`, card
+queue via `approval-cards.ts` — published as the E4b artifact), cohort-AND
+matching, deterministic holdout, per-view self-checks re-run on every serve,
+`rule_*` measurement events. Live-proven on sentry (all five gates). The
+approval now covers the SUCCESS DEFINITION too: `AngelRule.success`
+(primary metric + guardrails + MDE from the metric catalog), rendered on
+the card with time-to-verdict estimates, auto-defaulted at approval, and
+observed client-side from v0.12 (`data-goal-click`/`data-goal-url`, form
+submits, `metrics()`). See `docs/serving-e4.md` / `docs/metric-hierarchy.md`.
+Remaining: the product UI for the button and the server-side plan store/goal
+join (integration decision).
 
 ### E4 — Validate → store → serve → measure
 Each generated plan auto-runs through the visual-acceptance harness against

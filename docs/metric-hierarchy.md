@@ -94,6 +94,40 @@ its first execution. Fix, now in `measure.ts`: "no_effect" only becomes
 Rules that stay underpowered forever are ended by loop policy (a time-box in
 the designer brief), not by pretending the data said "no".
 
+## From math to contract (v0.12)
+
+The hierarchy is now an executable contract end-to-end, not just verdict math:
+
+- **`src/adaptive/metrics.ts` — the catalog.** Eight well-defined binary
+  metrics (conversion, form_submit, cta_click, pricing_view, engaged,
+  deep_scroll, return_visit, bounce), each with its good-direction and where
+  it is observed (client / profile / owner-declared goal / collector).
+  Site-type presets (saas/leadgen/ecommerce/content) give the default answer
+  to "what is THIS site after".
+- **`AngelRule.success` — the declaration.** `{ primary, guardrails[],
+  mdeRel }` rides on the rule itself, validated + normalized by
+  `validateRules` (unknown metric ⇒ the rule is rejected). Serving ignores
+  it; measurement is bound by it (`evaluateRuleWithSpec` pulls guardrail
+  directions from the catalog). `guardrail-sim` now runs its planted worlds
+  through exactly this path — same result, format proven.
+- **The approval card shows it.** Each card renders the success block:
+  primary + MDE, guardrail chips ("Bounce ↑ ⇒ paus"), and a time-to-verdict
+  line from `estimateVerdictTime` (standard 80%-power sample size at the
+  card's stated traffic assumption) — plus the early-signal line: engagement
+  gives direction in days, the verdict is only ever the primary's.
+  `approve-rule.ts` prints the contract on approval and fills in the
+  site-type default when missing — no rule activates with an undefined
+  definition of winning.
+- **The snippet observes it (v0.12).** `data-goal-click` / `data-goal-url`
+  let the owner declare conversion on the script tag (click target or
+  thank-you URL); form submits are tracked; `__angelAdaptive.metrics()`
+  derives the client-decidable catalog booleans for any pageview. Verified
+  in a real browser: goal click → conversion, thank-you load → conversion,
+  submit → form_submit, full scroll → engaged + deep_scroll, and
+  same-session pageviews correctly NOT counted as return visits. Bounce
+  stays collector-derived (it is a session-level fact) — the snippet ships
+  the ingredients.
+
 ## Honest boundaries
 
 - Metrics are drawn independently per visitor in the sim; real bounce and

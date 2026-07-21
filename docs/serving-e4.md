@@ -1,8 +1,15 @@
 # E4b/E4 — Approval-gated rule serving
 
-**Date:** 2026-07-21 · **Snippet:** v0.11.0 · **Module:** `src/adaptive/rules.ts`
-**Proof:** 10 unit tests + `scripts/serve-e2e.ts` on sentry.io (live) ·
+**Date:** 2026-07-21 · **Snippet:** v0.12.0 · **Module:** `src/adaptive/rules.ts`
+**Proof:** 11 unit tests + `scripts/serve-e2e.ts` on sentry.io (live) ·
 **Cards:** `scripts/approval-cards.ts` → published approval-queue artifact
+
+**v0.12 addendum:** the rule now carries its `success` contract (primary
+metric + guardrails + MDE, validated by `validateRules`), the card renders
+it with a time-to-verdict estimate, `approve-rule.ts` approves it together
+with the change, and the snippet observes the ingredients (owner-declared
+goals via `data-goal-click`/`data-goal-url`, form submits,
+`__angelAdaptive.metrics()`). See `docs/metric-hierarchy.md`.
 
 ## The trust chain, now executable
 
