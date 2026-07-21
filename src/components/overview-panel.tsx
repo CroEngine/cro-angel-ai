@@ -243,10 +243,37 @@ export function OverviewPanel({
             </div>
           ) : (
             <div className="mt-3 text-[12.5px] text-stone-400">
-              Too few conversions on one of the arms yet — no probability is claimed until the math
-              holds.
+              {verdict.measured
+                ? verdict.measured.reason
+                : "Too few conversions on one of the arms yet — no probability is claimed until the math holds."}
             </div>
           )}
+          {verdict.state === "measured" && verdict.measured ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-stone-500">
+              <span
+                className="rounded-full px-2 py-0.5 font-semibold"
+                style={
+                  verdict.measured.verdict === "win"
+                    ? { background: "#d1fae5", color: "#065f46" }
+                    : verdict.measured.verdict === "loss"
+                      ? { background: "#fee2e2", color: "#991b1b" }
+                      : { background: "#f5f5f4", color: "#57534e" }
+                }
+              >
+                {verdict.measured.verdict.replace("_", " ")}
+              </span>
+              {verdict.measured.upliftRelCi ? (
+                <span className="tabular-nums">
+                  lift CI {Math.round(verdict.measured.upliftRelCi[0] * 100)}%…
+                  {Math.round(verdict.measured.upliftRelCi[1] * 100)}%
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="mt-2 text-[11.5px] text-stone-400">
+            Judged on conversions only; engagement and bounce guard the test — they can pause it,
+            never win it (docs/metric-hierarchy.md).
+          </div>
         </>
       ) : (
         <div className="rounded-xl border border-dashed border-stone-200 px-[18px] py-5 text-[13px] text-stone-400">
