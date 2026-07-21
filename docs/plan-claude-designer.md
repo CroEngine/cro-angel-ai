@@ -73,6 +73,14 @@ profile knows the visitor saw /pricing yesterday.
 *Effort ~3-4 nights. Needs the collector deployed (reference exists) or
 integration with the live angel_* events (they already store visitor_hash).*
 
+**STATUS: client-side half shipped (v0.10, `src/adaptive/profile.ts`).**
+Touch history (first/last, UTM-over-referrer), 30-min-session visit counts,
+pages-seen ring buffer, sticky seenPricing — journey-proven on four real
+sites (price_hesitant now derives on homepages; cohort keys `ch:/src:/ret:/
+seen:` exposed for E4b). See `docs/cohort-profiles.md`. The server-side
+half (cross-DEVICE aggregation + past segment outcomes) still needs the
+collector or angel_* integration.
+
 ### E3 — The Claude Designer job
 An offline job per site: assemble the design brief (content inventory, section
 map with screenshots, cohort aggregates, past plan performance) → Claude API →
