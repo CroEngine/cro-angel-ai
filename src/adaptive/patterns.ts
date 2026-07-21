@@ -498,22 +498,23 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
     // height within max(48px, 3%).
     let bad = "";
     const after = kids.map((k) => ({ k, r: k.getBoundingClientRect(), env: envelope(k) }));
-    for (const { k, r, env } of after) {
-      const b = before.get(k)!;
-      const bEnv = beforeEnv.get(k)!;
+    for (let i = 0; i < after.length; i++) {
+      const { r, env } = after[i];
+      const b = before.get(after[i].k)!;
+      const bEnv = beforeEnv.get(after[i].k)!;
       if (b.height <= 1) {
         if (env.height > 12) {
-          bad = "check-hidden-appeared";
+          bad = `check-hidden-appeared@${i}:h${Math.round(env.height)}`;
           break;
         }
         continue;
       }
       if (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2) {
-        bad = "check-width-left";
+        bad = `check-width-left@${i}:dw${Math.round(r.width - b.width)},dl${Math.round(r.left - b.left)}`;
         break;
       }
       if (Math.abs(env.height - bEnv.height) > 12) {
-        bad = "check-height";
+        bad = `check-height@${i}:dh${Math.round(env.height - bEnv.height)}`;
         break;
       }
     }
