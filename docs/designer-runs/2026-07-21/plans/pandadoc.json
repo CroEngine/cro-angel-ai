@@ -1,0 +1,8 @@
+{
+ "action": "reorder",
+ "container": "#main-content > div:nth-of-type(1) > div:nth-of-type(1)",
+ "move": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(5)",
+ "after": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1)",
+ "mode": "grid",
+ "rationale": "The customer story (Will O'Neil, Head of IT) lands directly after the hero instead of 5300px down. Grid promotion sidesteps the height drift the flex attempt hit."
+}

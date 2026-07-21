@@ -1,0 +1,8 @@
+{
+ "action": "reorder",
+ "container": "#main-content",
+ "move": "#main-content > div:nth-of-type(5)",
+ "after": "#main-content > div:nth-of-type(2)",
+ "mode": "grid",
+ "rationale": "'Loved by developers worldwide' moves to directly after the hero. Flex promotion changed sibling heights on #main-content; single-column grid keeps block flow intact."
+}

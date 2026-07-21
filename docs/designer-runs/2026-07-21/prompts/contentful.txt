@@ -1,0 +1,510 @@
+SYSTEM:
+You are the layout solver for Angel Adaptive, a snippet that adapts third-party marketing pages using only safe, reversible CSS changes.
+
+GOAL: surface the page's PROOF section (testimonials) earlier — ideally right after the hero — on pages where the automatic solver refused. You receive a structural brief: the page's detected sections, the automatic attempt trail with named refusal reasons, and a "ladder" of candidate containers (from the common ancestor of hero+proof down to the proof's own parent), each with its direct children.
+
+MECHANICS (what a plan can do):
+- A reorder happens INSIDE one container: its direct children get CSS `order` values; the child carrying the proof moves after a chosen sibling (or to the front). The DOM never changes.
+- Block-stacked containers are promoted to flex-column (mode "flex") or single-column grid (mode "grid"). Grid stretches children like block flow and can avoid the width/height drift that flex promotion sometimes causes — prefer "grid" when the trail shows check-width-left or check-height at that container.
+- Every plan is re-verified on the live page: siblings must keep width/left (±2px) and height (±12px), no overlaps, page height within 3%, the proof must lift ≥200px, never land above the hero, never land <300px from the page top, and the moved child must not carry other detected sections. A failed check rolls back invisibly and you get the named reason.
+
+RULES:
+1. Copy selectors EXACTLY from the brief ("selector" fields). Never invent selectors.
+2. "move" must be the proof section itself or a child marked hasProof:true whose "sections" list contains ONLY the proof index (never a wrapper that also carries other sections).
+3. "container" must be a ladder container (or a listed child that is an ancestor of the proof). "after" must be a child selector FROM THAT SAME container, or null for front-of-group.
+4. Prefer the smallest move that still yields a meaningful lift. Landing right after the hero child is ideal; front-of-group is fine when the container sits below the hero.
+5. The refusal trail tells you what already failed — do not repeat a failed attempt unchanged; change the container, the anchor, or the mode.
+6. If no safe move exists (every child that carries the proof also carries other sections, or every container has <2 usable children), answer action "refuse" with a short rationale. Refusal is a correct answer.
+7. "rationale": 1-2 sentences, written for the site owner (why this improves the page for engaged non-clicking visitors).
+
+OUTPUT: one JSON object per the schema. action "refuse" → container/move/after/mode all null.
+
+USER:
+BRIEF:
+{
+ "name": "contentful",
+ "site": "www.contentful.com",
+ "url": "https://www.contentful.com/",
+ "page": {
+  "title": "Content that takes you everywhere | Contentful",
+  "docHeight": 11123,
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "sections": [
+  {
+   "i": 0,
+   "type": "hero",
+   "heading": "Sorry, content chaos — your time’s up",
+   "selector": "section[data-section=\"reduced_height_hero\"]",
+   "top": 136,
+   "h": 541
+  },
+  {
+   "i": 1,
+   "type": "content",
+   "heading": "78% increased CVR via personalization",
+   "selector": "section[data-section=\"logo_metric\"]",
+   "top": 677,
+   "h": 252
+  },
+  {
+   "i": 2,
+   "type": "content",
+   "heading": "",
+   "selector": "section:nth-of-type(3)",
+   "top": 994,
+   "h": 248
+  },
+  {
+   "i": 3,
+   "type": "content",
+   "heading": "Customers turning content into their competitive edge",
+   "selector": "#customers-turning-content-into-their-competitive-edge",
+   "top": 1242,
+   "h": 224
+  },
+  {
+   "i": 4,
+   "type": "testimonials",
+   "heading": "Ruggable rolls out an efficient way to manage Black Friday a",
+   "selector": "section[data-section=\"case_study\"]",
+   "top": 1465,
+   "h": 721
+  },
+  {
+   "i": 5,
+   "type": "content",
+   "heading": "",
+   "selector": "section[data-nt-component-id=\"4N9vfc4WwNczk57uTuAcR1\"]",
+   "top": 2186,
+   "h": 629
+  },
+  {
+   "i": 6,
+   "type": "content",
+   "heading": "Bring order to your content, and impact to your campaigns",
+   "selector": "main > div:nth-of-type(3)",
+   "top": 2816,
+   "h": 865
+  },
+  {
+   "i": 7,
+   "type": "content",
+   "heading": "Modular content, max impact",
+   "selector": "section[data-nt-component-id=\"6H7aWAKWSBZ8XLyZRuEv3A\"]",
+   "top": 3071,
+   "h": 319
+  },
+  {
+   "i": 8,
+   "type": "testimonials",
+   "heading": "\"Contentful has the capabilities to power and personalize co",
+   "selector": "section[data-section=\"customer_quote\"]",
+   "top": 3713,
+   "h": 554
+  },
+  {
+   "i": 9,
+   "type": "content",
+   "heading": "Content that works harder, so you can work smarter",
+   "selector": "main > div:nth-of-type(6)",
+   "top": 4299,
+   "h": 939
+  },
+  {
+   "i": 10,
+   "type": "content",
+   "heading": "More content, more meaningful results",
+   "selector": "div:nth-of-type(6) > div > section",
+   "top": 4554,
+   "h": 620
+  },
+  {
+   "i": 11,
+   "type": "content",
+   "heading": "One dynamic content platform, infinite possibilities.",
+   "selector": "main > div:nth-of-type(8)",
+   "top": 5303,
+   "h": 1242
+  },
+  {
+   "i": 12,
+   "type": "content",
+   "heading": "Manage content",
+   "selector": "div:nth-of-type(8) > div:nth-of-type(1) > section:nth-of-type(1)",
+   "top": 5527,
+   "h": 679
+  },
+  {
+   "i": 13,
+   "type": "content",
+   "heading": "All your content, under control",
+   "selector": "section[data-section=\"text_with_media\"]",
+   "top": 5711,
+   "h": 495
+  },
+  {
+   "i": 14,
+   "type": "content",
+   "heading": "With every team aligned, your impact shines",
+   "selector": "main > div:nth-of-type(9)",
+   "top": 6545,
+   "h": 1159
+  },
+  {
+   "i": 15,
+   "type": "content",
+   "heading": "Growth Marketing",
+   "selector": "div:nth-of-type(9) > div:nth-of-type(1) > section",
+   "top": 6769,
+   "h": 806
+  },
+  {
+   "i": 16,
+   "type": "content",
+   "heading": "No-code personalization",
+   "selector": "#section-0 > section",
+   "top": 5711,
+   "h": 495
+  },
+  {
+   "i": 17,
+   "type": "content",
+   "heading": "Our experts will turn your “can we?” into “we totally did”",
+   "selector": "main > div:nth-of-type(10)",
+   "top": 7704,
+   "h": 681
+  },
+  {
+   "i": 18,
+   "type": "content",
+   "heading": "Professional Services",
+   "selector": "section[data-nt-component-id=\"7xBXpwfLS4dqFxCU9sG8Cj\"]",
+   "top": 7960,
+   "h": 296
+  },
+  {
+   "i": 19,
+   "type": "content",
+   "heading": "Contentful resources to power your digital experiences",
+   "selector": "main > div:nth-of-type(11)",
+   "top": 8385,
+   "h": 1052
+  },
+  {
+   "i": 20,
+   "type": "content",
+   "heading": "A New Chapter for Contentful: Scaling Our Vision with Salesf",
+   "selector": "section[data-section=\"article\"]",
+   "top": 8641,
+   "h": 668
+  },
+  {
+   "i": 21,
+   "type": "content",
+   "heading": "Leading brands vibe with Contentful",
+   "selector": "main > div:nth-of-type(12)",
+   "top": 9438,
+   "h": 480
+  },
+  {
+   "i": 22,
+   "type": "content",
+   "heading": "Your experiences should wow, not wait. Let's talk.",
+   "selector": "section[data-section=\"call_to_action\"]",
+   "top": 9918,
+   "h": 806
+  }
+ ],
+ "proofIndex": 4,
+ "heroIndex": 0,
+ "floorIndex": 0,
+ "autoTrail": "L0:check-width-left",
+ "ladder": [
+  {
+   "depth": 0,
+   "selector": "body > main:nth-of-type(1)",
+   "tag": "main",
+   "id": null,
+   "className": "page-homepage march-home-style",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 19,
+   "rect": {
+    "top": 136,
+    "h": 10587
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "section",
+     "id": null,
+     "className": "p-mobile-s flex flex-col rounded-lg bg-(image:--bg-image-mob",
+     "selector": "body > main:nth-of-type(1) > section:nth-of-type(1)",
+     "top": 136,
+     "h": 541,
+     "sections": [
+      0
+     ],
+     "hasProof": false,
+     "hasFloor": true
+    },
+    {
+     "idx": 1,
+     "tag": "section",
+     "id": null,
+     "className": "py-m gap-mobile-s md:flex md:justify-center md:px-s lg:px-m",
+     "selector": "body > main:nth-of-type(1) > section:nth-of-type(2)",
+     "top": 677,
+     "h": 252,
+     "sections": [
+      1
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "main-grid",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(1)",
+     "top": 929,
+     "h": 65,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 3,
+     "tag": "section",
+     "id": null,
+     "className": "main-grid section-vertical-space",
+     "selector": "body > main:nth-of-type(1) > section:nth-of-type(3)",
+     "top": 994,
+     "h": 248,
+     "sections": [
+      2
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 4,
+     "tag": "div",
+     "id": "customers-turning-content-into-their-competitive-edge",
+     "className": "main-grid scroll-mt-l pt-[2rem] lg:pt-s data-[dark-theme=tru",
+     "selector": "#customers-turning-content-into-their-competitive-edge",
+     "top": 1242,
+     "h": 224,
+     "sections": [
+      3
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 5,
+     "tag": "section",
+     "id": null,
+     "className": "main-grid section-vertical-space",
+     "selector": "body > main:nth-of-type(1) > section:nth-of-type(4)",
+     "top": 1465,
+     "h": 721,
+     "sections": [
+      4
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 6,
+     "tag": "section",
+     "id": null,
+     "className": "main-grid section-vertical-space [&_[data-component='case_st",
+     "selector": "body > main:nth-of-type(1) > section:nth-of-type(5)",
+     "top": 2186,
+     "h": 629,
+     "sections": [
+      5
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 7,
+     "tag": "div",
+     "id": null,
+     "className": "outline-none",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(3)",
+     "top": 2816,
+     "h": 865,
+     "sections": [
+      6,
+      7
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 8,
+     "tag": "div",
+     "id": null,
+     "className": "main-grid",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(4)",
+     "top": 3681,
+     "h": 32,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 9,
+     "tag": "section",
+     "id": null,
+     "className": "group relative",
+     "selector": "body > main:nth-of-type(1) > section:nth-of-type(6)",
+     "top": 3713,
+     "h": 554,
+     "sections": [
+      8
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 10,
+     "tag": "div",
+     "id": null,
+     "className": "main-grid",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(5)",
+     "top": 4267,
+     "h": 32,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 11,
+     "tag": "div",
+     "id": null,
+     "className": "outline-none",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(6)",
+     "top": 4299,
+     "h": 939,
+     "sections": [
+      9,
+      10
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 12,
+     "tag": "div",
+     "id": null,
+     "className": "main-grid",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(7)",
+     "top": 5238,
+     "h": 65,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 13,
+     "tag": "div",
+     "id": null,
+     "className": "outline-none",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(8)",
+     "top": 5303,
+     "h": 1242,
+     "sections": [
+      11,
+      12,
+      13,
+      16
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 14,
+     "tag": "div",
+     "id": null,
+     "className": "outline-none",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(9)",
+     "top": 6545,
+     "h": 1159,
+     "sections": [
+      14,
+      15
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 15,
+     "tag": "div",
+     "id": null,
+     "className": "outline-none",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(10)",
+     "top": 7704,
+     "h": 681,
+     "sections": [
+      17,
+      18
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 16,
+     "tag": "div",
+     "id": null,
+     "className": "outline-none",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(11)",
+     "top": 8385,
+     "h": 1052,
+     "sections": [
+      19,
+      20
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 17,
+     "tag": "div",
+     "id": null,
+     "className": "outline-none",
+     "selector": "body > main:nth-of-type(1) > div:nth-of-type(12)",
+     "top": 9438,
+     "h": 480,
+     "sections": [
+      21
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 18,
+     "tag": "section",
+     "id": null,
+     "className": "lg:py-s py-8",
+     "selector": "body > main:nth-of-type(1) > section:nth-of-type(7)",
+     "top": 9918,
+     "h": 806,
+     "sections": [
+      22
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  }
+ ]
+}

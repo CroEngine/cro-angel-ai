@@ -1,0 +1,265 @@
+{
+ "name": "wrike",
+ "site": "www.wrike.com",
+ "url": "https://www.wrike.com/",
+ "page": {
+  "title": "AI-powered enterprise work management software | Wrike",
+  "docHeight": 9399,
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "sections": [
+  {
+   "i": 0,
+   "type": "hero",
+   "heading": "Complex work, delivered by humans and agents",
+   "selector": "website-widget-loader:nth-of-type(1)",
+   "top": 116,
+   "h": 636
+  },
+  {
+   "i": 1,
+   "type": "content",
+   "heading": "",
+   "selector": "website-widget-loader:nth-of-type(2)",
+   "top": 752,
+   "h": 194
+  },
+  {
+   "i": 2,
+   "type": "content",
+   "heading": "Do 10x more. Burn out less.",
+   "selector": "website-widget-loader:nth-of-type(3)",
+   "top": 945,
+   "h": 1364
+  },
+  {
+   "i": 3,
+   "type": "content",
+   "heading": "Your work needs more than a task manager",
+   "selector": "website-widget-loader:nth-of-type(4)",
+   "top": 2272,
+   "h": 1030
+  },
+  {
+   "i": 4,
+   "type": "content",
+   "heading": "Every team has work that agents can handle",
+   "selector": "website-widget-loader:nth-of-type(5)",
+   "top": 3302,
+   "h": 817
+  },
+  {
+   "i": 5,
+   "type": "content",
+   "heading": "Wrike Whiteboard: Map complexity, then conquer it",
+   "selector": "website-widget-loader:nth-of-type(6)",
+   "top": 4119,
+   "h": 556
+  },
+  {
+   "i": 6,
+   "type": "content",
+   "heading": "The trusted platform built for complex work",
+   "selector": "website-widget-loader:nth-of-type(7)",
+   "top": 4675,
+   "h": 1924
+  },
+  {
+   "i": 7,
+   "type": "testimonials",
+   "heading": "Your work, delivered. 30,000+ times over.",
+   "selector": "website-widget-loader:nth-of-type(8)",
+   "top": 6600,
+   "h": 790
+  },
+  {
+   "i": 8,
+   "type": "content",
+   "heading": "Award-winning platform for complex work",
+   "selector": "website-widget-loader:nth-of-type(9)",
+   "top": 7390,
+   "h": 511
+  },
+  {
+   "i": 9,
+   "type": "form",
+   "heading": "Your most important work deserves more than hype.",
+   "selector": "website-widget-loader:nth-of-type(10)",
+   "top": 7901,
+   "h": 508
+  },
+  {
+   "i": 10,
+   "type": "footer",
+   "heading": "Subscribe to Wrike news and updates",
+   "selector": "footer[data-application=\"website-footer\"]",
+   "top": 8409,
+   "h": 990
+  }
+ ],
+ "proofIndex": 7,
+ "heroIndex": 0,
+ "floorIndex": 0,
+ "autoTrail": "L0:check-height",
+ "ladder": [
+  {
+   "depth": 0,
+   "selector": "body > div:nth-of-type(1) > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1)",
+   "tag": "website-widgets-loader",
+   "id": null,
+   "className": "",
+   "display": "inline",
+   "flexDirection": "row",
+   "childCount": 10,
+   "rect": {
+    "top": 116,
+    "h": 8293
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "website-widget-loader",
+     "id": null,
+     "className": "",
+     "selector": "body > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1) > website-widget-loader:nth-of-type(1)",
+     "top": 116,
+     "h": 636,
+     "sections": [
+      0
+     ],
+     "hasProof": false,
+     "hasFloor": true
+    },
+    {
+     "idx": 1,
+     "tag": "website-widget-loader",
+     "id": null,
+     "className": "",
+     "selector": "body > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1) > website-widget-loader:nth-of-type(2)",
+     "top": 752,
+     "h": 194,
+     "sections": [
+      1
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "website-widget-loader",
+     "id": null,
+     "className": "",
+     "selector": "body > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1) > website-widget-loader:nth-of-type(3)",
+     "top": 945,
+     "h": 1364,
+     "sections": [
+      2
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 3,
+     "tag": "website-widget-loader",
+     "id": null,
+     "className": "",
+     "selector": "body > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1) > website-widget-loader:nth-of-type(4)",
+     "top": 2272,
+     "h": 1030,
+     "sections": [
+      3
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 4,
+     "tag": "website-widget-loader",
+     "id": null,
+     "className": "",
+     "selector": "body > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1) > website-widget-loader:nth-of-type(5)",
+     "top": 3302,
+     "h": 817,
+     "sections": [
+      4
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 5,
+     "tag": "website-widget-loader",
+     "id": null,
+     "className": "",
+     "selector": "body > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1) > website-widget-loader:nth-of-type(6)",
+     "top": 4119,
+     "h": 556,
+     "sections": [
+      5
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 6,
+     "tag": "website-widget-loader",
+     "id": null,
+     "className": "",
+     "selector": "body > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1) > website-widget-loader:nth-of-type(7)",
+     "top": 4675,
+     "h": 1924,
+     "sections": [
+      6
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 7,
+     "tag": "website-widget-loader",
+     "id": null,
+     "className": "",
+     "selector": "body > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1) > website-widget-loader:nth-of-type(8)",
+     "top": 6600,
+     "h": 790,
+     "sections": [
+      7
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 8,
+     "tag": "website-widget-loader",
+     "id": null,
+     "className": "",
+     "selector": "body > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1) > website-widget-loader:nth-of-type(9)",
+     "top": 7390,
+     "h": 511,
+     "sections": [
+      8
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 9,
+     "tag": "website-widget-loader",
+     "id": null,
+     "className": "",
+     "selector": "body > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1) > website-widget-loader:nth-of-type(10)",
+     "top": 7901,
+     "h": 508,
+     "sections": [
+      9
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  }
+ ]
+}

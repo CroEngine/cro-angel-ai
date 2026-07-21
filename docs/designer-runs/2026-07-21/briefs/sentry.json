@@ -1,0 +1,266 @@
+{
+ "name": "sentry",
+ "site": "sentry.io",
+ "url": "https://sentry.io/welcome/",
+ "page": {
+  "title": "Application Performance Monitoring & Error Tracking Software | Sentry",
+  "docHeight": 8690,
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "sections": [
+  {
+   "i": 0,
+   "type": "hero",
+   "heading": "Code breaks, fix it faster",
+   "selector": "#main-content > div:nth-of-type(2)",
+   "top": 72,
+   "h": 1714
+  },
+  {
+   "i": 1,
+   "type": "content",
+   "heading": "Developer first. Always.",
+   "selector": "#main-content > div:nth-of-type(3)",
+   "top": 1786,
+   "h": 947
+  },
+  {
+   "i": 2,
+   "type": "content",
+   "heading": "Everything’s connected",
+   "selector": "#main-content > div:nth-of-type(4)",
+   "top": 2733,
+   "h": 1962
+  },
+  {
+   "i": 3,
+   "type": "content",
+   "heading": "Debugging needs context— with or without AI",
+   "selector": "div:nth-of-type(4) > div:nth-of-type(2) > section:nth-of-type(2)",
+   "top": 3732,
+   "h": 963
+  },
+  {
+   "i": 4,
+   "type": "testimonials",
+   "heading": "Loved by developers worldwide",
+   "selector": "#main-content > div:nth-of-type(5)",
+   "top": 4695,
+   "h": 655
+  },
+  {
+   "i": 5,
+   "type": "content",
+   "heading": "Get started in minutes",
+   "selector": "#main-content > div:nth-of-type(6)",
+   "top": 5350,
+   "h": 834
+  },
+  {
+   "i": 6,
+   "type": "content",
+   "heading": "Built to be secure, Designed to not get in your way",
+   "selector": "#main-content > section:nth-of-type(1)",
+   "top": 6185,
+   "h": 603
+  },
+  {
+   "i": 7,
+   "type": "form",
+   "heading": "Get monthly product updates from our newsletter",
+   "selector": "#main-content > section:nth-of-type(2)",
+   "top": 6788,
+   "h": 461
+  },
+  {
+   "i": 8,
+   "type": "content",
+   "heading": "Fix It",
+   "selector": "section:nth-of-type(3)",
+   "top": 7409,
+   "h": 538
+  },
+  {
+   "i": 9,
+   "type": "footer",
+   "heading": "Company",
+   "selector": "footer",
+   "top": 7947,
+   "h": 743
+  }
+ ],
+ "proofIndex": 4,
+ "heroIndex": 0,
+ "floorIndex": 0,
+ "autoTrail": "L0:check-height",
+ "ladder": [
+  {
+   "depth": 0,
+   "selector": "#main-content",
+   "tag": "main",
+   "id": "main-content",
+   "className": "transition-colors duration-200 bg-rich-black",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 11,
+   "rect": {
+    "top": 72,
+    "h": 7875
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "div",
+     "id": null,
+     "className": "toggle-container",
+     "selector": "#main-content > div:nth-of-type(1)",
+     "top": 100,
+     "h": 70,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 1,
+     "tag": "script",
+     "id": null,
+     "className": "",
+     "selector": "#main-content > script:nth-of-type(1)",
+     "top": 0,
+     "h": 0,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "relative ",
+     "selector": "#main-content > div:nth-of-type(2)",
+     "top": 72,
+     "h": 1714,
+     "sections": [
+      0
+     ],
+     "hasProof": false,
+     "hasFloor": true
+    },
+    {
+     "idx": 3,
+     "tag": "div",
+     "id": null,
+     "className": "relative ",
+     "selector": "#main-content > div:nth-of-type(3)",
+     "top": 1786,
+     "h": 947,
+     "sections": [
+      1
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 4,
+     "tag": "div",
+     "id": null,
+     "className": "relative ",
+     "selector": "#main-content > div:nth-of-type(4)",
+     "top": 2733,
+     "h": 1962,
+     "sections": [
+      2,
+      3
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 5,
+     "tag": "div",
+     "id": null,
+     "className": "relative ",
+     "selector": "#main-content > div:nth-of-type(5)",
+     "top": 4695,
+     "h": 655,
+     "sections": [
+      4
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 6,
+     "tag": "div",
+     "id": null,
+     "className": "relative ",
+     "selector": "#main-content > div:nth-of-type(6)",
+     "top": 5350,
+     "h": 834,
+     "sections": [
+      5
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 7,
+     "tag": "section",
+     "id": null,
+     "className": "relative overflow-x-clip z-0 pb-4 lg:pb-16  ",
+     "selector": "#main-content > section:nth-of-type(1)",
+     "top": 6185,
+     "h": 603,
+     "sections": [
+      6
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 8,
+     "tag": "section",
+     "id": null,
+     "className": "relative overflow-x-clip z-0   ",
+     "selector": "#main-content > section:nth-of-type(2)",
+     "top": 6788,
+     "h": 461,
+     "sections": [
+      7
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 9,
+     "tag": "section",
+     "id": null,
+     "className": "relative overflow-x-clip z-0 pt-4 lg:pt-16 pb-4 lg:pb-16 tex",
+     "selector": "#main-content > section:nth-of-type(3)",
+     "top": 7409,
+     "h": 538,
+     "sections": [
+      8
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 10,
+     "tag": "script",
+     "id": null,
+     "className": "",
+     "selector": "#main-content > script:nth-of-type(2)",
+     "top": 0,
+     "h": 0,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  }
+ ]
+}

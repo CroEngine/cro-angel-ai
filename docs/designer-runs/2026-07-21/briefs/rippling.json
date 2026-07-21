@@ -1,0 +1,338 @@
+{
+ "name": "rippling",
+ "site": "www.rippling.com",
+ "url": "https://www.rippling.com/",
+ "page": {
+  "title": "Rippling: #1 Workforce Management System | HR, IT, Finance",
+  "docHeight": 10604,
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "sections": [
+  {
+   "i": 0,
+   "type": "header",
+   "heading": "See a demo",
+   "selector": "header[data-theme=\"berry\"]",
+   "top": 0,
+   "h": 80
+  },
+  {
+   "i": 1,
+   "type": "hero",
+   "heading": "See a demo",
+   "selector": "div:nth-of-type(1) > div > div:nth-of-type(2) > div:nth-of-type(1)",
+   "top": 0,
+   "h": 0
+  },
+  {
+   "i": 2,
+   "type": "form",
+   "heading": "AI that knows your company, and acts like it",
+   "selector": "div[data-ctfl-entry-id=\"4iHoqYz5WP61mmKqQyvTDJ\"]",
+   "top": 0,
+   "h": 800
+  },
+  {
+   "i": 3,
+   "type": "content",
+   "heading": "Start with the apps you need, or run them all together",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(3)",
+   "top": 1105,
+   "h": 1019
+  },
+  {
+   "i": 4,
+   "type": "testimonials",
+   "heading": "The workforce OS with intelligence built in",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(4)",
+   "top": 2124,
+   "h": 2293
+  },
+  {
+   "i": 5,
+   "type": "content",
+   "heading": "Go from prompt to productivity in seconds",
+   "selector": "div[data-ctfl-entry-id=\"6y69X2GvLHBwRT7muOIuNO\"]",
+   "top": 4417,
+   "h": 1093
+  },
+  {
+   "i": 6,
+   "type": "content",
+   "heading": "Work moves faster when everything runs on one system",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(6)",
+   "top": 5510,
+   "h": 1004
+  },
+  {
+   "i": 7,
+   "type": "testimonials",
+   "heading": "",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(7)",
+   "top": 6514,
+   "h": 783
+  },
+  {
+   "i": 8,
+   "type": "content",
+   "heading": "What’s new at Rippling",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(8)",
+   "top": 7297,
+   "h": 872
+  },
+  {
+   "i": 9,
+   "type": "content",
+   "heading": "",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(9)",
+   "top": 8168,
+   "h": 236
+  },
+  {
+   "i": 10,
+   "type": "content",
+   "heading": "Get a demo—live or on demand",
+   "selector": "div[data-ctfl-entry-id=\"jvkGD1EWwDKnLEGADU7Y1\"]",
+   "top": 8405,
+   "h": 392
+  },
+  {
+   "i": 11,
+   "type": "footer",
+   "heading": "Platform",
+   "selector": "footer",
+   "top": 8796,
+   "h": 1808
+  }
+ ],
+ "proofIndex": 4,
+ "heroIndex": 1,
+ "floorIndex": 1,
+ "autoTrail": "L0:wrapper-carries-other-sections;L1:check-width-left",
+ "ladder": [
+  {
+   "depth": 0,
+   "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2)",
+   "tag": "div",
+   "id": null,
+   "className": "sava-layout tw-sava",
+   "display": "flex",
+   "flexDirection": "column",
+   "childCount": 3,
+   "rect": {
+    "top": 0,
+    "h": 10604
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1)",
+     "top": 0,
+     "h": 0,
+     "sections": [
+      0,
+      1
+     ],
+     "hasProof": false,
+     "hasFloor": true
+    },
+    {
+     "idx": 1,
+     "tag": "div",
+     "id": null,
+     "className": "sava-layout-content",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2)",
+     "top": 0,
+     "h": 8796,
+     "sections": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "tw-sava",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(3)",
+     "top": 8796,
+     "h": 1808,
+     "sections": [
+      11
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  },
+  {
+   "depth": 1,
+   "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2)",
+   "tag": "div",
+   "id": null,
+   "className": "sava-layout-content",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 10,
+   "rect": {
+    "top": 0,
+    "h": 8796
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto pt-margin-section-hero md:pt-margin-section-lg lg:pt",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1)",
+     "top": 0,
+     "h": 800,
+     "sections": [
+      2
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 1,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto pt-2xl pb-2xl sava-accolades-section flex justify-ce",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(2)",
+     "top": 800,
+     "h": 306,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto pt-4xl pb-margin-section-md sava-grid-list-section w",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(3)",
+     "top": 1105,
+     "h": 1019,
+     "sections": [
+      3
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 3,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto py-margin-section-md sava-river-flow-section bg-surf",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(4)",
+     "top": 2124,
+     "h": 2293,
+     "sections": [
+      4
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 4,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto py-margin-section-md sava-centered-highlight-section",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(5)",
+     "top": 4417,
+     "h": 1093,
+     "sections": [
+      5
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 5,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto py-margin-section-md sava-river-flow-section bg-surf",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(6)",
+     "top": 5510,
+     "h": 1004,
+     "sections": [
+      6
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 6,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto py-margin-section-md px-5 bg-surface-l0 overflow-x-c",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(7)",
+     "top": 6514,
+     "h": 783,
+     "sections": [
+      7
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 7,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto pt-margin-section-md pb-3xl sava-cards-section w-ful",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(8)",
+     "top": 7297,
+     "h": 872,
+     "sections": [
+      8
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 8,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto pt-0 pb-margin-section-md sava-accolades-section fle",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(9)",
+     "top": 8168,
+     "h": 236,
+     "sections": [
+      9
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 9,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto py-margin-section-md sava-cta-section bg-surface-l0 ",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(10)",
+     "top": 8405,
+     "h": 392,
+     "sections": [
+      10
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  }
+ ]
+}

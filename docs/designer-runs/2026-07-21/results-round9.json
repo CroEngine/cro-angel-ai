@@ -1,0 +1,15 @@
+{
+ "contentful": {
+  "ok": false,
+  "reason": "check-width-left@0:dw-1088,dl544",
+  "restoredClean": true,
+  "plan": {
+   "action": "reorder",
+   "container": "body > main:nth-of-type(1)",
+   "move": "section[data-section=\"case_study\"]",
+   "after": "body > main:nth-of-type(1) > section:nth-of-type(1)",
+   "mode": "grid",
+   "rationale": "The Ruggable customer case study lands directly after the hero, giving skeptical readers proof before the feature pitch. Flex promotion failed width checks on this 19-child main; single-column grid preserves block-flow widths."
+  }
+ }
+}

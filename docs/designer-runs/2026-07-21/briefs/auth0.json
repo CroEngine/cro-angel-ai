@@ -1,0 +1,207 @@
+{
+ "name": "auth0",
+ "site": "auth0.com",
+ "url": "https://auth0.com/",
+ "page": {
+  "title": "Secure AI Agent & User Authentication | Auth0",
+  "docHeight": 8614,
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "sections": [
+  {
+   "i": 0,
+   "type": "header",
+   "heading": "Let's connect",
+   "selector": "header",
+   "top": 0,
+   "h": 106
+  },
+  {
+   "i": 1,
+   "type": "hero",
+   "heading": "Secure AI agents, humans, and whatever comes next",
+   "selector": "#block-0",
+   "top": 0,
+   "h": 896
+  },
+  {
+   "i": 2,
+   "type": "content",
+   "heading": "Auth0 is an easy to implement, adaptable authentication and ",
+   "selector": "main > section:nth-of-type(2)",
+   "top": 896,
+   "h": 609
+  },
+  {
+   "i": 3,
+   "type": "content",
+   "heading": "Integrate Auth0 in any application in just 5 minutes",
+   "selector": "main > section:nth-of-type(3)",
+   "top": 1505,
+   "h": 528
+  },
+  {
+   "i": 4,
+   "type": "content",
+   "heading": "Built for what you’re building",
+   "selector": "main > div",
+   "top": 2161,
+   "h": 3040
+  },
+  {
+   "i": 5,
+   "type": "testimonials",
+   "heading": "You’re in great company",
+   "selector": "main > section:nth-of-type(4)",
+   "top": 5201,
+   "h": 1160
+  },
+  {
+   "i": 6,
+   "type": "content",
+   "heading": "Read. Watch. Code. More.",
+   "selector": "main > section:nth-of-type(5)",
+   "top": 6361,
+   "h": 860
+  },
+  {
+   "i": 7,
+   "type": "content",
+   "heading": "Ready to start securing AI agents, delivering amazing user e",
+   "selector": "main > section:nth-of-type(6)",
+   "top": 7221,
+   "h": 420
+  },
+  {
+   "i": 8,
+   "type": "footer",
+   "heading": "",
+   "selector": "footer",
+   "top": 7733,
+   "h": 881
+  }
+ ],
+ "proofIndex": 5,
+ "heroIndex": 1,
+ "floorIndex": 1,
+ "autoTrail": "L0:check-height",
+ "ladder": [
+  {
+   "depth": 0,
+   "selector": "#__next > main:nth-of-type(1)",
+   "tag": "main",
+   "id": null,
+   "className": "",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 7,
+   "rect": {
+    "top": 0,
+    "h": 7641
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "section",
+     "id": "block-0",
+     "className": "sc-11664e9f-0 cMUpwB",
+     "selector": "#block-0",
+     "top": 0,
+     "h": 896,
+     "sections": [
+      1
+     ],
+     "hasProof": false,
+     "hasFloor": true
+    },
+    {
+     "idx": 1,
+     "tag": "section",
+     "id": null,
+     "className": "sc-3548f3c2-0 kypFyr",
+     "selector": "#__next > main:nth-of-type(1) > section:nth-of-type(2)",
+     "top": 896,
+     "h": 609,
+     "sections": [
+      2
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "section",
+     "id": null,
+     "className": "sc-be85499a-0 fWKSqi",
+     "selector": "#__next > main:nth-of-type(1) > section:nth-of-type(3)",
+     "top": 1505,
+     "h": 528,
+     "sections": [
+      3
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 3,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#__next > main:nth-of-type(1) > div:nth-of-type(1)",
+     "top": 2161,
+     "h": 3040,
+     "sections": [
+      4
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 4,
+     "tag": "section",
+     "id": null,
+     "className": "sc-9c0d6011-0 jWyqKL",
+     "selector": "#__next > main:nth-of-type(1) > section:nth-of-type(4)",
+     "top": 5201,
+     "h": 1160,
+     "sections": [
+      5
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 5,
+     "tag": "section",
+     "id": null,
+     "className": "sc-b6aa57a0-0 hXGzzJ",
+     "selector": "#__next > main:nth-of-type(1) > section:nth-of-type(5)",
+     "top": 6361,
+     "h": 860,
+     "sections": [
+      6
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 6,
+     "tag": "section",
+     "id": null,
+     "className": "sc-c0c3f7c9-0 dDlpHn",
+     "selector": "#__next > main:nth-of-type(1) > section:nth-of-type(6)",
+     "top": 7221,
+     "h": 420,
+     "sections": [
+      7
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  }
+ ]
+}

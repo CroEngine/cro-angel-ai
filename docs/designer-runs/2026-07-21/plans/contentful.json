@@ -1,0 +1,8 @@
+{
+ "action": "refuse",
+ "container": null,
+ "move": null,
+ "after": null,
+ "mode": null,
+ "rationale": "Full-bleed child class (kid 0 overflows the container by 1088px, centered): promotion squeezes real content. Same structural boundary as clickup/rippling \u2014 needs DOM moves."
+}

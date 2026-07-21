@@ -560,7 +560,11 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
       if (dh > Math.max(48, docH * 0.03)) bad = "check-docheight";
     }
     if (!bad) {
-      const allowed = Math.max(8, maxOverlapBefore + 8);
+      // "No worse than before" — but CAPPED: the before-measure is global
+      // while overlap designs are local, so one large intentional overlap
+      // (parallax heroes run 200-400px) must not license an equally large
+      // NOVEL collision elsewhere. Heavy-overlap designs refuse instead.
+      const allowed = Math.min(96, Math.max(8, maxOverlapBefore + 8));
       const vis = after.filter((x) => x.env.height > 1).sort((a, b) => a.env.top - b.env.top);
       for (let i = 1; i < vis.length; i++) {
         if (vis[i].env.top < vis[i - 1].env.bottom - allowed) {

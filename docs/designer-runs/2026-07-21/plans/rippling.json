@@ -1,0 +1,8 @@
+{
+ "action": "refuse",
+ "container": null,
+ "move": null,
+ "after": null,
+ "mode": null,
+ "rationale": "Same full-bleed-child class as clickup (97px overflow at kid 6): promotion squeezes real content, and no alternative container exists in the ladder."
+}

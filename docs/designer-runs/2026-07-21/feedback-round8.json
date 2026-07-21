@@ -1,0 +1,13 @@
+{
+ "auth0": {
+  "plan": {
+   "action": "reorder",
+   "container": "#__next > main:nth-of-type(1)",
+   "move": "#__next > main:nth-of-type(1) > section:nth-of-type(4)",
+   "after": "#block-0",
+   "mode": "flex",
+   "rationale": "'You're in great company' moves from 5200px down to right after the hero. Flex promotion changed section heights here (BFC formation); grid promotion keeps block-like flow. (Round 6: grid promotion hit a site-CSS width interaction the stretch override could not neutralize; retrying with flex promotion which now carries the same block-flow width semantics.)"
+  },
+  "failReason": "check-width-left@5:dw175,dl0"
+ }
+}

@@ -1,0 +1,375 @@
+SYSTEM:
+You are the layout solver for Angel Adaptive, a snippet that adapts third-party marketing pages using only safe, reversible CSS changes.
+
+GOAL: surface the page's PROOF section (testimonials) earlier — ideally right after the hero — on pages where the automatic solver refused. You receive a structural brief: the page's detected sections, the automatic attempt trail with named refusal reasons, and a "ladder" of candidate containers (from the common ancestor of hero+proof down to the proof's own parent), each with its direct children.
+
+MECHANICS (what a plan can do):
+- A reorder happens INSIDE one container: its direct children get CSS `order` values; the child carrying the proof moves after a chosen sibling (or to the front). The DOM never changes.
+- Block-stacked containers are promoted to flex-column (mode "flex") or single-column grid (mode "grid"). Grid stretches children like block flow and can avoid the width/height drift that flex promotion sometimes causes — prefer "grid" when the trail shows check-width-left or check-height at that container.
+- Every plan is re-verified on the live page: siblings must keep width/left (±2px) and height (±12px), no overlaps, page height within 3%, the proof must lift ≥200px, never land above the hero, never land <300px from the page top, and the moved child must not carry other detected sections. A failed check rolls back invisibly and you get the named reason.
+
+RULES:
+1. Copy selectors EXACTLY from the brief ("selector" fields). Never invent selectors.
+2. "move" must be the proof section itself or a child marked hasProof:true whose "sections" list contains ONLY the proof index (never a wrapper that also carries other sections).
+3. "container" must be a ladder container (or a listed child that is an ancestor of the proof). "after" must be a child selector FROM THAT SAME container, or null for front-of-group.
+4. Prefer the smallest move that still yields a meaningful lift. Landing right after the hero child is ideal; front-of-group is fine when the container sits below the hero.
+5. The refusal trail tells you what already failed — do not repeat a failed attempt unchanged; change the container, the anchor, or the mode.
+6. If no safe move exists (every child that carries the proof also carries other sections, or every container has <2 usable children), answer action "refuse" with a short rationale. Refusal is a correct answer.
+7. "rationale": 1-2 sentences, written for the site owner (why this improves the page for engaged non-clicking visitors).
+
+OUTPUT: one JSON object per the schema. action "refuse" → container/move/after/mode all null.
+
+USER:
+BRIEF:
+{
+ "name": "clickup",
+ "site": "clickup.com",
+ "url": "https://clickup.com/",
+ "page": {
+  "title": "ClickUp™ | Maximize productivity • Software, AI, and humans converge",
+  "docHeight": 12149,
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "sections": [
+  {
+   "i": 0,
+   "type": "hero",
+   "heading": "Software to replace all software Software to replace all sof",
+   "selector": "div[data-testid=\"home-hero-4o\"]",
+   "top": 100,
+   "h": 745
+  },
+  {
+   "i": 1,
+   "type": "content",
+   "heading": "60% of work is lost in context – and AI is lost without it",
+   "selector": "div[data-testid=\"cu-home-video-section-4o\"]",
+   "top": 923,
+   "h": 731
+  },
+  {
+   "i": 2,
+   "type": "content",
+   "heading": "All apps, AI Agents, and humans in ClickUp",
+   "selector": "div[data-testid=\"cu-wall-of-features\"]",
+   "top": 1654,
+   "h": 1146
+  },
+  {
+   "i": 3,
+   "type": "content",
+   "heading": "A new era of humans, with Super Agents",
+   "selector": "div[data-testid=\"lp4-agents-section\"]",
+   "top": 2799,
+   "h": 1606
+  },
+  {
+   "i": 4,
+   "type": "testimonials",
+   "heading": "The best AI is your AI",
+   "selector": "section[data-testid=\"home-brain-2-section\"]",
+   "top": 4405,
+   "h": 2653
+  },
+  {
+   "i": 5,
+   "type": "header",
+   "heading": "Nothing comes close to Brain2",
+   "selector": "div:nth-of-type(3) > header",
+   "top": 5471,
+   "h": 224
+  },
+  {
+   "i": 6,
+   "type": "content",
+   "heading": "AI solutions for every team",
+   "selector": "main > div:nth-of-type(3) > div:nth-of-type(5)",
+   "top": 7058,
+   "h": 820
+  },
+  {
+   "i": 7,
+   "type": "content",
+   "heading": "It's like adding 15 full-time employees",
+   "selector": "div[data-testid=\"cu-home-impact4o\"]",
+   "top": 7878,
+   "h": 659
+  },
+  {
+   "i": 8,
+   "type": "testimonials",
+   "heading": "Loved by 5+ million teams, backed by 100+ awards",
+   "selector": "main > div:nth-of-type(3) > div:nth-of-type(7)",
+   "top": 8537,
+   "h": 953
+  },
+  {
+   "i": 9,
+   "type": "content",
+   "heading": "#1 most referenced company on G2 reports",
+   "selector": "section[data-testid=\"achievements\"]",
+   "top": 9490,
+   "h": 1017
+  },
+  {
+   "i": 10,
+   "type": "content",
+   "heading": "Enterprise-grade everything",
+   "selector": "div[data-testid=\"cu-home-security\"]",
+   "top": 10507,
+   "h": 375
+  },
+  {
+   "i": 11,
+   "type": "content",
+   "heading": "All your work, all your people, all powered by AI",
+   "selector": "section:nth-of-type(3)",
+   "top": 10881,
+   "h": 436
+  }
+ ],
+ "proofIndex": 4,
+ "heroIndex": 0,
+ "floorIndex": 0,
+ "autoTrail": "L0:wrapper-carries-other-sections;L1:check-width-left",
+ "ladder": [
+  {
+   "depth": 0,
+   "selector": "#v4-homepage > main:nth-of-type(1)",
+   "tag": "main",
+   "id": null,
+   "className": "CuHome_mainWrapper__QDbpa",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 3,
+   "rect": {
+    "top": 100,
+    "h": 11217
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "div",
+     "id": null,
+     "className": "HomeHero4o_wrapper__nN0BX home-hero-long-title-control",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(1)",
+     "top": 100,
+     "h": 745,
+     "sections": [
+      0
+     ],
+     "hasProof": false,
+     "hasFloor": true
+    },
+    {
+     "idx": 1,
+     "tag": "div",
+     "id": null,
+     "className": "CuHome_homeHeroContent__4gF1G home-hero-long-title-variant",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(2)",
+     "top": 0,
+     "h": 0,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "CuHome_mainContent__xfnhR",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3)",
+     "top": 845,
+     "h": 10473,
+     "sections": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    }
+   ]
+  },
+  {
+   "depth": 1,
+   "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3)",
+   "tag": "div",
+   "id": null,
+   "className": "CuHome_mainContent__xfnhR",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 11,
+   "rect": {
+    "top": 845,
+    "h": 10473
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "div",
+     "id": null,
+     "className": "_wrapper_nk8qp_41 ui CuHome_joinTeamsBanner__ukXVU home-hero",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1)",
+     "top": 845,
+     "h": 30,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 1,
+     "tag": "div",
+     "id": null,
+     "className": "CuHomeVideoSection4on_wrapper__2W_d2 v4",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2)",
+     "top": 923,
+     "h": 731,
+     "sections": [
+      1
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "CuWallOfFeatures_wrapper__hccvt v4",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(3)",
+     "top": 1654,
+     "h": 1146,
+     "sections": [
+      2
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 3,
+     "tag": "div",
+     "id": null,
+     "className": "Lp4AgentsSection_wrapper__ufTQ6 v4",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(4)",
+     "top": 2799,
+     "h": 1606,
+     "sections": [
+      3
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 4,
+     "tag": "section",
+     "id": null,
+     "className": "HomeBrain2Section_wrapper__X7dSG",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > section:nth-of-type(1)",
+     "top": 4405,
+     "h": 2653,
+     "sections": [
+      4,
+      5
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 5,
+     "tag": "div",
+     "id": null,
+     "className": "CuHomeTeamsTab4o_wrapper__JEZ7A CuHome_teamsTabSection__feuP",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(5)",
+     "top": 7058,
+     "h": 820,
+     "sections": [
+      6
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 6,
+     "tag": "div",
+     "id": null,
+     "className": "CuHomeImpact4o_wrapper__p0a87 v4",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(6)",
+     "top": 7878,
+     "h": 659,
+     "sections": [
+      7
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 7,
+     "tag": "div",
+     "id": null,
+     "className": "CuHomeTeamsTab4o_wrapper__JEZ7A CuHome_testimonialsSection__",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(7)",
+     "top": 8537,
+     "h": 953,
+     "sections": [
+      8
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 8,
+     "tag": "section",
+     "id": null,
+     "className": "_wrapper_xe9jl_40 v4",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > section:nth-of-type(2)",
+     "top": 9490,
+     "h": 1017,
+     "sections": [
+      9
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 9,
+     "tag": "div",
+     "id": null,
+     "className": "CuHomeSecurity_wrapper__qzEwB v4",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(8)",
+     "top": 10507,
+     "h": 375,
+     "sections": [
+      10
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 10,
+     "tag": "section",
+     "id": null,
+     "className": "Lp4AiCta_wrapper__P26gj ",
+     "selector": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3) > section:nth-of-type(3)",
+     "top": 10881,
+     "h": 436,
+     "sections": [
+      11
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  }
+ ]
+}

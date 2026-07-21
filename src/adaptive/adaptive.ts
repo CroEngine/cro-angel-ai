@@ -98,6 +98,10 @@ function adapt(segmentArg?: Segment): AppliedChange[] {
 }
 
 // E3: planned-reorder reverts, drained together with the pattern reverts.
+// Sequencing contract: adapt() begins with a FULL revert, so it also undoes
+// any applied plan — plans and segment patterns do not compose yet. The E4
+// serving layer must apply the plan AFTER adapt() (or teach adapt() to
+// re-apply stored plans) before the two run together in production.
 const planReverts: Array<() => void> = [];
 
 function planReorder(plan: PlannedReorder): PlannedResult {

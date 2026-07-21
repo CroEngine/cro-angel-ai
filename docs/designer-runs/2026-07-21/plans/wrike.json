@@ -1,0 +1,8 @@
+{
+ "action": "reorder",
+ "container": "website-widgets-loader",
+ "move": "website-widget-loader:nth-of-type(8)",
+ "after": "website-widget-loader:nth-of-type(1)",
+ "mode": "grid",
+ "rationale": "'Your work, delivered. 30,000+ times' moves to right after the hero widget. The widget-loader host is display:inline; grid promotion blockifies the custom-element children where flex promotion shifted heights. (Round 2: container re-targeted by tag name \u2014 the positional path did not survive a fresh page load.)"
+}

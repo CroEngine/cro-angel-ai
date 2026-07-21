@@ -1,0 +1,8 @@
+{
+ "action": "refuse",
+ "container": null,
+ "move": null,
+ "after": null,
+ "mode": null,
+ "rationale": "The detected proof section is a navigation artifact (a nav item inside the page header \u2014 the ladder runs into the mobile menu). Any move would reorder navigation, not content. The inventory needs a corrected testimonial detection on this page first."
+}
