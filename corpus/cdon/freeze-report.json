@@ -1,0 +1,70 @@
+{
+  "ok": true,
+  "error": null,
+  "dryRun": false,
+  "consent": {
+    "selector": "#didomi-notice-agree-button",
+    "dismissCheck": "detached",
+    "matchCountBeforeClick": 1,
+    "visibleBeforeClick": true,
+    "dismissedAfterMs": 707,
+    "postDismissDomHits": {
+      "accept all": 0,
+      "decline all": 0,
+      "reject all": 0,
+      "cookie": 1
+    }
+  },
+  "capture": {
+    "mhtmlKb": 4195,
+    "screenshotKb": 1175,
+    "beforeDismissScreenshotPath": null,
+    "loadStateDegraded": null,
+    "externalFontSrcCount": 0,
+    "unembeddedFontUrls": [],
+    "embeddedFontCount": 17,
+    "mhtmlKbBeforeFontEmbed": 3712,
+    "fontFetchFailures": [],
+    "embeddedFamilies": [
+      "__Manrope_812432",
+      "__Varela_Round_353619",
+      "hotjar",
+      "roboto"
+    ],
+    "fontUrls": {
+      "embedded": 0,
+      "absolute": 7,
+      "relativeResolved": 10,
+      "unresolvable": []
+    },
+    "externalized": false,
+    "externalAssetUrl": null,
+    "externalAssetSha256": null,
+    "removedStaleLocalMhtml": false,
+    "removedStalePointer": false
+  },
+  "env": {
+    "source": "browserbase",
+    "chromiumVersion": null,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "frozenAt": "2026-07-06T20:06:58.167Z"
+  },
+  "failureClass": null,
+  "captureValidity": {
+    "ok": true,
+    "textLen": 21740,
+    "interactiveCount": 484,
+    "heroHasMeaningfulHeading": true,
+    "challengeMarkersFound": [],
+    "reason": null
+  },
+  "timing": {
+    "gotoMs": 7907,
+    "consentMs": 2859,
+    "scrollMs": 4680,
+    "captureMs": 9884
+  }
+}

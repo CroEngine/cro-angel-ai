@@ -558,6 +558,19 @@
         "area": 600
       },
       {
+        "text": "Contact sales",
+        "tagName": "a",
+        "category": "cta_primary",
+        "intent": "contact",
+        "section": "content",
+        "aboveFold": false,
+        "href": "linear.app",
+        "disabled": false,
+        "yBand": 9600,
+        "score": 10,
+        "area": 6000
+      },
+      {
         "text": "Get started",
         "tagName": "a",
         "category": "cta_primary",
@@ -569,19 +582,6 @@
         "yBand": 9600,
         "score": 40,
         "bgContrast": 16,
-        "area": 6000
-      },
-      {
-        "text": "Contact sales",
-        "tagName": "a",
-        "category": "cta_primary",
-        "intent": "utility",
-        "section": "content",
-        "aboveFold": false,
-        "href": "linear.app",
-        "disabled": false,
-        "yBand": 9600,
-        "score": 10,
         "area": 6000
       },
       {
@@ -1135,6 +1135,20 @@
         "area": 400
       },
       {
+        "text": "Contact us",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "contact",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "linear.app",
+        "disabled": false,
+        "yBand": 10000,
+        "score": 0,
+        "bgContrast": 1,
+        "area": 2000
+      },
+      {
         "text": "Customer Requests",
         "tagName": "a",
         "category": "nav_item",
@@ -1653,20 +1667,6 @@
         "area": 700
       },
       {
-        "text": "Contact us",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "utility",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "linear.app",
-        "disabled": false,
-        "yBand": 10000,
-        "score": 0,
-        "bgContrast": 1,
-        "area": 2000
-      },
-      {
         "text": "Listen",
         "tagName": "button",
         "category": "cta_secondary",
@@ -1858,6 +1858,19 @@
         "area": 6000
       },
       {
+        "text": "Contact",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "contact",
+        "section": "nav",
+        "aboveFold": true,
+        "href": "linear.app",
+        "disabled": false,
+        "yBand": 0,
+        "score": 0,
+        "area": 2000
+      },
+      {
         "text": "Log in",
         "tagName": "a",
         "category": "nav_item",
@@ -1914,19 +1927,6 @@
         "tagName": "a",
         "category": "nav_item",
         "intent": "unknown",
-        "section": "nav",
-        "aboveFold": true,
-        "href": "linear.app",
-        "disabled": false,
-        "yBand": 0,
-        "score": 0,
-        "area": 2000
-      },
-      {
-        "text": "Contact",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "utility",
         "section": "nav",
         "aboveFold": true,
         "href": "linear.app",
@@ -2210,9 +2210,9 @@
       }
     },
     "ctaSummary": {
-      "total": 14,
-      "primary": 1,
-      "aboveFold": 2
+      "total": 15,
+      "primary": 4,
+      "aboveFold": 3
     },
     "sectionOrder": [
       "hero",

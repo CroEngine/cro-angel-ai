@@ -61,6 +61,42 @@ E consent above-fold + dark-theme inversion):
 Add e-commerce / testimonial-heavy sites only when the trust-signal bugs
 become active again.
 
+## Archetype corpus — one frozen site per conversion goal kind
+
+Beyond snapshot regression, the corpus doubles as a **per-goal-kind
+regression suite** (`__tests__/archetype-goals.test.ts`): the whole pipeline
+harvest → `mapAuditToInventory` → `rankGoalCandidates` is exercised on a real
+site of each conversion type, so a taxonomy change that re-types a webshop's
+"Köp" as signup, or a nonprofit's "Ge en gåva" as start_flow, fails CI. This
+is the "one goal model for any conversion site" claim made testable.
+
+| Site | Goal kind | CMP | Notes |
+|---|---|---|---|
+| `cdon` | purchase | Didomi | Swedish marketplace/webshop |
+| `elskling` | start_flow / quote | Cookiebot (hidden) | electricity comparison portal |
+| `cancerfonden` | donate | Cookiebot (hidden) | nonprofit |
+| `hubspot` | signup / trial / contact | (own banner, hidden) | SaaS (pre-existing) |
+| `bokadirekt` | booking* | none (region) | booking marketplace homepage |
+| `bokadirekt-service` | booking | own React-modal (`data-cy="allowCookiesButton"`, detached) | service page — the SSR:ed "Boka" CTAs; dialog shows on service pages but not the homepage |
+| `nextory` | trial / subscribe | none in region (Cookiebot in server HTML only) | audiobook subscription |
+| `sector-alarm` | lead / quote | Cookie Information (custom template, hidden) | home-alarm lead-gen |
+
+\* **bokadirekt (homepage) is soft-asserted only.** The homepage is a category
+portal — the prominent CTAs are href-less service tiles ("Frisör", "Massage"),
+so the deterministic no-LLM floor sees no booking verb/href and defaults to
+signup; the holistic goal judge (LLM) reads "booking marketplace" from the
+whole inventory. The real "Boka" CTAs live on the service pages — that is what
+`bokadirekt-service` captures, giving booking its strict archetype.
+
+Failed freeze attempts, for the record: **lead** — Verisure/OneTrust exceeded
+the 9 MB externalize threshold with no lovable-assets CLI in the freeze env;
+Svensk Fast/Cookiebot rendered no banner against the Browserbase IP (replaced
+by sector-alarm). **subscribe** — di.se's newspaper fonts exceeded the inline
+threshold and broke the render-canary (replaced by nextory). When a CMP ships
+a custom template (standard vendor selectors match nothing),
+`scripts/probe-consent-dom.ts --url=…` dumps the banner's real DOM to pick a
+selector from — that's how sector-alarm's classless accept button was found.
+
 ## Determinism contract & limitations (Grind 1)
 
 The substrate's promise is `score = f(frozen DOM, extractor_vN)`. For this to
@@ -176,3 +212,17 @@ and SPA shell etags make HEAD too noisy to be authoritative).
 
 A weekly GitHub Action runs `scripts/freeze-staleness-check.ts` and opens
 an issue listing stale snapshots. Human triggers re-freeze; no auto-refreeze.
+
+## Vocabulary harvest (KIND_TEXT evidence)
+
+`vocab-harvest-2026-07-06.json` — CTA/button labels harvested from 107 live
+homepages across goal archetypes (e-com, booking, lead-gen, comparison,
+nonprofit, media, SaaS, bank, telecom, energy; breadth-targets + a broadened
+Swedish/Nordic mix). Method: curl of server-rendered HTML, `<a>`/`<button>`/
+submit labels, deduped per site, chrome labels (login/search/social/legal/nav)
+filtered out, threshold ≥ 2 sites. This file is the evidence base for the
+`KIND_TEXT` vocabulary in `src/adaptive/crawler-inventory.ts` — extend the
+regexes only with terms that clear the same bar (≥ 2 independent sites, no
+plausible non-goal reading), and re-run a harvest when entering a new market
+or vertical. Note it captures server-rendered labels only (no JS execution) —
+SPA-heavy sites need the real crawler/freeze pipeline.

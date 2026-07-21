@@ -1,5 +1,11 @@
 // Auto-extracted from engine.server.ts — runs inside the browser via page.evaluate.
 // Keep self-contained: no imports, no closures over server state.
+//
+// AVSIKTLIG DUBBLETT (task #90 / återanvändnings-auditen): PATTERNS nedan är
+// den rika EN+SV-trustvokabulären; redesign-kedjans enklare HTML-skanning
+// delar kärnan via src/adaptive/redesign/vocab.ts (SOCIAL_PROOF_NOUNS_SRC,
+// TRUSTED_BY_LEADINS_SRC). Skriptet kan inte importera (självbärande sträng,
+// kodgen-pinnad harvest-bundle) — utöka BÅDA när vokabulären växer.
 
 export const TRUST_SIGNALS_SCRIPT = `(() => {
   const viewportH = window.innerHeight || 720;
@@ -145,8 +151,15 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
   function push(type, text, el, source, extras) {
     const block = nearestBlock(el);
-    const inCarousel = isInsideCarousel(block);
-    const visibleEnough = isVisible(block) || (inCarousel && block.getBoundingClientRect().width > 0);
+    // Document-level entries (schema.org JSON-LD, anchored to <body>) are
+    // non-positional corroboration, not visible UI: body.contains(everything),
+    // so giving them a _block would let hierarchyDedup keep the invisible
+    // schema entry and silently delete every VISIBLE signal of the same type
+    // (Trustpilot widget, "4.7 av 5" text). They also must not count as
+    // above-fold/hero — they have no visual position at all.
+    const isDocLevel = block === document.body;
+    const inCarousel = !isDocLevel && isInsideCarousel(block);
+    const visibleEnough = isDocLevel || isVisible(block) || (inCarousel && block.getBoundingClientRect().width > 0);
     if (!visibleEnough) return;
     if (type === 'stars') {
       const raw = block.getBoundingClientRect();
@@ -161,10 +174,10 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const entry = {
       type,
       text: cleanText,
-      section: SECTION_KIND(block, rect),
-      aboveFold: rect.top < viewportH,
+      section: isDocLevel ? 'document' : SECTION_KIND(block, rect),
+      aboveFold: isDocLevel ? false : rect.top < viewportH,
       selector: buildSelector(block),
-      visualWeight: Math.round(rect.width * rect.height),
+      visualWeight: isDocLevel ? 0 : Math.round(rect.width * rect.height),
       source,
       rect: {
         x: Math.round(rect.left + window.scrollX),
@@ -177,7 +190,9 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     if (inCarousel) entry.inCarousel = true;
     // Stash the source block on every entry so the post-collection hierarchy
     // dedup can walk ancestor/descendant relationships. Stripped before return.
-    entry._block = block;
+    // Doc-level entries get NO block: hierarchyDedup skips null-_block entries,
+    // so schema corroboration and visible widgets coexist instead of competing.
+    entry._block = isDocLevel ? null : block;
     out.push(entry);
   }
 
@@ -1271,8 +1286,12 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       ? withRating.reduce((s, e) => s + e.rating, 0) / withRating.length
       : null;
     const aboveFoldCount = starsEntries.filter((e) => e.aboveFold).length;
+    // Review VOLUME must survive the collapse (B7): downstream sums used to
+    // read reviewCount off type 'stars', which no longer exists after this
+    // point. Max, not sum — multiple star clusters restate the same corpus.
+    const reviewCount = starsEntries.reduce((m, e) => Math.max(m, e.reviewCount || 0), 0);
     filtered = filtered.filter((e) => e.type !== 'stars');
-    filtered.push({
+    filtered.push(Object.assign({
       type: 'stars_aggregate',
       text: starsEntries.length + ' star ratings' + (avg !== null ? ' (avg ' + (Math.round(avg * 100) / 100) + ')' : ''),
       section: starsEntries[0].section,
@@ -1282,7 +1301,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       averageRating: avg !== null ? Math.round(avg * 100) / 100 : null,
       count: starsEntries.length,
       aboveFoldCount,
-    });
+    }, reviewCount > 0 ? { reviewCount } : {}));
   }
 
   return { signals: filtered, _debug: debug };

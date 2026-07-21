@@ -92,13 +92,6 @@ export type PsiStrategyResult = {
   error: string | null;
 };
 
-export type PsiResult = {
-  url: string;
-  mobile: PsiStrategyResult | null;
-  desktop: PsiStrategyResult | null;
-  error: string | null;
-};
-
 function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
@@ -364,17 +357,3 @@ export const runPsiDesktop = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ url: z.string().url() }).parse(input))
   .handler(async ({ data }): Promise<PsiStrategyResult> => runStrategyServer(data.url, "desktop"));
 
-export const runPageSpeedInsights = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ url: z.string().url() }).parse(input))
-  .handler(async ({ data }): Promise<PsiResult> => {
-    const [mobile, desktop] = await Promise.all([
-      runStrategyServer(data.url, "mobile"),
-      runStrategyServer(data.url, "desktop"),
-    ]);
-    return {
-      url: data.url,
-      mobile,
-      desktop,
-      error: mobile.error && desktop.error ? `Both strategies failed: ${mobile.error}` : null,
-    };
-  });

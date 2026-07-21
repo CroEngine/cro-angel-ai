@@ -399,7 +399,13 @@
 //           validation commit the same night — this bump precedes them so any
 //           result produced by this tree is distinguishable from v1.19.0.
 
-export const EXTRACTOR_VERSION = "1.20.0" as const;
+//   1.21.0 — merge of the product lineage (main): shared intent/category
+//           classifiers (B1/B2) now canonical for ctas+collect; our image-only
+//           logo-strip guard ported into classifyCategoryShared (isImageOnly
+//           param, computed per script); trust proximity from canonical trust
+//           rects (B4); category-only primary count (B9). Re-bless goldens.
+
+export const EXTRACTOR_VERSION = "1.21.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

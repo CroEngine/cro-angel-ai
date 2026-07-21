@@ -4,18 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { runPsiMobile, runPsiDesktop } from "@/lib/tests/pagespeed.functions";
 import type { PsiStrategyResult } from "@/lib/tests/pagespeed.functions";
-
-function downloadJson(filename: string, payload: unknown) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+import { downloadJson } from "./download";
 
 function scoreColor(score: number | null): string {
   if (score === null) return "text-muted-foreground";
@@ -60,9 +49,9 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
     const isTimeout = /AbortError|aborted/i.test(msg);
     const isFailedDoc = /FAILED_DOCUMENT_REQUEST|ERRORED_DOCUMENT_REQUEST|NO_FCP/.test(msg);
     const friendly = isTimeout
-      ? `Lighthouse hann inte ladda sidan inom 25s${retried ? " (även efter ett omförsök)" : ""}. Sidan är troligen för långsam — testa den andra fliken eller kör om.`
+      ? `Lighthouse couldn't load the page within 25s${retried ? " (even after a retry)" : ""}. The page is likely too slow — try the other tab or run again.`
       : isFailedDoc
-        ? `Lighthouse kunde inte ladda sidan på ${result.strategy}${retried ? " (även efter ett omförsök)" : ""}. Sidan svarar för långsamt — testa den andra fliken eller kör om.`
+        ? `Lighthouse couldn't load the page on ${result.strategy}${retried ? " (even after a retry)" : ""}. The page responds too slowly — try the other tab or run again.`
         : msg;
     return (
       <div className="space-y-2 rounded border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
@@ -72,7 +61,7 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
         <div className="text-foreground/80">{friendly}</div>
         {friendly !== msg && (
           <details className="text-[10px] text-muted-foreground">
-            <summary className="cursor-pointer">Visa rått fel</summary>
+            <summary className="cursor-pointer">Show raw error</summary>
             <pre className="mt-1 whitespace-pre-wrap break-all">{msg}</pre>
           </details>
         )}

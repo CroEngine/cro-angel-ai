@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 1,
+  "env": {
+    "chromiumPath": "<playwright-bundled>",
+    "chromiumVersion": "148.0.7778.96",
+    "pinned": true
+  },
+  "families": [
+    {
+      "family": "Icon",
+      "gate1": {
+        "wWith": 505.484375,
+        "wFallback": 520.171875,
+        "deltaLoad": 14.6875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Icon",
+          "allDescriptorFamilies": [
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric-Regular",
+            "Metric-Bold",
+            "Metric-SemiBold",
+            "Icon",
+            "Metric-Light"
+          ],
+          "matchedDescriptorFamilies": [
+            "Icon"
+          ],
+          "checkString": "16px \"Icon\"",
+          "widthString": "\"Icon\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Metric",
+      "gate1": {
+        "wWith": 363,
+        "wFallback": 520.171875,
+        "deltaLoad": 157.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Metric",
+          "allDescriptorFamilies": [
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric-Regular",
+            "Metric-Bold",
+            "Metric-SemiBold",
+            "Icon",
+            "Metric-Light"
+          ],
+          "matchedDescriptorFamilies": [
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric"
+          ],
+          "checkString": "16px \"Metric\"",
+          "widthString": "\"Metric\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Metric-Bold",
+      "gate1": {
+        "wWith": 401,
+        "wFallback": 520.171875,
+        "deltaLoad": 119.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Metric-Bold",
+          "allDescriptorFamilies": [
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric-Regular",
+            "Metric-Bold",
+            "Metric-SemiBold",
+            "Icon",
+            "Metric-Light"
+          ],
+          "matchedDescriptorFamilies": [
+            "Metric-Bold"
+          ],
+          "checkString": "16px \"Metric-Bold\"",
+          "widthString": "\"Metric-Bold\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Metric-Light",
+      "gate1": {
+        "wWith": 354,
+        "wFallback": 520.171875,
+        "deltaLoad": 166.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Metric-Light",
+          "allDescriptorFamilies": [
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric-Regular",
+            "Metric-Bold",
+            "Metric-SemiBold",
+            "Icon",
+            "Metric-Light"
+          ],
+          "matchedDescriptorFamilies": [
+            "Metric-Light"
+          ],
+          "checkString": "16px \"Metric-Light\"",
+          "widthString": "\"Metric-Light\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Metric-Regular",
+      "gate1": {
+        "wWith": 363,
+        "wFallback": 520.171875,
+        "deltaLoad": 157.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Metric-Regular",
+          "allDescriptorFamilies": [
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric-Regular",
+            "Metric-Bold",
+            "Metric-SemiBold",
+            "Icon",
+            "Metric-Light"
+          ],
+          "matchedDescriptorFamilies": [
+            "Metric-Regular"
+          ],
+          "checkString": "16px \"Metric-Regular\"",
+          "widthString": "\"Metric-Regular\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Metric-SemiBold",
+      "gate1": {
+        "wWith": 384,
+        "wFallback": 520.171875,
+        "deltaLoad": 136.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Metric-SemiBold",
+          "allDescriptorFamilies": [
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric",
+            "Metric-Regular",
+            "Metric-Bold",
+            "Metric-SemiBold",
+            "Icon",
+            "Metric-Light"
+          ],
+          "matchedDescriptorFamilies": [
+            "Metric-SemiBold"
+          ],
+          "checkString": "16px \"Metric-SemiBold\"",
+          "widthString": "\"Metric-SemiBold\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    }
+  ]
+}

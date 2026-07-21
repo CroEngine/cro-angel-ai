@@ -1,0 +1,16 @@
+{
+  "url": "https://www.cancerfonden.se",
+  "name": "cancerfonden",
+  "captured_at": "2026-07-06T20:14:34.964Z",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "consentSelector": "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+  "consentInstruction": null,
+  "notes": "Cookiebot-CMP. Arketyp: donate (nonprofit).",
+  "ttlDays": 90,
+  "frozenAt": "2026-07-06T20:14:34.964Z",
+  "expiresAt": "2026-10-04T20:14:34.964Z",
+  "refreezeReason": "manual"
+}

@@ -10,6 +10,7 @@ import type {
   PageAuditData,
   SectionKind,
 } from "@/lib/tests/schema";
+import { downloadJson } from "./download";
 
 function fmtTime(ts: unknown) {
   const n = typeof ts === "number" ? ts : Date.now();
@@ -48,18 +49,6 @@ const CATEGORY_LABELS: Record<ElementCategory, string> = {
   link: "Link",
   other: "Other",
 };
-
-function downloadJson(filename: string, payload: unknown) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
 
 function renderEventLine(ev: StreamEvent): string {
   switch (ev.type) {

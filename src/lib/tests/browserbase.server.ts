@@ -40,6 +40,10 @@ export async function createSession(
 ): Promise<BrowserbaseSession> {
   const { client, projectId } = getClient();
   const base = { projectId, keepAlive: true, timeout: 16 * 60, proxies: true } as const;
+  // OBS viewport: sessions-nivåns browserSettings.viewport gäller bara tills
+  // första navigationen — Stagehand återställer sedan sin default (1288×711).
+  // Per-enhet-emulering görs därför i robustness-runnern via Stagehands
+  // POSITIONELLA page.setViewportSize(w, h), efter goto.
   // Opt-in so normal sessions stay on the ungated path (no wasted 403/400
   // round-trip); when a caller requests it we attempt the Enterprise tier and
   // fall back to basic stealth on rejection, so it's ready once the plan allows.

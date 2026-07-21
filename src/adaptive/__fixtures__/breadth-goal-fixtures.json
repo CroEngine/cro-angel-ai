@@ -1,0 +1,830 @@
+{
+ "generatedAt": "2026-07-06",
+ "method": "server-HTML harvest av 20 sajter (107-sajters-svepet 2026-07-06) → extraktionsagent + adversariell verifierare per sajt → triage mot det deterministiska golvet: expects uttrycker taxonomins beslut (tel:→lead, teckna→purchase, kategori-ingångar=start_flow); varumärkesord och 1-sajts-bevis rensades; 6 sajter refuserade (bot-block/SPA-skal), se \"rejected\" nedan — de kräver freeze-pipelinen.",
+ "rejected": [
+  {
+   "domain": "apotea.se",
+   "notes": "The fetched HTML is a Cloudflare \"Just a moment...\" managed challenge page (bot-block), not the real apotea.se site. It contains no site content or CTA labels. expectedSiteKinds reflects the vertical prior only (online pharmacy retail = purchase); the HTML could not confirm or refute it."
+  },
+  {
+   "domain": "zalando.se",
+   "notes": "The captured HTML is a \"Not Found\" error/JS-shell page (titles: \"Zalando\", \"Not Found\"), containing only error-recovery buttons \"Försök igen\" and \"Skicka felanmälan\" plus require.js asset bootstrapping. No real storefront CTAs present. expectedSiteKinds reflects the vertical prior (purchase, plus account signup/newsletter) since the HTML offers no evidence either way."
+  },
+  {
+   "domain": "booking.com",
+   "notes": "File is an AWS WAF JavaScript bot-challenge page (challenge.js, AwsWafIntegration), not real site content — no CTA labels present. expectedSiteKinds reflect vertical prior only, not observed HTML."
+  },
+  {
+   "domain": "sas.se",
+   "notes": "HTML is a bot-block/access-denied page (title \"Denied boarding\", meta description \"Boarding not Allowed\"), containing only styling and a single anchor with no real conversion CTAs. expectedSiteKinds reflect the vertical prior only; the HTML provides no evidence."
+  },
+  {
+   "domain": "sj.se",
+   "notes": "The HTML is a pure client-side SPA shell (React/Vite, empty #root div, noscript \"You need to enable JavaScript to run this app.\"). No visible link/button labels are server-rendered, so no real CTAs can be extracted. Preloaded modules (BookingComponent, StationPicker) confirm the booking-flow prior, but expectedSiteKinds here reflect the vertical prior, not observed CTAs."
+  },
+  {
+   "domain": "spotify.com",
+   "notes": "File is the open.spotify.com web-player SPA shell: only script/link/meta tags and base64 config blobs, zero visible <a>/<button>/input labels in the server-rendered HTML. No real CTAs extractable. expectedSiteKinds reflect vertical prior only."
+  }
+ ],
+ "sites": [
+  {
+   "domain": "advisa.se",
+   "ok": true,
+   "businessType": "Loan broker / loan comparison portal (Sweden)",
+   "expectedSiteKinds": [
+    "start_flow",
+    "lead"
+   ],
+   "ctas": [
+    {
+     "text": "GÅ VIDARE"
+    },
+    {
+     "text": "Samla lån",
+     "href": "/samla-lan/"
+    },
+    {
+     "text": "Jämför lån",
+     "href": "/jamfor-lan/"
+    },
+    {
+     "text": "Låna pengar",
+     "href": "/lana-pengar/"
+    },
+    {
+     "text": "Privatlån",
+     "href": "/privatlan/"
+    },
+    {
+     "text": "Billån",
+     "href": "/billan/"
+    }
+   ],
+   "notes": "HTML matches the lead/start_flow prior: homepage embeds a multi-step loan application widget whose submit button is \"GÅ VIDARE\" (proceed), adjacent to user-agreement/data-policy consent links — the classic comparison-flow entry. Product nav links (Samla lån, Jämför lån, etc.) are funnel entries and count as conversion CTAs for this portal vertical. Excluded chrome: Logga in, cookie consent, Trustpilot, footer legal, phone/mail contacts."
+  },
+  {
+   "domain": "anticimex.se",
+   "ok": true,
+   "businessType": "Pest control and home-health services (lead-gen, contact/phone driven)",
+   "expectedSiteKinds": [
+    "contact",
+    "lead",
+    "booking"
+   ],
+   "ctas": [
+    {
+     "text": "Kontakta oss",
+     "href": "/kontakta-oss/",
+     "expect": "contact"
+    },
+    {
+     "text": "075 245 10 00",
+     "href": "tel:075245 10 00",
+     "expect": "lead"
+    },
+    {
+     "text": "Hjälp med skadedjur i bostad",
+     "href": "/skadedjur-privat/"
+    },
+    {
+     "text": "Testa din hushälsa",
+     "href": "/hushalsa/hushalsotest/",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Läs mer och boka utbildning",
+     "href": "/anticimex-utbildningar/",
+     "expect": "booking"
+    },
+    {
+     "text": "Kom i kontakt med oss",
+     "href": "/kontakta-oss/",
+     "expect": "contact"
+    }
+   ],
+   "notes": "HTML confirms the vertical prior: conversion motions are contact/phone-call lead-gen for pest control and inspections, plus booking of trainings and a \"home health test\" self-serve flow entry. No visible quote form on the homepage; \"Anmäl försäkringsskada\" and \"Mitt Anticimex\"/Webbshop excluded as existing-customer/chrome actions. No explicit \"get quote\" label found, so quote omitted from expectedSiteKinds despite the prior. \"Identifiera skadedjur\" removed as an informational tool without a conversion expect."
+  },
+  {
+   "domain": "boozt.com",
+   "ok": true,
+   "businessType": "fashion e-commerce (Nordic multi-brand department store)",
+   "expectedSiteKinds": [
+    "purchase",
+    "download"
+   ],
+   "ctas": [
+    {
+     "text": "Denmark",
+     "href": "/dk/da"
+    },
+    {
+     "text": "Sweden",
+     "href": "/se/sv"
+    },
+    {
+     "text": "Germany",
+     "href": "/de/de"
+    },
+    {
+     "text": "Others",
+     "href": "/eu/en"
+    },
+    {
+     "text": "Download",
+     "href": "#",
+     "expect": "download"
+    }
+   ],
+   "notes": "The server-rendered root page is a country/region gateway, not the storefront: no products, forms, or buy buttons — only 14 country links (funnel entry into the localized shop) and an app-download promo (\"Download the Boozt app for free!\"). The purchase prior is still correct for the site overall, but purchase CTAs live behind the country selection; on this page the only concrete conversion labels are the country entry links (kept as funnel entries, no unambiguous expect) and the app \"Download\" button. Trust-signal copy (\"Fast delivery 3-5 days\", \"Easy returns\") confirms e-commerce."
+  },
+  {
+   "domain": "compricer.se",
+   "ok": true,
+   "businessType": "Swedish price comparison portal for insurance, loans, electricity, savings and telecom",
+   "expectedSiteKinds": [
+    "start_flow",
+    "quote",
+    "subscribe"
+   ],
+   "ctas": [
+    {
+     "text": "Jämför el",
+     "href": "/el/",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Bilförsäkring",
+     "href": "/forsakring/bil/",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Hemförsäkring",
+     "href": "/forsakring/hem/",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Privatlån",
+     "href": "/privatlan/",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Sparkonto",
+     "href": "/sparande/",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Mobilabonnemang",
+     "href": "/mobilabonnemang/",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Prenumerera",
+     "expect": "subscribe"
+    }
+   ],
+   "notes": "Server-rendered homepage with full nav. No explicit \"Jämför nu\"-style button labels in the static HTML; the conversion motion is category funnel entries (insurance/loan/electricity comparison pages), which for a comparison portal count as start_flow — consistent with the vertical prior. \"Prenumerera\" is a newsletter signup. BankID \"Logga in\" and cookie buttons excluded as chrome."
+  },
+  {
+   "domain": "elgiganten.se",
+   "ok": true,
+   "businessType": "electronics retail e-commerce (Swedish arm of Elkjøp Nordic)",
+   "expectedSiteKinds": [
+    "purchase",
+    "signup",
+    "start_flow"
+   ],
+   "ctas": [
+    {
+     "text": "Se alla deals här",
+     "href": "/kampanj/sommarrea",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Boka & Hämta inom 30 min",
+     "href": "/kundtjanst/boka-och-hamta"
+    },
+    {
+     "text": "Elgiganten Kundklubb",
+     "href": "/kundklubb"
+    },
+    {
+     "text": "Elgiganten Företag",
+     "href": "/elgiganten-foretag"
+    }
+   ],
+   "notes": "Server-rendered homepage with real content. Confirms the purchase prior: dozens of product-card links to /product/... plus per-product \"Jämför\" compare buttons and a cart (\"Kundvagn\"), but no explicit \"Köp\"/\"Lägg i kundvagn\" labels on the homepage itself — add-to-cart lives on product pages, so homepage CTAs are funnel entries (deals/campaign links, product cards). Secondary motion is Kundklubb membership signup. Excluded chrome: Logga in, Meny, cookie settings, footer legal, store finder, category nav (incl. Kampanjer), and cart controls like Fortsätt handla. | start_flow tillagd i sitekinds: e-handels-homepage utan explicita Köp-etiketter — golvets ärliga svar är funnel entries (köpet sker på produktsidor)."
+  },
+  {
+   "domain": "folksam.se",
+   "ok": true,
+   "businessType": "insurance",
+   "expectedSiteKinds": [
+    "quote",
+    "purchase",
+    "booking"
+   ],
+   "ctas": [
+    {
+     "text": "Boka en kostnadsfri rådgivning",
+     "href": "/sparande/prata-pengar",
+     "expect": "booking"
+    },
+    {
+     "text": "Börja pensionsspara",
+     "href": "/sparande/tips-och-rad/borja-pensionsspara",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Börja spara",
+     "href": "/sparande/tips-och-rad/borja-spara",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Beställ resebevis",
+     "href": "/forsakringar/reseforsakring/resebevis"
+    },
+    {
+     "text": "Ladda ner appen",
+     "href": "/kundservice/app",
+     "expect": "download"
+    },
+    {
+     "text": "Räkna ut din pension",
+     "href": "/sparande/tips-och-rad/rakna-ut-din-pension"
+    }
+   ],
+   "notes": "Server-rendered homepage with full nav. Prior (purchase/quote) holds: the site is an insurer whose primary motion is entering product pages that lead to price/quote+purchase flows (\"Se alla våra försäkringar\" and dozens of product links like /forsakringar/bilforsakring). Secondary motions: booking free savings/pension advice, app download. Excluded chrome: Logga in, Sök, cookie/GDPR footer links, Anmäl skada (existing-customer claims, not acquisition), Kundservice."
+  },
+  {
+   "domain": "fortnox.se",
+   "ok": true,
+   "businessType": "SaaS accounting (Swedish accounting/invoicing/payroll software)",
+   "expectedSiteKinds": [
+    "signup",
+    "start_flow",
+    "booking"
+   ],
+   "ctas": [
+    {
+     "text": "Skaffa Fortnox",
+     "href": "/paket"
+    },
+    {
+     "text": "Se paket & priser",
+     "href": "/paket"
+    },
+    {
+     "text": "Starta köpguiden",
+     "href": "https://buy-guide.fortnox.se/",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Boka demo",
+     "href": "/byra/boka-demo",
+     "expect": "booking"
+    },
+    {
+     "text": "Boka startsnack",
+     "href": "/startsnack",
+     "expect": "booking"
+    },
+    {
+     "text": "Byt till Fortnox",
+     "href": "/byt-till-fortnox"
+    },
+    {
+     "text": "Beställ byråpaket",
+     "href": "/byra",
+     "expect": "purchase"
+    },
+    {
+     "text": "Prata med oss",
+     "href": "/kontakt/foretagare",
+     "expect": "contact"
+    }
+   ],
+   "notes": "HTML confirms SaaS acquisition motions but not the trial/quote prior: primary funnel is \"Skaffa Fortnox\"/\"Se paket & priser\" into a package purchase, plus a guided comparison flow (\"Starta köpguiden\") and booked meetings/demos (\"Boka demo\", \"Boka startsnack\"). No free-trial or quote CTAs found. Excluded login, support, cookie, career, and knowledge-guide links."
+  },
+  {
+   "domain": "hedvig.com",
+   "ok": true,
+   "businessType": "insurtech (Swedish digital insurance: home, car, pet, accident)",
+   "expectedSiteKinds": [
+    "quote",
+    "purchase"
+   ],
+   "ctas": [
+    {
+     "text": "Se ditt pris",
+     "expect": "quote"
+    },
+    {
+     "text": "Välj försäkring",
+     "href": "/se/forsakringar",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Se alla försäkringar",
+     "href": "/se/forsakringar"
+    },
+    {
+     "text": "Byt till oss",
+     "href": "/se/hedvig/byt-till-oss"
+    },
+    {
+     "text": "Få samlingsrabatt",
+     "href": "/se/hedvig/samlingsrabatt"
+    },
+    {
+     "text": "Hemförsäkring",
+     "href": "/se/forsakringar/hemforsakring"
+    },
+    {
+     "text": "Bilförsäkring",
+     "href": "/se/forsakringar/bilforsakring"
+    }
+   ],
+   "notes": "Primary conversion is the quote flow via the button \"Se ditt pris\" (see your price, no href — JS-driven quote funnel). Product pages (hemforsakring, bilforsakring etc.) funnel into the same quote/purchase flow. No trial/download emphasis on this page despite app mentions; prior of purchase/quote holds with quote strongest. Excluded: help/FAQ, about, careers, social, legal footer links."
+  },
+  {
+   "domain": "if.se",
+   "ok": true,
+   "businessType": "insurance",
+   "expectedSiteKinds": [
+    "purchase",
+    "quote"
+   ],
+   "ctas": [
+    {
+     "text": "Teckna olycksfallsförsäkring",
+     "href": "/privat/forsakringar/personforsakring/olycksfallsforsakring",
+     "expect": "purchase"
+    },
+    {
+     "text": "Få ditt pris på båtförsäkring",
+     "href": "/privat/forsakringar/batforsakring",
+     "expect": "quote"
+    },
+    {
+     "text": "Få ditt pris på mc-försäkring",
+     "href": "/privat/forsakringar/fordonsforsakringar/mc-forsakring",
+     "expect": "quote"
+    },
+    {
+     "text": "Köp försäkring",
+     "href": "/foretag/kop-forsakring",
+     "expect": "purchase"
+    },
+    {
+     "text": "Köp personpaket för anställda",
+     "href": "/foretag/forsakringar/personalforsakring/forsakring-anstalld",
+     "expect": "purchase"
+    }
+   ],
+   "notes": "If.se (Swedish insurer) homepage matches the vertical prior: primary conversion motions are buying insurance online (\"Teckna...\", \"Köp försäkring\") and getting a price/quote (\"Få ditt pris på...\"). Extensive product-category nav (incl. \"Våra försäkringar\") and claims/service links excluded as chrome. No signup/booking/donation motions present."
+  },
+  {
+   "domain": "kivra.se",
+   "ok": true,
+   "businessType": "Digital mailbox service (Swedish digital post, receipts and payments platform)",
+   "expectedSiteKinds": [
+    "signup"
+   ],
+   "ctas": [
+    {
+     "text": "Skapa konto",
+     "href": "https://accounts.kivra.com/register/user?locale=sv",
+     "expect": "signup"
+    },
+    {
+     "text": "Skapa privatkonto",
+     "href": "/sv/privat/registrera",
+     "expect": "signup"
+    },
+    {
+     "text": "Kivra Företag",
+     "href": "/sv/foretag/ta-emot"
+    },
+    {
+     "text": "För företag",
+     "href": "/sv/foretag"
+    },
+    {
+     "text": "Hur funkar Kivra",
+     "href": "/sv/privat/sa-funkar-det"
+    }
+   ],
+   "notes": "HTML confirms the prior: primary conversion is account creation (\"Skapa konto\" to accounts.kivra.com/register, \"Skapa privatkonto\"). Secondary motion is a B2B funnel for companies to send via Kivra (För företag / Kivra Företag), but no explicit contact/lead CTA label is visible on this page. Login, cookies, press, and legal links excluded."
+  },
+  {
+   "domain": "lakareutangranser.se",
+   "ok": true,
+   "businessType": "nonprofit — Médecins Sans Frontières / Läkare Utan Gränser (Sweden), humanitarian medical aid",
+   "expectedSiteKinds": [
+    "donate",
+    "subscribe",
+    "lead"
+   ],
+   "ctas": [
+    {
+     "text": "Skänk en gåva",
+     "href": "/stod-oss",
+     "expect": "donate"
+    },
+    {
+     "text": "Ge en gåva",
+     "href": "/stod-oss/ge-en-gava",
+     "expect": "donate"
+    },
+    {
+     "text": "Bli månadsgivare nu",
+     "href": "/stod-oss/manadsgivare",
+     "expect": "donate"
+    },
+    {
+     "text": "Swisha en gåva",
+     "href": "/stod-oss/swisha-en-gava",
+     "expect": "donate"
+    },
+    {
+     "text": "Ge en minnesgåva",
+     "href": "/stod-oss/minnesgava",
+     "expect": "donate"
+    },
+    {
+     "text": "Beställ gåvobevis",
+     "href": "/stod-oss/gavobevis",
+     "expect": "donate"
+    },
+    {
+     "text": "Starta egen insamling",
+     "href": "/stod-oss/egen-insamling",
+     "expect": "donate"
+    }
+   ],
+   "notes": "HTML confirms the donate prior strongly: header CTA \"Skänk en gåva\", a \"Stöd oss\" mega-menu of donation variants (one-off gift, monthly giving, Swish, memorial gift, gift certificates, legacy/testamente, corporate giving). \"Bli månadsgivare\" is recurring donation (donate, subscribe-like motion). Secondary motions: peer fundraising (\"Starta egen insamling\") and recruitment for field work (\"Jobba med oss\") as a lead motion. No purchase/booking flows present. Dropped \"Läs mer om utlandsuppdrag\" — informational read-more link, not a conversion CTA."
+  },
+  {
+   "domain": "mathem.se",
+   "ok": true,
+   "businessType": "online grocery (Swedish grocery delivery)",
+   "expectedSiteKinds": [
+    "purchase",
+    "signup"
+   ],
+   "ctas": [
+    {
+     "text": "Skapa konto",
+     "href": "/se/user/signup/",
+     "expect": "signup"
+    },
+    {
+     "text": "Bli kund nu",
+     "href": "/se/user/signup/",
+     "expect": "signup"
+    },
+    {
+     "text": "Klicka hem med leverans från 0 kr",
+     "href": "/se/categories/911-prismatch/"
+    },
+    {
+     "text": "Köp presentkort",
+     "href": "/se/about/presentkort/",
+     "expect": "purchase"
+    },
+    {
+     "text": "Alla varor",
+     "href": "/se/products/"
+    },
+    {
+     "text": "Tusentals recept att klicka hem",
+     "href": "/se/recipes/"
+    },
+    {
+     "text": "För företag",
+     "href": "/se/business/foretag/"
+    }
+   ],
+   "notes": "Homepage matches the vertical prior: primary motions are account signup (\"Skapa konto\"/\"Bli kund nu\" -> /se/user/signup/) and shopping entry points (\"Klicka hem...\", \"Alla varor\", \"Köp presentkort\"). \"För företag\" is a B2B lead entry. Excluded login, cookie buttons, social links, footer legal, and plain grocery category nav."
+  },
+  {
+   "domain": "rodakorset.se",
+   "ok": true,
+   "businessType": "nonprofit (Swedish Red Cross)",
+   "expectedSiteKinds": [
+    "donate",
+    "signup",
+    "subscribe"
+   ],
+   "ctas": [
+    {
+     "text": "Ge en gåva",
+     "href": "/skank-pengar/ge-en-gava/",
+     "expect": "donate"
+    },
+    {
+     "text": "Bli månadsgivare nu",
+     "href": "/skank-pengar/bli-manadsgivare/#manadsgivare",
+     "expect": "donate"
+    },
+    {
+     "text": "Ge en gåva nu",
+     "href": "/var-varld/har-arbetar-vi/ukraina/#gava",
+     "expect": "donate"
+    },
+    {
+     "text": "Swisha en gåva",
+     "href": "/skank-pengar/swisha-en-gava/",
+     "expect": "donate"
+    },
+    {
+     "text": "Bli medlem",
+     "href": "/skank-pengar/bli-medlem/",
+     "expect": "signup"
+    },
+    {
+     "text": "Bli volontär",
+     "href": "/bli-volontar/"
+    },
+    {
+     "text": "Ge en företagsgåva",
+     "href": "/for-foretag/ge-en-foretagsgava/",
+     "expect": "donate"
+    },
+    {
+     "text": "Bli samarbetspartner",
+     "href": "/for-foretag/bli-samarbetspartner/"
+    }
+   ],
+   "notes": "HTML confirms the donate prior: primary conversion motions are gifts and monthly giving (multiple \"gåva\"/\"månadsgivare\" CTAs), plus membership/volunteer signups and corporate partnership leads. There is also a gift shop (\"Gåvoshop\", \"Till kassan\" checkout) which is effectively donation-flavored purchase. Chrome (search, cookies, social, footer) excluded."
+  },
+  {
+   "domain": "sats.se",
+   "ok": true,
+   "businessType": "gym chain membership",
+   "expectedSiteKinds": [
+    "signup",
+    "booking"
+   ],
+   "ctas": [
+    {
+     "text": "Bli medlem nu",
+     "href": "/bli-medlem-sats",
+     "expect": "signup"
+    },
+    {
+     "text": "BLI MEDLEM",
+     "href": "/bli-medlem-sats",
+     "expect": "signup"
+    },
+    {
+     "text": "VÅRA MEDLEMSKAP",
+     "href": "/vara-medlemskap"
+    },
+    {
+     "text": "Boka gruppträning",
+     "href": "/boka",
+     "expect": "booking"
+    },
+    {
+     "text": "Hitta gym",
+     "href": "/gym"
+    },
+    {
+     "text": "Ny på SATS? Kom igång på 1-2-3!",
+     "href": "/ny-pa-sats"
+    }
+   ],
+   "notes": "HTML matches vertical prior: dominant repeated CTA is membership signup (\"Bli medlem nu\" appears 3+ times incl. hero), secondary motion is class booking (/boka). No trial/free-pass CTA visible on this page, so trial omitted from expectedSiteKinds. \"Hitta gym\" and \"Våra medlemskap\" are funnel entries toward signup but ambiguous as goal kinds."
+  },
+  {
+   "domain": "storytel.com",
+   "ok": true,
+   "businessType": "audiobook subscription service",
+   "expectedSiteKinds": [
+    "start_flow",
+    "trial",
+    "subscribe"
+   ],
+   "ctas": [
+    {
+     "text": "Sweden Sweden ( SV )",
+     "href": "/se",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Germany Germany ( DE )",
+     "href": "/de",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Netherlands Netherlands ( NL )",
+     "href": "/nl",
+     "expect": "start_flow"
+    },
+    {
+     "text": "India India ( EN )",
+     "href": "/in",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Denmark Denmark ( DA )",
+     "href": "https://mofibo.com/dk",
+     "expect": "outbound"
+    },
+    {
+     "text": "International ( EN )",
+     "href": "/tv",
+     "expect": "start_flow"
+    }
+   ],
+   "notes": "The served page is Storytel's global country selector (\"Choose your country\" / title \"Storytel - Select your country\"), not a marketing landing page. It contains no signup/trial buttons — the only visible CTAs are ~30 country links that route into localized funnels (one, Denmark, goes outbound to mofibo.com). Trial/subscribe copy (\"Start today with a free trial\", \"Subscribe now\") exists only in embedded locale-string JSON, confirming the vertical prior downstream, but on this page the conversion motion is start_flow via country selection. Country CTAs above are a representative subset (deduplicated pattern)."
+  },
+  {
+   "domain": "svd.se",
+   "ok": true,
+   "businessType": "newspaper paywall (Svenska Dagbladet, Schibsted)",
+   "expectedSiteKinds": [
+    "subscribe"
+   ],
+   "ctas": [
+    {
+     "text": "Prenumerera",
+     "href": "https://prenumerera.svd.se/bliprenumerant",
+     "expect": "subscribe"
+    },
+    {
+     "text": "Läs mer om allt som ingår",
+     "href": "https://prenumerera.svd.se/onboarding-om-svd-digital-premium"
+    },
+    {
+     "text": "Läs eSvD",
+     "href": "https://kund.svd.se/kundinfo/dagens-tidning.html"
+    }
+   ],
+   "notes": "HTML confirms the subscribe prior: the sole acquisition funnel is the \"Prenumerera\" header button pointing to prenumerera.svd.se/bliprenumerant. \"Läs mer om allt som ingår\" is an informational premium-package link (Läs mer-style, no expect). Almost everything else is content nav, article links, account chrome (Logga in, Hantera prenumeration), and footer/social. \"Läs eSvD\" is borderline (mostly existing-subscriber usage), included without expect. Page appears logged-in-user rendered (account menu present), which suppresses some anonymous subscribe prompts."
+  },
+  {
+   "domain": "tele2.se",
+   "ok": true,
+   "businessType": "Telecom operator (mobile plans, broadband, TV/streaming, phone hardware)",
+   "expectedSiteKinds": [
+    "purchase",
+    "subscribe",
+    "start_flow"
+   ],
+   "ctas": [
+    {
+     "text": "Beställ",
+     "href": "/mobiler/samsung-galaxy-s26-sommardeal",
+     "expect": "purchase"
+    },
+    {
+     "text": "Välj ditt bredband",
+     "href": "/bredband",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Se aktuella deals",
+     "href": "/erbjudanden"
+    },
+    {
+     "text": "Lägg till medlem för 169 kr",
+     "href": "/mobilabonnemang/familj"
+    },
+    {
+     "text": "Flytta ditt nummer till Tele2",
+     "href": "/support/mobilt/byt-till-tele2"
+    },
+    {
+     "text": "Värdera här",
+     "href": "/mobiler/byt-in",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Alla tv- & streamingpaket",
+     "href": "/tv"
+    }
+   ],
+   "notes": "Server-rendered ecommerce/subscription site; HTML matches the vertical prior. Conversion motions are ordering devices with plans (purchase), signing up for mobile/broadband/TV subscriptions (subscribe), and entering plan-selection/trade-in flows (start_flow). Excluded login, search, cookie, social, and plain category nav."
+  },
+  {
+   "domain": "tibber.com",
+   "ok": true,
+   "businessType": "Smart electricity contract provider with dynamic tariffs, energy app and Grid Rewards (international gateway page)",
+   "expectedSiteKinds": [
+    "start_flow",
+    "download",
+    "signup"
+   ],
+   "ctas": [
+    {
+     "text": "Google Play",
+     "href": "https://tibber.onelink.me/3IQr",
+     "expect": "download"
+    },
+    {
+     "text": "App Store",
+     "href": "https://tibber.onelink.me/3IQr",
+     "expect": "download"
+    }
+   ],
+   "notes": "This is the tibber.com/en international landing page, not a country storefront: the only conversion motions rendered server-side are country-selection cards (\"Germany\"/\"Netherlands\"/\"Norway\" under \"Visit our local websites\" — divs with JS navigation, no hrefs) and app-download badges (Google Play / App Store via onelink). The signup funnel (\"Get Tibber\", \"Switch to Tibber\", \"Order\") exists only inside JS locale strings, confirming signup/purchase happen on local sites/app, not on this page. So the page itself is a start_flow/download gateway; signup is the downstream goal, matching the vertical prior only indirectly."
+  },
+  {
+   "domain": "unicef.se",
+   "ok": true,
+   "businessType": "nonprofit (UNICEF Sweden — children's charity)",
+   "expectedSiteKinds": [
+    "donate",
+    "subscribe"
+   ],
+   "ctas": [
+    {
+     "text": "Ge en gåva",
+     "href": "/stod-oss",
+     "expect": "donate"
+    },
+    {
+     "text": "Bli månadsgivare",
+     "href": "/varldsforalder",
+     "expect": "donate"
+    },
+    {
+     "text": "Ge en katastrofgåva",
+     "href": "/katastrofinsatser",
+     "expect": "donate"
+    },
+    {
+     "text": "Bli Världsförälder",
+     "href": "/varldsforalder"
+    },
+    {
+     "text": "Gåvoshop",
+     "href": "/gavoshop"
+    },
+    {
+     "text": "Företagsgåva",
+     "href": "/foretag",
+     "expect": "donate"
+    },
+    {
+     "text": "Egen insamling",
+     "href": "https://insamling.unicef.se",
+     "expect": "start_flow"
+    },
+    {
+     "text": "STÖD OSS",
+     "href": "/stod-oss",
+     "expect": "donate"
+    }
+   ],
+   "notes": "HTML confirms the donate prior strongly. Primary motions: one-off and monthly donations (\"Bli Världsförälder\" is UNICEF Sweden's monthly-giving/sponsorship program — donate, with a subscribe-like recurring flavor). An embedded payment flow is present (Swedish bank picker buttons like Swedbank/Nordea and \"TILL BETALNING\"), showing on-site donation checkout. Newsletter signup (Prenumerera/nyhetsbrev) supports the subscribe site kind. Secondary: gift shop purchases (Gåvoshop) and corporate giving. \"Egen insamling\" starts a peer-fundraising flow on insamling.unicef.se (start_flow). Excluded chrome/nav, news \"Läs mer\" links, cookie buttons."
+  },
+  {
+   "domain": "zmarta.se",
+   "ok": true,
+   "businessType": "Loan, insurance and electricity comparison portal (Sweden)",
+   "expectedSiteKinds": [
+    "start_flow",
+    "quote",
+    "lead"
+   ],
+   "ctas": [
+    {
+     "text": "Jämför lån",
+     "href": "/lana-pengar",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Jämför elavtal",
+     "href": "/el",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Teckna försäkring",
+     "href": "/forsakring/bilforsakring",
+     "expect": "purchase"
+    },
+    {
+     "text": "Hitta rätt försäkring",
+     "href": "/forsakring"
+    },
+    {
+     "text": "Utöka bolån",
+     "href": "/bolan/utoka-bolan/ansok",
+     "expect": "start_flow"
+    },
+    {
+     "text": "Vidare"
+    },
+    {
+     "text": "Lånelöfte",
+     "href": "/bolan/lanelofte"
+    }
+   ],
+   "notes": "Server-rendered homepage with full nav/footer. HTML confirms the vertical prior: conversion motions are comparison-flow entries (\"Jämför lån\", \"Jämför elavtal\", \"Teckna försäkring\") leading to loan/insurance/electricity application forms (\"Ansök idag\", \"/ansok\" paths). \"Vidare\" is the on-page form step-submit button starting the loan comparison flow. No purchase/booking motions; login/social/legal links excluded."
+  }
+ ]
+}

@@ -1,0 +1,658 @@
+// Angel Adaptive — the Adaptive Decision Engine (blueprint Step 5).
+//
+// Given a visitor's context and a site's content inventory, decide which safe
+// patterns to apply *for this specific visitor*. The engine is:
+//   - rule-based and deterministic: same input -> same output (debuggable, and
+//     the AI/learning layer can be layered on later, exactly as the vision says);
+//   - safe-by-construction: it can only choose catalog patterns, and any pattern
+//     that needs published content is dropped when the inventory lacks it, so
+//     Angel never invents copy;
+//   - transparent: every adaptation carries a human-readable reason, and the
+//     whole decision hashes to a stable id for logging and replay.
+
+import { isAcquisition, type GoalKind } from "./crawler-inventory";
+import { fnv1a32 } from "./hash";
+import { getPattern } from "./patterns";
+import { pickItem } from "./inventory";
+import type {
+  Adaptation,
+  ContentInventory,
+  Decision,
+  DeclineReason,
+  PatternId,
+  VisitorContext,
+} from "./types";
+
+/** Most adaptations on a single page load. Three is deliberate: one visual
+ *  emphasis, at most one added element, one structural tweak — a page that
+ *  keeps its own design. More reads as clutter and erodes the customer's
+ *  brand (and our credibility). */
+export const MAX_ADAPTATIONS = 3;
+
+/**
+ * Measured performance fed back into the engine (increment 2). A signed priority
+ * delta per pattern, derived from conversion lift vs the holdout control group:
+ *   - proven winner  → small positive boost (rises in the ranking / cap);
+ *   - proven loser   → strong negative delta (suppressed, see PERF_SUPPRESS);
+ *   - not yet significant → absent (0, unchanged default behaviour).
+ * Exploration is not random: the holdout bucket keeps measuring the
+ * counterfactual, so the engine can stay pure and deterministic.
+ */
+export type PatternBoost = Partial<Record<PatternId, number>>;
+
+/** Ops that ADD an element to the page. Design-integrity rule: at most ONE
+ *  of these per decision — extra links and badges stack into visual noise
+ *  fast, and the customer's design must stay theirs. */
+const INJECT_OPS = new Set(["inject_secondary", "inject_badge"]);
+
+/** Ingreppsvikt per op — tie-break vid lika prioritet OCH lika nivå: det
+ *  lättaste ingreppet vinner. Ordningen speglar hur mycket av sidan som rörs:
+ *  textbyte < visa dolt < liten badge < chip < flytt. */
+const OP_WEIGHT: Record<string, number> = {
+  set_text: 1,
+  reveal: 2,
+  inject_badge: 3,
+  inject_secondary: 4,
+  move_up: 6,
+  condense: 7,
+};
+
+/** Ägarregeln (2026-07-20, sticky-pill-fyndet på glutenforum): sajtens egen
+ *  målknapp är ORÖRBAR — Angel flyttar den aldrig, stylar aldrig om den och
+ *  skriver aldrig om dess text. Mönstren som fanns FÖR att röra målet
+ *  (emphasize_goal, sticky_goal_cta) är borttagna ur katalogen; den här
+ *  grinden täcker resten: en op som MUTERAR sitt målelement får aldrig träffa
+ *  det deklarerade målet. Injektioner (badge/secondary) ankrar BREDVID målet
+ *  utan att röra det — de släpps igenom. */
+const MUTATING_OPS = new Set(["set_text", "move_up", "condense", "reveal"]);
+function touchesGoalElement(a: Adaptation, goal?: SiteGoal): boolean {
+  if (!goal || !MUTATING_OPS.has(a.op)) return false;
+  if (goal.selector && a.target && a.target === goal.selector) return true;
+  const goalText = (goal.text ?? "").trim().toLowerCase();
+  const anchor = (a.anchorText ?? "").trim().toLowerCase();
+  return Boolean(goalText && anchor && goalText === anchor);
+}
+
+/** Largest positive nudge a proven winner can earn (keeps rules meaningful). */
+export const PERF_MAX_BOOST = 30;
+/** Delta assigned to a proven loser — drives its effective priority ≤ 0 so the
+ *  engine drops it (stop showing adaptations that measurably hurt). */
+export const PERF_SUPPRESS = -1000;
+
+interface Rule {
+  id: string;
+  priority: number;
+  when: (c: VisitorContext) => boolean;
+  patterns: PatternId[];
+}
+
+/**
+ * The rule set. Order doesn't matter — priority does. When two rules pick the
+ * same pattern, the higher priority wins (see dedup in `decide`). These rules
+ * encode the three worked examples from the blueprint plus sensible defaults.
+ */
+const RULES: Rule[] = [
+  {
+    id: "returning_evaluated_pricing",
+    priority: 90,
+    when: (c) => c.isReturning && c.viewedPricing,
+    patterns: ["surface_pricing", "continue_where_left_off", "show_case_study"],
+  },
+  {
+    id: "linkedin_b2b",
+    priority: 80,
+    when: (c) => c.trafficSource === "linkedin" || c.trafficSource === "partner",
+    patterns: [
+      "show_customer_logos_early",
+      "show_enterprise_testimonial",
+      "clarify_cta",
+      "show_case_study",
+    ],
+  },
+  {
+    id: "paid_high_intent",
+    priority: 75,
+    when: (c) => c.trafficSource === "google_ads",
+    patterns: ["clarify_cta", "show_no_credit_card", "show_guarantee", "show_trust_badge"],
+  },
+  {
+    // Cold first-time visitors: the primary goal can be too big a first step —
+    // surface a published lower-commitment path beside it.
+    id: "cold_soft_path",
+    priority: 55,
+    when: (c) => !c.isReturning && c.visitCount === 0,
+    patterns: ["show_secondary_cta"],
+  },
+  {
+    id: "mobile_simplify",
+    priority: 70,
+    when: (c) => c.device === "mobile",
+    patterns: ["shorten_hero", "move_faq_up", "clarify_cta"],
+  },
+  {
+    id: "google_organic",
+    priority: 60,
+    when: (c) => c.trafficSource === "google",
+    patterns: ["shorten_hero", "move_faq_up"],
+  },
+  {
+    id: "first_time_trust",
+    priority: 50,
+    when: (c) => !c.isReturning,
+    patterns: ["show_trust_badge", "show_no_credit_card"],
+  },
+  {
+    id: "returning_generic",
+    priority: 40,
+    when: (c) => c.isReturning,
+    patterns: ["continue_where_left_off"],
+  },
+  {
+    id: "baseline",
+    priority: 10,
+    when: () => true,
+    patterns: ["show_2min_setup"],
+  },
+  // ---- Våg 8 (docs/wave8-pattern-spec.md) — prioriteter är avsiktligt
+  // kalibrerade mot befintliga regler: payment_trust (64) under goal_focus
+  // (65); decision_point_proof (62) under mobile_sticky_goal (72) så stickyn
+  // vinner injektionsbudgeten på mobil; donate/callback-vägarna (56) slår
+  // generiska cold_soft_path (55) så den specialiserade motionen vinner.
+  {
+    id: "first_time_social_proof",
+    priority: 58,
+    when: (c) => !c.isReturning,
+    patterns: ["move_reviews_up"],
+  },
+  {
+    id: "decision_point_proof",
+    priority: 62,
+    when: (c) => !c.isReturning,
+    patterns: ["show_rating_near_goal"],
+  },
+  {
+    id: "payment_trust",
+    priority: 64,
+    when: (c) => !c.isReturning || c.trafficSource === "google_ads",
+    patterns: ["show_payment_security"],
+  },
+  {
+    id: "donate_recurring_path",
+    priority: 56,
+    when: (c) => !c.isReturning && c.visitCount === 0,
+    patterns: ["show_monthly_giving_option"],
+  },
+  {
+    id: "high_consideration_channel",
+    priority: 56,
+    when: (c) => !c.isReturning && c.visitCount === 0,
+    patterns: ["show_callback_option"],
+  },
+  {
+    id: "subscription_risk_reversal",
+    priority: 60,
+    when: (c) => !c.isReturning || c.trafficSource === "google_ads",
+    patterns: ["show_cancel_anytime"],
+  },
+];
+
+/**
+ * Which published CTA labels fit this visitor, best-first. The confirmed
+ * goal's KIND anchors what "clarifying the CTA" means for THIS business —
+ * the judge ranks goals per business type, and the runtime must not undo that
+ * by assuming SaaS: a lead-gen/quote site's clarification is the sales
+ * motion, not a free trial. The list is a fallback chain over the PUBLISHED
+ * label variants (harvest stamps demo/trial/sales), so every published
+ * variant is reachable — a sales-only inventory no longer dead-ends.
+ */
+function ctaIntentPreferences(c: VisitorContext, goal?: SiteGoal): string[] {
+  const b2b = c.trafficSource === "linkedin" || c.trafficSource === "partner";
+  switch (goal?.kind) {
+    case "contact":
+    case "lead":
+    case "quote":
+      return ["sales", "demo", "trial"];
+    case "booking":
+      return ["demo", "sales", "trial"];
+    default:
+      return b2b ? ["demo", "sales", "trial"] : ["trial", "demo", "sales"];
+  }
+}
+
+/**
+ * Is this pattern eligible for the site's confirmed goal kind? A pattern with
+ * no `appliesTo` is goal-agnostic (always eligible). A pattern WITH an
+ * appliesTo is dropped only when the site has a CONFIRMED goal kind that the
+ * list excludes — so a "2 minute setup" SaaS badge is not nominated on a
+ * donate site. Backward compatible: no confirmed kind (or an unrecognized
+ * one) → every pattern stays eligible, exactly as before goal kinds existed.
+ */
+function patternFitsGoalKind(id: PatternId, kind?: string | null): boolean {
+  if (!kind) return true;
+  const applies = getPattern(id).appliesTo;
+  if (!applies) return true; // agnostic pattern
+  return (applies as string[]).includes(kind);
+}
+
+/** Är mönstret lämpligt för SIDTYPEN? Flytt-/omordningsmönster är designade
+ *  för landningsytor; på en artikel-/bloggsida är "FAQ/recensioner först"
+ *  alltid fel (glutenforum-incidenten). Se Pattern.avoidPageTypes. */
+function patternFitsPageType(id: PatternId, pageType: string): boolean {
+  const avoid = getPattern(id).avoidPageTypes;
+  return !avoid || !(avoid as string[]).includes(pageType);
+}
+
+/** Microcopy meta.kind a given inject pattern wants. */
+const MICROCOPY_KIND: Partial<Record<PatternId, string>> = {
+  show_no_credit_card: "no_credit_card",
+  show_2min_setup: "setup_time",
+  continue_where_left_off: "continuity",
+  // Våg 8 (S3, S6): båda konsumerar ENBART sajtens publicerade fraser.
+  // cancel_anytime är en EGEN kind, skild från guarantee (pengarna tillbaka)
+  // — granskningsfynd: en delad kind lät ett refund-löfte rendera under
+  // avsluta-när-du-vill-etiketten.
+  show_payment_security: "payment_security",
+  show_cancel_anytime: "cancel_anytime",
+};
+
+/** Våg 8 (W8-E1): badge-mönster vars TEXTKÄLLA är en annan slot än microcopy
+ *  (Pattern.slot). Predikatet är per mönster och STRIKT — S2-lärdomen från
+ *  show_enterprise_testimonial: utan typ-predikat kan en GDPR-cert dyka upp
+ *  under en betygsetikett. Formkravet på texten är andra försvarslinjen. */
+const BADGE_SLOT_ITEM: Partial<
+  Record<PatternId, (i: { text?: string; selector?: string; meta?: Record<string, string> }) => boolean>
+> = {
+  show_rating_near_goal: (i) =>
+    Boolean(i.text) &&
+    Boolean(i.selector) &&
+    ["review_rating", "stars", "stars_aggregate"].includes(i.meta?.trustType ?? "") &&
+    /^\d[\d\s.,·]*\s*(betyg|omd[öo]men|reviews?|av 5)/i.test((i.text ?? "").trim()),
+};
+
+/** Våg 8 (W8-E2): inject_secondary-mönster med KRAV på att alternativets text
+ *  matchar mönstrets motion — generiska show_secondary_cta har inget filter.
+ *  Vokabulären är samma som mål-taxonomins (donate-recurring, lead-callback);
+ *  matchar ingen publicerad CTA → no_secondary_alternative, aldrig påhitt. */
+const SECONDARY_TEXT: Partial<Record<PatternId, RegExp>> = {
+  show_monthly_giving_option: /(bli )?m[åa]nadsgivare|monthly (donor|giving)/i,
+  show_callback_option:
+    /vi ringer upp|ring mig|bli uppringd|boka (ett )?samtal|kontakta (mig|dig|oss)|request a call(back)?/i,
+};
+
+/** The owner's declared conversion goal (Measurement card), if configured. */
+export interface SiteGoal {
+  selector?: string | null;
+  url?: string | null;
+  /** The goal's visible label — target-resolution fallback on pages where the
+   *  CSS selector doesn't resolve (structures differ across pages). */
+  text?: string | null;
+  /** WHAT converting means (judge taxonomy), persisted when the owner confirms
+   *  a proposed candidate. Conditions goal-aware rules — e.g. which published
+   *  CTA label variant clarify_cta prefers. Absent on raw owner overrides. */
+  kind?: GoalKind | string | null;
+}
+
+/**
+ * Turn a chosen pattern into a concrete Adaptation, drawing any text strictly
+ * from the inventory. Returns a DeclineReason (string) when the pattern must
+ * not fire — the safety valve that prevents invented copy, now with WHY (C3)
+ * so zero-adaptation decisions are explainable instead of warn-noise.
+ */
+function resolve(
+  id: PatternId,
+  priority: number,
+  context: VisitorContext,
+  inventory: ContentInventory,
+  goal?: SiteGoal,
+): Adaptation | DeclineReason {
+  const pattern = getPattern(id);
+  const slotSelector = `[data-angel-slot="${pattern.slot}"]`;
+
+  if (pattern.op === "inject_secondary") {
+    // show_secondary_cta (ofiltrerad) + våg 8:s specialiserade varianter
+    // (W8-E2): samma guards ordagrant, plus ett textkrav när mönstret bär en
+    // motion (SECONDARY_TEXT) — månadsgivar-/callback-vägen ska vara sajtens
+    // EGEN publicerade sådan, inte första bästa CTA.
+    if (!goal?.selector && !goal?.text) return "no_goal_configured";
+    const txtRx = SECONDARY_TEXT[id];
+    // Granskningsfynd (våg 8): "skiljer sig från målet" måste gälla
+    // DESTINATIONEN också, inte bara etiketten — annars injiceras målet
+    // bredvid sig självt när sajtens månadsgivar-/callback-CTA ÄR målet
+    // (samma href, eller samma text i annan skiftläggning). Path-jämförelse
+    // utan origin/avslutande snedstreck så relativa och absoluta former möts.
+    const pathOf = (u: string) =>
+      u
+        .replace(/^https?:\/\/[^/]+/i, "")
+        .replace(/[?#].*$/, "")
+        .replace(/\/+$/, "") || "/";
+    const goalText = (goal.text ?? "").trim().toLowerCase();
+    const goalPath = goal.url ? pathOf(goal.url) : null;
+    const differsFromGoal = (text: string, href: string) =>
+      text.trim().toLowerCase() !== goalText && (!goalPath || pathOf(href) !== goalPath);
+    // A published, lower-commitment alternative: an acquisition CTA with its
+    // own destination whose label differs from the goal. pickItem falls back
+    // to the first item when the match misses, so re-guard after.
+    const alt = pickItem(
+      inventory,
+      "cta",
+      (i) =>
+        isAcquisition(i) &&
+        Boolean(i.text) &&
+        Boolean(i.meta?.href) &&
+        differsFromGoal(i.text ?? "", i.meta?.href ?? "") &&
+        !/^javascript:/i.test(i.meta?.href ?? "") &&
+        (!txtRx || txtRx.test(i.text ?? "")),
+    );
+    if (
+      !alt?.text ||
+      !alt.meta?.href ||
+      !differsFromGoal(alt.text, alt.meta.href) ||
+      !isAcquisition(alt) ||
+      /^javascript:/i.test(alt.meta.href) ||
+      (txtRx && !txtRx.test(alt.text))
+    ) {
+      return "no_secondary_alternative";
+    }
+    return {
+      pattern: id,
+      op: "inject_secondary",
+      target: goal.selector ?? "",
+      anchorText: goal.text ?? undefined,
+      value: alt.text,
+      href: alt.meta.href,
+      reason: `Published lower-commitment path "${alt.text}" beside the goal for a first-time visitor.`,
+      priority,
+    };
+  }
+
+  if (pattern.op === "set_text") {
+    // clarify_cta — pick the published CTA label matching the visitor's intent,
+    // walking the goal-aware preference chain until a variant actually exists.
+    // Only acquisition CTAs qualify: "Hjälp"/"Logga in"/"Läs mer" are labelled
+    // by role at harvest and must never become conversion copy. STRICT match
+    // only — pickItem's first-item fallback would grab an arbitrary CTA and
+    // misreport its intent in the reason string.
+    const prefs = ctaIntentPreferences(context, goal);
+    let item: ReturnType<typeof pickItem> = null;
+    let intent = prefs[0];
+    for (const wanted of prefs) {
+      const hit = (inventory.slots.cta ?? []).find(
+        (i) => isAcquisition(i) && i.meta?.intent === wanted && Boolean(i.text),
+      );
+      if (hit) {
+        item = hit;
+        intent = wanted;
+        break;
+      }
+    }
+    if (!item?.text || !isAcquisition(item)) return "no_intent_variant";
+    // Never retext an element with the only label we know for it — that's a
+    // guaranteed no-op ("Skapa konto" → "Skapa konto", seen live on the pilot,
+    // where the crawler harvests each CTA's own text). The change is real only
+    // when the inventory holds ANOTHER label for the same element (multi-label
+    // demo slots) or we're falling back to the generic instrumented slot.
+    if (item.selector) {
+      const otherLabel = (inventory.slots.cta ?? []).some(
+        (i) => i !== item && i.selector === item.selector && i.text && i.text !== item.text,
+      );
+      if (!otherLabel) return "single_label_cta";
+    }
+    return {
+      pattern: id,
+      op: "set_text",
+      target: item.selector ?? slotSelector,
+      slot: pattern.slot,
+      // The published label doubles as a text locator if the selector drifts —
+      // the same resilience the reveal/move ops already had (audit gap).
+      anchorText: item.text,
+      tag: item.meta?.tag,
+      value: item.text,
+      reason: `CTA set to "${item.text}" for ${context.trafficSource} visitor (intent: ${intent}).`,
+      priority,
+    };
+  }
+
+  if (pattern.op === "inject_badge") {
+    // Textkälla: microcopy som default; ett badge-mönster med annan slot
+    // (S2: trust_badge) hämtar texten därifrån via sitt strikta
+    // BADGE_SLOT_ITEM-predikat.
+    let text: string | undefined;
+    if (pattern.slot !== "microcopy") {
+      const pred = BADGE_SLOT_ITEM[id];
+      const src = pickItem(inventory, pattern.slot, pred);
+      // Re-guard mot pickItems first-item-fallback — samma disciplin som
+      // microcopy-vägen: fel typ av trust-signal får ALDRIG rendera under
+      // det här mönstrets etikett.
+      if (!src?.text || (pred && !pred(src))) return "no_inventory_for_slot";
+      text = src.text;
+    } else {
+      const kind = MICROCOPY_KIND[id];
+      const item = pickItem(inventory, "microcopy", kind ? (i) => i.meta?.kind === kind : undefined);
+      // STRICT kind match — pickItem's first-item fallback would otherwise
+      // inject some OTHER published reassurance under this pattern's name
+      // ("No credit card required" badge showing the setup-time copy). Same
+      // no-arbitrary-fallback rule as clarify_cta's intent match.
+      if (!item?.text || (kind && item.meta?.kind !== kind)) return "no_microcopy";
+      text = item.text;
+    }
+    // W8-E1: målankrat target — badgen är per definition "rätt stödbevis
+    // INTILL MÅLET". Utan konfigurerat mål finns inget ankare: den gamla
+    // slot-konventionen '[data-angel-slot="cta"]' fanns bara på de numera
+    // borttagna demosidorna, så fallbacken var en garanterad tyst no-op som
+    // ändå loggades som exposure (mätförorening, granskningsfynd). Typad
+    // decline i stället.
+    if (!goal?.selector && !goal?.text) return "no_goal_configured";
+    return {
+      pattern: id,
+      op: "inject_badge",
+      target: goal.selector ?? "",
+      ...(goal.text ? { anchorText: goal.text } : {}),
+      slot: "cta",
+      value: text,
+      reason: `Showing "${text}" (${pattern.label}).`,
+      priority,
+    };
+  }
+
+  // reveal / move_up / condense — operate on an EXISTING element.
+  // If we harvested nothing for this slot we have no real locator (only the
+  // [data-angel-slot] convention, which un-instrumented sites lack), so the op
+  // would silently no-op AND consume one of the MAX_ADAPTATIONS slots, crowding
+  // out an adaptation that could actually fire. Skip it — same "never act on
+  // content we don't have" rule that governs the set_text / inject_badge paths.
+  const item = pickItem(inventory, pattern.slot);
+  if (!item) return "no_inventory_for_slot";
+  const target = item.selector ?? slotSelector;
+  // reveal only un-hides [data-angel-hidden] and condense only hides
+  // [data-angel-secondary] children — markers that exist solely on
+  // slot-instrumented pages. On a crawled site (raw CSS selector, element
+  // harvested visible) both are guaranteed visual no-ops that would still be
+  // logged as exposures and pollute measurement (seen live: shorten_hero on
+  // the pilot's un-instrumented <main>). Same honesty rule as set_text.
+  // Two ways to be dishonest here: a raw harvested selector as the target, or
+  // a harvest-sourced item with NO selector (e.g. the synthetic stars-aggregate
+  // trust row) falling back to the slot-convention target — its anchorText then
+  // text-matches the already-visible element on an un-instrumented page.
+  if (
+    (pattern.op === "reveal" || pattern.op === "condense") &&
+    (!target.startsWith("[data-angel-slot") || item.meta?.source === "harvest")
+  ) {
+    return "reveal_would_noop";
+  }
+  return {
+    pattern: id,
+    op: pattern.op,
+    target,
+    slot: pattern.slot,
+    // These ops act on an existing element by its content, so its published
+    // text is a safe last-resort locator if the selector drifts.
+    anchorText: item.text,
+    tag: item.meta?.tag,
+    reason: `${pattern.label} for ${context.trafficSource} / ${context.device} visitor.`,
+    priority,
+  };
+}
+
+/** FNV-1a 32-bit hash → 8-char hex. Deterministic, dependency-free. */
+function hashHex(input: string): string {
+  return fnv1a32(input).toString(16).padStart(8, "0");
+}
+
+/** Stable id for a decision — the engine inputs that affect the outcome. */
+export function decisionIdFor(site: string, c: VisitorContext, goal?: SiteGoal): string {
+  const key = [
+    site,
+    c.trafficSource,
+    c.device,
+    c.isReturning ? "ret" : "new",
+    c.viewedPricing ? "px" : "-",
+    c.language,
+    c.pageType,
+    goal?.selector ? "g" : "-",
+    // The goal KIND steers clarify_cta's label choice, so it is a real engine
+    // input — same visitor + re-judged kind must yield a new decisionId.
+    goal?.kind ?? "-",
+  ].join("|");
+  return hashHex(key);
+}
+
+/**
+ * The decision engine. Pure: no IO, no clock, no randomness — so it is trivially
+ * testable and the same visitor context always yields the same adaptations.
+ */
+/** Per-sajt-inställningar som villkorar beslutet (utöver mål och boosts). */
+export interface DecideOptions {
+  /** Nivå 3 (layout-mönster) kräver uttrycklig opt-in per sajt
+   *  (angel_sites.layout_patterns_enabled) — v1-produkten är nivå 1–2:
+   *  relevans med minsta möjliga ingrepp, aldrig ombyggnad som standard. */
+  allowLayoutPatterns?: boolean;
+}
+
+export function decide(
+  site: string,
+  context: VisitorContext,
+  inventory: ContentInventory,
+  boosts: PatternBoost = {},
+  goal?: SiteGoal,
+  options?: DecideOptions,
+): Decision {
+  // Collect pattern -> best priority across all matching rules.
+  const best = new Map<PatternId, number>();
+  for (const rule of RULES) {
+    if (!rule.when(context)) continue;
+    for (const id of rule.patterns) {
+      const prev = best.get(id);
+      if (prev === undefined || rule.priority > prev) best.set(id, rule.priority);
+    }
+  }
+
+  // Why nominated patterns resolved to nothing (C3) — the honesty gates make
+  // zero adaptations CORRECT on many pages, and this is how downstream
+  // consumers (the robustness harness above all) can tell that apart from an
+  // empty inventory. Highest-priority attempt per pattern wins.
+  const declined: { pattern: PatternId; reason: DeclineReason }[] = [];
+
+  const adaptations = [...best.entries()]
+    // Apply the measured performance delta to each pattern's priority. Only a
+    // SIGNIFICANT conversion verdict (PERF_SUPPRESS) may remove a pattern;
+    // milder negatives (micro/engagement nudges) demote in the ranking but
+    // floor at priority 1 (D3) — an engagement proxy that never met the
+    // significance bar must not zero out e.g. the priority-10 baseline rule.
+    .map(([id, priority]) => {
+      const boost = boosts[id] ?? 0;
+      const effective =
+        boost <= PERF_SUPPRESS ? priority + boost : Math.max(1, priority + boost);
+      return { id, priority: effective };
+    })
+    .filter((e) => e.priority > 0)
+    .map((e) => {
+      // v1-grind: på konverteringssidor (/kassa, /signup, /checkout …) står
+      // Angel HELT stilla. Tidigare gällde conversion_page bara måldekorations-
+      // opsen (emphasize/sticky/secondary) — badges, set_text och (med opt-in)
+      // flyttar kunde fortfarande landa på checkouten. Det är "formulär-/
+      // checkout-ingrepp" ur do-not-build-listan oavsett op: besökaren är
+      // redan vid målet, och förtroendenivån för att röra den ytan har vi
+      // inte. Auth-sidor grindas däremot INTE blankt (A3, medvetet beslut):
+      // den felklickade besökaren på /login behöver vägen tillbaka till målet
+      // — flyttarna utesluts där via avoidPageTypes. Typad decline per
+      // mönster så pre-flight förklarar frånvaron.
+      if (context.pageType === "conversion") {
+        declined.push({ pattern: e.id, reason: "conversion_page" });
+        return null;
+      }
+      // Goal-kind eligibility (target architecture step 4): drop patterns the
+      // site's CONFIRMED goal kind excludes BEFORE resolving them, so a
+      // SaaS-flavored pattern never fires on a donate/purchase site even when
+      // matching inventory happens to exist (the load-bearing case is
+      // show_enterprise_testimonial, which reveals ANY testimonial). No
+      // confirmed kind → no gating, so unconfigured sites are unaffected.
+      if (!patternFitsGoalKind(e.id, goal?.kind)) {
+        declined.push({ pattern: e.id, reason: "goal_kind_mismatch" });
+        return null;
+      }
+      // Sidtyps-gating: flytt-/omordningsmönster nomineras aldrig på sidor
+      // där omordning ser trasig ut (artikel/blogg = content, auth). Typad
+      // decline så pre-flight/robustness förklarar VARFÖR i stället för att
+      // tyst sakna mönstret.
+      if (!patternFitsPageType(e.id, context.pageType)) {
+        declined.push({ pattern: e.id, reason: "page_type_mismatch" });
+        return null;
+      }
+      // Nivågrind (v1): layout-mönster (nivå 3) är AV som standard och kräver
+      // per-sajt opt-in efter pre-flight + ägargodkännande. Typad decline —
+      // frånvaron ska vara förklarad, inte tyst.
+      if (getPattern(e.id).level === 3 && !options?.allowLayoutPatterns) {
+        declined.push({ pattern: e.id, reason: "layout_level_disabled" });
+        return null;
+      }
+      const result = resolve(e.id, e.priority, context, inventory, goal);
+      if (typeof result === "string") {
+        declined.push({ pattern: e.id, reason: result });
+        return null;
+      }
+      // Ägarregeln: målknappen är orörbar — t.ex. clarify_cta som råkar
+      // resolva till sajtens egen målknapp (den ligger i inventoriet som
+      // vilken CTA som helst) får aldrig skriva om just den.
+      if (touchesGoalElement(result, goal)) {
+        declined.push({ pattern: e.id, reason: "goal_element_untouchable" });
+        return null;
+      }
+      return result;
+    })
+    .filter((a): a is Adaptation => a !== null)
+    // Vid lika prioritet vinner det MINSTA ingreppet ("hur lite behöver vi
+    // förändra sidan?" är produktfrågan): lägre nivå före högre, lättare op
+    // före tyngre, och först därefter namn (determinism). Paint slår badge,
+    // badge slår chip, allt slår flytt.
+    .sort(
+      (a, b) =>
+        b.priority - a.priority ||
+        getPattern(a.pattern).level - getPattern(b.pattern).level ||
+        (OP_WEIGHT[a.op] ?? 9) - (OP_WEIGHT[b.op] ?? 9) ||
+        a.pattern.localeCompare(b.pattern),
+    )
+    // Injection budget: keep only the highest-priority element-adding op so a
+    // visitor never sees more than one thing Angel added to the page.
+    .filter(
+      (
+        () => {
+          let injected = false;
+          return (a: Adaptation) => {
+            if (!INJECT_OPS.has(a.op)) return true;
+            if (injected) return false;
+            injected = true;
+            return true;
+          };
+        }
+      )(),
+    )
+    .slice(0, MAX_ADAPTATIONS);
+
+  return {
+    decisionId: decisionIdFor(site, context, goal),
+    site,
+    adaptations,
+    ...(declined.length > 0 ? { declined } : {}),
+    context,
+  };
+}

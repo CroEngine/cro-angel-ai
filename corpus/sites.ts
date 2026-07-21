@@ -93,6 +93,109 @@ export const SITES: SiteSpec[] = [
     notes:
       "Dark-theme SaaS-landing (inverterad kontrast/salience). Ingen blockerande consent-banner mot Browserbase-IP i breadth-capture.",
   },
+  // ---- Arketyp-korpusen: en frusen sajt per konverteringsmåltyp -------------
+  // Poängen (contradictions-audit "target architecture"): hela kedjan
+  // skörd → måldom → mönster regressionstestas PER MÅLTYP, inte bara för
+  // SaaS-signup. CMP-vendor per sajt identifierad 2026-07-06 ur server-
+  // renderad HTML (vocab-harvesten); selektorerna är vendorernas standard-id:n.
+  {
+    // PURCHASE — svensk marketplace/webshop ("Köp", varukorg, till kassan).
+    name: "cdon",
+    url: "https://cdon.se",
+    consentSelector: "#didomi-notice-agree-button",
+    notes: "Didomi-CMP. Arketyp: purchase (webshop).",
+  },
+  {
+    // LEAD — hemlarm med "bli uppringd"/kostnadsfritt hembesök som primär
+    // konvertering. Tidigare lead-försök föll: Verisure (OneTrust) över
+    // externalize-tröskeln, Svensk Fast (Cookiebot) renderade ingen banner
+    // mot Browserbase-IP. sector-alarm.se → www.sectoralarm.se (redirect),
+    // vi fryser slut-URL:en direkt.
+    name: "sector-alarm",
+    url: "https://www.sectoralarm.se/",
+    // Cookie Information-CMP (policy.app.cookieinformation.com/uc.js) med
+    // CUSTOM-mall: accept-knappen är klasslös (".coi-banner__accept" finns
+    // inte) — identifierad 2026-07-06 via scripts/probe-consent-dom.ts:
+    // <button class="button ... button--gossamer"
+    //   onclick="CookieInformation.submitAllCategories();resolveLeadSourceId();">
+    // Attribut-selektorn är den enda stabila kroken och matchar exakt 1 element
+    // (coiPage-2:s "välj alla"-knapp kör setCheckboxes, inte submitAllCategories).
+    consentSelector: '#coiPage-1 button[onclick*="submitAllCategories"]',
+    // CoI göms (overlay display:none) — knappen detachar inte.
+    consentDismissCheck: "hidden",
+    notes: "Cookie Information-CMP (custom-mall). Arketyp: lead (hemlarm, callback/hembesök).",
+  },
+  {
+    // START_FLOW — jämförelseportal för elavtal ("Jämför och byt elavtal").
+    name: "elskling",
+    url: "https://elskling.se",
+    consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    // Verifierat 2026-07-06: Cookiebot göms (detachas inte), som HubSpot.
+    consentDismissCheck: "hidden",
+    notes: "Cookiebot-CMP. Arketyp: start_flow (jämförelseportal).",
+  },
+  {
+    // DONATE — insamlingsorganisation ("Ge en gåva", "Bli månadsgivare").
+    name: "cancerfonden",
+    url: "https://www.cancerfonden.se",
+    consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    // Verifierat 2026-07-06: Cookiebot göms (detachas inte), som HubSpot.
+    consentDismissCheck: "hidden",
+    notes: "Cookiebot-CMP. Arketyp: donate (nonprofit).",
+  },
+  {
+    // SUBSCRIBE/TRIAL — ljudboks-abonnemang ("Prova gratis" → prenumeration).
+    // di.se (första subscribe-försöket) föll på egna fonter över inline-
+    // tröskeln + render-canary; Nextory är en lättare abonnemangssajt.
+    // nextory.se → nextory.com/se (redirect), vi fryser slut-URL:en direkt.
+    name: "nextory",
+    url: "https://nextory.com/se",
+    // Verifierat 2026-07-06 via --dry-run --screenshot-before-dismiss:
+    // Cookiebot finns i server-HTML:en men ingen banner rendras mot
+    // Browserbase-IP (geo-gate, samma som hibob/microsoft) — sidan rendrar
+    // fullt med "Prova gratis nu"-hero. Lägg INTE tillbaka selektorn utan att
+    // först verifiera att bannern faktiskt rendras i capture-miljön.
+    notes: "Ingen consent-banner i Browserbase-region (geo-gate; Cookiebot enbart i server-HTML). Arketyp: subscribe/trial (abonnemang).",
+  },
+  {
+    // BOOKING — bokningsmarknadsplats ("Boka tid"). Ingen CMP-vendor synlig i
+    // server-HTML — kör --dry-run --screenshot-before-dismiss först och lägg
+    // till selektor ENDAST om en banner faktiskt rendras i capture-miljön
+    // (samma disciplin som hibob/microsoft).
+    name: "bokadirekt",
+    url: "https://www.bokadirekt.se",
+    notes: "Arketyp: booking (bokningsmarknadsplats). CMP okänd — verifiera med dry-run.",
+  },
+  {
+    // BOOKING (strikt) — TJÄNSTESIDA på bokadirekt, där de riktiga "Boka"-
+    // CTA:erna bor (SSR:ade; homepagens kategorityler är JS-hydrerade och
+    // href-lösa, se archetype-goals.test.ts). Sidan vald ur sitemap-details
+    // (lågt id = etablerad salong, stabil URL).
+    // OBS: till skillnad från homepagen visar TJÄNSTESIDAN bokadirekts EGEN
+    // consent-dialog ("Vi värdesätter dina val" — React-modal, inga vendor-
+    // namn i id/class). Hittad 2026-07-06 via probe-consent-dom.ts pass 3
+    // (textbaserat): accept-knappen bär data-cy="allowCookiesButton".
+    // Modalen unmountas vid accept → detached (default).
+    name: "bokadirekt-service",
+    url: "https://www.bokadirekt.se/places/citymassage-457",
+    consentSelector: '[data-cy="allowCookiesButton"]',
+    // Determinism: headerns KOLLAPSADE mega-menypaneler (`absolute inset-0
+    // h-0 -z-10` — osynliga för besökare, men barnen mäter fulla rects) får
+    // sin absoluta Y-position att flippa ±200px mellan replays (CI 2026-07-06:
+    // grön+röd+röd på samma sha; ±200 = exakt en yBand-bucket, och eftersom
+    // yBand ingår i normalize-sorteringsnyckeln kaskaderar flippen till
+    // ~700 diffrader). Panelerna är score-neutrala (dolt nav-innehåll, inte
+    // huvudinnehåll) — samma capture-time-normalisering som hubspots overlays.
+    // Homepage-capturen har samma paneler men historiskt stabila goldens —
+    // rör den inte i efterhand; flippar den någon gång är detta boten.
+    // Systemisk fix (clip-medveten synlighet i collectorn) är våg 7-arbete.
+    // #mega-menu-manager-container: syskonstrippen med "X nära mig"-undernav
+    // ("Huvudnavigation underkategorier" — dropdown-innehåll, inte den synliga
+    // kategoriraden) flippade likadant (±200px, "Deals"/"För företag") när
+    // panelerna väl var borta — samma dolda-header-klass, samma bot.
+    removeSelectors: [".mega-menu-categories-category", "#mega-menu-manager-container"],
+    notes: "Egen consent-dialog (React-modal, data-cy-krok). Arketyp: booking strikt (tjänstesida med Boka-CTA:er).",
+  },
   // Salesforce, Slack, Kry, Monday: ej tillagda än.
   // Salesforce testad 2026-06-10: ingen consent-banner mot Browserbase-IP
   // (samma geo-gate som HiBob) men page.mhtml blev 60 MB efter font-embed.

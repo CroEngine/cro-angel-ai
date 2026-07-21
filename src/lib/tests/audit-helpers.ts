@@ -163,9 +163,12 @@ export function buildPageSummary(input: {
       : null;
   const ctaContrastFailCount = ctas.filter((c) => c.wcagLevel === "FAIL").length;
 
-  const ctasScriptPrimaryCount = ctas.filter(
-    (c) => c.category === "cta_primary" && c.intent === "conversion",
-  ).length;
+  // Category-only, exactly as the schema documents it ("NOT intent-grided") —
+  // the intent-gated number lives solely in CollectSummary.
+  // primaryConversionCtaCount (B9: the two deliberately distinct counts were
+  // silently the same predicate, so a primary-styled "Logga in" was listed as
+  // a primary in the findings rows but excluded from the count above them).
+  const ctasScriptPrimaryCount = ctas.filter((c) => c.category === "cta_primary").length;
   const secondaryCtaCount = ctas.filter((c) => c.category === "cta_secondary").length;
   const iconButtonCount = ctas.filter((c) => c.category === "icon_button").length;
   const ctaTotalCount = ctas.length;
@@ -419,4 +422,29 @@ export function groupRepeatedControls<T extends CollectedLite>(
   }
   groups.sort((a, b) => b.count - a.count);
   return groups;
+}
+
+/**
+ * Fill each CTA's nearestTrustSignalDistance from the trust engine's canonical
+ * rects (B4, from main). The CTA script used to guess trust locations from
+ * class names, which disagreed with TRUST_SIGNALS_SCRIPT in the same report.
+ */
+export function computeTrustProximity(ctas: CTAEntity[], trustSignals: TrustSignal[]): void {
+  const centers = trustSignals
+    .filter((t): t is TrustSignal & { rect: Rect } => t.rect !== undefined)
+    .map((t) => ({ cx: t.rect.x + t.rect.w / 2, cy: t.rect.y + t.rect.h / 2 }));
+  for (const c of ctas) {
+    if (centers.length === 0) {
+      c.nearestTrustSignalDistance = null;
+      continue;
+    }
+    const cx = c.rect.x + c.rect.w / 2;
+    const cy = c.rect.y + c.rect.h / 2;
+    let min = Infinity;
+    for (const t of centers) {
+      const d = Math.hypot(cx - t.cx, cy - t.cy);
+      if (d < min) min = d;
+    }
+    c.nearestTrustSignalDistance = Math.round(min);
+  }
 }

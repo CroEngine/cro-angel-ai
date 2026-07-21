@@ -1,0 +1,315 @@
+{
+  "schemaVersion": 1,
+  "env": {
+    "chromiumPath": "<playwright-bundled>",
+    "chromiumVersion": "148.0.7778.96",
+    "pinned": true
+  },
+  "families": [
+    {
+      "family": "Nextory Sans Headline Demi-Bold",
+      "gate1": {
+        "wWith": 402,
+        "wFallback": 520.171875,
+        "deltaLoad": 118.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Nextory Sans Headline Demi-Bold",
+          "allDescriptorFamilies": [
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Headline Regular",
+            "Nextory Sans Headline Demi-Bold",
+            "Nextory Sans Regular",
+            "Nextory Sans Medium",
+            "Twemoji Country Flags"
+          ],
+          "matchedDescriptorFamilies": [
+            "Nextory Sans Headline Demi-Bold"
+          ],
+          "checkString": "16px \"Nextory Sans Headline Demi-Bold\"",
+          "widthString": "\"Nextory Sans Headline Demi-Bold\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Nextory Sans Headline Regular",
+      "gate1": {
+        "wWith": 413,
+        "wFallback": 520.171875,
+        "deltaLoad": 107.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Nextory Sans Headline Regular",
+          "allDescriptorFamilies": [
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Headline Regular",
+            "Nextory Sans Headline Demi-Bold",
+            "Nextory Sans Regular",
+            "Nextory Sans Medium",
+            "Twemoji Country Flags"
+          ],
+          "matchedDescriptorFamilies": [
+            "Nextory Sans Headline Regular"
+          ],
+          "checkString": "16px \"Nextory Sans Headline Regular\"",
+          "widthString": "\"Nextory Sans Headline Regular\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Nextory Sans Medium",
+      "gate1": {
+        "wWith": 416,
+        "wFallback": 520.171875,
+        "deltaLoad": 104.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Nextory Sans Medium",
+          "allDescriptorFamilies": [
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Headline Regular",
+            "Nextory Sans Headline Demi-Bold",
+            "Nextory Sans Regular",
+            "Nextory Sans Medium",
+            "Twemoji Country Flags"
+          ],
+          "matchedDescriptorFamilies": [
+            "Nextory Sans Medium"
+          ],
+          "checkString": "16px \"Nextory Sans Medium\"",
+          "widthString": "\"Nextory Sans Medium\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Nextory Sans Regular",
+      "gate1": {
+        "wWith": 412,
+        "wFallback": 520.171875,
+        "deltaLoad": 108.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Nextory Sans Regular",
+          "allDescriptorFamilies": [
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Headline Regular",
+            "Nextory Sans Headline Demi-Bold",
+            "Nextory Sans Regular",
+            "Nextory Sans Medium",
+            "Twemoji Country Flags"
+          ],
+          "matchedDescriptorFamilies": [
+            "Nextory Sans Regular"
+          ],
+          "checkString": "16px \"Nextory Sans Regular\"",
+          "widthString": "\"Nextory Sans Regular\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Twemoji Country Flags",
+      "gate1": {
+        "wWith": 520.171875,
+        "wFallback": 520.171875,
+        "deltaLoad": 0,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "metric_twin"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "coverage-exclusion",
+        "loadResultKind": "loaded",
+        "faceCount": 0,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Twemoji Country Flags",
+          "allDescriptorFamilies": [
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Regular fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Headline Demi-Bold fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Regular fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Medium fallback",
+            "Nextory Sans Headline Regular",
+            "Nextory Sans Headline Demi-Bold",
+            "Nextory Sans Regular",
+            "Nextory Sans Medium",
+            "Twemoji Country Flags"
+          ],
+          "matchedDescriptorFamilies": [
+            "Twemoji Country Flags"
+          ],
+          "checkString": "16px \"Twemoji Country Flags\"",
+          "widthString": "\"Twemoji Country Flags\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    }
+  ]
+}

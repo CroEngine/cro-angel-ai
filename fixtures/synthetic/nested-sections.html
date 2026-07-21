@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- Syntetisk fixtur: sektioner i WRAPPER-LÅDA (main > div.page > div.wrapper >
+     section×3) — mönstret 8/13 riktiga sajter använde och som v1-upplösningen
+     ("direkt barn av main") inte kunde flytta i. CI-smoken applicerar en
+     variant-flytt här och bevisar att snippetens v2-upplösning lyfter EXAKT
+     sektionen (inte wrappern), ett steg, reversibelt. Ändra inte strukturen
+     utan att uppdatera scenariot i scripts/ci/serving-smoke.mjs. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nested sections fixture</title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+  .hero { padding: 40px 16px; background: #eef; }
+  section { padding: 48px 16px; min-height: 120px; }
+  #sec-alpha { background: #fee; }
+  #sec-beta  { background: #efe; }
+  #sec-gamma { background: #eef6ff; }
+</style>
+</head>
+<body>
+<main>
+  <div class="page">
+    <div class="hero">
+      <h1>Nested Fixture Hero</h1>
+      <p>The sections below live inside a wrapper, not directly under main.</p>
+      <a href="/signup">Start now</a>
+    </div>
+    <div class="wrapper">
+      <section id="sec-alpha">
+        <h2>Alpha Features</h2>
+        <p>First section body content, tall enough to be a visible block.</p>
+      </section>
+      <section id="sec-beta">
+        <h2>Beta Reviews</h2>
+        <p>Second section body content, tall enough to be a visible block.</p>
+      </section>
+      <section id="sec-gamma">
+        <h2>Gamma Pricing</h2>
+        <p>Third section body content, tall enough to be a visible block.</p>
+      </section>
+    </div>
+  </div>
+</main>
+</body>
+</html>

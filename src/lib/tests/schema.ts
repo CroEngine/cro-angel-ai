@@ -30,6 +30,10 @@ export type ViewportZone = "above_fold" | "mid_page" | "below_fold";
 
 export type ElementIntent =
   | "conversion"
+  /** Contact actions (tel:/mailto:/contact wording) — their own intent, NOT
+   *  'utility': for lead-gen businesses contact IS the conversion, and the
+   *  goal system (GoalKind contact/lead) already treats it that way (A1). */
+  | "contact"
   | "information"
   | "navigation"
   | "social"
@@ -43,7 +47,10 @@ export type SectionKind =
   | "hero"
   | "cards"
   | "content"
-  | "footer";
+  | "footer"
+  /** Non-positional, document-level evidence (schema.org JSON-LD anchored to
+   *  <body>) — never above-fold, never competes with visible signals. */
+  | "document";
 
 export type CollectedElement = {
   text: string;
@@ -205,17 +212,30 @@ export type WcagLevel = "AAA" | "AA" | "AA-large" | "FAIL";
 
 export type CTAEntity = {
   text: string;
+  /** Destination (raw href) — language-independent role signal (/login, /faq …). */
+  href?: string;
   intent: ElementIntent;
   category: ElementCategory;
   section: SectionKind;
   aboveFold: boolean;
   visualWeight: number;
   competingActions: number;
-  nearestTrustSignalDistance: number;
+  /** Distance (px, document space) from this CTA's centre to the nearest
+   *  POSITIONED trust signal, computed SERVER-SIDE from the trust engine's
+   *  canonical rects (audit-helpers computeTrustProximity, B4) — never from
+   *  in-script class-name guessing. null = no positioned trust signal on the
+   *  page (never a 9999 sentinel). */
+  nearestTrustSignalDistance: number | null;
   nearestFormDistance: number;
   contrastRatio: number | null;
   wcagLevel: WcagLevel | null;
   selector?: string; // transient — present in browser script output, stripped before persistence
+  /** Set by curation when this CTA REPRESENTS a collapsed uniform strip (nav /
+   *  category grid): how many near-identical siblings it stood in for, and a few
+   *  of their labels. Preserves the "this is 1 of a 40-item comparison grid"
+   *  signal that goal judgment needs, without keeping all 40 in the inventory. */
+  variantCount?: number;
+  variantSample?: string[];
   rect: Rect;
 };
 
@@ -280,8 +300,12 @@ export type VisualHierarchyEntry = {
   area: number;
   fontSize: number;
   fontWeight: number;
-  contrast: number;
-  wcagLevel: WcagLevel | null;
+  /** Element surface vs PAGE background — a salience input, NOT text
+   *  readability. Real WCAG text contrast lives on CTAEntity
+   *  (contrastRatio/wcagLevel); this field deliberately does not borrow that
+   *  vocabulary (audit B5: the same button used to be 'AAA' there and 'FAIL'
+   *  here in the same PageAuditData). */
+  bgSeparation: number;
   position: { xPct: number; yPct: number };
   aboveFold: boolean;
   section: SectionKind;
@@ -577,6 +601,13 @@ export type CollectSummary = {
   total: number;
   aboveFold: number;
   primaryConversionCtaCount: number;
+  /** All above-fold conversion-capable CTAs, INCLUDING the primary — the raw
+   *  pool competingAboveFold is derived from. */
+  conversionCtasAboveFold?: number;
+  /** CTAs competing WITH the primary above the fold: the raw pool minus one
+   *  reserved slot for the primary itself (B8 — the audit's own ideal page,
+   *  exactly one above-fold conversion CTA, reads 0 here, matching the
+   *  per-CTA competingActions self-exclusion convention). */
   competingAboveFold: number;
   topVisualWeight: Array<{ selector: string; text: string; score: number }>;
   intentBreakdown: Partial<Record<ElementIntent, number>>;

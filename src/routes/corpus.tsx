@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
 import { useState } from "react";
+
+import { AppNav } from "@/components/app-nav";
 import { Download, FileJson, ChevronDown, ChevronRight, ExternalLink, Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -51,28 +53,26 @@ function CorpusPage() {
   const { sites } = data;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Corpus inspector</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {sites.length} sajt{sites.length === 1 ? "" : "er"} i <code>corpus/</code>. Ladda ner artefakter eller bläddra i JSON inline.
-            </p>
-          </div>
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Tillbaka</Link>
+    <div className="min-h-screen bg-[#fafaf9] text-stone-900">
+      <AppNav active="/corpus" isAdmin />
+      <main className="mx-auto max-w-5xl space-y-6 px-6 pb-16 pt-7">
+        <header>
+          <h1 className="font-heading text-[23px] font-bold tracking-tight">Corpus inspector</h1>
+          <p className="mt-2 text-sm text-stone-500">
+            {sites.length} site{sites.length === 1 ? "" : "s"} in <code>corpus/</code>. Download artifacts or browse the JSON inline.
+          </p>
         </header>
 
         {sites.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-sm text-muted-foreground">
-              Inga frysta sajter ännu. Kör <code>bun run freeze --url=... --name=...</code>.
+              No frozen sites yet. Run <code>bun run freeze --url=... --name=...</code>.
             </CardContent>
           </Card>
         ) : (
           sites.map((site) => <SiteCard key={site.name} site={site} />)
         )}
-      </div>
+      </main>
     </div>
   );
 }
@@ -111,7 +111,7 @@ function SiteCard({ site }: { site: CorpusSite }) {
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (error) {
       console.error(error);
-      window.alert(`Kunde inte ladda ner ${file}.`);
+      window.alert(`Couldn't download ${file}.`);
     } finally {
       setDownloading(null);
     }
@@ -167,7 +167,7 @@ function SiteCard({ site }: { site: CorpusSite }) {
           <div className="grid grid-cols-2 gap-3 rounded-md border border-border bg-muted/30 p-3 text-sm sm:grid-cols-3">
             {summaryQuery.isLoading || !g ? (
               <div className="sm:col-span-3 text-xs text-muted-foreground">
-                {summaryQuery.isLoading ? "laddar snabbsiffror…" : "—"}
+                {summaryQuery.isLoading ? "loading quick stats…" : "—"}
               </div>
             ) : (
               <>
@@ -291,7 +291,7 @@ function JsonInline({ site, file }: { site: string; file: ArtifactFile }) {
           <FileJson className="h-4 w-4 text-muted-foreground" />
           <span className="font-mono">{file}</span>
         </span>
-        <span className="text-xs text-muted-foreground">{open ? "dölj" : "visa"}</span>
+        <span className="text-xs text-muted-foreground">{open ? "hide" : "show"}</span>
       </button>
       {open && (
         <pre className="max-h-96 overflow-auto border-t border-border bg-muted/30 p-3 font-mono text-xs leading-relaxed text-foreground">

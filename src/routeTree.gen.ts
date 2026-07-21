@@ -9,19 +9,105 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SeoAndPrivacyRouteImport } from './routes/seo-and-privacy'
+import { Route as SandboxRouteImport } from './routes/sandbox'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CorpusRouteImport } from './routes/corpus'
+import { Route as AgentRouteImport } from './routes/agent'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
+import { Route as ApiSandboxMirrorRouteImport } from './routes/api/sandbox/mirror'
+import { Route as ApiAdaptiveInventoryRouteImport } from './routes/api/adaptive/inventory'
+import { Route as ApiAdaptiveEventsRouteImport } from './routes/api/adaptive/events'
+import { Route as ApiAdaptiveDecideRouteImport } from './routes/api/adaptive/decide'
+import { Route as ApiAdaptiveConsentConfigRouteImport } from './routes/api/adaptive/consent-config'
+import { Route as ApiTestsRobustnessStreamRouteImport } from './routes/api/tests/robustness.stream'
+import { Route as ApiTestsCrawlStreamRouteImport } from './routes/api/tests/crawl.stream'
 import { Route as ApiTestsRunIdStreamRouteImport } from './routes/api/tests/$runId.stream'
 import { Route as ApiPublicCorpusSplatRouteImport } from './routes/api/public/corpus.$'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeoAndPrivacyRoute = SeoAndPrivacyRouteImport.update({
+  id: '/seo-and-privacy',
+  path: '/seo-and-privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SandboxRoute = SandboxRouteImport.update({
+  id: '/sandbox',
+  path: '/sandbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CorpusRoute = CorpusRouteImport.update({
   id: '/corpus',
   path: '/corpus',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentRoute = AgentRouteImport.update({
+  id: '/agent',
+  path: '/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe/webhook',
+  path: '/api/stripe/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSandboxMirrorRoute = ApiSandboxMirrorRouteImport.update({
+  id: '/api/sandbox/mirror',
+  path: '/api/sandbox/mirror',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdaptiveInventoryRoute = ApiAdaptiveInventoryRouteImport.update({
+  id: '/api/adaptive/inventory',
+  path: '/api/adaptive/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdaptiveEventsRoute = ApiAdaptiveEventsRouteImport.update({
+  id: '/api/adaptive/events',
+  path: '/api/adaptive/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdaptiveDecideRoute = ApiAdaptiveDecideRouteImport.update({
+  id: '/api/adaptive/decide',
+  path: '/api/adaptive/decide',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdaptiveConsentConfigRoute =
+  ApiAdaptiveConsentConfigRouteImport.update({
+    id: '/api/adaptive/consent-config',
+    path: '/api/adaptive/consent-config',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiTestsRobustnessStreamRoute =
+  ApiTestsRobustnessStreamRouteImport.update({
+    id: '/api/tests/robustness/stream',
+    path: '/api/tests/robustness/stream',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiTestsCrawlStreamRoute = ApiTestsCrawlStreamRouteImport.update({
+  id: '/api/tests/crawl/stream',
+  path: '/api/tests/crawl/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTestsRunIdStreamRoute = ApiTestsRunIdStreamRouteImport.update({
@@ -37,49 +123,186 @@ const ApiPublicCorpusSplatRoute = ApiPublicCorpusSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/corpus': typeof CorpusRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/sandbox': typeof SandboxRoute
+  '/seo-and-privacy': typeof SeoAndPrivacyRoute
+  '/signup': typeof SignupRoute
+  '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
+  '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
+  '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
+  '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
+  '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
+  '/api/tests/crawl/stream': typeof ApiTestsCrawlStreamRoute
+  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/corpus': typeof CorpusRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/sandbox': typeof SandboxRoute
+  '/seo-and-privacy': typeof SeoAndPrivacyRoute
+  '/signup': typeof SignupRoute
+  '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
+  '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
+  '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
+  '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
+  '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
+  '/api/tests/crawl/stream': typeof ApiTestsCrawlStreamRoute
+  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
   '/corpus': typeof CorpusRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/sandbox': typeof SandboxRoute
+  '/seo-and-privacy': typeof SeoAndPrivacyRoute
+  '/signup': typeof SignupRoute
+  '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
+  '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
+  '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
+  '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
+  '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
   '/api/tests/$runId/stream': typeof ApiTestsRunIdStreamRoute
+  '/api/tests/crawl/stream': typeof ApiTestsCrawlStreamRoute
+  '/api/tests/robustness/stream': typeof ApiTestsRobustnessStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agent'
     | '/corpus'
+    | '/dashboard'
+    | '/login'
+    | '/sandbox'
+    | '/seo-and-privacy'
+    | '/signup'
+    | '/api/adaptive/consent-config'
+    | '/api/adaptive/decide'
+    | '/api/adaptive/events'
+    | '/api/adaptive/inventory'
+    | '/api/sandbox/mirror'
+    | '/api/stripe/webhook'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
+    | '/api/tests/crawl/stream'
+    | '/api/tests/robustness/stream'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/corpus' | '/api/public/corpus/$' | '/api/tests/$runId/stream'
+  to:
+    | '/'
+    | '/agent'
+    | '/corpus'
+    | '/dashboard'
+    | '/login'
+    | '/sandbox'
+    | '/seo-and-privacy'
+    | '/signup'
+    | '/api/adaptive/consent-config'
+    | '/api/adaptive/decide'
+    | '/api/adaptive/events'
+    | '/api/adaptive/inventory'
+    | '/api/sandbox/mirror'
+    | '/api/stripe/webhook'
+    | '/api/public/corpus/$'
+    | '/api/tests/$runId/stream'
+    | '/api/tests/crawl/stream'
+    | '/api/tests/robustness/stream'
   id:
     | '__root__'
     | '/'
+    | '/agent'
     | '/corpus'
+    | '/dashboard'
+    | '/login'
+    | '/sandbox'
+    | '/seo-and-privacy'
+    | '/signup'
+    | '/api/adaptive/consent-config'
+    | '/api/adaptive/decide'
+    | '/api/adaptive/events'
+    | '/api/adaptive/inventory'
+    | '/api/sandbox/mirror'
+    | '/api/stripe/webhook'
     | '/api/public/corpus/$'
     | '/api/tests/$runId/stream'
+    | '/api/tests/crawl/stream'
+    | '/api/tests/robustness/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentRoute: typeof AgentRoute
   CorpusRoute: typeof CorpusRoute
+  DashboardRoute: typeof DashboardRoute
+  LoginRoute: typeof LoginRoute
+  SandboxRoute: typeof SandboxRoute
+  SeoAndPrivacyRoute: typeof SeoAndPrivacyRoute
+  SignupRoute: typeof SignupRoute
+  ApiAdaptiveConsentConfigRoute: typeof ApiAdaptiveConsentConfigRoute
+  ApiAdaptiveDecideRoute: typeof ApiAdaptiveDecideRoute
+  ApiAdaptiveEventsRoute: typeof ApiAdaptiveEventsRoute
+  ApiAdaptiveInventoryRoute: typeof ApiAdaptiveInventoryRoute
+  ApiSandboxMirrorRoute: typeof ApiSandboxMirrorRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiPublicCorpusSplatRoute: typeof ApiPublicCorpusSplatRoute
   ApiTestsRunIdStreamRoute: typeof ApiTestsRunIdStreamRoute
+  ApiTestsCrawlStreamRoute: typeof ApiTestsCrawlStreamRoute
+  ApiTestsRobustnessStreamRoute: typeof ApiTestsRobustnessStreamRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/seo-and-privacy': {
+      id: '/seo-and-privacy'
+      path: '/seo-and-privacy'
+      fullPath: '/seo-and-privacy'
+      preLoaderRoute: typeof SeoAndPrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sandbox': {
+      id: '/sandbox'
+      path: '/sandbox'
+      fullPath: '/sandbox'
+      preLoaderRoute: typeof SandboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/corpus': {
       id: '/corpus'
       path: '/corpus'
@@ -87,11 +310,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CorpusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agent': {
+      id: '/agent'
+      path: '/agent'
+      fullPath: '/agent'
+      preLoaderRoute: typeof AgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stripe/webhook': {
+      id: '/api/stripe/webhook'
+      path: '/api/stripe/webhook'
+      fullPath: '/api/stripe/webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sandbox/mirror': {
+      id: '/api/sandbox/mirror'
+      path: '/api/sandbox/mirror'
+      fullPath: '/api/sandbox/mirror'
+      preLoaderRoute: typeof ApiSandboxMirrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/adaptive/inventory': {
+      id: '/api/adaptive/inventory'
+      path: '/api/adaptive/inventory'
+      fullPath: '/api/adaptive/inventory'
+      preLoaderRoute: typeof ApiAdaptiveInventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/adaptive/events': {
+      id: '/api/adaptive/events'
+      path: '/api/adaptive/events'
+      fullPath: '/api/adaptive/events'
+      preLoaderRoute: typeof ApiAdaptiveEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/adaptive/decide': {
+      id: '/api/adaptive/decide'
+      path: '/api/adaptive/decide'
+      fullPath: '/api/adaptive/decide'
+      preLoaderRoute: typeof ApiAdaptiveDecideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/adaptive/consent-config': {
+      id: '/api/adaptive/consent-config'
+      path: '/api/adaptive/consent-config'
+      fullPath: '/api/adaptive/consent-config'
+      preLoaderRoute: typeof ApiAdaptiveConsentConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tests/robustness/stream': {
+      id: '/api/tests/robustness/stream'
+      path: '/api/tests/robustness/stream'
+      fullPath: '/api/tests/robustness/stream'
+      preLoaderRoute: typeof ApiTestsRobustnessStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tests/crawl/stream': {
+      id: '/api/tests/crawl/stream'
+      path: '/api/tests/crawl/stream'
+      fullPath: '/api/tests/crawl/stream'
+      preLoaderRoute: typeof ApiTestsCrawlStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tests/$runId/stream': {
@@ -113,9 +399,23 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentRoute: AgentRoute,
   CorpusRoute: CorpusRoute,
+  DashboardRoute: DashboardRoute,
+  LoginRoute: LoginRoute,
+  SandboxRoute: SandboxRoute,
+  SeoAndPrivacyRoute: SeoAndPrivacyRoute,
+  SignupRoute: SignupRoute,
+  ApiAdaptiveConsentConfigRoute: ApiAdaptiveConsentConfigRoute,
+  ApiAdaptiveDecideRoute: ApiAdaptiveDecideRoute,
+  ApiAdaptiveEventsRoute: ApiAdaptiveEventsRoute,
+  ApiAdaptiveInventoryRoute: ApiAdaptiveInventoryRoute,
+  ApiSandboxMirrorRoute: ApiSandboxMirrorRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiPublicCorpusSplatRoute: ApiPublicCorpusSplatRoute,
   ApiTestsRunIdStreamRoute: ApiTestsRunIdStreamRoute,
+  ApiTestsCrawlStreamRoute: ApiTestsCrawlStreamRoute,
+  ApiTestsRobustnessStreamRoute: ApiTestsRobustnessStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

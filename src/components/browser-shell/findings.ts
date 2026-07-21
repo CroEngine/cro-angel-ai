@@ -202,8 +202,10 @@ function trustFindings(a: PageAuditData): Finding[] {
       f("cro", "Individual ratings", `${ratings.length} testimonials: ${ratings.join(", ")}`),
     );
   }
+  // stars entries never reach findings — the collector collapses them into
+  // one stars_aggregate (which now carries the review volume, B7).
   const totalReviewCount = signals
-    .filter((s) => s.type === "review_rating" || s.type === "stars")
+    .filter((s) => s.type === "review_rating" || s.type === "stars_aggregate")
     .reduce((sum, s) => sum + (s.reviewCount ?? 0), 0);
   if (totalReviewCount > 0) {
     out.push(f("cro", "Total review count", String(totalReviewCount)));
@@ -256,7 +258,7 @@ function ctaFindings(a: PageAuditData): Finding[] {
       f(
         "cro",
         `"${c.text || "(no text)"}"`,
-        `${c.section}${c.aboveFold ? " · af" : ""} · ${c.intent} · competing ${c.competingActions} · trust ${c.nearestTrustSignalDistance}px · form ${c.nearestFormDistance === 0 ? "in" : c.nearestFormDistance + "px"}`,
+        `${c.section}${c.aboveFold ? " · af" : ""} · ${c.intent} · competing ${c.competingActions} · trust ${c.nearestTrustSignalDistance === null ? "–" : c.nearestTrustSignalDistance + "px"} · form ${c.nearestFormDistance === 0 ? "in" : c.nearestFormDistance + "px"}`,
       ),
     );
   }

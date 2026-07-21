@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "env": {
+    "chromiumPath": "<playwright-bundled>",
+    "chromiumVersion": "148.0.7778.96",
+    "pinned": true
+  },
+  "families": [
+    {
+      "family": "CancerfondenSans",
+      "gate1": {
+        "wWith": 419,
+        "wFallback": 520.171875,
+        "deltaLoad": 101.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "CancerfondenSans",
+          "allDescriptorFamilies": [
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "Colfax",
+            "Colfax",
+            "Colfax",
+            "Open Sans",
+            "Open Sans",
+            "Open Sans",
+            "IcoMoon"
+          ],
+          "matchedDescriptorFamilies": [
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans"
+          ],
+          "checkString": "16px \"CancerfondenSans\"",
+          "widthString": "\"CancerfondenSans\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Colfax",
+      "gate1": {
+        "wWith": 426,
+        "wFallback": 520.171875,
+        "deltaLoad": 94.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Colfax",
+          "allDescriptorFamilies": [
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "Colfax",
+            "Colfax",
+            "Colfax",
+            "Open Sans",
+            "Open Sans",
+            "Open Sans",
+            "IcoMoon"
+          ],
+          "matchedDescriptorFamilies": [
+            "Colfax",
+            "Colfax",
+            "Colfax"
+          ],
+          "checkString": "16px \"Colfax\"",
+          "widthString": "\"Colfax\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "IcoMoon",
+      "gate1": {
+        "wWith": 505.484375,
+        "wFallback": 520.171875,
+        "deltaLoad": 14.6875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "IcoMoon",
+          "allDescriptorFamilies": [
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "Colfax",
+            "Colfax",
+            "Colfax",
+            "Open Sans",
+            "Open Sans",
+            "Open Sans",
+            "IcoMoon"
+          ],
+          "matchedDescriptorFamilies": [
+            "IcoMoon"
+          ],
+          "checkString": "16px \"IcoMoon\"",
+          "widthString": "\"IcoMoon\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Open Sans",
+      "gate1": {
+        "wWith": 429,
+        "wFallback": 520.171875,
+        "deltaLoad": 91.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Open Sans",
+          "allDescriptorFamilies": [
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "CancerfondenSans",
+            "Colfax",
+            "Colfax",
+            "Colfax",
+            "Open Sans",
+            "Open Sans",
+            "Open Sans",
+            "IcoMoon"
+          ],
+          "matchedDescriptorFamilies": [
+            "Open Sans",
+            "Open Sans",
+            "Open Sans"
+          ],
+          "checkString": "16px \"Open Sans\"",
+          "widthString": "\"Open Sans\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    }
+  ]
+}

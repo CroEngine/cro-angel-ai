@@ -14,13 +14,344 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      angel_billing: {
+        Row: {
+          user_id: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          status: string
+          trial_end: string | null
+          current_period_end: string | null
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          status?: string
+          trial_end?: string | null
+          current_period_end?: string | null
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          status?: string
+          trial_end?: string | null
+          current_period_end?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      angel_notifications: {
+        Row: {
+          id: string
+          site: string
+          kind: string
+          dedupe_key: string
+          email: string
+          channel: string
+          payload: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          site: string
+          kind: string
+          dedupe_key: string
+          email: string
+          channel?: string
+          payload?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          site?: string
+          kind?: string
+          dedupe_key?: string
+          email?: string
+          channel?: string
+          payload?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      angel_sites: {
+        Row: {
+          id: string
+          slug: string
+          domain: string | null
+          domain_verified_at: string | null
+          billing_status: string
+          name: string | null
+          consent_mode: string
+          holdout_pct: number
+          conversion_url: string | null
+          conversion_selector: string | null
+          conversion_text: string | null
+          conversion_source: string | null
+          conversion_kind: string | null
+          ingest_key: string | null
+          layout_patterns_enabled: boolean
+          adaptations_enabled: boolean
+          serving_enabled: boolean
+          test_metric: string
+          ramp_pct: number
+          goal_candidates: Json | null
+          day0_report_url: string | null
+          day0_report_at: string | null
+          day0_report_status: string | null
+          day0_findings: Json | null
+          first_verified_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          domain?: string | null
+          domain_verified_at?: string | null
+          billing_status?: string
+          name?: string | null
+          consent_mode?: string
+          holdout_pct?: number
+          conversion_url?: string | null
+          conversion_selector?: string | null
+          conversion_text?: string | null
+          conversion_source?: string | null
+          conversion_kind?: string | null
+          ingest_key?: string | null
+          layout_patterns_enabled?: boolean
+          adaptations_enabled?: boolean
+          serving_enabled?: boolean
+          test_metric?: string
+          ramp_pct?: number
+          goal_candidates?: Json | null
+          day0_report_url?: string | null
+          day0_report_at?: string | null
+          day0_report_status?: string | null
+          day0_findings?: Json | null
+          first_verified_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          domain?: string | null
+          domain_verified_at?: string | null
+          billing_status?: string
+          name?: string | null
+          consent_mode?: string
+          holdout_pct?: number
+          conversion_url?: string | null
+          conversion_selector?: string | null
+          conversion_text?: string | null
+          conversion_source?: string | null
+          conversion_kind?: string | null
+          ingest_key?: string | null
+          layout_patterns_enabled?: boolean
+          adaptations_enabled?: boolean
+          serving_enabled?: boolean
+          test_metric?: string
+          ramp_pct?: number
+          goal_candidates?: Json | null
+          day0_report_url?: string | null
+          day0_report_at?: string | null
+          day0_report_status?: string | null
+          day0_findings?: Json | null
+          first_verified_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      angel_variants: {
+        Row: {
+          id: string
+          site: string
+          path: string
+          segment_key: string
+          status: string
+          ops: Json
+          serve_ops: Json
+          evidence: Json
+          held_reason: string | null
+          held_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          site: string
+          path?: string
+          segment_key: string
+          status?: string
+          ops?: Json
+          serve_ops?: Json
+          evidence?: Json
+          held_reason?: string | null
+          held_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          site?: string
+          path?: string
+          segment_key?: string
+          status?: string
+          ops?: Json
+          serve_ops?: Json
+          evidence?: Json
+          held_reason?: string | null
+          held_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      angel_site_members: {
+        Row: {
+          id: string
+          user_id: string
+          site_slug: string
+          role: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          site_slug: string
+          role?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          site_slug?: string
+          role?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      angel_content_inventory: {
+        Row: {
+          id: string
+          site_slug: string
+          path: string
+          slot: string
+          item_id: string
+          text: string | null
+          selector: string | null
+          meta: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          site_slug: string
+          path?: string
+          slot: string
+          item_id: string
+          text?: string | null
+          selector?: string | null
+          meta?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          site_slug?: string
+          path?: string
+          slot?: string
+          item_id?: string
+          text?: string | null
+          selector?: string | null
+          meta?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      angel_events: {
+        Row: {
+          id: number
+          site: string
+          type: string
+          decision_id: string | null
+          visitor_hash: string | null
+          payload: Json
+          created_at: string
+        }
+        Insert: {
+          id?: never
+          site: string
+          type: string
+          decision_id?: string | null
+          visitor_hash?: string | null
+          payload?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: never
+          site?: string
+          type?: string
+          decision_id?: string | null
+          visitor_hash?: string | null
+          payload?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      angel_segment_rollup: {
+        Args: { p_site: string; p_since?: string }
+        Returns: {
+          channel: string
+          device: string
+          country: string
+          is_returning: boolean
+          visits: number
+          conversions: number
+          form_starts: number
+          form_abandons: number
+          rage_sessions: number
+        }[]
+      }
+      angel_variant_arms: {
+        Args: { p_site: string; p_variant: string }
+        Returns: {
+          arm: string
+          visits: number
+          conversions: number
+          continuations: number
+        }[]
+      }
+      angel_page_segment_rollup: {
+        Args: { p_site: string; p_since?: string }
+        Returns: {
+          path: string
+          channel: string
+          device: string
+          country: string
+          is_returning: boolean
+          visits: number
+          conversions: number
+        }[]
+      }
+      angel_page_flow_rollup: {
+        Args: { p_site: string; p_since?: string }
+        Returns: {
+          landing_path: string
+          dest_path: string
+          channel: string
+          device: string
+          country: string
+          is_returning: boolean
+          sessions: number
+          reached: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

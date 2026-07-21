@@ -1,0 +1,347 @@
+import { describe, it, expect } from "vitest";
+
+import { analyze, summarize, type RobustnessObservation } from "../analyze";
+import { personaContext, isPersona } from "../personas";
+
+const sig = (elementCount: number, textLen = 100, bodyChildCount = 10) => ({
+  textLen,
+  elementCount,
+  bodyChildCount,
+});
+
+function obs(over: Partial<RobustnessObservation> = {}): RobustnessObservation {
+  return {
+    url: "https://x/",
+    site: "s",
+    persona: "linkedin_desktop",
+    reachable: true,
+    snippetRan: true,
+    consoleErrors: [],
+    decidedCount: 3,
+    appliedCount: 3,
+    probes: [
+      { pattern: "a", op: "reveal", via: "selector", count: 1 },
+      { pattern: "b", op: "set_text", via: "text", count: 2 },
+      { pattern: "c", op: "emphasize", via: "slot", count: 1 },
+    ],
+    baseline: sig(100),
+    afterApply: sig(103),
+    afterReset: sig(100),
+    layout: { matched: 50, shiftedCount: 0, shiftedFraction: 0, controlShiftedFraction: 0, maxMove: 0 },
+    rerender: { residueAfterApply: 2, residueAfterRerender: 2 },
+    interaction: { checked: 20, broken: 0 },
+    residueAfterReset: 0,
+    durationMs: 10,
+    ...over,
+  };
+}
+
+describe("analyze — robustness verdicts", () => {
+  it("passes a clean run with full targeting and no residue", () => {
+    const r = analyze(obs());
+    expect(r.verdict).toBe("pass");
+    expect(r.reasons).toEqual([]);
+    expect(r.metrics.targetingRate).toBe(1);
+    expect(r.metrics.reversible).toBe(true);
+  });
+
+  it("fails when a console error fires during apply", () => {
+    const r = analyze(obs({ consoleErrors: ["TypeError: boom"] }));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons[0]).toContain("console error");
+  });
+
+  it("fails when reset leaves residue (not reversible)", () => {
+    const r = analyze(obs({ residueAfterReset: 2 }));
+    expect(r.verdict).toBe("fail");
+    expect(r.metrics.reversible).toBe(false);
+  });
+
+  it("fails when apply removes a meaningful chunk of the DOM", () => {
+    const r = analyze(obs({ afterApply: sig(80) })); // 20% gone
+    expect(r.verdict).toBe("fail");
+    expect(r.metrics.elementsRemoved).toBe(20);
+  });
+
+  it("tolerates a tiny DOM delta (badge/text) as a pass", () => {
+    const r = analyze(obs({ afterApply: sig(96) })); // 4% < 10%
+    expect(r.verdict).toBe("pass");
+  });
+
+  it("warns (not fails) when some adaptations resolve no target", () => {
+    const r = analyze(
+      obs({
+        probes: [
+          { pattern: "a", op: "reveal", via: "selector", count: 1 },
+          { pattern: "b", op: "set_text", via: "none", count: 0 },
+          { pattern: "c", op: "emphasize", via: "none", count: 0 },
+        ],
+      }),
+    );
+    expect(r.verdict).toBe("warn");
+    expect(r.metrics.targeted).toBe(1);
+    expect(r.metrics.fullyTargeted).toBe(false);
+  });
+
+  it("warns (with review note) on a large layout shift after apply", () => {
+    const r = analyze(
+      obs({
+        layout: {
+          matched: 60,
+          shiftedCount: 40,
+          shiftedFraction: 0.55,
+          controlShiftedFraction: 0.02,
+          maxMove: 320,
+        },
+      }),
+    );
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.some((x) => x.includes("layout shift"))).toBe(true);
+    expect(r.metrics.layout.shiftedFraction).toBeCloseTo(0.55);
+  });
+
+  it("does not warn when the shift is mostly the page's own motion (netted out)", () => {
+    // apply motion was small once ambient carousel motion is subtracted.
+    const r = analyze(
+      obs({
+        layout: {
+          matched: 60,
+          shiftedCount: 3,
+          shiftedFraction: 0.05,
+          controlShiftedFraction: 0.75,
+          maxMove: 12,
+        },
+      }),
+    );
+    expect(r.verdict).toBe("pass");
+  });
+
+  it("warns when a re-render reverts the adaptation (SPA conflict)", () => {
+    const r = analyze(obs({ rerender: { residueAfterApply: 3, residueAfterRerender: 1 } }));
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.some((x) => x.includes("reverted by page re-render"))).toBe(true);
+    expect(r.metrics.rerenderStable).toBe(false);
+  });
+
+  it("warns when a re-render duplicates the adaptation", () => {
+    const r = analyze(obs({ rerender: { residueAfterApply: 2, residueAfterRerender: 4 } }));
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.some((x) => x.includes("duplicated"))).toBe(true);
+  });
+
+  it("treats marker-less ops (residue 0) as re-render stable", () => {
+    const r = analyze(obs({ rerender: { residueAfterApply: 0, residueAfterRerender: 0 } }));
+    expect(r.metrics.rerenderStable).toBe(true);
+    expect(r.verdict).toBe("pass");
+  });
+
+  it("warns when nothing was decided (empty inventory)", () => {
+    const r = analyze(obs({ decidedCount: 0, appliedCount: 0, probes: [] }));
+    expect(r.verdict).toBe("warn");
+    expect(r.metrics.targetingRate).toBe(1);
+  });
+
+  it("fails when a clickable element became unclickable after apply", () => {
+    const r = analyze(obs({ interaction: { checked: 20, broken: 2 } }));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons.some((x) => x.includes("unclickable"))).toBe(true);
+    expect(r.metrics.interactionBroken).toBe(2);
+  });
+
+  it("passes when all clickable elements stay clickable", () => {
+    const r = analyze(obs({ interaction: { checked: 30, broken: 0 } }));
+    expect(r.verdict).toBe("pass");
+    expect(r.metrics.interactionBroken).toBe(0);
+  });
+
+  it("fails an unreachable page", () => {
+    const r = analyze(obs({ reachable: false, snippetRan: false, decidedCount: 0, probes: [] }));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons).toContain("page unreachable");
+  });
+
+  it("fails when the snippet never initialized", () => {
+    const r = analyze(obs({ snippetRan: false }));
+    expect(r.verdict).toBe("fail");
+  });
+
+  it("lets a hard failure win over a soft warning", () => {
+    const r = analyze(
+      obs({
+        consoleErrors: ["e"],
+        probes: [
+          { pattern: "a", op: "reveal", via: "none", count: 0 },
+          { pattern: "b", op: "x", via: "none", count: 0 },
+          { pattern: "c", op: "y", via: "none", count: 0 },
+        ],
+      }),
+    );
+    expect(r.verdict).toBe("fail");
+  });
+});
+
+describe("summarize — sweep aggregate", () => {
+  it("buckets verdicts and averages targeting across reachable pages", () => {
+    const reports = [
+      analyze(obs()),
+      analyze(obs({ consoleErrors: ["e"] })),
+      analyze(
+        obs({
+          probes: [
+            { pattern: "a", op: "reveal", via: "selector", count: 1 },
+            { pattern: "b", op: "set_text", via: "none", count: 0 },
+            { pattern: "c", op: "emphasize", via: "none", count: 0 },
+          ],
+        }),
+      ),
+      analyze(obs({ reachable: false, snippetRan: false, decidedCount: 0, probes: [] })),
+    ];
+    const s = summarize(reports);
+    expect(s.total).toBe(4);
+    expect(s.pass).toBe(1);
+    expect(s.warn).toBe(1);
+    expect(s.fail).toBe(2);
+    // unreachable page (snippetRan:false) counts as irreversible.
+    expect(s.irreversible).toBe(1);
+    expect(s.avgTargetingRate).toBeGreaterThan(0);
+    expect(s.avgTargetingRate).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("personas", () => {
+  it("maps persona ids to the right visitor context", () => {
+    const li = personaContext("linkedin_desktop", "https://x/");
+    expect(li.trafficSource).toBe("linkedin");
+    expect(li.device).toBe("desktop");
+    expect(li.url).toBe("https://x/");
+
+    const gm = personaContext("google_mobile", "https://x/");
+    expect(gm.trafficSource).toBe("google");
+    expect(gm.device).toBe("mobile");
+
+    const rp = personaContext("returning_pricing", "https://x/");
+    expect(rp.isReturning).toBe(true);
+    expect(rp.viewedPricing).toBe(true);
+  });
+
+  it("recognizes valid persona ids", () => {
+    expect(isPersona("linkedin_desktop")).toBe(true);
+    expect(isPersona("nope")).toBe(false);
+  });
+});
+
+describe("analyze — zero decisions with decline reasons (C3)", () => {
+  const baseObservation = {
+    url: "https://x.se/skapa-konto",
+    site: "t",
+    persona: "mobile_google",
+    reachable: true,
+    snippetRan: true,
+    consoleErrors: [] as string[],
+    decidedCount: 0,
+    appliedCount: 0,
+    probes: [],
+    baseline: { textLen: 100, elementCount: 50, bodyChildCount: 5 },
+    afterApply: { textLen: 100, elementCount: 50, bodyChildCount: 5 },
+    afterReset: { textLen: 100, elementCount: 50, bodyChildCount: 5 },
+    layout: { matched: 0, shiftedCount: 0, shiftedFraction: 0, controlShiftedFraction: 0, maxMove: 0 },
+    rerender: { residueAfterApply: 0, residueAfterRerender: 0 },
+    interaction: { checked: 10, broken: 0 },
+    residueAfterReset: 0,
+    durationMs: 100,
+  };
+
+  it("zero decided purely by conversion-page design → clean pass, no warn", () => {
+    const report = analyze({
+      ...baseObservation,
+      declined: [
+        { pattern: "emphasize_goal", reason: "conversion_page" },
+        { pattern: "sticky_goal_cta", reason: "conversion_page" },
+      ],
+    });
+    expect(report.verdict).toBe("pass");
+    expect(report.reasons).toEqual([]);
+  });
+
+  it("zero decided for inventory reasons → warn with an explanatory rollup", () => {
+    const report = analyze({
+      ...baseObservation,
+      declined: [
+        { pattern: "show_trust_badge", reason: "no_inventory_for_slot" },
+        { pattern: "show_guarantee", reason: "no_inventory_for_slot" },
+        { pattern: "emphasize_goal", reason: "no_goal_configured" },
+      ],
+    });
+    expect(report.verdict).toBe("warn");
+    expect(report.reasons.join(" ")).toContain("no_inventory_for_slot ×2");
+    expect(report.reasons.join(" ")).toContain("no_goal_configured ×1");
+  });
+
+  it("zero decided with no decline info at all → the old empty-inventory warn", () => {
+    const report = analyze({ ...baseObservation, declined: [] });
+    expect(report.verdict).toBe("warn");
+    expect(report.reasons.join(" ")).toContain("empty inventory");
+  });
+});
+
+describe("skönhetsgrindarna (VisualSanity) — 'får aldrig försämra sidan'", () => {
+  const base = (): RobustnessObservation => ({
+    url: "https://x/",
+    site: "s",
+    persona: "linkedin_desktop",
+    reachable: true,
+    snippetRan: true,
+    consoleErrors: [],
+    decidedCount: 2,
+    appliedCount: 2,
+    probes: [
+      { pattern: "emphasize_goal", op: "emphasize", via: "selector", count: 1 },
+      { pattern: "move_faq_up", op: "move_up", via: "selector", count: 1 },
+    ],
+    baseline: sig(1000),
+    afterApply: sig(1000),
+    afterReset: sig(1000),
+    layout: { matched: 100, shiftedCount: 2, shiftedFraction: 0.02, controlShiftedFraction: 0, maxMove: 40 },
+    rerender: { residueAfterApply: 1, residueAfterRerender: 1 },
+    interaction: { checked: 50, broken: 0 },
+    residueAfterReset: 0,
+    durationMs: 10,
+  });
+
+  it("flyttat element OVANFÖR huvudinnehållet → fail (blogg-fallets signatur)", () => {
+    const r = analyze({
+      ...base(),
+      visual: { movedCount: 1, movedAboveMain: 1, mainAnchorFound: true, hOverflowIntroducedPx: 0 },
+    });
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons.join(" ")).toContain("ABOVE the page's main content");
+  });
+
+  it("introducerad horisontell overflow → fail; befintlig overflow friar", () => {
+    const bad = analyze({
+      ...base(),
+      visual: { movedCount: 0, movedAboveMain: 0, mainAnchorFound: true, hOverflowIntroducedPx: 120 },
+    });
+    expect(bad.verdict).toBe("fail");
+    expect(bad.reasons.join(" ")).toContain("horizontal overflow");
+    // 0 introducerad (även om sajten själv har overflow) → grinden tyst.
+    const ok = analyze({
+      ...base(),
+      visual: { movedCount: 1, movedAboveMain: 0, mainAnchorFound: true, hOverflowIntroducedPx: 0 },
+    });
+    expect(ok.verdict).toBe("pass");
+  });
+
+  it("flytt utan mätbart ankare → warn (mänsklig granskning), inte fail", () => {
+    const r = analyze({
+      ...base(),
+      visual: { movedCount: 1, movedAboveMain: 0, mainAnchorFound: false, hOverflowIntroducedPx: 0 },
+    });
+    expect(r.verdict).toBe("warn");
+    expect(r.reasons.join(" ")).toContain("review screenshots");
+  });
+
+  it("observation utan visual-fält bedöms som förr (bakåtkompatibelt)", () => {
+    expect(analyze(base()).verdict).toBe("pass");
+  });
+});

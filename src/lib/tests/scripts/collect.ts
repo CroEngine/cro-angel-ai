@@ -1,5 +1,14 @@
 // Auto-extracted from engine.server.ts — runs inside the browser via page.evaluate.
-// Keep self-contained: no imports, no closures over server state.
+// Keep self-contained: no imports of server state; the shared classifier below
+// is inlined into the script string via toString(), never closed over.
+
+import { classifyIntentShared, formKindShared, samePageAnchorShared } from "./shared/intent";
+import {
+  classifyCategoryShared,
+  hasMeaningfulSurfaceShared,
+  HERO_MAX_VIEWPORTS,
+  inNavOrFooterShared,
+} from "./shared/category";
 
 // Exporterad så att (a) testet importerar exakt samma predikat och
 // (b) den kan inlinas i COLLECT_SCRIPT via ${isVisible.toString()}.
@@ -51,6 +60,7 @@ export const COLLECT_SCRIPT = `(() => {
   ${isVisible.toString()}
   ${isSuspectOffFlow.toString()}
 
+
   const SEMANTIC_SEL =
     'button, a[href], input[type=submit], input[type=button], ' +
     '[role="button"], [role="link"], [role="menuitem"], [role="tab"], [role="switch"], ' +
@@ -78,6 +88,16 @@ export const COLLECT_SCRIPT = `(() => {
     for (const n of all) {
       if (n.shadowRoot) walk(n.shadowRoot, selector, sink);
     }
+  }
+
+  // Never audit Angel's own runtime artifacts (C1): the snippet stamps every
+  // injected node with data-angel-injected — counting the injected secondary
+  // link/badge/pill as page CTAs would pollute the findings, the inventory
+  // and (on re-harvest) the goal judge's input with content the site owner
+  // never published. Mirrors the data-lovable-cookie-root exclusion.
+  const ANGEL_SEL = '[data-angel-injected], .angel-badge, .angel-sticky-cta, .angel-secondary-cta, #angel-debug';
+  function isAngelArtifact(el) {
+    try { return !!(el.closest && el.closest(ANGEL_SEL)); } catch (e) { return false; }
   }
 
   const semanticNodes = [];
@@ -183,82 +203,39 @@ export const COLLECT_SCRIPT = `(() => {
     return el.tagName.toLowerCase();
   }
 
-  function inNavOrFooter(el) {
-    let p = el;
-    while (p && p !== document.body) {
-      const tag = p.tagName;
-      const role = (p.getAttribute && p.getAttribute('role') || '').toLowerCase();
-      if (tag === 'NAV' || tag === 'HEADER' || tag === 'FOOTER' || role === 'navigation') return true;
-      p = p.parentElement;
-    }
-    return false;
-  }
-
-  function hasMeaningfulSurface(cs) {
-    const bg = cs.backgroundColor || '';
-    const border = cs.border || '';
-    // Detect non-transparent bg or visible border.
-    const bgSolid = !!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent';
-    const hasBorder = /\\d+px/.test(border) && !/0px/.test(border.split(' ')[0] || '');
-    return bgSolid || hasBorder;
-  }
+  // Shared classification (B2) — inlined from shared/category.ts, same source
+  // CTAS_SCRIPT uses. This file used to carry its own copy of the category
+  // heuristic; it no longer defines any.
+  ${hasMeaningfulSurfaceShared.toString()}
+  ${inNavOrFooterShared.toString()}
+  ${classifyCategoryShared.toString()}
 
   function classifyCategory(el, cs, rect, text) {
-    const tag = el.tagName;
-    const type = (el.getAttribute('type') || '').toLowerCase();
-    if ((tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit')) {
-      return 'form_submit';
-    }
-    const role = (el.getAttribute('role') || '').toLowerCase();
-    const isButtonish = tag === 'BUTTON' || tag === 'INPUT' || role === 'button' || (tag === 'A' && el.hasAttribute('href'));
-    const area = rect.width * rect.height;
-    const smallSquareish = rect.width <= 56 && rect.height <= 56;
-    const shortLabel = text.length <= 2 || (!text && !!el.getAttribute('aria-label'));
-    if (isButtonish && smallSquareish && shortLabel) return 'icon_button';
-
-    const aboveFold = rect.top < window.innerHeight;
-    const inChrome = inNavOrFooter(el);
-
-    if (isButtonish) {
-      // Multi-signal CTA primary heuristic.
-      let score = 0;
-      if (aboveFold) score++;
-      if (text.length > 0 && text.length <= 32) score++;
-      if (area >= 90 * 28) score++; // sizeable click target
-      if (hasMeaningfulSurface(cs)) score++;
-      if (!inChrome) score++;
-      if (score >= 4) return 'cta_primary';
-      if (score >= 2 && hasMeaningfulSurface(cs)) return 'cta_secondary';
-    }
-
-    if (tag === 'A' && el.hasAttribute('href')) {
-      if (inChrome) return 'nav_item';
-      return 'link';
-    }
-    return 'other';
+    return classifyCategoryShared(
+      el.tagName,
+      el.getAttribute('type') || '',
+      el.getAttribute('role') || '',
+      el.tagName === 'A' && el.hasAttribute('href'),
+      rect.width, rect.height, rect.top,
+      (text || '').length,
+      hasMeaningfulSurfaceShared(cs.backgroundColor || '', cs.border || ''),
+      inNavOrFooterShared(el),
+      window.innerHeight,
+    );
   }
 
-  // Intent ordlistor — partial match, case-insensitive
-  const INTENT_RX = {
-    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|beställ|köp|boka|prova|kom igång|skapa konto|registrera|gå med|gratis|ladda ner|lägg i (varu)?kund?korg|lägg till|ansök|bidra)/i,
-    information: /(learn|read|explore|see how|how |why |about |läs|utforska|så funkar|mer info)/i,
-    navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inställningar)/i,
-    social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
-    utility: /(search|sök|language|språk|cookie|accept|godkänn|contact|kontakt|help|hjälp|faq)/i,
-    engagement: /(like|love|save|bookmark|share|comment|reply|follow|subscribe|upvote|downvote|gilla|spara|kommentar|svara|följ|prenumerera|rösta|röst)/i,
-  };
-
-  const SOCIAL_HOST_RX = /(facebook|instagram|linkedin|twitter|x\\.com|youtube|tiktok|pinterest|snapchat|reddit|threads|mastodon)\\./i;
+  // THE shared intent classifier — inlined from shared/intent.ts so this
+  // script and CTAS_SCRIPT can never drift apart again (B1). Wordlists,
+  // rule order and the contact/tel:/form-kind semantics live THERE, not here.
+  ${classifyIntentShared.toString()}
+  ${formKindShared.toString()}
+  ${samePageAnchorShared.toString()}
 
   function classifyIntent(el, text, category, rect) {
     const tag = el.tagName;
     const type = (el.getAttribute('type') || '').toLowerCase();
     const isFormSubmit = (tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit');
-    if (isFormSubmit) return 'conversion';
-
     const href = (el.getAttribute('href') || '');
-    if (href.startsWith('tel:') || href.startsWith('mailto:')) return 'utility';
-    if (SOCIAL_HOST_RX.test(href)) return 'social';
 
     // data-* attribute signals (data-event, data-cta, data-track, data-analytics-*)
     const attrBag = [];
@@ -266,21 +243,19 @@ export const COLLECT_SCRIPT = `(() => {
       if (a.name.startsWith('data-')) attrBag.push(a.value || '');
     }
     const attrStr = attrBag.join(' ');
-
     const t = (text || '').trim();
-    const probe = t + ' ' + attrStr;
 
-    if (INTENT_RX.conversion.test(probe)) return 'conversion';
-    if (INTENT_RX.engagement.test(probe)) return 'engagement';
-    if (INTENT_RX.navigation.test(probe)) return 'navigation';
-    if (INTENT_RX.social.test(probe)) return 'social';
-    if (INTENT_RX.utility.test(probe)) return 'utility';
-    if (INTENT_RX.information.test(probe)) return 'information';
+    // Same-page anchor (flik/TOC) — delad beräkning (samePageAnchorShared),
+    // regel 6 i classifyIntentShared: flikar får inte positions-fallbackas
+    // till conversion. MHTML-replay-rationalen bor hos den delade funktionen.
+    const intent = classifyIntentShared(
+      t, href, attrStr, category, isFormSubmit, rect.top < window.innerHeight,
+      isFormSubmit ? formKindShared(el) : '', samePageAnchorShared(el, href),
+    );
+    if (intent !== 'unknown') return intent;
 
-    // Position-based fallback: above-fold primary CTA without keyword match → likely conversion.
-    if (category === 'cta_primary' && rect.top < window.innerHeight) return 'conversion';
-
-    // Text-less icon buttons in a horizontal row of ≥3 siblings → engagement toolbar.
+    // DOM-dependent tail (needs siblings, so it stays outside the pure core):
+    // text-less icon buttons in a horizontal row of ≥3 siblings → engagement toolbar.
     if (!t && category === 'icon_button') {
       const parent = el.parentElement;
       if (parent) {
@@ -332,8 +307,8 @@ export const COLLECT_SCRIPT = `(() => {
     if (cardsAncestor) return 'cards';
     // Hero: above the fold + element is in the first big block of <main> (or just first 1.2 viewports).
     const docTop = rect.top + window.scrollY;
-    if (docTop < viewportH * 1.2 && inMain) return 'hero';
-    if (docTop < viewportH * 1.0 && !inAside) return 'hero';
+    if (docTop < viewportH * ${HERO_MAX_VIEWPORTS} && inMain) return 'hero';
+    if (docTop < viewportH * ${HERO_MAX_VIEWPORTS} && !inAside) return 'hero';
     return 'content';
   }
 
@@ -403,6 +378,7 @@ export const COLLECT_SCRIPT = `(() => {
   const raw = [];
   let maxArea = 1;
   for (const el of kept) {
+    if (isAngelArtifact(el)) continue; // never audit Angel's own injections (C1)
     const rect = el.getBoundingClientRect();
     const cs = window.getComputedStyle(el);
     if (!isVisible(el, cs, rect)) continue;
