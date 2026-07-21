@@ -428,15 +428,20 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
   const targetIdx = anchorKid ? kids.indexOf(anchorKid) : -1;
   if (fromIdx === targetIdx + 1) return { ok: false, err: "already-there" };
 
-  // Content envelope: the union of a kid's element children. Border boxes
-  // lie after promotion — a blockified kid ADOPTS child margins that used to
-  // collapse out (height grows, screen pixels identical) — so height and
-  // overlap are judged on what the visitor actually sees.
+  // Content envelope: the union of a kid's IN-FLOW element children. Border
+  // boxes lie after promotion — a blockified kid ADOPTS child margins that
+  // used to collapse out (height grows, screen pixels identical) — so height
+  // and overlap are judged on what the visitor actually sees. Out-of-flow
+  // children (absolute/fixed — hidden overlays, decorative backdrops) span
+  // arbitrary areas and are excluded (sentry: an overlay inflated a 70px
+  // banner's envelope to full-page and "overlapped" the hero by 1678px).
   const envelope = (k: HTMLElement): { top: number; bottom: number; height: number } => {
     let top = Infinity;
     let bottom = -Infinity;
     for (const c of Array.from(k.children)) {
       if (!(c instanceof HTMLElement)) continue;
+      const pos = window.getComputedStyle(c).position;
+      if (pos === "absolute" || pos === "fixed") continue;
       const r = c.getBoundingClientRect();
       if (r.height <= 0 && r.width <= 0) continue;
       if (r.top < top) top = r.top;
@@ -451,6 +456,19 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
 
   const before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
   const beforeEnv = new Map(kids.map((k) => [k, envelope(k)]));
+  // Designs overlap on purpose (negative margins, angled dividers): the
+  // acceptance bar is "no WORSE than the page already was", not zero.
+  let maxOverlapBefore = 0;
+  {
+    const vis0 = kids
+      .map((k) => beforeEnv.get(k)!)
+      .filter((e) => e.height > 1)
+      .sort((a, b) => a.top - b.top);
+    for (let i = 1; i < vis0.length; i++) {
+      const o = vis0[i - 1].bottom - vis0[i].top;
+      if (o > maxOverlapBefore) maxOverlapBefore = o;
+    }
+  }
   const focusTop0 = focusEl.getBoundingClientRect().top;
   const docH = document.documentElement.scrollHeight;
   const parentPrev = container.getAttribute("style");
@@ -494,10 +512,12 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
         // width: dw=-86,dl=+43 on clickup), and item min-width:auto lets
         // wide content blow past the track where block flow just overflowed
         // (dw=+175 on auth0). Stretch + min-width:0 restores exactly what
-        // block flow rendered. Never touched on native flex/grid containers.
-        if (mode === "grid") k.style.justifySelf = "stretch";
-        else k.style.alignSelf = "stretch";
-        k.style.minWidth = "0";
+        // block flow rendered — with "important" priority, because utility
+        // CSS on real pages carries !important that beats plain inline
+        // styles. Never touched on native flex/grid containers.
+        if (mode === "grid") k.style.setProperty("justify-self", "stretch", "important");
+        else k.style.setProperty("align-self", "stretch", "important");
+        k.style.setProperty("min-width", "0", "important");
       }
     });
     moveKid.style.order = anchorKid ? String(kids.indexOf(anchorKid) * 2 + 1) : "-1";
@@ -536,9 +556,10 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
       if (dh > Math.max(48, docH * 0.03)) bad = "check-docheight";
     }
     if (!bad) {
+      const allowed = Math.max(8, maxOverlapBefore + 8);
       const vis = after.filter((x) => x.env.height > 1).sort((a, b) => a.env.top - b.env.top);
       for (let i = 1; i < vis.length; i++) {
-        if (vis[i].env.top < vis[i - 1].env.bottom - 8) {
+        if (vis[i].env.top < vis[i - 1].env.bottom - allowed) {
           const a = kids.indexOf(vis[i - 1].k);
           const b2 = kids.indexOf(vis[i].k);
           bad = `check-overlap@${a}~${b2}:${Math.round(vis[i - 1].env.bottom - vis[i].env.top)}px`;
