@@ -37,6 +37,22 @@ function q(sel?: string): HTMLElement | null {
 
 type Pattern = (inv: ContentInventory, ctx: ApplyCtx) => AppliedChange | null;
 
+// Restore an element's style attribute EXACTLY as captured (string | null).
+// A bare removeAttribute("style") while inline-style serialization is still
+// pending lets Chromium re-materialize an empty style="" — the exact residue
+// the byte-clean promise forbids. Clearing the CSSOM and READING the
+// attribute first flushes that state; only then is removal permanent
+// (verified by op-sequence bisect in the reorder lab).
+function restoreStyleAttr(el: HTMLElement, v: string | null): void {
+  if (v === null) {
+    el.style.cssText = "";
+    void el.getAttribute("style");
+    el.removeAttribute("style");
+  } else {
+    el.setAttribute("style", v);
+  }
+}
+
 // Words that are navigation, not a conversion action — never emphasise these,
 // even if the CTA classifier tagged one as primary (Stripe's "Products").
 const NAV_WORDS =
@@ -85,6 +101,38 @@ export function hasFixedTopHeader(): boolean {
     }
   }
   return false;
+}
+
+// ── v0.8: runtime visual acceptance ─────────────────────────────────────────
+// The harness hit-tested bars and emphasis from the outside; the sweep showed
+// real pages where a bar renders under an overlay or an emphasized CTA is
+// collapsed/covered. Those checks belong in the SNIPPET: verify right after
+// applying, refuse + self-undo when the element isn't actually presentable.
+// (Same stance as the reorder self-check: everything runs synchronously, so a
+// refused application is invisible to the visitor.)
+export function barIsPresentable(bar: HTMLElement): boolean {
+  const r = bar.getBoundingClientRect();
+  if (r.width < window.innerWidth * 0.9) return false; // body max-width sites
+  if (r.height < 18 || r.height > 90) return false;
+  if (r.bottom > 0 && r.top < window.innerHeight) {
+    const hit = document.elementFromPoint(
+      Math.floor(window.innerWidth / 2),
+      Math.floor(r.top + r.height / 2),
+    );
+    if (!hit || (hit !== bar && !bar.contains(hit))) return false; // covered
+  }
+  return true;
+}
+export function emphasisIsPresentable(el: HTMLElement): boolean {
+  const r = el.getBoundingClientRect();
+  if (r.width < 8 || r.height < 8) return false; // collapsed target
+  if (r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth) {
+    const cx = Math.floor(Math.min(window.innerWidth - 1, Math.max(0, r.left + r.width / 2)));
+    const cy = Math.floor(Math.min(window.innerHeight - 1, Math.max(0, r.top + r.height / 2)));
+    const hit = document.elementFromPoint(cx, cy);
+    if (!hit || (hit !== el && !el.contains(hit))) return false; // covered
+  }
+  return true;
 }
 
 type BarKind = "trust" | "risk";
@@ -172,6 +220,10 @@ const trustBar: Pattern = (inv, ctx) => {
 
   const bar = makeBar("trust_bar", text, "trust");
   document.body.insertBefore(bar, document.body.firstChild);
+  if (!barIsPresentable(bar)) {
+    bar.remove(); // narrow/covered on THIS page — refuse before anyone sees it
+    return null;
+  }
   ctx.reverts.push(() => bar.remove());
   return { patternId: "trust_bar", label: "Surface trust bar", detail: text.slice(0, 60) };
 };
@@ -196,16 +248,23 @@ const emphasizePrimaryCta: Pattern = (inv, ctx) => {
     candidates.find((c) => c.category === "cta_primary");
   const el = q(cta?.selector);
   if (!el || !cta) return null;
-  const prev = el.getAttribute("style") ?? "";
+  const prev = el.getAttribute("style");
   el.style.boxShadow = "0 0 0 3px rgba(37,99,235,.55), 0 12px 30px rgba(37,99,235,.35)";
   el.style.transform = "scale(1.04)";
   el.style.transition = "transform .15s ease";
   // Tagged so visual-acceptance checks can find the emphasized element.
   el.setAttribute("data-angel-emphasis", "1");
-  ctx.reverts.push(() => {
-    el.setAttribute("style", prev);
+  const undoEmphasis = () => {
+    restoreStyleAttr(el, prev);
     el.removeAttribute("data-angel-emphasis");
-  });
+  };
+  if (!emphasisIsPresentable(el)) {
+    // Collapsed or covered target: emphasising it would decorate something
+    // the visitor can't even hit — undo before paint and refuse.
+    undoEmphasis();
+    return null;
+  }
+  ctx.reverts.push(undoEmphasis);
   return {
     patternId: "emphasize_primary_cta",
     label: "Emphasise primary CTA",
@@ -255,6 +314,10 @@ const riskReducerBar: Pattern = (inv, ctx) => {
   const text = truncateBarText(best.text, 120);
   const bar = makeBar("risk_reducer_bar", text, "risk");
   document.body.insertBefore(bar, document.body.firstChild);
+  if (!barIsPresentable(bar)) {
+    bar.remove();
+    return null;
+  }
   ctx.reverts.push(() => bar.remove());
   return { patternId: "risk_reducer_bar", label: "Surface risk-reducer", detail: text.slice(0, 60) };
 };
@@ -267,10 +330,10 @@ const pricingSpotlight: Pattern = (inv, ctx) => {
   const sec = inv.sections.find((s) => s.type === "pricing" && s.selector);
   const el = q(sec?.selector);
   if (!el || !sec) return null;
-  const prev = el.getAttribute("style") ?? "";
+  const prev = el.getAttribute("style");
   el.style.boxShadow = "0 0 0 3px rgba(16,122,66,.45), 0 10px 34px rgba(16,122,66,.18)";
   el.style.borderRadius = "12px";
-  ctx.reverts.push(() => el.setAttribute("style", prev));
+  ctx.reverts.push(() => restoreStyleAttr(el, prev));
   return {
     patternId: "pricing_spotlight",
     label: "Spotlight pricing section",
@@ -385,21 +448,6 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
   }
   if (!containers.length) return why("no-container");
 
-  const restoreStyle = (el: HTMLElement, v: string | null) => {
-    if (v === null) {
-      // A bare removeAttribute("style") while inline-style serialization is
-      // still pending lets Chromium re-materialize an empty style="" — the
-      // exact residue the byte-clean promise forbids. Clearing the CSSOM and
-      // READING the attribute first flushes that state; only then is removal
-      // permanent (verified by op-sequence bisect in the reorder lab).
-      el.style.cssText = "";
-      void el.getAttribute("style");
-      el.removeAttribute("style");
-    } else {
-      el.setAttribute("style", v);
-    }
-  };
-
   let keptAnchored = false;
   let keptDepth = -1;
 
@@ -448,9 +496,9 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
     const parentPrev = container.getAttribute("style");
     const kidPrev = new Map(kids.map((k) => [k, k.getAttribute("style")]));
     const undo = () => {
-      restoreStyle(container, parentPrev);
+      restoreStyleAttr(container, parentPrev);
       container.removeAttribute("data-angel-reorder");
-      for (const k of kids) restoreStyle(k, kidPrev.get(k) ?? null);
+      for (const k of kids) restoreStyleAttr(k, kidPrev.get(k) ?? null);
     };
 
     try {

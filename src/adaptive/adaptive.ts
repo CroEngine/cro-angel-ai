@@ -25,7 +25,7 @@ import {
 import { trackBehavior, type BehaviorEvent, type BehaviorTracker } from "./behavior";
 import { visitorKey, sessionId, sendInventory, installEventCollector } from "./collector";
 
-const VERSION = "0.7.0";
+const VERSION = "0.8.0";
 
 type AngelGlobal = {
   version: string;

@@ -166,6 +166,75 @@ const CASES: Case[] = [
   },
 ];
 
+// v0.8 pattern cases: runtime visual acceptance for bars + emphasis. Each
+// drives applyAdaptations with a hand-built inventory; overlays/collapsed
+// targets must make the pattern refuse and self-undo (byte-clean page).
+type PatternCase = {
+  name: string;
+  html: string;
+  inv: Record<string, unknown>;
+  expectApplied: string[]; // patternIds that MUST be in applied
+  expectRefused: string[]; // patternIds that must NOT be in applied
+};
+
+const TRUST_INV = {
+  ratings: [{ type: "review_rating", text: "Rated 4.8/5 by 2,000+ teams" }],
+  socialProof: [],
+  trustedBy: [],
+  testimonials: [],
+  guarantees: [],
+  certifications: [],
+};
+const HERO_CTA = [
+  {
+    text: "Start free trial",
+    selector: "#cta",
+    section: "hero",
+    intent: "conversion",
+    category: "cta_primary",
+    aboveFold: true,
+  },
+];
+const OVERLAY = (topPx: number, h: number) =>
+  `<div id="ovl" style="position:fixed;top:${topPx}px;left:0;width:100vw;height:${h}px;background:rgba(255,255,255,.95);z-index:99999">overlay</div>`;
+
+const PATTERN_CASES: PatternCase[] = [
+  {
+    // Clean page: bar + emphasis both apply and revert byte-clean.
+    name: "clean-bar+emphasis",
+    html: `<main>${box("hero", 500, "hero", `<a id="cta" href="#" style="display:inline-block;padding:12px 24px;background:#25e;color:#fff">Start free trial</a>`)}${box("f1", 500, "f1")}</main>`,
+    inv: { trust: TRUST_INV, ctas: HERO_CTA },
+    expectApplied: ["trust_bar", "emphasize_primary_cta"],
+    expectRefused: [],
+  },
+  {
+    // The toggl/framer class: an overlay paints over the top of the page —
+    // the bar would render underneath it. Runtime hit-test must refuse.
+    name: "bar-covered-by-overlay",
+    html: `${OVERLAY(0, 140)}<main>${box("hero", 500, "hero", `<a id="cta" href="#" style="display:inline-block;padding:12px 24px;background:#25e;color:#fff">Start free trial</a>`)}${box("f1", 500, "f1")}</main>`,
+    inv: { trust: TRUST_INV, ctas: HERO_CTA },
+    expectApplied: [],
+    expectRefused: ["trust_bar"],
+  },
+  {
+    // The moz class: the CTA classifier picked a collapsed (zero-size)
+    // element. Emphasis must refuse instead of decorating nothing.
+    name: "emphasis-collapsed",
+    html: `<main>${box("hero", 500, "hero", `<a id="cta" href="#" style="display:block;width:0;height:0;overflow:hidden">Start free trial</a>`)}${box("f1", 500, "f1")}</main>`,
+    inv: { trust: { ...TRUST_INV, ratings: [] }, ctas: HERO_CTA },
+    expectApplied: [],
+    expectRefused: ["emphasize_primary_cta"],
+  },
+  {
+    // The front class: CTA exists but an overlay covers it at its center.
+    name: "emphasis-covered",
+    html: `${OVERLAY(200, 400)}<main>${box("hero", 500, "hero", `<a id="cta" href="#" style="display:inline-block;margin-top:250px;padding:12px 24px;background:#25e;color:#fff">Start free trial</a>`)}${box("f1", 500, "f1")}</main>`,
+    inv: { trust: { ...TRUST_INV, ratings: [] }, ctas: HERO_CTA },
+    expectApplied: [],
+    expectRefused: ["emphasize_primary_cta"],
+  },
+];
+
 async function main() {
   const entry = await Bun.build({
     entrypoints: ["scripts/reorder-lab-entry.ts"],
@@ -228,6 +297,39 @@ async function main() {
       `${ok ? "PASS" : "FAIL"}  ${c.name.padEnd(22)} trail="${res.trail}" applied=${res.applied} lift=${res.lift}px byteClean=${res.byteClean}${res.detail ? ` detail=${res.detail}` : ""}`,
     );
     if (!okTrail) console.log(`      expected trail to contain "${c.expectTrail}"`);
+  }
+
+  for (const c of PATTERN_CASES) {
+    await page.setContent(
+      `<!doctype html><html><head><meta charset="utf-8"><title>${c.name}</title></head><body style="margin:0">${c.html}</body></html>`,
+      { waitUntil: "domcontentloaded" },
+    );
+    await page.addScriptTag({ content: bundle });
+    const res = await page.evaluate((inv) => {
+      const lab = (window as unknown as {
+        __angelLab: { apply: (inv: unknown, seg: string) => { applied: Array<{ patternId: string }>; revert: () => void } };
+      }).__angelLab;
+      const beforeHtml = document.body.outerHTML;
+      const out = lab.apply(
+        {
+          sections: [],
+          page: { hero: { headline: "", subheadline: "" } },
+          ...(inv as Record<string, unknown>),
+        },
+        "engaged_no_click",
+      );
+      const ids = out.applied.map((a) => a.patternId);
+      out.revert();
+      return { ids, byteClean: beforeHtml === document.body.outerHTML };
+    }, c.inv);
+
+    const missing = c.expectApplied.filter((id) => !res.ids.includes(id));
+    const leaked = c.expectRefused.filter((id) => res.ids.includes(id));
+    const ok = !missing.length && !leaked.length && res.byteClean;
+    if (!ok) failures++;
+    console.log(
+      `${ok ? "PASS" : "FAIL"}  ${c.name.padEnd(22)} applied=[${res.ids.join(",")}] byteClean=${res.byteClean}${missing.length ? ` MISSING=${missing}` : ""}${leaked.length ? ` LEAKED=${leaked}` : ""}`,
+    );
   }
 
   await browser.close();
