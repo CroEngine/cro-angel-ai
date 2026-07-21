@@ -370,6 +370,152 @@ const REORDER_MIN_LIFT_PX = 200;
 const REORDER_TIME_BUDGET_MS = 150;
 const REORDER_MAX_ATTEMPTS = 5;
 
+// ── The shared order-move core ──────────────────────────────────────────────
+// One attempt: guards → apply → self-check → keep or roll back. Runs
+// synchronously, so a failed attempt is rolled back BEFORE the browser can
+// paint it. This is the single implementation both the automatic ladder
+// (reorder_proof_first) and Claude-designed plans (applyPlannedReorder) go
+// through — a plan gets no more power than the auto mode, only different
+// targeting.
+export type OrderMoveSpec = {
+  container: HTMLElement;
+  // The section being surfaced — lift, floor, and collapse checks measure it.
+  focusEl: HTMLElement;
+  // Land after this element's wrapper-kid when it lives in the container;
+  // null (or outside the container in auto mode) → front of the group.
+  landAfterEl: HTMLElement | null;
+  // Semantic floor (the hero): the focus must never land above it, and a
+  // front move is only allowed when the container already sits below it.
+  floorEl: HTMLElement | null;
+  // Sections that must not ride along with the moved wrapper.
+  otherSectionEls: HTMLElement[];
+  // Promotion for block containers: flex-column (default) or grid — grid
+  // stretches children like block flow does, which can avoid the width/BFC
+  // drift flex promotion sometimes causes.
+  mode: "flex" | "grid";
+  minKids: number;
+};
+export type OrderMoveResult =
+  | { ok: false; err: string }
+  | { ok: true; undo: () => void; anchored: boolean };
+
+export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
+  const { container, focusEl, landAfterEl, floorEl, otherSectionEls, mode, minKids } = spec;
+  const kids = Array.from(container.children).filter(
+    (k): k is HTMLElement => k instanceof HTMLElement,
+  );
+  if (kids.length < minKids || kids.length > 40) return { ok: false, err: `kid-count-${kids.length}` };
+  const moveKid = kids.find((k) => k === focusEl || k.contains(focusEl));
+  if (!moveKid) return { ok: false, err: "no-move-kid" };
+  // The moved wrapper must not drag unrelated sections along with it.
+  if (otherSectionEls.some((el) => moveKid.contains(el)))
+    return { ok: false, err: "wrapper-carries-other-sections" };
+  // Anchor: land right after the target's wrapper when it lives in this
+  // container; otherwise the move goes to the FRONT of the group — but only
+  // when the group itself already sits below the floor, so a front move can
+  // never hoist proof above the hero.
+  let anchorKid: HTMLElement | null = null;
+  if (landAfterEl && container.contains(landAfterEl)) {
+    anchorKid = kids.find((k) => k === landAfterEl || k.contains(landAfterEl)) ?? null;
+    if (!anchorKid || anchorKid === moveKid) return { ok: false, err: "no-distinct-wrapper-kids" };
+  } else if (
+    floorEl &&
+    container.getBoundingClientRect().top < floorEl.getBoundingClientRect().bottom - 40
+  ) {
+    return { ok: false, err: "container-above-anchor" };
+  }
+  const fromIdx = kids.indexOf(moveKid);
+  const targetIdx = anchorKid ? kids.indexOf(anchorKid) : -1;
+  if (fromIdx === targetIdx + 1) return { ok: false, err: "already-there" };
+
+  const before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
+  const focusTop0 = focusEl.getBoundingClientRect().top;
+  const docH = document.documentElement.scrollHeight;
+  const parentPrev = container.getAttribute("style");
+  const kidPrev = new Map(kids.map((k) => [k, k.getAttribute("style")]));
+  const undo = () => {
+    restoreStyleAttr(container, parentPrev);
+    container.removeAttribute("data-angel-reorder");
+    for (const k of kids) restoreStyleAttr(k, kidPrev.get(k) ?? null);
+  };
+
+  try {
+    const cs = window.getComputedStyle(container);
+    const isFlexCol =
+      cs.display.indexOf("flex") !== -1 &&
+      (cs.flexDirection === "column" || cs.flexDirection === "column-reverse");
+    const isGrid = cs.display.indexOf("grid") !== -1;
+    if (!isFlexCol && !isGrid) {
+      // Block-stacked: promote so `order` takes effect. Any spacing drift
+      // (margin-collapse, BFC formation) is caught by the self-check below.
+      if (mode === "grid") {
+        container.style.display = "grid";
+        container.style.gridAutoFlow = "row";
+      } else {
+        container.style.display = "flex";
+        container.style.flexDirection = "column";
+      }
+    }
+    kids.forEach((k, i) => {
+      k.style.order = String(i * 2);
+    });
+    moveKid.style.order = anchorKid ? String(kids.indexOf(anchorKid) * 2 + 1) : "-1";
+    container.setAttribute("data-angel-reorder", "1");
+
+    // SELF-CHECK — every sibling must land where flow says it should,
+    // changed only in vertical order. Tolerances: width/left ±2px, own
+    // height ±12px, no overlap beyond 8px, doc height within max(48px, 3%).
+    let bad = "";
+    const after = kids.map((k) => ({ k, r: k.getBoundingClientRect() }));
+    for (const { k, r } of after) {
+      const b = before.get(k)!;
+      if (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2) {
+        bad = "check-width-left";
+        break;
+      }
+      if (Math.abs(r.height - b.height) > 12) {
+        bad = "check-height";
+        break;
+      }
+    }
+    if (!bad) {
+      const dh = Math.abs(document.documentElement.scrollHeight - docH);
+      if (dh > Math.max(48, docH * 0.03)) bad = "check-docheight";
+    }
+    if (!bad) {
+      const vis = after.filter((x) => x.r.height > 1).sort((a, b) => a.r.top - b.r.top);
+      for (let i = 1; i < vis.length; i++) {
+        if (vis[i].r.top < vis[i - 1].r.bottom - 8) {
+          bad = "check-overlap";
+          break;
+        }
+      }
+    }
+    if (!bad) {
+      // The move must EARN its keep: the focus section visibly earlier (this
+      // also refuses explicit-grid no-ops where `order` changed nothing),
+      // never above the floor it should follow, never at the very top of
+      // the page (even a mis-detected anchor can't excuse landing above
+      // the fold's opening content), never collapsed away.
+      const t = focusEl.getBoundingClientRect();
+      if (focusTop0 - t.top < REORDER_MIN_LIFT_PX) bad = "no-improvement";
+      else if (floorEl && t.top < floorEl.getBoundingClientRect().bottom - 40)
+        bad = "check-above-anchor";
+      else if (t.top + window.scrollY < 300) bad = "check-page-top";
+      else if (t.height < 2) bad = "check-collapsed";
+    }
+    if (bad) {
+      undo();
+      return { ok: false, err: bad };
+    }
+  } catch {
+    undo();
+    return { ok: false, err: "apply-threw" };
+  }
+
+  return { ok: true, undo, anchored: !!anchorKid };
+}
+
 const reorderProofFirst: Pattern = (inv, ctx) => {
   const secs = inv.sections;
   const ti = secs.findIndex((s) => s.type === "testimonials" && s.selector);
@@ -451,126 +597,26 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
   let keptAnchored = false;
   let keptDepth = -1;
 
-  // One attempt: guards → apply → self-check → keep ("") or undo (reason).
-  // Runs synchronously, so a failed attempt is rolled back BEFORE the browser
-  // can paint it — chansning på insidan, aldrig på skärmen.
+  // Sections that must not ride along with the moved wrapper (anything
+  // outside the testimonial itself).
+  const otherSectionEls = secs
+    .filter((s, i) => i !== ti && s.selector)
+    .map((s) => q(s.selector))
+    .filter((el): el is HTMLElement => !!el && !testiEl.contains(el));
+
   const attempt = (container: HTMLElement, depth: number): string => {
-    const kids = Array.from(container.children).filter(
-      (k): k is HTMLElement => k instanceof HTMLElement,
-    );
-    if (kids.length < 3 || kids.length > 40) return `L${depth}:kid-count-${kids.length}`;
-    const moveKid = kids.find((k) => k === testiEl || k.contains(testiEl));
-    if (!moveKid) return `L${depth}:no-move-kid`;
-    // The moved wrapper must not drag unrelated sections along with it.
-    const dragsOthers = secs.some(
-      (s, i) =>
-        i !== ti &&
-        s.selector &&
-        (() => {
-          const el = q(s.selector);
-          return !!el && moveKid.contains(el) && !testiEl.contains(el);
-        })(),
-    );
-    if (dragsOthers) return `L${depth}:wrapper-carries-other-sections`;
-    // Anchor: hero wrapper when the hero lives in this container (land right
-    // after it); otherwise the testimonial goes to the FRONT of its group —
-    // but only when the group itself already sits below the anchor, so a
-    // front move can never hoist proof above the hero.
-    let anchorKid: HTMLElement | null = null;
-    if (container.contains(anchorEl)) {
-      anchorKid = kids.find((k) => k === anchorEl || k.contains(anchorEl)) ?? null;
-      if (!anchorKid || anchorKid === moveKid) return `L${depth}:no-distinct-wrapper-kids`;
-    } else if (
-      container.getBoundingClientRect().top <
-      anchorEl.getBoundingClientRect().bottom - 40
-    ) {
-      return `L${depth}:container-above-anchor`;
-    }
-    const fromIdx = kids.indexOf(moveKid);
-    const targetIdx = anchorKid ? kids.indexOf(anchorKid) : -1;
-    if (fromIdx === targetIdx + 1) return `L${depth}:already-there`;
-
-    const before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
-    const testiTop0 = testiEl.getBoundingClientRect().top;
-    const docH = document.documentElement.scrollHeight;
-    const parentPrev = container.getAttribute("style");
-    const kidPrev = new Map(kids.map((k) => [k, k.getAttribute("style")]));
-    const undo = () => {
-      restoreStyleAttr(container, parentPrev);
-      container.removeAttribute("data-angel-reorder");
-      for (const k of kids) restoreStyleAttr(k, kidPrev.get(k) ?? null);
-    };
-
-    try {
-      const cs = window.getComputedStyle(container);
-      const isFlexCol =
-        cs.display.indexOf("flex") !== -1 &&
-        (cs.flexDirection === "column" || cs.flexDirection === "column-reverse");
-      const isGrid = cs.display.indexOf("grid") !== -1;
-      if (!isFlexCol && !isGrid) {
-        // Block-stacked: promote to flex-column so `order` takes effect. Any
-        // margin-collapse spacing drift is caught by the self-check below.
-        container.style.display = "flex";
-        container.style.flexDirection = "column";
-      }
-      kids.forEach((k, i) => {
-        k.style.order = String(i * 2);
-      });
-      moveKid.style.order = anchorKid ? String(kids.indexOf(anchorKid) * 2 + 1) : "-1";
-      container.setAttribute("data-angel-reorder", "1");
-
-      // SELF-CHECK — every sibling must land where flow says it should,
-      // changed only in vertical order. Tolerances: width/left ±2px, own
-      // height ±12px, no overlap beyond 8px, doc height within max(48px, 3%).
-      let bad = "";
-      const after = kids.map((k) => ({ k, r: k.getBoundingClientRect() }));
-      for (const { k, r } of after) {
-        const b = before.get(k)!;
-        if (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2) {
-          bad = "check-width-left";
-          break;
-        }
-        if (Math.abs(r.height - b.height) > 12) {
-          bad = "check-height";
-          break;
-        }
-      }
-      if (!bad) {
-        const dh = Math.abs(document.documentElement.scrollHeight - docH);
-        if (dh > Math.max(48, docH * 0.03)) bad = "check-docheight";
-      }
-      if (!bad) {
-        const vis = after.filter((x) => x.r.height > 1).sort((a, b) => a.r.top - b.r.top);
-        for (let i = 1; i < vis.length; i++) {
-          if (vis[i].r.top < vis[i - 1].r.bottom - 8) {
-            bad = "check-overlap";
-            break;
-          }
-        }
-      }
-      if (!bad) {
-        // The move must EARN its keep: the testimonial visibly earlier (this
-        // also refuses explicit-grid no-ops where `order` changed nothing),
-        // never above the hero it should follow, never at the very top of
-        // the page (even a mis-detected anchor can't excuse landing above
-        // the fold's opening content), never collapsed away.
-        const t = testiEl.getBoundingClientRect();
-        if (testiTop0 - t.top < REORDER_MIN_LIFT_PX) bad = "no-improvement";
-        else if (t.top < anchorEl.getBoundingClientRect().bottom - 40) bad = "check-above-anchor";
-        else if (t.top + window.scrollY < 300) bad = "check-page-top";
-        else if (t.height < 2) bad = "check-collapsed";
-      }
-      if (bad) {
-        undo();
-        return `L${depth}:${bad}`;
-      }
-    } catch {
-      undo();
-      return `L${depth}:apply-threw`;
-    }
-
-    ctx.reverts.push(undo);
-    keptAnchored = !!anchorKid;
+    const res = tryOrderMove({
+      container,
+      focusEl: testiEl,
+      landAfterEl: anchorEl,
+      floorEl: anchorEl,
+      otherSectionEls,
+      mode: "flex",
+      minKids: 3,
+    });
+    if (!res.ok) return `L${depth}:${res.err}`;
+    ctx.reverts.push(res.undo);
+    keptAnchored = res.anchored;
     keptDepth = depth;
     return "";
   };
@@ -601,6 +647,85 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
       : `"${heading}" → top of its group (L${keptDepth})`,
   };
 };
+
+// ── E3: Claude-designed reorder plans ───────────────────────────────────────
+// The Claude Designer proposes WHERE to move (container/move/after/mode) in
+// the safe-primitive vocabulary; this executor grants the plan no more power
+// than the automatic ladder has. Non-negotiable regardless of what the plan
+// says: the moved element must be the page's proof section, the semantic
+// floor stays the detected hero, and every tryOrderMove self-check must pass
+// or the attempt rolls itself back pre-paint. Plans only widen TARGETING
+// (any container level, explicit anchors, grid promotion, 2-kid swaps).
+export type PlannedReorder = {
+  action: "reorder";
+  container: string;
+  move: string;
+  after: string | null;
+  mode: "flex" | "grid";
+  rationale?: string;
+};
+
+export type PlannedResult = {
+  ok: boolean;
+  reason?: string;
+  detail?: string;
+  revert?: () => void;
+};
+
+export function applyPlannedReorder(inv: ContentInventory, plan: PlannedReorder): PlannedResult {
+  try {
+    if (!plan || plan.action !== "reorder") return { ok: false, reason: "plan-invalid" };
+    const container = q(plan.container);
+    if (!container) return { ok: false, reason: "container-not-found" };
+    const moveEl = q(plan.move);
+    if (!moveEl) return { ok: false, reason: "move-not-found" };
+    if (!container.contains(moveEl)) return { ok: false, reason: "move-not-in-container" };
+
+    const secs = inv.sections;
+    const ti = secs.findIndex((s) => s.type === "testimonials" && s.selector);
+    const testiEl = ti >= 0 ? q(secs[ti].selector) : null;
+    if (!testiEl) return { ok: false, reason: "no-proof-section" };
+    if (!(moveEl === testiEl || moveEl.contains(testiEl) || testiEl.contains(moveEl)))
+      return { ok: false, reason: "move-not-proof-section" };
+
+    const heroI = secs.findIndex((s) => s.type === "hero" && s.selector);
+    const CHROME_RX = /^(header|nav|footer)$/;
+    const floorI =
+      heroI >= 0 ? heroI : secs.findIndex((s) => s.selector && !CHROME_RX.test(s.type));
+    const floorEl = floorI >= 0 ? q(secs[floorI].selector) : null;
+
+    let landAfterEl: HTMLElement | null = null;
+    if (plan.after) {
+      landAfterEl = q(plan.after);
+      if (!landAfterEl) return { ok: false, reason: "after-not-found" };
+      if (!container.contains(landAfterEl)) return { ok: false, reason: "after-not-in-container" };
+    }
+
+    const otherSectionEls = secs
+      .filter((s, i) => i !== ti && s.selector)
+      .map((s) => q(s.selector))
+      .filter((el): el is HTMLElement => !!el && !testiEl.contains(el));
+
+    const res = tryOrderMove({
+      container,
+      focusEl: testiEl,
+      landAfterEl,
+      floorEl,
+      otherSectionEls,
+      mode: plan.mode === "grid" ? "grid" : "flex",
+      minKids: 2,
+    });
+    if (!res.ok) return { ok: false, reason: res.err };
+    const heading = (secs[ti].heading || "testimonials").slice(0, 40);
+    return {
+      ok: true,
+      detail: `"${heading}" → ${plan.after ? "after planned anchor" : "front of planned container"} (${plan.mode})`,
+      revert: res.undo,
+    };
+  } catch {
+    return { ok: false, reason: "planned-threw" };
+  }
+}
 
 const ALL_PATTERNS: Record<string, Pattern> = {
   trust_bar: trustBar,

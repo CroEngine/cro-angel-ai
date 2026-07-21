@@ -235,6 +235,80 @@ const PATTERN_CASES: PatternCase[] = [
   },
 ];
 
+// E3 plan cases: applyPlannedReorder must obey the same self-checks while
+// widening targeting (2-kid swaps, explicit containers) — and must refuse to
+// move anything that is not the proof section, no matter what the plan says.
+type PlanCase = {
+  name: string;
+  html: string;
+  sections: Array<{ type: string; selector: string; heading?: string }>;
+  plan: { action: "reorder"; container: string; move: string; after: string | null; mode: "flex" | "grid" };
+  expectOk: boolean;
+  expectReason?: string;
+};
+
+const PLAN_CASES: PlanCase[] = [
+  {
+    // The auto ladder refuses 2-kid containers (kid-count); a plan may swap
+    // within one — proof wrapper above a feature wrapper, both below hero.
+    name: "plan-2kid-swap",
+    html:
+      `<main id="m">${box("hero", 700, "hero")}` +
+      `<div id="grp">${box("f1", 600, "f1")}<div id="tw">${box("testi", 400, "testi")}</div></div>` +
+      `${box("cta", 300, "cta")}</main>`,
+    sections: [
+      { type: "hero", selector: "#hero" },
+      { type: "features", selector: "#f1" },
+      { type: "testimonials", selector: "#testi", heading: "Proof" },
+    ],
+    plan: { action: "reorder", container: "#grp", move: "#tw", after: null, mode: "flex" },
+    expectOk: true,
+  },
+  {
+    // A plan may NOT move arbitrary content — only the proof section.
+    name: "plan-not-proof-refused",
+    html: `<main id="m">${box("hero", 700, "hero")}${box("f1", 600, "f1")}${box("f2", 500, "f2")}${box("testi", 400, "testi")}</main>`,
+    sections: [
+      { type: "hero", selector: "#hero" },
+      { type: "features", selector: "#f1" },
+      { type: "features", selector: "#f2" },
+      { type: "testimonials", selector: "#testi", heading: "Proof" },
+    ],
+    plan: { action: "reorder", container: "#m", move: "#f2", after: "#hero", mode: "flex" },
+    expectOk: false,
+    expectReason: "move-not-proof-section",
+  },
+  {
+    // Planned grid promotion on a block container (the alternative when flex
+    // promotion drifts) — same checks, different mechanism.
+    name: "plan-grid-mode",
+    html: `<main id="m">${box("hero", 700, "hero")}${box("f1", 600, "f1")}${box("f2", 500, "f2")}${box("testi", 400, "testi")}${box("cta", 300, "cta")}</main>`,
+    sections: [
+      { type: "hero", selector: "#hero" },
+      { type: "features", selector: "#f1" },
+      { type: "features", selector: "#f2" },
+      { type: "testimonials", selector: "#testi", heading: "Proof" },
+    ],
+    plan: { action: "reorder", container: "#m", move: "#testi", after: "#hero", mode: "grid" },
+    expectOk: true,
+  },
+  {
+    // The floor survives plans: an anchor placement that would land the proof
+    // at the very top of the page must be refused even when the plan asks.
+    name: "plan-page-top-refused",
+    html: `<main id="m">${box("banner", 80, "banner")}${box("f1", 500, "f1")}${box("f2", 500, "f2")}${box("testi", 400, "testi")}</main>`,
+    sections: [
+      { type: "content", selector: "#banner" },
+      { type: "features", selector: "#f1" },
+      { type: "features", selector: "#f2" },
+      { type: "testimonials", selector: "#testi", heading: "Proof" },
+    ],
+    plan: { action: "reorder", container: "#m", move: "#testi", after: "#banner", mode: "flex" },
+    expectOk: false,
+    expectReason: "check-page-top",
+  },
+];
+
 async function main() {
   const entry = await Bun.build({
     entrypoints: ["scripts/reorder-lab-entry.ts"],
@@ -329,6 +403,53 @@ async function main() {
     if (!ok) failures++;
     console.log(
       `${ok ? "PASS" : "FAIL"}  ${c.name.padEnd(22)} applied=[${res.ids.join(",")}] byteClean=${res.byteClean}${missing.length ? ` MISSING=${missing}` : ""}${leaked.length ? ` LEAKED=${leaked}` : ""}`,
+    );
+  }
+
+  for (const c of PLAN_CASES) {
+    await page.setContent(
+      `<!doctype html><html><head><meta charset="utf-8"><title>${c.name}</title></head><body style="margin:0">${c.html}</body></html>`,
+      { waitUntil: "domcontentloaded" },
+    );
+    await page.addScriptTag({ content: bundle });
+    const res = await page.evaluate(
+      ({ sections, plan }) => {
+        const lab = (window as unknown as {
+          __angelLab: {
+            plan: (inv: unknown, p: unknown) => { ok: boolean; reason?: string; detail?: string; revert?: () => void };
+          };
+        }).__angelLab;
+        const beforeHtml = document.body.outerHTML;
+        const testi = document.querySelector("#testi") as HTMLElement | null;
+        const topBefore = testi ? testi.getBoundingClientRect().top + window.scrollY : -1;
+        const inv = {
+          sections,
+          trust: { ratings: [], socialProof: [], trustedBy: [], testimonials: [], guarantees: [], certifications: [] },
+          ctas: [],
+          page: { hero: { headline: "", subheadline: "" } },
+        };
+        const out = lab.plan(inv, plan);
+        const topAfter = testi ? testi.getBoundingClientRect().top + window.scrollY : -1;
+        if (out.ok && out.revert) out.revert();
+        const afterHtml = document.body.outerHTML;
+        return {
+          ok: out.ok,
+          reason: out.reason ?? "",
+          detail: out.detail ?? "",
+          lift: Math.round(topBefore - topAfter),
+          byteClean: beforeHtml === afterHtml,
+        };
+      },
+      { sections: c.sections, plan: c.plan },
+    );
+
+    const okStatus = res.ok === c.expectOk;
+    const okReason = !c.expectReason || res.reason === c.expectReason;
+    const okLift = !c.expectOk || res.lift >= 200;
+    const ok = okStatus && okReason && okLift && res.byteClean;
+    if (!ok) failures++;
+    console.log(
+      `${ok ? "PASS" : "FAIL"}  ${c.name.padEnd(22)} ok=${res.ok} reason="${res.reason}" lift=${res.lift}px byteClean=${res.byteClean}${res.detail ? ` detail=${res.detail}` : ""}`,
     );
   }
 

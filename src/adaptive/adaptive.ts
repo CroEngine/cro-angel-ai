@@ -16,16 +16,19 @@
 import { collectInventory, type ContentInventory } from "./inventory";
 import {
   applyAdaptations,
+  applyPlannedReorder,
   deriveSegment,
   SEGMENT_PATTERNS,
   type AppliedChange,
   type AdaptationResult,
+  type PlannedReorder,
+  type PlannedResult,
   type Segment,
 } from "./patterns";
 import { trackBehavior, type BehaviorEvent, type BehaviorTracker } from "./behavior";
 import { visitorKey, sessionId, sendInventory, installEventCollector } from "./collector";
 
-const VERSION = "0.8.0";
+const VERSION = "0.9.0";
 
 type AngelGlobal = {
   version: string;
@@ -38,6 +41,10 @@ type AngelGlobal = {
   segments: string[];
   collect: () => ContentInventory;
   adapt: (segment?: Segment) => AppliedChange[];
+  // E3: apply a Claude-designed reorder plan (validation/serving harnesses
+  // call this explicitly; it never runs automatically). Same self-checks and
+  // rollback as the automatic ladder; revert() undoes it too.
+  planReorder: (plan: PlannedReorder) => PlannedResult;
   revert: () => void;
 };
 
@@ -90,12 +97,34 @@ function adapt(segmentArg?: Segment): AppliedChange[] {
   return angel.applied;
 }
 
+// E3: planned-reorder reverts, drained together with the pattern reverts.
+const planReverts: Array<() => void> = [];
+
+function planReorder(plan: PlannedReorder): PlannedResult {
+  if (!angel || !angel.inventory) return { ok: false, reason: "no-inventory" };
+  const res = applyPlannedReorder(angel.inventory, plan);
+  if (res.ok && res.revert) {
+    planReverts.push(res.revert);
+    console.info(`[Angel Adaptive] planned reorder applied — ${res.detail ?? ""}`);
+  }
+  // The revert handle stays internal; callers revert via __angelAdaptive.revert().
+  return { ok: res.ok, reason: res.reason, detail: res.detail };
+}
+
 // Undo every applied change, restoring the original page.
 function revertAdaptation(): void {
   if (activeAdaptation) {
     activeAdaptation.revert();
     activeAdaptation = null;
   }
+  for (const undo of planReverts.reverse()) {
+    try {
+      undo();
+    } catch {
+      /* best-effort restore */
+    }
+  }
+  planReverts.length = 0;
   if (angel) angel.applied = [];
 }
 
@@ -117,6 +146,7 @@ function init(): void {
     segments: Object.keys(SEGMENT_PATTERNS),
     collect: collectInventory,
     adapt,
+    planReorder,
     revert: revertAdaptation,
   };
   (window as unknown as { __angelAdaptive: AngelGlobal }).__angelAdaptive = angel;
