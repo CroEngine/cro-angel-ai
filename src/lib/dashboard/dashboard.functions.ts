@@ -10,7 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { defaultSuccessSpec, validateSuccessSpec, type SuccessSpec } from "@/adaptive-lab/metrics";
+import { defaultSuccessSpec, evaluateRuleWithSpec, validateSuccessSpec, type SuccessSpec } from "@/adaptive-lab/metrics";
 import type { Json } from "@/integrations/supabase/types";
 import { GOAL_KINDS, type GoalCandidate } from "@/adaptive/crawler-inventory";
 import {
@@ -160,6 +160,12 @@ export interface VariantAbView {
   };
 }
 
+export interface VariantRuling {
+  verdict: "win" | "loss" | "no_effect" | "inconclusive" | "guardrail_breach";
+  action: "extend" | "pause" | "retire_or_redesign" | "keep_measuring";
+  breachedMetrics: string[];
+}
+
 export interface VariantView {
   id: string;
   path: string;
@@ -179,6 +185,9 @@ export interface VariantView {
   comparison: VariantComparison | null;
   /** Bara för serving/winner-varianter; null tills exponeringar finns. */
   abTest: VariantAbView | null;
+  /** Kontraktsdomslutet (evaluateRuleWithSpec) på LIVE-armarna: guardrail-
+   *  brott ⇒ pausrekommendation på kortet. null tills kontrakt + data finns. */
+  ruling: VariantRuling | null;
 }
 
 /** Zero-config default hold-out, applied on attestation so measurement is ready
@@ -390,6 +399,7 @@ export const getDashboard = createServerFn({ method: "POST" })
           // En RPC per serverande variant (högst 1 per site·path·segment enligt
           // det partiella unika indexet, så listan är kort). Best-effort.
           const abById = new Map<string, VariantAbView>();
+          const rulingById = new Map<string, VariantRuling>();
           const servingRows = vRows.filter((v) => v.status === "serving" || v.status === "winner");
           await Promise.all(
             servingRows.map(async (v) => {
@@ -410,6 +420,22 @@ export const getDashboard = createServerFn({ method: "POST" })
                       metric === "continuation"
                         ? Number(row?.continuations) || 0
                         : Number(row?.conversions) || 0,
+                  };
+                };
+                // Guardrail-armar (metrikkatalogens id:n) ur samma RPC-läsning.
+                // Frånvarande mått utelämnas ⇒ "not enough data", aldrig påhitt.
+                // bounce = gick aldrig vidare (visits − continuations); primärens
+                // dataflöde följer sajtens test_metric precis som abTest.
+                const metricArmsOf = (name: string) => {
+                  const row = arms.find((a) => a.arm === name);
+                  const visits = Number(row?.visits) || 0;
+                  const cont = Number(row?.continuations) || 0;
+                  return {
+                    conversion: { n: visits, conversions: armOf(name).conversions },
+                    bounce: { n: visits, conversions: Math.max(0, visits - cont) },
+                    engaged: { n: visits, conversions: Number(row?.engaged) || 0 },
+                    cta_click: { n: visits, conversions: Number(row?.cta_clicks) || 0 },
+                    form_submit: { n: visits, conversions: Number(row?.form_submits) || 0 },
                   };
                 };
                 const variantArm = armOf("variant");
@@ -434,6 +460,24 @@ export const getDashboard = createServerFn({ method: "POST" })
                     controlRate: ev.stats.controlRate,
                     relativeLift: ev.stats.relativeLift,
                   },
+                });
+                // Kontraktsdomslut på live-armarna: variantens success-spec
+                // (eller sajttypens standard om A/B:t startats utan) dömer
+                // primären och prövar guardrails med kalibrerade matten.
+                const spec = validateSuccessSpec(v.success) ?? defaultSuccessSpec();
+                const servedM = metricArmsOf("variant");
+                const holdoutM = metricArmsOf("control");
+                const armsByMetric: Record<string, { served: { n: number; conversions: number }; holdout: { n: number; conversions: number } }> = {};
+                for (const id of Object.keys(servedM) as Array<keyof typeof servedM>) {
+                  armsByMetric[id] = { served: servedM[id], holdout: holdoutM[id] };
+                }
+                const contractRuling = evaluateRuleWithSpec(spec, armsByMetric);
+                rulingById.set(v.id, {
+                  verdict: contractRuling.verdict,
+                  action: contractRuling.action,
+                  breachedMetrics: contractRuling.guardrails
+                    .filter((g) => g.breached)
+                    .map((g) => g.metric),
                 });
               } catch {
                 /* arm read is best-effort */
@@ -485,6 +529,7 @@ export const getDashboard = createServerFn({ method: "POST" })
                   }
                 : null,
               abTest: abById.get(v.id) ?? null,
+              ruling: rulingById.get(v.id) ?? null,
             };
           });
         }

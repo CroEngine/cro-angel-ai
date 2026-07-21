@@ -711,6 +711,16 @@ export function OverviewPanel({
                                 paused — source changed
                               </span>
                             ) : null}
+                            {v.ruling?.verdict === "guardrail_breach" ? (
+                              <span
+                                title={`Skyddsmått försämrat: ${v.ruling.breachedMetrics
+                                  .map((m) => METRIC_EN[m] ?? m)
+                                  .join(", ")} — primärvinst köper inte guardrail-skada.`}
+                                className="flex-none rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700"
+                              >
+                                guardrail harmed — pause recommended
+                              </span>
+                            ) : null}
                             {/* EN primär åtgärd per rad (design v3):
                                 verified → Start A/B; rekommenderad vinnare →
                                 Make winner; annars Compare. Resten bor i ···. */}

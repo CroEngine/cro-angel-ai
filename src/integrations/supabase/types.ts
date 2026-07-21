@@ -331,6 +331,9 @@ export type Database = {
           visits: number
           conversions: number
           continuations: number
+          cta_clicks: number
+          form_submits: number
+          engaged: number
         }[]
       }
       angel_page_segment_rollup: {
