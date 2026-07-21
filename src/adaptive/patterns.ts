@@ -535,14 +535,18 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
       const { r, env } = after[i];
       const b = before.get(after[i].k)!;
       const bEnv = beforeEnv.get(after[i].k)!;
-      if (b.height <= 1) {
+      if (bEnv.height <= 1) {
+        // Invisible before (by CONTENT, not box — height-0 wrappers with
+        // overflowing in-flow children are common) must stay invisible.
         if (env.height > 12) {
           bad = `check-hidden-appeared@${i}:h${Math.round(env.height)}`;
           break;
         }
         continue;
       }
-      if (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2) {
+      // Box metrics only mean something for kids with a real box; height-0
+      // wrappers with visible content are judged on their envelope alone.
+      if (b.height > 1 && (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2)) {
         bad = `check-width-left@${i}:dw${Math.round(r.width - b.width)},dl${Math.round(r.left - b.left)}`;
         break;
       }
