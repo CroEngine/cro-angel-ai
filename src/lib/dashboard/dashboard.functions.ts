@@ -10,7 +10,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { defaultSuccessSpec, evaluateRuleWithSpec, validateSuccessSpec, type SuccessSpec } from "@/adaptive-lab/metrics";
+import {
+  defaultSuccessSpec,
+  evaluateRuleWithSpec,
+  validateSuccessSpec,
+  type SuccessSpec,
+} from "@/adaptive-lab/metrics";
+import { metricArmsFromRpc } from "@/adaptive/redesign/guardrail-sweep";
 import type { Json } from "@/integrations/supabase/types";
 import { GOAL_KINDS, type GoalCandidate } from "@/adaptive/crawler-inventory";
 import {
@@ -233,9 +239,7 @@ export interface DashboardResponse {
 
 // Seeded baseline — shown in the site picker when the DB can't be reached
 // (e.g. local dev without a service-role key).
-const FALLBACK_SITES: SiteRef[] = [
-  { slug: "hubspot", name: "HubSpot", domain: "hubspot.com" },
-];
+const FALLBACK_SITES: SiteRef[] = [{ slug: "hubspot", name: "HubSpot", domain: "hubspot.com" }];
 
 const EVENT_LIMIT = 5000;
 
@@ -283,9 +287,7 @@ export const getDashboard = createServerFn({ method: "POST" })
           .eq("user_id", ctx.userId);
         owned = new Set((mem ?? []).map((r: { site_slug: string }) => r.site_slug));
       }
-      const visibleRows = admin
-        ? rows
-        : rows.filter((r: { slug: string }) => owned!.has(r.slug));
+      const visibleRows = admin ? rows : rows.filter((r: { slug: string }) => owned!.has(r.slug));
       const sites = visibleRows as SiteRef[];
       const canView = admin || owned!.has(site);
 
@@ -372,7 +374,8 @@ export const getDashboard = createServerFn({ method: "POST" })
             testMetric: current.test_metric === "continuation" ? "continuation" : "conversion",
             domain: current.domain ?? null,
             domainVerifiedAt: current.domain_verified_at ?? null,
-            billingStatus: typeof current.billing_status === "string" ? current.billing_status : "exempt",
+            billingStatus:
+              typeof current.billing_status === "string" ? current.billing_status : "exempt",
             businessType: typeof judged?.businessType === "string" ? judged.businessType : null,
             goalCandidates: Array.isArray(judged?.goals) ? judged.goals.slice(0, 6) : [],
             day0ReportUrl: current.day0_report_url ?? null,
@@ -422,22 +425,6 @@ export const getDashboard = createServerFn({ method: "POST" })
                         : Number(row?.conversions) || 0,
                   };
                 };
-                // Guardrail-armar (metrikkatalogens id:n) ur samma RPC-läsning.
-                // Frånvarande mått utelämnas ⇒ "not enough data", aldrig påhitt.
-                // bounce = gick aldrig vidare (visits − continuations); primärens
-                // dataflöde följer sajtens test_metric precis som abTest.
-                const metricArmsOf = (name: string) => {
-                  const row = arms.find((a) => a.arm === name);
-                  const visits = Number(row?.visits) || 0;
-                  const cont = Number(row?.continuations) || 0;
-                  return {
-                    conversion: { n: visits, conversions: armOf(name).conversions },
-                    bounce: { n: visits, conversions: Math.max(0, visits - cont) },
-                    engaged: { n: visits, conversions: Number(row?.engaged) || 0 },
-                    cta_click: { n: visits, conversions: Number(row?.cta_clicks) || 0 },
-                    form_submit: { n: visits, conversions: Number(row?.form_submits) || 0 },
-                  };
-                };
                 const variantArm = armOf("variant");
                 const controlArm = armOf("control");
                 if (variantArm.visits + controlArm.visits === 0) return;
@@ -465,20 +452,18 @@ export const getDashboard = createServerFn({ method: "POST" })
                 // (eller sajttypens standard om A/B:t startats utan) dömer
                 // primären och prövar guardrails med kalibrerade matten.
                 const spec = validateSuccessSpec(v.success) ?? defaultSuccessSpec();
-                const servedM = metricArmsOf("variant");
-                const holdoutM = metricArmsOf("control");
-                const armsByMetric: Record<string, { served: { n: number; conversions: number }; holdout: { n: number; conversions: number } }> = {};
-                for (const id of Object.keys(servedM) as Array<keyof typeof servedM>) {
-                  armsByMetric[id] = { served: servedM[id], holdout: holdoutM[id] };
+                // Delad arm-mappning (EN sanning med nattloopens guardrail-svep).
+                const armsByMetric = metricArmsFromRpc(arms, metric);
+                if (armsByMetric) {
+                  const contractRuling = evaluateRuleWithSpec(spec, armsByMetric);
+                  rulingById.set(v.id, {
+                    verdict: contractRuling.verdict,
+                    action: contractRuling.action,
+                    breachedMetrics: contractRuling.guardrails
+                      .filter((g) => g.breached)
+                      .map((g) => g.metric),
+                  });
                 }
-                const contractRuling = evaluateRuleWithSpec(spec, armsByMetric);
-                rulingById.set(v.id, {
-                  verdict: contractRuling.verdict,
-                  action: contractRuling.action,
-                  breachedMetrics: contractRuling.guardrails
-                    .filter((g) => g.breached)
-                    .map((g) => g.metric),
-                });
               } catch {
                 /* arm read is best-effort */
               }
@@ -822,7 +807,10 @@ export const confirmGoal = createServerFn({ method: "POST" })
 /** Verify an account password against Supabase Auth, server-side. Returns
  *  'ok' | 'password' (wrong credentials) | 'error' (rate limit / infra). The
  *  returned session is discarded — this is a yes/no check only. */
-async function verifyPassword(email: string, password: string): Promise<"ok" | "password" | "error"> {
+async function verifyPassword(
+  email: string,
+  password: string,
+): Promise<"ok" | "password" | "error"> {
   const url = process.env.SUPABASE_URL;
   const apikey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !apikey) return "error";
@@ -948,26 +936,24 @@ export const createSite = createServerFn({ method: "POST" })
       let key = existing?.ingest_key ?? null;
       if (!existing) {
         key = genKey();
-        const { error } = await supabaseAdmin
-          .from("angel_sites")
-          .insert({
-            slug,
-            name: data.name ?? null,
-            domain,
-            // Nya sajter kräver prenumeration för SERVING (observation är
-            // alltid fri). exempt sätts bara manuellt (pilot/labb).
-            billing_status: "none",
-            ingest_key: key,
-            // Consent-by-default: a new site starts ANONYMOUS (the DB default —
-            // no persistent visitor id, no behavioural events) and with no
-            // holdout, per docs/consent-gate.md ("never assume consent") and
-            // GDPR's opt-in default. The owner flips the existing dashboard
-            // attestation toggle when they have a lawful basis — setConsentMode
-            // then auto-enables the DEFAULT_HOLDOUT_PCT control group, so
-            // measurement is still zero-config from the moment collection is
-            // actually allowed. The signup checkbox alone is not a lawful basis
-            // for the VISITORS of a site the account hasn't attested.
-          });
+        const { error } = await supabaseAdmin.from("angel_sites").insert({
+          slug,
+          name: data.name ?? null,
+          domain,
+          // Nya sajter kräver prenumeration för SERVING (observation är
+          // alltid fri). exempt sätts bara manuellt (pilot/labb).
+          billing_status: "none",
+          ingest_key: key,
+          // Consent-by-default: a new site starts ANONYMOUS (the DB default —
+          // no persistent visitor id, no behavioural events) and with no
+          // holdout, per docs/consent-gate.md ("never assume consent") and
+          // GDPR's opt-in default. The owner flips the existing dashboard
+          // attestation toggle when they have a lawful basis — setConsentMode
+          // then auto-enables the DEFAULT_HOLDOUT_PCT control group, so
+          // measurement is still zero-config from the moment collection is
+          // actually allowed. The signup checkbox alone is not a lawful basis
+          // for the VISITORS of a site the account hasn't attested.
+        });
         if (error) {
           console.warn(`[angel] createSite insert failed: ${error.message}`);
           return { ok: false, reason: "error" };

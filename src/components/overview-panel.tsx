@@ -708,7 +708,9 @@ export function OverviewPanel({
                                 style={{ background: "#fffbeb", color: "#b45309" }}
                                 title={v.heldReason}
                               >
-                                paused — source changed
+                                {v.heldReason?.startsWith("guardrail:")
+                                  ? "paused — guardrail harmed"
+                                  : "paused — source changed"}
                               </span>
                             ) : null}
                             {v.ruling?.verdict === "guardrail_breach" ? (

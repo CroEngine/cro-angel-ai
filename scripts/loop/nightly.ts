@@ -28,6 +28,11 @@ import {
   dependenciesOf,
   planDependencySweep,
 } from "../../src/adaptive/redesign/drift";
+import {
+  metricArmsFromRpc,
+  planGuardrailSweep,
+  type GuardrailSweepVariant,
+} from "../../src/adaptive/redesign/guardrail-sweep";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 import { mirrorStorageKey } from "../../src/lib/sandbox/mirror-key";
 import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
@@ -95,7 +100,7 @@ for (const site of targets) {
     // till detect behåller sin gamla smala form (path + segmentKey).
     const { data: variants } = await db
       .from("angel_variants")
-      .select("id,path,segment_key,status,held_reason,ops,evidence")
+      .select("id,path,segment_key,status,held_reason,ops,evidence,success")
       .eq("site", site.slug)
       .neq("status", "retired");
     // Sidflödet (korssid-lyftets signal, task #117): "andel av segmentet som
@@ -293,6 +298,55 @@ for (const site of targets) {
         await notifyVariantHeld(site.slug, id, label, reason, heldAt);
         console.log(`[loop] ${site.slug} ${label}: HÅLLS maskinellt — ${reason}`);
       };
+      // ── Guardrail-svepet (kontraktsskydden, ren planerare) ─────────────
+      // Live-armarna döms mot variantens framgångskontrakt varje natt:
+      // signifikant skyddsskada eller primärförlust ⇒ maskinellt hold via
+      // samma held_reason-mekanism som drift-svepet (ägarstatus orörd,
+      // självläkning släpper). Falska stopp ~1 %/variant — billiga åt rätt håll.
+      {
+        const guardable = ((variants ?? []) as typeof variants & object[]).filter(
+          (v: { status: string }) => v.status === "serving" || v.status === "winner",
+        ) as {
+          id: string;
+          path: string;
+          segment_key: string;
+          held_reason: string | null;
+          success: unknown;
+        }[];
+        const guardInput: GuardrailSweepVariant[] = [];
+        for (const v of guardable) {
+          const { data: armRows } = await db.rpc("angel_variant_arms", {
+            p_site: site.slug,
+            p_variant: v.id,
+          });
+          guardInput.push({
+            id: v.id,
+            heldReason: v.held_reason ?? null,
+            success: v.success,
+            arms: Array.isArray(armRows)
+              ? metricArmsFromRpc(
+                  armRows,
+                  site.test_metric === "continuation" ? "continuation" : "conversion",
+                )
+              : null,
+          });
+        }
+        for (const action of planGuardrailSweep(guardInput)) {
+          if (action.action === "keep") continue;
+          const row = guardable.find((v) => v.id === action.id)!;
+          const label = `${row.path} · ${row.segment_key}`;
+          if (action.action === "hold") {
+            await holdVariant(action.id, label, action.reason);
+            continue;
+          }
+          await db
+            .from("angel_variants")
+            .update({ held_reason: null, held_at: null })
+            .eq("id", action.id);
+          console.log(`[loop] ${site.slug} ${label}: skydden gröna igen — guardrail-hold släppt`);
+        }
+      }
+
       for (const action of planDependencySweep(sweepInput, freshSnippets)) {
         const row = sweepable.find((v) => v.id === action.id)!;
         const label = `${row.path} · ${row.segment_key}`;
