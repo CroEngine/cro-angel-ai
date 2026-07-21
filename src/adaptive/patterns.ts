@@ -450,6 +450,12 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
       // (margin-collapse, BFC formation) is caught by the self-check below.
       if (mode === "grid") {
         container.style.display = "grid";
+        // One EXPLICIT full-width column. With only the implicit auto track,
+        // the column sizes to the widest child's max-content contribution
+        // (auth0: +175px from one overflowing section) and every stretched
+        // item inherits that width — measured live, 100% pins the track to
+        // the container and keeps block-flow widths exactly.
+        container.style.gridTemplateColumns = "100%";
         container.style.gridAutoFlow = "row";
       } else {
         container.style.display = "flex";
