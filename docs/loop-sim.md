@@ -106,3 +106,10 @@ Not provable here, by construction: whether a *real* design change moves
 *real* visitors — the planted +30% stands in for reality. That single
 question is what live traffic is for, and the machinery that will answer it
 is exactly what this simulation just exercised end-to-end.
+
+**Follow-up:** a site is after many more things than one conversion goal —
+bounce, engagement, proxy clicks. How the loop measures many metrics without
+lying to itself (one primary, guardrails that can only pause, the 20-metric
+dashboard fallacy, the MDE/keep-measuring layer) is proven the same way —
+planted traps, 200-seed calibration — in `docs/metric-hierarchy.md` /
+`scripts/guardrail-sim.ts`.

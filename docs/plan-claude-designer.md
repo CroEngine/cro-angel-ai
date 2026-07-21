@@ -144,6 +144,14 @@ false-positive rate 2.5% (≤ alpha), power 81% at the design point. See
 `docs/loop-sim.md`. Remaining, by construction: real conversion outcomes —
 the one question that needs live visitors — via the collector/goal join.
 
+**Metric hierarchy proven the same way:** one pre-declared primary per rule,
+guardrails that can only pause (never win), MDE-gated retire-vs-keep-
+measuring. A planted gamed-proxy trap (+35% clicks, +20% bounce, ±0
+conversion) is paused in 100% of 200 worlds while primary-alone would have
+shipped it in 96%; free-for-all dashboard mining (20 junk metrics) shows a
+fake "significant" in 66% of worlds — why pre-declaration is mandatory. See
+`docs/metric-hierarchy.md` / `scripts/guardrail-sim.ts`.
+
 ## Honest constraints carried forward
 
 - Reordering stays inside flex/grid siblings (the safe subset) until measured
