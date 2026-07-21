@@ -173,6 +173,7 @@ export type Database = {
           status: string
           ops: Json
           serve_ops: Json
+          required_cohorts: string[] | null
           evidence: Json
           held_reason: string | null
           held_at: string | null
@@ -187,6 +188,7 @@ export type Database = {
           status?: string
           ops?: Json
           serve_ops?: Json
+          required_cohorts?: string[] | null
           evidence?: Json
           held_reason?: string | null
           held_at?: string | null
@@ -201,6 +203,7 @@ export type Database = {
           status?: string
           ops?: Json
           serve_ops?: Json
+          required_cohorts?: string[] | null
           evidence?: Json
           held_reason?: string | null
           held_at?: string | null

@@ -359,3 +359,32 @@ describe("serveDecision — insert_snippet med klickväg + stil-donator (slice 4
     expect(decide(linked("/priser", 'x" onmouseover="alert(1)'))).toBeNull();
   });
 });
+
+describe("kohortscopade varianter (E4b-kopplingen)", () => {
+  const cfg = { servingEnabled: true, rampPct: 5 };
+  const li = { ...visitor("linkedin", "mobile", "se"), cohorts: ["ch:social", "src:linkedin", "ret:new"] };
+  const direct = { ...visitor("linkedin", "mobile", "se"), cohorts: ["ch:direct", "ret:new"] };
+
+  it("serverar när besökarens nycklar täcker kravet (OCH-semantik)", () => {
+    const v = variant("linkedin", "winner", { serveOps, requiredCohorts: ["src:linkedin"] });
+    expect(serveDecision(cfg, [v], li, "vh-1")?.arm).toBe("variant");
+  });
+
+  it("hoppar över kohortscopad variant när kravet inte täcks — ingen servering", () => {
+    const v = variant("linkedin", "winner", { serveOps, requiredCohorts: ["src:linkedin", "seen:pricing"] });
+    expect(serveDecision(cfg, [v], li, "vh-1")).toBeNull();
+  });
+
+  it("faller till grövre oscopad variant när den scopade inte matchar", () => {
+    const scoped = variant("linkedin·mobile", "winner", { serveOps, requiredCohorts: ["src:linkedin"] });
+    const coarse = variant("linkedin", "winner", { serveOps });
+    expect(serveDecision(cfg, [scoped, coarse], direct, "vh-1")?.variant.segmentKey).toBe("linkedin");
+    // …och den scopade vinner (finaste matchning) när kravet täcks.
+    expect(serveDecision(cfg, [scoped, coarse], li, "vh-1")?.variant.segmentKey).toBe("linkedin·mobile");
+  });
+
+  it("tomt/frånvarande krav grindar ingenting", () => {
+    const v = variant("linkedin", "winner", { serveOps, requiredCohorts: [] });
+    expect(serveDecision(cfg, [v], direct, "vh-1")?.arm).toBe("variant");
+  });
+});

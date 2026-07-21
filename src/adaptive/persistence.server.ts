@@ -470,7 +470,7 @@ export async function loadServableVariants(
   try {
     const { data, error } = await supabaseAdmin
       .from("angel_variants")
-      .select("id,site,path,segment_key,status,ops,serve_ops")
+      .select("id,site,path,segment_key,status,ops,serve_ops,required_cohorts")
       .eq("site", site)
       .eq("path", path)
       .in("status", ["serving", "winner"])
@@ -489,6 +489,9 @@ export async function loadServableVariants(
       serveOps: (Array.isArray(r.serve_ops)
         ? r.serve_ops
         : []) as unknown as import("./redesign/serve").ServeOp[],
+      requiredCohorts: Array.isArray(r.required_cohorts)
+        ? (r.required_cohorts as unknown[]).filter((c): c is string => typeof c === "string")
+        : undefined,
     }));
   } catch (err) {
     console.warn(`[angel] variant read unavailable:`, err);

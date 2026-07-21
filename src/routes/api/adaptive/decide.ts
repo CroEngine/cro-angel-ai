@@ -18,7 +18,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { buildVisitorContext, readServerSignals } from "@/adaptive/context";
+import { buildVisitorContext, cohortsForVisitor, readServerSignals } from "@/adaptive/context";
 import { decisionIdFor } from "@/adaptive/decide";
 import { isBotUserAgent } from "@/adaptive/bot";
 import { originVerdict } from "@/adaptive/domain";
@@ -180,6 +180,10 @@ export const Route = createFileRoute("/api/adaptive/decide")({
                 country: context.country,
                 isReturning: context.isReturning,
               },
+              // Härledda kohortnycklar (ch:/src:/ret:/seen:) — grindar
+              // kohortscopade varianter; besökare utan kraven faller till
+              // grövre varianter eller observe-only. Serverberäknat.
+              cohorts: cohortsForVisitor(context),
             },
             vhServe,
           );
