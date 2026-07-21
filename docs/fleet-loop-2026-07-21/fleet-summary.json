@@ -2,39 +2,41 @@
   "generatedFrom": "fleet-loop over the committed sweep corpus; traffic fabricated, site layer real",
   "sites": 101,
   "outcomes": {
-    "measured": 71,
-    "noMeasurableCohort": 30
+    "measured": 72,
+    "noMeasurableCohort": 29
   },
   "planted": {
-    "winner": 53,
-    "null": 22,
-    "trap": 26
+    "winner": 60,
+    "null": 25,
+    "trap": 16
   },
   "calibration": {
     "winner": {
-      "measurable": 44,
-      "recoveredWin": 36,
-      "recoveryPower": 0.818,
+      "measurable": 46,
+      "recoveredWin": 35,
+      "recoveryPower": 0.761,
       "falseHarm": 0
     },
     "null": {
-      "measurable": 18,
-      "falsePositives": 1,
-      "fpRate": 0.056
+      "measurable": 20,
+      "falsePositives": 2,
+      "fpRate": 0.1
     },
     "trap": {
-      "measurable": 9,
-      "caughtAndHeld": 9,
+      "measurable": 6,
+      "caughtAndHeld": 6,
       "catchRate": 1,
       "escaped": 0
     }
   },
   "daysToVerdict": {
-    "min": 5,
-    "median": 21,
-    "max": 43
+    "min": 4,
+    "median": 20,
+    "max": 44
   },
-  "calibration_note": "null false-positives at ~alpha are EXPECTED and confirm calibration; only excess FPs, winner false-harm, or trap escapes are violations",
+  "nullFpExpected": 1,
+  "nullFpPlausibleBound": 4,
+  "calibration_note": "null false-positives at ~alpha are EXPECTED and confirm calibration; a violation is only an FP count beyond the binomial bound, winner false-harm, or a trap escape",
   "calibrationViolations": 0,
   "calibrationHealthy": true,
   "estimateVerdictSanity": {

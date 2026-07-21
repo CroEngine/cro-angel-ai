@@ -84,14 +84,17 @@ type Profile = "winner" | "null" | "trap";
 
 // Cohort universe for the fabricated traffic (real trafficSource tokens the
 // context mapping understands). Shares sum to 1.
+// Base shares kept deliberately FLAT among the acquisition channels so the
+// per-site jitter (below) genuinely varies which cohort dominates — different
+// sites are LinkedIn-led, search-led, referral-led, etc.
 const SOURCE_MIX: Array<{ src: string; share: number }> = [
-  { src: "linkedin", share: 0.14 },
-  { src: "google", share: 0.26 },
-  { src: "facebook", share: 0.08 },
-  { src: "bing", share: 0.05 },
-  { src: "newsletter", share: 0.07 },
-  { src: "reddit", share: 0.04 },
-  { src: "direct", share: 0.36 },
+  { src: "linkedin", share: 0.16 },
+  { src: "google", share: 0.18 },
+  { src: "facebook", share: 0.1 },
+  { src: "bing", share: 0.07 },
+  { src: "newsletter", share: 0.09 },
+  { src: "reddit", share: 0.06 },
+  { src: "direct", share: 0.34 },
 ];
 
 type SiteResult = Record<string, unknown>;
@@ -109,9 +112,17 @@ function runSite(a: AdaptRow): SiteResult {
   const returningShare = 0.18 + rand() * 0.22; // 18–40 %
   const pricingShare = 0.1 + rand() * 0.22; // 10–32 %
 
+  // Per-SITE acquisition profile: jitter the base shares by the site's own
+  // seed and renormalize, so different sites are dominated by different
+  // channels (LinkedIn-heavy, search-heavy, referral-heavy…) — real sites
+  // don't share one traffic mix, and the fastest measurable cohort varies.
+  const jittered = SOURCE_MIX.map((m) => ({ src: m.src, w: m.share * (0.35 + rand() * 1.9) }));
+  const wsum = jittered.reduce((s, x) => s + x.w, 0);
+  const mix = jittered.map((x) => ({ src: x.src, share: x.w / wsum }));
+
   // Per (src, returning, pricing) traffic rows for the scope planner.
   const rows: CohortTrafficRow[] = [];
-  for (const m of SOURCE_MIX) {
+  for (const m of mix) {
     const n = Math.round(exposed * m.share);
     if (n <= 0) continue;
     const ret = Math.round(n * returningShare);
@@ -435,18 +446,31 @@ function main() {
       },
     },
     daysToVerdict: { min: daysDist[0] ?? null, median, max: daysDist[daysDist.length - 1] ?? null },
+    // Judge the null false-positive count the statistically correct way: is it
+    // within the BINOMIAL range expected at alpha on this many nulls? On ~20
+    // nulls the FP count is noisy (expected ~1, plausibly up to ~4), so a raw
+    // rate threshold is a knife-edge; the ~99th-percentile bound is robust.
     // A calibration VIOLATION is the math misbehaving: a true winner falsely
-    // harmed, a trap that escaped, or a null-FP rate meaningfully above alpha.
-    // A single A/A tripping at ~alpha is calibration CONFIRMED, not a failure —
-    // and the sweep pauses it (safe direction, self-heals). Distinguish them.
+    // harmed, a trap that escaped, or a null-FP count BEYOND that bound.
+    nullFpExpected: +(ALPHA * nullMeasured.length).toFixed(2),
+    nullFpPlausibleBound: Math.ceil(
+      ALPHA * nullMeasured.length + 3 * Math.sqrt(ALPHA * (1 - ALPHA) * nullMeasured.length),
+    ),
     calibration_note:
-      "null false-positives at ~alpha are EXPECTED and confirm calibration; only excess FPs, winner false-harm, or trap escapes are violations",
+      "null false-positives at ~alpha are EXPECTED and confirm calibration; a violation is only an FP count beyond the binomial bound, winner false-harm, or a trap escape",
     calibrationViolations:
-      winFalseHarm + trapEscaped + Math.max(0, nullFP - Math.ceil(2 * ALPHA * nullMeasured.length)),
+      winFalseHarm +
+      trapEscaped +
+      Math.max(
+        0,
+        nullFP -
+          Math.ceil(ALPHA * nullMeasured.length + 3 * Math.sqrt(ALPHA * (1 - ALPHA) * nullMeasured.length)),
+      ),
     calibrationHealthy:
       winFalseHarm === 0 &&
       trapEscaped === 0 &&
-      (nullMeasured.length === 0 || nullFP / nullMeasured.length <= 2 * ALPHA),
+      nullFP <=
+        Math.ceil(ALPHA * nullMeasured.length + 3 * Math.sqrt(ALPHA * (1 - ALPHA) * nullMeasured.length)),
     estimateVerdictSanity: estimateVerdictSanity(),
   };
 

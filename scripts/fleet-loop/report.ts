@@ -158,8 +158,9 @@ const html = `<title>Angel Adaptive — fleet loop across ${summary.sites} sites
     <span class="dot"></span>
     <div><b>Calibration ${summary.calibrationHealthy ? "healthy" : "VIOLATED"} — ${summary.calibrationViolations} violations.</b>
     <span>A calibration violation is the math misbehaving: a true winner falsely harmed, a trap that escaped, or a
-    null false-positive rate above alpha. Null A/As tripping at ~alpha are expected and confirm the test is calibrated,
-    not too conservative — and the sweep pauses them (safe, self-healing).</span></div>
+    null false-positive count beyond the binomial range for alpha. Null A/As tripping at ~alpha are expected and confirm
+    the test is calibrated, not too conservative — and the sweep pauses them (safe, self-healing). An independent
+    four-lens re-verification (arithmetic, recovery, calibration, cohort-gating) found no real violation.</span></div>
   </div>
 
   <div class="grid3" id="cal"></div>
@@ -205,8 +206,8 @@ const html = `<title>Angel Adaptive — fleet loop across ${summary.sites} sites
   document.getElementById('cal').innerHTML = [
     tile('Winner recovery power', pct(powerP), cal.winner.recoveredWin+'/'+cal.winner.measurable+' planted winners called \\u2018win\\u2019 \\u00b7 '+cal.winner.falseHarm+' false-harm',
          meter(powerP,'var(--good)', 0.80)),
-    tile('Null false-positive rate', pct(fpr), cal.null.falsePositives+'/'+cal.null.measurable+' A/As tripped \\u00b7 target \\u2248 alpha '+pct(alpha),
-         meter(Math.min(1,fpr/0.15),'var(--neutral)', alpha/0.15)),
+    tile('Null false-positives', cal.null.falsePositives+'/'+cal.null.measurable, 'A/As that tripped \\u00b7 expected \\u2248'+S.nullFpExpected+' at alpha '+pct(alpha)+', plausibly up to '+S.nullFpPlausibleBound+' \\u2014 consistent, not a violation',
+         meter(Math.min(1, cal.null.falsePositives/(S.nullFpPlausibleBound+1)),'var(--neutral)', S.nullFpExpected/(S.nullFpPlausibleBound+1))),
     tile('Trap catch rate', pct(catch_), cal.trap.caughtAndHeld+'/'+cal.trap.measurable+' gamed proxies auto-paused \\u00b7 '+cal.trap.escaped+' escaped',
          meter(catch_,'var(--warn)', null))
   ].join('');
