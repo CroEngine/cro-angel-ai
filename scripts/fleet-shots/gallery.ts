@@ -14,7 +14,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 const DIR = "docs/fleet-shots-2026-07-21";
 const IMG = `${DIR}/img`;
 const MAX_W = 380; // downscale width for the embedded images
-const PART_BUDGET = 10_500_000; // ~10.5 MB of image data per part file
+const PART_BUDGET = 4_500_000; // ~4.5 MB of image data per part file (safe to publish)
 
 type Rec = {
   name: string;
@@ -131,6 +131,15 @@ for (const s of sites) {
   }
   parts[parts.length - 1].push(s);
   acc += b;
+}
+// Fold a tiny trailing part into the previous one (avoid a 1-site orphan part).
+if (parts.length > 1) {
+  const last = parts[parts.length - 1];
+  const lastBytes = last.reduce((n, s) => n + bytesOf(s), 0);
+  if (lastBytes < 1_500_000) {
+    parts[parts.length - 2].push(...last);
+    parts.pop();
+  }
 }
 
 const esc = (s: unknown) =>

@@ -1,5 +1,5 @@
 {
- "generatedAtSites": 99,
+ "generatedAtSites": 134,
  "records": [
   {
    "name": "monday",
@@ -1472,6 +1472,515 @@
    "visualIssues": [],
    "changed": true,
    "after": "toggl-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "wrike",
+   "url": "https://www.wrike.com/",
+   "page": "home",
+   "ok": true,
+   "before": "wrike-before.jpg",
+   "applied": [
+    "Move social proof up — \"Your work, delivered. 30,000+ times over\" → after hero (L0)",
+    "Emphasise primary CTA — \"Try Wrike for free\"",
+    "Surface trust bar — Join 30,000+ organizations where humans and agents deliver m"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "wrike-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "wrike",
+   "url": "https://www.wrike.com/price/",
+   "page": "pricing",
+   "ok": true,
+   "before": "wrike-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — What does Wrike do to ensure GDPR compliance?"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "wrike-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "smartsheet",
+   "url": "https://www.smartsheet.com/",
+   "page": "home",
+   "ok": true,
+   "before": "smartsheet-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Watch a demo\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "smartsheet-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "smartsheet",
+   "url": "https://www.smartsheet.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "smartsheet-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Features by plan type"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "smartsheet-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "gusto",
+   "url": "https://gusto.com/",
+   "page": "home",
+   "ok": true,
+   "before": "gusto-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Payroll takes just a few clicks\"",
+    "Surface trust bar — ““Payroll used to take at least one full day per month. We’r"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "gusto-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "rippling",
+   "url": "https://www.rippling.com/",
+   "page": "home",
+   "ok": true,
+   "before": "rippling-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Take a product tour\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "rippling-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "bamboohr",
+   "url": "https://www.bamboohr.com/",
+   "page": "home",
+   "ok": true,
+   "before": "bamboohr-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get My Free Demo\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "bamboohr-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "personio",
+   "url": "https://www.personio.com/",
+   "page": "home",
+   "ok": true,
+   "before": "personio-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "personio-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "remotecom",
+   "url": "https://remote.com/",
+   "page": "home",
+   "ok": true,
+   "before": "remotecom-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "remotecom-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "ramp",
+   "url": "https://ramp.com/",
+   "page": "home",
+   "ok": true,
+   "before": "ramp-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Read the report\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "ramp-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "mercury",
+   "url": "https://mercury.com/",
+   "page": "home",
+   "ok": true,
+   "before": "mercury-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Launch demo\"",
+    "Surface trust bar — Loved by 300K+ of the most ambitious entrepreneurs on the pl"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mercury-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "mercury",
+   "url": "https://mercury.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "mercury-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Compare our plans"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mercury-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "onepassword",
+   "url": "https://1password.com/",
+   "page": "home",
+   "ok": true,
+   "before": "onepassword-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Request SaaS Manger demo\"",
+    "Surface trust bar — ““At an organizational level, 1Password helped impose discip"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "onepassword-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "vanta",
+   "url": "https://www.vanta.com/",
+   "page": "home",
+   "ok": true,
+   "before": "vanta-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"✨ Vanta Delivers: AI is moving fast. See how Vanta helps you stay ahead of risk.\"",
+    "Surface trust bar — ““Vanta helped us unblock our sales cycle for security quest"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "vanta-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "docusign",
+   "url": "https://www.docusign.com/",
+   "page": "home",
+   "ok": true,
+   "before": "docusign-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Featured\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "docusign-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "pandadoc",
+   "url": "https://www.pandadoc.com/",
+   "page": "home",
+   "ok": true,
+   "before": "pandadoc-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get Started\"",
+    "Surface trust bar — “PandaDoc has a personal touch — they listen, adapt, and sup"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "pandadoc-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "chargebee",
+   "url": "https://www.chargebee.com/",
+   "page": "home",
+   "ok": true,
+   "before": "chargebee-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "chargebee-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "paddle",
+   "url": "https://www.paddle.com/",
+   "page": "home",
+   "ok": true,
+   "before": "paddle-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get started\"",
+    "Surface trust bar — 10,000+ — CUSTOMERS"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "paddle-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "bokio",
+   "url": "https://www.bokio.se/",
+   "page": "home",
+   "ok": false,
+   "error": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+  },
+  {
+   "name": "bokio",
+   "url": "https://www.bokio.se/priser/",
+   "page": "pricing",
+   "ok": false,
+   "error": "Error: page.evaluate: TypeError: Cannot read properties of undefined (reading 'events')\n    at eval\n    at evaluate\n    at "
+  },
+  {
+   "name": "mynewsdesk",
+   "url": "https://www.mynewsdesk.com/",
+   "page": "home",
+   "ok": true,
+   "before": "mynewsdesk-before.jpg",
+   "applied": [
+    "Move social proof up — \"8 out of 10 get media coverage\" → after hero (L0)",
+    "Emphasise primary CTA — \"Test the product for free\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mynewsdesk-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "upsales",
+   "url": "https://www.upsales.com/",
+   "page": "home",
+   "ok": true,
+   "before": "upsales-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Request demo\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "upsales-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "sanalabs",
+   "url": "https://sanalabs.com/",
+   "page": "home",
+   "ok": true,
+   "before": "sanalabs-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Explore\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "sanalabs-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "framer",
+   "url": "https://www.framer.com/",
+   "page": "home",
+   "ok": true,
+   "before": "framer-before.jpg",
+   "applied": [
+    "Move social proof up — \"Built on a community that isn’t going an\" → after hero (L0)",
+    "Emphasise primary CTA — \"Learn how our AI agents work\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "framer-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "lemlist",
+   "url": "https://www.lemlist.com/",
+   "page": "home",
+   "ok": true,
+   "before": "lemlist-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Meet lemAgent\"",
+    "Surface trust bar — Recognized by G2. Trusted by thousands. 4.7 / 5 based on 1,3"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "lemlist-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "apollo",
+   "url": "https://www.apollo.io/",
+   "page": "home",
+   "ok": true,
+   "before": "apollo-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Sign up for free\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "apollo-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "attio",
+   "url": "https://attio.com/",
+   "page": "home",
+   "ok": false,
+   "error": "Error: page.goto: Page crashed\nCall log:\n\u001b[2m  - navigating to \"https://attio.com/\", waiting until \"domcontentloaded\"\u001b[22m\n"
+  },
+  {
+   "name": "clay",
+   "url": "https://www.clay.com/",
+   "page": "home",
+   "ok": true,
+   "before": "clay-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start free trial\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "clay-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "loops",
+   "url": "https://loops.so/",
+   "page": "home",
+   "ok": true,
+   "before": "loops-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"product email\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "loops-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "savvycal",
+   "url": "https://savvycal.com/",
+   "page": "home",
+   "ok": true,
+   "before": "savvycal-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Sign up\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "savvycal-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "postmark",
+   "url": "https://postmarkapp.com/",
+   "page": "home",
+   "ok": true,
+   "before": "postmark-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start free trial\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "postmark-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "lucid",
+   "url": "https://lucid.co/",
+   "page": "home",
+   "ok": true,
+   "before": "lucid-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Contact sales\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "lucid-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "coda",
+   "url": "https://coda.io/",
+   "page": "home",
+   "ok": true,
+   "before": "coda-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Skip to content\"",
+    "Surface trust bar — A few of the 50,000+ teams collaborating on Coda."
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "coda-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "planetscale",
+   "url": "https://planetscale.com/",
+   "page": "home",
+   "ok": true,
+   "before": "planetscale-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Watch the talk\"",
+    "Surface trust bar — “We chose PlanetScale to host our most demanding Vitess and "
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "planetscale-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "clickhouse",
+   "url": "https://clickhouse.com/",
+   "page": "home",
+   "ok": true,
+   "before": "clickhouse-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start free cloud trial\"",
+    "Surface trust bar — Join the 100k+ developers using ClickHouse today"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "clickhouse-after.jpg",
    "restoredClean": true
   }
  ]
