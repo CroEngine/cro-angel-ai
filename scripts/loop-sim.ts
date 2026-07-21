@@ -21,6 +21,8 @@
 
 import { writeFileSync, mkdirSync } from "node:fs";
 
+import { mulberry32 } from "./sim-rng";
+
 import { assignBucket, ruleMatches, type AngelRule } from "../src/adaptive/rules";
 import { measureRule, ALPHA, type ArmStats } from "../src/adaptive/measure";
 
@@ -29,16 +31,6 @@ const OUT_DIR =
 const RUN_DIR = "docs/designer-runs/2026-07-21";
 
 // Deterministic RNG — the whole simulation replays byte-identically per seed.
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 type SimVisitor = {
   key: string;
