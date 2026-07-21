@@ -467,7 +467,8 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
       cs.display.indexOf("flex") !== -1 &&
       (cs.flexDirection === "column" || cs.flexDirection === "column-reverse");
     const isGrid = cs.display.indexOf("grid") !== -1;
-    if (!isFlexCol && !isGrid) {
+    const promoted = !isFlexCol && !isGrid;
+    if (promoted) {
       // Block-stacked: promote so `order` takes effect. Any spacing drift
       // (margin-collapse, BFC formation) is caught by the self-check below.
       if (mode === "grid") {
@@ -486,6 +487,18 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
     }
     kids.forEach((k, i) => {
       k.style.order = String(i * 2);
+      if (promoted) {
+        // Block-flow width semantics for the new items. Site CSS can carry
+        // DORMANT item properties that our promotion would activate
+        // (justify-items: center → kids drop stretch and center at natural
+        // width: dw=-86,dl=+43 on clickup), and item min-width:auto lets
+        // wide content blow past the track where block flow just overflowed
+        // (dw=+175 on auth0). Stretch + min-width:0 restores exactly what
+        // block flow rendered. Never touched on native flex/grid containers.
+        if (mode === "grid") k.style.justifySelf = "stretch";
+        else k.style.alignSelf = "stretch";
+        k.style.minWidth = "0";
+      }
     });
     moveKid.style.order = anchorKid ? String(kids.indexOf(anchorKid) * 2 + 1) : "-1";
     container.setAttribute("data-angel-reorder", "1");
