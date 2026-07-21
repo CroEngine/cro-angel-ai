@@ -838,13 +838,17 @@ export const SEGMENT_PATTERNS: Record<Segment, string[]> = {
   price_hesitant: ["risk_reducer_bar", "pricing_spotlight"],
 };
 
-// Derive a segment from THIS session's real behavior events. Deliberately
-// conservative: only patterns the events can actually support; anything murky
-// stays "default". (Cross-session signals — returning visitor, pricing-page
-// revisits — arrive with the collector-backed profile in a later milestone.)
+// Derive a segment from THIS session's real behavior events, plus (E2) the
+// visitor's cross-page profile when available. Deliberately conservative:
+// only patterns the events can actually support; anything murky stays
+// "default". The profile's contribution today is exactly one unlock: a
+// visitor who has SEEN PRICING (this page or an earlier one — "/pricing
+// yesterday") counts as having pricing context, so price_hesitant can fire
+// on a homepage. Session thresholds stay unchanged.
 export function deriveSegment(
   events: Array<{ type: string; value?: number }>,
   inv: ContentInventory,
+  profile?: { seenPricing?: boolean } | null,
 ): Segment {
   const maxScroll = Math.max(0, ...events.filter((e) => e.type === "scroll_depth").map((e) => e.value ?? 0));
   const ctaClicks = events.filter((e) => e.type === "cta_click").length;
@@ -854,7 +858,7 @@ export function deriveSegment(
   // tracker data and fired always on empty data.)
   const timeRaw = Math.max(0, ...events.filter((e) => e.type === "time_on_page").map((e) => e.value ?? 0));
   const timeSec = timeRaw > 1000 ? timeRaw / 1000 : timeRaw;
-  const hasPricing = inv.sections.some((s) => s.type === "pricing");
+  const hasPricing = inv.sections.some((s) => s.type === "pricing") || !!profile?.seenPricing;
   if (hasPricing && maxScroll >= 60 && ctaClicks === 0) return "price_hesitant";
   if (maxScroll >= 70 && ctaClicks === 0) return "engaged_no_click";
   if (maxScroll <= 25 && timeSec <= 15) return "new_skimmer";

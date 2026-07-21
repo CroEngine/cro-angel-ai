@@ -26,9 +26,10 @@ import {
   type Segment,
 } from "./patterns";
 import { trackBehavior, type BehaviorEvent, type BehaviorTracker } from "./behavior";
+import { updateProfile, deriveCohorts, type AngelProfile } from "./profile";
 import { visitorKey, sessionId, sendInventory, installEventCollector } from "./collector";
 
-const VERSION = "0.9.0";
+const VERSION = "0.10.0";
 
 type AngelGlobal = {
   version: string;
@@ -39,6 +40,10 @@ type AngelGlobal = {
   applied: AppliedChange[];
   segment: Segment | null;
   segments: string[];
+  // E2: the visitor's cross-page journey memory + the cohort keys derived
+  // from it (the vocabulary cohort-scoped rules match on).
+  profile: AngelProfile | null;
+  cohorts: string[];
   collect: () => ContentInventory;
   adapt: (segment?: Segment) => AppliedChange[];
   // E3: apply a Claude-designed reorder plan (validation/serving harnesses
@@ -84,7 +89,7 @@ function adapt(segmentArg?: Segment): AppliedChange[] {
   const segment: Segment =
     segmentArg ??
     (attr && attr in SEGMENT_PATTERNS ? attr : null) ??
-    deriveSegment(angel.events, angel.inventory);
+    deriveSegment(angel.events, angel.inventory, angel.profile);
   angel.segment = segment;
   activeAdaptation = applyAdaptations(angel.inventory, segment);
   angel.applied = activeAdaptation.applied;
@@ -148,6 +153,8 @@ function init(): void {
     applied: [],
     segment: null,
     segments: Object.keys(SEGMENT_PATTERNS),
+    profile: null,
+    cohorts: [],
     collect: collectInventory,
     adapt,
     planReorder,
@@ -168,6 +175,15 @@ function crawl(): void {
   }
   angel.inventory = inventory;
   console.info(summarize(inventory));
+
+  // E2: record this pageview in the first-party journey profile. Best-effort
+  // and storage-only — a failure can never affect the host page.
+  try {
+    angel.profile = updateProfile(inventory);
+    angel.cohorts = deriveCohorts(angel.profile);
+  } catch {
+    /* profile is optional */
+  }
 
   // Learn-mode (default): start passive behavior tracking once. This is the
   // "collect data" half — scroll depth, CTA clicks, time on page — and it runs
