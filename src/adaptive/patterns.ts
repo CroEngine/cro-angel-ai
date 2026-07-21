@@ -539,7 +539,9 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
       const vis = after.filter((x) => x.env.height > 1).sort((a, b) => a.env.top - b.env.top);
       for (let i = 1; i < vis.length; i++) {
         if (vis[i].env.top < vis[i - 1].env.bottom - 8) {
-          bad = "check-overlap";
+          const a = kids.indexOf(vis[i - 1].k);
+          const b2 = kids.indexOf(vis[i].k);
+          bad = `check-overlap@${a}~${b2}:${Math.round(vis[i - 1].env.bottom - vis[i].env.top)}px`;
           break;
         }
       }
