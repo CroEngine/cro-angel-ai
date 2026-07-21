@@ -1086,8 +1086,15 @@ export const trustSignalsRun: () => any = () => ((() => {
 
   function push(type, text, el, source, extras) {
     const block = nearestBlock(el);
-    const inCarousel = isInsideCarousel(block);
-    const visibleEnough = isVisible(block) || (inCarousel && block.getBoundingClientRect().width > 0);
+    // Document-level entries (schema.org JSON-LD, anchored to <body>) are
+    // non-positional corroboration, not visible UI: body.contains(everything),
+    // so giving them a _block would let hierarchyDedup keep the invisible
+    // schema entry and silently delete every VISIBLE signal of the same type
+    // (Trustpilot widget, "4.7 av 5" text). They also must not count as
+    // above-fold/hero — they have no visual position at all.
+    const isDocLevel = block === document.body;
+    const inCarousel = !isDocLevel && isInsideCarousel(block);
+    const visibleEnough = isDocLevel || isVisible(block) || (inCarousel && block.getBoundingClientRect().width > 0);
     if (!visibleEnough) return;
     if (type === 'stars') {
       const raw = block.getBoundingClientRect();
@@ -1102,10 +1109,10 @@ export const trustSignalsRun: () => any = () => ((() => {
     const entry = {
       type,
       text: cleanText,
-      section: SECTION_KIND(block, rect),
-      aboveFold: rect.top < viewportH,
+      section: isDocLevel ? 'document' : SECTION_KIND(block, rect),
+      aboveFold: isDocLevel ? false : rect.top < viewportH,
       selector: buildSelector(block),
-      visualWeight: Math.round(rect.width * rect.height),
+      visualWeight: isDocLevel ? 0 : Math.round(rect.width * rect.height),
       source,
       rect: {
         x: Math.round(rect.left + window.scrollX),
@@ -1118,7 +1125,9 @@ export const trustSignalsRun: () => any = () => ((() => {
     if (inCarousel) entry.inCarousel = true;
     // Stash the source block on every entry so the post-collection hierarchy
     // dedup can walk ancestor/descendant relationships. Stripped before return.
-    entry._block = block;
+    // Doc-level entries get NO block: hierarchyDedup skips null-_block entries,
+    // so schema corroboration and visible widgets coexist instead of competing.
+    entry._block = isDocLevel ? null : block;
     out.push(entry);
   }
 
@@ -2212,8 +2221,12 @@ export const trustSignalsRun: () => any = () => ((() => {
       ? withRating.reduce((s, e) => s + e.rating, 0) / withRating.length
       : null;
     const aboveFoldCount = starsEntries.filter((e) => e.aboveFold).length;
+    // Review VOLUME must survive the collapse (B7): downstream sums used to
+    // read reviewCount off type 'stars', which no longer exists after this
+    // point. Max, not sum — multiple star clusters restate the same corpus.
+    const reviewCount = starsEntries.reduce((m, e) => Math.max(m, e.reviewCount || 0), 0);
     filtered = filtered.filter((e) => e.type !== 'stars');
-    filtered.push({
+    filtered.push(Object.assign({
       type: 'stars_aggregate',
       text: starsEntries.length + ' star ratings' + (avg !== null ? ' (avg ' + (Math.round(avg * 100) / 100) + ')' : ''),
       section: starsEntries[0].section,
@@ -2223,7 +2236,7 @@ export const trustSignalsRun: () => any = () => ((() => {
       averageRating: avg !== null ? Math.round(avg * 100) / 100 : null,
       count: starsEntries.length,
       aboveFoldCount,
-    });
+    }, reviewCount > 0 ? { reviewCount } : {}));
   }
 
   return { signals: filtered, _debug: debug };
@@ -2238,12 +2251,97 @@ export const trustSignalsRun: () => any = () => ((() => {
 export const ctasRun: () => any = () => ((() => {
   const viewportH = window.innerHeight || 720;
 
-  const INTENT_RX = {
-    conversion: /(book|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|checkout|order|apply|donate|download|add to cart|best[äa]ll|k[öo]p|boka|prova|kom ig[åa]ng|skapa konto|registrera|ans[öo]k)/i,
-    navigation: /(login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst[äa]llningar)/i,
-    utility: /(search|s[öo]k|language|spr[åa]k|cookie|accept|godk[äa]nn|contact|kontakt|help|hj[äa]lp|faq)/i,
-    social: /(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i,
-  };
+  // THE shared intent classifier — inlined from shared/intent.ts, same source
+  // COLLECT_SCRIPT uses (B1). This file used to carry its own drifted copy of
+  // the wordlists; it no longer defines any.
+  function classifyIntentShared(text, href, attrText, category, isFormSubmit, aboveFold, formKind, samePageAnchor) {
+  const probe = (text || "").trim() + " " + (attrText || ""), h = href || "";
+  if (isFormSubmit) {
+    if (formKind === "search")
+      return "utility";
+    if (formKind === "newsletter")
+      return "engagement";
+    return "conversion";
+  }
+  if (/(facebook|instagram|linkedin|twitter|x\.com|youtube|tiktok|pinterest|snapchat|reddit|threads|mastodon)\./i.test(h))
+    return "social";
+  const CONV = [
+    "\\bbook\\b|buy|demo|start|get started|sign[- ]?up|signup|register|subscribe|request|trial|\\btry\\b|checkout|order|apply|donate|download|add to cart",
+    "best\xE4ll|k\xF6p|boka|prova|kom ig\xE5ng|skapa konto|registrera|g\xE5 med|gratis|ladda ne[dr]|l\xE4gg i (varu|kund)?korg(en)?|l\xE4gg till|ans\xF6k|bidra|donera|teckna|j\xE4mf\xF6r|shoppa|m\xE5nadsgivare",
+    "\\bkaufen\\b|warenkorb|zur kasse|bestellen|registrieren|konto erstellen|kostenlos|ausprobieren|buchen|termin vereinbaren|herunterladen|spenden|abonnieren|angebot anfordern|loslegen",
+    "acheter|ajouter au panier|commander|s.inscrire|inscription|essai gratuit|essayer|r\xE9server|commencer|t\xE9l\xE9charger|faire un don|s.abonner|demander un devis|rendez-vous",
+    "comprar|a\xF1adir al carrito|agregar al carrito|registrarse|reg\xEDstrate|prueba gratis|reservar|comenzar|empieza|descargar|\\bdonar\\b|suscr|solicitar|cotizaci\xF3n|adicionar ao carrinho|cadastr|teste gr\xE1tis|experimente|come\xE7ar|baixar|\\bdoar\\b|assinar|or\xE7amento",
+    "acquista|\\bcompra\\b|aggiungi al carrello|\\bordina\\b|registrati|iscriviti|prenota|inizia|scarica|abbonati|richiedi",
+    "\\bkopen\\b|koop nu|winkelwagen|winkelmand|gratis proberen|proberen|boek nu|te boeken|reserveren|aan de slag|downloaden|doneren|abonneren|offerte|registreren",
+    "\\bk\xF8b\\b|l\xE6g i kurv|\\bkj\xF8p\\b|handlekurv|\\bbestil\\b|\\bbestill\\b|tilmeld|pr\xF8v|kom i gang|last ned|f\xE5 tilbud|abonner|reserver",
+    "\\bosta\\b|koriin|\\btilaa\\b|rekister\xF6idy|kokeile|\\bvaraa\\b|aloita|\\blataa\\b|lahjoita",
+    "\\bkup\\b|do koszyka|zam\xF3w|zarejestruj|wypr\xF3buj|zarezerwuj|rozpocznij|pobierz|zapisz si\u0119|koupit|do ko\u0161\xEDku|objednat|vyzkou\u0161et|rezervovat|st\xE1hnout|za\u010D\xEDt",
+    "\u043A\u0443\u043F\u0438\u0442\u044C|\u0432 \u043A\u043E\u0440\u0437\u0438\u043D\u0443|\u0437\u0430\u043A\u0430\u0437\u0430\u0442\u044C|\u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440|\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044F|\u043F\u043E\u043F\u0440\u043E\u0431\u043E|\u0437\u0430\u0431\u0440\u043E\u043D\u0438\u0440|\u0441\u043A\u0430\u0447\u0430\u0442\u044C|\u043F\u043E\u0434\u043F\u0438\u0441\u0430\u0442\u044C\u0441\u044F|\u043E\u0444\u043E\u0440\u043C\u0438\u0442\u044C|\u043F\u0440\u0438\u0434\u0431\u0430\u0442\u0438|\u0437\u0430\u043C\u043E\u0432\u0438\u0442\u0438|\u0437\u0430\u0440\u0435\u0454\u0441\u0442\u0440\u0443|\u0441\u043F\u0440\u043E\u0431\u0443\u0432\u0430\u0442\u0438|\u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0438\u0442\u0438",
+    "\u03B1\u03B3\u03BF\u03C1\u03AC|\u03C3\u03C4\u03BF \u03BA\u03B1\u03BB\u03AC\u03B8\u03B9|\u03C0\u03B1\u03C1\u03B1\u03B3\u03B3\u03B5\u03BB\u03AF\u03B1|\u03B5\u03B3\u03B3\u03C1\u03B1\u03C6\u03AE|\u03B4\u03BF\u03BA\u03B9\u03BC|\u03BA\u03C1\u03AC\u03C4\u03B7\u03C3\u03B7|\u03BE\u03B5\u03BA\u03B9\u03BD\u03AE\u03C3\u03C4\u03B5|\u03BB\u03AE\u03C8\u03B7",
+    "sat\u0131n al|sepete ekle|sipari\u015F|kay\u0131t ol|\xFCye ol|\\bdene\\b|rezervasyon|ba\u015Fla|\\bindir\\b|ba\u011F\u0131\u015F|abone ol|teklif al",
+    "\u0627\u0634\u062A\u0631|\u0627\u0644\u0633\u0644\u0629|\u0627\u0637\u0644\u0628|\u0633\u062C\u0644 \u0627\u0644\u0622\u0646|\u0625\u0646\u0634\u0627\u0621 \u062D\u0633\u0627\u0628|\u062C\u0631\u0628|\u0627\u062D\u062C\u0632|\u0627\u0628\u062F\u0623|\u062A\u062D\u0645\u064A\u0644|\u062A\u0628\u0631\u0639|\u0627\u0634\u062A\u0631\u0643|\u05E7\u05E0\u05D4|\u05E7\u05E0\u05D9\u05D9\u05D4|\u05D4\u05D5\u05E1\u05E3 \u05DC\u05E1\u05DC|\u05D4\u05D6\u05DE\u05DF|\u05D4\u05E8\u05E9\u05DE\u05D4|\u05E0\u05E1\u05D4|\u05D4\u05EA\u05D7\u05DC|\u05D4\u05D5\u05E8\u05D3|\u05EA\u05E8\u05D5\u05DD",
+    "\u0916\u0930\u0940\u0926\u0947\u0902|\u0915\u093E\u0930\u094D\u091F|\u0911\u0930\u094D\u0921\u0930 \u0915\u0930\u0947\u0902|\u0930\u091C\u093F\u0938\u094D\u091F\u0930|\u092A\u0902\u091C\u0940\u0915\u0930\u0923|\u0906\u091C\u093C\u092E\u093E\u090F\u0902|\u092C\u0941\u0915 \u0915\u0930\u0947\u0902|\u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902|\u0921\u093E\u0909\u0928\u0932\u094B\u0921|\u0926\u093E\u0928 \u0915\u0930\u0947\u0902",
+    "\u8CFC\u5165|\u30AB\u30FC\u30C8\u306B\u5165\u308C\u308B|\u30AB\u30FC\u30C8\u306B\u8FFD\u52A0|\u6CE8\u6587|\u4F1A\u54E1\u767B\u9332|\u65B0\u898F\u767B\u9332|\u767B\u9332\u3059\u308B|\u7121\u6599\u4F53\u9A13|\u304A\u8A66\u3057|\u4E88\u7D04|\u7533\u3057\u8FBC|\u8CC7\u6599\u8ACB\u6C42|\u898B\u7A4D|\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9|\u5BC4\u4ED8",
+    "\u8D2D\u4E70|\u52A0\u5165\u8D2D\u7269\u8F66|\u4E0B\u5355|\u8BA2\u8D2D|\u6CE8\u518C|\u514D\u8D39\u8BD5\u7528|\u8BD5\u7528|\u9884\u8BA2|\u9884\u7EA6|\u4E0B\u8F7D|\u6350\u8D60|\u8BA2\u9605|\u8CFC\u8CB7|\u52A0\u5165\u8CFC\u7269\u8ECA|\u8A3B\u518A|\u9810\u7D04|\u4E0B\u8F09|\u6350\u6B3E|\u8A02\u95B1",
+    "\uAD6C\uB9E4|\uC7A5\uBC14\uAD6C\uB2C8|\uC8FC\uBB38|\uD68C\uC6D0\uAC00\uC785|\uAC00\uC785\uD558\uAE30|\uBB34\uB8CC \uCCB4\uD5D8|\uCCB4\uD5D8\uD558\uAE30|\uC608\uC57D|\uC2DC\uC791\uD558\uAE30|\uB2E4\uC6B4\uB85C\uB4DC|\uAE30\uBD80|\uAD6C\uB3C5|\uC2E0\uCCAD",
+    "\\bmua\\b|v\xE0o gi\u1ECF|\u0111\u1EB7t h\xE0ng|\u0111\u0103ng k\xFD|d\xF9ng th\u1EED|\u0111\u1EB7t ch\u1ED7|b\u1EAFt \u0111\u1EA7u|t\u1EA3i xu\u1ED1ng|quy\xEAn g\xF3p|\u0E0B\u0E37\u0E49\u0E2D|\u0E15\u0E30\u0E01\u0E23\u0E49\u0E32|\u0E2A\u0E31\u0E48\u0E07\u0E0B\u0E37\u0E49\u0E2D|\u0E2A\u0E21\u0E31\u0E04\u0E23|\u0E17\u0E14\u0E25\u0E2D\u0E07|\u0E08\u0E2D\u0E07|\u0E40\u0E23\u0E34\u0E48\u0E21|\u0E14\u0E32\u0E27\u0E19\u0E4C\u0E42\u0E2B\u0E25\u0E14|\u0E1A\u0E23\u0E34\u0E08\u0E32\u0E04|\\bbeli\\b|keranjang|pesan sekarang|pemesanan|daftar sekarang|daftar akun|coba gratis|\\bcoba\\b|unduh|donasi|berlangganan"
+  ].join("|");
+  if (new RegExp(CONV, "i").test(probe))
+    return "conversion";
+  const CONTACT = "contact|kontakt|contato|contatto|\u03B5\u03C0\u03B9\u03BA\u03BF\u03B9\u03BD|\u043A\u043E\u043D\u0442\u0430\u043A\u0442|\u0441\u0432\u044F\u0437\u0430\u0442\u044C\u0441\u044F|leti\u015Fim|\u0627\u062A\u0635\u0644|\u062A\u0648\u0627\u0635\u0644|\u05E6\u05D5\u05E8 \u05E7\u05E9\u05E8|\u0938\u0902\u092A\u0930\u094D\u0915|\u554F\u3044\u5408\u308F\u305B|\u304A\u554F\u5408\u305B|\u8054\u7CFB|\u806F\u7D61|\uBB38\uC758|li\xEAn h\u1EC7|\u0E15\u0E34\u0E14\u0E15\u0E48\u0E2D|hubungi";
+  if (/^(tel:|mailto:)/i.test(h) || new RegExp(CONTACT, "i").test(probe))
+    return "contact";
+  if (/(like|love|save|bookmark|share|comment|reply|follow|subscribe|upvote|downvote|gilla|spara|kommentar|svara|f\u00F6lj|prenumerera|r\u00F6sta|r\u00F6st)/i.test(probe))
+    return "engagement";
+  const NAV = [
+    "login|log in|sign in|account|menu|home|profile|settings|logga in|mina sidor|hem|inst\xE4llningar",
+    "einloggen|\\banmelden\\b|mein konto|se connecter|connexion|mon compte|iniciar sesi\xF3n|mi cuenta|\\bentrar\\b|accedi|il mio account|inloggen|mijn account|log ind|logg inn|min side|kirjaudu|zaloguj|moje konto|\u0432\u043E\u0439\u0442\u0438|\u0432\u0445\u043E\u0434|\u043B\u0438\u0447\u043D\u044B\u0439 \u043A\u0430\u0431\u0438\u043D\u0435\u0442|giri\u015F|\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644|\u05D4\u05EA\u05D7\u05D1\u05E8|\u0932\u0949\u0917 ?\u0907\u0928|\u30ED\u30B0\u30A4\u30F3|\u30DE\u30A4\u30DA\u30FC\u30B8|\u767B\u5F55|\u767B\u5165|\uB85C\uADF8\uC778|\uB9C8\uC774\uD398\uC774\uC9C0|\u0111\u0103ng nh\u1EADp|\u0E40\u0E02\u0E49\u0E32\u0E2A\u0E39\u0E48\u0E23\u0E30\u0E1A\u0E1A|\\bmasuk\\b"
+  ].join("|");
+  if (new RegExp(NAV, "i").test(probe))
+    return "navigation";
+  if (/(facebook|instagram|linkedin|twitter|youtube|tiktok|share|dela)/i.test(probe))
+    return "social";
+  if (/(search|s\u00F6k|language|spr\u00E5k|cookie|accept|godk\u00E4nn|help|hj\u00E4lp|faq)/i.test(probe))
+    return "utility";
+  if (/(learn|read|explore|see how|how |why |about |l\u00E4s|utforska|s\u00E5 funkar|mer info)/i.test(probe))
+    return "information";
+  if (samePageAnchor)
+    return "navigation";
+  if (category === "cta_primary" && aboveFold)
+    return "conversion";
+  return "unknown";
+}
+  function formKindShared(el) {
+  try {
+    const f = el.closest ? el.closest("form") : null;
+    if (!f)
+      return "";
+    const role = (f.getAttribute("role") || "").toLowerCase(), action = f.getAttribute("action") || "";
+    if (role === "search" || f.querySelector('input[type="search"]') || /(^|[/?#-])s(earch|ok)([/?#-]|$)/i.test(action))
+      return "search";
+    const inputs = f.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"])');
+    if (inputs.length === 1) {
+      const i0 = inputs[0], hint = ((i0.getAttribute("type") || "") + " " + (i0.getAttribute("name") || "") + " " + (i0.getAttribute("placeholder") || "") + " " + (i0.getAttribute("aria-label") || "")).toLowerCase();
+      if (/email|e-?post|nyhetsbrev|newsletter/.test(hint))
+        return "newsletter";
+    }
+  } catch (e) {}
+  return "";
+}
+  function samePageAnchorShared(el, href) {
+  if (el.tagName !== "A" || !href)
+    return !1;
+  try {
+    let pageUrl = new URL(location.href);
+    const canon = document.querySelector('link[rel="canonical"]'), og = document.querySelector('meta[property="og:url"]'), declared = canon && canon.getAttribute("href") || og && og.getAttribute("content") || "";
+    if (declared && /^https?:/i.test(declared))
+      pageUrl = new URL(declared);
+    const u = new URL(href, pageUrl.href);
+    return !!u.hash && u.origin === pageUrl.origin && u.pathname === pageUrl.pathname && u.search === pageUrl.search;
+  } catch (e) {
+    return !1;
+  }
+}
 
   function buildSelector(el) {
     if (el.id && /^[A-Za-z][\w-]*$/.test(el.id)) return '#' + el.id;
@@ -2307,16 +2405,6 @@ export const ctasRun: () => any = () => ((() => {
     return 'content';
   }
 
-  function hasSurface(cs) {
-    const bg = cs.backgroundColor || '';
-    if (!!bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return true;
-    // Outline / ghost buttons have no fill but a visible border — still a
-    // surfaced, clickable region and a common modern CTA style ("Contact sales").
-    const bw = parseFloat(cs.borderTopWidth) || 0;
-    const bs = cs.borderTopStyle || 'none';
-    return bw > 0 && bs !== 'none' && bs !== 'hidden';
-  }
-
   function parseRgb(s) {
     if (!s) return null;
     const m = s.match(/rgba?\(([^)]+)\)/);
@@ -2351,47 +2439,88 @@ export const ctasRun: () => any = () => ((() => {
     return 'FAIL';
   }
 
+  // Shared category classification (B2) — same 5-signal rule as COLLECT_SCRIPT
+  // (this script used to require above-fold for cta_primary; a prominent
+  // below-fold buy button can be primary in both scripts now).
+  function hasMeaningfulSurfaceShared(backgroundColor, border) {
+  const bg = backgroundColor || "", b = border || "", bgSolid = !!bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent", hasBorder = /\d+px/.test(b) && !/0px/.test(b.split(" ")[0] || "");
+  return bgSolid || hasBorder;
+}
+  function inNavOrFooterShared(el) {
+  let p = el.parentElement;
+  while (p && p !== document.body) {
+    const tag = p.tagName, role = (p.getAttribute && p.getAttribute("role") || "").toLowerCase();
+    if (tag === "NAV" || tag === "HEADER" || tag === "FOOTER" || role === "navigation")
+      return !0;
+    p = p.parentElement;
+  }
+  return !1;
+}
+  function classifyCategoryShared(tagName, inputType, role, hasHref, rectW, rectH, rectTop, textLen, hasSurface, inChrome, viewportH, isImageOnly = !1) {
+  const tag = (tagName || "").toUpperCase(), type = (inputType || "").toLowerCase();
+  if (tag === "BUTTON" && type === "submit" || tag === "INPUT" && type === "submit")
+    return "form_submit";
+  const isButtonish = tag === "BUTTON" || tag === "INPUT" || (role || "").toLowerCase() === "button" || tag === "A" && hasHref, area = rectW * rectH, smallSquareish = rectW <= 56 && rectH <= 56, shortLabel = textLen <= 2;
+  if (isButtonish && smallSquareish && shortLabel)
+    return "icon_button";
+  if (isButtonish && isImageOnly)
+    return "link";
+  const aboveFold = rectTop < viewportH;
+  if (isButtonish) {
+    let score = 0;
+    if (aboveFold)
+      score++;
+    if (textLen > 0 && textLen <= 32)
+      score++;
+    if (area >= 2520)
+      score++;
+    if (hasSurface)
+      score++;
+    if (!inChrome)
+      score++;
+    if (score >= 4)
+      return "cta_primary";
+    if (score >= 2 && hasSurface)
+      return "cta_secondary";
+  }
+  if (tag === "A" && hasHref)
+    return inChrome ? "nav_item" : "link";
+  return "other";
+}
+
   function classifyCategory(el, cs, rect, text) {
-    const tag = el.tagName;
-    const type = (el.getAttribute('type') || '').toLowerCase();
-    if ((tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit')) return 'form_submit';
-    const role = (el.getAttribute('role') || '').toLowerCase();
-    const isButtonish = tag === 'BUTTON' || tag === 'INPUT' || role === 'button' || (tag === 'A' && el.hasAttribute('href'));
-    const area = rect.width * rect.height;
-    if (isButtonish && rect.width <= 56 && rect.height <= 56 && (!text || text.length <= 2)) return 'icon_button';
-    if (isButtonish) {
-      // Customer-logo / image link: it has NO visible text of its own (the label
-      // text passed in comes from img alt / aria-label) and its content is an
-      // image. These fill "trusted by" logo strips and otherwise score
-      // cta_primary — notion's hero logos (OpenAI, Figma, Ramp, Cursor, Vercel)
-      // each became cta_primary/conversion, so deriveHero took "OpenAI" as the
-      // hero CTA over "Get Notion free". Social proof, not a CTA — drop to 'link'
-      // (trust detection counts them as customer_logos where appropriate).
-      const ownText = ((el.innerText || el.value || '') + '').trim();
-      if (!ownText && el.querySelector && el.querySelector('img, svg, picture')) return 'link';
-      let score = 0;
-      if (rect.top < viewportH) score++;
-      if (text.length > 0 && text.length <= 32) score++;
-      // Button-sized. The old 90×28 floor missed normal small buttons — linear's
-      // above-fold "Sign up" (≈78×30 = 2334px²) scored 3 → secondary, so the hero
-      // CTA came back empty. 64×28 still excludes inline links / sub-icon chrome.
-      if (area >= 64 * 28) score++;
-      if (hasSurface(cs)) score++;
-      if (score >= 4) return 'cta_primary';
-      if (score >= 2 && hasSurface(cs)) return 'cta_secondary';
-    }
-    if (tag === 'A' && el.hasAttribute('href')) return 'link';
-    return 'other';
+    return classifyCategoryShared(
+      el.tagName,
+      el.getAttribute('type') || '',
+      el.getAttribute('role') || '',
+      el.tagName === 'A' && el.hasAttribute('href'),
+      rect.width, rect.height, rect.top,
+      (text || '').length,
+      hasMeaningfulSurfaceShared(cs.backgroundColor || '', cs.border || ''),
+      inNavOrFooterShared(el),
+      viewportH,
+      // Image-only buttonish anchor (logo-strip guard, B-notion): no own
+      // visible text, image content — computed here, decided in the shared rule.
+      !((el.innerText || el.value || '') + '').trim() && !!(el.querySelector && el.querySelector('img, svg, picture')),
+    );
   }
 
-  function classifyIntent(text, category, rect) {
-    const t = (text || '').trim();
-    if (INTENT_RX.conversion.test(t)) return 'conversion';
-    if (INTENT_RX.navigation.test(t)) return 'navigation';
-    if (INTENT_RX.social.test(t)) return 'social';
-    if (INTENT_RX.utility.test(t)) return 'utility';
-    if (category === 'cta_primary' && rect.top < viewportH) return 'conversion';
-    return 'unknown';
+  function classifyIntent(el, text, category, rect) {
+    const tag = el.tagName;
+    const type = (el.getAttribute('type') || '').toLowerCase();
+    const isFormSubmit = (tag === 'BUTTON' && type === 'submit') || (tag === 'INPUT' && type === 'submit');
+    const href = (el.getAttribute('href') || '');
+    const attrBag = [];
+    for (const a of Array.from(el.attributes)) {
+      if (a.name.startsWith('data-')) attrBag.push(a.value || '');
+    }
+    // Same-page anchor (flik/TOC) — delad beräkning (samePageAnchorShared),
+    // regel 6 i classifyIntentShared: flikar får inte positions-fallbackas
+    // till conversion.
+    return classifyIntentShared(
+      (text || '').trim(), href, attrBag.join(' '), category, isFormSubmit, rect.top < viewportH,
+      isFormSubmit ? formKindShared(el) : '', samePageAnchorShared(el, href),
+    );
   }
 
   // Collect candidate CTAs (buttons + anchor links with visible surface or strong CTA-ish text)
@@ -2408,31 +2537,16 @@ export const ctasRun: () => any = () => ((() => {
     return false;
   }
 
-  // Accessibility skip-links (<a href="#main">Skip to content</a>) are
-  // button-ish anchors that score as cta_primary but are never CTAs — they're
-  // keyboard jump links. Exclude by canonical phrasing.
-  function isSkipLink(text) {
-    const t = (text || '').trim();
-    if (!/^(skip|jump)\b/i.test(t)) return false;
-    return /^(skip|jump)\s+(to\s+)?(the\s+)?(main\s+)?(content|navigation|nav|search|menu|main)\b/i.test(t);
-  }
-
   const SEL = 'button, a[href], input[type=submit], input[type=button], [role="button"]';
   const nodes = Array.from(document.querySelectorAll(SEL));
-  // v1.20 defense: a stamped cookie root that ENVELOPS the page (a wrapper /
-  // state-classed container rather than the banner itself) would make the
-  // ancestor filter below skip EVERY CTA — typeform's audit returned 0 CTAs
-  // while the collect layer saw them all. Only honor cookie roots that hold a
-  // minority of the page's CTA candidates; an enveloping stamp is ignored.
-  const cookieRoots = Array.from(document.querySelectorAll('[data-lovable-cookie-root="1"]')).filter((r) => {
-    if (r === document.body || r === document.documentElement) return false;
-    const inside = r.querySelectorAll(SEL).length;
-    return inside <= Math.max(8, nodes.length * 0.5);
-  });
   const raw = [];
   for (const el of nodes) {
     if (!isVisible(el)) continue;
-    if (cookieRoots.some((r) => r.contains(el))) {
+    if (el.closest && el.closest('[data-lovable-cookie-root="1"]')) {
+      continue;
+    }
+    // Never audit Angel's own runtime injections (C1) — same rule as collect.
+    if (el.closest && el.closest('[data-angel-injected], .angel-badge, .angel-sticky-cta, .angel-secondary-cta, #angel-debug')) {
       continue;
     }
     const rect = el.getBoundingClientRect();
@@ -2440,26 +2554,21 @@ export const ctasRun: () => any = () => ((() => {
     const cs = window.getComputedStyle(el);
     const text = ((el.innerText || el.value || el.getAttribute('aria-label') || '') + '').trim().replace(/\s+/g, ' ').slice(0, 80);
     if (isCarouselNav(el, text)) continue;
-    if (isSkipLink(text)) continue;
     const category = classifyCategory(el, cs, rect, text);
-    if (category === 'other' || category === 'link') continue; // keep button-ish + form_submit only
+    if (category === 'other' || category === 'link' || category === 'nav_item') continue; // keep button-ish + form_submit only
     raw.push({
       el, rect, cs, text, category,
-      intent: classifyIntent(text, category, rect),
+      intent: classifyIntent(el, text, category, rect),
       section: sectionKind(el, rect),
     });
   }
 
-  // Pre-fetch trust signal + form rects for distance calc
-  const trustRects = [];
-  document.querySelectorAll('[class*="testimonial" i], [class*="review" i], [class*="trust" i], blockquote').forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (r.width > 1 && r.height > 1) trustRects.push({ cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
-  });
-  document.querySelectorAll('[class*="star" i], [class*="logo" i]').forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (r.width > 1 && r.height > 1) trustRects.push({ cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
-  });
+  // NOTE (B4): trust proximity is NOT computed here anymore. This script used
+  // to guess trust locations from class names ([class*="trust"], blockquote…),
+  // which disagreed with the real trust engine in the same report ("Trust
+  // signals: 1 above fold" next to "trust 9999px"). The server now computes
+  // nearestTrustSignalDistance from TRUST_SIGNALS_SCRIPT's canonical rects
+  // (audit-helpers.ts computeTrustProximity); this script emits null.
   const formRects = Array.from(document.querySelectorAll('form')).map((f) => {
     const r = f.getBoundingClientRect();
     return { x: r.left, y: r.top, w: r.width, h: r.height, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
@@ -2504,7 +2613,9 @@ export const ctasRun: () => any = () => ((() => {
       aboveFold: r.rect.top < viewportH,
       visualWeight: Math.round(r.rect.width * r.rect.height),
       competingActions: competing,
-      nearestTrustSignalDistance: minDist(cx, cy, trustRects),
+      // Filled server-side from the canonical trust rects (B4); null when the
+      // page has no positioned trust signal — never a fake 9999.
+      nearestTrustSignalDistance: null,
       nearestFormDistance: formDistance(r.el, cx, cy),
       contrastRatio: contrastRatio,
       wcagLevel: wcagLevel,
