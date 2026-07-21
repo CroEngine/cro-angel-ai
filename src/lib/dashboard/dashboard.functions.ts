@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { defaultSuccessSpec, validateSuccessSpec, type SuccessSpec } from "@/adaptive-lab/metrics";
 import type { Json } from "@/integrations/supabase/types";
 import { GOAL_KINDS, type GoalCandidate } from "@/adaptive/crawler-inventory";
 import {
@@ -164,6 +165,9 @@ export interface VariantView {
   path: string;
   segmentKey: string;
   status: "candidate" | "verified" | "serving" | "winner" | "retired";
+  /** Framgångskontraktet (labbets SuccessSpec) — null för äldre varianter;
+   *  sätts med sajttypens standard när ägaren startar A/B:t. */
+  success?: SuccessSpec | null;
   opsCount: number;
   updatedAt: string;
   /** Maskinellt serveringsstopp (drift-svepet, slice 3) — null = serverbar
@@ -374,7 +378,7 @@ export const getDashboard = createServerFn({ method: "POST" })
       try {
         const { data: vRows, error: vErr } = await supabaseAdmin
           .from("angel_variants")
-          .select("id,path,segment_key,status,ops,evidence,held_reason,updated_at")
+          .select("id,path,segment_key,status,ops,evidence,held_reason,updated_at,success")
           .eq("site", site)
           .order("updated_at", { ascending: false })
           .limit(50);
@@ -454,6 +458,9 @@ export const getDashboard = createServerFn({ method: "POST" })
               opsCount: opsArr.length,
               updatedAt: v.updated_at,
               heldReason: typeof v.held_reason === "string" ? v.held_reason : null,
+              // Tolerant läsning: ogiltigt/frånvarande kontrakt → null → UI:t
+              // visar standardkontraktet i stället för att gissa.
+              success: validateSuccessSpec(v.success),
               ops: opsArr.map((o) => {
                 const r = (o ?? {}) as Record<string, unknown>;
                 return {
@@ -686,7 +693,7 @@ export const setVariantStatus = createServerFn({ method: "POST" })
     }
     const { data: row, error: readErr } = await supabaseAdmin
       .from("angel_variants")
-      .select("id,status")
+      .select("id,status,success")
       .eq("id", variantId)
       .eq("site", site)
       .maybeSingle();
@@ -694,9 +701,16 @@ export const setVariantStatus = createServerFn({ method: "POST" })
     if (!VARIANT_TRANSITIONS[status]?.includes(row.status)) {
       return { ok: false, reason: `illegal transition ${row.status} → ${status}` };
     }
+    // Att starta A/B:t ÄR godkännandet av framgångsdefinitionen: saknas
+    // kontraktet fylls sajttypens standard i — ingen variant mäter med
+    // odefinierad vinst (samma regel som labbets approve-rule).
+    const successFill =
+      status === "serving" && !validateSuccessSpec(row.success)
+        ? { success: defaultSuccessSpec() as unknown as Json }
+        : {};
     const { error } = await supabaseAdmin
       .from("angel_variants")
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({ status, updated_at: new Date().toISOString(), ...successFill })
       .eq("id", variantId)
       .eq("site", site)
       .eq("status", row.status); // optimistiskt lås — samtidiga klick blir no-op

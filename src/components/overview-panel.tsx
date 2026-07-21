@@ -51,6 +51,7 @@ import type {
 } from "@/lib/dashboard/aggregate";
 import type { VariantView } from "@/lib/dashboard/dashboard.functions";
 import type { ArmVerdict } from "./dashboard/variant-stats";
+import type { SuccessSpec } from "@/adaptive-lab/metrics";
 
 export function OverviewPanel({
   site,
@@ -195,7 +196,17 @@ export function OverviewPanel({
 
   // Armtabellen delas mellan All sources (summerade armar) och ett valt
   // segment (variantens armar) — samma ärliga tre lägen.
-  const armsBlock = (verdict: ArmVerdict) => (
+  const METRIC_EN: Record<string, string> = {
+    conversion: "conversions",
+    form_submit: "form submits",
+    cta_click: "CTA clicks",
+    pricing_view: "pricing views",
+    engaged: "engagement",
+    deep_scroll: "deep scroll",
+    return_visit: "return visits",
+    bounce: "bounce",
+  };
+  const armsBlock = (verdict: ArmVerdict, success?: SuccessSpec | null) => (
     <div className="mt-6">
       <div className="mb-2.5 font-heading text-sm font-semibold">Adapted vs control</div>
       {verdict.arms ? (
@@ -270,9 +281,26 @@ export function OverviewPanel({
               ) : null}
             </div>
           ) : null}
+          {verdict.state === "measured" &&
+          verdict.measured?.verdict === "no_effect" &&
+          success?.mdeRel &&
+          verdict.measured.upliftRelCi &&
+          (verdict.measured.upliftRelCi[1] >= success.mdeRel ||
+            verdict.measured.upliftRelCi[0] <= -success.mdeRel) ? (
+            <div className="mt-2 text-[12px] text-stone-500">
+              The CI still allows ±{Math.round(success.mdeRel * 100)}% — underpowered, keep
+              measuring rather than calling it flat.
+            </div>
+          ) : null}
           <div className="mt-2 text-[11.5px] text-stone-400">
-            Judged on conversions only; engagement and bounce guard the test — they can pause it,
-            never win it (docs/metric-hierarchy.md).
+            {success
+              ? `Judged on ${METRIC_EN[success.primary] ?? success.primary} only (MDE ±${Math.round((success.mdeRel ?? 0.1) * 100)}%); ${
+                  success.guardrails.length
+                    ? success.guardrails.map((g) => METRIC_EN[g] ?? g).join(" & ") +
+                      " guard the test — they can pause it, never win it."
+                    : "no guardrails declared."
+                }`
+              : "Judged on conversions only; engagement and bounce guard the test — they can pause it, never win it (docs/metric-hierarchy.md)."}
           </div>
         </>
       ) : (
@@ -607,7 +635,7 @@ export function OverviewPanel({
                 </div>
               </div>
 
-              {armsBlock(selArms)}
+              {armsBlock(selArms, selVariant?.success)}
 
               {/* varianterna som hör till valet — ägarens knappar bor här */}
               <div className="mt-6">
