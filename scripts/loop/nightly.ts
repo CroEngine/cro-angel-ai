@@ -33,7 +33,11 @@ import {
   planGuardrailSweep,
   type GuardrailSweepVariant,
 } from "../../src/adaptive/redesign/guardrail-sweep";
-import { planCohortScopes } from "../../src/adaptive/redesign/cohort-scopes";
+import {
+  cohortBriefLines,
+  planCohortScopes,
+  segmentKeyForScope,
+} from "../../src/adaptive/redesign/cohort-scopes";
 import { defaultSuccessSpec, validateSuccessSpec } from "../../src/adaptive-lab/metrics";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 import { mirrorStorageKey } from "../../src/lib/sandbox/mirror-key";
@@ -102,7 +106,7 @@ for (const site of targets) {
     // till detect behåller sin gamla smala form (path + segmentKey).
     const { data: variants } = await db
       .from("angel_variants")
-      .select("id,path,segment_key,status,held_reason,ops,evidence,success")
+      .select("id,path,segment_key,status,held_reason,ops,evidence,success,required_cohorts")
       .eq("site", site.slug)
       .neq("status", "retired");
     // Sidflödet (korssid-lyftets signal, task #117): "andel av segmentet som
@@ -304,17 +308,21 @@ for (const site of targets) {
       // Ren planerare på exponeringarnas dims (30 d): bara scopes som kan nå
       // ett domslut inom 45 dagar föreslås. Förslag, inte generering — de
       // skrivs till körkatalogen och loggen; den generativa våningen läser dem.
+      let cohortScopes: ReturnType<typeof planCohortScopes> = [];
       try {
         const { data: cohortRows } = await db.rpc("angel_cohort_traffic", {
           p_site: site.slug,
           p_days: 30,
         });
-        const scopes = planCohortScopes(Array.isArray(cohortRows) ? cohortRows : [], {
+        cohortScopes = planCohortScopes(Array.isArray(cohortRows) ? cohortRows : [], {
           windowDays: 30,
           baseRate: site.test_metric === "continuation" ? 0.4 : 0.04,
         });
-        writeFileSync(join(dir, "cohort-opportunities.json"), JSON.stringify(scopes, null, 1));
-        for (const sc of scopes) {
+        writeFileSync(
+          join(dir, "cohort-opportunities.json"),
+          JSON.stringify(cohortScopes, null, 1),
+        );
+        for (const sc of cohortScopes) {
           console.log(
             `[loop] ${site.slug} kohort-scope: ${sc.cohorts.join("+")} — ${sc.visitorsInWindow} besökare/30d, domslut ~${sc.estimatedDaysToVerdict} d`,
           );
@@ -533,6 +541,7 @@ for (const site of targets) {
         observations: string[];
         sourcePaths?: string[];
         brief: string;
+        cohorts?: string[];
       }[];
       needsFreeze: unknown[];
     };
@@ -540,6 +549,42 @@ for (const site of targets) {
       console.log(
         `[loop] ${site.slug}: ${earned.needsFreeze.length} cell(er) väntar på browser-frysning (needs_freeze)`,
       );
+    }
+    // Kohortceller (generativa våningen): för det snabbaste serverbara
+    // src:-scopet designas en EGEN variant av startsidan — kohortens intent i
+    // briefen, samma grindkedja som allt annat, född grindad + kontrakterad
+    // vid insert. Max EN per natt och sajt; hoppa om ett kohortscopat A/B för
+    // nyckeln redan finns eller startsidan saknar fryst kopia.
+    {
+      const existingCohortKeys = new Set(
+        ((variants ?? []) as { segment_key: string; required_cohorts: unknown }[])
+          .filter((v) => Array.isArray(v.required_cohorts) && v.required_cohorts.length > 0)
+          .map((v) => v.segment_key),
+      );
+      const candidate = cohortScopes.find((sc) => {
+        const key = segmentKeyForScope(sc);
+        return (
+          key !== null &&
+          !existingCohortKeys.has(key) &&
+          !earned.briefed.some((b) => b.key === key) &&
+          !!pages["/"]
+        );
+      });
+      if (candidate) {
+        const key = segmentKeyForScope(candidate)!;
+        earned.briefed.push({
+          path: "/",
+          key,
+          total: { visits: candidate.visitorsInWindow, conversions: 0 },
+          observations: cohortBriefLines(candidate),
+          sourcePaths: [],
+          brief: "",
+          cohorts: candidate.cohorts,
+        });
+        console.log(
+          `[loop] ${site.slug} kohortcell: designar /×${key} för ${candidate.cohorts.join("+")}`,
+        );
+      }
     }
     if (earned.briefed.length === 0) continue;
 
@@ -608,6 +653,7 @@ for (const site of targets) {
         observations: b.observations,
         sourcePaths: b.sourcePaths ?? [],
         ops: plan.ops,
+        cohorts: b.cohorts,
       });
     }
     if (plans.length === 0) continue;

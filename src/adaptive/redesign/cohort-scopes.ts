@@ -78,3 +78,36 @@ export function planCohortScopes(
   );
   return out.slice(0, opts.maxScopes ?? 3);
 }
+
+/** Segmentnyckeln ett scope kan serveras under i dag. Bara källkohorter
+ *  (src:X → kanaltoken X) är uttryckbara i segmentvokabulären — ch:-klasser
+ *  spänner flera tokens och seen:/ret: saknar dimension; de förblir förslag
+ *  tills nyckelvokabulären växer. */
+export function segmentKeyForScope(scope: CohortScope): string | null {
+  const key = scope.cohorts[0] ?? "";
+  return key.startsWith("src:") ? key.slice(4) : null;
+}
+
+/** Ärliga briefrader för en kohortcell: mätdata först, designhypotesen
+ *  tydligt märkt som hypotes — aldrig påhittade siffror. */
+export function cohortBriefLines(scope: CohortScope): string[] {
+  const key = scope.cohorts[0] ?? "";
+  const lines = [
+    `Kohortcell: besökare i kohorten ${scope.cohorts.join("+")} — ${scope.visitorsInWindow} exponerade besökare senaste 30 dagarna; ett eget A/B når domslut på ~${scope.estimatedDaysToVerdict} dagar vid nuvarande trafik.`,
+    `Kohortens egen konvertering är ännu omätt (mål-join per kohort saknas) — designa på kohortens INTENT nedan; mätningen sker efteråt genom variantens kontrakt.`,
+  ];
+  if (key === "src:linkedin") {
+    lines.push(
+      "Designhypotes (märkt hypotes, inte data): LinkedIn-ankomster är ofta kollegor som utvärderar via delning — social proof och peer-bevis tidigt väger tyngre än featurelistor.",
+    );
+  } else if (key === "src:google" || key === "src:bing") {
+    lines.push(
+      "Designhypotes (märkt hypotes, inte data): sökankomster jämför alternativ — svara på 'varför just vi' med konkreta resultat före featurelistan.",
+    );
+  } else if (key.startsWith("src:")) {
+    lines.push(
+      `Designhypotes (märkt hypotes, inte data): ankomster från ${key.slice(4)} bär källans kontext — möt den referensramen i första skärmen i stället för generiskt budskap.`,
+    );
+  }
+  return lines;
+}

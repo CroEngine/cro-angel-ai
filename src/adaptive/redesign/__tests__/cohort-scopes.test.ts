@@ -1,7 +1,7 @@
 // Kohort-scope-planeraren: mätbarhet är grinden, basen är aldrig ett scope.
 import { describe, expect, it } from "vitest";
 
-import { planCohortScopes } from "../cohort-scopes";
+import { cohortBriefLines, planCohortScopes, segmentKeyForScope } from "../cohort-scopes";
 
 const row = (src: string, visitors: number, ret = false, pricing = false) => ({
   traffic_source: src,
@@ -54,5 +54,20 @@ describe("planCohortScopes", () => {
     const a = planCohortScopes([row("linkedin", 5000), row("facebook", 5000)], opts);
     const b = planCohortScopes([row("facebook", 5000), row("linkedin", 5000)], opts);
     expect(a.map((s) => s.cohorts[0])).toEqual(b.map((s) => s.cohorts[0]));
+  });
+});
+
+describe("segmentKeyForScope + cohortBriefLines", () => {
+  const scope = (k: string) => ({ cohorts: [k], visitorsInWindow: 9000, estimatedDaysToVerdict: 6 });
+  it("bara src:-scopes är serverbara som segmentnyckel i dag", () => {
+    expect(segmentKeyForScope(scope("src:linkedin"))).toBe("linkedin");
+    expect(segmentKeyForScope(scope("ch:social"))).toBeNull();
+    expect(segmentKeyForScope(scope("seen:pricing"))).toBeNull();
+  });
+  it("briefen bär mätdata + tydligt märkt hypotes, aldrig påhittad konvertering", () => {
+    const lines = cohortBriefLines(scope("src:linkedin"));
+    expect(lines[0]).toContain("9000 exponerade");
+    expect(lines[1]).toContain("omätt");
+    expect(lines.some((l) => l.includes("hypotes") && l.includes("peer-bevis"))).toBe(true);
   });
 });
