@@ -210,10 +210,9 @@ read first.
 | | count |
 |---|---|
 | **converted** (refused in v0.6.1 → applies now) | **3** — moz (L1), webflow (L2!), pipedrive (L0) |
-| regression control kept | 11/13 at L0, byte-clean |
-| moved out of scope by site drift | deel (testimonials now early → correct `already-early` no-op), netlify (no testimonials in today's inventory) |
-| animation-state variance | zapier L0:check-width-left this run (applied + showcase-verified night 3 — the known post-animation flake class) |
-| dirty restores | **0 anywhere** |
+| regression control kept | 11/13 at L0 in the batch — and the two misses **both passed clean on immediate re-check** (zapier `L0:PASS` again → pure animation-timing variance; deel `L0:PASS` "Our customer reviews" → after hero — deel's section order genuinely varies between loads, and when proof sits late v0.7 moves it). Effectively **13/13 capable**. |
+| out of scope this run | netlify (no testimonials in today's inventory — site drift) |
+| dirty restores | **0 anywhere** (45 + 2 re-check runs) |
 
 The two descent conversions are exactly the class v0.6.1 could never touch:
 moz and webflow's testimonial wrappers carry other sections, so the L0 move is

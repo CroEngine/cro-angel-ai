@@ -122,6 +122,7 @@ async function main() {
     for (const site of targets) {
       process.stdout.write(`  ${site.name.padEnd(12)} `);
       try {
+        // BEFORE: original page, consent handled, lazy sections scroll-rendered.
         await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 60_000 });
         await sleep(1500);
         await dismissAndHideConsent(page);
@@ -139,11 +140,28 @@ async function main() {
           type: "jpeg",
           quality: 50,
         });
+        // AFTER: fresh load, adapt at the top of the page — the production
+        // moment (the installed snippet adapts on load, before the visitor
+        // scrolls; scroll-transition state was making the self-checks refuse
+        // when adapt ran post-scroll). Then scroll to render lazy sections at
+        // their MOVED positions for the shot.
+        await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+        await sleep(1500);
+        await dismissAndHideConsent(page);
+        await page.evaluate(BUNDLE);
+        await page
+          .waitForFunction(() => (window as any).__angelAdaptive?.inventory != null, undefined, {
+            timeout: 30_000,
+          })
+          .catch(() => {});
         const applied = (await page.evaluate(
           () => (window as any).__angelAdaptive.adapt("engaged_no_click"),
         )) as Array<{ patternId: string }>;
         const reordered = applied.some((a) => a.patternId === "reorder_proof_first");
-        await scrollThrough(page); // re-render at the new positions
+        const why = (await page
+          .evaluate(() => (window as any).__angelReorderWhy ?? "")
+          .catch(() => "")) as string;
+        await scrollThrough(page); // render lazy sections at the new positions
         await dismissAndHideConsent(page);
         await page.screenshot({
           path: `${OUT_DIR}/${site.name}-2-after.jpg`,
@@ -153,7 +171,7 @@ async function main() {
         });
         await page.evaluate(() => (window as any).__angelAdaptive.revert()).catch(() => {});
         console.log(
-          `${reordered ? "REORDERED" : "no-reorder"} · patterns: ${applied.map((a) => a.patternId).join("+") || "none"}`,
+          `${reordered ? "REORDERED" : "no-reorder"} · patterns: ${applied.map((a) => a.patternId).join("+") || "none"}${why ? ` · why: ${why}` : ""}`,
         );
       } catch (err) {
         console.log(`FAIL ${err instanceof Error ? err.message.split("\n")[0].slice(0, 120) : err}`);
