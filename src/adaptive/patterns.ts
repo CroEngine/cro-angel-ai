@@ -428,7 +428,29 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
   const targetIdx = anchorKid ? kids.indexOf(anchorKid) : -1;
   if (fromIdx === targetIdx + 1) return { ok: false, err: "already-there" };
 
+  // Content envelope: the union of a kid's element children. Border boxes
+  // lie after promotion — a blockified kid ADOPTS child margins that used to
+  // collapse out (height grows, screen pixels identical) — so height and
+  // overlap are judged on what the visitor actually sees.
+  const envelope = (k: HTMLElement): { top: number; bottom: number; height: number } => {
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (const c of Array.from(k.children)) {
+      if (!(c instanceof HTMLElement)) continue;
+      const r = c.getBoundingClientRect();
+      if (r.height <= 0 && r.width <= 0) continue;
+      if (r.top < top) top = r.top;
+      if (r.bottom > bottom) bottom = r.bottom;
+    }
+    if (top === Infinity) {
+      const r = k.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, height: r.height };
+    }
+    return { top, bottom, height: bottom - top };
+  };
+
   const before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
+  const beforeEnv = new Map(kids.map((k) => [k, envelope(k)]));
   const focusTop0 = focusEl.getBoundingClientRect().top;
   const docH = document.documentElement.scrollHeight;
   const parentPrev = container.getAttribute("style");
@@ -469,17 +491,28 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
     container.setAttribute("data-angel-reorder", "1");
 
     // SELF-CHECK — every sibling must land where flow says it should,
-    // changed only in vertical order. Tolerances: width/left ±2px, own
-    // height ±12px, no overlap beyond 8px, doc height within max(48px, 3%).
+    // changed only in vertical order. Visible kids: width/left ±2px (border
+    // box) and CONTENT height ±12px (envelope — border boxes adopt collapsed
+    // margins on promotion while the screen stays identical). Previously
+    // invisible kids must stay invisible. No content overlap beyond 8px, doc
+    // height within max(48px, 3%).
     let bad = "";
-    const after = kids.map((k) => ({ k, r: k.getBoundingClientRect() }));
-    for (const { k, r } of after) {
+    const after = kids.map((k) => ({ k, r: k.getBoundingClientRect(), env: envelope(k) }));
+    for (const { k, r, env } of after) {
       const b = before.get(k)!;
+      const bEnv = beforeEnv.get(k)!;
+      if (b.height <= 1) {
+        if (env.height > 12) {
+          bad = "check-hidden-appeared";
+          break;
+        }
+        continue;
+      }
       if (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2) {
         bad = "check-width-left";
         break;
       }
-      if (Math.abs(r.height - b.height) > 12) {
+      if (Math.abs(env.height - bEnv.height) > 12) {
         bad = "check-height";
         break;
       }
@@ -489,9 +522,9 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
       if (dh > Math.max(48, docH * 0.03)) bad = "check-docheight";
     }
     if (!bad) {
-      const vis = after.filter((x) => x.r.height > 1).sort((a, b) => a.r.top - b.r.top);
+      const vis = after.filter((x) => x.env.height > 1).sort((a, b) => a.env.top - b.env.top);
       for (let i = 1; i < vis.length; i++) {
-        if (vis[i].r.top < vis[i - 1].r.bottom - 8) {
+        if (vis[i].env.top < vis[i - 1].env.bottom - 8) {
           bad = "check-overlap";
           break;
         }
