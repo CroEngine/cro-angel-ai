@@ -14,6 +14,7 @@ import { isAcquisition, type GoalKind } from "./crawler-inventory";
 import { fnv1a32 } from "./hash";
 import { getPattern } from "./patterns";
 import { pickItem } from "./inventory";
+import { cohortsForVisitor, cohortsSatisfied } from "./context";
 import type {
   Adaptation,
   ContentInventory,
@@ -526,6 +527,11 @@ export interface DecideOptions {
    *  (angel_sites.layout_patterns_enabled) — v1-produkten är nivå 1–2:
    *  relevans med minsta möjliga ingrepp, aldrig ombyggnad som standard. */
   allowLayoutPatterns?: boolean;
+  /** Kohortgrindar från ägargodkända regler (labbets E4b-format): mönster-id →
+   *  kohortnycklar (ch:/src:/ret:/seen:) som ALLA måste finnas på besökaren
+   *  (samma OCH-semantik som labbets ruleMatches). Frånvarande/tom = ingen
+   *  grindning — mekanismen är AV tills en sajt konfigurerar den. */
+  cohortGates?: Partial<Record<PatternId, string[]>>;
 }
 
 export function decide(
@@ -596,6 +602,15 @@ export function decide(
       // tyst sakna mönstret.
       if (!patternFitsPageType(e.id, context.pageType)) {
         declined.push({ pattern: e.id, reason: "page_type_mismatch" });
+        return null;
+      }
+      // Kohortgrind (E4b-kopplingen): ett mönster som en ägargodkänd regel
+      // scopat till en kohort serveras bara besökare vars härledda nycklar
+      // täcker kravet. Typad decline — frånvaron ska vara förklarad.
+      const requiredCohorts = options?.cohortGates?.[e.id];
+      if (requiredCohorts && requiredCohorts.length > 0 &&
+          !cohortsSatisfied(requiredCohorts, cohortsForVisitor(context))) {
+        declined.push({ pattern: e.id, reason: "cohort_mismatch" });
         return null;
       }
       // Nivågrind (v1): layout-mönster (nivå 3) är AV som standard och kräver
