@@ -75,6 +75,23 @@ Each fix is locked in `check:reorder-lab` (16 cases) and benefits the
 AUTOMATIC ladder too — the regression suite over the previously-applied
 sites gates that both stay green.
 
+## The twist: the loop's fixes were absorbed by the AUTOMATIC ladder
+
+After the mechanism fixes the designer rounds forced, the verification sweep
+showed **sentry, wrike and pandadoc now reorder via the plain automatic
+ladder at L0** — no plan needed. The designer's grid plans PROVED the moves;
+the check corrections (envelopes, relative overlap, out-of-flow exclusion,
+important-priority stretch) then generalized them into the core. The loop's
+deepest value was not the three site wins — it was using real pages to
+debug the mechanism until the automatic tier got stronger.
+
+Net auto-ladder tally on the tracked set after E3-lite: **16 applied**
+(the 13-site regression roster + sentry + wrike + pandadoc, minus two
+newly-conservative refusals under the stricter-but-truer rules: sanity — a
+real, stable 128px envelope reflow border-box measurement used to mask —
+and mercury — a 50px overlap in an adjacency pair the original page never
+had). Refusal beats weirdness; both stand.
+
 ## The honest boundaries that remain
 
 - **Full-bleed children** (clickup, rippling): a child that overflows its
