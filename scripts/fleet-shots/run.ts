@@ -31,6 +31,27 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const only = process.argv.find((a) => a.startsWith("--only="))?.slice(7);
 const limit = Number(process.argv.find((a) => a.startsWith("--limit="))?.slice(8) || 0);
 
+// Known pricing-page URLs (base site name → url), reused from the adaptive
+// sweep. Sites here get a SECOND pass: the engine adapts the pricing page for
+// a price-hesitant visitor (risk-reducer bar + pricing spotlight).
+const PRICING: Record<string, string> = {
+  monday: "https://monday.com/pricing", asana: "https://asana.com/pricing",
+  clickup: "https://clickup.com/pricing", calendly: "https://calendly.com/pricing",
+  zapier: "https://zapier.com/pricing", airtable: "https://www.airtable.com/pricing",
+  webflow: "https://webflow.com/pricing", typeform: "https://www.typeform.com/pricing/",
+  posthog: "https://posthog.com/pricing", deel: "https://www.deel.com/pricing/",
+  pipedrive: "https://www.pipedrive.com/en/prices", hotjar: "https://www.hotjar.com/pricing/",
+  mixpanel: "https://mixpanel.com/pricing/", amplitude: "https://amplitude.com/pricing",
+  ahrefs: "https://ahrefs.com/pricing", close: "https://www.close.com/pricing",
+  helpscout: "https://www.helpscout.com/pricing/", front: "https://front.com/pricing",
+  aircall: "https://aircall.io/pricing/", slack: "https://slack.com/pricing",
+  dropbox: "https://www.dropbox.com/plans", miro: "https://miro.com/pricing/",
+  todoist: "https://todoist.com/pricing", wrike: "https://www.wrike.com/price/",
+  smartsheet: "https://www.smartsheet.com/pricing", mercury: "https://mercury.com/pricing",
+  mailchimp: "https://mailchimp.com/pricing/marketing/", mentimeter: "https://www.mentimeter.com/plans",
+  bokio: "https://www.bokio.se/priser/", fortnox: "https://www.fortnox.se/pris",
+};
+
 // Best-effort accept-all consent so bars/CTAs aren't shot under a modal, THEN
 // hard-remove any banner the click missed (different CMPs, "reject-only" walls,
 // iframe messages) — a cookie banner in the frame is exactly what the fleet
@@ -123,9 +144,11 @@ const VISUAL_CHECK = `(() => {
   return issues;
 })()`;
 
+type Target = { name: string; url: string; page: "home" | "pricing"; segment: string };
 type Rec = {
   name: string;
   url: string;
+  page: "home" | "pricing";
   ok: boolean;
   error?: string;
   applied?: string[];
@@ -140,16 +163,35 @@ type Rec = {
 const withTimeout = <T>(p: Promise<T>, ms: number, label: string) =>
   Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`timeout:${label}`)), ms))]);
 
+// FULL-PAGE screenshot (the whole start page, not just the fold) — height capped
+// at 7000px so giant/infinite pages stay a sane size. Scroll through first so
+// lazy-loaded sections render, resize the viewport to the (capped) page height,
+// shoot, then restore the normal viewport for the engine's next step.
+const CAP_H = 6000;
 async function shoot(page: Page, file: string) {
-  await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
+  const H = await page
+    .evaluate(async (cap) => {
+      const step = window.innerHeight;
+      const full = () => Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+      for (let y = 0; y < Math.min(full(), 12000); y += step) {
+        window.scrollTo(0, y);
+        await new Promise((r) => setTimeout(r, 110));
+      }
+      window.scrollTo(0, 0);
+      return Math.min(full(), cap as number);
+    }, CAP_H)
+    .catch(() => 1680);
+  await page.setViewportSize({ width: 1200, height: Math.max(900, Math.round(H)) }).catch(() => {});
   await dismissConsent(page); // re-hide any banner that reappeared before the shot
-  await sleep(200);
-  await page.screenshot({ path: `${IMG}/${file}`, type: "jpeg", quality: 46 });
+  await sleep(300);
+  await page.screenshot({ path: `${IMG}/${file}`, type: "jpeg", quality: 38 });
+  await page.setViewportSize({ width: 1200, height: 1680 }).catch(() => {}); // restore for the engine
 }
 
-async function runSite(page: Page, site: { name: string; url: string }): Promise<Rec> {
-  const rec: Rec = { name: site.name, url: site.url, ok: false };
-  await page.goto(site.url, { waitUntil: "domcontentloaded", timeout: 55_000 });
+async function capturePage(page: Page, t: Target): Promise<Rec> {
+  const tag = t.page === "pricing" ? `${t.name}-pricing` : t.name;
+  const rec: Rec = { name: t.name, url: t.url, page: t.page, ok: false };
+  await page.goto(t.url, { waitUntil: "domcontentloaded", timeout: 55_000 });
   await sleep(1400);
   await dismissConsent(page);
   await sleep(700);
@@ -167,28 +209,29 @@ async function runSite(page: Page, site: { name: string; url: string }): Promise
   if (!hasInv) throw new Error("no inventory");
 
   await dismissConsent(page);
-  rec.before = `${site.name}-before.jpg`;
+  rec.before = `${tag}-before.jpg`;
   await shoot(page, rec.before);
 
-  // Adapt for a representative visitor: an engaged reader who hasn't clicked —
-  // the segment that most reliably surfaces the safe primitives (trust bar +
-  // CTA emphasis, and reorder where eligible). Real engine output, not staged.
-  const res = (await page.evaluate(() => {
-    const a = (window as unknown as { __angelAdaptive: { events: unknown[]; adapt: (s?: string) => Array<{ label: string; detail?: string }>; segment: string } }).__angelAdaptive;
+  // Adapt for this page's visitor. Home → an engaged reader who hasn't clicked
+  // (trust bar + CTA emphasis + reorder where eligible). Pricing → a price-
+  // hesitant visitor (risk-reducer bar + pricing spotlight). Real engine output.
+  const seg = t.segment;
+  const res = (await page.evaluate((s) => {
+    const a = (window as unknown as { __angelAdaptive: { events: unknown[]; adapt: (x?: string) => Array<{ label: string; detail?: string }>; segment: string } }).__angelAdaptive;
     a.events.length = 0;
     a.events.push({ type: "pageview", ts: 0 });
     a.events.push({ type: "scroll_depth", ts: 0, value: 82 });
     a.events.push({ type: "time_on_page", ts: 0, value: 45_000 });
-    const applied = a.adapt("engaged_no_click");
+    const applied = a.adapt(s);
     return { applied: applied.map((x) => x.label + (x.detail ? ` — ${x.detail}` : "")), segment: a.segment };
-  })) as { applied: string[]; segment: string };
+  }, seg)) as { applied: string[]; segment: string };
   rec.applied = res.applied;
   rec.segment = res.segment;
   await sleep(500);
   rec.visualIssues = (await page.evaluate(VISUAL_CHECK).catch(() => [])) as string[];
   rec.changed = rec.applied.length > 0;
 
-  rec.after = `${site.name}-after.jpg`;
+  rec.after = `${tag}-after.jpg`;
   await shoot(page, rec.after);
 
   // Revert and confirm the page returns clean (no angel residue).
@@ -215,16 +258,25 @@ async function freshPage(): Promise<{ browser: Browser; page: Page; sessionId: s
 
 async function main() {
   mkdirSync(IMG, { recursive: true });
-  let targets = SITES as Array<{ name: string; url: string }>;
-  if (only) targets = targets.filter((s) => s.name === only);
-  if (limit) targets = targets.slice(0, limit);
+  let sites = SITES as Array<{ name: string; url: string }>;
+  if (only) sites = sites.filter((s) => s.name === only);
+  if (limit) sites = sites.slice(0, limit);
+
+  // Build the target list: every site's HOME, plus a PRICING pass for the sites
+  // with a known pricing URL. Home + pricing are captured back to back so the
+  // gallery can pair them per site.
+  const targets: Target[] = [];
+  for (const s of sites) {
+    targets.push({ name: s.name, url: s.url, page: "home", segment: "engaged_no_click" });
+    if (PRICING[s.name]) targets.push({ name: s.name, url: PRICING[s.name], page: "pricing", segment: "price_hesitant" });
+  }
 
   const records: Rec[] = [];
   let h = await freshPage();
   const flush = () => writeFileSync(`${OUT}/manifest.json`, JSON.stringify({ generatedAtSites: records.length, records }, null, 1));
 
   for (let i = 0; i < targets.length; i++) {
-    const site = targets[i];
+    const t = targets[i];
     // Recycle the session before the 16-min cap, or after a failure.
     if (Date.now() - h.born > 11 * 60_000) {
       try {
@@ -233,15 +285,15 @@ async function main() {
       await closeSession(h.sessionId).catch(() => {});
       h = await freshPage();
     }
-    process.stdout.write(`[${i + 1}/${targets.length}] ${site.name} … `);
+    process.stdout.write(`[${i + 1}/${targets.length}] ${t.name}${t.page === "pricing" ? " (pricing)" : ""} … `);
     try {
-      const rec = await withTimeout(runSite(h.page, site), 95_000, "site");
+      const rec = await withTimeout(capturePage(h.page, t), 130_000, "site");
       records.push(rec);
       console.log(`ok · ${rec.changed ? rec.applied?.join(", ") : "no change"}${rec.visualIssues?.length ? ` · issues: ${rec.visualIssues.join(",")}` : ""}${rec.restoredClean === false ? " · RESIDUE" : ""}`);
     } catch (err) {
-      records.push({ name: site.name, url: site.url, ok: false, error: String(err).slice(0, 160) });
+      records.push({ name: t.name, url: t.url, page: t.page, ok: false, error: String(err).slice(0, 160) });
       console.log(`FAIL · ${String(err).slice(0, 90)}`);
-      // Rebuild the session — a failed site often leaves the page/session bad.
+      // Rebuild the session — a failed page often leaves the page/session bad.
       try {
         await h.browser.close();
       } catch {}
