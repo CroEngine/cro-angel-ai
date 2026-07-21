@@ -21,7 +21,7 @@ import { readFileSync } from "node:fs";
 
 import { createSession, closeSession } from "../src/lib/tests/browserbase.server";
 
-const BUNDLE = readFileSync("public/adaptive.js", "utf8");
+const BUNDLE = readFileSync("public/adaptive-lab.js", "utf8");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const JOURNEYS: Array<{ name: string; pricing: string; home: string }> = [

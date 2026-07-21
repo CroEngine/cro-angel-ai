@@ -1,6 +1,6 @@
 # E4b/E4 — Approval-gated rule serving
 
-**Date:** 2026-07-21 · **Snippet:** v0.12.0 · **Module:** `src/adaptive/rules.ts`
+**Date:** 2026-07-21 · **Snippet:** v0.12.0 · **Module:** `src/adaptive-lab/rules.ts`
 **Proof:** 11 unit tests + `scripts/serve-e2e.ts` on sentry.io (live) ·
 **Cards:** `scripts/approval-cards.ts` → published approval-queue artifact
 

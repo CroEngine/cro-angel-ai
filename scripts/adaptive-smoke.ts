@@ -3,7 +3,7 @@
 //   bun run scripts/adaptive-smoke.ts                       # demo, via real <script src>
 //   bun run scripts/adaptive-smoke.ts https://glutenforum.se  # live site, through the proxy
 //
-// Demo mode proves the BUNDLED public/adaptive.js self-runs when loaded as a
+// Demo mode proves the BUNDLED public/adaptive-lab.js self-runs when loaded as a
 // one-line <script src> (the true install path). URL mode loads a live page and
 // injects the bundle, reading back window.__angelAdaptive — the same thing that
 // happens when the snippet is installed on the real site.
@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 
 const REPO = join(dirname(new URL(import.meta.url).pathname), "..");
-const BUNDLE = join(REPO, "public/adaptive.js");
+const BUNDLE = join(REPO, "public/adaptive-lab.js");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const arg = process.argv[2];
 
@@ -62,10 +62,10 @@ async function demoMode(browser: Browser) {
   // Real install path: index.html references ./adaptive.js as a <script src>.
   const html = readFileSync(join(REPO, "public/demo/index.html"), "utf8").replace(
     '<script src="/adaptive.js" data-site-id="demo"></script>',
-    '<script src="adaptive.js" data-site-id="demo"></script>',
+    '<script src="adaptive-lab.js" data-site-id="demo"></script>',
   );
   writeFileSync(join(tmp, "index.html"), html);
-  copyFileSync(BUNDLE, join(tmp, "adaptive.js"));
+  copyFileSync(BUNDLE, join(tmp, "adaptive-lab.js"));
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await ctx.route("**/*", (r) =>
     r.request().url().startsWith("file://") ? r.continue() : r.abort(),
@@ -96,7 +96,7 @@ async function spaMode(browser: Browser) {
     `<script>setTimeout(function(){document.getElementById('root').innerHTML = ${JSON.stringify(content)};}, 1500);</script>` +
     `<script src="adaptive.js" data-site-id="spa-demo"></script></body></html>`;
   writeFileSync(join(tmp, "index.html"), html);
-  copyFileSync(BUNDLE, join(tmp, "adaptive.js"));
+  copyFileSync(BUNDLE, join(tmp, "adaptive-lab.js"));
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await ctx.route("**/*", (r) =>
     r.request().url().startsWith("file://") ? r.continue() : r.abort(),

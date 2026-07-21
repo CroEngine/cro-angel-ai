@@ -31,7 +31,7 @@ function check(name: string, ok: boolean, detail = ""): void {
 }
 
 const received: Body[] = [];
-const bundle = readFileSync(join(REPO, "public/adaptive.js"));
+const bundle = readFileSync(join(REPO, "public/adaptive-lab.js"));
 const demoHtml = readFileSync(join(REPO, "public/demo/index.html"), "utf8").replace(
   '<script src="/adaptive.js" data-site-id="demo"></script>',
   '<script src="/adaptive.js" data-site-id="demo" data-endpoint="/collect"></script>',

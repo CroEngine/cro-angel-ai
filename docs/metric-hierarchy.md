@@ -1,6 +1,6 @@
 # Metric hierarchy — one primary, few guardrails, everything else diagnostics
 
-**Date:** 2026-07-21 · **Math:** `src/adaptive/measure.ts` (22 unit tests)
+**Date:** 2026-07-21 · **Math:** `src/adaptive-lab/measure.ts` (22 unit tests)
 **Proof:** `scripts/guardrail-sim.ts` — planted traps + 200-seed calibration,
 run under four narrative seeds (42, 7, 1234, 777), all green
 
@@ -98,7 +98,7 @@ the designer brief), not by pretending the data said "no".
 
 The hierarchy is now an executable contract end-to-end, not just verdict math:
 
-- **`src/adaptive/metrics.ts` — the catalog.** Eight well-defined binary
+- **`src/adaptive-lab/metrics.ts` — the catalog.** Eight well-defined binary
   metrics (conversion, form_submit, cta_click, pricing_view, engaged,
   deep_scroll, return_visit, bounce), each with its good-direction and where
   it is observed (client / profile / owner-declared goal / collector).

@@ -15,8 +15,8 @@ import { chromium, type Page } from "playwright";
 import { copyFileSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, basename, dirname, isAbsolute } from "node:path";
-import { INVENTORY_SCRIPT } from "../src/adaptive/inventory-script";
-import { type ContentInventory } from "../src/adaptive/inventory";
+import { INVENTORY_SCRIPT } from "../src/adaptive-lab/inventory-script";
+import { type ContentInventory } from "../src/adaptive-lab/inventory";
 
 const REPO = join(dirname(new URL(import.meta.url).pathname), "..");
 const wantJson = process.argv.includes("--json");

@@ -1,6 +1,6 @@
 # E2 — Cohort profiles: "people who arrived the same way before"
 
-**Date:** 2026-07-21 · **Snippet:** v0.10.0 · **Module:** `src/adaptive/profile.ts`
+**Date:** 2026-07-21 · **Snippet:** v0.10.0 · **Module:** `src/adaptive-lab/profile.ts`
 **Proof:** 30 unit tests + `scripts/journey-e2e.ts` on four real sites
 
 ## What it is

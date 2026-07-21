@@ -6,8 +6,8 @@ import {
   applyPlannedReorder,
   type PlannedReorder,
   type Segment,
-} from "../src/adaptive/patterns";
-import type { ContentInventory } from "../src/adaptive/inventory";
+} from "../src/adaptive-lab/patterns";
+import type { ContentInventory } from "../src/adaptive-lab/inventory";
 
 (window as unknown as Record<string, unknown>).__angelLab = {
   apply: (inv: ContentInventory, segment: Segment) => applyAdaptations(inv, segment),

@@ -13,7 +13,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 
-import { defaultSuccessSpec, metricById, type SuccessSpec } from "../src/adaptive/metrics";
+import { defaultSuccessSpec, metricById, type SuccessSpec } from "../src/adaptive-lab/metrics";
 
 function arg(name: string): string | undefined {
   const p = `--${name}=`;

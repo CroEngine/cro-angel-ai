@@ -21,15 +21,15 @@ import { writeFileSync, mkdirSync } from "node:fs";
 
 import { mulberry32 } from "./sim-rng";
 
-import { assignBucket, ruleMatches, validateRules, type AngelRule } from "../src/adaptive/rules";
-import { evaluateRuleWithSpec } from "../src/adaptive/metrics";
+import { assignBucket, ruleMatches, validateRules, type AngelRule } from "../src/adaptive-lab/rules";
+import { evaluateRuleWithSpec } from "../src/adaptive-lab/metrics";
 import {
   ALPHA,
   GUARDRAIL_ALPHA,
   measureRule,
   type ArmStats,
   type RuleRuling,
-} from "../src/adaptive/measure";
+} from "../src/adaptive-lab/measure";
 
 const OUT_DIR =
   "/tmp/claude-0/-home-user-cro-angel-ai/c11460d4-452b-5901-aaf1-829bf613facc/scratchpad/guardrail-sim";

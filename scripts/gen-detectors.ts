@@ -42,7 +42,7 @@ const body = detectors
   .map(([name, src]) => `export const ${name}: () => any = () => (${src});`)
   .join("\n\n");
 
-const out = join(REPO, "src/adaptive/detectors.generated.ts");
+const out = join(REPO, "src/adaptive-lab/detectors.generated.ts");
 writeFileSync(out, `${header}\n${body}\n`);
 
 console.log(`wrote ${out} (${detectors.length} detectors, eval-free)`);

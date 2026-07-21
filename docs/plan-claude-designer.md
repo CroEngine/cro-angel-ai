@@ -73,7 +73,7 @@ profile knows the visitor saw /pricing yesterday.
 *Effort ~3-4 nights. Needs the collector deployed (reference exists) or
 integration with the live angel_* events (they already store visitor_hash).*
 
-**STATUS: client-side half shipped (v0.10, `src/adaptive/profile.ts`).**
+**STATUS: client-side half shipped (v0.10, `src/adaptive-lab/profile.ts`).**
 Touch history (first/last, UTM-over-referrer), 30-min-session visit counts,
 pages-seen ring buffer, sticky seenPricing — journey-proven on four real
 sites (price_hesitant now derives on homepages; cohort keys `ch:/src:/ret:/
@@ -141,7 +141,7 @@ site-specific and cohort-specific, grounded in that site's own measured data.
 **STATUS: mechanics simulation-proven (E5-sim).** The full tick — fabricated
 population → cohort aggregates → the real rule machinery serving at ramp 50
 with deterministic holdout → the real measurement math
-(`src/adaptive/measure.ts`) → verdicts → `rules-measured.json` + the next
+(`src/adaptive-lab/measure.ts`) → verdicts → `rules-measured.json` + the next
 designer brief — runs end-to-end with a PLANTED ground truth and recovers
 it: win where +30% relative was planted, no_effect on the A/A null control,
 zero serves of the unapproved rule. Calibration over 200 seeded worlds:

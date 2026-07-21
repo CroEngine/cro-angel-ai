@@ -1,8 +1,8 @@
 # E5-sim — the whole loop on fabricated data, with a planted truth
 
 **Date:** 2026-07-21 · **Script:** `scripts/loop-sim.ts` (pure bun, no browser)
-**Math:** `src/adaptive/measure.ts` (10 unit tests) · **Serving:** the REAL
-`ruleMatches` + `assignBucket` from `src/adaptive/rules.ts` — no mocks
+**Math:** `src/adaptive-lab/measure.ts` (10 unit tests) · **Serving:** the REAL
+`ruleMatches` + `assignBucket` from `src/adaptive-lab/rules.ts` — no mocks
 
 ## Why this exists
 

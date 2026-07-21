@@ -23,8 +23,8 @@ import { writeFileSync, mkdirSync } from "node:fs";
 
 import { mulberry32 } from "./sim-rng";
 
-import { assignBucket, ruleMatches, type AngelRule } from "../src/adaptive/rules";
-import { measureRule, ALPHA, type ArmStats } from "../src/adaptive/measure";
+import { assignBucket, ruleMatches, type AngelRule } from "../src/adaptive-lab/rules";
+import { measureRule, ALPHA, type ArmStats } from "../src/adaptive-lab/measure";
 
 const OUT_DIR =
   "/tmp/claude-0/-home-user-cro-angel-ai/c11460d4-452b-5901-aaf1-829bf613facc/scratchpad/loop-sim";

@@ -14,7 +14,7 @@ import {
   defaultSuccessSpec,
   estimateVerdictTime,
   metricById,
-} from "../src/adaptive/metrics";
+} from "../src/adaptive-lab/metrics";
 
 type CardDef = {
   site: string;
