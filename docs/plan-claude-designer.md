@@ -133,6 +133,17 @@ what won and iterates. This is the moat: every night the designs get more
 site-specific and cohort-specific, grounded in that site's own measured data.
 *Continuous once E4 is live.*
 
+**STATUS: mechanics simulation-proven (E5-sim).** The full tick — fabricated
+population → cohort aggregates → the real rule machinery serving at ramp 50
+with deterministic holdout → the real measurement math
+(`src/adaptive/measure.ts`) → verdicts → `rules-measured.json` + the next
+designer brief — runs end-to-end with a PLANTED ground truth and recovers
+it: win where +30% relative was planted, no_effect on the A/A null control,
+zero serves of the unapproved rule. Calibration over 200 seeded worlds:
+false-positive rate 2.5% (≤ alpha), power 81% at the design point. See
+`docs/loop-sim.md`. Remaining, by construction: real conversion outcomes —
+the one question that needs live visitors — via the collector/goal join.
+
 ## Honest constraints carried forward
 
 - Reordering stays inside flex/grid siblings (the safe subset) until measured
