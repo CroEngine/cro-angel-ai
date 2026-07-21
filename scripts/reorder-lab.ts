@@ -129,6 +129,41 @@ const CASES: Case[] = [
     expectTrail: "already-early",
     expectApplied: false,
   },
+  {
+    // The webflow class, caught by the showcase screenshots: hero undetected
+    // (real hero classifies as "content") and sections[0] is the HEADER. The
+    // old anchor fallback anchored on the header and hoisted proof above the
+    // real hero. The anchor must skip chrome sections → first content block
+    // is the anchor → proof already sits right after it → honest refusal.
+    name: "header-anchor-webflow",
+    html:
+      `<header id="hd" style="height:70px">nav</header>` +
+      `<main id="m">${box("c1", 900, "real hero (content)")}${box("f2", 700, "f2")}${box("testi", 400, "testi")}${box("cta", 300, "cta")}</main>`,
+    sections: [
+      { type: "header", selector: "#hd" },
+      { type: "content", selector: "#c1" },
+      { type: "features", selector: "#f2" },
+      { type: "testimonials", selector: "#testi", heading: "Brands" },
+    ],
+    expectTrail: "already-early",
+    expectApplied: false,
+  },
+  {
+    // Page-top floor: anchor is a thin top banner (mis-detection stand-in) —
+    // an after-anchor move would land the proof at the very top of the page.
+    // check-above-anchor alone passes (anchor bottom is tiny); the 300px
+    // page-top floor must refuse.
+    name: "page-top-floor",
+    html: `<main id="m">${box("banner", 80, "banner")}${box("f1", 500, "f1")}${box("f2", 500, "f2")}${box("testi", 400, "testi")}${box("cta", 300, "cta")}</main>`,
+    sections: [
+      { type: "content", selector: "#banner" },
+      { type: "features", selector: "#f1" },
+      { type: "features", selector: "#f2" },
+      { type: "testimonials", selector: "#testi", heading: "Proof" },
+    ],
+    expectTrail: "check-page-top",
+    expectApplied: false,
+  },
 ];
 
 async function main() {

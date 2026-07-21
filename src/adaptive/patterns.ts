@@ -312,7 +312,18 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
   const ti = secs.findIndex((s) => s.type === "testimonials" && s.selector);
   if (ti < 0) return null;
   const heroI = secs.findIndex((s) => s.type === "hero" && s.selector);
-  const anchorI = heroI >= 0 ? heroI : 0;
+  // Anchor = what the proof must sit AFTER. Never a header/nav/footer: on
+  // pages where the hero goes undetected (webflow — its hero classifies as
+  // plain "content"), the old sections[0] fallback anchored on the page
+  // HEADER, and "below the nav" is satisfied by the very top of the page —
+  // the showcase screenshots caught proof landing ABOVE the real hero. Fall
+  // back to the first content-ish section instead (usually the real hero).
+  const CHROME_SECTIONS = /^(header|nav|footer)$/;
+  const anchorI =
+    heroI >= 0
+      ? heroI
+      : secs.findIndex((s) => s.selector && !CHROME_SECTIONS.test(s.type));
+  if (anchorI < 0) return null;
   const trail: string[] = [];
   const note = (reason: string): void => {
     trail.push(reason);
@@ -414,12 +425,18 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
     );
     if (dragsOthers) return `L${depth}:wrapper-carries-other-sections`;
     // Anchor: hero wrapper when the hero lives in this container (land right
-    // after it); otherwise the container sits below the hero already and the
-    // testimonial goes to the FRONT of its group.
+    // after it); otherwise the testimonial goes to the FRONT of its group —
+    // but only when the group itself already sits below the anchor, so a
+    // front move can never hoist proof above the hero.
     let anchorKid: HTMLElement | null = null;
     if (container.contains(anchorEl)) {
       anchorKid = kids.find((k) => k === anchorEl || k.contains(anchorEl)) ?? null;
       if (!anchorKid || anchorKid === moveKid) return `L${depth}:no-distinct-wrapper-kids`;
+    } else if (
+      container.getBoundingClientRect().top <
+      anchorEl.getBoundingClientRect().bottom - 40
+    ) {
+      return `L${depth}:container-above-anchor`;
     }
     const fromIdx = kids.indexOf(moveKid);
     const targetIdx = anchorKid ? kids.indexOf(anchorKid) : -1;
@@ -486,10 +503,13 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
       if (!bad) {
         // The move must EARN its keep: the testimonial visibly earlier (this
         // also refuses explicit-grid no-ops where `order` changed nothing),
-        // never above the hero it should follow, never collapsed away.
+        // never above the hero it should follow, never at the very top of
+        // the page (even a mis-detected anchor can't excuse landing above
+        // the fold's opening content), never collapsed away.
         const t = testiEl.getBoundingClientRect();
         if (testiTop0 - t.top < REORDER_MIN_LIFT_PX) bad = "no-improvement";
         else if (t.top < anchorEl.getBoundingClientRect().bottom - 40) bad = "check-above-anchor";
+        else if (t.top + window.scrollY < 300) bad = "check-page-top";
         else if (t.height < 2) bad = "check-collapsed";
       }
       if (bad) {

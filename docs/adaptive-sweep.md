@@ -209,10 +209,38 @@ read first.
 
 | | count |
 |---|---|
-| **converted** (refused in v0.6.1 → applies now) | **3** — moz (L1), webflow (L2!), pipedrive (L0) |
+| **converted** (refused in v0.6.1 → applies now) | **2** — moz (L1), pipedrive (L0). webflow initially counted as a third (L2) and was **retracted by the gallery check** — see below. |
 | regression control kept | 11/13 at L0 in the batch — and the two misses **both passed clean on immediate re-check** (zapier `L0:PASS` again → pure animation-timing variance; deel `L0:PASS` "Our customer reviews" → after hero — deel's section order genuinely varies between loads, and when proof sits late v0.7 moves it). Effectively **13/13 capable**. |
 | out of scope this run | netlify (no testimonials in today's inventory — site drift) |
 | dirty restores | **0 anywhere** (45 + 2 re-check runs) |
+
+## The screenshot that beat the numbers: webflow retracted, two new guards
+
+The webflow "conversion" passed every geometric self-check — and the
+full-page AFTER shot showed the testimonial wall sitting **above the real
+hero** ("Make your website a growth engine"). Root cause, from a section
+diagnostic: webflow's hero goes undetected (it classifies as plain
+`content`), so the anchor fallback took `sections[0]` — the page **header**.
+"Below the nav" is satisfied by the very top of the page, so
+`check-above-anchor` passed honestly against the wrong anchor, and the L2
+front-move hoisted the proof to the top.
+
+Fixes (v0.7, same day):
+
+1. **The anchor may never be chrome** (`header`/`nav`/`footer`) — hero if
+   detected, else the first content-ish section. On webflow that anchor is
+   the real hero block, the testimonial already sits directly after it, and
+   the pattern now honestly refuses with `already-early`.
+2. **Page-top floor**: independent of anchor quality, a move may never land
+   the proof above ~300px absolute — `check-page-top` — and a front-move's
+   container must already sit below the anchor (`container-above-anchor`).
+
+Both guards are locked into the offline lab (`header-anchor-webflow`,
+`page-top-floor` cases; 8/8 green) and the applied set re-verified. The
+lesson is now product doctrine: **geometric cleanliness is not semantic
+correctness — every new reorder strategy gets a gallery pass before it
+counts.** (This is exactly the acceptance standard the user set: "det måste
+falla in på rätt plats".)
 
 The two descent conversions are exactly the class v0.6.1 could never touch:
 moz and webflow's testimonial wrappers carry other sections, so the L0 move is
