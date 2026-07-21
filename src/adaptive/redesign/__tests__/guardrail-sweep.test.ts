@@ -12,7 +12,7 @@ const rpc = (over: Partial<Record<string, number>> = {}) => [
   { arm: "variant", visits: 5000, conversions: 250, continuations: 2600,
     cta_clicks: 300, form_submits: 40, engaged: over.vEng ?? 2000, ...{} },
   { arm: "control", visits: 5000, conversions: over.cConv ?? 250, continuations: over.cCont ?? 2600,
-    cta_clicks: 300, form_submits: 40, engaged: over.cEng ?? 2000 },
+    cta_clicks: 300, form_submits: 40, engaged: over.cEng ?? 2000, deep_scrolls: 900 },
 ];
 
 describe("metricArmsFromRpc", () => {
@@ -20,6 +20,7 @@ describe("metricArmsFromRpc", () => {
     const arms = metricArmsFromRpc(rpc(), "conversion")!;
     expect(arms.bounce.served).toEqual({ n: 5000, conversions: 2400 });
     expect(arms.conversion.served.conversions).toBe(250);
+    expect(arms.deep_scroll.holdout).toEqual({ n: 5000, conversions: 900 });
   });
   it("continuation-läget matar primären med 'gick vidare'", () => {
     const arms = metricArmsFromRpc(rpc(), "continuation")!;

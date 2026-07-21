@@ -334,6 +334,7 @@ export type Database = {
           cta_clicks: number
           form_submits: number
           engaged: number
+          deep_scrolls: number
         }[]
       }
       angel_page_segment_rollup: {

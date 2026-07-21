@@ -706,6 +706,37 @@ const VARIANT_TRANSITIONS: Record<string, string[]> = {
  * partiella unika indexet (max EN serving/winner per site·path·segment) gör
  * dubbel-aktivering till ett städat fel i stället för ett odefinierat A/B.
  */
+/** Ägaren redigerar framgångskontraktet — valideras hårt (metrikkatalogen);
+ *  ogiltigt kontrakt avvisas i stället för att skrivas halvtrasigt. */
+export const setVariantSuccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      site: z.string().min(1),
+      variantId: z.string().uuid(),
+      success: z.unknown(),
+    }),
+  )
+  .handler(async ({ data, context }): Promise<{ ok: boolean; reason?: string }> => {
+    const { site, variantId } = data;
+    const spec = validateSuccessSpec(data.success);
+    if (!spec) return { ok: false, reason: "invalid success contract" };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!(await ownsSite(supabaseAdmin, context as unknown as AuthCtx, site))) {
+      return { ok: false, reason: "not owner" };
+    }
+    const { error } = await supabaseAdmin
+      .from("angel_variants")
+      .update({ success: spec as unknown as Json, updated_at: new Date().toISOString() })
+      .eq("id", variantId)
+      .eq("site", site);
+    if (error) {
+      console.warn(`[angel] setVariantSuccess failed: ${error.message}`);
+      return { ok: false, reason: "write failed" };
+    }
+    return { ok: true };
+  });
+
 export const setVariantStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(

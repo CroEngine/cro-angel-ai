@@ -34,6 +34,7 @@ export interface ArmsRpcRow {
   cta_clicks?: number | string;
   form_submits?: number | string;
   engaged?: number | string;
+  deep_scrolls?: number | string;
 }
 
 export type MetricArms = Record<string, { served: ArmStats; holdout: ArmStats }>;
@@ -50,7 +51,7 @@ export function metricArmsFromRpc(
 ): MetricArms | null {
   const armOf = (
     name: string,
-  ): ArmStats & { cont: number; clicks: number; forms: number; eng: number } => {
+  ): ArmStats & { cont: number; clicks: number; forms: number; eng: number; deep: number } => {
     const r = rows.find((x) => x.arm === name);
     const n = Number(r?.visits) || 0;
     const conv = Number(r?.conversions) || 0;
@@ -62,6 +63,7 @@ export function metricArmsFromRpc(
       clicks: Number(r?.cta_clicks) || 0,
       forms: Number(r?.form_submits) || 0,
       eng: Number(r?.engaged) || 0,
+      deep: Number(r?.deep_scrolls) || 0,
     };
   };
   const v = armOf("variant");
@@ -77,6 +79,7 @@ export function metricArmsFromRpc(
     engaged: pair(v.eng, v.n, c.eng, c.n),
     cta_click: pair(v.clicks, v.n, c.clicks, c.n),
     form_submit: pair(v.forms, v.n, c.forms, c.n),
+    deep_scroll: pair(v.deep, v.n, c.deep, c.n),
   };
 }
 

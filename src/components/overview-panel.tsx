@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { setVariantStatus } from "@/lib/dashboard/dashboard.functions";
+import { setVariantStatus, setVariantSuccess } from "@/lib/dashboard/dashboard.functions";
 import { parentSegmentKey, segmentDims } from "@/lib/segment-key";
 import { CompareOverlay, JourneysOverlay } from "./dashboard/overlays";
 import {
@@ -154,6 +154,17 @@ export function OverviewPanel({
       queryClient.invalidateQueries({ queryKey: ["dashboard", site] });
     },
   });
+  // Kontraktsredigeraren: ägaren väljer primärt mått + guardrails per variant.
+  const contract = useMutation({
+    mutationFn: (args: { variantId: string; success: SuccessSpec }) =>
+      setVariantSuccess({ data: { site, ...args } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", site] });
+    },
+  });
+  const [editingContract, setEditingContract] = useState(false);
+  const [draftPrimary, setDraftPrimary] = useState("conversion");
+  const [draftGuards, setDraftGuards] = useState<string[]>(["bounce", "engaged"]);
   // Varje trafikpåverkande statusbyte bekräftas — en felklickning ska inte
   // starta eller stoppa ett A/B.
   const askStatus = (v: VariantView, next: "serving" | "winner" | "retired", label: string) => {
@@ -636,6 +647,98 @@ export function OverviewPanel({
               </div>
 
               {armsBlock(selArms, selVariant?.success)}
+              {selVariant ? (
+                <div className="mt-2">
+                  {!editingContract ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sp = selVariant.success ?? {
+                          primary: "conversion",
+                          guardrails: ["bounce", "engaged"],
+                        };
+                        setDraftPrimary(sp.primary);
+                        setDraftGuards([...sp.guardrails]);
+                        setEditingContract(true);
+                      }}
+                      className="text-[11.5px] font-semibold text-stone-500 underline decoration-dotted hover:text-stone-700"
+                    >
+                      Edit success contract
+                    </button>
+                  ) : (
+                    <div className="mt-1 flex flex-wrap items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-[12px]">
+                      <label className="font-semibold text-stone-600">Judged on</label>
+                      <select
+                        value={draftPrimary}
+                        onChange={(e) => {
+                          setDraftPrimary(e.target.value);
+                          setDraftGuards((g) => g.filter((x) => x !== e.target.value));
+                        }}
+                        className="rounded border border-stone-300 bg-white px-1.5 py-0.5"
+                      >
+                        {["conversion", "engaged", "deep_scroll", "cta_click", "form_submit"].map(
+                          (m) => (
+                            <option key={m} value={m}>
+                              {METRIC_EN[m] ?? m}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                      <span className="font-semibold text-stone-600">guarded by</span>
+                      {["bounce", "engaged", "cta_click", "form_submit", "conversion"]
+                        .filter((m) => m !== draftPrimary)
+                        .map((m) => {
+                          const on = draftGuards.includes(m);
+                          return (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() =>
+                                setDraftGuards((g) =>
+                                  on ? g.filter((x) => x !== m) : g.length >= 4 ? g : [...g, m],
+                                )
+                              }
+                              className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                                on
+                                  ? "border-emerald-600 bg-emerald-50 text-emerald-800"
+                                  : "border-stone-300 bg-white text-stone-500"
+                              }`}
+                            >
+                              {METRIC_EN[m] ?? m}
+                            </button>
+                          );
+                        })}
+                      <button
+                        type="button"
+                        disabled={contract.isPending}
+                        onClick={() =>
+                          contract.mutate(
+                            {
+                              variantId: selVariant.id,
+                              success: {
+                                primary: draftPrimary,
+                                guardrails: draftGuards,
+                                mdeRel: selVariant.success?.mdeRel ?? 0.1,
+                              },
+                            },
+                            { onSuccess: () => setEditingContract(false) },
+                          )
+                        }
+                        className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11.5px] font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingContract(false)}
+                        className="text-[11.5px] font-semibold text-stone-500 hover:text-stone-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               {/* varianterna som hör till valet — ägarens knappar bor här */}
               <div className="mt-6">
