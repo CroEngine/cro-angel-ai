@@ -278,40 +278,62 @@ const pricingSpotlight: Pattern = (inv, ctx) => {
   };
 };
 
-// ── v0.6: visual REORDERING without touching the DOM ────────────────────────
+// ── v0.6→v0.7: visual REORDERING without touching the DOM ───────────────────
 // "Flytta runt" done safely: CSS `order` changes what the visitor SEES while
 // the DOM (and the site's framework) never changes. On flex/grid parents the
 // property just works; block-stacked parents are promoted to flex-column,
-// which CAN shift spacing (margin collapsing differs) — so the pattern
-// SELF-CHECKS: it snapshots every sibling's rect, applies, re-measures, and
-// ROLLS ITSELF BACK unless everything landed within tight tolerances (same
-// width/left, same height, no overlaps, total page height within 3%). A
-// reorder that can't be proven invisible-but-for-the-order does not ship —
-// the pattern refuses instead. The move itself: bring the social-proof
-// (testimonials) section up to sit right after the hero — the classic
-// "skeptical reader needs proof early" play.
+// which CAN shift spacing (margin collapsing differs) — so every attempt
+// SELF-CHECKS: snapshot every sibling's rect, apply, re-measure, and ROLL
+// BACK unless everything landed within tight tolerances. A reorder that can't
+// be proven invisible-but-for-the-order does not ship.
+//
+// v0.7 — the attempt LOOP. One strategy → refuse was leaving structurally
+// possible moves on the table. Now the pattern generates a LADDER of
+// candidate containers, from the nearest common ancestor of testimonial and
+// hero (the big "right after the hero" jump) down level by level toward the
+// testimonial's own wrapper (the minimal "top of its own group" move), and
+// tries each in turn. Because apply → measure → rollback runs synchronously
+// inside one task, the browser never paints a failed attempt — the visitor
+// only ever sees the first PROVEN-clean result, or the original page. Every
+// attempt's outcome is recorded in __angelReorderWhy ("L0:check-height;
+// L1:PASS") so refusals stay diagnosable.
+//
+// v0.7 also closes two v0.6 gaps: an explicit-grid parent where `order` has
+// no visual effect used to pass the checks as a silent no-op "applied" — the
+// new no-improvement check (testimonial must land ≥200px higher) refuses it
+// and moves on; and restores are now attribute-exact (a missing style
+// attribute is removed again, not left behind as style="").
+const REORDER_MIN_LIFT_PX = 200;
+const REORDER_TIME_BUDGET_MS = 150;
+const REORDER_MAX_ATTEMPTS = 5;
+
 const reorderProofFirst: Pattern = (inv, ctx) => {
   const secs = inv.sections;
   const ti = secs.findIndex((s) => s.type === "testimonials" && s.selector);
   if (ti < 0) return null;
   const heroI = secs.findIndex((s) => s.type === "hero" && s.selector);
   const anchorI = heroI >= 0 ? heroI : 0;
-  if (ti <= anchorI + 2) return null; // proof already sits early — nothing to gain
-  const why = (reason: string): null => {
+  const trail: string[] = [];
+  const note = (reason: string): void => {
+    trail.push(reason);
     try {
-      (window as unknown as { __angelReorderWhy?: string }).__angelReorderWhy = reason;
+      (window as unknown as { __angelReorderWhy?: string }).__angelReorderWhy = trail.join(";");
     } catch {
       /* ignore */
     }
+  };
+  const why = (reason: string): null => {
+    note(reason);
     return null;
   };
+  if (ti <= anchorI + 2) return why("already-early"); // proof already sits early
   const testiEl = q(secs[ti].selector);
   const anchorEl = q(secs[anchorI].selector);
   if (!testiEl || !anchorEl) return why("selector-miss");
-  // v0.6.1: sections often sit in per-section WRAPPERS (main > div > section),
-  // so direct siblinghood is too strict. Find the nearest common ancestor and
-  // operate on ITS direct children that contain each section — the wrappers
-  // are what visually stack, so they are what `order` must move.
+
+  // Sections often sit in per-section WRAPPERS (main > div > section), so
+  // direct siblinghood is too strict. Find the nearest common ancestor — the
+  // wrappers under it are what visually stack, so they are what `order` moves.
   const chain = (el: HTMLElement): HTMLElement[] => {
     const out: HTMLElement[] = [];
     let p: HTMLElement | null = el;
@@ -330,85 +352,185 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
       break;
     }
   }
-  if (!common) common = testiEl.parentElement;
-  const parent = common;
-  if (!parent) return why("no-common-parent");
-  const kids = Array.from(parent.children).filter((c): c is HTMLElement => c instanceof HTMLElement);
-  const testiKid = kids.find((k) => k === testiEl || k.contains(testiEl));
-  const anchorKid = kids.find((k) => k === anchorEl || k.contains(anchorEl));
-  if (!testiKid || !anchorKid || testiKid === anchorKid) return why("no-distinct-wrapper-kids");
-  // The testimonials wrapper must not drag unrelated sections along with it.
-  const testiWrapsOthers = secs.some(
-    (s, i) => i !== ti && s.selector && (() => {
-      const el = q(s.selector);
-      return !!el && testiKid.contains(el) && !testiEl.contains(el);
-    })(),
-  );
-  if (testiWrapsOthers) return why("wrapper-carries-other-sections");
-  if (kids.length < 3 || kids.length > 40) return why("kid-count-" + kids.length);
 
-  const before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
-  const docH = document.documentElement.scrollHeight;
-  const parentPrev = parent.getAttribute("style") ?? "";
-  const kidPrev = new Map(kids.map((k) => [k, k.getAttribute("style") ?? ""]));
-  const undo = () => {
-    parent.setAttribute("style", parentPrev);
-    parent.removeAttribute("data-angel-reorder");
-    for (const k of kids) k.setAttribute("style", kidPrev.get(k) ?? "");
+  // The candidate ladder: L0 = the common ancestor (move the testimonial
+  // wrapper to right after the hero wrapper), then each level down toward the
+  // testimonial's own parent (move it to the top of its own wrapper group —
+  // a smaller but still real lift, and the container there may already be
+  // flex/grid where L0's block-promotion drifted). No common ancestor (rare:
+  // separate top-level trees) → only the local move remains.
+  const containers: HTMLElement[] = [];
+  if (common) {
+    const path: HTMLElement[] = [];
+    let c: HTMLElement | null = testiEl.parentElement;
+    while (c && c !== common) {
+      path.push(c);
+      c = c.parentElement;
+    }
+    path.push(common);
+    containers.push(...path.reverse());
+  } else if (testiEl.parentElement) {
+    containers.push(testiEl.parentElement);
+  }
+  if (!containers.length) return why("no-container");
+
+  const restoreStyle = (el: HTMLElement, v: string | null) => {
+    if (v === null) {
+      // A bare removeAttribute("style") while inline-style serialization is
+      // still pending lets Chromium re-materialize an empty style="" — the
+      // exact residue the byte-clean promise forbids. Clearing the CSSOM and
+      // READING the attribute first flushes that state; only then is removal
+      // permanent (verified by op-sequence bisect in the reorder lab).
+      el.style.cssText = "";
+      void el.getAttribute("style");
+      el.removeAttribute("style");
+    } else {
+      el.setAttribute("style", v);
+    }
   };
 
-  try {
-    const cs = window.getComputedStyle(parent);
-    const isFlexCol =
-      cs.display.indexOf("flex") !== -1 &&
-      (cs.flexDirection === "column" || cs.flexDirection === "column-reverse");
-    const isGrid = cs.display.indexOf("grid") !== -1;
-    if (!isFlexCol && !isGrid) {
-      // Block-stacked: promote to flex-column so `order` takes effect. Any
-      // margin-collapse spacing drift is caught by the self-check below.
-      parent.style.display = "flex";
-      parent.style.flexDirection = "column";
-    }
-    kids.forEach((k, i) => {
-      k.style.order = String(i * 2);
-    });
-    testiKid.style.order = String(kids.indexOf(anchorKid) * 2 + 1);
-    parent.setAttribute("data-angel-reorder", "1");
+  let keptAnchored = false;
+  let keptDepth = -1;
 
-    // SELF-CHECK — every sibling must land where flow says it should, changed
-    // only in vertical order. Tolerances: width/left ±2px, own height ±12px,
-    // no vertical overlap beyond 8px, document height within max(48px, 3%).
-    let bad = "";
-    const after = kids.map((k) => ({ k, r: k.getBoundingClientRect() }));
-    for (const { k, r } of after) {
-      const b = before.get(k)!;
-      if (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2) { bad = "check-width-left"; break; }
-      if (Math.abs(r.height - b.height) > 12) { bad = "check-height"; break; }
+  // One attempt: guards → apply → self-check → keep ("") or undo (reason).
+  // Runs synchronously, so a failed attempt is rolled back BEFORE the browser
+  // can paint it — chansning på insidan, aldrig på skärmen.
+  const attempt = (container: HTMLElement, depth: number): string => {
+    const kids = Array.from(container.children).filter(
+      (k): k is HTMLElement => k instanceof HTMLElement,
+    );
+    if (kids.length < 3 || kids.length > 40) return `L${depth}:kid-count-${kids.length}`;
+    const moveKid = kids.find((k) => k === testiEl || k.contains(testiEl));
+    if (!moveKid) return `L${depth}:no-move-kid`;
+    // The moved wrapper must not drag unrelated sections along with it.
+    const dragsOthers = secs.some(
+      (s, i) =>
+        i !== ti &&
+        s.selector &&
+        (() => {
+          const el = q(s.selector);
+          return !!el && moveKid.contains(el) && !testiEl.contains(el);
+        })(),
+    );
+    if (dragsOthers) return `L${depth}:wrapper-carries-other-sections`;
+    // Anchor: hero wrapper when the hero lives in this container (land right
+    // after it); otherwise the container sits below the hero already and the
+    // testimonial goes to the FRONT of its group.
+    let anchorKid: HTMLElement | null = null;
+    if (container.contains(anchorEl)) {
+      anchorKid = kids.find((k) => k === anchorEl || k.contains(anchorEl)) ?? null;
+      if (!anchorKid || anchorKid === moveKid) return `L${depth}:no-distinct-wrapper-kids`;
     }
-    if (!bad) {
-      const dh = Math.abs(document.documentElement.scrollHeight - docH);
-      if (dh > Math.max(48, docH * 0.03)) bad = "check-docheight";
-    }
-    if (!bad) {
-      const vis = after.filter((x) => x.r.height > 1).sort((a, b) => a.r.top - b.r.top);
-      for (let i = 1; i < vis.length; i++) {
-        if (vis[i].r.top < vis[i - 1].r.bottom - 8) { bad = "check-overlap"; break; }
+    const fromIdx = kids.indexOf(moveKid);
+    const targetIdx = anchorKid ? kids.indexOf(anchorKid) : -1;
+    if (fromIdx === targetIdx + 1) return `L${depth}:already-there`;
+
+    const before = new Map(kids.map((k) => [k, k.getBoundingClientRect()]));
+    const testiTop0 = testiEl.getBoundingClientRect().top;
+    const docH = document.documentElement.scrollHeight;
+    const parentPrev = container.getAttribute("style");
+    const kidPrev = new Map(kids.map((k) => [k, k.getAttribute("style")]));
+    const undo = () => {
+      restoreStyle(container, parentPrev);
+      container.removeAttribute("data-angel-reorder");
+      for (const k of kids) restoreStyle(k, kidPrev.get(k) ?? null);
+    };
+
+    try {
+      const cs = window.getComputedStyle(container);
+      const isFlexCol =
+        cs.display.indexOf("flex") !== -1 &&
+        (cs.flexDirection === "column" || cs.flexDirection === "column-reverse");
+      const isGrid = cs.display.indexOf("grid") !== -1;
+      if (!isFlexCol && !isGrid) {
+        // Block-stacked: promote to flex-column so `order` takes effect. Any
+        // margin-collapse spacing drift is caught by the self-check below.
+        container.style.display = "flex";
+        container.style.flexDirection = "column";
       }
-    }
-    if (bad) {
-      undo();
-      return why(bad); // provably-clean reorder not possible here — refuse
-    }
-  } catch {
-    undo();
-    return why("apply-threw");
-  }
+      kids.forEach((k, i) => {
+        k.style.order = String(i * 2);
+      });
+      moveKid.style.order = anchorKid ? String(kids.indexOf(anchorKid) * 2 + 1) : "-1";
+      container.setAttribute("data-angel-reorder", "1");
 
-  ctx.reverts.push(undo);
+      // SELF-CHECK — every sibling must land where flow says it should,
+      // changed only in vertical order. Tolerances: width/left ±2px, own
+      // height ±12px, no overlap beyond 8px, doc height within max(48px, 3%).
+      let bad = "";
+      const after = kids.map((k) => ({ k, r: k.getBoundingClientRect() }));
+      for (const { k, r } of after) {
+        const b = before.get(k)!;
+        if (Math.abs(r.width - b.width) > 2 || Math.abs(r.left - b.left) > 2) {
+          bad = "check-width-left";
+          break;
+        }
+        if (Math.abs(r.height - b.height) > 12) {
+          bad = "check-height";
+          break;
+        }
+      }
+      if (!bad) {
+        const dh = Math.abs(document.documentElement.scrollHeight - docH);
+        if (dh > Math.max(48, docH * 0.03)) bad = "check-docheight";
+      }
+      if (!bad) {
+        const vis = after.filter((x) => x.r.height > 1).sort((a, b) => a.r.top - b.r.top);
+        for (let i = 1; i < vis.length; i++) {
+          if (vis[i].r.top < vis[i - 1].r.bottom - 8) {
+            bad = "check-overlap";
+            break;
+          }
+        }
+      }
+      if (!bad) {
+        // The move must EARN its keep: the testimonial visibly earlier (this
+        // also refuses explicit-grid no-ops where `order` changed nothing),
+        // never above the hero it should follow, never collapsed away.
+        const t = testiEl.getBoundingClientRect();
+        if (testiTop0 - t.top < REORDER_MIN_LIFT_PX) bad = "no-improvement";
+        else if (t.top < anchorEl.getBoundingClientRect().bottom - 40) bad = "check-above-anchor";
+        else if (t.height < 2) bad = "check-collapsed";
+      }
+      if (bad) {
+        undo();
+        return `L${depth}:${bad}`;
+      }
+    } catch {
+      undo();
+      return `L${depth}:apply-threw`;
+    }
+
+    ctx.reverts.push(undo);
+    keptAnchored = !!anchorKid;
+    keptDepth = depth;
+    return "";
+  };
+
+  const t0 = performance.now();
+  let kept = false;
+  for (let d = 0; d < containers.length && d < REORDER_MAX_ATTEMPTS; d++) {
+    if (performance.now() - t0 > REORDER_TIME_BUDGET_MS) {
+      note(`L${d}:time-budget`);
+      break;
+    }
+    const err = attempt(containers[d], d);
+    if (err === "") {
+      note(`L${d}:PASS`);
+      kept = true;
+      break;
+    }
+    note(err);
+  }
+  if (!kept) return null; // full trail already in __angelReorderWhy
+
+  const heading = (secs[ti].heading || "testimonials").slice(0, 40);
   return {
     patternId: "reorder_proof_first",
     label: "Move social proof up",
-    detail: `"${(secs[ti].heading || "testimonials").slice(0, 40)}" → after ${secs[anchorI].type}`,
+    detail: keptAnchored
+      ? `"${heading}" → after ${secs[anchorI].type} (L${keptDepth})`
+      : `"${heading}" → top of its group (L${keptDepth})`,
   };
 };
 

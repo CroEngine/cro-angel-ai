@@ -1,0 +1,9 @@
+// Browser entry for the reorder lab: exposes the pattern applier so synthetic
+// pages can drive it with a hand-built inventory (machinery under test is the
+// reorder attempt loop, not the extractor — that has its own benchmarks).
+import { applyAdaptations, type Segment } from "../src/adaptive/patterns";
+import type { ContentInventory } from "../src/adaptive/inventory";
+
+(window as unknown as Record<string, unknown>).__angelLab = {
+  apply: (inv: ContentInventory, segment: Segment) => applyAdaptations(inv, segment),
+};
