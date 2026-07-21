@@ -33,6 +33,8 @@ import {
   planGuardrailSweep,
   type GuardrailSweepVariant,
 } from "../../src/adaptive/redesign/guardrail-sweep";
+import { planCohortScopes } from "../../src/adaptive/redesign/cohort-scopes";
+import { defaultSuccessSpec, validateSuccessSpec } from "../../src/adaptive-lab/metrics";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 import { mirrorStorageKey } from "../../src/lib/sandbox/mirror-key";
 import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
@@ -298,6 +300,29 @@ for (const site of targets) {
         await notifyVariantHeld(site.slug, id, label, reason, heldAt);
         console.log(`[loop] ${site.slug} ${label}: HÅLLS maskinellt — ${reason}`);
       };
+      // ── Kohort-scopes: var är nästa kohortscopade variant designvärdig? ──
+      // Ren planerare på exponeringarnas dims (30 d): bara scopes som kan nå
+      // ett domslut inom 45 dagar föreslås. Förslag, inte generering — de
+      // skrivs till körkatalogen och loggen; den generativa våningen läser dem.
+      try {
+        const { data: cohortRows } = await db.rpc("angel_cohort_traffic", {
+          p_site: site.slug,
+          p_days: 30,
+        });
+        const scopes = planCohortScopes(Array.isArray(cohortRows) ? cohortRows : [], {
+          windowDays: 30,
+          baseRate: site.test_metric === "continuation" ? 0.4 : 0.04,
+        });
+        writeFileSync(join(dir, "cohort-opportunities.json"), JSON.stringify(scopes, null, 1));
+        for (const sc of scopes) {
+          console.log(
+            `[loop] ${site.slug} kohort-scope: ${sc.cohorts.join("+")} — ${sc.visitorsInWindow} besökare/30d, domslut ~${sc.estimatedDaysToVerdict} d`,
+          );
+        }
+      } catch (err) {
+        console.warn(`[loop] ${site.slug} kohorttrafik otillgänglig:`, err);
+      }
+
       // ── Guardrail-svepet (kontraktsskydden, ren planerare) ─────────────
       // Live-armarna döms mot variantens framgångskontrakt varje natt:
       // signifikant skyddsskada eller primärförlust ⇒ maskinellt hold via
@@ -649,6 +674,17 @@ for (const site of targets) {
         ops: r.ops ?? [],
         serve_ops: r.serveOps ?? [],
         evidence,
+        // Kohortscopade planer (den generativa våningen läser
+        // cohort-opportunities.json) föds med sitt scope + kontrakt — samma
+        // fält live-vägen grindar respektive mäter på. Utan scope: null = som förut.
+        required_cohorts: Array.isArray((r as { cohorts?: unknown }).cohorts)
+          ? ((r as { cohorts: unknown[] }).cohorts.filter(
+              (c): c is string => typeof c === "string",
+            ) as string[])
+          : null,
+        success:
+          validateSuccessSpec((r as { success?: unknown }).success) ??
+          (defaultSuccessSpec() as unknown as null),
       });
       if (insErr) console.warn(`[loop] ${site.slug}: insert föll: ${insErr.message}`);
       else

@@ -253,8 +253,15 @@ export function buildVisitorContext(server: ServerSignals, client: ClientSignals
 // Channel set mirrors the lab's: direct|search|social|ads|email|referral.
 
 const SOCIAL_SOURCES = new Set([
-  "linkedin", "facebook", "instagram", "reddit", "tiktok", "youtube",
-  "snapchat", "pinterest", "twitter",
+  "linkedin",
+  "facebook",
+  "instagram",
+  "reddit",
+  "tiktok",
+  "youtube",
+  "snapchat",
+  "pinterest",
+  "twitter",
 ]);
 
 function channelOf(src: VisitorContext["trafficSource"]): string {
@@ -266,18 +273,32 @@ function channelOf(src: VisitorContext["trafficSource"]): string {
   return "referral"; // partner/other — a referrer exists but isn't a named class
 }
 
-/** Derive the visitor's cohort keys from the assembled context. Pure. */
-export function cohortsForVisitor(ctx: VisitorContext): string[] {
+/** Kärnmappningen på dims-nivå — delas av live-vägen (full VisitorContext)
+ *  och aggregat/planerare som bara har exponeringens loggade fält. */
+export function cohortKeysFromDims(dims: {
+  trafficSource: string;
+  isReturning: boolean;
+  viewedPricing: boolean;
+}): string[] {
   const out: string[] = [];
-  const ch = channelOf(ctx.trafficSource);
+  const ch = channelOf(dims.trafficSource as VisitorContext["trafficSource"]);
   out.push("ch:" + ch);
   // Mirror the lab rule: the source key only when it says more than the channel.
-  if (ctx.trafficSource !== ch && ctx.trafficSource !== "direct") {
-    out.push("src:" + ctx.trafficSource);
+  if (dims.trafficSource !== ch && dims.trafficSource !== "direct") {
+    out.push("src:" + dims.trafficSource);
   }
-  out.push(ctx.isReturning || ctx.visitCount >= 2 ? "ret:2plus" : "ret:new");
-  if (ctx.viewedPricing) out.push("seen:pricing");
+  out.push(dims.isReturning ? "ret:2plus" : "ret:new");
+  if (dims.viewedPricing) out.push("seen:pricing");
   return out;
+}
+
+/** Derive the visitor's cohort keys from the assembled context. Pure. */
+export function cohortsForVisitor(ctx: VisitorContext): string[] {
+  return cohortKeysFromDims({
+    trafficSource: ctx.trafficSource,
+    isReturning: ctx.isReturning || ctx.visitCount >= 2,
+    viewedPricing: ctx.viewedPricing,
+  });
 }
 
 /** AND-semantics shared with the lab's ruleMatches: every required key must

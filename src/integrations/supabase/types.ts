@@ -324,6 +324,15 @@ export type Database = {
           rage_sessions: number
         }[]
       }
+      angel_cohort_traffic: {
+        Args: { p_site: string; p_days?: number }
+        Returns: {
+          traffic_source: string | null
+          is_returning: boolean | null
+          viewed_pricing: boolean | null
+          visitors: number
+        }[]
+      }
       angel_variant_arms: {
         Args: { p_site: string; p_variant: string }
         Returns: {

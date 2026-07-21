@@ -204,6 +204,7 @@ export async function logDecision(
         trafficSource: context.trafficSource,
         device: context.device,
         isReturning: context.isReturning,
+        viewedPricing: context.viewedPricing,
         country: context.country,
         browser: context.browser,
         language: context.language,
