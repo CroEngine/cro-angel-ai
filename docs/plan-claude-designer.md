@@ -53,6 +53,15 @@ an existing section). Every new primitive ships with visual-acceptance checks
 and the 100-site sweep as its regression gate.
 *Effort ~2-3 nights. No dependencies — can start now.*
 
+**STATUS: shipped through v0.7.** v0.6 (self-checking `order` reorder) →
+v0.6.1 (common-ancestor targeting) → v0.7 (the attempt loop: a ladder of
+candidate containers tried under strict self-checks with pre-paint rollback,
+full per-attempt diagnostics in `__angelReorderWhy`, byte-identical restores
+proven by outerHTML equality in `check:reorder-lab`). Validated across the
+101-site corpus; see `docs/adaptive-sweep.md` day-4 addendum. The remaining
+refusal classes (single-child wrapper chains, flex-promotion drift) are the
+documented boundary that E4+ DOM moves would cross.
+
 ### E2 — Cohort profiles ("people who arrived the same way before")
 Extend the collector schema: visitor profile keyed by first-party visitorKey —
 source/UTM/referrer class, landing page, pages seen (visited-pricing!),

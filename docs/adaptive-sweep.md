@@ -174,3 +174,73 @@ post-scroll animation state (translateY transitions) makes the self-check
 extra conservative right after scrolling. Correct behavior (refusal beats
 risk), logged as a calibration item: settle-wait before adapt in post-scroll
 contexts.
+
+---
+
+# Addendum (day 4): v0.7 — the attempt loop ("chansa-loopen")
+
+**The user's directive:** *"vi måste kunna bygga en loop som chansar till det
+blir bra"* — and the insight that makes it safe: apply → measure → rollback
+runs synchronously inside one task, so **the browser never paints a failed
+attempt**. The pattern can gamble internally; the visitor only ever sees the
+first proven-clean result or the untouched page.
+
+## What v0.7 does
+
+Instead of one strategy → refuse, `reorder_proof_first` builds a **ladder of
+candidate containers** — L0 = the common ancestor of testimonial + hero (the
+big "right after the hero" jump), then level by level down toward the
+testimonial's own wrapper (the minimal "top of its own group" move, where the
+container may already be flex/grid) — and tries each in turn under the same
+strict self-checks. Every attempt's outcome is recorded:
+`__angelReorderWhy = "L0:wrapper-carries-other-sections;L1:PASS"`.
+
+New checks that every candidate must also pass: **minimum 200px lift** (kills
+a real v0.6 bug — explicit-grid parents where `order` has no visual effect
+shipped as silent no-op "applied"), **never above the hero anchor**, never
+collapsed. Restores became attribute-exact and are verified **byte-identical
+via outerHTML equality** in a new offline rig (`bun run check:reorder-lab`,
+six synthetic cases covering each refusal class) — which also caught a
+Chromium quirk: `removeAttribute("style")` with pending inline-style
+serialization re-materializes an empty `style=""`; fixed by flushing with a
+read first.
+
+## Results — same-day rerun of all 28 refused + the 13 applied (45 runs total)
+
+| | count |
+|---|---|
+| **converted** (refused in v0.6.1 → applies now) | **3** — moz (L1), webflow (L2!), pipedrive (L0) |
+| regression control kept | 11/13 at L0, byte-clean |
+| moved out of scope by site drift | deel (testimonials now early → correct `already-early` no-op), netlify (no testimonials in today's inventory) |
+| animation-state variance | zapier L0:check-width-left this run (applied + showcase-verified night 3 — the known post-animation flake class) |
+| dirty restores | **0 anywhere** |
+
+The two descent conversions are exactly the class v0.6.1 could never touch:
+moz and webflow's testimonial wrappers carry other sections, so the L0 move is
+structurally impossible — the loop now descends INTO the wrapper and lifts the
+testimonial to the top of its own group (webflow needed two levels down).
+pipedrive's selector resolves in today's inventory and passes L0 directly.
+
+## The refusal map is now a diagnosis, not a shrug
+
+21 sites still refuse, each with a full trail. The taxonomy:
+
+1. **Single-child wrapper chains** (~7: airtable, ramp, remotecom, resend,
+   unleash, upsales, mynewsdesk) — every ladder rung has 1–2 children;
+   nothing for `order` to reorder at any level. The honest CSS boundary:
+   these need framework-aware DOM moves (E4+ work).
+2. **Flex-promotion drift caught by checks** (~10: auth0, clerk, sentry,
+   wrike, pandadoc, contentful, front, + clickup/rippling at L1) — promoting
+   a block parent to flex-column changes kid widths/heights (BFC formation,
+   margin-uncollapsing); the self-check refuses. A `display:grid` attempt
+   variant is the next lever here.
+3. **Overlap from absolute/decorative elements** (5: ahrefs L1, n8n, neon L1,
+   oneflow, toggl).
+4. **Semantic guards doing their job**: chargebee `already-there` (wrapper
+   order already proof-early), trustly `check-above-anchor` (the move would
+   land proof above the hero), grammarly `no-distinct-wrapper-kids`.
+
+Visual issues logged this run (moz/front/grammarly emphasis, toggl/clerk/
+fortnox/framer/calcom/amplitude trust-bar hit-test) are **byte-identical to
+their v0.6.1 entries** — pre-existing bar/emphasis calibration items on those
+sites, not v0.7 regressions.
