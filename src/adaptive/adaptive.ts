@@ -27,9 +27,10 @@ import {
 } from "./patterns";
 import { trackBehavior, type BehaviorEvent, type BehaviorTracker } from "./behavior";
 import { updateProfile, deriveCohorts, type AngelProfile } from "./profile";
+import { serveRules, validateRules, type AngelRule, type RuleOutcome } from "./rules";
 import { visitorKey, sessionId, sendInventory, installEventCollector } from "./collector";
 
-const VERSION = "0.10.0";
+const VERSION = "0.11.0";
 
 type AngelGlobal = {
   version: string;
@@ -50,6 +51,9 @@ type AngelGlobal = {
   // call this explicitly; it never runs automatically). Same self-checks and
   // rollback as the automatic ladder; revert() undoes it too.
   planReorder: (plan: PlannedReorder) => PlannedResult;
+  // E4: serve owner-approved rules to this visitor (cohort-matched, holdout-
+  // assigned, per-view self-checked). Explicit call or data-rules-src only.
+  serve: (rules?: unknown) => RuleOutcome[];
   revert: () => void;
 };
 
@@ -120,6 +124,60 @@ function planReorder(plan: PlannedReorder): PlannedResult {
   return { ok: res.ok, reason: res.reason, detail: res.detail };
 }
 
+// E4: serve approved rules. Rules come from the explicit argument (harness/
+// console) or the source configured via data-rules-src. Serving reuses the
+// standard appliers, so every application self-checks per view; reverts
+// drain through revert() like everything else.
+let fetchedRules: AngelRule[] | null = null;
+
+function serve(rulesArg?: unknown): RuleOutcome[] {
+  if (!angel || !angel.inventory) return [];
+  const rules = rulesArg !== undefined ? validateRules(rulesArg) : (fetchedRules ?? []);
+  if (!rules.length) return [];
+  const segment =
+    angel.segment ?? deriveSegment(angel.events, angel.inventory, angel.profile);
+  const res = serveRules(rules, {
+    inv: angel.inventory,
+    cohorts: angel.cohorts,
+    segment,
+    visitorKey: visitorKey(),
+  });
+  for (const undo of res.reverts) planReverts.push(undo);
+  for (const ev of res.events) {
+    angel.events.push({ type: ev.type, ts: ev.ts, meta: { ruleId: ev.ruleId, detail: ev.detail } } as unknown as BehaviorEvent);
+  }
+  const servedCount = res.outcomes.filter((o) => o.outcome === "served").length;
+  if (servedCount) {
+    console.info(`[Angel Adaptive] served ${servedCount} rule(s) to cohorts [${angel.cohorts.join(", ")}]`);
+  }
+  return res.outcomes;
+}
+
+// Best-effort rules fetch (size-capped, validated); serving after fetch only
+// happens in adaptive mode — learn mode stays inert even with a source set.
+function fetchRules(src: string): void {
+  try {
+    void fetch(src, { credentials: "omit" })
+      .then((r) => (r.ok ? r.text() : null))
+      .then((text) => {
+        if (!text || text.length > 200_000) return;
+        try {
+          fetchedRules = validateRules(JSON.parse(text));
+        } catch {
+          fetchedRules = null;
+        }
+        if (fetchedRules && fetchedRules.length && mode === "adaptive" && angel?.inventory) {
+          serve();
+        }
+      })
+      .catch(() => {
+        /* best-effort */
+      });
+  } catch {
+    /* ignore */
+  }
+}
+
 // Undo every applied change, restoring the original page.
 function revertAdaptation(): void {
   if (activeAdaptation) {
@@ -144,6 +202,8 @@ function init(): void {
   // Learn by default — collect data, change nothing. Adaptation only runs when
   // explicitly opted in with data-mode="adaptive" (or the exposed adapt() call).
   mode = script?.getAttribute("data-mode") === "adaptive" ? "adaptive" : "learn";
+  const rulesSrc = script?.getAttribute("data-rules-src");
+  if (rulesSrc) fetchRules(rulesSrc);
   angel = {
     version: VERSION,
     siteId,
@@ -158,6 +218,7 @@ function init(): void {
     collect: collectInventory,
     adapt,
     planReorder,
+    serve,
     revert: revertAdaptation,
   };
   (window as unknown as { __angelAdaptive: AngelGlobal }).__angelAdaptive = angel;

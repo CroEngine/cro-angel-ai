@@ -868,11 +868,17 @@ export function deriveSegment(
 /**
  * Apply the pattern set for a segment (default: the v2 set). Returns what
  * changed and a single `revert()` that undoes all of it. Never throws.
+ * `only` (E4 rule serving) overrides the segment set with an explicit
+ * pattern list — same appliers, same guards, just rule-selected.
  */
-export function applyAdaptations(inv: ContentInventory, segment: Segment = "default"): AdaptationResult {
+export function applyAdaptations(
+  inv: ContentInventory,
+  segment: Segment = "default",
+  only?: string[],
+): AdaptationResult {
   const ctx: ApplyCtx = { reverts: [] };
   const applied: AppliedChange[] = [];
-  const ids = SEGMENT_PATTERNS[segment] ?? SEGMENT_PATTERNS.default;
+  const ids = only ?? SEGMENT_PATTERNS[segment] ?? SEGMENT_PATTERNS.default;
   for (const id of ids) {
     const pattern = ALL_PATTERNS[id];
     if (!pattern) continue;

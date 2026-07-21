@@ -110,6 +110,14 @@ drift (the live product already emits inventory_drift events) pauses the rule
 until re-validated. "Use it as much as we want" = unlimited within the
 approved rule, never a day past it still provably holding.
 
+**E4b STATUS: chain executable (v0.11).** Rule format + approval state
+machine (`approve-rule.ts`, card queue via `approval-cards.ts` — published
+as the E4b artifact), cohort-AND matching, deterministic holdout, per-view
+self-checks re-run on every serve, `rule_*` measurement events. Live-proven
+on sentry (all five gates). See `docs/serving-e4.md`. Remaining: the product
+UI for the button and the server-side plan store/goal join (integration
+decision).
+
 ### E4 — Validate → store → serve → measure
 Each generated plan auto-runs through the visual-acceptance harness against
 the live page (the night-2 harness, productized): reject on any visual issue.
