@@ -31,7 +31,7 @@ import { updateProfile, deriveCohorts, type AngelProfile } from "./profile";
 import { serveRules, validateRules, type AngelRule, type RuleOutcome } from "./rules";
 import { visitorKey, sessionId, sendInventory, installEventCollector } from "./collector";
 
-const VERSION = "0.12.0";
+const VERSION = "0.13.0";
 
 type AngelGlobal = {
   version: string;

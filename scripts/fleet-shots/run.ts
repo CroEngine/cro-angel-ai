@@ -31,11 +31,15 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const only = process.argv.find((a) => a.startsWith("--only="))?.slice(7);
 const limit = Number(process.argv.find((a) => a.startsWith("--limit="))?.slice(8) || 0);
 
-// Best-effort accept-all consent so bars/CTAs aren't shot under a modal.
+// Best-effort accept-all consent so bars/CTAs aren't shot under a modal, THEN
+// hard-remove any banner the click missed (different CMPs, "reject-only" walls,
+// iframe messages) — a cookie banner in the frame is exactly what the fleet
+// gallery review flagged. Removal is cosmetic + local to this crawl; it never
+// ships in the engine.
 async function dismissConsent(page: Page) {
   await page
     .evaluate(() => {
-      const RX = /^(accept( all)?( cookies)?|allow all( cookies)?|godk[äa]nn( alla)?( cookies)?|acceptera( alla)?( cookies)?|jag f[öo]rst[åa]r|ok(ay)?|got it|i agree|agree)$/i;
+      const RX = /^(accept( all)?( cookies)?|allow all( cookies)?|godk[äa]nn( alla)?( cookies)?|acceptera( alla)?( cookies)?|jag f[öo]rst[åa]r|ok(ay)?|got it|i agree|agree|tillåt alla)$/i;
       for (const el of Array.from(document.querySelectorAll("button, [role=button], a"))) {
         const t = ((el as HTMLElement).innerText || "").trim();
         if (t && t.length <= 30 && RX.test(t)) {
@@ -49,7 +53,52 @@ async function dismissConsent(page: Page) {
       return false;
     })
     .catch(() => {});
-  await sleep(600);
+  await sleep(500);
+  // Hard-hide whatever banner survives — common CMP containers + heuristics.
+  await page
+    .evaluate(() => {
+      const SEL = [
+        "#onetrust-consent-sdk", "#onetrust-banner-sdk", "#CybotCookiebotDialog",
+        "#usercentrics-root", "#cookiescript_injected", "#cookie-law-info-bar",
+        "[id^='sp_message_container']", "[class*='sp_message']", "[id*='sourcepoint']",
+        ".osano-cm-window", "#termly-code-snippet-support", "#hs-eu-cookie-confirmation",
+        "[class*='cookie-banner']", "[class*='cookie-consent']", "[class*='cookie-notice']",
+        "[class*='consent-banner']", "[id*='cookie-banner']", "[id*='cookie-consent']",
+        "[aria-label*='cookie' i]", "[class*='gdpr']", "[data-testid*='cookie' i]",
+      ];
+      let hidden = 0;
+      for (const s of SEL) {
+        try {
+          document.querySelectorAll<HTMLElement>(s).forEach((el) => {
+            const r = el.getBoundingClientRect();
+            // Only touch banner-sized fixed/sticky elements near an edge — never
+            // the page's own content.
+            if (r.width > 200 && r.height > 30) {
+              el.style.setProperty("display", "none", "important");
+              hidden++;
+            }
+          });
+        } catch {
+          /* bad selector — skip */
+        }
+      }
+      // Any leftover full-width fixed bar pinned to top/bottom (generic CMP).
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>("body *"))) {
+        const cs = getComputedStyle(el);
+        if (cs.position !== "fixed" && cs.position !== "sticky") continue;
+        const r = el.getBoundingClientRect();
+        const wide = r.width > window.innerWidth * 0.8 && r.height > 40 && r.height < window.innerHeight * 0.6;
+        const edge = r.top < 4 || r.bottom > window.innerHeight - 4;
+        const txt = (el.innerText || "").toLowerCase();
+        if (wide && edge && /cookie|consent|gdpr|privacy|samtycke|kakor/.test(txt)) {
+          el.style.setProperty("display", "none", "important");
+          hidden++;
+        }
+      }
+      return hidden;
+    })
+    .catch(() => {});
+  await sleep(200);
 }
 
 // The same automated visual-acceptance the sweep uses — "nothing looks off" as
@@ -93,7 +142,8 @@ const withTimeout = <T>(p: Promise<T>, ms: number, label: string) =>
 
 async function shoot(page: Page, file: string) {
   await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {});
-  await sleep(250);
+  await dismissConsent(page); // re-hide any banner that reappeared before the shot
+  await sleep(200);
   await page.screenshot({ path: `${IMG}/${file}`, type: "jpeg", quality: 46 });
 }
 
@@ -159,7 +209,7 @@ async function freshPage(): Promise<{ browser: Browser; page: Page; sessionId: s
   const browser = await chromium.connectOverCDP(session.connectUrl, { timeout: 30_000 });
   const ctx = browser.contexts()[0] ?? (await browser.newContext());
   const page = ctx.pages()[0] ?? (await ctx.newPage());
-  await page.setViewportSize({ width: 1200, height: 840 });
+  await page.setViewportSize({ width: 1200, height: 1680 });
   return { browser, page, sessionId: session.id, born: Date.now() };
 }
 

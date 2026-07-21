@@ -200,6 +200,11 @@ export function truncateBarText(raw: string, max = 96): string {
 const trustBar: Pattern = (inv, ctx) => {
   // v0.5: score ALL candidates through the quality gate instead of taking the
   // first — numeric claims ("Rated 4.7/5 by 10,000+ users") beat bare labels.
+  // v0.13: only surface proof the visitor CAN'T ALREADY SEE. The bar exists to
+  // bring buried proof up; a signal that already sits above the fold (e.g.
+  // "Trusted by 60% of the Fortune 500" in the hero) would just be duplicated —
+  // so above-fold candidates are excluded. If every proof signal is already
+  // above the fold, the bar adds nothing and the pattern declines.
   const cands = [
     ...inv.trust.ratings,
     ...inv.trust.socialProof,
@@ -209,9 +214,9 @@ const trustBar: Pattern = (inv, ctx) => {
     .map((sig) => {
       let text = (sig.text || "").replace(/\s+/g, " ").trim();
       if (sig.type === "testimonial") text = `“${truncateBarText(text, 90)}”`;
-      return { text, score: scoreBarText(text) };
+      return { text, score: scoreBarText(text), aboveFold: !!sig.aboveFold };
     })
-    .filter((c) => c.score >= 1)
+    .filter((c) => c.score >= 1 && !c.aboveFold)
     .sort((a, b) => b.score - a.score);
   const best = cands[0];
   if (!best) return null;

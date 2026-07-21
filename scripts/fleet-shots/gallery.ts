@@ -109,7 +109,7 @@ const html = `<title>Angel Adaptive — before/after across ${recs.length} live 
   input.search{font:inherit;padding:6px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);min-width:150px;}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;}
-  .ba{position:relative;width:100%;aspect-ratio:1200/840;background:var(--surface-2);overflow:hidden;cursor:ew-resize;touch-action:none;user-select:none;}
+  .ba{position:relative;width:100%;aspect-ratio:1200/1680;background:var(--surface-2);overflow:hidden;cursor:ew-resize;touch-action:none;user-select:none;}
   .ba img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;display:block;}
   .ba img.after{clip-path:inset(0 0 0 50%);z-index:1;}
   .ba .tag{position:absolute;top:8px;font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:5px;color:#fff;background:rgba(20,26,34,.72);z-index:2;}

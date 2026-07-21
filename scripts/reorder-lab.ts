@@ -208,6 +208,26 @@ const PATTERN_CASES: PatternCase[] = [
     expectRefused: [],
   },
   {
+    // v0.13: the proof is ALREADY above the fold (e.g. "Trusted by 60% of the
+    // Fortune 500" in the hero) — a bar would just duplicate it, so trust_bar
+    // declines. Caught in the fleet gallery: monday got a second trust bar.
+    name: "trust-already-above-fold",
+    html: `<main>${box("hero", 500, "hero", `<a id="cta" href="#" style="display:inline-block;padding:12px 24px;background:#25e;color:#fff">Start free trial</a>`)}${box("f1", 500, "f1")}</main>`,
+    inv: {
+      trust: {
+        ratings: [{ type: "review_rating", text: "Rated 4.8/5 by 2,000+ teams", aboveFold: true }],
+        socialProof: [],
+        trustedBy: [],
+        testimonials: [],
+        guarantees: [],
+        certifications: [],
+      },
+      ctas: HERO_CTA,
+    },
+    expectApplied: ["emphasize_primary_cta"],
+    expectRefused: ["trust_bar"],
+  },
+  {
     // The toggl/framer class: an overlay paints over the top of the page —
     // the bar would render underneath it. Runtime hit-test must refuse.
     name: "bar-covered-by-overlay",
