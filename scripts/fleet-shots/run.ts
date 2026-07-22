@@ -192,11 +192,21 @@ async function shoot(page: Page, file: string) {
 async function capturePage(page: Page, t: Target): Promise<Rec> {
   const tag = t.page === "pricing" ? `${t.name}-pricing` : t.name;
   const rec: Rec = { name: t.name, url: t.url, page: t.page, ok: false };
-  await page.goto(t.url, { waitUntil: "domcontentloaded", timeout: 55_000 });
+  await page.goto(t.url, { waitUntil: "domcontentloaded", timeout: 70_000 });
+  // Let client-side redirects (locale/geo) settle before we inject — otherwise a
+  // late navigation destroys the JS context mid-inventory (n8n, personio).
+  await page.waitForLoadState("networkidle", { timeout: 12_000 }).catch(() => {});
   await sleep(1400);
   await dismissConsent(page);
   await sleep(700);
-  await page.evaluate(BUNDLE);
+  try {
+    await page.evaluate(BUNDLE);
+  } catch {
+    // Context torn down by a late navigation — settle and re-inject once.
+    await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
+    await sleep(900);
+    await page.evaluate(BUNDLE);
+  }
   await page
     .waitForFunction(() => (window as unknown as { __angelAdaptive?: { inventory?: unknown } }).__angelAdaptive?.inventory != null, undefined, { timeout: 28_000 })
     .catch(() => {});
@@ -353,7 +363,10 @@ async function freshPage(): Promise<{ browser: Browser; page: Page; sessionId: s
 async function main() {
   mkdirSync(IMG, { recursive: true });
   let sites = SITES as Array<{ name: string; url: string }>;
-  if (only) sites = sites.filter((s) => s.name === only);
+  if (only) {
+    const set = new Set(only.split(",").map((s) => s.trim()));
+    sites = sites.filter((s) => set.has(s.name));
+  }
   if (limit) sites = sites.slice(0, limit);
 
   // Build the target list: every site's HOME, plus a PRICING pass for the sites
@@ -381,13 +394,35 @@ async function main() {
       h = await freshPage();
     }
     process.stdout.write(`[${i + 1}/${targets.length}] ${t.name}${t.page === "pricing" ? " (pricing)" : ""} … `);
-    try {
-      const rec = await withTimeout(capturePage(h.page, t), 130_000, "site");
+    // Up to FLEET_RETRIES extra attempts (default 0 = single pass). Transient
+    // failures — late-redirect context loss, tunnel drop, session race — usually
+    // clear on a fresh session, so a retry recovers them without a full re-run.
+    const attempts = 1 + (Number(process.env.FLEET_RETRIES) || 0);
+    let rec: Rec | null = null;
+    let lastErr = "";
+    for (let a = 0; a < attempts; a++) {
+      if (a > 0) {
+        try {
+          await h.browser.close();
+        } catch {}
+        await closeSession(h.sessionId).catch(() => {});
+        h = await freshPage();
+        process.stdout.write(`(retry ${a}) `);
+      }
+      try {
+        rec = await withTimeout(capturePage(h.page, t), 130_000, "site");
+        break;
+      } catch (err) {
+        lastErr = String(err).slice(0, 160);
+        rec = null;
+      }
+    }
+    if (rec) {
       records.push(rec);
       console.log(`ok · ${rec.changed ? rec.applied?.join(", ") : "no change"}${rec.visualIssues?.length ? ` · issues: ${rec.visualIssues.join(",")}` : ""}${rec.restoredClean === false ? " · RESIDUE" : ""}`);
-    } catch (err) {
-      records.push({ name: t.name, url: t.url, page: t.page, ok: false, error: String(err).slice(0, 160) });
-      console.log(`FAIL · ${String(err).slice(0, 90)}`);
+    } else {
+      records.push({ name: t.name, url: t.url, page: t.page, ok: false, error: lastErr });
+      console.log(`FAIL · ${lastErr.slice(0, 90)}`);
       // Rebuild the session — a failed page often leaves the page/session bad.
       try {
         await h.browser.close();
