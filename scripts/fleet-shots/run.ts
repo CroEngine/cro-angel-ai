@@ -352,12 +352,28 @@ async function capturePage(page: Page, t: Target): Promise<Rec> {
 }
 
 async function freshPage(): Promise<{ browser: Browser; page: Page; sessionId: string; born: number }> {
-  const session = await createSession();
-  const browser = await chromium.connectOverCDP(session.connectUrl, { timeout: 30_000 });
-  const ctx = browser.contexts()[0] ?? (await browser.newContext());
-  const page = ctx.pages()[0] ?? (await ctx.newPage());
-  await page.setViewportSize({ width: 1200, height: 1680 });
-  return { browser, page, sessionId: session.id, born: Date.now() };
+  // createSession/connect had NO timeout — a single stalled Browserbase call
+  // froze the whole run indefinitely (the map run hung 3h at site 89). Bound
+  // each attempt and retry a few times so a stalled session self-heals.
+  let lastErr: unknown;
+  for (let a = 0; a < 3; a++) {
+    try {
+      const session = await withTimeout(createSession(), 60_000, "createSession");
+      const browser = await withTimeout(
+        chromium.connectOverCDP(session.connectUrl, { timeout: 30_000 }),
+        35_000,
+        "connectCDP",
+      );
+      const ctx = browser.contexts()[0] ?? (await browser.newContext());
+      const page = ctx.pages()[0] ?? (await ctx.newPage());
+      await page.setViewportSize({ width: 1200, height: 1680 });
+      return { browser, page, sessionId: session.id, born: Date.now() };
+    } catch (e) {
+      lastErr = e;
+      await sleep(2000 * (a + 1));
+    }
+  }
+  throw new Error(`freshPage failed: ${String(lastErr).slice(0, 120)}`);
 }
 
 async function main() {
