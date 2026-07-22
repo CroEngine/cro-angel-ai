@@ -24,7 +24,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createSession, closeSession } from "../../src/lib/tests/browserbase.server";
 import { SITES } from "../day0-sites";
 
-const OUT = "docs/fleet-shots-2026-07-21";
+const OUT = process.env.FLEET_OUT || "docs/fleet-shots-2026-07-21";
 const IMG = `${OUT}/img`;
 const BUNDLE = readFileSync("public/adaptive-lab.js", "utf8");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

@@ -253,6 +253,29 @@ const PATTERN_CASES: PatternCase[] = [
     expectApplied: [],
     expectRefused: ["emphasize_primary_cta"],
   },
+  {
+    // v0.14: the clickup / airtable class. The page's proof is a LOGO WALL /
+    // "trusted by" strip — a section that containsTrustSignals, NOT a
+    // testimonials section — sitting below the fold. Reorder must now LIFT it
+    // (broadened target beyond testimonials), and trust_bar must STAND DOWN so
+    // the page doesn't end up with two proof strips (the reported double-bar).
+    // TRUST_INV still carries a below-fold rating, so trust_bar HAS a candidate
+    // — proving it's the proofPromoted guard that stops it, not an empty pool.
+    name: "logo-wall-reorder-standsdown",
+    html: `<main id="m">${box("hero", 600, "hero", `<a id="cta" href="#" style="display:inline-block;padding:12px 24px;background:#25e;color:#fff">Start free trial</a>`)}${box("f1", 500, "f1")}${box("f2", 500, "f2")}${box("logos", 400, "TRUSTED BY THE BEST")}${box("cta2", 300, "cta2")}</main>`,
+    inv: {
+      sections: [
+        { type: "hero", selector: "#hero" },
+        { type: "features", selector: "#f1" },
+        { type: "features", selector: "#f2" },
+        { type: "content", selector: "#logos", heading: "Trusted by the best", containsTrustSignals: true },
+      ],
+      trust: TRUST_INV,
+      ctas: HERO_CTA,
+    },
+    expectApplied: ["reorder_proof_first", "emphasize_primary_cta"],
+    expectRefused: ["trust_bar"],
+  },
 ];
 
 // E3 plan cases: applyPlannedReorder must obey the same self-checks while

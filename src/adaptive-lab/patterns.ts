@@ -24,7 +24,7 @@ export type AdaptationResult = {
   revert: () => void;
 };
 
-type ApplyCtx = { reverts: Array<() => void> };
+type ApplyCtx = { reverts: Array<() => void>; proofPromoted?: boolean };
 
 function q(sel?: string): HTMLElement | null {
   if (!sel) return null;
@@ -198,6 +198,12 @@ export function truncateBarText(raw: string, max = 96): string {
 // Layout-safe: one isolated, self-contained element prepended to <body> — it
 // shifts the page down uniformly and is never injected into an internal grid.
 const trustBar: Pattern = (inv, ctx) => {
+  // If reorder already lifted the page's own proof strip up this run, a
+  // surfaced bar would just be a SECOND proof strip — the clickup / airtable
+  // double-bar. Stand down: reorder owns the "page already has a proof
+  // section" case; the bar is for pages whose proof is buried inline with no
+  // strip of its own.
+  if (ctx.proofPromoted) return null;
   // v0.5: score ALL candidates through the quality gate instead of taking the
   // first — numeric claims ("Rated 4.7/5 by 10,000+ users") beat bare labels.
   // v0.13: only surface proof the visitor CAN'T ALREADY SEE. The bar exists to
@@ -607,8 +613,6 @@ export function tryOrderMove(spec: OrderMoveSpec): OrderMoveResult {
 
 const reorderProofFirst: Pattern = (inv, ctx) => {
   const secs = inv.sections;
-  const ti = secs.findIndex((s) => s.type === "testimonials" && s.selector);
-  if (ti < 0) return null;
   const heroI = secs.findIndex((s) => s.type === "hero" && s.selector);
   // Anchor = what the proof must sit AFTER. Never a header/nav/footer: on
   // pages where the hero goes undetected (webflow — its hero classifies as
@@ -622,6 +626,21 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
       ? heroI
       : secs.findIndex((s) => s.selector && !CHROME_SECTIONS.test(s.type));
   if (anchorI < 0) return null;
+  // The proof section to lift. Prefer a dedicated testimonials section (the
+  // original v0.6 target). Otherwise fall back to the earliest section BELOW
+  // the anchor that carries trust signals — a "trusted by" / customer-logo /
+  // rating strip. That fallback is what lets reorder fire on the many pages
+  // whose proof is a logo wall rather than testimonials, so the engine MOVES
+  // the existing proof up instead of stacking a second trust bar over it
+  // (the clickup / airtable double-bar). The tryOrderMove self-check still
+  // reverts anything that doesn't land cleanly, so a broader target can only
+  // add safe moves, never unsafe ones.
+  let ti = secs.findIndex((s) => s.type === "testimonials" && s.selector);
+  if (ti < 0)
+    ti = secs.findIndex(
+      (s, i) => i > anchorI && s.selector && !CHROME_SECTIONS.test(s.type) && !!s.containsTrustSignals,
+    );
+  if (ti < 0) return null;
   const trail: string[] = [];
   const note = (reason: string): void => {
     trail.push(reason);
@@ -726,6 +745,8 @@ const reorderProofFirst: Pattern = (inv, ctx) => {
     note(err);
   }
   if (!kept) return null; // full trail already in __angelReorderWhy
+
+  ctx.proofPromoted = true; // proof strip is now up top — trust_bar stands down
 
   const heading = (secs[ti].heading || "testimonials").slice(0, 40);
   return {
