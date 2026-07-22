@@ -440,6 +440,14 @@ export async function measurePlan(
 
       // ── FAS 2: applicera i planordning ─────────────────────────────────
       let appliedMoves = 0;
+      // Flyttar som INTE lyfte sektionen visuellt (per steg, DOM-ordning ≠
+      // visuell ordning: en "move up" landar före ett syskon som renderas
+      // lägre → sektionen sjunker). SPEGELVÄND av snippetens reorder-självkoll
+      // (public/adaptive.js, ADR-001 steg 2): där rullar en no-lift-flytt HELA
+      // varianten tillbaka fail-closed. Mäts per steg — exakt som klienten —
+      // så mätharnesset aldrig godkänner en flytt klienten sedan vägrar serva
+      // (annars mäter A/B-armen original mot original, samma fälla som LCP).
+      let moveNoRise = 0;
       let appliedTexts = 0;
       let appliedInserts = 0;
       const movedEls: Element[] = [];
@@ -471,7 +479,14 @@ export async function measurePlan(
               prev = prev.previousElementSibling;
             }
             if (prev && r.sec.parentElement === prev.parentElement) {
+              // Per-steg lyft-koll — SPEGELVÄND snippetens självkoll (ADR-001
+              // steg 2): mät sektionens topp direkt före/efter DENNA insertBefore
+              // med exakt klientens tröskel (< 1px = lyfte inte). En no-lift-flytt
+              // fäller HELA varianten på klienten, så den måste fälla grinden här
+              // med — annars godkänns en variant som aldrig servas.
+              const topBefore = r.sec.getBoundingClientRect().top;
               r.sec.parentElement!.insertBefore(r.sec, prev);
+              if (r.sec.getBoundingClientRect().top >= topBefore - 1) moveNoRise++;
               if (!movedEls.includes(r.sec)) movedEls.push(r.sec);
               appliedMoves++;
             }
@@ -647,6 +662,7 @@ export async function measurePlan(
         ctaBroken,
         requestedMoves: ops.filter((o) => o.op === "move_up").length,
         appliedMoves,
+        moveNoRise,
         requestedTexts: ops.filter((o) => o.op === "set_text").length,
         appliedTexts,
         requestedInserts: ops.filter((o) => o.op === "insert_snippet").length,
@@ -684,6 +700,7 @@ export function toRenderMeasurements(
     ctaBroken: raw.ctaBroken,
     requestedMoves: raw.requestedMoves,
     appliedMoves: raw.appliedMoves,
+    moveNoRise: raw.moveNoRise,
     reversedOrderMatches: raw.reversedOrderMatches,
     verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
     lcpFound: raw.lcpFound,

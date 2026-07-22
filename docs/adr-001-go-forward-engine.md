@@ -47,11 +47,22 @@ sandbox whose *code is harvested into the product*.
 ### Convergence plan (each step its own PR)
 1. **Code truth (this ADR).** Reconcile the misleading headers + the stale `serve.ts`
    comment so the code states which engine is which. *(done alongside this doc.)*
-2. **Port the reorder self-check into the customer applier.** `adaptive.js` `move_up` is a
-   real DOM move (a11y-correct) but has **no** self-check; the lab's `tryOrderMove` has the
-   full self-check but uses CSS `order` (a11y-wrong). **Converged = DOM move + self-check =
-   the correct reorder** — fixes the Tier-1 a11y violation *and* the customer engine's
-   missing safety in one move. Neither engine has this today.
+2. **Port the reorder self-check into the customer applier.** ✅ **SHIPPED.** `adaptive.js`
+   `move_up` is a real DOM move (a11y-correct) but had **no** self-check; the lab's
+   `tryOrderMove` has the full self-check but uses CSS `order` (a11y-wrong). **Converged =
+   DOM move + self-check = the correct reorder** — fixes the Tier-1 a11y violation *and* the
+   customer engine's missing safety in one move. The applier now measures the section's top +
+   the document height/width around each move and, if the section did not actually rise (DOM
+   order ≠ visual order), grew/shrank the page, overflowed horizontally, or collapsed, puts
+   it straight back. **Decision — the customer engine fails the WHOLE variant** (not
+   skip-this-op like the lab): a verified + owner-approved variant is one atomic A/B
+   treatment, so a visitor sees the exact variant or the clean baseline, never a half-variant.
+   **Kept in sync with the server harness** (`scripts/redesign/measure.ts` +
+   `render-gates.ts`): the harness now measures the same per-move "did it rise" and **fails
+   verification** (unservable, same class as the LCP-touch gate) so it can never approve a
+   move the client will fail-closed on — otherwise the A/B arm measures original vs original.
+   Proven end-to-end on the plausible.io fixture (a 2nd `move_up` there sinks the proof
+   983→1227px): `scripts/ci/serving-smoke.mjs` (client) + the render-gates tests (harness).
 3. **Port structural section typing + proof→section linking into the server inventory**
    (`crawler-inventory.ts` / `redesign/extract.ts`) so the customer engine perceives
    structure the way the lab now does (needs the audit to extract the structural signals

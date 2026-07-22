@@ -1097,7 +1097,41 @@
           break;
         }
         var next = r0.sec.nextSibling;
+        // Self-check (ADR-001 step 2, ported from the lab's tryOrderMove): a real
+        // DOM move can still fail to help or actively break the live page — the
+        // frozen page the server verified against may have drifted. Measure the
+        // section's top + the document height/width around the move; put it
+        // straight back and FAIL THE WHOLE VARIANT (fail-closed) if it:
+        //   • never rose — DOM order ≠ visual order in this container (flex/grid
+        //     order, a visually-lower earlier sibling), so "move up" doesn't lift
+        //     the section — or sends it DOWN; the reorder earns nothing,
+        //   • grew/shrank the page past tolerance or introduced horizontal
+        //     overflow — the reflow broke the layout,
+        //   • collapsed the element away.
+        // Whole-variant, NOT skip-this-op: the variant was verified + owner-
+        // approved AS A UNIT and its A/B arm must stay one consistent treatment —
+        // a visitor sees the exact approved variant or the clean baseline, never a
+        // half-variant. (The lab skips just the move because it is client-
+        // autonomous with no atomic-variant / measurement contract.) The !ok path
+        // below rolls everything back byte-clean. Cheap: runs once, on apply.
+        var _doc = document.documentElement;
+        var _befTop = r0.sec.getBoundingClientRect().top;
+        var _befH = _doc.scrollHeight,
+          _befW = _doc.scrollWidth;
         r0.sec.parentElement.insertBefore(r0.sec, prev);
+        var _rect = r0.sec.getBoundingClientRect();
+        var _tol = Math.max(48, _befH * 0.03);
+        if (
+          _befTop - _rect.top < 1 || // never rose ⇒ no benefit (or DOM≠visual order)
+          Math.abs(_doc.scrollHeight - _befH) > _tol || // grew/shrank the page
+          _doc.scrollWidth > _befW + 2 || // new horizontal overflow
+          _rect.width < 1 ||
+          _rect.height < 1 // element collapsed/vanished
+        ) {
+          if (r0.sec.parentElement) r0.sec.parentElement.insertBefore(r0.sec, next);
+          ok = false;
+          break;
+        }
         r0.sec.setAttribute("data-angel-moved", "");
         undos.push(
           (function (s, n) {

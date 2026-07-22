@@ -46,6 +46,13 @@ export interface RenderMeasurements {
   requestedMoves: number;
   /** move ops that were SAFELY applicable (target + predecessor were siblings). */
   appliedMoves: number;
+  /** Applied moves whose section did NOT actually rise (per step, < 1px lift) —
+   *  DOM order ≠ visual order in that container, so the "move up" left the
+   *  section where it was or sent it DOWN. Mirrors the snippet's reorder self-
+   *  check (public/adaptive.js, ADR-001 step 2), which rolls the WHOLE variant
+   *  back fail-closed on such a move. >0 ⇒ the variant can never serve (like
+   *  opsTouchingLcp). Optional: absent on observations from before the check. */
+  moveNoRise?: number;
   /** After reset(), does the DOM order equal beforeOrder exactly? */
   reversedOrderMatches: boolean;
   /** Did the harness observe an LCP element to check ops against? Optional:
@@ -154,6 +161,18 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
   if (lcpTouches > 0) {
     fail(
       `${lcpTouches} op(s) target the page's LCP element — the serve-time CWV guard rolls the whole variant back for every real visitor (unservable)`,
+    );
+  }
+  // Same unservable class as the LCP touch above: the snippet's reorder self-
+  // check (ADR-001 step 2) rolls the WHOLE variant back for every visitor when a
+  // move does not actually lift its section (DOM order ≠ visual order — the
+  // section lands before a visually-lower sibling and stays put or drops). A
+  // "verified" variant the client always reverts would make the A/B arm measure
+  // original vs original — so it must fail here, not pass.
+  const moveNoRise = m.moveNoRise ?? 0;
+  if (moveNoRise > 0) {
+    fail(
+      `${moveNoRise} move(s) did not lift their section (DOM order ≠ visual order) — the snippet's reorder self-check rolls the whole variant back for every real visitor (unservable)`,
     );
   }
   if (m.movedAboveMain > 0) {

@@ -133,6 +133,23 @@ describe("evaluateRenderGates — pixel-half beauty gates", () => {
     expect(r.verdict).toBe("pass");
   });
 
+  it("FAILS when a move did not lift its section (unservable — self-check reverts it)", () => {
+    // ADR-001 step 2: the snippet's reorder self-check rolls the whole variant
+    // back when a "move up" lands the section before a visually-lower sibling
+    // (DOM order ≠ visual order) so it stays put or drops. A variant the client
+    // always reverts must fail verification, exactly like the LCP-touch case —
+    // otherwise the A/B arm measures original vs original. (Real example: the
+    // plausible.io hero region, where a 2nd move_up sinks the proof 983→1227px.)
+    const r = evaluateRenderGates(clean({ moveNoRise: 1 }));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons.some((x) => /did not lift.*unservable/i.test(x))).toBe(true);
+  });
+
+  it("passes when moves all lifted their sections (moveNoRise 0)", () => {
+    const r = evaluateRenderGates(clean({ moveNoRise: 0 }));
+    expect(r.verdict).toBe("pass");
+  });
+
   it("WARNS when no LCP element could be observed (servability check vacuous)", () => {
     const r = evaluateRenderGates(clean({ lcpFound: false, opsTouchingLcp: 0 }));
     expect(r.verdict).toBe("warn");
