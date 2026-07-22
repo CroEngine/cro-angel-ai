@@ -392,7 +392,10 @@ async function main() {
   for (const s of sites) {
     targets.push({ name: s.name, url: s.url, page: "home", segment: "engaged_no_click" });
     // FLEET_MAP audits the START pages only; the before/after run does home+pricing.
-    if (!process.env.FLEET_MAP && PRICING[s.name]) targets.push({ name: s.name, url: PRICING[s.name], page: "pricing", segment: "price_hesitant" });
+    // FLEET_MAP and FLEET_HOME_ONLY audit the START pages only; the normal
+    // before/after run does home+pricing.
+    if (!process.env.FLEET_MAP && !process.env.FLEET_HOME_ONLY && PRICING[s.name])
+      targets.push({ name: s.name, url: PRICING[s.name], page: "pricing", segment: "price_hesitant" });
   }
 
   const records: Rec[] = [];

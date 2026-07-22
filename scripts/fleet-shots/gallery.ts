@@ -11,7 +11,7 @@
 import { chromium } from "playwright";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 
-const DIR = "docs/fleet-shots-2026-07-21";
+const DIR = process.env.GALLERY_DIR || "docs/fleet-shots-2026-07-21";
 const IMG = `${DIR}/img`;
 const MAX_W = 380; // downscale width for the embedded images
 const PART_BUDGET = 4_500_000; // ~4.5 MB of image data per part file (safe to publish)
