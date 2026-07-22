@@ -67,3 +67,7 @@ redesign-render-out/
 package-lock.json
 # Snapshot-diffens debug-avtryck vid fail — skrivs av snapshot.test.ts, aldrig commitbart.
 corpus/**/actual.json
+
+# Fleet page-map raw full-height captures — heavy + regenerable; the gallery
+# embeds downscaled copies, and manifest.json keeps the structured map.
+docs/fleet-map-2026-07-22/img/

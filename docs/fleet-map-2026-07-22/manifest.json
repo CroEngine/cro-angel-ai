@@ -1,0 +1,2956 @@
+{
+ "generatedAtSites": 14,
+ "records": [
+  {
+   "name": "monday",
+   "url": "https://monday.com/",
+   "page": "home",
+   "ok": true,
+   "before": "monday-map.jpg",
+   "map": {
+    "url": "https://monday.com/",
+    "hero": {
+     "headline": "You lead. Agents act.",
+     "sub": "AI work platform"
+    },
+    "sectionCount": 11,
+    "typedShare": "3/11",
+    "sections": [
+     {
+      "i": 0,
+      "type": "hero",
+      "heading": "You lead. Agents act.",
+      "x": 0,
+      "y": 70,
+      "w": 1185,
+      "h": 602,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "hero",
+      "heading": "Trusted by over 60% of the Fortune 500",
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "content",
+      "heading": "Get more done with agents and people working side ",
+      "x": 0,
+      "y": 921,
+      "w": 1185,
+      "h": 970,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "content",
+      "heading": "An agent for every use case",
+      "x": 0,
+      "y": 1891,
+      "w": 1185,
+      "h": 1081,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "content",
+      "heading": "Work in context",
+      "x": 0,
+      "y": 2972,
+      "w": 1185,
+      "h": 4360,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "content",
+      "heading": "Full control",
+      "x": 0,
+      "y": 7332,
+      "w": 1185,
+      "h": 730,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "content",
+      "heading": "Consider yourself limitless",
+      "x": 0,
+      "y": 8061,
+      "w": 1185,
+      "h": 1433,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "Let work flow",
+      "x": 0,
+      "y": 9495,
+      "w": 1185,
+      "h": 1210,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "testimonials",
+      "heading": "Our customers achieve more",
+      "x": 0,
+      "y": 10704,
+      "w": 1185,
+      "h": 818,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 9,
+      "type": "content",
+      "heading": "Trusted by enterprises. Recognized by industry lea",
+      "x": 0,
+      "y": 11522,
+      "w": 1185,
+      "h": 933,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 10,
+      "type": "content",
+      "heading": "Built for people",
+      "x": 0,
+      "y": 12454,
+      "w": 1185,
+      "h": 335,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Get Started",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "IT",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "HR",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "Marketing",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "IT",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Product",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Sales",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "HR",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "PMO",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Create any agent",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Get Started",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Research Agents Surface deep intelligenc",
+      "section": "content",
+      "intent": "utility",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 3,
+     "customerLogos": 0,
+     "ratings": 0,
+     "trustedBy": 2,
+     "socialProof": 0,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "asana",
+   "url": "https://asana.com/",
+   "page": "home",
+   "ok": true,
+   "before": "asana-map.jpg",
+   "map": {
+    "url": "https://asana.com/",
+    "hero": {
+     "headline": "The OS for human-agent teams",
+     "sub": "Supercharge your teams to get things done"
+    },
+    "sectionCount": 11,
+    "typedShare": "5/11",
+    "sections": [
+     {
+      "i": 0,
+      "type": "header",
+      "heading": "Get started",
+      "x": 0,
+      "y": 0,
+      "w": 1185,
+      "h": 68,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "testimonials",
+      "heading": "The OS for human-agent teams AI TEAMMATES",
+      "x": 773,
+      "y": 12,
+      "w": 44,
+      "h": 44,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "hero",
+      "heading": "The OS for human-agent teams",
+      "x": 0,
+      "y": 0,
+      "w": 1185,
+      "h": 712,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "content",
+      "heading": "85% of Fortune 100 companies choose Asana¹",
+      "x": 68,
+      "y": 712,
+      "w": 1050,
+      "h": 364,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "content",
+      "heading": "AI that works the way your team works",
+      "x": 68,
+      "y": 1076,
+      "w": 1050,
+      "h": 989,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "testimonials",
+      "heading": "AI TEAMMATES",
+      "x": 68,
+      "y": 2065,
+      "w": 1050,
+      "h": 1132,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "content",
+      "heading": "Deliver real productivity for every team",
+      "x": 0,
+      "y": 3197,
+      "w": 1185,
+      "h": 1261,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "Get started easily",
+      "x": 0,
+      "y": 5078,
+      "w": 1185,
+      "h": 778,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "content",
+      "heading": "Recognized as a leader",
+      "x": 68,
+      "y": 6040,
+      "w": 1050,
+      "h": 701,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 9,
+      "type": "content",
+      "heading": "The only platform that can support your company at",
+      "x": 0,
+      "y": 6742,
+      "w": 1185,
+      "h": 645,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 10,
+      "type": "footer",
+      "heading": "",
+      "x": 0,
+      "y": 7386,
+      "w": 1185,
+      "h": 884,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Get started",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Get started",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "View demo",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Learn more",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Skills ROADMAP SYNCING GTM SEQUENCING DE",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Skills VOICE GOVERNANCE ARTIFACT AUDITIN",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Skills ROADMAP SYNCING GTM SEQUENCING DE",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Skills ROADMAP SYNCING GTM SEQUENCING DE",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Skills CULTURAL TRANSLATION LINGUISTIC Q",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Skills TEAM EXPERTISE READY TO HELP TAIL",
+      "section": "content",
+      "intent": "utility",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 3,
+     "customerLogos": 0,
+     "ratings": 0,
+     "trustedBy": 0,
+     "socialProof": 1,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "clickup",
+   "url": "https://clickup.com/",
+   "page": "home",
+   "ok": true,
+   "before": "clickup-map.jpg",
+   "map": {
+    "url": "https://clickup.com/",
+    "hero": {
+     "headline": "Software to replace all software Software to replace all software",
+     "sub": ""
+    },
+    "sectionCount": 13,
+    "typedShare": "4/13",
+    "sections": [
+     {
+      "i": 0,
+      "type": "hero",
+      "heading": "Software to replace all software Software to repla",
+      "x": 0,
+      "y": 100,
+      "w": 1185,
+      "h": 745,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "content",
+      "heading": "Trusted by the best",
+      "x": 13,
+      "y": 845,
+      "w": 1160,
+      "h": 206,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "content",
+      "heading": "60% of work is lost in context – and AI is lost wi",
+      "x": 0,
+      "y": 1099,
+      "w": 1185,
+      "h": 690,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "content",
+      "heading": "All apps, AI Agents, and humans in ClickUp",
+      "x": 0,
+      "y": 1788,
+      "w": 1185,
+      "h": 1146,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "content",
+      "heading": "A new era of humans, with Super Agents",
+      "x": 0,
+      "y": 2934,
+      "w": 1185,
+      "h": 1586,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "testimonials",
+      "heading": "The best AI is your AI",
+      "x": 0,
+      "y": 4520,
+      "w": 1185,
+      "h": 2653,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "header",
+      "heading": "Nothing comes close to Brain2",
+      "x": 233,
+      "y": 5586,
+      "w": 720,
+      "h": 224,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "AI solutions for every team",
+      "x": 33,
+      "y": 7173,
+      "w": 1120,
+      "h": 820,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "content",
+      "heading": "It's like adding 15 full-time employees",
+      "x": 0,
+      "y": 7993,
+      "w": 1185,
+      "h": 659,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 9,
+      "type": "testimonials",
+      "heading": "Loved by 5+ million teams, backed by 100+ awards",
+      "x": 33,
+      "y": 8652,
+      "w": 1120,
+      "h": 953,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 10,
+      "type": "content",
+      "heading": "#1 most referenced company on G2 reports",
+      "x": 13,
+      "y": 9605,
+      "w": 1160,
+      "h": 1017,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 11,
+      "type": "content",
+      "heading": "Enterprise-grade everything",
+      "x": 0,
+      "y": 10622,
+      "w": 1185,
+      "h": 375,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 12,
+      "type": "content",
+      "heading": "All your work, all your people, all powered by AI",
+      "x": 0,
+      "y": 10996,
+      "w": 1185,
+      "h": 769,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "NEW: Brain² — The best AI is your AI. Th",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "Login",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Sign Up",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "The Best AI is",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Get started. It's FREE!",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Play Video",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Dependencies",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Connected Search",
+      "section": "content",
+      "intent": "utility",
+      "aboveFold": false
+     },
+     {
+      "text": "Tasks",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Mind Maps",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Wikis",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 8,
+     "customerLogos": 1,
+     "ratings": 1,
+     "trustedBy": 2,
+     "socialProof": 1,
+     "guarantees": 0,
+     "certifications": 7,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "calendly",
+   "url": "https://calendly.com/",
+   "page": "home",
+   "ok": true,
+   "before": "calendly-map.jpg",
+   "map": {
+    "url": "https://calendly.com/",
+    "hero": {
+     "headline": "",
+     "sub": ""
+    },
+    "sectionCount": 8,
+    "typedShare": "1/8",
+    "sections": [
+     {
+      "i": 0,
+      "type": "hero",
+      "heading": "",
+      "x": 425,
+      "y": 580,
+      "w": 334,
+      "h": 0,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "content",
+      "heading": "Easy scheduling ahead.",
+      "x": 480,
+      "y": 580,
+      "w": 459,
+      "h": 141,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "content",
+      "heading": "A better way to book meetings.",
+      "x": 0,
+      "y": 1119,
+      "w": 1185,
+      "h": 1717,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "content",
+      "heading": "There’s more to meetings than finding a time.",
+      "x": 0,
+      "y": 2837,
+      "w": 1185,
+      "h": 460,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "content",
+      "heading": "Actionable recaps for every meeting.",
+      "x": 0,
+      "y": 3296,
+      "w": 1185,
+      "h": 1157,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "content",
+      "heading": "100+ integrations.",
+      "x": 0,
+      "y": 4975,
+      "w": 1185,
+      "h": 576,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "content",
+      "heading": "Pick the perfect plan for your team",
+      "x": 0,
+      "y": 5551,
+      "w": 1185,
+      "h": 826,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "From the first meeting to the follow-up.",
+      "x": 0,
+      "y": 6377,
+      "w": 1185,
+      "h": 474,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Log In",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Get started for free",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Sign up with Google",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Sign up with Microsoft",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Join the waitlist",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Testimonial 1",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Testimonial 2",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Testimonial 3",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Testimonial 4",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Testimonial 5",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Get started",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
+     },
+     {
+      "text": "Get started",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 0,
+     "customerLogos": 1,
+     "ratings": 0,
+     "trustedBy": 0,
+     "socialProof": 0,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "zapier",
+   "url": "https://zapier.com/",
+   "page": "home",
+   "ok": true,
+   "before": "zapier-map.jpg",
+   "map": {
+    "url": "https://zapier.com/",
+    "hero": {
+     "headline": "Your tools. Your rules. Any AI.",
+     "sub": ""
+    },
+    "sectionCount": 13,
+    "typedShare": "2/13",
+    "sections": [
+     {
+      "i": 0,
+      "type": "content",
+      "heading": "Your tools. Your rules. Any AI.",
+      "x": 0,
+      "y": 56,
+      "w": 1185,
+      "h": 15140,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "content",
+      "heading": "TRUSTED BY THE WORLD’S BEST COMPANIES",
+      "x": 20,
+      "y": 1016,
+      "w": 1145,
+      "h": 206,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "content",
+      "heading": "Every team has AI. Now they need a system.",
+      "x": 0,
+      "y": 1286,
+      "w": 1185,
+      "h": 1571,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "content",
+      "heading": "Zapier MCP and SDK. One secure connection. For eve",
+      "x": 0,
+      "y": 2857,
+      "w": 1185,
+      "h": 1759,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "content",
+      "heading": "Bring your hardest AI challenge. Leave with a clea",
+      "x": 0,
+      "y": 4616,
+      "w": 1185,
+      "h": 837,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "content",
+      "heading": "Your complete AI toolkit: MCP, SDK, CLI, and 9,000",
+      "x": 0,
+      "y": 5452,
+      "w": 1185,
+      "h": 1558,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "testimonials",
+      "heading": "Built for everyone, from the Fortune 500 to first-",
+      "x": 0,
+      "y": 7010,
+      "w": 1185,
+      "h": 1419,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "No AI hype here. Just results.",
+      "x": 0,
+      "y": 8429,
+      "w": 1185,
+      "h": 1929,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "content",
+      "heading": "AI that drives real outcomes",
+      "x": 0,
+      "y": 10359,
+      "w": 1185,
+      "h": 918,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 9,
+      "type": "content",
+      "heading": "AI governance and security that scales with you",
+      "x": 0,
+      "y": 11277,
+      "w": 1185,
+      "h": 2192,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 10,
+      "type": "content",
+      "heading": "Security built into every workflow",
+      "x": 0,
+      "y": 13468,
+      "w": 1185,
+      "h": 1336,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 11,
+      "type": "content",
+      "heading": "Go from AI experiments to real results",
+      "x": 0,
+      "y": 14804,
+      "w": 1185,
+      "h": 392,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 12,
+      "type": "footer",
+      "heading": "Apps by title",
+      "x": 0,
+      "y": 15196,
+      "w": 1185,
+      "h": 545,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Start free with email",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Start free with Google",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "MCP",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Claude",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Claude Code",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "ChatGPT",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Cursor",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "OpenClaw",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Learn more about governance",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Explore Zapier for Enterprise",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Learn more about MCP",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Get started with Zapier SDK",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 4,
+     "customerLogos": 0,
+     "ratings": 0,
+     "trustedBy": 1,
+     "socialProof": 0,
+     "guarantees": 0,
+     "certifications": 4,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "airtable",
+   "url": "https://www.airtable.com/",
+   "page": "home",
+   "ok": true,
+   "before": "airtable-map.jpg",
+   "map": {
+    "url": "https://www.airtable.com/",
+    "hero": {
+     "headline": "All your teams, all their workflows—connected in one workspace",
+     "sub": ""
+    },
+    "sectionCount": 14,
+    "typedShare": "7/14",
+    "sections": [
+     {
+      "i": 0,
+      "type": "header",
+      "heading": "Airtable home or view your bases",
+      "x": 0,
+      "y": 0,
+      "w": 1185,
+      "h": 121,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "nav",
+      "heading": "",
+      "x": -100,
+      "y": 0,
+      "w": 668,
+      "h": 1680,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "content",
+      "heading": "All your teams, all their workflows—connected in o",
+      "x": 0,
+      "y": 121,
+      "w": 1185,
+      "h": 7556,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "testimonials",
+      "heading": "",
+      "x": -115,
+      "y": 153,
+      "w": 668,
+      "h": 491,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "nav",
+      "heading": "",
+      "x": -115,
+      "y": 153,
+      "w": 668,
+      "h": 654,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "nav",
+      "heading": "",
+      "x": -115,
+      "y": 562,
+      "w": 668,
+      "h": 285,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "nav",
+      "heading": "",
+      "x": -115,
+      "y": 839,
+      "w": 668,
+      "h": 525,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "Trusted by 500,000 leading teams",
+      "x": 0,
+      "y": 1110,
+      "w": 1185,
+      "h": 191,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "content",
+      "heading": "Sophisticated workflows in minutes, not months",
+      "x": 0,
+      "y": 1301,
+      "w": 1185,
+      "h": 3549,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 9,
+      "type": "content",
+      "heading": "Production apps at prototype speed",
+      "x": 0,
+      "y": 1394,
+      "w": 1185,
+      "h": 3456,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 10,
+      "type": "content",
+      "heading": "Don’t just ask AI. Deploy it.",
+      "x": 307,
+      "y": 2290,
+      "w": 846,
+      "h": 800,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 11,
+      "type": "content",
+      "heading": "The path to 10x every person in your organization",
+      "x": 0,
+      "y": 4850,
+      "w": 1185,
+      "h": 1294,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 12,
+      "type": "content",
+      "heading": "Start building with Airtable Teams at over 500,000",
+      "x": 0,
+      "y": 7279,
+      "w": 1185,
+      "h": 334,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 13,
+      "type": "nav",
+      "heading": "",
+      "x": 48,
+      "y": 7677,
+      "w": 1089,
+      "h": 434,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Book Demo",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Sign up for free",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Get started for free",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Book demo",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Learn more",
+      "section": "hero",
+      "intent": "information",
+      "aboveFold": true
+     },
+     {
+      "text": "Learn more",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Learn more",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "See AI plays",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Read this brief and generate 10 campaign",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Gather intel on all event invitees to he",
+      "section": "content",
+      "intent": "utility",
+      "aboveFold": false
+     },
+     {
+      "text": "What are customers saying about our comp",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Run language translation on 500 assets a",
+      "section": "content",
+      "intent": "utility",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 1,
+     "customerLogos": 0,
+     "ratings": 0,
+     "trustedBy": 1,
+     "socialProof": 1,
+     "guarantees": 0,
+     "certifications": 1,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "webflow",
+   "url": "https://webflow.com/",
+   "page": "home",
+   "ok": true,
+   "before": "webflow-map.jpg",
+   "map": {
+    "url": "https://webflow.com/",
+    "hero": {
+     "headline": "Make your website a growth engine Make websites that drive results",
+     "sub": "Build your brand. Rank in AI search. Drive real revenue. All with Webflow."
+    },
+    "sectionCount": 9,
+    "typedShare": "5/9",
+    "sections": [
+     {
+      "i": 0,
+      "type": "header",
+      "heading": "Platform",
+      "x": 0,
+      "y": 46,
+      "w": 1185,
+      "h": 68,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "hero",
+      "heading": "Make your website a growth engine Make websites th",
+      "x": 0,
+      "y": 114,
+      "w": 1185,
+      "h": 3445,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "content",
+      "heading": "Webflow is the agentic web marketing platform for ",
+      "x": 0,
+      "y": 1234,
+      "w": 1185,
+      "h": 993,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "testimonials",
+      "heading": "300,000+ brands move the needle with Webflow",
+      "x": 0,
+      "y": 3560,
+      "w": 1185,
+      "h": 1002,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "cards",
+      "heading": "From idea to impact, faster",
+      "x": 0,
+      "y": 4562,
+      "w": 1185,
+      "h": 1201,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "content",
+      "heading": "Build",
+      "x": 0,
+      "y": 4830,
+      "w": 1185,
+      "h": 933,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "content",
+      "heading": "Everything marketing teams love about webflow",
+      "x": 0,
+      "y": 5763,
+      "w": 1185,
+      "h": 3526,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "Make your website your competitive edge",
+      "x": 0,
+      "y": 9289,
+      "w": 1185,
+      "h": 1096,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "nav",
+      "heading": "Product",
+      "x": 59,
+      "y": 10502,
+      "w": 1067,
+      "h": 955,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "New for Enterprise: Webflow AEO. Own you",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Platform",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Solutions",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Resources",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Contact Sales",
+      "section": "header",
+      "intent": "contact",
+      "aboveFold": true
+     },
+     {
+      "text": "Start for free",
+      "section": "header",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Machine Mode",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Machine Mode",
+      "section": "content",
+      "intent": "navigation",
+      "aboveFold": false
+     },
+     {
+      "text": "Select tab",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Select tab",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Select tab",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Machine Mode",
+      "section": "content",
+      "intent": "navigation",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 6,
+     "customerLogos": 0,
+     "ratings": 0,
+     "trustedBy": 0,
+     "socialProof": 2,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "typeform",
+   "url": "https://www.typeform.com/",
+   "page": "home",
+   "ok": true,
+   "before": "typeform-map.jpg",
+   "map": {
+    "url": "https://www.typeform.com/",
+    "hero": {
+     "headline": "",
+     "sub": ""
+    },
+    "sectionCount": 9,
+    "typedShare": "5/9",
+    "sections": [
+     {
+      "i": 0,
+      "type": "nav",
+      "heading": "Platform",
+      "x": 0,
+      "y": 0,
+      "w": 1185,
+      "h": 88,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "testimonials",
+      "heading": "Your favorite forms.Now with AI automation.",
+      "x": 0,
+      "y": 88,
+      "w": 1185,
+      "h": 8206,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "testimonials",
+      "heading": "Build forms at the drop of a prompt",
+      "x": 0,
+      "y": 3240,
+      "w": 1185,
+      "h": 828,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "content",
+      "heading": "When the form ends, the flow begins...",
+      "x": 0,
+      "y": 4067,
+      "w": 1185,
+      "h": 250,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "testimonials",
+      "heading": "Be proactive with customer data",
+      "x": 0,
+      "y": 4317,
+      "w": 1185,
+      "h": 819,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "testimonials",
+      "heading": "Run fast research, moderated by AI",
+      "x": 0,
+      "y": 5312,
+      "w": 1185,
+      "h": 798,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "content",
+      "heading": "Join 150,000+ businesses driving revenue with Type",
+      "x": 0,
+      "y": 6141,
+      "w": 1185,
+      "h": 301,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "Integrate with your tech stack",
+      "x": 0,
+      "y": 7207,
+      "w": 1185,
+      "h": 615,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "content",
+      "heading": "AI forms and automation. All in Typeform.",
+      "x": 0,
+      "y": 7821,
+      "w": 1185,
+      "h": 473,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Contact sales",
+      "section": "nav",
+      "intent": "contact",
+      "aboveFold": true
+     },
+     {
+      "text": "Sign up",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Explore forms",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Explore Growth Flow",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Explore Research Flow",
+      "section": "content",
+      "intent": "utility",
+      "aboveFold": false
+     },
+     {
+      "text": "Read all customer stories",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "View integrations",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Get started—it’s free",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 10,
+     "customerLogos": 1,
+     "ratings": 0,
+     "trustedBy": 0,
+     "socialProof": 1,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "posthog",
+   "url": "https://posthog.com/",
+   "page": "home",
+   "ok": true,
+   "before": "posthog-map.jpg",
+   "map": {
+    "url": "https://posthog.com/",
+    "hero": {
+     "headline": "Shift your product into self-driving mode",
+     "sub": "PostHog already knows your customers, which features they use, and the issues they have."
+    },
+    "sectionCount": 3,
+    "typedShare": "2/3",
+    "sections": [
+     {
+      "i": 0,
+      "type": "nav",
+      "heading": "Self-driving product",
+      "x": 0,
+      "y": 0,
+      "w": 1200,
+      "h": 1664,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "hero",
+      "heading": "Shift your product into self-driving mode",
+      "x": 0,
+      "y": 0,
+      "w": 1200,
+      "h": 1680,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "content",
+      "heading": "Shift your product into self-driving mode",
+      "x": 126,
+      "y": 89,
+      "w": 932,
+      "h": 4681,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "Get started – free",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "Open Customers",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "US (Virginia)",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "EU (Frankfurt)",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Get started",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 0,
+     "customerLogos": 0,
+     "ratings": 0,
+     "trustedBy": 0,
+     "socialProof": 1,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 1,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "basecamp",
+   "url": "https://basecamp.com/",
+   "page": "home",
+   "ok": true,
+   "before": "basecamp-map.jpg",
+   "map": {
+    "url": "https://basecamp.com/",
+    "hero": {
+     "headline": "The refreshingly straightforward project management system that’s rock-solid and easy to u",
+     "sub": ""
+    },
+    "sectionCount": 6,
+    "typedShare": "5/6",
+    "sections": [
+     {
+      "i": 0,
+      "type": "testimonials",
+      "heading": "Sign up free",
+      "x": 0,
+      "y": 0,
+      "w": 1190,
+      "h": 63,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "content",
+      "heading": "Tell me if this sounds about right.",
+      "x": 0,
+      "y": 1245,
+      "w": 1190,
+      "h": 2285,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "header",
+      "heading": "Big numbers. Highly-trusted. Rugged, reliable, and",
+      "x": 152,
+      "y": 2053,
+      "w": 285,
+      "h": 127,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "header",
+      "heading": "Remember when companies cared about service? We st",
+      "x": 152,
+      "y": 2323,
+      "w": 285,
+      "h": 127,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "header",
+      "heading": "All these questions have the same answer: Yes!",
+      "x": 152,
+      "y": 2585,
+      "w": 285,
+      "h": 90,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "footer",
+      "heading": "And there’s more…",
+      "x": 0,
+      "y": 3530,
+      "w": 1190,
+      "h": 433,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Sign up free",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Take a 3 minute tour of Basecamp",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Check out over 1,000 more customer testi",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Meet Chase, our Head of Support",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Try Basecamp free",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 12,
+     "customerLogos": 0,
+     "ratings": 0,
+     "trustedBy": 0,
+     "socialProof": 0,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "deel",
+   "url": "https://www.deel.com/",
+   "page": "home",
+   "ok": true,
+   "before": "deel-map.jpg",
+   "map": {
+    "url": "https://www.deel.com/",
+    "hero": {
+     "headline": "Hire, manage, pay, & equip anyone, anywhere",
+     "sub": "What would you like to do with Deel?"
+    },
+    "sectionCount": 9,
+    "typedShare": "4/9",
+    "sections": [
+     {
+      "i": 0,
+      "type": "header",
+      "heading": "Get 3 months free of PEO*",
+      "x": 0,
+      "y": 0,
+      "w": 1185,
+      "h": 144,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "hero",
+      "heading": "Hire, manage, pay, & equip anyone, anywhere",
+      "x": 0,
+      "y": 144,
+      "w": 1185,
+      "h": 924,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "content",
+      "heading": "Read about real results",
+      "x": 0,
+      "y": 1068,
+      "w": 1185,
+      "h": 292,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "content",
+      "heading": "The Global People Platform",
+      "x": 0,
+      "y": 1360,
+      "w": 1185,
+      "h": 1282,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "content",
+      "heading": "Accomplish more in less time",
+      "x": 0,
+      "y": 2643,
+      "w": 1185,
+      "h": 649,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "content",
+      "heading": "One modern experience for today's workforce",
+      "x": 0,
+      "y": 3292,
+      "w": 1185,
+      "h": 1376,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "testimonials",
+      "heading": "Our customer reviews",
+      "x": 0,
+      "y": 4668,
+      "w": 1185,
+      "h": 1206,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "Deel makes growing remote and international teams ",
+      "x": 0,
+      "y": 5874,
+      "w": 1185,
+      "h": 541,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "testimonials",
+      "heading": "Excellent global payroll",
+      "x": 0,
+      "y": 6415,
+      "w": 1185,
+      "h": 492,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Claim offer",
+      "section": "header",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Log in",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Book a demo",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Hire anywhere",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Run payroll",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Secure visas",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Manage HR & people",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Ship equipment",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Book a demo",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "175 STORIES Read about real results",
+      "section": "hero",
+      "intent": "information",
+      "aboveFold": true
+     },
+     {
+      "text": "Deel Payroll Local and global payroll, y",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Deel HR One HR system for every worker.",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     }
+    ],
+    "trustCount": {
+     "testimonials": 9,
+     "customerLogos": 0,
+     "ratings": 6,
+     "trustedBy": 1,
+     "socialProof": 3,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "mentimeter",
+   "url": "https://www.mentimeter.com/",
+   "page": "home",
+   "ok": true,
+   "before": "mentimeter-map.jpg",
+   "map": {
+    "url": "https://www.mentimeter.com/",
+    "hero": {
+     "headline": "Listen, learn, and think. Together.",
+     "sub": ""
+    },
+    "sectionCount": 16,
+    "typedShare": "7/16",
+    "sections": [
+     {
+      "i": 0,
+      "type": "testimonials",
+      "heading": "Listen, learn, and think. Together.",
+      "x": 0,
+      "y": 65,
+      "w": 1185,
+      "h": 6568,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "content",
+      "heading": "Trusted by 500+ million users worldwide",
+      "x": 0,
+      "y": 993,
+      "w": 1185,
+      "h": 338,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "faq",
+      "heading": "Good questions, great insights.",
+      "x": 0,
+      "y": 1332,
+      "w": 1185,
+      "h": 268,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "faq",
+      "heading": "TURN PRESENTATIONS INTO QUESTIONS",
+      "x": 0,
+      "y": 1600,
+      "w": 1185,
+      "h": 620,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "content",
+      "heading": "KEEP THE CONVERSATION GOING",
+      "x": 64,
+      "y": 1675,
+      "w": 1121,
+      "h": 500,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "content",
+      "heading": "LEAVE WITH NEW INSIGHTS",
+      "x": 64,
+      "y": 1675,
+      "w": 1121,
+      "h": 500,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "content",
+      "heading": "More engagement, every day.",
+      "x": 0,
+      "y": 2842,
+      "w": 1185,
+      "h": 348,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "Get live feedback",
+      "x": 0,
+      "y": 3190,
+      "w": 1185,
+      "h": 849,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "content",
+      "heading": "easy to start. simple to connect.",
+      "x": 0,
+      "y": 4039,
+      "w": 1185,
+      "h": 340,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 9,
+      "type": "content",
+      "heading": "Customizable templates",
+      "x": 0,
+      "y": 4379,
+      "w": 1185,
+      "h": 591,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 10,
+      "type": "content",
+      "heading": "The power of participation.",
+      "x": 0,
+      "y": 4971,
+      "w": 1185,
+      "h": 388,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 11,
+      "type": "content",
+      "heading": "listen, learn, and lead with curiosity.",
+      "x": 0,
+      "y": 6229,
+      "w": 1185,
+      "h": 404,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 12,
+      "type": "nav",
+      "heading": "",
+      "x": 64,
+      "y": 6697,
+      "w": 146,
+      "h": 357,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 13,
+      "type": "nav",
+      "heading": "",
+      "x": 242,
+      "y": 6697,
+      "w": 146,
+      "h": 357,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 14,
+      "type": "nav",
+      "heading": "",
+      "x": 421,
+      "y": 6697,
+      "w": 146,
+      "h": 357,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 15,
+      "type": "nav",
+      "heading": "",
+      "x": 599,
+      "y": 6697,
+      "w": 146,
+      "h": 357,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Accept all",
+      "section": "hero",
+      "intent": "utility",
+      "aboveFold": true
+     },
+     {
+      "text": "Reject all",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Cookie preferences",
+      "section": "hero",
+      "intent": "utility",
+      "aboveFold": true
+     },
+     {
+      "text": "Sign up",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Join",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Sign up with Google",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Continue with email",
+      "section": "hero",
+      "intent": "engagement",
+      "aboveFold": true
+     },
+     {
+      "text": "Get started",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Get a demo",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 1,
+     "customerLogos": 1,
+     "ratings": 0,
+     "trustedBy": 1,
+     "socialProof": 0,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "fortnox",
+   "url": "https://www.fortnox.se/",
+   "page": "home",
+   "ok": true,
+   "before": "fortnox-map.jpg",
+   "map": {
+    "url": "https://www.fortnox.se/",
+    "hero": {
+     "headline": "allt för att starta, driva och växa",
+     "sub": ""
+    },
+    "sectionCount": 6,
+    "typedShare": "2/6",
+    "sections": [
+     {
+      "i": 0,
+      "type": "testimonials",
+      "heading": "allt för att starta, driva och växa",
+      "x": 0,
+      "y": 0,
+      "w": 1200,
+      "h": 7850,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "content",
+      "heading": "Samla alla betalningar i samma plattform",
+      "x": 0,
+      "y": 1570,
+      "w": 1200,
+      "h": 698,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "content",
+      "heading": "Vill du starta företag? Vi hjälper dig igång.",
+      "x": 0,
+      "y": 2268,
+      "w": 1200,
+      "h": 752,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "content",
+      "heading": "Se till att du inte stannar i växten",
+      "x": 0,
+      "y": 4189,
+      "w": 1200,
+      "h": 752,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "content",
+      "heading": "De första byggstenarna",
+      "x": 0,
+      "y": 6829,
+      "w": 1200,
+      "h": 541,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "footer",
+      "heading": "",
+      "x": 0,
+      "y": 7850,
+      "w": 1200,
+      "h": 1731,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Starta företag",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Skaffa Fortnox",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "För redovisningsbyrån",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Kunskap & inspiration",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "",
+      "section": "nav",
+      "intent": "unknown",
+      "aboveFold": true
+     },
+     {
+      "text": "Starta köpguiden",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Köp lagerbolag",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Se våra paket",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Se vårt byråpaket",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "",
+      "section": "footer",
+      "intent": "social",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "footer",
+      "intent": "social",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "footer",
+      "intent": "social",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 1,
+     "customerLogos": 0,
+     "ratings": 0,
+     "trustedBy": 0,
+     "socialProof": 0,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  },
+  {
+   "name": "teamtailor",
+   "url": "https://www.teamtailor.com/",
+   "page": "home",
+   "ok": true,
+   "before": "teamtailor-map.jpg",
+   "map": {
+    "url": "https://www.teamtailor.com/en-us/",
+    "hero": {
+     "headline": "Hire for growth.",
+     "sub": "The ATS loved by candidates and recruiters — with AI at the core ."
+    },
+    "sectionCount": 13,
+    "typedShare": "3/13",
+    "sections": [
+     {
+      "i": 0,
+      "type": "hero",
+      "heading": "Hire for growth.",
+      "x": 0,
+      "y": 0,
+      "w": 1185,
+      "h": 1425,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "content",
+      "heading": "‍Attract",
+      "x": -181,
+      "y": 937,
+      "w": 3000,
+      "h": 30,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "testimonials",
+      "heading": "“Excellent support, user friendly system and alway",
+      "x": 2851,
+      "y": 937,
+      "w": 3000,
+      "h": 30,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "content",
+      "heading": "AI Co-pilot. Your own AI assistant.",
+      "x": 0,
+      "y": 2647,
+      "w": 1185,
+      "h": 844,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "content",
+      "heading": "",
+      "x": 0,
+      "y": 3491,
+      "w": 1185,
+      "h": 458,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "content",
+      "heading": "",
+      "x": 0,
+      "y": 3950,
+      "w": 1185,
+      "h": 659,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "content",
+      "heading": "",
+      "x": 0,
+      "y": 4608,
+      "w": 1185,
+      "h": 692,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "content",
+      "heading": "Loved by candidates, recruiters and hiring manager",
+      "x": 0,
+      "y": 5300,
+      "w": 1185,
+      "h": 510,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "content",
+      "heading": "Begin every day with a smile on your face.",
+      "x": 0,
+      "y": 5811,
+      "w": 1185,
+      "h": 1079,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 9,
+      "type": "content",
+      "heading": "450+ powerful integrations.",
+      "x": 0,
+      "y": 6889,
+      "w": 1185,
+      "h": 893,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 10,
+      "type": "content",
+      "heading": "Even more inside.",
+      "x": 0,
+      "y": 7782,
+      "w": 1185,
+      "h": 896,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 11,
+      "type": "testimonials",
+      "heading": "",
+      "x": 0,
+      "y": 8678,
+      "w": 1185,
+      "h": 1020,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 12,
+      "type": "content",
+      "heading": "Experience the magic of Teamtailor",
+      "x": 0,
+      "y": 9698,
+      "w": 1185,
+      "h": 5040,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Log in",
+      "section": "header",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Book a demo",
+      "section": "header",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Book a demo",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "We’d love to help you support@teamtailor",
+      "section": "content",
+      "intent": "contact",
+      "aboveFold": false
+     },
+     {
+      "text": "We’d love to speak to you +46 (0)10 330 ",
+      "section": "content",
+      "intent": "contact",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "content",
+      "intent": "social",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "content",
+      "intent": "social",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "content",
+      "intent": "social",
+      "aboveFold": false
+     },
+     {
+      "text": "",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 9,
+     "customerLogos": 1,
+     "ratings": 0,
+     "trustedBy": 3,
+     "socialProof": 1,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
+  }
+ ]
+}
