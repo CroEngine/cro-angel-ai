@@ -73,3 +73,7 @@ corpus/**/actual.json
 docs/fleet-map-2026-07-22/img/
 docs/fleet-shots-2026-07-22/img/
 docs/fleet-shots-2026-07-22/manifest.json
+
+# Lab/forsknings-bundlen — BYGGARTEFAKT (bun run build:adaptive), aldrig
+# kund-laddad och aldrig deployad: flyttad UT ur public/ (ADR-001 steg 4).
+artifacts/

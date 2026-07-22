@@ -7,7 +7,7 @@
 // callable function with no runtime code-gen. The audit engine keeps using the
 // string form; this is a second, eval-free view of the SAME source.
 //
-// Run: bun run scripts/gen-detectors.ts  (also runs as part of build:adaptive)
+// Run: bun run scripts/gen-detectors.ts  (also runs as part of build:lab)
 import { writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 

@@ -4,7 +4,7 @@
 // prove reversibility. Screenshots at every step.
 // =====================================================================
 // Per site:
-//   goto (Browserbase) → inject public/adaptive-lab.js (the shipped bundle) →
+//   goto (Browserbase) → inject artifacts/lab/adaptive-lab.js (the shipped bundle) →
 //   wait for inventory → scroll through the page (the snippet's tracker
 //   records REAL scroll/time events) → back to top → BEFORE shot →
 //   adapt() with no argument (segment DERIVED from the real events) → shot →
@@ -22,7 +22,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createSession, closeSession } from "../src/lib/tests/browserbase.server";
 
 const OUT_DIR = "/tmp/claude-0/-home-user-cro-angel-ai/c11460d4-452b-5901-aaf1-829bf613facc/scratchpad";
-const BUNDLE = readFileSync("public/adaptive-lab.js", "utf8");
+const BUNDLE = readFileSync("artifacts/lab/adaptive-lab.js", "utf8");
 
 const SITES: Array<{ name: string; url: string }> = [
   { name: "plausible", url: "https://plausible.io/" },

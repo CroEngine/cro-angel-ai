@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // FLEET SHOTS — live before/after of the REAL engine adapting each of the 101
 // fleet sites. Re-crawls every site via Browserbase, dismisses consent, injects
-// public/adaptive-lab.js, photographs BEFORE, applies the adaptation for a
+// artifacts/lab/adaptive-lab.js, photographs BEFORE, applies the adaptation for a
 // representative visitor, photographs AFTER, then reverts and photographs
 // RESTORED to prove the page comes back byte-clean.
 //
@@ -26,7 +26,7 @@ import { SITES } from "../day0-sites";
 
 const OUT = process.env.FLEET_OUT || "docs/fleet-shots-2026-07-21";
 const IMG = `${OUT}/img`;
-const BUNDLE = readFileSync("public/adaptive-lab.js", "utf8");
+const BUNDLE = readFileSync("artifacts/lab/adaptive-lab.js", "utf8");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const only = process.argv.find((a) => a.startsWith("--only="))?.slice(7);
 const limit = Number(process.argv.find((a) => a.startsWith("--limit="))?.slice(8) || 0);

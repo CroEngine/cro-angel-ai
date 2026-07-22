@@ -21,7 +21,7 @@ import { createSession, closeSession } from "../src/lib/tests/browserbase.server
 import { SITES } from "./day0-sites";
 
 const OUT_DIR = "/tmp/claude-0/-home-user-cro-angel-ai/c11460d4-452b-5901-aaf1-829bf613facc/scratchpad";
-const BUNDLE = readFileSync("public/adaptive-lab.js", "utf8");
+const BUNDLE = readFileSync("artifacts/lab/adaptive-lab.js", "utf8");
 const CHUNK = 5;
 
 // Known remote-tab crashers from the day-0 sweep — skip, don't burn time.

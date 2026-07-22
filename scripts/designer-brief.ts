@@ -20,7 +20,7 @@ import { SITES } from "./day0-sites";
 
 const OUT_DIR =
   "/tmp/claude-0/-home-user-cro-angel-ai/c11460d4-452b-5901-aaf1-829bf613facc/scratchpad/designer/briefs";
-const BUNDLE = readFileSync("public/adaptive-lab.js", "utf8");
+const BUNDLE = readFileSync("artifacts/lab/adaptive-lab.js", "utf8");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function arg(name: string): string | undefined {

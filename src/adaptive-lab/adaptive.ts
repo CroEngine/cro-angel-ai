@@ -1,4 +1,4 @@
-// Angel Adaptive — the RESEARCH / LAB engine (built to public/adaptive-lab.js).
+// Angel Adaptive — the RESEARCH / LAB engine (built to artifacts/lab/adaptive-lab.js).
 //
 // NOT the customer-facing snippet. Per docs/adr-001-go-forward-engine.md the
 // go-forward product is the SERVER-DECIDES engine (public/adaptive.js + the server

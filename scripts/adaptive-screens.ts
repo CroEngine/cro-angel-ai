@@ -18,7 +18,7 @@ import { tmpdir } from "node:os";
 import { join, dirname, isAbsolute, basename } from "node:path";
 
 const REPO = join(dirname(new URL(import.meta.url).pathname), "..");
-const BUNDLE = join(REPO, "public/adaptive-lab.js");
+const BUNDLE = join(REPO, "artifacts/lab/adaptive-lab.js");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const OUT = (process.argv.find((a) => a.startsWith("--out=")) ?? `--out=${REPO}`).slice(6);
 const targets = process.argv.slice(2).filter((a) => !a.startsWith("--"));

@@ -3,7 +3,7 @@
 //   bun run scripts/adaptive-smoke.ts                       # demo, via real <script src>
 //   bun run scripts/adaptive-smoke.ts https://glutenforum.se  # live site, through the proxy
 //
-// Demo mode proves the BUNDLED public/adaptive-lab.js self-runs when loaded as a
+// Demo mode proves the BUNDLED artifacts/lab/adaptive-lab.js self-runs when loaded as a
 // one-line <script src> (the true install path). URL mode loads a live page and
 // injects the bundle, reading back window.__angelAdaptive — the same thing that
 // happens when the snippet is installed on the real site.
@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 
 const REPO = join(dirname(new URL(import.meta.url).pathname), "..");
-const BUNDLE = join(REPO, "public/adaptive-lab.js");
+const BUNDLE = join(REPO, "artifacts/lab/adaptive-lab.js");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const arg = process.argv[2];
 

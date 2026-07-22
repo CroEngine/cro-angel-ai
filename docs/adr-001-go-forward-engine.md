@@ -87,11 +87,26 @@ sandbox whose *code is harvested into the product*.
      (`sections.ts` + `enrichSections`) — it is version-gated by `EXTRACTOR_VERSION` + corpus
      goldens, the goldens are geo/build-sensitive, and it is **not the live serve path** anyway.
      Deferred to a golden-capable environment if the ContentInventory path is ever revived.
-4. **Rebuild the runtime applier as clean, tested TS** (absorbing the lab's
-   presentability + revert discipline) instead of hand-maintained JS; retire
-   `public/adaptive-lab.js` as a runtime.
-5. **Relabel the lab** to a perception/research sandbox that feeds the offline
-   designer-brief only.
+4. **Rebuild the runtime applier as clean, tested TS.** ✅ **SHIPPED.** The variant
+   applier (two-phase resolve/apply, section resolution v3, reorder self-check, atomic
+   rollback) now has ONE source of truth: `src/adaptive/runtime/applier.ts` — typed,
+   dependency-injected (`ApplierDeps`), carrying all the design commentary, and
+   unit-tested in real Chromium (`src/adaptive/runtime/__tests__/applier.test.ts`, 15
+   scenarios: self-check paths, atomicity, byte-exact undo, CWV re-anchor, href
+   defence-in-depth). `scripts/build/gen-applier.ts` compiles it (type-strip, es2017)
+   and splices it between markers in `public/adaptive.js`; CI pins source↔artifact
+   (`gen:applier:check`, same discipline as the harvest codegen pin) and
+   `serving-smoke` proves the spliced snippet — source + minified — byte-clean on the
+   frozen fixture. **Scope note (deliberate):** the applier, not the whole snippet —
+   boot/collectors/telemetry stay hand-maintained JS; they never mutate the customer
+   page, and a wholesale rewrite risks regressions in paths the smoke can't see.
+   **Retired `adaptive-lab.js` as a runtime:** the lab bundle moved OUT of `public/`
+   to `artifacts/lab/` (gitignored build artifact — it can never deploy again); all
+   script consumers repointed; `bun run build:lab` rebuilds it.
+5. **Relabel the lab.** ✅ **SHIPPED.** `src/adaptive-lab/README.md` declares the
+   sandbox contract (harvest INTO the product, never point a customer at the lab);
+   `build:adaptive` renamed `build:lab`; entry-point header already reconciled in
+   step 1.
 
 ### Version note
 `adaptive.js` reports `"0.1.0"` despite heavy development — reconcile to a real version
