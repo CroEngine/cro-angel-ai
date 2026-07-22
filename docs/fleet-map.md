@@ -61,9 +61,15 @@ sections — boundary detection works. But:
    The load-bearing move: reorder can now find the proof strip on 91 % of the fleet
    (it couldn't on any). Confirmed on the real clickup DOM — the "Trusted by the best"
    wall → `logos [TRUST]`, the 384 %/$3.1M and 85 %/3M+ strips → `stats [TRUST]`.
-2. **Grow the type vocabulary** — real `features` / `cta_band`, and capture the headline
-   stat *numbers* (384 % / $3.1M / 85 % …) as discrete proof. (The 659 remaining
-   `content` sections are mostly feature/value-prop blocks this fix left untouched.)
+2. **Grow the type vocabulary** — ✅ **SHIPPED (v0.16).** `structuralType` in
+   `assembleInventory` categorises each still-`content` section by DOM structure (not
+   heading — headings are marketing copy): `<video>`/video-iframe → **video**,
+   `<details>`/accordion → **faq**, `<table>` → **comparison**, ≥6 imgs + apps/integration
+   heading → **integrations**, repeating card grid → **cards**, short headline+button →
+   **cta**. Genuine prose stays `content`. **Measured fleet-wide: `content` 65% → 31%**
+   (typed 35% → **69%**). Histogram: `cards:166 · video:64 · cta:49 · logos:44 · faq:35 ·
+   stats:26 · integrations:17 · comparison:2` (+ testimonials/hero/form). Every section
+   now has a real category — the "koll" the founder asked for.
 3. **Fix the mislabels** — 22 mid-page `header`s, hero-as-`testimonials` (asana).
 4. **Re-run this audit** to confirm — the map is its own regression gate (as above).
 

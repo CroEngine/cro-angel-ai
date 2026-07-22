@@ -14,7 +14,7 @@
      "sub": "Where people and agents drive results together on one secure AI work platform"
     },
     "sectionCount": 11,
-    "typedShare": "4/11",
+    "typedShare": "7/11",
     "sections": [
      {
       "i": 0,
@@ -40,7 +40,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "video",
       "heading": "Get more done with agents",
       "x": 0,
       "y": 820,
@@ -51,7 +51,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "An agent for every use case",
       "x": 0,
       "y": 1593,
@@ -84,7 +84,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Consider yourself limitless",
       "x": 0,
       "y": 7742,
@@ -100,7 +100,7 @@
       "x": 0,
       "y": 9175,
       "w": 1185,
-      "h": 1002,
+      "h": 763,
       "trust": false,
       "pricing": false
      },
@@ -109,7 +109,7 @@
       "type": "testimonials",
       "heading": "Our customers achieve more",
       "x": 0,
-      "y": 10177,
+      "y": 9938,
       "w": 1185,
       "h": 818,
       "trust": true,
@@ -120,7 +120,7 @@
       "type": "logos",
       "heading": "Trusted by enterprises. Recognized by industry lea",
       "x": 0,
-      "y": 10995,
+      "y": 10756,
       "w": 1185,
       "h": 921,
       "trust": true,
@@ -131,7 +131,7 @@
       "type": "content",
       "heading": "",
       "x": 0,
-      "y": 11916,
+      "y": 11677,
       "w": 1185,
       "h": 335,
       "trust": false,
@@ -241,7 +241,7 @@
      "sub": "Supercharge your teams to get things done"
     },
     "sectionCount": 11,
-    "typedShare": "6/11",
+    "typedShare": "9/11",
     "sections": [
      {
       "i": 0,
@@ -289,12 +289,12 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "AI that works the way your team works",
       "x": 68,
       "y": 1076,
       "w": 1050,
-      "h": 989,
+      "h": 993,
       "trust": false,
       "pricing": false
      },
@@ -303,7 +303,7 @@
       "type": "testimonials",
       "heading": "AI TEAMMATES",
       "x": 68,
-      "y": 2065,
+      "y": 2069,
       "w": 1050,
       "h": 1132,
       "trust": true,
@@ -311,21 +311,21 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Deliver real productivity for every team",
       "x": 0,
-      "y": 3197,
+      "y": 3201,
       "w": 1185,
-      "h": 1261,
+      "h": 1143,
       "trust": false,
       "pricing": false
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "Get started easily",
       "x": 0,
-      "y": 5078,
+      "y": 4964,
       "w": 1185,
       "h": 778,
       "trust": false,
@@ -336,7 +336,7 @@
       "type": "stats",
       "heading": "Recognized as a leader",
       "x": 68,
-      "y": 6040,
+      "y": 5926,
       "w": 1050,
       "h": 701,
       "trust": true,
@@ -347,7 +347,7 @@
       "type": "content",
       "heading": "The only platform that can support your company at",
       "x": 0,
-      "y": 6742,
+      "y": 6628,
       "w": 1185,
       "h": 645,
       "trust": false,
@@ -358,9 +358,9 @@
       "type": "footer",
       "heading": "",
       "x": 0,
-      "y": 7386,
+      "y": 7272,
       "w": 1185,
-      "h": 884,
+      "h": 846,
       "trust": false,
       "pricing": false
      }
@@ -468,7 +468,7 @@
      "sub": ""
     },
     "sectionCount": 13,
-    "typedShare": "7/13",
+    "typedShare": "9/13",
     "sections": [
      {
       "i": 0,
@@ -505,7 +505,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "integrations",
       "heading": "All apps, AI Agents, and humans in ClickUp",
       "x": 0,
       "y": 1788,
@@ -549,7 +549,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "AI solutions for every team",
       "x": 33,
       "y": 7173,
@@ -717,14 +717,14 @@
      "sub": ""
     },
     "sectionCount": 11,
-    "typedShare": "4/11",
+    "typedShare": "8/11",
     "sections": [
      {
       "i": 0,
       "type": "hero",
       "heading": "",
       "x": 425,
-      "y": 98,
+      "y": 59,
       "w": 334,
       "h": 0,
       "trust": false,
@@ -754,7 +754,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Calendly makes scheduling simple",
       "x": 0,
       "y": 930,
@@ -787,7 +787,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "More than a scheduling link",
       "x": 0,
       "y": 3097,
@@ -798,7 +798,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "Pick the perfect plan for your team",
       "x": 0,
       "y": 4239,
@@ -831,7 +831,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "cta",
       "heading": "Power up your scheduling",
       "x": 0,
       "y": 6319,
@@ -940,29 +940,29 @@
    "map": {
     "url": "https://zapier.com/",
     "hero": {
-     "headline": "Your tools. Your rules. Any AI.",
+     "headline": "TRUSTED BY THE WORLD’S BEST COMPANIES",
      "sub": ""
     },
     "sectionCount": 13,
-    "typedShare": "2/13",
+    "typedShare": "10/13",
     "sections": [
      {
       "i": 0,
-      "type": "content",
+      "type": "cards",
       "heading": "Your tools. Your rules. Any AI.",
       "x": 0,
       "y": 56,
       "w": 1185,
-      "h": 14906,
+      "h": 14628,
       "trust": false,
       "pricing": false
      },
      {
       "i": 1,
-      "type": "logos",
+      "type": "hero",
       "heading": "TRUSTED BY THE WORLD’S BEST COMPANIES",
       "x": 20,
-      "y": 960,
+      "y": 600,
       "w": 1145,
       "h": 206,
       "trust": true,
@@ -970,7 +970,18 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "video",
+      "heading": "Every team has AI. Now they need a system.",
+      "x": 0,
+      "y": 870,
+      "w": 1185,
+      "h": 1571,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "cta",
       "heading": "How did you hear about us?",
       "x": 803,
       "y": 1214,
@@ -980,22 +991,11 @@
       "pricing": false
      },
      {
-      "i": 3,
-      "type": "content",
-      "heading": "Every team has AI. Now they need a system.",
-      "x": 0,
-      "y": 1230,
-      "w": 1185,
-      "h": 1571,
-      "trust": false,
-      "pricing": false
-     },
-     {
       "i": 4,
       "type": "content",
       "heading": "Zapier MCP and SDK. One secure connection. For eve",
       "x": 0,
-      "y": 2801,
+      "y": 2441,
       "w": 1185,
       "h": 1711,
       "trust": false,
@@ -1006,7 +1006,7 @@
       "type": "content",
       "heading": "Bring your hardest AI challenge. Leave with a clea",
       "x": 0,
-      "y": 4512,
+      "y": 4152,
       "w": 1185,
       "h": 837,
       "trust": false,
@@ -1014,10 +1014,10 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "video",
       "heading": "Your complete AI toolkit: MCP, SDK, CLI, and 9,000",
       "x": 0,
-      "y": 5348,
+      "y": 4988,
       "w": 1185,
       "h": 1558,
       "trust": false,
@@ -1028,7 +1028,7 @@
       "type": "testimonials",
       "heading": "Built for everyone, from the Fortune 500 to first-",
       "x": 0,
-      "y": 6906,
+      "y": 6546,
       "w": 1185,
       "h": 1419,
       "trust": true,
@@ -1039,7 +1039,7 @@
       "type": "content",
       "heading": "No AI hype here. Just results.",
       "x": 0,
-      "y": 8325,
+      "y": 7965,
       "w": 1185,
       "h": 1929,
       "trust": false,
@@ -1047,10 +1047,10 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "cards",
       "heading": "AI that drives real outcomes",
       "x": 0,
-      "y": 10255,
+      "y": 9895,
       "w": 1185,
       "h": 918,
       "trust": false,
@@ -1058,21 +1058,21 @@
      },
      {
       "i": 10,
-      "type": "content",
-      "heading": "AI governance and security that scales with you",
+      "type": "video",
+      "heading": "Governance that scales with you",
       "x": 0,
-      "y": 11173,
+      "y": 10813,
       "w": 1185,
-      "h": 2062,
+      "h": 2144,
       "trust": false,
       "pricing": false
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "cards",
       "heading": "Security built into every workflow",
       "x": 0,
-      "y": 13234,
+      "y": 12956,
       "w": 1185,
       "h": 1336,
       "trust": false,
@@ -1080,10 +1080,10 @@
      },
      {
       "i": 12,
-      "type": "content",
+      "type": "cta",
       "heading": "Go from AI experiments to real results",
       "x": 0,
-      "y": 14570,
+      "y": 14292,
       "w": 1185,
       "h": 392,
       "trust": false,
@@ -1110,42 +1110,6 @@
       "aboveFold": true
      },
      {
-      "text": "MCP",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "Claude",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "Claude Code",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "ChatGPT",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "Cursor",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "OpenClaw",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
       "text": "Learn more about governance",
       "section": "content",
       "intent": "information",
@@ -1161,6 +1125,42 @@
       "text": "Learn more about MCP",
       "section": "content",
       "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Get started with Zapier SDK",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
+     },
+     {
+      "text": "Request an AI Transformation Consultatio",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
+     },
+     {
+      "text": "Explore AI Workflows",
+      "section": "content",
+      "intent": "information",
+      "aboveFold": false
+     },
+     {
+      "text": "Let AI handle your IT support tickets",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Turn sales calls into coaching moments",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "See more templates",
+      "section": "content",
+      "intent": "unknown",
       "aboveFold": false
      }
     ],
@@ -1189,11 +1189,11 @@
    "map": {
     "url": "https://www.airtable.com/",
     "hero": {
-     "headline": "All your teams, all their workflows—connected in one workspace",
-     "sub": ""
+     "headline": "AI transformed individual work. Airtable transforms teamwork.",
+     "sub": "It turns individual gains into team momentum — the apps, workflows, and agents one person "
     },
-    "sectionCount": 14,
-    "typedShare": "8/14",
+    "sectionCount": 15,
+    "typedShare": "13/15",
     "sections": [
      {
       "i": 0,
@@ -1210,21 +1210,21 @@
       "i": 1,
       "type": "nav",
       "heading": "",
-      "x": -109,
+      "x": -97,
       "y": 0,
-      "w": 725,
+      "w": 650,
       "h": 1680,
-      "trust": false,
+      "trust": true,
       "pricing": false
      },
      {
       "i": 2,
-      "type": "content",
-      "heading": "All your teams, all their workflows—connected in o",
+      "type": "hero",
+      "heading": "AI transformed individual work. Airtable transform",
       "x": 0,
       "y": 121,
       "w": 1185,
-      "h": 7556,
+      "h": 1559,
       "trust": false,
       "pricing": false
      },
@@ -1232,10 +1232,10 @@
       "i": 3,
       "type": "testimonials",
       "heading": "",
-      "x": -124,
+      "x": -112,
       "y": 153,
-      "w": 725,
-      "h": 465,
+      "w": 650,
+      "h": 491,
       "trust": true,
       "pricing": false
      },
@@ -1243,21 +1243,21 @@
       "i": 4,
       "type": "nav",
       "heading": "",
-      "x": -124,
+      "x": -112,
       "y": 153,
-      "w": 725,
+      "w": 650,
       "h": 633,
       "trust": false,
       "pricing": false
      },
      {
       "i": 5,
-      "type": "nav",
-      "heading": "",
-      "x": -124,
-      "y": 562,
-      "w": 725,
-      "h": 285,
+      "type": "video",
+      "heading": "AI transformed individual work. Airtable transform",
+      "x": 0,
+      "y": 243,
+      "w": 1185,
+      "h": 8333,
       "trust": false,
       "pricing": false
      },
@@ -1265,85 +1265,96 @@
       "i": 6,
       "type": "nav",
       "heading": "",
-      "x": -124,
-      "y": 818,
-      "w": 725,
-      "h": 484,
+      "x": -112,
+      "y": 562,
+      "w": 650,
+      "h": 285,
       "trust": false,
       "pricing": false
      },
      {
       "i": 7,
-      "type": "logos",
-      "heading": "Trusted by 500,000 leading teams",
-      "x": 0,
-      "y": 1110,
-      "w": 1185,
-      "h": 191,
-      "trust": true,
+      "type": "nav",
+      "heading": "",
+      "x": -112,
+      "y": 819,
+      "w": 650,
+      "h": 484,
+      "trust": false,
       "pricing": false
      },
      {
       "i": 8,
-      "type": "content",
-      "heading": "Sophisticated workflows in minutes, not months",
+      "type": "testimonials",
+      "heading": "Trusted by 500,000+ companies",
       "x": 0,
-      "y": 1301,
+      "y": 1801,
       "w": 1185,
-      "h": 3549,
-      "trust": false,
+      "h": 6774,
+      "trust": true,
       "pricing": false
      },
      {
       "i": 9,
-      "type": "content",
-      "heading": "Production apps at prototype speed",
-      "x": 0,
-      "y": 1394,
-      "w": 1185,
-      "h": 3456,
-      "trust": false,
+      "type": "testimonials",
+      "heading": "How to build in Airtable",
+      "x": 1,
+      "y": 3416,
+      "w": 1183,
+      "h": 176,
+      "trust": true,
       "pricing": false
      },
      {
       "i": 10,
-      "type": "content",
-      "heading": "Don’t just ask AI. Deploy it.",
-      "x": 307,
-      "y": 2290,
-      "w": 846,
-      "h": 800,
+      "type": "video",
+      "heading": "How to build in Airtable",
+      "x": 0,
+      "y": 3416,
+      "w": 1185,
+      "h": 753,
       "trust": false,
       "pricing": false
      },
      {
       "i": 11,
-      "type": "content",
-      "heading": "The path to 10x every person in your organization",
+      "type": "integrations",
+      "heading": "Works with tools you already use",
       "x": 0,
-      "y": 4850,
+      "y": 4169,
       "w": 1185,
-      "h": 1294,
+      "h": 506,
       "trust": false,
       "pricing": false
      },
      {
       "i": 12,
       "type": "content",
-      "heading": "Start building with Airtable Teams at over 500,000",
+      "heading": "MCP Server",
       "x": 0,
-      "y": 7279,
+      "y": 7790,
       "w": 1185,
-      "h": 334,
+      "h": 273,
       "trust": false,
       "pricing": false
      },
      {
       "i": 13,
+      "type": "content",
+      "heading": "Build something.",
+      "x": 0,
+      "y": 8063,
+      "w": 1185,
+      "h": 512,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 14,
       "type": "nav",
       "heading": "",
       "x": 48,
-      "y": 7677,
+      "y": 8575,
       "w": 1089,
       "h": 434,
       "trust": false,
@@ -1370,63 +1381,63 @@
       "aboveFold": true
      },
      {
-      "text": "Book demo",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "Learn more",
-      "section": "hero",
-      "intent": "information",
-      "aboveFold": true
-     },
-     {
-      "text": "Learn more",
-      "section": "content",
-      "intent": "information",
-      "aboveFold": false
-     },
-     {
-      "text": "Learn more",
-      "section": "content",
-      "intent": "information",
-      "aboveFold": false
-     },
-     {
-      "text": "See AI plays",
+      "text": "From a sentence to a system",
       "section": "content",
       "intent": "unknown",
       "aboveFold": false
      },
      {
-      "text": "Read this brief and generate 10 campaign",
+      "text": "Try it for free",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
+     },
+     {
+      "text": "Automate the busywork",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Run on shared data",
+      "section": "content",
+      "intent": "engagement",
+      "aboveFold": false
+     },
+     {
+      "text": "Explore integrations",
       "section": "content",
       "intent": "information",
       "aboveFold": false
      },
      {
-      "text": "Gather intel on all event invitees to he",
+      "text": "Watch story",
       "section": "content",
-      "intent": "utility",
+      "intent": "unknown",
       "aboveFold": false
      },
      {
-      "text": "What are customers saying about our comp",
+      "text": "Book demo",
       "section": "content",
-      "intent": "information",
+      "intent": "conversion",
       "aboveFold": false
      },
      {
-      "text": "Run language translation on 500 assets a",
+      "text": "AI Plays Localize image and copy variant",
       "section": "content",
-      "intent": "utility",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Claude + Airtable I just drafted persona",
+      "section": "content",
+      "intent": "unknown",
       "aboveFold": false
      }
     ],
     "trustCount": {
-     "testimonials": 1,
-     "customerLogos": 0,
+     "testimonials": 7,
+     "customerLogos": 1,
      "ratings": 0,
      "trustedBy": 1,
      "socialProof": 1,
@@ -1453,7 +1464,7 @@
      "sub": "Build your brand. Rank in AI search. Drive real revenue. All with Webflow."
     },
     "sectionCount": 9,
-    "typedShare": "5/9",
+    "typedShare": "8/9",
     "sections": [
      {
       "i": 0,
@@ -1479,7 +1490,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "faq",
       "heading": "Webflow is the agentic web marketing platform for ",
       "x": 0,
       "y": 1234,
@@ -1512,7 +1523,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "Build",
       "x": 0,
       "y": 4830,
@@ -1534,7 +1545,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "faq",
       "heading": "Make your website your competitive edge",
       "x": 0,
       "y": 9289,
@@ -1557,7 +1568,7 @@
     ],
     "ctas": [
      {
-      "text": "New for Enterprise: Webflow AEO. Own you",
+      "text": "Introducing MCP 2.0: Build, govern, and ",
       "section": "hero",
       "intent": "navigation",
       "aboveFold": true
@@ -1658,7 +1669,7 @@
      "sub": ""
     },
     "sectionCount": 9,
-    "typedShare": "7/9",
+    "typedShare": "8/9",
     "sections": [
      {
       "i": 0,
@@ -1678,7 +1689,7 @@
       "x": 0,
       "y": 88,
       "w": 1185,
-      "h": 8221,
+      "h": 8215,
       "trust": true,
       "pricing": false
      },
@@ -1687,7 +1698,7 @@
       "type": "testimonials",
       "heading": "Build forms at the drop of a prompt",
       "x": 0,
-      "y": 3255,
+      "y": 3248,
       "w": 1185,
       "h": 828,
       "trust": true,
@@ -1698,7 +1709,7 @@
       "type": "content",
       "heading": "When the form ends, the flow begins...",
       "x": 0,
-      "y": 4082,
+      "y": 4076,
       "w": 1185,
       "h": 250,
       "trust": false,
@@ -1709,7 +1720,7 @@
       "type": "testimonials",
       "heading": "Be proactive with customer data",
       "x": 0,
-      "y": 4332,
+      "y": 4326,
       "w": 1185,
       "h": 819,
       "trust": true,
@@ -1720,7 +1731,7 @@
       "type": "testimonials",
       "heading": "Run fast research, moderated by AI",
       "x": 0,
-      "y": 5326,
+      "y": 5320,
       "w": 1185,
       "h": 798,
       "trust": true,
@@ -1731,7 +1742,7 @@
       "type": "stats",
       "heading": "Join 150,000+ businesses driving revenue with Type",
       "x": 0,
-      "y": 6156,
+      "y": 6150,
       "w": 1185,
       "h": 301,
       "trust": true,
@@ -1742,7 +1753,7 @@
       "type": "logos",
       "heading": "Integrate with your tech stack",
       "x": 0,
-      "y": 7222,
+      "y": 7216,
       "w": 1185,
       "h": 615,
       "trust": true,
@@ -1750,10 +1761,10 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "video",
       "heading": "AI forms and automation. All in Typeform.",
       "x": 0,
-      "y": 7836,
+      "y": 7830,
       "w": 1185,
       "h": 473,
       "trust": false,
@@ -1984,7 +1995,7 @@
      "sub": ""
     },
     "sectionCount": 6,
-    "typedShare": "5/6",
+    "typedShare": "6/6",
     "sections": [
      {
       "i": 0,
@@ -1999,7 +2010,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "cards",
       "heading": "Tell me if this sounds about right.",
       "x": 0,
       "y": 1245,
@@ -2110,11 +2121,11 @@
    "map": {
     "url": "https://www.deel.com/",
     "hero": {
-     "headline": "Hire, manage, pay, & equip anyone, anywhere.",
+     "headline": "Hire, manage, pay, & equip anyone, anywhere",
      "sub": ""
     },
     "sectionCount": 5,
-    "typedShare": "2/5",
+    "typedShare": "5/5",
     "sections": [
      {
       "i": 0,
@@ -2130,7 +2141,7 @@
      {
       "i": 1,
       "type": "testimonials",
-      "heading": "Hire, manage, pay, & equip anyone, anywhere.",
+      "heading": "Hire, manage, pay, & equip anyone, anywhere",
       "x": 0,
       "y": 144,
       "w": 1185,
@@ -2140,8 +2151,8 @@
      },
      {
       "i": 2,
-      "type": "content",
-      "heading": "The global people platform",
+      "type": "cards",
+      "heading": "The Global People Platform",
       "x": 0,
       "y": 1360,
       "w": 1185,
@@ -2151,7 +2162,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Accomplish more in less time",
       "x": 0,
       "y": 2643,
@@ -2162,7 +2173,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "One modern experience for today's workforce",
       "x": 0,
       "y": 3292,
@@ -2275,7 +2286,7 @@
      "sub": ""
     },
     "sectionCount": 16,
-    "typedShare": "8/16",
+    "typedShare": "11/16",
     "sections": [
      {
       "i": 0,
@@ -2326,7 +2337,7 @@
       "type": "content",
       "heading": "KEEP THE CONVERSATION GOING",
       "x": 64,
-      "y": 1600,
+      "y": 1675,
       "w": 1121,
       "h": 500,
       "trust": false,
@@ -2334,7 +2345,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cta",
       "heading": "LEAVE WITH NEW INSIGHTS",
       "x": 64,
       "y": 1675,
@@ -2356,7 +2367,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "faq",
       "heading": "Get live feedback",
       "x": 0,
       "y": 3190,
@@ -2378,7 +2389,7 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "cards",
       "heading": "Customizable templates",
       "x": 0,
       "y": 4379,
@@ -2557,7 +2568,7 @@
      "sub": ""
     },
     "sectionCount": 6,
-    "typedShare": "2/6",
+    "typedShare": "4/6",
     "sections": [
      {
       "i": 0,
@@ -2572,7 +2583,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "cta",
       "heading": "Samla alla betalningar i samma plattform",
       "x": 0,
       "y": 1566,
@@ -2605,7 +2616,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "De första byggstenarna",
       "x": 0,
       "y": 6817,
@@ -2729,7 +2740,7 @@
      "sub": "The ATS loved by candidates and recruiters — with AI at the core ."
     },
     "sectionCount": 13,
-    "typedShare": "4/13",
+    "typedShare": "9/13",
     "sections": [
      {
       "i": 0,
@@ -2746,7 +2757,7 @@
       "i": 1,
       "type": "content",
       "heading": "‍Attract",
-      "x": -329,
+      "x": -334,
       "y": 937,
       "w": 3000,
       "h": 30,
@@ -2757,7 +2768,7 @@
       "i": 2,
       "type": "testimonials",
       "heading": "“Excellent support, user friendly system and alway",
-      "x": 2703,
+      "x": 2698,
       "y": 937,
       "w": 3000,
       "h": 30,
@@ -2777,7 +2788,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "",
       "x": 0,
       "y": 3491,
@@ -2788,7 +2799,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "",
       "x": 0,
       "y": 3950,
@@ -2799,7 +2810,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "",
       "x": 0,
       "y": 4608,
@@ -2832,7 +2843,7 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "integrations",
       "heading": "450+ powerful integrations.",
       "x": 0,
       "y": 6889,
@@ -2843,7 +2854,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "cards",
       "heading": "Even more inside.",
       "x": 0,
       "y": 7782,
@@ -2960,7 +2971,7 @@
      "sub": "Forecast demand accurately, optimize schedules, and engage your frontline – transforming e"
     },
     "sectionCount": 15,
-    "typedShare": "4/15",
+    "typedShare": "8/15",
     "sections": [
      {
       "i": 0,
@@ -3008,7 +3019,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Workforce management built around how your industr",
       "x": 0,
       "y": 856,
@@ -3019,7 +3030,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cta",
       "heading": "One platform. Endless possibilities.",
       "x": 0,
       "y": 1815,
@@ -3030,7 +3041,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Optimize performance and costs",
       "x": 0,
       "y": 2126,
@@ -3085,7 +3096,7 @@
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "cards",
       "heading": "",
       "x": 0,
       "y": 5585,
@@ -3231,7 +3242,7 @@
      "sub": "GetAccept's AI Digital Sales Room turns every signal across your deals into action, guidin"
     },
     "sectionCount": 16,
-    "typedShare": "7/16",
+    "typedShare": "15/16",
     "sections": [
      {
       "i": 0,
@@ -3257,7 +3268,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cards",
       "heading": "Stop letting great meetings fade into email chaos.",
       "x": 0,
       "y": 1738,
@@ -3290,7 +3301,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "video",
       "heading": "Keep deals moving with automated meeting summaries",
       "x": 0,
       "y": 7663,
@@ -3301,7 +3312,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "What makes GetAccept AI different",
       "x": 0,
       "y": 9504,
@@ -3323,7 +3334,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cards",
       "heading": "How GetAccept improves your sales process",
       "x": 0,
       "y": 11576,
@@ -3334,7 +3345,7 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "cta",
       "heading": "Run every deal like your best sales rep",
       "x": 0,
       "y": 12176,
@@ -3345,7 +3356,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "video",
       "heading": "",
       "x": 0,
       "y": 12461,
@@ -3356,7 +3367,7 @@
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "cta",
       "heading": "Close faster with the #1 AI Digital Sales Room",
       "x": 0,
       "y": 13805,
@@ -3389,7 +3400,7 @@
      },
      {
       "i": 14,
-      "type": "content",
+      "type": "cards",
       "heading": "Resources to help you work smarter, close faster, ",
       "x": 0,
       "y": 15608,
@@ -3513,7 +3524,7 @@
      "sub": ""
     },
     "sectionCount": 13,
-    "typedShare": "6/13",
+    "typedShare": "8/13",
     "sections": [
      {
       "i": 0,
@@ -3561,7 +3572,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Do more than store",
       "x": 0,
       "y": 2678,
@@ -3572,7 +3583,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "One centralized repository for all teams",
       "x": 0,
       "y": 3884,
@@ -3762,7 +3773,7 @@
      "sub": ""
     },
     "sectionCount": 35,
-    "typedShare": "8/35",
+    "typedShare": "9/35",
     "sections": [
      {
       "i": 0,
@@ -4052,7 +4063,7 @@
      },
      {
       "i": 26,
-      "type": "content",
+      "type": "cards",
       "heading": "Follow Scrive's latest news and articles",
       "x": 0,
       "y": 6132,
@@ -4244,8 +4255,217 @@
    "name": "voyado",
    "url": "https://voyado.com/",
    "page": "home",
-   "ok": false,
-   "error": "Error: page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://voyado.com/\nCall log:\n\u001b[2m  - navigating to \"https://voyado.com/\", waiting until \"domcontentloade"
+   "ok": true,
+   "before": "voyado-map.jpg",
+   "map": {
+    "url": "https://voyado.com/",
+    "hero": {
+     "headline": "The Agentic CX Suite for Retail",
+     "sub": "TRUSTED BY 500+ RETAIL BRANDS"
+    },
+    "sectionCount": 10,
+    "typedShare": "9/10",
+    "sections": [
+     {
+      "i": 0,
+      "type": "header",
+      "heading": "Love Generation 2026:",
+      "x": 0,
+      "y": 0,
+      "w": 1185,
+      "h": 100,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 1,
+      "type": "hero",
+      "heading": "The Agentic CX Suite for Retail",
+      "x": 0,
+      "y": 0,
+      "w": 1185,
+      "h": 1476,
+      "trust": true,
+      "pricing": false
+     },
+     {
+      "i": 2,
+      "type": "cards",
+      "heading": "AI that understands the rhythms of retail",
+      "x": 0,
+      "y": 1436,
+      "w": 1185,
+      "h": 1073,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "faq",
+      "heading": "Connected experiences across channels",
+      "x": 0,
+      "y": 2469,
+      "w": 1185,
+      "h": 1149,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 4,
+      "type": "benefits",
+      "heading": "Why retailers choose Voyado",
+      "x": 0,
+      "y": 3577,
+      "w": 1185,
+      "h": 515,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "content",
+      "heading": "\"Voyado has been a reliable and stable partner for",
+      "x": 0,
+      "y": 4053,
+      "w": 1185,
+      "h": 562,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "cards",
+      "heading": "",
+      "x": 0,
+      "y": 4575,
+      "w": 1185,
+      "h": 1735,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 7,
+      "type": "cards",
+      "heading": "Learn how other retailers grow and succeed with Vo",
+      "x": 0,
+      "y": 6270,
+      "w": 1185,
+      "h": 751,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 8,
+      "type": "form",
+      "heading": "Ready to know more?",
+      "x": 0,
+      "y": 6981,
+      "w": 1185,
+      "h": 948,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 9,
+      "type": "footer",
+      "heading": "",
+      "x": 0,
+      "y": 7929,
+      "w": 1185,
+      "h": 837,
+      "trust": false,
+      "pricing": false
+     }
+    ],
+    "ctas": [
+     {
+      "text": "Read more about cookies",
+      "section": "header",
+      "intent": "utility",
+      "aboveFold": true
+     },
+     {
+      "text": "Google privacy policy",
+      "section": "header",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Decline all",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Accept all",
+      "section": "nav",
+      "intent": "utility",
+      "aboveFold": true
+     },
+     {
+      "text": "Skip to main content",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Skip to navigation",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Book a demo",
+      "section": "nav",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Search",
+      "section": "header",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Explore the CX Suite",
+      "section": "hero",
+      "intent": "information",
+      "aboveFold": true
+     },
+     {
+      "text": "View product tours",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Agentic Marketing Intelligent data, proa",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Algorithmic Merchandising Personalizatio",
+      "section": "hero",
+      "intent": "unknown",
+      "aboveFold": false
+     }
+    ],
+    "trustCount": {
+     "testimonials": 0,
+     "customerLogos": 1,
+     "ratings": 1,
+     "trustedBy": 1,
+     "socialProof": 0,
+     "guarantees": 0,
+     "certifications": 0,
+     "reviewBadges": 0,
+     "pressMentions": 0
+    }
+   },
+   "applied": [],
+   "changed": false,
+   "restoredClean": true
   },
   {
    "name": "funnel",
@@ -4256,16 +4476,16 @@
    "map": {
     "url": "https://funnel.io/",
     "hero": {
-     "headline": "The marketing data foundation your dashboards can rely on.",
+     "headline": "The marketing data foundation your agents can rely on.",
      "sub": "POWERING AGENTIC MARKETING"
     },
     "sectionCount": 23,
-    "typedShare": "5/23",
+    "typedShare": "12/23",
     "sections": [
      {
       "i": 0,
       "type": "hero",
-      "heading": "The marketing data foundation your dashboards can ",
+      "heading": "The marketing data foundation your agents can rely",
       "x": 0,
       "y": 70,
       "w": 1185,
@@ -4297,7 +4517,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Data centralization",
       "x": 0,
       "y": 1460,
@@ -4308,7 +4528,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cta",
       "heading": "Turn data into intelligence",
       "x": 0,
       "y": 1709,
@@ -4374,7 +4594,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "video",
       "heading": "",
       "x": 0,
       "y": 4061,
@@ -4396,7 +4616,7 @@
      },
      {
       "i": 12,
-      "type": "content",
+      "type": "cards",
       "heading": "Turn scattered marketing data into clear, actionab",
       "x": 0,
       "y": 4934,
@@ -4418,7 +4638,7 @@
      },
      {
       "i": 14,
-      "type": "content",
+      "type": "cards",
       "heading": "600+",
       "x": 0,
       "y": 5698,
@@ -4429,7 +4649,7 @@
      },
      {
       "i": 15,
-      "type": "content",
+      "type": "cta",
       "heading": "",
       "x": 0,
       "y": 5979,
@@ -4473,7 +4693,7 @@
      },
      {
       "i": 19,
-      "type": "content",
+      "type": "cta",
       "heading": "26% increase in marketing efficiency",
       "x": 0,
       "y": 6986,
@@ -4618,34 +4838,23 @@
      "headline": "You bring the idea. We bring the sound.",
      "sub": ""
     },
-    "sectionCount": 12,
-    "typedShare": "4/12",
+    "sectionCount": 11,
+    "typedShare": "9/11",
     "sections": [
      {
       "i": 0,
-      "type": "header",
-      "heading": "Create free account",
-      "x": 0,
-      "y": 0,
-      "w": 1185,
-      "h": 88,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 1,
       "type": "logos",
       "heading": "You bring the idea. We bring the sound.",
       "x": 0,
       "y": 88,
       "w": 1185,
-      "h": 9470,
+      "h": 8457,
       "trust": true,
       "pricing": false
      },
      {
-      "i": 2,
-      "type": "content",
+      "i": 1,
+      "type": "cta",
       "heading": "Studio, a faster way of soundtracking",
       "x": 0,
       "y": 1300,
@@ -4655,99 +4864,99 @@
       "pricing": false
      },
      {
-      "i": 3,
-      "type": "content",
+      "i": 2,
+      "type": "video",
       "heading": "SEARCH BY VIDEO",
       "x": 0,
-      "y": 2446,
+      "y": 2097,
       "w": 1185,
-      "h": 742,
+      "h": 424,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 3,
+      "type": "video",
+      "heading": "FIND SIMILAR",
+      "x": 0,
+      "y": 2521,
+      "w": 1185,
+      "h": 392,
       "trust": false,
       "pricing": false
      },
      {
       "i": 4,
       "type": "content",
-      "heading": "FIND SIMILAR",
-      "x": 0,
-      "y": 3189,
-      "w": 1185,
-      "h": 737,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 5,
-      "type": "content",
       "heading": "Discover and download music on the go with the Epi",
       "x": 0,
-      "y": 3925,
+      "y": 2913,
       "w": 1185,
       "h": 843,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 6,
+      "i": 5,
       "type": "content",
       "heading": "GENRES, THEMES, MOODS, AND SOUND EFFECTS",
       "x": 0,
-      "y": 4768,
+      "y": 3756,
       "w": 1185,
       "h": 1153,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 7,
-      "type": "content",
+      "i": 6,
+      "type": "cards",
       "heading": "EXCLUSIVE TRACKS",
       "x": 0,
-      "y": 5921,
+      "y": 4908,
       "w": 1185,
       "h": 1212,
       "trust": true,
       "pricing": false
      },
      {
-      "i": 8,
-      "type": "content",
+      "i": 7,
+      "type": "cards",
       "heading": "NEWS, PLAYLISTS, AND UPDATES",
       "x": 0,
-      "y": 7133,
+      "y": 6120,
       "w": 1185,
       "h": 897,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 9,
-      "type": "content",
+      "i": 8,
+      "type": "cta",
       "heading": "Discover what sound can do.",
       "x": 0,
-      "y": 8030,
+      "y": 7017,
       "w": 1185,
       "h": 760,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 10,
+      "i": 9,
       "type": "faq",
       "heading": "Frequently Asked Questions",
       "x": 0,
-      "y": 8790,
+      "y": 7777,
       "w": 1185,
       "h": 768,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 11,
+      "i": 10,
       "type": "footer",
       "heading": "Footer",
       "x": 0,
-      "y": 9558,
+      "y": 8545,
       "w": 1185,
       "h": 681,
       "trust": false,
@@ -4959,7 +5168,7 @@
      "sub": ""
     },
     "sectionCount": 11,
-    "typedShare": "7/11",
+    "typedShare": "9/11",
     "sections": [
      {
       "i": 0,
@@ -4996,7 +5205,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cta",
       "heading": "See what Dixa can do for you",
       "x": 0,
       "y": 2637,
@@ -5018,7 +5227,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "integrations",
       "heading": "Integrates with your existing tech stack",
       "x": 0,
       "y": 5106,
@@ -5370,7 +5579,7 @@
      "sub": "The 2026 Tour de France starts here"
     },
     "sectionCount": 10,
-    "typedShare": "4/10",
+    "typedShare": "7/10",
     "sections": [
      {
       "i": 0,
@@ -5407,7 +5616,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Choose the best Kahoot! solution tailored to your ",
       "x": 0,
       "y": 2256,
@@ -5418,7 +5627,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Why millions choose Kahoot! for engagement",
       "x": 0,
       "y": 2684,
@@ -5462,7 +5671,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cta",
       "heading": "Ready to make learning awesome?",
       "x": 0,
       "y": 3053,
@@ -5585,8 +5794,8 @@
      "headline": "Friends don't let friends ship AI-generated code without feature flags.",
      "sub": "FEATUREOPS CONTROL PLANE"
     },
-    "sectionCount": 33,
-    "typedShare": "9/33",
+    "sectionCount": 32,
+    "typedShare": "14/32",
     "sections": [
      {
       "i": 0,
@@ -5595,7 +5804,7 @@
       "x": 0,
       "y": 43,
       "w": 1185,
-      "h": 95,
+      "h": 82,
       "trust": false,
       "pricing": false
      },
@@ -5604,7 +5813,7 @@
       "type": "nav",
       "heading": "Start Free Trial",
       "x": 132,
-      "y": 67,
+      "y": 60,
       "w": 993,
       "h": 46,
       "trust": false,
@@ -5615,7 +5824,7 @@
       "type": "hero",
       "heading": "Friends don't let friends ship AI-generated code w",
       "x": 0,
-      "y": 138,
+      "y": 124,
       "w": 1185,
       "h": 1235,
       "trust": true,
@@ -5626,7 +5835,7 @@
       "type": "content",
       "heading": "Head of Internal Developer Platforms and Engineeri",
       "x": 0,
-      "y": 1373,
+      "y": 1359,
       "w": 1185,
       "h": 849,
       "trust": false,
@@ -5637,7 +5846,7 @@
       "type": "content",
       "heading": "Sergio Revilla Velasco",
       "x": -1570,
-      "y": 1553,
+      "y": 1539,
       "w": 865,
       "h": 377,
       "trust": false,
@@ -5645,13 +5854,13 @@
      },
      {
       "i": 5,
-      "type": "testimonials",
-      "heading": "Daniel Woollery",
-      "x": 160,
-      "y": 1553,
+      "type": "content",
+      "heading": "Mark Jackson",
+      "x": -705,
+      "y": 1539,
       "w": 865,
-      "h": 317,
-      "trust": true,
+      "h": 347,
+      "trust": false,
       "pricing": false
      },
      {
@@ -5659,7 +5868,7 @@
       "type": "content",
       "heading": "Rohan Deshpande",
       "x": 1025,
-      "y": 1553,
+      "y": 1539,
       "w": 865,
       "h": 407,
       "trust": false,
@@ -5670,7 +5879,7 @@
       "type": "content",
       "heading": "Head of Internal Developer Platforms and Engineeri",
       "x": 1890,
-      "y": 1553,
+      "y": 1539,
       "w": 865,
       "h": 401,
       "trust": false,
@@ -5681,7 +5890,7 @@
       "type": "content",
       "heading": "Joseph Garcia",
       "x": 2755,
-      "y": 1553,
+      "y": 1539,
       "w": 865,
       "h": 347,
       "trust": false,
@@ -5692,7 +5901,7 @@
       "type": "content",
       "heading": "Sitarama Maruvada",
       "x": 3620,
-      "y": 1553,
+      "y": 1539,
       "w": 865,
       "h": 497,
       "trust": false,
@@ -5700,13 +5909,13 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "testimonials",
       "heading": "Kirti Dhanai",
       "x": 4485,
-      "y": 1553,
+      "y": 1539,
       "w": 865,
       "h": 317,
-      "trust": false,
+      "trust": true,
       "pricing": false
      },
      {
@@ -5714,7 +5923,7 @@
       "type": "content",
       "heading": "Sergio Revilla Velasco",
       "x": 5350,
-      "y": 1553,
+      "y": 1539,
       "w": 865,
       "h": 377,
       "trust": false,
@@ -5725,7 +5934,7 @@
       "type": "content",
       "heading": "Mark Jackson",
       "x": 6215,
-      "y": 1553,
+      "y": 1539,
       "w": 865,
       "h": 347,
       "trust": false,
@@ -5733,10 +5942,10 @@
      },
      {
       "i": 13,
-      "type": "content",
+      "type": "cards",
       "heading": "Docker downloads",
       "x": 0,
-      "y": 2221,
+      "y": 2208,
       "w": 1185,
       "h": 350,
       "trust": false,
@@ -5747,7 +5956,7 @@
       "type": "content",
       "heading": "Unleash ranked as top Feature Management Software ",
       "x": 0,
-      "y": 2571,
+      "y": 2558,
       "w": 1185,
       "h": 718,
       "trust": false,
@@ -5755,10 +5964,10 @@
      },
      {
       "i": 15,
-      "type": "content",
+      "type": "video",
       "heading": "Why you shouldn’t wait to implement an Enterprise ",
       "x": 0,
-      "y": 3289,
+      "y": 3276,
       "w": 1185,
       "h": 1239,
       "trust": false,
@@ -5769,7 +5978,7 @@
       "type": "content",
       "heading": "Why enterprises choose Unleash Feature Management",
       "x": 0,
-      "y": 4528,
+      "y": 4514,
       "w": 1185,
       "h": 842,
       "trust": false,
@@ -5777,10 +5986,10 @@
      },
      {
       "i": 17,
-      "type": "content",
+      "type": "cards",
       "heading": "What problems are enterprises solving with Unleash",
       "x": 0,
-      "y": 5370,
+      "y": 5356,
       "w": 1185,
       "h": 1286,
       "trust": false,
@@ -5788,10 +5997,10 @@
      },
      {
       "i": 18,
-      "type": "content",
+      "type": "cta",
       "heading": "Reduce risk associated with releasing new features",
       "x": 86,
-      "y": 5808,
+      "y": 5794,
       "w": 413,
       "h": 344,
       "trust": false,
@@ -5799,10 +6008,10 @@
      },
      {
       "i": 19,
-      "type": "content",
+      "type": "cta",
       "heading": "Drive innovation by streamlining software releases",
       "x": 86,
-      "y": 6186,
+      "y": 6172,
       "w": 413,
       "h": 108,
       "trust": false,
@@ -5810,10 +6019,10 @@
      },
      {
       "i": 20,
-      "type": "content",
+      "type": "cta",
       "heading": "Improve security and compliance by protecting data",
       "x": 86,
-      "y": 6434,
+      "y": 6420,
       "w": 413,
       "h": 108,
       "trust": false,
@@ -5824,7 +6033,7 @@
       "type": "content",
       "heading": "Join a global community of 10,000+ Developers",
       "x": 0,
-      "y": 6656,
+      "y": 6642,
       "w": 1185,
       "h": 1114,
       "trust": false,
@@ -5832,77 +6041,77 @@
      },
      {
       "i": 22,
-      "type": "testimonials",
-      "heading": "",
-      "x": 743,
-      "y": 6807,
-      "w": 273,
-      "h": 395,
-      "trust": true,
-      "pricing": false
-     },
-     {
-      "i": 23,
       "type": "content",
       "heading": "",
       "x": 1016,
-      "y": 6807,
+      "y": 6793,
       "w": 273,
       "h": 738,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 24,
+      "i": 23,
       "type": "content",
       "heading": "",
       "x": 1289,
-      "y": 6807,
+      "y": 6793,
       "w": 273,
       "h": 568,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 25,
+      "i": 24,
       "type": "testimonials",
       "heading": "",
       "x": 1562,
-      "y": 6807,
+      "y": 6793,
       "w": 273,
       "h": 439,
       "trust": true,
       "pricing": false
      },
      {
-      "i": 26,
+      "i": 25,
       "type": "content",
       "heading": "",
       "x": 1835,
-      "y": 6807,
+      "y": 6793,
       "w": 273,
       "h": 574,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 27,
+      "i": 26,
       "type": "features",
       "heading": "Feature Management best practices",
       "x": 0,
-      "y": 7770,
+      "y": 7756,
       "w": 1185,
       "h": 911,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 28,
+      "i": 27,
       "type": "content",
       "heading": "We’ve raised $35M in Series B to help enterprises ",
       "x": 60,
-      "y": 8036,
+      "y": 8022,
       "w": 523,
+      "h": 450,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 28,
+      "type": "content",
+      "heading": "AI Governance starts at runtime",
+      "x": 603,
+      "y": 8022,
+      "w": 251,
       "h": 450,
       "trust": false,
       "pricing": false
@@ -5910,9 +6119,9 @@
      {
       "i": 29,
       "type": "content",
-      "heading": "AI Governance starts at runtime",
-      "x": 603,
-      "y": 8036,
+      "heading": "Automated FeatureOps just got real: Impact Metrics",
+      "x": 874,
+      "y": 8022,
       "w": 251,
       "h": 450,
       "trust": false,
@@ -5920,32 +6129,21 @@
      },
      {
       "i": 30,
-      "type": "content",
-      "heading": "Automated FeatureOps just got real: Impact Metrics",
-      "x": 874,
-      "y": 8036,
-      "w": 251,
-      "h": 450,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 31,
       "type": "faq",
       "heading": "FAQs about Unleash",
       "x": 0,
-      "y": 8681,
+      "y": 8667,
       "w": 1185,
       "h": 1222,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 32,
+      "i": 31,
       "type": "footer",
       "heading": "",
       "x": 0,
-      "y": 9903,
+      "y": 9889,
       "w": 1185,
       "h": 781,
       "trust": false,
@@ -6055,7 +6253,7 @@
      "sub": ""
     },
     "sectionCount": 10,
-    "typedShare": "3/10",
+    "typedShare": "5/10",
     "sections": [
      {
       "i": 0,
@@ -6070,7 +6268,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "cards",
       "heading": "The future of business banking",
       "x": 0,
       "y": 0,
@@ -6147,7 +6345,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cards",
       "heading": "Some quick answers",
       "x": 0,
       "y": 5470,
@@ -6271,7 +6469,7 @@
      "sub": ""
     },
     "sectionCount": 10,
-    "typedShare": "5/10",
+    "typedShare": "6/10",
     "sections": [
      {
       "i": 0,
@@ -6286,7 +6484,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "video",
       "heading": "Ignite growth with Pay by Bank",
       "x": 0,
       "y": 0,
@@ -6457,7 +6655,7 @@
      "sub": "Application monitoring software considered \"not bad\" by millions of developers."
     },
     "sectionCount": 10,
-    "typedShare": "4/10",
+    "typedShare": "8/10",
     "sections": [
      {
       "i": 0,
@@ -6472,7 +6670,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "cards",
       "heading": "Developer first. Always.",
       "x": 0,
       "y": 1754,
@@ -6483,7 +6681,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "faq",
       "heading": "Everything’s connected",
       "x": 0,
       "y": 2701,
@@ -6494,7 +6692,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "faq",
       "heading": "Debugging needs context— with or without AI",
       "x": 0,
       "y": 3700,
@@ -6549,7 +6747,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cta",
       "heading": "Fix It",
       "x": 0,
       "y": 7377,
@@ -6669,11 +6867,11 @@
    "map": {
     "url": "https://retool.com/",
     "hero": {
-     "headline": "Secure your vibe-coded apps",
+     "headline": "Build anywhere. Ship in Retool.",
      "sub": ""
     },
     "sectionCount": 9,
-    "typedShare": "4/9",
+    "typedShare": "7/9",
     "sections": [
      {
       "i": 0,
@@ -6682,14 +6880,14 @@
       "x": 0,
       "y": 0,
       "w": 1185,
-      "h": 119,
+      "h": 120,
       "trust": false,
       "pricing": false
      },
      {
       "i": 1,
-      "type": "content",
-      "heading": "Secure your vibe-coded apps",
+      "type": "video",
+      "heading": "Build anywhere. Ship in Retool.",
       "x": 0,
       "y": 40,
       "w": 1185,
@@ -6699,7 +6897,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "integrations",
       "heading": "Apps that mean business",
       "x": 0,
       "y": 1096,
@@ -6710,7 +6908,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "integrations",
       "heading": "Build powerful apps from anywhere",
       "x": 0,
       "y": 1759,
@@ -7068,7 +7266,7 @@
    "map": {
     "url": "https://render.com/",
     "hero": {
-     "headline": "Your fastest path to production for data pipelines",
+     "headline": "Your fastest path to production for",
      "sub": ""
     },
     "sectionCount": 4,
@@ -7088,7 +7286,7 @@
      {
       "i": 1,
       "type": "hero",
-      "heading": "Your fastest path to production for data pipelines",
+      "heading": "Your fastest path to production for",
       "x": 0,
       "y": 109,
       "w": 1185,
@@ -7204,7 +7402,7 @@
      "sub": ""
     },
     "sectionCount": 13,
-    "typedShare": "5/13",
+    "typedShare": "6/13",
     "sections": [
      {
       "i": 0,
@@ -7274,7 +7472,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "VMs That Do Everything You Need",
       "x": 0,
       "y": 3260,
@@ -7453,7 +7651,7 @@
      "sub": ""
     },
     "sectionCount": 10,
-    "typedShare": "7/10",
+    "typedShare": "9/10",
     "sections": [
      {
       "i": 0,
@@ -7512,7 +7710,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "Build your way. Ship on one platform.",
       "x": 0,
       "y": 776,
@@ -7534,7 +7732,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "Prompt. Preview. Repeat.",
       "x": 0,
       "y": 3332,
@@ -7885,7 +8083,7 @@
      "sub": "Need more than sign-in? Clerk gives you full stack auth and user management — so you can l"
     },
     "sectionCount": 9,
-    "typedShare": "4/9",
+    "typedShare": "7/9",
     "sections": [
      {
       "i": 0,
@@ -7911,7 +8109,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cards",
       "heading": "Join the waitlist Thanks for joining the waitlist ",
       "x": 0,
       "y": 737,
@@ -7922,7 +8120,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "User authentication",
       "x": 0,
       "y": 1910,
@@ -7933,7 +8131,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "B2B Authentication",
       "x": 81,
       "y": 4352,
@@ -8090,7 +8288,7 @@
      "sub": "AUTH0 FOR AI AGENTS NAMED"
     },
     "sectionCount": 9,
-    "typedShare": "4/9",
+    "typedShare": "8/9",
     "sections": [
      {
       "i": 0,
@@ -8127,7 +8325,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "integrations",
       "heading": "Integrate Auth0 in any application in just 5 minut",
       "x": 0,
       "y": 1505,
@@ -8138,7 +8336,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Built for what you’re building",
       "x": 0,
       "y": 2161,
@@ -8160,7 +8358,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Read. Watch. Code. More.",
       "x": 0,
       "y": 6449,
@@ -8171,7 +8369,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cta",
       "heading": "Ready to start securing AI agents, delivering amaz",
       "x": 0,
       "y": 7309,
@@ -8282,8 +8480,8 @@
      "headline": "Agentic. Generative. Search",
      "sub": "One AI retrieval platform to power them all"
     },
-    "sectionCount": 8,
-    "typedShare": "4/8",
+    "sectionCount": 7,
+    "typedShare": "4/7",
     "sections": [
      {
       "i": 0,
@@ -8300,10 +8498,10 @@
       "i": 1,
       "type": "hero",
       "heading": "Agentic. Generative. Search",
-      "x": 0,
-      "y": 0,
-      "w": 0,
-      "h": 0,
+      "x": 56,
+      "y": 36,
+      "w": 607,
+      "h": 32,
       "trust": false,
       "pricing": false
      },
@@ -8320,12 +8518,12 @@
      },
      {
       "i": 3,
-      "type": "content",
-      "heading": "",
+      "type": "video",
+      "heading": "Top scores across every B2B category",
       "x": 0,
-      "y": 0,
-      "w": 0,
-      "h": 0,
+      "y": 1830,
+      "w": 1185,
+      "h": 863,
       "trust": false,
       "pricing": false
      },
@@ -8345,7 +8543,7 @@
       "type": "content",
       "heading": "See customer success in action",
       "x": 0,
-      "y": 3242,
+      "y": 3466,
       "w": 1185,
       "h": 764,
       "trust": false,
@@ -8359,17 +8557,6 @@
       "y": 1464,
       "w": 269,
       "h": 285,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 7,
-      "type": "footer",
-      "heading": "",
-      "x": 0,
-      "y": 4580,
-      "w": 1185,
-      "h": 338,
       "trust": false,
       "pricing": false
      }
@@ -8400,7 +8587,7 @@
       "aboveFold": true
      },
      {
-      "text": "Product (204)",
+      "text": "Product (205)",
       "section": "hero",
       "intent": "conversion",
       "aboveFold": true
@@ -8477,7 +8664,7 @@
      "sub": "✨"
     },
     "sectionCount": 23,
-    "typedShare": "3/23",
+    "typedShare": "14/23",
     "sections": [
      {
       "i": 0,
@@ -8492,7 +8679,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "cards",
       "heading": "78% increased CVR via personalization",
       "x": 0,
       "y": 779,
@@ -8547,7 +8734,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Bring order to your content, and impact to your ca",
       "x": 0,
       "y": 2857,
@@ -8580,7 +8767,7 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "cards",
       "heading": "Content that works harder, so you can work smarter",
       "x": 0,
       "y": 4433,
@@ -8591,7 +8778,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "cards",
       "heading": "More content, more meaningful results",
       "x": 0,
       "y": 4689,
@@ -8602,7 +8789,7 @@
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "cards",
       "heading": "One dynamic content platform, infinite possibiliti",
       "x": 0,
       "y": 5437,
@@ -8613,7 +8800,7 @@
      },
      {
       "i": 12,
-      "type": "content",
+      "type": "cards",
       "heading": "Manage content",
       "x": 0,
       "y": 5661,
@@ -8635,7 +8822,7 @@
      },
      {
       "i": 14,
-      "type": "content",
+      "type": "cards",
       "heading": "With every team aligned, your impact shines",
       "x": 0,
       "y": 6675,
@@ -8646,7 +8833,7 @@
      },
      {
       "i": 15,
-      "type": "content",
+      "type": "cards",
       "heading": "Growth Marketing",
       "x": 0,
       "y": 6899,
@@ -8668,7 +8855,7 @@
      },
      {
       "i": 17,
-      "type": "content",
+      "type": "cards",
       "heading": "Our experts will turn your “can we?” into “we tota",
       "x": 0,
       "y": 7823,
@@ -8690,7 +8877,7 @@
      },
      {
       "i": 19,
-      "type": "content",
+      "type": "cards",
       "heading": "Contentful resources to power your digital experie",
       "x": 0,
       "y": 8568,
@@ -8701,7 +8888,7 @@
      },
      {
       "i": 20,
-      "type": "content",
+      "type": "cards",
       "heading": "A New Chapter for Contentful: Scaling Our Vision w",
       "x": 25,
       "y": 8887,
@@ -8836,7 +9023,7 @@
      "sub": "Power content applications and AI workflows at scale. Every application, one platform."
     },
     "sectionCount": 14,
-    "typedShare": "5/14",
+    "typedShare": "7/14",
     "sections": [
      {
       "i": 0,
@@ -8884,7 +9071,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Everything your team needs in one place",
       "x": 0,
       "y": 4937,
@@ -8972,7 +9159,7 @@
      },
      {
       "i": 12,
-      "type": "content",
+      "type": "video",
       "heading": "Less talk, more code",
       "x": 0,
       "y": 12081,
@@ -9096,7 +9283,7 @@
      "sub": "npx create-strapi-app@latest"
     },
     "sectionCount": 9,
-    "typedShare": "4/9",
+    "typedShare": "9/9",
     "sections": [
      {
       "i": 0,
@@ -9133,7 +9320,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "The content framework you control end-to-end",
       "x": 0,
       "y": 1346,
@@ -9144,7 +9331,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "From content model to live API, in minutes",
       "x": 0,
       "y": 2004,
@@ -9155,7 +9342,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "Extend it like a framework. Run it like a CMS.",
       "x": 0,
       "y": 2938,
@@ -9166,7 +9353,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Deploy anywhere. Scale without surprises.",
       "x": 0,
       "y": 3993,
@@ -9177,7 +9364,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "Ready for how enterprises actually run",
       "x": 0,
       "y": 5025,
@@ -9301,7 +9488,7 @@
      "sub": ""
     },
     "sectionCount": 14,
-    "typedShare": "1/14",
+    "typedShare": "8/14",
     "sections": [
      {
       "i": 0,
@@ -9316,7 +9503,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "video",
       "heading": "Turn your audience into a business.",
       "x": 0,
       "y": 304,
@@ -9327,7 +9514,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "video",
       "heading": "EASY SITE DESIGN",
       "x": 0,
       "y": 2039,
@@ -9338,7 +9525,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "video",
       "heading": "ADVANCED CREATOR TOOLS",
       "x": 0,
       "y": 3577,
@@ -9349,7 +9536,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "video",
       "heading": "GROW YOUR AUDIENCES",
       "x": 0,
       "y": 5827,
@@ -9360,7 +9547,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "video",
       "heading": "RUN YOUR BUSINESS",
       "x": 0,
       "y": 6819,
@@ -9371,7 +9558,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "integrations",
       "heading": "INTEGRATIONS",
       "x": 0,
       "y": 8981,
@@ -9382,7 +9569,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "$100,000,000+",
       "x": 0,
       "y": 9585,
@@ -9525,14 +9712,14 @@
      "sub": "The best way to reach humans instead of spam folders. Deliver transactional and marketing "
     },
     "sectionCount": 15,
-    "typedShare": "6/15",
+    "typedShare": "11/15",
     "sections": [
      {
       "i": 0,
       "type": "header",
       "heading": "Get started",
       "x": 0,
-      "y": 4977,
+      "y": 4719,
       "w": 1190,
       "h": 58,
       "trust": false,
@@ -9543,7 +9730,7 @@
       "type": "hero",
       "heading": "Email for developers",
       "x": 24,
-      "y": 4997,
+      "y": 4739,
       "w": 80,
       "h": 17,
       "trust": false,
@@ -9562,8 +9749,8 @@
      },
      {
       "i": 3,
-      "type": "content",
-      "heading": "Integrate this morning",
+      "type": "video",
+      "heading": "Integrate this afternoon",
       "x": 0,
       "y": 1567,
       "w": 1190,
@@ -9595,7 +9782,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "video",
       "heading": "Write using a delightful editor",
       "x": 0,
       "y": 3829,
@@ -9617,7 +9804,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "video",
       "heading": "Develop emails using React",
       "x": 0,
       "y": 6087,
@@ -9650,7 +9837,7 @@
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "video",
       "heading": "Everything in your control",
       "x": 0,
       "y": 9049,
@@ -9672,7 +9859,7 @@
      },
      {
       "i": 13,
-      "type": "content",
+      "type": "cta",
       "heading": "Email reimagined. Available today.",
       "x": 0,
       "y": 11013,
@@ -9796,7 +9983,7 @@
      "sub": ""
     },
     "sectionCount": 11,
-    "typedShare": "5/11",
+    "typedShare": "10/11",
     "sections": [
      {
       "i": 0,
@@ -9811,7 +9998,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "cards",
       "heading": "Dev Ops",
       "x": 0,
       "y": 719,
@@ -9823,7 +10010,7 @@
      {
       "i": 2,
       "type": "stats",
-      "heading": "Our 197.4k stars place us among the most popular p",
+      "heading": "Our 197.5k stars place us among the most popular p",
       "x": 0,
       "y": 1339,
       "w": 1185,
@@ -9833,7 +10020,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "integrations",
       "heading": "Plug AI into your own data & over 500 integrations",
       "x": 59,
       "y": 1551,
@@ -9844,7 +10031,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Build AI agents you can actually follow",
       "x": 0,
       "y": 2147,
@@ -9877,7 +10064,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "video",
       "heading": "Code when you need it, UI when you don't",
       "x": 0,
       "y": 3223,
@@ -9899,7 +10086,7 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "cards",
       "heading": "Reliable. Scalable. Secure.",
       "x": 0,
       "y": 5525,
@@ -9922,7 +10109,7 @@
     ],
     "ctas": [
      {
-      "text": "197,429",
+      "text": "197,455",
       "section": "nav",
       "intent": "navigation",
       "aboveFold": true
@@ -9934,7 +10121,7 @@
       "aboveFold": true
      },
      {
-      "text": "Top 50 Github. Our 197.4k stars place us",
+      "text": "Top 50 Github. Our 197.5k stars place us",
       "section": "hero",
       "intent": "conversion",
       "aboveFold": true
@@ -10016,8 +10203,8 @@
      "headline": "Industries and Solutions",
      "sub": ""
     },
-    "sectionCount": 13,
-    "typedShare": "5/13",
+    "sectionCount": 9,
+    "typedShare": "8/9",
     "sections": [
      {
       "i": 0,
@@ -10025,19 +10212,19 @@
       "heading": "Industries and Solutions",
       "x": 0,
       "y": 42,
-      "w": 1200,
+      "w": 1185,
       "h": 68,
       "trust": false,
       "pricing": false
      },
      {
       "i": 1,
-      "type": "form",
+      "type": "logos",
       "heading": "Email & SMS marketing minus the learning curve",
       "x": 0,
       "y": 42,
-      "w": 1200,
-      "h": 6023,
+      "w": 1185,
+      "h": 6079,
       "trust": true,
       "pricing": false
      },
@@ -10047,117 +10234,73 @@
       "heading": "Industries and Solutions",
       "x": 16,
       "y": 54,
-      "w": 1168,
+      "w": 1153,
       "h": 44,
       "trust": false,
       "pricing": false
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Recommended for your business",
       "x": 0,
       "y": 894,
-      "w": 1200,
-      "h": 1210,
+      "w": 1185,
+      "h": 1267,
       "trust": false,
       "pricing": false
      },
      {
       "i": 4,
-      "type": "content",
-      "heading": "Design with ease",
-      "x": 60,
-      "y": 1071,
-      "w": 532,
-      "h": 407,
+      "type": "cards",
+      "heading": "Mailchimp customers saw up to 8x more orders on av",
+      "x": 0,
+      "y": 2355,
+      "w": 1185,
+      "h": 504,
       "trust": false,
       "pricing": false
      },
      {
       "i": 5,
-      "type": "content",
-      "heading": "Get more sales",
-      "x": 608,
-      "y": 1071,
-      "w": 532,
-      "h": 407,
-      "trust": false,
+      "type": "testimonials",
+      "heading": "Businesses like yours are thriving with Mailchimp",
+      "x": 0,
+      "y": 2859,
+      "w": 1185,
+      "h": 1111,
+      "trust": true,
       "pricing": false
      },
      {
       "i": 6,
-      "type": "content",
-      "heading": "Reach your audience on any device",
-      "x": 60,
-      "y": 1509,
-      "w": 532,
-      "h": 407,
+      "type": "form",
+      "heading": "Try our Standard plan for free!",
+      "x": 0,
+      "y": 3969,
+      "w": 1185,
+      "h": 637,
       "trust": false,
       "pricing": false
      },
      {
       "i": 7,
-      "type": "content",
-      "heading": "Connect all your apps",
-      "x": 608,
-      "y": 1509,
-      "w": 532,
-      "h": 407,
+      "type": "integrations",
+      "heading": "One marketing platform to unite 300+ apps",
+      "x": 0,
+      "y": 4606,
+      "w": 1185,
+      "h": 805,
       "trust": false,
       "pricing": false
      },
      {
       "i": 8,
       "type": "content",
-      "heading": "Mailchimp customers saw up to 8x more orders on av",
-      "x": 0,
-      "y": 2298,
-      "w": 1200,
-      "h": 504,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 9,
-      "type": "testimonials",
-      "heading": "Businesses like yours are thriving with Mailchimp",
-      "x": 0,
-      "y": 2802,
-      "w": 1200,
-      "h": 1111,
-      "trust": true,
-      "pricing": false
-     },
-     {
-      "i": 10,
-      "type": "form",
-      "heading": "Try our Standard plan for free!",
-      "x": 0,
-      "y": 3913,
-      "w": 1200,
-      "h": 637,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 11,
-      "type": "content",
-      "heading": "One marketing platform to unite 300+ apps",
-      "x": 0,
-      "y": 4550,
-      "w": 1200,
-      "h": 805,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 12,
-      "type": "content",
       "heading": "Millions of users trust us with their email market",
       "x": 0,
-      "y": 5355,
-      "w": 1200,
+      "y": 5411,
+      "w": 1185,
       "h": 310,
       "trust": false,
       "pricing": false
@@ -10183,31 +10326,19 @@
       "aboveFold": true
      },
      {
-      "text": "Customize my experience",
+      "text": "Learn about SMS marketing",
       "section": "hero",
-      "intent": "conversion",
+      "intent": "information",
+      "aboveFold": true
+     },
+     {
+      "text": "Learn about driving sales",
+      "section": "hero",
+      "intent": "information",
       "aboveFold": true
      },
      {
       "text": "See our content creation tools",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "Design with ease",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "Get more sales",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "Connect all your apps",
       "section": "hero",
       "intent": "conversion",
       "aboveFold": true
@@ -10219,22 +10350,34 @@
       "aboveFold": false
      },
      {
-      "text": "Select",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
+      "text": "Slide 1 of 3",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
      },
      {
-      "text": "No thank you",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
+      "text": "Go to slide 2 of 3",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
      },
      {
-      "text": "Customize my experience",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
+      "text": "Go to slide 3 of 3",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Slide 1 of 3",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
+     },
+     {
+      "text": "Go to slide 2 of 3",
+      "section": "content",
+      "intent": "unknown",
+      "aboveFold": false
      }
     ],
     "trustCount": {
@@ -10266,7 +10409,7 @@
      "sub": ""
     },
     "sectionCount": 14,
-    "typedShare": "4/14",
+    "typedShare": "7/14",
     "sections": [
      {
       "i": 0,
@@ -10336,7 +10479,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Service that solves and sells",
       "x": 0,
       "y": 2957,
@@ -10369,7 +10512,7 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "faq",
       "heading": "Fueling growth for brands that don’t settle",
       "x": 0,
       "y": 3625,
@@ -10380,7 +10523,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "integrations",
       "heading": "350+ pre-built integrations",
       "x": 0,
       "y": 4583,
@@ -10526,7 +10669,7 @@
      "sub": ""
     },
     "sectionCount": 14,
-    "typedShare": "8/14",
+    "typedShare": "11/14",
     "sections": [
      {
       "i": 0,
@@ -10552,7 +10695,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "video",
       "heading": "AI that knows your brand. Campaigns you’ll be prou",
       "x": 0,
       "y": 732,
@@ -10563,7 +10706,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Memory",
       "x": 0,
       "y": 1113,
@@ -10585,7 +10728,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "Automate every marketing channel",
       "x": 0,
       "y": 3406,
@@ -10786,7 +10929,7 @@
      "sub": ""
     },
     "sectionCount": 8,
-    "typedShare": "4/8",
+    "typedShare": "5/8",
     "sections": [
      {
       "i": 0,
@@ -10801,7 +10944,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "comparison",
       "heading": "Create email marketing automations landing pages s",
       "x": 0,
       "y": 0,
@@ -10979,18 +11122,18 @@
      "headline": "NEWSLETTERS. PODCASTS. COMMUNITY. ONE PLATFORM.",
      "sub": "beehiiv is the only platform that brings together every tool you need to grow and earn."
     },
-    "sectionCount": 13,
-    "typedShare": "3/13",
+    "sectionCount": 14,
+    "typedShare": "9/14",
     "sections": [
      {
       "i": 0,
       "type": "nav",
-      "heading": "Take a tour of beehiiv",
+      "heading": "Sign up for free",
       "x": 0,
-      "y": 3135,
+      "y": 56,
       "w": 1185,
-      "h": 79,
-      "trust": false,
+      "h": 77,
+      "trust": true,
       "pricing": false
      },
      {
@@ -10998,18 +11141,18 @@
       "type": "hero",
       "heading": "NEWSLETTERS. PODCASTS. COMMUNITY. ONE PLATFORM.",
       "x": 0,
-      "y": 135,
+      "y": 133,
       "w": 1185,
       "h": 654,
-      "trust": true,
+      "trust": false,
       "pricing": false
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cta",
       "heading": "STAND OUT IN THE INBOX",
       "x": 0,
-      "y": 918,
+      "y": 916,
       "w": 1185,
       "h": 921,
       "trust": false,
@@ -11017,10 +11160,10 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cta",
       "heading": "NO CODE. NO LIMITS.",
       "x": 0,
-      "y": 1839,
+      "y": 1837,
       "w": 1185,
       "h": 921,
       "trust": false,
@@ -11028,10 +11171,10 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cta",
       "heading": "MONETIZE YOUR CONTENT",
       "x": 0,
-      "y": 2759,
+      "y": 2757,
       "w": 1185,
       "h": 921,
       "trust": false,
@@ -11042,7 +11185,7 @@
       "type": "stats",
       "heading": "BUILD YOUR CONTENT YOUR WAY",
       "x": 0,
-      "y": 3680,
+      "y": 3678,
       "w": 1185,
       "h": 1360,
       "trust": true,
@@ -11053,7 +11196,7 @@
       "type": "content",
       "heading": "",
       "x": 0,
-      "y": 5040,
+      "y": 5038,
       "w": 1185,
       "h": 104,
       "trust": false,
@@ -11061,10 +11204,10 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "MORE THAN JUST NEWSLETTERS",
       "x": 0,
-      "y": 5144,
+      "y": 5142,
       "w": 1185,
       "h": 1140,
       "trust": false,
@@ -11075,9 +11218,9 @@
       "type": "content",
       "heading": "",
       "x": 0,
-      "y": 6284,
+      "y": 6282,
       "w": 1185,
-      "h": 820,
+      "h": 788,
       "trust": false,
       "pricing": false
      },
@@ -11086,7 +11229,7 @@
       "type": "content",
       "heading": "THE ONE PLATFORM FOR EVERY CREATOR",
       "x": 0,
-      "y": 7104,
+      "y": 7070,
       "w": 1185,
       "h": 756,
       "trust": false,
@@ -11097,18 +11240,18 @@
       "type": "content",
       "heading": "CONNECT YOUR NEWSLETTER WITH THE TOOLS YOU LOVE",
       "x": 0,
-      "y": 7860,
+      "y": 7826,
       "w": 1185,
-      "h": 662,
+      "h": 1023,
       "trust": false,
       "pricing": false
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "faq",
       "heading": "GOT QUESTIONS? WE'VE GOT ANSWERS.",
       "x": 0,
-      "y": 8522,
+      "y": 8848,
       "w": 1185,
       "h": 976,
       "trust": false,
@@ -11119,9 +11262,20 @@
       "type": "content",
       "heading": "READY TO BUILD?",
       "x": 0,
-      "y": 9498,
+      "y": 9824,
       "w": 1185,
-      "h": 676,
+      "h": 1249,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 13,
+      "type": "footer",
+      "heading": "",
+      "x": 0,
+      "y": 11073,
+      "w": 1185,
+      "h": 461,
       "trust": false,
       "pricing": false
      }
@@ -11229,7 +11383,7 @@
      "sub": "Hotjar is now part of Contentsquare. Together, we’ve built a powerful, easy-to-use platfor"
     },
     "sectionCount": 7,
-    "typedShare": "3/7",
+    "typedShare": "4/7",
     "sections": [
      {
       "i": 0,
@@ -11288,7 +11442,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "integrations",
       "heading": "Integrations",
       "x": 0,
       "y": 3108,
@@ -11412,7 +11566,7 @@
      "sub": "Give product, engineering, and growth teams an edge with proactive AI that knows your data"
     },
     "sectionCount": 6,
-    "typedShare": "3/6",
+    "typedShare": "4/6",
     "sections": [
      {
       "i": 0,
@@ -11460,7 +11614,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Support for every step of the journey",
       "x": 0,
       "y": 5472,
@@ -11584,7 +11738,7 @@
      "sub": ""
     },
     "sectionCount": 12,
-    "typedShare": "8/12",
+    "typedShare": "11/12",
     "sections": [
      {
       "i": 0,
@@ -11632,7 +11786,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "video",
       "heading": "See what users do. Improve what matters.",
       "x": 0,
       "y": 139,
@@ -11654,7 +11808,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Your unfair AI advantage",
       "x": 0,
       "y": 2361,
@@ -11665,7 +11819,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "Understand what your customers want—and give it to",
       "x": 0,
       "y": 3118,
@@ -11822,7 +11976,7 @@
      "sub": "We're merging our websites to make things simpler. You can now find our leading customer d"
     },
     "sectionCount": 5,
-    "typedShare": "3/5",
+    "typedShare": "4/5",
     "sections": [
      {
       "i": 0,
@@ -11848,7 +12002,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cta",
       "heading": "Same CDP, new home base.",
       "x": 0,
       "y": 715,
@@ -11941,7 +12095,7 @@
      "sub": "Turn customer data into personalized experiences with a platform that gets more powerful o"
     },
     "sectionCount": 11,
-    "typedShare": "4/11",
+    "typedShare": "7/11",
     "sections": [
      {
       "i": 0,
@@ -11978,7 +12132,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "We unify your , , and into a single platform, so e",
       "x": 0,
       "y": 1442,
@@ -11989,7 +12143,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Everything you need to engage customers",
       "x": 0,
       "y": 2160,
@@ -12000,7 +12154,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "Support every stage of the customer journey",
       "x": 0,
       "y": 3831,
@@ -12168,7 +12322,7 @@
      "sub": ""
     },
     "sectionCount": 19,
-    "typedShare": "4/19",
+    "typedShare": "10/19",
     "sections": [
      {
       "i": 0,
@@ -12183,7 +12337,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "video",
       "heading": "Your edge to win every search.",
       "x": 32,
       "y": 1516,
@@ -12194,7 +12348,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "video",
       "heading": "Ask AI. Get Semrush data.",
       "x": 783,
       "y": 1516,
@@ -12205,7 +12359,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "video",
       "heading": "Bigger scale. Bigger advantage.",
       "x": 0,
       "y": 2087,
@@ -12227,7 +12381,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "STATS AND FACTS",
       "x": 0,
       "y": 3477,
@@ -12238,7 +12392,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "comparison",
       "heading": "AI VISIBILITY INDEX",
       "x": 0,
       "y": 4551,
@@ -12260,7 +12414,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cards",
       "heading": "RESOURCES ( 9 )",
       "x": 0,
       "y": 6835,
@@ -12483,7 +12637,7 @@
      "sub": "Track every brand mention, competitor move, and industry story in real time."
     },
     "sectionCount": 17,
-    "typedShare": "7/17",
+    "typedShare": "15/17",
     "sections": [
      {
       "i": 0,
@@ -12520,7 +12674,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "video",
       "heading": "Watch demos",
       "x": 0,
       "y": 987,
@@ -12553,7 +12707,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "video",
       "heading": "Your marketing platform—built for search and AI",
       "x": 233,
       "y": 1557,
@@ -12575,7 +12729,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "video",
       "heading": "AI that creates results, not noise",
       "x": 0,
       "y": 3045,
@@ -12586,7 +12740,7 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "video",
       "heading": "Lead with data that sees further, faster, and deep",
       "x": 0,
       "y": 5780,
@@ -12597,7 +12751,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "cards",
       "heading": "Whatever your role, Ahrefs gives you an edge",
       "x": 0,
       "y": 6500,
@@ -12608,7 +12762,7 @@
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "cards",
       "heading": "Ahrefs Enterprise–See the big picture, get answers",
       "x": 0,
       "y": 7598,
@@ -12619,7 +12773,7 @@
      },
      {
       "i": 12,
-      "type": "content",
+      "type": "cards",
       "heading": "We’ll support youall the way—whatever your questio",
       "x": 0,
       "y": 8808,
@@ -12630,7 +12784,7 @@
      },
      {
       "i": 13,
-      "type": "content",
+      "type": "cta",
       "heading": "Join our community",
       "x": 0,
       "y": 10144,
@@ -12776,7 +12930,7 @@
      "sub": ""
     },
     "sectionCount": 17,
-    "typedShare": "4/17",
+    "typedShare": "14/17",
     "sections": [
      {
       "i": 0,
@@ -12796,13 +12950,13 @@
       "x": 0,
       "y": 756,
       "w": 1185,
-      "h": 9896,
+      "h": 9830,
       "trust": true,
       "pricing": false
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cards",
       "heading": "Get the SEO insights you need to convert more traf",
       "x": 0,
       "y": 1086,
@@ -12813,7 +12967,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cta",
       "heading": "Turn AI Citations Into Maximum Visibility",
       "x": 0,
       "y": 1962,
@@ -12835,7 +12989,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "faq",
       "heading": "STAT: the ultimate large-scale rank tracking platf",
       "x": 0,
       "y": 4171,
@@ -12846,7 +13000,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "faq",
       "heading": "Moz Local: the local SEO and reputation management",
       "x": 0,
       "y": 5180,
@@ -12857,7 +13011,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "faq",
       "heading": "Moz API: powering custom data solutions",
       "x": 0,
       "y": 6086,
@@ -12868,7 +13022,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cards",
       "heading": "Propel your business forward with Moz Data",
       "x": 0,
       "y": 6957,
@@ -12890,7 +13044,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "cards",
       "heading": "Learn SEO from our experts",
       "x": 0,
       "y": 8319,
@@ -12901,7 +13055,7 @@
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "cta",
       "heading": "Ready to get started with Moz Pro?",
       "x": 0,
       "y": 9221,
@@ -12912,45 +13066,45 @@
      },
      {
       "i": 12,
-      "type": "content",
+      "type": "cards",
       "heading": "The latest from the Moz Blog",
       "x": 0,
       "y": 9766,
       "w": 1185,
-      "h": 886,
+      "h": 820,
       "trust": false,
       "pricing": false
      },
      {
       "i": 13,
-      "type": "content",
-      "heading": "The 4 S’s of YouTube Success — Whiteboard Friday",
+      "type": "testimonials",
+      "heading": "How to Build AI Citations — Whiteboard Friday",
       "x": 2,
       "y": 10010,
       "w": 394,
-      "h": 562,
-      "trust": false,
+      "h": 496,
+      "trust": true,
       "pricing": false
      },
      {
       "i": 14,
       "type": "content",
-      "heading": "How Community Building Helps Your SEO — Whiteboard",
+      "heading": "How to Integrate PR & SEO for Maximum Brand Visibi",
       "x": 396,
       "y": 10010,
       "w": 394,
-      "h": 562,
+      "h": 496,
       "trust": false,
       "pricing": false
      },
      {
       "i": 15,
       "type": "content",
-      "heading": "Stop Calling It SEO: 12 Strategies To Dominate AI ",
+      "heading": "The 4 S’s of YouTube Success — Whiteboard Friday",
       "x": 789,
       "y": 10010,
       "w": 394,
-      "h": 562,
+      "h": 496,
       "trust": false,
       "pricing": false
      },
@@ -12959,7 +13113,7 @@
       "type": "testimonials",
       "heading": "Get started with Moz Pro!",
       "x": 12,
-      "y": 10398,
+      "y": 10422,
       "w": 370,
       "h": 59,
       "trust": true,
@@ -13041,7 +13195,7 @@
      }
     ],
     "trustCount": {
-     "testimonials": 6,
+     "testimonials": 9,
      "customerLogos": 0,
      "ratings": 0,
      "trustedBy": 2,
@@ -13065,11 +13219,11 @@
    "map": {
     "url": "https://surferseo.com/",
     "hero": {
-     "headline": "Be The Answer in AI Mode – Everywhere Buyers Search.",
-     "sub": "Surfer helped us scale Hostinger Tutorials drastically to over 1 million clicks per week."
+     "headline": "Be The Answer in Perplexity – Everywhere Buyers Search.",
+     "sub": "Surfer has been a total game-changer for my agency. Surfer gives us all the data we need t"
     },
     "sectionCount": 10,
-    "typedShare": "5/10",
+    "typedShare": "7/10",
     "sections": [
      {
       "i": 0,
@@ -13085,7 +13239,7 @@
      {
       "i": 1,
       "type": "hero",
-      "heading": "Be The Answer in AI Mode – Everywhere Buyers Searc",
+      "heading": "Be The Answer in Perplexity – Everywhere Buyers Se",
       "x": 0,
       "y": 137,
       "w": 1185,
@@ -13106,7 +13260,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Welcome to The Era of Artificial Influence.",
       "x": 0,
       "y": 3129,
@@ -13161,7 +13315,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cards",
       "heading": "Explore, absorb and upskill at Surfer Academy. Joi",
       "x": 0,
       "y": 12291,
@@ -13285,7 +13439,7 @@
      "sub": "Pipedrive lets you track your sales pipeline, optimize leads, manage deals with AI and aut"
     },
     "sectionCount": 17,
-    "typedShare": "7/17",
+    "typedShare": "10/17",
     "sections": [
      {
       "i": 0,
@@ -13355,7 +13509,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "",
       "x": 0,
       "y": 2065,
@@ -13421,7 +13575,7 @@
      },
      {
       "i": 12,
-      "type": "content",
+      "type": "cards",
       "heading": "Easily manage leads and deals",
       "x": 0,
       "y": 4852,
@@ -13443,7 +13597,7 @@
      },
      {
       "i": 14,
-      "type": "content",
+      "type": "cards",
       "heading": "Popular blog posts",
       "x": 0,
       "y": 5909,
@@ -13578,17 +13732,17 @@
      "sub": ""
     },
     "sectionCount": 12,
-    "typedShare": "5/12",
+    "typedShare": "11/12",
     "sections": [
      {
       "i": 0,
-      "type": "form",
+      "type": "hero",
       "heading": "The sales CRM built for calling, emailing, texting",
       "x": 0,
       "y": 64,
       "w": 1185,
-      "h": 1118,
-      "trust": true,
+      "h": 1190,
+      "trust": false,
       "pricing": false
      },
      {
@@ -13596,18 +13750,18 @@
       "type": "testimonials",
       "heading": "Built for conversations. Now Close runs them, end-",
       "x": 0,
-      "y": 1182,
+      "y": 1254,
       "w": 1185,
-      "h": 7520,
+      "h": 7384,
       "trust": true,
       "pricing": false
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cta",
       "heading": "",
       "x": 80,
-      "y": 2100,
+      "y": 2172,
       "w": 1025,
       "h": 470,
       "trust": false,
@@ -13615,10 +13769,10 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cta",
       "heading": "",
       "x": 1105,
-      "y": 2100,
+      "y": 2172,
       "w": 1025,
       "h": 432,
       "trust": false,
@@ -13626,10 +13780,10 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cta",
       "heading": "",
       "x": 2130,
-      "y": 2100,
+      "y": 2172,
       "w": 1025,
       "h": 469,
       "trust": false,
@@ -13640,18 +13794,18 @@
       "type": "testimonials",
       "heading": "Customers can’t stop talking about how much they l",
       "x": 0,
-      "y": 3110,
+      "y": 3182,
       "w": 1185,
-      "h": 1518,
+      "h": 1383,
       "trust": true,
       "pricing": false
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Your CRM has all the data. Now it can act on it.",
       "x": 0,
-      "y": 4629,
+      "y": 4564,
       "w": 1185,
       "h": 998,
       "trust": false,
@@ -13662,7 +13816,7 @@
       "type": "content",
       "heading": "Every call, captured and summarized",
       "x": 80,
-      "y": 5113,
+      "y": 5049,
       "w": 1025,
       "h": 386,
       "trust": false,
@@ -13670,10 +13824,10 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "integrations",
       "heading": "Works with the tools you already use",
       "x": 0,
-      "y": 5862,
+      "y": 5797,
       "w": 1185,
       "h": 829,
       "trust": false,
@@ -13681,10 +13835,10 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "cta",
       "heading": "Build on Close",
       "x": 0,
-      "y": 7387,
+      "y": 7323,
       "w": 1185,
       "h": 452,
       "trust": false,
@@ -13695,7 +13849,7 @@
       "type": "testimonials",
       "heading": "Stop missing leads. Start closing deals.",
       "x": 0,
-      "y": 7839,
+      "y": 7775,
       "w": 1185,
       "h": 863,
       "trust": true,
@@ -13706,7 +13860,7 @@
       "type": "footer",
       "heading": "Platform",
       "x": 469,
-      "y": 1559,
+      "y": 1630,
       "w": 391,
       "h": 20,
       "trust": true,
@@ -13722,12 +13876,6 @@
      },
      {
       "text": "Try for free",
-      "section": "hero",
-      "intent": "engagement",
-      "aboveFold": true
-     },
-     {
-      "text": "Start free with Google",
       "section": "hero",
       "intent": "conversion",
       "aboveFold": true
@@ -13785,6 +13933,12 @@
       "section": "content",
       "intent": "unknown",
       "aboveFold": false
+     },
+     {
+      "text": "Try for free",
+      "section": "content",
+      "intent": "conversion",
+      "aboveFold": false
      }
     ],
     "trustCount": {
@@ -13792,7 +13946,7 @@
      "customerLogos": 0,
      "ratings": 2,
      "trustedBy": 0,
-     "socialProof": 2,
+     "socialProof": 1,
      "guarantees": 0,
      "certifications": 1,
      "reviewBadges": 0,
@@ -13816,7 +13970,7 @@
      "sub": ""
     },
     "sectionCount": 10,
-    "typedShare": "5/10",
+    "typedShare": "8/10",
     "sections": [
      {
       "i": 0,
@@ -13864,7 +14018,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Get to know Gorgias",
       "x": 0,
       "y": 2301,
@@ -13875,7 +14029,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "AI Agent + Helpdesk",
       "x": 0,
       "y": 2301,
@@ -13886,7 +14040,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "video",
       "heading": "Customer stories",
       "x": 0,
       "y": 4887,
@@ -13913,7 +14067,7 @@
       "x": 0,
       "y": 6945,
       "w": 1185,
-      "h": 766,
+      "h": 761,
       "trust": false,
       "pricing": false
      },
@@ -13922,9 +14076,9 @@
       "type": "footer",
       "heading": "Looking for other resources? Win more customers wi",
       "x": 0,
-      "y": 7711,
+      "y": 7705,
       "w": 1185,
-      "h": 1069,
+      "h": 1012,
       "trust": false,
       "pricing": false
      }
@@ -14014,7 +14168,7 @@
      "sub": "Bring customer insights, team collaboration, and thoughtful AI together so every interacti"
     },
     "sectionCount": 16,
-    "typedShare": "8/16",
+    "typedShare": "15/16",
     "sections": [
      {
       "i": 0,
@@ -14084,7 +14238,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "video",
       "heading": "One home for all your support conversations",
       "x": 0,
       "y": 1801,
@@ -14095,7 +14249,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "video",
       "heading": "Plus, all the little things support teams love",
       "x": 0,
       "y": 2945,
@@ -14106,7 +14260,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cards",
       "heading": "Meet Beacon: your embeddable support hub",
       "x": 0,
       "y": 3621,
@@ -14117,7 +14271,7 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "integrations",
       "heading": "Get closer to customers with in-app messages",
       "x": 0,
       "y": 4515,
@@ -14128,7 +14282,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "cards",
       "heading": "Reporting that tells a story",
       "x": 0,
       "y": 5410,
@@ -14139,7 +14293,7 @@
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "cards",
       "heading": "Stay organized automatically",
       "x": 0,
       "y": 6304,
@@ -14172,7 +14326,7 @@
      },
      {
       "i": 14,
-      "type": "content",
+      "type": "video",
       "heading": "Start for Free",
       "x": 0,
       "y": 8302,
@@ -14188,7 +14342,7 @@
       "x": 0,
       "y": 8915,
       "w": 1185,
-      "h": 658,
+      "h": 601,
       "trust": false,
       "pricing": false
      }
@@ -14284,7 +14438,7 @@
      "sub": "Only Front brings teams, conversations, and AI into one coordinated system, so customer op"
     },
     "sectionCount": 10,
-    "typedShare": "3/10",
+    "typedShare": "6/10",
     "sections": [
      {
       "i": 0,
@@ -14304,13 +14458,13 @@
       "x": 0,
       "y": 0,
       "w": 1185,
-      "h": 1789,
+      "h": 1655,
       "trust": true,
       "pricing": false
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cta",
       "heading": "Complexity is where most customer support platform",
       "x": 465,
       "y": 20,
@@ -14321,7 +14475,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cta",
       "heading": "Where cross-team customer operations stops crossin",
       "x": 577,
       "y": 20,
@@ -14343,10 +14497,10 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "Customer Service Support",
       "x": 0,
-      "y": 5585,
+      "y": 5451,
       "w": 1185,
       "h": 1299,
       "trust": false,
@@ -14379,7 +14533,7 @@
       "type": "content",
       "heading": "",
       "x": 0,
-      "y": 8822,
+      "y": 8688,
       "w": 1185,
       "h": 453,
       "trust": false,
@@ -14390,7 +14544,7 @@
       "type": "content",
       "heading": "",
       "x": 0,
-      "y": 9275,
+      "y": 9141,
       "w": 1185,
       "h": 846,
       "trust": false,
@@ -14406,6 +14560,12 @@
      },
      {
       "text": "Request demo",
+      "section": "hero",
+      "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Start free trial",
       "section": "hero",
       "intent": "conversion",
       "aboveFold": true
@@ -14463,12 +14623,6 @@
       "section": "content",
       "intent": "conversion",
       "aboveFold": false
-     },
-     {
-      "text": "",
-      "section": "footer",
-      "intent": "social",
-      "aboveFold": false
      }
     ],
     "trustCount": {
@@ -14479,7 +14633,7 @@
      "socialProof": 2,
      "guarantees": 0,
      "certifications": 0,
-     "reviewBadges": 10,
+     "reviewBadges": 7,
      "pressMentions": 0
     }
    },
@@ -14496,18 +14650,18 @@
    "map": {
     "url": "https://aircall.io/",
     "hero": {
-     "headline": "Customer communications, evolved with AI that qualifies customers and resolves issues.",
+     "headline": "Customer communications, evolved with AI that coaches your team in real time.",
      "sub": ""
     },
     "sectionCount": 11,
-    "typedShare": "4/11",
+    "typedShare": "6/11",
     "sections": [
      {
       "i": 0,
       "type": "nav",
       "heading": "Get free access",
       "x": -1320,
-      "y": 56,
+      "y": 41,
       "w": 1185,
       "h": 1680,
       "trust": false,
@@ -14516,7 +14670,7 @@
      {
       "i": 1,
       "type": "hero",
-      "heading": "Customer communications, evolved with AI that qual",
+      "heading": "Customer communications, evolved with AI that coac",
       "x": 0,
       "y": 64,
       "w": 1185,
@@ -14537,7 +14691,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Team-led customer conversations powered by a moder",
       "x": 0,
       "y": 4332,
@@ -14581,7 +14735,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "integrations",
       "heading": "250+ integrations that connect every conversation ",
       "x": 0,
       "y": 19893,
@@ -14727,7 +14881,7 @@
      "sub": ""
     },
     "sectionCount": 22,
-    "typedShare": "17/22",
+    "typedShare": "22/22",
     "sections": [
      {
       "i": 0,
@@ -14753,7 +14907,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "video",
       "heading": "Reimagine what’s possible with AI and agents.",
       "x": 0,
       "y": 1181,
@@ -14764,7 +14918,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "What’s new in Slack",
       "x": 0,
       "y": 2295,
@@ -14863,7 +15017,7 @@
      },
      {
       "i": 12,
-      "type": "content",
+      "type": "video",
       "heading": "The most innovative companies run their business i",
       "x": 0,
       "y": 6980,
@@ -14896,7 +15050,7 @@
      },
      {
       "i": 15,
-      "type": "content",
+      "type": "cards",
       "heading": "Your Slack deep dive starts here.",
       "x": 0,
       "y": 9143,
@@ -14951,7 +15105,7 @@
      },
      {
       "i": 20,
-      "type": "content",
+      "type": "cta",
       "heading": "See all you can accomplish in Slack.",
       "x": 0,
       "y": 9984,
@@ -15075,7 +15229,7 @@
      "sub": ""
     },
     "sectionCount": 11,
-    "typedShare": "2/11",
+    "typedShare": "8/11",
     "sections": [
      {
       "i": 0,
@@ -15090,7 +15244,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "video",
       "heading": "Find, organize, and share your work, all in one pl",
       "x": 0,
       "y": 129,
@@ -15134,7 +15288,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "video",
       "heading": "Find it fast, every time",
       "x": 0,
       "y": 1734,
@@ -15145,7 +15299,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "video",
       "heading": "Everything in order, everyone aligned",
       "x": 0,
       "y": 2807,
@@ -15156,7 +15310,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "video",
       "heading": "Send it safely, share it fast",
       "x": 0,
       "y": 3784,
@@ -15178,7 +15332,7 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "cards",
       "heading": "Construction",
       "x": 0,
       "y": 6500,
@@ -15189,7 +15343,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "cards",
       "heading": "Working Smarter: A podcast about AI and modern wor",
       "x": 0,
       "y": 7464,
@@ -15296,16 +15450,16 @@
      "sub": ""
     },
     "sectionCount": 5,
-    "typedShare": "3/5",
+    "typedShare": "4/5",
     "sections": [
      {
       "i": 0,
       "type": "hero",
       "heading": "The collaboration layer your AI tools are missing.",
-      "x": 15,
-      "y": 132,
-      "w": 1155,
-      "h": 983,
+      "x": 27,
+      "y": 129,
+      "w": 1131,
+      "h": 962,
       "trust": true,
       "pricing": false
      },
@@ -15333,12 +15487,12 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "video",
       "heading": "",
-      "x": -493,
-      "y": 3001,
-      "w": 2170,
-      "h": 1215,
+      "x": -463,
+      "y": 3026,
+      "w": 2110,
+      "h": 1182,
       "trust": false,
       "pricing": false
      },
@@ -15457,7 +15611,7 @@
      "sub": ""
     },
     "sectionCount": 8,
-    "typedShare": "5/8",
+    "typedShare": "7/8",
     "sections": [
      {
       "i": 0,
@@ -15483,7 +15637,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cards",
       "heading": "Tools to power your best work",
       "x": 0,
       "y": 964,
@@ -15505,7 +15659,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cta",
       "heading": "Templates for absolutely anything",
       "x": 0,
       "y": 3413,
@@ -15651,7 +15805,7 @@
      "sub": ""
     },
     "sectionCount": 8,
-    "typedShare": "3/8",
+    "typedShare": "5/8",
     "sections": [
      {
       "i": 0,
@@ -15660,27 +15814,27 @@
       "x": 0,
       "y": 65,
       "w": 1185,
-      "h": 6906,
+      "h": 6954,
       "trust": true,
       "pricing": false
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "video",
       "heading": "Better writing, better results",
       "x": 0,
       "y": 1335,
       "w": 1185,
-      "h": 2052,
+      "h": 2100,
       "trust": false,
       "pricing": false
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cards",
       "heading": "Choose the right Grammarly plan",
       "x": 0,
-      "y": 3387,
+      "y": 3435,
       "w": 1185,
       "h": 1213,
       "trust": false,
@@ -15691,7 +15845,7 @@
       "type": "content",
       "heading": "Free",
       "x": 80,
-      "y": 3727,
+      "y": 3775,
       "w": 1025,
       "h": 777,
       "trust": false,
@@ -15702,7 +15856,7 @@
       "type": "testimonials",
       "heading": "What’s the ROI on better work?",
       "x": 0,
-      "y": 4600,
+      "y": 4648,
       "w": 1185,
       "h": 1239,
       "trust": true,
@@ -15713,7 +15867,7 @@
       "type": "content",
       "heading": "Grammarly is now a part of Superhuman",
       "x": 0,
-      "y": 5839,
+      "y": 5887,
       "w": 1185,
       "h": 561,
       "trust": false,
@@ -15724,7 +15878,7 @@
       "type": "content",
       "heading": "Great writing gets work done",
       "x": 0,
-      "y": 6400,
+      "y": 6448,
       "w": 1185,
       "h": 571,
       "trust": false,
@@ -15735,7 +15889,7 @@
       "type": "nav",
       "heading": "",
       "x": 80,
-      "y": 6987,
+      "y": 7035,
       "w": 1025,
       "h": 1049,
       "trust": false,
@@ -15774,9 +15928,9 @@
       "aboveFold": true
      },
      {
-      "text": "Contact Sales",
+      "text": "Request a demo",
       "section": "nav",
-      "intent": "contact",
+      "intent": "navigation",
       "aboveFold": true
      },
      {
@@ -15845,7 +15999,7 @@
      "sub": "Join 50+ million professionals who simplify work and life with the world’s #1 to-do list a"
     },
     "sectionCount": 9,
-    "typedShare": "4/9",
+    "typedShare": "6/9",
     "sections": [
      {
       "i": 0,
@@ -15882,7 +16036,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "video",
       "heading": "Capture tasks at the speed of thought",
       "x": 0,
       "y": 1165,
@@ -15915,7 +16069,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cta",
       "heading": "",
       "x": 0,
       "y": 5564,
@@ -16008,7 +16162,7 @@
      "sub": ""
     },
     "sectionCount": 6,
-    "typedShare": "3/6",
+    "typedShare": "5/6",
     "sections": [
      {
       "i": 0,
@@ -16023,7 +16177,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "video",
       "heading": "Superpowers, everywhere you work",
       "x": 0,
       "y": 139,
@@ -16056,7 +16210,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cta",
       "heading": "AI that works everywhere you work",
       "x": 0,
       "y": 4810,
@@ -16150,7 +16304,7 @@
      "sub": "Cal.com launches v6.7"
     },
     "sectionCount": 12,
-    "typedShare": "5/12",
+    "typedShare": "8/12",
     "sections": [
      {
       "i": 0,
@@ -16176,7 +16330,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cards",
       "heading": "With us, appointment scheduling is easy",
       "x": 0,
       "y": 934,
@@ -16187,7 +16341,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "integrations",
       "heading": "Your all-purpose scheduling app",
       "x": 0,
       "y": 1834,
@@ -16198,7 +16352,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "…and so much more!",
       "x": 0,
       "y": 3072,
@@ -16236,7 +16390,7 @@
       "x": 0,
       "y": 4878,
       "w": 1185,
-      "h": 1267,
+      "h": 1579,
       "trust": false,
       "pricing": false
      },
@@ -16245,7 +16399,7 @@
       "type": "faq",
       "heading": "Frequently asked questions",
       "x": 0,
-      "y": 6176,
+      "y": 6488,
       "w": 1185,
       "h": 913,
       "trust": false,
@@ -16256,7 +16410,7 @@
       "type": "logos",
       "heading": "",
       "x": 0,
-      "y": 7121,
+      "y": 7433,
       "w": 1185,
       "h": 74,
       "trust": true,
@@ -16267,7 +16421,7 @@
       "type": "content",
       "heading": "Smarter, simpler scheduling",
       "x": 0,
-      "y": 7227,
+      "y": 7539,
       "w": 1185,
       "h": 390,
       "trust": false,
@@ -16278,7 +16432,7 @@
       "type": "content",
       "heading": "",
       "x": 0,
-      "y": 7649,
+      "y": 7961,
       "w": 1185,
       "h": 848,
       "trust": false,
@@ -16388,7 +16542,7 @@
      "sub": ""
     },
     "sectionCount": 2,
-    "typedShare": "1/2",
+    "typedShare": "2/2",
     "sections": [
      {
       "i": 0,
@@ -16403,7 +16557,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "cards",
       "heading": "Where teams and time tracking data meet",
       "x": 0,
       "y": 0,
@@ -16516,7 +16670,7 @@
      "sub": ""
     },
     "sectionCount": 11,
-    "typedShare": "5/11",
+    "typedShare": "11/11",
     "sections": [
      {
       "i": 0,
@@ -16542,7 +16696,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "faq",
       "heading": "Do 10x more. Burn out less.",
       "x": 0,
       "y": 907,
@@ -16553,7 +16707,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "video",
       "heading": "Your work needs more than a task manager",
       "x": 0,
       "y": 2154,
@@ -16564,7 +16718,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "faq",
       "heading": "Every team has work that agents can handle",
       "x": 0,
       "y": 3076,
@@ -16575,7 +16729,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "faq",
       "heading": "Wrike Whiteboard: Map complexity, then conquer it",
       "x": 0,
       "y": 3890,
@@ -16586,7 +16740,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "faq",
       "heading": "The trusted platform built for complex work",
       "x": 0,
       "y": 4417,
@@ -16608,7 +16762,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cards",
       "heading": "Award-winning platform for complex work",
       "x": 0,
       "y": 7066,
@@ -16750,7 +16904,7 @@
       "type": "nav",
       "heading": "Log in",
       "x": 0,
-      "y": 1,
+      "y": 0,
       "w": 1185,
       "h": 63,
       "trust": false,
@@ -16861,11 +17015,11 @@
    "map": {
     "url": "https://gusto.com/",
     "hero": {
-     "headline": "Payroll, HR, and benefits for startups agencies boutiques practices nonprofits businesses ",
+     "headline": "Payroll, HR, Benefits. Simplified.",
      "sub": ""
     },
-    "sectionCount": 9,
-    "typedShare": "4/9",
+    "sectionCount": 11,
+    "typedShare": "8/11",
     "sections": [
      {
       "i": 0,
@@ -16880,87 +17034,109 @@
      },
      {
       "i": 1,
-      "type": "content",
-      "heading": "Payroll, HR, and benefits for startups agencies bo",
+      "type": "testimonials",
+      "heading": "Payroll, HR, Benefits. Simplified.",
       "x": 0,
       "y": 80,
       "w": 1185,
-      "h": 5013,
+      "h": 6613,
       "trust": true,
       "pricing": false
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "faq",
       "heading": "Run payroll in minutes with smart technology.",
       "x": 0,
-      "y": 923,
+      "y": 954,
       "w": 1185,
-      "h": 908,
+      "h": 909,
       "trust": false,
       "pricing": false
      },
      {
       "i": 3,
       "type": "content",
-      "heading": "But wait, there’s more.",
+      "heading": "Make a real difference with affordable employee be",
       "x": 0,
-      "y": 1831,
+      "y": 2331,
       "w": 1185,
-      "h": 378,
+      "h": 610,
       "trust": false,
       "pricing": false
      },
      {
       "i": 4,
       "type": "content",
+      "heading": "Hire standout candidates and get them up to speed ",
+      "x": 0,
+      "y": 2941,
+      "w": 1185,
+      "h": 490,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 5,
+      "type": "content",
+      "heading": "But wait, there’s more.",
+      "x": 0,
+      "y": 3431,
+      "w": 1185,
+      "h": 378,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 6,
+      "type": "cta",
       "heading": "Let’s find the right plan for your business",
       "x": 0,
-      "y": 2209,
+      "y": 3809,
       "w": 1185,
       "h": 349,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 5,
+      "i": 7,
       "type": "stats",
       "heading": "See how Gusto stacks up against other payroll prov",
       "x": 0,
-      "y": 2558,
+      "y": 4158,
       "w": 1185,
       "h": 668,
       "trust": true,
       "pricing": false
      },
      {
-      "i": 6,
-      "type": "content",
+      "i": 8,
+      "type": "cards",
       "heading": "Get started for free",
       "x": 0,
-      "y": 3226,
+      "y": 4826,
       "w": 1185,
       "h": 658,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 7,
+      "i": 9,
       "type": "faq",
       "heading": "Frequently Asked Questions",
       "x": 0,
-      "y": 3884,
+      "y": 5484,
       "w": 1185,
       "h": 665,
       "trust": false,
       "pricing": false
      },
      {
-      "i": 8,
+      "i": 10,
       "type": "faq",
       "heading": "Questions? Meet answers.",
       "x": 0,
-      "y": 4549,
+      "y": 6149,
       "w": 1185,
       "h": 544,
       "trust": false,
@@ -16969,7 +17145,7 @@
     ],
     "ctas": [
      {
-      "text": "Create free account",
+      "text": "Create account",
       "section": "nav",
       "intent": "navigation",
       "aboveFold": true
@@ -16996,22 +17172,16 @@
       "text": "Create free account",
       "section": "hero",
       "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "How Gusto works",
+      "section": "hero",
+      "intent": "information",
       "aboveFold": true
      },
      {
       "text": "Payroll takes just a few clicks",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "Customize your experience",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "View a payroll demo→",
       "section": "hero",
       "intent": "conversion",
       "aboveFold": true
@@ -17023,9 +17193,21 @@
       "aboveFold": true
      },
      {
-      "text": "See a demo",
+      "text": "See all time tools →",
       "section": "hero",
       "intent": "conversion",
+      "aboveFold": true
+     },
+     {
+      "text": "Why Gusto",
+      "section": "hero",
+      "intent": "navigation",
+      "aboveFold": true
+     },
+     {
+      "text": "Read the full story",
+      "section": "content",
+      "intent": "information",
       "aboveFold": false
      },
      {
@@ -17033,16 +17215,10 @@
       "section": "content",
       "intent": "navigation",
       "aboveFold": false
-     },
-     {
-      "text": "Compare Gusto",
-      "section": "content",
-      "intent": "navigation",
-      "aboveFold": false
      }
     ],
     "trustCount": {
-     "testimonials": 0,
+     "testimonials": 1,
      "customerLogos": 0,
      "ratings": 1,
      "trustedBy": 0,
@@ -17069,9 +17245,20 @@
      "headline": "See a demo",
      "sub": ""
     },
-    "sectionCount": 11,
-    "typedShare": "5/11",
+    "sectionCount": 12,
+    "typedShare": "9/12",
     "sections": [
+     {
+      "i": 0,
+      "type": "header",
+      "heading": "See a demo",
+      "x": 0,
+      "y": 2,
+      "w": 1185,
+      "h": 80,
+      "trust": false,
+      "pricing": false
+     },
      {
       "i": 1,
       "type": "hero",
@@ -17096,7 +17283,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Start with the apps you need, or run them all toge",
       "x": 0,
       "y": 1102,
@@ -17118,7 +17305,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cta",
       "heading": "Go from prompt to productivity in seconds",
       "x": 0,
       "y": 4425,
@@ -17134,7 +17321,7 @@
       "x": 0,
       "y": 5515,
       "w": 1185,
-      "h": 1001,
+      "h": 927,
       "trust": false,
       "pricing": false
      },
@@ -17143,7 +17330,7 @@
       "type": "testimonials",
       "heading": "",
       "x": 0,
-      "y": 6516,
+      "y": 6442,
       "w": 1185,
       "h": 779,
       "trust": true,
@@ -17154,7 +17341,7 @@
       "type": "content",
       "heading": "What’s new at Rippling",
       "x": 0,
-      "y": 7295,
+      "y": 7222,
       "w": 1185,
       "h": 869,
       "trust": false,
@@ -17165,7 +17352,7 @@
       "type": "content",
       "heading": "",
       "x": 0,
-      "y": 8164,
+      "y": 8090,
       "w": 1185,
       "h": 236,
       "trust": true,
@@ -17173,10 +17360,10 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "cta",
       "heading": "Get a demo—live or on demand",
       "x": 0,
-      "y": 8400,
+      "y": 8327,
       "w": 1185,
       "h": 390,
       "trust": false,
@@ -17187,7 +17374,7 @@
       "type": "footer",
       "heading": "Platform",
       "x": 0,
-      "y": 8791,
+      "y": 8717,
       "w": 1185,
       "h": 1807,
       "trust": true,
@@ -17293,228 +17480,22 @@
    "map": {
     "url": "https://www.bamboohr.com/",
     "hero": {
-     "headline": "From HR platform to HR partner with Bamboo AI™",
+     "headline": "From HR platform to HR partnerwith Bamboo AI™",
      "sub": ""
     },
-    "sectionCount": 12,
-    "typedShare": "8/12",
-    "sections": [
-     {
-      "i": 0,
-      "type": "nav",
-      "heading": "United Kingdom",
-      "x": 0,
-      "y": 0,
-      "w": 1200,
-      "h": 71,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 1,
-      "type": "hero",
-      "heading": "From HR platform to HR partner with Bamboo AI™",
-      "x": 0,
-      "y": 70,
-      "w": 1185,
-      "h": 1182,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 2,
-      "type": "logos",
-      "heading": "See why 30,000 businesses love working with Bamboo",
-      "x": 0,
-      "y": 1252,
-      "w": 1185,
-      "h": 788,
-      "trust": true,
-      "pricing": false
-     },
-     {
-      "i": 3,
-      "type": "content",
-      "heading": "BambooHR announcements",
-      "x": 0,
-      "y": 2064,
-      "w": 1185,
-      "h": 616,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 4,
-      "type": "content",
-      "heading": "Meet Bamboo AI™",
-      "x": 0,
-      "y": 2680,
-      "w": 1185,
-      "h": 433,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 5,
-      "type": "content",
-      "heading": "Combine all your HR systems into one platform",
-      "x": 0,
-      "y": 3208,
-      "w": 1185,
-      "h": 715,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 6,
-      "type": "content",
-      "heading": "BambooHR customers save hundreds of hours and redu",
-      "x": 0,
-      "y": 4019,
-      "w": 1185,
-      "h": 652,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 7,
-      "type": "cards",
-      "heading": "150+ pre-built integrations",
-      "x": 80,
-      "y": 4671,
-      "w": 1025,
-      "h": 360,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 8,
-      "type": "stats",
-      "heading": "Hear from our customers",
-      "x": 0,
-      "y": 5127,
-      "w": 1185,
-      "h": 712,
-      "trust": true,
-      "pricing": false
-     },
-     {
-      "i": 9,
-      "type": "faq",
-      "heading": "Frequently Asked Questions",
-      "x": 0,
-      "y": 5903,
-      "w": 1185,
-      "h": 819,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 10,
-      "type": "cards",
-      "heading": "In a rush? Try BambooHR now!",
-      "x": 0,
-      "y": 6818,
-      "w": 1185,
-      "h": 342,
-      "trust": false,
-      "pricing": false
-     },
-     {
-      "i": 11,
-      "type": "footer",
-      "heading": "Platform",
-      "x": 0,
-      "y": 7160,
-      "w": 1185,
-      "h": 713,
-      "trust": false,
-      "pricing": false
-     }
-    ],
-    "ctas": [
-     {
-      "text": "Skip to main content",
-      "section": "hero",
-      "intent": "navigation",
-      "aboveFold": true
-     },
-     {
-      "text": "",
-      "section": "nav",
-      "intent": "unknown",
-      "aboveFold": true
-     },
-     {
-      "text": "Log In",
-      "section": "nav",
-      "intent": "navigation",
-      "aboveFold": true
-     },
-     {
-      "text": "Get a Demo",
-      "section": "nav",
-      "intent": "navigation",
-      "aboveFold": true
-     },
-     {
-      "text": "Get My Free Demo",
-      "section": "hero",
-      "intent": "conversion",
-      "aboveFold": true
-     },
-     {
-      "text": "Learn About Bamboo AI",
-      "section": "content",
-      "intent": "information",
-      "aboveFold": false
-     },
-     {
-      "text": "Get a Demo",
-      "section": "content",
-      "intent": "conversion",
-      "aboveFold": false
-     },
-     {
-      "text": "Learn More",
-      "section": "content",
-      "intent": "information",
-      "aboveFold": false
-     },
-     {
-      "text": "Get a Demo",
-      "section": "content",
-      "intent": "conversion",
-      "aboveFold": false
-     },
-     {
-      "text": "See Case Studies",
-      "section": "content",
-      "intent": "unknown",
-      "aboveFold": false
-     },
-     {
-      "text": "See All Integrations",
-      "section": "content",
-      "intent": "unknown",
-      "aboveFold": false
-     },
-     {
-      "text": "Get a Demo",
-      "section": "content",
-      "intent": "conversion",
-      "aboveFold": false
-     }
-    ],
+    "sectionCount": 0,
+    "typedShare": "0/0",
+    "sections": [],
+    "ctas": [],
     "trustCount": {
      "testimonials": 0,
-     "customerLogos": 1,
-     "ratings": 1,
+     "customerLogos": 0,
+     "ratings": 0,
      "trustedBy": 0,
-     "socialProof": 2,
+     "socialProof": 0,
      "guarantees": 0,
      "certifications": 0,
-     "reviewBadges": 1,
+     "reviewBadges": 0,
      "pressMentions": 0
     }
    },
@@ -17535,7 +17516,7 @@
      "sub": ""
     },
     "sectionCount": 9,
-    "typedShare": "5/9",
+    "typedShare": "6/9",
     "sections": [
      {
       "i": 0,
@@ -17577,7 +17558,7 @@
       "x": 0,
       "y": 5292,
       "w": 1185,
-      "h": 1086,
+      "h": 986,
       "trust": false,
       "pricing": false
      },
@@ -17586,7 +17567,7 @@
       "type": "form",
       "heading": "Real-time answers. Better decisions.",
       "x": 0,
-      "y": 6377,
+      "y": 6278,
       "w": 1185,
       "h": 1977,
       "trust": false,
@@ -17597,7 +17578,7 @@
       "type": "content",
       "heading": "Pricing that adapts as your business grows",
       "x": 0,
-      "y": 8354,
+      "y": 8255,
       "w": 1185,
       "h": 1365,
       "trust": false,
@@ -17605,10 +17586,10 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Switch with confidence, from day one",
       "x": 0,
-      "y": 9719,
+      "y": 9620,
       "w": 1185,
       "h": 1132,
       "trust": false,
@@ -17619,7 +17600,7 @@
       "type": "content",
       "heading": "HR evolves. So do we.",
       "x": 0,
-      "y": 10851,
+      "y": 10752,
       "w": 1185,
       "h": 1026,
       "trust": false,
@@ -17630,7 +17611,7 @@
       "type": "form",
       "heading": "Explore Intelligent HR. See how Personio works.",
       "x": 0,
-      "y": 11877,
+      "y": 11778,
       "w": 1185,
       "h": 1110,
       "trust": false,
@@ -17740,7 +17721,7 @@
      "sub": "Hire and pay anyone in the world — with the compliance, reliability, and local expertise t"
     },
     "sectionCount": 27,
-    "typedShare": "8/27",
+    "typedShare": "11/27",
     "sections": [
      {
       "i": 0,
@@ -17799,7 +17780,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "faq",
       "heading": "One system of record. Every employment need.",
       "x": 0,
       "y": 732,
@@ -17821,7 +17802,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cta",
       "heading": "Hiring internationally, converting contractors, or",
       "x": 0,
       "y": 2142,
@@ -17832,7 +17813,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cards",
       "heading": "Your workflows, your way, on our infrastructure",
       "x": 0,
       "y": 2514,
@@ -17900,7 +17881,7 @@
       "i": 14,
       "type": "testimonials",
       "heading": "",
-      "x": -2624,
+      "x": -2987,
       "y": 3992,
       "w": 520,
       "h": 344,
@@ -17911,7 +17892,7 @@
       "i": 15,
       "type": "content",
       "heading": "",
-      "x": -2086,
+      "x": -2449,
       "y": 3992,
       "w": 520,
       "h": 344,
@@ -17922,7 +17903,7 @@
       "i": 16,
       "type": "content",
       "heading": "",
-      "x": -1549,
+      "x": -1912,
       "y": 3992,
       "w": 520,
       "h": 344,
@@ -17933,7 +17914,7 @@
       "i": 17,
       "type": "content",
       "heading": "",
-      "x": -1011,
+      "x": -1374,
       "y": 3992,
       "w": 520,
       "h": 344,
@@ -17944,7 +17925,7 @@
       "i": 18,
       "type": "content",
       "heading": "",
-      "x": -474,
+      "x": -837,
       "y": 3992,
       "w": 520,
       "h": 344,
@@ -17955,7 +17936,7 @@
       "i": 19,
       "type": "content",
       "heading": "",
-      "x": 1139,
+      "x": 776,
       "y": 3992,
       "w": 520,
       "h": 344,
@@ -17966,7 +17947,7 @@
       "i": 20,
       "type": "content",
       "heading": "",
-      "x": 1676,
+      "x": 1313,
       "y": 3992,
       "w": 520,
       "h": 344,
@@ -17977,7 +17958,7 @@
       "i": 21,
       "type": "content",
       "heading": "",
-      "x": 2214,
+      "x": 1851,
       "y": 3992,
       "w": 520,
       "h": 344,
@@ -17988,7 +17969,7 @@
       "i": 22,
       "type": "content",
       "heading": "",
-      "x": 2751,
+      "x": 2388,
       "y": 3992,
       "w": 520,
       "h": 344,
@@ -17999,7 +17980,7 @@
       "i": 23,
       "type": "content",
       "heading": "",
-      "x": 3289,
+      "x": 2926,
       "y": 3992,
       "w": 520,
       "h": 344,
@@ -18113,7 +18094,7 @@
      "sub": ""
     },
     "sectionCount": 19,
-    "typedShare": "9/19",
+    "typedShare": "10/19",
     "sections": [
      {
       "i": 0,
@@ -18150,7 +18131,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "One platform for all of finance. Agents for every ",
       "x": 0,
       "y": 1813,
@@ -18218,7 +18199,7 @@
       "i": 9,
       "type": "testimonials",
       "heading": "",
-      "x": 1062,
+      "x": 1060,
       "y": 9764,
       "w": 320,
       "h": 192,
@@ -18229,7 +18210,7 @@
       "i": 10,
       "type": "content",
       "heading": "",
-      "x": 1398,
+      "x": 1396,
       "y": 9764,
       "w": 320,
       "h": 192,
@@ -18240,7 +18221,7 @@
       "i": 11,
       "type": "content",
       "heading": "",
-      "x": -282,
+      "x": -284,
       "y": 9764,
       "w": 320,
       "h": 192,
@@ -18251,7 +18232,7 @@
       "i": 12,
       "type": "testimonials",
       "heading": "",
-      "x": 963,
+      "x": 961,
       "y": 9972,
       "w": 320,
       "h": 192,
@@ -18262,7 +18243,7 @@
       "i": 13,
       "type": "content",
       "heading": "",
-      "x": 1299,
+      "x": 1297,
       "y": 9972,
       "w": 320,
       "h": 192,
@@ -18273,7 +18254,7 @@
       "i": 14,
       "type": "content",
       "heading": "",
-      "x": 1635,
+      "x": 1633,
       "y": 9972,
       "w": 320,
       "h": 192,
@@ -18284,7 +18265,7 @@
       "i": 15,
       "type": "testimonials",
       "heading": "",
-      "x": 865,
+      "x": 863,
       "y": 10180,
       "w": 320,
       "h": 192,
@@ -18295,7 +18276,7 @@
       "i": 16,
       "type": "content",
       "heading": "",
-      "x": 1201,
+      "x": 1199,
       "y": 10180,
       "w": 320,
       "h": 192,
@@ -18427,8 +18408,8 @@
      "headline": "Radically different banking",
      "sub": ""
     },
-    "sectionCount": 9,
-    "typedShare": "2/9",
+    "sectionCount": 10,
+    "typedShare": "7/10",
     "sections": [
      {
       "i": 0,
@@ -18437,13 +18418,13 @@
       "x": 0,
       "y": 0,
       "w": 1185,
-      "h": 12924,
+      "h": 12802,
       "trust": true,
       "pricing": false
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "video",
       "heading": "Business banking & more",
       "x": 0,
       "y": 4200,
@@ -18465,10 +18446,10 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "faq",
       "heading": "Apply online in 10 minutes",
       "x": 0,
-      "y": 8262,
+      "y": 8238,
       "w": 1185,
       "h": 612,
       "trust": false,
@@ -18476,10 +18457,10 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "faq",
       "heading": "Send no-fee USD payments around the globe",
       "x": 0,
-      "y": 8874,
+      "y": 8850,
       "w": 1185,
       "h": 592,
       "trust": false,
@@ -18490,18 +18471,18 @@
       "type": "content",
       "heading": "You’re creating something to stand the test of tim",
       "x": 0,
-      "y": 10409,
+      "y": 10360,
       "w": 1185,
-      "h": 450,
+      "h": 426,
       "trust": false,
       "pricing": false
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Mercury hits $5.2B valuation",
       "x": 0,
-      "y": 11547,
+      "y": 11450,
       "w": 1185,
       "h": 579,
       "trust": false,
@@ -18512,20 +18493,31 @@
       "type": "content",
       "heading": "Banking – redesigned from the ground up.",
       "x": 0,
-      "y": 12126,
+      "y": 12029,
       "w": 1185,
-      "h": 798,
+      "h": 773,
       "trust": false,
       "pricing": false
      },
      {
       "i": 8,
+      "type": "footer",
+      "heading": "",
+      "x": 176,
+      "y": 12930,
+      "w": 833,
+      "h": 733,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 9,
       "type": "content",
       "heading": "Disclaimers and footnotes",
       "x": 0,
-      "y": 13880,
+      "y": 13743,
       "w": 1185,
-      "h": 1430,
+      "h": 1312,
       "trust": false,
       "pricing": false
      }
@@ -18633,7 +18625,7 @@
      "sub": ""
     },
     "sectionCount": 5,
-    "typedShare": "2/5",
+    "typedShare": "4/5",
     "sections": [
      {
       "i": 0,
@@ -18659,7 +18651,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cards",
       "heading": "Discover, secure, audit",
       "x": 0,
       "y": 1968,
@@ -18681,7 +18673,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "video",
       "heading": "Bring modern access under control",
       "x": 0,
       "y": 4596,
@@ -18782,7 +18774,7 @@
      "sub": ""
     },
     "sectionCount": 11,
-    "typedShare": "3/11",
+    "typedShare": "8/11",
     "sections": [
      {
       "i": 0,
@@ -18802,18 +18794,18 @@
       "x": 0,
       "y": 129,
       "w": 1185,
-      "h": 8843,
+      "h": 8857,
       "trust": false,
       "pricing": false
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cards",
       "heading": "It’s all here",
       "x": 0,
       "y": 1680,
       "w": 1185,
-      "h": 2728,
+      "h": 2741,
       "trust": false,
       "pricing": false
      },
@@ -18822,7 +18814,7 @@
       "type": "testimonials",
       "heading": "“Vanta helped us unblock our sales cycle for secur",
       "x": 0,
-      "y": 3534,
+      "y": 3548,
       "w": 1185,
       "h": 873,
       "trust": true,
@@ -18830,10 +18822,10 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "All the frameworks you need",
       "x": 0,
-      "y": 4407,
+      "y": 4421,
       "w": 1185,
       "h": 808,
       "trust": false,
@@ -18841,21 +18833,21 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "testimonials",
       "heading": "Built for you",
       "x": 0,
-      "y": 5215,
+      "y": 5229,
       "w": 1185,
       "h": 670,
-      "trust": false,
+      "trust": true,
       "pricing": false
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Proof? We've got proof.",
       "x": 0,
-      "y": 5885,
+      "y": 5899,
       "w": 1185,
       "h": 1684,
       "trust": false,
@@ -18863,10 +18855,10 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "Dive into all things Vanta and trust management",
       "x": 0,
-      "y": 7569,
+      "y": 7583,
       "w": 1185,
       "h": 589,
       "trust": false,
@@ -18877,7 +18869,7 @@
       "type": "content",
       "heading": "Meet the new standard for trust",
       "x": 0,
-      "y": 8159,
+      "y": 8173,
       "w": 1185,
       "h": 813,
       "trust": false,
@@ -18888,9 +18880,9 @@
       "type": "content",
       "heading": "",
       "x": 0,
-      "y": 1680,
+      "y": 8986,
       "w": 1185,
-      "h": 1855,
+      "h": 96,
       "trust": false,
       "pricing": false
      },
@@ -18899,7 +18891,7 @@
       "type": "footer",
       "heading": "",
       "x": 0,
-      "y": 9068,
+      "y": 9082,
       "w": 1185,
       "h": 1096,
       "trust": false,
@@ -18974,20 +18966,20 @@
       "aboveFold": false
      },
      {
-      "text": "Get the report",
+      "text": "Learn more",
       "section": "content",
-      "intent": "unknown",
+      "intent": "information",
       "aboveFold": false
      }
     ],
     "trustCount": {
-     "testimonials": 1,
+     "testimonials": 4,
      "customerLogos": 1,
      "ratings": 0,
      "trustedBy": 1,
      "socialProof": 1,
      "guarantees": 0,
-     "certifications": 1,
+     "certifications": 6,
      "reviewBadges": 0,
      "pressMentions": 0
     }
@@ -19009,7 +19001,7 @@
      "sub": ""
     },
     "sectionCount": 17,
-    "typedShare": "3/17",
+    "typedShare": "8/17",
     "sections": [
      {
       "i": 0,
@@ -19057,7 +19049,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Find, analyze, and act on agreements powered by AI",
       "x": 0,
       "y": 1162,
@@ -19068,7 +19060,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "video",
       "heading": "Do (much) more with IAM",
       "x": 0,
       "y": 3267,
@@ -19079,7 +19071,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cta",
       "heading": "Build custom agreement workflows",
       "x": 0,
       "y": 4261,
@@ -19112,7 +19104,7 @@
      },
      {
       "i": 9,
-      "type": "content",
+      "type": "video",
       "heading": "Companies do better with Docusign",
       "x": 0,
       "y": 6399,
@@ -19123,7 +19115,7 @@
      },
      {
       "i": 10,
-      "type": "content",
+      "type": "cards",
       "heading": "Recommended for you",
       "x": 16,
       "y": 7475,
@@ -19302,7 +19294,7 @@
      "sub": ""
     },
     "sectionCount": 8,
-    "typedShare": "4/8",
+    "typedShare": "7/8",
     "sections": [
      {
       "i": 0,
@@ -19328,7 +19320,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "video",
       "heading": "The complete document management solutions",
       "x": 0,
       "y": 1363,
@@ -19350,7 +19342,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "cards",
       "heading": "Designed to make every agreement easier",
       "x": 0,
       "y": 3300,
@@ -19372,7 +19364,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "integrations",
       "heading": "Built to integrate with all your favorite tools",
       "x": 0,
       "y": 6342,
@@ -19646,7 +19638,7 @@
      "sub": ""
     },
     "sectionCount": 8,
-    "typedShare": "2/8",
+    "typedShare": "7/8",
     "sections": [
      {
       "i": 0,
@@ -19661,7 +19653,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "cards",
       "heading": "Billing",
       "x": 0,
       "y": 774,
@@ -19672,7 +19664,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cta",
       "heading": "Built for growth. Proven at scale.",
       "x": 0,
       "y": 2449,
@@ -19683,7 +19675,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "How Renderforest unlocked 3X ARR growth with Paddl",
       "x": 0,
       "y": 2707,
@@ -19705,7 +19697,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cta",
       "heading": "Reach every market. Capture every opportunity.",
       "x": 0,
       "y": 4250,
@@ -19716,7 +19708,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Explore Paddle",
       "x": 0,
       "y": 4918,
@@ -19832,7 +19824,7 @@
    "url": "https://www.bokio.se/",
    "page": "home",
    "ok": false,
-   "error": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+   "error": "Error: no inventory"
   },
   {
    "name": "mynewsdesk",
@@ -19847,7 +19839,7 @@
      "sub": ""
     },
     "sectionCount": 16,
-    "typedShare": "7/16",
+    "typedShare": "12/16",
     "sections": [
      {
       "i": 0,
@@ -19884,7 +19876,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "The easy way to make the headlines",
       "x": 17,
       "y": 1148,
@@ -19906,7 +19898,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "Strategic media monitoring",
       "x": 17,
       "y": 1996,
@@ -19917,7 +19909,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "Press releases that build your visibility",
       "x": 17,
       "y": 2554,
@@ -19928,7 +19920,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "Insightful PR reports with one click",
       "x": 17,
       "y": 3113,
@@ -19972,7 +19964,7 @@
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "cards",
       "heading": "Transform your PR with us",
       "x": 0,
       "y": 5126,
@@ -20169,7 +20161,7 @@
       "type": "nav",
       "heading": "Product",
       "x": 422,
-      "y": 8502,
+      "y": 8452,
       "w": 723,
       "h": 484,
       "trust": false,
@@ -20279,7 +20271,7 @@
      "sub": "Give your teams the tools they need to thrive in an AI-first world."
     },
     "sectionCount": 3,
-    "typedShare": "2/3",
+    "typedShare": "3/3",
     "sections": [
      {
       "i": 0,
@@ -20305,7 +20297,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cta",
       "heading": "Sana AI Summit May 21, 2026",
       "x": 0,
       "y": 3450,
@@ -20394,7 +20386,7 @@
      "sub": "Get started for free"
     },
     "sectionCount": 8,
-    "typedShare": "6/8",
+    "typedShare": "7/8",
     "sections": [
      {
       "i": 0,
@@ -20431,7 +20423,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Agents that work alongside you, not instead of you",
       "x": 0,
       "y": 2615,
@@ -20588,7 +20580,7 @@
      "sub": "14-day free trial. No credit card required."
     },
     "sectionCount": 10,
-    "typedShare": "5/10",
+    "typedShare": "6/10",
     "sections": [
      {
       "i": 0,
@@ -20614,7 +20606,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cards",
       "heading": "From full TAM coverage to your top accounts, run o",
       "x": 0,
       "y": 1419,
@@ -20811,7 +20803,7 @@
       "type": "content",
       "heading": "Why buy five tools when one does it better?",
       "x": 24,
-      "y": 8956,
+      "y": 9181,
       "w": 1137,
       "h": 906,
       "trust": false,
@@ -20822,7 +20814,7 @@
       "type": "faq",
       "heading": "Frequently asked questions",
       "x": 24,
-      "y": 9886,
+      "y": 10111,
       "w": 1137,
       "h": 947,
       "trust": false,
@@ -20833,7 +20825,7 @@
       "type": "footer",
       "heading": "",
       "x": 0,
-      "y": 10833,
+      "y": 11058,
       "w": 1185,
       "h": 1565,
       "trust": false,
@@ -20917,11 +20909,11 @@
     "trustCount": {
      "testimonials": 0,
      "customerLogos": 0,
-     "ratings": 1,
+     "ratings": 0,
      "trustedBy": 0,
      "socialProof": 2,
      "guarantees": 0,
-     "certifications": 4,
+     "certifications": 3,
      "reviewBadges": 0,
      "pressMentions": 0
     }
@@ -20949,8 +20941,8 @@
      "headline": "Build systems to grow revenue",
      "sub": "Infrastructure to get any data, run agentic workflows, and launch GTM plays."
     },
-    "sectionCount": 9,
-    "typedShare": "7/9",
+    "sectionCount": 16,
+    "typedShare": "15/16",
     "sections": [
      {
       "i": 0,
@@ -21031,7 +21023,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cards",
       "heading": "Learn more about GTM engineering",
       "x": 0,
       "y": 7378,
@@ -21050,6 +21042,83 @@
       "h": 1510,
       "trust": false,
       "pricing": false
+     },
+     {
+      "i": 9,
+      "type": "cards",
+      "heading": "",
+      "x": 31,
+      "y": 1,
+      "w": 1124,
+      "h": 463,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 10,
+      "type": "cards",
+      "heading": "",
+      "x": 31,
+      "y": 1,
+      "w": 1124,
+      "h": 328,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 11,
+      "type": "cards",
+      "heading": "",
+      "x": 31,
+      "y": 1,
+      "w": 1124,
+      "h": 463,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 12,
+      "type": "cards",
+      "heading": "",
+      "x": 31,
+      "y": 1,
+      "w": 1124,
+      "h": 328,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 13,
+      "type": "cards",
+      "heading": "",
+      "x": 31,
+      "y": 1,
+      "w": 1124,
+      "h": 328,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 14,
+      "type": "cards",
+      "heading": "",
+      "x": 31,
+      "y": 1,
+      "w": 1124,
+      "h": 328,
+      "trust": false,
+      "pricing": false
+     },
+     {
+      "i": 15,
+      "type": "cards",
+      "heading": "",
+      "x": 31,
+      "y": 1,
+      "w": 1124,
+      "h": 328,
+      "trust": false,
+      "pricing": false
      }
     ],
     "ctas": [
@@ -21066,13 +21135,13 @@
       "aboveFold": true
      },
      {
-      "text": "Start free trial",
+      "text": "ACCOUNT RESEARCH AGENTS",
       "section": "hero",
-      "intent": "conversion",
+      "intent": "navigation",
       "aboveFold": true
      },
      {
-      "text": "Get a demo",
+      "text": "Start free trial",
       "section": "hero",
       "intent": "conversion",
       "aboveFold": true
@@ -21195,7 +21264,7 @@
       "type": "content",
       "heading": "A delightful developer experience",
       "x": 296,
-      "y": 1833,
+      "y": 1832,
       "w": 593,
       "h": 565,
       "trust": false,
@@ -21206,7 +21275,7 @@
       "type": "content",
       "heading": "Build powerful lifecycle workflows",
       "x": 296,
-      "y": 2592,
+      "y": 2593,
       "w": 593,
       "h": 581,
       "trust": false,
@@ -21382,7 +21451,7 @@
      "sub": "You’ll love it for the flexible controls to keep your calendar sane. They’ll love it for t"
     },
     "sectionCount": 7,
-    "typedShare": "1/7",
+    "typedShare": "4/7",
     "sections": [
      {
       "i": 0,
@@ -21397,7 +21466,7 @@
      },
      {
       "i": 1,
-      "type": "content",
+      "type": "video",
       "heading": "SCHEDULING EXPERIENCE",
       "x": 0,
       "y": 788,
@@ -21419,7 +21488,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "video",
       "heading": "OPTIMIZED AVAILABILITY",
       "x": 0,
       "y": 2726,
@@ -21441,7 +21510,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "video",
       "heading": "TEAM SCHEDULING",
       "x": 0,
       "y": 4664,
@@ -21511,7 +21580,7 @@
      "sub": ""
     },
     "sectionCount": 10,
-    "typedShare": "4/10",
+    "typedShare": "6/10",
     "sections": [
      {
       "i": 0,
@@ -21537,7 +21606,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "cta",
       "heading": "The email delivery service that people actually li",
       "x": 755,
       "y": 10,
@@ -21603,7 +21672,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cta",
       "heading": "Ready to get started?",
       "x": 0,
       "y": 4210,
@@ -21727,7 +21796,7 @@
      "sub": "Use powerful capabilities in Lucid to document the current state of your business. Identif"
     },
     "sectionCount": 8,
-    "typedShare": "1/8",
+    "typedShare": "5/8",
     "sections": [
      {
       "i": 0,
@@ -21753,7 +21822,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "faq",
       "heading": "Work acceleration for every team",
       "x": 0,
       "y": 1740,
@@ -21764,7 +21833,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Purpose-built solutions",
       "x": 0,
       "y": 2630,
@@ -21797,7 +21866,7 @@
      },
      {
       "i": 6,
-      "type": "content",
+      "type": "cards",
       "heading": "The most used platform of its kind",
       "x": 0,
       "y": 5957,
@@ -21808,7 +21877,7 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "cta",
       "heading": "See and build the future with AI in Lucid",
       "x": 0,
       "y": 6963,
@@ -21885,7 +21954,7 @@
      "sub": "Coda is now Superhuman Docs!"
     },
     "sectionCount": 16,
-    "typedShare": "7/16",
+    "typedShare": "11/16",
     "sections": [
      {
       "i": 0,
@@ -21966,12 +22035,12 @@
      },
      {
       "i": 7,
-      "type": "content",
+      "type": "video",
       "heading": "",
       "x": 0,
       "y": 15758,
       "w": 1185,
-      "h": 653,
+      "h": 219,
       "trust": false,
       "pricing": false
      },
@@ -21980,7 +22049,7 @@
       "type": "stats",
       "heading": "4 ways 50,000+ teams use Coda to supercharge their",
       "x": 0,
-      "y": 16411,
+      "y": 15977,
       "w": 1185,
       "h": 2411,
       "trust": true,
@@ -21991,7 +22060,7 @@
       "type": "content",
       "heading": "Want to see more?",
       "x": 0,
-      "y": 18822,
+      "y": 18388,
       "w": 1185,
       "h": 400,
       "trust": false,
@@ -22002,7 +22071,7 @@
       "type": "content",
       "heading": "Take the busywork out of your work with Coda AI.",
       "x": 0,
-      "y": 19222,
+      "y": 18788,
       "w": 1185,
       "h": 655,
       "trust": false,
@@ -22010,10 +22079,10 @@
      },
      {
       "i": 11,
-      "type": "content",
+      "type": "video",
       "heading": "Create workflows across your must-have tools.",
       "x": 0,
-      "y": 19877,
+      "y": 19443,
       "w": 1185,
       "h": 637,
       "trust": false,
@@ -22021,10 +22090,10 @@
      },
      {
       "i": 12,
-      "type": "content",
+      "type": "cards",
       "heading": "And getting started is easy.",
       "x": 0,
-      "y": 20514,
+      "y": 20080,
       "w": 1185,
       "h": 1371,
       "trust": false,
@@ -22035,7 +22104,7 @@
       "type": "content",
       "heading": "",
       "x": 0,
-      "y": 21885,
+      "y": 21452,
       "w": 1185,
       "h": 702,
       "trust": false,
@@ -22043,10 +22112,10 @@
      },
      {
       "i": 14,
-      "type": "content",
+      "type": "video",
       "heading": "Collaboration costs (much) less in Coda.",
       "x": 0,
-      "y": 22587,
+      "y": 22154,
       "w": 1185,
       "h": 444,
       "trust": false,
@@ -22057,7 +22126,7 @@
       "type": "nav",
       "heading": "",
       "x": 0,
-      "y": 23091,
+      "y": 22658,
       "w": 1185,
       "h": 346,
       "trust": false,
@@ -22317,7 +22386,7 @@
      "sub": ""
     },
     "sectionCount": 13,
-    "typedShare": "5/13",
+    "typedShare": "10/13",
     "sections": [
      {
       "i": 0,
@@ -22343,7 +22412,7 @@
      },
      {
       "i": 2,
-      "type": "content",
+      "type": "video",
       "heading": "The leading database for AI",
       "x": 0,
       "y": 105,
@@ -22354,7 +22423,7 @@
      },
      {
       "i": 3,
-      "type": "content",
+      "type": "cards",
       "heading": "Built for every modern data challenge",
       "x": 0,
       "y": 965,
@@ -22365,7 +22434,7 @@
      },
      {
       "i": 4,
-      "type": "content",
+      "type": "video",
       "heading": "Build real-time data products that scale",
       "x": 0,
       "y": 1626,
@@ -22376,7 +22445,7 @@
      },
      {
       "i": 5,
-      "type": "content",
+      "type": "cards",
       "heading": "Why ClickHouse?",
       "x": 0,
       "y": 3656,
@@ -22409,7 +22478,7 @@
      },
      {
       "i": 8,
-      "type": "content",
+      "type": "cards",
       "heading": "Deploy your way",
       "x": 0,
       "y": 6428,
