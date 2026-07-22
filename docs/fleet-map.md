@@ -14,6 +14,10 @@ the trust signals it found. It's the same inventory the product runs
 
 ## The result — 102 / 104 start pages mapped
 
+> The numbers in this section are the **baseline discovery** (v0.14) that motivated
+> the fix. The committed manifest now reflects **v0.15** (fix #1) — see *The fix* below
+> for the before → after. The gallery renders the current (v0.15) maps.
+
 | | |
 |---|---|
 | pages mapped | **102 / 104** (bokio: redirect loop; attio: page crash) |
@@ -42,12 +46,26 @@ sections — boundary detection works. But:
 
 ## The fix, in leverage order
 
-1. **Link trust signals → their section** (set `containsTrustSignals`, and promote the
-   containing section to a proof type). Fixes the 0/102 and directly unblocks reorder.
-2. **Grow the type vocabulary** — `logos` / `stats` / `cta_band` / real `features`,
-   and capture headline stat numbers (384 % / $3.1M / 85 % …) as proof.
-3. **Fix the mislabels** — mid-page `header`, hero-as-`testimonials`.
-4. **Re-run this audit** to confirm typing improved — the map is its own regression gate.
+1. **Link trust signals → their section** — ✅ **SHIPPED (v0.15).** `assembleInventory`
+   now matches every proof signal's centre to the smallest section that contains it,
+   setting `containsTrustSignals` from geometry (not the never-set detector flag) and
+   promoting a generic `content` section to a proof type (`logos` / `stats` /
+   `testimonials`). **Measured fleet-wide before → after:**
+
+   | | baseline (v0.14) | v0.15 |
+   |---|---|---|
+   | sites with proof **linked to a section** | **0 / 102** | **92 / 101** |
+   | sections typed | 35 % | **42 %** |
+   | `logos` / `stats` sections | 0 / 0 | **46 / 27** |
+
+   The load-bearing move: reorder can now find the proof strip on 91 % of the fleet
+   (it couldn't on any). Confirmed on the real clickup DOM — the "Trusted by the best"
+   wall → `logos [TRUST]`, the 384 %/$3.1M and 85 %/3M+ strips → `stats [TRUST]`.
+2. **Grow the type vocabulary** — real `features` / `cta_band`, and capture the headline
+   stat *numbers* (384 % / $3.1M / 85 % …) as discrete proof. (The 659 remaining
+   `content` sections are mostly feature/value-prop blocks this fix left untouched.)
+3. **Fix the mislabels** — 22 mid-page `header`s, hero-as-`testimonials` (asana).
+4. **Re-run this audit** to confirm — the map is its own regression gate (as above).
 
 ## Reproduce
 
