@@ -158,6 +158,7 @@ type Rec = {
   changed?: boolean; // did the AFTER differ from BEFORE at all?
   before?: string;
   after?: string;
+  map?: Record<string, unknown>; // FLEET_MAP: structured section map for this page
 };
 
 const withTimeout = <T>(p: Promise<T>, ms: number, label: string) =>
@@ -167,13 +168,13 @@ const withTimeout = <T>(p: Promise<T>, ms: number, label: string) =>
 // at 7000px so giant/infinite pages stay a sane size. Scroll through first so
 // lazy-loaded sections render, resize the viewport to the (capped) page height,
 // shoot, then restore the normal viewport for the engine's next step.
-const CAP_H = 6000;
+const CAP_H = Number(process.env.FLEET_CAP_H) || 6000;
 async function shoot(page: Page, file: string) {
   const H = await page
     .evaluate(async (cap) => {
       const step = window.innerHeight;
       const full = () => Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-      for (let y = 0; y < Math.min(full(), 12000); y += step) {
+      for (let y = 0; y < Math.min(full(), Math.max(12000, cap as number)); y += step) {
         window.scrollTo(0, y);
         await new Promise((r) => setTimeout(r, 110));
       }
@@ -272,6 +273,7 @@ async function capturePage(page: Page, t: Target): Promise<Rec> {
     await shoot(page, rec.before);
     await page.evaluate(() => document.querySelectorAll(".angel-map-ovl").forEach((e) => e.remove()));
     console.log("MAP " + tag + " " + JSON.stringify(map));
+    rec.map = map;
     rec.ok = true;
     rec.applied = [];
     rec.changed = false;
@@ -360,7 +362,8 @@ async function main() {
   const targets: Target[] = [];
   for (const s of sites) {
     targets.push({ name: s.name, url: s.url, page: "home", segment: "engaged_no_click" });
-    if (PRICING[s.name]) targets.push({ name: s.name, url: PRICING[s.name], page: "pricing", segment: "price_hesitant" });
+    // FLEET_MAP audits the START pages only; the before/after run does home+pricing.
+    if (!process.env.FLEET_MAP && PRICING[s.name]) targets.push({ name: s.name, url: PRICING[s.name], page: "pricing", segment: "price_hesitant" });
   }
 
   const records: Rec[] = [];
