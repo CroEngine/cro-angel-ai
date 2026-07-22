@@ -71,3 +71,4 @@ corpus/**/actual.json
 # Fleet page-map raw full-height captures — heavy + regenerable; the gallery
 # embeds downscaled copies, and manifest.json keeps the structured map.
 docs/fleet-map-2026-07-22/img/
+docs/fleet-map-2026-07-22/manifest.json
