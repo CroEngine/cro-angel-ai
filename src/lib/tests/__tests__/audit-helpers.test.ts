@@ -168,3 +168,42 @@ describe("deriveHero — hero CTA selection (v1.7.0)", () => {
     expect(deriveHero([heroSection], ctas, ["Build things"])?.primaryCtaText).toBe("Contact sales");
   });
 });
+
+describe("deriveHero — v1.22 regressions (skip-links + 'get X for free')", () => {
+  const heroSection = mkSection({ id: "s1", type: "hero", heading: "Build things" });
+
+  it("never picks an accessibility skip-link, even when it scores primary+conversion (trello/cdon)", () => {
+    // The 0cf3c4c merge lost v1.3.0's candidacy-level exclusion and the shared
+    // intent classifier labels skip-links "conversion" — they then won the
+    // hero-region fallback. Gated at pick level in isCleanAction.
+    const ctas = [
+      mkCta({ text: "Skip to main content", category: "cta_primary" }),
+      mkCta({ text: "Get Trello for free", category: "cta_primary", section: "header" }),
+    ];
+    expect(deriveHero([heroSection], ctas, ["Build things"])?.primaryCtaText).toBe(
+      "Get Trello for free",
+    );
+  });
+
+  it("never picks the Swedish skip-link ('Hoppa till huvudinnehållet')", () => {
+    const ctas = [
+      mkCta({ text: "Hoppa till huvudinnehållet", category: "cta_primary" }),
+      mkCta({ text: "Utforska", category: "cta_primary", intent: "information" }),
+    ];
+    expect(deriveHero([heroSection], ctas, ["Build things"])?.primaryCtaText).toBe("Utforska");
+  });
+
+  it("treats 'Get X for free' as conversion-worded — beats a non-conversion install link (loom)", () => {
+    // "Get Loom for free" was mislabeled navigation by the shared classifier
+    // and `get \w+ (free|now)` missed the "for free" phrasing, so the Chrome-
+    // extension install link won the fallback. Conversion-worded steps ignore
+    // the navigation intent label; only utility is excluded.
+    const ctas = [
+      mkCta({ text: "Install Chrome Extension Open in new window", category: "cta_primary" }),
+      mkCta({ text: "Get Loom for free", category: "cta_primary", intent: "navigation" }),
+    ];
+    expect(deriveHero([heroSection], ctas, ["Build things"])?.primaryCtaText).toBe(
+      "Get Loom for free",
+    );
+  });
+});

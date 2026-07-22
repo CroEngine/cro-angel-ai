@@ -405,7 +405,28 @@
 //           param, computed per script); trust proximity from canonical trust
 //           rects (B4); category-only primary count (B9). Re-bless goldens.
 
-export const EXTRACTOR_VERSION = "1.21.0" as const;
+//   1.22.0 — deriveHero regression fixes surfaced when the harvest-pin CI
+//           blockage lifted (the pin had hidden every vitest verdict since
+//           ~575a8a6, so the v1.21 merge landed unchecked):
+//           (a) accessibility skip-links gated out of the hero-CTA pick
+//               (HERO_CTA_SKIP i isCleanAction). v1.3.0's candidacy-level
+//               exclusion in ctas.ts was lost in the 0cf3c4c merge to the
+//               shared classifiers, which label "Skip to main content" as
+//               conversion — it then won the hero fallback (structure-eval:
+//               trello; the cdon golden had blessed "Hoppa till huvud-
+//               innehållet" as hero CTA — golden surgically corrected in the
+//               same commit). Candidacy-level restore deferred to a golden-
+//               capable environment (it moves cta lists/counts broadly).
+//           (b) conversion vocabulary: "get X for free" now matches
+//               (get \w+ (?:for )?(free|now)) — loom's real "Get Loom for
+//               free" lost to a chrome-extension install link because the
+//               shared intent classifier calls it navigation and the
+//               conversion-worded steps never saw it.
+//           structure-eval CTA pick: 9/13 → 11/13 (the 0.70 floor holds
+//           again); remaining misses are the documented fuzzy cases
+//           (vercel labeling, gymshark replay instability).
+
+export const EXTRACTOR_VERSION = "1.22.0" as const;
 
 export type ExtractorStamp = {
   extractorVersion: string;

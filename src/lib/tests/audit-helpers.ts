@@ -226,7 +226,7 @@ const HERO_LABEL_BLOCKLIST =
 // PREFER; the original any-primary pick stays as the fallback, so a legitimate
 // non-matching CTA like "Contact sales" still wins when it's the only primary.
 const HERO_CTA_CONVERSION =
-  /\b(get started|start|sign\s?up|signup|try|book|buy|order|checkout|subscribe|register|download|demo|request|trial|join|create\s+(?:\w+\s+)?account|add to cart|get \w+ (free|now))\b/i;
+  /\b(get started|start|sign\s?up|signup|try|book|buy|order|checkout|subscribe|register|download|demo|request|trial|join|create\s+(?:\w+\s+)?account|add to cart|get \w+ (?:for )?(free|now))\b/i;
 
 // A hero CTA must be a real conversion ACTION — never a weak "learn more"/"read
 // more" content link, page chrome (search/login), a nav/category tab, or a
@@ -248,6 +248,15 @@ const HERO_CTA_COOKIE =
 // misses aria-label variants — quinyx's hero CTA came back "Search Button"
 // (intent unknown) because INTENT_RX matches "search" phrasing, not the label.
 const HERO_CTA_CHROME = /\bsearch\b|\bs[öo]k\b|\bmenu\b|\bmeny\b|toggle navigation/i;
+// v1.22: accessibility skip-links. v1.3.0 excluded them at CANDIDACY level in
+// ctas.ts; the 0cf3c4c main-merge replaced that classifier path with the shared
+// one and the exclusion was lost — the shared intent classifier then labeled
+// "Skip to main content" *conversion* and it won deriveHero's hero-region
+// fallback (structure-eval: trello; the cdon golden had blessed "Hoppa till
+// huvudinnehållet" as its hero CTA). Gated here at PICK level — the narrowest
+// golden surface; restoring the candidacy-level exclusion belongs in a
+// golden-capable environment (it changes cta lists/counts for every site).
+const HERO_CTA_SKIP = /^(?:skip to|hoppa till)\b/i;
 // Disqualifies a CTA from being the hero action regardless of category: a weak
 // "learn/read more" content link, a cookie-consent button, or a pure search/
 // utility control (gymshark's "search"). Applied to BOTH the conversion-worded
@@ -255,7 +264,14 @@ const HERO_CTA_CHROME = /\bsearch\b|\bs[öo]k\b|\bmenu\b|\bmeny\b|toggle navigat
 const isCleanAction = (c: CTAEntity): boolean => {
   const t = (c.text || "").trim();
   if (!t) return false;
-  if (HERO_CTA_WEAK.test(t) || HERO_CTA_COOKIE.test(t) || HERO_CTA_CHROME.test(t)) return false;
+  if (
+    HERO_CTA_WEAK.test(t) ||
+    HERO_CTA_COOKIE.test(t) ||
+    HERO_CTA_CHROME.test(t) ||
+    HERO_CTA_SKIP.test(t)
+  ) {
+    return false;
+  }
   return c.intent !== "utility";
 };
 // The fallback (no conversion-worded CTA found) is stricter: a non-conversion
