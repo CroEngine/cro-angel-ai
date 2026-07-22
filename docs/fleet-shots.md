@@ -7,7 +7,7 @@
 ## What it is
 
 The fleet report showed the loop's *numbers*; this shows the *pixels*. Each fleet
-site was re-crawled **live** via Browserbase, the engine (`public/adaptive-lab.js`)
+site was re-crawled **live** via Browserbase, the engine (`artifacts/lab/adaptive-lab.js`)
 injected, and the page photographed **before** → the engine adapting → **after** →
 then reverted to confirm it comes back byte-clean.
 
@@ -49,6 +49,7 @@ honest: the engine found nothing safe to surface for that visitor, not a failure
 
 ```
 # live crawl (Browserbase; Node + proxy env) — full start pages + pricing pages
+bun run build:lab   # bygger artifacts/lab/adaptive-lab.js (gitignored) som run.ts läser
 bun build scripts/fleet-shots/run.ts --target=node --format=esm \
   --outfile=fleet-shots.node.mjs --external playwright --external @browserbasehq/sdk
 NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt node fleet-shots.node.mjs

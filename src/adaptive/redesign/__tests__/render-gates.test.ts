@@ -150,6 +150,23 @@ describe("evaluateRenderGates — pixel-half beauty gates", () => {
     expect(r.verdict).toBe("pass");
   });
 
+  it("FAILS when a move trips the client self-check thresholds (unservable)", () => {
+    // Mirror hardening (audit 2026-07-22): the client also rolls the whole
+    // variant back on doc-height blowup / new overflow / collapse — a variant
+    // verified past those would A/B-measure original vs original.
+    const r = evaluateRenderGates(clean({ moveUnsafe: 1 }));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons.some((x) => /self-check thresholds.*unservable/i.test(x))).toBe(true);
+  });
+
+  it("FAILS when a requested move has no valid previous sibling (client fails whole variant)", () => {
+    // The harness used to skip silently with only a warn; the client refuses
+    // the WHOLE variant (ok=false) — same unservable class, now a hard fail.
+    const r = evaluateRenderGates(clean({ moveUnappliable: 1 }));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons.some((x) => /no valid previous sibling.*unservable/i.test(x))).toBe(true);
+  });
+
   it("WARNS when no LCP element could be observed (servability check vacuous)", () => {
     const r = evaluateRenderGates(clean({ lcpFound: false, opsTouchingLcp: 0 }));
     expect(r.verdict).toBe("warn");

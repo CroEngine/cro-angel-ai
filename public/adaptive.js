@@ -16,7 +16,7 @@
  *
  * GO-FORWARD CUSTOMER RUNTIME (docs/adr-001-go-forward-engine.md): the server
  * Decision Engine decides, this snippet applies. The research lab engine
- * (src/adaptive-lab -> public/adaptive-lab.js) is a sandbox, NOT this one.
+ * (src/adaptive-lab -> artifacts/lab/adaptive-lab.js) is a sandbox, NOT this one.
  */
 (function () {
   "use strict";

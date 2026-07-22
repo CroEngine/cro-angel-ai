@@ -443,11 +443,23 @@ export async function measurePlan(
       // Flyttar som INTE lyfte sektionen visuellt (per steg, DOM-ordning ≠
       // visuell ordning: en "move up" landar före ett syskon som renderas
       // lägre → sektionen sjunker). SPEGELVÄND av snippetens reorder-självkoll
-      // (public/adaptive.js, ADR-001 steg 2): där rullar en no-lift-flytt HELA
-      // varianten tillbaka fail-closed. Mäts per steg — exakt som klienten —
-      // så mätharnesset aldrig godkänner en flytt klienten sedan vägrar serva
-      // (annars mäter A/B-armen original mot original, samma fälla som LCP).
+      // (src/adaptive/runtime/applier.ts, ADR-001 steg 2): där rullar en
+      // no-lift-flytt HELA varianten tillbaka fail-closed. Mäts per steg —
+      // exakt som klienten — så mätharnesset aldrig godkänner en flytt
+      // klienten sedan vägrar serva (annars mäter A/B-armen original mot
+      // original, samma fälla som LCP).
       let moveNoRise = 0;
+      // Klientens ÖVRIGA självkoll-villkor, per steg med SAMMA trösklar
+      // (granskningsfynd 2026-07-22 — harnesset speglade bara lyft-kollen;
+      // dokumenthöjd/överflöde/kollaps saknades helt eller låg på lösare
+      // globala trösklar, så en variant kunde verifieras som klienten sedan
+      // alltid rullar tillbaka): |ΔdocH| > max(48, 3%), scrollWidth > +2px,
+      // eller sektionen kollapsad (<1px) efter flytten.
+      let moveUnsafe = 0;
+      // Begärda flyttar vars mål saknar giltigt föregående syskon — klienten
+      // fäller HELA varianten (ok=false), harnesset får inte nöja sig med en
+      // tyst skip + warn (samma oservbarhets-klass som ovan).
+      let moveUnappliable = 0;
       let appliedTexts = 0;
       let appliedInserts = 0;
       const movedEls: Element[] = [];
@@ -479,16 +491,32 @@ export async function measurePlan(
               prev = prev.previousElementSibling;
             }
             if (prev && r.sec.parentElement === prev.parentElement) {
-              // Per-steg lyft-koll — SPEGELVÄND snippetens självkoll (ADR-001
-              // steg 2): mät sektionens topp direkt före/efter DENNA insertBefore
-              // med exakt klientens tröskel (< 1px = lyfte inte). En no-lift-flytt
-              // fäller HELA varianten på klienten, så den måste fälla grinden här
-              // med — annars godkänns en variant som aldrig servas.
+              // Per-steg självkoll — SPEGELVÄND snippetens (ADR-001 steg 2):
+              // mät sektionens topp + dokumentets höjd/bredd direkt före/efter
+              // DENNA insertBefore med exakt klientens trösklar (< 1px = lyfte
+              // inte; |ΔH| > max(48, 3%); bredd > +2px; kollaps < 1px). Varje
+              // villkor som fäller klienten (hela varianten, fail-closed) måste
+              // fälla grinden här med — annars godkänns en variant som aldrig
+              // servas och A/B-armen mäter original mot original.
               const topBefore = r.sec.getBoundingClientRect().top;
+              const befH = de.scrollHeight;
+              const befW = de.scrollWidth;
               r.sec.parentElement!.insertBefore(r.sec, prev);
-              if (r.sec.getBoundingClientRect().top >= topBefore - 1) moveNoRise++;
+              const rect = r.sec.getBoundingClientRect();
+              const tol = Math.max(48, befH * 0.03);
+              if (rect.top >= topBefore - 1) moveNoRise++;
+              if (
+                Math.abs(de.scrollHeight - befH) > tol ||
+                de.scrollWidth > befW + 2 ||
+                rect.width < 1 ||
+                rect.height < 1
+              ) {
+                moveUnsafe++;
+              }
               if (!movedEls.includes(r.sec)) movedEls.push(r.sec);
               appliedMoves++;
+            } else {
+              moveUnappliable++;
             }
           } else if (r.op === "insert_snippet") {
             // Samma applicering som snippeten: <p> med textContent (aldrig
@@ -663,6 +691,8 @@ export async function measurePlan(
         requestedMoves: ops.filter((o) => o.op === "move_up").length,
         appliedMoves,
         moveNoRise,
+        moveUnsafe,
+        moveUnappliable,
         requestedTexts: ops.filter((o) => o.op === "set_text").length,
         appliedTexts,
         requestedInserts: ops.filter((o) => o.op === "insert_snippet").length,
@@ -701,6 +731,8 @@ export function toRenderMeasurements(
     requestedMoves: raw.requestedMoves,
     appliedMoves: raw.appliedMoves,
     moveNoRise: raw.moveNoRise,
+    moveUnsafe: raw.moveUnsafe,
+    moveUnappliable: raw.moveUnappliable,
     reversedOrderMatches: raw.reversedOrderMatches,
     verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
     lcpFound: raw.lcpFound,

@@ -58,16 +58,21 @@ sandbox whose *code is harvested into the product*.
    skip-this-op like the lab): a verified + owner-approved variant is one atomic A/B
    treatment, so a visitor sees the exact variant or the clean baseline, never a half-variant.
    **Kept in sync with the server harness** (`scripts/redesign/measure.ts` +
-   `render-gates.ts`): the harness now measures the same per-move "did it rise" and **fails
-   verification** (unservable, same class as the LCP-touch gate) so it can never approve a
-   move the client will fail-closed on — otherwise the A/B arm measures original vs original.
+   `src/adaptive/redesign/render-gates.ts`): the harness now measures the same per-move "did
+   it rise" and **fails verification** (unservable, same class as the LCP-touch gate) so it
+   can never approve a move the client will fail-closed on — otherwise the A/B arm measures
+   original vs original. *(Re-audit 2026-07-22: the mirror was then completed — the client's
+   remaining self-check conditions (doc-height/overflow/collapse, per-move thresholds) and
+   the no-valid-prev case are now hard verification fails too, not warns.)*
    Proven end-to-end on the plausible.io fixture (a 2nd `move_up` there sinks the proof
    983→1227px): `scripts/ci/serving-smoke.mjs` (client) + the render-gates tests (harness).
 3. **Port structural section typing + proof→section linking into the server inventory.**
    ✅ **SHIPPED (live path).** A tracing pass established the decisive fact: the live customer
    endpoint (`/api/adaptive/decide`) serves **only** redesign variant `serveOps` via
    `serveDecision` — the `PageSection → ContentInventory → decide()` pattern engine is
-   **retired from live serving** (`decide.ts:9-17`). So the section typing that actually
+   **retired from live serving** (the route `src/routes/api/adaptive/decide.ts:9-17`; the
+   engine `src/adaptive/decide.ts` is reached only by the robustness harness and tests). So
+   the section typing that actually
    reaches a visitor flows through `redesign/extract.ts` (`RedesignContentModel`), **not** the
    audit/`crawler-inventory.ts` path. The port therefore landed in `extract.ts` + `vocab.ts` +
    `context.ts`:
@@ -109,8 +114,10 @@ sandbox whose *code is harvested into the product*.
    step 1.
 
 ### Version note
-`adaptive.js` reports `"0.1.0"` despite heavy development — reconcile to a real version
-scheme in step 4 (not changed now, to avoid telemetry confusion mid-decision).
+`adaptive.js` reports `"0.1.0"` despite heavy development. Step 4 shipped **without**
+changing it (deliberate — a version flip mid-arc would blur telemetry attribution);
+reconciling to a real version scheme is now its own follow-up, to be done as a
+standalone change with nothing else in the diff.
 
 ## Consequences
 - Future adaptation + perception work targets the **customer engine** (`src/adaptive/*` +

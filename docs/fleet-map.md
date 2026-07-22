@@ -9,8 +9,9 @@
 Before trusting the engine to *rearrange* a page, we have to know it *maps* the page
 correctly. This audit overlays the engine's own detected section map on each live
 start page — every section boxed and labeled `#index type · heading` — and reads out
-the trust signals it found. It's the same inventory the product runs
-(`public/adaptive-lab.js`), just made visible.
+the trust signals it found. It's the same inventory the lab/research engine runs
+(`artifacts/lab/adaptive-lab.js` — the perception sandbox, not the customer
+snippet; see ADR-001), just made visible.
 
 ## The result — 102 / 104 start pages mapped
 
@@ -76,6 +77,7 @@ sections — boundary detection works. But:
 ## Reproduce
 
 ```
+bun run build:lab   # bygger artifacts/lab/adaptive-lab.js (gitignored) som run.ts läser
 bun build scripts/fleet-shots/run.ts --target=node --format=esm \
   --outfile=fleet-shots.node.mjs --external playwright --external @browserbasehq/sdk
 FLEET_MAP=1 FLEET_CAP_H=16000 FLEET_RETRIES=1 NODE_USE_ENV_PROXY=1 \

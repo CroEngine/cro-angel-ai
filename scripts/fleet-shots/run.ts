@@ -13,7 +13,10 @@
 // session cap), a hard per-site timeout, graceful skip-on-failure, and the
 // manifest is rewritten after EVERY site so a crash preserves progress.
 //
-// Build for Node (Browserbase needs Node + the proxy env), then run:
+// Build the LAB BUNDLE first (this script reads artifacts/lab/adaptive-lab.js,
+// a gitignored artifact), then build for Node (Browserbase needs Node + the
+// proxy env), then run:
+//   bun run build:lab
 //   bun build scripts/fleet-shots/run.ts --target=node --format=esm \
 //     --outfile=fleet-shots.node.mjs --external playwright --external @browserbasehq/sdk
 //   NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt node fleet-shots.node.mjs

@@ -81,21 +81,51 @@ function primaryH1(html: string): string | null {
 // section's own HTML slice — robust for the literal-tag ones (video/table/
 // details) and for proof strips whose heading has no magic word.
 
-const TRUSTED_BY_RE = new RegExp(`(?:${TRUSTED_BY_LEADINS_SRC})`, "i");
-const SOCIAL_COUNT_RE = new RegExp(
-  `\\d[\\d\\s,.]*\\+?\\s*(?:paying |happy |active |n[öo]jda )?(?:${SOCIAL_PROOF_NOUNS_SRC})`,
+// PROMOTION regexes — deliberately TIGHTER than the shared trust vocabulary
+// (granskningsfynd 2026-07-22): promotion re-TYPES a whole section and drives
+// the granska-site reorder demo + the LLM's [proof] tag, so a prose false
+// positive is expensive. The loosest lead-ins ("used by", "loved by", "joined
+// by", "älskas av") are everyday prose ("a tool used by developers") — they
+// stay in extractTrustSignals' softer signal list but never promote a section.
+const TRUSTED_BY_PROMOTE_RE = /(?:trusted by|anv[äa]nds av|valt av|f[öo]rtrodda av)\s/i;
+// Count-promotion: the number must sit DIRECTLY before the noun (whitespace
+// only — "Since 2019, customers…" has ", " and must not match) and a bare
+// 19xx/20xx year is never a proof count ("since 2019 customers have…").
+// Structured thousands groups (`12,500` / `12 000`) instead of the old
+// `[\d\s,.]*` free-run — that adjacent-quantifier shape backtracked O(L²) on
+// digit-heavy failing inputs, and this now runs per section slice.
+const SOCIAL_COUNT_PROMOTE_RE = new RegExp(
+  // (?<![\d,.]) — talet får inte börja MITT i ett längre tal ("[2]019" spärrad
+  // av årsvakten ⇒ motorn får inte bara kliva in ett steg och matcha "019").
+  `(?<![\\d,.])(?:\\d{1,3}(?:[ ,.]\\d{3})+|(?!(?:19|20)\\d{2}\\b)\\d+)\\+?\\s+` +
+    `(?:paying |happy |active |n[öo]jda )?(?:${SOCIAL_PROOF_NOUNS_SRC})`,
   "i",
 );
 
 /** Proof carried by a section's BODY, not its heading — generalises the heading-
  *  based logos/testimonials so a strip titled "Loved by teams that ship" is still
- *  found. Mirrors the lab's proofType precedence (logos before stats). Returns
- *  the proof type to promote a GENERIC section to, or null. */
+ *  found via its count/leadin. Mirrors the lab's proofType precedence (logos
+ *  before stats). Returns the proof type to promote a GENERIC section to, or
+ *  null. */
 function proofFromBody(body: string): "logos" | "stats" | null {
   const flat = stripTags(body);
-  if (TRUSTED_BY_RE.test(flat)) return "logos"; // "trusted by / used by / as seen in …"
-  if (SOCIAL_COUNT_RE.test(flat)) return "stats"; // "500,000+ customers", "80 billion events"
+  if (TRUSTED_BY_PROMOTE_RE.test(flat)) return "logos"; // "trusted by …" wall
+  if (SOCIAL_COUNT_PROMOTE_RE.test(flat)) return "stats"; // "500,000+ customers"
   return null;
+}
+
+/** Does any class="…" attribute in the slice carry a TOKEN matching rx?
+ *  Token-level, not substring (granskningsfynd 2026-07-22): a prose link class
+ *  like "faq-teaser-link" must never type a whole section. Bounded scan. */
+function hasComponentClass(body: string, rx: RegExp): boolean {
+  const attr = /class=["']([^"']{0,300})["']/gi;
+  let m: RegExpExecArray | null;
+  let scanned = 0;
+  while ((m = attr.exec(body)) && scanned < 400) {
+    scanned++;
+    for (const token of m[1].split(/\s+/)) if (rx.test(token)) return true;
+  }
+  return false;
 }
 
 /** Name a still-generic section from its STRUCTURE (literal tags in its slice).
@@ -103,15 +133,16 @@ function proofFromBody(body: string): "logos" | "stats" | null {
  *  ported to regex; card-grid / short-CTA heuristics are left to the heading
  *  classifier (fragile to reconstruct from a string). Returns a type or null. */
 function structuralType(body: string, heading: string): string | null {
+  // Video-värdar HOST-förankrade ("loom" som substräng träffar bloomberg.com).
   if (
     /<video[\s/>]/i.test(body) ||
-    /<iframe[^>]+(?:youtube|youtu\.be|vimeo|wistia|loom)/i.test(body)
+    /<iframe[^>]+(?:youtube|youtu\.be|vimeo|wistia|(?:\.|\/\/)loom\.)/i.test(body)
   )
     return "video";
   const detailsCount = (body.match(/<details[\s/>]/gi) || []).length;
   if (
     detailsCount >= 2 ||
-    /class=["'][^"']*(?:accordion|faq)/i.test(body) ||
+    hasComponentClass(body, /^(?:accordion|faq)(?:s|[_-]\w+)?$/i) ||
     /data-accordion/i.test(body)
   )
     return "faq";
@@ -161,10 +192,16 @@ function extractSections(html: string): RedesignContentModel["sections"] {
   // Each section's body = the HTML from the end of its heading to the start of
   // the next heading, computed in DOCUMENT order (before the hero reshuffle
   // below, so adjacency is real). The body drives structural/proof typing.
+  // Sista sektionens slice tar SLUT vid första <footer> (granskningsfynd
+  // 2026-07-22): utan <main> är regionen hela dokumentet, och utan taket
+  // sveper sista innehållssektionens body in sidfotens badges/accordions/
+  // "Join 50,000 subscribers" — och blir feltypad som proof/faq/stats.
+  const footerIdx = main.search(/<footer\b/i);
+  const bodyEnd = footerIdx >= 0 ? footerIdx : main.length;
   for (let i = 0; i < heads.length; i++) {
     heads[i].body = main.slice(
       heads[i].bodyStart,
-      i + 1 < heads.length ? heads[i + 1].headStart : main.length,
+      i + 1 < heads.length ? heads[i + 1].headStart : Math.max(heads[i].bodyStart, bodyEnd),
     );
   }
   // The hero leads. If <main> has the h1, move it to front; if the h1 lives
@@ -179,10 +216,13 @@ function extractSections(html: string): RedesignContentModel["sections"] {
 
   return heads.map((h, i) => {
     const headingType = classify(h.text, heroPresent && i === 0);
-    // The hero is never re-typed from its body (it legitimately wraps media/proof).
+    // The hero is never re-TYPED from its body (it legitimately wraps media/
+    // proof) — but its proof FLAG is still computed (granskningsfynd 2026-07-22):
+    // "Trusted by 10,000 teams" in the hero is real proof the designer brief
+    // must see, or the LLM redundantly moves other proof up beside it.
     const { type, containsTrustSignals } =
       headingType === "hero"
-        ? { type: "hero", containsTrustSignals: false }
+        ? { type: "hero", containsTrustSignals: proofFromBody(h.body || "") !== null }
         : refineType(headingType, h.body || "", h.text);
     return {
       id: `sec-${i + 1}-${type}`,

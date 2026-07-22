@@ -49,10 +49,21 @@ export interface RenderMeasurements {
   /** Applied moves whose section did NOT actually rise (per step, < 1px lift) —
    *  DOM order ≠ visual order in that container, so the "move up" left the
    *  section where it was or sent it DOWN. Mirrors the snippet's reorder self-
-   *  check (public/adaptive.js, ADR-001 step 2), which rolls the WHOLE variant
-   *  back fail-closed on such a move. >0 ⇒ the variant can never serve (like
-   *  opsTouchingLcp). Optional: absent on observations from before the check. */
+   *  check (src/adaptive/runtime/applier.ts, ADR-001 step 2), which rolls the
+   *  WHOLE variant back fail-closed on such a move. >0 ⇒ the variant can never
+   *  serve (like opsTouchingLcp). Optional: absent on older observations. */
   moveNoRise?: number;
+  /** Applied moves that tripped the client self-check's OTHER conditions, per
+   *  step with the client's exact thresholds: |Δ scrollHeight| > max(48, 3%),
+   *  new horizontal overflow (> +2px), or the section collapsing (< 1px).
+   *  Any of these rolls the whole variant back on the client — so >0 here is
+   *  the same unservable class. Optional: absent on older observations. */
+  moveUnsafe?: number;
+  /** Requested moves whose target had NO valid previous sibling (after the
+   *  divider skip). The client fails the WHOLE variant on this (ok=false); the
+   *  harness used to skip silently with only a warn — same unservable class,
+   *  now a hard fail. Optional: absent on older observations. */
+  moveUnappliable?: number;
   /** After reset(), does the DOM order equal beforeOrder exactly? */
   reversedOrderMatches: boolean;
   /** Did the harness observe an LCP element to check ops against? Optional:
@@ -173,6 +184,23 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
   if (moveNoRise > 0) {
     fail(
       `${moveNoRise} move(s) did not lift their section (DOM order ≠ visual order) — the snippet's reorder self-check rolls the whole variant back for every real visitor (unservable)`,
+    );
+  }
+  // The client self-check's remaining conditions, mirrored per-move with its
+  // exact thresholds (docHeight/overflow/collapse) — and the no-valid-prev
+  // case, where the client also fails the whole variant. Same unservable
+  // class as above: a "verified" variant the client always reverts makes the
+  // A/B arm measure original vs original.
+  const moveUnsafe = m.moveUnsafe ?? 0;
+  if (moveUnsafe > 0) {
+    fail(
+      `${moveUnsafe} move(s) tripped the client self-check thresholds (document height/overflow/collapse) — the snippet rolls the whole variant back for every real visitor (unservable)`,
+    );
+  }
+  const moveUnappliable = m.moveUnappliable ?? 0;
+  if (moveUnappliable > 0) {
+    fail(
+      `${moveUnappliable} move(s) have no valid previous sibling to land above — the snippet fails the whole variant on this (unservable)`,
     );
   }
   if (m.movedAboveMain > 0) {

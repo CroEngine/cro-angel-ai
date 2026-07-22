@@ -269,6 +269,69 @@ describe("extractContentModel — structural + proof section typing", () => {
     const t = `<section><h2>Our story</h2><p>We started in a garage and grew from there.</p></section>`;
     expect(["section", "content"]).toContain(typeOf(t, "Our story"));
   });
+
+  // Precision hardening (granskningsfynd 2026-07-22) — promotion must not fire
+  // on prose that merely brushes the trust vocabulary.
+  it("does NOT promote on a bare year ('Since 2019 customers…' is not a stat)", () => {
+    const t = `<section><h2>Our journey</h2><p>Since 2019 customers have trusted our roadmap reviews.</p></section>`;
+    const s = extractContentModel(wrap(t)).sections.find((x) => x.heading === "Our journey");
+    expect(s?.type).not.toBe("stats");
+    expect(s?.containsTrustSignals).toBeFalsy();
+  });
+
+  it("does NOT promote on ', customers' where the number is sentence-separated", () => {
+    const t = `<section><h2>Timeline</h2><p>Back in 2019, customers asked us for exports.</p></section>`;
+    expect(typeOf(t, "Timeline")).not.toBe("stats");
+  });
+
+  it("does NOT promote everyday prose 'used by developers' to logos", () => {
+    const t = `<section><h2>Under the hood</h2><p>A build tool used by developers who care about speed.</p></section>`;
+    const s = extractContentModel(wrap(t)).sections.find((x) => x.heading === "Under the hood");
+    expect(s?.type).not.toBe("logos");
+    expect(s?.containsTrustSignals).toBeFalsy();
+  });
+
+  it("still promotes a real thousands-separated count ('12 000 kunder')", () => {
+    const t = `<section><h2>Siffror</h2><p>Fler än 12 000 kunder använder oss varje dag.</p></section>`;
+    expect(typeOf(t, "Siffror")).toBe("stats");
+  });
+
+  it("does NOT type a prose section faq off a 'faq-teaser-link' class", () => {
+    const t = `<section><h2>More reading</h2><p><a class="faq-teaser-link" href="/faq">See our FAQ</a> for details.</p></section>`;
+    expect(typeOf(t, "More reading")).not.toBe("faq");
+  });
+
+  it("still types a real accordion component (class='accordion-item' ×2) as faq", () => {
+    const t = `<section><h2>Good to know</h2><div class="accordion"><div class="accordion-item">Q1</div><div class="accordion-item">Q2</div></div></section>`;
+    expect(typeOf(t, "Good to know")).toBe("faq");
+  });
+
+  it("does NOT type a Bloomberg iframe as video ('loom' is host-anchored)", () => {
+    const t = `<section><h2>In the news</h2><iframe src="https://www.bloomberg.com/embed/xyz"></iframe></section>`;
+    expect(typeOf(t, "In the news")).not.toBe("video");
+  });
+
+  it("still types a real Loom embed as video", () => {
+    const t = `<section><h2>See it in action</h2><iframe src="https://www.loom.com/embed/abc123"></iframe></section>`;
+    expect(typeOf(t, "See it in action")).toBe("video");
+  });
+
+  it("caps the LAST section's body at <footer> — footer proof cannot type it", () => {
+    const page = `<div><h1>Hero here</h1><p>Intro.</p><h2>Our approach</h2><p>Plain prose about process.</p></div>
+      <footer><p>Join 50,000 subscribers. Trusted by Google.</p></footer>`;
+    const m = extractContentModel(page); // no <main> — whole doc is the region
+    const s = m.sections.find((x) => x.heading === "Our approach");
+    expect(s?.type).not.toBe("stats");
+    expect(s?.type).not.toBe("logos");
+    expect(s?.containsTrustSignals).toBeFalsy();
+  });
+
+  it("flags hero-level proof (containsTrustSignals) without re-typing the hero", () => {
+    const page = `<main><h1>Ship faster</h1><p>Trusted by 10,000 teams worldwide.</p><section><h2>Features</h2><p>x</p></section></main>`;
+    const hero = extractContentModel(page).sections[0];
+    expect(hero.type).toBe("hero");
+    expect(hero.containsTrustSignals).toBe(true);
+  });
 });
 
 // Task #90: den delade EN+SV-vokabulären — en svensk sida ska klassificeras
