@@ -198,12 +198,27 @@ export function truncateBarText(raw: string, max = 96): string {
 // Layout-safe: one isolated, self-contained element prepended to <body> — it
 // shifts the page down uniformly and is never injected into an internal grid.
 const trustBar: Pattern = (inv, ctx) => {
-  // If reorder already lifted the page's own proof strip up this run, a
-  // surfaced bar would just be a SECOND proof strip — the clickup / airtable
-  // double-bar. Stand down: reorder owns the "page already has a proof
-  // section" case; the bar is for pages whose proof is buried inline with no
-  // strip of its own.
+  // Don't stack a SECOND proof strip — the clickup / airtable double-bar.
+  // Stand down when either (a) reorder already promoted the page's proof up
+  // this visit, or (b) the visitor can ALREADY SEE proof above the fold (a
+  // logo wall / "trusted by" / rating / testimonial already in view). The bar
+  // exists to lift proof onto pages that show NONE up top; if proof is already
+  // visible, another bar — even of DIFFERENT proof — is pure redundancy. That
+  // is exactly what clickup showed: a below-fold G2 rating surfaced on top of
+  // an above-fold "TRUSTED BY THE BEST" wall. (v0.13 only excluded the SAME
+  // above-fold signal from being re-surfaced; this also blocks surfacing a
+  // DIFFERENT below-fold proof when visible proof already exists.)
   if (ctx.proofPromoted) return null;
+  const proofAboveFold = [
+    ...inv.trust.customerLogos,
+    ...inv.trust.trustedBy,
+    ...inv.trust.ratings,
+    ...inv.trust.socialProof,
+    ...inv.trust.testimonials,
+    ...inv.trust.reviewBadges,
+    ...inv.trust.pressMentions,
+  ].some((s) => !!s.aboveFold);
+  if (proofAboveFold) return null;
   // v0.5: score ALL candidates through the quality gate instead of taking the
   // first — numeric claims ("Rated 4.7/5 by 10,000+ users") beat bare labels.
   // v0.13: only surface proof the visitor CAN'T ALREADY SEE. The bar exists to

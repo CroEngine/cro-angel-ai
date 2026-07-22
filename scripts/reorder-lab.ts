@@ -182,6 +182,9 @@ const TRUST_INV = {
   socialProof: [],
   trustedBy: [],
   testimonials: [],
+  customerLogos: [],
+  reviewBadges: [],
+  pressMentions: [],
   guarantees: [],
   certifications: [],
 };
@@ -219,6 +222,37 @@ const PATTERN_CASES: PatternCase[] = [
         socialProof: [],
         trustedBy: [],
         testimonials: [],
+        customerLogos: [],
+        reviewBadges: [],
+        pressMentions: [],
+        guarantees: [],
+        certifications: [],
+      },
+      ctas: HERO_CTA,
+    },
+    expectApplied: ["emphasize_primary_cta"],
+    expectRefused: ["trust_bar"],
+  },
+  {
+    // v0.14: the REAL clickup class (from the live inventory dump). Proof is
+    // ALREADY visible above the fold (a "TRUSTED BY THE BEST" wall), AND there
+    // is a DIFFERENT below-fold rating that on its own WOULD qualify as a bar
+    // candidate ("Rated 4.7/5 … on G2"). trust_bar must stand down anyway —
+    // surfacing the below-fold rating on top of the visible wall is precisely
+    // the double-bar the user reported. (v0.13's same-signal filter missed
+    // this because the surfaced proof is a DIFFERENT signal from the visible
+    // one.)
+    name: "proof-visible-standsdown",
+    html: `<main>${box("hero", 500, "hero", `<a id="cta" href="#" style="display:inline-block;padding:12px 24px;background:#25e;color:#fff">Start free trial</a>`)}${box("f1", 500, "f1")}</main>`,
+    inv: {
+      trust: {
+        ratings: [{ type: "review_rating", text: "Rated 4.7/5 by 10,000+ users on G2" }],
+        socialProof: [],
+        trustedBy: [{ type: "trusted_by", text: "TRUSTED BY THE BEST", aboveFold: true }],
+        testimonials: [],
+        customerLogos: [],
+        reviewBadges: [],
+        pressMentions: [],
         guarantees: [],
         certifications: [],
       },
