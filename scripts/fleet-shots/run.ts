@@ -209,6 +209,76 @@ async function capturePage(page: Page, t: Target): Promise<Rec> {
   if (!hasInv) throw new Error("no inventory");
 
   await dismissConsent(page);
+
+  // MAP mode (FLEET_MAP=1): overlay the detected section map on the real page
+  // and dump the structured inventory — a "does the engine see the page
+  // correctly?" audit. Section boxes are colored by type; generic `content`
+  // (the untyped gap) is shaded so the coarse-typing problem is visible.
+  if (process.env.FLEET_MAP) {
+    await page.evaluate(async () => {
+      for (let y = 0; y < document.body.scrollHeight; y += 700) {
+        window.scrollTo(0, y);
+        await new Promise((r) => setTimeout(r, 60));
+      }
+      window.scrollTo(0, 0);
+    });
+    await sleep(500);
+    const map = await page.evaluate(() => {
+      const inv = (window as unknown as { __angelAdaptive: { inventory: Record<string, unknown> } }).__angelAdaptive
+        .inventory as {
+        sections?: Array<{ type?: string; selector?: string; heading?: string; containsTrustSignals?: boolean; containsPricing?: boolean }>;
+        ctas?: Array<{ text?: string; section?: string; intent?: string; category?: string; aboveFold?: boolean }>;
+        trust?: Record<string, Array<unknown>>;
+        page?: { hero?: { headline?: string; subheadline?: string } };
+      };
+      const COLORS: Record<string, string> = {
+        hero: "#2563eb", testimonials: "#0d9488", pricing: "#7c3aed", features: "#16a34a", benefits: "#16a34a",
+        faq: "#d97706", cta: "#db2777", logos: "#0891b2", stats: "#ca8a04", content: "#64748b",
+        header: "#334155", nav: "#334155", footer: "#334155",
+      };
+      const sx = window.scrollX, sy = window.scrollY;
+      const boxes: Array<Record<string, unknown>> = [];
+      (inv.sections || []).forEach((s, i) => {
+        if (!s.selector) return;
+        const el = document.querySelector(s.selector) as HTMLElement | null;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const b = { i, type: s.type, heading: (s.heading || "").slice(0, 50), x: Math.round(r.left + sx), y: Math.round(r.top + sy), w: Math.round(r.width), h: Math.round(r.height), trust: !!s.containsTrustSignals, pricing: !!s.containsPricing };
+        boxes.push(b);
+        const color = COLORS[s.type || "content"] || "#64748b";
+        const d = document.createElement("div");
+        d.className = "angel-map-ovl";
+        d.style.cssText = `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;border:3px solid ${color};background:${s.type === "content" ? "rgba(100,116,139,.10)" : "transparent"};box-sizing:border-box;z-index:2147482000;pointer-events:none`;
+        const lbl = document.createElement("div");
+        lbl.textContent = `#${i} ${s.type}${b.heading ? " · " + b.heading : ""}${b.trust ? " [TRUST]" : ""}${b.pricing ? " [PRICE]" : ""}`;
+        lbl.style.cssText = `position:absolute;left:0;top:0;background:${color};color:#fff;font:700 13px system-ui;padding:2px 8px;white-space:nowrap;max-width:96vw;overflow:hidden;text-overflow:ellipsis`;
+        d.appendChild(lbl);
+        document.body.appendChild(d);
+      });
+      const trustCount: Record<string, number> = {};
+      for (const k of ["testimonials", "customerLogos", "ratings", "trustedBy", "socialProof", "guarantees", "certifications", "reviewBadges", "pressMentions"])
+        trustCount[k] = ((inv.trust || {})[k] || []).length;
+      return {
+        url: location.href,
+        hero: { headline: (inv.page?.hero?.headline || "").slice(0, 90), sub: (inv.page?.hero?.subheadline || "").slice(0, 90) },
+        sectionCount: boxes.length,
+        typedShare: boxes.filter((b) => b.type !== "content").length + "/" + boxes.length,
+        sections: boxes,
+        ctas: (inv.ctas || []).slice(0, 12).map((c) => ({ text: (c.text || "").slice(0, 40), section: c.section, intent: c.intent, aboveFold: !!c.aboveFold })),
+        trustCount,
+      };
+    });
+    rec.before = `${tag}-map.jpg`;
+    await shoot(page, rec.before);
+    await page.evaluate(() => document.querySelectorAll(".angel-map-ovl").forEach((e) => e.remove()));
+    console.log("MAP " + tag + " " + JSON.stringify(map));
+    rec.ok = true;
+    rec.applied = [];
+    rec.changed = false;
+    rec.restoredClean = true;
+    return rec;
+  }
+
   rec.before = `${tag}-before.jpg`;
   await shoot(page, rec.before);
 
