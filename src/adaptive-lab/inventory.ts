@@ -245,7 +245,8 @@ export function assembleInventory(parts: any): ContentInventory {
     if (table && table.querySelectorAll("tr").length >= 3) return "comparison";
     var txt = (el.textContent || "").toLowerCase();
     var imgCount = el.querySelectorAll("img").length;
-    if (imgCount >= 6 && /integrat|connect your|works with|app (store|directory|marketplace)/.test(txt))
+    var head = (sec.heading || "").toLowerCase();
+    if (imgCount >= 6 && /integrat|works with|connect (your|to)|\bapps?\b/.test(head))
       return "integrations";
     if (cardGridCount(el) >= 3) return "cards";
     var words = txt.trim() ? txt.trim().split(/\s+/).length : 0;
