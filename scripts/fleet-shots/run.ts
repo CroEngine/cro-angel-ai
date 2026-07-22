@@ -227,6 +227,28 @@ async function capturePage(page: Page, t: Target): Promise<Rec> {
   }, seg)) as { applied: string[]; segment: string };
   rec.applied = res.applied;
   rec.segment = res.segment;
+  if (process.env.FLEET_DEBUG) {
+    const dbg = await page
+      .evaluate(() => {
+        const a = (window as unknown as { __angelAdaptive: { inventory: Record<string, unknown> } }).__angelAdaptive;
+        const inv = a.inventory as { sections?: unknown[]; trust?: Record<string, unknown> };
+        const map = (arr: unknown): string[] =>
+          ((arr as Array<{ text?: string; aboveFold?: boolean }>) || [])
+            .slice(0, 4)
+            .map((x) => (x.text || "").replace(/\s+/g, " ").slice(0, 34) + (x.aboveFold ? "[AF]" : ""));
+        return {
+          why: (window as unknown as { __angelReorderWhy?: string }).__angelReorderWhy || null,
+          secs: ((inv.sections as Array<{ type?: string; selector?: string; containsTrustSignals?: boolean }>) || []).map(
+            (s) => `${s.type}${s.selector ? "" : "(nosel)"}${s.containsTrustSignals ? "[TRUST]" : ""}`,
+          ),
+          logos: map(inv.trust?.customerLogos),
+          trustedBy: map(inv.trust?.trustedBy),
+          ratings: map(inv.trust?.ratings),
+        };
+      })
+      .catch(() => null);
+    console.log("DEBUG " + tag + " " + JSON.stringify(dbg));
+  }
   await sleep(500);
   rec.visualIssues = (await page.evaluate(VISUAL_CHECK).catch(() => [])) as string[];
   rec.changed = rec.applied.length > 0;
