@@ -13,6 +13,10 @@
  * server and nothing is persisted into the DOM.
  *
  * Dependency-free, framework-free. Targets evergreen browsers.
+ *
+ * GO-FORWARD CUSTOMER RUNTIME (docs/adr-001-go-forward-engine.md): the server
+ * Decision Engine decides, this snippet applies. The research lab engine
+ * (src/adaptive-lab -> public/adaptive-lab.js) is a sandbox, NOT this one.
  */
 (function () {
   "use strict";

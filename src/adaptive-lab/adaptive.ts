@@ -1,7 +1,11 @@
-// Angel Adaptive — the snippet (`adaptive.js`), entry point.
+// Angel Adaptive — the RESEARCH / LAB engine (built to public/adaptive-lab.js).
 //
-//   <script src="https://app.angeladaptive.com/adaptive.js"
-//           data-site-id="xxxx"></script>
+// NOT the customer-facing snippet. Per docs/adr-001-go-forward-engine.md the
+// go-forward product is the SERVER-DECIDES engine (public/adaptive.js + the server
+// Decision Engine). This client-autonomous lab is a perception + pattern research
+// sandbox, loaded ONLY by scripts (fleet-shots, sweeps, designer-brief) — no
+// customer loads it. Its good ideas (self-checked reorder, structural section
+// typing, proof→section linking) are being harvested INTO the product; see the ADR.
 //
 // Phases (mirror sites.phase: learn -> intelligence -> adaptive):
 //   * "learn" (DEFAULT): collect only. Build the Content Inventory AND track

@@ -6,9 +6,12 @@
 // how serving is switched on, the A/B split, the win criterion, baseline swap —
 // live elsewhere and do not affect this matching.
 //
-// It is deliberately NOT wired into the live decide path. Nothing here routes real
-// traffic; it is the library the eventual serving step calls. Serving stays OFF
-// until the owner turns it on per segment.
+// This pure matcher IS wired into the live decide path: src/routes/api/adaptive/
+// decide.ts calls serveDecision() behind the owner gates (serving_enabled +
+// domain-verified + billing). This file only picks WHICH verified variant matches;
+// the gating, A/B split, win criterion and baseline swap live elsewhere. Serving
+// stays OFF until the owner turns it on per segment. (Corrected 2026-07-22 — the
+// earlier "NOT wired" note was stale; see docs/adr-001-go-forward-engine.md.)
 //
 // The segment key format MIRRORS the dashboard rollup (aggregate.ts) exactly —
 // `channel·device·country·returning`, coarse→fine — so serving and segment
