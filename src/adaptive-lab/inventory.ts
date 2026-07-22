@@ -165,14 +165,22 @@ export function assembleInventory(parts: any): ContentInventory {
     contactInfo: g("contact_info"),
   };
 
-  // Structural testimonials (mirrors the audit's enrichSections): classifyType no
-  // longer keys testimonials off a heading word, so promote the SMALLEST section
-  // that contains a testimonial signal's center. Keeps the snippet's sectionTypes
-  // in step with the audit.
-  var testiIds: Record<string, boolean> = {};
+  // Link EVERY proof signal to the SMALLEST section whose bounds contain its
+  // center, then use that to (a) set containsTrustSignals correctly and (b)
+  // promote a generic `content` section to a proof type. The fleet map audit
+  // showed the detector's own containsTrustSignals is never set (0/102 sites),
+  // so nothing marked WHICH section holds the proof and reorder could never
+  // find the proof strip — this computes it from geometry. Generalizes the old
+  // testimonials-only mapping. (customer_logos / trusted_by → logos strip;
+  // social_proof_count / review_rating / stars_aggregate → stats strip.)
+  var PROOF_TYPES: Record<string, boolean> = {
+    testimonial: true, customer_logos: true, trusted_by: true, review_rating: true,
+    stars_aggregate: true, social_proof_count: true, review_badges: true, press_mention: true,
+  };
+  var secProof: Record<string, Record<string, boolean>> = {};
   for (var ti = 0; ti < signals.length; ti++) {
     var tsig = signals[ti];
-    if (tsig.type !== "testimonial" || !tsig.rect) continue;
+    if (!tsig.rect || !PROOF_TYPES[tsig.type]) continue;
     var bestId: any = null;
     var bestArea = Infinity;
     var cy = tsig.rect.y + tsig.rect.h / 2;
@@ -186,19 +194,32 @@ export function assembleInventory(parts: any): ContentInventory {
         bestId = ss.id;
       }
     }
-    if (bestId) testiIds[bestId] = true;
+    if (bestId != null) {
+      if (!secProof[bestId]) secProof[bestId] = {};
+      secProof[bestId][tsig.type] = true;
+    }
+  }
+  function proofType(has: Record<string, boolean>, current: string): string {
+    if (has.testimonial) return "testimonials"; // as before — overrides any type
+    if (current !== "content") return current; // don't clobber hero/pricing/faq/…
+    if (has.customer_logos || has.trusted_by) return "logos";
+    if (has.social_proof_count || has.review_rating || has.stars_aggregate) return "stats";
+    return current;
   }
 
   var sections = [];
   for (var j = 0; j < sectionsRaw.length; j++) {
     var sec = sectionsRaw[j];
+    var has = secProof[sec.id] || {};
+    var hasProof = false;
+    for (var hk in has) if (has[hk]) { hasProof = true; break; }
     sections.push({
-      type: testiIds[sec.id] ? "testimonials" : sec.type,
+      type: proofType(has, sec.type),
       heading: (sec.heading || sec.displayHeading || "").slice(0, 120),
       position: sec.position,
       aboveFold: !!sec.aboveFold,
       containsPricing: !!sec.containsPricing,
-      containsTrustSignals: !!sec.containsTrustSignals,
+      containsTrustSignals: hasProof || !!sec.containsTrustSignals,
       containsForm: !!sec.containsForm,
       selector: sec.selector,
     });
