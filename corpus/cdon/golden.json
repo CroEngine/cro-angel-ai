@@ -1995,8 +1995,8 @@
     },
     "hero": {
       "headline": "Håll dig sval i sommar",
-      "primaryCtaText": "Utforska",
-      "primaryCtaIntent": "information",
+      "primaryCtaText": "Respons",
+      "primaryCtaIntent": "conversion",
       "aboveFold": true
     },
     "images": {
