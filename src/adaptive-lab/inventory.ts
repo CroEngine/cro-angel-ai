@@ -207,6 +207,53 @@ export function assembleInventory(parts: any): ContentInventory {
     return current;
   }
 
+  // Structural categorisation: for sections still generic `content`, name what
+  // the section IS from its DOM STRUCTURE (not its heading — headings are
+  // marketing copy: "consider yourself limitless" tells you nothing). Cheap DOM
+  // cues, capped for perf. Anything with no distinctive structure stays
+  // `content` — an honest prose / value-prop block. Proof types (logos / stats /
+  // testimonials) already took priority above; this only refines what's left.
+  function cardGridCount(el: any): number {
+    var best = 0, scanned = 0;
+    var all = el.querySelectorAll("*");
+    for (var i = 0; i < all.length && scanned < 300; i++) {
+      var c = all[i];
+      var kids = c.children;
+      if (!kids || kids.length < 3) continue;
+      scanned++;
+      var similar = 0;
+      for (var k = 0; k < kids.length; k++) {
+        var kid = kids[k];
+        var head = kid.querySelector && kid.querySelector('h1,h2,h3,h4,h5,h6,strong,[class*="title"]');
+        var txt = (kid.textContent || "").trim();
+        if (head && txt.length > 15) similar++;
+      }
+      if (similar >= 3 && similar >= kids.length * 0.6 && similar > best) best = similar;
+    }
+    return best;
+  }
+  function structuralType(sec: any, current: string): string {
+    if (current !== "content" || !sec.selector) return current;
+    var el: any = null;
+    try { el = document.querySelector(sec.selector); } catch (e) { el = null; }
+    if (!el) return current;
+    if (el.querySelector('video, iframe[src*="youtube"], iframe[src*="youtu.be"], iframe[src*="vimeo"], iframe[src*="wistia"], iframe[src*="loom"]'))
+      return "video";
+    if (el.querySelectorAll("details").length >= 2) return "faq";
+    if (el.querySelector('[class*="accordion"], [class*="faq"], [data-accordion]')) return "faq";
+    var table = el.querySelector("table");
+    if (table && table.querySelectorAll("tr").length >= 3) return "comparison";
+    var txt = (el.textContent || "").toLowerCase();
+    var imgCount = el.querySelectorAll("img").length;
+    if (imgCount >= 6 && /integrat|connect your|works with|app (store|directory|marketplace)/.test(txt))
+      return "integrations";
+    if (cardGridCount(el) >= 3) return "cards";
+    var words = txt.trim() ? txt.trim().split(/\s+/).length : 0;
+    var btns = el.querySelectorAll('a[class*="btn"], button, a[role="button"], [class*="button"]').length;
+    if (words > 0 && words < 32 && btns >= 1 && btns <= 3 && imgCount <= 1) return "cta";
+    return current;
+  }
+
   var sections = [];
   for (var j = 0; j < sectionsRaw.length; j++) {
     var sec = sectionsRaw[j];
@@ -214,7 +261,7 @@ export function assembleInventory(parts: any): ContentInventory {
     var hasProof = false;
     for (var hk in has) if (has[hk]) { hasProof = true; break; }
     sections.push({
-      type: proofType(has, sec.type),
+      type: structuralType(sec, proofType(has, sec.type)),
       heading: (sec.heading || sec.displayHeading || "").slice(0, 120),
       position: sec.position,
       aboveFold: !!sec.aboveFold,
