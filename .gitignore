@@ -72,3 +72,4 @@ corpus/**/actual.json
 # embeds downscaled copies, and manifest.json keeps the structured map.
 docs/fleet-map-2026-07-22/img/
 docs/fleet-shots-2026-07-22/img/
+docs/fleet-shots-2026-07-22/manifest.json
