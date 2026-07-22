@@ -63,10 +63,30 @@ sandbox whose *code is harvested into the product*.
    move the client will fail-closed on — otherwise the A/B arm measures original vs original.
    Proven end-to-end on the plausible.io fixture (a 2nd `move_up` there sinks the proof
    983→1227px): `scripts/ci/serving-smoke.mjs` (client) + the render-gates tests (harness).
-3. **Port structural section typing + proof→section linking into the server inventory**
-   (`crawler-inventory.ts` / `redesign/extract.ts`) so the customer engine perceives
-   structure the way the lab now does (needs the audit to extract the structural signals
-   video/table/details/card-grid first, then map).
+3. **Port structural section typing + proof→section linking into the server inventory.**
+   ✅ **SHIPPED (live path).** A tracing pass established the decisive fact: the live customer
+   endpoint (`/api/adaptive/decide`) serves **only** redesign variant `serveOps` via
+   `serveDecision` — the `PageSection → ContentInventory → decide()` pattern engine is
+   **retired from live serving** (`decide.ts:9-17`). So the section typing that actually
+   reaches a visitor flows through `redesign/extract.ts` (`RedesignContentModel`), **not** the
+   audit/`crawler-inventory.ts` path. The port therefore landed in `extract.ts` + `vocab.ts` +
+   `context.ts`:
+   - **Structural typing** (ported from the lab's `assembleInventory`, adapted from live-DOM
+     `querySelector` to regex over each section's frozen HTML slice): a still-generic section
+     is named from its own body — `<video>`/YouTube-Vimeo-Wistia-Loom → **video**, ≥2
+     `<details>`/accordion → **faq**, `<table>` (≥3 rows) → **comparison**, ≥6 imgs +
+     integration heading → **integrations**. A heading-assigned type is never clobbered.
+   - **Proof→section linking**: a section whose *body* carries "trusted by …" → **logos** or a
+     social-proof count ("500,000+ customers") → **stats**, and every proof-bearing section is
+     flagged `containsTrustSignals` — the "which section holds the proof" signal, now surfaced
+     to the designer LLM (`[proof]` in the prompt) and driving the offline before/after reorder
+     demo (`EVIDENCE_SECTION_TYPES` gained `stats`). This is the lab's key win (0 → 3
+     proof-linked sections on the plausible fixture; the flag didn't exist in the model before).
+   - **Not ported** (deliberate): the card-grid / short-CTA structural heuristics (fragile to
+     reconstruct from a string; headings cover CTA), and the **audit/golden path**
+     (`sections.ts` + `enrichSections`) — it is version-gated by `EXTRACTOR_VERSION` + corpus
+     goldens, the goldens are geo/build-sensitive, and it is **not the live serve path** anyway.
+     Deferred to a golden-capable environment if the ContentInventory path is ever revived.
 4. **Rebuild the runtime applier as clean, tested TS** (absorbing the lab's
    presentability + revert discipline) instead of hand-maintained JS; retire
    `public/adaptive-lab.js` as a runtime.

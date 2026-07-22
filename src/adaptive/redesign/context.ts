@@ -68,6 +68,10 @@ export interface RedesignContentModel {
     heading: string;
     aboveFold: boolean;
     visualWeight: number;
+    /** Proof (logos / social-proof counts) detected in the section's own body,
+     *  even when its heading has no magic word — the "which section holds the
+     *  proof" signal reorder needs (ADR-001 step 3). */
+    containsTrustSignals?: boolean;
   }[];
   trustSignals: { type: string; text: string; aboveFold: boolean; section: string }[];
   ctas: { text: string; intent?: string; aboveFold: boolean }[];
@@ -232,7 +236,8 @@ export function renderRedesignPrompt(ctx: RedesignContext): string {
   L.push("Sections:");
   for (const s of [...content.sections].sort((a, b) => a.position - b.position)) {
     L.push(
-      `  ${s.position}. [${s.id}] ${s.type} — “${s.heading || "(no heading)"}” · ` +
+      `  ${s.position}. [${s.id}] ${s.type}${s.containsTrustSignals ? " [proof]" : ""} — ` +
+        `“${s.heading || "(no heading)"}” · ` +
         `${s.aboveFold ? "above fold" : "below fold"} · weight ${s.visualWeight}`,
     );
   }
