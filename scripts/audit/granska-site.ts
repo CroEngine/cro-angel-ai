@@ -137,13 +137,46 @@ await page.waitForTimeout(600);
 const rendered = await page.evaluate(() => document.documentElement.outerHTML);
 const content = extractContentModel(rendered);
 const convCtas = content.ctas.filter((c) => c.intent === "conversion");
-const goalGuess = ownerGoal ?? convCtas.find((c) => c.aboveFold)?.text ?? convCtas[0]?.text ?? null;
 // Extraherade konverterings-CTA:er ∪ ägarens måltext — samma union som
 // auto-generate, så mätningarna alltid vaktar målets element.
 const ctaTexts = [...new Set([...convCtas.map((c) => c.text), ...(ownerGoal ? [ownerGoal] : [])])];
 
-// Basmätning (inga ops): overflow + CTA-klickbarhet i mobilviewport.
+// Basmätning (inga ops): overflow + CTA-klickbarhet i mobilviewport. Strippar
+// även CMP-overlays i sidkopian, så fold-mätningen nedan ser sidans egen layout.
 const base = await measurePlan(page, [], ctaTexts);
+
+// Uppmätt fold-position (ärlighetsfynd 2026-07-23): cta.aboveFold i extract.ts
+// är en DOKUMENTORDNINGS-approximation (order < 12) — en stor header-nav slår ut
+// den: en hjälte-CTA knuffas under gränsen fast den syns, och en tidig nav-
+// drawer-dubblett räknas som synlig fast den ligger under folden. Vi renderar i
+// en riktig 390×844-viewport, så vi MÄTER vilka konverterings-CTA:er som faktiskt
+// börjar inom första skärmen (absolut topp; samma text-/aria-matchning som
+// measure.ctaClickable).
+const measuredAboveFold = new Set<string>(
+  await page.evaluate(
+    (texts: string[]) => {
+      const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+      const vh = window.innerHeight;
+      return texts.filter((text) =>
+        Array.from(document.querySelectorAll("a,button")).some((n) => {
+          if (!norm(`${n.textContent || ""} ${n.getAttribute("aria-label") || ""}`).includes(text))
+            return false;
+          const r = n.getBoundingClientRect();
+          return r.width > 0 && r.height > 0 && r.top + window.scrollY < vh;
+        }),
+      );
+    },
+    convCtas.map((c) => c.text),
+  ),
+);
+// Målgissning: ägarens konfigurerade mål vinner; annars en UPPMÄTT ovanför-
+// folden-CTA (så en tidig nav-drawer-dubblett aldrig namnges som målet); annars
+// den första extraherade. Hedgas alltid i rapporten.
+const goalGuess =
+  ownerGoal ??
+  convCtas.find((c) => measuredAboveFold.has(c.text))?.text ??
+  convCtas[0]?.text ??
+  null;
 
 // ── 3. fynden — mätningar, aldrig tyckande ───────────────────────────────────
 interface Fynd {
@@ -153,7 +186,7 @@ interface Fynd {
 }
 const fynd: Fynd[] = [];
 
-const aboveFoldConv = convCtas.filter((c) => c.aboveFold);
+const aboveFoldConv = convCtas.filter((c) => measuredAboveFold.has(c.text));
 if (convCtas.length === 0) {
   fynd.push({
     vikt: 1,
@@ -173,7 +206,13 @@ if (convCtas.length === 0) {
       : `Vi hittade ${convCtas.length} konverterings-handling(ar) — t.ex. “${convCtas[0].text}” — men ingen av dem ligger i det besökaren ser först på en mobil. Mobilbesökaren måste scrolla innan sidan ber om något.`,
   });
 }
-if (base.hOverflowBeforePx > 8) {
+// Tröskel 8 → 24 (ärlighetsfynd 2026-07-23): frysningen inlinear CSS men INTE
+// webbfonter, och granskas render blockerar icke-data:-requests — texten mäts i
+// systemets fallback-typsnitt, vars glyf-metrik skiljer sig från sidans riktiga
+// font. En nowrap-rad i fallback-font kan skjuta ut några få–~20 px som skarpa
+// sidan aldrig har. Äkta brott (bild/tabell/fast bredd) ligger ~40 px+; 24 px
+// (~6 % av 390 px-viewporten) släpper igenom det verkliga och tystar artefakten.
+if (base.hOverflowBeforePx > 24) {
   fynd.push({
     vikt: 2,
     rubrik: EN
@@ -240,16 +279,25 @@ let flyttText = "";
 
 if (targetIdx >= 2) {
   const target = sections[targetIdx];
-  // "Långt ner" bara när det ÄR långt ner (fleet-E2E 2026-07-23): Fix B kan välja
-  // en förtroende-sektion redan vid index 2 (position 3) som kan ligga nära
-  // folden — då vore "sits far down" en överdrift. Under nedre halvan säger vi
-  // det neutrala (och sanna) "under folden".
-  const deepInPage = targetIdx > sections.length / 2;
+  // Utan <main> faller extract.ts:s region tillbaka till HELA dokumentet, så
+  // nav/sidfot-rubriker blåser upp räkningen (ärlighetsfynd 2026-07-23) — då är
+  // ordinalen "sektion X av Y" inte att lita på. measure-censusen (h2 i main/body,
+  // exkl. header/nav/footer/aside) driver flytten korrekt ändå; bara den VISADE
+  // räkningen mjukas upp. Med <main> står ordinalen kvar.
+  const hasMain = /<main\b[^>]*>[\s\S]*?<\/main>/i.test(rendered);
+  // "Långt ner" bara när det ÄR långt ner OCH räkningen går att lita på (Fix B kan
+  // välja en förtroende-sektion redan vid index 2 nära folden — då vore "far down"
+  // en överdrift).
+  const deepInPage = hasMain && targetIdx > sections.length / 2;
   fynd.push({
     vikt: 3,
-    rubrik: EN
-      ? `Your strongest content sits as section ${targetIdx + 1} of ${sections.length}`
-      : `Ert starkaste innehåll ligger som sektion ${targetIdx + 1} av ${sections.length}`,
+    rubrik: hasMain
+      ? EN
+        ? `Your strongest content sits as section ${targetIdx + 1} of ${sections.length}`
+        : `Ert starkaste innehåll ligger som sektion ${targetIdx + 1} av ${sections.length}`
+      : EN
+        ? `Your strongest content sits below the fold`
+        : `Ert starkaste innehåll ligger under folden`,
     text: EN
       ? `“${target.heading.slice(0, 60)}” is the kind of content (${target.type}) that usually decides the visit${deepInPage ? " — and it sits far down" : ", sitting below the fold"}. Below we test-lifted it, on a frozen copy of your page, through our checks.`
       : `“${target.heading.slice(0, 60)}” är den typ av innehåll (${target.type}) som brukar avgöra beslutet${deepInPage ? " — och det ligger långt ner" : ", och ligger under folden"}. Nedan har vi testat att lyfta det, i en fryst kopia av er sida, genom våra kontroller.`,
