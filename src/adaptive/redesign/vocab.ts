@@ -73,7 +73,7 @@ export const EVIDENCE_SECTION_TYPES: readonly string[] = [
  *  samma ordlista som webbläsar-harvesterns social_proof_count. Exporteras som
  *  regex-KÄLLA så konsumenter bygger sina egna fångstgrupper runt den. */
 export const SOCIAL_PROOF_NOUNS_SRC =
-  "customers|companies|users|subscribers|businesses|sites|websites|members|downloads|reviews|kunder|anv[äa]ndare|medlemmar|f[öo]retag|prenumeranter|nedladdningar|recensioner";
+  "customers|companies|users|subscribers|businesses|teams|brands|organi[sz]ations|developers|sites|websites|members|downloads|reviews|kunder|anv[äa]ndare|medlemmar|f[öo]retag|team|varum[äa]rken|utvecklare|prenumeranter|nedladdningar|recensioner";
 
 /** "Trusted by …"-inledningar, EN+SV. Regex-källa, samma skäl som ovan. */
 export const TRUSTED_BY_LEADINS_SRC =

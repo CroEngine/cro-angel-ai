@@ -170,7 +170,14 @@ function refineType(
     const st = structuralType(body, heading);
     if (st) type = st;
   }
-  return { type, containsTrustSignals: proof !== null };
+  // Rubrik-buret bevis FLAGGAR bara (om-typar ALDRIG): "9,300+ customers trust
+  // Front" i en RUBRIK är riktigt bevis för [proof]-taggen och granskas
+  // måltavleval, men en feature-rubrik som råkar nämna ett antal är inte
+  // strukturellt en bevis-strip — så rubrikträffen rör aldrig typen, bara
+  // flaggan (fleet-E2E 2026-07-23: 10 av 43 "None"-sajter bar bevis i en rubrik
+  // som kroppsskannern missade). Typerna hålls golden-stabila.
+  const containsTrustSignals = proof !== null || proofFromBody(heading) !== null;
+  return { type, containsTrustSignals };
 }
 
 function extractSections(html: string): RedesignContentModel["sections"] {
@@ -222,7 +229,12 @@ function extractSections(html: string): RedesignContentModel["sections"] {
     // must see, or the LLM redundantly moves other proof up beside it.
     const { type, containsTrustSignals } =
       headingType === "hero"
-        ? { type: "hero", containsTrustSignals: proofFromBody(h.body || "") !== null }
+        ? {
+            type: "hero",
+            // Hjälten flaggas från BÅDE rubrik och kropp ("Join 150,000+
+            // businesses" bor ofta i själva hjälterubriken) — men om-typas aldrig.
+            containsTrustSignals: proofFromBody(`${h.text || ""} ${h.body || ""}`) !== null,
+          }
         : refineType(headingType, h.body || "", h.text);
     return {
       id: `sec-${i + 1}-${type}`,
@@ -341,6 +353,15 @@ function extractTrustSignals(html: string): RedesignContentModel["trustSignals"]
       ),
     },
     { type: "trusted_by", re: new RegExp(`((?:${TRUSTED_BY_LEADINS_SRC})\\s[^.<]{3,70})`, "i") },
+    // Garanti/pengarna-tillbaka (portad + åtstramad från lab-detektorn,
+    // detectors.generated.ts): fyndet "Inga förtroendesignaler" var OSANT på
+    // sidor vars starkaste bevis ÄR en garanti (activecampaign: "…or get your
+    // money back"). Kräver kontext (money-back / N-day / satisfaction / warranty
+    // / garanti / öppet köp) så ett löst "no guarantee that…" aldrig fångas.
+    {
+      type: "guarantee",
+      re: /((?:\d+[- ]?(?:day|dagars?)\s+)?money[- ]?back(?:\s+guarantee)?|satisfaction guarantee|\d+[- ]?(?:day|dagars?)\s+guarantee|[öo]ppet k[öo]p|n[öo]jd[- ]?kund\w*|\bwarranty\b|\bgaranti\b)/i,
+    },
     { type: "independence", re: /((?:independent|oberoende)[,\s][^.<]{3,70})/i },
     {
       type: "compliance",

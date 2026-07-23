@@ -332,6 +332,35 @@ describe("extractContentModel — structural + proof section typing", () => {
     expect(hero.type).toBe("hero");
     expect(hero.containsTrustSignals).toBe(true);
   });
+
+  it("flags SECTION-heading proof without re-typing it (fleet-E2E recall gap)", () => {
+    // 10/43 "None" sites carried proof in a section HEADING the body scanner
+    // missed. The heading now FLAGS proof — but a feature headline that cites a
+    // count is not structurally a stats strip, so the TYPE stays untouched.
+    const page = `<main><h1>Ship it</h1><section><h2>Features</h2><p>fast</p></section><section><h2>Join 150,000+ businesses driving revenue</h2><p>details</p></section></main>`;
+    const s = extractContentModel(page).sections.find((x) => /150,000/.test(x.heading));
+    expect(s?.containsTrustSignals).toBe(true);
+    expect(s?.type).not.toBe("stats");
+    expect(s?.type).not.toBe("logos");
+  });
+
+  it("counts the SaaS noun 'teams' as social proof ('50,000+ teams')", () => {
+    const t = `<section><h2>Adoption</h2><p>Used across 50,000+ teams worldwide.</p></section>`;
+    expect(typeOf(t, "Adoption")).toBe("stats");
+    const m = extractContentModel(`<main><h1>x</h1>${t}</main>`);
+    expect(m.trustSignals.find((x) => x.type === "social_proof_count")?.text).toContain("teams");
+  });
+
+  it("detects a money-back guarantee as a trust signal, but not a bare 'no guarantee'", () => {
+    const withG = extractContentModel(
+      `<main><h1>Try it</h1><section><h2>Risk free</h2><p>See results in 30 days or get your money back.</p></section></main>`,
+    );
+    expect(withG.trustSignals.find((t) => t.type === "guarantee")?.text).toBeTruthy();
+    const bare = extractContentModel(
+      `<main><h1>x</h1><section><h2>Terms</h2><p>There is no guarantee that results will vary.</p></section></main>`,
+    );
+    expect(bare.trustSignals.find((t) => t.type === "guarantee")).toBeUndefined();
+  });
 });
 
 // Task #90: den delade EN+SV-vokabulären — en svensk sida ska klassificeras
