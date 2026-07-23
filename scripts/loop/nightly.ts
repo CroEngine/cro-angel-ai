@@ -467,21 +467,31 @@ for (const site of targets) {
         // Nya texten grindad OK → uppdatera varianten och släpp hållningen.
         // Skärmdumparna laddas upp på SAMMA nycklar som originalet (slug är
         // härledd ur path+key) så dashboardens bevisbilder visar nya läget.
-        const shots: { before: string | null; after: string | null; attempt1: null } = {
-          before: null,
-          after: null,
-          attempt1: null,
-        };
+        const shots: {
+          before: string | null;
+          after: string | null;
+          attempt1: null;
+          desktopBefore?: string;
+          desktopAfter?: string;
+        } = { before: null, after: null, attempt1: null };
         if (refreshed.slug) {
-          for (const which of ["before", "after"] as const) {
+          const shotKeyOf = {
+            before: "before",
+            after: "after",
+            "desktop-before": "desktopBefore",
+            "desktop-after": "desktopAfter",
+          } as const;
+          for (const which of ["before", "after", "desktop-before", "desktop-after"] as const) {
             const local = join(refreshDir, `${refreshed.slug}-${which}.jpg`);
             if (!existsSync(local)) continue;
             const key = `${site.slug}/${refreshed.slug}/${which}.jpg`;
             const { error: upErr } = await db.storage
               .from("angel-evidence")
               .upload(key, readFileSync(local), { contentType: "image/jpeg", upsert: true });
-            if (!upErr)
-              shots[which] = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
+            if (!upErr) {
+              const url = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
+              shots[shotKeyOf[which]] = url;
+            }
           }
         }
         const newEvidence = {
@@ -691,21 +701,33 @@ for (const site of targets) {
     // 6. Verifierade → ladda upp skärmdumpar till storage + direkta inserts.
     //    Status 'verified' — ALDRIG serving; det är ägarens knapp.
     for (const r of results.filter((x) => x.verdict === "verified")) {
-      const shots: { before: string | null; after: string | null; attempt1: null } = {
-        before: null,
-        after: null,
-        attempt1: null,
-      };
+      // desktop-paret finns bara när ett desktop-bekräftelsepass kördes
+      // (viewport-grindningen, Tier-1 #3) — saknade filer hoppas tyst.
+      const shots: {
+        before: string | null;
+        after: string | null;
+        attempt1: null;
+        desktopBefore?: string;
+        desktopAfter?: string;
+      } = { before: null, after: null, attempt1: null };
       if (r.slug) {
-        for (const which of ["before", "after"] as const) {
+        const shotKeyOf = {
+          before: "before",
+          after: "after",
+          "desktop-before": "desktopBefore",
+          "desktop-after": "desktopAfter",
+        } as const;
+        for (const which of ["before", "after", "desktop-before", "desktop-after"] as const) {
           const local = join(dir, `${r.slug}-${which}.jpg`);
           if (!existsSync(local)) continue;
           const key = `${site.slug}/${r.slug}/${which}.jpg`;
           const { error: upErr } = await db.storage
             .from("angel-evidence")
             .upload(key, readFileSync(local), { contentType: "image/jpeg", upsert: true });
-          if (!upErr)
-            shots[which] = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
+          if (!upErr) {
+            const url = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
+            shots[shotKeyOf[which]] = url;
+          }
         }
       }
       const evidence = {

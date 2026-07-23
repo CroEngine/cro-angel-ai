@@ -145,7 +145,16 @@ export interface VariantComparison {
   orderBefore: string[];
   orderAfter: string[];
   movedLabel: string | null;
-  screenshots: { before: string | null; after: string | null; attempt1: string | null };
+  screenshots: {
+    before: string | null;
+    after: string | null;
+    attempt1: string | null;
+    /** Desktop-paret finns när viewport-grindningen (Tier-1 #3) körde ett
+     *  desktop-bekräftelsepass — grova segment servar alla enheter, och
+     *  ägaren ska kunna se BÅDA lägena innan hen startar A/B:t. */
+    desktopBefore?: string | null;
+    desktopAfter?: string | null;
+  };
 }
 
 /** A/B-läget för en SERVERANDE variant: armarnas räknare (hela historiken, via
@@ -559,6 +568,8 @@ export const getDashboard = createServerFn({ method: "POST" })
                       before: str(shots.before),
                       after: str(shots.after),
                       attempt1: str(shots.attempt1),
+                      desktopBefore: str(shots.desktopBefore),
+                      desktopAfter: str(shots.desktopAfter),
                     },
                   }
                 : null,

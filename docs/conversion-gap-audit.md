@@ -81,6 +81,20 @@ numeric claims cross the `>90px` refusal and **silently don't fire**, and `scale
 can overflow a full-width mobile CTA into horizontal jiggle. Most traffic is the viewport
 we've never looked at.
 
+> **✅ FIXED (2026-07-23, on the go-forward engine):** after ADR-001 retired the lab the
+> situation had *inverted* — the customer verify chain gated only at mobile 390×844 while
+> coarse segments (no device dimension) serve every device, so **desktop** was the
+> unverified viewport. Verification is now segment-aware (`viewportsForSegmentKey`):
+> a device-pinned segment gates at its own viewport; a coarse/tablet/unknown segment
+> gates at BOTH extremes (mobile 390×844 + desktop 1280×900). The canonical viewport
+> runs the retry ladder + owner screenshots; every additional viewport runs a
+> confirmation pass on **exactly the ops that will serve** (no separate retry — one op
+> list serves the whole segment) and any failure holds the variant. Evidence records
+> the coverage (`viewportsChecked`, `viewportConfirmations`) plus a desktop
+> before/after screenshot pair, uploaded by the nightly loop and exposed through the
+> dashboard's comparison data. The lab-harness photography (fleet-shots at 1280) is a
+> research concern and stays as-is.
+
 ---
 
 ## Tier 2 — cheap, high-value: signals we already detect, then throw away
