@@ -1,0 +1,8 @@
+{
+ "action": "refuse",
+ "container": null,
+ "move": null,
+ "after": null,
+ "mode": null,
+ "rationale": "The only viable container carries a full-bleed child (width 100% + content-box padding, overflowing 86px, centered by auto margins) that flex/grid promotion would visibly squeeze; the alternative container carries other sections. No safe move exists with CSS order."
+}

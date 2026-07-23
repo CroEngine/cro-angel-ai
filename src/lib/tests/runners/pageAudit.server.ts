@@ -180,16 +180,25 @@ export async function runPageAudit(
         '[id*="truste" i]', '[class*="truste" i]',
         '[aria-label*="cookie" i]', '[aria-label*="consent" i]',
         '[id*="usercentrics" i]', '[id*="didomi" i]', '[class*="didomi" i]',
+        '[id*="ppms" i]', '[class*="ppms" i]', '[id*="piwik" i]', '[class*="piwik" i]',
+        '[id*="hs-eu-cookie" i]', '[id*="cookie-confirmation" i]', '[id*="cookie-notice" i]', '[class*="cookie-notice" i]',
+        '[id*="cookieconsent" i]', '[class*="cookieconsent" i]', '[id*="coi-banner" i]', '[class*="coi-banner" i]', '[class*="cky-consent" i]',
       ].join(',');
-      const ROOT_SEL = '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i]';
+      const ROOT_SEL = '#onetrust-consent-sdk, [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [id*="onetrust" i], [id*="ppms" i], [class*="ppms" i], [id*="coi-banner" i], [class*="coi-banner" i], [class*="cky-consent" i]';
       const deadline = Date.now() + 2500;
       while (Date.now() < deadline) {
         const found = Array.from(document.querySelectorAll(SEL)).find(el => el.tagName !== 'STYLE' && el.tagName !== 'SCRIPT' && el.tagName !== 'LINK');
         if (found) {
           const r = found.getBoundingClientRect();
-          const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano/i.test(found.id || '');
+          const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano|ppms|piwik/i.test(found.id || '');
           if (isKnownVendor || (r.width > 50 && r.height > 30)) {
-            const root = (found.closest && found.closest(ROOT_SEL)) || found;
+            let root = (found.closest && found.closest(ROOT_SEL)) || found;
+            // v1.20 guard: closest() can land on a page-enveloping wrapper (a
+            // body/html carrying a "…cookie…"/"…consent…" state class), and a
+            // stamped wrapper makes downstream filters (ctas.ts) skip EVERY CTA
+            // on the page — typeform's audit came back with 0 CTAs this way.
+            // Never stamp body/html; fall back to the found element itself.
+            if (root === document.body || root === document.documentElement) root = found;
             try { root.setAttribute('data-lovable-cookie-root', '1'); } catch (_) {}
             return;
           }
@@ -404,9 +413,8 @@ export async function runPageAudit(
 
   enrichSections(sectionsTyped, ctasTyped, trustTyped, formsTyped);
   // Trust proximity from the trust engine's canonical rects — the CTA script
-  // no longer guesses trust locations from class names (B4).
+  // no longer guesses trust locations from class names (B4, from main).
   computeTrustProximity(ctasTyped, trustTyped);
-  const sectionOrder = sectionsTyped.map((s) => s.type);
   const trustSummary = buildTrustSummary(trustTyped);
   const pageSummary = buildPageSummary({
     ctas: ctasTyped,
@@ -417,7 +425,19 @@ export async function runPageAudit(
     sections: sectionsTyped,
     dims: dimsTyped,
   });
-  const hero = deriveHero(sectionsTyped, ctasTyped);
+  const hero = deriveHero(sectionsTyped, ctasTyped, audit.headings?.h1Texts ?? []);
+  // Align the hero section's TYPE with deriveHero. classifyType's geometry guard
+  // rejects a tall hero wrapper (vercel/gymshark/trello's top section is 5-7x the
+  // viewport, over the 2.5x cap) so the real hero comes back `content`; deriveHero
+  // anchors on the page h1 and gets it right. Promote only plain content/cards —
+  // never override structural nav/header/footer or a structural testimonials —
+  // and only when deriveHero anchored on a real section (not the h1-synthesized
+  // fallback, whose sectionId is "").
+  if (hero?.sectionId) {
+    const hs = sectionsTyped.find((s) => s.id === hero.sectionId);
+    if (hs && (hs.type === "content" || hs.type === "cards")) hs.type = "hero";
+  }
+  const sectionOrder = sectionsTyped.map((s) => s.type);
 
   // Strip transient `selector` from sections before persistence — it's a
   // DOM lookup helper for the browser-side scripts, not analytics data.

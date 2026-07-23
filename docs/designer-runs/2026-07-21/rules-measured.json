@@ -1,0 +1,76 @@
+[
+ {
+  "id": "sentry-proof-linkedin",
+  "cohorts": [
+   "src:linkedin"
+  ],
+  "action": {
+   "kind": "pattern",
+   "patternId": "reorder_proof_first"
+  },
+  "status": "approved",
+  "ramp": 50,
+  "measured": {
+   "verdict": "win",
+   "upliftRel": 0.46795918034062495,
+   "pValue": 0.00002,
+   "served": {
+    "n": 5231,
+    "conversions": 295,
+    "rate": 0.0563945708277576,
+    "ci": [
+     0.05046252813894047,
+     0.06297769515262962
+    ]
+   },
+   "holdout": {
+    "n": 5180,
+    "conversions": 199,
+    "rate": 0.038416988416988415,
+    "ci": [
+     0.033515673845586166,
+     0.044002435504051376
+    ]
+   },
+   "simulated": true,
+   "seed": 42
+  }
+ },
+ {
+  "id": "search-null-control",
+  "cohorts": [
+   "src:google"
+  ],
+  "action": {
+   "kind": "pattern",
+   "patternId": "trust_bar"
+  },
+  "status": "approved",
+  "ramp": 50,
+  "measured": {
+   "verdict": "no_effect",
+   "upliftRel": -0.006300589446371725,
+   "pValue": 0.94416,
+   "served": {
+    "n": 4770,
+    "conversions": 244,
+    "rate": 0.05115303983228511,
+    "ci": [
+     0.045254153937037925,
+     0.05777431688612471
+    ]
+   },
+   "holdout": {
+    "n": 4332,
+    "conversions": 223,
+    "rate": 0.051477377654662974,
+    "ci": [
+     0.045285422045292595,
+     0.05846412452485886
+    ]
+   },
+   "simulated": true,
+   "seed": 42
+  }
+ }
+]

@@ -1,0 +1,129 @@
+[
+ {
+  "id": "proof-first-linkedin",
+  "cohorts": [
+   "src:linkedin"
+  ],
+  "action": {
+   "kind": "pattern",
+   "patternId": "reorder_proof_first"
+  },
+  "status": "approved",
+  "ramp": 50,
+  "success": {
+   "primary": "conversion",
+   "guardrails": [
+    "bounce",
+    "engaged"
+   ]
+  },
+  "ruling": {
+   "verdict": "no_effect",
+   "action": "keep_measuring",
+   "reason": "no significant difference, but rel CI [-8%…29%] still allows ±10% — underpowered, keep measuring",
+   "guardrails": [
+    {
+     "metric": "bounce",
+     "breached": false,
+     "servedRate": 0.3835,
+     "holdoutRate": 0.4294
+    },
+    {
+     "metric": "engaged",
+     "breached": false,
+     "servedRate": 0.5753,
+     "holdoutRate": 0.5021
+    }
+   ],
+   "simulated": true,
+   "seed": 42
+  }
+ },
+ {
+  "id": "null-control-google",
+  "cohorts": [
+   "src:google"
+  ],
+  "action": {
+   "kind": "pattern",
+   "patternId": "trust_bar"
+  },
+  "status": "approved",
+  "ramp": 50,
+  "success": {
+   "primary": "conversion",
+   "guardrails": [
+    "bounce",
+    "engaged"
+   ]
+  },
+  "ruling": {
+   "verdict": "no_effect",
+   "action": "keep_measuring",
+   "reason": "no significant difference, but rel CI [-29%…3%] still allows ±10% — underpowered, keep measuring",
+   "guardrails": [
+    {
+     "metric": "bounce",
+     "breached": false,
+     "servedRate": 0.4793,
+     "holdoutRate": 0.4864
+    },
+    {
+     "metric": "engaged",
+     "breached": false,
+     "servedRate": 0.3983,
+     "holdoutRate": 0.4024
+    }
+   ],
+   "simulated": true,
+   "seed": 42
+  }
+ },
+ {
+  "id": "popup-teaser-direct",
+  "cohorts": [
+   "ch:direct"
+  ],
+  "action": {
+   "kind": "pattern",
+   "patternId": "emphasize_primary_cta"
+  },
+  "status": "approved",
+  "ramp": 50,
+  "success": {
+   "primary": "cta_click",
+   "guardrails": [
+    "bounce",
+    "engaged",
+    "conversion"
+   ]
+  },
+  "ruling": {
+   "verdict": "guardrail_breach",
+   "action": "pause",
+   "reason": "guardrail bounce+engaged harmed — primary (cta_click) said \"win\", pausing regardless: a primary win may not buy guardrail damage",
+   "guardrails": [
+    {
+     "metric": "bounce",
+     "breached": true,
+     "servedRate": 0.5332,
+     "holdoutRate": 0.4426
+    },
+    {
+     "metric": "engaged",
+     "breached": true,
+     "servedRate": 0.3322,
+     "holdoutRate": 0.3807
+    },
+    {
+     "metric": "conversion",
+     "breached": false,
+     "servedRate": 0.0459,
+     "holdoutRate": 0.0456
+    }
+   ],
+   "simulated": true,
+   "seed": 42
+  }
+ }
+]

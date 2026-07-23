@@ -1597,7 +1597,7 @@
       ]
     },
     "hero": {
-      "headline": "Sök",
+      "headline": "6 veckor med gratis ljudböcker börjar här",
       "primaryCtaText": "Prova gratis nu",
       "primaryCtaIntent": "conversion",
       "aboveFold": true
@@ -1629,8 +1629,8 @@
     },
     "trustEvidence": {
       "rollup": {
-        "quote-block/accepted/container with attribution": 1,
-        "text-pattern/rejected/substring-fragment-mid-sentence": 1
+        "hierarchy-dedup/rejected/descendant of kept entry": 1,
+        "quote-block/accepted/container with attribution": 1
       }
     },
     "ctaSummary": {
@@ -1640,7 +1640,7 @@
     },
     "sectionOrder": [
       "header",
-      "content",
+      "testimonials",
       "cards",
       "cards",
       "cards",

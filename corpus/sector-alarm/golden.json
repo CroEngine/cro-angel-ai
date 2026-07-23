@@ -1383,26 +1383,26 @@
       }
     },
     "trustSummary": {
-      "total": 7,
-      "aboveFold": 3,
+      "total": 10,
+      "aboveFold": 2,
       "byType": {
-        "testimonial": 3,
+        "org_number": 1,
+        "testimonial": 6,
         "review_rating": 2,
-        "customer_logos": 1,
         "contact_info": 1
       }
     },
     "trustEvidence": {
       "rollup": {
         "hierarchy-dedup/rejected/descendant of kept entry": 2,
-        "quote-block/accepted/slide with attribution": 3,
-        "quote-block/rejected/no attribution signal": 13,
+        "quote-block/accepted/slide with attribution": 6,
+        "quote-block/rejected/no attribution signal": 10,
         "quote-block/rejected/text length 650": 1,
         "quote-block/rejected/text length 655": 1,
         "quote-block/rejected/text length 657": 1,
         "quote-block/rejected/text length 691": 1,
         "quote-block/rejected/text length 705": 1,
-        "text-pattern/rejected/substring-fragment-mid-sentence": 10
+        "text-pattern/rejected/incidental-keyword-in-long-prose": 8
       }
     },
     "ctaSummary": {
@@ -1416,11 +1416,11 @@
       "hero",
       "content",
       "content",
-      "content",
-      "testimonials",
       "testimonials",
       "content",
       "content",
+      "content",
+      "testimonials",
       "content",
       "faq",
       "content",
@@ -1441,7 +1441,7 @@
       "content",
       "content",
       "content",
-      "benefits",
+      "content",
       "content",
       "faq",
       "content",

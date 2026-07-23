@@ -8,9 +8,13 @@
 //   1. BOT-GRINDEN: headless Chromium har navigator.webdriver=true → snippeten
 //      vägrar boota; harness-flaggan (och bara den) öppnar test-sömmen.
 //   2. FULL APPLICERING (utan LCP-observer = tidig boot): variantens ops landar
-//      exakt — sektionen lyfts precis ett steg per op, rubriken byts till det
-//      verifierade värdet, markörer sätts, omkörning är idempotent och reset()
-//      återställer sidan BYTE-exakt.
+//      exakt — sektionen lyfts ett steg, rubriken byts till det verifierade
+//      värdet, markörer sätts, omkörning är idempotent och reset() återställer
+//      sidan BYTE-exakt.
+//   2b. REORDER-SJÄLVKOLL (ADR-001 steg 2): en flytt som INTE lyfter sektionen
+//      visuellt (DOM-ordning ≠ visuell ordning kring hjälten på den frysta
+//      sidan) fälls av självkollen ⇒ HELA varianten rullas tillbaka fail-closed,
+//      DOM byte-identisk med baslinjen — aldrig en halv variant.
 //   3. ALLT-ELLER-INGET: en op vars lokator inte finns på sidan ⇒ HELA
 //      varianten rullas tillbaka — DOM:en är byte-identisk med baslinjen.
 //
@@ -32,8 +36,28 @@ const minified = (
 let html = readFileSync("fixtures/real-sites/plausible-io.html", "utf8");
 html = html.replace(/<script[\s\S]*?<\/script>/gi, "");
 
+// Happy path: EN flytt som genuint lyfter (People-sektionen 4738→983 px) + en
+// retext. Båda ops landar. (Den frysta plausible-sidan har DOM-ordning ≠ visuell
+// ordning kring hjälten — ett andra steg skulle SÄNKA sektionen, se SELFCHECK.)
 const VARIANT = {
   id: "smoke",
+  segmentKey: "facebook·mobile·US",
+  ops: [
+    { op: "move_up", locator: { tag: "h2", text: "People ❤️ Plausible" } },
+    {
+      op: "set_text",
+      locator: { tag: "h1", text: "Easy to use and privacy-friendly" },
+      value: "Privacy-friendly Google Analytics alternative — trusted by thousands of companies.",
+    },
+  ],
+};
+// Självkollen (ADR-001 steg 2): ETT andra move_up på samma sektion landar den
+// FÖRE ett syskon som renderas visuellt LÄGRE ("relative container mx-auto"), så
+// sektionen SJUNKER 983→1227 px i stället för att lyftas. Självkollen ("steg den
+// uppåt?") fäller flytten ⇒ HELA varianten rullas tillbaka fail-closed; även den
+// verifierade retexten offras — kund-motorn visar aldrig en halv variant.
+const SELFCHECK_VARIANT = {
+  id: "smoke-selfcheck",
   segmentKey: "facebook·mobile·US",
   ops: [
     { op: "move_up", locator: { tag: "h2", text: "People ❤️ Plausible" } },
@@ -144,7 +168,7 @@ async function runSuite(label, snippet) {
     );
     const after = await state(page);
     check("variant rapporterad applicerad", applied.includes("variant:smoke"));
-    check("sektionen lyft EXAKT två steg", before.peopleIdx - after.peopleIdx === 2);
+    check("sektionen lyft ett steg", before.peopleIdx - after.peopleIdx === 1);
     check(
       "rubriken bytt till verifierat värde",
       after.h1.startsWith("Privacy-friendly Google Analytics"),
@@ -165,6 +189,37 @@ async function runSuite(label, snippet) {
     const restored = await state(page);
     check("reset återställer BYTE-exakt", restored.mainHtml === before.mainHtml);
     check("noll residue efter reset", (await page.evaluate(() => window.__angel.residue())) === 0);
+    await page.close();
+  }
+
+  // 2b) Reorder-självkollen (ADR-001 steg 2). SELFCHECK_VARIANT gör ETT extra
+  //     move_up som skulle SÄNKA sektionen (DOM-ordning ≠ visuell ordning kring
+  //     hjälten). Självkollen ("steg den uppåt?") fäller flytten ⇒ HELA varianten
+  //     fail-closed: ingen op landar (inte ens den giltiga retexten), DOM byte-
+  //     identisk med baslinjen, noll markörer/residue. Detta är regressionsgrinden
+  //     för porteringen — utan självkollen skulle sektionen dubbel-flyttas nedåt.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await boot(page, snippet, { harness: true });
+    const before = await state(page);
+    const applied = await page.evaluate(
+      (v) => window.__angel.apply({ adaptations: [], variant: v }),
+      SELFCHECK_VARIANT,
+    );
+    const after = await state(page);
+    check(
+      "självkoll: no-lift-flytt ⇒ varianten rapporteras EJ applicerad",
+      !applied.includes("variant:smoke-selfcheck"),
+    );
+    check(
+      "självkoll: fail-closed ⇒ DOM byte-identisk med baslinjen",
+      after.mainHtml === before.mainHtml,
+    );
+    check("självkoll: noll markörer (den giltiga första flytten offrad)", after.moved === 0 && after.retext === 0);
+    check(
+      "självkoll: noll residue (inget kvar att återställa)",
+      (await page.evaluate(() => window.__angel.residue())) === 0,
+    );
     await page.close();
   }
 

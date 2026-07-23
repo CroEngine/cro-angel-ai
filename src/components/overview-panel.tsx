@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { setVariantStatus } from "@/lib/dashboard/dashboard.functions";
+import { setVariantStatus, setVariantSuccess } from "@/lib/dashboard/dashboard.functions";
 import { parentSegmentKey, segmentDims } from "@/lib/segment-key";
 import { CompareOverlay, JourneysOverlay } from "./dashboard/overlays";
 import {
@@ -50,7 +50,9 @@ import type {
   SessionSummary,
 } from "@/lib/dashboard/aggregate";
 import type { VariantView } from "@/lib/dashboard/dashboard.functions";
+import type { JourneyMilestone } from "@/lib/dashboard/journey";
 import type { ArmVerdict } from "./dashboard/variant-stats";
+import type { SuccessSpec } from "@/adaptive-lab/metrics";
 
 export function OverviewPanel({
   site,
@@ -62,6 +64,7 @@ export function OverviewPanel({
   searches,
   variants,
   servingOn,
+  journey = [],
 }: {
   site: string;
   overview: Overview;
@@ -72,6 +75,7 @@ export function OverviewPanel({
   searches: SearchTerm[];
   variants: VariantView[];
   servingOn: boolean;
+  journey?: JourneyMilestone[];
 }) {
   // ── trädet: nycklarna ÄR hierarkin (grov→fin, prefix = förälder) ──────────
   const byKey = useMemo(() => new Map(segments.map((s) => [s.key, s])), [segments]);
@@ -153,6 +157,17 @@ export function OverviewPanel({
       queryClient.invalidateQueries({ queryKey: ["dashboard", site] });
     },
   });
+  // Kontraktsredigeraren: ägaren väljer primärt mått + guardrails per variant.
+  const contract = useMutation({
+    mutationFn: (args: { variantId: string; success: SuccessSpec }) =>
+      setVariantSuccess({ data: { site, ...args } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", site] });
+    },
+  });
+  const [editingContract, setEditingContract] = useState(false);
+  const [draftPrimary, setDraftPrimary] = useState("conversion");
+  const [draftGuards, setDraftGuards] = useState<string[]>(["bounce", "engaged"]);
   // Varje trafikpåverkande statusbyte bekräftas — en felklickning ska inte
   // starta eller stoppa ett A/B.
   const askStatus = (v: VariantView, next: "serving" | "winner" | "retired", label: string) => {
@@ -195,7 +210,17 @@ export function OverviewPanel({
 
   // Armtabellen delas mellan All sources (summerade armar) och ett valt
   // segment (variantens armar) — samma ärliga tre lägen.
-  const armsBlock = (verdict: ArmVerdict) => (
+  const METRIC_EN: Record<string, string> = {
+    conversion: "conversions",
+    form_submit: "form submits",
+    cta_click: "CTA clicks",
+    pricing_view: "pricing views",
+    engaged: "engagement",
+    deep_scroll: "deep scroll",
+    return_visit: "return visits",
+    bounce: "bounce",
+  };
+  const armsBlock = (verdict: ArmVerdict, success?: SuccessSpec | null) => (
     <div className="mt-6">
       <div className="mb-2.5 font-heading text-sm font-semibold">Adapted vs control</div>
       {verdict.arms ? (
@@ -243,10 +268,54 @@ export function OverviewPanel({
             </div>
           ) : (
             <div className="mt-3 text-[12.5px] text-stone-400">
-              Too few conversions on one of the arms yet — no probability is claimed until the math
-              holds.
+              {verdict.measured
+                ? verdict.measured.reason
+                : "Too few conversions on one of the arms yet — no probability is claimed until the math holds."}
             </div>
           )}
+          {verdict.state === "measured" && verdict.measured ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-stone-500">
+              <span
+                className="rounded-full px-2 py-0.5 font-semibold"
+                style={
+                  verdict.measured.verdict === "win"
+                    ? { background: "#d1fae5", color: "#065f46" }
+                    : verdict.measured.verdict === "loss"
+                      ? { background: "#fee2e2", color: "#991b1b" }
+                      : { background: "#f5f5f4", color: "#57534e" }
+                }
+              >
+                {verdict.measured.verdict.replace("_", " ")}
+              </span>
+              {verdict.measured.upliftRelCi ? (
+                <span className="tabular-nums">
+                  lift CI {Math.round(verdict.measured.upliftRelCi[0] * 100)}%…
+                  {Math.round(verdict.measured.upliftRelCi[1] * 100)}%
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {verdict.state === "measured" &&
+          verdict.measured?.verdict === "no_effect" &&
+          success?.mdeRel &&
+          verdict.measured.upliftRelCi &&
+          (verdict.measured.upliftRelCi[1] >= success.mdeRel ||
+            verdict.measured.upliftRelCi[0] <= -success.mdeRel) ? (
+            <div className="mt-2 text-[12px] text-stone-500">
+              The CI still allows ±{Math.round(success.mdeRel * 100)}% — underpowered, keep
+              measuring rather than calling it flat.
+            </div>
+          ) : null}
+          <div className="mt-2 text-[11.5px] text-stone-400">
+            {success
+              ? `Judged on ${METRIC_EN[success.primary] ?? success.primary} only (MDE ±${Math.round((success.mdeRel ?? 0.1) * 100)}%); ${
+                  success.guardrails.length
+                    ? success.guardrails.map((g) => METRIC_EN[g] ?? g).join(" & ") +
+                      " guard the test — they can pause it, never win it."
+                    : "no guardrails declared."
+                }`
+              : "Judged on conversions only; engagement and bounce guard the test — they can pause it, never win it (docs/metric-hierarchy.md)."}
+          </div>
         </>
       ) : (
         <div className="rounded-xl border border-dashed border-stone-200 px-[18px] py-5 text-[13px] text-stone-400">
@@ -259,6 +328,11 @@ export function OverviewPanel({
   // ── dashboardvyn ───────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
+      {/* Resan till bevisat (stanna-tills-bevisat): synlig tills första ärliga
+          domslutet — insamlingsperioden ska kännas som pågående mätning, inte
+          tystnad. Döljs när berättelsen är klar (verdict done). */}
+      <JourneyCard journey={journey} />
+
       {/* rad 1 — svarskortet + KPI:er */}
       <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
         <div
@@ -580,7 +654,99 @@ export function OverviewPanel({
                 </div>
               </div>
 
-              {armsBlock(selArms)}
+              {armsBlock(selArms, selVariant?.success)}
+              {selVariant ? (
+                <div className="mt-2">
+                  {!editingContract ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sp = selVariant.success ?? {
+                          primary: "conversion",
+                          guardrails: ["bounce", "engaged"],
+                        };
+                        setDraftPrimary(sp.primary);
+                        setDraftGuards([...sp.guardrails]);
+                        setEditingContract(true);
+                      }}
+                      className="text-[11.5px] font-semibold text-stone-500 underline decoration-dotted hover:text-stone-700"
+                    >
+                      Edit success contract
+                    </button>
+                  ) : (
+                    <div className="mt-1 flex flex-wrap items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-[12px]">
+                      <label className="font-semibold text-stone-600">Judged on</label>
+                      <select
+                        value={draftPrimary}
+                        onChange={(e) => {
+                          setDraftPrimary(e.target.value);
+                          setDraftGuards((g) => g.filter((x) => x !== e.target.value));
+                        }}
+                        className="rounded border border-stone-300 bg-white px-1.5 py-0.5"
+                      >
+                        {["conversion", "engaged", "deep_scroll", "cta_click", "form_submit"].map(
+                          (m) => (
+                            <option key={m} value={m}>
+                              {METRIC_EN[m] ?? m}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                      <span className="font-semibold text-stone-600">guarded by</span>
+                      {["bounce", "engaged", "cta_click", "form_submit", "conversion"]
+                        .filter((m) => m !== draftPrimary)
+                        .map((m) => {
+                          const on = draftGuards.includes(m);
+                          return (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() =>
+                                setDraftGuards((g) =>
+                                  on ? g.filter((x) => x !== m) : g.length >= 4 ? g : [...g, m],
+                                )
+                              }
+                              className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                                on
+                                  ? "border-emerald-600 bg-emerald-50 text-emerald-800"
+                                  : "border-stone-300 bg-white text-stone-500"
+                              }`}
+                            >
+                              {METRIC_EN[m] ?? m}
+                            </button>
+                          );
+                        })}
+                      <button
+                        type="button"
+                        disabled={contract.isPending}
+                        onClick={() =>
+                          contract.mutate(
+                            {
+                              variantId: selVariant.id,
+                              success: {
+                                primary: draftPrimary,
+                                guardrails: draftGuards,
+                                mdeRel: selVariant.success?.mdeRel ?? 0.1,
+                              },
+                            },
+                            { onSuccess: () => setEditingContract(false) },
+                          )
+                        }
+                        className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11.5px] font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingContract(false)}
+                        className="text-[11.5px] font-semibold text-stone-500 hover:text-stone-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               {/* varianterna som hör till valet — ägarens knappar bor här */}
               <div className="mt-6">
@@ -630,6 +796,20 @@ export function OverviewPanel({
                                     >
                                       {liftFmt(arms.liftRel)}
                                     </span>
+                                    {/* Ärlig tidshorisont (gap-audit Tier-1): när datat inte
+                                        räcker sägs det RAKT hur långt bort ett domslut är vid
+                                        sajtens verkliga trafik — i stället för en evig
+                                        "measuring" som ser ut som framsteg. */}
+                                    {v.abTest?.outcome === "insufficient_data" &&
+                                      v.abTest.prognosis && (
+                                        <span className="text-stone-400">
+                                          {" "}
+                                          · verdict needs ~
+                                          {v.abTest.prognosis.neededPerArm.toLocaleString()}/arm
+                                          {v.abTest.prognosis.estDaysAtSiteTraffic !== null &&
+                                            ` (≈${v.abTest.prognosis.estDaysAtSiteTraffic.toLocaleString()} days at current traffic)`}
+                                        </span>
+                                      )}
                                   </>
                                 ) : v.status === "verified" ? (
                                   "verified — waiting for your go-ahead"
@@ -653,7 +833,19 @@ export function OverviewPanel({
                                 style={{ background: "#fffbeb", color: "#b45309" }}
                                 title={v.heldReason}
                               >
-                                paused — source changed
+                                {v.heldReason?.startsWith("guardrail:")
+                                  ? "paused — guardrail harmed"
+                                  : "paused — source changed"}
+                              </span>
+                            ) : null}
+                            {v.ruling?.verdict === "guardrail_breach" ? (
+                              <span
+                                title={`Skyddsmått försämrat: ${v.ruling.breachedMetrics
+                                  .map((m) => METRIC_EN[m] ?? m)
+                                  .join(", ")} — primärvinst köper inte guardrail-skada.`}
+                                className="flex-none rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700"
+                              >
+                                guardrail harmed — pause recommended
                               </span>
                             ) : null}
                             {/* EN primär åtgärd per rad (design v3):
@@ -858,6 +1050,83 @@ export function OverviewPanel({
           onClose={() => setJourneysOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+/** Resan till bevisat — stanna-tills-bevisat-berättelsen (journey.ts).
+ *  Varje detaljrad är en mätning ur sajtens eget data; "current" bär den
+ *  fylliga raden, senaste "done" behåller sin (vad hände nyss + vad pågår).
+ *  När det ärliga domslutet finns är berättelsen klar och kortet försvinner —
+ *  då ÄR dashboardens riktiga siffror berättelsen. */
+function JourneyCard({ journey }: { journey: JourneyMilestone[] }) {
+  if (journey.length === 0) return null;
+  const verdictDone = journey.find((m) => m.id === "verdict")?.state === "done";
+  if (verdictDone) return null;
+  const doneCount = journey.filter((m) => m.state === "done").length;
+  const lastDoneIdx = journey.reduce((acc, m, i) => (m.state === "done" ? i : acc), -1);
+
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="flex items-baseline justify-between">
+        <div className="font-mono text-[10.5px] uppercase tracking-[.14em] text-emerald-600">
+          The road to proven
+        </div>
+        <div className="font-mono text-[10.5px] text-stone-400">
+          {doneCount} / {journey.length}
+        </div>
+      </div>
+      <ol className="mt-4 space-y-0">
+        {journey.map((m, i) => {
+          const showDetail = m.state === "current" || i === lastDoneIdx;
+          return (
+            <li key={m.id} className="relative flex gap-3 pb-3 last:pb-0">
+              {i < journey.length - 1 && (
+                <span
+                  className="absolute left-[7px] top-5 h-full w-px"
+                  style={{ background: m.state === "done" ? "#a7f3d0" : "#e7e5e4" }}
+                />
+              )}
+              <span
+                className="relative mt-1 flex h-[15px] w-[15px] flex-none items-center justify-center rounded-full text-[9px] font-bold"
+                style={{
+                  background:
+                    m.state === "done" ? "#047857" : m.state === "current" ? "#ecfdf5" : "#f5f5f4",
+                  color: m.state === "done" ? "#fff" : "#a8a29e",
+                  border: m.state === "current" ? "1.5px solid #047857" : "1.5px solid transparent",
+                }}
+              >
+                {m.state === "done" ? "✓" : ""}
+                {m.state === "current" && (
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-700" />
+                )}
+              </span>
+              <div className="min-w-0">
+                <div
+                  className={`text-[13px] font-semibold ${
+                    m.state === "upcoming"
+                      ? "text-stone-400"
+                      : m.state === "current"
+                        ? "text-stone-900"
+                        : "text-stone-600"
+                  }`}
+                >
+                  {m.title}
+                </div>
+                {showDetail && (
+                  <p
+                    className={`mt-0.5 text-[12.5px] leading-relaxed ${
+                      m.state === "current" ? "text-stone-600" : "text-stone-400"
+                    }`}
+                  >
+                    {m.detail}
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

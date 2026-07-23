@@ -6,9 +6,12 @@
 // how serving is switched on, the A/B split, the win criterion, baseline swap —
 // live elsewhere and do not affect this matching.
 //
-// It is deliberately NOT wired into the live decide path. Nothing here routes real
-// traffic; it is the library the eventual serving step calls. Serving stays OFF
-// until the owner turns it on per segment.
+// This pure matcher IS wired into the live decide path: src/routes/api/adaptive/
+// decide.ts calls serveDecision() behind the owner gates (serving_enabled +
+// domain-verified + billing). This file only picks WHICH verified variant matches;
+// the gating, A/B split, win criterion and baseline swap live elsewhere. Serving
+// stays OFF until the owner turns it on per segment. (Corrected 2026-07-22 — the
+// earlier "NOT wired" note was stale; see docs/adr-001-go-forward-engine.md.)
 //
 // The segment key format MIRRORS the dashboard rollup (aggregate.ts) exactly —
 // `channel·device·country·returning`, coarse→fine — so serving and segment
@@ -18,6 +21,7 @@
 import { fnv1a32 } from "../hash";
 import { fullSegmentKey, isSegmentPrefix, segmentDepth } from "../../lib/segment-key";
 
+import { cohortsSatisfied } from "../context";
 import type { RedesignOp } from "./generate";
 
 // Nyckelsemantiken bor i src/lib/segment-key.ts (task #89) — samma byggare/
@@ -94,6 +98,11 @@ export interface ServableVariant {
   ops: RedesignOp[];
   /** Browser-applicable ops (see ServeOp). Empty/invalid ⇒ never served. */
   serveOps?: ServeOp[];
+  /** Kohortkrav ur den ägargodkända regeln (labbets vokabulär ch:/src:/ret:/
+   *  seen:) — ALLA nycklar måste finnas på besökaren (OCH, samma semantik som
+   *  ruleMatches). Frånvarande/tom ⇒ ingen grindning. Servern härleder
+   *  besökarens nycklar själv (cohortsForVisitor) — inget klientförtroende. */
+  requiredCohorts?: string[];
 }
 
 /** Build the FULL coarse→fine segment key for a visitor — identical format to the
@@ -184,12 +193,19 @@ export interface ServeVerdict {
 export function serveDecision(
   cfg: { servingEnabled: boolean; rampPct: number },
   variants: ServableVariant[],
-  visitor: { site: string; path: string; segment: VisitorSegment },
+  visitor: { site: string; path: string; segment: VisitorSegment; cohorts?: string[] },
   visitorHash: string | null | undefined,
 ): ServeVerdict | null {
   if (!cfg.servingEnabled) return null;
   if (!visitorHash) return null;
-  const match = matchVariant(variants, visitor);
+  // Kohortgrinden körs FÖRE matchningen: en kohortscopad variant som inte
+  // passar besökaren försvinner ur kandidatlistan, så en grövre variant
+  // fortfarande kan serva (samma lån-styrka-tanke som segmentprefixen).
+  const have = visitor.cohorts ?? [];
+  const eligible = variants.filter(
+    (v) => !v.requiredCohorts?.length || cohortsSatisfied(v.requiredCohorts, have),
+  );
+  const match = matchVariant(eligible, visitor);
   if (!match) return null;
   const ops = match.serveOps ?? [];
   if (ops.length === 0 || !ops.every(serveOpValid)) return null;

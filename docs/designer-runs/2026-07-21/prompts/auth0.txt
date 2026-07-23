@@ -1,0 +1,230 @@
+SYSTEM:
+You are the layout solver for Angel Adaptive, a snippet that adapts third-party marketing pages using only safe, reversible CSS changes.
+
+GOAL: surface the page's PROOF section (testimonials) earlier — ideally right after the hero — on pages where the automatic solver refused. You receive a structural brief: the page's detected sections, the automatic attempt trail with named refusal reasons, and a "ladder" of candidate containers (from the common ancestor of hero+proof down to the proof's own parent), each with its direct children.
+
+MECHANICS (what a plan can do):
+- A reorder happens INSIDE one container: its direct children get CSS `order` values; the child carrying the proof moves after a chosen sibling (or to the front). The DOM never changes.
+- Block-stacked containers are promoted to flex-column (mode "flex") or single-column grid (mode "grid"). Grid stretches children like block flow and can avoid the width/height drift that flex promotion sometimes causes — prefer "grid" when the trail shows check-width-left or check-height at that container.
+- Every plan is re-verified on the live page: siblings must keep width/left (±2px) and height (±12px), no overlaps, page height within 3%, the proof must lift ≥200px, never land above the hero, never land <300px from the page top, and the moved child must not carry other detected sections. A failed check rolls back invisibly and you get the named reason.
+
+RULES:
+1. Copy selectors EXACTLY from the brief ("selector" fields). Never invent selectors.
+2. "move" must be the proof section itself or a child marked hasProof:true whose "sections" list contains ONLY the proof index (never a wrapper that also carries other sections).
+3. "container" must be a ladder container (or a listed child that is an ancestor of the proof). "after" must be a child selector FROM THAT SAME container, or null for front-of-group.
+4. Prefer the smallest move that still yields a meaningful lift. Landing right after the hero child is ideal; front-of-group is fine when the container sits below the hero.
+5. The refusal trail tells you what already failed — do not repeat a failed attempt unchanged; change the container, the anchor, or the mode.
+6. If no safe move exists (every child that carries the proof also carries other sections, or every container has <2 usable children), answer action "refuse" with a short rationale. Refusal is a correct answer.
+7. "rationale": 1-2 sentences, written for the site owner (why this improves the page for engaged non-clicking visitors).
+
+OUTPUT: one JSON object per the schema. action "refuse" → container/move/after/mode all null.
+
+USER:
+BRIEF:
+{
+ "name": "auth0",
+ "site": "auth0.com",
+ "url": "https://auth0.com/",
+ "page": {
+  "title": "Secure AI Agent & User Authentication | Auth0",
+  "docHeight": 8614,
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "sections": [
+  {
+   "i": 0,
+   "type": "header",
+   "heading": "Let's connect",
+   "selector": "header",
+   "top": 0,
+   "h": 106
+  },
+  {
+   "i": 1,
+   "type": "hero",
+   "heading": "Secure AI agents, humans, and whatever comes next",
+   "selector": "#block-0",
+   "top": 0,
+   "h": 896
+  },
+  {
+   "i": 2,
+   "type": "content",
+   "heading": "Auth0 is an easy to implement, adaptable authentication and ",
+   "selector": "main > section:nth-of-type(2)",
+   "top": 896,
+   "h": 609
+  },
+  {
+   "i": 3,
+   "type": "content",
+   "heading": "Integrate Auth0 in any application in just 5 minutes",
+   "selector": "main > section:nth-of-type(3)",
+   "top": 1505,
+   "h": 528
+  },
+  {
+   "i": 4,
+   "type": "content",
+   "heading": "Built for what you’re building",
+   "selector": "main > div",
+   "top": 2161,
+   "h": 3040
+  },
+  {
+   "i": 5,
+   "type": "testimonials",
+   "heading": "You’re in great company",
+   "selector": "main > section:nth-of-type(4)",
+   "top": 5201,
+   "h": 1160
+  },
+  {
+   "i": 6,
+   "type": "content",
+   "heading": "Read. Watch. Code. More.",
+   "selector": "main > section:nth-of-type(5)",
+   "top": 6361,
+   "h": 860
+  },
+  {
+   "i": 7,
+   "type": "content",
+   "heading": "Ready to start securing AI agents, delivering amazing user e",
+   "selector": "main > section:nth-of-type(6)",
+   "top": 7221,
+   "h": 420
+  },
+  {
+   "i": 8,
+   "type": "footer",
+   "heading": "",
+   "selector": "footer",
+   "top": 7733,
+   "h": 881
+  }
+ ],
+ "proofIndex": 5,
+ "heroIndex": 1,
+ "floorIndex": 1,
+ "autoTrail": "L0:check-height",
+ "ladder": [
+  {
+   "depth": 0,
+   "selector": "#__next > main:nth-of-type(1)",
+   "tag": "main",
+   "id": null,
+   "className": "",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 7,
+   "rect": {
+    "top": 0,
+    "h": 7641
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "section",
+     "id": "block-0",
+     "className": "sc-11664e9f-0 cMUpwB",
+     "selector": "#block-0",
+     "top": 0,
+     "h": 896,
+     "sections": [
+      1
+     ],
+     "hasProof": false,
+     "hasFloor": true
+    },
+    {
+     "idx": 1,
+     "tag": "section",
+     "id": null,
+     "className": "sc-3548f3c2-0 kypFyr",
+     "selector": "#__next > main:nth-of-type(1) > section:nth-of-type(2)",
+     "top": 896,
+     "h": 609,
+     "sections": [
+      2
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "section",
+     "id": null,
+     "className": "sc-be85499a-0 fWKSqi",
+     "selector": "#__next > main:nth-of-type(1) > section:nth-of-type(3)",
+     "top": 1505,
+     "h": 528,
+     "sections": [
+      3
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 3,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#__next > main:nth-of-type(1) > div:nth-of-type(1)",
+     "top": 2161,
+     "h": 3040,
+     "sections": [
+      4
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 4,
+     "tag": "section",
+     "id": null,
+     "className": "sc-9c0d6011-0 jWyqKL",
+     "selector": "#__next > main:nth-of-type(1) > section:nth-of-type(4)",
+     "top": 5201,
+     "h": 1160,
+     "sections": [
+      5
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 5,
+     "tag": "section",
+     "id": null,
+     "className": "sc-b6aa57a0-0 hXGzzJ",
+     "selector": "#__next > main:nth-of-type(1) > section:nth-of-type(5)",
+     "top": 6361,
+     "h": 860,
+     "sections": [
+      6
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 6,
+     "tag": "section",
+     "id": null,
+     "className": "sc-c0c3f7c9-0 dDlpHn",
+     "selector": "#__next > main:nth-of-type(1) > section:nth-of-type(6)",
+     "top": 7221,
+     "h": 420,
+     "sections": [
+      7
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  }
+ ]
+}

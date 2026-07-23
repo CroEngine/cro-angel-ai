@@ -1,0 +1,92 @@
+[
+ {
+  "id": "sentry-proof-first",
+  "siteId": "sentry",
+  "cohorts": [
+   "src:linkedin"
+  ],
+  "action": {
+   "kind": "planned_reorder",
+   "plan": {
+    "action": "reorder",
+    "container": "#main-content",
+    "move": "#main-content > div:nth-of-type(5)",
+    "after": "#main-content > div:nth-of-type(2)",
+    "mode": "grid"
+   }
+  },
+  "status": "proposed",
+  "ramp": 50,
+  "success": {
+   "primary": "conversion",
+   "guardrails": [
+    "bounce",
+    "engaged"
+   ],
+   "mdeRel": 0.1
+  },
+  "evidence": {
+   "rationale": "LinkedIn-ankomster är kollegor som utvärderar — peer-bevis väger tyngst. Utvecklarcitaten flyttas från ~55 % ner på sidan till direkt under hero + logotyper."
+  }
+ },
+ {
+  "id": "wrike-proof-first",
+  "siteId": "wrike",
+  "cohorts": [
+   "seen:pricing"
+  ],
+  "action": {
+   "kind": "planned_reorder",
+   "plan": {
+    "action": "reorder",
+    "container": "website-widgets-loader",
+    "move": "website-widget-loader:nth-of-type(8)",
+    "after": "website-widget-loader:nth-of-type(1)",
+    "mode": "grid"
+   }
+  },
+  "status": "proposed",
+  "ramp": 50,
+  "success": {
+   "primary": "conversion",
+   "guardrails": [
+    "bounce",
+    "engaged"
+   ],
+   "mdeRel": 0.1
+  },
+  "evidence": {
+   "rationale": "Besökare som redan sett priserna väger värde mot kostnad — kundkarusellen med Nvidia/Walmart-citaten möter dem direkt i stället för 6 600 px ner."
+  }
+ },
+ {
+  "id": "pandadoc-proof-first",
+  "siteId": "pandadoc",
+  "cohorts": [
+   "ch:search"
+  ],
+  "action": {
+   "kind": "planned_reorder",
+   "plan": {
+    "action": "reorder",
+    "container": "#main-content > div:nth-of-type(1) > div:nth-of-type(1)",
+    "move": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(5)",
+    "after": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1)",
+    "mode": "grid"
+   }
+  },
+  "status": "proposed",
+  "ramp": 50,
+  "success": {
+   "primary": "conversion",
+   "guardrails": [
+    "bounce",
+    "engaged"
+   ],
+   "mdeRel": 0.1
+  },
+  "evidence": {
+   "rationale": "Sök-ankomster jämför alternativ — Will O'Neils berättelse med mätbara resultat (92 % snabbare offertskapande) svarar på ”varför just PandaDoc” före featurelistan."
+  }
+ }
+]

@@ -188,6 +188,150 @@ describe("extractContentModel — HTML → content model loader", () => {
     expect(texts).not.toContain("Books we wrote");
     expect(texts).not.toContain("Employee handbook");
   });
+
+  it("flags containsTrustSignals on the section whose BODY carries the proof", () => {
+    // The "People love Acme" section's heading types it testimonials; its body
+    // also carries "12,500 paying customers" + "trusted by thousands" — so it is
+    // the section that holds the proof (the signal reorder needs).
+    const proofSecs = model.sections.filter((s) => s.containsTrustSignals);
+    expect(proofSecs.map((s) => s.heading)).toContain("People love Acme");
+    // the pricing / features sections carry no proof in their own body
+    expect(model.sections.find((s) => s.type === "pricing")?.containsTrustSignals).toBeFalsy();
+  });
+});
+
+// ADR-001 step 3: structural + proof section typing on the redesign (live-serve)
+// path. The heading classifier leaves most sections generic; these cues type a
+// section from its OWN BODY (ported from the lab's assembleInventory, adapted
+// from live-DOM querySelector to regex over the frozen section slice). Structure
+// and proof only ever FILL a generic section — a heading-assigned type is kept.
+describe("extractContentModel — structural + proof section typing", () => {
+  const wrap = (section: string) =>
+    `<main><h1>Hero headline here</h1><p>Intro.</p>${section}</main>`;
+  const typeOf = (section: string, heading: string) =>
+    extractContentModel(wrap(section)).sections.find((s) => s.heading === heading)?.type;
+
+  it("types a generic section built around a <video> as video", () => {
+    expect(
+      typeOf(
+        `<section><h2>See it live</h2><video src="/demo.mp4"></video></section>`,
+        "See it live",
+      ),
+    ).toBe("video");
+  });
+
+  it("types a YouTube/Vimeo embed section as video", () => {
+    expect(
+      typeOf(
+        `<section><h2>Watch the tour</h2><iframe src="https://www.youtube.com/embed/x"></iframe></section>`,
+        "Watch the tour",
+      ),
+    ).toBe("video");
+  });
+
+  it("types a section built around a comparison <table> (>=3 rows) as comparison", () => {
+    const t = `<section><h2>Side by side</h2><table><tr><th>Us</th><th>Them</th></tr><tr><td>Yes</td><td>No</td></tr><tr><td>Fast</td><td>Slow</td></tr></table></section>`;
+    expect(typeOf(t, "Side by side")).toBe("comparison");
+  });
+
+  it("types a section with two or more <details> as faq", () => {
+    const t = `<section><h2>Good to know</h2><details><summary>Q1</summary>A1</details><details><summary>Q2</summary>A2</details></section>`;
+    expect(typeOf(t, "Good to know")).toBe("faq");
+  });
+
+  it("types an integrations section (>=6 imgs + integration heading) as integrations", () => {
+    const imgs = Array.from({ length: 7 }, (_, i) => `<img src="/logo${i}.svg">`).join("");
+    expect(
+      typeOf(`<section><h2>Works with your tools</h2>${imgs}</section>`, "Works with your tools"),
+    ).toBe("integrations");
+  });
+
+  it("promotes a generic section whose BODY carries a social-proof count to stats", () => {
+    const t = `<section><h2>By the numbers</h2><p>Over 500,000 customers and 80 billion events tracked.</p></section>`;
+    const s = extractContentModel(wrap(t)).sections.find((x) => x.heading === "By the numbers");
+    expect(s?.type).toBe("stats");
+    expect(s?.containsTrustSignals).toBe(true);
+  });
+
+  it("promotes a generic section whose BODY says 'trusted by' to logos", () => {
+    const t = `<section><h2>In good company</h2><p>Trusted by Google, Meta and Spotify.</p></section>`;
+    const s = extractContentModel(wrap(t)).sections.find((x) => x.heading === "In good company");
+    expect(s?.type).toBe("logos");
+    expect(s?.containsTrustSignals).toBe(true);
+  });
+
+  it("never re-types a heading-classified section — pricing with a table stays pricing", () => {
+    const t = `<section><h2>Simple pricing</h2><table><tr><td>1</td></tr><tr><td>2</td></tr><tr><td>3</td></tr></table></section>`;
+    expect(typeOf(t, "Simple pricing")).toBe("pricing");
+  });
+
+  it("leaves a genuinely generic prose section untyped (no false structural type)", () => {
+    const t = `<section><h2>Our story</h2><p>We started in a garage and grew from there.</p></section>`;
+    expect(["section", "content"]).toContain(typeOf(t, "Our story"));
+  });
+
+  // Precision hardening (granskningsfynd 2026-07-22) — promotion must not fire
+  // on prose that merely brushes the trust vocabulary.
+  it("does NOT promote on a bare year ('Since 2019 customers…' is not a stat)", () => {
+    const t = `<section><h2>Our journey</h2><p>Since 2019 customers have trusted our roadmap reviews.</p></section>`;
+    const s = extractContentModel(wrap(t)).sections.find((x) => x.heading === "Our journey");
+    expect(s?.type).not.toBe("stats");
+    expect(s?.containsTrustSignals).toBeFalsy();
+  });
+
+  it("does NOT promote on ', customers' where the number is sentence-separated", () => {
+    const t = `<section><h2>Timeline</h2><p>Back in 2019, customers asked us for exports.</p></section>`;
+    expect(typeOf(t, "Timeline")).not.toBe("stats");
+  });
+
+  it("does NOT promote everyday prose 'used by developers' to logos", () => {
+    const t = `<section><h2>Under the hood</h2><p>A build tool used by developers who care about speed.</p></section>`;
+    const s = extractContentModel(wrap(t)).sections.find((x) => x.heading === "Under the hood");
+    expect(s?.type).not.toBe("logos");
+    expect(s?.containsTrustSignals).toBeFalsy();
+  });
+
+  it("still promotes a real thousands-separated count ('12 000 kunder')", () => {
+    const t = `<section><h2>Siffror</h2><p>Fler än 12 000 kunder använder oss varje dag.</p></section>`;
+    expect(typeOf(t, "Siffror")).toBe("stats");
+  });
+
+  it("does NOT type a prose section faq off a 'faq-teaser-link' class", () => {
+    const t = `<section><h2>More reading</h2><p><a class="faq-teaser-link" href="/faq">See our FAQ</a> for details.</p></section>`;
+    expect(typeOf(t, "More reading")).not.toBe("faq");
+  });
+
+  it("still types a real accordion component (class='accordion-item' ×2) as faq", () => {
+    const t = `<section><h2>Good to know</h2><div class="accordion"><div class="accordion-item">Q1</div><div class="accordion-item">Q2</div></div></section>`;
+    expect(typeOf(t, "Good to know")).toBe("faq");
+  });
+
+  it("does NOT type a Bloomberg iframe as video ('loom' is host-anchored)", () => {
+    const t = `<section><h2>In the news</h2><iframe src="https://www.bloomberg.com/embed/xyz"></iframe></section>`;
+    expect(typeOf(t, "In the news")).not.toBe("video");
+  });
+
+  it("still types a real Loom embed as video", () => {
+    const t = `<section><h2>See it in action</h2><iframe src="https://www.loom.com/embed/abc123"></iframe></section>`;
+    expect(typeOf(t, "See it in action")).toBe("video");
+  });
+
+  it("caps the LAST section's body at <footer> — footer proof cannot type it", () => {
+    const page = `<div><h1>Hero here</h1><p>Intro.</p><h2>Our approach</h2><p>Plain prose about process.</p></div>
+      <footer><p>Join 50,000 subscribers. Trusted by Google.</p></footer>`;
+    const m = extractContentModel(page); // no <main> — whole doc is the region
+    const s = m.sections.find((x) => x.heading === "Our approach");
+    expect(s?.type).not.toBe("stats");
+    expect(s?.type).not.toBe("logos");
+    expect(s?.containsTrustSignals).toBeFalsy();
+  });
+
+  it("flags hero-level proof (containsTrustSignals) without re-typing the hero", () => {
+    const page = `<main><h1>Ship faster</h1><p>Trusted by 10,000 teams worldwide.</p><section><h2>Features</h2><p>x</p></section></main>`;
+    const hero = extractContentModel(page).sections[0];
+    expect(hero.type).toBe("hero");
+    expect(hero.containsTrustSignals).toBe(true);
+  });
 });
 
 // Task #90: den delade EN+SV-vokabulären — en svensk sida ska klassificeras

@@ -2057,17 +2057,16 @@
       }
     },
     "trustSummary": {
-      "total": 5,
-      "aboveFold": 1,
+      "total": 4,
+      "aboveFold": 0,
       "byType": {
         "org_number": 1,
-        "customer_logos": 1,
         "contact_info": 3
       }
     },
     "trustEvidence": {
       "rollup": {
-        "text-pattern/rejected/substring-fragment-mid-sentence": 10
+        "text-pattern/rejected/incidental-keyword-in-long-prose": 4
       }
     },
     "ctaSummary": {
@@ -2086,7 +2085,7 @@
       "content",
       "content",
       "content",
-      "faq",
+      "content",
       "content",
       "content",
       "content",

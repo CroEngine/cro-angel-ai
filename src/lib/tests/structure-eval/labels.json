@@ -1,0 +1,218 @@
+{
+  "_doc": "Page-structure ground-truth benchmark. Two metrics: (1) section-type PRESENCE per (site x type) over the semantic section types, and (2) the PRIMARY CTA text. Labels are hand-marked from the RENDERED page (heading outline from scripts/structure-evidence.ts + the committed screenshot.jpg), INDEPENDENT of the sections/CTA classifiers we grade — including cells where the detector is wrong. sections: 1=a section of that semantic type is present on the page, 0=absent. primaryCta: the visible text of THE single main conversion action a visitor is steered to (hero button), or null when the page genuinely has no single primary CTA (news/editorial/marketplace landing). run.ts replays each capture, runs the real detectors via runPageAudit, and scores section presence P/R/F1 + primary-CTA pick accuracy vs these labels. Same capture set + CI-coverage rules as trust-eval (corpus/ + tracked fixtures/drift-survey/ score in CI; angel-sample/ are local-only). See README.md.",
+  "sectionTypes": ["hero", "features", "benefits", "pricing", "faq", "testimonials", "form"],
+  "captures": {
+    "hubspot": "corpus/hubspot/page.mhtml",
+    "linear": "corpus/linear/page.mhtml",
+    "hibob": "corpus/hibob/page.mhtml",
+    "supabase": "fixtures/drift-survey/saas-landing/supabase/page.mhtml",
+    "vercel": "fixtures/drift-survey/saas-landing/vercel/page.mhtml",
+    "loom": "fixtures/drift-survey/saas-landing/loom/page.mhtml",
+    "stripe": "fixtures/drift-survey/saas-landing/stripe/page.mhtml",
+    "rei": "fixtures/drift-survey/ecommerce/rei/page.mhtml",
+    "shopify-store-gymshark": "fixtures/drift-survey/ecommerce/shopify-store-gymshark/page.mhtml",
+    "patagonia": "fixtures/drift-survey/ecommerce/patagonia/page.mhtml",
+    "warby-parker": "fixtures/drift-survey/ecommerce/warby-parker/page.mhtml",
+    "verge": "fixtures/drift-survey/media/verge/page.mhtml",
+    "airbnb": "fixtures/drift-survey/spa/airbnb/page.mhtml",
+    "booking": "fixtures/drift-survey/i18n-routing/booking/page.mhtml",
+    "uber": "fixtures/drift-survey/i18n-routing/uber/page.mhtml",
+    "klarna": "fixtures/drift-survey/i18n-routing/klarna/page.mhtml",
+    "tradera": "fixtures/drift-survey/i18n-routing/tradera/page.mhtml",
+    "everlane": "fixtures/angel-sample/ecommerce/everlane/page.mhtml",
+    "trello": "fixtures/drift-survey/spa/trello/page.mhtml",
+    "lemonde": "fixtures/drift-survey/cookie-wall-eu/lemonde/page.mhtml",
+    "intercom": "fixtures/drift-survey/saas-landing/intercom/page.mhtml",
+    "notion": "fixtures/drift-survey/saas-landing/notion/page.mhtml",
+    "figma": "fixtures/angel-sample/saas-landing/figma/page.mhtml",
+    "glossier": "fixtures/drift-survey/ecommerce/glossier/page.mhtml",
+    "ikea-se": "fixtures/drift-survey/ecommerce/ikea-se/page.mhtml",
+    "shopify-store-allbirds": "fixtures/drift-survey/ecommerce/shopify-store-allbirds/page.mhtml",
+    "spotify": "fixtures/drift-survey/spa/spotify/page.mhtml",
+    "substack": "fixtures/drift-survey/iframe-heavy/substack/page.mhtml",
+    "dev-to": "fixtures/drift-survey/iframe-heavy/dev-to/page.mhtml",
+    "aftonbladet": "fixtures/drift-survey/cookie-wall-eu/aftonbladet/page.mhtml",
+    "spiegel": "fixtures/drift-survey/cookie-wall-eu/spiegel/page.mhtml",
+    "github-blog": "fixtures/drift-survey/iframe-heavy/github-blog/page.mhtml",
+    "stackoverflow": "fixtures/angel-sample/iframe-heavy/stackoverflow/page.mhtml",
+    "dn": "fixtures/drift-survey/cookie-wall-eu/dn/page.mhtml",
+    "svd": "fixtures/drift-survey/cookie-wall-eu/svd/page.mhtml"
+  },
+  "labels": {
+    "hubspot": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "Get a demo",
+      "_note": "SaaS. Hero banner 'Where go-to-market teams go to grow' + solid 'Get a demo'. Product/Hub cards + 'Built-in AI agents' = features. 'Remarkable results' w/ Adam Jones customer quote + G2 badges = testimonials. No on-page pricing table or FAQ (Pricing is a nav link). Screenshot-confirmed."
+    },
+    "linear": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "Sign up",
+      "_note": "SaaS. Hero 'The product development system...' + 'Sign up'/'Log in'. Feature sections (self-driving ops, define direction, review PRs, progress at scale). 2 testimonial quotes (trust-eval). Pricing/FAQ are nav links only."
+    },
+    "hibob": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "GET A FREE DEMO",
+      "_note": "SaaS HR. Hero 'Loved by people. Built for growth.' + 'GET A FREE DEMO'. 'All-in-one HR' capability cards = features. 'Loved by users. Proven by experts.' + customer stories = testimonials."
+    },
+    "supabase": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "Start your project",
+      "_note": "SaaS. Hero 'Build in a weekend, Scale to millions' + 'Start your project'. Product feature blocks (Database/Auth/Edge Functions/Storage/Realtime/Vector). 'Trusted by...' + community quotes = testimonials (trust-eval). No on-page pricing/FAQ."
+    },
+    "vercel": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": "Deploy Now",
+      "_note": "SaaS. Hero 'Agentic Infrastructure' + 'Deploy Now'/'Get a Demo'. 'Agents'/'Apps' feature sections. Logo wall but NO testimonial quotes (trust-eval testimonial=0). No on-page pricing/FAQ."
+    },
+    "loom": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "Get Loom for free",
+      "_note": "SaaS. Hero 'One video is worth a thousand words' + 'Get Loom for free'. 'So much more than a screen recorder' + 'Powerful features' = features. 6 blockquote testimonials (trust-eval)."
+    },
+    "stripe": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "Get started",
+      "_note": "SaaS. Hero 'Financial infrastructure to grow your revenue' + 'Get started'. 'Flexible solutions for every business model' capability cards = features. Hertz/URBN/Instacart case studies = testimonials. No on-page pricing/FAQ."
+    },
+    "rei": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "E-commerce homepage. Seasonal hero banner. Product/category grids, no feature/testimonial sections. Many co-equal 'Shop' links, no single dominant conversion CTA -> primaryCta null."
+    },
+    "shopify-store-gymshark": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": "Shop Now",
+      "_note": "E-commerce. Hero 'UP TO 50% OFF EVERYTHING' + single 'Shop Now'. Category/product grids only."
+    },
+    "patagonia": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":1},
+      "primaryCta": null,
+      "_note": "E-commerce. Hero 'Manage Your Microclimate'. 'Newsletter Signup' = form section. Category nav homepage, no single dominant CTA -> primaryCta null."
+    },
+    "warby-parker": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "E-commerce. Seasonal hero. Multiple co-equal CTAs (Shop eyeglasses / Shop Summer / Start with a quiz) -> primaryCta null. 'Warby Parker in the wild' is UGC, not testimonial quotes."
+    },
+    "verge": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "News site. Opens into article grid, no marketing hero/feature/testimonial sections. Negative control."
+    },
+    "airbnb": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "Marketplace SPA. Search bar in nav, opens straight into listing carousels ('Popular homes in Houston' at y255) — no marketing-headline hero. Search-driven, no conversion CTA -> null."
+    },
+    "booking": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "Travel. Search masthead WITH headline 'Find deals for any season' = hero. Property-type grids, trust stats (not a testimonials section). Search-driven -> primaryCta null."
+    },
+    "uber": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "Hero 'Go anywhere with Uber' + pickup/dropoff form. 'Explore what you can do with Uber' product/use-case cards = features. Form-driven hero ('See prices'/'Sign up'), no single dominant button -> primaryCta null."
+    },
+    "klarna": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "Sign up",
+      "_note": "Fintech. Hero 'Your money treated right' + 'Sign up'/'Get the app'. 'Explore our offering' (Payments/Cards/...) = features. 'Real reviews from real people' = testimonials."
+    },
+    "tradera": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "SE marketplace. Hero 'Sveriges största cirkulära marknad' then category/listing carousels. No feature/testimonial sections. Marketplace, no single CTA -> null."
+    },
+    "everlane": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "E-commerce. Hero 'MADE FOR SUMMER' / 'Everything you'll wear this season'. Co-equal 'SHOP NEW ARRIVALS'/'SHOP BEST SELLERS' -> null. ('Everything you...' is NOT a features section — keyword would FP.)"
+    },
+    "trello": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "Get Trello for free",
+      "_note": "SaaS. Hero 'Capture, organize, and tackle your to-dos' + 'Get Trello for free'. 'From message to action' + Integrations/Automation = features. 3 blockquote testimonials + outcome stats (trust-eval)."
+    },
+    "lemonde": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "News site (Le Monde). Lead-article headline then article lists. No marketing sections. Negative control."
+    },
+    "intercom": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":1,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "Start free trial",
+      "_note": "SaaS. Hero '...AI Agent era' + 'Start free trial'. 'A complete solution' + 'fully-featured helpdesk' = features. 'Transparent pricing' section IS on-page = pricing. 'A true partner' + customer quotes = testimonials."
+    },
+    "notion": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "Get Notion free",
+      "_note": "SaaS. Hero 'Where teams and agents Build together' + 'Get Notion free'. 'Automate repetitive work' / 'One search for everything' / 'Bring all your work together' = features. 'Trusted by teams that ship' + quote = testimonials."
+    },
+    "figma": {
+      "sections": {"hero":1,"features":1,"benefits":0,"pricing":0,"faq":0,"testimonials":1,"form":0},
+      "primaryCta": "Get started for free",
+      "_note": "SaaS. Hero 'Make anything possible, all in Figma' + 'Get started for free'. 'Prompt, code, and design' / 'Bring everyone together' / 'Ship products' = features. 2 blockquote testimonials (trust-eval). No on-page pricing/FAQ."
+    },
+    "glossier": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "E-commerce beauty. Hero 'Friends of Glossier Sale'. SHOP ALL / category grids. No single dominant CTA -> null."
+    },
+    "ikea-se": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "E-commerce SE. Hero 'Möbler, heminredning...' + 'REA på IKEA!'. 'Våra bästa priser' is a DEALS carousel, not a pricing-plan section (pricing=0; keyword /pris/ would FP). Category grids, no single CTA -> null."
+    },
+    "shopify-store-allbirds": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "E-commerce. Hero 'Wildly Comfortable. Super Natural.'. Co-equal 'SHOP WOMENS'/'SHOP MENS' -> primaryCta null. 'FOLLOW THE FLOCK' is a footer email, not a form section."
+    },
+    "spotify": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "Web-player app shell ('Your Library'/'Home'/'Trending songs'). No marketing hero/feature/testimonial sections. Negative control. ('Featured Charts' keyword would FP features.)"
+    },
+    "substack": {
+      "sections": {"hero":1,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": "Start your Substack",
+      "_note": "Thin capture but a clear hero headline 'Make money doing the work you believe in' + 'Start your Substack'. No other marketing sections surfaced. Recall test for a sparse hero."
+    },
+    "dev-to": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "Article feed. The '3.9M developers' line is a sidebar callout, not a hero. Post grid only. Negative control (article titles trigger benefits/features/faq keyword FPs)."
+    },
+    "aftonbladet": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "SE tabloid news. Article-headline grid, no marketing sections. Negative control."
+    },
+    "spiegel": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "DE news (Der Spiegel). Article headlines only. Negative control (pricing/features keyword hits are article-title FPs)."
+    },
+    "github-blog": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "GitHub BLOG feed (not the product homepage). Post cards by category. No marketing hero/feature/testimonial sections. Negative control."
+    },
+    "stackoverflow": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "Q&A feed (Newest Questions + question-title list + Collectives). No marketing hero/feature/testimonial sections. Negative control — question titles trip faq/benefits keywords; the v1.16 label gate + v1.17 structural testimonials should keep it clean. (angel-sample: local-only, not scored in CI.)"
+    },
+    "dn": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "SE news (Dagens Nyheter). Breaking-news strip + article grid (Senaste artiklarna). No marketing sections. Negative control — article titles trip pricing/faq/testimonials keywords."
+    },
+    "svd": {
+      "sections": {"hero":0,"features":0,"benefits":0,"pricing":0,"faq":0,"testimonials":0,"form":0},
+      "primaryCta": null,
+      "_note": "SE news (Svenska Dagbladet). Article grid (Senast publicerat) + stock tickers. No marketing sections. Negative control."
+    }
+  }
+}

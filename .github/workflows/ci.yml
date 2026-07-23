@@ -32,6 +32,15 @@ jobs:
       - name: Harvest bundle codegen pin
         run: bun run build:harvest && git diff --exit-code -- public/adaptive-harvest.js
 
+      # Kodgen-pinne 2 (ADR-001 steg 4): variant-appliceraren i public/
+      # adaptive.js är GENERERAD ur src/adaptive/runtime/applier.ts — källan
+      # är den enhetstestade TS-modulen, blocket mellan markörerna är artefakt.
+      # Utan pinnen kan en handredigering av blocket (eller en källändring
+      # utan regenerering) glida isär tyst — samma klass av fel som harvest-
+      # pinnen ovan fångar.
+      - name: Applier codegen pin
+        run: bun run gen:applier:check
+
       - name: Typecheck
         run: bun run typecheck
 
@@ -62,6 +71,19 @@ jobs:
 
       - name: Run snapshot diff tests
         run: bunx vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts
+
+      - name: Run extractor unit tests
+        run: >-
+          bunx vitest run
+          src/lib/tests/__tests__/audit-helpers.test.ts
+          src/lib/tests/snapshot/__tests__/fetch-records.test.ts
+          src/lib/tests/scripts/__tests__/sections-walker.test.ts
+          src/lib/tests/scripts/__tests__/ctas-logo.test.ts
+          src/lib/tests/scripts/__tests__/trust-signals.test.ts
+          src/lib/tests/scripts/__tests__/collect-visibility.test.ts
+
+      - name: Run trust-signal benchmark gate (committed corpus)
+        run: bunx vitest run src/lib/tests/trust-eval/__tests__/trust-eval.test.ts
 
       - name: Run archetype goal-kind tests
         run: bunx vitest run src/lib/tests/snapshot/__tests__/archetype-goals.test.ts

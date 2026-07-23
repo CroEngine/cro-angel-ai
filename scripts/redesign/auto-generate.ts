@@ -72,7 +72,14 @@ import {
   evaluateRenderGates,
   type RenderMeasurements,
 } from "../../src/adaptive/redesign/render-gates";
-import { captureLcpElement, measurePlan, runGatedAttempts, type MeasureOp } from "./measure";
+import {
+  captureLcpElement,
+  measurePlan,
+  runGatedAttempts,
+  toRenderMeasurements,
+  type MeasureOp,
+} from "./measure";
+import { viewportsForSegmentKey } from "../../src/adaptive/redesign/viewports";
 import type { ServeOp } from "../../src/adaptive/redesign/serve";
 import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
@@ -497,7 +504,16 @@ try {
       continue;
     }
 
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    // Viewport-grindning (gap-audit Tier-1 #3): segmentet avgör vilka
+    // viewportar som MÅSTE grinda varianten — ett grovt segment (ingen
+    // device-dimension) servar ALLA enheter och grindas därför i BÅDA
+    // ytterligheterna. Den kanoniska viewporten (index 0) kör retry-stegen +
+    // ägar-skärmdumparna; resten är bekräftelsepass på EXAKT samma ops.
+    const requiredViewports = viewportsForSegmentKey(plan.key);
+    const canonicalVp = requiredViewports[0];
+    const context = await browser.newContext({
+      viewport: { width: canonicalVp.width, height: canonicalVp.height },
+    });
     await context.route("**/*", (r) => r.abort());
     const page = await context.newPage();
     await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
@@ -559,6 +575,69 @@ try {
       continue;
     }
 
+    // Bekräftelsepass per ÅTERSTÅENDE viewport (gap-audit Tier-1 #3): samma
+    // attemptOps, INGEN egen retry-stege — det som servas är EN op-lista för
+    // hela segmentet, så exakt den listan måste klara varje enhets layout.
+    // Faller något pass hålls varianten tillbaka: hellre overifierad än
+    // servad till en enhet vi aldrig tittat på.
+    const confirmations: { label: string; verdict: string; reasons: string[] }[] = [];
+    for (const vp of requiredViewports.slice(1)) {
+      const cctx = await browser.newContext({
+        viewport: { width: vp.width, height: vp.height },
+      });
+      await cctx.route("**/*", (r) => r.abort());
+      const cpage = await cctx.newPage();
+      await cpage.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
+      await cpage.waitForTimeout(400);
+      await captureLcpElement(cpage);
+      await cpage.screenshot({
+        path: join(outDir, `${slug}-${vp.label}-before.jpg`),
+        type: "jpeg",
+        quality: 60,
+        fullPage: true,
+      });
+      const craw = await measurePlan(cpage, attemptOps, ctaTexts, false, ctaSelectors);
+      if (!craw.resolvedAll) {
+        confirmations.push({
+          label: vp.label,
+          verdict: "fail",
+          reasons: [`ops kunde inte upplösas i ${vp.label}-viewporten (fail closed)`],
+        });
+        await cctx.close();
+        break;
+      }
+      const cgate = evaluateRenderGates(toRenderMeasurements(craw));
+      confirmations.push({ label: vp.label, verdict: cgate.verdict, reasons: cgate.reasons });
+      if (cgate.verdict === "pass") {
+        // EFTER-skärmdump från exakt den grindade appliceringen — samma regel
+        // som den kanoniska viewporten.
+        await measurePlan(cpage, attemptOps, [], true);
+        await cpage.screenshot({
+          path: join(outDir, `${slug}-${vp.label}-after.jpg`),
+          type: "jpeg",
+          quality: 60,
+          fullPage: true,
+        });
+      }
+      await cctx.close();
+      if (cgate.verdict !== "pass") break;
+    }
+    const failedConfirm = confirmations.find((c) => c.verdict !== "pass");
+    if (failedConfirm) {
+      results.push({
+        path: plan.path,
+        key: plan.key,
+        verdict: "gate_fail",
+        reason: `${failedConfirm.label}-viewport: ${failedConfirm.reasons[0] ?? "grind föll"}`,
+        attempts,
+        confirmations,
+      });
+      console.log(
+        `  ${plan.path} × ${plan.key}: GRIND-FAIL i ${failedConfirm.label}-viewporten — segmentet servar alla enheter, alla måste klara. Hålls tillbaka.`,
+      );
+      continue;
+    }
+
     // Grindat OK → bygg det serverbara + evidensen.
     // Retry-lyftet blir en extra move_up-op per mål så plan/serve_ops/sanning matchar.
     const finalOps: RedesignOp[] = !extraLiftApplied
@@ -604,6 +683,14 @@ try {
         insertedVisible: last.measurements.insertedVisible ?? null,
         insertedRemoved: last.measurements.insertedRemoved ?? null,
         attempts: attempts.length,
+        // Viewport-grindningen (Tier-1 #3): vilka viewportar som grindade
+        // varianten (kanonisk först) + bekräftelsepassens utfall. Når hit
+        // bara när ALLA passerat — fältet dokumenterar täckningen.
+        viewportsChecked: requiredViewports.map((v) => v.label),
+        viewportConfirmations: confirmations.map((c) => ({
+          label: c.label,
+          verdict: c.verdict,
+        })),
       },
       // Självläkningens krok (ägarbeslut 2026-07-18): varje insatt citat
       // deklarerar sin källsida + exakta text, så drift-svepet kan hålla/
@@ -621,6 +708,14 @@ try {
           before: `/evidence/${site}/${slug}/before.jpg`,
           after: `/evidence/${site}/${slug}/after.jpg`,
           attempt1: null,
+          // Desktop-paret finns när ett desktop-bekräftelsepass kördes och
+          // passerade (grovt segment) — ägaren ska kunna SE båda lägena.
+          ...(confirmations.some((c) => c.label === "desktop" && c.verdict === "pass")
+            ? {
+                desktopBefore: `/evidence/${site}/${slug}/desktop-before.jpg`,
+                desktopAfter: `/evidence/${site}/${slug}/desktop-after.jpg`,
+              }
+            : {}),
         },
       },
     };

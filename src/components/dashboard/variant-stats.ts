@@ -2,8 +2,9 @@
 // Overview-panelen och dess overlays (utbrutna ur overview-panel.tsx i
 // sajt-genomgången 2026-07-18; ren flytt, ingen semantikändring).
 
-import { armStatValid, twoProportionZ } from "@/lib/dashboard/aggregate";
 import { isDimsPrefix, segmentDims, segmentKeysRelated } from "@/lib/segment-key";
+
+import { measureRule, type MeasureResult } from "@/adaptive-lab/measure";
 
 import type { VariantView } from "@/lib/dashboard/dashboard.functions";
 
@@ -49,24 +50,24 @@ export interface ArmVerdict {
   liftRel: number | null;
   prob: number | null;
   arms: Arms | null;
+  /** Hela det kalibrerade domslutet (adaptive-lab/measure): Wilson-CI per arm,
+   *  win/loss/no_effect/inconclusive-grindar, MDE-medveten reason. Bevisat med
+   *  planterade sanningar över 200 världar — se docs/metric-hierarchy.md. */
+  measured?: MeasureResult;
 }
 
 export function judgeArms(arms: Arms | null): ArmVerdict {
   if (!arms) return { state: "observing", liftRel: null, prob: null, arms: null };
-  const ok =
-    armStatValid(arms.variant.visits, arms.variant.conversions) &&
-    armStatValid(arms.control.visits, arms.control.conversions);
-  const crV = arms.variant.visits > 0 ? arms.variant.conversions / arms.variant.visits : 0;
-  const crC = arms.control.visits > 0 ? arms.control.conversions / arms.control.visits : 0;
-  const liftRel = crC > 0 ? (crV - crC) / crC : null;
-  if (!ok) return { state: "insufficient", liftRel, prob: null, arms };
-  const z = twoProportionZ(
-    arms.variant.conversions,
-    arms.variant.visits,
-    arms.control.conversions,
-    arms.control.visits,
+  // Samma kalibrerade matte som simulatorernas planterade sanningar: grindarna
+  // (300/arm, ≥10 konverteringar) vägrar domslut på tunn data — de gamla
+  // 30/5-trösklarna kallade vinnare långt före evidensen.
+  const m = measureRule(
+    { n: arms.variant.visits, conversions: arms.variant.conversions },
+    { n: arms.control.visits, conversions: arms.control.conversions },
   );
-  return { state: "measured", liftRel, prob: z === null ? null : probFromZ(z), arms };
+  if (m.verdict === "inconclusive")
+    return { state: "insufficient", liftRel: m.upliftRel, prob: null, arms, measured: m };
+  return { state: "measured", liftRel: m.upliftRel, prob: probFromZ(m.zScore), arms, measured: m };
 }
 
 /** Finaste servande/vinnande variant vars segmentnyckel är prefix av `key`

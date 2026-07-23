@@ -99,6 +99,35 @@ describe("family-source contract — extractEmbeddedFamilies output flows verbat
     const css = `@font-face { font-family: "GothamA-Book"; src: url("cid:x"); }`;
     expect(extractEmbeddedFamilies(mhtml(css))).toEqual(["GothamA-Book"]);
   });
+
+  test("cidOnly scopes to faces actually embedded — the size-gate canary contract", () => {
+    // A big site after the size-gate: the used family got a cid: face; an unused
+    // family was left external (relative src, like Apple) or absolute (like
+    // Salesforce). The canary must verify the embedded one and SKIP the dropped
+    // ones (they never render and can't resolve at file:// replay).
+    const css = `
+      @font-face { font-family: "Used"; src: url("cid:font-abc@snapshot"); }
+      @font-face { font-family: "DroppedRel"; src: url("/wss/fonts/x.woff2"); }
+      @font-face { font-family: "DroppedAbs"; src: url("https://cdn.example.com/y.woff2"); }
+    `;
+    // Default (every declared remote face) sees all three…
+    expect(extractEmbeddedFamilies(mhtml(css))).toEqual(["DroppedAbs", "DroppedRel", "Used"]);
+    // …cidOnly sees only the one with a cid: src → exactly the canary manifest.
+    expect(extractEmbeddedFamilies(mhtml(css), { cidOnly: true })).toEqual(["Used"]);
+  });
+
+  test("cidOnly is a no-op when every face is embedded (the corpus case)", () => {
+    // Small sites embed everything → every face is cid: → cidOnly === default.
+    // This is the property that keeps hubspot/linear canary manifests unchanged.
+    const css = `
+      @font-face { font-family: "A"; src: url("cid:1@s"); }
+      @font-face { font-family: "B"; src: url("cid:2@s"); font-weight: 700; }
+    `;
+    const all = extractEmbeddedFamilies(mhtml(css));
+    const cid = extractEmbeddedFamilies(mhtml(css), { cidOnly: true });
+    expect(cid).toEqual(all);
+    expect(cid).toEqual(["A", "B"]);
+  });
 });
 
 // ─── Behavior layer (Playwright) ────────────────────────────────────────────

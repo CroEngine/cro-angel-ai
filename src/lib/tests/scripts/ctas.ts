@@ -134,6 +134,9 @@ export const CTAS_SCRIPT = `(() => {
       hasMeaningfulSurfaceShared(cs.backgroundColor || '', cs.border || ''),
       inNavOrFooterShared(el),
       viewportH,
+      // Image-only buttonish anchor (logo-strip guard, B-notion): no own
+      // visible text, image content — computed here, decided in the shared rule.
+      !((el.innerText || el.value || '') + '').trim() && !!(el.querySelector && el.querySelector('img, svg, picture')),
     );
   }
 

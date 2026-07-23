@@ -1380,9 +1380,10 @@
       ]
     },
     "hero": {
-      "headline": "",
-      "primaryCtaText": "",
-      "aboveFold": false
+      "headline": "Citymassage",
+      "primaryCtaText": "Fler bilder",
+      "primaryCtaIntent": "unknown",
+      "aboveFold": true
     },
     "images": {
       "total": 177,
@@ -1401,27 +1402,28 @@
       }
     },
     "trustSummary": {
-      "total": 2,
-      "aboveFold": 1,
+      "total": 4,
+      "aboveFold": 0,
       "byType": {
         "review_rating": 1,
-        "customer_logos": 1
+        "testimonial": 3
       }
     },
     "trustEvidence": {
       "rollup": {
-        "text-pattern/rejected/substring-fragment-mid-sentence": 1
+        "card-wall/accepted/name/role card in 3+ wall": 3,
+        "text-pattern/rejected/incidental-keyword-in-long-prose": 1
       }
     },
     "ctaSummary": {
-      "total": 39,
-      "primary": 11,
-      "aboveFold": 8
+      "total": 30,
+      "primary": 8,
+      "aboveFold": 6
     },
     "sectionOrder": [
       "header",
       "aside",
-      "content",
+      "hero",
       "content",
       "content",
       "content",

@@ -1,0 +1,8 @@
+{
+ "action": "refuse",
+ "container": null,
+ "move": null,
+ "after": null,
+ "mode": null,
+ "rationale": "Child 6 of the main container grows exactly +175px under every promotion variant (grid, flex, stretch overrides with important priority) \u2014 its sizing is coupled to item context in a way CSS order cannot neutralize. Needs a DOM-move rework; refusing keeps the page untouched."
+}

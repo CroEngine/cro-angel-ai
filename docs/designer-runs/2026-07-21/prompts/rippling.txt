@@ -1,0 +1,361 @@
+SYSTEM:
+You are the layout solver for Angel Adaptive, a snippet that adapts third-party marketing pages using only safe, reversible CSS changes.
+
+GOAL: surface the page's PROOF section (testimonials) earlier — ideally right after the hero — on pages where the automatic solver refused. You receive a structural brief: the page's detected sections, the automatic attempt trail with named refusal reasons, and a "ladder" of candidate containers (from the common ancestor of hero+proof down to the proof's own parent), each with its direct children.
+
+MECHANICS (what a plan can do):
+- A reorder happens INSIDE one container: its direct children get CSS `order` values; the child carrying the proof moves after a chosen sibling (or to the front). The DOM never changes.
+- Block-stacked containers are promoted to flex-column (mode "flex") or single-column grid (mode "grid"). Grid stretches children like block flow and can avoid the width/height drift that flex promotion sometimes causes — prefer "grid" when the trail shows check-width-left or check-height at that container.
+- Every plan is re-verified on the live page: siblings must keep width/left (±2px) and height (±12px), no overlaps, page height within 3%, the proof must lift ≥200px, never land above the hero, never land <300px from the page top, and the moved child must not carry other detected sections. A failed check rolls back invisibly and you get the named reason.
+
+RULES:
+1. Copy selectors EXACTLY from the brief ("selector" fields). Never invent selectors.
+2. "move" must be the proof section itself or a child marked hasProof:true whose "sections" list contains ONLY the proof index (never a wrapper that also carries other sections).
+3. "container" must be a ladder container (or a listed child that is an ancestor of the proof). "after" must be a child selector FROM THAT SAME container, or null for front-of-group.
+4. Prefer the smallest move that still yields a meaningful lift. Landing right after the hero child is ideal; front-of-group is fine when the container sits below the hero.
+5. The refusal trail tells you what already failed — do not repeat a failed attempt unchanged; change the container, the anchor, or the mode.
+6. If no safe move exists (every child that carries the proof also carries other sections, or every container has <2 usable children), answer action "refuse" with a short rationale. Refusal is a correct answer.
+7. "rationale": 1-2 sentences, written for the site owner (why this improves the page for engaged non-clicking visitors).
+
+OUTPUT: one JSON object per the schema. action "refuse" → container/move/after/mode all null.
+
+USER:
+BRIEF:
+{
+ "name": "rippling",
+ "site": "www.rippling.com",
+ "url": "https://www.rippling.com/",
+ "page": {
+  "title": "Rippling: #1 Workforce Management System | HR, IT, Finance",
+  "docHeight": 10604,
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "sections": [
+  {
+   "i": 0,
+   "type": "header",
+   "heading": "See a demo",
+   "selector": "header[data-theme=\"berry\"]",
+   "top": 0,
+   "h": 80
+  },
+  {
+   "i": 1,
+   "type": "hero",
+   "heading": "See a demo",
+   "selector": "div:nth-of-type(1) > div > div:nth-of-type(2) > div:nth-of-type(1)",
+   "top": 0,
+   "h": 0
+  },
+  {
+   "i": 2,
+   "type": "form",
+   "heading": "AI that knows your company, and acts like it",
+   "selector": "div[data-ctfl-entry-id=\"4iHoqYz5WP61mmKqQyvTDJ\"]",
+   "top": 0,
+   "h": 800
+  },
+  {
+   "i": 3,
+   "type": "content",
+   "heading": "Start with the apps you need, or run them all together",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(3)",
+   "top": 1105,
+   "h": 1019
+  },
+  {
+   "i": 4,
+   "type": "testimonials",
+   "heading": "The workforce OS with intelligence built in",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(4)",
+   "top": 2124,
+   "h": 2293
+  },
+  {
+   "i": 5,
+   "type": "content",
+   "heading": "Go from prompt to productivity in seconds",
+   "selector": "div[data-ctfl-entry-id=\"6y69X2GvLHBwRT7muOIuNO\"]",
+   "top": 4417,
+   "h": 1093
+  },
+  {
+   "i": 6,
+   "type": "content",
+   "heading": "Work moves faster when everything runs on one system",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(6)",
+   "top": 5510,
+   "h": 1004
+  },
+  {
+   "i": 7,
+   "type": "testimonials",
+   "heading": "",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(7)",
+   "top": 6514,
+   "h": 783
+  },
+  {
+   "i": 8,
+   "type": "content",
+   "heading": "What’s new at Rippling",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(8)",
+   "top": 7297,
+   "h": 872
+  },
+  {
+   "i": 9,
+   "type": "content",
+   "heading": "",
+   "selector": "div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(9)",
+   "top": 8168,
+   "h": 236
+  },
+  {
+   "i": 10,
+   "type": "content",
+   "heading": "Get a demo—live or on demand",
+   "selector": "div[data-ctfl-entry-id=\"jvkGD1EWwDKnLEGADU7Y1\"]",
+   "top": 8405,
+   "h": 392
+  },
+  {
+   "i": 11,
+   "type": "footer",
+   "heading": "Platform",
+   "selector": "footer",
+   "top": 8796,
+   "h": 1808
+  }
+ ],
+ "proofIndex": 4,
+ "heroIndex": 1,
+ "floorIndex": 1,
+ "autoTrail": "L0:wrapper-carries-other-sections;L1:check-width-left",
+ "ladder": [
+  {
+   "depth": 0,
+   "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2)",
+   "tag": "div",
+   "id": null,
+   "className": "sava-layout tw-sava",
+   "display": "flex",
+   "flexDirection": "column",
+   "childCount": 3,
+   "rect": {
+    "top": 0,
+    "h": 10604
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1)",
+     "top": 0,
+     "h": 0,
+     "sections": [
+      0,
+      1
+     ],
+     "hasProof": false,
+     "hasFloor": true
+    },
+    {
+     "idx": 1,
+     "tag": "div",
+     "id": null,
+     "className": "sava-layout-content",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2)",
+     "top": 0,
+     "h": 8796,
+     "sections": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "tw-sava",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(3)",
+     "top": 8796,
+     "h": 1808,
+     "sections": [
+      11
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  },
+  {
+   "depth": 1,
+   "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2)",
+   "tag": "div",
+   "id": null,
+   "className": "sava-layout-content",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 10,
+   "rect": {
+    "top": 0,
+    "h": 8796
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto pt-margin-section-hero md:pt-margin-section-lg lg:pt",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1)",
+     "top": 0,
+     "h": 800,
+     "sections": [
+      2
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 1,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto pt-2xl pb-2xl sava-accolades-section flex justify-ce",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(2)",
+     "top": 800,
+     "h": 306,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto pt-4xl pb-margin-section-md sava-grid-list-section w",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(3)",
+     "top": 1105,
+     "h": 1019,
+     "sections": [
+      3
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 3,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto py-margin-section-md sava-river-flow-section bg-surf",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(4)",
+     "top": 2124,
+     "h": 2293,
+     "sections": [
+      4
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 4,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto py-margin-section-md sava-centered-highlight-section",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(5)",
+     "top": 4417,
+     "h": 1093,
+     "sections": [
+      5
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 5,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto py-margin-section-md sava-river-flow-section bg-surf",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(6)",
+     "top": 5510,
+     "h": 1004,
+     "sections": [
+      6
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 6,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto py-margin-section-md px-5 bg-surface-l0 overflow-x-c",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(7)",
+     "top": 6514,
+     "h": 783,
+     "sections": [
+      7
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 7,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto pt-margin-section-md pb-3xl sava-cards-section w-ful",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(8)",
+     "top": 7297,
+     "h": 872,
+     "sections": [
+      8
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 8,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto pt-0 pb-margin-section-md sava-accolades-section fle",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(9)",
+     "top": 8168,
+     "h": 236,
+     "sections": [
+      9
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 9,
+     "tag": "div",
+     "id": null,
+     "className": "mx-auto py-margin-section-md sava-cta-section bg-surface-l0 ",
+     "selector": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(10)",
+     "top": 8405,
+     "h": 392,
+     "sections": [
+      10
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  }
+ ]
+}

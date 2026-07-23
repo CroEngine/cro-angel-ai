@@ -45,6 +45,19 @@ fixtures/breadth-50/**/page.mhtml
 fixtures/breadth-50/**/page.pre-embed.mhtml
 fixtures/breadth-50/**/screenshot.jpg
 
+# angel breadth validation — transient scratch captures + report, never committed.
+fixtures/angel-sample/
+
+# Local secrets. The committed template is .env.example (names only, no values).
+# Real keys (BROWSERBASE_API_KEY, etc.) live in .env locally / in the runtime
+# environment — never committed.
+.env
+.env.*
+!.env.example
+
+# local Node bundles for the sandbox Browserbase runners (rebuilt on demand)
+*.node.mjs
+
 # Visual pre-flight / redesign-render evidence — generated screenshots + report,
 # reproduce via scripts/preflight.ts resp. scripts/lab/redesign-render.ts.
 preflight-out/
@@ -54,3 +67,13 @@ redesign-render-out/
 package-lock.json
 # Snapshot-diffens debug-avtryck vid fail — skrivs av snapshot.test.ts, aldrig commitbart.
 corpus/**/actual.json
+
+# Fleet page-map raw full-height captures — heavy + regenerable; the gallery
+# embeds downscaled copies, and manifest.json keeps the structured map.
+docs/fleet-map-2026-07-22/img/
+docs/fleet-shots-2026-07-22/img/
+docs/fleet-shots-2026-07-22/manifest.json
+
+# Lab/forsknings-bundlen — BYGGARTEFAKT (bun run build:lab), aldrig
+# kund-laddad och aldrig deployad: flyttad UT ur public/ (ADR-001 steg 4).
+artifacts/

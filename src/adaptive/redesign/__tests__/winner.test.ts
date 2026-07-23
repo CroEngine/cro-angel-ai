@@ -27,7 +27,10 @@ describe("evaluateWinner — recommendation-only, owner's cautious v1 gates", ()
   it("exactly at the volume thresholds passes the volume gate", () => {
     // 1000 visits / 50 conversions per arm, identical rates → not a winner, but
     // the failure must be significance, not volume.
-    const r = evaluateWinner(arm(WINNER_MIN_VISITS, WINNER_MIN_CONVERSIONS), arm(WINNER_MIN_VISITS, WINNER_MIN_CONVERSIONS));
+    const r = evaluateWinner(
+      arm(WINNER_MIN_VISITS, WINNER_MIN_CONVERSIONS),
+      arm(WINNER_MIN_VISITS, WINNER_MIN_CONVERSIONS),
+    );
     expect(r.outcome).toBe("no_winner");
     expect(r.reasons[0]).toMatch(/no significant difference/i);
   });
@@ -79,9 +82,11 @@ describe("evaluateWinner — recommendation-only, owner's cautious v1 gates", ()
 
   it("secondary metrics respect direction (higherIsBetter)", () => {
     const dropInGoodMetric: SecondaryMetric[] = [
-      { name: "return-visit rate", variantRate: 0.10, controlRate: 0.20, higherIsBetter: true },
+      { name: "return-visit rate", variantRate: 0.1, controlRate: 0.2, higherIsBetter: true },
     ];
-    expect(evaluateWinner(arm(5000, 350), arm(5000, 250), dropInGoodMetric).outcome).toBe("no_winner");
+    expect(evaluateWinner(arm(5000, 350), arm(5000, 250), dropInGoodMetric).outcome).toBe(
+      "no_winner",
+    );
     const stableSecondaries: SecondaryMetric[] = [
       { name: "form-abandon rate", variantRate: 0.205, controlRate: 0.2, higherIsBetter: false },
     ];
@@ -108,5 +113,127 @@ describe("evaluateWinner — recommendation-only, owner's cautious v1 gates", ()
       expect(r.reasons.length).toBeGreaterThan(0);
       expect(r.stats).toBeDefined();
     }
+  });
+});
+
+// ── evaluateWinnerWithGuards + promotionBlockReason (gap-audit Tier-1) ───────
+// The live path must never judge a variant without the guards the arms afford:
+// bounce/engaged always, and under the continuation proxy the GOAL itself.
+
+import {
+  evaluateWinnerWithGuards,
+  guardSecondariesFromArms,
+  promotionBlockReason,
+  type GuardArmCounts,
+} from "../winner";
+
+const counts = (
+  visits: number,
+  conversions: number,
+  continuations: number,
+  engaged: number,
+): GuardArmCounts => ({ visits, conversions, continuations, engaged });
+
+describe("guardSecondariesFromArms — the arms' own guard set", () => {
+  it("derives bounce (↓) and engaged (↑) rates from the counts", () => {
+    const s = guardSecondariesFromArms(counts(1000, 50, 700, 400), counts(1000, 50, 800, 500));
+    const bounce = s.find((x) => x.name === "bounce")!;
+    const engaged = s.find((x) => x.name === "engaged")!;
+    expect(bounce.higherIsBetter).toBe(false);
+    expect(bounce.variantRate).toBeCloseTo(0.3);
+    expect(bounce.controlRate).toBeCloseTo(0.2);
+    expect(engaged.higherIsBetter).toBe(true);
+    expect(engaged.variantRate).toBeCloseTo(0.4);
+    expect(engaged.controlRate).toBeCloseTo(0.5);
+  });
+});
+
+describe("evaluateWinnerWithGuards — false-winner protection on the live arms", () => {
+  it("blocks a conversion win when bounce degraded (the guard the dashboard never passed)", () => {
+    // Variant converts clearly better but bounces 38% vs control 30% (+27% rel).
+    const v = counts(3000, 240, 1860, 1500);
+    const c = counts(3000, 150, 2100, 1500);
+    const r = evaluateWinnerWithGuards(v, c, "conversion");
+    expect(r.outcome).toBe("no_winner");
+    expect(r.reasons.some((x) => /bounce/.test(x))).toBe(true);
+  });
+
+  it("recommends a clean conversion win when no guard degraded", () => {
+    const v = counts(3000, 240, 2100, 1500);
+    const c = counts(3000, 150, 2100, 1500);
+    const r = evaluateWinnerWithGuards(v, c, "conversion");
+    expect(r.outcome).toBe("recommend_winner");
+  });
+
+  it("continuation proxy: a proxy win over a SIGNIFICANTLY sinking goal is withdrawn", () => {
+    // Continuations lead (60% vs 50%) but goal conversions sink 2% vs 4% at
+    // real volume — the audit's exact false-winner case.
+    const v = counts(3000, 60, 1800, 1500);
+    const c = counts(3000, 120, 1500, 1500);
+    const r = evaluateWinnerWithGuards(v, c, "continuation");
+    expect(r.outcome).toBe("no_winner");
+    expect(r.reasons[0]).toMatch(/GOAL conversions are significantly WORSE/);
+  });
+
+  it("continuation proxy: an unproven goal does not block, but the caveat is explicit", () => {
+    // Proxy volume gates pass (engagement thresholds) while the goal is merely
+    // inconclusive (6 vs 5 conversions, z≈0.3) — the recommendation stands but
+    // must SAY the goal itself is unproven before the owner freezes the A/B.
+    const v = counts(400, 6, 280, 200);
+    const c = counts(400, 5, 200, 200);
+    const r = evaluateWinnerWithGuards(v, c, "continuation");
+    expect(r.outcome).toBe("recommend_winner");
+    expect(r.reasons.some((x) => /PROXY win/.test(x) && /unproven/.test(x))).toBe(true);
+  });
+
+  it("continuation proxy: goal noise at tiny counts never blocks (no coin-flip guard)", () => {
+    // 3 vs 5 goal conversions is noise, not evidence — with the proxy leading,
+    // the outcome must not be blocked by the goal guard (caveat only).
+    const v = counts(400, 3, 280, 200);
+    const c = counts(400, 5, 200, 200);
+    const r = evaluateWinnerWithGuards(v, c, "continuation");
+    expect(r.outcome).toBe("recommend_winner");
+  });
+});
+
+describe("promotionBlockReason — the serving→winner gate", () => {
+  const winnerEval = (
+    outcome: "recommend_winner" | "recommend_stop" | "no_winner",
+  ): import("../winner").WinnerEvaluation => ({
+    outcome,
+    reasons: [],
+    stats: { variantRate: 0, controlRate: 0, relativeLift: null, z: null },
+  });
+
+  it("refuses on a contract guardrail breach, naming the metrics", () => {
+    const r = promotionBlockReason(winnerEval("recommend_winner"), {
+      verdict: "guardrail_breach",
+      breachedMetrics: ["bounce", "engaged"],
+    });
+    expect(r).toMatch(/bounce, engaged/);
+    expect(r).toMatch(/freeze the A\/B/);
+  });
+
+  it("refuses on a contract primary loss", () => {
+    expect(
+      promotionBlockReason(winnerEval("no_winner"), { verdict: "loss", breachedMetrics: [] }),
+    ).toMatch(/significantly WORSE/);
+  });
+
+  it("refuses when the evaluation recommends stopping", () => {
+    expect(promotionBlockReason(winnerEval("recommend_stop"), null)).toMatch(/STOPPING/);
+  });
+
+  it("allows promotion when no harm is demonstrated — absence of proof is the owner's call", () => {
+    expect(
+      promotionBlockReason(winnerEval("no_winner"), {
+        verdict: "inconclusive",
+        breachedMetrics: [],
+      }),
+    ).toBeNull();
+    expect(promotionBlockReason(null, null)).toBeNull();
+    expect(
+      promotionBlockReason(winnerEval("recommend_winner"), { verdict: "win", breachedMetrics: [] }),
+    ).toBeNull();
   });
 });

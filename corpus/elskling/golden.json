@@ -1437,8 +1437,8 @@
     },
     "hero": {
       "headline": "Jämför elavtal och spara pengar",
-      "primaryCtaText": "Logga in",
-      "primaryCtaIntent": "navigation",
+      "primaryCtaText": "Se mina bästa priser",
+      "primaryCtaIntent": "conversion",
       "aboveFold": true
     },
     "images": {
@@ -1458,20 +1458,20 @@
       }
     },
     "trustSummary": {
-      "total": 6,
-      "aboveFold": 2,
+      "total": 10,
+      "aboveFold": 4,
       "byType": {
+        "social_proof_count": 2,
         "testimonial": 1,
-        "review_rating": 2,
+        "review_rating": 4,
         "contact_info": 3
       }
     },
     "trustEvidence": {
       "rollup": {
-        "hierarchy-dedup/rejected/descendant of kept entry": 6,
+        "hierarchy-dedup/rejected/descendant of kept entry": 9,
         "quote-block/accepted/container with attribution": 7,
-        "quote-block/rejected/text length 916": 1,
-        "text-pattern/rejected/substring-fragment-mid-sentence": 7
+        "quote-block/rejected/text length 916": 1
       }
     },
     "ctaSummary": {
@@ -1484,7 +1484,8 @@
       "form",
       "content",
       "content",
-      "pricing",
+      "content",
+      "testimonials",
       "content",
       "content",
       "content",
@@ -1492,7 +1493,6 @@
       "content",
       "content",
       "content",
-      "faq",
       "content",
       "footer"
     ]

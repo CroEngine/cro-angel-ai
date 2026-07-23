@@ -7111,7 +7111,7 @@
       ]
     },
     "hero": {
-      "headline": "Allt inom skönhet och hälsa",
+      "headline": "Skönhet",
       "primaryCtaText": "Deals",
       "primaryCtaIntent": "conversion",
       "aboveFold": true
@@ -7133,17 +7133,19 @@
       }
     },
     "trustSummary": {
-      "total": 1,
-      "aboveFold": 1,
+      "total": 7,
+      "aboveFold": 7,
       "byType": {
-        "customer_logos": 1
+        "testimonial": 7
       }
     },
     "trustEvidence": {
-      "rollup": {}
+      "rollup": {
+        "card-wall/accepted/name/role card in 3+ wall": 7
+      }
     },
     "ctaSummary": {
-      "total": 25,
+      "total": 22,
       "primary": 18,
       "aboveFold": 17
     },

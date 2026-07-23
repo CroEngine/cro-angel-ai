@@ -13,12 +13,12 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
   const PATTERNS = {
     testimonial:        /testimonial|kundr[öo]st|kundcitat|customer story|case study/i,
     review_rating:      /\\b(\\d[.,]\\d)\\s*\\/\\s*5\\b|\\b(\\d[.,]\\d)\\s*av\\s*5\\b|\\b(\\d[.,]\\d)\\s*out of\\s*5\\b/i,
-    trusted_by:         /\\b(trusted by|used by|anv[äa]nds av|joined by|loved by|trusted globally by)\\s+[\\d\\w]|featured in|som setts i|as seen in/i,
-    certification:      /\\bISO\\s?\\d{4,5}\\b|\\bGDPR\\b|\\bHIPAA\\b|\\bSOC ?2\\b|\\bPCI[- ]?DSS\\b|certifierad|certified/i,
-    guarantee:          /(\\d+)[- ]?(day|dagars?)\\s+(money[- ]back|n[öo]jd[- ]?kund|garanti|guarantee)|return policy|[öo]ppet k[öo]p|money[- ]back guarantee/i,
+    trusted_by:         /\\b(trusted by|used by|anv[äa]nds av|joined by|loved by|trusted globally by)\\s+[\\d\\w]/i,
+    certification:      /\\bISO\\s?\\d{4,5}\\b|\\bGDPR\\b|\\bHIPAA\\b|\\bSOC ?2\\b|\\bPCI[- ]?DSS\\b|certifierad|\\bcertified\\b(?!\\s+(?:experts?|partners?|professionals?|developers?|consultants?|specialists?|resellers?|trainers?|agenc))/i,
+    guarantee:          /(\\d+)[- ]?(day|dagars?)\\s+(money[- ]back|n[öo]jd[- ]?kund|garanti|guarantee|returns?)|\\b(?:returns?|refunds?)\\s+polic(?:y|ies)\\b|\\breturns?\\s*(?:&|and|\\/)\\s*exchanges?\\b|\\b(?:free|easy|hassle[- ]free)\\s+returns?\\b|[öo]ppet k[öo]p|money[- ]back guarantee|\\bguarantee[ds]?\\b|\\bwarranty\\b|\\bgaranti\\b/i,
     secure_payment:     /secure (checkout|payment)|s[äa]ker betalning|ssl secured|256[- ]bit/i,
-    press_mention:      /as seen in|as featured in|som setts i|i pressen|in the news/i,
-    social_proof_count: /\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d{4,})\\+?\\s*(customers|users|members|kunder|anv[äa]ndare|medlemmar|downloads|nedladdningar|reviews|recensioner)/i,
+    press_mention:      /as seen in|featured in|som setts i|i pressen|in the news/i,
+    social_proof_count: /\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d+(?:[.,]\\d+)?[KMBT]|\\d{4,})\\+?\\s*(?:[a-zåäö]+\\s+){0,2}(customers|users|members|kunder|anv[äa]ndare|medlemmar|downloads|nedladdningar|reviews|recensioner|compan(?:y|ies)|businesses|teams|brands|people|developers|organi[sz]ations|websites|sites|stores|merchants|subscribers|installs)/i,
     org_number:         /\\b\\d{6}-\\d{4}\\b|\\bVAT[: ]?[A-Z]{2}\\d{6,}\\b/i,
   };
 
@@ -279,11 +279,21 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     if (!leaf) continue;
     const text = (el.innerText || el.textContent || '').trim();
     if (!text || text.length > 600) continue;
+    let blockHadRating = false;
     for (const type in PATTERNS) {
       const rx = PATTERNS[type];
       rx.lastIndex = 0;
       const m = rx.exec(text);
       if (!m) continue;
+      // A "N reviews" volume inside a block that ALSO states an X/5 rating is the
+      // review COUNT (already captured as review_rating.reviewCount), not an
+      // independent social-proof stat. review_rating is evaluated first (PATTERNS
+      // order), so skip the redundant social_proof_count for the same block —
+      // otherwise a product card "1,306 reviews · 4.6/5" counts as two signals.
+      if (type === 'social_proof_count' && blockHadRating) {
+        logDecision('text-pattern', 'rejected', 'redundant-with-review_rating-same-block', el, text);
+        continue;
+      }
       // Sentence-boundary anchor: the match must start at text[0] (or after
       // [.!?]\\s) and end at [.!?] (with optional trailing whitespace) or at
       // block-end. Rejects mid-sentence substring matches like
@@ -294,9 +304,20 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       const startOk = start === 0 || /[.!?]\\s/.test(before2);
       const after = text.slice(end);
       const endOk = /^\\s*$/.test(after) || /^[.!?](\\s|$)/.test(after);
-      if (!startOk || !endOk) {
-        logDecision('text-pattern', 'rejected', 'substring-fragment-mid-sentence', el, text, {
-          matchedText: m[0], startOk: startOk, endOk: endOk,
+      // A SHORT block (badge, caption, label, heading) IS trust copy — the
+      // matched keyword is the whole point of the block, so accept it even when
+      // more words follow ("GDPR Compliant", "30-day money-back guarantee", "As
+      // seen in TechCrunch", "Trusted by 4,000+ companies", "Rated 4.8 out of 5
+      // by 2,341 customers"). The strict start+end sentence anchor only guards
+      // LONG prose blocks, where a keyword buried mid-paragraph is an incidental
+      // fragment, not a signal. Without the exemption the anchor silently
+      // dropped ~2/3 of real-world trust copy (every phrase with a trailing
+      // word). Every PATTERN already carries \\b word boundaries / a specific
+      // numeric format, so the keyword can't match inside another word.
+      const SHORT_TRUST_BLOCK = 120;
+      if (!(startOk && endOk) && text.length > SHORT_TRUST_BLOCK) {
+        logDecision('text-pattern', 'rejected', 'incidental-keyword-in-long-prose', el, text, {
+          matchedText: m[0], startOk: startOk, endOk: endOk, blockLen: text.length,
         });
         continue;
       }
@@ -312,6 +333,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
         });
       }
       push(type, text, el, 'text', extras);
+      if (type === 'review_rating') blockHadRating = true;
     }
   }
 
@@ -333,7 +355,11 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const cls = (el.className && typeof el.className === 'string') ? el.className.toLowerCase() : '';
     const isSlide = /slide|swiper|slick|embla|keen-slider|glide|splide/.test(cls)
       || (el.getAttribute && (el.getAttribute('aria-roledescription') || '').toLowerCase().indexOf('slide') !== -1);
-    const hasQuote = /[“"„«»]/.test(text) || /[—–-]\\s*[A-ZÅÄÖ]/.test(text);
+    // A quotation mark proves there is quoted text, NOT that the text is a
+    // customer endorsement — news headlines (»…«) and product/music carousels
+    // are full of quoted or dashed text. So a bare quote mark (or a hyphen) no
+    // longer qualifies a slide on its own; it must come with a real attribution.
+    const hasQuoteMark = /[“"„«»]/.test(text);
     const hasTestimonialClass = /testimonial|quote|review/.test(cls);
     // Strong author signal: an explicit <cite>/<figcaption> element with text,
     // OR a customer logo near the card. The previous broad selector
@@ -345,15 +371,17 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const hasLogoImg = !!el.querySelector('img[alt*="logo" i], img[class*="logo" i], [class*="logo" i] img');
 
     const meta = extractTestimonialMeta(el, text);
-    // Attribution: a real testimonial needs at least one strong attribution
-    // signal — a quote-mark, an explicit cite/figcaption, a customer logo, or
-    // a name+company extracted from the text (e.g. "— Jane Doe, Acme Corp").
+    // Attribution: a real testimonial names or marks its endorser. Require one
+    // of — an explicit testimonial/quote/review class (author intent), a
+    // cite/figcaption author element, a customer logo, or a person name parsed
+    // from a "— Jane Doe[, Acme]" author line. A quote mark alone is NOT
+    // sufficient (it fired on »…« news headlines and "- Title" music/product
+    // carousels). Blockquotes still pass on the tag below.
     const hasAttribution =
-      hasQuote ||
+      hasTestimonialClass ||
       hasStrongAuthor ||
       hasLogoImg ||
-      (!!meta.personName && !!meta.company) ||
-      hasTestimonialClass;
+      !!meta.personName;
 
     // Apply the attribution gate to BOTH slides and explicit testimonial/quote
     // containers (CMS authors sometimes reuse those class names for product
@@ -362,7 +390,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const isBlockquote = el.tagName === 'BLOCKQUOTE';
     if (!isBlockquote && !hasAttribution) {
       logDecision('quote-block', 'rejected', 'no attribution signal', el, text, {
-        isSlide: isSlide, hasQuote: hasQuote, hasStrongAuthor: hasStrongAuthor,
+        isSlide: isSlide, hasQuoteMark: hasQuoteMark, hasStrongAuthor: hasStrongAuthor,
         hasLogoImg: hasLogoImg, hasTestimonialClass: hasTestimonialClass,
         personName: meta.personName, company: meta.company,
       });
@@ -371,18 +399,136 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     logDecision('quote-block', 'accepted',
       isBlockquote ? 'blockquote tag' : (isSlide ? 'slide with attribution' : 'container with attribution'),
       el, text, {
-        isSlide: isSlide, hasQuote: hasQuote, hasStrongAuthor: hasStrongAuthor,
+        isSlide: isSlide, hasQuoteMark: hasQuoteMark, hasStrongAuthor: hasStrongAuthor,
         hasLogoImg: hasLogoImg, hasTestimonialClass: hasTestimonialClass,
         personName: meta.personName, company: meta.company, hasImage: meta.hasImage,
       });
     push('testimonial', text, el, 'text', meta);
   });
 
+  // Quote-less avatar-card testimonial WALLS (structural, v1.19). The modern
+  // tweet-style endorsement grid (plausible.io: 6 cards, avatar + name + role +
+  // prose, class "tweet-text") carries NO quote marks, NO testimonial/quote
+  // class, NO blockquote and NO stars — invisible to every pass above. Detect
+  // the STRUCTURE instead, precision-gated hard so article/product/team/comment
+  // cards can't ride along:
+  //   card   — compact box, text 60–600 chars, NOT inside <a>, no link with
+  //            >=30 chars of text inside (article/product cards link out;
+  //            testimonial cards don't), no commerce/price tokens, no
+  //            news/comment tokens (dates, "min read", reply/like/subscribe);
+  //   author — a NAME-shaped line (1–4 words, each Capitalized/initials, <=32
+  //            chars, no terminal punctuation) in the card's first/last lines,
+  //            PLUS a role/company line (CEO/founder/"at Acme"/@handle) or a
+  //            small square avatar image;
+  //   prose  — >=50 chars beyond the name/role lines (team-directory cards
+  //            have name+role but no prose);
+  //   wall   — >=3 qualifying sibling cards under one parent/grandparent (a
+  //            lone match is more likely a bio or press blurb than a wall).
+  (function cardTestimonialWalls() {
+    // Regex LITERAL on purpose: a new RegExp(string) here would add a third
+    // escaping layer under the outer template literal ("\\\\w") — the exact
+    // trap that cooked /\\s+/ into /s+/ in v1.16. Literals have only two.
+    const NAME_LINE_RX = /^(?:[A-Z][\\w\\u00c0-\\u017f.'\\u2019&-]{0,19}|[A-Z]{2,5})(?:\\s+(?:[A-Z][\\w\\u00c0-\\u017f.'\\u2019&-]{0,19}|&|[A-Z]{2,5})){0,3}$/;
+    const ROLE_LINE_RX = /\\b(ceo|cto|cfo|coo|cmo|founder|co-?founder|medgrundare|director|head of|vp\\b|vice president|president|manager|lead|engineer|architect|designer|marketer|owner|creator|author|analyst|consultant|developer|advocate|evangelist|scientist|specialist|strategist|grundare|vd|chef)\\b|\\bat\\s+[A-Z0-9]|@\\w{2,}/i;
+    // Noise tokens are ANCHORED (\\d+ likes, \\d+ days ago, follow us/@) — bare
+    // "like"/"ago"/"follow" are ordinary prose words and killed the motivating
+    // DHH card ("domains like web stats") on the first cut.
+    const CARD_NOISE_RX = /\\b(\\d+\\s*(?:min|minutes?)\\s+read|read more|l[äa]s mer|repl(?:y|ies)\\b|svara|\\d+\\s*likes?\\b|gilla|upvotes?|\\d+\\s*(?:minutes?|hours?|days?|weeks?|months?|years?)\\s+ago|posted (?:on|by)|published (?:on|by|in)|publicerad|kommentarer?|comments?\\b|subscribe|prenumerera|follow (?:us|me|@)|f[öo]lj (?:oss|p[åa])|sign up|view profile)\\b/i;
+    const CARD_COMMERCE_RX = /[$\\u20ac\\u00a3\\u00a5]\\s?\\d|\\b\\d[\\d  .,]*\\s?(?:kr|sek|usd|eur|gbp|nok|dkk)\\b|\\d+\\s*:\\-|\\b(?:add to (?:cart|bag|basket)|buy now|shop now|in stock|out of stock|sold out|free shipping|fri frakt|k[öo]p\\b|l[äa]gg i|rea\\b|sale\\b)/i;
+    const CARD_DATE_RX = /\\b\\d{1,2}\\s+(jan|feb|mar|apr|maj|may|jun|jul|aug|sep|okt|oct|nov|dec)\\w*\\b|\\b20\\d{2}-\\d{2}-\\d{2}\\b/i;
+
+    function smallAvatar(card) {
+      for (const img of card.querySelectorAll('img')) {
+        const r = img.getBoundingClientRect();
+        if (r.width >= 16 && r.width <= 120 && r.height >= 16 && r.height <= 120) {
+          const ar = r.width / Math.max(1, r.height);
+          if (ar >= 0.6 && ar <= 1.6) return true;
+        }
+      }
+      return false;
+    }
+    // Article/product cards link out with their TITLE (long link, dominant
+    // share of the card's text). A testimonial card may still carry a short
+    // author-attribution link ("DHH / Co-founder and CTO at 37signals", 35
+    // chars) — so gate on a single ≥60-char link OR links covering ≥40% of the
+    // card text, not on any ≥30-char link (which killed the motivating card).
+    function linkDominated(card, totalLen) {
+      let linkLen = 0;
+      for (const a of card.querySelectorAll('a')) {
+        const t = ((a.innerText || '').trim());
+        if (t.length >= 60) return true;
+        linkLen += t.length;
+      }
+      return totalLen > 0 && linkLen / totalLen >= 0.4;
+    }
+    const isRoleLine = (l) => l.length <= 90 && ROLE_LINE_RX.test(l);
+
+    const cands = [];
+    for (const el of document.querySelectorAll('div, li, article, figure')) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 220 || r.width > 760 || r.height < 90 || r.height > 700) continue;
+      const raw = (el.innerText || '').trim();
+      if (raw.length < 60 || raw.length > 600) continue;
+      if (el.closest('a')) continue;
+      if (linkDominated(el, raw.length)) continue;
+      if (CARD_COMMERCE_RX.test(raw) || CARD_NOISE_RX.test(raw) || CARD_DATE_RX.test(raw)) continue;
+      const lines = raw.split(/\\n+/).map((l) => l.trim()).filter(Boolean);
+      if (lines.length < 2) continue;
+      const edge = lines.slice(0, 3).concat(lines.slice(-3));
+      let nameLine = null;
+      for (const l of edge) {
+        if (l.length >= 2 && l.length <= 32 && !/[.!?]$/.test(l) && NAME_LINE_RX.test(l)) { nameLine = l; break; }
+      }
+      if (!nameLine) continue;
+      const hasRole = lines.some((l) => l !== nameLine && isRoleLine(l));
+      const hasAvatar = smallAvatar(el);
+      if (!hasRole && !hasAvatar) continue;
+      const proseLen = lines.filter((l) => l !== nameLine && !isRoleLine(l)).join(' ').length;
+      if (proseLen < 50) continue;
+      cands.push({ el: el, text: raw.replace(/\\s+/g, ' '), nameLine: nameLine, hasRole: hasRole, hasAvatar: hasAvatar, lines: lines });
+    }
+    // Innermost candidates only (a card and its wrapper can both size-qualify).
+    const inner = cands.filter((c) => !cands.some((o) => o !== c && c.el !== o.el && c.el.contains(o.el)));
+    // Wall requirement: >=3 members under one parent OR grandparent.
+    const groups = new Map();
+    for (const c of inner) {
+      const p1 = c.el.parentElement;
+      const p2 = p1 && p1.parentElement;
+      for (const key of [p1, p2]) {
+        if (!key) continue;
+        const arr = groups.get(key) || [];
+        arr.push(c);
+        groups.set(key, arr);
+      }
+    }
+    const accepted = new Set();
+    for (const members of groups.values()) {
+      const uniq = Array.from(new Set(members));
+      if (uniq.length < 3) continue;
+      for (const c of uniq) accepted.add(c);
+    }
+    for (const c of accepted) {
+      const roleLine = c.lines.find((l) => l !== c.nameLine && isRoleLine(l)) || null;
+      const meta = { personName: c.nameLine, hasImage: c.hasAvatar };
+      if (roleLine) {
+        const atM = roleLine.match(/\\bat\\s+(.+)$/i);
+        meta.company = (atM ? atM[1] : roleLine).trim().slice(0, 60);
+      }
+      logDecision('card-wall', 'accepted', 'name/role card in 3+ wall', c.el, c.text, {
+        personName: meta.personName, company: meta.company, hasImage: c.hasAvatar, hasRole: c.hasRole,
+      });
+      push('testimonial', c.text, c.el, 'card', meta);
+    }
+  })();
+
 
   // Big-number stat blocks (dl/dt/dd or stat/metric/counter containers where
   // the number and label live in separate sibling elements).
-  const STAT_KEYWORDS = /\\b(customers|users|members|downloads|reviews|recensioner|kunder|anv[äa]ndare|medlemmar|nedladdningar|rekryteringar|rekryterare|f[öo]retag|projekt|jobb|tj[äa]nster|ordrar|leveranser)\\b/i;
-  const NUM_RX = /^\\s*\\d{1,3}(?:[ ,.\\u00a0]\\d{3})+\\+?\\s*$|^\\s*\\d{4,}\\+?\\s*$/;
+  const STAT_KEYWORDS = /\\b(customers|users|members|downloads|reviews|recensioner|kunder|anv[äa]ndare|medlemmar|nedladdningar|rekryteringar|rekryterare|f[öo]retag|projekt|jobb|tj[äa]nster|ordrar|leveranser|subscribers|prenumeranter)\\b/i;
+  // Third branch (v1.19): compact K/M/B/T-suffix stats ("19k", "4.5M", "260B")
+  // — the plausible-style <dl> stats row writes them this way. Case-insensitive
+  // for the lowercase "19k" form.
+  const NUM_RX = /^\\s*\\d{1,3}(?:[ ,.\\u00a0]\\d{3})+\\+?\\s*$|^\\s*\\d{4,}\\+?\\s*$|^\\s*\\d+(?:[.,]\\d+)?\\s?[kmbt]\\+?\\s*$/i;
   const statSeen = new Set();
   document.querySelectorAll('dl, [class*="stat" i], [class*="metric" i], [class*="counter" i]').forEach((container) => {
     const containerText = (container.innerText || '').toLowerCase();
@@ -400,13 +546,27 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
       const p1 = numEl.parentElement;
       const p2 = p1 && p1.parentElement;
       const m1 = p1 && (p1.innerText || '').match(STAT_KEYWORDS);
-      const m2 = !m1 && p2 ? (p2.innerText || '').match(STAT_KEYWORDS) : null;
-      const m3 = (!m1 && !m2) ? containerText.match(STAT_KEYWORDS) : null;
+      // K/M/B-suffix stats must find their keyword CELL-LOCALLY (parent). The
+      // grandparent/container fallbacks span the whole stats row, which would
+      // stamp e.g. "subscribers" onto the sibling "260B pageviews" cell.
+      const isSuffixNum = /[kmbt]\\s*\\+?\\s*$/i.test(numText);
+      const m2 = (!m1 && !isSuffixNum && p2) ? (p2.innerText || '').match(STAT_KEYWORDS) : null;
+      const m3 = (!m1 && !isSuffixNum && !m2) ? containerText.match(STAT_KEYWORDS) : null;
       const km = m1 || m2 || m3;
+      if (isSuffixNum && !m1) continue;
       const label = km ? km[0] : '';
+      // Suffix stats scale to their real magnitude ("19k" -> 19000, "4.5M" ->
+      // 4500000); safeInt would strip the decimal point and the suffix.
+      let cnt = safeInt(numText);
+      if (isSuffixNum) {
+        const sf = (numText.match(/([kmbt])\\s*\\+?\\s*$/i) || [])[1];
+        const base = parseFloat(numText.replace(',', '.'));
+        const mult = sf ? { k: 1e3, m: 1e6, b: 1e9, t: 1e12 }[sf.toLowerCase()] : 1;
+        if (!isNaN(base) && mult) cnt = Math.round(base * mult);
+      }
       const display = label ? numText + ' — ' + label : numText;
       push('social_proof_count', display, numEl, 'text', {
-        reviewCount: safeInt(numText),
+        reviewCount: cnt,
       });
     }
   });
@@ -590,10 +750,26 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
 
 
-  // 2) Star icons clusters
+  // 2) Star icons clusters.
+  // CRITICAL precision filter: [class*="star"] also matches the CSS-utility
+  // tokens "items-start", "col-start-2", "row-start-1", "self-start",
+  // "justify-start" (every one contains the substring "star"), so on any
+  // Tailwind/grid site (vercel, patagonia, …) hundreds of layout cells were
+  // collected as "stars" and miscounted into phantom rating clusters
+  // (vercel reported a bogus "avg 1.33", patagonia "avg 0"). Drop a "star"
+  // candidate unless it carries a REAL star token — "star" NOT inside "start"
+  // (star-not-followed-by-t) — or a star aria-label. "rating"-class candidates
+  // pass through unchanged: utility CSS has no "rating" false friend, and
+  // tightening it would drop camelCase widgets like MUI's "MuiRating-icon".
+  const STAR_TOKEN = /(^|[^a-z])star(?!t)/i;
   const starNodes = Array.from(document.querySelectorAll(
     '[class*="star" i], [class*="rating" i], svg[aria-label*="star" i], i[class*="fa-star"]'
-  ));
+  )).filter((n) => {
+    const cls = (n.className && n.className.toString()) || '';
+    const aria = (n.getAttribute && n.getAttribute('aria-label')) || '';
+    if (/rating/i.test(cls)) return true;                 // unchanged from before
+    return STAR_TOKEN.test(cls) || STAR_TOKEN.test(aria); // "star" but not "start"
+  });
   const byParent = new Map();
   for (const n of starNodes) {
     const p = n.parentElement;
@@ -645,44 +821,164 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     }
   });
 
-  // 3) Customer logos — globally dedupe by normalized src
-  const allLogoImgs = Array.from(document.querySelectorAll('img'));
-  const seenSrcs = new Set();
-  const uniqueLogos = [];
-  for (const img of allLogoImgs) {
-    const r = img.getBoundingClientRect();
-    if (r.width < 40 || r.width > 240 || r.height < 20 || r.height > 120) continue;
-    const raw = img.getAttribute('src') || img.currentSrc || '';
-    if (!raw) continue;
-    const key = raw.split('?')[0];
-    if (seenSrcs.has(key)) continue;
-    seenSrcs.add(key);
-    uniqueLogos.push(img);
-  }
+  // 2d) Review-score widgets. A compact container that shows a DECIMAL score
+  // co-located with a review COUNT — booking.com "8.5 Very Good · 3,339
+  // reviews", "4.6 (1,200 reviews)", hotel/marketplace/e-commerce score cards.
+  // The score and label often live in separate child nodes, so the leaf
+  // text-scan (PATTERNS.review_rating, /5 only) misses them; scan compact
+  // containers here. Tightly gated: a decimal X.Y (or 10) AND "N reviews" in
+  // the SAME <=120-char block — both together are specifically a rating widget,
+  // so a bare review count ("3,339 reviews") or a stray decimal never fires.
+  // Nested duplicates collapse via the hierarchy-dedup pass below.
+  const SCORE_RX = /(?:^|[^\\d.,])([0-9][.,][0-9]|10(?:[.,]0)?)(?![\\d.,])/;
+  const REVIEWCOUNT_RX = /\\b(\\d{1,3}(?:[ ,.]\\d{3})+|\\d{2,})\\s*(reviews|recensioner|omd[öo]men|ratings|reviews?)\\b/i;
+  document.querySelectorAll('div, section, li, article, a, figure, span, p').forEach((el) => {
+    // Cheap textContent gate first (no layout): the count keyword must be
+    // present, so we only pay innerText on compact rating-context elements.
+    const tc = el.textContent || '';
+    if (tc.length > 400 || !/review|recension|omd[\\u00f6o]m|rating/i.test(tc)) return;
+    const t = (el.innerText || '').replace(/\\s+/g, ' ').trim();
+    if (t.length < 6 || t.length > 120) return;
+    const sm = t.match(SCORE_RX);
+    const rm = t.match(REVIEWCOUNT_RX);
+    if (!sm || !rm) return;
+    const val = safeFloat(sm[1]);
+    if (val === undefined || val < 1 || val > 10) return;
+    const extras = { rating: val, reviewCount: safeInt(rm[1]) };
+    if (val > 5) extras.ratingScale = 10; // /10 widget (booking-style); else /5
+    push('review_rating', t.slice(0, 80), el, 'widget', extras);
+  });
 
-  if (uniqueLogos.length >= 4) {
-    const vh = window.innerHeight;
-    const aboveFoldLogoCount = uniqueLogos.filter((i) => {
-      const r = i.getBoundingClientRect();
-      return r.top < vh && r.bottom > 0;
-    }).length;
-    const altText = uniqueLogos
-      .map((i) => (i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || ''))
-      .join(' ').toLowerCase();
-    const recognized = [];
-    for (const b of RECOGNIZED_BRANDS) if (altText.indexOf(b) >= 0) recognized.push(b);
-    const anchor = uniqueLogos[0];
-    push('customer_logos', String(uniqueLogos.length) + ' logo images', anchor, 'img_alt', {
-      logoCount: uniqueLogos.length,
-      aboveFoldLogoCount: aboveFoldLogoCount,
-      recognizedBrands: Array.from(new Set(recognized)).slice(0, 20),
-    });
+  // 3) Customer-logo walls (img + inline-svg, unified). A wall is a container
+  // holding >=4 logo-sized media — imgs (deduped by src) and/or inline svgs,
+  // which modern SaaS use for "trusted by" logos (no src/alt), invisible to a
+  // plain <img> scan. Emit ONE customer_logos for the largest wall that shows a
+  // real logo signal, so a media / e-commerce page's scattered article/product
+  // thumbnails don't read as a logo wall — the old global img count read 33
+  // article thumbnails on The Verge as customer logos. A wall must be a strip /
+  // compact grid (height <= 600; alone this drops a whole-page image scatter)
+  // AND carry one of: a logo/customer CONTEXT word on the container or an
+  // ancestor; most media carrying "logo" in src/alt; or a wordmark SHAPE (widths
+  // vary >=2x AND each wider-than-tall) — brand wordmarks that uniform
+  // article/product/icon grids never have.
+  const LOGO_CTX = /logo|customer|client|partner|brand|trusted|compan|integrat|powered|works with|used by|backed by/i;
+  // A wall of payment-method marks (visa/mastercard/klarna/swish…) is the
+  // checkout/secure-payment strip, NOT a customer-logo wall — and these icons
+  // often live under /assets/logos/ so they otherwise qualify via "logo" in the
+  // path. The secure_payment pass already emits them; skip such walls here.
+  const PAYMENT_WALL_RX = /\\b(visa|mastercard|maestro|amex|american express|paypal|klarna|swish|apple ?pay|google ?pay|discover|diners|unionpay|mobilepay|vipps|ideal|bancontact|sofort|giropay|sepa|mada)\\b/;
+  const inLogoBox = (r) => r.width >= 40 && r.width <= 240 && r.height >= 14 && r.height <= 120;
+  const logoVisible = (el) => {
+    const cs = window.getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity || '1') === 0) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 1 && r.height > 1;
+  };
+  const logoCands = [];
+  const seenLogoSrc = new Set();
+  for (const img of document.querySelectorAll('img')) {
+    if (!logoVisible(img)) continue;
+    const r = img.getBoundingClientRect();
+    if (!inLogoBox(r)) continue;
+    const src = (img.getAttribute('src') || img.currentSrc || '').split('?')[0];
+    if (!src || seenLogoSrc.has(src)) continue;
+    seenLogoSrc.add(src);
+    logoCands.push({ el: img, kind: 'img', r, hay: ((img.getAttribute('alt') || '') + ' ' + src).toLowerCase() });
+  }
+  for (const svg of document.querySelectorAll('svg')) {
+    if (!logoVisible(svg)) continue;
+    const r = svg.getBoundingClientRect();
+    if (!inLogoBox(r)) continue;
+    const cls = (svg.className && svg.className.toString && svg.className.toString()) || '';
+    logoCands.push({ el: svg, kind: 'svg', r, hay: ((svg.getAttribute('aria-label') || '') + ' ' + cls).toLowerCase() });
+  }
+  if (logoCands.length >= 4 && logoCands.length <= 600) {
+    const candSet = new Set(logoCands.map((c) => c.el));
+    // each candidate -> nearest ancestor (<=4 hops) holding >=4 candidates (the wall)
+    const wallFor = (el) => {
+      let p = el.parentElement, hops = 0;
+      while (p && p !== document.body && hops++ < 4) {
+        let c = 0;
+        for (const o of candSet) { if (p.contains(o)) { c++; if (c >= 4) break; } }
+        if (c >= 4) return p;
+        p = p.parentElement;
+      }
+      return null;
+    };
+    const byWall = new Map();
+    for (const cand of logoCands) {
+      const w = wallFor(cand.el);
+      if (!w) continue;
+      const arr = byWall.get(w) || [];
+      arr.push(cand);
+      byWall.set(w, arr);
+    }
+    const wallEls = Array.from(byWall.keys());
+    const outerWalls = wallEls.filter((a) => !wallEls.some((b) => b !== a && b.contains(a)));
+    const qualifying = [];
+    for (const wall of outerWalls) {
+      const members = byWall.get(wall);
+      if (!members || members.length < 4) continue;
+      const wr = wall.getBoundingClientRect();
+      if (wr.height > 600) continue; // strip/compact grid only; drops page-wide scatter
+      // Payment-method strip (visa/mastercard/klarna/swish…) -> secure_payment,
+      // not a customer-logo wall. Skip when most members are payment marks.
+      const paymentMembers = members.filter((m) => PAYMENT_WALL_RX.test(m.hay)).length;
+      if (paymentMembers >= 2 && paymentMembers * 2 >= members.length) continue;
+      const widths = members.map((m) => m.r.width);
+      const widthSpread = Math.max.apply(null, widths) / Math.max(1, Math.min.apply(null, widths));
+      const aspects = members.map((m) => m.r.width / Math.max(1, m.r.height)).sort((a, b) => a - b);
+      const medAspect = aspects[Math.floor(aspects.length / 2)];
+      let ctx = false, node = wall;
+      for (let i = 0; i < 4 && node && node !== document.body; i++) {
+        const hay = ((node.className && node.className.toString()) || '') + ' ' +
+          (node.id || '') + ' ' + ((node.getAttribute && node.getAttribute('aria-label')) || '');
+        if (LOGO_CTX.test(hay)) { ctx = true; break; }
+        node = node.parentElement;
+      }
+      const logoInPath = members.filter((m) => m.hay.indexOf('logo') >= 0).length;
+      // The pure-visual wordmark path (no logo/customer context word, no "logo"
+      // in markup) is the weakest signal — it fired on booking.com's 16px strip
+      // of 5 unlabeled sister-brand wordmarks. Require >=6 members there: a small
+      // unlabeled wordmark strip is more likely sister-brands / partners /
+      // decoration than a customer-logo wall. Context- or "logo"-backed walls
+      // still qualify at >=4.
+      const wordmarkShape = members.length >= 6 && widthSpread >= 2 && medAspect >= 1.8;
+      const accept = ctx || (logoInPath >= 3 && logoInPath * 2 >= members.length) || wordmarkShape;
+      if (!accept) continue;
+      const vh = window.innerHeight;
+      const wallHay = members.map((m) => m.hay).join(' ');
+      const recognized = [];
+      for (const b of RECOGNIZED_BRANDS) if (wallHay.indexOf(b) >= 0) recognized.push(b);
+      qualifying.push({
+        wall,
+        count: members.length,
+        aboveFoldLogoCount: members.filter((m) => m.r.top < vh && m.r.bottom > 0).length,
+        recognizedBrands: Array.from(new Set(recognized)).slice(0, 20),
+      });
+    }
+    // Emit ONE signal: a page has a logo wall or it doesn't. Anchor on the
+    // largest qualifying wall so a multi-strip site counts once, not per row.
+    if (qualifying.length) {
+      qualifying.sort((a, b) => b.count - a.count);
+      const top = qualifying[0];
+      push('customer_logos', String(top.count) + ' logo images', top.wall, 'logo_wall', {
+        logoCount: top.count,
+        aboveFoldLogoCount: top.aboveFoldLogoCount,
+        recognizedBrands: top.recognizedBrands,
+        wallCount: qualifying.length,
+      });
+    }
   }
 
   // 3b) Third-party review/award badges (G2, Capterra, Trustpilot, etc.)
   const BADGE_BRANDS = /\\bg2\\b|g2crowd|g2\\.com|capterra|trustradius|trustpilot|software ?advice|getapp|gartner peer insights|sourceforge|product hunt|crozdesk|finances ?online|tekpon/i;
   const BADGE_TITLES = /\\b(leader|high performer|momentum leader|easiest to do business with|best (value|support|relationship|usability|est\\.? roi)|top rated|best of \\d{4}|users love us|fastest implementation|rising star|category leader|customers' choice|editors' choice)\\b/i;
   const BADGE_PATH = /\\/badges?\\/(file\\/)?/i;
+  // App-store / download badges also live under /badges/ paths but are NOT
+  // third-party REVIEW badges — counting them inflated trust (rei's Google-Play
+  // + App-Store buttons read as review badges). Exclude them up front.
+  const APP_STORE_BADGE = /google.?play|app.?store|apple.?store|microsoft store|windows store|chrome.?web.?store|get.?it.?on|download.?on|f-?droid|galaxy store|app gallery/i;
 
   const allBadgeImgs = Array.from(document.querySelectorAll('img[alt], img[src]'));
   const badgeRects = new Map();
@@ -694,6 +990,7 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
     const alt = i.getAttribute('alt') || '';
     const src = i.getAttribute('src') || '';
     const hay = (alt + ' ' + src).toLowerCase();
+    if (APP_STORE_BADGE.test(hay)) return false;
     if (BADGE_BRANDS.test(hay)) return true;
     if (BADGE_PATH.test(src)) return true;
     if (BADGE_TITLES.test(alt) && r.height >= r.width * 0.8) {
@@ -741,15 +1038,30 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
 
 
-  // 4) Payment logos
+  // 4) Payment-method logos. A genuine "we accept …" strip lists SEVERAL
+  // providers, so require >=2 DISTINCT payment brands. Stripe/Klarna/PayPal/
+  // Apple-Pay/Google-Pay also appear as marquee CUSTOMER logos, so a lone one is
+  // far more likely a customer logo than a checkout trust badge — counting it
+  // inflated trust (a single Stripe logo became "1 payment provider logos").
+  // Single-provider secure-payment claims are still covered by the textual
+  // PATTERNS.secure_payment scan ("secure checkout" / "SSL" / "256-bit").
   const paymentRx = /(visa|mastercard|amex|american express|paypal|stripe|klarna|swish|apple pay|google pay)/i;
   const paymentImgs = Array.from(document.querySelectorAll('img[alt], img[src]')).filter((i) => {
+    const r = i.getBoundingClientRect();
+    if (r.width < 16 || r.height < 8) return false;
     const alt = (i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || '');
     return paymentRx.test(alt);
   });
-  if (paymentImgs.length > 0) {
+  const paymentBrands = new Set();
+  for (const i of paymentImgs) {
+    const m = ((i.getAttribute('alt') || '') + ' ' + (i.getAttribute('src') || '')).match(paymentRx);
+    if (m) paymentBrands.add(m[0].toLowerCase());
+  }
+  if (paymentBrands.size >= 2) {
     const parent = paymentImgs[0].closest('div, section, footer, ul') || paymentImgs[0].parentElement;
-    if (parent) push('secure_payment', paymentImgs.length + ' payment provider logos', parent, 'img_alt');
+    if (parent) push('secure_payment', paymentImgs.length + ' payment provider logos', parent, 'img_alt', {
+      paymentBrands: Array.from(paymentBrands).slice(0, 10),
+    });
   }
 
   // 5) Contact info
@@ -842,6 +1154,16 @@ export const TRUST_SIGNALS_SCRIPT = `(() => {
 
     const fullCardText = (cardEl.innerText || '').trim().replace(/\\s+/g, ' ');
     if (fullCardText.length < 40 || fullCardText.length > 600) continue;
+
+    // Product cards in a carousel carry an aggregate star rating too, but they
+    // are not testimonials. Reject anything that reads as commerce — a price
+    // token (incl. SEK "99:-"), a sale/price label, or an add-to-cart
+    // affordance — so "★4.4 GREJSIMOJS … 99:-" is not derived as a quote.
+    const COMMERCE_RX = /[$€£¥]\\s?\\d|\\b\\d[\\d  .,]*\\s?(?:kr|sek|usd|eur|gbp|nok|dkk)\\b|\\d+\\s*:\\-|\\b(?:add to (?:cart|bag|basket)|buy now|shop now|in stock|out of stock|sold out|free shipping|fri frakt|k[öo]p\\b|l[äa]gg i|s[äa]nkt pris|tidigare.{0,6}pris|l[äa]gsta pris|ordinarie pris|rea\\b|sale\\b)/i;
+    if (COMMERCE_RX.test(fullCardText)) {
+      logDecision('stars-anchor', 'rejected', 'commercial/product card', cardEl, fullCardText);
+      continue;
+    }
 
     const meta = extractTestimonialMeta(cardEl, fullCardText);
 

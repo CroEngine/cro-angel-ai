@@ -1,0 +1,6375 @@
+{
+ "results": [
+  {
+   "name": "monday",
+   "url": "https://monday.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 60% of the Fortune 500"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 60% of the Fortune 500"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 60% of the Fortune 500"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 60% of the Fortune 500"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 5,
+    "ctas": 79,
+    "sections": 13,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "asana",
+   "url": "https://asana.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "A leader in Work Management and OKR Software with more than "
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "A leader in Work Management and OKR Software with more than "
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "A leader in Work Management and OKR Software with more than "
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "A leader in Work Management and OKR Software with more than "
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 39,
+    "sections": 12,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "clickup",
+   "url": "https://clickup.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "RATED 4.7/5 BY 10,000+ USERS ON G2"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"The Best AI is\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "RATED 4.7/5 BY 10,000+ USERS ON G2"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"The Best AI is\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "RATED 4.7/5 BY 10,000+ USERS ON G2"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "RATED 4.7/5 BY 10,000+ USERS ON G2"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"The Best AI is\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 21,
+    "ctas": 69,
+    "sections": 12,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "calendly",
+   "url": "https://calendly.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up with Google\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up with Google\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up with Google\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 1,
+    "ctas": 25,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "zapier",
+   "url": "https://zapier.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the world's best companies"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free with email\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the world's best companies"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free with email\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the world's best companies"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the world's best companies"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free with email\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 10,
+    "ctas": 93,
+    "sections": 13,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "oneflow",
+   "url": "https://oneflow.com/",
+   "ok": false,
+   "runs": [],
+   "inventory": {
+    "trust": 29,
+    "ctas": 30,
+    "sections": 18,
+    "hasPricing": false
+   },
+   "error": "page.evaluate: TypeError: Cannot read properties of undefined (reading 'events')"
+  },
+  {
+   "name": "scrive",
+   "url": "https://www.scrive.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 13 000+ customers"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Why Scrive\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 13 000+ customers"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Why Scrive\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 13 000+ customers"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 13 000+ customers"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Why Scrive\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 27,
+    "sections": 38,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "voyado",
+   "url": "https://voyado.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Rated 4.7/5 on G2"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Explore the CX Suite\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Rated 4.7/5 on G2"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Explore the CX Suite\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Rated 4.7/5 on G2"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Rated 4.7/5 on G2"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Explore the CX Suite\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 2,
+    "ctas": 14,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "funnel",
+   "url": "https://funnel.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"GET A DEMO\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"GET A DEMO\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"GET A DEMO\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 6,
+    "ctas": 17,
+    "sections": 24,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "epidemicsound",
+   "url": "https://www.epidemicsound.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Change cookie settings\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Change cookie settings\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Change cookie settings\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 8,
+    "ctas": 18,
+    "sections": 13,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "pleo",
+   "url": "https://www.pleo.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 0,
+    "ctas": 3,
+    "sections": 4,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "dixa",
+   "url": "https://www.dixa.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by brands across 42 countries"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by brands across 42 countries"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by brands across 42 countries"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by brands across 42 countries"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a demo\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 13,
+    "ctas": 16,
+    "sections": 12,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "whereby",
+   "url": "https://whereby.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by leading companies like"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by leading companies like"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by leading companies like"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by leading companies like"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 3,
+    "ctas": 0,
+    "sections": 12,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "kahoot",
+   "url": "https://kahoot.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "The ultimate way to engage, learn, and play — loved by billi"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up FREE\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "The ultimate way to engage, learn, and play — loved by billi"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up FREE\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "The ultimate way to engage, learn, and play — loved by billi"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "The ultimate way to engage, learn, and play — loved by billi"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 3,
+    "ctas": 25,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "unleash",
+   "url": "https://www.getunleash.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join a global community of 10,000+ Developers"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join a global community of 10,000+ Developers"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join a global community of 10,000+ Developers"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join a global community of 10,000+ Developers"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 17,
+    "ctas": 19,
+    "sections": 31,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "juni",
+   "url": "https://juni.co/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Business Banking\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Business Banking\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Business Banking\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 0,
+    "ctas": 20,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "trustly",
+   "url": "https://www.trustly.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Case Study”"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start your engine\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Case Study”"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start your engine\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Case Study”"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Case Study”"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start your engine\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 3,
+    "ctas": 6,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "sentry",
+   "url": "https://sentry.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by developers worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Marketing Mode\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by developers worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Marketing Mode\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by developers worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by developers worldwide"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Marketing Mode\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 6,
+    "ctas": 13,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "retool",
+   "url": "https://retool.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 10,000+ teams to generate production-ready AI app"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Starter prompts\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 10,000+ teams to generate production-ready AI app"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Starter prompts\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 10,000+ teams to generate production-ready AI app"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 10,000+ teams to generate production-ready AI app"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Starter prompts\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 3,
+    "ctas": 17,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "railway",
+   "url": "https://railway.app/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the best in business"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Deploy →\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the best in business"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Deploy →\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the best in business"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the best in business"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Deploy →\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 12,
+    "ctas": 7,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "render",
+   "url": "https://render.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY OVER 6 MILLION BUILDERS"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Apply now\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY OVER 6 MILLION BUILDERS"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Apply now\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY OVER 6 MILLION BUILDERS"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY OVER 6 MILLION BUILDERS"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Apply now\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 9,
+    "sections": 4,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "flyio",
+   "url": "https://fly.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY TEAMS AT"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY TEAMS AT"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY TEAMS AT"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY TEAMS AT"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 16,
+    "sections": 13,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "netlify",
+   "url": "https://www.netlify.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "10M+ developers"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start building\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "10M+ developers"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start building\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "10M+ developers"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "10M+ developers"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start building\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 6,
+    "ctas": 15,
+    "sections": 0,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "neon",
+   "url": "https://neon.tech/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY THE BEST"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY THE BEST"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY THE BEST"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY THE BEST"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 14,
+    "ctas": 12,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "clerk",
+   "url": "https://clerk.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by fast-growing companies around the world."
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start building for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by fast-growing companies around the world."
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start building for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by fast-growing companies around the world."
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by fast-growing companies around the world."
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start building for free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 6,
+    "ctas": 32,
+    "sections": 12,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "auth0",
+   "url": "https://auth0.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““We used Auth0 from day one to be able to spend our limited"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““We used Auth0 from day one to be able to spend our limited"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““We used Auth0 from day one to be able to spend our limited"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““We used Auth0 from day one to be able to spend our limited"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 6,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "algolia",
+   "url": "https://www.algolia.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": []
+    }
+   ],
+   "inventory": {
+    "trust": 5,
+    "ctas": 12,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "contentful",
+   "url": "https://www.contentful.com/",
+   "ok": false,
+   "runs": [],
+   "error": "snippet produced no inventory"
+  },
+  {
+   "name": "sanity",
+   "url": "https://www.sanity.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by 1M+ users and 6k+ teams"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"PREFERENCES\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by 1M+ users and 6k+ teams"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"PREFERENCES\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by 1M+ users and 6k+ teams"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by 1M+ users and 6k+ teams"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 9,
+    "ctas": 35,
+    "sections": 15,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "strapi",
+   "url": "https://strapi.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 3K+ customers"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 3K+ customers"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 3K+ customers"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 3K+ customers"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 6,
+    "ctas": 9,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "ghost",
+   "url": "https://ghost.org/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Just launched: Ghost 6.0 →\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Just launched: Ghost 6.0 →\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Just launched: Ghost 6.0 →\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 1,
+    "ctas": 6,
+    "sections": 16,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "resend",
+   "url": "https://resend.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Rely on a platform of reputable IP's used by trustworthy sen"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Rely on a platform of reputable IP's used by trustworthy sen"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Rely on a platform of reputable IP's used by trustworthy sen"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Rely on a platform of reputable IP's used by trustworthy sen"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 17,
+    "ctas": 18,
+    "sections": 15,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "n8n",
+   "url": "https://n8n.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.7/5 stars on G2. To quote \"I can move fast and never feel "
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.7/5 stars on G2. To quote \"I can move fast and never feel "
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.7/5 stars on G2. To quote \"I can move fast and never feel "
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.7/5 stars on G2. To quote \"I can move fast and never feel "
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 13,
+    "ctas": 11,
+    "sections": 11,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "mailchimp",
+   "url": "https://mailchimp.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "*Based on 33,000+ reviews across"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start Free Trial\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "*Based on 33,000+ reviews across"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start Free Trial\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "*Based on 33,000+ reviews across"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "*Based on 33,000+ reviews across"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start Free Trial\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 5,
+    "ctas": 8,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "klaviyo",
+   "url": "https://www.klaviyo.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join the 196,000+ customers growing with Klaviyo"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join the 196,000+ customers growing with Klaviyo"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join the 196,000+ customers growing with Klaviyo"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join the 196,000+ customers growing with Klaviyo"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 29,
+    "sections": 16,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "activecampaign",
+   "url": "https://www.activecampaign.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“I felt overwhelmed, but with the AI tools, that hesitant fe"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start trial\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“I felt overwhelmed, but with the AI tools, that hesitant fe"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start trial\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“I felt overwhelmed, but with the AI tools, that hesitant fe"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“I felt overwhelmed, but with the AI tools, that hesitant fe"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start trial\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 5,
+    "ctas": 20,
+    "sections": 13,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "mailerlite",
+   "url": "https://www.mailerlite.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 1M+ creators and businesses using MailerLite to grow."
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 1M+ creators and businesses using MailerLite to grow."
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 1M+ creators and businesses using MailerLite to grow."
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 1M+ creators and businesses using MailerLite to grow."
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 5,
+    "ctas": 22,
+    "sections": 8,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "beehiiv",
+   "url": "https://www.beehiiv.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.9/5 from 28,479 customers"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.9/5 from 28,479 customers"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.9/5 from 28,479 customers"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.9/5 from 28,479 customers"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 6,
+    "ctas": 21,
+    "sections": 14,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "hotjar",
+   "url": "https://www.hotjar.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 1,306,323 websites in 180+ countries"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 1,306,323 websites in 180+ countries"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 1,306,323 websites in 180+ countries"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 1,306,323 websites in 180+ countries"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a demo\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 13,
+    "sections": 7,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "mixpanel",
+   "url": "https://mixpanel.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read Case Study”"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a Demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read Case Study”"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a Demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read Case Study”"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read Case Study”"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a Demo\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 2,
+    "ctas": 72,
+    "sections": 6,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "amplitude",
+   "url": "https://amplitude.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Up to 10K monthly tracked users, no credit card required. Or"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Up to 10K monthly tracked users, no credit card required. Or"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Up to 10K monthly tracked users, no credit card required. Or"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Up to 10K monthly tracked users, no credit card required. Or"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 5,
+    "ctas": 30,
+    "sections": 15,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "segment",
+   "url": "https://segment.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"OK, got it\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"OK, got it\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"OK, got it\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 0,
+    "ctas": 5,
+    "sections": 4,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "customerio",
+   "url": "https://customer.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "The customer engagement platform trusted by 9,000+ brands"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started Get started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "The customer engagement platform trusted by 9,000+ brands"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started Get started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "The customer engagement platform trusted by 9,000+ brands"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "The customer engagement platform trusted by 9,000+ brands"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started Get started\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 9,
+    "ctas": 38,
+    "sections": 11,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "semrush",
+   "url": "https://www.semrush.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Find relevant media trusted by LLMs, use AI to create press-"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get insights\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Find relevant media trusted by LLMs, use AI to create press-"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get insights\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Find relevant media trusted by LLMs, use AI to create press-"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Find relevant media trusted by LLMs, use AI to create press-"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get insights\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 3,
+    "ctas": 22,
+    "sections": 20,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "ahrefs",
+   "url": "https://ahrefs.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.7 /5 4.5 /5 9.2 /10 4.6 /5"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.7 /5 4.5 /5 9.2 /10 4.6 /5"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.7 /5 4.5 /5 9.2 /10 4.6 /5"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.7 /5 4.5 /5 9.2 /10 4.6 /5"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 13,
+    "ctas": 48,
+    "sections": 17,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "moz",
+   "url": "https://moz.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500,000+ brands and agencies"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500,000+ brands and agencies"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500,000+ brands and agencies"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500,000+ brands and agencies"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 12,
+    "ctas": 11,
+    "sections": 20,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "surferseo",
+   "url": "https://surferseo.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.8/5 500+ Reviews"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try Surfer Platform →\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.8/5 500+ Reviews"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try Surfer Platform →\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.8/5 500+ Reviews"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.8/5 500+ Reviews"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try Surfer Platform →\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 8,
+    "ctas": 14,
+    "sections": 11,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "pipedrive",
+   "url": "https://www.pipedrive.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 100,000 companies"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Continue\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 100,000 companies"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Continue\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 100,000 companies"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 100,000 companies"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Continue\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 15,
+    "ctas": 15,
+    "sections": 17,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "close",
+   "url": "https://www.close.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free with Google\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free with Google\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free with Google\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 11,
+    "ctas": 17,
+    "sections": 12,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "airtable",
+   "url": "https://www.airtable.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500,000+ companies"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500,000+ companies"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500,000+ companies"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500,000+ companies"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started for free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 11,
+    "ctas": 68,
+    "sections": 17,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "webflow",
+   "url": "https://webflow.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“@type”: “WebPageElement”, “id”: \"webflow.com/#customers\", “"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“@type”: “WebPageElement”, “id”: \"webflow.com/#customers\", “"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“@type”: “WebPageElement”, “id”: \"webflow.com/#customers\", “"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“@type”: “WebPageElement”, “id”: \"webflow.com/#customers\", “"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 8,
+    "ctas": 15,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "typeform",
+   "url": "https://www.typeform.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 150,000+ businesses driving revenue with Typeform"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Cookie settings\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 150,000+ businesses driving revenue with Typeform"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Cookie settings\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 150,000+ businesses driving revenue with Typeform"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 150,000+ businesses driving revenue with Typeform"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Cookie settings\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 13,
+    "ctas": 9,
+    "sections": 11,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "posthog",
+   "url": "https://posthog.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 500,000+ teams already shipping with PostHog."
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started – free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 500,000+ teams already shipping with PostHog."
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started – free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 500,000+ teams already shipping with PostHog."
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join 500,000+ teams already shipping with PostHog."
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started – free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 2,
+    "ctas": 12,
+    "sections": 3,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "basecamp",
+   "url": "https://basecamp.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Check out over 1,000 more customer testimonials…”"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Take a 3 minute tour of Basecamp\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Check out over 1,000 more customer testimonials…”"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Take a 3 minute tour of Basecamp\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Check out over 1,000 more customer testimonials…”"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Check out over 1,000 more customer testimonials…”"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Take a 3 minute tour of Basecamp\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 13,
+    "ctas": 5,
+    "sections": 6,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "deel",
+   "url": "https://www.deel.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.8/5 | 14K+ Reviews"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Hire anywhere\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.8/5 | 14K+ Reviews"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Hire anywhere\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.8/5 | 14K+ Reviews"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.8/5 | 14K+ Reviews"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Hire anywhere\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 19,
+    "ctas": 22,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "mentimeter",
+   "url": "https://www.mentimeter.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500+ million users worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up with Google\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500+ million users worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up with Google\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500+ million users worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 500+ million users worldwide"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up with Google\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 3,
+    "ctas": 14,
+    "sections": 11,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "fortnox",
+   "url": "https://www.fortnox.se/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“du är i gott sällskap. fler än sjuhundratusen företag sköte"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“du är i gott sällskap. fler än sjuhundratusen företag sköte"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“du är i gott sällskap. fler än sjuhundratusen företag sköte"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“du är i gott sällskap. fler än sjuhundratusen företag sköte"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 2,
+    "ctas": 10,
+    "sections": 12,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "teamtailor",
+   "url": "https://www.teamtailor.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 13,000 Companies worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 13,000 Companies worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 13,000 Companies worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by over 13,000 Companies worldwide"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 16,
+    "ctas": 7,
+    "sections": 14,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "quinyx",
+   "url": "https://www.quinyx.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Decline\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Decline\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Decline\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 8,
+    "sections": 15,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "getaccept",
+   "url": "https://www.getaccept.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Schema rating 4.6"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Schema rating 4.6"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Schema rating 4.6"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Schema rating 4.6"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Book a demo\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 32,
+    "ctas": 68,
+    "sections": 17,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "gorgias",
+   "url": "https://www.gorgias.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read case study”"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Discover pricing\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read case study”"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Discover pricing\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read case study”"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read case study”"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Discover pricing\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 3,
+    "ctas": 8,
+    "sections": 13,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "helpscout",
+   "url": "https://www.helpscout.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Why do 12,000+ companies choose Help Scout?"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for Free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Why do 12,000+ companies choose Help Scout?"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for Free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Why do 12,000+ companies choose Help Scout?"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Why do 12,000+ companies choose Help Scout?"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for Free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 2,
+    "ctas": 10,
+    "sections": 15,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "front",
+   "url": "https://front.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 9,300+ companies"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Request demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 9,300+ companies"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Request demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 9,300+ companies"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 9,300+ companies"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Request demo\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 15,
+    "ctas": 11,
+    "sections": 11,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "aircall",
+   "url": "https://aircall.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "23,000+ COMPANIES TRUST AIRCALL to power their customer comm"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"TRY FOR FREE\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "23,000+ COMPANIES TRUST AIRCALL to power their customer comm"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"TRY FOR FREE\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "23,000+ COMPANIES TRUST AIRCALL to power their customer comm"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "23,000+ COMPANIES TRUST AIRCALL to power their customer comm"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"TRY FOR FREE\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 7,
+    "ctas": 22,
+    "sections": 12,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "slack",
+   "url": "https://slack.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4M — users"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"GET STARTED\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4M — users"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"GET STARTED\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4M — users"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4M — users"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"GET STARTED\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 8,
+    "ctas": 18,
+    "sections": 24,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "dropbox",
+   "url": "https://www.dropbox.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Testimonial \"The security of knowing our information is saf"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try Dropbox free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Testimonial \"The security of knowing our information is saf"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try Dropbox free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Testimonial \"The security of knowing our information is saf"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Testimonial \"The security of knowing our information is saf"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try Dropbox free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 2,
+    "ctas": 6,
+    "sections": 14,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "miro",
+   "url": "https://miro.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "See how over 250,000 companies are getting great done in Mir"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Watch now\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "See how over 250,000 companies are getting great done in Mir"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Watch now\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "See how over 250,000 companies are getting great done in Mir"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "See how over 250,000 companies are getting great done in Mir"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Watch now\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 9,
+    "ctas": 19,
+    "sections": 6,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "canva",
+   "url": "https://www.canva.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start designing\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start designing\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start designing\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 0,
+    "ctas": 107,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "grammarly",
+   "url": "https://www.grammarly.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.9/5"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Grammarly It's free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.9/5"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Grammarly It's free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.9/5"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.9/5"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Grammarly It's free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 10,
+    "ctas": 32,
+    "sections": 8,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "todoist",
+   "url": "https://todoist.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "2 star ratings"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "2 star ratings"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "2 star ratings"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "2 star ratings"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 7,
+    "ctas": 6,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "superhuman",
+   "url": "https://superhuman.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the most innovative companies in the world"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Superhuman\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the most innovative companies in the world"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Superhuman\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the most innovative companies in the world"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by the most innovative companies in the world"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Superhuman\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 1,
+    "ctas": 7,
+    "sections": 7,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "calcom",
+   "url": "https://cal.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by fast-growing companies around the world"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Cal.com launches v6.7\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by fast-growing companies around the world"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Cal.com launches v6.7\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by fast-growing companies around the world"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by fast-growing companies around the world"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Cal.com launches v6.7\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 10,
+    "sections": 12,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "toggl",
+   "url": "https://toggl.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read case study”"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Allow all\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read case study”"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Allow all\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read case study”"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Read case study”"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Allow all\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 7,
+    "ctas": 22,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "wrike",
+   "url": "https://www.wrike.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "1 star ratings (avg 4.5)"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try Wrike for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "1 star ratings (avg 4.5)"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try Wrike for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "1 star ratings (avg 4.5)"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "1 star ratings (avg 4.5)"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try Wrike for free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 14,
+    "ctas": 29,
+    "sections": 11,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "smartsheet",
+   "url": "https://www.smartsheet.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“ANALYST RECOGNITION 2025 Gartner® Magic Quadrant™ Leader Sm"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Watch a demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“ANALYST RECOGNITION 2025 Gartner® Magic Quadrant™ Leader Sm"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Watch a demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“ANALYST RECOGNITION 2025 Gartner® Magic Quadrant™ Leader Sm"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“ANALYST RECOGNITION 2025 Gartner® Magic Quadrant™ Leader Sm"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Watch a demo\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 5,
+    "ctas": 9,
+    "sections": 4,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "gusto",
+   "url": "https://gusto.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5 stars"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"How Gusto works\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5 stars"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"How Gusto works\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5 stars"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5 stars"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"How Gusto works\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 7,
+    "ctas": 91,
+    "sections": 13,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "rippling",
+   "url": "https://www.rippling.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 30,000+ customers"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 30,000+ customers"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 30,000+ customers"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 30,000+ customers"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 13,
+    "ctas": 30,
+    "sections": 12,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "bamboohr",
+   "url": "https://www.bamboohr.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": []
+    }
+   ],
+   "inventory": {
+    "trust": 0,
+    "ctas": 0,
+    "sections": 0,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "personio",
+   "url": "https://www.personio.com/",
+   "ok": false,
+   "runs": [],
+   "error": "snippet produced no inventory"
+  },
+  {
+   "name": "remotecom",
+   "url": "https://remote.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Schema review"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Schema review"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Schema review"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Schema review"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 14,
+    "ctas": 0,
+    "sections": 26,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "ramp",
+   "url": "https://ramp.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Built on the intelligence of 70k+ finance teams. One platfor"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Built on the intelligence of 70k+ finance teams. One platfor"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Built on the intelligence of 70k+ finance teams. One platfor"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Built on the intelligence of 70k+ finance teams. One platfor"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started for free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 19,
+    "ctas": 17,
+    "sections": 19,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "mercury",
+   "url": "https://mercury.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by 300K+ of the most ambitious entrepreneurs on the pl"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Launch demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by 300K+ of the most ambitious entrepreneurs on the pl"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Launch demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by 300K+ of the most ambitious entrepreneurs on the pl"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Loved by 300K+ of the most ambitious entrepreneurs on the pl"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Launch demo\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 5,
+    "ctas": 9,
+    "sections": 15,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "onepassword",
+   "url": "https://1password.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““At an organizational level, 1Password helped impose discip"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““At an organizational level, 1Password helped impose discip"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““At an organizational level, 1Password helped impose discip"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““At an organizational level, 1Password helped impose discip"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 2,
+    "ctas": 10,
+    "sections": 6,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "vanta",
+   "url": "https://www.vanta.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY 16,000+ CUSTOMERS, FROM STARTUP TO ENTERPRISE"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Manage Preferences\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY 16,000+ CUSTOMERS, FROM STARTUP TO ENTERPRISE"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Manage Preferences\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY 16,000+ CUSTOMERS, FROM STARTUP TO ENTERPRISE"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "TRUSTED BY 16,000+ CUSTOMERS, FROM STARTUP TO ENTERPRISE"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Manage Preferences\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 5,
+    "ctas": 14,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "docusign",
+   "url": "https://www.docusign.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 11,
+    "sections": 18,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "pandadoc",
+   "url": "https://www.pandadoc.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“Will O’Neil, Head of IT & Strategic Enablement at Nomad See"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“PandaDoc has a personal touch — they listen, adapt, and sup"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“PandaDoc has a personal touch — they listen, adapt, and sup"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“PandaDoc has a personal touch — they listen, adapt, and sup"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get Started\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 3,
+    "ctas": 18,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "chargebee",
+   "url": "https://www.chargebee.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 6500+ businesses globally"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get a Demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 6500+ businesses globally"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get a Demo\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 6500+ businesses globally"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 6500+ businesses globally"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get a Demo\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 6,
+    "ctas": 29,
+    "sections": 7,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "paddle",
+   "url": "https://www.paddle.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "10,000+ — CUSTOMERS"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "10,000+ — CUSTOMERS"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "10,000+ — CUSTOMERS"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "10,000+ — CUSTOMERS"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Get started\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 1,
+    "ctas": 18,
+    "sections": 8,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "bokio",
+   "url": "https://www.bokio.se/",
+   "ok": false,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““Med Bokio kan jag känna mig trygg. Jag kan fokusera på att"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 1,
+    "ctas": 19,
+    "sections": 16,
+    "hasPricing": false
+   },
+   "error": "page.evaluate: Execution context was destroyed, most likely because of a navigation"
+  },
+  {
+   "name": "mynewsdesk",
+   "url": "https://www.mynewsdesk.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 4,000+ communicators worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 4,000+ communicators worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 4,000+ communicators worldwide"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Trusted by 4,000+ communicators worldwide"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 1,
+    "ctas": 16,
+    "sections": 17,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "upsales",
+   "url": "https://www.upsales.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 8,
+    "ctas": 14,
+    "sections": 15,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "sanalabs",
+   "url": "https://sanalabs.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““If we're going to move to the level of AI fluency that we "
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Explore\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "““If we're going to move to the level of AI fluency that we "
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Explore\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "““If we're going to move to the level of AI fluency that we "
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "““If we're going to move to the level of AI fluency that we "
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 1,
+    "ctas": 7,
+    "sections": 3,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "framer",
+   "url": "https://www.framer.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Widget rating"
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 7,
+    "ctas": 22,
+    "sections": 8,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "lemlist",
+   "url": "https://www.lemlist.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "4.5/5"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start for free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 7,
+    "ctas": 56,
+    "sections": 10,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "apollo",
+   "url": "https://www.apollo.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "JOIN OVER 600,000 COMPANIES USING APOLLO"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "JOIN OVER 600,000 COMPANIES USING APOLLO"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up for free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "JOIN OVER 600,000 COMPANIES USING APOLLO"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "JOIN OVER 600,000 COMPANIES USING APOLLO"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Sign up for free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 6,
+    "ctas": 14,
+    "sections": 3,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "savvycal",
+   "url": "https://savvycal.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join over 2,000 happy customers"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try SavvyCal risk-free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join over 2,000 happy customers"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try SavvyCal risk-free\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join over 2,000 happy customers"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join over 2,000 happy customers"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Try SavvyCal risk-free\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 3,
+    "ctas": 2,
+    "sections": 9,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "postmark",
+   "url": "https://postmarkapp.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free trial\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free trial\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free trial\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 0,
+    "ctas": 18,
+    "sections": 11,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "lucid",
+   "url": "https://lucid.co/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": []
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Manage Preferences\""
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Manage Preferences\""
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Manage Preferences\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 0,
+    "ctas": 6,
+    "sections": 8,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "coda",
+   "url": "https://coda.io/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "A few of the 50,000+ teams collaborating on Coda."
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Learn all about Docs →\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "A few of the 50,000+ teams collaborating on Coda."
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Learn all about Docs →\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "A few of the 50,000+ teams collaborating on Coda."
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "A few of the 50,000+ teams collaborating on Coda."
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Learn all about Docs →\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 4,
+    "ctas": 24,
+    "sections": 16,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "planetscale",
+   "url": "https://planetscale.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“We chose PlanetScale to host our most demanding Vitess and "
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Watch the talk\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“We chose PlanetScale to host our most demanding Vitess and "
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Watch the talk\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "“We chose PlanetScale to host our most demanding Vitess and "
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "“We chose PlanetScale to host our most demanding Vitess and "
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Watch the talk\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 11,
+    "ctas": 11,
+    "sections": 3,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  },
+  {
+   "name": "clickhouse",
+   "url": "https://clickhouse.com/",
+   "ok": true,
+   "runs": [
+    {
+     "persona": "skimmer",
+     "derived": "new_skimmer",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join the 100k+ developers using ClickHouse today"
+      }
+     ]
+    },
+    {
+     "persona": "reader_no_click",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free cloud trial\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join the 100k+ developers using ClickHouse today"
+      }
+     ]
+    },
+    {
+     "persona": "price_checker",
+     "derived": "engaged_no_click",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free cloud trial\""
+      },
+      {
+       "patternId": "trust_bar",
+       "detail": "Join the 100k+ developers using ClickHouse today"
+      }
+     ]
+    },
+    {
+     "persona": "clicker_control",
+     "derived": "default",
+     "matchesExpectation": true,
+     "applied": [
+      {
+       "patternId": "trust_bar",
+       "detail": "Join the 100k+ developers using ClickHouse today"
+      },
+      {
+       "patternId": "emphasize_primary_cta",
+       "detail": "\"Start free cloud trial\""
+      }
+     ]
+    }
+   ],
+   "inventory": {
+    "trust": 1,
+    "ctas": 27,
+    "sections": 14,
+    "hasPricing": false
+   },
+   "restoredClean": true
+  }
+ ]
+}

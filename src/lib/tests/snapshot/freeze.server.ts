@@ -105,11 +105,18 @@ interface FreezeReport {
      *  self-diagnosing companion to externalFontSrcCount. */
     unembeddedFontUrls: string[] | null;
     embeddedFontCount: number | null;
+    /** True när size-gaten slog till: embed-all-artefakten hade överskridit
+     *  in-repo-budgeten, så bara de browser-laddade fonterna embeddades (oanvända
+     *  @font-face-faces lämnades externa). Förklarar varför externalFontSrcCount
+     *  kan vara > 0 på en stor sajt utan att A2-loaded-gaten fäller den. */
+    sizeGatedLoadedOnly: boolean | null;
+    sizeGatedDroppedCount: number | null;
     mhtmlKbBeforeFontEmbed: number | null;
     fontFetchFailures: { url: string; error: string }[] | null;
-    /** Unika @font-face-familjenamn i den slutliga MHTML:en. Render-canary
-     *  i replay läser denna lista för att avgöra vilka familjer som måste
-     *  faktiskt resolva. */
+    /** Unika @font-face-familjenamn vi FAKTISKT embeddade (cid:-face) i den
+     *  slutliga MHTML:en. Render-canary i replay läser denna lista för att avgöra
+     *  vilka familjer som måste faktiskt resolva. På den size-gatade pathen är
+     *  detta delmängden vi behöll (oanvända, externa faces ingår INTE). */
     embeddedFamilies: string[] | null;
     /** Commit 4 — Per-hink token-occurrence-räknare (INTE distinkta-på-resolved).
      *  Speglar embedded.fontUrlSummary. För korpus-grep: "har sajten relativa
@@ -419,6 +426,8 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       externalFontSrcCount: null,
       unembeddedFontUrls: null,
       embeddedFontCount: null,
+      sizeGatedLoadedOnly: null,
+      sizeGatedDroppedCount: null,
       mhtmlKbBeforeFontEmbed: null,
       fontFetchFailures: null,
       embeddedFamilies: null,
@@ -859,6 +868,8 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     report.capture.externalFontSrcCount = embedded.externalFontSrcCount;
     report.capture.unembeddedFontUrls = embedded.unembeddedFontUrls;
     report.capture.embeddedFontCount = embedded.embeddedFontCount;
+    report.capture.sizeGatedLoadedOnly = embedded.sizeGatedLoadedOnly;
+    report.capture.sizeGatedDroppedCount = embedded.sizeGatedDroppedCount;
     report.capture.fontFetchFailures = embedded.fetchFailures;
     report.capture.embeddedFamilies = embedded.embeddedFamilies;
     // Commit 4 — receipt populeras INNAN A2-gaten kan throwa, så hink-4-

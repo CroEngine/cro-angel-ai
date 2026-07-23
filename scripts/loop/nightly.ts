@@ -28,6 +28,17 @@ import {
   dependenciesOf,
   planDependencySweep,
 } from "../../src/adaptive/redesign/drift";
+import {
+  metricArmsFromRpc,
+  planGuardrailSweep,
+  type GuardrailSweepVariant,
+} from "../../src/adaptive/redesign/guardrail-sweep";
+import {
+  cohortBriefLines,
+  planCohortScopes,
+  segmentKeyForScope,
+} from "../../src/adaptive/redesign/cohort-scopes";
+import { defaultSuccessSpec, validateSuccessSpec } from "../../src/adaptive-lab/metrics";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 import { mirrorStorageKey } from "../../src/lib/sandbox/mirror-key";
 import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
@@ -95,7 +106,7 @@ for (const site of targets) {
     // till detect behåller sin gamla smala form (path + segmentKey).
     const { data: variants } = await db
       .from("angel_variants")
-      .select("id,path,segment_key,status,held_reason,ops,evidence")
+      .select("id,path,segment_key,status,held_reason,ops,evidence,success,required_cohorts")
       .eq("site", site.slug)
       .neq("status", "retired");
     // Sidflödet (korssid-lyftets signal, task #117): "andel av segmentet som
@@ -293,6 +304,82 @@ for (const site of targets) {
         await notifyVariantHeld(site.slug, id, label, reason, heldAt);
         console.log(`[loop] ${site.slug} ${label}: HÅLLS maskinellt — ${reason}`);
       };
+      // ── Kohort-scopes: var är nästa kohortscopade variant designvärdig? ──
+      // Ren planerare på exponeringarnas dims (30 d): bara scopes som kan nå
+      // ett domslut inom 45 dagar föreslås. Förslag, inte generering — de
+      // skrivs till körkatalogen och loggen; den generativa våningen läser dem.
+      let cohortScopes: ReturnType<typeof planCohortScopes> = [];
+      try {
+        const { data: cohortRows } = await db.rpc("angel_cohort_traffic", {
+          p_site: site.slug,
+          p_days: 30,
+        });
+        cohortScopes = planCohortScopes(Array.isArray(cohortRows) ? cohortRows : [], {
+          windowDays: 30,
+          baseRate: site.test_metric === "continuation" ? 0.4 : 0.04,
+        });
+        writeFileSync(
+          join(dir, "cohort-opportunities.json"),
+          JSON.stringify(cohortScopes, null, 1),
+        );
+        for (const sc of cohortScopes) {
+          console.log(
+            `[loop] ${site.slug} kohort-scope: ${sc.cohorts.join("+")} — ${sc.visitorsInWindow} besökare/30d, domslut ~${sc.estimatedDaysToVerdict} d`,
+          );
+        }
+      } catch (err) {
+        console.warn(`[loop] ${site.slug} kohorttrafik otillgänglig:`, err);
+      }
+
+      // ── Guardrail-svepet (kontraktsskydden, ren planerare) ─────────────
+      // Live-armarna döms mot variantens framgångskontrakt varje natt:
+      // signifikant skyddsskada eller primärförlust ⇒ maskinellt hold via
+      // samma held_reason-mekanism som drift-svepet (ägarstatus orörd,
+      // självläkning släpper). Falska stopp ~1 %/variant — billiga åt rätt håll.
+      {
+        const guardable = ((variants ?? []) as typeof variants & object[]).filter(
+          (v: { status: string }) => v.status === "serving" || v.status === "winner",
+        ) as {
+          id: string;
+          path: string;
+          segment_key: string;
+          held_reason: string | null;
+          success: unknown;
+        }[];
+        const guardInput: GuardrailSweepVariant[] = [];
+        for (const v of guardable) {
+          const { data: armRows } = await db.rpc("angel_variant_arms", {
+            p_site: site.slug,
+            p_variant: v.id,
+          });
+          guardInput.push({
+            id: v.id,
+            heldReason: v.held_reason ?? null,
+            success: v.success,
+            arms: Array.isArray(armRows)
+              ? metricArmsFromRpc(
+                  armRows,
+                  site.test_metric === "continuation" ? "continuation" : "conversion",
+                )
+              : null,
+          });
+        }
+        for (const action of planGuardrailSweep(guardInput)) {
+          if (action.action === "keep") continue;
+          const row = guardable.find((v) => v.id === action.id)!;
+          const label = `${row.path} · ${row.segment_key}`;
+          if (action.action === "hold") {
+            await holdVariant(action.id, label, action.reason);
+            continue;
+          }
+          await db
+            .from("angel_variants")
+            .update({ held_reason: null, held_at: null })
+            .eq("id", action.id);
+          console.log(`[loop] ${site.slug} ${label}: skydden gröna igen — guardrail-hold släppt`);
+        }
+      }
+
       for (const action of planDependencySweep(sweepInput, freshSnippets)) {
         const row = sweepable.find((v) => v.id === action.id)!;
         const label = `${row.path} · ${row.segment_key}`;
@@ -380,21 +467,31 @@ for (const site of targets) {
         // Nya texten grindad OK → uppdatera varianten och släpp hållningen.
         // Skärmdumparna laddas upp på SAMMA nycklar som originalet (slug är
         // härledd ur path+key) så dashboardens bevisbilder visar nya läget.
-        const shots: { before: string | null; after: string | null; attempt1: null } = {
-          before: null,
-          after: null,
-          attempt1: null,
-        };
+        const shots: {
+          before: string | null;
+          after: string | null;
+          attempt1: null;
+          desktopBefore?: string;
+          desktopAfter?: string;
+        } = { before: null, after: null, attempt1: null };
         if (refreshed.slug) {
-          for (const which of ["before", "after"] as const) {
+          const shotKeyOf = {
+            before: "before",
+            after: "after",
+            "desktop-before": "desktopBefore",
+            "desktop-after": "desktopAfter",
+          } as const;
+          for (const which of ["before", "after", "desktop-before", "desktop-after"] as const) {
             const local = join(refreshDir, `${refreshed.slug}-${which}.jpg`);
             if (!existsSync(local)) continue;
             const key = `${site.slug}/${refreshed.slug}/${which}.jpg`;
             const { error: upErr } = await db.storage
               .from("angel-evidence")
               .upload(key, readFileSync(local), { contentType: "image/jpeg", upsert: true });
-            if (!upErr)
-              shots[which] = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
+            if (!upErr) {
+              const url = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
+              shots[shotKeyOf[which]] = url;
+            }
           }
         }
         const newEvidence = {
@@ -454,6 +551,7 @@ for (const site of targets) {
         observations: string[];
         sourcePaths?: string[];
         brief: string;
+        cohorts?: string[];
       }[];
       needsFreeze: unknown[];
     };
@@ -461,6 +559,42 @@ for (const site of targets) {
       console.log(
         `[loop] ${site.slug}: ${earned.needsFreeze.length} cell(er) väntar på browser-frysning (needs_freeze)`,
       );
+    }
+    // Kohortceller (generativa våningen): för det snabbaste serverbara
+    // src:-scopet designas en EGEN variant av startsidan — kohortens intent i
+    // briefen, samma grindkedja som allt annat, född grindad + kontrakterad
+    // vid insert. Max EN per natt och sajt; hoppa om ett kohortscopat A/B för
+    // nyckeln redan finns eller startsidan saknar fryst kopia.
+    {
+      const existingCohortKeys = new Set(
+        ((variants ?? []) as { segment_key: string; required_cohorts: unknown }[])
+          .filter((v) => Array.isArray(v.required_cohorts) && v.required_cohorts.length > 0)
+          .map((v) => v.segment_key),
+      );
+      const candidate = cohortScopes.find((sc) => {
+        const key = segmentKeyForScope(sc);
+        return (
+          key !== null &&
+          !existingCohortKeys.has(key) &&
+          !earned.briefed.some((b) => b.key === key) &&
+          !!pages["/"]
+        );
+      });
+      if (candidate) {
+        const key = segmentKeyForScope(candidate)!;
+        earned.briefed.push({
+          path: "/",
+          key,
+          total: { visits: candidate.visitorsInWindow, conversions: 0 },
+          observations: cohortBriefLines(candidate),
+          sourcePaths: [],
+          brief: "",
+          cohorts: candidate.cohorts,
+        });
+        console.log(
+          `[loop] ${site.slug} kohortcell: designar /×${key} för ${candidate.cohorts.join("+")}`,
+        );
+      }
     }
     if (earned.briefed.length === 0) continue;
 
@@ -529,6 +663,7 @@ for (const site of targets) {
         observations: b.observations,
         sourcePaths: b.sourcePaths ?? [],
         ops: plan.ops,
+        cohorts: b.cohorts,
       });
     }
     if (plans.length === 0) continue;
@@ -566,21 +701,33 @@ for (const site of targets) {
     // 6. Verifierade → ladda upp skärmdumpar till storage + direkta inserts.
     //    Status 'verified' — ALDRIG serving; det är ägarens knapp.
     for (const r of results.filter((x) => x.verdict === "verified")) {
-      const shots: { before: string | null; after: string | null; attempt1: null } = {
-        before: null,
-        after: null,
-        attempt1: null,
-      };
+      // desktop-paret finns bara när ett desktop-bekräftelsepass kördes
+      // (viewport-grindningen, Tier-1 #3) — saknade filer hoppas tyst.
+      const shots: {
+        before: string | null;
+        after: string | null;
+        attempt1: null;
+        desktopBefore?: string;
+        desktopAfter?: string;
+      } = { before: null, after: null, attempt1: null };
       if (r.slug) {
-        for (const which of ["before", "after"] as const) {
+        const shotKeyOf = {
+          before: "before",
+          after: "after",
+          "desktop-before": "desktopBefore",
+          "desktop-after": "desktopAfter",
+        } as const;
+        for (const which of ["before", "after", "desktop-before", "desktop-after"] as const) {
           const local = join(dir, `${r.slug}-${which}.jpg`);
           if (!existsSync(local)) continue;
           const key = `${site.slug}/${r.slug}/${which}.jpg`;
           const { error: upErr } = await db.storage
             .from("angel-evidence")
             .upload(key, readFileSync(local), { contentType: "image/jpeg", upsert: true });
-          if (!upErr)
-            shots[which] = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
+          if (!upErr) {
+            const url = db.storage.from("angel-evidence").getPublicUrl(key).data.publicUrl;
+            shots[shotKeyOf[which]] = url;
+          }
         }
       }
       const evidence = {
@@ -595,6 +742,17 @@ for (const site of targets) {
         ops: r.ops ?? [],
         serve_ops: r.serveOps ?? [],
         evidence,
+        // Kohortscopade planer (den generativa våningen läser
+        // cohort-opportunities.json) föds med sitt scope + kontrakt — samma
+        // fält live-vägen grindar respektive mäter på. Utan scope: null = som förut.
+        required_cohorts: Array.isArray((r as { cohorts?: unknown }).cohorts)
+          ? ((r as { cohorts: unknown[] }).cohorts.filter(
+              (c): c is string => typeof c === "string",
+            ) as string[])
+          : null,
+        success:
+          validateSuccessSpec((r as { success?: unknown }).success) ??
+          (defaultSuccessSpec() as unknown as null),
       });
       if (insErr) console.warn(`[loop] ${site.slug}: insert föll: ${insErr.message}`);
       else
@@ -604,6 +762,54 @@ for (const site of targets) {
     // 7. Dag-10-mejlet: svep varianter som väntar utan skickad notis.
     const { sweepVariantNotifications } = await import("../../src/adaptive/notify.server");
     await sweepVariantNotifications(site.slug);
+
+    // 7b. Vecka-1-digesten (stanna-tills-bevisat): ETT mejl ~dag 5 när ingen
+    //     variant ännu finns — insamlingsperioden ska synas, inte vara tyst.
+    //     Ärliga räknare ur rollup-löven som redan är lästa (steg 1); dedupen
+    //     bor i notifyOwners så svepet är idempotent. Finns en variant äger
+    //     dag-10-mejlet berättelsen och digesten skickas aldrig.
+    try {
+      const { count: variantCount } = await db
+        .from("angel_variants")
+        .select("id", { count: "exact", head: true })
+        .eq("site", site.slug);
+      if (!variantCount) {
+        const { data: firstEv } = await db
+          .from("angel_events")
+          .select("created_at")
+          .eq("site", site.slug)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        const ageDays = firstEv ? (Date.now() - Date.parse(firstEv.created_at)) / 86_400_000 : 0;
+        if (ageDays >= 5) {
+          const byGroup = new Map<string, number>();
+          let visitors = 0;
+          for (const l of leaves as { channel?: string; device?: string; visits?: number }[]) {
+            const v = Number(l.visits) || 0;
+            visitors += v;
+            if (l.channel && l.device) {
+              const key = `${l.channel} · ${l.device}`;
+              byGroup.set(key, (byGroup.get(key) ?? 0) + v);
+            }
+          }
+          const top = [...byGroup.entries()].sort((a, b) => b[1] - a[1])[0];
+          const { count: pageviews } = await db
+            .from("angel_events")
+            .select("id", { count: "exact", head: true })
+            .eq("site", site.slug)
+            .eq("type", "pageview");
+          const { notifyWeekOneDigest } = await import("../../src/adaptive/notify.server");
+          await notifyWeekOneDigest(site.slug, {
+            visitors,
+            pageviews: pageviews ?? 0,
+            topGroup: top ? `${top[0]} (${top[1].toLocaleString("en-US")} visits)` : null,
+          });
+        }
+      }
+    } catch (dgErr) {
+      console.warn(`[loop] ${site.slug}: vecka-1-digesten föll (icke-fatalt):`, dgErr);
+    }
   } catch (err) {
     console.error(`[loop] ${site.slug} föll:`, err);
   }

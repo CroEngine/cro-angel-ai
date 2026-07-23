@@ -180,6 +180,11 @@ export type DeclineReason =
    *  setup" SaaS badge nominated for a donate site. Only fires when a goal
    *  kind is confirmed; unconfigured sites are never gated this way. */
   | "goal_kind_mismatch"
+  /** The pattern is cohort-gated (owner-approved rule scoped to a visitor
+   *  cohort, lab vocabulary ch:/src:/ret:/seen:) and this visitor's derived
+   *  cohorts do not include every required key. Off by default — only fires
+   *  when the site's options declare cohort gates. */
+  | "cohort_mismatch"
   /** Mönstrets avoidPageTypes exkluderar sidans typ — t.ex. ett flytt-mönster
    *  på en artikel-/bloggsida (content). Se Pattern.avoidPageTypes. */
   | "page_type_mismatch"

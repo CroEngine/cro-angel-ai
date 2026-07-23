@@ -1,0 +1,79 @@
+{
+ "clickup": {
+  "plan": {
+   "action": "reorder",
+   "container": "#v4-homepage > main:nth-of-type(1) > div:nth-of-type(3)",
+   "move": "section[data-testid=\"home-brain-2-section\"]",
+   "after": null,
+   "mode": "grid",
+   "rationale": "Engaged visitors who read deep without clicking should meet the AI proof story ('The best AI is your AI') right under the hero instead of 4400px down. Flex promotion drifted sibling widths here, so the container is promoted to single-column grid, which stretches children like normal flow."
+  },
+  "failReason": "check-width-left"
+ },
+ "rippling": {
+  "plan": {
+   "action": "reorder",
+   "container": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2)",
+   "move": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(4)",
+   "after": "#__next > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(1)",
+   "mode": "grid",
+   "rationale": "The intelligence/proof block moves to directly after the opening block. A front move would land above the 300px floor (the detected hero is zero-height), so it anchors after the first content block instead; grid promotion avoids the width drift flex caused."
+  },
+  "failReason": "check-width-left"
+ },
+ "contentful": {
+  "plan": {
+   "action": "reorder",
+   "container": "body > main:nth-of-type(1)",
+   "move": "section[data-section=\"case_study\"]",
+   "after": "body > main:nth-of-type(1) > section:nth-of-type(1)",
+   "mode": "grid",
+   "rationale": "The Ruggable customer case study lands directly after the hero, giving skeptical readers proof before the feature pitch. Flex promotion failed width checks on this 19-child main; single-column grid preserves block-flow widths."
+  },
+  "failReason": "check-width-left"
+ },
+ "auth0": {
+  "plan": {
+   "action": "reorder",
+   "container": "#__next > main:nth-of-type(1)",
+   "move": "#__next > main:nth-of-type(1) > section:nth-of-type(4)",
+   "after": "#block-0",
+   "mode": "grid",
+   "rationale": "'You're in great company' moves from 5200px down to right after the hero. Flex promotion changed section heights here (BFC formation); grid promotion keeps block-like flow."
+  },
+  "failReason": "check-width-left"
+ },
+ "wrike": {
+  "plan": {
+   "action": "reorder",
+   "container": "body > div:nth-of-type(1) > main:nth-of-type(1) > tp-page-view:nth-of-type(1) > div:nth-of-type(1) > website-widgets-loader:nth-of-type(1)",
+   "move": "website-widget-loader:nth-of-type(8)",
+   "after": "website-widget-loader:nth-of-type(1)",
+   "mode": "grid",
+   "rationale": "'Your work, delivered. 30,000+ times' moves to right after the hero widget. The widget-loader host is display:inline; grid promotion blockifies the custom-element children where flex promotion shifted heights."
+  },
+  "failReason": "container-not-found"
+ },
+ "pandadoc": {
+  "plan": {
+   "action": "reorder",
+   "container": "#main-content > div:nth-of-type(1) > div:nth-of-type(1)",
+   "move": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(5)",
+   "after": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1)",
+   "mode": "grid",
+   "rationale": "The customer story (Will O'Neil, Head of IT) lands directly after the hero instead of 5300px down. Grid promotion sidesteps the height drift the flex attempt hit."
+  },
+  "failReason": "check-width-left"
+ },
+ "sentry": {
+  "plan": {
+   "action": "reorder",
+   "container": "#main-content",
+   "move": "#main-content > div:nth-of-type(5)",
+   "after": "#main-content > div:nth-of-type(2)",
+   "mode": "grid",
+   "rationale": "'Loved by developers worldwide' moves to directly after the hero. Flex promotion changed sibling heights on #main-content; single-column grid keeps block flow intact."
+  },
+  "failReason": "check-width-left"
+ }
+}

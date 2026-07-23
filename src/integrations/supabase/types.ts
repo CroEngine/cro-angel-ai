@@ -44,6 +44,42 @@ export type Database = {
         }
         Relationships: []
       }
+      angel_preview_jobs: {
+        Row: {
+          id: string
+          url: string
+          status: string
+          report_url: string | null
+          findings: Json | null
+          error: string | null
+          requester_hash: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          url: string
+          status?: string
+          report_url?: string | null
+          findings?: Json | null
+          error?: string | null
+          requester_hash: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          url?: string
+          status?: string
+          report_url?: string | null
+          findings?: Json | null
+          error?: string | null
+          requester_hash?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       angel_notifications: {
         Row: {
           id: string
@@ -173,6 +209,8 @@ export type Database = {
           status: string
           ops: Json
           serve_ops: Json
+          required_cohorts: string[] | null
+          success: Json | null
           evidence: Json
           held_reason: string | null
           held_at: string | null
@@ -187,6 +225,8 @@ export type Database = {
           status?: string
           ops?: Json
           serve_ops?: Json
+          required_cohorts?: string[] | null
+          success?: Json | null
           evidence?: Json
           held_reason?: string | null
           held_at?: string | null
@@ -201,6 +241,8 @@ export type Database = {
           status?: string
           ops?: Json
           serve_ops?: Json
+          required_cohorts?: string[] | null
+          success?: Json | null
           evidence?: Json
           held_reason?: string | null
           held_at?: string | null
@@ -318,6 +360,15 @@ export type Database = {
           rage_sessions: number
         }[]
       }
+      angel_cohort_traffic: {
+        Args: { p_site: string; p_days?: number }
+        Returns: {
+          traffic_source: string | null
+          is_returning: boolean | null
+          viewed_pricing: boolean | null
+          visitors: number
+        }[]
+      }
       angel_variant_arms: {
         Args: { p_site: string; p_variant: string }
         Returns: {
@@ -325,6 +376,10 @@ export type Database = {
           visits: number
           conversions: number
           continuations: number
+          cta_clicks: number
+          form_submits: number
+          engaged: number
+          deep_scrolls: number
         }[]
       }
       angel_page_segment_rollup: {

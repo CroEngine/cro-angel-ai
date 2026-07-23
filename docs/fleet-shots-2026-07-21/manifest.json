@@ -1,0 +1,1987 @@
+{
+ "generatedAtSites": 134,
+ "records": [
+  {
+   "name": "monday",
+   "url": "https://monday.com/",
+   "page": "home",
+   "ok": true,
+   "before": "monday-before.jpg",
+   "applied": [
+    "Move social proof up — \"Our customers achieve more\" → after hero (L0)",
+    "Emphasise primary CTA — \"Marketing\"",
+    "Surface trust bar — “We replaced a 15-minute screening call with an AI agent tha"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "monday-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "monday",
+   "url": "https://monday.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "monday-pricing-before.jpg",
+   "applied": [],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": false,
+   "after": "monday-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "asana",
+   "url": "https://asana.com/",
+   "page": "home",
+   "ok": true,
+   "before": "asana-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get started\"",
+    "Surface trust bar — A leader in Work Management and OKR Software with more than "
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "asana-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "asana",
+   "url": "https://asana.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "asana-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — What is your refund policy?"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "asana-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "clickup",
+   "url": "https://clickup.com/",
+   "page": "home",
+   "ok": true,
+   "before": "clickup-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"NEW: Brain² — The best AI is your AI. The world's first company Brain\"",
+    "Surface trust bar — RATED 4.7/5 BY 10,000+ USERS ON G2"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "clickup-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "clickup",
+   "url": "https://clickup.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "clickup-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — 100% Money-back Guarantee"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "clickup-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "calendly",
+   "url": "https://calendly.com/",
+   "page": "home",
+   "ok": true,
+   "before": "calendly-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Sign up with Google\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "calendly-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "calendly",
+   "url": "https://calendly.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "calendly-pricing-before.jpg",
+   "applied": [],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": false,
+   "after": "calendly-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "zapier",
+   "url": "https://zapier.com/",
+   "page": "home",
+   "ok": true,
+   "before": "zapier-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start free with email\"",
+    "Surface trust bar — “Because of automation, we've seen about a $1 million increa"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "zapier-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "zapier",
+   "url": "https://zapier.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "zapier-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — All paid plans include"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "zapier-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "airtable",
+   "url": "https://www.airtable.com/",
+   "page": "home",
+   "ok": true,
+   "before": "airtable-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get started for free\"",
+    "Surface trust bar — Trusted by 500,000+ companies"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "airtable-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "airtable",
+   "url": "https://www.airtable.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "airtable-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Compare our plans"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "airtable-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "webflow",
+   "url": "https://webflow.com/",
+   "page": "home",
+   "ok": true,
+   "before": "webflow-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"New for Enterprise: Webflow AEO. Own your visibility in AI search →\"",
+    "Surface trust bar — 300,000+ brands move the needle with Webflow"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "webflow-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "webflow",
+   "url": "https://webflow.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "webflow-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Ecommerce plans"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "webflow-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "typeform",
+   "url": "https://www.typeform.com/",
+   "page": "home",
+   "ok": true,
+   "before": "typeform-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Explore forms\"",
+    "Surface trust bar — Join 150,000+ businesses driving revenue with Typeform"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "typeform-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "typeform",
+   "url": "https://www.typeform.com/pricing/",
+   "page": "pricing",
+   "ok": true,
+   "before": "typeform-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — SSO, HIPAA, GDPR compliance, and your choice of US or EU dat"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "typeform-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "posthog",
+   "url": "https://posthog.com/",
+   "page": "home",
+   "ok": true,
+   "before": "posthog-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get started – free\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "posthog-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "posthog",
+   "url": "https://posthog.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "posthog-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Usage-based pricing"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "posthog-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "basecamp",
+   "url": "https://basecamp.com/",
+   "page": "home",
+   "ok": true,
+   "before": "basecamp-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "basecamp-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "deel",
+   "url": "https://www.deel.com/",
+   "page": "home",
+   "ok": true,
+   "before": "deel-before.jpg",
+   "applied": [
+    "Surface trust bar — 4.8/5 based on 14,256+ reviews"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "deel-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "deel",
+   "url": "https://www.deel.com/pricing/",
+   "page": "pricing",
+   "ok": true,
+   "before": "deel-pricing-before.jpg",
+   "applied": [],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": false,
+   "after": "deel-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "mentimeter",
+   "url": "https://www.mentimeter.com/",
+   "page": "home",
+   "ok": true,
+   "before": "mentimeter-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Join\"",
+    "Surface trust bar — ““ I know participants are listening and that my message is "
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mentimeter-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "mentimeter",
+   "url": "https://www.mentimeter.com/plans",
+   "page": "pricing",
+   "ok": true,
+   "before": "mentimeter-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Compare plans"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mentimeter-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "fortnox",
+   "url": "https://www.fortnox.se/",
+   "page": "home",
+   "ok": true,
+   "before": "fortnox-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "fortnox-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "fortnox",
+   "url": "https://www.fortnox.se/pris",
+   "page": "pricing",
+   "ok": true,
+   "before": "fortnox-pricing-before.jpg",
+   "applied": [],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": false,
+   "after": "fortnox-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "teamtailor",
+   "url": "https://www.teamtailor.com/",
+   "page": "home",
+   "ok": true,
+   "before": "teamtailor-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Book a demo\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [
+    "emphasis-covered"
+   ],
+   "changed": true,
+   "after": "teamtailor-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "quinyx",
+   "url": "https://www.quinyx.com/",
+   "page": "home",
+   "ok": true,
+   "before": "quinyx-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Explore solutions\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [
+    "emphasis-covered"
+   ],
+   "changed": true,
+   "after": "quinyx-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "getaccept",
+   "url": "https://www.getaccept.com/",
+   "page": "home",
+   "ok": true,
+   "before": "getaccept-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Book a demo\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "getaccept-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "oneflow",
+   "url": "https://oneflow.com/",
+   "page": "home",
+   "ok": true,
+   "before": "oneflow-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "oneflow-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "scrive",
+   "url": "https://www.scrive.com/",
+   "page": "home",
+   "ok": true,
+   "before": "scrive-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "scrive-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "voyado",
+   "url": "https://voyado.com/",
+   "page": "home",
+   "ok": false,
+   "error": "Error: page.screenshot: Target page, context or browser has been closed"
+  },
+  {
+   "name": "funnel",
+   "url": "https://funnel.io/",
+   "page": "home",
+   "ok": true,
+   "before": "funnel-before.jpg",
+   "applied": [
+    "Move social proof up — \"testimonials\" → after hero (L0)",
+    "Emphasise primary CTA — \"GET A DEMO\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "funnel-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "epidemicsound",
+   "url": "https://www.epidemicsound.com/",
+   "page": "home",
+   "ok": true,
+   "before": "epidemicsound-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"\"EAST WEST / WEST EAST\"\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "epidemicsound-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "pleo",
+   "url": "https://www.pleo.io/",
+   "page": "home",
+   "ok": true,
+   "before": "pleo-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get Started\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "pleo-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "dixa",
+   "url": "https://www.dixa.com/",
+   "page": "home",
+   "ok": true,
+   "before": "dixa-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Book a demo\"",
+    "Surface trust bar — “+22% efficiency +14% CSAT +17% retention”"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "dixa-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "whereby",
+   "url": "https://whereby.com/",
+   "page": "home",
+   "ok": true,
+   "before": "whereby-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get started\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "whereby-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "kahoot",
+   "url": "https://kahoot.com/",
+   "page": "home",
+   "ok": true,
+   "before": "kahoot-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Sign up FREE\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "kahoot-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "unleash",
+   "url": "https://www.getunleash.io/",
+   "page": "home",
+   "ok": true,
+   "before": "unleash-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"➩ See where we're going\"",
+    "Surface trust bar — Join a global community of 10,000+ Developers"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "unleash-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "juni",
+   "url": "https://juni.co/",
+   "page": "home",
+   "ok": true,
+   "before": "juni-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "juni-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "trustly",
+   "url": "https://www.trustly.com/",
+   "page": "home",
+   "ok": true,
+   "before": "trustly-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start your engine\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "trustly-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "sentry",
+   "url": "https://sentry.io/",
+   "page": "home",
+   "ok": true,
+   "before": "sentry-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Marketing Mode\"",
+    "Surface trust bar — Loved by developers worldwide"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "sentry-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "retool",
+   "url": "https://retool.com/",
+   "page": "home",
+   "ok": true,
+   "before": "retool-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Starter prompts\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "retool-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "railway",
+   "url": "https://railway.app/",
+   "page": "home",
+   "ok": true,
+   "before": "railway-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Railway\"",
+    "Surface trust bar — “\"On our previous rent day, we saw traffic of 1,500+ request"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "railway-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "render",
+   "url": "https://render.com/",
+   "page": "home",
+   "ok": true,
+   "before": "render-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Apply now\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "render-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "flyio",
+   "url": "https://fly.io/",
+   "page": "home",
+   "ok": true,
+   "before": "flyio-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Check Em Out!\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "flyio-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "netlify",
+   "url": "https://www.netlify.com/",
+   "page": "home",
+   "ok": true,
+   "before": "netlify-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start building\"",
+    "Surface trust bar — “I can push a change, and within 30 seconds the site is comp"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "netlify-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "neon",
+   "url": "https://neon.tech/",
+   "page": "home",
+   "ok": true,
+   "before": "neon-before.jpg",
+   "applied": [
+    "Move social proof up — \"Instant branching. Develop and test with\" → top of its group (L1)",
+    "Emphasise primary CTA — \"Neon is expanding into a backend: Object Storage, Functions, and AI Gateway now \"",
+    "Surface trust bar — Trusted by developers, ready for agents. Build and scale app"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "neon-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "clerk",
+   "url": "https://clerk.com/",
+   "page": "home",
+   "ok": true,
+   "before": "clerk-before.jpg",
+   "applied": [
+    "Move social proof up — \"testimonials\" → after hero (L0)",
+    "Emphasise primary CTA — \"Start building for free\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "clerk-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "auth0",
+   "url": "https://auth0.com/",
+   "page": "home",
+   "ok": true,
+   "before": "auth0-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start building for free\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "auth0-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "algolia",
+   "url": "https://www.algolia.com/",
+   "page": "home",
+   "ok": true,
+   "before": "algolia-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "algolia-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "contentful",
+   "url": "https://www.contentful.com/",
+   "page": "home",
+   "ok": true,
+   "before": "contentful-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"SumUp logo\"",
+    "Surface trust bar — “View case study Browse all”"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "contentful-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "sanity",
+   "url": "https://www.sanity.io/",
+   "page": "home",
+   "ok": true,
+   "before": "sanity-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"🗓️ Everything *[NYC] is back. A free gathering for AI builders. Sept 9 →\"",
+    "Surface trust bar — Loved by 1M+ users and 6k+ teams"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "sanity-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "strapi",
+   "url": "https://strapi.io/",
+   "page": "home",
+   "ok": true,
+   "before": "strapi-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"MCP is now Generally Available\"",
+    "Surface trust bar — Trusted by 3K+ customers"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "strapi-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "ghost",
+   "url": "https://ghost.org/",
+   "page": "home",
+   "ok": true,
+   "before": "ghost-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Just launched: Ghost 6.0 →\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "ghost-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "resend",
+   "url": "https://resend.com/",
+   "page": "home",
+   "ok": true,
+   "before": "resend-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Join us at Resend Forward\"",
+    "Surface trust bar — “\"The Resend team have built a great product in a space that"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "resend-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "n8n",
+   "url": "https://n8n.io/",
+   "page": "home",
+   "ok": true,
+   "before": "n8n-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Top 50 Github. Our 197.2k stars place us among the most popular projects.\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "n8n-after.jpg",
+   "restoredClean": false
+  },
+  {
+   "name": "mailchimp",
+   "url": "https://mailchimp.com/",
+   "page": "home",
+   "ok": true,
+   "before": "mailchimp-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "mailchimp-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "mailchimp",
+   "url": "https://mailchimp.com/pricing/marketing/",
+   "page": "pricing",
+   "ok": true,
+   "before": "mailchimp-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — GDPR Compliance"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mailchimp-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "klaviyo",
+   "url": "https://www.klaviyo.com/",
+   "page": "home",
+   "ok": true,
+   "before": "klaviyo-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "klaviyo-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "activecampaign",
+   "url": "https://www.activecampaign.com/",
+   "page": "home",
+   "ok": true,
+   "before": "activecampaign-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start trial\"",
+    "Surface trust bar — “I felt overwhelmed, but with the AI tools, that hesitant fe"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "activecampaign-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "mailerlite",
+   "url": "https://www.mailerlite.com/",
+   "page": "home",
+   "ok": true,
+   "before": "mailerlite-before.jpg",
+   "applied": [
+    "Surface trust bar — Join 1M+ creators and businesses using MailerLite to grow."
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mailerlite-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "beehiiv",
+   "url": "https://www.beehiiv.com/",
+   "page": "home",
+   "ok": true,
+   "before": "beehiiv-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Sign up with Google\"",
+    "Surface trust bar — More than 100,000 subscribers?"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "beehiiv-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "hotjar",
+   "url": "https://www.hotjar.com/",
+   "page": "home",
+   "ok": true,
+   "before": "hotjar-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start for free Start for free\"",
+    "Surface trust bar — “Error Monitoring Catch JavaScript errors before they kill y"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "hotjar-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "hotjar",
+   "url": "https://www.hotjar.com/pricing/",
+   "page": "pricing",
+   "ok": true,
+   "before": "hotjar-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Included in every plan"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "hotjar-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "mixpanel",
+   "url": "https://mixpanel.com/",
+   "page": "home",
+   "ok": true,
+   "before": "mixpanel-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Book a Demo\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mixpanel-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "mixpanel",
+   "url": "https://mixpanel.com/pricing/",
+   "page": "pricing",
+   "ok": true,
+   "before": "mixpanel-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — GDPR, CCPA, & Native SOC 2 type II compliant"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mixpanel-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "amplitude",
+   "url": "https://amplitude.com/",
+   "page": "home",
+   "ok": false,
+   "error": "Error: page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://amplitude.com/\nCall log:\n\u001b[2m  - navigating to \"https://amplitude.com/\", waiting until \"domconten"
+  },
+  {
+   "name": "amplitude",
+   "url": "https://amplitude.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "amplitude-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Pricing"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "amplitude-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "segment",
+   "url": "https://segment.com/",
+   "page": "home",
+   "ok": true,
+   "before": "segment-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Visit Twilio.com\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "segment-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "customerio",
+   "url": "https://customer.io/",
+   "page": "home",
+   "ok": true,
+   "before": "customerio-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "customerio-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "semrush",
+   "url": "https://www.semrush.com/",
+   "page": "home",
+   "ok": true,
+   "before": "semrush-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Skip to content\"",
+    "Surface trust bar — “OUR CUSTOMERS HOW WE HELP MARKETERS WIN Semrush for Enterpr"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "semrush-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "ahrefs",
+   "url": "https://ahrefs.com/",
+   "page": "home",
+   "ok": true,
+   "before": "ahrefs-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get Started\"",
+    "Surface trust bar — 4.7 /5 4.5 /5 9.2 /10 4.6 /5"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "ahrefs-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "ahrefs",
+   "url": "https://ahrefs.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "ahrefs-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — What is your refund policy?",
+    "Spotlight pricing section — Plans & pricing"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "ahrefs-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "moz",
+   "url": "https://moz.com/",
+   "page": "home",
+   "ok": true,
+   "before": "moz-before.jpg",
+   "applied": [
+    "Move social proof up — \"Why marketers trust Moz Data & tools\" → top of its group (L1)",
+    "Emphasise primary CTA — \"View Plans\"",
+    "Surface trust bar — “Laura Simis Director of Marketing at Hum “We've been using "
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "moz-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "surferseo",
+   "url": "https://surferseo.com/",
+   "page": "home",
+   "ok": false,
+   "error": "Error: page.goto: net::ERR_TUNNEL_CONNECTION_FAILED at https://surferseo.com/\nCall log:\n\u001b[2m  - navigating to \"https://surferseo.com/\", waiting until \"domconten"
+  },
+  {
+   "name": "pipedrive",
+   "url": "https://www.pipedrive.com/",
+   "page": "home",
+   "ok": true,
+   "before": "pipedrive-before.jpg",
+   "applied": [
+    "Move social proof up — \"testimonials\" → after hero (L0)",
+    "Emphasise primary CTA — \"Try it free\"",
+    "Surface trust bar — “I waited until I had the first 12 months of Pipedrive data,"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "pipedrive-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "pipedrive",
+   "url": "https://www.pipedrive.com/en/prices",
+   "page": "pricing",
+   "ok": true,
+   "before": "pipedrive-pricing-before.jpg",
+   "applied": [],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": false,
+   "after": "pipedrive-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "close",
+   "url": "https://www.close.com/",
+   "page": "home",
+   "ok": true,
+   "before": "close-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start free with Google\"",
+    "Surface trust bar — 4.7 stars from 2,000+ reviews on G2"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "close-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "close",
+   "url": "https://www.close.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "close-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — 30-day money-back guarantee"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "close-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "gorgias",
+   "url": "https://www.gorgias.com/",
+   "page": "home",
+   "ok": true,
+   "before": "gorgias-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Discover pricing\"",
+    "Surface trust bar — “\"When we first started with Gorgias, our goal was to hit 30"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "gorgias-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "helpscout",
+   "url": "https://www.helpscout.com/",
+   "page": "home",
+   "ok": true,
+   "before": "helpscout-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start for Free\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "helpscout-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "helpscout",
+   "url": "https://www.helpscout.com/pricing/",
+   "page": "pricing",
+   "ok": true,
+   "before": "helpscout-pricing-before.jpg",
+   "applied": [],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": false,
+   "after": "helpscout-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "front",
+   "url": "https://front.com/",
+   "page": "home",
+   "ok": true,
+   "before": "front-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Request demo\"",
+    "Surface trust bar — 9,300+ customers trust Front with the hard stuff"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "front-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "front",
+   "url": "https://front.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "front-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Compare plans"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "front-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "aircall",
+   "url": "https://aircall.io/",
+   "page": "home",
+   "ok": true,
+   "before": "aircall-before.jpg",
+   "applied": [
+    "Move social proof up — \"testimonials\" → after hero (L0)",
+    "Emphasise primary CTA — \"TRY FOR FREE\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "aircall-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "aircall",
+   "url": "https://aircall.io/pricing/",
+   "page": "pricing",
+   "ok": true,
+   "before": "aircall-pricing-before.jpg",
+   "applied": [],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": false,
+   "after": "aircall-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "slack",
+   "url": "https://slack.com/",
+   "page": "home",
+   "ok": true,
+   "before": "slack-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"GET STARTED\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "slack-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "slack",
+   "url": "https://slack.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "slack-pricing-before.jpg",
+   "applied": [],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": false,
+   "after": "slack-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "dropbox",
+   "url": "https://www.dropbox.com/",
+   "page": "home",
+   "ok": true,
+   "before": "dropbox-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Try Dropbox free\"",
+    "Surface trust bar — “Testimonial \"The security of knowing our information is saf"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "dropbox-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "dropbox",
+   "url": "https://www.dropbox.com/plans",
+   "page": "pricing",
+   "ok": true,
+   "before": "dropbox-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — Enable HIPAA compliance",
+    "Spotlight pricing section — Compare plans"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "dropbox-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "miro",
+   "url": "https://miro.com/",
+   "page": "home",
+   "ok": true,
+   "before": "miro-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Watch now\"",
+    "Surface trust bar — 20,000+ reviews from Capterra, G2 and Trustradius"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "miro-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "miro",
+   "url": "https://miro.com/pricing/",
+   "page": "pricing",
+   "ok": true,
+   "before": "miro-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — SOC 2 Type II"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "miro-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "canva",
+   "url": "https://www.canva.com/",
+   "page": "home",
+   "ok": true,
+   "before": "canva-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start designing\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "canva-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "grammarly",
+   "url": "https://www.grammarly.com/",
+   "page": "home",
+   "ok": true,
+   "before": "grammarly-before.jpg",
+   "applied": [
+    "Surface trust bar — “92% style-guide feature adoption Janine Anderson Managing E"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "grammarly-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "todoist",
+   "url": "https://todoist.com/",
+   "page": "home",
+   "ok": true,
+   "before": "todoist-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start for free\"",
+    "Surface trust bar — “Accounting Tasks Create a system to keep your books, receip"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "todoist-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "todoist",
+   "url": "https://todoist.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "todoist-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — Enterprise-grade security with SOC2 Type II certification.",
+    "Spotlight pricing section — Plans and pricing"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "todoist-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "superhuman",
+   "url": "https://superhuman.com/",
+   "page": "home",
+   "ok": true,
+   "before": "superhuman-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get Superhuman\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "superhuman-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "calcom",
+   "url": "https://cal.com/",
+   "page": "home",
+   "ok": true,
+   "before": "calcom-before.jpg",
+   "applied": [
+    "Move social proof up — \"Don’t just take our word for it\" → after hero (L0)",
+    "Emphasise primary CTA — \"Cal.ai\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "calcom-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "toggl",
+   "url": "https://toggl.com/",
+   "page": "home",
+   "ok": true,
+   "before": "toggl-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start tracking for free\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "toggl-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "wrike",
+   "url": "https://www.wrike.com/",
+   "page": "home",
+   "ok": true,
+   "before": "wrike-before.jpg",
+   "applied": [
+    "Move social proof up — \"Your work, delivered. 30,000+ times over\" → after hero (L0)",
+    "Emphasise primary CTA — \"Try Wrike for free\"",
+    "Surface trust bar — Join 30,000+ organizations where humans and agents deliver m"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "wrike-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "wrike",
+   "url": "https://www.wrike.com/price/",
+   "page": "pricing",
+   "ok": true,
+   "before": "wrike-pricing-before.jpg",
+   "applied": [
+    "Surface risk-reducer — What does Wrike do to ensure GDPR compliance?"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "wrike-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "smartsheet",
+   "url": "https://www.smartsheet.com/",
+   "page": "home",
+   "ok": true,
+   "before": "smartsheet-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Watch a demo\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "smartsheet-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "smartsheet",
+   "url": "https://www.smartsheet.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "smartsheet-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Features by plan type"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "smartsheet-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "gusto",
+   "url": "https://gusto.com/",
+   "page": "home",
+   "ok": true,
+   "before": "gusto-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Payroll takes just a few clicks\"",
+    "Surface trust bar — ““Payroll used to take at least one full day per month. We’r"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "gusto-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "rippling",
+   "url": "https://www.rippling.com/",
+   "page": "home",
+   "ok": true,
+   "before": "rippling-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Take a product tour\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "rippling-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "bamboohr",
+   "url": "https://www.bamboohr.com/",
+   "page": "home",
+   "ok": true,
+   "before": "bamboohr-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get My Free Demo\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "bamboohr-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "personio",
+   "url": "https://www.personio.com/",
+   "page": "home",
+   "ok": true,
+   "before": "personio-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "personio-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "remotecom",
+   "url": "https://remote.com/",
+   "page": "home",
+   "ok": true,
+   "before": "remotecom-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "remotecom-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "ramp",
+   "url": "https://ramp.com/",
+   "page": "home",
+   "ok": true,
+   "before": "ramp-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Read the report\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "ramp-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "mercury",
+   "url": "https://mercury.com/",
+   "page": "home",
+   "ok": true,
+   "before": "mercury-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Launch demo\"",
+    "Surface trust bar — Loved by 300K+ of the most ambitious entrepreneurs on the pl"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mercury-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "mercury",
+   "url": "https://mercury.com/pricing",
+   "page": "pricing",
+   "ok": true,
+   "before": "mercury-pricing-before.jpg",
+   "applied": [
+    "Spotlight pricing section — Compare our plans"
+   ],
+   "segment": "price_hesitant",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mercury-pricing-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "onepassword",
+   "url": "https://1password.com/",
+   "page": "home",
+   "ok": true,
+   "before": "onepassword-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Request SaaS Manger demo\"",
+    "Surface trust bar — ““At an organizational level, 1Password helped impose discip"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "onepassword-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "vanta",
+   "url": "https://www.vanta.com/",
+   "page": "home",
+   "ok": true,
+   "before": "vanta-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"✨ Vanta Delivers: AI is moving fast. See how Vanta helps you stay ahead of risk.\"",
+    "Surface trust bar — ““Vanta helped us unblock our sales cycle for security quest"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "vanta-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "docusign",
+   "url": "https://www.docusign.com/",
+   "page": "home",
+   "ok": true,
+   "before": "docusign-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Featured\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "docusign-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "pandadoc",
+   "url": "https://www.pandadoc.com/",
+   "page": "home",
+   "ok": true,
+   "before": "pandadoc-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get Started\"",
+    "Surface trust bar — “PandaDoc has a personal touch — they listen, adapt, and sup"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "pandadoc-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "chargebee",
+   "url": "https://www.chargebee.com/",
+   "page": "home",
+   "ok": true,
+   "before": "chargebee-before.jpg",
+   "applied": [],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": false,
+   "after": "chargebee-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "paddle",
+   "url": "https://www.paddle.com/",
+   "page": "home",
+   "ok": true,
+   "before": "paddle-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Get started\"",
+    "Surface trust bar — 10,000+ — CUSTOMERS"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "paddle-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "bokio",
+   "url": "https://www.bokio.se/",
+   "page": "home",
+   "ok": false,
+   "error": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+  },
+  {
+   "name": "bokio",
+   "url": "https://www.bokio.se/priser/",
+   "page": "pricing",
+   "ok": false,
+   "error": "Error: page.evaluate: TypeError: Cannot read properties of undefined (reading 'events')\n    at eval\n    at evaluate\n    at "
+  },
+  {
+   "name": "mynewsdesk",
+   "url": "https://www.mynewsdesk.com/",
+   "page": "home",
+   "ok": true,
+   "before": "mynewsdesk-before.jpg",
+   "applied": [
+    "Move social proof up — \"8 out of 10 get media coverage\" → after hero (L0)",
+    "Emphasise primary CTA — \"Test the product for free\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "mynewsdesk-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "upsales",
+   "url": "https://www.upsales.com/",
+   "page": "home",
+   "ok": true,
+   "before": "upsales-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Request demo\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "upsales-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "sanalabs",
+   "url": "https://sanalabs.com/",
+   "page": "home",
+   "ok": true,
+   "before": "sanalabs-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Explore\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "sanalabs-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "framer",
+   "url": "https://www.framer.com/",
+   "page": "home",
+   "ok": true,
+   "before": "framer-before.jpg",
+   "applied": [
+    "Move social proof up — \"Built on a community that isn’t going an\" → after hero (L0)",
+    "Emphasise primary CTA — \"Learn how our AI agents work\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "framer-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "lemlist",
+   "url": "https://www.lemlist.com/",
+   "page": "home",
+   "ok": true,
+   "before": "lemlist-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Meet lemAgent\"",
+    "Surface trust bar — Recognized by G2. Trusted by thousands. 4.7 / 5 based on 1,3"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "lemlist-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "apollo",
+   "url": "https://www.apollo.io/",
+   "page": "home",
+   "ok": true,
+   "before": "apollo-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Sign up for free\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "apollo-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "attio",
+   "url": "https://attio.com/",
+   "page": "home",
+   "ok": false,
+   "error": "Error: page.goto: Page crashed\nCall log:\n\u001b[2m  - navigating to \"https://attio.com/\", waiting until \"domcontentloaded\"\u001b[22m\n"
+  },
+  {
+   "name": "clay",
+   "url": "https://www.clay.com/",
+   "page": "home",
+   "ok": true,
+   "before": "clay-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start free trial\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "clay-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "loops",
+   "url": "https://loops.so/",
+   "page": "home",
+   "ok": true,
+   "before": "loops-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"product email\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "loops-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "savvycal",
+   "url": "https://savvycal.com/",
+   "page": "home",
+   "ok": true,
+   "before": "savvycal-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Sign up\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "savvycal-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "postmark",
+   "url": "https://postmarkapp.com/",
+   "page": "home",
+   "ok": true,
+   "before": "postmark-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start free trial\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "postmark-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "lucid",
+   "url": "https://lucid.co/",
+   "page": "home",
+   "ok": true,
+   "before": "lucid-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Contact sales\""
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "lucid-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "coda",
+   "url": "https://coda.io/",
+   "page": "home",
+   "ok": true,
+   "before": "coda-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Skip to content\"",
+    "Surface trust bar — A few of the 50,000+ teams collaborating on Coda."
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "coda-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "planetscale",
+   "url": "https://planetscale.com/",
+   "page": "home",
+   "ok": true,
+   "before": "planetscale-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Watch the talk\"",
+    "Surface trust bar — “We chose PlanetScale to host our most demanding Vitess and "
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "planetscale-after.jpg",
+   "restoredClean": true
+  },
+  {
+   "name": "clickhouse",
+   "url": "https://clickhouse.com/",
+   "page": "home",
+   "ok": true,
+   "before": "clickhouse-before.jpg",
+   "applied": [
+    "Emphasise primary CTA — \"Start free cloud trial\"",
+    "Surface trust bar — Join the 100k+ developers using ClickHouse today"
+   ],
+   "segment": "engaged_no_click",
+   "visualIssues": [],
+   "changed": true,
+   "after": "clickhouse-after.jpg",
+   "restoredClean": true
+  }
+ ]
+}

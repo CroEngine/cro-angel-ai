@@ -1994,8 +1994,8 @@
       "h1": []
     },
     "hero": {
-      "headline": "",
-      "primaryCtaText": "Hoppa till huvudinnehållet",
+      "headline": "Håll dig sval i sommar",
+      "primaryCtaText": "Respons",
       "primaryCtaIntent": "conversion",
       "aboveFold": true
     },
@@ -2016,28 +2016,30 @@
       }
     },
     "trustSummary": {
-      "total": 2,
-      "aboveFold": 0,
+      "total": 3,
+      "aboveFold": 1,
       "byType": {
+        "review_rating": 1,
         "secure_payment": 1,
-        "customer_logos": 1
+        "org_number": 1
       }
     },
     "trustEvidence": {
       "rollup": {
-        "text-pattern/rejected/substring-fragment-mid-sentence": 3
+        "hierarchy-dedup/rejected/descendant of kept entry": 1
       }
     },
     "ctaSummary": {
-      "total": 246,
+      "total": 244,
       "primary": 55,
-      "aboveFold": 8
+      "aboveFold": 7
     },
     "sectionOrder": [
       "header",
       "hero",
       "hero",
       "hero",
+      "hero",
       "content",
       "content",
       "content",
@@ -2048,10 +2050,9 @@
       "content",
       "content",
       "content",
-      "pricing",
-      "pricing",
       "content",
-      "testimonials",
+      "content",
+      "content",
       "content",
       "content",
       "content",

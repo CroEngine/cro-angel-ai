@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "env": {
+    "chromiumPath": "<playwright-bundled>",
+    "chromiumVersion": "148.0.7778.96",
+    "pinned": true
+  },
+  "families": [
+    {
+      "family": "Berkeley Mono",
+      "gate1": {
+        "wWith": 540,
+        "wFallback": 520.171875,
+        "deltaLoad": 19.828125,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Berkeley Mono",
+          "allDescriptorFamilies": [
+            "Inter Variable",
+            "Inter Variable",
+            "Berkeley Mono",
+            "Tiempos Headline"
+          ],
+          "matchedDescriptorFamilies": [
+            "Berkeley Mono"
+          ],
+          "checkString": "16px \"Berkeley Mono\"",
+          "widthString": "\"Berkeley Mono\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Inter Variable",
+      "gate1": {
+        "wWith": 426,
+        "wFallback": 520.171875,
+        "deltaLoad": 94.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Inter Variable",
+          "allDescriptorFamilies": [
+            "Inter Variable",
+            "Inter Variable",
+            "Berkeley Mono",
+            "Tiempos Headline"
+          ],
+          "matchedDescriptorFamilies": [
+            "Inter Variable",
+            "Inter Variable"
+          ],
+          "checkString": "16px \"Inter Variable\"",
+          "widthString": "\"Inter Variable\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    },
+    {
+      "family": "Tiempos Headline",
+      "gate1": {
+        "wWith": 401,
+        "wFallback": 520.171875,
+        "deltaLoad": 119.171875,
+        "fontsCheckPass": true,
+        "pass": true,
+        "reason": "ok"
+      },
+      "gate2": {
+        "wOrig": 0,
+        "deltaSubset": 0,
+        "pass": true,
+        "reason": "skipped"
+      },
+      "diag": {
+        "branchTaken": "distinct+check",
+        "loadResultKind": "loaded",
+        "faceCount": 1,
+        "hasDescriptorMatch": true,
+        "epsilonLoadPx": 2,
+        "strings": {
+          "manifestFamily": "Tiempos Headline",
+          "allDescriptorFamilies": [
+            "Inter Variable",
+            "Inter Variable",
+            "Berkeley Mono",
+            "Tiempos Headline"
+          ],
+          "matchedDescriptorFamilies": [
+            "Tiempos Headline"
+          ],
+          "checkString": "16px \"Tiempos Headline\"",
+          "widthString": "\"Tiempos Headline\", monospace"
+        },
+        "canonMismatch": false,
+        "canonMismatchDetail": []
+      }
+    }
+  ]
+}

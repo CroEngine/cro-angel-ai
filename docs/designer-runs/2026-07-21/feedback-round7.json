@@ -1,0 +1,46 @@
+{
+ "auth0": {
+  "plan": {
+   "action": "reorder",
+   "container": "#__next > main:nth-of-type(1)",
+   "move": "#__next > main:nth-of-type(1) > section:nth-of-type(4)",
+   "after": "#block-0",
+   "mode": "flex",
+   "rationale": "'You're in great company' moves from 5200px down to right after the hero. Flex promotion changed section heights here (BFC formation); grid promotion keeps block-like flow. (Round 6: grid promotion hit a site-CSS width interaction the stretch override could not neutralize; retrying with flex promotion which now carries the same block-flow width semantics.)"
+  },
+  "failReason": "check-width-left@5:dw175,dl0"
+ },
+ "wrike": {
+  "plan": {
+   "action": "reorder",
+   "container": "website-widgets-loader",
+   "move": "website-widget-loader:nth-of-type(8)",
+   "after": "website-widget-loader:nth-of-type(1)",
+   "mode": "grid",
+   "rationale": "'Your work, delivered. 30,000+ times' moves to right after the hero widget. The widget-loader host is display:inline; grid promotion blockifies the custom-element children where flex promotion shifted heights. (Round 2: container re-targeted by tag name — the positional path did not survive a fresh page load.)"
+  },
+  "failReason": "check-overlap@2~3:38px"
+ },
+ "sentry": {
+  "plan": {
+   "action": "reorder",
+   "container": "#main-content",
+   "move": "#main-content > div:nth-of-type(5)",
+   "after": "#main-content > div:nth-of-type(2)",
+   "mode": "grid",
+   "rationale": "'Loved by developers worldwide' moves to directly after the hero. Flex promotion changed sibling heights on #main-content; single-column grid keeps block flow intact."
+  },
+  "failReason": "check-overlap@2~0:1678px"
+ },
+ "contentful": {
+  "plan": {
+   "action": "reorder",
+   "container": "body > main:nth-of-type(1)",
+   "move": "section[data-section=\"case_study\"]",
+   "after": "body > main:nth-of-type(1) > section:nth-of-type(1)",
+   "mode": "grid",
+   "rationale": "The Ruggable customer case study lands directly after the hero, giving skeptical readers proof before the feature pitch. Flex promotion failed width checks on this 19-child main; single-column grid preserves block-flow widths."
+  },
+  "failReason": "check-width-left@0:dw-1088,dl544"
+ }
+}

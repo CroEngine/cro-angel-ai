@@ -3,6 +3,24 @@
 
 export const PAGE_AUDIT_SCRIPT = `(() => {
   function nullIfEmpty(s) { const v = (s || '').trim(); return v === '' ? null : v; }
+  // Heading text as a human reads it: innerText (visible only — drops the
+  // display:none responsive/a11y headline copies sites duplicate into one
+  // element) with textContent fallback, then collapse an exact whole-phrase
+  // repetition. Responsive/animation layouts render the headline 2-3x; reading
+  // raw text concatenated them ("X X X"). Guard the repeat unit to >=3 words so
+  // intentional short repeats ("Go go go") are never touched.
+  function cleanHeadingText(el) {
+    if (!el) return '';
+    var t = ((el.innerText || el.textContent || '') + '').trim().replace(/\\s+/g, ' ');
+    var w = t.split(' ');
+    for (var p = 3; p <= w.length / 2; p++) {
+      if (w.length % p !== 0) continue;
+      var ok = true;
+      for (var i = p; i < w.length; i++) { if (w[i] !== w[i % p]) { ok = false; break; } }
+      if (ok) { w = w.slice(0, p); break; }
+    }
+    return w.join(' ');
+  }
   function meta(name) {
     const el = document.querySelector('meta[name="' + name + '"]');
     return el ? (el.getAttribute('content') || '').trim() : '';
@@ -33,7 +51,7 @@ export const PAGE_AUDIT_SCRIPT = `(() => {
   const h1Texts = hs
     .filter((h) => h.tagName === 'H1')
     .slice(0, 2)
-    .map((h) => (h.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 120));
+    .map((h) => cleanHeadingText(h).slice(0, 120));
   const headings = {
     h1Count: hs.filter((h) => h.tagName === 'H1').length,
     h2Count: hs.filter((h) => h.tagName === 'H2').length,

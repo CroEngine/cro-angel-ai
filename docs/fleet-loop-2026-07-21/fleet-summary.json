@@ -1,0 +1,46 @@
+{
+  "generatedFrom": "fleet-loop over the committed sweep corpus; traffic fabricated, site layer real",
+  "sites": 101,
+  "outcomes": {
+    "measured": 72,
+    "noMeasurableCohort": 29
+  },
+  "planted": {
+    "winner": 60,
+    "null": 25,
+    "trap": 16
+  },
+  "calibration": {
+    "winner": {
+      "measurable": 46,
+      "recoveredWin": 35,
+      "recoveryPower": 0.761,
+      "falseHarm": 0
+    },
+    "null": {
+      "measurable": 20,
+      "falsePositives": 2,
+      "fpRate": 0.1
+    },
+    "trap": {
+      "measurable": 6,
+      "caughtAndHeld": 6,
+      "catchRate": 1,
+      "escaped": 0
+    }
+  },
+  "daysToVerdict": {
+    "min": 4,
+    "median": 20,
+    "max": 44
+  },
+  "nullFpExpected": 1,
+  "nullFpPlausibleBound": 4,
+  "calibration_note": "null false-positives at ~alpha are EXPECTED and confirm calibration; a violation is only an FP count beyond the binomial bound, winner false-harm, or a trap escape",
+  "calibrationViolations": 0,
+  "calibrationHealthy": true,
+  "estimateVerdictSanity": {
+    "nPerArm": 4187,
+    "days": 28
+  }
+}

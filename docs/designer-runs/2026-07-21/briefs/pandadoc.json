@@ -1,0 +1,207 @@
+{
+ "name": "pandadoc",
+ "site": "www.pandadoc.com",
+ "url": "https://www.pandadoc.com/",
+ "page": {
+  "title": "PandaDoc – Create, Approve, Track & eSign Docs 40% Faster",
+  "docHeight": 8445,
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "sections": [
+  {
+   "i": 0,
+   "type": "header",
+   "heading": "",
+   "selector": "header[data-ssblock=\"header-nav\"]",
+   "top": 82,
+   "h": 80
+  },
+  {
+   "i": 1,
+   "type": "hero",
+   "heading": "Make proposals that make impressions",
+   "selector": "#main-content > div > div > div:nth-of-type(1)",
+   "top": 82,
+   "h": 1323
+  },
+  {
+   "i": 2,
+   "type": "content",
+   "heading": "The complete document management solutions",
+   "selector": "div[data-contentful-entry-id=\"1Rgm9l06CiPVeUJAuRoesC\"]",
+   "top": 1405,
+   "h": 1093
+  },
+  {
+   "i": 3,
+   "type": "content",
+   "heading": "Safe, secure, and legally binding",
+   "selector": "#main-content > div > div > div:nth-of-type(3)",
+   "top": 2498,
+   "h": 807
+  },
+  {
+   "i": 4,
+   "type": "content",
+   "heading": "Designed to make every agreement easier",
+   "selector": "#main-content > div > div > div:nth-of-type(4)",
+   "top": 3305,
+   "h": 1991
+  },
+  {
+   "i": 5,
+   "type": "testimonials",
+   "heading": "Will O’Neil, Head of IT & Strategic Enablement at Nomad",
+   "selector": "div[data-contentful-entry-id=\"ZuHXapedM17zHnFV9uLdU\"]",
+   "top": 5296,
+   "h": 1002
+  },
+  {
+   "i": 6,
+   "type": "content",
+   "heading": "Built to integrate with all your favorite tools",
+   "selector": "#main-content > div > div > div:nth-of-type(6)",
+   "top": 6348,
+   "h": 818
+  },
+  {
+   "i": 7,
+   "type": "form",
+   "heading": "Streamline your document workflow",
+   "selector": "#main-content > div > div > div:nth-of-type(7)",
+   "top": 7165,
+   "h": 557
+  },
+  {
+   "i": 8,
+   "type": "footer",
+   "heading": "",
+   "selector": "footer[data-ssblock=\"cta\"]",
+   "top": 7782,
+   "h": 663
+  }
+ ],
+ "proofIndex": 5,
+ "heroIndex": 1,
+ "floorIndex": 1,
+ "autoTrail": "L0:check-height",
+ "ladder": [
+  {
+   "depth": 0,
+   "selector": "#main-content > div:nth-of-type(1) > div:nth-of-type(1)",
+   "tag": "div",
+   "id": null,
+   "className": "",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 7,
+   "rect": {
+    "top": 82,
+    "h": 7640
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1)",
+     "top": 82,
+     "h": 1323,
+     "sections": [
+      1
+     ],
+     "hasProof": false,
+     "hasFloor": true
+    },
+    {
+     "idx": 1,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2)",
+     "top": 1405,
+     "h": 1093,
+     "sections": [
+      2
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3)",
+     "top": 2498,
+     "h": 807,
+     "sections": [
+      3
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 3,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(4)",
+     "top": 3305,
+     "h": 1991,
+     "sections": [
+      4
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 4,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(5)",
+     "top": 5296,
+     "h": 1002,
+     "sections": [
+      5
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 5,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(6)",
+     "top": 6348,
+     "h": 818,
+     "sections": [
+      6
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 6,
+     "tag": "div",
+     "id": null,
+     "className": "",
+     "selector": "#main-content > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(7)",
+     "top": 7165,
+     "h": 557,
+     "sections": [
+      7
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  }
+ ]
+}

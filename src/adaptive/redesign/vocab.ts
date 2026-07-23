@@ -63,6 +63,7 @@ export function classifySectionHeading(heading: string, isFirst: boolean): strin
 export const EVIDENCE_SECTION_TYPES: readonly string[] = [
   "testimonials",
   "logos",
+  "stats",
   "comparison",
   "pricing",
   "faq",

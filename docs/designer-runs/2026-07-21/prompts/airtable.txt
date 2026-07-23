@@ -1,0 +1,566 @@
+SYSTEM:
+You are the layout solver for Angel Adaptive, a snippet that adapts third-party marketing pages using only safe, reversible CSS changes.
+
+GOAL: surface the page's PROOF section (testimonials) earlier — ideally right after the hero — on pages where the automatic solver refused. You receive a structural brief: the page's detected sections, the automatic attempt trail with named refusal reasons, and a "ladder" of candidate containers (from the common ancestor of hero+proof down to the proof's own parent), each with its direct children.
+
+MECHANICS (what a plan can do):
+- A reorder happens INSIDE one container: its direct children get CSS `order` values; the child carrying the proof moves after a chosen sibling (or to the front). The DOM never changes.
+- Block-stacked containers are promoted to flex-column (mode "flex") or single-column grid (mode "grid"). Grid stretches children like block flow and can avoid the width/height drift that flex promotion sometimes causes — prefer "grid" when the trail shows check-width-left or check-height at that container.
+- Every plan is re-verified on the live page: siblings must keep width/left (±2px) and height (±12px), no overlaps, page height within 3%, the proof must lift ≥200px, never land above the hero, never land <300px from the page top, and the moved child must not carry other detected sections. A failed check rolls back invisibly and you get the named reason.
+
+RULES:
+1. Copy selectors EXACTLY from the brief ("selector" fields). Never invent selectors.
+2. "move" must be the proof section itself or a child marked hasProof:true whose "sections" list contains ONLY the proof index (never a wrapper that also carries other sections).
+3. "container" must be a ladder container (or a listed child that is an ancestor of the proof). "after" must be a child selector FROM THAT SAME container, or null for front-of-group.
+4. Prefer the smallest move that still yields a meaningful lift. Landing right after the hero child is ideal; front-of-group is fine when the container sits below the hero.
+5. The refusal trail tells you what already failed — do not repeat a failed attempt unchanged; change the container, the anchor, or the mode.
+6. If no safe move exists (every child that carries the proof also carries other sections, or every container has <2 usable children), answer action "refuse" with a short rationale. Refusal is a correct answer.
+7. "rationale": 1-2 sentences, written for the site owner (why this improves the page for engaged non-clicking visitors).
+
+OUTPUT: one JSON object per the schema. action "refuse" → container/move/after/mode all null.
+
+USER:
+BRIEF:
+{
+ "name": "airtable",
+ "site": "www.airtable.com",
+ "url": "https://www.airtable.com/",
+ "page": {
+  "title": "Airtable: Build Enterprise-ready AI Workflows, Apps & Agents | Airtable",
+  "docHeight": 7271,
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "sections": [
+  {
+   "i": 0,
+   "type": "header",
+   "heading": "Airtable home or view your bases",
+   "selector": "#marketingHeaderSharedRoot",
+   "top": 0,
+   "h": 121
+  },
+  {
+   "i": 1,
+   "type": "nav",
+   "heading": "",
+   "selector": "nav[data-drawer=\"ddc8f5b6f2f783a9d5fc3333a846907e\"]",
+   "top": 0,
+   "h": 720
+  },
+  {
+   "i": 2,
+   "type": "hero",
+   "heading": "AI transformed individual work. Airtable transforms teamwork",
+   "selector": "main > section",
+   "top": 121,
+   "h": 599
+  },
+  {
+   "i": 3,
+   "type": "nav",
+   "heading": "",
+   "selector": "div:nth-of-type(1) > nav > ul > li:nth-of-type(2) > nav",
+   "top": 153,
+   "h": 491
+  },
+  {
+   "i": 4,
+   "type": "testimonials",
+   "heading": "",
+   "selector": "li:nth-of-type(6) > div > nav > div:nth-of-type(1) > ul > li:nth-of-type(2) > nav",
+   "top": 153,
+   "h": 650
+  },
+  {
+   "i": 5,
+   "type": "nav",
+   "heading": "",
+   "selector": "div:nth-of-type(2) > nav > ul > li:nth-of-type(2) > div > nav:nth-of-type(1)",
+   "top": 153,
+   "h": 633
+  },
+  {
+   "i": 6,
+   "type": "nav",
+   "heading": "",
+   "selector": "li:nth-of-type(2) > div > nav > div:nth-of-type(1) > ul > li:nth-of-type(2) > nav",
+   "top": 153,
+   "h": 761
+  },
+  {
+   "i": 7,
+   "type": "content",
+   "heading": "AI transformed individual work. Airtable transforms teamwork",
+   "selector": "main",
+   "top": 243,
+   "h": 6449
+  },
+  {
+   "i": 8,
+   "type": "nav",
+   "heading": "",
+   "selector": "div:nth-of-type(3) > nav > ul > li:nth-of-type(3) > nav",
+   "top": 562,
+   "h": 285
+  },
+  {
+   "i": 9,
+   "type": "testimonials",
+   "heading": "",
+   "selector": "nav:nth-of-type(2)",
+   "top": 819,
+   "h": 484
+  },
+  {
+   "i": 10,
+   "type": "testimonials",
+   "heading": "Trusted by 500,000+ companies",
+   "selector": "main > div:nth-of-type(2)",
+   "top": 841,
+   "h": 5851
+  },
+  {
+   "i": 11,
+   "type": "testimonials",
+   "heading": "How to build in Airtable",
+   "selector": "section:nth-of-type(1) > div > header",
+   "top": 2376,
+   "h": 176
+  },
+  {
+   "i": 12,
+   "type": "content",
+   "heading": "How to build in Airtable",
+   "selector": "div:nth-of-type(2) > section:nth-of-type(1)",
+   "top": 2376,
+   "h": 798
+  },
+  {
+   "i": 13,
+   "type": "content",
+   "heading": "Works with tools you already use",
+   "selector": "section:nth-of-type(2)",
+   "top": 3174,
+   "h": 506
+  },
+  {
+   "i": 14,
+   "type": "content",
+   "heading": "MCP Server",
+   "selector": "section:nth-of-type(4)",
+   "top": 5907,
+   "h": 273
+  },
+  {
+   "i": 15,
+   "type": "content",
+   "heading": "Build something.",
+   "selector": "section[data-slot=\"cta-banner\"]",
+   "top": 6180,
+   "h": 512
+  },
+  {
+   "i": 16,
+   "type": "nav",
+   "heading": "",
+   "selector": "footer > div:nth-of-type(1) > nav",
+   "top": 6692,
+   "h": 434
+  }
+ ],
+ "proofIndex": 4,
+ "heroIndex": 2,
+ "floorIndex": 2,
+ "autoTrail": "already-early",
+ "ladder": [
+  {
+   "depth": 0,
+   "selector": "body > div:nth-of-type(2)",
+   "tag": "div",
+   "id": null,
+   "className": "flex flex-col",
+   "display": "flex",
+   "flexDirection": "column",
+   "childCount": 4,
+   "rect": {
+    "top": 0,
+    "h": 7271
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "span",
+     "id": null,
+     "className": "Nav-module_sentinel__1WH6p",
+     "selector": "body > div:nth-of-type(2) > span:nth-of-type(1)",
+     "top": 5,
+     "h": 1,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 1,
+     "tag": "header",
+     "id": "marketingHeaderSharedRoot",
+     "className": "shellTypography-module_shellSeasonSans__1xDlp Nav-module_hea",
+     "selector": "#marketingHeaderSharedRoot",
+     "top": 0,
+     "h": 121,
+     "sections": [
+      0,
+      1,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "marketing-main flex min-h-0 flex-1 flex-col z-0",
+     "selector": "body > div:nth-of-type(2) > div:nth-of-type(1)",
+     "top": 121,
+     "h": 6571,
+     "sections": [
+      2,
+      7,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+     ],
+     "hasProof": false,
+     "hasFloor": true
+    },
+    {
+     "idx": 3,
+     "tag": "footer",
+     "id": null,
+     "className": "marketingFooterV2-module_footerWrap__2l-em shellTypography-m",
+     "selector": "body > div:nth-of-type(2) > footer:nth-of-type(1)",
+     "top": 6692,
+     "h": 579,
+     "sections": [
+      16
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  },
+  {
+   "depth": 1,
+   "selector": "#marketingHeaderSharedRoot",
+   "tag": "header",
+   "id": "marketingHeaderSharedRoot",
+   "className": "shellTypography-module_shellSeasonSans__1xDlp Nav-module_headerWrap__3rK1K",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 2,
+   "rect": {
+    "top": 0,
+    "h": 121
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "nav",
+     "id": null,
+     "className": "Nav-module_headerInnerWrap__WHzem",
+     "selector": "#marketingHeaderSharedRoot > nav:nth-of-type(1)",
+     "top": 0,
+     "h": 121,
+     "sections": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 1,
+     "tag": "span",
+     "id": null,
+     "className": "Nav-module_backdropOverlay__3EPp5",
+     "selector": "#marketingHeaderSharedRoot > span:nth-of-type(1)",
+     "top": 0,
+     "h": 720,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  },
+  {
+   "depth": 2,
+   "selector": "#marketingHeaderSharedRoot > nav:nth-of-type(1)",
+   "tag": "nav",
+   "id": null,
+   "className": "Nav-module_headerInnerWrap__WHzem",
+   "display": "grid",
+   "flexDirection": "row",
+   "childCount": 4,
+   "rect": {
+    "top": 0,
+    "h": 121
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "span",
+     "id": null,
+     "className": "Nav-module_drawerRectSpacer__36KhV",
+     "selector": "#marketingHeaderSharedRoot > nav:nth-of-type(1) > span:nth-of-type(1)",
+     "top": 0,
+     "h": 121,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 1,
+     "tag": "section",
+     "id": null,
+     "className": "Nav-module_beforeNavSection__lgBS3",
+     "selector": "#marketingHeaderSharedRoot > nav:nth-of-type(1) > section:nth-of-type(1)",
+     "top": 0,
+     "h": 43,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "MainNav-module_mainNavWrapper__Mgzqi",
+     "selector": "#marketingHeaderSharedRoot > nav:nth-of-type(1) > div:nth-of-type(1)",
+     "top": 43,
+     "h": 79,
+     "sections": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 3,
+     "tag": "div",
+     "id": null,
+     "className": "ActionGroup-module_actionGroupWrap__2CSAe",
+     "selector": "#marketingHeaderSharedRoot > nav:nth-of-type(1) > div:nth-of-type(2)",
+     "top": 55,
+     "h": 55,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  },
+  {
+   "depth": 3,
+   "selector": "#marketingHeaderSharedRoot > nav:nth-of-type(1) > div:nth-of-type(1)",
+   "tag": "div",
+   "id": null,
+   "className": "MainNav-module_mainNavWrapper__Mgzqi",
+   "display": "grid",
+   "flexDirection": "row",
+   "childCount": 2,
+   "rect": {
+    "top": 43,
+    "h": 79
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "a",
+     "id": "nav-brand",
+     "className": "Brand-module_brandWrap__1dhJu Brand-module_brandWrapSeasonSa",
+     "selector": "#nav-brand",
+     "top": 66,
+     "h": 32,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 1,
+     "tag": "div",
+     "id": "mobile-nav-menu",
+     "className": "Collapse-module_navCollapseWrap__3oz3L v2-module_backArrowV2",
+     "selector": "#mobile-nav-menu",
+     "top": 43,
+     "h": 79,
+     "sections": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    }
+   ]
+  },
+  {
+   "depth": 4,
+   "selector": "#mobile-nav-menu",
+   "tag": "div",
+   "id": "mobile-nav-menu",
+   "className": "Collapse-module_navCollapseWrap__3oz3L v2-module_backArrowV2Styles__3NQk5",
+   "display": "block",
+   "flexDirection": "row",
+   "childCount": 1,
+   "rect": {
+    "top": 43,
+    "h": 79
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "div",
+     "id": null,
+     "className": "Collapse-module_navCollapseInner__OPSv7",
+     "selector": "#mobile-nav-menu > div:nth-of-type(1)",
+     "top": 43,
+     "h": 79,
+     "sections": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    }
+   ]
+  },
+  {
+   "depth": 5,
+   "selector": "#mobile-nav-menu > div:nth-of-type(1)",
+   "tag": "div",
+   "id": null,
+   "className": "Collapse-module_navCollapseInner__OPSv7",
+   "display": "inline-flex",
+   "flexDirection": "row",
+   "childCount": 6,
+   "rect": {
+    "top": 43,
+    "h": 79
+   },
+   "children": [
+    {
+     "idx": 0,
+     "tag": "div",
+     "id": null,
+     "className": "v2-module_drawerCategoryWrapper__LIvAa Drawer-module_navDraw",
+     "selector": "#mobile-nav-menu > div:nth-of-type(1) > div:nth-of-type(1)",
+     "top": 43,
+     "h": 79,
+     "sections": [
+      1,
+      3,
+      4
+     ],
+     "hasProof": true,
+     "hasFloor": false
+    },
+    {
+     "idx": 1,
+     "tag": "div",
+     "id": null,
+     "className": "v2-module_drawerCategoryWrapper__LIvAa Drawer-module_navDraw",
+     "selector": "#mobile-nav-menu > div:nth-of-type(1) > div:nth-of-type(2)",
+     "top": 43,
+     "h": 79,
+     "sections": [
+      5,
+      9
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 2,
+     "tag": "div",
+     "id": null,
+     "className": "v2-module_drawerCategoryWrapper__LIvAa Drawer-module_navDraw",
+     "selector": "#mobile-nav-menu > div:nth-of-type(1) > div:nth-of-type(3)",
+     "top": 43,
+     "h": 79,
+     "sections": [
+      6,
+      8
+     ],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 3,
+     "tag": "a",
+     "id": null,
+     "className": "Link-module_navLink__17BFl ActionGroup-module_navLinkInsideA",
+     "selector": "#mobile-nav-menu > div:nth-of-type(1) > a:nth-of-type(1)",
+     "top": 72,
+     "h": 21,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 4,
+     "tag": "a",
+     "id": null,
+     "className": "Link-module_navLink__17BFl ActionGroup-module_navLinkInsideA",
+     "selector": "#mobile-nav-menu > div:nth-of-type(1) > a:nth-of-type(2)",
+     "top": 72,
+     "h": 21,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    },
+    {
+     "idx": 5,
+     "tag": "div",
+     "id": null,
+     "className": "v2-module_mobileActionLinkWrapper__1KHJW media-module_visibi",
+     "selector": "#mobile-nav-menu > div:nth-of-type(1) > div:nth-of-type(4)",
+     "top": 0,
+     "h": 0,
+     "sections": [],
+     "hasProof": false,
+     "hasFloor": false
+    }
+   ]
+  }
+ ]
+}

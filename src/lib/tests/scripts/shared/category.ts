@@ -51,6 +51,11 @@ export function classifyCategoryShared(
   hasSurface: boolean,
   inChrome: boolean,
   viewportH: number,
+  // Customer-logo / image link (B-notion): buttonish anchor with NO visible
+  // text of its own whose content is an image — "trusted by" logo strips that
+  // otherwise score cta_primary. Social proof, not a CTA → 'link'. Computed
+  // by the caller (needs DOM); default false keeps other call sites unchanged.
+  isImageOnly: boolean = false,
 ): "form_submit" | "icon_button" | "cta_primary" | "cta_secondary" | "nav_item" | "link" | "other" {
   const tag = (tagName || "").toUpperCase();
   const type = (inputType || "").toLowerCase();
@@ -63,6 +68,7 @@ export function classifyCategoryShared(
   const smallSquareish = rectW <= 56 && rectH <= 56;
   const shortLabel = textLen <= 2;
   if (isButtonish && smallSquareish && shortLabel) return "icon_button";
+  if (isButtonish && isImageOnly) return "link";
 
   const aboveFold = rectTop < viewportH;
   if (isButtonish) {
