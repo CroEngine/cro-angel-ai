@@ -44,6 +44,42 @@ export type Database = {
         }
         Relationships: []
       }
+      angel_preview_jobs: {
+        Row: {
+          id: string
+          url: string
+          status: string
+          report_url: string | null
+          findings: Json | null
+          error: string | null
+          requester_hash: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          url: string
+          status?: string
+          report_url?: string | null
+          findings?: Json | null
+          error?: string | null
+          requester_hash: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          url?: string
+          status?: string
+          report_url?: string | null
+          findings?: Json | null
+          error?: string | null
+          requester_hash?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       angel_notifications: {
         Row: {
           id: string

@@ -138,9 +138,81 @@ function Hero() {
           </Link>
         </div>
 
+        {/* Trattens topp (ägarmodellen 2026-07-23): klistra in URL:en → se
+            exemplet på DIN egen sida (before/after, dina egna bevis lyfta) →
+            därifrån in i signup + checkout. Jobbet byggs av en isolerad
+            arbetare; /try pollar tills rapporten finns. */}
+        <TryUrlForm />
+
         <SnippetPanel />
       </div>
     </section>
+  );
+}
+
+/** Trattens topp: URL in → köa förhandsvisningsjobbet → vidare till /try som
+ *  pollar tills exemplet (prospektets EGEN sida, before/after) är byggt. */
+function TryUrlForm() {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy || !url.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/preview/job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = (await res.json()) as { ok: boolean; id?: string; reason?: string };
+      if (data.ok && data.id) {
+        window.location.href = `/try?id=${data.id}`;
+        return;
+      }
+      setError(
+        data.reason === "rate_limited"
+          ? "That's the daily limit from your network — try again tomorrow."
+          : data.reason === "private_host" || data.reason === "not_public"
+            ? "That address isn't publicly reachable — paste your live site's URL."
+            : "We couldn't read that as a website address — try the full URL.",
+      );
+    } catch {
+      setError("Something went wrong on our side — try again in a minute.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="mx-auto mt-10 w-full max-w-xl">
+      <div className="flex items-center gap-2 rounded-xl border border-stone-300 bg-white p-1.5 shadow-sm">
+        <input
+          type="text"
+          inputMode="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="yourwebsite.com — see what Angel would do to it"
+          className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] text-stone-800 placeholder:text-stone-400 focus:outline-none"
+          aria-label="Your website address"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex-none rounded-lg bg-stone-900 px-5 py-2.5 text-[14px] font-semibold text-white transition hover:bg-stone-700 disabled:opacity-50"
+        >
+          {busy ? "Queuing…" : "Show me"}
+        </button>
+      </div>
+      <p className="mt-2 text-[12.5px] text-stone-400">
+        Free example on your own page in a few minutes — your buried social proof, lifted. No signup
+        needed to look.
+      </p>
+      {error && <p className="mt-2 text-[13px] font-medium text-red-600">{error}</p>}
+    </form>
   );
 }
 
@@ -381,8 +453,8 @@ function FinalCta() {
           <span className="text-emerald-700">Watch the lift.</span>
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-stone-600">
-          Free while in early access — no card, no sales call, and a promise to never make your
-          site worse.
+          Free while in early access — no card, no sales call, and a promise to never make your site
+          worse.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link

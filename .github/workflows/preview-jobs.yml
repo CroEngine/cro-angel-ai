@@ -1,0 +1,54 @@
+# Prospekt-förhandsvisningens arbetare (trattens topp) — dränerar
+# angel_preview_jobs-kön: granska-site i prospect-läge på prospektets URL →
+# rapport till angel-evidence → jobbraden stämplas. /try-sidan pollar raden.
+#
+# Väcks direkt av submit-API:t via workflow_dispatch (ANGEL_GH_DISPATCH_TOKEN i
+# Netlify-miljön); var 15:e minut som reservväg så kön aldrig fastnar om
+# tokenen saknas/fallerat. Samma isolerade körmiljö som day0-svepet — prod-
+# servern rör aldrig prospektets sajt.
+#
+# Kräver repo-secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
+# Saknas de är körningen en loggad no-op — aldrig röd av fel anledning.
+
+name: Preview jobs
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: preview-jobs
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium (with system deps)
+        run: bunx playwright install --with-deps chromium
+
+      - name: Drain the preview queue
+        run: bun run scripts/loop/preview.ts --out=preview-out
+
+      - name: Upload run artifacts (loggar/rapporter, 7 dagar)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-out
+          path: preview-out
+          retention-days: 7
+          if-no-files-found: ignore
