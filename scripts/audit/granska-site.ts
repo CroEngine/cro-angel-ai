@@ -25,6 +25,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
+import { isVacuityWarn } from "../../src/adaptive/redesign/render-gates";
 import { EVIDENCE_SECTION_TYPES } from "../../src/adaptive/redesign/vocab";
 import { measurePlan, runGatedAttempts, type MeasureOp } from "../redesign/measure";
 
@@ -168,7 +169,14 @@ if (content.trustSignals.length === 0) {
 // — den lokala svenska fallback-regexen behövs inte längre: classify()
 // förstår svenska rubriker direkt.
 const sections = content.sections;
-const targetIdx = sections.findIndex((s, i) => i >= 2 && EVIDENCE_SECTION_TYPES.includes(s.type));
+// Fleet-E2E 2026-07-23: en sektion räknas som lyft-värd om dess TYP är bevis
+// (social proof/jämförelse/priser/FAQ) ELLER om classify() flaggat att dess
+// text bär förtroendesignaler (kundantal/omdömen/certifikat) även om typen
+// blev något annat. 44 av 104 sajter fick "None" i baslinjen — flera bar
+// proof i en sektion vars typ inte råkade ligga i EVIDENCE_SECTION_TYPES.
+const targetIdx = sections.findIndex(
+  (s, i) => i >= 2 && (EVIDENCE_SECTION_TYPES.includes(s.type) || s.containsTrustSignals),
+);
 let beforeShot: string | null = null;
 let afterShot: string | null = null;
 let flyttStatus: "pass" | "refused" | "held" | null = null;
@@ -198,7 +206,39 @@ if (targetIdx >= 2) {
     op: "move_up",
     find: target.heading,
   }));
-  const gated = await runGatedAttempts(page, ops, ctaTexts);
+  // DEMO-vägens godkänt (fleet-E2E 2026-07-23): serveringsvägen (auto-generate)
+  // kräver ett RENT pass, men på en fryst kopia utan sidans skript saknas ofta
+  // LCP-elementet och ibland hit-testbara CTA:er — då blir grindutslaget "warn"
+  // av ren VAKUITET, inte för att lyftet skadade något. De hårda skade-grindarna
+  // (overflow, ovanför-hjälten, klickbarhet, återställbarhet) fäller alltid som
+  // "fail". Ett "warn" vars ENDA orsaker är vakuitet = layouten är bevisat säker,
+  // bara oåtkomlig att fullständigt verifiera på en kopia → demo-värdigt. All
+  // annan warn/fail hålls tillbaka precis som förr. (isVacuityWarn bor i
+  // render-gates, bredvid varningssträngarna — en källa.)
+  const demoPass = (g: typeof gated): boolean => {
+    const last = g.attempts[g.attempts.length - 1];
+    return (
+      !!last &&
+      (last.gate.verdict === "pass" ||
+        (last.gate.verdict === "warn" && last.gate.reasons.every(isVacuityWarn)))
+    );
+  };
+  let gated = await runGatedAttempts(page, ops, ctaTexts);
+  // Sikta högt men LANDA ärligt — faller grindarna med N lyft provas färre, ned
+  // till 1. Plausible-fallet: 2 lyft sänker sektionen (DOM-ordning ≠ visuell
+  // ordning runt hjälten ⇒ no-rise-grinden fäller, korrekt) men 1 lyft passerar
+  // rent med stor visuell vinst. Prospektet ska se vinsten som FINNS, inte ett
+  // "held" för att vi siktade för högt. measurePlan återställer sidan mellan
+  // försöken (keepApplied=false).
+  let usedLifts = lifts;
+  while (!gated.unresolvable && !demoPass(gated) && usedLifts > 1) {
+    usedLifts -= 1;
+    const fewer: MeasureOp[] = Array.from({ length: usedLifts }, () => ({
+      op: "move_up",
+      find: target.heading,
+    }));
+    gated = await runGatedAttempts(page, fewer, ctaTexts);
+  }
   if (gated.unresolvable) {
     flyttStatus = "refused";
     flyttText = EN
@@ -206,7 +246,7 @@ if (targetIdx >= 2) {
       : "Er sektionsstruktur är byggd på ett sätt där vår motor VÄGRAR flytta i stället för att gissa (det är en säkerhetsfunktion, inte ett fel). En flytt här görs manuellt tillsammans med er.";
   } else {
     const last = gated.attempts[gated.attempts.length - 1];
-    if (last.gate.verdict === "pass") {
+    if (demoPass(gated)) {
       flyttStatus = "pass";
       await measurePlan(page, gated.attemptOps, [], true);
       await page.screenshot({
@@ -217,9 +257,19 @@ if (targetIdx >= 2) {
       });
       beforeShot = join(outDir, "before.jpg");
       afterShot = join(outDir, "after.jpg");
+      // Ärlig kopia: nämn CTA-klausulen BARA när minst en CTA verkligen
+      // kontrollerades — annars är det en tom (vakuös) grind och "0 element
+      // fortfarande klickbara" vore vilseledande. Skade-grindarna är layout —
+      // scoping till "layout check" håller påståendet sant även vid vakuös warn.
+      const clickable =
+        last.measurements.ctaChecked > 0
+          ? EN
+            ? `${last.measurements.ctaChecked} conversion element(s) still clickable, `
+            : `${last.measurements.ctaChecked} konverterings-element fortfarande klickbara, `
+          : "";
       flyttText = EN
-        ? `The lift passed every check: no horizontal scroll introduced, nothing lands above your main headline, ${last.measurements.ctaChecked} conversion element(s) still clickable, and the change reverses exactly.`
-        : `Flytten klarade alla kontroller: ingen horisontell scroll introducerad, inget hamnar ovanför er huvudrubrik, ${last.measurements.ctaChecked} konverterings-element fortfarande klickbara, och ändringen är exakt återställbar.`;
+        ? `The lift passed every layout check: no horizontal scroll introduced, nothing lands above your main headline, ${clickable}and the change reverses exactly.`
+        : `Flytten klarade alla layout-kontroller: ingen horisontell scroll introducerad, inget hamnar ovanför er huvudrubrik, ${clickable}och ändringen är exakt återställbar.`;
     } else {
       flyttStatus = "held";
       flyttText = EN
@@ -324,6 +374,9 @@ writeFileSync(
       goalSource: ownerGoal ? "configured" : goalGuess ? "guessed" : null,
       fynd,
       flyttStatus,
+      // Flytt-berättelsen i klartext (fleet-E2E 2026-07-23): held-orsaken är
+      // feltaxonomins råvara — utan den är "held" bara en siffra.
+      flyttText,
       sektioner: sections.length,
       ctas: ctaTexts,
     },

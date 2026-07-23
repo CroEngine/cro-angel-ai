@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { evaluateRenderGates, type RenderMeasurements } from "../render-gates";
+import { evaluateRenderGates, isVacuityWarn, type RenderMeasurements } from "../render-gates";
 
 // A clean, safe apply: testimonials lifted above features, still below hero, no
 // overflow, CTAs intact, fully reversible.
@@ -271,5 +271,49 @@ describe("evaluateRenderGates — flytt-no-op-varningen (breddfynd 1)", () => {
     const r = evaluateRenderGates(unmoved());
     expect(r.verdict).toBe("warn");
     expect(r.reasons.join(" ")).toMatch(/section order is unchanged/);
+  });
+});
+
+describe("isVacuityWarn — the demo path's 'could-not-run' vs. 'failed' line", () => {
+  // Fleet-E2E 2026-07-23: on a frozen copy (page scripts inert) the CTA hit-test
+  // and the LCP servability check often can't run — the gate then WARNS out of
+  // pure vacuity, not because the lift damaged anything. The serving loop still
+  // demands a clean pass; the DEMO path (granska-site) may accept a warn whose
+  // reasons are ALL vacuity. These tests pin the predicate to the ACTUAL strings
+  // the gate emits, so a reword of either warn is caught here — not silently in
+  // the demo path where it would flip a held example into a shown one, or back.
+  const ctaVacuityReason = evaluateRenderGates(clean({ ctaChecked: 0, ctaBroken: 0 })).reasons.find(
+    (r) => /vacuous/.test(r),
+  );
+  const lcpVacuityReason = evaluateRenderGates(
+    clean({ lcpFound: false, opsTouchingLcp: 0 }),
+  ).reasons.find((r) => /LCP.*vacuous/.test(r));
+
+  it("recognises the exact CTA- and LCP-vacuity strings the gate emits", () => {
+    expect(ctaVacuityReason).toBeTruthy();
+    expect(lcpVacuityReason).toBeTruthy();
+    expect(isVacuityWarn(ctaVacuityReason!)).toBe(true);
+    expect(isVacuityWarn(lcpVacuityReason!)).toBe(true);
+  });
+
+  it("does NOT treat a real (non-vacuous) warn or a hard-fail reason as vacuity", () => {
+    const anchorWarn = evaluateRenderGates(clean({ mainAnchorFound: false })).reasons[0];
+    const overflowFail = evaluateRenderGates(clean({ hOverflowAfterPx: 400 })).reasons[0];
+    expect(isVacuityWarn(anchorWarn)).toBe(false);
+    expect(isVacuityWarn(overflowFail)).toBe(false);
+    expect(isVacuityWarn("")).toBe(false);
+  });
+
+  it("composes into the demo-pass rule: a warn is demo-passable only if EVERY reason is vacuity", () => {
+    // Only the two checks that couldn't run → the hard layout gates all passed →
+    // demo-worthy on a frozen copy.
+    const pureVacuity = evaluateRenderGates(clean({ ctaChecked: 0, lcpFound: false }));
+    expect(pureVacuity.verdict).toBe("warn");
+    expect(pureVacuity.reasons.every(isVacuityWarn)).toBe(true);
+    // Mix a genuine warn (no main anchor to judge against) in with the vacuity →
+    // NOT demo-passable: something real is unproven, not merely un-runnable.
+    const mixed = evaluateRenderGates(clean({ ctaChecked: 0, mainAnchorFound: false }));
+    expect(mixed.verdict).toBe("warn");
+    expect(mixed.reasons.every(isVacuityWarn)).toBe(false);
   });
 });
