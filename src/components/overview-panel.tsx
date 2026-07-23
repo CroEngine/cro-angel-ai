@@ -50,6 +50,7 @@ import type {
   SessionSummary,
 } from "@/lib/dashboard/aggregate";
 import type { VariantView } from "@/lib/dashboard/dashboard.functions";
+import type { JourneyMilestone } from "@/lib/dashboard/journey";
 import type { ArmVerdict } from "./dashboard/variant-stats";
 import type { SuccessSpec } from "@/adaptive-lab/metrics";
 
@@ -63,6 +64,7 @@ export function OverviewPanel({
   searches,
   variants,
   servingOn,
+  journey = [],
 }: {
   site: string;
   overview: Overview;
@@ -73,6 +75,7 @@ export function OverviewPanel({
   searches: SearchTerm[];
   variants: VariantView[];
   servingOn: boolean;
+  journey?: JourneyMilestone[];
 }) {
   // ── trädet: nycklarna ÄR hierarkin (grov→fin, prefix = förälder) ──────────
   const byKey = useMemo(() => new Map(segments.map((s) => [s.key, s])), [segments]);
@@ -325,6 +328,11 @@ export function OverviewPanel({
   // ── dashboardvyn ───────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
+      {/* Resan till bevisat (stanna-tills-bevisat): synlig tills första ärliga
+          domslutet — insamlingsperioden ska kännas som pågående mätning, inte
+          tystnad. Döljs när berättelsen är klar (verdict done). */}
+      <JourneyCard journey={journey} />
+
       {/* rad 1 — svarskortet + KPI:er */}
       <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
         <div
@@ -1042,6 +1050,83 @@ export function OverviewPanel({
           onClose={() => setJourneysOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+/** Resan till bevisat — stanna-tills-bevisat-berättelsen (journey.ts).
+ *  Varje detaljrad är en mätning ur sajtens eget data; "current" bär den
+ *  fylliga raden, senaste "done" behåller sin (vad hände nyss + vad pågår).
+ *  När det ärliga domslutet finns är berättelsen klar och kortet försvinner —
+ *  då ÄR dashboardens riktiga siffror berättelsen. */
+function JourneyCard({ journey }: { journey: JourneyMilestone[] }) {
+  if (journey.length === 0) return null;
+  const verdictDone = journey.find((m) => m.id === "verdict")?.state === "done";
+  if (verdictDone) return null;
+  const doneCount = journey.filter((m) => m.state === "done").length;
+  const lastDoneIdx = journey.reduce((acc, m, i) => (m.state === "done" ? i : acc), -1);
+
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-white p-6">
+      <div className="flex items-baseline justify-between">
+        <div className="font-mono text-[10.5px] uppercase tracking-[.14em] text-emerald-600">
+          The road to proven
+        </div>
+        <div className="font-mono text-[10.5px] text-stone-400">
+          {doneCount} / {journey.length}
+        </div>
+      </div>
+      <ol className="mt-4 space-y-0">
+        {journey.map((m, i) => {
+          const showDetail = m.state === "current" || i === lastDoneIdx;
+          return (
+            <li key={m.id} className="relative flex gap-3 pb-3 last:pb-0">
+              {i < journey.length - 1 && (
+                <span
+                  className="absolute left-[7px] top-5 h-full w-px"
+                  style={{ background: m.state === "done" ? "#a7f3d0" : "#e7e5e4" }}
+                />
+              )}
+              <span
+                className="relative mt-1 flex h-[15px] w-[15px] flex-none items-center justify-center rounded-full text-[9px] font-bold"
+                style={{
+                  background:
+                    m.state === "done" ? "#047857" : m.state === "current" ? "#ecfdf5" : "#f5f5f4",
+                  color: m.state === "done" ? "#fff" : "#a8a29e",
+                  border: m.state === "current" ? "1.5px solid #047857" : "1.5px solid transparent",
+                }}
+              >
+                {m.state === "done" ? "✓" : ""}
+                {m.state === "current" && (
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-700" />
+                )}
+              </span>
+              <div className="min-w-0">
+                <div
+                  className={`text-[13px] font-semibold ${
+                    m.state === "upcoming"
+                      ? "text-stone-400"
+                      : m.state === "current"
+                        ? "text-stone-900"
+                        : "text-stone-600"
+                  }`}
+                >
+                  {m.title}
+                </div>
+                {showDetail && (
+                  <p
+                    className={`mt-0.5 text-[12.5px] leading-relaxed ${
+                      m.state === "current" ? "text-stone-600" : "text-stone-400"
+                    }`}
+                  >
+                    {m.detail}
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

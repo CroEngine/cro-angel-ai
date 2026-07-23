@@ -25,6 +25,7 @@ import {
   promotionBlockReason,
   type GuardArmCounts,
 } from "@/adaptive/redesign/winner";
+import { buildJourney, type JourneyMilestone } from "./journey";
 import { cleanEvents } from "./data-hygiene";
 import {
   aggregate,
@@ -251,6 +252,9 @@ export interface DashboardResponse {
   siteConfig: SiteConfigView;
   /** Fas 4: sajtens redesign-varianter (alla statusar), nyast först. */
   variants: VariantView[];
+  /** Resan till bevisat — stanna-tills-bevisat-berättelsen (journey.ts):
+   *  varje milstolpe härledd ur datat ovan, varje detaljrad en mätning. */
+  journey: JourneyMilestone[];
   /** Admin extras (the sandbox link) render only for ANGEL_ADMIN_EMAILS. */
   isAdmin: boolean;
 }
@@ -619,6 +623,26 @@ export const getDashboard = createServerFn({ method: "POST" })
         console.warn(`[angel] segment rollup unavailable, using window fallback:`, segErr);
       }
 
+      // Resan till bevisat (stanna-tills-bevisat, ägarmodellen 2026-07-23):
+      // ren härledning ur det som redan lästs — inga extra frågor.
+      const journey = buildJourney({
+        pageviews: metrics.overview.pageviews,
+        uniqueVisitors: metrics.overview.uniqueVisitors,
+        inventoryCount: inventory.length,
+        segmentGroups: metrics.segmentGroups.map((g) => ({
+          label: g.label,
+          depth: g.depth,
+          visits: g.visits,
+          conversions: g.conversions,
+        })),
+        variants: variants.map((v) => ({
+          status: v.status,
+          segmentKey: v.segmentKey,
+          abOutcome: v.abTest?.outcome ?? null,
+        })),
+        testMetric: siteConfig.testMetric,
+      });
+
       return {
         site,
         sites,
@@ -627,6 +651,7 @@ export const getDashboard = createServerFn({ method: "POST" })
         metrics,
         siteConfig,
         variants,
+        journey,
         isAdmin: admin,
       };
     } catch (err) {
@@ -639,6 +664,14 @@ export const getDashboard = createServerFn({ method: "POST" })
         metrics: aggregate([], []),
         siteConfig: DEFAULT_SITE_CONFIG,
         variants: [],
+        journey: buildJourney({
+          pageviews: 0,
+          uniqueVisitors: 0,
+          inventoryCount: 0,
+          segmentGroups: [],
+          variants: [],
+          testMetric: "conversion",
+        }),
         isAdmin: false,
       };
     }

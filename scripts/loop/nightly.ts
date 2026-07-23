@@ -762,6 +762,54 @@ for (const site of targets) {
     // 7. Dag-10-mejlet: svep varianter som väntar utan skickad notis.
     const { sweepVariantNotifications } = await import("../../src/adaptive/notify.server");
     await sweepVariantNotifications(site.slug);
+
+    // 7b. Vecka-1-digesten (stanna-tills-bevisat): ETT mejl ~dag 5 när ingen
+    //     variant ännu finns — insamlingsperioden ska synas, inte vara tyst.
+    //     Ärliga räknare ur rollup-löven som redan är lästa (steg 1); dedupen
+    //     bor i notifyOwners så svepet är idempotent. Finns en variant äger
+    //     dag-10-mejlet berättelsen och digesten skickas aldrig.
+    try {
+      const { count: variantCount } = await db
+        .from("angel_variants")
+        .select("id", { count: "exact", head: true })
+        .eq("site", site.slug);
+      if (!variantCount) {
+        const { data: firstEv } = await db
+          .from("angel_events")
+          .select("created_at")
+          .eq("site", site.slug)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        const ageDays = firstEv ? (Date.now() - Date.parse(firstEv.created_at)) / 86_400_000 : 0;
+        if (ageDays >= 5) {
+          const byGroup = new Map<string, number>();
+          let visitors = 0;
+          for (const l of leaves as { channel?: string; device?: string; visits?: number }[]) {
+            const v = Number(l.visits) || 0;
+            visitors += v;
+            if (l.channel && l.device) {
+              const key = `${l.channel} · ${l.device}`;
+              byGroup.set(key, (byGroup.get(key) ?? 0) + v);
+            }
+          }
+          const top = [...byGroup.entries()].sort((a, b) => b[1] - a[1])[0];
+          const { count: pageviews } = await db
+            .from("angel_events")
+            .select("id", { count: "exact", head: true })
+            .eq("site", site.slug)
+            .eq("type", "pageview");
+          const { notifyWeekOneDigest } = await import("../../src/adaptive/notify.server");
+          await notifyWeekOneDigest(site.slug, {
+            visitors,
+            pageviews: pageviews ?? 0,
+            topGroup: top ? `${top[0]} (${top[1].toLocaleString("en-US")} visits)` : null,
+          });
+        }
+      }
+    } catch (dgErr) {
+      console.warn(`[loop] ${site.slug}: vecka-1-digesten föll (icke-fatalt):`, dgErr);
+    }
   } catch (err) {
     console.error(`[loop] ${site.slug} föll:`, err);
   }

@@ -297,6 +297,7 @@ function Dashboard() {
               searches={d.metrics.searches}
               variants={d.variants ?? []}
               servingOn={d.siteConfig.servingEnabled}
+              journey={d.journey ?? []}
             />
           </>
         )}

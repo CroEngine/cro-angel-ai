@@ -1,9 +1,12 @@
 // Notiser (block 1c) — loopen stannar när något väntar på ägarens knapp och
-// ägaren inte tittar. Tre händelser, tre mejl, aldrig fler:
+// ägaren inte tittar. Få händelser, få mejl — varje mejl ska bära något:
 //
-//   installed     — snippetens första domän-bevisade signal (dag 0-kvittot)
-//   variant_ready — en verifierad variant väntar på godkännande (dag ~10)
-//   test_result   — mätningen har något att säga
+//   installed        — snippetens första domän-bevisade signal (dag 0-kvittot)
+//   week_one_digest  — ETT ärligt läges-mejl ~dag 5 när ingen variant ännu
+//                      finns (stanna-tills-bevisat: insamlingen ska synas)
+//   variant_ready    — en verifierad variant väntar på godkännande (dag ~10)
+//   variant_held     — maskinell paus, ingen åtgärd krävs (självläkningen)
+//   test_result      — mätningen har något att säga
 //
 // Kontrakt:
 //   * Idempotent per (site, kind, dedupe_key, email) — unik-nyckeln i
@@ -22,7 +25,8 @@ import type { Json } from "@/integrations/supabase/types";
  *  Netlify-miljön), aldrig hårdkodade länkar i mejlen. */
 const APP_ORIGIN = (process.env.APP_ORIGIN ?? "https://croengine.netlify.app").replace(/\/$/, "");
 
-export type NotificationKind = "installed" | "variant_ready" | "test_result" | "variant_held";
+export type NotificationKind =
+  "installed" | "variant_ready" | "test_result" | "variant_held" | "week_one_digest";
 
 /** Ägarnas e-postadresser för en sajt (medlemmar → auth-användare). */
 async function ownerEmails(site: string): Promise<string[]> {
@@ -134,7 +138,11 @@ export function notifyInstalled(site: string, domain: string): Promise<number> {
 }
 
 /** Dag ~10: en verifierad variant väntar på ägarens knapp — affärens viktigaste mejl. */
-export function notifyVariantReady(site: string, variantId: string, label: string): Promise<number> {
+export function notifyVariantReady(
+  site: string,
+  variantId: string,
+  label: string,
+): Promise<number> {
   return notifyOwners(
     site,
     "variant_ready",
@@ -190,6 +198,45 @@ export function notifyVariantHeld(
       `— CROENGINE`,
     ].join("\n"),
     { variantId, label, reason },
+  );
+}
+
+/** Vecka-1-digesten (stanna-tills-bevisat, ägarmodellen 2026-07-23): mellan
+ *  installationen och första varianten är dashboarden annars tyst — där bor
+ *  churnen. ETT mejl, ~5 dygn efter första signalen, som visar att insamlingen
+ *  ARBETAR (ärliga räknare, aldrig löften) och pekar mot resan i dashboarden.
+ *  Dedupe per sajt (notifyOwners) — kan svepas hur ofta som helst, skickas en
+ *  gång. Skickas ALDRIG när en variant redan finns (då äger dag-10-mejlet
+ *  berättelsen — avsändarens ansvar att kolla, se nightly steg 7b). */
+export function notifyWeekOneDigest(
+  site: string,
+  stats: { visitors: number; pageviews: number; topGroup: string | null },
+): Promise<number> {
+  return notifyOwners(
+    site,
+    "week_one_digest",
+    "week-one",
+    `Week one: Angel is measuring — here's what it sees so far`,
+    [
+      `Hi!`,
+      ``,
+      `A quick honest status from your first week:`,
+      ``,
+      `  · ${stats.visitors.toLocaleString("en-US")} distinct visitors profiled (${stats.pageviews.toLocaleString("en-US")} pageviews)`,
+      ...(stats.topGroup
+        ? [`  · Largest visitor group so far: ${stats.topGroup}`]
+        : [`  · Visitor groups are still forming — they build as traffic arrives`]),
+      ``,
+      `Nothing on your page has changed, and nothing will without your click.`,
+      `A group of visitors earns its own design once it carries enough data to`,
+      `measure honestly — no shortcuts: designs are earned by data, not guessed.`,
+      ``,
+      `Follow the road to proven live on your dashboard:`,
+      `${APP_ORIGIN}/dashboard`,
+      ``,
+      `— CROENGINE`,
+    ].join("\n"),
+    stats,
   );
 }
 
