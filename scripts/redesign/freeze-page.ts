@@ -304,6 +304,20 @@ for (const tag of links) {
 }
 if (css) html = html.replace(/<\/head>/i, `<style>${css}</style></head>`);
 
+// 2b) srcset/sizes bort på ALLA hämtvägar (bild-fidelitetsfynd 2026-07-23). En
+//     <img>/<source> med srcset låter browsern välja en ICKE-inlinead kandidat
+//     (absolut URL) framför den inlinade src:en — under demo-renderingens data:-
+//     grind blockeras den och bilden blir tom TROTS lyckad inlining (calendly
+//     frös 95 % vitt). Utan srcset faller browsern tillbaka på src, som bild-
+//     steget nedan inlinear. Browser-vägen strippar redan i DOM:en
+//     (browserRenderedHtml) — här är det idempotent, och på serverings-vägen
+//     (auto-generate blockerar ALLA requests) påverkas inga grindutslag.
+html = html.replace(/<(img|source)\b[^>]*>/gi, (tag) =>
+  tag
+    .replace(/\s+srcset\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s+sizes\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ""),
+);
+
 // 3) Bilder → data-URI (layout-ytan), stora/ohämtbara/utanför budget →
 //    absolut URL. Budgeten spenderas där den syns: above-fold först, sedan
 //    störst renderad yta (browser-vägens geometri); statiska vägen saknar
