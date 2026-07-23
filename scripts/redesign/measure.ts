@@ -164,9 +164,22 @@ export async function measurePlan(
         return null;
       }
       function findByLocator(tag: string | undefined, find: string): Element | null {
-        const needle = norm(find).slice(0, 24).toLowerCase();
-        if (!needle) return null;
-        for (const el of Array.from(mainEl.querySelectorAll(tag || "h1,h2,h3"))) {
+        const full = norm(find).toLowerCase();
+        if (!full) return null;
+        const els = Array.from(mainEl.querySelectorAll(tag || "h1,h2,h3"));
+        // Pass 1 — EXACT full-heading match. The locator text IS a section's own
+        // heading (extract.ts: heading = h.text.slice(0,120)); when two sections
+        // share the first 24 chars but differ later, only the exact match resolves
+        // the INTENDED section — otherwise the harness verifies (and the snippet
+        // then serves) a move of the WRONG section (bug-hunt 2026-07, sev high).
+        // MIRRORED in the snippet (src/adaptive/runtime/applier.ts findByLocator).
+        for (const el of els) {
+          if (norm(el.textContent || "").toLowerCase() === full) return el;
+        }
+        // Pass 2 — substring fallback (first 24 chars): a drift-tolerant handle for
+        // when the live heading changed slightly since the frozen page was verified.
+        const needle = full.slice(0, 24);
+        for (const el of els) {
           if (
             norm(el.textContent || "")
               .toLowerCase()

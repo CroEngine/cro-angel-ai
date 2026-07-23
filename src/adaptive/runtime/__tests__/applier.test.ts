@@ -143,6 +143,38 @@ describe("runtime applier module — real-Chromium unit tests", () => {
     });
   });
 
+  it("collision: move_up resolves the EXACT heading, not the earlier 24-char-prefix twin", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Two sections whose h2 share the first 24 chars ("pricing that scales with")
+    // but differ later. The op names the LOWER one's FULL heading. The old
+    // substring-only resolver moved the FIRST match (the wrong section, which the
+    // harness would then also serve); exact-first resolution must move the section
+    // actually named (bug-hunt 2026-07, sev high). MIRRORS measure.ts findByLocator.
+    const COLLISION = `
+      <main><div class="page">
+        <div class="hero"><h1>Hero headline</h1><p id="intro">Intro.</p></div>
+        <div class="wrapper">
+          <section id="sx"><h2>Features overview</h2><p>x</p></section>
+          <section id="sa"><h2>Pricing that scales with you</h2><p>a</p></section>
+          <section id="sb"><h2>Pricing that scales with your team</h2><p>b</p></section>
+        </div>
+      </div></main>`;
+    await scenario(async (page) => {
+      await boot(page, COLLISION);
+      const r = await run(page, {
+        ops: [
+          { op: "move_up", locator: { tag: "h2", text: "Pricing that scales with your team" } },
+        ],
+      });
+      expect(r.applied).toBe(true);
+      const order = await page.evaluate(() =>
+        [...document.querySelector(".wrapper")!.children].map((c) => c.id),
+      );
+      // sb (the named section) rose above sa; sa (the 24-char twin) did NOT jump.
+      expect(order).toEqual(["sx", "sb", "sa"]);
+    });
+  });
+
   it("self-check: a move that does NOT rise (visual ≠ DOM order) rolls the WHOLE variant back", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
     await scenario(async (page) => {
