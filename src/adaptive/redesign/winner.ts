@@ -4,7 +4,12 @@
 // "should a human be told this variant looks like a winner / a loser / neither?"
 // It decides NOTHING on its own — per the owner's Fas 4 rules (2026-07-12), the
 // system recommends, a human approves, and baseline swaps are always manual.
-// Not wired into any live path; the eventual serving step calls this.
+// LIVE consumers (gap-audit Tier-1 wiring, 2026-07-23): the dashboard's variant
+// A/B view calls evaluateWinnerWithGuards (never bare evaluateWinner — the
+// guards come from the arms RPC), and setVariantStatus gates serving→winner on
+// promotionBlockReason. The ONE carve-out from "the human decides": promotion
+// is refused when harm is DEMONSTRATED (contract breach/loss/recommend_stop),
+// because promotion freezes the A/B and makes live harm unmeasurable.
 //
 // The significance math is the SAME as pattern attribution — twoProportionZ from
 // aggregate.ts, |z| ≥ 1.96, and the success–failure validity rule (MIN_ARM_*) —
@@ -38,10 +43,7 @@ export interface SecondaryMetric {
 }
 
 export type WinnerOutcome =
-  | "insufficient_data"
-  | "no_winner"
-  | "recommend_winner"
-  | "recommend_stop";
+  "insufficient_data" | "no_winner" | "recommend_winner" | "recommend_stop";
 
 export interface WinnerEvaluation {
   outcome: WinnerOutcome;
@@ -81,7 +83,8 @@ const armStatValid = (a: VariantArm): boolean => armCountsValid(a.visits, a.conv
 function degradedSecondaries(secondaries: SecondaryMetric[]): SecondaryMetric[] {
   return secondaries.filter((s) => {
     const base = s.controlRate;
-    if (base <= 0) return s.higherIsBetter ? false : s.variantRate > 0 && s.variantRate > SECONDARY_DEGRADE_REL;
+    if (base <= 0)
+      return s.higherIsBetter ? false : s.variantRate > 0 && s.variantRate > SECONDARY_DEGRADE_REL;
     const rel = (s.variantRate - base) / base;
     return s.higherIsBetter ? rel < -SECONDARY_DEGRADE_REL : rel > SECONDARY_DEGRADE_REL;
   });
@@ -101,10 +104,16 @@ export function evaluateWinner(
 ): WinnerEvaluation {
   const vRate = rate(variant);
   const cRate = rate(control);
-  const z = twoProportionZ(variant.conversions, variant.visits, control.conversions, control.visits);
+  const z = twoProportionZ(
+    variant.conversions,
+    variant.visits,
+    control.conversions,
+    control.visits,
+  );
   const relativeLift = cRate > 0 ? (vRate - cRate) / cRate : null;
   const stats = { variantRate: vRate, controlRate: cRate, relativeLift, z };
-  const significant = z !== null && Math.abs(z) >= WINNER_Z && armStatValid(variant) && armStatValid(control);
+  const significant =
+    z !== null && Math.abs(z) >= WINNER_Z && armStatValid(variant) && armStatValid(control);
 
   // Damage limitation first: a variant that is SIGNIFICANTLY worse should be
   // pulled as soon as the standard significance rules can say so — waiting for
@@ -121,7 +130,10 @@ export function evaluateWinner(
 
   // Owner's volume gates for a WINNER call.
   const lacking: string[] = [];
-  for (const [label, arm] of [["variant", variant], ["control", control]] as const) {
+  for (const [label, arm] of [
+    ["variant", variant],
+    ["control", control],
+  ] as const) {
     if (arm.visits < thresholds.minVisits)
       lacking.push(`${label} has ${arm.visits}/${thresholds.minVisits} qualified visits`);
     if (arm.conversions < thresholds.minSuccesses)
@@ -169,9 +181,149 @@ export function evaluateWinner(
     outcome: "recommend_winner",
     reasons: [
       `variant converts ${(vRate * 100).toFixed(1)}% vs control ${(cRate * 100).toFixed(1)}%` +
-        (relativeLift !== null ? ` (+${(relativeLift * 100).toFixed(1)}% relative)` : " (control at 0%)") +
+        (relativeLift !== null
+          ? ` (+${(relativeLift * 100).toFixed(1)}% relative)`
+          : " (control at 0%)") +
         ` at z=${z.toFixed(2)} — RECOMMENDATION ONLY: baseline swap requires manual approval`,
     ],
     stats,
   };
+}
+
+// ── False-winner guard (gap-audit Tier-1, 2026-07-22) ────────────────────────
+// evaluateWinner has carried a SecondaryMetric guard since day one — but the
+// live dashboard called it with `[]`, so "recommend_winner" never consulted the
+// guard metrics the arms RPC already returns. These helpers are the ONE way the
+// product should evaluate a live variant: guards built from the real arms, and
+// — under the continuation proxy metric — the actual GOAL as a guard, so an
+// engagement win can never silently ride over sinking conversions.
+
+/** Per-arm counts exactly as the angel_variant_arms RPC returns them.
+ *  `conversions` is ALWAYS the goal column (even when the test metric is
+ *  continuation — the RPC reports both, and the goal guard needs the goal). */
+export interface GuardArmCounts {
+  visits: number;
+  conversions: number;
+  continuations: number;
+  engaged: number;
+}
+
+const safeRate = (num: number, den: number): number => (den > 0 ? num / den : 0);
+
+/** The guard set for a live A/B, from the arms themselves: bounce (worse =
+ *  more one-page exits) and engagement (worse = fewer engaged visitors).
+ *  Coarse by design — evaluateWinner only consults these AFTER its volume
+ *  gates, so the rates carry real n. */
+export function guardSecondariesFromArms(
+  variant: GuardArmCounts,
+  control: GuardArmCounts,
+): SecondaryMetric[] {
+  return [
+    {
+      name: "bounce",
+      variantRate: safeRate(Math.max(0, variant.visits - variant.continuations), variant.visits),
+      controlRate: safeRate(Math.max(0, control.visits - control.continuations), control.visits),
+      higherIsBetter: false,
+    },
+    {
+      name: "engaged",
+      variantRate: safeRate(variant.engaged, variant.visits),
+      controlRate: safeRate(control.engaged, control.visits),
+      higherIsBetter: true,
+    },
+  ];
+}
+
+/**
+ * Evaluate a live variant with the guards the arms afford. This is what the
+ * dashboard and the winner-promotion gate call — never bare evaluateWinner.
+ *
+ * Under test_metric='continuation' (the engagement proxy that reaches
+ * significance ~20× sooner), the GOAL metric is handled honestly instead of
+ * ignored (the audit's false-winner case — a proxy win over sinking
+ * conversions):
+ *   - goal arms POWERED + goal significantly WORSE (z ≤ −1.96) ⇒ the winner
+ *     recommendation is withdrawn (no_winner) with the goal numbers in the
+ *     reasons. Noise never blocks — only a significant goal loss does.
+ *   - proxy recommends winner but the goal has NOT independently proven
+ *     BETTER (unpowered counts, or powered-but-inconclusive z) ⇒ the
+ *     recommendation STANDS but carries an explicit caveat reason: this is a
+ *     proxy win, the goal itself is unproven, and promoting freezes the A/B
+ *     before it ever could be proven.
+ */
+export function evaluateWinnerWithGuards(
+  variant: GuardArmCounts,
+  control: GuardArmCounts,
+  testMetric: "conversion" | "continuation",
+): WinnerEvaluation {
+  const primaryOf = (a: GuardArmCounts): VariantArm => ({
+    visits: a.visits,
+    conversions: testMetric === "continuation" ? a.continuations : a.conversions,
+  });
+  const secondaries = guardSecondariesFromArms(variant, control);
+  const thresholds =
+    testMetric === "continuation"
+      ? { minVisits: ENGAGEMENT_MIN_VISITS, minSuccesses: ENGAGEMENT_MIN_SUCCESSES }
+      : undefined;
+  const ev = evaluateWinner(primaryOf(variant), primaryOf(control), secondaries, thresholds);
+  if (testMetric !== "continuation") return ev;
+
+  const goalV: VariantArm = { visits: variant.visits, conversions: variant.conversions };
+  const goalC: VariantArm = { visits: control.visits, conversions: control.conversions };
+  const goalPowered = armStatValid(goalV) && armStatValid(goalC);
+  const goalZ = twoProportionZ(goalV.conversions, goalV.visits, goalC.conversions, goalC.visits);
+  const goalRates = `${(safeRate(goalV.conversions, goalV.visits) * 100).toFixed(1)}% vs ${(safeRate(goalC.conversions, goalC.visits) * 100).toFixed(1)}%`;
+
+  if (goalPowered && goalZ !== null && goalZ <= -WINNER_Z) {
+    return {
+      outcome: "no_winner",
+      reasons: [
+        `proxy metric leads but GOAL conversions are significantly WORSE (${goalRates}, z=${goalZ.toFixed(2)}) — winner withdrawn: an engagement win must never ride over a sinking goal`,
+        ...ev.reasons,
+      ],
+      stats: ev.stats,
+    };
+  }
+  const goalProvenBetter = goalPowered && goalZ !== null && goalZ >= WINNER_Z;
+  if (ev.outcome === "recommend_winner" && !goalProvenBetter) {
+    const why = !goalPowered
+      ? `still unpowered (${goalV.conversions}/${goalV.visits} vs ${goalC.conversions}/${goalC.visits})`
+      : `inconclusive (${goalRates}, z=${goalZ === null ? "—" : goalZ.toFixed(2)})`;
+    return {
+      ...ev,
+      reasons: [
+        ...ev.reasons,
+        `caveat: this is a PROXY win (continuation) — the goal itself is unproven: goal conversions ${why}, and promoting freezes the A/B before the goal is ever proven`,
+      ],
+    };
+  }
+  return ev;
+}
+
+/**
+ * The winner-PROMOTION gate (serving → winner). Promotion freezes the A/B —
+ * the control arm stops filling, so any live harm becomes invisible and the
+ * nightly guardrail sweep loses its evidence. The machine therefore refuses
+ * promotion when harm is DEMONSTRATED (and only then — absence of proof stays
+ * the owner's call, per the Fas 4 rules 2026-07-12):
+ *   - the success-contract ruling says guardrail_breach or loss, or
+ *   - the winner evaluation says recommend_stop.
+ * Returns the refusal reason, or null when promotion may proceed.
+ */
+export function promotionBlockReason(
+  evaluation: WinnerEvaluation | null,
+  ruling: { verdict: string; breachedMetrics: string[] } | null,
+): string | null {
+  if (ruling?.verdict === "guardrail_breach") {
+    const which =
+      ruling.breachedMetrics.length > 0 ? ruling.breachedMetrics.join(", ") : "guardrail";
+    return `contract guardrail breached (${which}) — promoting would freeze the A/B with live harm; retire or keep measuring instead`;
+  }
+  if (ruling?.verdict === "loss") {
+    return `the success contract judges the primary metric significantly WORSE — a loser cannot be promoted to winner`;
+  }
+  if (evaluation?.outcome === "recommend_stop") {
+    return `the A/B evaluation recommends STOPPING this variant (significantly worse than control) — promotion refused`;
+  }
+  return null;
 }

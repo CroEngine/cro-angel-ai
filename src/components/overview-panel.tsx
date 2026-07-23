@@ -788,6 +788,20 @@ export function OverviewPanel({
                                     >
                                       {liftFmt(arms.liftRel)}
                                     </span>
+                                    {/* Ärlig tidshorisont (gap-audit Tier-1): när datat inte
+                                        räcker sägs det RAKT hur långt bort ett domslut är vid
+                                        sajtens verkliga trafik — i stället för en evig
+                                        "measuring" som ser ut som framsteg. */}
+                                    {v.abTest?.outcome === "insufficient_data" &&
+                                      v.abTest.prognosis && (
+                                        <span className="text-stone-400">
+                                          {" "}
+                                          · verdict needs ~
+                                          {v.abTest.prognosis.neededPerArm.toLocaleString()}/arm
+                                          {v.abTest.prognosis.estDaysAtSiteTraffic !== null &&
+                                            ` (≈${v.abTest.prognosis.estDaysAtSiteTraffic.toLocaleString()} days at current traffic)`}
+                                        </span>
+                                      )}
                                   </>
                                 ) : v.status === "verified" ? (
                                   "verified — waiting for your go-ahead"

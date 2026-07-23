@@ -12,17 +12,18 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   defaultSuccessSpec,
+  estimateVerdictTime,
   evaluateRuleWithSpec,
   validateSuccessSpec,
   type SuccessSpec,
 } from "@/adaptive-lab/metrics";
-import { metricArmsFromRpc } from "@/adaptive/redesign/guardrail-sweep";
+import { metricArmsFromRpc, type ArmsRpcRow } from "@/adaptive/redesign/guardrail-sweep";
 import type { Json } from "@/integrations/supabase/types";
 import { GOAL_KINDS, type GoalCandidate } from "@/adaptive/crawler-inventory";
 import {
-  ENGAGEMENT_MIN_SUCCESSES,
-  ENGAGEMENT_MIN_VISITS,
-  evaluateWinner,
+  evaluateWinnerWithGuards,
+  promotionBlockReason,
+  type GuardArmCounts,
 } from "@/adaptive/redesign/winner";
 import { cleanEvents } from "./data-hygiene";
 import {
@@ -163,6 +164,14 @@ export interface VariantAbView {
     variantRate: number;
     controlRate: number;
     relativeLift: number | null;
+  };
+  /** Ärlig tidshorisont när datat inte räcker (gap-audit Tier-1: prognosen
+   *  fanns i labbet men visades aldrig): hur många besökare per arm behövs för
+   *  ett domslut vid deklarerad MDE, och ungefär hur många dagar det tar vid
+   *  sajtens NUVARANDE trafik (null när trafiktakten är okänd). */
+  prognosis?: {
+    neededPerArm: number;
+    estDaysAtSiteTraffic: number | null;
   };
 }
 
@@ -404,6 +413,21 @@ export const getDashboard = createServerFn({ method: "POST" })
           const abById = new Map<string, VariantAbView>();
           const rulingById = new Map<string, VariantRuling>();
           const servingRows = vRows.filter((v) => v.status === "serving" || v.status === "winner");
+          // Trafiktakt för prognosen — ur de redan lästa, redan städade
+          // eventen (cleanEvents ovan): distinkta besökare med pageview
+          // senaste 7 dygnen ⇒ dagstakt. Ingen extra DB-fråga. null när
+          // fönstret är tomt ⇒ prognosen visar "N per arm" utan dagsestimat.
+          let dailyVisitors: number | null = null;
+          {
+            const since = Date.now() - 7 * 24 * 3600 * 1000;
+            const seen = new Set<string>();
+            for (const e of events) {
+              if (e.type !== "pageview" || !e.visitorHash) continue;
+              if (Date.parse(e.createdAt) < since) continue;
+              seen.add(e.visitorHash);
+            }
+            dailyVisitors = seen.size > 0 ? seen.size / 7 : null;
+          }
           await Promise.all(
             servingRows.map(async (v) => {
               try {
@@ -415,27 +439,51 @@ export const getDashboard = createServerFn({ method: "POST" })
                 // Mätmålet styr vilken kolumn som är "framgång": continuation-
                 // läget räknar besökare som gick vidare till en andra sida.
                 const metric = siteConfig.testMetric;
-                const armOf = (name: string) => {
-                  const row = arms.find((a) => a.arm === name);
+                const fullArm = (name: string): GuardArmCounts => {
+                  const row = (arms as ArmsRpcRow[]).find((a) => a.arm === name);
                   return {
                     visits: Number(row?.visits) || 0,
-                    conversions:
-                      metric === "continuation"
-                        ? Number(row?.continuations) || 0
-                        : Number(row?.conversions) || 0,
+                    conversions: Number(row?.conversions) || 0,
+                    continuations: Number(row?.continuations) || 0,
+                    engaged: Number(row?.engaged) || 0,
                   };
                 };
-                const variantArm = armOf("variant");
-                const controlArm = armOf("control");
-                if (variantArm.visits + controlArm.visits === 0) return;
-                const ev = evaluateWinner(
-                  variantArm,
-                  controlArm,
-                  [],
-                  metric === "continuation"
-                    ? { minVisits: ENGAGEMENT_MIN_VISITS, minSuccesses: ENGAGEMENT_MIN_SUCCESSES }
-                    : undefined,
-                );
+                const variantFull = fullArm("variant");
+                const controlFull = fullArm("control");
+                if (variantFull.visits + controlFull.visits === 0) return;
+                const primaryOf = (a: GuardArmCounts) => ({
+                  visits: a.visits,
+                  conversions: metric === "continuation" ? a.continuations : a.conversions,
+                });
+                const variantArm = primaryOf(variantFull);
+                const controlArm = primaryOf(controlFull);
+                // Falsk-vinnar-vakten (gap-audit Tier-1): rekommendationen döms
+                // ALDRIG utan sekundärvakterna — bounce/engagemang ur samma
+                // armar, och under continuation-proxyt även själva MÅLET.
+                const ev = evaluateWinnerWithGuards(variantFull, controlFull, metric);
+                // Ärlig tidshorisont när datat inte räcker: hur långt bort är
+                // ett domslut vid sajtens verkliga trafik? (Tier-1-fyndet:
+                // estimateVerdictTime fanns men visades aldrig.)
+                let prognosis: VariantAbView["prognosis"];
+                if (ev.outcome === "insufficient_data") {
+                  const spec0 = validateSuccessSpec(v.success);
+                  const baseRate =
+                    ev.stats.controlRate > 0
+                      ? ev.stats.controlRate
+                      : metric === "continuation"
+                        ? 0.3
+                        : 0.04;
+                  const est = estimateVerdictTime({
+                    dailyMatchedVisitors: Math.max(1, dailyVisitors ?? 0),
+                    baseRate,
+                    mdeRel: spec0?.mdeRel,
+                    ramp: siteConfig.rampPct,
+                  });
+                  prognosis = {
+                    neededPerArm: est.nPerArm,
+                    estDaysAtSiteTraffic: dailyVisitors !== null ? est.days : null,
+                  };
+                }
                 abById.set(v.id, {
                   metric,
                   variant: variantArm,
@@ -447,6 +495,7 @@ export const getDashboard = createServerFn({ method: "POST" })
                     controlRate: ev.stats.controlRate,
                     relativeLift: ev.stats.relativeLift,
                   },
+                  ...(prognosis ? { prognosis } : {}),
                 });
                 // Kontraktsdomslut på live-armarna: variantens success-spec
                 // (eller sajttypens standard om A/B:t startats utan) dömer
@@ -761,6 +810,52 @@ export const setVariantStatus = createServerFn({ method: "POST" })
     if (readErr || !row) return { ok: false, reason: "variant not found" };
     if (!VARIANT_TRANSITIONS[status]?.includes(row.status)) {
       return { ok: false, reason: `illegal transition ${row.status} → ${status}` };
+    }
+    // Vinnar-grinden (gap-audit Tier-1, falsk vinnare): serving→winner FRYSER
+    // A/B:t — kontrollarmen slutar fyllas, så påvisad skada blir osynlig och
+    // nattens guardrail-svep förlorar sin bevisning. Maskinen vägrar därför
+    // befordran vid PÅVISAD skada (kontraktsbrott/förlust/recommend_stop) —
+    // och bara då: frånvaro av bevis förblir ägarens beslut (Fas 4-reglerna
+    // 2026-07-12). Läsningen är best-effort: går armarna inte att läsa finns
+    // ingen påvisad skada att vägra på.
+    if (status === "winner") {
+      try {
+        const [{ data: siteRow }, { data: arms, error: aErr }] = await Promise.all([
+          supabaseAdmin.from("angel_sites").select("test_metric").eq("slug", site).maybeSingle(),
+          supabaseAdmin.rpc("angel_variant_arms", { p_site: site, p_variant: variantId }),
+        ]);
+        if (!aErr && Array.isArray(arms) && arms.length > 0) {
+          const metric = siteRow?.test_metric === "continuation" ? "continuation" : "conversion";
+          const fullArm = (name: string): GuardArmCounts => {
+            const r = (arms as ArmsRpcRow[]).find((a) => a.arm === name);
+            return {
+              visits: Number(r?.visits) || 0,
+              conversions: Number(r?.conversions) || 0,
+              continuations: Number(r?.continuations) || 0,
+              engaged: Number(r?.engaged) || 0,
+            };
+          };
+          const variantFull = fullArm("variant");
+          const controlFull = fullArm("control");
+          const evaluation =
+            variantFull.visits + controlFull.visits > 0
+              ? evaluateWinnerWithGuards(variantFull, controlFull, metric)
+              : null;
+          const spec = validateSuccessSpec(row.success) ?? defaultSuccessSpec();
+          const armsByMetric = metricArmsFromRpc(arms as ArmsRpcRow[], metric);
+          const contract = armsByMetric ? evaluateRuleWithSpec(spec, armsByMetric) : null;
+          const ruling = contract
+            ? {
+                verdict: contract.verdict,
+                breachedMetrics: contract.guardrails.filter((g) => g.breached).map((g) => g.metric),
+              }
+            : null;
+          const blocked = promotionBlockReason(evaluation, ruling);
+          if (blocked) return { ok: false, reason: blocked };
+        }
+      } catch {
+        /* best-effort: oläsbara armar är inte påvisad skada */
+      }
     }
     // Att starta A/B:t ÄR godkännandet av framgångsdefinitionen: saknas
     // kontraktet fylls sajttypens standard i — ingen variant mäter med

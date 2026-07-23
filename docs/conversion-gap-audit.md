@@ -48,6 +48,20 @@ guardrail (guardrails only test bounce/engaged) and is surfaced as `recommend_wi
 your traffic") exists but is **never surfaced in the live dashboard**. For a product whose
 pitch is *honest measurement*, this is the sharpest edge.
 
+> **✅ FIXED (2026-07-23, the closable part):** the live dashboard's recommendation now
+> runs `evaluateWinnerWithGuards` — bounce/engagement guards built from the real arms
+> (previously `evaluateWinner(…, [])`: the guard machinery existed but was never fed),
+> and under the continuation proxy the GOAL itself is a guard: a proxy win over a
+> significantly sinking goal is **withdrawn**, and a proxy win with an unproven goal
+> carries an explicit caveat. `serving→winner` is now **gated server-side**
+> (`promotionBlockReason`): promotion is refused on demonstrated harm (contract
+> guardrail breach / primary loss / recommend_stop) because promotion freezes the A/B
+> and makes live harm unmeasurable. `estimateVerdictTime` is now surfaced per variant
+> ("verdict needs ~N/arm, ≈D days at current traffic") whenever data is insufficient.
+> **Still open (needs new collection):** a real revenue/lead-quality metric — the
+> catalog has nothing money-shaped to guard with; that requires a value channel through
+> the snippet + events + arms RPC and is its own project.
+
 **2. Accessibility → legal exposure.** `reorder_proof_first` — the flagship pattern —
 moves proof **visually via CSS `order` but never touches the DOM** (`patterns.ts:370-377`),
 so screen-reader and keyboard users get the **original** order and a scrambled focus path:
