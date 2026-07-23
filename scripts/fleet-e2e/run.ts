@@ -30,6 +30,9 @@ interface SiteResult {
   url: string;
   status: "ok" | "freeze_failed" | "crashed";
   flyttStatus: "pass" | "held" | "refused" | null;
+  // Ett pass kan vara giltigt men sakna ett visuellt tydligt före/efter (bildlös
+  // frysning / inner-scroll) — då är flyttShown false: giltig flytt, ingen demo.
+  flyttShown: boolean;
   fyndCount: number;
   fyndRubriker: string[];
   heldReason: string | null;
@@ -87,6 +90,7 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
     try {
       const fynd = JSON.parse(readFileSync(fyndPath, "utf8")) as {
         flyttStatus: SiteResult["flyttStatus"];
+        flyttShown?: boolean;
         fynd?: { rubrik: string }[];
         flyttText?: string;
         sektioner?: number;
@@ -104,6 +108,7 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
         url: site.url,
         status: "ok",
         flyttStatus: fynd.flyttStatus ?? null,
+        flyttShown: fynd.flyttShown ?? false,
         fyndCount: fynd.fynd?.length ?? 0,
         fyndRubriker: (fynd.fynd ?? []).map((f) => f.rubrik),
         heldReason,
@@ -119,6 +124,7 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
         url: site.url,
         status: "crashed",
         flyttStatus: null,
+        flyttShown: false,
         fyndCount: 0,
         fyndRubriker: [],
         heldReason: null,
@@ -136,6 +142,7 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
     url: site.url,
     status: freezeFail ? "freeze_failed" : "crashed",
     flyttStatus: null,
+    flyttShown: false,
     fyndCount: 0,
     fyndRubriker: [],
     heldReason: null,
@@ -143,7 +150,8 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
     ctas: 0,
     goalGuess: null,
     ms,
-    error: stderr.split("\n").filter(Boolean).slice(-3).join(" | ").slice(0, 400) || `exit ${exitCode}`,
+    error:
+      stderr.split("\n").filter(Boolean).slice(-3).join(" | ").slice(0, 400) || `exit ${exitCode}`,
   };
 }
 
@@ -166,6 +174,7 @@ persist();
 
 const by = (s: string) => results.filter((r) => r.status === s).length;
 const byFlytt = (s: string) => results.filter((r) => r.flyttStatus === s).length;
+const shown = results.filter((r) => r.flyttStatus === "pass" && r.flyttShown).length;
 console.log(
-  `\n[fleet-e2e] klart: ${results.length} sajter · ok=${by("ok")} freeze_failed=${by("freeze_failed")} crashed=${by("crashed")} · flytt: pass=${byFlytt("pass")} held=${byFlytt("held")} refused=${byFlytt("refused")}`,
+  `\n[fleet-e2e] klart: ${results.length} sajter · ok=${by("ok")} freeze_failed=${by("freeze_failed")} crashed=${by("crashed")} · flytt: pass=${byFlytt("pass")} (varav ${shown} med demo-bild) held=${byFlytt("held")} refused=${byFlytt("refused")}`,
 );
