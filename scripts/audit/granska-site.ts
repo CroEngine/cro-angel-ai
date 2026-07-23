@@ -210,9 +210,13 @@ if (content.trustSignals.length === 0) {
   fynd.push({
     vikt: 5,
     rubrik: EN ? "No trust signals in the page copy" : "Inga förtroendesignaler i sidans text",
+    // Samma JS-render-förbehåll som konverterings-fyndet (fleet-E2E 2026-07-23):
+    // en tunn SPA-skal-frysning har inget innehåll att läsa — då är "inga
+    // förtroendesignaler" hur en första rendering ser ut för oss, inte en dom
+    // över sidan. Utan förbehållet blir fyndet osant för JS-byggda sidor.
     text: EN
-      ? `We found no customer counts, reviews or certifications in the copy itself. If you have them (reviews, customer numbers, certificates) they deserve a spot — Angel only surfaces what already exists.`
-      : `Vi hittade inga kundantal, omdömen eller certifieringar i själva kopian. Om ni har dem (recensioner, antal kunder, certifikat) förtjänar de plats — vi flyttar bara fram sådant som redan finns.`,
+      ? `We found no customer counts, reviews or certifications in the copy itself. If you have them (reviews, customer numbers, certificates) they deserve a spot — Angel only surfaces what already exists. (If your page builds its content with JavaScript after load, this may simply be what a first paint looks like to us — tell us and we'll re-check.)`
+      : `Vi hittade inga kundantal, omdömen eller certifieringar i själva kopian. Om ni har dem (recensioner, antal kunder, certifikat) förtjänar de plats — vi flyttar bara fram sådant som redan finns. (Bygger er sida sitt innehåll med JavaScript efter laddning kan detta helt enkelt vara hur en första rendering ser ut för oss — säg till så kollar vi igen.)`,
   });
 }
 
@@ -236,14 +240,19 @@ let flyttText = "";
 
 if (targetIdx >= 2) {
   const target = sections[targetIdx];
+  // "Långt ner" bara när det ÄR långt ner (fleet-E2E 2026-07-23): Fix B kan välja
+  // en förtroende-sektion redan vid index 2 (position 3) som kan ligga nära
+  // folden — då vore "sits far down" en överdrift. Under nedre halvan säger vi
+  // det neutrala (och sanna) "under folden".
+  const deepInPage = targetIdx > sections.length / 2;
   fynd.push({
     vikt: 3,
     rubrik: EN
       ? `Your strongest content sits as section ${targetIdx + 1} of ${sections.length}`
       : `Ert starkaste innehåll ligger som sektion ${targetIdx + 1} av ${sections.length}`,
     text: EN
-      ? `“${target.heading.slice(0, 60)}” is the kind of content (${target.type}) that usually decides the visit — and it sits far down. Below we test-lifted it, on a frozen copy of your page, through our checks.`
-      : `“${target.heading.slice(0, 60)}” är den typ av innehåll (${target.type}) som brukar avgöra beslutet — och det ligger långt ner. Nedan har vi testat att lyfta det, i en fryst kopia av er sida, genom våra kontroller.`,
+      ? `“${target.heading.slice(0, 60)}” is the kind of content (${target.type}) that usually decides the visit${deepInPage ? " — and it sits far down" : ", sitting below the fold"}. Below we test-lifted it, on a frozen copy of your page, through our checks.`
+      : `“${target.heading.slice(0, 60)}” är den typ av innehåll (${target.type}) som brukar avgöra beslutet${deepInPage ? " — och det ligger långt ner" : ", och ligger under folden"}. Nedan har vi testat att lyfta det, i en fryst kopia av er sida, genom våra kontroller.`,
   });
   // Fail-closed mot tvetydig flytt (fleet-E2E 2026-07-23): move-op:en hittar sin
   // sektion via de FÖRSTA 24 tecknen av rubriken (measure.findByLocator: substräng,
