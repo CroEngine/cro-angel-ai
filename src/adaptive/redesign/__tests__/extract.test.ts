@@ -246,6 +246,41 @@ describe("extractContentModel — structural + proof section typing", () => {
     ).toBe("integrations");
   });
 
+  // Structural typing (2026-07-24): read the section's BODY composition when the
+  // marketing-slogan heading is un-typeable. Generic headings on purpose here, so
+  // it's the STRUCTURE driving the type. Precision over recall.
+  it("types a >=2 price-point body as pricing (generic heading)", () => {
+    const t = `<section><h2>Choose your fit</h2><ul><li>$29/mo</li><li>$99/mo</li></ul></section>`;
+    expect(typeOf(t, "Choose your fit")).toBe("pricing");
+  });
+
+  it("does NOT type a single '$5M raised' prose mention as pricing", () => {
+    const t = `<section><h2>Our journey</h2><p>We raised $5M to build this.</p></section>`;
+    expect(typeOf(t, "Our journey")).not.toBe("pricing");
+  });
+
+  it("types a body with a blockquote as testimonials (generic heading)", () => {
+    const t = `<section><h2>Straight from the source</h2><blockquote>This changed everything.</blockquote></section>`;
+    expect(typeOf(t, "Straight from the source")).toBe("testimonials");
+  });
+
+  it("types a logo-cloud class body as logos (generic heading)", () => {
+    const t = `<section><h2>In good hands</h2><div class="logo-cloud"><img><img><img></div></section>`;
+    expect(typeOf(t, "In good hands")).toBe("logos");
+  });
+
+  it("types a body with an email signup form as cta (generic heading)", () => {
+    const t = `<section><h2>Stay in the loop</h2><form><input type="email"><button>Go</button></form></section>`;
+    expect(typeOf(t, "Stay in the loop")).toBe("cta");
+  });
+
+  it("types a >=3 sub-heading grid as features, but a single sub-heading stays section", () => {
+    const grid = `<section><h2>Everything at once</h2><div><h3>Fast</h3><h3>Secure</h3><h3>Open</h3></div></section>`;
+    expect(typeOf(grid, "Everything at once")).toBe("features");
+    const prose = `<section><h2>Our method</h2><h3>Background</h3><p>A long paragraph of prose about the method.</p></section>`;
+    expect(typeOf(prose, "Our method")).toBe("section");
+  });
+
   it("promotes a generic section whose BODY carries a social-proof count to stats", () => {
     const t = `<section><h2>By the numbers</h2><p>Over 500,000 customers and 80 billion events tracked.</p></section>`;
     const s = extractContentModel(wrap(t)).sections.find((x) => x.heading === "By the numbers");

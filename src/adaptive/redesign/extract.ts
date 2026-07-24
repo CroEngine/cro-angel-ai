@@ -128,29 +128,85 @@ function hasComponentClass(body: string, rx: RegExp): boolean {
   return false;
 }
 
-/** Name a still-generic section from its STRUCTURE (literal tags in its slice).
- *  Only the drift-robust, tag-based cues the lab reads via querySelector are
- *  ported to regex; card-grid / short-CTA heuristics are left to the heading
- *  classifier (fragile to reconstruct from a string). Returns a type or null. */
+/** Structural facts read ONCE from a section's body slice — literal tag counts
+ *  and component-class flags, never the marketing-slogan heading (83% of generic
+ *  headings are un-typeable slogans — capture-eval 2026-07-24). Computed in one
+ *  place so every threshold the typer below leans on is visible together. */
+interface BodyFacts {
+  videoEmbed: boolean;
+  details: number;
+  accordion: boolean;
+  tableRows: number;
+  compareClass: boolean;
+  images: number;
+  integrationsClass: boolean;
+  integrationHint: boolean;
+  pricePoints: number;
+  blockquotes: number;
+  testimonialClass: boolean;
+  stars: number;
+  logoCloudClass: boolean;
+  signupForm: boolean;
+  featureGridClass: boolean;
+  subHeadings: number;
+  iconListItems: number;
+}
+
+function readBodyFacts(body: string): BodyFacts {
+  const count = (re: RegExp) => (body.match(re) || []).length;
+  const cls = (rx: RegExp) => hasComponentClass(body, rx);
+  return {
+    // Video-värdar HOST-förankrade ("loom" som substräng träffar bloomberg.com).
+    videoEmbed:
+      /<video[\s/>]/i.test(body) ||
+      /<iframe[^>]+(?:youtube|youtu\.be|vimeo|wistia|(?:\.|\/\/)loom\.)/i.test(body),
+    details: count(/<details[\s/>]/gi),
+    accordion: cls(/^(?:accordion|faq)(?:s|[_-]\w+)?$/i) || /data-accordion/i.test(body),
+    tableRows: count(/<tr[\s/>]/gi),
+    compareClass: cls(/^(?:compare|comparison|vs)(?:[_-]\w+)?$/i),
+    images: count(/<img[\s/>]/gi),
+    integrationsClass: cls(/^(?:integrations?|integrate)(?:[_-]\w+)?$/i),
+    integrationHint: /integrat|works with|connect (?:your|to)|\bapps?\b/i.test(body),
+    // Ett riktigt prisblock: två eller fler prispunkter (valuta+siffra eller
+    // siffra/mån). Enstaka "$5M raised" i prosa räcker inte → hög precision.
+    pricePoints: count(/[$€£]\s?\d|\b\d+\s*(?:\/\s*mo|\/\s*month|per month|\/\s*m[åa]n|kr\b)/gi),
+    blockquotes: count(/<blockquote[\s/>]/gi),
+    testimonialClass: cls(/^(?:testimonials?|quote|review|kundcitat|kundr[öo]st)(?:[_-]\w+)?$/i),
+    stars: count(/★|⭐/g),
+    logoCloudClass: cls(/^(?:logos?|logo[_-]?cloud|clients?|brands?)(?:[_-]\w+)?$/i),
+    signupForm:
+      /<form[\s>]/i.test(body) &&
+      (/<input[^>]+type=["']?email/i.test(body) ||
+        cls(/^(?:signup|subscribe|newsletter|waitlist)(?:[_-]\w+)?$/i)),
+    featureGridClass: cls(/^(?:features?|feature[_-]?grid|cards?|card[_-]?grid|benefits?)(?:[_-]\w+)?$/i),
+    subHeadings: count(/<h[34][\s>]/gi),
+    iconListItems: count(/<li\b[^>]*>(?:(?!<\/li>)[\s\S]){0,400}?<(?:svg|img)\b/gi),
+  };
+}
+
+/** Type a still-generic section from its STRUCTURE. Ordered MOST-SPECIFIC →
+ *  broadest; first match wins. Precision over recall — a wrong type misleads the
+ *  designer brief and the lift-target pick worse than an honest "section", so
+ *  each cue demands a strong structural signal. The evidence types
+ *  (pricing/testimonials/logos/comparison) are the ones that matter most: they
+ *  become lift targets and [proof] markers when the heading slogan missed them. */
 function structuralType(body: string, heading: string): string | null {
-  // Video-värdar HOST-förankrade ("loom" som substräng träffar bloomberg.com).
-  if (
-    /<video[\s/>]/i.test(body) ||
-    /<iframe[^>]+(?:youtube|youtu\.be|vimeo|wistia|(?:\.|\/\/)loom\.)/i.test(body)
-  )
-    return "video";
-  const detailsCount = (body.match(/<details[\s/>]/gi) || []).length;
-  if (
-    detailsCount >= 2 ||
-    hasComponentClass(body, /^(?:accordion|faq)(?:s|[_-]\w+)?$/i) ||
-    /data-accordion/i.test(body)
-  )
-    return "faq";
-  const trCount = (body.match(/<tr[\s/>]/gi) || []).length;
-  if (/<table[\s/>]/i.test(body) && trCount >= 3) return "comparison";
-  const imgCount = (body.match(/<img[\s/>]/gi) || []).length;
-  if (imgCount >= 6 && /integrat|works with|connect (?:your|to)|\bapps?\b/i.test(heading))
-    return "integrations";
+  const b = readBodyFacts(body);
+  // Integrations är det ENDA fallet där rubriken är en pålitlig STRUKTUR-etikett
+  // ("Integrations" / "Works with your tools"), inte en slogan — men bara som
+  // avsikts-signal, alltid grindad av logga-rutnätet (≥6 bilder). Övriga typer
+  // läser aldrig rubriken.
+  const integrationIntent =
+    b.integrationHint || /integrat|works with|connect (?:your|to)|\bapps?\b/i.test(heading);
+  if (b.videoEmbed) return "video";
+  if (b.details >= 2 || b.accordion) return "faq";
+  if (b.pricePoints >= 2) return "pricing";
+  if (b.tableRows >= 3 || b.compareClass) return "comparison";
+  if (b.blockquotes >= 1 || b.testimonialClass || b.stars >= 3) return "testimonials";
+  if (b.logoCloudClass) return "logos";
+  if (b.integrationsClass || (b.images >= 6 && integrationIntent)) return "integrations";
+  if (b.signupForm) return "cta";
+  if (b.featureGridClass || b.subHeadings >= 3 || b.iconListItems >= 3) return "features";
   return null;
 }
 
