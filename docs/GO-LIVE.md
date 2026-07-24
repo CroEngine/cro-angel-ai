@@ -65,7 +65,7 @@ Repo → Settings → Secrets and variables → Actions.
 | `ANTHROPIC_API_KEY` | nightly-loop (variant generation), preview granska | **yes** for variants + `/try` reports |
 | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` | **DB migrate** workflow | for the one-click apply in §1 |
 | `GOOGLE_PAGESPEED_API_KEY` | CWV gate | optional |
-| `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID` | crawler | optional |
+| `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID` | crawler **+ SPA rendering** of the paste-URL freeze (a remote stealth browser that reaches live sites and dodges datacenter bot-blocks; without it, SPA shells fall back to the static copy) | recommended |
 
 ---
 

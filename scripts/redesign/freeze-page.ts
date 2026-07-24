@@ -25,6 +25,8 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
+import type { Page } from "playwright-core";
+
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
@@ -94,14 +96,53 @@ const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
  *  UA-filtrerar auktoritativt, så frysningen kan aldrig förorena mätdatat.
  *  Lazy-svepet scrollar genom sidan så under-folden-innehåll renderas, och
  *  scrollar tillbaka så frysta dokumentet börjar vid toppen. */
+/** Skaffa en render-sida. En FJÄRR-browser (Browserbase) när den är konfigurerad
+ *  — den kan nå LEVANDE sajter (SPA-rendering, kapacitet steg 2, 2026-07-24) och
+ *  är exakt vägen skördaren redan kör i prod; lokal Chromium når inte levande
+ *  URL:er bakom agent-proxyn. Annars lokal Chromium (dev + Actions-runner med en
+ *  lokal browser-installation). Returnerar sidan + en cleanup som stänger
+ *  browsern OCH släpper Browserbase-sessionen (annars fortsätter den debiteras).
+ *  Kan inte köras lokalt i den här containern (Browserbase onåbar via proxyn) —
+ *  validering sker i CI/prod där skördaren redan använder samma väg. */
+async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => Promise<void> }> {
+  const { chromium } = await import("playwright-core");
+  const apiKey = process.env.BROWSERBASE_API_KEY;
+  const projectId = process.env.BROWSERBASE_PROJECT_ID;
+  if (apiKey && projectId) {
+    const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
+    const session = await createSession();
+    const browser = await chromium.connectOverCDP(session.connectUrl, { timeout: 30_000 });
+    // Browserbase-sessionen bär redan en kontext; skapa/återanvänd sida och sätt
+    // viewporten POSITIONELLT (browserSettings.viewport gäller bara till första
+    // navigeringen — createSession-kommentaren). Stealth/UA sköts av sessionen.
+    const ctx = browser.contexts()[0] ?? (await browser.newContext());
+    const page = ctx.pages()[0] ?? (await ctx.newPage());
+    await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
+    return {
+      page,
+      cleanup: async () => {
+        await browser.close().catch(() => {});
+        await closeSession(session.id).catch(() => {});
+      },
+    };
+  }
+  const exec = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+  const browser = await chromium.launch({ headless: true, executablePath: exec });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, userAgent: UA });
+  return {
+    page,
+    cleanup: async () => {
+      await browser.close().catch(() => {});
+    },
+  };
+}
+
 async function browserRenderedHtml(
   u: string,
 ): Promise<{ html: string; imgPriority: Record<string, { top: number; area: number }> }> {
-  const { chromium, errors } = await import("playwright-core");
-  const exec = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
-  const browser = await chromium.launch({ headless: true, executablePath: exec });
+  const { errors } = await import("playwright-core");
+  const { page, cleanup } = await acquireRenderPage();
   try {
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, userAgent: UA });
     // Tunga SPA:er fyrar ibland aldrig load (öppna connections) — samma
     // degradera-och-fortsätt som korpus-frysaren (freeze.server.ts): fånga
     // TIMEOUTEN och jobba vidare på det som renderats. Bara timeouten: ett
@@ -197,7 +238,7 @@ async function browserRenderedHtml(
     });
     return { html: outHtml, imgPriority: priority };
   } finally {
-    await browser.close();
+    await cleanup();
   }
 }
 
