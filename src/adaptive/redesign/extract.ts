@@ -293,10 +293,15 @@ export function sectionBodyExcerpts(html: string, cap = 600): { heading: string;
     const key = heading.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
     seen.add(key);
-    // Delimiter-backreferens (\1) så en apostrof INUTI en dubbelciterad alt
-    // ("Best tool I've used") inte kapar texten mitt itu.
-    const withAlt = h.body.replace(/<img\b[^>]*?\balt=(["'])([\s\S]*?)\1[^>]*?>/gi, " $2 ");
-    const flat = stripTags(withAlt.replace(/data:[^"')\s]+/gi, " "));
+    // <style>/<script>-INNEHÅLL bort först (stripTags tar taggen men lämnar CSS/JS-
+    // texten kvar → brex/plaid/mongodb gav ren CSS till prompten, rapportfynd
+    // 2026-07-24). Sedan lyft <img alt> (delimiter-backreferens \1 så en apostrof
+    // INUTI en dubbelciterad alt inte kapar texten), sist data-URIer bort.
+    const cleaned = h.body
+      .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
+      .replace(/data:[^"')\s]+/gi, " ");
+    const withAlt = cleaned.replace(/<img\b[^>]*?\balt=(["'])([\s\S]*?)\1[^>]*?>/gi, " $2 ");
+    const flat = stripTags(withAlt);
     out.push({ heading, excerpt: flat.slice(0, cap) });
   }
   return out;
