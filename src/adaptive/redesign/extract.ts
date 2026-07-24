@@ -144,6 +144,8 @@ interface BodyFacts {
   featureGridClass: boolean;
   subHeadings: number;
   iconListItems: number;
+  blockquotes: number;
+  starGlyphs: number;
 }
 
 function readBodyFacts(body: string): BodyFacts {
@@ -170,6 +172,14 @@ function readBodyFacts(body: string): BodyFacts {
     featureGridClass: cls(/^(?:features?|feature[_-]?grid|cards?|card[_-]?grid|benefits?)(?:[_-]\w+)?$/i),
     subHeadings: count(/<h[34][\s>]/gi),
     iconListItems: count(/<li\b[^>]*>(?:(?!<\/li>)[\s\S]){0,400}?<(?:svg|img)\b/gi),
+    // Semantiska bevis-taggar (LLM-revision 2026-07-24). <blockquote> är den
+    // ENDA precisa testimonials-strukturen — en vägg av citat (resend 39,
+    // zendesk 11, ro 8, zapier 4). Stjärnglyfer ≥4 = ett ifyllt betyg (todoist
+    // "337 000+ ★★★★★ reviews"). Båda är golv-hårda tröskeln över en 210-sajts
+    // korpusmätning: enda icke-testimonials-träffen på blockquote var linears
+    // "Changelog" (bq3) → tröskeln 4 utesluter den.
+    blockquotes: count(/<blockquote[\s/>]/gi),
+    starGlyphs: (body.match(/[★⭐✩✪✰]/g) || []).length,
   };
 }
 
@@ -194,18 +204,28 @@ function structuralType(body: string, heading: string): string | null {
   // bära minst en FRÅGA (annars är det en feature-flik, inte en FAQ).
   if (b.accordion || (b.details >= 2 && b.faqQuestions >= 1)) return "faq";
   if (b.tableRows >= 3) return "comparison";
+  // Testimonials via SEMANTISKA bevis-taggar (LLM-revision 2026-07-24) — inte de
+  // lösa text/klass-signaler som drogs i d18f89d. En vägg av <blockquote> (≥4)
+  // eller ett ifyllt stjärnbetyg (≥4 glyfer) ÄR strukturellt socialt bevis och
+  // felträffar inte prosa: enda icke-testimonials-blockquote-träffen på 1902
+  // sektioner var en changelog (bq3), utesluten av tröskeln. Fångar väggar vars
+  // rubrik är en slogan ("Beyond expectations" resend, "3,000,000+" ro,
+  // "Built for businesses of all sizes" zendesk).
+  if (b.blockquotes >= 4 || b.starGlyphs >= 4) return "testimonials";
   if (b.integrationsClass || (b.images >= 6 && integrationIntent)) return "integrations";
   if (b.signupForm) return "cta";
   // features is a NON-evidence label (never a lift target), so an approximate
   // multi-item signal is acceptable where a wrong evidence type would not be.
   if (b.featureGridClass || b.subHeadings >= 3 || b.iconListItems >= 3) return "features";
-  // Deliberately NO structural pricing / testimonials / logos: a 210-site scale
-  // scan (2026-07-24) showed the price-count and class-token cues false-positive
-  // on incidental markup ("What's the ROI on better work?" → pricing; a stray
-  // "reviews"/"brands" token → testimonials/logos). Those are EVIDENCE types, so a
-  // wrong one becomes a fake lift target — worse than an honest "section". Real
-  // pricing/testimonials/logos sections are still typed by their heading
-  // (classifySectionHeading) and by proofFromBody's "trusted by"/count text.
+  // Structural testimonials is ONLY the semantic-tag cues above (blockquote≥4 /
+  // star≥4). Deliberately STILL NO structural pricing / logos, and NO loose
+  // testimonials text/class cues: the 210-site scan (2026-07-24) showed the
+  // price-count and class-token cues false-positive on incidental markup
+  // ("What's the ROI on better work?" → pricing; a stray "reviews"/"brands"
+  // token → testimonials/logos). Those are EVIDENCE types, so a wrong one becomes
+  // a fake lift target — worse than an honest "section". Real pricing/logos
+  // sections are still typed by their heading (classifySectionHeading) and by
+  // proofFromBody's "trusted by"/count text.
   return null;
 }
 

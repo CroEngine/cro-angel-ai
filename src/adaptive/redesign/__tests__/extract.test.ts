@@ -266,6 +266,57 @@ describe("extractContentModel — structural + proof section typing", () => {
     ).toBe("pricing");
   });
 
+  it("re-widened testimonials: social-proof-framed headings type, slogans do not (LLM audit 2026-07-24)", () => {
+    // The tightening (ed0c266) over-corrected: it dropped REAL social-proof
+    // headings whose body is an image carousel no structural cue can reach. A
+    // 210-site corpus proved these four families FP-free — recover them.
+    expect(
+      typeOf(`<section><h2>Students, parents, and teachers love us</h2><p>x</p></section>`, "Students, parents, and teachers love us"),
+    ).toBe("testimonials"); // "X love us"
+    expect(
+      typeOf(`<section><h2>Why millions love HelloFresh</h2><p>x</p></section>`, "Why millions love HelloFresh"),
+    ).toBe("testimonials"); // "N/millions love|choose"
+    expect(
+      typeOf(`<section><h2>Why people choose Coursera</h2><p>x</p></section>`, "Why people choose Coursera"),
+    ).toBe("testimonials"); // "why … people choose"
+    expect(
+      typeOf(`<section><h2>See the stories of people worldwide choosing Wise</h2><p>x</p></section>`, "See the stories of people worldwide choosing Wise"),
+    ).toBe("testimonials"); // "stories of people"
+    // Guard: a "products you love" slogan is NOT testimonials (no "us"/number/"why").
+    expect(
+      typeOf(`<section><h2>The products you love are designed in Figma</h2><p>x</p></section>`, "The products you love are designed in Figma"),
+    ).not.toBe("testimonials");
+  });
+
+  it("normalizes a literal curly apostrophe so testimonial/faq headings still match (calcom bug)", () => {
+    // Source ships a literal U+2019 (not &rsquo;), which stripTags never touches —
+    // "Don’t just take our word for it" was mis-typed section. Normalize → straight.
+    expect(
+      typeOf(`<section><h2>Don’t just take our word for it</h2><p>x</p></section>`, "Don’t just take our word for it"),
+    ).toBe("testimonials");
+  });
+
+  it("structurally types a <blockquote> wall (>=4) as testimonials, but <4 stays generic", () => {
+    // Semantic-tag cue re-added (precise): a quote wall whose heading is a slogan
+    // (resend "Beyond expectations", zendesk "Built for businesses of all sizes").
+    const bq = (n: number) => Array.from({ length: n }, (_, i) => `<blockquote>Great tool ${i}</blockquote>`).join("");
+    expect(typeOf(`<section><h2>Beyond expectations</h2>${bq(4)}</section>`, "Beyond expectations")).toBe(
+      "testimonials",
+    );
+    // Threshold guard: 3 blockquotes (a pull-quote article like linear "Changelog") must NOT type.
+    expect(typeOf(`<section><h2>Changelog</h2>${bq(3)}</section>`, "Changelog")).toBe("section");
+  });
+
+  it("structurally types a >=4 star-glyph rating as testimonials (todoist)", () => {
+    expect(
+      typeOf(`<section><h2>Daily companion</h2><p>★★★★★ 337,000+ on the App Store</p></section>`, "Daily companion"),
+    ).toBe("testimonials");
+    // A single decorative star must NOT make it testimonials.
+    expect(
+      typeOf(`<section><h2>Our weekly note</h2><p>★ one small highlight this week.</p></section>`, "Our weekly note"),
+    ).not.toBe("testimonials");
+  });
+
   it("types an integrations section (>=6 imgs + integration heading) as integrations", () => {
     const imgs = Array.from({ length: 7 }, (_, i) => `<img src="/logo${i}.svg">`).join("");
     expect(

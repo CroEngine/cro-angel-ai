@@ -30,9 +30,19 @@ export const SECTION_TYPE_PATTERNS: readonly { type: string; re: RegExp }[] = [
     // Åtstramad (precisionsfynd 2026-07-24): bara "love"/"people"/"review" som
     // SUBSTRÄNGAR typade "People" (Slack), "global people platform" (Deel),
     // "code review" som testimonials → fel lyftmål + falsk [proof]. Kräver nu
-    // testimonial-KONTEXT; blockquote/citat-klass/stjärnor fångar resten
-    // strukturellt.
-    re: /(❤|loved by|(?:customers?|users?|people|teams?|clients?|they) (?:love|rave)|testimonials?|don'?t (?:just )?take our word|what (?:our )?(?:customers|users|people|clients|teams) (?:say|think)|say about (?:us|our)|customers think|\breviews\b|omd[öo]men?|recensioner?|kundr[öo]st(?:er)?|kundcitat|kunder (?:s[äa]ger|tycker|ber[äa]ttar)|betyg|referenser?)/,
+    // testimonial-KONTEXT.
+    //
+    // ÅTER-VIDGAD (LLM-revision 2026-07-24, ägaren: "Why millions love HelloFresh
+    // är kopplad till scroll-karusellen under — det ÄR testimonials"): åtstram-
+    // ningen tog också bort ÄKTA social-proof-ramade rubriker. En 210-sajts
+    // korpusmätning (scripts/capture-eval/typing-audit.ts) bekräftade fyra SÄKRA
+    // familjer — noll falska positiva över 1902 sektioner, och ingen av dem
+    // återinför de 34 korrekt borttagna slogans ("products you love" saknar "us"/
+    // siffra/"why"): "X love us" (brilliant), "N/millions (of …) love|choose|trust"
+    // (hellofresh/mailchimp/slack), "why … (people|millions|…) choose|love|trust"
+    // (coursera/calcom), "stories of people|customers" (wise). Bild-renderade
+    // karuseller (hellofresh) når INGEN kroppsdetektor — rubriken är enda signalen.
+    re: /(❤|loved by|(?:customers?|users?|people|teams?|clients?|they) (?:love|rave)|\blove us\b|(?:millions?|thousands?|hundreds?|\d[\d,. ]*\+?) (?:of (?:people|users|customers|companies|businesses|creators) )?(?:love|choose|trust|rely on)\b|why (?:\w+ ){0,4}(?:people|customers|users|teams|students|learners|businesses|developers|creators|millions|thousands) (?:choose|love|trust|switch|pick)|stories of (?:people|customers|our)|testimonials?|don'?t (?:just )?take our word|what (?:our )?(?:customers|users|people|clients|teams) (?:say|think)|say about (?:us|our)|customers think|\breviews\b|omd[öo]men?|recensioner?|kundr[öo]st(?:er)?|kundcitat|kunder (?:s[äa]ger|tycker|ber[äa]ttar)|betyg|referenser?)/,
   },
   {
     type: "logos",
@@ -62,7 +72,15 @@ export const SECTION_TYPE_PATTERNS: readonly { type: string; re: RegExp }[] = [
  *  "section" — hellre otypad än felgissad. */
 export function classifySectionHeading(heading: string, isFirst: boolean): string {
   if (isFirst) return "hero";
-  const h = heading.toLowerCase();
+  // Normalisera TYPOGRAFISKA citattecken → raka (LLM-revision 2026-07-24):
+  // calcoms "Don't just take our word for it" (rubrik ÖVER en testimonial-vägg)
+  // typades "section" för att källan bär ett LITTERAT krullat ' (U+2019), inte
+  // &rsquo; — stripTags avkodar entiteter men rör aldrig litterala UTF-8-tecken,
+  // så vokabulärens raka `don'?t` missade. Träffar även faq/övriga apostrof-mönster.
+  const h = heading
+    .toLowerCase()
+    .replace(/[‘’ʼ]/g, "'")
+    .replace(/[“”]/g, '"');
   for (const p of SECTION_TYPE_PATTERNS) if (p.re.test(h)) return p.type;
   return "section";
 }
