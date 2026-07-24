@@ -86,3 +86,4 @@ artifacts/
 
 # Capture-eval körartefakter (scripts/capture-eval/run.ts) — regenererbara.
 /capture-eval/
+/capture-corpus/

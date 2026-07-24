@@ -25,7 +25,7 @@ const EXEC = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const ONLY = arg("only")?.split(",").filter(Boolean);
 const CONC = Math.max(1, Number(arg("conc") ?? 4));
-const FLEET = "fleet-e2e";
+const FLEET = arg("root") ?? "fleet-e2e";
 const OUT = "capture-eval";
 mkdirSync(OUT, { recursive: true });
 
