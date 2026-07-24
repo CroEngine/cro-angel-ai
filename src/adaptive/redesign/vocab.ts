@@ -19,11 +19,20 @@
 export const SECTION_TYPE_PATTERNS: readonly { type: string; re: RegExp }[] = [
   {
     type: "pricing",
-    re: /(pricing|plans?|\/mo|per month|traffic based|growth|priser|prisplan|kostnad|per m[åa]nad|\/m[åa]n)/,
+    // Åtstramad (precisionsfynd 2026-07-24): "growth"/"traffic based" typade
+    // "Driving business growth" som pricing → fel lyftmål. Riktiga prisblock
+    // fångas av pricing/plans/-per-månad-rubriker + den strukturella grinden
+    // (>=2 prispunkter i kroppen).
+    re: /(pricing|\bplans?\b|\/mo|per month|priser|prisplan|kostnad|per m[åa]nad|\/m[åa]n)/,
   },
   {
     type: "testimonials",
-    re: /(love|❤|people|testimonial|review|say about|customers think|omd[öo]m|recension|kundr[öo]st|kundcitat|kunder (s[äa]ger|tycker|ber[äa]ttar)|medlemmar|betyg|referens)/,
+    // Åtstramad (precisionsfynd 2026-07-24): bara "love"/"people"/"review" som
+    // SUBSTRÄNGAR typade "People" (Slack), "global people platform" (Deel),
+    // "code review" som testimonials → fel lyftmål + falsk [proof]. Kräver nu
+    // testimonial-KONTEXT; blockquote/citat-klass/stjärnor fångar resten
+    // strukturellt.
+    re: /(❤|loved by|(?:customers?|users?|people|teams?|clients?|they) (?:love|rave)|testimonials?|don'?t (?:just )?take our word|what (?:our )?(?:customers|users|people|clients|teams) (?:say|think)|say about (?:us|our)|customers think|\breviews\b|omd[öo]men?|recensioner?|kundr[öo]st(?:er)?|kundcitat|kunder (?:s[äa]ger|tycker|ber[äa]ttar)|betyg|referenser?)/,
   },
   {
     type: "logos",

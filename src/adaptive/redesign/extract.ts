@@ -135,6 +135,7 @@ function hasComponentClass(body: string, rx: RegExp): boolean {
 interface BodyFacts {
   videoEmbed: boolean;
   details: number;
+  faqQuestions: number;
   accordion: boolean;
   tableRows: number;
   images: number;
@@ -154,6 +155,10 @@ function readBodyFacts(body: string): BodyFacts {
       /<video[\s/>]/i.test(body) ||
       /<iframe[^>]+(?:youtube|youtu\.be|vimeo|wistia|(?:\.|\/\/)loom\.)/i.test(body),
     details: count(/<details[\s/>]/gi),
+    // Ett <summary> som är en FRÅGA (innehåller "?") — skiljer en riktig FAQ från
+    // en <details>-baserad feature-tab/flik-widget (precisionsfynd 2026-07-24:
+    // monday-fliken och vantas testimonial-i-<details> feltypades faq → fel lyftmål).
+    faqQuestions: count(/<summary\b[^>]*>(?:(?!<\/summary>)[\s\S])*?\?(?:(?!<\/summary>)[\s\S])*?<\/summary>/gi),
     accordion: cls(/^(?:accordion|faq)(?:s|[_-]\w+)?$/i) || /data-accordion/i.test(body),
     tableRows: count(/<tr[\s/>]/gi),
     images: count(/<img[\s/>]/gi),
@@ -185,7 +190,9 @@ function structuralType(body: string, heading: string): string | null {
   const integrationIntent = /integrat|works with|connect (?:your|to)|\bapps?\b/i.test(heading);
   // Reliable, tag-anchored cues only (semantic tags / a real table / a form).
   if (b.videoEmbed) return "video";
-  if (b.details >= 2 || b.accordion) return "faq";
+  // Riktig accordion-KLASS räcker; en <details>-baserad widget måste dessutom
+  // bära minst en FRÅGA (annars är det en feature-flik, inte en FAQ).
+  if (b.accordion || (b.details >= 2 && b.faqQuestions >= 1)) return "faq";
   if (b.tableRows >= 3) return "comparison";
   if (b.integrationsClass || (b.images >= 6 && integrationIntent)) return "integrations";
   if (b.signupForm) return "cta";

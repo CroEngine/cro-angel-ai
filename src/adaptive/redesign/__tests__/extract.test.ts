@@ -234,9 +234,36 @@ describe("extractContentModel — structural + proof section typing", () => {
     expect(typeOf(t, "Side by side")).toBe("comparison");
   });
 
-  it("types a section with two or more <details> as faq", () => {
-    const t = `<section><h2>Good to know</h2><details><summary>Q1</summary>A1</details><details><summary>Q2</summary>A2</details></section>`;
-    expect(typeOf(t, "Good to know")).toBe("faq");
+  it("types <details> with QUESTION summaries as faq, but <details> feature-tabs (no '?') stay section", () => {
+    const faq = `<section><h2>Good to know</h2><details><summary>How do I start?</summary>A1</details><details><summary>Is it free?</summary>A2</details></section>`;
+    expect(typeOf(faq, "Good to know")).toBe("faq");
+    // Interactive <details> feature-tabs (monday) have no question summaries —
+    // must NOT mis-type as faq (an evidence/lift type), precision fix 2026-07-24.
+    const tabs = `<section><h2>Explore</h2><details><summary>Automations</summary>x</details><details><summary>Dashboards</summary>y</details></section>`;
+    expect(typeOf(tabs, "Explore")).toBe("section");
+  });
+
+  it("tightened testimonials heading: real phrasing types, bare 'people'/'love' substrings do not", () => {
+    // Precision fix 2026-07-24: these were mis-typed testimonials (→ wrong lift
+    // target + false [proof]) via bare substrings — the audit's actual FP headings.
+    expect(typeOf(`<section><h2>People</h2><p>Meet the team.</p></section>`, "People")).toBe("section");
+    expect(
+      typeOf(`<section><h2>The global people platform</h2><p>x</p></section>`, "The global people platform"),
+    ).toBe("section");
+    // Real testimonial headings still type.
+    expect(
+      typeOf(`<section><h2>What our customers say</h2><p>x</p></section>`, "What our customers say"),
+    ).toBe("testimonials");
+    expect(typeOf(`<section><h2>Loved by teams</h2><p>x</p></section>`, "Loved by teams")).toBe("testimonials");
+  });
+
+  it("tightened pricing heading: 'growth' no longer types as pricing, real pricing still does", () => {
+    expect(
+      typeOf(`<section><h2>Driving business growth</h2><p>x</p></section>`, "Driving business growth"),
+    ).not.toBe("pricing");
+    expect(
+      typeOf(`<section><h2>Simple, transparent pricing</h2><p>x</p></section>`, "Simple, transparent pricing"),
+    ).toBe("pricing");
   });
 
   it("types an integrations section (>=6 imgs + integration heading) as integrations", () => {
