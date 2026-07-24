@@ -351,6 +351,21 @@ describe("extractContentModel — structural + proof section typing", () => {
     expect(m.trustSignals.find((x) => x.type === "social_proof_count")?.text).toContain("teams");
   });
 
+  it("dedups exact-duplicate section headings (responsive mobile+desktop copies)", () => {
+    // Capture faithfulness (steg 1): a responsive theme renders the same heading
+    // twice (mobile + desktop) and the visitor sees ONE. Keep the first, drop the
+    // repeat; re-index positions contiguously. (monday: 16 → real sections.)
+    const page = `<main>
+      <h1>Hero headline</h1>
+      <section><h2>Consider yourself limitless</h2><p>a</p></section>
+      <section><h2>Real distinct feature</h2><p>b</p></section>
+      <section><h2>Consider yourself limitless</h2><p>c</p></section>
+    </main>`;
+    const secs = extractContentModel(page).sections;
+    expect(secs.filter((s) => /limitless/i.test(s.heading)).length).toBe(1);
+    expect(secs.map((s) => s.position)).toEqual(secs.map((_, i) => i + 1));
+  });
+
   it("detects a money-back guarantee as a trust signal, but not a bare 'no guarantee'", () => {
     const withG = extractContentModel(
       `<main><h1>Try it</h1><section><h2>Risk free</h2><p>See results in 30 days or get your money back.</p></section></main>`,

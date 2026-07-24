@@ -83,3 +83,6 @@ artifacts/
 # regenererbara. Ankrad till roten (/) så runnern under scripts/fleet-e2e/
 # INTE ignoreras. Siffrorna som betyder något bor i docs/fleet-e2e-*.md.
 /fleet-e2e/
+
+# Capture-eval körartefakter (scripts/capture-eval/run.ts) — regenererbara.
+/capture-eval/

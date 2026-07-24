@@ -221,7 +221,7 @@ function extractSections(html: string): RedesignContentModel["sections"] {
     heads.unshift({ level: 1, text: docH1, headStart: -1, bodyStart: -1, body: "" });
   const heroPresent = heads.some((h) => h.level === 1);
 
-  return heads.map((h, i) => {
+  const built = heads.map((h, i) => {
     const headingType = classify(h.text, heroPresent && i === 0);
     // The hero is never re-TYPED from its body (it legitimately wraps media/
     // proof) — but its proof FLAG is still computed (granskningsfynd 2026-07-22):
@@ -237,15 +237,35 @@ function extractSections(html: string): RedesignContentModel["sections"] {
           }
         : refineType(headingType, h.body || "", h.text);
     return {
-      id: `sec-${i + 1}-${type}`,
       type,
-      position: i + 1,
       heading: h.text.slice(0, 120),
       aboveFold: type === "hero", // honest approximation w/o a render: only the hero is above the fold
-      visualWeight: type === "hero" ? 85 : Math.max(20, 60 - i * 4),
       containsTrustSignals,
     };
   });
+  // Dedup EXAKTA rubrikdubbletter (kapaciteten "fånga vad besökaren SER", steg 1):
+  // responsiva teman renderar mobil- OCH desktop-kopior av samma rubrik i DOM:en,
+  // men besökaren ser EN. Den synliga-DOM-serialiseringen uppströms tar bort
+  // display:none-kopiorna; detta fångar resten (synliga exakta dubbletter). Behåll
+  // FÖRSTA förekomsten i dokumentordning; id/position/visualWeight sätts efter
+  // dedup så modellen är sammanhängande. (monday: 16 → 11 riktiga sektioner.)
+  const seen = new Set<string>();
+  return built
+    .filter((s) => {
+      const key = s.heading.trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((s, i) => ({
+      id: `sec-${i + 1}-${s.type}`,
+      type: s.type,
+      position: i + 1,
+      heading: s.heading,
+      aboveFold: s.aboveFold,
+      visualWeight: s.type === "hero" ? 85 : Math.max(20, 60 - i * 4),
+      containsTrustSignals: s.containsTrustSignals,
+    }));
 }
 
 /** A raw anchor/button candidate before intent classification — the input both

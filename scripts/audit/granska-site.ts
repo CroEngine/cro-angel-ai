@@ -28,6 +28,7 @@ import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { isVacuityWarn } from "../../src/adaptive/redesign/render-gates";
 import { EVIDENCE_SECTION_TYPES } from "../../src/adaptive/redesign/vocab";
 import { measurePlan, runGatedAttempts, type MeasureOp } from "../redesign/measure";
+import { serializeVisibleHtml } from "../redesign/visible-dom";
 
 // Env-var eller undefined — playwright-core hittar sin egen installation
 // (bunx playwright install) på Actions-runnern; den hårdkodade dev-sökvägen
@@ -133,8 +134,11 @@ const page = await context.newPage();
 await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 30_000 });
 await page.waitForTimeout(600);
 
-// Extraktion mot RENDERAD DOM (samma som breadth-testet).
-const rendered = await page.evaluate(() => document.documentElement.outerHTML);
+// Extraktion mot SYNLIG renderad DOM (kapacitet steg 1): serialiseringen tar
+// bort display:none/visibility:hidden-delträd så modellen speglar vad besökaren
+// faktiskt ser — inga responsiva fantom-sektioner. Den levande sidan (som
+// lyft-testet mäter på) lämnas orörd.
+const rendered = await serializeVisibleHtml(page);
 const content = extractContentModel(rendered);
 const convCtas = content.ctas.filter((c) => c.intent === "conversion");
 // Extraherade konverterings-CTA:er ∪ ägarens måltext — samma union som
