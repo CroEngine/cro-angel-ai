@@ -81,7 +81,15 @@ async function evalSite(name: string): Promise<Row> {
     // OCH är FAKTISKT renderade (getClientRects>0 — respekterar förfäders
     // display:none, till skillnad från getComputedStyle(el).display)? De är den
     // enda riktiga förlusten. Dolda-via-förälder-rubriker SKA försvinna.
-    const dropped = rawSecs.map((s) => s.heading.trim().toLowerCase()).filter((h) => !faithfulKeys.has(h));
+    const faithfulKeyArr = [...faithfulKeys];
+    // En raw-rubrik "försvann" bara på RIKTIGT om (a) den faktiskt renderas OCH
+    // (b) ingen faithful-rubrik delar dess 20-teckensprefix. Villkor (b) skiljer
+    // en TAPPAD sektion från en STÄDAD: synlig-serialiseringen tar bort dolda
+    // dubblett-spans INUTI en rubrik ("Luxe sheets Luxe sheets" → "Luxe sheets"),
+    // vilket ändrar strängen men behåller sektionen (brooklinen, capture-eval).
+    const dropped = rawSecs
+      .map((s) => s.heading.trim().toLowerCase())
+      .filter((h) => !faithfulKeys.has(h) && !faithfulKeyArr.some((f) => f.startsWith(h.slice(0, 20)) || h.startsWith(f.slice(0, 20))));
     const realLoss = await page.evaluate((headings: string[]) => {
       const main = document.querySelector("main") || document.body;
       const norm = (s: string | null) => (s || "").replace(/\s+/g, " ").trim().toLowerCase();
