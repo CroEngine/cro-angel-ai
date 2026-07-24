@@ -137,15 +137,8 @@ interface BodyFacts {
   details: number;
   accordion: boolean;
   tableRows: number;
-  compareClass: boolean;
   images: number;
   integrationsClass: boolean;
-  integrationHint: boolean;
-  pricePoints: number;
-  blockquotes: number;
-  testimonialClass: boolean;
-  stars: number;
-  logoCloudClass: boolean;
   signupForm: boolean;
   featureGridClass: boolean;
   subHeadings: number;
@@ -163,17 +156,8 @@ function readBodyFacts(body: string): BodyFacts {
     details: count(/<details[\s/>]/gi),
     accordion: cls(/^(?:accordion|faq)(?:s|[_-]\w+)?$/i) || /data-accordion/i.test(body),
     tableRows: count(/<tr[\s/>]/gi),
-    compareClass: cls(/^(?:compare|comparison|vs)(?:[_-]\w+)?$/i),
     images: count(/<img[\s/>]/gi),
     integrationsClass: cls(/^(?:integrations?|integrate)(?:[_-]\w+)?$/i),
-    integrationHint: /integrat|works with|connect (?:your|to)|\bapps?\b/i.test(body),
-    // Ett riktigt prisblock: två eller fler prispunkter (valuta+siffra eller
-    // siffra/mån). Enstaka "$5M raised" i prosa räcker inte → hög precision.
-    pricePoints: count(/[$€£]\s?\d|\b\d+\s*(?:\/\s*mo|\/\s*month|per month|\/\s*m[åa]n|kr\b)/gi),
-    blockquotes: count(/<blockquote[\s/>]/gi),
-    testimonialClass: cls(/^(?:testimonials?|quote|review|kundcitat|kundr[öo]st)(?:[_-]\w+)?$/i),
-    stars: count(/★|⭐/g),
-    logoCloudClass: cls(/^(?:logos?|logo[_-]?cloud|clients?|brands?)(?:[_-]\w+)?$/i),
     signupForm:
       /<form[\s>]/i.test(body) &&
       (/<input[^>]+type=["']?email/i.test(body) ||
@@ -194,19 +178,27 @@ function structuralType(body: string, heading: string): string | null {
   const b = readBodyFacts(body);
   // Integrations är det ENDA fallet där rubriken är en pålitlig STRUKTUR-etikett
   // ("Integrations" / "Works with your tools"), inte en slogan — men bara som
-  // avsikts-signal, alltid grindad av logga-rutnätet (≥6 bilder). Övriga typer
-  // läser aldrig rubriken.
-  const integrationIntent =
-    b.integrationHint || /integrat|works with|connect (?:your|to)|\bapps?\b/i.test(heading);
+  // avsikts-signal, alltid grindad av logga-rutnätet (≥6 bilder). Intent läses
+  // BARA ur rubriken: att skanna kroppen efter "works"/"apps" felträffade
+  // feature-sektioner (asana) i 210-sajtssvepet — övriga typer läser aldrig
+  // rubriken alls.
+  const integrationIntent = /integrat|works with|connect (?:your|to)|\bapps?\b/i.test(heading);
+  // Reliable, tag-anchored cues only (semantic tags / a real table / a form).
   if (b.videoEmbed) return "video";
   if (b.details >= 2 || b.accordion) return "faq";
-  if (b.pricePoints >= 2) return "pricing";
-  if (b.tableRows >= 3 || b.compareClass) return "comparison";
-  if (b.blockquotes >= 1 || b.testimonialClass || b.stars >= 3) return "testimonials";
-  if (b.logoCloudClass) return "logos";
+  if (b.tableRows >= 3) return "comparison";
   if (b.integrationsClass || (b.images >= 6 && integrationIntent)) return "integrations";
   if (b.signupForm) return "cta";
+  // features is a NON-evidence label (never a lift target), so an approximate
+  // multi-item signal is acceptable where a wrong evidence type would not be.
   if (b.featureGridClass || b.subHeadings >= 3 || b.iconListItems >= 3) return "features";
+  // Deliberately NO structural pricing / testimonials / logos: a 210-site scale
+  // scan (2026-07-24) showed the price-count and class-token cues false-positive
+  // on incidental markup ("What's the ROI on better work?" → pricing; a stray
+  // "reviews"/"brands" token → testimonials/logos). Those are EVIDENCE types, so a
+  // wrong one becomes a fake lift target — worse than an honest "section". Real
+  // pricing/testimonials/logos sections are still typed by their heading
+  // (classifySectionHeading) and by proofFromBody's "trusted by"/count text.
   return null;
 }
 

@@ -248,25 +248,20 @@ describe("extractContentModel — structural + proof section typing", () => {
 
   // Structural typing (2026-07-24): read the section's BODY composition when the
   // marketing-slogan heading is un-typeable. Generic headings on purpose here, so
-  // it's the STRUCTURE driving the type. Precision over recall.
-  it("types a >=2 price-point body as pricing (generic heading)", () => {
-    const t = `<section><h2>Choose your fit</h2><ul><li>$29/mo</li><li>$99/mo</li></ul></section>`;
-    expect(typeOf(t, "Choose your fit")).toBe("pricing");
-  });
-
-  it("does NOT type a single '$5M raised' prose mention as pricing", () => {
-    const t = `<section><h2>Our journey</h2><p>We raised $5M to build this.</p></section>`;
-    expect(typeOf(t, "Our journey")).not.toBe("pricing");
-  });
-
-  it("types a body with a blockquote as testimonials (generic heading)", () => {
-    const t = `<section><h2>Straight from the source</h2><blockquote>This changed everything.</blockquote></section>`;
-    expect(typeOf(t, "Straight from the source")).toBe("testimonials");
-  });
-
-  it("types a logo-cloud class body as logos (generic heading)", () => {
-    const t = `<section><h2>In good hands</h2><div class="logo-cloud"><img><img><img></div></section>`;
-    expect(typeOf(t, "In good hands")).toBe("logos");
+  // it's the STRUCTURE driving the type. Only tag-anchored, non-harmful cues —
+  // a 210-site scan showed price-count/class-token cues false-positive into
+  // EVIDENCE types (fake lift targets), so those were dropped.
+  it("does NOT structurally type EVIDENCE from loose cues (guards against fake lift targets)", () => {
+    // A stray dollar figure must NOT become pricing, and a lone 'reviews' class
+    // token must NOT become testimonials — those are lift targets, so a wrong one
+    // is worse than an honest generic section. Neutral headings so only structure
+    // could type them.
+    expect(typeOf(`<section><h2>Our journey</h2><p>We raised $5M.</p></section>`, "Our journey")).toBe(
+      "section",
+    );
+    expect(
+      typeOf(`<section><h2>The result</h2><div class="reviews-link">x</div></section>`, "The result"),
+    ).toBe("section");
   });
 
   it("types a body with an email signup form as cta (generic heading)", () => {
