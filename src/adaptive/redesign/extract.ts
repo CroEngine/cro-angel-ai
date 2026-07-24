@@ -255,45 +255,62 @@ function refineType(
   return { type, containsTrustSignals };
 }
 
-function extractSections(html: string): RedesignContentModel["sections"] {
+/** Collect each h1/h2 heading in <main> with its BODY slice — the HTML from the
+ *  end of its heading to the start of the next heading, in DOCUMENT order. The
+ *  last section's slice stops at the first <footer> (granskningsfynd 2026-07-22:
+ *  without <main> the region is the whole doc, so an unbounded last slice sweeps
+ *  the footer's badges/accordions/"Join 50,000 subscribers" and mistypes as
+ *  proof/faq/stats). Shared by extractSections (typing) and sectionBodyExcerpts
+ *  (the LLM ceiling's prompt) so the two never slice differently. */
+function collectSectionBodies(html: string): { level: number; text: string; body: string }[] {
   const main = mainRegion(html);
-  const heads: {
-    level: number;
-    text: string;
-    headStart: number;
-    bodyStart: number;
-    body?: string;
-  }[] = [];
+  const heads: { level: number; text: string; headStart: number; bodyStart: number }[] = [];
   const re = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(main))) {
     const text = stripTags(m[2]);
-    if (text)
-      heads.push({ level: Number(m[1][1]), text, headStart: m.index, bodyStart: re.lastIndex });
+    if (text) heads.push({ level: Number(m[1][1]), text, headStart: m.index, bodyStart: re.lastIndex });
   }
-  // Each section's body = the HTML from the end of its heading to the start of
-  // the next heading, computed in DOCUMENT order (before the hero reshuffle
-  // below, so adjacency is real). The body drives structural/proof typing.
-  // Sista sektionens slice tar SLUT vid första <footer> (granskningsfynd
-  // 2026-07-22): utan <main> är regionen hela dokumentet, och utan taket
-  // sveper sista innehållssektionens body in sidfotens badges/accordions/
-  // "Join 50,000 subscribers" — och blir feltypad som proof/faq/stats.
   const footerIdx = main.search(/<footer\b/i);
   const bodyEnd = footerIdx >= 0 ? footerIdx : main.length;
-  for (let i = 0; i < heads.length; i++) {
-    heads[i].body = main.slice(
-      heads[i].bodyStart,
-      i + 1 < heads.length ? heads[i + 1].headStart : Math.max(heads[i].bodyStart, bodyEnd),
-    );
+  return heads.map((h, i) => ({
+    level: h.level,
+    text: h.text,
+    body: main.slice(h.bodyStart, i + 1 < heads.length ? heads[i + 1].headStart : Math.max(h.bodyStart, bodyEnd)),
+  }));
+}
+
+/** Per-section body excerpt for the LLM section-typer (server-side ceiling). Same
+ *  slices as extractSections, flattened to readable text with IMAGE ALT surfaced
+ *  (image-rendered testimonials carry their copy in alt) and data-URIs dropped,
+ *  capped for a cheap prompt. Deduped by heading like the section model, so the
+ *  excerpts align 1:1 with RedesignContentModel.sections by heading. */
+export function sectionBodyExcerpts(html: string, cap = 600): { heading: string; excerpt: string }[] {
+  const seen = new Set<string>();
+  const out: { heading: string; excerpt: string }[] = [];
+  for (const h of collectSectionBodies(html)) {
+    const heading = h.text.slice(0, 120);
+    const key = heading.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    // Delimiter-backreferens (\1) så en apostrof INUTI en dubbelciterad alt
+    // ("Best tool I've used") inte kapar texten mitt itu.
+    const withAlt = h.body.replace(/<img\b[^>]*?\balt=(["'])([\s\S]*?)\1[^>]*?>/gi, " $2 ");
+    const flat = stripTags(withAlt.replace(/data:[^"')\s]+/gi, " "));
+    out.push({ heading, excerpt: flat.slice(0, cap) });
   }
+  return out;
+}
+
+function extractSections(html: string): RedesignContentModel["sections"] {
+  const heads: { level: number; text: string; body: string }[] = collectSectionBodies(html);
   // The hero leads. If <main> has the h1, move it to front; if the h1 lives
   // OUTSIDE <main> (a header hero), prepend it so the hero isn't lost — while the
   // h2 sections stay scoped to <main> to avoid nav/footer noise.
   const docH1 = primaryH1(html);
   const mainH1Idx = heads.findIndex((h) => h.level === 1);
   if (mainH1Idx > 0) heads.unshift(heads.splice(mainH1Idx, 1)[0]);
-  else if (mainH1Idx < 0 && docH1)
-    heads.unshift({ level: 1, text: docH1, headStart: -1, bodyStart: -1, body: "" });
+  else if (mainH1Idx < 0 && docH1) heads.unshift({ level: 1, text: docH1, body: "" });
   const heroPresent = heads.some((h) => h.level === 1);
 
   const built = heads.map((h, i) => {

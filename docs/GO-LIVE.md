@@ -42,7 +42,7 @@ new deploy.**
 | `SUPABASE_SERVICE_ROLE_KEY` | **yes** (secret) | same as above |
 | `SUPABASE_PUBLISHABLE_KEY` | **yes** | client can't read (anon, RLS applies) |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` | **yes** (build-time) | client build has no Supabase |
-| `ANTHROPIC_API_KEY` | **yes** | CTA/goal classification at ingest degrades to the deterministic floor |
+| `ANTHROPIC_API_KEY` | **yes** | CTA/goal classification **and section typing** at ingest degrade to the deterministic floor (image/div-based evidence under a slogan heading stays generic) |
 | `STRIPE_SECRET_KEY` | **to charge** | checkout is a polite no-op (funnel works up to signup) |
 | `STRIPE_PRICE_ID` | **to charge** | checkout can't build a line item |
 | `STRIPE_WEBHOOK_SECRET` | **to charge** | subscription status never syncs back |

@@ -62,6 +62,7 @@ import {
   extractQuotables,
 } from "../../src/adaptive/redesign/extract";
 import { addLlmCtas } from "../../src/adaptive/redesign/cta-llm.server";
+import { refineSectionTypesLlm } from "../../src/adaptive/redesign/section-llm.server";
 import {
   buildRedesignContext,
   renderRedesignPrompt,
@@ -133,6 +134,12 @@ async function pageFor(
   // ctaChecked/vakuum-varningen i stället för att gissas bort.
   const llmAdded = await addLlmCtas(entry.content, extractCtaCandidates(html));
   if (llmAdded > 0) console.log(`  språklagret: +${llmAdded} LLM-klassade CTA:er på ${path}`);
+  // Typnings-TAKET: sektioner som den deterministiska typaren lämnade generiska
+  // (bild-/div-buret bevis under en slogan-rubrik — HelloFresh-klassen) befordras
+  // till en bevistyp av LLM:en över konfidensgolvet. Utan ANTHROPIC_API_KEY står
+  // golvet ensamt (fail-open, samma som CTA-lagret).
+  const typed = await refineSectionTypesLlm(entry.content, html);
+  if (typed > 0) console.log(`  typtaket: +${typed} LLM-typade sektioner på ${path}`);
   pageCache.set(path, entry);
   return entry;
 }
