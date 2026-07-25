@@ -105,27 +105,49 @@ const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
  *  Kan inte köras lokalt i den här containern (Browserbase onåbar via proxyn) —
  *  validering sker i CI/prod där skördaren redan använder samma väg. */
 async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => Promise<void> }> {
-  const { chromium } = await import("playwright-core");
   const apiKey = process.env.BROWSERBASE_API_KEY;
   const projectId = process.env.BROWSERBASE_PROJECT_ID;
   if (apiKey && projectId) {
+    // Anslut via Stagehand — INTE chromium.connectOverCDP(session.connectUrl).
+    // Den råa CDP-vägen timeoutade 8/8 i CI (capture-test #1/#2, både 30s och
+    // 90s): createSession() lyckas men CDP-websocketen ansluter aldrig — den var
+    // aldrig den validerade vägen. Stagehand (env:BROWSERBASE + sessionID) är
+    // skördarens bevisade väg (engine.server.ts) och renderade 6/8 sajter i
+    // capture-test #4 — bl.a. gymshark 0→11 sektioner som statiska skalet helt
+    // missade. Sidan lever på stagehand.context, INTE stagehand.page (undefined
+    // i Stagehand 3.x → "undefined is not an object"; #3 föll 8/8 på just det).
     const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
+    const { Stagehand } = await import("@browserbasehq/stagehand");
     const session = await createSession();
-    const browser = await chromium.connectOverCDP(session.connectUrl, { timeout: 30_000 });
-    // Browserbase-sessionen bär redan en kontext; skapa/återanvänd sida och sätt
-    // viewporten POSITIONELLT (browserSettings.viewport gäller bara till första
-    // navigeringen — createSession-kommentaren). Stealth/UA sköts av sessionen.
-    const ctx = browser.contexts()[0] ?? (await browser.newContext());
-    const page = ctx.pages()[0] ?? (await ctx.newPage());
-    await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
-    return {
-      page,
-      cleanup: async () => {
-        await browser.close().catch(() => {});
-        await closeSession(session.id).catch(() => {});
-      },
+    const stagehand = new Stagehand({
+      env: "BROWSERBASE",
+      apiKey,
+      projectId,
+      browserbaseSessionID: session.id,
+      keepAlive: true,
+      disablePino: true,
+    });
+    // Cleanup definieras FÖRE init(): kastar init()/sid-hämtningen får sessionen
+    // ALDRIG läcka (capture-test #3 läckte 8 keepAlive-sessioner till jobb-
+    // timeouten och brände credits). Nu släpps den även vid init-fel.
+    const cleanup = async () => {
+      await stagehand.close().catch(() => {});
+      await closeSession(session.id).catch(() => {});
     };
+    try {
+      await stagehand.init();
+      const page = (stagehand.context.pages()[0] ??
+        (await stagehand.context.newPage())) as unknown as Page;
+      // Viewporten sätts POSITIONELLT (browserSettings.viewport gäller bara till
+      // första navigeringen — createSession-kommentaren). Stealth/UA: sessionen.
+      await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
+      return { page, cleanup };
+    } catch (err) {
+      await cleanup(); // fail fast, läck aldrig sessionen
+      throw err;
+    }
   }
+  const { chromium } = await import("playwright-core");
   const exec = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
   const browser = await chromium.launch({ headless: true, executablePath: exec });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, userAgent: UA });
@@ -149,8 +171,16 @@ async function browserRenderedHtml(
     // hårt navigationsfel (net::ERR_...) har ingen DOM — att fortsätta där
     // fryser Chromiums egen felsida som vore den sajten.
     const resp = await page.goto(u, { waitUntil: "load", timeout: 45_000 }).catch((err) => {
-      if (!(err instanceof errors.TimeoutError)) throw err;
-      console.warn(`[freeze-page] load-event uteblev (${err}) — fortsätter på renderat läge`);
+      // Stagehands timeout är INTE en playwright errors.TimeoutError-instans
+      // (capture-test #4: whoop/docker föll på "waitForMainLoadState(load) timed
+      // out after 15000ms", som re-kastades och fällde hela rendern). Matcha
+      // därför även på meddelandet så tunga SPA:er fryses på det renderade läget
+      // i stället för att falla helt — samma degradera-och-fortsätt som förr,
+      // men robust mot Stagehands egen felform. Ett hårt navigationsfel
+      // (net::ERR_...) har ingen DOM och måste fortfarande kasta.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!(err instanceof errors.TimeoutError) && !/tim(?:e|ed)\s*[- ]?out/i.test(msg)) throw err;
+      console.warn(`[freeze-page] load-event uteblev (${msg}) — fortsätter på renderat läge`);
       return null;
     });
     // Samma ärlighetsgräns som statiska vägen (curl-hjälparen): ≥400 är
