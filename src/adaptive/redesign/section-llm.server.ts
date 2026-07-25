@@ -166,8 +166,10 @@ export async function classifySectionsLlm(
 // "pricing", ingen siffra → aldrig "stats". Dödade 6 av 14 falska positiva i
 // skala-testet (coinbase/hulu/salesforce prislösa "pricing"; plaid/rust-lang/
 // twilio sifferlösa "stats") utan att fälla en enda äkta träff.
+// "from" KRÄVER valuta (annars matchade "From 100+ Channels" → falsk pricing, hulu
+// i skala-test #2). kr/:- är svenska pris-suffix.
 const PRICE_TOKEN =
-  /[$€£]\s?\d|\d\s?\/\s?(?:mo|month|yr|year|wk|week|day|m[åa]n)|per\s+(?:month|year|user|seat|m[åa]nad)|\bfrom\s+[$€£]?\s?\d|\bkr\b|\/mo\b/i;
+  /[$€£]\s?\d|\d\s?\/\s?(?:mo|month|yr|year|wk|week|day|m[åa]n)\b|per\s+(?:month|year|user|seat|m[åa]nad)|\bfrom\s+[$€£]\s?\d|\d\s?(?:kr|:-)\b|\/mo\b/i;
 // Utmärkelse-signal: en känd analytiker/badge måste FYSISKT nämnas för "recognition"
 // (annars faller "award-winning"-prosa igenom). Fångar asana/clickup/twilio-mönstret.
 const RECOGNITION_TOKEN =

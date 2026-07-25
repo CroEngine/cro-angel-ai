@@ -161,6 +161,52 @@ describe("refineSectionTypesLlm — LLM-taket ovanpå det deterministiska typnin
     expect(t("By the numbers")).toBe("stats"); // has 500,000
     expect(promoted).toBe(2);
   });
+
+  it("price gate: 'From 100+ Channels' is NOT pricing (currency required after 'from')", async () => {
+    // Gate hole found in scale-test #2 (hulu): "From 100+" matched an optional-currency
+    // 'from' pattern. Now 'from' requires a currency symbol.
+    const html = `<main><h1>H</h1><p>i</p><h2>Watch Live TV From 100+ Channels</h2><div>Get top national and local channels plus live sports and news.</div></main>`;
+    const content: RedesignContentModel = {
+      sections: [
+        { id: "sec-1-hero", type: "hero", position: 1, heading: "H", aboveFold: true, visualWeight: 85 },
+        { id: "sec-2-section", type: "section", position: 2, heading: "Watch Live TV From 100+ Channels", aboveFold: false, visualWeight: 56 },
+      ],
+      trustSignals: [],
+      ctas: [],
+      hero: { headline: "H" },
+    };
+    const promoted = await refineSectionTypesLlm(content, html, fake({ "Watch Live TV From 100+ Channels": { type: "pricing", confidence: 0.9 } }));
+    expect(content.sections[1].type).toBe("section"); // no currency → gated
+    expect(promoted).toBe(0);
+  });
+
+  it("recognition: a Gartner/G2 badge section is accepted; a badge-less slogan is gated", async () => {
+    const html = `<main><h1>H</h1><p>i</p>
+      <h2>Recognized as a leader</h2><div>A Leader in the Gartner Magic Quadrant three years running. G2 Best Software.</div>
+      <h2>We are simply the best</h2><div>Self-praise with no third-party source at all.</div></main>`;
+    const content: RedesignContentModel = {
+      sections: [
+        { id: "sec-1-hero", type: "hero", position: 1, heading: "H", aboveFold: true, visualWeight: 85 },
+        { id: "sec-2-section", type: "section", position: 2, heading: "Recognized as a leader", aboveFold: false, visualWeight: 56 },
+        { id: "sec-3-section", type: "section", position: 3, heading: "We are simply the best", aboveFold: false, visualWeight: 52 },
+      ],
+      trustSignals: [],
+      ctas: [],
+      hero: { headline: "H" },
+    };
+    const promoted = await refineSectionTypesLlm(
+      content,
+      html,
+      fake({
+        "Recognized as a leader": { type: "recognition", confidence: 0.9 }, // has Gartner/G2 → keep
+        "We are simply the best": { type: "recognition", confidence: 0.9 }, // no badge token → gated
+      }),
+    );
+    expect(content.sections.find((s) => s.heading === "Recognized as a leader")!.type).toBe("recognition");
+    expect(content.sections.find((s) => s.heading === "Recognized as a leader")!.containsTrustSignals).toBe(true);
+    expect(content.sections.find((s) => s.heading === "We are simply the best")!.type).toBe("section");
+    expect(promoted).toBe(1);
+  });
 });
 
 describe("classifySectionsLlm — nätverkskontraktet", () => {
