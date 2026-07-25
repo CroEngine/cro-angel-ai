@@ -116,7 +116,54 @@ semantic (customer-logo-wall vs content-catalog; quote vs feature-copy) and
 capture-limited. The highest-leverage next investment is **capture + fuller
 section context to the LLM**, not more regex gates. Ceiling stays review-assisted.
 
+## Run #3 — with Browserbase render fallback (capture is the real ceiling)
+
+Every prior run's biggest hole was **capture**, not typing (18% never fetched,
+19% of successes thin). Run #3 wires the now-proven Stagehand render path
+(`capture-test #4`) into the harness as a **shell/thin/fail fallback**: static
+fetch first, and when it returns `<3` sections the site is rendered in
+Browserbase and re-captured. Render is a fallback only, so content-rich static
+sites are untouched (no regression).
+
+**Capture jumped from 82% to 95.5%.**
+
+| | Static-only (runs #1–2) | With render (run #3) |
+|---|---|---|
+| Captured | 163/199 (82%) | **190/199 (95.5%)** |
+| Failed | 36 | **9** |
+| Sections | 1,469 | **1,793** (+324) |
+| Evidence promotions | 134 | **188** (+54) |
+
+**`===CAPTURE===`:** 70 sites triggered render → 48 beat static → **38 fully
+recovered** (shell/fail → ≥3 real sections), 1 render errored. ~5.5 min
+wall-clock; render concurrency capped at 3 (no session-limit errors, no hang —
+`process.exit(0)` after the aggregate).
+
+**What render recovered** — the SPA/JS-store class static capture is blind to:
+`gymshark 0→11`, `sofi 0→27`, `kyliecosmetics 0→22` (8 evidence), `doordash
+0→19`, `rei 0→17`, `uber 0→16`, `patreon 0→12` (8 evidence), `ritual 0→7` (4
+evidence, a real pricing grid), `chime`, `klarna`, `dropbox`, `sephora 2→9`,
+`hims`, `tripadvisor 0→10` (3 evidence), `udemy` (3 evidence). +54 evidence
+sections the static-only run never saw — pricing grids, testimonials, logo walls.
+
+**Honest caveats.**
+- **Typing precision on recovered content is unchanged (~61%).** Render hands the
+  classifier *more* to type; it doesn't make the labels more right. Fresh noise
+  from newly-seen content: `airbnb` listing cards typed `testimonials`; `ro.co`
+  "3,000,000+ members" typed `testimonials` (should be `stats`); `oura.com`
+  resolved to a French transit page (a DNS/geo artifact, not a typing miss). Still
+  review-assisted, not unattended.
+- **A real bug the run surfaced (now fixed):** the LLM JSON parse threw on a
+  ```-fenced Haiku response and silently dropped to floor-only typing on those
+  sites — so run #3's typing is a slight *under*-count of what the fixed parser
+  now yields. Fixed in `llm-json.ts` (fence/prose-tolerant, +9 tests).
+
+**Bottom line:** capture was the ceiling, and render lifts it hard — 27 net new
+sites and +54 evidence sections for ~5 minutes and a bounded credit spend. The
+next precision gains are in typing (logos/testimonials-vs-stats), not capture.
+
 ## Re-run
 
 GitHub → Actions → **Section scale test** → Run (optional `urls=`). Artifacts:
-`scale-test.out` + `scale-test.json` (14-day retention).
+`scale-test.out` + `scale-test.json` (14-day retention). Render fallback needs
+`BROWSERBASE_API_KEY` + `BROWSERBASE_PROJECT_ID` (else static-only).
