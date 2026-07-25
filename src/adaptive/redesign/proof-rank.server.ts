@@ -9,6 +9,8 @@
 // injicerbar (DI) så poängsättningen enhetstestas utan nät. Rankningen är RÅDGIVANDE
 // metadata — den tar aldrig bort eller hittar på objekt, bara ordnar befintliga.
 
+import { parseJsonArray } from "./llm-json";
+
 const MODEL = "claude-haiku-4-5";
 const TIMEOUT_MS = 8000;
 const MAX_ITEMS = 12; // ett bevis-block har sällan fler objekt
@@ -85,7 +87,7 @@ export async function callRankApi(
     }
     const body = (await res.json()) as { content?: { type: string; text?: string }[] };
     const text = body.content?.find((c) => c.type === "text")?.text ?? "";
-    const raw = JSON.parse(text.replace(/^```(json)?|```$/g, "").trim()) as unknown;
+    const raw = parseJsonArray(text);
     if (!Array.isArray(raw)) return null;
 
     const out: (ProofScore | null)[] = new Array(items.length).fill(null);

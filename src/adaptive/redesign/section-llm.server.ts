@@ -28,6 +28,7 @@
 import { LLM_CONFIDENCE_FLOOR } from "../crawler-inventory";
 
 import { sectionBodyExcerpts } from "./extract";
+import { parseJsonArray } from "./llm-json";
 
 import type { RedesignContentModel } from "./context";
 
@@ -129,7 +130,7 @@ export async function classifySectionsLlm(
     }
     const body = (await res.json()) as { content?: { type: string; text?: string }[] };
     const text = body.content?.find((c) => c.type === "text")?.text ?? "";
-    const raw = JSON.parse(text.replace(/^```(json)?|```$/g, "").trim()) as unknown;
+    const raw = parseJsonArray(text);
     if (!Array.isArray(raw)) return null;
 
     const out: (SectionLabel | null)[] = new Array(batch.length).fill(null);
