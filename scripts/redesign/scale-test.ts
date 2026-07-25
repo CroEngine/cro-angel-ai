@@ -1,21 +1,28 @@
 #!/usr/bin/env bun
-// Skala-test (ägaren 2026-07-25: "testa detta på 200 hemsidor"). Kör HELA kedjan
-// — golv (extractContentModel) → tak (classifySectionsLlm) → gruppera → ranka
-// (rankProofItems) — över ~200 riktiga sajter SAMTIDIGT (pool), och skriver
-// aggregat + ett verifierings-SAMPLE (rad-orienterat, överlever loggens
-// radbrytning) + full JSON-artefakt. Kräver ANTHROPIC_API_KEY (annars golvet
-// ensamt). Statisk hämtning: SPA-skal/bot-block syns som "thin"/"failed".
+// Skala-test (ägaren 2026-07-25: "testa detta på 200 hemsidor" → sedan "kör de
+// 200 MED render som skal-fallback"). Kör HELA kedjan — golv (extractContentModel)
+// → tak (classifySectionsLlm) → gruppera → ranka (rankProofItems) — över ~200
+// riktiga sajter SAMTIDIGT (pool). Hämtning: STATISK först; föll den eller gav ett
+// skal/tunt (<3 sektioner) RENDERAS sajten i Browserbase (Stagehand, den bevisade
+// vägen — capture-test #4) och återfångas. Mäter hur många av de statiska fallen
+// render räddar. Skriver aggregat + rad-orienterat SAMPLE + JSON-artefakt. Kräver
+// ANTHROPIC_API_KEY (taket) + BROWSERBASE_API_KEY/PROJECT_ID (render-fallbacken).
 
 import { writeFileSync } from "node:fs";
+
+import type { Page } from "playwright-core";
 
 import { extractContentModel, sectionBodyExcerpts } from "../../src/adaptive/redesign/extract";
 import { classifySectionsLlm, passesEvidenceGate, PROMOTABLE, EVIDENCE } from "../../src/adaptive/redesign/section-llm.server";
 import { rankProofItems } from "../../src/adaptive/redesign/proof-rank.server";
+import { serializeVisibleHtml } from "./visible-dom";
 
 const DEFAULT_URLS = ["affirm.com", "airbnb.com", "airtable.com", "allbirds.com", "aritzia.com", "arstechnica.com", "asana.com", "asos.com", "atlassian.com", "audible.com", "away.com", "bbc.com", "bloomberg.com", "blueapron.com", "bombas.com", "booking.com", "brex.com", "brilliant.org", "brooklinen.com", "calm.com", "carvana.com", "casper.com", "chewy.com", "chime.com", "chipotle.com", "clickup.com", "cloudflare.com", "coinbase.com", "confluent.io", "coursera.org", "cron.com", "databricks.com", "datadoghq.com", "digitalocean.com", "docker.com", "doordash.com", "drsquatch.com", "duolingo.com", "economist.com", "engadget.com", "etsy.com", "eventbrite.com", "everlane.com", "expedia.com", "fentybeauty.com", "figma.com", "fly.io", "ghost.org", "github.com", "gitlab.com", "gitpod.io", "glossier.com", "go.dev", "gradle.org", "gumroad.com", "gymshark.com", "hashicorp.com", "headspace.com", "height.app", "hellofresh.com", "heroku.com", "hey.com", "hims.com", "hm.com", "huggingface.co", "hulu.com", "ikea.com", "imdb.com", "instacart.com", "intercom.com", "jetbrains.com", "khanacademy.org", "kickstarter.com", "klarna.com", "kotlinlang.org", "kraken.com", "kyliecosmetics.com", "linear.app", "liquiddeath.com", "loom.com", "lululemon.com", "lyft.com", "masterclass.com", "medium.com", "mejuri.com", "monday.com", "mongodb.com", "netflix.com", "newyorker.com", "nike.com", "nodejs.org", "noom.com", "notion.so", "npr.org", "okta.com", "opentable.com", "oura.com", "patagonia.com", "patreon.com", "paypal.com", "peloton.com", "plaid.com", "postman.com", "python.org", "railway.app", "reactjs.org", "redfin.com", "rei.com", "render.com", "replit.com", "revolut.com", "ro.co", "robinhood.com", "ruggable.com", "rust-lang.org", "salesforce.com", "sephora.com", "servicenow.com", "shopify.com", "snowflake.com", "sofi.com", "spotify.com", "squarespace.com", "squareup.com", "stripe.com", "substack.com", "supabase.com", "superhuman.com", "svelte.dev", "sweetgreen.com", "tailwindcss.com", "target.com", "techcrunch.com", "theatlantic.com", "theverge.com", "tripadvisor.com", "turo.com", "twilio.com", "typeform.com", "uber.com", "udemy.com", "ulta.com", "uniqlo.com", "vercel.com", "vimeo.com", "vox.com", "vuejs.org", "warbyparker.com", "wayfair.com", "whoop.com", "wired.com", "wise.com", "wix.com", "wordpress.com", "workday.com", "zara.com", "zendesk.com", "zillow.com", "zoom.us", "canva.com", "miro.com", "dropbox.com", "box.com", "zapier.com", "webflow.com", "framer.com", "bigcommerce.com", "skillshare.com", "codecademy.com", "pluralsight.com", "ramp.com", "mercury.com", "gusto.com", "carta.com", "bill.com", "expensify.com", "quickbooks.intuit.com", "segment.com", "amplitude.com", "mixpanel.com", "sentry.io", "launchdarkly.com", "auth0.com", "openai.com", "anthropic.com", "replicate.com", "perplexity.ai", "cohere.com", "eightsleep.com", "ritual.com", "seed.com", "harrys.com", "grammarly.com", "hotjar.com", "pipedrive.com", "mailchimp.com", "calendly.com", "hubspot.com", "slack.com"];
 const CONC = 8;
 const GENERIC = new Set(["section", "content"]);
 const FLOOR = 0.7;
+const SHELL = 3; // <3 sektioner efter statisk hämtning = skal/tunt/fall → försök render
+const MAX_RENDERS = 3; // samtidiga Browserbase-sessioner (plan-gräns), oberoende av CONC
 
 const urlsArg = process.argv.find((a) => a.startsWith("--urls="))?.split("=")[1];
 const URLS = urlsArg ? urlsArg.split(",").map((s) => s.trim()).filter(Boolean) : DEFAULT_URLS;
@@ -23,18 +30,102 @@ const URLS = urlsArg ? urlsArg.split(",").map((s) => s.trim()).filter(Boolean) :
 interface Promo { host: string; from: string; to: string; conf: number; heading: string; excerpt: string }
 interface RankBlock { host: string; type: string; items: { heading: string; strength: number; excerpt: string }[] }
 interface SiteOut {
-  host: string; ok: boolean; error?: string; sections: number; generic: number;
+  host: string; ok: boolean; error?: string; sections: number; staticSections: number; generic: number;
   promotions: Promo[]; evidencePromos: number; groups: number; multiGroups: number; ranked: number; rankBlocks: RankBlock[];
+  via: "static" | "render"; rendered: boolean; recovered: boolean; renderErr?: string;
+}
+
+// Semafor: begränsa SAMTIDIGA Browserbase-sessioner (plan-gräns) oberoende av
+// poolens CONC — de statiska hämtningarna får vara CONC breda, renderna max MAX_RENDERS.
+function makeSemaphore(max: number) {
+  let active = 0;
+  const waiters: (() => void)[] = [];
+  return {
+    async acquire(): Promise<void> {
+      if (active < max) { active++; return; }
+      await new Promise<void>((res) => waiters.push(res));
+      active++;
+    },
+    release(): void { active--; waiters.shift()?.(); },
+  };
+}
+const renderGate = makeSemaphore(MAX_RENDERS);
+
+// Rendera en LEVANDE sida via Browserbase (Stagehand — den bevisade vägen,
+// capture-test #4: gymshark 0→11 sektioner). Läck-säker: cleanup körs även vid
+// init-fel; semaforen släpps alltid. Returnerar serialiserad synlig DOM, annars null.
+async function renderHtml(full: string): Promise<string | null> {
+  const apiKey = process.env.BROWSERBASE_API_KEY;
+  const projectId = process.env.BROWSERBASE_PROJECT_ID;
+  if (!apiKey || !projectId) return null;
+  await renderGate.acquire();
+  let cleanup = async () => {};
+  try {
+    const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
+    const { Stagehand } = await import("@browserbasehq/stagehand");
+    const { errors } = await import("playwright-core");
+    const session = await createSession();
+    const stagehand = new Stagehand({ env: "BROWSERBASE", apiKey, projectId, browserbaseSessionID: session.id, keepAlive: true, disablePino: true });
+    cleanup = async () => { await stagehand.close().catch(() => {}); await closeSession(session.id).catch(() => {}); };
+    await stagehand.init();
+    const page = (stagehand.context.pages()[0] ?? (await stagehand.context.newPage())) as unknown as Page;
+    await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
+    await page.goto(full, { waitUntil: "load", timeout: 45_000 }).catch((err) => {
+      // Stagehands timeout är ingen playwright errors.TimeoutError-instans — matcha
+      // även på meddelandet så tunga SPA:er serialiseras på renderat läge.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!(err instanceof errors.TimeoutError) && !/tim(?:e|ed)\s*[- ]?out/i.test(msg)) throw err;
+      return null;
+    });
+    await page
+      .evaluate(async () => {
+        await new Promise((resolve) => {
+          let y = 0;
+          const t = setInterval(() => {
+            window.scrollBy(0, 900);
+            y += 900;
+            if (y >= document.body.scrollHeight - 1200 || y > 40000) { clearInterval(t); window.scrollTo(0, 0); resolve(null); }
+          }, 80);
+        });
+      })
+      .catch(() => {});
+    await page.waitForTimeout(800).catch(() => {});
+    return await serializeVisibleHtml(page);
+  } finally {
+    await cleanup();
+    renderGate.release();
+  }
 }
 
 async function doSite(url: string): Promise<SiteOut> {
   const full = url.startsWith("http") ? url : `https://${url}`;
   const host = full.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
-  const base: SiteOut = { host, ok: false, sections: 0, generic: 0, promotions: [], evidencePromos: 0, groups: 0, multiGroups: 0, ranked: 0, rankBlocks: [] };
+  const base: SiteOut = { host, ok: false, sections: 0, staticSections: 0, generic: 0, promotions: [], evidencePromos: 0, groups: 0, multiGroups: 0, ranked: 0, rankBlocks: [], via: "static", rendered: false, recovered: false };
   try {
-    const res = await fetch(full, { headers: { "user-agent": "Mozilla/5.0 (AngelAdaptive scale)" }, signal: AbortSignal.timeout(15000), redirect: "follow" });
-    if (!res.ok) { base.error = `HTTP ${res.status}`; return base; }
-    const html = await res.text();
+    // ── hämtning: statisk först, Browserbase-render vid skal/tunt/fall ──
+    let html = "";
+    let staticErr = "";
+    try {
+      const res = await fetch(full, { headers: { "user-agent": "Mozilla/5.0 (AngelAdaptive scale)" }, signal: AbortSignal.timeout(15000), redirect: "follow" });
+      if (res.ok) html = await res.text();
+      else staticErr = `HTTP ${res.status}`;
+    } catch (e) { staticErr = (e as Error).message.slice(0, 50); }
+    base.staticSections = html ? extractContentModel(html).sections.length : 0;
+
+    if (base.staticSections < SHELL && process.env.BROWSERBASE_API_KEY && process.env.BROWSERBASE_PROJECT_ID) {
+      base.rendered = true;
+      try {
+        const rHtml = await renderHtml(full);
+        const rSecs = rHtml ? extractContentModel(rHtml).sections.length : 0;
+        if (rHtml && rSecs > base.staticSections) {
+          html = rHtml;
+          base.via = "render";
+          if (rSecs >= SHELL) base.recovered = true; // skal/fall → riktig sida
+        }
+      } catch (e) { base.renderErr = (e as Error).message.slice(0, 50); }
+    }
+
+    if (!html) { base.error = staticErr || "empty"; return base; }
     const model = extractContentModel(html);
     const exc = new Map(sectionBodyExcerpts(html).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]));
     const bodyOf = (h: string) => exc.get(h.trim().toLowerCase()) ?? "";
@@ -89,6 +180,17 @@ for (const r of results.filter((x) => !x.ok)) { const k = (r.error || "?").split
 console.log(`failures: ${JSON.stringify(fails)}`);
 console.log(`thin (<3 sec): ${ok.filter((r) => r.sections < 3).length}`);
 
+const renderAttempted = results.filter((r) => r.rendered);
+const viaRender = results.filter((r) => r.via === "render");
+const recovered = results.filter((r) => r.recovered);
+const renderErrored = results.filter((r) => r.rendered && r.renderErr);
+console.log("\n===CAPTURE===");
+console.log(`render attempted (static shell/fail <${SHELL} sec): ${renderAttempted.length}`);
+console.log(`captured via render (render beat static): ${viaRender.length}`);
+console.log(`RECOVERED (static <${SHELL} → render >=${SHELL}): ${recovered.length}`);
+console.log(`render errored (no usable DOM): ${renderErrored.length}`);
+for (const r of recovered) console.log(`REC|${r.host}|${r.staticSections}->${r.sections}sec|${r.evidencePromos}ev`);
+
 const promoSample: Promo[] = [];
 const perSite: Record<string, number> = {};
 for (const p of promos) { if (!EVIDENCE.has(p.to)) continue; if ((perSite[p.host] || 0) >= 2) continue; perSite[p.host] = (perSite[p.host] || 0) + 1; promoSample.push(p); if (promoSample.length >= 60) break; }
@@ -103,3 +205,8 @@ for (const b of rankSample) { console.log(`RB|${b.host}|${b.type}|${b.items.leng
 
 writeFileSync("scale-test.json", JSON.stringify(results));
 console.log("\n[scale] wrote scale-test.json");
+
+// Tvinga exit: Browserbase/Stagehand lämnar keepAlive-handtag som annars håller
+// processen vid liv till jobbtimeouten (capture-test #3). Alla per-sajt-cleanups
+// är redan await:ade (mapPool har resolvat).
+process.exit(0);
