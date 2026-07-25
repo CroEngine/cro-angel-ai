@@ -24,24 +24,35 @@ const SITES = [
 ];
 
 async function renderPage(): Promise<{ page: Page; cleanup: () => Promise<void> }> {
-  const { chromium } = await import("playwright-core");
   const apiKey = process.env.BROWSERBASE_API_KEY;
   const projectId = process.env.BROWSERBASE_PROJECT_ID;
   if (apiKey && projectId) {
+    // Anslut som den BEVISADE vägen (skördaren/engine.server.ts): Stagehand med
+    // env:BROWSERBASE + sessionID. Raw chromium.connectOverCDP(connectUrl) time-
+    // outade 8/8 i CI (capture-test #1/#2) — det var aldrig den validerade vägen.
     const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
+    const { Stagehand } = await import("@browserbasehq/stagehand");
     const session = await createSession();
-    const browser = await chromium.connectOverCDP(session.connectUrl, { timeout: 90_000 });
-    const ctx = browser.contexts()[0] ?? (await browser.newContext());
-    const page = ctx.pages()[0] ?? (await ctx.newPage());
+    const stagehand = new Stagehand({
+      env: "BROWSERBASE",
+      apiKey,
+      projectId,
+      browserbaseSessionID: session.id,
+      keepAlive: true,
+      disablePino: true,
+    });
+    await stagehand.init();
+    const page = stagehand.page as unknown as Page; // Stagehand-sidan är playwright-kompatibel
     await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
     return {
       page,
       cleanup: async () => {
-        await browser.close().catch(() => {});
+        await stagehand.close().catch(() => {});
         await closeSession(session.id).catch(() => {});
       },
     };
   }
+  const { chromium } = await import("playwright-core");
   const exec = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
   const browser = await chromium.launch({ headless: true, executablePath: exec });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, userAgent: UA });
