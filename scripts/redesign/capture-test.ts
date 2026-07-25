@@ -41,16 +41,27 @@ async function renderPage(): Promise<{ page: Page; cleanup: () => Promise<void> 
       keepAlive: true,
       disablePino: true,
     });
-    await stagehand.init();
-    const page = stagehand.page as unknown as Page; // Stagehand-sidan är playwright-kompatibel
-    await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
-    return {
-      page,
-      cleanup: async () => {
-        await stagehand.close().catch(() => {});
-        await closeSession(session.id).catch(() => {});
-      },
+    // Cleanup definieras FÖRE init(): om init() eller sid-hämtningen kastar får
+    // sessionen ALDRIG läcka. capture-test #3 kastade felet FÖRE return →
+    // cleanup returnerades aldrig → 8 keepAlive-sessioner hängde till 15-min-
+    // timeouten och brände credits. Nu släpps sessionen även vid init-fel.
+    const cleanup = async () => {
+      await stagehand.close().catch(() => {});
+      await closeSession(session.id).catch(() => {});
     };
+    try {
+      await stagehand.init();
+      // Sidan lever på stagehand.context — INTE stagehand.page (undefined i
+      // Stagehand 3.x → "undefined is not an object"; capture-test #3 föll 8/8
+      // på exakt det). Precis skördarens bevisade mönster (engine.server.ts:254).
+      const page = (stagehand.context.pages()[0] ??
+        (await stagehand.context.newPage())) as unknown as Page;
+      await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
+      return { page, cleanup };
+    } catch (err) {
+      await cleanup(); // läck aldrig sessionen — fail fast i stället för 16-min-hang
+      throw err;
+    }
   }
   const { chromium } = await import("playwright-core");
   const exec = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
@@ -105,7 +116,9 @@ async function renderedCap(url: string): Promise<Cap> {
     const m = extractContentModel(html);
     return { ok: true, secs: m.sections.length, ev: m.sections.filter((s) => EVIDENCE.has(s.type)).length };
   } catch (e) {
-    return { ok: false, err: (e as Error).message.slice(0, 40), secs: 0, ev: 0 };
+    // 120 tecken (inte 40): capture-test #3 klippte felet vid "(evaluating '"
+    // och dolde VILKEN åtkomst som var undefined — full text sparar en körning.
+    return { ok: false, err: (e as Error).message.replace(/\s+/g, " ").slice(0, 120), secs: 0, ev: 0 };
   } finally {
     await cleanup();
   }
@@ -153,3 +166,9 @@ console.log(
 console.log(
   `avg evidence: static ${(rows.reduce((a, x) => a + x.s.ev, 0) / rows.length).toFixed(1)} → rendered ${(rows.reduce((a, x) => a + x.r.ev, 0) / rows.length).toFixed(1)}`,
 );
+
+// Tvinga exit: Stagehand/Browserbase lämnar bakgrunds-timers/sockets (keepAlive)
+// som annars håller bun-processen vid liv till 15-min-jobbtimeouten — capture-
+// test #3 hängde 14 min EFTER AGG-utskriften och brände credits. Alla per-sajt-
+// cleanups är redan await:ade (pool() har resolvat), så detta är säkert.
+process.exit(0);
