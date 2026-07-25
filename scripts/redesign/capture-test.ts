@@ -12,18 +12,14 @@ import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { serializeVisibleHtml } from "./visible-dom";
 
 const EVIDENCE = new Set(["testimonials", "pricing", "logos", "stats", "comparison", "faq"]);
-const CONC = 2; // Browserbase-sessioner: håll nere (samtidiga-sessions-tak + kostnad)
+const CONC = 1; // DIAGNOSTIK: 1 session i taget — isolerar om samtidighet är problemet
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36";
 
-// Scoped ~25: föll (429/socket), blev tunna (SPA-skal), eller bild-loggor/bleed +
-// kontroller som fungerade statiskt (får inte regrera).
+// Diagnostisk delmängd (~8): bekräfta att Browserbase-CDP ansluter alls (förra
+// körningen timeoutade på connectOverCDP) innan vi kör de fulla ~25.
 const SITES = [
-  "gymshark.com", "ruggable.com", "warbyparker.com", "allbirds.com", "glossier.com",
-  "linear.app", "notion.so", "vercel.com", "mercury.com", "ramp.com", "intercom.com",
-  "figma.com", "tailwindcss.com", "databricks.com",
-  "nike.com", "lululemon.com", "aritzia.com", "peloton.com", "oura.com",
-  "airbnb.com", "doordash.com", "robinhood.com",
+  "gymshark.com", "figma.com", "notion.so", "nike.com", "airbnb.com", // SPA/thin/image
   "whoop.com", "docker.com", "stripe.com", // controls
 ];
 
@@ -34,7 +30,7 @@ async function renderPage(): Promise<{ page: Page; cleanup: () => Promise<void> 
   if (apiKey && projectId) {
     const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
     const session = await createSession();
-    const browser = await chromium.connectOverCDP(session.connectUrl, { timeout: 30_000 });
+    const browser = await chromium.connectOverCDP(session.connectUrl, { timeout: 90_000 });
     const ctx = browser.contexts()[0] ?? (await browser.newContext());
     const page = ctx.pages()[0] ?? (await ctx.newPage());
     await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
@@ -66,9 +62,12 @@ async function staticCap(url: string): Promise<Cap> {
 }
 
 async function renderedCap(url: string): Promise<Cap> {
-  const { page, cleanup } = await renderPage();
+  let cleanup = async () => {};
   try {
     const { errors } = await import("playwright-core");
+    const rp = await renderPage(); // INUTI try: en connect-timeout blir ett per-sajt-fel, inte fatalt
+    cleanup = rp.cleanup;
+    const page = rp.page;
     await page.goto(url, { waitUntil: "load", timeout: 45_000 }).catch((err) => {
       if (!(err instanceof errors.TimeoutError)) throw err;
       return null;
