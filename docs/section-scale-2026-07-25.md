@@ -84,6 +84,38 @@ FP shapes (`section-llm.test.ts`).
    (Browserbase render + anti-bot); no typing change beats capturing the page.
 3. **Logos guard** — require ≥2 distinct company-like names, not bios/archetypes.
 
+## Run #2 + re-verification (after recognition class + gates)
+
+Shipped the recognition class, tightened logos/stats prompt, and routed the scale
+harness through the shared gate; re-ran 199 sites and **re-audited a focused
+adversarial set** (old FPs' new status + logos-leak suspects + controls — NOT a
+random sample, so 35% here is diagnostic, not comparable to the 61% baseline).
+
+**What the re-audit proved:**
+- **recognition class = clean win** (5/6; controls github/stripe/hims/monday 4/4,
+  zero regression on true positives). Gartner/G2 badges now type correctly.
+- **the stats gate I shipped was porous** — `/\d/` passes on incidental digits
+  (CSS `24px`, a year, `24/7`), so `cloudflare` "Region: Earth" (zero real
+  numbers) sailed through. **Fixed:** stats now requires a *proof-shaped* number
+  (`%`, currency, K/M/B/million, `3.9x`, `12,000`, `N+`, `N in N`).
+- **logos is the top residual leak** (1/8) and had no gate. It over-fires on
+  community-size (`reactjs` "two million developers"), content catalogs (`spotify`
+  artists), archetypes (`shopify`), bare org-counts (`headspace`), and heading-only
+  copy whose logo wall is *images not in the text* (`figma`, `tailwindcss`).
+  **Partial fix:** a safe anti-gate demotes community-size-of-people from logos;
+  the rest (catalogs, archetypes, image-only walls) need a brand list or better
+  capture — genuinely hard for a regex or a 600-char text excerpt.
+- **excerpt/capture is the real ceiling.** Several "errors" are capture artifacts:
+  `databricks` awards bled in from an *adjacent* section (segmentation), `figma`/
+  `tailwindcss` logo walls are images absent from the text. The classifier can
+  only be as right as the slice it's handed.
+
+**Honest verdict:** recognition + the proof-number stats gate are real precision
+gains; logos/testimonials remain leaky and are **not** one-commit fixes — they're
+semantic (customer-logo-wall vs content-catalog; quote vs feature-copy) and
+capture-limited. The highest-leverage next investment is **capture + fuller
+section context to the LLM**, not more regex gates. Ceiling stays review-assisted.
+
 ## Re-run
 
 GitHub → Actions → **Section scale test** → Run (optional `urls=`). Artifacts:

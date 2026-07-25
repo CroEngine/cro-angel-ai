@@ -174,11 +174,23 @@ const PRICE_TOKEN =
 // (annars faller "award-winning"-prosa igenom). Fångar asana/clickup/twilio-mönstret.
 const RECOGNITION_TOKEN =
   /\bgartner\b|\bforrester\b|\bg2\b|\bcapterra\b|\bidc\b|magic quadrant|\baward|award-winning|\bleader\b|recogni[sz]ed|#1\s+(?:on|in|most|rated)|top[- ]rated|best software/i;
+export // stats kräver ett BEVIS-FORMAT tal, inte vilken siffra som helst (re-verify #2:
+// /\d/ passerade allt — CSS "24px", årtal "2026", "24/7" — så cloudflare
+// "Region: Earth" och plaid "world's largest" feltypades stats). Kräver %, valuta,
+// magnitud (K/M/B/million…), multiplikator (3.9x), tusental-avgränsat, N+, eller "N in N".
+const STAT_NUMBER =
+  /\d\s*%|[$€£]\s?\d|\b\d[\d.,]*\s*(?:k|m|bn?|million|billion|trillion|x)\b|\b\d{1,3}(?:,\d{3})+|\b\d[\d.,]*\+|\b\d+\s+in\s+\d+\b/i;
+// community-size av PERSONER är stats, aldrig en företags-logga-vägg (re-verify #2:
+// reactjs "two million developers" → logos). "companies/organizations" utesluts
+// med flit — de kan föregå en RIKTIG logga-vägg ("trusted by 500 companies [loggor]").
+const LOGOS_ANTI =
+  /\b(?:millions?|thousands?|hundreds?|\d[\d,]*\+?)\s+(?:of\s+)?(?:developers|people|users|members|subscribers|learners|creators|artists|fans|listeners)\b/i;
 export function passesEvidenceGate(type: string, text: string): boolean {
   if (type === "pricing") return PRICE_TOKEN.test(text);
-  if (type === "stats") return /\d/.test(text); // en riktig kvantitet, inte "hundreds"/prosa
+  if (type === "stats") return STAT_NUMBER.test(text); // ett bevis-format tal, inte vilken siffra som helst
   if (type === "recognition") return RECOGNITION_TOKEN.test(text); // en riktig badge/analytiker
-  return true; // logos/testimonials/comparison/faq gasas inte av EN token — golv-konf. håller
+  if (type === "logos") return !LOGOS_ANTI.test(text); // community-size-av-personer är inte en logga-vägg
+  return true; // testimonials/comparison/faq: svårgasade semantiskt — golv-konf. + prompt håller
 }
 
 export async function refineSectionTypesLlm(

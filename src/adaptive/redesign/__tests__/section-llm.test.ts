@@ -207,6 +207,42 @@ describe("refineSectionTypesLlm — LLM-taket ovanpå det deterministiska typnin
     expect(content.sections.find((s) => s.heading === "We are simply the best")!.type).toBe("section");
     expect(promoted).toBe(1);
   });
+
+  it("proof-number stats gate: incidental digits don't count; community-size-of-people isn't logos (re-verify #2)", async () => {
+    const html = `<main><h1>H</h1><p>i</p>
+      <h2>Region: Earth</h2><div>One smart network close to users in 2026. Reduces latency 24/7.</div>
+      <h2>The backbone of global commerce</h2><div>135+ currencies and $1.9T processed, 99.999% uptime.</div>
+      <h2>Join a community of millions</h2><div>Two million developers visit the docs every month.</div>
+      <h2>Our customers</h2><div>American Airlines, Mercedes-Benz, Spotify, Ford, Vodafone.</div></main>`;
+    const content: RedesignContentModel = {
+      sections: [
+        { id: "sec-1-hero", type: "hero", position: 1, heading: "H", aboveFold: true, visualWeight: 85 },
+        { id: "sec-2-section", type: "section", position: 2, heading: "Region: Earth", aboveFold: false, visualWeight: 56 },
+        { id: "sec-3-section", type: "section", position: 3, heading: "The backbone of global commerce", aboveFold: false, visualWeight: 52 },
+        { id: "sec-4-section", type: "section", position: 4, heading: "Join a community of millions", aboveFold: false, visualWeight: 48 },
+        { id: "sec-5-section", type: "section", position: 5, heading: "Our customers", aboveFold: false, visualWeight: 44 },
+      ],
+      trustSignals: [],
+      ctas: [],
+      hero: { headline: "H" },
+    };
+    const promoted = await refineSectionTypesLlm(
+      content,
+      html,
+      fake({
+        "Region: Earth": { type: "stats", confidence: 0.9 }, // only "2026"/"24/7" → NOT proof numbers → gated
+        "The backbone of global commerce": { type: "stats", confidence: 0.9 }, // 135+/$1.9T/99.999% → keep
+        "Join a community of millions": { type: "logos", confidence: 0.9 }, // "two million developers" → not logos
+        "Our customers": { type: "logos", confidence: 0.9 }, // real company wall → keep
+      }),
+    );
+    const t = (h: string) => content.sections.find((s) => s.heading === h)!.type;
+    expect(t("Region: Earth")).toBe("section"); // gated: no proof-shaped number
+    expect(t("The backbone of global commerce")).toBe("stats"); // 135+/$1.9T/%
+    expect(t("Join a community of millions")).toBe("section"); // community-size-of-people, not logos
+    expect(t("Our customers")).toBe("logos"); // real brand wall survives
+    expect(promoted).toBe(2);
+  });
 });
 
 describe("classifySectionsLlm — nätverkskontraktet", () => {
