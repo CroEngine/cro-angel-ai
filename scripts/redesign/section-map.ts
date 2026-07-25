@@ -21,6 +21,7 @@ import { extractContentModel } from "../../src/adaptive/redesign/extract";
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=").slice(1).join("=");
 const OUT = arg("out") ?? "section-map.html";
 const REPORT = arg("report");
+const RANKS = arg("ranks");
 
 const SITES: { slug: string; dir: string; host: string; label: string; cat: string }[] = [
   { slug: "whoop", dir: "capture-corpus/whoop", host: "whoop.com", label: "WHOOP", cat: "DTC" },
@@ -85,6 +86,19 @@ function loadVerdicts(): Map<string, Verdict> {
   return map;
 }
 
+// bevis-rankning per objekt (RANKITEM|host|strength|rank|heading) från proof-rank.txt
+type Rank = { strength: number; rank: number };
+function loadRanks(): Map<string, Rank> {
+  const map = new Map<string, Rank>();
+  if (!RANKS || !existsSync(RANKS)) return map;
+  const txt = readFileSync(RANKS, "utf8").replace(/\\n/g, "\n");
+  for (const line of txt.split("\n")) {
+    const m = /^RANKITEM\|([^|]+)\|([\d.]+)\|(\d+)\|(.+)$/.exec(line.trim());
+    if (m) map.set(`${m[1].replace(/^www\./, "")}::${m[4].slice(0, 40).trim().toLowerCase()}`, { strength: Number(m[2]), rank: Number(m[3]) });
+  }
+  return map;
+}
+
 const COLOR: Record<string, string> = {
   hero: "#7c5cff", testimonials: "#10b981", pricing: "#3b82f6", stats: "#14b8a6", logos: "#06b6d4",
   comparison: "#f97316", faq: "#eab308", cta: "#ec4899", integrations: "#6366f1", video: "#ef4444",
@@ -92,10 +106,11 @@ const COLOR: Record<string, string> = {
 };
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-interface Sec { pos: number; type: string; heading: string; proof: boolean; len: number; llm?: Verdict }
+interface Sec { pos: number; type: string; heading: string; proof: boolean; len: number; llm?: Verdict; rank?: Rank }
 interface Site { slug: string; label: string; host: string; cat: string; ok: boolean; secs: Sec[] }
 
 const verdicts = loadVerdicts();
+const ranks = loadRanks();
 const sites: Site[] = [];
 for (const s of SITES) {
   const f = join(s.dir, "frozen.html");
@@ -108,9 +123,10 @@ for (const s of SITES) {
     const gk = `${s.host.replace(/^www\./, "")}::${sec.heading.slice(0, 40).trim().toLowerCase()}`;
     const isGen = sec.type === "section" || sec.type === "content" || sec.type === "features";
     const v = isGen ? verdicts.get(gk) : undefined;
+    const rk = ranks.get(`${s.host.replace(/^www\./, "")}::${sec.heading.slice(0, 40).trim().toLowerCase()}`);
     return {
       pos: sec.position, type: sec.type, heading: sec.heading, proof: !!sec.containsTrustSignals,
-      len: lens.get(key) ?? 0, llm: v && v.conf >= 0.7 && v.to !== sec.type ? v : undefined,
+      len: lens.get(key) ?? 0, llm: v && v.conf >= 0.7 && v.to !== sec.type ? v : undefined, rank: rk,
     };
   });
   sites.push({ ...s, ok: true, secs });
@@ -171,8 +187,20 @@ function groupCard(g: Group): string {
     const lifted = x.llm ? `<span class="llm" style="--c:${cc}">LLM→ ${t} ${x.llm.conf.toFixed(2)}</span>` : "";
     return `<div class="gcard${EVIDENCE.has(t) ? " ev" : ""}${gen && !x.llm ? " gen" : ""}" style="--c:${cc}"><div class="gh"><span class="chip" style="background:${cc}">${t}</span>${lifted}<span class="hd">${esc(x.heading) || "<span class=nohd>(ingen rubrik)</span>"}</span></div></div>`;
   }
-  const items = g.items.map((x, i) => `<div class="it"><span class="in">${i + 1}</span><span class="ih">${esc(x.heading) || "<span class=nohd>(ingen rubrik)</span>"}</span><span class="isz">${x.len >= 1000 ? (x.len / 1000).toFixed(1) + "k" : x.len}</span></div>`).join("");
-  return `<div class="gcard grp${ev}" style="--c:${c}"><div class="gh"><span class="chip" style="background:${c}">${g.type}</span><span class="cnt">×${g.items.length} objekt</span><span class="hd">${g.type}-block · ${g.items.length} objekt att ranka</span></div><div class="items">${items}</div></div>`;
+  const hasRanks = g.items.some((x) => x.rank);
+  const ordered = hasRanks ? [...g.items].sort((a, b) => (a.rank?.rank ?? 99) - (b.rank?.rank ?? 99)) : g.items;
+  const items = ordered
+    .map((x, i) => {
+      const rk = x.rank;
+      const mark = rk && rk.rank === 1 ? `<span class="star" title="starkaste beviset">★</span>` : `<span class="in">${i + 1}</span>`;
+      const meta = rk
+        ? `<span class="bar"><span class="fill" style="width:${Math.round(rk.strength * 100)}%;--c:${c}"></span></span><span class="pct">${rk.strength.toFixed(2)}</span>`
+        : `<span class="isz">${x.len >= 1000 ? (x.len / 1000).toFixed(1) + "k" : x.len}</span>`;
+      return `<div class="it${rk && rk.rank === 1 ? " top" : ""}">${mark}<span class="ih">${esc(x.heading) || "<span class=nohd>(ingen rubrik)</span>"}</span>${meta}</div>`;
+    })
+    .join("");
+  const sub = hasRanks ? `${g.items.length} objekt · rankade på bevis-styrka` : `${g.items.length} objekt att ranka`;
+  return `<div class="gcard grp${ev}" style="--c:${c}"><div class="gh"><span class="chip" style="background:${c}">${g.type}</span><span class="cnt">×${g.items.length} objekt</span><span class="hd">${g.type}-block · ${sub}</span></div><div class="items">${items}</div></div>`;
 }
 
 const panels = okSites.map((s, i) => {
@@ -201,7 +229,7 @@ const html = `<div class="wrap mode-raw">
   <header class="top">
     <h1>Section map</h1>
     <p class="sub">Hur Angel delar en sida i sektioner. <b>Rå split</b>: ett band per rubrik (höjd = kroppsstorlek, färg = typ) — så över-/under-segmentering syns.
-    <b>Grupperad</b>: konsekutiva band av samma typ slås ihop till ETT block med N objekt (HelloFresh 4 stat-band → 1 proof-block) — nästa steg är att <i>ranka objekten inuti</i> och lyfta det starkaste beviset.
+    <b>Grupperad</b>: konsekutiva band av samma typ slås ihop till ETT block med N objekt (HelloFresh 4 stat-band → 1 proof-block), och objekten <i>rankas på bevis-styrka</i> — ★ = starkaste beviset, stapeln = poäng. Så motorn kan leda med det som övertygar mest, inte bara flytta hela blocket.
     Streckad kant = generisk (går till LLM-taket); <span class="k llm">LLM→</span> = takets dom. Bevistyper (●) är det motorn lyfter.</p>
     <div class="row">
       <div class="toggle"><button class="mode on" data-m="raw">Rå split</button><button class="mode" data-m="grouped">Grupperad</button></div>
@@ -280,6 +308,11 @@ const html = `<div class="wrap mode-raw">
   .in{width:18px;height:18px;flex-shrink:0;border-radius:50%;background:color-mix(in srgb,var(--c) 20%,transparent);color:var(--c);font-size:10.5px;font-weight:800;display:grid;place-items:center;font-variant-numeric:tabular-nums}
   .ih{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
   .isz{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;flex-shrink:0}
+  .it.top .ih{font-weight:700}
+  .star{width:18px;height:18px;flex-shrink:0;display:grid;place-items:center;color:#f5a623;font-size:14px}
+  .bar{width:84px;height:7px;flex-shrink:0;border-radius:4px;background:color-mix(in srgb,var(--ink) 10%,transparent);overflow:hidden}
+  .fill{display:block;height:100%;border-radius:4px;background:var(--c)}
+  .pct{width:30px;text-align:right;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;flex-shrink:0}
   .miss{color:var(--muted);font-size:12.5px;margin-top:16px}
   .foot{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
   code{background:color-mix(in srgb,var(--ink) 8%,transparent);padding:1px 5px;border-radius:4px;font-size:12px}
