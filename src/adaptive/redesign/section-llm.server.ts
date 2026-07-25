@@ -152,6 +152,21 @@ export async function classifySectionsLlm(
  * demotes a floor-assigned evidence type — those are never sent. Fail-open: no key
  * / API failure → 0, floor stands alone. Injectable classifier for tests.
  */
+// Deterministiskt CEILING-CHECK (200-sajts skala-test 2026-07-25, adversariell
+// verifiering: precision 61% → ~78%). LLM:en FÖRESLÅR, en deterministisk närvaro-
+// koll AVGÖR — samma disciplin som golvet. En bevistyp får bara bära etiketten om
+// dess DEFINIERANDE signal FYSISKT står i rubrik/kropp: inget pris → aldrig
+// "pricing", ingen siffra → aldrig "stats". Dödade 6 av 14 falska positiva i
+// skala-testet (coinbase/hulu/salesforce prislösa "pricing"; plaid/rust-lang/
+// twilio sifferlösa "stats") utan att fälla en enda äkta träff.
+const PRICE_TOKEN =
+  /[$€£]\s?\d|\d\s?\/\s?(?:mo|month|yr|year|wk|week|day|m[åa]n)|per\s+(?:month|year|user|seat|m[åa]nad)|\bfrom\s+[$€£]?\s?\d|\bkr\b|\/mo\b/i;
+function passesEvidenceGate(type: string, text: string): boolean {
+  if (type === "pricing") return PRICE_TOKEN.test(text);
+  if (type === "stats") return /\d/.test(text); // en riktig kvantitet, inte "hundreds"/prosa
+  return true; // logos/testimonials/comparison/faq gasas inte av EN token — golv-konf. håller
+}
+
 export async function refineSectionTypesLlm(
   content: RedesignContentModel,
   html: string,
@@ -160,19 +175,21 @@ export async function refineSectionTypesLlm(
   const excerpts = new Map(
     sectionBodyExcerpts(html).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]),
   );
-  const cand = content.sections.filter((s) => GENERIC.has(s.type)).slice(0, MAX_SECTIONS);
+  const cand = content.sections
+    .filter((s) => GENERIC.has(s.type))
+    .slice(0, MAX_SECTIONS)
+    .map((s) => ({ s, body: excerpts.get(s.heading.trim().toLowerCase()) ?? "" }));
   if (cand.length === 0) return 0;
 
-  const labels = await classify(
-    cand.map((s) => ({ heading: s.heading, body: excerpts.get(s.heading.trim().toLowerCase()) ?? "" })),
-  );
+  const labels = await classify(cand.map((c) => ({ heading: c.s.heading, body: c.body })));
   if (!labels) return 0; // no key / failure → deterministic floor stands alone
 
   let promoted = 0;
-  cand.forEach((s, i) => {
+  cand.forEach(({ s, body }, i) => {
     const l = labels[i];
     if (!l || l.confidence < LLM_CONFIDENCE_FLOOR) return;
     if (!PROMOTABLE.has(l.type) || l.type === s.type) return; // 'section'/'other'/no-op → leave generic
+    if (!passesEvidenceGate(l.type, `${s.heading} ${body}`)) return; // deterministic dispose
     s.type = l.type;
     s.id = `sec-${s.position}-${l.type}`; // id encodes the type — keep it consistent so the brief/ops agree
     if (EVIDENCE.has(l.type)) s.containsTrustSignals = true;

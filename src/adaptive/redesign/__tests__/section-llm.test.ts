@@ -120,6 +120,47 @@ describe("refineSectionTypesLlm — LLM-taket ovanpå det deterministiska typnin
     expect(promoted).toBe(0);
     expect(content.sections.map((s) => s.type)).toEqual(["hero", "section", "features", "pricing"]);
   });
+
+  it("token-gate: rejects price-less 'pricing' and digit-less 'stats' (200-site scale fix)", async () => {
+    // The exact FP shapes the scale test surfaced: coinbase/salesforce "pricing"
+    // with no price; plaid/rust-lang "stats" with no number. The LLM proposes,
+    // the deterministic token check disposes.
+    const html = `<main>
+      <h1>Welcome</h1><p>Intro.</p>
+      <h2>Zero trading fees, more rewards</h2><div>Get more out of crypto with one membership and priority support.</div>
+      <h2>Choose a membership</h2><div>Starts at $199/yr with a 14 day battery.</div>
+      <h2>A network that makes products better</h2><div>Your products get smarter with every connection.</div>
+      <h2>By the numbers</h2><div>Over 500,000 customers and 80 billion events.</div>
+    </main>`;
+    const content: RedesignContentModel = {
+      sections: [
+        { id: "sec-1-hero", type: "hero", position: 1, heading: "Welcome", aboveFold: true, visualWeight: 85 },
+        { id: "sec-2-section", type: "section", position: 2, heading: "Zero trading fees, more rewards", aboveFold: false, visualWeight: 56 },
+        { id: "sec-3-section", type: "section", position: 3, heading: "Choose a membership", aboveFold: false, visualWeight: 52 },
+        { id: "sec-4-section", type: "section", position: 4, heading: "A network that makes products better", aboveFold: false, visualWeight: 48 },
+        { id: "sec-5-section", type: "section", position: 5, heading: "By the numbers", aboveFold: false, visualWeight: 44 },
+      ],
+      trustSignals: [],
+      ctas: [],
+      hero: { headline: "Welcome" },
+    };
+    const promoted = await refineSectionTypesLlm(
+      content,
+      html,
+      fake({
+        "Zero trading fees, more rewards": { type: "pricing", confidence: 0.9 }, // no price token → REJECT
+        "Choose a membership": { type: "pricing", confidence: 0.9 }, // "$199/yr" → keep
+        "A network that makes products better": { type: "stats", confidence: 0.9 }, // no digit → REJECT
+        "By the numbers": { type: "stats", confidence: 0.9 }, // "500,000" → keep
+      }),
+    );
+    const t = (h: string) => content.sections.find((s) => s.heading === h)!.type;
+    expect(t("Zero trading fees, more rewards")).toBe("section"); // gated out (no price)
+    expect(t("Choose a membership")).toBe("pricing"); // has $199/yr
+    expect(t("A network that makes products better")).toBe("section"); // gated out (no number)
+    expect(t("By the numbers")).toBe("stats"); // has 500,000
+    expect(promoted).toBe(2);
+  });
 });
 
 describe("classifySectionsLlm — nätverkskontraktet", () => {
