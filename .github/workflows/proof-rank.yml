@@ -1,0 +1,46 @@
+# Bevis-RANKNING i CI (ägaren 2026-07-24: "kör"). Golv → tak → gruppera →
+# ranka objekten i varje fler-objekts-bevisblock på styrka. Skriver läsbara
+# block + rad-orienterade RANKITEM-rader (för section-map-overlay) i loggen.
+# Använder repo-secreten ANTHROPIC_API_KEY. Push-trigg på testfilerna + manuellt.
+
+name: Proof rank
+on:
+  push:
+    paths:
+      - ".github/workflows/proof-rank.yml"
+      - "scripts/redesign/proof-rank-report.ts"
+      - "src/adaptive/redesign/proof-rank.server.ts"
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: "Komma-separerad sajtlista (annars standardlistan)"
+        required: false
+
+jobs:
+  rank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Rank proof items within grouped blocks
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "::warning::ANTHROPIC_API_KEY saknas — inga rankningar."; fi
+          ARGS=""
+          if [ -n "${{ github.event.inputs.urls }}" ]; then ARGS="--urls=${{ github.event.inputs.urls }}"; fi
+          bun run scripts/redesign/proof-rank-report.ts $ARGS | tee proof-rank.txt
+      - name: Upload ranking artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: proof-rank
+          path: proof-rank.txt
+          retention-days: 14
+          if-no-files-found: warn
