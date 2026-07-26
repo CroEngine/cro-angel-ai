@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { journeyFlow } from "@/lib/dashboard/aggregate";
 import { createVariantPreview } from "@/lib/dashboard/sandbox.functions";
-import { fmt, STATUS_PILL } from "./variant-stats";
+import { enLabel, fmt, STATUS_PILL } from "./variant-stats";
 
 import type {
   FlowNode,
@@ -481,7 +481,7 @@ export function JourneysOverlay({
                 antydde att den enda synliga källan var den enda möjliga. */}
             <FilterMenu
               label="Sources"
-              options={channelOptions.map(([c, n]) => ({ key: c, label: c, count: n }))}
+              options={channelOptions.map(([c, n]) => ({ key: c, label: enLabel(c), count: n }))}
               selected={channelSel}
               onToggle={(c) => setChannelSel((s) => toggleIn(s, c))}
               onClear={() => setChannelSel(new Set())}
