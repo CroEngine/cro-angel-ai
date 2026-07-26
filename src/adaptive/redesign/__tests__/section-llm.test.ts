@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 
-import { classifySectionsLlm, refineSectionTypesLlm, type SectionLabel } from "../section-llm.server";
+import {
+  callVerifyLogosApi,
+  classifySectionsLlm,
+  refineSectionTypesLlm,
+  verifyLogosLlm,
+  type SectionLabel,
+} from "../section-llm.server";
 
 import type { RedesignContentModel } from "../context";
 
@@ -293,6 +299,117 @@ describe("refineSectionTypesLlm — LLM-taket ovanpå det deterministiska typnin
     expect(t("Loved by home cooks")).toBe("testimonials"); // %-stat survives (COMMERCE_GRID doesn't fire without $/cart)
     expect(t("Flexible plans")).toBe("pricing"); // pricing untouched by the commerce gate
     expect(promoted).toBe(4);
+  });
+
+  it("logos cite-and-verify: a bio proposed as logos is rejected, a real brand wall is kept (2026-07-26)", async () => {
+    // The token gate can't tell a single-person bio from a brand wall (both pass
+    // !LOGOS_ANTI/!COMMERCE_GRID). The cite-and-verify second pass does: it keeps a
+    // logos promotion only when >=3 cited brands are physically present. Testimonials
+    // are NOT verified (LLM verdict flip-flops) — this test locks logos-only.
+    const html = `<main>
+      <h1>H</h1><p>i</p>
+      <h2>Our customers</h2><div>American Airlines, Duolingo, Ford, Shopify, Spotify and Vodafone build on us.</div>
+      <h2>Dr. Nitin Vaswani, MD MPH MBA</h2><div>Director, Clinical Strategy. General surgeon and clinical pathologist trainee.</div>
+      <h2>What people say</h2><div>"This changed how our team ships." — Jane Doe, VP Engineering at Acme.</div>
+    </main>`;
+    const content: RedesignContentModel = {
+      sections: [
+        { id: "sec-1-hero", type: "hero", position: 1, heading: "H", aboveFold: true, visualWeight: 85 },
+        { id: "sec-2-section", type: "section", position: 2, heading: "Our customers", aboveFold: false, visualWeight: 56 },
+        { id: "sec-3-section", type: "section", position: 3, heading: "Dr. Nitin Vaswani, MD MPH MBA", aboveFold: false, visualWeight: 52 },
+        { id: "sec-4-section", type: "section", position: 4, heading: "What people say", aboveFold: false, visualWeight: 48 },
+      ],
+      trustSignals: [],
+      ctas: [],
+      hero: { headline: "H" },
+    };
+    // Fake verify: cite from the item's own text so the deterministic ground-check runs
+    // for real — the wall yields >=3 present brands, the bio yields 0.
+    const fakeVerify: typeof verifyLogosLlm = (items) =>
+      verifyLogosLlm(items, async (batch) =>
+        batch.map((it) =>
+          /Our customers/i.test(it.heading)
+            ? ["American Airlines", "Duolingo", "Ford", "Shopify"]
+            : ["Clinical Strategy", "Johns Hopkins", "Nonexistent Corp"], // none present in the bio body
+        ),
+      );
+    const promoted = await refineSectionTypesLlm(
+      content,
+      html,
+      fake({
+        "Our customers": { type: "logos", confidence: 0.95 }, // real wall → verify keeps
+        "Dr. Nitin Vaswani, MD MPH MBA": { type: "logos", confidence: 0.9 }, // bio → verify rejects
+        "What people say": { type: "testimonials", confidence: 0.95 }, // NOT verified → keeps on floor+ceiling
+      }),
+      fakeVerify,
+    );
+    const t = (h: string) => content.sections.find((s) => s.heading === h)!.type;
+    expect(t("Our customers")).toBe("logos"); // >=3 cited brands present → kept
+    expect(t("Dr. Nitin Vaswani, MD MPH MBA")).toBe("section"); // 0 cited brands present → rejected, stays generic
+    expect(t("What people say")).toBe("testimonials"); // testimonials bypass the logos verify
+    expect(promoted).toBe(2);
+  });
+
+  it("logos verify is fail-open: no verifier result → logos promotion stands (floor behaviour preserved)", async () => {
+    const html = `<main><h1>H</h1><p>i</p><h2>Trusted by teams</h2><div>Acme, Globex, Initech.</div></main>`;
+    const content: RedesignContentModel = {
+      sections: [
+        { id: "sec-1-hero", type: "hero", position: 1, heading: "H", aboveFold: true, visualWeight: 85 },
+        { id: "sec-2-section", type: "section", position: 2, heading: "Trusted by teams", aboveFold: false, visualWeight: 56 },
+      ],
+      trustSignals: [],
+      ctas: [],
+      hero: { headline: "H" },
+    };
+    const failOpen: typeof verifyLogosLlm = (items) => verifyLogosLlm(items, async () => null); // API failure
+    const promoted = await refineSectionTypesLlm(
+      content,
+      html,
+      fake({ "Trusted by teams": { type: "logos", confidence: 0.95 } }),
+      failOpen,
+    );
+    expect(content.sections[1].type).toBe("logos"); // fail-open keeps it (existing gates stand)
+    expect(promoted).toBe(1);
+  });
+});
+
+describe("verifyLogosLlm — LLM citerar, golvet dömer (deterministisk mark-koll)", () => {
+  const call =
+    (byIndex: (string[] | null)[] | null): typeof callVerifyLogosApi =>
+    async () =>
+      byIndex;
+
+  it("keeps when >=3 cited brands are physically present in the text", async () => {
+    const items = [{ heading: "Our customers", body: "Acme Globex Initech Umbrella power our work" }];
+    expect(await verifyLogosLlm(items, call([["Acme", "Globex", "Initech"]]))).toEqual([true]);
+  });
+
+  it("rejects when fewer than 3 cited brands are present", async () => {
+    const items = [{ heading: "Partners", body: "Acme and Globex only" }];
+    expect(await verifyLogosLlm(items, call([["Acme", "Globex"]]))).toEqual([false]);
+  });
+
+  it("rejects hallucinated citations (cited but not in the body)", async () => {
+    const items = [{ heading: "Dr. Smith, MD", body: "Director of Clinical Strategy, a general surgeon." }];
+    expect(await verifyLogosLlm(items, call([["Acme", "Globex", "Initech"]]))).toEqual([false]); // none present
+  });
+
+  it("fail-open: a null API result keeps every item", async () => {
+    const items = [{ heading: "a", body: "b" }, { heading: "c", body: "d" }];
+    expect(await verifyLogosLlm(items, call(null))).toEqual([true, true]);
+  });
+
+  it("fail-open per item: a missing per-item verdict keeps that item", async () => {
+    const items = [
+      { heading: "x", body: "no brands here" },
+      { heading: "Wall", body: "Acme Globex Initech present" },
+    ];
+    expect(await verifyLogosLlm(items, call([null, ["Acme", "Globex", "Initech"]]))).toEqual([true, true]);
+  });
+
+  it("counts DISTINCT brands — repeats don't reach the threshold of 3", async () => {
+    const items = [{ heading: "Partners", body: "Acme Acme Acme everywhere" }];
+    expect(await verifyLogosLlm(items, call([["Acme", "Acme", "Acme"]]))).toEqual([false]);
   });
 });
 
