@@ -162,13 +162,7 @@ const trimChange = (c: AdaptationChange): AdaptationChange => ({
  *  senare — datat går inte att backfilla.) */
 export async function bumpReferrerDomain(site: string, domain: string): Promise<void> {
   try {
-    // RPC:n är nyare än den genererade Database-typen (regenereras efter
-    // db-migrate) — kastad anropssignatur tills dess, aldrig osäker data ut.
-    const rpc = supabaseAdmin.rpc as unknown as (
-      fn: string,
-      args: Record<string, unknown>,
-    ) => Promise<{ error: unknown }>;
-    await rpc("angel_bump_referrer_domain", { p_site: site, p_domain: domain });
+    await supabaseAdmin.rpc("angel_bump_referrer_domain", { p_site: site, p_domain: domain });
   } catch (err) {
     console.warn(`[angel] referrer-domain bump failed:`, err);
   }
@@ -183,11 +177,7 @@ export async function loadTopReferrerDomains(
   limit = 8,
 ): Promise<{ domain: string; visits: number }[]> {
   try {
-    const rpc = supabaseAdmin.rpc as unknown as (
-      fn: string,
-      args: Record<string, unknown>,
-    ) => Promise<{ data: { domain?: unknown; visits?: unknown }[] | null; error: unknown }>;
-    const { data, error } = await rpc("angel_referrer_domains_top", {
+    const { data, error } = await supabaseAdmin.rpc("angel_referrer_domains_top", {
       p_site: site,
       p_limit: limit,
     });
