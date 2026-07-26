@@ -11,7 +11,8 @@
 
 import { parseJsonArray } from "./llm-json";
 
-const MODEL = "claude-haiku-4-5";
+import { callHaikuText } from "../haiku.server";
+
 const TIMEOUT_MS = 8000;
 const MAX_ITEMS = 12; // ett bevis-block har sällan fler objekt
 
@@ -55,56 +56,33 @@ export async function callRankApi(
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key || items.length === 0) return null;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      signal: controller.signal,
-      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1000,
-        system: SYSTEM,
-        messages: [
-          {
-            role: "user",
-            content: JSON.stringify({
-              sectionType,
-              items: items.map((it, i) => ({
-                i,
-                heading: (it.heading ?? "").slice(0, 120),
-                body: (it.body ?? "").slice(0, 400),
-              })),
-            }),
-          },
-        ],
-      }),
-    });
-    if (!res.ok) {
-      console.warn(`[angel] proof-rank: API ${res.status}`);
-      return null;
-    }
-    const body = (await res.json()) as { content?: { type: string; text?: string }[] };
-    const text = body.content?.find((c) => c.type === "text")?.text ?? "";
-    const raw = parseJsonArray(text);
-    if (!Array.isArray(raw)) return null;
+  const text = await callHaikuText({
+    system: SYSTEM,
+    userContent: JSON.stringify({
+      sectionType,
+      items: items.map((it, i) => ({
+        i,
+        heading: (it.heading ?? "").slice(0, 120),
+        body: (it.body ?? "").slice(0, 400),
+      })),
+    }),
+    max_tokens: 1000,
+    timeoutMs: TIMEOUT_MS,
+    tag: "proof-rank",
+  });
+  if (text === null) return null;
+  const raw = parseJsonArray(text);
+  if (!Array.isArray(raw)) return null;
 
-    const out: (ProofScore | null)[] = new Array(items.length).fill(null);
-    for (const entry of raw) {
-      if (!entry || typeof entry !== "object") continue;
-      const e = entry as { i?: unknown; strength?: unknown; reason?: unknown };
-      const i = typeof e.i === "number" ? e.i : -1;
-      if (i < 0 || i >= items.length) continue;
-      const strength = typeof e.strength === "number" ? Math.max(0, Math.min(1, e.strength)) : 0;
-      const reason = typeof e.reason === "string" ? e.reason.slice(0, 90) : "";
-      out[i] = { strength, reason };
-    }
-    return out;
-  } catch (err) {
-    console.warn(`[angel] proof-rank unavailable:`, err);
-    return null;
-  } finally {
-    clearTimeout(timer);
+  const out: (ProofScore | null)[] = new Array(items.length).fill(null);
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const e = entry as { i?: unknown; strength?: unknown; reason?: unknown };
+    const i = typeof e.i === "number" ? e.i : -1;
+    if (i < 0 || i >= items.length) continue;
+    const strength = typeof e.strength === "number" ? Math.max(0, Math.min(1, e.strength)) : 0;
+    const reason = typeof e.reason === "string" ? e.reason.slice(0, 90) : "";
+    out[i] = { strength, reason };
   }
+  return out;
 }
