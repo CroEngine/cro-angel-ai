@@ -204,3 +204,46 @@ check catches it (as not-faithful) rather than silently trusting it.
 GitHub → Actions → **Section scale test** → Run (optional `urls=`). Artifacts:
 `scale-test.out` + `scale-test.json` (14-day retention). Render fallback needs
 `BROWSERBASE_API_KEY` + `BROWSERBASE_PROJECT_ID` (else static-only).
+
+## Typing precision, measured (2026-07-26) — the commerce-grid gate is a safe no-op here
+
+Added a `COMMERCE_GRID` anti-signal to `passesEvidenceGate` (a product/listing
+grid — "Add to cart", "$228 for 2 nights", "Sale price … Regular price" — should
+never be typed `logos`/`testimonials`), unit-tested it, then **measured its real
+effect by replaying it offline against this run's pre-gate artifact** (zero
+credits, deterministic: every logos/testimonials promotion in the artifact had
+already passed the old gate, so anything the new gate rejects is exactly what it
+catches).
+
+**Result: it rejects 0 of the 94 logos/testimonials promotions.** Zero
+regressions — and zero real-world impact on this corpus. The FP class it targets
+does not occur: the corpus has 20 commerce/marketplace sites (airbnb, etsy, nike,
+turo, ritual…), and commerce tokens *do* appear in 13 promotions, but **every one
+was typed `pricing`, not logos/testimonials** (turo "Add car to favorites /
+Average daily prices", ritual "Sale price $26.40 Regular price $33.00 Add"). A
+priced product grid *is* pricing, which the gate deliberately leaves alone. The
+gate is retained as a cheap **defensive** guard against a nondeterministic future
+mislabel; it is not a measured precision lift, and the earlier commit message
+claiming it fixed "two remaining systematic FPs" overstated it.
+
+**The actual logos/testimonials errors are all semantic, none lexical** (adversarial
+read of all 94):
+- **logos (~32):** ~13 clean brand walls (asos, github, zendesk, klarna); the FPs are
+  *single-person bios* (ro.co "Dr. Nitin Vaswani, MD… Director, Clinical Strategy"),
+  *audience archetypes* (shopify "solo-preneur category creator", ghost
+  "Publishers/Creators/Businesses"), and *prose marketing blurbs* (figma, jetbrains,
+  zapier, whoop).
+- **testimonials (~62):** mostly real quotes (expensify, casper, whoop, chime); the
+  FPs are *mis-slotted stats* (gumroad "$1,992,651"), *brand-story/feature blurbs*
+  (heroku, tripadvisor, skillshare, ikea), and *empty bodies* (ro.co).
+
+**Why more prompting won't fix it:** the typer prompt *already* says logos is "NOT a
+single person's bio, NOT audience/customer archetypes ('solo-preneur', 'category
+creator')" — the exact examples that still got mislabeled. The instruction is
+present verbatim and Haiku violates it. A lexical token gate can't reach these
+either. Squeezing logos/testimonials precision further is therefore low-yield
+(prompt already ignored) and, via a deterministic prose-vs-list gate, high-risk
+(the over-tighten trap that dropped real proof before), on a subsystem whose
+errors are already blast-radius-contained by the floor + human variant approval.
+Conclusion: typing precision is at diminishing returns; the residual errors are
+semantic and cheap.
