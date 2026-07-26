@@ -567,7 +567,17 @@ try {
       ]),
     ];
     const ctaSelectors = GOAL.selector ? [GOAL.selector] : [];
-    const slug = `${plan.path.replace(/\//g, "-").replace(/^-|-$/g, "") || "home"}--${plan.key
+    // Slug:en blir filnamn, artifact-paths OCH Storage-nycklar (nattloopen
+    // återanvänder den ur verify-rapporten) — mallmönstrets "*" är förbjudet i
+    // Actions-artefakter (NTFS-regeln fällde körning 2026-07-26), så "*"→"mall"
+    // och samma teckenvitlista som key-delen på path-delen.
+    const slug = `${
+      plan.path
+        .replace(/\*/g, "mall")
+        .replace(/\//g, "-")
+        .replace(/[^\p{L}\p{N}-]/gu, "")
+        .replace(/^-+|-+$/g, "") || "home"
+    }--${plan.key
       .replace(/·/g, "-")
       .replace(/[^\p{L}\p{N}-]/gu, "")
       .toLowerCase()}`.replace(/^--/, "");
