@@ -263,6 +263,11 @@ for (const site of targets) {
     //     varianten och håll-flaggan släpps — kunden gör ingenting. Går det
     //     inte att verifiera i natt → maskinellt hold + ägarnotis. Ägarens
     //     STATUS rörs aldrig (policyn 2026-07-12) — bara held_reason/held_at.
+    // Deklarerad FÖRE svepets try (scoping-fyndet 2026-07-26, första riktiga
+    // mall-körningen): `let` inne i try-blocket + användning EFTER catch:en är
+    // en körtids-ReferenceError som tsc aldrig ser (scripts/ ligger utanför
+    // include) — den åt upp glutenforums två första mall-celler före design.
+    let cohortScopes: ReturnType<typeof planCohortScopes> = [];
     try {
       const sweepable = depVariants.filter(
         (v) => v.status === "verified" || v.status === "serving" || v.status === "winner",
@@ -297,7 +302,6 @@ for (const site of targets) {
       // Ren planerare på exponeringarnas dims (30 d): bara scopes som kan nå
       // ett domslut inom 45 dagar föreslås. Förslag, inte generering — de
       // skrivs till körkatalogen och loggen; den generativa våningen läser dem.
-      let cohortScopes: ReturnType<typeof planCohortScopes> = [];
       try {
         const { data: cohortRows } = await db.rpc("angel_cohort_traffic", {
           p_site: site.slug,
