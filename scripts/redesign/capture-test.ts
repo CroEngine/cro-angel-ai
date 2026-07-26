@@ -6,10 +6,8 @@
 // Rent GOLV (ingen LLM) — isolerar CAPTURE-frågan. Kräver BROWSERBASE_API_KEY +
 // BROWSERBASE_PROJECT_ID (annars är render == statisk och testet är meningslöst).
 
-import type { Page } from "playwright-core";
-
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
-import { serializeVisibleHtml } from "./visible-dom";
+import { renderVisibleCapture } from "./render-page";
 
 const EVIDENCE = new Set(["testimonials", "pricing", "logos", "stats", "comparison", "faq"]);
 const CONC = 1; // DIAGNOSTIK: 1 session i taget — isolerar om samtidighet är problemet
@@ -22,53 +20,6 @@ const SITES = [
   "gymshark.com", "figma.com", "notion.so", "nike.com", "airbnb.com", // SPA/thin/image
   "whoop.com", "docker.com", "stripe.com", // controls
 ];
-
-async function renderPage(): Promise<{ page: Page; cleanup: () => Promise<void> }> {
-  const apiKey = process.env.BROWSERBASE_API_KEY;
-  const projectId = process.env.BROWSERBASE_PROJECT_ID;
-  if (apiKey && projectId) {
-    // Anslut som den BEVISADE vägen (skördaren/engine.server.ts): Stagehand med
-    // env:BROWSERBASE + sessionID. Raw chromium.connectOverCDP(connectUrl) time-
-    // outade 8/8 i CI (capture-test #1/#2) — det var aldrig den validerade vägen.
-    const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
-    const { Stagehand } = await import("@browserbasehq/stagehand");
-    const session = await createSession();
-    const stagehand = new Stagehand({
-      env: "BROWSERBASE",
-      apiKey,
-      projectId,
-      browserbaseSessionID: session.id,
-      keepAlive: true,
-      disablePino: true,
-    });
-    // Cleanup definieras FÖRE init(): om init() eller sid-hämtningen kastar får
-    // sessionen ALDRIG läcka. capture-test #3 kastade felet FÖRE return →
-    // cleanup returnerades aldrig → 8 keepAlive-sessioner hängde till 15-min-
-    // timeouten och brände credits. Nu släpps sessionen även vid init-fel.
-    const cleanup = async () => {
-      await stagehand.close().catch(() => {});
-      await closeSession(session.id).catch(() => {});
-    };
-    try {
-      await stagehand.init();
-      // Sidan lever på stagehand.context — INTE stagehand.page (undefined i
-      // Stagehand 3.x → "undefined is not an object"; capture-test #3 föll 8/8
-      // på exakt det). Precis skördarens bevisade mönster (engine.server.ts:254).
-      const page = (stagehand.context.pages()[0] ??
-        (await stagehand.context.newPage())) as unknown as Page;
-      await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
-      return { page, cleanup };
-    } catch (err) {
-      await cleanup(); // läck aldrig sessionen — fail fast i stället för 16-min-hang
-      throw err;
-    }
-  }
-  const { chromium } = await import("playwright-core");
-  const exec = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
-  const browser = await chromium.launch({ headless: true, executablePath: exec });
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, userAgent: UA });
-  return { page, cleanup: async () => void (await browser.close().catch(() => {})) };
-}
 
 interface Cap { ok: boolean; err?: string; secs: number; ev: number }
 
@@ -83,45 +34,14 @@ async function staticCap(url: string): Promise<Cap> {
   }
 }
 
+// Render via den delade vägen (render-page.ts) — samma bevisade Stagehand-anslutning
+// + modal-avfärdning som freeze-page/scale-test. Ostylad render räknas som miss.
 async function renderedCap(url: string): Promise<Cap> {
-  let cleanup = async () => {};
-  try {
-    const { errors } = await import("playwright-core");
-    const rp = await renderPage(); // INUTI try: en connect-timeout blir ett per-sajt-fel, inte fatalt
-    cleanup = rp.cleanup;
-    const page = rp.page;
-    await page.goto(url, { waitUntil: "load", timeout: 45_000 }).catch((err) => {
-      if (!(err instanceof errors.TimeoutError)) throw err;
-      return null;
-    });
-    // Lazy-svep så under-folden renderas, sedan tillbaka till toppen.
-    await page
-      .evaluate(async () => {
-        await new Promise((resolve) => {
-          let y = 0;
-          const t = setInterval(() => {
-            window.scrollBy(0, 900);
-            y += 900;
-            if (y >= document.body.scrollHeight - 1200 || y > 40000) {
-              clearInterval(t);
-              window.scrollTo(0, 0);
-              resolve(null);
-            }
-          }, 80);
-        });
-      })
-      .catch(() => {});
-    await page.waitForTimeout(800).catch(() => {});
-    const html = await serializeVisibleHtml(page);
-    const m = extractContentModel(html);
-    return { ok: true, secs: m.sections.length, ev: m.sections.filter((s) => EVIDENCE.has(s.type)).length };
-  } catch (e) {
-    // 120 tecken (inte 40): capture-test #3 klippte felet vid "(evaluating '"
-    // och dolde VILKEN åtkomst som var undefined — full text sparar en körning.
-    return { ok: false, err: (e as Error).message.replace(/\s+/g, " ").slice(0, 120), secs: 0, ev: 0 };
-  } finally {
-    await cleanup();
-  }
+  const cap = await renderVisibleCapture(url);
+  if (!cap) return { ok: false, err: "render failed", secs: 0, ev: 0 };
+  if (!cap.styled) return { ok: false, err: "unstyled render", secs: 0, ev: 0 };
+  const m = extractContentModel(cap.html);
+  return { ok: true, secs: m.sections.length, ev: m.sections.filter((s) => EVIDENCE.has(s.type)).length };
 }
 
 async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>): Promise<R[]> {
