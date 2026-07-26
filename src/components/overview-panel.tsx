@@ -756,7 +756,31 @@ export function OverviewPanel({
                 </div>
                 {selScoped.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-stone-200 px-[18px] py-5 text-[13px] text-stone-400">
-                    None yet — Angel proposes one when the group has earned it.
+                    {/* Ärlighet om grinden (glutenforum-fyndet): designer byggs PER
+                        SIDA, så gruppens sajtsumma kan se "klar" ut medan ingen
+                        enskild sida bär volymen. Visa progressen mot det som
+                        faktiskt låser upp — bästa sidan mot per-sida-grinden. */}
+                    None yet — Angel designs per page, and proposes one once a single page
+                    gathers enough of this group.
+                    {sel.bestPage ? (
+                      <div className="mt-2.5 flex items-center gap-2.5 text-[12px]">
+                        <span className="flex-none text-stone-500">Closest page:</span>
+                        <div className="h-1.5 w-[96px] flex-none overflow-hidden rounded-full bg-stone-200">
+                          <div
+                            className="h-full rounded-full bg-stone-400"
+                            style={{
+                              width: `${Math.min(100, Math.round((sel.bestPage.visits / sel.bestPage.gate) * 100))}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="flex-none tabular-nums text-stone-500">
+                          {fmt(sel.bestPage.visits)}/{fmt(sel.bestPage.gate)} visits
+                        </span>
+                        <span className="min-w-0 truncate font-mono text-[11.5px]">
+                          {sel.bestPage.path}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="overflow-hidden rounded-xl border border-[#f0eee9]">

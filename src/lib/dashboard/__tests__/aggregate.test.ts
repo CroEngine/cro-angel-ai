@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 
+import { segmentKeyOf } from "../../segment-key";
 import {
   aggregate,
   proofSummary,
@@ -8,6 +9,7 @@ import {
   segmentSummaries,
   expandSegmentLeaves,
   attachRecent,
+  bestPageForSegment,
   rageSignals,
   clickHeat,
   clickHeatPages,
@@ -1483,5 +1485,60 @@ describe("sessionSummaries — klick-räddningen (SPA-resor från äldre snippet
     expect(s.steps).toHaveLength(20);
     expect(s.steps.flatMap((x) => x.clicks)).toEqual([]);
     expect(s.clickOrder).toEqual(["Sen23"]);
+  });
+});
+
+describe("bestPageForSegment — ärlig per-sida-progress mot genererings-grinden", () => {
+  // Glutenforum-fyndet 2026-07-26: sajtnivån bar 230 google·mobil·SE-besök men
+  // bästa enskilda sida 34 — och designer genereras per sida. Hjälparen ger
+  // dashboarden sidan som är närmast grinden, med detektorns prefixsemantik.
+  const page = (
+    path: string,
+    channel: string,
+    device: string,
+    country: string,
+    returning: boolean,
+    visits: number,
+  ) => ({ path, channel, device, country, returning, visits });
+  const pages = [
+    page("/blogg/kladdkaka", "google", "mobile", "SE", false, 29),
+    page("/blogg/kladdkaka", "google", "mobile", "SE", true, 5),
+    page("/blogg/kladdkaka", "google", "desktop", "SE", false, 7),
+    page("/bageri", "google", "mobile", "SE", false, 26),
+    page("/bageri", "google", "mobile", "NO", false, 10),
+    page("/", "direct", "mobile", "SE", true, 9),
+  ];
+
+  it("summerar en sidas rader inom prefixet och tar argmax över sidor", () => {
+    // google·mobile: kladdkaka 29+5=34 vs bageri 26+10=36 → bageri vinner.
+    expect(bestPageForSegment(pages, "google·mobile")).toEqual({ path: "/bageri", visits: 36 });
+  });
+
+  it("djupare nyckel filtrerar hårdare — SE utesluter NO-raden", () => {
+    // google·mobile·SE: kladdkaka 34 vs bageri 26 → kladdkaka.
+    expect(bestPageForSegment(pages, "google·mobile·SE")).toEqual({
+      path: "/blogg/kladdkaka",
+      visits: 34,
+    });
+  });
+
+  it("depth-1-nyckel täcker alla enheter; okänd nyckel ger null", () => {
+    expect(bestPageForSegment(pages, "google")).toEqual({ path: "/blogg/kladdkaka", visits: 41 });
+    expect(bestPageForSegment(pages, "instagram")).toBeNull();
+    expect(bestPageForSegment([], "google")).toBeNull();
+  });
+
+  it("återkommande-dimensionen matchar via returningToken", () => {
+    expect(
+      bestPageForSegment(pages, segmentKeyOf(["direct", "mobile", "SE", "återkommande"])),
+    ).toEqual({ path: "/", visits: 9 });
+  });
+
+  it("lika besök → deterministiskt lägsta path", () => {
+    const tie = [
+      page("/b", "google", "mobile", "SE", false, 10),
+      page("/a", "google", "mobile", "SE", false, 10),
+    ];
+    expect(bestPageForSegment(tie, "google·mobile")).toEqual({ path: "/a", visits: 10 });
   });
 });

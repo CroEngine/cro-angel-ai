@@ -7,7 +7,14 @@
 // dashboard.functions.ts feeds it real rows from Supabase.
 
 import { stripQueryHash } from "../../adaptive/harvest/sanitize";
-import { RETURNING_TOKEN, returningToken, segToken, segmentKeyOf } from "../segment-key";
+import {
+  RETURNING_TOKEN,
+  isDimsPrefix,
+  returningToken,
+  segToken,
+  segmentDims,
+  segmentKeyOf,
+} from "../segment-key";
 
 /** A minimal projection of an angel_events row. */
 export interface DashEvent {
@@ -873,6 +880,12 @@ export interface SegmentSummary {
    *  ägaren ser om gruppen ändras över tid. null när den nyliga hinken saknas
    *  eller är under display-tröskeln (ärligt: ingen trend på tunn data). */
   recent: SegmentWindow | null;
+  /** Ärlig per-SIDA-progress mot genererings-grinden (glutenforum-fyndet
+   *  2026-07-26): designer byggs per sida (findEarnedCells), så sajtnivå-
+   *  volymen ovan kan se "klar" ut medan ingen enskild sida bär den. Sidan
+   *  med flest besök i gruppen + grinden den mäts mot. Frånvarande när
+   *  per-sida-rollupen inte lästs (fallback-vägen). */
+  bestPage?: { path: string; visits: number; gate: number } | null;
 }
 
 /** En segmentmätning över ett tidsfönster (t.ex. senaste 30 dgr). */
@@ -918,6 +931,47 @@ export interface SegmentLeaf {
   conversions: number;
   formStarts: number;
   formAbandons: number;
+}
+
+/** En per-sida-lövnod ur `angel_page_segment_rollup` — bara det bästa-sida-
+ *  progressen behöver. */
+export interface PageSegmentVisits {
+  path: string;
+  channel: string;
+  device: string;
+  country: string;
+  returning: boolean;
+  visits: number;
+}
+
+/** Sidan med flest besök inom ett segment-prefix — dashboardens ärliga
+ *  "closest page N/gate"-rad. Samma prefixmatchning som detektorn
+ *  (findEarnedCells), så progressen mäter exakt grinden som styr generering.
+ *  Ren; null när ingen sida matchar nyckeln. */
+export function bestPageForSegment(
+  pages: PageSegmentVisits[],
+  key: string,
+): { path: string; visits: number } | null {
+  const dims = segmentDims(key);
+  const byPath = new Map<string, number>();
+  for (const p of pages) {
+    const pageDims = [
+      segToken(p.channel),
+      segToken(p.device),
+      segToken(p.country),
+      returningToken(p.returning),
+    ];
+    if (!isDimsPrefix(dims, pageDims)) continue;
+    const path = p.path || "/";
+    byPath.set(path, (byPath.get(path) ?? 0) + p.visits);
+  }
+  let best: { path: string; visits: number } | null = null;
+  for (const [path, visits] of byPath) {
+    if (!best || visits > best.visits || (visits === best.visits && path < best.path)) {
+      best = { path, visits };
+    }
+  }
+  return best;
 }
 
 /** Expandera finaste-grain-löv till grov→fin-prefix. Varje löv bidrar till ALLA

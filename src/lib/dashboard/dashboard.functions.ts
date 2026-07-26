@@ -31,10 +31,14 @@ import {
   aggregate,
   expandSegmentLeaves,
   attachRecent,
+  bestPageForSegment,
   RECENT_WINDOW_DAYS,
+  SEGMENT_MIN_VISITS,
+  SEGMENT_MIN_VISITS_ENGAGEMENT,
   type DashboardMetrics,
   type DashEvent,
   type InventoryEntry,
+  type PageSegmentVisits,
 } from "./aggregate";
 
 // ---- tenancy helpers (server-only) ------------------------------------------
@@ -593,12 +597,16 @@ export const getDashboard = createServerFn({ method: "POST" })
       // livstid + senaste RECENT_WINDOW_DAYS (för "över tid"-kolumnen). Bäst-
       // effort: faller tillbaka på den fönster-baserade rollupen om RPC:n dör.
       try {
-        const [allRes, recentRes] = await Promise.all([
+        const [allRes, recentRes, pageRes] = await Promise.all([
           supabaseAdmin.rpc("angel_segment_rollup", { p_site: site }),
           supabaseAdmin.rpc("angel_segment_rollup", {
             p_site: site,
             p_since: new Date(Date.now() - RECENT_WINDOW_DAYS * 86_400_000).toISOString(),
           }),
+          // Per-SIDA-rollupen (samma RPC nattloopen matar findEarnedCells med):
+          // designer genereras per sida, så segmentkortets ärliga progress är
+          // "bästa sida × grinden", inte sajtsumman ovan.
+          supabaseAdmin.rpc("angel_page_segment_rollup", { p_site: site }),
         ]);
         const toLeaves = (rows: NonNullable<typeof allRes.data>) =>
           rows.map((r) => ({
@@ -618,6 +626,28 @@ export const getDashboard = createServerFn({ method: "POST" })
               ? expandSegmentLeaves(toLeaves(recentRes.data))
               : [];
           metrics.segmentGroups = attachRecent(allTime, recent);
+          // Ärlig per-sida-progress (glutenforum-fyndet 2026-07-26): sajtnivån
+          // kan bära 230 besök medan bästa sidan har 34 — och grinden räknar
+          // per sida. Bäst-effort: saknas per-sida-rollupen lämnas fältet och
+          // UI:t faller tillbaka på den generiska texten.
+          if (!pageRes.error && Array.isArray(pageRes.data)) {
+            const pageRows: PageSegmentVisits[] = pageRes.data.map((r) => ({
+              path: String(r.path ?? "/"),
+              channel: String(r.channel ?? ""),
+              device: String(r.device ?? ""),
+              country: String(r.country ?? ""),
+              returning: r.is_returning === true,
+              visits: Number(r.visits) || 0,
+            }));
+            const gate =
+              siteConfig.testMetric === "continuation"
+                ? SEGMENT_MIN_VISITS_ENGAGEMENT
+                : SEGMENT_MIN_VISITS;
+            for (const g of metrics.segmentGroups) {
+              const best = bestPageForSegment(pageRows, g.key);
+              g.bestPage = best ? { ...best, gate } : null;
+            }
+          }
         }
       } catch (segErr) {
         console.warn(`[angel] segment rollup unavailable, using window fallback:`, segErr);
