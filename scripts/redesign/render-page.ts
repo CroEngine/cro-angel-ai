@@ -100,9 +100,18 @@ export async function autoScroll(page: Page): Promise<void> {
  *  ALDRIG signup/login/checkout/continue — de navigerar eller binder. Exakta,
  *  korta etiketter (≤28 tecken). Säker att köra även när ingen modal finns. */
 export async function dismissOverlays(page: Page): Promise<void> {
-  for (let k = 0; k < 2; k++) {
-    await page.keyboard.press("Escape").catch(() => {});
-    await page.waitForTimeout(120).catch(() => {});
+  // HELA kroppen är best-effort och FÅR ALDRIG kasta — en avfärdning som fäller
+  // fångsten är värre än en kvarvarande modal. page.keyboard finns inte på
+  // Stagehands context-sida (render-fidelity #2 föll 38/38 på ett SYNKRONT kast
+  // från page.keyboard.press innan .catch hann fästa), så vägen till klick-
+  // avfärdaren (page.evaluate, som garanterat finns) måste överleva det.
+  try {
+    for (let k = 0; k < 2; k++) {
+      await page.keyboard.press("Escape").catch(() => {});
+      await page.waitForTimeout(120).catch(() => {});
+    }
+  } catch {
+    /* ingen keyboard på denna sida — hoppa Escape, klick-avfärdaren räcker */
   }
   await page
     .evaluate(() => {
@@ -173,8 +182,11 @@ export async function renderVisibleCapture(
     const rp = await acquireRenderPage();
     cleanup = rp.cleanup;
     const page = rp.page;
-    await gotoTolerant(page, url);
-    await dismissOverlays(page); // rensa load-tids-modaler före svepet
+    // Bara anslutning (ovan) och serialisering (nedan) får nulla fångsten. Allt
+    // däremellan är tolerans-/förbättringssteg — ett kast där ska ALDRIG kosta
+    // hela rendern (render-fidelity #2: en modal-avfärdning nullade 38/38).
+    await gotoTolerant(page, url).catch(() => {}); // partiell render dugar att serialisera
+    await dismissOverlays(page); // rensa load-tids-modaler före svepet (throw-proof)
     await autoScroll(page);
     await dismissOverlays(page); // och de som dök upp under svepet
     if (opts.screenshotPath) await page.screenshot({ path: opts.screenshotPath }).catch(() => {});
@@ -183,7 +195,9 @@ export async function renderVisibleCapture(
     const styled = await pageLooksStyled(page);
     const html = await serializeVisibleHtml(page);
     return { html, title, text: (rawText || "").replace(/\s+/g, " ").trim(), styled };
-  } catch {
+  } catch (e) {
+    // Surfaca felet (render-fidelity #2 svalde det → 38/38 "RENDER-FAIL" utan orsak).
+    console.warn(`[render] ${url} capture failed: ${(e as Error)?.message?.replace(/\s+/g, " ").slice(0, 140)}`);
     return null;
   } finally {
     await cleanup();
