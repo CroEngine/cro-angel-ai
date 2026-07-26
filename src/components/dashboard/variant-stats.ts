@@ -110,8 +110,17 @@ export const STATUS_PILL: Record<string, { bg: string; color: string }> = {
 
 /** Visningsöversättning av segment-tokens: nycklarna (lagrade i variant-
  *  segment_keys och byggda av aggregatets rollup) behåller sina tokens —
- *  bara ETIKETTEN blir engelska. */
+ *  bara ETIKETTEN blir engelska.
+ *
+ *  direct/other omdöpta i VISNINGEN (ägarfynd 2026-07-26: "direct, other och
+ *  unknown … för många liknande namn, ingen tydlig koppling"). Semantiken är
+ *  tre olika verkligheter och etiketterna ska säga det:
+ *    direct  = ingen referrer (skrev adressen/bokmärke) → "direct visits"
+ *    other   = referrer FRÅN en oigenkänd sajt          → "other websites"
+ *    okänd   = händelsen saknade källdata (delas med enhet/land) → "unknown" */
 export const TOKEN_EN: Record<string, string> = {
+  direct: "direct visits",
+  other: "other websites",
   okänd: "unknown",
   ny: "new",
   återkommande: "returning",

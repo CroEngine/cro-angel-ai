@@ -71,6 +71,27 @@ function bareHost(input: string): string | null {
   }
 }
 
+/**
+ * Referrer-DOMÄNEN för "other websites"-räknaren (ägarbeslut 2026-07-26:
+ * samla nu, visa senare). Bara domänen — aldrig full URL, aldrig path — och
+ * null för intern navigation (samma egen-domän-regel som klassificeraren:
+ * subdomäner åt båda hållen räknas som sajten själv) eller trasig input.
+ * Ren; decide-vägen anropar den enbart för "other"-klassade besök.
+ */
+export function referrerHost(
+  referrer: string | null | undefined,
+  pageUrl: string | null | undefined,
+): string | null {
+  if (!referrer) return null;
+  const ref = bareHost(referrer);
+  if (!ref) return null;
+  const page = pageUrl ? bareHost(pageUrl) : null;
+  if (page && (ref === page || ref.endsWith(`.${page}`) || page.endsWith(`.${ref}`))) {
+    return null; // intern navigation — ingen förvärvskälla
+  }
+  return ref.slice(0, 253); // DNS-maxlängd — defensiv klamp mot skräp
+}
+
 export function classifyTrafficSource(opts: {
   utmSource?: string;
   utmMedium?: string;

@@ -18,13 +18,19 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { buildVisitorContext, cohortsForVisitor, readServerSignals } from "@/adaptive/context";
+import {
+  buildVisitorContext,
+  cohortsForVisitor,
+  readServerSignals,
+  referrerHost,
+} from "@/adaptive/context";
 import { decisionIdFor } from "@/adaptive/decide";
 import { isBotUserAgent } from "@/adaptive/bot";
 import { originVerdict } from "@/adaptive/domain";
 import { servingAllowedForBilling } from "@/lib/billing/billing";
 import { serveDecision } from "@/adaptive/redesign/serve";
 import {
+  bumpReferrerDomain,
   isSandboxSlug,
   loadPreviewVariant,
   loadServableVariants,
@@ -109,6 +115,21 @@ export const Route = createFileRoute("/api/adaptive/decide")({
             holdout: false,
             context,
           });
+        }
+
+        // "Other websites"-domänräknaren (ägarbeslut 2026-07-26: samla nu,
+        // visa senare — går inte att backfilla). BARA när klassificeraren
+        // landade i "other" (kända kanaler behöver ingen domän), bara samtyckta
+        // besök (visitorHash finns — samma hållning som events-vägen), aldrig
+        // sandbox-speglar. Bara domänen; fire-safe i persistence-hjälparen.
+        if (
+          context.trafficSource === "other" &&
+          typeof client.visitorHash === "string" &&
+          client.visitorHash &&
+          !isSandboxSlug(client.site)
+        ) {
+          const dom = referrerHost(client.referrer || server.referrer, client.url);
+          if (dom) await bumpReferrerDomain(client.site, dom);
         }
 
         // Ägarens deklarerade mål — driver emphasize_goal, badge-matchning och

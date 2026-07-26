@@ -156,6 +156,52 @@ const trimChange = (c: AdaptationChange): AdaptationChange => ({
  * single `decision` event so the dashboard can reconstruct "Live Adaptations"
  * without a second table. Best-effort.
  */
+/** Räkna upp en "other websites"-referrerdomän (sajt × domän × dag). Bara
+ *  domänen, aldrig URL:er eller besökarkoppling — och fire-safe: ett DB-fel
+ *  får aldrig röra decide-svaret. (Ägarbeslut 2026-07-26: samla nu, visa
+ *  senare — datat går inte att backfilla.) */
+export async function bumpReferrerDomain(site: string, domain: string): Promise<void> {
+  try {
+    // RPC:n är nyare än den genererade Database-typen (regenereras efter
+    // db-migrate) — kastad anropssignatur tills dess, aldrig osäker data ut.
+    const rpc = supabaseAdmin.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ error: unknown }>;
+    await rpc("angel_bump_referrer_domain", { p_site: site, p_domain: domain });
+  } catch (err) {
+    console.warn(`[angel] referrer-domain bump failed:`, err);
+  }
+}
+
+/** Topp-domänerna bakom "other websites" — TRÖSKELGRINDAD (ägarens brus-
+ *  princip): under minTotal summerade besök returneras tom lista och
+ *  dashboarden visar ingenting alls. Aldrig throw. */
+export async function loadTopReferrerDomains(
+  site: string,
+  minTotal = 20,
+  limit = 8,
+): Promise<{ domain: string; visits: number }[]> {
+  try {
+    const rpc = supabaseAdmin.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: { domain?: unknown; visits?: unknown }[] | null; error: unknown }>;
+    const { data, error } = await rpc("angel_referrer_domains_top", {
+      p_site: site,
+      p_limit: limit,
+    });
+    if (error || !Array.isArray(data)) return [];
+    const rows = data
+      .map((r) => ({ domain: String(r.domain ?? ""), visits: Number(r.visits) || 0 }))
+      .filter((r) => r.domain && r.visits > 0);
+    const total = rows.reduce((a, r) => a + r.visits, 0);
+    return total >= minTotal ? rows : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function logDecision(
   site: string,
   decisionId: string,

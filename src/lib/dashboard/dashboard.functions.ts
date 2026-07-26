@@ -25,6 +25,7 @@ import {
   promotionBlockReason,
   type GuardArmCounts,
 } from "@/adaptive/redesign/winner";
+import { loadTopReferrerDomains } from "@/adaptive/persistence.server";
 import { buildJourney, type JourneyMilestone } from "./journey";
 import { cleanEvents } from "./data-hygiene";
 import {
@@ -259,6 +260,9 @@ export interface DashboardResponse {
   /** Resan till bevisat — stanna-tills-bevisat-berättelsen (journey.ts):
    *  varje milstolpe härledd ur datat ovan, varje detaljrad en mätning. */
   journey: JourneyMilestone[];
+  /** Topp-domänerna bakom "other websites" (samla nu, visa senare 2026-07-26).
+   *  Tom tills volymtröskeln nås — panelblocket är vilande till dess. */
+  otherDomains?: { domain: string; visits: number }[];
   /** Admin extras (the sandbox link) render only for ANGEL_ADMIN_EMAILS. */
   isAdmin: boolean;
 }
