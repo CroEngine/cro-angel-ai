@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseJsonArray } from "../llm-json";
+import { parseJsonArray, parseJsonObject } from "../llm-json";
 
 describe("parseJsonArray", () => {
   it("parses a bare JSON array", () => {
@@ -41,5 +41,28 @@ describe("parseJsonArray", () => {
 
   it("returns null for empty text", () => {
     expect(parseJsonArray("")).toBeNull();
+  });
+});
+
+describe("parseJsonObject", () => {
+  it("parses a bare JSON object", () => {
+    expect(parseJsonObject('{"businessType":"saas"}')).toEqual({ businessType: "saas" });
+  });
+
+  it("recovers a fenced object with a prose preamble (the goal-judge bug class)", () => {
+    expect(parseJsonObject('Here you go:\n```json\n{"goals":["signup"]}\n```')).toEqual({
+      goals: ["signup"],
+    });
+  });
+
+  it("recovers an object via brace extraction when wrapped in prose", () => {
+    expect(parseJsonObject('The result is {"businessType":"ecommerce"} — hope that helps')).toEqual({
+      businessType: "ecommerce",
+    });
+  });
+
+  it("returns null (never throws) for an object-less or malformed response", () => {
+    expect(parseJsonObject("no json here")).toBeNull();
+    expect(parseJsonObject("{oops")).toBeNull();
   });
 });

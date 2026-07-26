@@ -27,7 +27,7 @@
 
 import { LLM_CONFIDENCE_FLOOR } from "../crawler-inventory";
 
-import { sectionBodyExcerpts } from "./extract";
+import { sectionBodyLookup } from "./extract";
 import { parseJsonArray } from "./llm-json";
 
 import type { RedesignContentModel } from "./context";
@@ -199,13 +199,11 @@ export async function refineSectionTypesLlm(
   html: string,
   classify: typeof classifySectionsLlm = classifySectionsLlm,
 ): Promise<number> {
-  const excerpts = new Map(
-    sectionBodyExcerpts(html).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]),
-  );
+  const bodyOf = sectionBodyLookup(html);
   const cand = content.sections
     .filter((s) => GENERIC.has(s.type))
     .slice(0, MAX_SECTIONS)
-    .map((s) => ({ s, body: excerpts.get(s.heading.trim().toLowerCase()) ?? "" }));
+    .map((s) => ({ s, body: bodyOf(s.heading) }));
   if (cand.length === 0) return 0;
 
   const labels = await classify(cand.map((c) => ({ heading: c.s.heading, body: c.body })));

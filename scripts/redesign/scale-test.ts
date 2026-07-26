@@ -10,9 +10,10 @@
 
 import { writeFileSync } from "node:fs";
 
-import { extractContentModel, sectionBodyExcerpts } from "../../src/adaptive/redesign/extract";
+import { extractContentModel, sectionBodyLookup } from "../../src/adaptive/redesign/extract";
 import { classifySectionsLlm, passesEvidenceGate, PROMOTABLE, EVIDENCE } from "../../src/adaptive/redesign/section-llm.server";
 import { rankProofItems } from "../../src/adaptive/redesign/proof-rank.server";
+import { mapPool } from "./pool";
 import { renderVisibleCapture } from "./render-page";
 
 const DEFAULT_URLS = ["affirm.com", "airbnb.com", "airtable.com", "allbirds.com", "aritzia.com", "arstechnica.com", "asana.com", "asos.com", "atlassian.com", "audible.com", "away.com", "bbc.com", "bloomberg.com", "blueapron.com", "bombas.com", "booking.com", "brex.com", "brilliant.org", "brooklinen.com", "calm.com", "carvana.com", "casper.com", "chewy.com", "chime.com", "chipotle.com", "clickup.com", "cloudflare.com", "coinbase.com", "confluent.io", "coursera.org", "cron.com", "databricks.com", "datadoghq.com", "digitalocean.com", "docker.com", "doordash.com", "drsquatch.com", "duolingo.com", "economist.com", "engadget.com", "etsy.com", "eventbrite.com", "everlane.com", "expedia.com", "fentybeauty.com", "figma.com", "fly.io", "ghost.org", "github.com", "gitlab.com", "gitpod.io", "glossier.com", "go.dev", "gradle.org", "gumroad.com", "gymshark.com", "hashicorp.com", "headspace.com", "height.app", "hellofresh.com", "heroku.com", "hey.com", "hims.com", "hm.com", "huggingface.co", "hulu.com", "ikea.com", "imdb.com", "instacart.com", "intercom.com", "jetbrains.com", "khanacademy.org", "kickstarter.com", "klarna.com", "kotlinlang.org", "kraken.com", "kyliecosmetics.com", "linear.app", "liquiddeath.com", "loom.com", "lululemon.com", "lyft.com", "masterclass.com", "medium.com", "mejuri.com", "monday.com", "mongodb.com", "netflix.com", "newyorker.com", "nike.com", "nodejs.org", "noom.com", "notion.so", "npr.org", "okta.com", "opentable.com", "oura.com", "patagonia.com", "patreon.com", "paypal.com", "peloton.com", "plaid.com", "postman.com", "python.org", "railway.app", "reactjs.org", "redfin.com", "rei.com", "render.com", "replit.com", "revolut.com", "ro.co", "robinhood.com", "ruggable.com", "rust-lang.org", "salesforce.com", "sephora.com", "servicenow.com", "shopify.com", "snowflake.com", "sofi.com", "spotify.com", "squarespace.com", "squareup.com", "stripe.com", "substack.com", "supabase.com", "superhuman.com", "svelte.dev", "sweetgreen.com", "tailwindcss.com", "target.com", "techcrunch.com", "theatlantic.com", "theverge.com", "tripadvisor.com", "turo.com", "twilio.com", "typeform.com", "uber.com", "udemy.com", "ulta.com", "uniqlo.com", "vercel.com", "vimeo.com", "vox.com", "vuejs.org", "warbyparker.com", "wayfair.com", "whoop.com", "wired.com", "wise.com", "wix.com", "wordpress.com", "workday.com", "zara.com", "zendesk.com", "zillow.com", "zoom.us", "canva.com", "miro.com", "dropbox.com", "box.com", "zapier.com", "webflow.com", "framer.com", "bigcommerce.com", "skillshare.com", "codecademy.com", "pluralsight.com", "ramp.com", "mercury.com", "gusto.com", "carta.com", "bill.com", "expensify.com", "quickbooks.intuit.com", "segment.com", "amplitude.com", "mixpanel.com", "sentry.io", "launchdarkly.com", "auth0.com", "openai.com", "anthropic.com", "replicate.com", "perplexity.ai", "cohere.com", "eightsleep.com", "ritual.com", "seed.com", "harrys.com", "grammarly.com", "hotjar.com", "pipedrive.com", "mailchimp.com", "calendly.com", "hubspot.com", "slack.com"];
@@ -82,8 +83,7 @@ async function doSite(url: string): Promise<SiteOut> {
 
     if (!html) { base.error = staticErr || "empty"; return base; }
     const model = extractContentModel(html);
-    const exc = new Map(sectionBodyExcerpts(html).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]));
-    const bodyOf = (h: string) => exc.get(h.trim().toLowerCase()) ?? "";
+    const bodyOf = sectionBodyLookup(html);
     base.sections = model.sections.length;
     const gens = model.sections.filter((s) => GENERIC.has(s.type) || s.type === "features");
     base.generic = model.sections.filter((s) => GENERIC.has(s.type)).length;
@@ -108,15 +108,10 @@ async function doSite(url: string): Promise<SiteOut> {
   } catch (e) { base.error = (e as Error).message.slice(0, 50); return base; }
 }
 
-async function mapPool<T, R>(items: T[], n: number, fn: (t: T, i: number) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let idx = 0;
-  async function worker() { while (idx < items.length) { const i = idx++; out[i] = await fn(items[i], i); if (i % 20 === 0) console.error(`[scale] ${i}/${items.length}`); } }
-  await Promise.all(Array.from({ length: Math.min(n, items.length) }, () => worker()));
-  return out;
-}
-
-const results = await mapPool(URLS, CONC, doSite);
+const results = await mapPool(URLS, CONC, (url, i) => {
+  if (i % 20 === 0) console.error(`[scale] ${i}/${URLS.length}`);
+  return doSite(url);
+});
 
 const ok = results.filter((r) => r.ok);
 const promos = ok.flatMap((r) => r.promotions);

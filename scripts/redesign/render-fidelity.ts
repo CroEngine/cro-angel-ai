@@ -12,6 +12,7 @@
 import { mkdirSync } from "node:fs";
 
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
+import { mapPool } from "./pool";
 import { renderVisibleCapture } from "./render-page";
 
 // De 38 sajter render RÄDDADE i scale-test #3 (REC|-raderna): statiskt skal/fall
@@ -30,7 +31,7 @@ const OUT = "render-fidelity"; // skärmbilder hamnar här → laddas upp som ar
 
 // ── fidelitets-signaturer (körs på den SYNLIGA texten, gemener) ──────────────
 const CHALLENGE =
-  /verifying you are human|checking your browser|enable javascript|please turn on javascript|are you a robot|access denied|attention required|cf-browser-verification|request could not be satisfied|unusual traffic/i;
+  /verifying (?:you are human|your browser)|checking your browser|security checkpoint|just a moment|enable javascript|please turn on javascript|are you a robot|access denied|attention required|cf-browser-verification|request could not be satisfied|unusual traffic/i;
 const CONSENT =
   /accept all cookies|we use cookies|cookie preferences|manage (your )?consent|privacy preferences|this (site|website) uses cookies/i;
 const ERRORPG =
@@ -59,8 +60,12 @@ function judge(host: string, secs: number, text: string, title: string, styled: 
   if (CHALLENGE.test(t)) return "CHALLENGE";
   if (ERRORPG.test(t) && len < 1500) return "ERROR";
   if (CONSENT.test(t) && len < 600) return "CONSENT-WALL"; // bara BANNER, ingen sida bakom
+  // Separator-okänslig brand-match: "Kylie Cosmetics" ska räknas som brand-token
+  // "kyliecosmetics" (fidelitet #3: kyliecosmetics feltflaggades WRONG-PAGE? trots
+  // äkta sida). Strippa allt utom a-z0-9 på båda sidor.
   const bt = brandToken(host);
-  if (bt && !`${title} ${t}`.includes(bt)) return "WRONG-PAGE?";
+  const hay = `${title} ${t}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (bt && !hay.includes(bt)) return "WRONG-PAGE?";
   if (secs < 3 || len < 800) return "PARTIAL/THIN";
   return "FAITHFUL?";
 }
@@ -82,21 +87,13 @@ async function renderCheck(site: string): Promise<Fid> {
   };
 }
 
-async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let i = 0;
-  async function w() { while (i < items.length) { const k = i++; out[k] = await fn(items[k]); } }
-  await Promise.all(Array.from({ length: Math.min(n, items.length) }, () => w()));
-  return out;
-}
-
 if (!process.env.BROWSERBASE_API_KEY || !process.env.BROWSERBASE_PROJECT_ID) {
   console.log("::warning::BROWSERBASE_API_KEY/PROJECT_ID saknas — kan ej rendera, testet är meningslöst.");
   process.exit(0);
 }
 mkdirSync(OUT, { recursive: true });
 
-const rows = await pool(SITES, CONC, async (site) => {
+const rows = await mapPool(SITES, CONC, async (site) => {
   const f = await renderCheck(site);
   console.log(`FID|${f.site}|${f.verdict}|secs=${f.secs}|len=${f.len}|title=${f.title}|head=${f.head}`);
   return f;

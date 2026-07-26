@@ -16,7 +16,7 @@ import type { Browser, Page, Response } from "playwright-core";
 
 import { serializeVisibleHtml } from "./visible-dom";
 
-const UA =
+export const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36";
 
 /** Skaffa en render-sida: Browserbase (Stagehand, bevisad väg) när creds finns,

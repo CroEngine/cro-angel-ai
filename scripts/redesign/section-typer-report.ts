@@ -12,7 +12,7 @@
 // Statisk hämtning (gratis): SPA-skal syns som "tunna" och rapporteras ärligt —
 // ett eget perspektiv (capture-readiness / var steg-2-render behövs).
 
-import { extractContentModel, sectionBodyExcerpts } from "../../src/adaptive/redesign/extract";
+import { extractContentModel, sectionBodyLookup } from "../../src/adaptive/redesign/extract";
 import { classifySectionsLlm } from "../../src/adaptive/redesign/section-llm.server";
 
 const GENERIC = new Set(["section", "content", "features"]);
@@ -84,10 +84,10 @@ for (const url of URLS) {
     }
     const html = await res.text();
     const model = extractContentModel(html);
-    const exc = new Map(sectionBodyExcerpts(html).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]));
+    const bodyOf = sectionBodyLookup(html);
     const generics = model.sections.filter((s) => GENERIC.has(s.type));
     const labels = await classifySectionsLlm(
-      generics.map((s) => ({ heading: s.heading, body: exc.get(s.heading.trim().toLowerCase()) ?? "" })),
+      generics.map((s) => ({ heading: s.heading, body: bodyOf(s.heading) })),
     );
     const rows: Row[] = generics.map((s, i) => {
       const l = labels?.[i] ?? null;
@@ -99,7 +99,7 @@ for (const url of URLS) {
         llmType: l?.type ?? null,
         conf,
         promote,
-        excerpt: (exc.get(s.heading.trim().toLowerCase()) ?? "").replace(/\s+/g, " ").slice(0, 130),
+        excerpt: (bodyOf(s.heading)).replace(/\s+/g, " ").slice(0, 130),
       };
     });
     results.push({ url: full, ok: true, floorCount: model.sections.length, genericCount: generics.length, rows });

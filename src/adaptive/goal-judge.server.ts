@@ -23,6 +23,7 @@ import {
   type GoalCandidate,
   type GoalKind,
 } from "./crawler-inventory";
+import { parseJsonObject } from "./redesign/llm-json";
 import type { ContentInventory } from "./types";
 
 /** Bump to re-judge everything (prompt/model change). */
@@ -192,7 +193,7 @@ export async function judgeSiteGoals(
     }
     const body = (await res.json()) as { content?: { type: string; text?: string }[] };
     const text = body.content?.find((c) => c.type === "text")?.text ?? "";
-    const parsed = JSON.parse(text.replace(/^```(json)?|```$/g, "").trim()) as unknown;
+    const parsed = parseJsonObject(text);
     if (!parsed || typeof parsed !== "object") return fallback();
     const p = parsed as { businessType?: unknown; goals?: unknown };
 

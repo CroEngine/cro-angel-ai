@@ -14,7 +14,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 
-import { extractContentModel, sectionBodyExcerpts } from "../../src/adaptive/redesign/extract";
+import { extractContentModel, sectionBodyLookup } from "../../src/adaptive/redesign/extract";
 import { refineSectionTypesLlm } from "../../src/adaptive/redesign/section-llm.server";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=").slice(1).join("=");
@@ -43,7 +43,7 @@ const hasKey = !!process.env.ANTHROPIC_API_KEY;
 
 const content = extractContentModel(html);
 const before = content.sections.map((s) => s.type);
-const excerpts = new Map(sectionBodyExcerpts(html).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]));
+const bodyOf = sectionBodyLookup(html);
 
 console.log(`\n═══ section-typer smoke — ${label} ═══`);
 console.log(`floor: ${content.sections.length} sections, ${before.filter((t) => GENERIC.has(t)).length} left generic`);
@@ -52,7 +52,7 @@ console.log(`ANTHROPIC_API_KEY: ${hasKey ? "present → running the LLM ceiling"
 if (!hasKey) {
   console.log("Generic candidates the ceiling WOULD send (heading → excerpt it would judge):");
   for (const s of content.sections.filter((x) => GENERIC.has(x.type))) {
-    const ex = (excerpts.get(s.heading.trim().toLowerCase()) ?? "").replace(/\s+/g, " ").slice(0, 160);
+    const ex = bodyOf(s.heading).replace(/\s+/g, " ").slice(0, 160);
     if (ex.length < 15) continue;
     console.log(`  [${s.type}] "${s.heading.slice(0, 56)}"\n     ${ex}`);
   }
@@ -64,7 +64,7 @@ const promoted = await refineSectionTypesLlm(content, html);
 console.log(`ceiling promoted ${promoted} generic section(s):\n`);
 content.sections.forEach((s, i) => {
   if (s.type === before[i]) return;
-  const ex = (excerpts.get(s.heading.trim().toLowerCase()) ?? "").replace(/\s+/g, " ").slice(0, 200);
+  const ex = bodyOf(s.heading).replace(/\s+/g, " ").slice(0, 200);
   console.log(`  ✓ "${s.heading.slice(0, 56)}"`);
   console.log(`     ${before[i]} → ${s.type}${s.containsTrustSignals ? "  [proof]" : ""}`);
   console.log(`     judged on: ${ex || "(no text/alt — pure image)"}\n`);

@@ -9,12 +9,22 @@
 // yttersta [...]-arrayen. Returnerar null om inget giltigt går att få ut —
 // aldrig ett kast (anroparna är fail-open).
 export function parseJsonArray(text: string): unknown {
+  return parseFenced(text, "[", "]");
+}
+
+/** Som parseJsonArray men för ett JSON-OBJEKT (yttersta {...}). goal-judge tar
+ *  ett objekt-svar, inte en array. */
+export function parseJsonObject(text: string): unknown {
+  return parseFenced(text, "{", "}");
+}
+
+function parseFenced(text: string, open: "[" | "{", close: "]" | "}"): unknown {
   const cleaned = text.replace(/```json\s*|```/g, "").trim();
   try {
     return JSON.parse(cleaned);
   } catch {
-    const s = cleaned.indexOf("[");
-    const e = cleaned.lastIndexOf("]");
+    const s = cleaned.indexOf(open);
+    const e = cleaned.lastIndexOf(close);
     if (s >= 0 && e > s) {
       try {
         return JSON.parse(cleaned.slice(s, e + 1));

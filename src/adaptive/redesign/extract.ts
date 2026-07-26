@@ -307,6 +307,14 @@ export function sectionBodyExcerpts(html: string, cap = 600): { heading: string;
   return out;
 }
 
+/** Bygg en rubrik→utdrag-uppslagning från sidan. Kapslar trim/lowercase-nyckeln
+ *  som taket, rankaren och skala-/rapport-skripten annars återuppfinner ordagrant
+ *  (5 kopior av `new Map(...)` + `exc.get(h.trim().toLowerCase()) ?? ""`). */
+export function sectionBodyLookup(html: string, cap = 600): (heading: string) => string {
+  const exc = new Map(sectionBodyExcerpts(html, cap).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]));
+  return (heading: string) => exc.get(heading.trim().toLowerCase()) ?? "";
+}
+
 function extractSections(html: string): RedesignContentModel["sections"] {
   const heads: { level: number; text: string; body: string }[] = collectSectionBodies(html);
   // The hero leads. If <main> has the h1, move it to front; if the h1 lives
@@ -600,7 +608,7 @@ export function extractPriceSnippets(html: string): PriceSnippet[] {
  *  fallbackens citat: ordagrant sidans eget svar när den inte publicerar
  *  belopp. null när sidan saknar användbar rubrik (⇒ inget att citera,
  *  aldrig-hitta-på-regeln vinner). */
-export function extractQuoteAnswer(html: string): PriceSnippet | null {
+function extractQuoteAnswer(html: string): PriceSnippet | null {
   const h1 = primaryH1(html);
   if (h1 && h1.length >= 3 && h1.length <= 140) return { text: h1, tag: "h1" };
   const main = mainRegion(html);

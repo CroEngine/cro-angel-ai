@@ -15,6 +15,7 @@
 //  - Labels never drift: cached per (text|href) and re-computed only when the
 //    content changes or LABEL_VERSION is deliberately bumped.
 
+import { parseJsonArray } from "./redesign/llm-json";
 import type { ContentInventory, InventoryItem } from "./types";
 
 /** Bump deliberately to re-label everything (prompt/model upgrade). */
@@ -90,7 +91,7 @@ export async function labelTexts(
     }
     const body = (await res.json()) as { content?: { type: string; text?: string }[] };
     const text = body.content?.find((c) => c.type === "text")?.text ?? "";
-    const raw = JSON.parse(text.replace(/^```(json)?|```$/g, "").trim()) as unknown;
+    const raw = parseJsonArray(text);
     if (!Array.isArray(raw)) return null;
 
     const out: (CtaLabel | null)[] = new Array(batch.length).fill(null);

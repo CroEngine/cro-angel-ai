@@ -10,7 +10,7 @@
 // Rad-orienterat med flit: GitHub-loggen radbryter långa JSON-rader, men rader
 // överlever. Utan nyckel står golvet ensamt (inga rankningar).
 
-import { extractContentModel, sectionBodyExcerpts } from "../../src/adaptive/redesign/extract";
+import { extractContentModel, sectionBodyLookup } from "../../src/adaptive/redesign/extract";
 import { classifySectionsLlm } from "../../src/adaptive/redesign/section-llm.server";
 import { rankProofItems } from "../../src/adaptive/redesign/proof-rank.server";
 
@@ -35,12 +35,12 @@ for (const url of URLS) {
     if (!res.ok) { console.log(`\n### RANK ${full} — ✗ HTTP ${res.status}`); continue; }
     const html = await res.text();
     const model = extractContentModel(html);
-    const exc = new Map(sectionBodyExcerpts(html).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]));
+    const bodyOf = sectionBodyLookup(html);
 
     // effektiv typ: tak-domen om den lyfte, annars golvet
     const generics = model.sections.filter((s) => GENERIC.has(s.type) || s.type === "features");
     const labels = await classifySectionsLlm(
-      generics.map((s) => ({ heading: s.heading, body: exc.get(s.heading.trim().toLowerCase()) ?? "" })),
+      generics.map((s) => ({ heading: s.heading, body: bodyOf(s.heading) })),
     );
     const lblMap = new Map<string, string>();
     generics.forEach((s, i) => {
@@ -55,7 +55,7 @@ for (const url of URLS) {
     let curType = "";
     for (const s of model.sections) {
       const t = eff(s);
-      const it: Item = { heading: s.heading, body: exc.get(s.heading.trim().toLowerCase()) ?? "", type: t };
+      const it: Item = { heading: s.heading, body: bodyOf(s.heading), type: t };
       if (cur.length && curType === t && !GENERIC.has(t)) cur.push(it);
       else { if (cur.length) groups.push(cur); cur = [it]; curType = t; }
     }
