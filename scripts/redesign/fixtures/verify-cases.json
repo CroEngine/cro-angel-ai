@@ -1,0 +1,233 @@
+[
+{
+"host": "asos.com",
+"type": "logos",
+"heading": "Discover more from",
+"body": "adidas Calvin Klein Dr Martens ON Running The Ordinary AllSaints Columbia Levi's Puma Timberland Barbour Converse New Balance The INKEY List Tommy Hil",
+"expect": "OK"
+},
+{
+"host": "casper.com",
+"type": "testimonials",
+"heading": "\"These sheets are amazing! So soft and comfortable. It’s like sleeping in a hug!",
+"body": "SuperSoft duvet cover, white, folded SuperSoft Duvet Cover",
+"expect": "OK"
+},
+{
+"host": "casper.com",
+"type": "testimonials",
+"heading": "\"I love the luxurious hotel-quality percale sheets. They wash very well, yet are",
+"body": "Folded pillowcases and a hyperlite sheet set, gray, sitting atop two pillows Hyperlite Sheet Set",
+"expect": "OK"
+},
+{
+"host": "chime.com",
+"type": "testimonials",
+"heading": "Hear from our members",
+"body": "“The best bank I have ever had. The customer service is pretty good, they usually get in touch in a timely manner. I lost my debit card, and they sent",
+"expect": "OK"
+},
+{
+"host": "figma.com",
+"type": "logos",
+"heading": "The products you love are designed in Figma",
+"body": "Everyone is able to influence, inspire, and give input without ever leaving the design file. That creates a really transparent, open, and honest proce",
+"expect": "FP"
+},
+{
+"host": "ghost.org",
+"type": "logos",
+"heading": "Publishers",
+"body": "A newsletter is just the start Build your own independent media business Learn more → 404 Media 404 Media Technology Tangle Tangle Politics Platformer",
+"expect": "FP"
+},
+{
+"host": "ghost.org",
+"type": "logos",
+"heading": "Creators",
+"body": "Escape the algorithm Your audience, brand, and revenue – owned entirely by you Learn more → Gone With The Wynns Gone With The Wynns Travel Creator Sci",
+"expect": "FP"
+},
+{
+"host": "github.com",
+"type": "logos",
+"heading": "GitHub customers",
+"body": "American Airlines Duolingo Ernst and Young Ford InfoSys Mercado Libre Mercedes-Benz Shopify Philips Société Générale Spotify Vodafone American Airline",
+"expect": "OK"
+},
+{
+"host": "gumroad.com",
+"type": "testimonials",
+"heading": "$1,992,651",
+"body": "The amount of income earned by Gumroad digital entrepreneurs last week. I launched MaxPacks as an experimental side gig; but within 2 years those Proc",
+"expect": "FP"
+},
+{
+"host": "heroku.com",
+"type": "testimonials",
+"heading": "The platform developers trust",
+"body": "Heroku is the cloud application platform of choice for startups, industry giants, and everyone in between. Bonobos Logo Align logo Live Nation logo He",
+"expect": "FP"
+},
+{
+"host": "jetbrains.com",
+"type": "logos",
+"heading": "For teams",
+"body": "Minimize friction and increase productivity Ensure efficient collaboration and maintain quality codebases with a fast software delivery flow TeamCity ",
+"expect": "FP"
+},
+{
+"host": "klarna.com",
+"type": "logos",
+"heading": "Use Klarna at brands you love",
+"body": "Browse all brands New Balance 4% cashback New Balance Sports Sephora 2% cashback Sephora Health & beauty Ray-Ban 3% cashback Ray-Ban Free shipping JD ",
+"expect": "OK"
+},
+{
+"host": "paypal.com",
+"type": "logos",
+"heading": "Get rewards from the brands you love",
+"body": "Adidas Sony Instacart 1-800 flowers.com Origins Nobull Ticketmaster 0 1 2 3 4 5 6 7 % back Get hundreds of offers. 2 Browse Offers Check offers for de",
+"expect": "OK"
+},
+{
+"host": "ro.co",
+"type": "testimonials",
+"heading": "Explore Serena's health journey",
+"body": "",
+"expect": "FP"
+},
+{
+"host": "ro.co",
+"type": "testimonials",
+"heading": "100% online, 100% convenient",
+"body": "Message your provider 24/7 Manage goals in one place Clinically-proven, FDA-approved treatments Fast, discreet shipping Sonia Ro member James Ro membe",
+"expect": "FP"
+},
+{
+"host": "ro.co",
+"type": "logos",
+"heading": "Dr. Nitin Vaswani, MD MPH MBA",
+"body": "Director, Clinical Strategy General Surgeon and Clinical Pathologist trainee Johns Hopkins University University of Pennsylvania logos for Alliance fo",
+"expect": "FP"
+},
+{
+"host": "salesforce.com",
+"type": "testimonials",
+"heading": "Sinan Deriş",
+"body": "See Mr. Beast story Pandora logo Chief Digital & Technology Officer, Pandora",
+"expect": "OK"
+},
+{
+"host": "salesforce.com",
+"type": "testimonials",
+"heading": "David Walmsley",
+"body": "See the Pandora story Williams Sonoma logo SVP, Technology, Williams Sonoma",
+"expect": "OK"
+},
+{
+"host": "shopify.com",
+"type": "logos",
+"heading": "store they line up for",
+"body": "AI all-star household name solo-preneur category creator global empire store they line up for big thing Dream big and build fast on Shopify. The world",
+"expect": "FP"
+},
+{
+"host": "tripadvisor.com",
+"type": "testimonials",
+"heading": "Experiences travelers love",
+"body": "Travelers’ Choice Awards Best of the Best The Best tour in Florence: Renaissance & Medici Tales - guided by a STORYTELLER 5.0 5 of 5 bubbles (12,800) ",
+"expect": "FP"
+},
+{
+"host": "tripadvisor.com",
+"type": "testimonials",
+"heading": "Just add water",
+"body": "Surfing, jet-skiing, boating, and beyond Key West Key West Island Adventure Jet Ski Tour: Bring a Partner for Free 4.8 4.8 of 5 bubbles (1,012) from $",
+"expect": "FP"
+},
+{
+"host": "whoop.com",
+"type": "logos",
+"heading": "Backed by PHDs, worn by MVPs",
+"body": "Whether you're #1 in the world or on day 1 of your journey, WHOOP helps you optimize your health, fitness, and life. Cristiano Ronaldo Football Legend",
+"expect": "OK"
+},
+{
+"host": "whoop.com",
+"type": "testimonials",
+"heading": "\" WHOOP has been a huge motivator to a healthier lifestyle. \"",
+"body": "Ashlynn P. Niall Horan wearing a WHOOP 5.0 band while holding an acoustic guitar backstage, showing recovery and strain tracking for performers. Niall",
+"expect": "OK"
+},
+{
+"host": "whoop.com",
+"type": "testimonials",
+"heading": "\" WHOOP has helped me greatly improve my physical health and wellbeing \"",
+"body": "Samatha R.",
+"expect": "OK"
+},
+{
+"host": "zendesk.com",
+"type": "logos",
+"heading": "22,000+ service teams trust Zendesk AI",
+"body": "Siemens Logo Github Logo Uber Logo Box Logo Vimeo Logo Lush Logo Tesco Logo Discord_Default",
+"expect": "OK"
+},
+{
+"host": "miro.com",
+"type": "testimonials",
+"heading": "6,000+",
+"body": "templates “Being able to bring everyone together to plan in Miro ultimately means that the most impactful initiatives will happen at the right time – ",
+"expect": "BORDER"
+},
+{
+"host": "skillshare.com",
+"type": "testimonials",
+"heading": "Keep Creating",
+"body": "Explore new ideas for your next project, post your work, and get feedback. Learn from Creative Experts Skillshare teachers are industry leaders excite",
+"expect": "FP"
+},
+{
+"host": "ramp.com",
+"type": "testimonials",
+"heading": "Keep your finance team focused on strategy. Let agents handle the busywork.",
+"body": "Learn about Ramp Intelligence Gone are the days of scrambling to chase receipts, manually coding really large data sets. All of that has been automati",
+"expect": "OK"
+},
+{
+"host": "ramp.com",
+"type": "testimonials",
+"heading": "AI that learns from your team. And gets smarter with every team that joins.",
+"body": "Learn about Policy Agents We have thousands of transactions a month, and the number of manual edits I make has dropped drastically. Ramp's AI just kee",
+"expect": "OK"
+},
+{
+"host": "bill.com",
+"type": "testimonials",
+"heading": "Customers succeed with BILL",
+"body": "Clif Family Winery achieved 20% efficiency increase with BILL Get Started Bear Robotics achieved 67% faster close with BILL Get Started Generation Tea",
+"expect": "OK"
+},
+{
+"host": "expensify.com",
+"type": "testimonials",
+"heading": "\"Makes expense submission easy!\"",
+"body": "\"Expensify has a really easy user interface for uploading receipts and getting expense reports submitted in a timely manner. I'm also getting reimburs",
+"expect": "OK"
+},
+{
+"host": "expensify.com",
+"type": "testimonials",
+"heading": "\"Super Easy to Use\"",
+"body": "\"It's quick and easy to use as a user, trying to get reimbursed and also very easy as a manager. Looking to approve my direct reports reviews. I parti",
+"expect": "OK"
+},
+{
+"host": "auth0.com",
+"type": "testimonials",
+"heading": "You’re in great company",
+"body": "Signify logo Auth0 lets Philips Hue focus on R&D, not IAM Auth0 enabled us to reduce our IAM-related development and maintenance by 80%, freeing us to",
+"expect": "OK"
+}
+]
