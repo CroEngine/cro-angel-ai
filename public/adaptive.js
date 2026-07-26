@@ -920,12 +920,17 @@
       var mainEl = document.querySelector("main") || document.body;
       function findByLocator(loc) {
         if (!loc || !loc.text) return null;
-        var needle = String(loc.text).replace(/\s+/g, " ").trim().slice(0, 24).toLowerCase();
-        if (!needle) return null;
+        var full = String(loc.text).replace(/\s+/g, " ").trim().toLowerCase();
+        if (!full) return null;
         var els = mainEl.querySelectorAll(loc.tag || "h1,h2,h3");
         for (var i2 = 0; i2 < els.length; i2++) {
           var t = (els[i2].textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-          if (t.indexOf(needle) >= 0) return els[i2];
+          if (t === full) return els[i2];
+        }
+        var needle = full.slice(0, 24);
+        for (var j = 0; j < els.length; j++) {
+          var t2 = (els[j].textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+          if (t2.indexOf(needle) >= 0) return els[j];
         }
         return null;
       }

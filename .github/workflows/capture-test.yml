@@ -1,0 +1,42 @@
+# Kapacitets-test: statisk hämtning vs Browserbase-RENDER på ~25 sajter som föll/
+# blev tunna/hade bild-loggor i skala-testet. Mäter om render återhämtar sektioner
+# golvet kan jobba på. Rent golv (ingen LLM). Kräver BROWSERBASE_API_KEY +
+# BROWSERBASE_PROJECT_ID (fjärr-browser via CDP — ingen lokal browser behövs).
+
+name: Capture test
+on:
+  push:
+    paths:
+      - ".github/workflows/capture-test.yml"
+      - "scripts/redesign/capture-test.ts"
+  workflow_dispatch:
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+      BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Static vs rendered capture
+        run: |
+          if [ -z "$BROWSERBASE_API_KEY" ] || [ -z "$BROWSERBASE_PROJECT_ID" ]; then
+            echo "::warning::BROWSERBASE secrets saknas — render faller tillbaka på lokal Chromium (kan ej nå levande sajter)."
+          fi
+          bun run scripts/redesign/capture-test.ts | tee capture-test.out
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capture-test
+          path: capture-test.out
+          retention-days: 14
+          if-no-files-found: warn

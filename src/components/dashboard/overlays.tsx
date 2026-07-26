@@ -1,7 +1,13 @@
 // Overview-panelens popup-overlays — Compare (FÖRE/EFTER i sandbox-speglar)
-// och Journeys & signals (klick-heatmap på spegel-backdrop) med den delade
-// HeatMirror-backdroppen (utbrutna ur overview-panel.tsx i sajt-genomgången
-// 2026-07-18; ren flytt, ingen semantikändring).
+// och Journeys & signals (flödet, personberättelsen, rage-listan, sajtsök).
+//
+// Heatmap-vyn PENSIONERAD (ägarbeslut 2026-07-26): den matade ingen maskinell
+// länk i beslutskedjan (detektor/design/verify/serve läser aldrig heat-datat)
+// men kostade nattliga frysningar av klick-topparna + spegel-backdrops — och
+// lämnade tolkningsjobbet till ägaren, tvärtemot produktens tes (maskinen
+// föreslår, sandboxen visar, ärlig A/B bevisar). Klick-DATAT samlas oförändrat
+// (element_click bär rage/intent/ordning — resorna och rage-listan lever på
+// det), så vyn kan återinföras utan datalucka om den saknas.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -16,102 +22,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { journeyFlow } from "@/lib/dashboard/aggregate";
-import { createPagePreview, createVariantPreview } from "@/lib/dashboard/sandbox.functions";
+import { createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { fmt, STATUS_PILL } from "./variant-stats";
 
 import type {
-  ClickHeat,
   FlowNode,
   RageSignal,
   SearchTerm,
   SessionSummary,
 } from "@/lib/dashboard/aggregate";
 import type { VariantView } from "@/lib/dashboard/dashboard.functions";
-
-/** Heatmapens backdrop: den RIKTIGA sidan i spegeln (orörd, utan Angel),
- *  skalad till hela dokumenthöjden så klickens y-% träffar rätt. Spegeln är
- *  opak origin och kan inte läsas — sidan rapporterar sin egen höjd via
- *  postMessage (höjdrapportören injiceras av mirror-endpointen när h=1). */
-function HeatMirror({
-  src,
-  overlay,
-  maxHeight = 560,
-  frameW = 1280,
-}: {
-  src: string;
-  overlay: React.ReactNode;
-  maxHeight?: number | string;
-  /** Spegelns viewportbredd — MÅSTE matcha layouten klicken mättes i
-   *  (390 = mobil, 1280 = desktop); x är % av besökarens viewportbredd. */
-  frameW?: number;
-}) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const frameRef = useRef<HTMLIFrameElement>(null);
-  const [wrapW, setWrapW] = useState(700);
-  const [docH, setDocH] = useState(2200);
-
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const update = () => setWrapW(el.clientWidth);
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      // Bara VÅR egen iframe får rapportera — annars kan en annan spegel
-      // (eller vilken inbäddad sida som helst) styra höjden.
-      if (e.source !== frameRef.current?.contentWindow) return;
-      const d = e.data as { type?: string; h?: number } | null;
-      if (d && d.type === "angel-mirror-height" && typeof d.h === "number") {
-        // Klampad: en fientlig speglad sida kan bara flytta punkter i ägarens
-        // egen vy av just den sidan — men vi tar inga orimliga värden.
-        setDocH(Math.min(20000, Math.max(600, Math.round(d.h))));
-      }
-    };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  }, []);
-
-  const scale = wrapW > 0 ? Math.min(1, wrapW / frameW) : 0.5;
-  return (
-    <div
-      ref={wrapRef}
-      className="overflow-y-auto overflow-x-hidden rounded-[10px] border border-[#f0eee9] bg-white"
-      style={{ maxHeight }}
-    >
-      {/* Inner-boxen har EXAKT spegelns visuella bredd (centrerad när smalare
-          än wrappen — mobilvyn) så overlay-punkternas % mappar mot iframe-
-          boxen, inte mot wrappens fulla bredd. */}
-      <div
-        className="relative mx-auto"
-        style={{ height: Math.round(docH * scale), width: Math.round(frameW * scale) }}
-      >
-        <iframe
-          ref={frameRef}
-          src={src}
-          title="Click heatmap backdrop"
-          sandbox="allow-scripts"
-          style={{
-            width: frameW,
-            height: docH,
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
-            border: 0,
-            // Backdroppen är en karta, inte en sida att klicka på — pekaren
-            // ska scrolla/hovra lagret ovanpå. (Interaktiv spegel prövades
-            // 2026-07-19 och backades samma dag: ägaren klickar inte runt på
-            // sin egen sajt i en vy vars jobb är att återge besökarens.)
-            pointerEvents: "none",
-          }}
-        />
-        <div className="absolute inset-0">{overlay}</div>
-      </div>
-    </div>
-  );
-}
 
 /** Mänskligt läsbara ändrings-chips för Compare-toppraden: "Moved 'X' #4 → #2"
  *  ur comparison-ordningen, "Rewrote a heading" för retext. Max 3 + "+N". */
@@ -334,7 +254,6 @@ export function CompareOverlay({
  *  skriver aldrig events; Esc stänger; body-scrollen låses. */
 export function JourneysOverlay({
   site,
-  heatPages,
   journeys,
   rageClicks,
   searches,
@@ -343,7 +262,6 @@ export function JourneysOverlay({
   onClose,
 }: {
   site: string;
-  heatPages: ClickHeat[];
   journeys: SessionSummary[];
   rageClicks: RageSignal[];
   /** Sajtsökningar per term (ägarbeslut 2026-07-19) — sajtvid rollup. */
@@ -355,28 +273,6 @@ export function JourneysOverlay({
   lockedDevice?: "mobile" | "desktop" | null;
   onClose: () => void;
 }) {
-  const [view, setView] = useState<"flow" | "heatmap">("flow");
-  const [heatMode, setHeatMode] = useState<"clicks" | "rage" | "both">("clicks");
-  // Sidväljaren (ägarfynd 2026-07-19: kartan "drog mot restauranger" — den
-  // var låst till sajtens mest klickade sida). Default = klick-toppen.
-  const [heatPathChoice, setHeatPathChoice] = useState<string | null>(null);
-  const emptyReach = { views: 0, p25: 0, p50: 0, p75: 0, p100: 0 };
-  const heat = (heatPathChoice && heatPages.find((h) => h.path === heatPathChoice)) ||
-    heatPages[0] || {
-      path: "/",
-      mobile: { clicks: [], rage: [], sampled: 0, reach: emptyReach },
-      desktop: { clicks: [], rage: [], sampled: 0, reach: emptyReach },
-      unattributed: 0,
-    };
-  // Ett sidval som åldrats ur topp-8 släpps ärligt — annars filtrerar det
-  // tyst mot klick-toppen och SNÄPPER TILLBAKA av sig själv om sidan
-  // återkommer i en senare refetch.
-  useEffect(() => {
-    if (heatPathChoice && !heatPages.some((h) => h.path === heatPathChoice)) {
-      setHeatPathChoice(null);
-    }
-  }, [heatPages, heatPathChoice]);
-
   // ── kohort-filtren (Hotjar-mönstret: ETT filter, tre zoomnivåer) ─────────
   // Källor + enheter är FÄLLBARA menyer med kryss (ägarfynd 2026-07-19: en
   // chip-rad med en ensam källa ser ut som att det ÄR den enda källan) —
@@ -478,20 +374,6 @@ export function JourneysOverlay({
   // trasigt ut. Berättelsen bär sig själv; ev. återinförande kräver först
   // ~100 % frysning av besökta sidor (parkerat som senare-jobb).
 
-  // ── heatmap-läget (oförändrad mekanik från v1) ───────────────────────────
-  const [deviceChoice, setDeviceChoice] = useState<"mobile" | "desktop" | null>(null);
-  const device =
-    lockedDevice ??
-    deviceChoice ??
-    (heat.desktop.sampled > heat.mobile.sampled ? "desktop" : "mobile");
-  const heatView = device === "mobile" ? heat.mobile : heat.desktop;
-  const frameW = device === "mobile" ? 390 : 1280;
-  const backdrop = useQuery({
-    queryKey: ["pagePreview", site, heat.path],
-    queryFn: () => createPagePreview({ data: { site, path: heat.path } }),
-    staleTime: 5 * 60 * 1000,
-  });
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -504,111 +386,6 @@ export function JourneysOverlay({
       document.body.style.overflow = prevOverflow;
     };
   }, [onClose]);
-
-  const showClicks = heatMode === "clicks" || heatMode === "both";
-  const showRage = heatMode === "rage" || heatMode === "both";
-  const maxN = Math.max(1, ...heatView.clicks.map((c) => c.n));
-  // Klicktäthet är MAGNITUD → sekventiell EN-tons ramp (blå, ljus→mörk) —
-  // inte grön→amber→röd (regnbågs- och CVD-fällan, och rött är reserverat
-  // för rage-markörerna/status). Varje punkt är en skarp 14px-kärna med vit
-  // ring (syns mot vilket sidinnehåll som helst) + en mjuk gloria via
-  // gradient — de gamla blur-suddarna var oläsliga (ägarfynd 2026-07-17).
-  const RAMP = ["#86b6ef", "#2a78d6", "#0d366b"] as const;
-  const rampAt = (rel: number) => (rel > 0.66 ? RAMP[2] : rel > 0.33 ? RAMP[1] : RAMP[0]);
-
-  const otherSampled = device === "mobile" ? heat.desktop.sampled : heat.mobile.sampled;
-  // Attention map (ägarbeslut 2026-07-19): scrolldjups-räckvidden som subtila
-  // linjer över kartan — "X % scrollade förbi här". Ritas först när sidan har
-  // ett ärligt underlag (≥3 attribuerade sidvisningar). Djupet är % av
-  // scrollsträckan; linjen läggs på samma % av dokumenthöjden (approximation,
-  // etiketten säger vad den betyder).
-  const reach = heatView.reach;
-  const attentionLines =
-    reach.views >= 3
-      ? ([
-          [25, reach.p25],
-          [50, reach.p50],
-          [75, reach.p75],
-        ] as const)
-          .filter(([, n]) => n > 0)
-          .map(([depth, n]) => (
-            <div
-              key={depth}
-              className="pointer-events-none absolute inset-x-0"
-              style={{ top: `${depth}%` }}
-            >
-              <div className="border-t border-dashed border-[#0d366b]/35" />
-              <span
-                className="absolute right-2 rounded-full px-2 py-[1px] text-[10px] font-semibold text-white"
-                style={{ top: -9, background: "rgba(13,54,107,.78)" }}
-              >
-                {Math.min(100, Math.round((n / reach.views) * 100))}% scrolled past here
-              </span>
-            </div>
-          ))
-      : [];
-  const heatOverlay =
-    heatView.sampled === 0 ? (
-      <div className="absolute inset-0 flex items-center justify-center bg-white/70 p-8 text-center">
-        <p className="max-w-sm text-[13px] text-stone-500">
-          {otherSampled > 0 && !lockedDevice
-            ? `No positioned clicks from ${device} visitors on this page yet — switch to ${device === "mobile" ? "Desktop" : "Mobile"} above.`
-            : "Click positions start collecting from your visitors' next page loads — the map draws itself as real data arrives. Nothing here is simulated."}
-        </p>
-      </div>
-    ) : (
-      <>
-        {attentionLines}
-        {showClicks &&
-          heatView.clicks.map((c, i) => {
-            const rel = c.n / maxN;
-            const hue = rampAt(rel);
-            const halo = Math.round(40 + rel * 80);
-            return (
-              <div
-                key={`c${i}`}
-                className="pointer-events-none absolute"
-                style={{ top: `${c.y}%`, left: `${c.x}%` }}
-              >
-                <div
-                  className="absolute rounded-full"
-                  style={{
-                    width: halo,
-                    height: halo,
-                    transform: "translate(-50%,-50%)",
-                    background: `radial-gradient(circle, ${hue}47, transparent 70%)`,
-                  }}
-                />
-                <div
-                  className="absolute h-[14px] w-[14px] rounded-full border-2 border-white"
-                  style={{
-                    transform: "translate(-50%,-50%)",
-                    background: hue,
-                    boxShadow: `0 0 0 1px ${hue}33`,
-                  }}
-                />
-              </div>
-            );
-          })}
-        {showRage &&
-          heatView.rage.map((r, i) => (
-            <div
-              key={`r${i}`}
-              title={r.ref}
-              className="absolute flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-bold text-white"
-              style={{
-                top: `${r.y}%`,
-                left: `${r.x}%`,
-                transform: "translate(-50%,-50%)",
-                background: "rgba(220,38,38,.92)",
-                boxShadow: "0 0 0 6px rgba(220,38,38,.26), 0 0 0 13px rgba(220,38,38,.13)",
-              }}
-            >
-              {r.n}
-            </div>
-          ))}
-      </>
-    );
 
   // ── Berättelse-tidslinjen (ägarbeslut 2026-07-19: "presentera datan i
   // stället — skippa playback"): personens resa berättas i ord — kom från,
@@ -664,12 +441,6 @@ export function JourneysOverlay({
           <span className="font-heading text-[14px] font-semibold">Journeys &amp; signals</span>
           <span className="truncate font-mono text-[12px] text-stone-400">
             {contextLabel}
-            {view === "heatmap" && !person && (
-              <>
-                {" "}
-                <span className="text-[#c4beb6]">·</span> {heat.path}
-              </>
-            )}
           </span>
           <div className="ml-auto flex items-center gap-3">
             {person ? (
@@ -697,120 +468,12 @@ export function JourneysOverlay({
                   </button>
                 </div>
               </div>
-            ) : (
-              <>
-                <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
-                  {(
-                    [
-                      ["flow", "Flow"],
-                      ["heatmap", "Heatmap"],
-                    ] as const
-                  ).map(([v, label]) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setView(v)}
-                      className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
-                      style={pill(view === v)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {view === "heatmap" && heatPages.length > 1 && (
-                  // Sidväljaren: kartan visar EN sida i taget — välj vilken av
-                  // de mest klickade (rankade, med antal), i stället för att
-                  // alltid låsas till sajtens klick-topp.
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex max-w-[280px] items-center gap-1.5 rounded-[9px] border border-stone-200 bg-[#faf9f7] px-[11px] py-[5px] text-[12px] font-semibold text-stone-700"
-                      >
-                        <span className="text-stone-400">Page:</span>
-                        <span className="truncate font-mono text-[11.5px]">{heat.path}</span>
-                        <svg
-                          width="9"
-                          height="6"
-                          viewBox="0 0 9 6"
-                          className="flex-none text-stone-400"
-                        >
-                          <path
-                            d="M1 1l3.5 3.5L8 1"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            fill="none"
-                          />
-                        </svg>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="max-w-[360px]">
-                      {heatPages.map((h) => (
-                        <DropdownMenuItem
-                          key={h.path}
-                          onSelect={() => setHeatPathChoice(h.path)}
-                          className="text-[12px]"
-                          style={h.path === heat.path ? { background: "#f4f2ef" } : undefined}
-                        >
-                          <span className="min-w-0 flex-1 truncate font-mono text-[11.5px]">
-                            {h.path}
-                          </span>
-                          <span className="ml-3 flex-none font-mono text-[11px] text-stone-400">
-                            {h.mobile.sampled + h.desktop.sampled}
-                          </span>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                {view === "heatmap" && !lockedDevice && (
-                  <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
-                    {(
-                      [
-                        ["mobile", `Mobile (${heat.mobile.sampled})`],
-                        ["desktop", `Desktop (${heat.desktop.sampled})`],
-                      ] as const
-                    ).map(([d, label]) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setDeviceChoice(d)}
-                        className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
-                        style={pill(device === d)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {view === "heatmap" && (
-                  <div className="flex gap-1 rounded-[9px] border border-stone-200 bg-[#faf9f7] p-[3px]">
-                    {(
-                      [
-                        ["clicks", "Clicks"],
-                        ["rage", "Rage clicks"],
-                        ["both", "Both"],
-                      ] as const
-                    ).map(([m, label]) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setHeatMode(m)}
-                        className="rounded-[7px] px-[11px] py-[5px] text-[12px] font-semibold"
-                        style={pill(heatMode === m)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+            ) : null}
           </div>
         </div>
 
         {/* kohort-filterraden (flödet + listan; personläget ärver kohorten) */}
-        {!person && view === "flow" && (
+        {!person && (
           <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 bg-white px-5 py-2.5">
             <span className="font-mono text-[10px] tracking-wider text-stone-400">[ filter ]</span>
             {/* Fällbara kryssmenyer (ägarfynd 2026-07-19): alternativen är
@@ -985,7 +648,7 @@ export function JourneysOverlay({
                 </div>
               </div>
             </div>
-          ) : view === "flow" ? (
+          ) : (
             // ── FLÖDET: rankat vägträd + sessionslistan ──────────────────────
             <div className="grid items-start gap-4 lg:grid-cols-[1.35fr_1fr]">
               <div className="min-w-0 rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
@@ -1137,87 +800,6 @@ export function JourneysOverlay({
                     </div>
                   ))}
                 </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            // ── HEATMAPEN (oförändrad mekanik, nu i full bredd) ──────────────
-            <div>
-              {backdrop.data?.ok && backdrop.data.mirrorPath ? (
-                <HeatMirror
-                  key={device}
-                  src={backdrop.data.mirrorPath}
-                  overlay={heatOverlay}
-                  maxHeight="calc(88vh - 190px)"
-                  frameW={frameW}
-                />
-              ) : (
-                <div className="relative h-[460px] overflow-hidden rounded-[10px] border border-[#f0eee9] bg-white p-[22px]">
-                  {/* siluett-fallback — utan domän finns ingen sida att spegla */}
-                  <div className="flex items-center justify-between">
-                    <div className="h-4 w-20 rounded-[5px] bg-[#eae7e2]" />
-                    <div className="flex gap-2.5">
-                      <div className="h-3 w-[52px] rounded bg-[#f0eee9]" />
-                      <div className="h-3 w-[52px] rounded bg-[#f0eee9]" />
-                      <div className="h-3 w-[66px] rounded bg-[#f0eee9]" />
-                    </div>
-                  </div>
-                  <div className="mt-11 text-center">
-                    <div className="mx-auto h-[30px] w-[58%] rounded-[7px] bg-[#eae7e2]" />
-                    <div className="mx-auto mt-3.5 h-[13px] w-[44%] rounded bg-[#f0eee9]" />
-                    <div className="mx-auto mt-2 h-[13px] w-[36%] rounded bg-[#f0eee9]" />
-                    <div className="mx-auto mt-6 h-10 w-[170px] rounded-[9px] bg-stone-200" />
-                  </div>
-                  <div className="mt-12 grid grid-cols-3 gap-3.5">
-                    <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
-                    <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
-                    <div className="h-24 rounded-[9px] bg-[#f7f6f4]" />
-                  </div>
-                  {heatOverlay}
-                </div>
-              )}
-              <div className="mt-3 flex items-center gap-4 text-[11px] text-stone-500">
-                {heatView.sampled > 0 && (
-                  <span className="text-stone-400">{fmt(heatView.sampled)} sampled clicks</span>
-                )}
-                {attentionLines.length > 0 && (
-                  <span className="text-stone-400">
-                    scroll reach from {fmt(reach.views)} page views
-                    {reach.views > reach.p25 &&
-                      ` · ${Math.min(100, Math.round(((reach.views - reach.p25) / reach.views) * 100))}% never scrolled past 25%`}
-                  </span>
-                )}
-                {showClicks && (
-                  <span className="flex items-center gap-2">
-                    low
-                    <span
-                      className="h-2 w-24 rounded-[5px]"
-                      style={{
-                        background: "linear-gradient(90deg, #b7d3f6, #2a78d6, #0d366b)",
-                      }}
-                    />
-                    high click density
-                  </span>
-                )}
-                {showRage && (
-                  <span className="flex items-center gap-1.5">
-                    <span
-                      className="h-3 w-3 rounded-full"
-                      style={{ background: "rgba(220,38,38,.92)" }}
-                    />
-                    rage clicks (n)
-                  </span>
-                )}
-                {heat.unattributed > 0 && (
-                  <span className="ml-auto">
-                    {heat.unattributed} click{heat.unattributed === 1 ? "" : "s"} without a known
-                    device layout — not drawn.
-                  </span>
-                )}
-                {backdrop.data && !backdrop.data.ok && backdrop.data.reason === "no_domain" && (
-                  <span className={heat.unattributed > 0 ? "" : "ml-auto"}>
-                    Set the site&apos;s domain in Settings to draw the map over the real page.
-                  </span>
                 )}
               </div>
             </div>

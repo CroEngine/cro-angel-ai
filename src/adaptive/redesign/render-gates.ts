@@ -147,6 +147,19 @@ export const INSERT_GAP_WARN_PX = 1200;
  *  ordningen står still (flytt över rubriklös grannsektion, breddfynd 1). */
 export const MOVE_SHIFT_MIN_PX = 40;
 
+/** En VAKUITETS-varning säger "kollen kunde inte köras", aldrig "kollen föll"
+ *  (fleet-E2E 2026-07-23: frysta kopior utan skript ger ofta inget LCP-element
+ *  och ibland inga hit-testbara CTA:er — 34 av 47 helds i 104-sajtssvepet var
+ *  ren vakuitet). Serveringsvägen (auto-generate) kräver ändå rent pass —
+ *  men DEMO-vägen (granska-site) får skilja "okontrollerbar" från "föll".
+ *  Strängkunskapen bor HÄR, bredvid varningarna själva — en källa. */
+export function isVacuityWarn(reason: string): boolean {
+  return (
+    reason.includes("the CTA gate was vacuous") ||
+    reason.includes("the LCP servability check was vacuous")
+  );
+}
+
 /** Evaluate the beauty gates over one apply's measurements. Pure. */
 export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
   const hOverflowIntroducedPx = Math.max(0, m.hOverflowAfterPx - m.hOverflowBeforePx);

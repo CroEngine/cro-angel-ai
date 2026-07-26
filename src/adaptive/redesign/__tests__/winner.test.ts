@@ -237,3 +237,50 @@ describe("promotionBlockReason — the serving→winner gate", () => {
     ).toBeNull();
   });
 });
+
+// ── Monte-Carlo trust bars (calibration, 2026-07-26) ─────────────────────────
+// The unit tests above prove the verdict LOGIC on hand-picked cases. These lock
+// the RATE the "you only pay when it's real" promise rests on, over many random
+// binomial draws from a KNOWN truth. Full calibration + power curve lives in
+// scripts/winner-calibration.ts; this is the CI regression gate for the two that
+// matter most: never declare a false winner on A/A, and DO catch a powered one.
+describe("evaluateWinnerWithGuards — Monte-Carlo trust bars", () => {
+  function mulberry(seed: number): () => number {
+    let a = seed >>> 0;
+    return () => {
+      a |= 0;
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const binom = (n: number, p: number, rnd: () => number): number => {
+    let k = 0;
+    for (let i = 0; i < n; i++) if (rnd() < p) k++;
+    return k;
+  };
+  const winnerRate = (
+    visits: number,
+    pv: number,
+    pc: number,
+    trials: number,
+  ): number => {
+    let wins = 0;
+    for (let t = 0; t < trials; t++) {
+      const r = mulberry(9001 + t * 7919 + visits);
+      const v = counts(visits, binom(visits, pv, r), binom(visits, 0.6, r), binom(visits, 0.6, r));
+      const c = counts(visits, binom(visits, pc, r), binom(visits, 0.6, r), binom(visits, 0.6, r));
+      if (evaluateWinnerWithGuards(v, c, "conversion").outcome === "recommend_winner") wins++;
+    }
+    return wins / trials;
+  };
+
+  it("A/A: false-positive winner rate stays low (never invents a win)", () => {
+    expect(winnerRate(3000, 0.05, 0.05, 300)).toBeLessThanOrEqual(0.06);
+  });
+
+  it("a powered +30% real lift is reliably caught", () => {
+    expect(winnerRate(12000, 0.065, 0.05, 200)).toBeGreaterThanOrEqual(0.9);
+  });
+});

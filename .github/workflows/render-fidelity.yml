@@ -1,0 +1,44 @@
+# Render-fidelitetstest: verifierar att de 38 render-RÄDDADE sajterna (scale-test
+# #3) faktiskt är TROGNA bilder av de riktiga sidorna — inte cookie-väggar, bot-
+# utmaningar, fel-sidor eller fel sajt. Tar skärmbilder (artefakt) + kör
+# signatur/brand-checkar. Kräver BROWSERBASE_API_KEY + BROWSERBASE_PROJECT_ID.
+
+name: Render fidelity test
+on:
+  push:
+    paths:
+      - ".github/workflows/render-fidelity.yml"
+      - "scripts/redesign/render-fidelity.ts"
+  workflow_dispatch:
+
+jobs:
+  fidelity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+      BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Render fidelity check
+        run: |
+          if [ -z "$BROWSERBASE_API_KEY" ] || [ -z "$BROWSERBASE_PROJECT_ID" ]; then
+            echo "::warning::BROWSERBASE-secrets saknas — kan ej rendera."
+          fi
+          bun run scripts/redesign/render-fidelity.ts | tee render-fidelity.out
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-fidelity
+          path: |
+            render-fidelity.out
+            render-fidelity/
+          retention-days: 14
+          if-no-files-found: warn

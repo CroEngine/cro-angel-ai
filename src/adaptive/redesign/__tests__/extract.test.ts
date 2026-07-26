@@ -234,9 +234,87 @@ describe("extractContentModel — structural + proof section typing", () => {
     expect(typeOf(t, "Side by side")).toBe("comparison");
   });
 
-  it("types a section with two or more <details> as faq", () => {
-    const t = `<section><h2>Good to know</h2><details><summary>Q1</summary>A1</details><details><summary>Q2</summary>A2</details></section>`;
-    expect(typeOf(t, "Good to know")).toBe("faq");
+  it("types <details> with QUESTION summaries as faq, but <details> feature-tabs (no '?') stay section", () => {
+    const faq = `<section><h2>Good to know</h2><details><summary>How do I start?</summary>A1</details><details><summary>Is it free?</summary>A2</details></section>`;
+    expect(typeOf(faq, "Good to know")).toBe("faq");
+    // Interactive <details> feature-tabs (monday) have no question summaries —
+    // must NOT mis-type as faq (an evidence/lift type), precision fix 2026-07-24.
+    const tabs = `<section><h2>Explore</h2><details><summary>Automations</summary>x</details><details><summary>Dashboards</summary>y</details></section>`;
+    expect(typeOf(tabs, "Explore")).toBe("section");
+  });
+
+  it("tightened testimonials heading: real phrasing types, bare 'people'/'love' substrings do not", () => {
+    // Precision fix 2026-07-24: these were mis-typed testimonials (→ wrong lift
+    // target + false [proof]) via bare substrings — the audit's actual FP headings.
+    expect(typeOf(`<section><h2>People</h2><p>Meet the team.</p></section>`, "People")).toBe("section");
+    expect(
+      typeOf(`<section><h2>The global people platform</h2><p>x</p></section>`, "The global people platform"),
+    ).toBe("section");
+    // Real testimonial headings still type.
+    expect(
+      typeOf(`<section><h2>What our customers say</h2><p>x</p></section>`, "What our customers say"),
+    ).toBe("testimonials");
+    expect(typeOf(`<section><h2>Loved by teams</h2><p>x</p></section>`, "Loved by teams")).toBe("testimonials");
+  });
+
+  it("tightened pricing heading: 'growth' no longer types as pricing, real pricing still does", () => {
+    expect(
+      typeOf(`<section><h2>Driving business growth</h2><p>x</p></section>`, "Driving business growth"),
+    ).not.toBe("pricing");
+    expect(
+      typeOf(`<section><h2>Simple, transparent pricing</h2><p>x</p></section>`, "Simple, transparent pricing"),
+    ).toBe("pricing");
+  });
+
+  it("re-widened testimonials: social-proof-framed headings type, slogans do not (LLM audit 2026-07-24)", () => {
+    // The tightening (ed0c266) over-corrected: it dropped REAL social-proof
+    // headings whose body is an image carousel no structural cue can reach. A
+    // 210-site corpus proved these four families FP-free — recover them.
+    expect(
+      typeOf(`<section><h2>Students, parents, and teachers love us</h2><p>x</p></section>`, "Students, parents, and teachers love us"),
+    ).toBe("testimonials"); // "X love us"
+    expect(
+      typeOf(`<section><h2>Why millions love HelloFresh</h2><p>x</p></section>`, "Why millions love HelloFresh"),
+    ).toBe("testimonials"); // "N/millions love|choose"
+    expect(
+      typeOf(`<section><h2>Why people choose Coursera</h2><p>x</p></section>`, "Why people choose Coursera"),
+    ).toBe("testimonials"); // "why … people choose"
+    expect(
+      typeOf(`<section><h2>See the stories of people worldwide choosing Wise</h2><p>x</p></section>`, "See the stories of people worldwide choosing Wise"),
+    ).toBe("testimonials"); // "stories of people"
+    // Guard: a "products you love" slogan is NOT testimonials (no "us"/number/"why").
+    expect(
+      typeOf(`<section><h2>The products you love are designed in Figma</h2><p>x</p></section>`, "The products you love are designed in Figma"),
+    ).not.toBe("testimonials");
+  });
+
+  it("normalizes a literal curly apostrophe so testimonial/faq headings still match (calcom bug)", () => {
+    // Source ships a literal U+2019 (not &rsquo;), which stripTags never touches —
+    // "Don’t just take our word for it" was mis-typed section. Normalize → straight.
+    expect(
+      typeOf(`<section><h2>Don’t just take our word for it</h2><p>x</p></section>`, "Don’t just take our word for it"),
+    ).toBe("testimonials");
+  });
+
+  it("structurally types a <blockquote> wall (>=4) as testimonials, but <4 stays generic", () => {
+    // Semantic-tag cue re-added (precise): a quote wall whose heading is a slogan
+    // (resend "Beyond expectations", zendesk "Built for businesses of all sizes").
+    const bq = (n: number) => Array.from({ length: n }, (_, i) => `<blockquote>Great tool ${i}</blockquote>`).join("");
+    expect(typeOf(`<section><h2>Beyond expectations</h2>${bq(4)}</section>`, "Beyond expectations")).toBe(
+      "testimonials",
+    );
+    // Threshold guard: 3 blockquotes (a pull-quote article like linear "Changelog") must NOT type.
+    expect(typeOf(`<section><h2>Changelog</h2>${bq(3)}</section>`, "Changelog")).toBe("section");
+  });
+
+  it("structurally types a >=4 star-glyph rating as testimonials (todoist)", () => {
+    expect(
+      typeOf(`<section><h2>Daily companion</h2><p>★★★★★ 337,000+ on the App Store</p></section>`, "Daily companion"),
+    ).toBe("testimonials");
+    // A single decorative star must NOT make it testimonials.
+    expect(
+      typeOf(`<section><h2>Our weekly note</h2><p>★ one small highlight this week.</p></section>`, "Our weekly note"),
+    ).not.toBe("testimonials");
   });
 
   it("types an integrations section (>=6 imgs + integration heading) as integrations", () => {
@@ -244,6 +322,36 @@ describe("extractContentModel — structural + proof section typing", () => {
     expect(
       typeOf(`<section><h2>Works with your tools</h2>${imgs}</section>`, "Works with your tools"),
     ).toBe("integrations");
+  });
+
+  // Structural typing (2026-07-24): read the section's BODY composition when the
+  // marketing-slogan heading is un-typeable. Generic headings on purpose here, so
+  // it's the STRUCTURE driving the type. Only tag-anchored, non-harmful cues —
+  // a 210-site scan showed price-count/class-token cues false-positive into
+  // EVIDENCE types (fake lift targets), so those were dropped.
+  it("does NOT structurally type EVIDENCE from loose cues (guards against fake lift targets)", () => {
+    // A stray dollar figure must NOT become pricing, and a lone 'reviews' class
+    // token must NOT become testimonials — those are lift targets, so a wrong one
+    // is worse than an honest generic section. Neutral headings so only structure
+    // could type them.
+    expect(typeOf(`<section><h2>Our journey</h2><p>We raised $5M.</p></section>`, "Our journey")).toBe(
+      "section",
+    );
+    expect(
+      typeOf(`<section><h2>The result</h2><div class="reviews-link">x</div></section>`, "The result"),
+    ).toBe("section");
+  });
+
+  it("types a body with an email signup form as cta (generic heading)", () => {
+    const t = `<section><h2>Stay in the loop</h2><form><input type="email"><button>Go</button></form></section>`;
+    expect(typeOf(t, "Stay in the loop")).toBe("cta");
+  });
+
+  it("types a >=3 sub-heading grid as features, but a single sub-heading stays section", () => {
+    const grid = `<section><h2>Everything at once</h2><div><h3>Fast</h3><h3>Secure</h3><h3>Open</h3></div></section>`;
+    expect(typeOf(grid, "Everything at once")).toBe("features");
+    const prose = `<section><h2>Our method</h2><h3>Background</h3><p>A long paragraph of prose about the method.</p></section>`;
+    expect(typeOf(prose, "Our method")).toBe("section");
   });
 
   it("promotes a generic section whose BODY carries a social-proof count to stats", () => {
@@ -331,6 +439,50 @@ describe("extractContentModel — structural + proof section typing", () => {
     const hero = extractContentModel(page).sections[0];
     expect(hero.type).toBe("hero");
     expect(hero.containsTrustSignals).toBe(true);
+  });
+
+  it("flags SECTION-heading proof without re-typing it (fleet-E2E recall gap)", () => {
+    // 10/43 "None" sites carried proof in a section HEADING the body scanner
+    // missed. The heading now FLAGS proof — but a feature headline that cites a
+    // count is not structurally a stats strip, so the TYPE stays untouched.
+    const page = `<main><h1>Ship it</h1><section><h2>Features</h2><p>fast</p></section><section><h2>Join 150,000+ businesses driving revenue</h2><p>details</p></section></main>`;
+    const s = extractContentModel(page).sections.find((x) => /150,000/.test(x.heading));
+    expect(s?.containsTrustSignals).toBe(true);
+    expect(s?.type).not.toBe("stats");
+    expect(s?.type).not.toBe("logos");
+  });
+
+  it("counts the SaaS noun 'teams' as social proof ('50,000+ teams')", () => {
+    const t = `<section><h2>Adoption</h2><p>Used across 50,000+ teams worldwide.</p></section>`;
+    expect(typeOf(t, "Adoption")).toBe("stats");
+    const m = extractContentModel(`<main><h1>x</h1>${t}</main>`);
+    expect(m.trustSignals.find((x) => x.type === "social_proof_count")?.text).toContain("teams");
+  });
+
+  it("dedups exact-duplicate section headings (responsive mobile+desktop copies)", () => {
+    // Capture faithfulness (steg 1): a responsive theme renders the same heading
+    // twice (mobile + desktop) and the visitor sees ONE. Keep the first, drop the
+    // repeat; re-index positions contiguously. (monday: 16 → real sections.)
+    const page = `<main>
+      <h1>Hero headline</h1>
+      <section><h2>Consider yourself limitless</h2><p>a</p></section>
+      <section><h2>Real distinct feature</h2><p>b</p></section>
+      <section><h2>Consider yourself limitless</h2><p>c</p></section>
+    </main>`;
+    const secs = extractContentModel(page).sections;
+    expect(secs.filter((s) => /limitless/i.test(s.heading)).length).toBe(1);
+    expect(secs.map((s) => s.position)).toEqual(secs.map((_, i) => i + 1));
+  });
+
+  it("detects a money-back guarantee as a trust signal, but not a bare 'no guarantee'", () => {
+    const withG = extractContentModel(
+      `<main><h1>Try it</h1><section><h2>Risk free</h2><p>See results in 30 days or get your money back.</p></section></main>`,
+    );
+    expect(withG.trustSignals.find((t) => t.type === "guarantee")?.text).toBeTruthy();
+    const bare = extractContentModel(
+      `<main><h1>x</h1><section><h2>Terms</h2><p>There is no guarantee that results will vary.</p></section></main>`,
+    );
+    expect(bare.trustSignals.find((t) => t.type === "guarantee")).toBeUndefined();
   });
 });
 

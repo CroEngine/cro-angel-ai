@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import type { SegmentLeaf } from "@/lib/dashboard/aggregate";
-import { findEarnedCells, findEarnedSegments, type PageSegmentLeaf } from "../earned";
+import { findEarnedCells, findEarnedCellsWithTemplates, findEarnedSegments, type PageSegmentLeaf } from "../earned";
 
 const leaf = (
   channel: string,
@@ -191,5 +191,86 @@ describe("continuation-läget (test_metric, ägarbeslut 2026-07-20)", () => {
   it("befintlig variant blockerar som vanligt även i continuation-läget", () => {
     const got = findEarnedCells(PILOT, [{ path: "/", segmentKey: "google" }], 5, "continuation");
     expect(got.map((c) => c.key)).not.toContain("google");
+  });
+});
+
+describe("findEarnedCellsWithTemplates — mall-passet (glutenforum-formen)", () => {
+  // Verkligheten som motiverade mallarna: google·mobil·SE bär 230 besök på
+  // SAJTEN men bästa enskilda sida 34 — per-sida-grinden (100, continuation)
+  // nås aldrig, medan bloggmallens sidor tillsammans bär volymen.
+  const page = (path: string, l: SegmentLeaf): PageSegmentLeaf => ({ ...l, path });
+  const GF: PageSegmentLeaf[] = [
+    // kladdkaka speglar riktiga rollupen: 29 nya + 5 återkommande = 34
+    page("/blogg/kladdkaka", leaf("google", "mobile", "SE", false, 29, 0)),
+    page("/blogg/kladdkaka", leaf("google", "mobile", "SE", true, 5, 0)),
+    page("/blogg/korskontaminering", leaf("google", "mobile", "SE", false, 27, 0)),
+    page("/blogg/brod", leaf("google", "mobile", "SE", false, 15, 0)),
+    page("/blogg/airfryer", leaf("google", "mobile", "SE", false, 30, 0)),
+    page("/blogg", leaf("google", "mobile", "SE", false, 4, 0)), // listningen — INTE artikelmallen
+    page("/restauranger/tavolo", leaf("google", "mobile", "SE", false, 11, 0)),
+    page("/", leaf("direct", "desktop", "SE", true, 9, 0)),
+  ];
+
+  it("grupperar icke-förtjänande artikelsidor till en mall-cell med exemplar", () => {
+    const got = findEarnedCellsWithTemplates(GF, [], 5, "continuation");
+    // Bloggartiklarna: 34+27+15+30 = 106 ≥ 100 → mallen förtjänar; listningen
+    // ("/blogg", null-mall) och restaurangen (ensam sida) gör det inte.
+    expect(got).toHaveLength(1);
+    const cell = got[0];
+    expect(cell.path).toBe("/blogg/*");
+    expect(cell.key).toBe("google·mobile·SE");
+    expect(cell.total.visits).toBe(106);
+    // Exemplaren: topp-3 efter besök inom segmentet — frys/verifierings-underlaget.
+    expect(cell.templatePages).toEqual([
+      { path: "/blogg/kladdkaka", visits: 34 },
+      { path: "/blogg/airfryer", visits: 30 },
+      { path: "/blogg/korskontaminering", visits: 27 },
+    ]);
+  });
+
+  it("en sida som bär sin EGEN volym får per-sida-cell — och lämnar mallen", () => {
+    const withBig = [
+      ...GF,
+      page("/blogg/succen", leaf("google", "mobile", "SE", false, 120, 0)),
+    ];
+    const got = findEarnedCellsWithTemplates(withBig, [], 5, "continuation");
+    const paths = got.map((c) => c.path);
+    // Succén förtjänar egen design; mallen byggs av de ÖVRIGA artiklarna (106).
+    expect(paths).toContain("/blogg/succen");
+    expect(paths).toContain("/blogg/*");
+    const tpl = got.find((c) => c.path === "/blogg/*")!;
+    expect(tpl.total.visits).toBe(106);
+    expect(tpl.templatePages!.map((p) => p.path)).not.toContain("/blogg/succen");
+  });
+
+  it("en servande mall-variant täcker sina konkreta sidor i per-sida-passet", () => {
+    const withBig = [
+      ...GF,
+      page("/blogg/succen", leaf("google", "mobile", "SE", false, 120, 0)),
+    ];
+    const got = findEarnedCellsWithTemplates(
+      withBig,
+      [{ path: "/blogg/*", segmentKey: "google" }],
+      5,
+      "continuation",
+    );
+    // "/blogg/*"×google täcker BÅDE mallcellen och succén — inget återförslag.
+    expect(got).toEqual([]);
+  });
+
+  it("en mall kräver ≥2 bidragande sidor — en ensam artikel är ingen mall", () => {
+    const lone = [
+      page("/forum/traden", leaf("google", "mobile", "SE", false, 150, 0)),
+      page("/blogg/kladdkaka", leaf("google", "mobile", "SE", false, 20, 0)),
+    ];
+    const got = findEarnedCellsWithTemplates(lone, [], 5, "continuation");
+    // /forum/traden bär volymen ENSAM → per-sida-cell, ingen "/forum/*"-mall.
+    expect(got.map((c) => c.path)).toEqual(["/forum/traden"]);
+    expect(got[0].templatePages).toBeUndefined();
+  });
+
+  it("conversion-läget gäller även mallar (1000/100-grinden)", () => {
+    const got = findEarnedCellsWithTemplates(GF, [], 5, "conversion");
+    expect(got).toEqual([]); // 106 besök / 0 konv — långt under 1000/100
   });
 });

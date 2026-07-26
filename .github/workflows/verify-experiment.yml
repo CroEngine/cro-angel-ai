@@ -1,0 +1,39 @@
+# Cite-and-verify experiment (typing precision, 2026-07-26). VALIDATION-ONLY:
+# runs the candidate "LLM cites its evidence, determinism checks the citation is
+# in the body" prompt over a hand-labelled fixture (clear FPs, clear positives,
+# one borderline) and prints keep/reject vs expected — so we see whether it
+# cleanly separates the SEMANTIC logos/testimonials FPs BEFORE wiring it into the
+# section-typer. Uses the repo secret ANTHROPIC_API_KEY (same as the other LLM
+# workflows). Does NOT touch production — it only reads the fixture.
+name: Verify experiment
+on:
+  push:
+    paths:
+      - ".github/workflows/verify-experiment.yml"
+      - "scripts/redesign/verify-experiment.ts"
+      - "scripts/redesign/fixtures/verify-cases.json"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Cite-and-verify — candidate prompt vs hand-labelled fixture
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY missing — cannot validate."
+          fi
+          bun run scripts/redesign/verify-experiment.ts

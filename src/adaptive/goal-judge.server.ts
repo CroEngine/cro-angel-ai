@@ -23,11 +23,12 @@ import {
   type GoalCandidate,
   type GoalKind,
 } from "./crawler-inventory";
+import { callHaikuText } from "./haiku.server";
+import { parseJsonObject } from "./redesign/llm-json";
 import type { ContentInventory } from "./types";
 
 /** Bump to re-judge everything (prompt/model change). */
 export const JUDGE_VERSION = "g2";
-const MODEL = "claude-haiku-4-5";
 const TIMEOUT_MS = 9000;
 const MAX_CTAS = 40;
 
@@ -154,87 +155,56 @@ export async function judgeSiteGoals(
   const compact = compactInventory(inventory);
   if (!key || compact.ctas.length === 0) return fallback();
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 700,
-        temperature: 0,
-        system: SYSTEM,
-        messages: [
-          {
-            role: "user",
-            content: JSON.stringify({
-              domain: siteDomain ?? "",
-              ctas: compact.ctas.map(
-                ({ _item, ...cta }) => cta, // strip the internal item ref; keep variant* hints
-              ),
-              headings: compact.headings,
-              sections: compact.sections,
-              trust: compact.trust,
-            }),
-          },
-        ],
-      }),
+  const text = await callHaikuText({
+    system: SYSTEM,
+    userContent: JSON.stringify({
+      domain: siteDomain ?? "",
+      ctas: compact.ctas.map(({ _item, ...cta }) => cta), // strip internal ref; keep variant* hints
+      headings: compact.headings,
+      sections: compact.sections,
+      trust: compact.trust,
+    }),
+    max_tokens: 700,
+    temperature: 0,
+    timeoutMs: TIMEOUT_MS,
+    tag: "goal-judge",
+  });
+  if (text === null) return fallback();
+  const parsed = parseJsonObject(text);
+  if (!parsed || typeof parsed !== "object") return fallback();
+  const p = parsed as { businessType?: unknown; goals?: unknown };
+
+  const businessType =
+    typeof p.businessType === "string" && BUSINESS_TYPES.has(p.businessType) ? p.businessType : "other";
+
+  if (!Array.isArray(p.goals)) return fallback();
+  const seen = new Set<number>();
+  const goals: GoalCandidate[] = [];
+  for (const g of p.goals) {
+    if (!g || typeof g !== "object") continue;
+    const e = g as { i?: unknown; kind?: unknown; rank?: unknown; confidence?: unknown };
+    const i = typeof e.i === "number" ? e.i : -1;
+    const src = compact.ctas[i];
+    if (!src || seen.has(i)) continue;
+    seen.add(i);
+    const kind =
+      typeof e.kind === "string" && (GOAL_KINDS as string[]).includes(e.kind)
+        ? (e.kind as GoalKind)
+        : classifyGoalKind(src.text, src.href || undefined, siteDomain);
+    const confidence =
+      typeof e.confidence === "number" ? Math.max(0, Math.min(1, e.confidence)) : 0.6;
+    goals.push({
+      selector: src._item.selector as string,
+      text: src._item.text as string,
+      ...(src.href ? { href: src.href } : {}),
+      kind,
+      rank: typeof e.rank === "number" && e.rank > 0 ? e.rank : goals.length + 1,
+      confidence,
+      source: "llm",
     });
-    if (!res.ok) {
-      console.warn(`[angel] goal-judge: API ${res.status}`);
-      return fallback();
-    }
-    const body = (await res.json()) as { content?: { type: string; text?: string }[] };
-    const text = body.content?.find((c) => c.type === "text")?.text ?? "";
-    const parsed = JSON.parse(text.replace(/^```(json)?|```$/g, "").trim()) as unknown;
-    if (!parsed || typeof parsed !== "object") return fallback();
-    const p = parsed as { businessType?: unknown; goals?: unknown };
-
-    const businessType =
-      typeof p.businessType === "string" && BUSINESS_TYPES.has(p.businessType)
-        ? p.businessType
-        : "other";
-
-    if (!Array.isArray(p.goals)) return fallback();
-    const seen = new Set<number>();
-    const goals: GoalCandidate[] = [];
-    for (const g of p.goals) {
-      if (!g || typeof g !== "object") continue;
-      const e = g as { i?: unknown; kind?: unknown; rank?: unknown; confidence?: unknown };
-      const i = typeof e.i === "number" ? e.i : -1;
-      const src = compact.ctas[i];
-      if (!src || seen.has(i)) continue;
-      seen.add(i);
-      const kind =
-        typeof e.kind === "string" && (GOAL_KINDS as string[]).includes(e.kind)
-          ? (e.kind as GoalKind)
-          : classifyGoalKind(src.text, src.href || undefined, siteDomain);
-      const confidence =
-        typeof e.confidence === "number" ? Math.max(0, Math.min(1, e.confidence)) : 0.6;
-      goals.push({
-        selector: src._item.selector as string,
-        text: src._item.text as string,
-        ...(src.href ? { href: src.href } : {}),
-        kind,
-        rank: typeof e.rank === "number" && e.rank > 0 ? e.rank : goals.length + 1,
-        confidence,
-        source: "llm",
-      });
-    }
-    if (goals.length === 0) return fallback();
-    goals.sort((a, b) => a.rank - b.rank);
-    goals.forEach((g, idx) => (g.rank = idx + 1)); // normalise to 1..N, dense
-    return { businessType, version: JUDGE_VERSION, ctaHash, goals };
-  } catch (err) {
-    console.warn(`[angel] goal-judge unavailable:`, err);
-    return fallback();
-  } finally {
-    clearTimeout(timer);
   }
+  if (goals.length === 0) return fallback();
+  goals.sort((a, b) => a.rank - b.rank);
+  goals.forEach((g, idx) => (g.rank = idx + 1)); // normalise to 1..N, dense
+  return { businessType, version: JUDGE_VERSION, ctaHash, goals };
 }

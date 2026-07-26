@@ -20,6 +20,7 @@
 
 import { fnv1a32 } from "../hash";
 import { fullSegmentKey, isSegmentPrefix, segmentDepth } from "../../lib/segment-key";
+import { templateOf } from "../../lib/page-template";
 
 import { cohortsSatisfied } from "../context";
 import type { RedesignOp } from "./generate";
@@ -111,24 +112,30 @@ export function visitorSegmentKey(seg: VisitorSegment): string {
   return fullSegmentKey(seg.channel, seg.device, seg.country, seg.isReturning);
 }
 
-/** The variant to serve a visitor, or null. Among the site+path's SERVABLE
- *  variants whose segmentKey is a prefix of the visitor's full key, the FINEST
- *  (longest prefix) wins; a coarser one borrows strength until the fine variant
- *  exists. Deterministic id tiebreak. Pure — routes nothing on its own. */
+/** The variant to serve a visitor, or null. A variant matches on its EXACT path
+ *  or — mall-nivå (2026-07-26) — on the page's template pattern ("/blogg/*" via
+ *  templateOf, the same rule the detector grouped by). Among matches whose
+ *  segmentKey is a prefix of the visitor's full key: EXACT path beats template
+ *  (the page-specific design was verified on exactly this page), then FINEST
+ *  segment prefix, then deterministic id tiebreak. Pure — routes nothing. */
 export function matchVariant(
   variants: ServableVariant[],
   visitor: { site: string; path: string; segment: VisitorSegment },
 ): ServableVariant | null {
   const key = visitorSegmentKey(visitor.segment);
+  const tpl = templateOf(visitor.path);
   const servable = variants.filter(
     (v) =>
       v.site === visitor.site &&
-      v.path === visitor.path &&
+      (v.path === visitor.path || (tpl !== null && v.path === tpl)) &&
       SERVABLE.has(v.status) &&
       isSegmentPrefix(v.segmentKey, key),
   );
   if (servable.length === 0) return null;
   servable.sort((a, b) => {
+    const exact =
+      (b.path === visitor.path ? 1 : 0) - (a.path === visitor.path ? 1 : 0);
+    if (exact !== 0) return exact;
     const depth = segmentDepth(b.segmentKey) - segmentDepth(a.segmentKey);
     return depth !== 0 ? depth : a.id.localeCompare(b.id);
   });

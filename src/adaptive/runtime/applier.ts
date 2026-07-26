@@ -144,12 +144,22 @@ export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => bo
     // en dubblettrubrik i header/footer får aldrig stjäla målet.
     function findByLocator(loc: ApplierLocator): Element | null {
       if (!loc || !loc.text) return null;
-      var needle = String(loc.text).replace(/\s+/g, " ").trim().slice(0, 24).toLowerCase();
-      if (!needle) return null;
+      var full = String(loc.text).replace(/\s+/g, " ").trim().toLowerCase();
+      if (!full) return null;
       var els = mainEl.querySelectorAll(loc.tag || "h1,h2,h3");
+      // Pass 1 — EXACT full-heading match, so the visitor's browser moves the SAME
+      // section the harness verified when two headings share the first 24 chars but
+      // differ later. MIRRORED in scripts/redesign/measure.ts findByLocator.
       for (var i = 0; i < els.length; i++) {
         var t = (els[i].textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-        if (t.indexOf(needle) >= 0) return els[i];
+        if (t === full) return els[i];
+      }
+      // Pass 2 — substring fallback (first 24 chars): drift-tolerant handle for
+      // when the live heading drifted from the frozen page that was verified.
+      var needle = full.slice(0, 24);
+      for (var j = 0; j < els.length; j++) {
+        var t2 = (els[j].textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        if (t2.indexOf(needle) >= 0) return els[j];
       }
       return null;
     }

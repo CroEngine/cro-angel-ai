@@ -25,6 +25,11 @@ jobs:
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # SPA-rendering (kapacitet steg 2): freeze-page använder Browserbase när
+      # dessa finns — en fjärr-browser som når levande sajter och kringgår
+      # bot-blocken. Saknas de faller den tillbaka på lokal Chromium. Ofarligt tomma.
+      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+      BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
 

@@ -26,6 +26,13 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
+import {
+  acquireRenderPage,
+  autoScroll,
+  dismissOverlays,
+  gotoTolerant,
+  pageLooksStyled,
+} from "./render-page";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const url = arg("url");
@@ -97,21 +104,16 @@ const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
 async function browserRenderedHtml(
   u: string,
 ): Promise<{ html: string; imgPriority: Record<string, { top: number; area: number }> }> {
-  const { chromium, errors } = await import("playwright-core");
-  const exec = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
-  const browser = await chromium.launch({ headless: true, executablePath: exec });
+  // Render-primitiverna (anslut/goto/svep/avfärda modaler/stylad-koll) delas med
+  // scale-test + render-fidelity via ./render-page — EN bevisad väg (Stagehand,
+  // engine.server.ts), inte fyra kopior. Frysningen nedan är freeze-specifik
+  // (bild-geometri + CSSOM) och stannar här.
+  const { page, cleanup } = await acquireRenderPage();
   try {
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, userAgent: UA });
-    // Tunga SPA:er fyrar ibland aldrig load (öppna connections) — samma
-    // degradera-och-fortsätt som korpus-frysaren (freeze.server.ts): fånga
-    // TIMEOUTEN och jobba vidare på det som renderats. Bara timeouten: ett
-    // hårt navigationsfel (net::ERR_...) har ingen DOM — att fortsätta där
-    // fryser Chromiums egen felsida som vore den sajten.
-    const resp = await page.goto(u, { waitUntil: "load", timeout: 45_000 }).catch((err) => {
-      if (!(err instanceof errors.TimeoutError)) throw err;
-      console.warn(`[freeze-page] load-event uteblev (${err}) — fortsätter på renderat läge`);
-      return null;
-    });
+    // Tunga SPA:er fyrar ibland aldrig load (öppna connections) — gotoTolerant
+    // fångar timeouten (även Stagehands egen felform) och jobbar vidare på det
+    // som renderats. Ett hårt navigationsfel (net::ERR_...) kastar fortfarande.
+    const resp = await gotoTolerant(page, u);
     // Samma ärlighetsgräns som statiska vägen (curl-hjälparen): ≥400 är
     // ingen sida att frysa — en WAF-utmaning eller felsida får aldrig
     // bli "den frysta kopian".
@@ -129,15 +131,17 @@ async function browserRenderedHtml(
       await page.waitForTimeout(500);
     }
     await page.waitForTimeout(1_200);
-    await page.evaluate(async () => {
-      const step = window.innerHeight;
-      for (let y = 0; y < document.body.scrollHeight; y += step) {
-        window.scrollTo(0, y);
-        await new Promise((r) => setTimeout(r, 120));
-      }
-      window.scrollTo(0, 0);
-    });
-    await page.waitForTimeout(500);
+    // Avfärda cookie-/auth-/e-post-/onboarding-modaler FÖRE frysningen så den
+    // frysta kopian (och pixelgrindarna) ser den riktiga sidan, inte en overlay
+    // (fidelitetstestet 2026-07-26: ~5 renders doldes av centrerade modaler).
+    await dismissOverlays(page);
+    await autoScroll(page);
+    // Ostylad render = trasig (sofi.com: CSS applicerades aldrig, bara nav-länkar).
+    // Frys den ALDRIG — i --render=browser fäller det körningen, i auto behålls
+    // hellre den statiska kopian (samma ärliga degradering som ett tomt skal).
+    if (!(await pageLooksStyled(page))) {
+      throw new Error("renderad sida är ostylad (CSS applicerades aldrig) — ingen trogen kopia att frysa");
+    }
     // Pinna bildgeometrin FÖRE frysningen: varje <img> stämplas med sin
     // faktiskt renderade width/height (CSS vinner alltid över attribut, så
     // stämpeln ändrar inget som redan är stylat — den pinnar bara det som
@@ -197,7 +201,7 @@ async function browserRenderedHtml(
     });
     return { html: outHtml, imgPriority: priority };
   } finally {
-    await browser.close();
+    await cleanup();
   }
 }
 
@@ -303,6 +307,20 @@ for (const tag of links) {
   }
 }
 if (css) html = html.replace(/<\/head>/i, `<style>${css}</style></head>`);
+
+// 2b) srcset/sizes bort på ALLA hämtvägar (bild-fidelitetsfynd 2026-07-23). En
+//     <img>/<source> med srcset låter browsern välja en ICKE-inlinead kandidat
+//     (absolut URL) framför den inlinade src:en — under demo-renderingens data:-
+//     grind blockeras den och bilden blir tom TROTS lyckad inlining (calendly
+//     frös 95 % vitt). Utan srcset faller browsern tillbaka på src, som bild-
+//     steget nedan inlinear. Browser-vägen strippar redan i DOM:en
+//     (browserRenderedHtml) — här är det idempotent, och på serverings-vägen
+//     (auto-generate blockerar ALLA requests) påverkas inga grindutslag.
+html = html.replace(/<(img|source)\b[^>]*>/gi, (tag) =>
+  tag
+    .replace(/\s+srcset\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s+sizes\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ""),
+);
 
 // 3) Bilder → data-URI (layout-ytan), stora/ohämtbara/utanför budget →
 //    absolut URL. Budgeten spenderas där den syns: above-fold först, sedan

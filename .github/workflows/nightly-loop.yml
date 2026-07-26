@@ -28,6 +28,14 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       NOTIFY_FROM: ${{ secrets.NOTIFY_FROM }}
+      # SPA-frysningen (glutenforum-piloten 2026-07-26): freeze-page.ts har en
+      # browser-render-FALLBACK (Stagehand, validerad 94,5 % capture + fidelity)
+      # som bara används när den statiska hämtningen ger ett tomt skal. Utan
+      # nycklarna fastnar en SPA-sajts celler för alltid i needs_freeze —
+      # mall-cellen kan aldrig få sina exemplar frysta. Kreditsnålt per
+      # konstruktion: rendern körs enbart vid fallback, aldrig för statiska sidor.
+      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+      BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
 

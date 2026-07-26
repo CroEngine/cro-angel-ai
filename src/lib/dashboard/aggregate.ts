@@ -7,7 +7,14 @@
 // dashboard.functions.ts feeds it real rows from Supabase.
 
 import { stripQueryHash } from "../../adaptive/harvest/sanitize";
-import { RETURNING_TOKEN, returningToken, segToken, segmentKeyOf } from "../segment-key";
+import {
+  RETURNING_TOKEN,
+  isDimsPrefix,
+  returningToken,
+  segToken,
+  segmentDims,
+  segmentKeyOf,
+} from "../segment-key";
 
 /** A minimal projection of an angel_events row. */
 export interface DashEvent {
@@ -231,10 +238,6 @@ export interface DashboardMetrics {
   /** Frustrationssignaler: mest rage-klickade element (ref → bursts).
    *  Diagnostik — driver aldrig en automatisk ändring. */
   rageClicks: RageSignal[];
-  /** Klick-heatmapen (Journeys & signals): täthet + rage-punkter per position,
-   *  en post per sida rankad efter klickvolym (sidväljaren). Diagnostik,
-   *  aldrig behandling. */
-  heatPages: ClickHeat[];
   /** Sajtsökningar per term (ägarbeslut 2026-07-19) — vad besökarna letar
    *  efter men kanske inte hittar. Tom lista tills sajten har sökningar. */
   searches: SearchTerm[];
@@ -250,58 +253,6 @@ export interface SearchTerm {
   term: string;
   count: number;
   lastSeen: string;
-}
-
-/** En klick-täthetspunkt för heatmapen: sid-relativ position (heltals-%,
- *  x av viewportbredd, y av dokumenthöjd) → antal klick i 5 %-rutan. */
-export interface HeatSpot {
-  x: number;
-  y: number;
-  n: number;
-}
-
-/** En rage-punkt för heatmapen: elementets ref + medelposition + bursts. */
-export interface RageSpot {
-  ref: string;
-  x: number;
-  y: number;
-  n: number;
-}
-
-/** Ena layoutvyn av heatmapen: punkter + rage för EN enhetsklass. `sampled` =
- *  antal positionsbärande klick i vyn — 0 ger ett ärligt "samlar in"-läge. */
-/** Scrolldjups-räckvidd för en sida+layoutklass (attention map-underlaget):
- *  hur många besök som nådde 25/50/75/100 % av sidans scroll. `views` är
- *  nämnaren — pageviews attribuerade till sidan+enheten. Bygger på
- *  scroll_depth-events MED path (äldre snippets skickade utan — de kan inte
- *  placeras per sida och räknas ärligt inte). */
-export interface ScrollReach {
-  views: number;
-  p25: number;
-  p50: number;
-  p75: number;
-  p100: number;
-}
-
-export interface ClickHeatView {
-  clicks: HeatSpot[];
-  rage: RageSpot[];
-  sampled: number;
-  reach: ScrollReach;
-}
-
-/** Klick-heatmapens underlag för sajtens mest klickade sida, delat per
- *  layoutklass. x är % av BESÖKARENS viewportbredd och y % av DERAS dokument-
- *  höjd — punkterna är bara meningsfulla mot en spegel i samma layoutbredd,
- *  därför attribueras varje klick till mobil/desktop via besökarens pageview-
- *  enhet (tablet ⇒ desktop, närmast den layoutbredden). Klick vars besökare
- *  saknar pageview i fönstret kan inte placeras ärligt — de räknas i
- *  `unattributed` och ritas inte. */
-export interface ClickHeat {
-  path: string;
-  mobile: ClickHeatView;
-  desktop: ClickHeatView;
-  unattributed: number;
 }
 
 /** Ett rage-klickat element, upprullat över alla besökare. */
@@ -873,6 +824,12 @@ export interface SegmentSummary {
    *  ägaren ser om gruppen ändras över tid. null när den nyliga hinken saknas
    *  eller är under display-tröskeln (ärligt: ingen trend på tunn data). */
   recent: SegmentWindow | null;
+  /** Ärlig per-SIDA-progress mot genererings-grinden (glutenforum-fyndet
+   *  2026-07-26): designer byggs per sida (findEarnedCells), så sajtnivå-
+   *  volymen ovan kan se "klar" ut medan ingen enskild sida bär den. Sidan
+   *  med flest besök i gruppen + grinden den mäts mot. Frånvarande när
+   *  per-sida-rollupen inte lästs (fallback-vägen). */
+  bestPage?: { path: string; visits: number; gate: number } | null;
 }
 
 /** En segmentmätning över ett tidsfönster (t.ex. senaste 30 dgr). */
@@ -918,6 +875,47 @@ export interface SegmentLeaf {
   conversions: number;
   formStarts: number;
   formAbandons: number;
+}
+
+/** En per-sida-lövnod ur `angel_page_segment_rollup` — bara det bästa-sida-
+ *  progressen behöver. */
+export interface PageSegmentVisits {
+  path: string;
+  channel: string;
+  device: string;
+  country: string;
+  returning: boolean;
+  visits: number;
+}
+
+/** Sidan med flest besök inom ett segment-prefix — dashboardens ärliga
+ *  "closest page N/gate"-rad. Samma prefixmatchning som detektorn
+ *  (findEarnedCells), så progressen mäter exakt grinden som styr generering.
+ *  Ren; null när ingen sida matchar nyckeln. */
+export function bestPageForSegment(
+  pages: PageSegmentVisits[],
+  key: string,
+): { path: string; visits: number } | null {
+  const dims = segmentDims(key);
+  const byPath = new Map<string, number>();
+  for (const p of pages) {
+    const pageDims = [
+      segToken(p.channel),
+      segToken(p.device),
+      segToken(p.country),
+      returningToken(p.returning),
+    ];
+    if (!isDimsPrefix(dims, pageDims)) continue;
+    const path = p.path || "/";
+    byPath.set(path, (byPath.get(path) ?? 0) + p.visits);
+  }
+  let best: { path: string; visits: number } | null = null;
+  for (const [path, visits] of byPath) {
+    if (!best || visits > best.visits || (visits === best.visits && path < best.path)) {
+      best = { path, visits };
+    }
+  }
+  return best;
 }
 
 /** Expandera finaste-grain-löv till grov→fin-prefix. Varje löv bidrar till ALLA
@@ -1500,132 +1498,6 @@ export function rageSignals(events: DashEvent[], limit = MAX_RAGE_SIGNALS): Rage
     .slice(0, limit);
 }
 
-/** Klick-heatmapens rollup. Positionsbärande klick (x/y-heltals-% ur snippeten)
- *  på sajtens mest klickade sida bucketas i 5 %-rutor per layoutklass (mobil/
- *  desktop via besökarens pageview-enhet); rage-punkter grupperas per element
- *  med medelposition. Sidvägen query-strippas — klick-events lagrade före
- *  sidvägs-normaliseringen (#126) bär ?fbclid och skulle annars fragmentera
- *  sidräkningen. Gamla events utan koordinater ignoreras — `sampled` säger
- *  ärligt hur mycket underlag varje vy har. Ren; aldrig throw. */
-/** Hur många sidor heatmapen erbjuder i sidväljaren (mest klickade först).
- *  Ägarfynd 2026-07-19: en enda sajtvid toppsida "drog mot restauranger" —
- *  kartan behöver kunna visas per sida. */
-export const MAX_HEAT_PAGES = 8;
-
-/** Klick-heatmap för de mest positions-klickade sidorna (upp till maxPages),
- *  rankade efter klickvolym. Alltid minst en post (tom "/" utan underlag) så
- *  konsumenterna slipper null-vägar. */
-export function clickHeatPages(
-  events: DashEvent[],
-  maxPages = MAX_HEAT_PAGES,
-  maxSpots = 60,
-  maxRage = 8,
-): ClickHeat[] {
-  const num = (v: unknown): number | null =>
-    typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 100 ? v : null;
-  // Besökare → layoutklass, ur pageview-events (klick-events bär ingen enhet).
-  const deviceOf = new Map<string, "mobile" | "desktop">();
-  for (const e of events) {
-    if (e.type !== "pageview" || !e.visitorHash) continue;
-    const d = str(e.payload.device);
-    if (!d) continue;
-    deviceOf.set(e.visitorHash, d === "mobile" ? "mobile" : "desktop");
-  }
-  type Pos = { x: number; y: number; path: string; dev: "mobile" | "desktop" | null };
-  const clicks: Pos[] = [];
-  const rageRaw: (Pos & { ref: string })[] = [];
-  // Attention map-underlaget: sidvisningar (nämnaren) + scrolldjups-buckets
-  // per sida+enhet. Samma enhetsattribution som klicken (besökarens pageview).
-  const views = new Map<string, number>();
-  const depths = new Map<string, { p25: number; p50: number; p75: number; p100: number }>();
-  const key = (path: string, dev: "mobile" | "desktop") => `${dev}|${path}`;
-  for (const e of events) {
-    if (e.type === "pageview" || e.type === "scroll_depth") {
-      const path = stripQueryHash(str(e.payload.path)) || (e.type === "pageview" ? "/" : "");
-      const dev = (e.visitorHash && deviceOf.get(e.visitorHash)) || null;
-      if (!path || !dev) continue;
-      if (e.type === "pageview") {
-        views.set(key(path, dev), (views.get(key(path, dev)) ?? 0) + 1);
-      } else {
-        const depth = e.payload.depth;
-        if (depth === 25 || depth === 50 || depth === 75 || depth === 100) {
-          const cur = depths.get(key(path, dev)) ?? { p25: 0, p50: 0, p75: 0, p100: 0 };
-          cur[`p${depth}`]++;
-          depths.set(key(path, dev), cur);
-        }
-      }
-      continue;
-    }
-    if (e.type !== "element_click" && e.type !== "rage_click") continue;
-    const x = num(e.payload.x);
-    const y = num(e.payload.y);
-    if (x === null || y === null) continue;
-    // Samtyckes-klick ritas aldrig: bannern är fast-positionerad så punkten
-    // kan inte mappas mot dokumentet — och det är bannerns UX, inte sidans.
-    if (isConsentRef(str(e.payload.ref) ?? "")) continue;
-    const path = stripQueryHash(str(e.payload.path)) || "/";
-    const dev = (e.visitorHash && deviceOf.get(e.visitorHash)) || null;
-    if (e.type === "element_click") clicks.push({ x, y, path, dev });
-    else rageRaw.push({ x, y, path, dev, ref: str(e.payload.ref) || "?" });
-  }
-  // Sidorna rankas efter klickvolym — heatmapen visar EN sida i taget,
-  // ärligt namngiven, och sidväljaren erbjuder toppen.
-  const byPath = new Map<string, number>();
-  for (const c of clicks) byPath.set(c.path, (byPath.get(c.path) ?? 0) + 1);
-  const rankedPaths = [...byPath.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, maxPages)
-    .map(([p]) => p);
-  if (rankedPaths.length === 0) rankedPaths.push("/");
-
-  const view = (path: string, dev: "mobile" | "desktop"): ClickHeatView => {
-    const grid = new Map<string, { x: number; y: number; n: number }>();
-    let sampled = 0;
-    for (const c of clicks) {
-      if (c.path !== path || c.dev !== dev) continue;
-      sampled++;
-      const bx = Math.min(19, Math.floor(c.x / 5));
-      const by = Math.min(19, Math.floor(c.y / 5));
-      const k = `${bx}:${by}`;
-      const cur = grid.get(k) ?? { x: bx * 5 + 2, y: by * 5 + 2, n: 0 };
-      cur.n++;
-      grid.set(k, cur);
-    }
-    const byRef = new Map<string, { sx: number; sy: number; n: number }>();
-    for (const r of rageRaw) {
-      if (r.path !== path || r.dev !== dev) continue;
-      const cur = byRef.get(r.ref) ?? { sx: 0, sy: 0, n: 0 };
-      cur.sx += r.x;
-      cur.sy += r.y;
-      cur.n++;
-      byRef.set(r.ref, cur);
-    }
-    const d = depths.get(key(path, dev)) ?? { p25: 0, p50: 0, p75: 0, p100: 0 };
-    return {
-      clicks: [...grid.values()].sort((a, b) => b.n - a.n).slice(0, maxSpots),
-      rage: [...byRef.entries()]
-        .map(([ref, v]) => ({ ref, x: Math.round(v.sx / v.n), y: Math.round(v.sy / v.n), n: v.n }))
-        .sort((a, b) => b.n - a.n || a.ref.localeCompare(b.ref))
-        .slice(0, maxRage),
-      sampled,
-      reach: { views: views.get(key(path, dev)) ?? 0, ...d },
-    };
-  };
-  return rankedPaths.map((path) => ({
-    path,
-    mobile: view(path, "mobile"),
-    desktop: view(path, "desktop"),
-    unattributed:
-      clicks.filter((c) => c.path === path && c.dev === null).length +
-      rageRaw.filter((r) => r.path === path && r.dev === null).length,
-  }));
-}
-
-/** Bakåtkompatibel yta: sajtens mest klickade sida (sidväljarens default). */
-export function clickHeat(events: DashEvent[], maxSpots = 60, maxRage = 8): ClickHeat {
-  return clickHeatPages(events, 1, maxSpots, maxRage)[0];
-}
-
 export function aggregate(
   events: DashEvent[],
   inventory: InventoryEntry[],
@@ -1718,7 +1590,6 @@ export function aggregate(
     // rollupen använder alla (annars vore grupperna trunkerade till 40 besök).
     sessions: allSessions.slice(0, MAX_SESSION_SUMMARIES),
     rageClicks: rageSignals(events),
-    heatPages: clickHeatPages(events),
     searches: siteSearches(events),
     segmentGroups: segmentSummaries(allSessions),
   };

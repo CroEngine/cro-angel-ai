@@ -1,0 +1,60 @@
+# Sektionstypnings-TAKET — rök-test (LLM-revision 2026-07-24, ägaren: "kan vi
+# testa och se att det funkar?"). Kör GOLVET + det RIKTIGA Haiku-TAKET på några
+# levande sidor och skriver FÖRE→EFTER i loggen: vilka generiska sektioner LLM:en
+# befordrade och till vad. Använder repo-secreten ANTHROPIC_API_KEY (samma som
+# nightly-loop) — ägaren behöver INTE lägga nyckeln någon ny plats.
+#
+# Triggar på push av själva testfilerna (så den kör direkt när den läggs till)
+# och manuellt. Saknas nyckeln säger skriptet det rakt ut (taket = no-op).
+
+name: Section-typer smoke
+on:
+  push:
+    paths:
+      - ".github/workflows/section-typer-smoke.yml"
+      - "scripts/redesign/section-typer-smoke.ts"
+      - "src/adaptive/redesign/section-llm.server.ts"
+      - "src/adaptive/redesign/extract.ts"
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Sida att testa (annars körs en standardlista)"
+        required: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Smoke — golv→tak på riktiga sidor
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY saknas som repo-secret — taket blir en no-op."
+          fi
+          URL="${{ github.event.inputs.url }}"
+          if [ -n "$URL" ]; then
+            bun run scripts/redesign/section-typer-smoke.ts --url="$URL"
+          else
+            for u in \
+              https://whoop.com \
+              https://www.hellofresh.com \
+              https://gumroad.com \
+              https://www.coursera.org \
+              https://brilliant.org ; do
+              echo ""
+              echo "════════════════════════════════════════════════════════"
+              bun run scripts/redesign/section-typer-smoke.ts --url="$u" || echo "($u — hämtning misslyckades, fortsätter)"
+            done
+          fi

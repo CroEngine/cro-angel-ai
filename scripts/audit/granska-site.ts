@@ -20,13 +20,15 @@
 // språk), ingen pilot-pitch/pris, ingen kontaktuppmaning. Default är
 // outreach-läget (svensk säljartefakt) — det befintliga flödet rörs inte.
 
-import { chromium } from "playwright-core";
+import { chromium, type Page } from "playwright-core";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
+import { isVacuityWarn } from "../../src/adaptive/redesign/render-gates";
 import { EVIDENCE_SECTION_TYPES } from "../../src/adaptive/redesign/vocab";
 import { measurePlan, runGatedAttempts, type MeasureOp } from "../redesign/measure";
+import { serializeVisibleHtml } from "../redesign/visible-dom";
 
 // Env-var eller undefined — playwright-core hittar sin egen installation
 // (bunx playwright install) på Actions-runnern; den hårdkodade dev-sökvägen
@@ -52,6 +54,58 @@ if (!url || !outDir) {
   process.exit(1);
 }
 mkdirSync(outDir, { recursive: true });
+
+// Ett giltigt före/efter måste FAKTISKT se olika ut. Under denna andel ändrade
+// rader utelämnas bildparet (flytten behålls, men vi visar aldrig två identiska
+// bilder under en påstådd omflyttning) — fleet-E2E 2026-07-23.
+const VISUAL_MIN_PCT = 2;
+
+/** Radnivå-pixelskillnad mellan två skärmdumpar: andelen rader (%) där fler än
+ *  2 % av pixlarna skiljer sig i RGB. Fångar två fall där en GILTIG flytt ändå
+ *  blir ett osynligt före/efter: en bildlös frysning (fjärrbilder blockerade →
+ *  nästan vit sida, t.ex. calendly) och en inner-scroll-layout där fullPage
+ *  bara fångar första skärmen medan flytten sker under den (posthog). Räknas i
+ *  webbläsaren (canvas) så inga bilddekoder-beroenden behövs. */
+async function visualDeltaPct(page: Page, aPath: string, bPath: string): Promise<number> {
+  const toDataUri = (p: string) => `data:image/jpeg;base64,${readFileSync(p).toString("base64")}`;
+  return page.evaluate(
+    async ([a, b]) => {
+      const load = (src: string) =>
+        new Promise<HTMLImageElement>((res) => {
+          const im = new Image();
+          im.onload = () => res(im);
+          im.src = src;
+        });
+      const [ai, bi] = await Promise.all([load(a), load(b)]);
+      const w = Math.min(ai.width, bi.width);
+      const h = Math.min(ai.height, bi.height);
+      if (w === 0 || h === 0) return 0;
+      const pixels = (img: HTMLImageElement) => {
+        const c = new OffscreenCanvas(w, h);
+        const cx = c.getContext("2d")!;
+        cx.drawImage(img, 0, 0);
+        return cx.getImageData(0, 0, w, h).data;
+      };
+      const A = pixels(ai);
+      const B = pixels(bi);
+      let changedRows = 0;
+      for (let y = 0; y < h; y++) {
+        let diff = 0;
+        for (let x = 0; x < w; x += 2) {
+          const i = (y * w + x) * 4;
+          if (
+            Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]) >
+            40
+          )
+            diff++;
+        }
+        if (diff > (w / 2) * 0.02) changedRows++;
+      }
+      return Math.round((100 * changedRows) / h);
+    },
+    [toDataUri(aPath), toDataUri(bPath)],
+  );
+}
 
 // ── 1. frys (cachad — omkörningar rör inte nätet) ────────────────────────────
 const frozenPath = join(outDir, "frozen.html");
@@ -80,17 +134,53 @@ const page = await context.newPage();
 await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 30_000 });
 await page.waitForTimeout(600);
 
-// Extraktion mot RENDERAD DOM (samma som breadth-testet).
-const rendered = await page.evaluate(() => document.documentElement.outerHTML);
+// Extraktion mot SYNLIG renderad DOM (kapacitet steg 1): serialiseringen tar
+// bort display:none/visibility:hidden-delträd så modellen speglar vad besökaren
+// faktiskt ser — inga responsiva fantom-sektioner. Den levande sidan (som
+// lyft-testet mäter på) lämnas orörd.
+const rendered = await serializeVisibleHtml(page);
 const content = extractContentModel(rendered);
 const convCtas = content.ctas.filter((c) => c.intent === "conversion");
-const goalGuess = ownerGoal ?? convCtas.find((c) => c.aboveFold)?.text ?? convCtas[0]?.text ?? null;
 // Extraherade konverterings-CTA:er ∪ ägarens måltext — samma union som
 // auto-generate, så mätningarna alltid vaktar målets element.
 const ctaTexts = [...new Set([...convCtas.map((c) => c.text), ...(ownerGoal ? [ownerGoal] : [])])];
 
-// Basmätning (inga ops): overflow + CTA-klickbarhet i mobilviewport.
+// Basmätning (inga ops): overflow + CTA-klickbarhet i mobilviewport. Strippar
+// även CMP-overlays i sidkopian, så fold-mätningen nedan ser sidans egen layout.
 const base = await measurePlan(page, [], ctaTexts);
+
+// Uppmätt fold-position (ärlighetsfynd 2026-07-23): cta.aboveFold i extract.ts
+// är en DOKUMENTORDNINGS-approximation (order < 12) — en stor header-nav slår ut
+// den: en hjälte-CTA knuffas under gränsen fast den syns, och en tidig nav-
+// drawer-dubblett räknas som synlig fast den ligger under folden. Vi renderar i
+// en riktig 390×844-viewport, så vi MÄTER vilka konverterings-CTA:er som faktiskt
+// börjar inom första skärmen (absolut topp; samma text-/aria-matchning som
+// measure.ctaClickable).
+const measuredAboveFold = new Set<string>(
+  await page.evaluate(
+    (texts: string[]) => {
+      const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+      const vh = window.innerHeight;
+      return texts.filter((text) =>
+        Array.from(document.querySelectorAll("a,button")).some((n) => {
+          if (!norm(`${n.textContent || ""} ${n.getAttribute("aria-label") || ""}`).includes(text))
+            return false;
+          const r = n.getBoundingClientRect();
+          return r.width > 0 && r.height > 0 && r.top + window.scrollY < vh;
+        }),
+      );
+    },
+    convCtas.map((c) => c.text),
+  ),
+);
+// Målgissning: ägarens konfigurerade mål vinner; annars en UPPMÄTT ovanför-
+// folden-CTA (så en tidig nav-drawer-dubblett aldrig namnges som målet); annars
+// den första extraherade. Hedgas alltid i rapporten.
+const goalGuess =
+  ownerGoal ??
+  convCtas.find((c) => measuredAboveFold.has(c.text))?.text ??
+  convCtas[0]?.text ??
+  null;
 
 // ── 3. fynden — mätningar, aldrig tyckande ───────────────────────────────────
 interface Fynd {
@@ -100,7 +190,7 @@ interface Fynd {
 }
 const fynd: Fynd[] = [];
 
-const aboveFoldConv = convCtas.filter((c) => c.aboveFold);
+const aboveFoldConv = convCtas.filter((c) => measuredAboveFold.has(c.text));
 if (convCtas.length === 0) {
   fynd.push({
     vikt: 1,
@@ -120,7 +210,13 @@ if (convCtas.length === 0) {
       : `Vi hittade ${convCtas.length} konverterings-handling(ar) — t.ex. “${convCtas[0].text}” — men ingen av dem ligger i det besökaren ser först på en mobil. Mobilbesökaren måste scrolla innan sidan ber om något.`,
   });
 }
-if (base.hOverflowBeforePx > 8) {
+// Tröskel 8 → 24 (ärlighetsfynd 2026-07-23): frysningen inlinear CSS men INTE
+// webbfonter, och granskas render blockerar icke-data:-requests — texten mäts i
+// systemets fallback-typsnitt, vars glyf-metrik skiljer sig från sidans riktiga
+// font. En nowrap-rad i fallback-font kan skjuta ut några få–~20 px som skarpa
+// sidan aldrig har. Äkta brott (bild/tabell/fast bredd) ligger ~40 px+; 24 px
+// (~6 % av 390 px-viewporten) släpper igenom det verkliga och tystar artefakten.
+if (base.hOverflowBeforePx > 24) {
   fynd.push({
     vikt: 2,
     rubrik: EN
@@ -157,9 +253,13 @@ if (content.trustSignals.length === 0) {
   fynd.push({
     vikt: 5,
     rubrik: EN ? "No trust signals in the page copy" : "Inga förtroendesignaler i sidans text",
+    // Samma JS-render-förbehåll som konverterings-fyndet (fleet-E2E 2026-07-23):
+    // en tunn SPA-skal-frysning har inget innehåll att läsa — då är "inga
+    // förtroendesignaler" hur en första rendering ser ut för oss, inte en dom
+    // över sidan. Utan förbehållet blir fyndet osant för JS-byggda sidor.
     text: EN
-      ? `We found no customer counts, reviews or certifications in the copy itself. If you have them (reviews, customer numbers, certificates) they deserve a spot — Angel only surfaces what already exists.`
-      : `Vi hittade inga kundantal, omdömen eller certifieringar i själva kopian. Om ni har dem (recensioner, antal kunder, certifikat) förtjänar de plats — vi flyttar bara fram sådant som redan finns.`,
+      ? `We found no customer counts, reviews or certifications in the copy itself. If you have them (reviews, customer numbers, certificates) they deserve a spot — Angel only surfaces what already exists. (If your page builds its content with JavaScript after load, this may simply be what a first paint looks like to us — tell us and we'll re-check.)`
+      : `Vi hittade inga kundantal, omdömen eller certifieringar i själva kopian. Om ni har dem (recensioner, antal kunder, certifikat) förtjänar de plats — vi flyttar bara fram sådant som redan finns. (Bygger er sida sitt innehåll med JavaScript efter laddning kan detta helt enkelt vara hur en första rendering ser ut för oss — säg till så kollar vi igen.)`,
   });
 }
 
@@ -168,7 +268,14 @@ if (content.trustSignals.length === 0) {
 // — den lokala svenska fallback-regexen behövs inte längre: classify()
 // förstår svenska rubriker direkt.
 const sections = content.sections;
-const targetIdx = sections.findIndex((s, i) => i >= 2 && EVIDENCE_SECTION_TYPES.includes(s.type));
+// Fleet-E2E 2026-07-23: en sektion räknas som lyft-värd om dess TYP är bevis
+// (social proof/jämförelse/priser/FAQ) ELLER om classify() flaggat att dess
+// text bär förtroendesignaler (kundantal/omdömen/certifikat) även om typen
+// blev något annat. 44 av 104 sajter fick "None" i baslinjen — flera bar
+// proof i en sektion vars typ inte råkade ligga i EVIDENCE_SECTION_TYPES.
+const targetIdx = sections.findIndex(
+  (s, i) => i >= 2 && (EVIDENCE_SECTION_TYPES.includes(s.type) || s.containsTrustSignals),
+);
 let beforeShot: string | null = null;
 let afterShot: string | null = null;
 let flyttStatus: "pass" | "refused" | "held" | null = null;
@@ -176,57 +283,154 @@ let flyttText = "";
 
 if (targetIdx >= 2) {
   const target = sections[targetIdx];
+  // Utan <main> faller extract.ts:s region tillbaka till HELA dokumentet, så
+  // nav/sidfot-rubriker blåser upp räkningen (ärlighetsfynd 2026-07-23) — då är
+  // ordinalen "sektion X av Y" inte att lita på. measure-censusen (h2 i main/body,
+  // exkl. header/nav/footer/aside) driver flytten korrekt ändå; bara den VISADE
+  // räkningen mjukas upp. Med <main> står ordinalen kvar.
+  const hasMain = /<main\b[^>]*>[\s\S]*?<\/main>/i.test(rendered);
+  // "Långt ner" bara när det ÄR långt ner OCH räkningen går att lita på (Fix B kan
+  // välja en förtroende-sektion redan vid index 2 nära folden — då vore "far down"
+  // en överdrift).
+  const deepInPage = hasMain && targetIdx > sections.length / 2;
   fynd.push({
     vikt: 3,
-    rubrik: EN
-      ? `Your strongest content sits as section ${targetIdx + 1} of ${sections.length}`
-      : `Ert starkaste innehåll ligger som sektion ${targetIdx + 1} av ${sections.length}`,
+    rubrik: hasMain
+      ? EN
+        ? `Your strongest content sits as section ${targetIdx + 1} of ${sections.length}`
+        : `Ert starkaste innehåll ligger som sektion ${targetIdx + 1} av ${sections.length}`
+      : EN
+        ? `Your strongest content sits below the fold`
+        : `Ert starkaste innehåll ligger under folden`,
     text: EN
-      ? `“${target.heading.slice(0, 60)}” is the kind of content (${target.type}) that usually decides the visit — and it sits far down. Below we test-lifted it, on a frozen copy of your page, through our checks.`
-      : `“${target.heading.slice(0, 60)}” är den typ av innehåll (${target.type}) som brukar avgöra beslutet — och det ligger långt ner. Nedan har vi testat att lyfta det, i en fryst kopia av er sida, genom våra kontroller.`,
+      ? `“${target.heading.slice(0, 60)}” is the kind of content (${target.type}) that usually decides the visit${deepInPage ? " — and it sits far down" : ", sitting below the fold"}. Below we test-lifted it, on a frozen copy of your page, through our checks.`
+      : `“${target.heading.slice(0, 60)}” är den typ av innehåll (${target.type}) som brukar avgöra beslutet${deepInPage ? " — och det ligger långt ner" : ", och ligger under folden"}. Nedan har vi testat att lyfta det, i en fryst kopia av er sida, genom våra kontroller.`,
   });
-  // Skärmdump FÖRE (orörd), sedan grindat lyft, sedan EFTER med samma
-  // applicering som grindades (keepApplied) — aldrig en egen algoritm.
-  await page.screenshot({
-    path: join(outDir, "before.jpg"),
-    type: "jpeg",
-    quality: 45,
-    fullPage: true,
-  });
-  const lifts = Math.min(Math.max(targetIdx - 1, 1), 4);
-  const ops: MeasureOp[] = Array.from({ length: lifts }, () => ({
-    op: "move_up",
-    find: target.heading,
-  }));
-  const gated = await runGatedAttempts(page, ops, ctaTexts);
-  if (gated.unresolvable) {
+  // Fail-closed mot tvetydig flytt (fleet-E2E 2026-07-23): move-op:en hittar sin
+  // sektion via de FÖRSTA 24 tecknen av rubriken (measure.findByLocator: substräng,
+  // första DOM-träffen). Delar två sektioner de 24 tecknen men har OLIKA fulltext
+  // kan grinden lyfta FEL sektion medan rapporten beskriver en annan — ett
+  // vilseledande före/efter, den värsta klassen mot ärlighetskontraktet. Hellre
+  // vägra än gissa. (Identiska dubblettrubriker är ofarliga: vilken som helst
+  // lyfter samma innehåll — därför räknas DISTINKTA fulltexter, inte träffar.)
+  const needle = target.heading.replace(/\s+/g, " ").trim().slice(0, 24).toLowerCase();
+  const distinctNeedleMatches = await page.evaluate((n: string) => {
+    const norm = (s: string | null) => (s || "").replace(/\s+/g, " ").trim();
+    const main = document.querySelector("main") || document.body;
+    const texts = Array.from(main.querySelectorAll("h1,h2,h3"))
+      .map((el) => norm(el.textContent))
+      .filter((t) => t.toLowerCase().includes(n));
+    return new Set(texts).size;
+  }, needle);
+  if (distinctNeedleMatches > 1) {
     flyttStatus = "refused";
     flyttText = EN
-      ? "Your section structure is built in a way where our engine REFUSES to move things rather than guess (that is a safety feature, not an error). A move here would be done manually, together with you."
-      : "Er sektionsstruktur är byggd på ett sätt där vår motor VÄGRAR flytta i stället för att gissa (det är en säkerhetsfunktion, inte ett fel). En flytt här görs manuellt tillsammans med er.";
+      ? "Two or more of your sections open with the same heading, so our engine can't be certain which one a lift would move — and it refuses to guess rather than risk rearranging the wrong section. We'd do this one together with you."
+      : "Två eller fler av era sektioner inleder med samma rubrik, så vår motor kan inte vara säker på vilken en flytt skulle röra — och den vägrar gissa hellre än att riskera fel sektion. Den här gör vi tillsammans med er.";
   } else {
-    const last = gated.attempts[gated.attempts.length - 1];
-    if (last.gate.verdict === "pass") {
-      flyttStatus = "pass";
-      await measurePlan(page, gated.attemptOps, [], true);
-      await page.screenshot({
-        path: join(outDir, "after.jpg"),
-        type: "jpeg",
-        quality: 45,
-        fullPage: true,
-      });
-      beforeShot = join(outDir, "before.jpg");
-      afterShot = join(outDir, "after.jpg");
-      flyttText = EN
-        ? `The lift passed every check: no horizontal scroll introduced, nothing lands above your main headline, ${last.measurements.ctaChecked} conversion element(s) still clickable, and the change reverses exactly.`
-        : `Flytten klarade alla kontroller: ingen horisontell scroll introducerad, inget hamnar ovanför er huvudrubrik, ${last.measurements.ctaChecked} konverterings-element fortfarande klickbara, och ändringen är exakt återställbar.`;
-    } else {
-      flyttStatus = "held";
-      flyttText = EN
-        ? `We tried the lift but held it back: ${last.gate.reasons[0] ?? "the checks did not give a clean pass"}. That is how it should work — nothing is shown that does not pass the checks.`
-        : `Vi provade lyftet men höll tillbaka det: ${last.gate.reasons[0] ?? "kontrollerna gav inte rent godkänt"}. Så ska det fungera — inget visas som inte klarar kontrollerna.`;
+    // Skärmdump FÖRE (orörd), sedan grindat lyft, sedan EFTER med samma
+    // applicering som grindades (keepApplied) — aldrig en egen algoritm.
+    await page.screenshot({
+      path: join(outDir, "before.jpg"),
+      type: "jpeg",
+      quality: 45,
+      fullPage: true,
+    });
+    const lifts = Math.min(Math.max(targetIdx - 1, 1), 4);
+    const ops: MeasureOp[] = Array.from({ length: lifts }, () => ({
+      op: "move_up",
+      find: target.heading,
+    }));
+    // DEMO-vägens godkänt (fleet-E2E 2026-07-23): serveringsvägen (auto-generate)
+    // kräver ett RENT pass, men på en fryst kopia utan sidans skript saknas ofta
+    // LCP-elementet och ibland hit-testbara CTA:er — då blir grindutslaget "warn"
+    // av ren VAKUITET, inte för att lyftet skadade något. De hårda skade-grindarna
+    // (overflow, ovanför-hjälten, klickbarhet, återställbarhet) fäller alltid som
+    // "fail". Ett "warn" vars ENDA orsaker är vakuitet = layouten är bevisat säker,
+    // bara oåtkomlig att fullständigt verifiera på en kopia → demo-värdigt. All
+    // annan warn/fail hålls tillbaka precis som förr. (isVacuityWarn bor i
+    // render-gates, bredvid varningssträngarna — en källa.)
+    const demoPass = (g: typeof gated): boolean => {
+      const last = g.attempts[g.attempts.length - 1];
+      return (
+        !!last &&
+        (last.gate.verdict === "pass" ||
+          (last.gate.verdict === "warn" && last.gate.reasons.every(isVacuityWarn)))
+      );
+    };
+    let gated = await runGatedAttempts(page, ops, ctaTexts);
+    // Sikta högt men LANDA ärligt — faller grindarna med N lyft provas färre, ned
+    // till 1. Plausible-fallet: 2 lyft sänker sektionen (DOM-ordning ≠ visuell
+    // ordning runt hjälten ⇒ no-rise-grinden fäller, korrekt) men 1 lyft passerar
+    // rent med stor visuell vinst. Prospektet ska se vinsten som FINNS, inte ett
+    // "held" för att vi siktade för högt. measurePlan återställer sidan mellan
+    // försöken (keepApplied=false).
+    let usedLifts = lifts;
+    while (!gated.unresolvable && !demoPass(gated) && usedLifts > 1) {
+      usedLifts -= 1;
+      const fewer: MeasureOp[] = Array.from({ length: usedLifts }, () => ({
+        op: "move_up",
+        find: target.heading,
+      }));
+      gated = await runGatedAttempts(page, fewer, ctaTexts);
     }
-  }
+    if (gated.unresolvable) {
+      flyttStatus = "refused";
+      flyttText = EN
+        ? "Your section structure is built in a way where our engine REFUSES to move things rather than guess (that is a safety feature, not an error). A move here would be done manually, together with you."
+        : "Er sektionsstruktur är byggd på ett sätt där vår motor VÄGRAR flytta i stället för att gissa (det är en säkerhetsfunktion, inte ett fel). En flytt här görs manuellt tillsammans med er.";
+    } else {
+      const last = gated.attempts[gated.attempts.length - 1];
+      if (demoPass(gated)) {
+        flyttStatus = "pass";
+        await measurePlan(page, gated.attemptOps, [], true);
+        await page.screenshot({
+          path: join(outDir, "after.jpg"),
+          type: "jpeg",
+          quality: 45,
+          fullPage: true,
+        });
+        // Ärlig kopia: nämn CTA-klausulen BARA när minst en CTA verkligen
+        // kontrollerades — annars är det en tom (vakuös) grind och "0 element
+        // fortfarande klickbara" vore vilseledande. Skade-grindarna är layout —
+        // scoping till "layout check" håller påståendet sant även vid vakuös warn.
+        const clickable =
+          last.measurements.ctaChecked > 0
+            ? EN
+              ? `${last.measurements.ctaChecked} conversion element(s) still clickable, `
+              : `${last.measurements.ctaChecked} konverterings-element fortfarande klickbara, `
+            : "";
+        // Visa bildparet BARA när det faktiskt ser olika ut. En bildlös frysning
+        // eller inner-scroll-layout kan ge en giltig flytt vars före/efter ändå
+        // är visuellt identiskt (grinden mäter rect-positioner, skärmdumpen fångar
+        // bara första skärmen) — då vore två lika bilder vilseledande. Passet står
+        // kvar (lyftet är giltigt); vi utelämnar bara bilderna och säger varför.
+        const deltaPct = await visualDeltaPct(
+          page,
+          join(outDir, "before.jpg"),
+          join(outDir, "after.jpg"),
+        );
+        if (deltaPct >= VISUAL_MIN_PCT) {
+          beforeShot = join(outDir, "before.jpg");
+          afterShot = join(outDir, "after.jpg");
+          flyttText = EN
+            ? `The lift passed every layout check: no horizontal scroll introduced, nothing lands above your main headline, ${clickable}and the change reverses exactly.`
+            : `Flytten klarade alla layout-kontroller: ingen horisontell scroll introducerad, inget hamnar ovanför er huvudrubrik, ${clickable}och ändringen är exakt återställbar.`;
+        } else {
+          beforeShot = null;
+          afterShot = null;
+          flyttText = EN
+            ? `The lift passed every layout check and reverses exactly. On this frozen copy the change did not render a clear enough before/after to show here — the page builds much of its layout with scripts we deliberately don't run — so we'd rather walk through it with you on your live page than show two look-alike images.`
+            : `Flytten klarade alla layout-kontroller och är exakt återställbar. På den frysta kopian gav ändringen ingen tillräckligt tydlig före/efter-bild att visa här — sidan bygger mycket av sin layout med skript vi medvetet inte kör — så vi går hellre igenom den med er på er skarpa sida än visar två snarlika bilder.`;
+        }
+      } else {
+        flyttStatus = "held";
+        flyttText = EN
+          ? `We tried the lift but held it back: ${last.gate.reasons[0] ?? "the checks did not give a clean pass"}. That is how it should work — nothing is shown that does not pass the checks.`
+          : `Vi provade lyftet men höll tillbaka det: ${last.gate.reasons[0] ?? "kontrollerna gav inte rent godkänt"}. Så ska det fungera — inget visas som inte klarar kontrollerna.`;
+      }
+    }
+  } // else: målet var otvetydigt — flytt-testet kördes
 }
 await browser.close();
 
@@ -324,6 +528,13 @@ writeFileSync(
       goalSource: ownerGoal ? "configured" : goalGuess ? "guessed" : null,
       fynd,
       flyttStatus,
+      // Visades bildparet? Ett pass utan bilder (flyttShown=false) är fortfarande
+      // en giltig flytt, men den frusna kopian gav ingen tydlig visuell skillnad
+      // — feltaxonomin skiljer "pass med demo" från "pass utan demo".
+      flyttShown: flyttStatus === "pass" && beforeShot !== null && afterShot !== null,
+      // Flytt-berättelsen i klartext (fleet-E2E 2026-07-23): held-orsaken är
+      // feltaxonomins råvara — utan den är "held" bara en siffra.
+      flyttText,
       sektioner: sections.length,
       ctas: ctaTexts,
     },

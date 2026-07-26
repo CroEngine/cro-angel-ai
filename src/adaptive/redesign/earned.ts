@@ -52,6 +52,7 @@ import {
   segmentDims,
   segmentKeyOf,
 } from "@/lib/segment-key";
+import { isTemplatePattern, templateMatches, templateOf } from "@/lib/page-template";
 
 // Nyckelsemantiken bor i src/lib/segment-key.ts (task #89) — samma tokenisering
 // som rollupen och serve-vägen, per konstruktion i stället för per disciplin.
@@ -83,6 +84,10 @@ export interface PageSegmentLeaf extends SegmentLeaf {
 /** Ett förtjänt (sida × segment)-par — cellen en design genereras för. */
 export interface EarnedCell extends EarnedSegment {
   path: string;
+  /** Mall-celler (path är ett mönster som "/blogg/*"): topp-exemplaren efter
+   *  besök inom cellens segmentprefix — frys/verifierings-underlaget. Alltid
+   *  ≥2 sidor (en ensam sida är ingen mall). Frånvarande för per-sida-celler. */
+  templatePages?: { path: string; visits: number }[];
 }
 
 /**
@@ -111,15 +116,93 @@ export function findEarnedCells(
       cells.push({ ...s, path });
     }
   }
-  cells.sort(
-    (a, b) =>
-      b.incremental.conversions - a.incremental.conversions ||
-      b.incremental.visits - a.incremental.visits ||
-      b.depth - a.depth ||
-      a.path.localeCompare(b.path) ||
-      a.key.localeCompare(b.key),
-  );
+  cells.sort(compareCells);
   return cells.slice(0, cap);
+}
+
+/** Rankningen över celler — inkrementella konverteringar → besök → finast →
+ *  deterministisk. Delad av per-sida- och mall-passet. */
+const compareCells = (a: EarnedCell, b: EarnedCell): number =>
+  b.incremental.conversions - a.incremental.conversions ||
+  b.incremental.visits - a.incremental.visits ||
+  b.depth - a.depth ||
+  a.path.localeCompare(b.path) ||
+  a.key.localeCompare(b.key);
+
+/**
+ * Detektorn MED mall-passet (mall-nivå-generering, glutenforum-fyndet
+ * 2026-07-26): långsvansade innehållssajter når aldrig per-sida-grinden (bästa
+ * sida 34/100 medan mallen bär 85+), så sidor som inte förtjänar en EGEN design
+ * grupperas per sidmall (templateOf — "/blogg/*") och körs som en pseudo-sida.
+ *
+ *  1. Per-sida-passet körs FÖRST, oförändrat — en sida som bär sin egen volym
+ *     får sin egen design. Servande MALL-varianter räknas här som täckning för
+ *     sina konkreta sidor (annars återföreslås /blogg/x så fort den ensam når
+ *     grinden, fast "/blogg/*" redan servar den).
+ *  2. Mall-passet: löven för sidor UTAN egen vald cell grupperas per mall.
+ *     Samma volymgrind och giriga urval (findEarnedSegments). En mall-cell
+ *     kräver ≥2 bidragande sidor i segmentet — en ensam sida är ingen mall —
+ *     och bär sina topp-exemplar (templatePages) som frys/verifierings-underlag.
+ *  3. Global rankning över båda passen, samma cap.
+ *
+ * Ren. Genereringen skriver fortfarande som mest `verified` — servering är
+ * alltid ägarens knapp, mall eller inte.
+ */
+export function findEarnedCellsWithTemplates(
+  leaves: PageSegmentLeaf[],
+  existing: { path: string; segmentKey: string }[],
+  cap = 5,
+  metric: TestMetric = "conversion",
+  exemplarCount = 3,
+): EarnedCell[] {
+  // Mall-varianter täcker sina konkreta sidor i per-sida-passet.
+  const concretePaths = [...new Set(leaves.map((l) => l.path || "/"))];
+  const expanded = [
+    ...existing,
+    ...existing
+      .filter((e) => isTemplatePattern(e.path))
+      .flatMap((e) =>
+        concretePaths
+          .filter((p) => templateMatches(e.path, p))
+          .map((p) => ({ path: p, segmentKey: e.segmentKey })),
+      ),
+  ];
+  const perPage = findEarnedCells(leaves, expanded, cap, metric);
+
+  const chosenPaths = new Set(perPage.map((c) => c.path));
+  const byTemplate = new Map<string, PageSegmentLeaf[]>();
+  for (const leaf of leaves) {
+    const p = leaf.path || "/";
+    if (chosenPaths.has(p)) continue; // sidan fick en egen cell — dubbelräkna inte
+    const tpl = templateOf(p);
+    if (!tpl) continue; // startsida/listning — egen mall, aldrig grupperad
+    byTemplate.set(tpl, [...(byTemplate.get(tpl) ?? []), leaf]);
+  }
+
+  const templateCells: EarnedCell[] = [];
+  for (const [tpl, tplLeaves] of byTemplate) {
+    if (new Set(tplLeaves.map((l) => l.path || "/")).size < 2) continue;
+    const keys = existing.filter((e) => e.path === tpl).map((e) => e.segmentKey);
+    for (const s of findEarnedSegments(tplLeaves, keys, cap, metric)) {
+      // Exemplaren: mallens sidor med flest besök inom cellens segmentprefix —
+      // det är de som fryses, får briefen byggd ur sig och pixelverifieras.
+      const dims = segmentDims(s.key);
+      const perPath = new Map<string, number>();
+      for (const l of tplLeaves) {
+        if (!isDimsPrefix(dims, leafDims(l))) continue;
+        const p = l.path || "/";
+        perPath.set(p, (perPath.get(p) ?? 0) + l.visits);
+      }
+      const pages = [...perPath.entries()]
+        .map(([path, visits]) => ({ path, visits }))
+        .sort((a, b) => b.visits - a.visits || a.path.localeCompare(b.path))
+        .slice(0, exemplarCount);
+      if (pages.length < 2) continue; // <2 exemplar i segmentet ⇒ ingen mall-cell
+      templateCells.push({ ...s, path: tpl, templatePages: pages });
+    }
+  }
+
+  return [...perPage, ...templateCells].sort(compareCells).slice(0, cap);
 }
 
 /**

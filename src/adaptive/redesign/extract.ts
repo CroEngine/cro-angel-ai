@@ -128,29 +128,104 @@ function hasComponentClass(body: string, rx: RegExp): boolean {
   return false;
 }
 
-/** Name a still-generic section from its STRUCTURE (literal tags in its slice).
- *  Only the drift-robust, tag-based cues the lab reads via querySelector are
- *  ported to regex; card-grid / short-CTA heuristics are left to the heading
- *  classifier (fragile to reconstruct from a string). Returns a type or null. */
+/** Structural facts read ONCE from a section's body slice — literal tag counts
+ *  and component-class flags, never the marketing-slogan heading (83% of generic
+ *  headings are un-typeable slogans — capture-eval 2026-07-24). Computed in one
+ *  place so every threshold the typer below leans on is visible together. */
+interface BodyFacts {
+  videoEmbed: boolean;
+  details: number;
+  faqQuestions: number;
+  accordion: boolean;
+  tableRows: number;
+  images: number;
+  integrationsClass: boolean;
+  signupForm: boolean;
+  featureGridClass: boolean;
+  subHeadings: number;
+  iconListItems: number;
+  blockquotes: number;
+  starGlyphs: number;
+}
+
+function readBodyFacts(body: string): BodyFacts {
+  const count = (re: RegExp) => (body.match(re) || []).length;
+  const cls = (rx: RegExp) => hasComponentClass(body, rx);
+  return {
+    // Video-värdar HOST-förankrade ("loom" som substräng träffar bloomberg.com).
+    videoEmbed:
+      /<video[\s/>]/i.test(body) ||
+      /<iframe[^>]+(?:youtube|youtu\.be|vimeo|wistia|(?:\.|\/\/)loom\.)/i.test(body),
+    details: count(/<details[\s/>]/gi),
+    // Ett <summary> som är en FRÅGA (innehåller "?") — skiljer en riktig FAQ från
+    // en <details>-baserad feature-tab/flik-widget (precisionsfynd 2026-07-24:
+    // monday-fliken och vantas testimonial-i-<details> feltypades faq → fel lyftmål).
+    faqQuestions: count(/<summary\b[^>]*>(?:(?!<\/summary>)[\s\S])*?\?(?:(?!<\/summary>)[\s\S])*?<\/summary>/gi),
+    accordion: cls(/^(?:accordion|faq)(?:s|[_-]\w+)?$/i) || /data-accordion/i.test(body),
+    tableRows: count(/<tr[\s/>]/gi),
+    images: count(/<img[\s/>]/gi),
+    integrationsClass: cls(/^(?:integrations?|integrate)(?:[_-]\w+)?$/i),
+    signupForm:
+      /<form[\s>]/i.test(body) &&
+      (/<input[^>]+type=["']?email/i.test(body) ||
+        cls(/^(?:signup|subscribe|newsletter|waitlist)(?:[_-]\w+)?$/i)),
+    featureGridClass: cls(/^(?:features?|feature[_-]?grid|cards?|card[_-]?grid|benefits?)(?:[_-]\w+)?$/i),
+    subHeadings: count(/<h[34][\s>]/gi),
+    iconListItems: count(/<li\b[^>]*>(?:(?!<\/li>)[\s\S]){0,400}?<(?:svg|img)\b/gi),
+    // Semantiska bevis-taggar (LLM-revision 2026-07-24). <blockquote> är den
+    // ENDA precisa testimonials-strukturen — en vägg av citat (resend 39,
+    // zendesk 11, ro 8, zapier 4). Stjärnglyfer ≥4 = ett ifyllt betyg (todoist
+    // "337 000+ ★★★★★ reviews"). Båda är golv-hårda tröskeln över en 210-sajts
+    // korpusmätning: enda icke-testimonials-träffen på blockquote var linears
+    // "Changelog" (bq3) → tröskeln 4 utesluter den.
+    blockquotes: count(/<blockquote[\s/>]/gi),
+    starGlyphs: (body.match(/[★⭐✩✪✰]/g) || []).length,
+  };
+}
+
+/** Type a still-generic section from its STRUCTURE. Ordered MOST-SPECIFIC →
+ *  broadest; first match wins. Precision over recall — a wrong type misleads the
+ *  designer brief and the lift-target pick worse than an honest "section", so
+ *  each cue demands a strong structural signal. The evidence types
+ *  (pricing/testimonials/logos/comparison) are the ones that matter most: they
+ *  become lift targets and [proof] markers when the heading slogan missed them. */
 function structuralType(body: string, heading: string): string | null {
-  // Video-värdar HOST-förankrade ("loom" som substräng träffar bloomberg.com).
-  if (
-    /<video[\s/>]/i.test(body) ||
-    /<iframe[^>]+(?:youtube|youtu\.be|vimeo|wistia|(?:\.|\/\/)loom\.)/i.test(body)
-  )
-    return "video";
-  const detailsCount = (body.match(/<details[\s/>]/gi) || []).length;
-  if (
-    detailsCount >= 2 ||
-    hasComponentClass(body, /^(?:accordion|faq)(?:s|[_-]\w+)?$/i) ||
-    /data-accordion/i.test(body)
-  )
-    return "faq";
-  const trCount = (body.match(/<tr[\s/>]/gi) || []).length;
-  if (/<table[\s/>]/i.test(body) && trCount >= 3) return "comparison";
-  const imgCount = (body.match(/<img[\s/>]/gi) || []).length;
-  if (imgCount >= 6 && /integrat|works with|connect (?:your|to)|\bapps?\b/i.test(heading))
-    return "integrations";
+  const b = readBodyFacts(body);
+  // Integrations är det ENDA fallet där rubriken är en pålitlig STRUKTUR-etikett
+  // ("Integrations" / "Works with your tools"), inte en slogan — men bara som
+  // avsikts-signal, alltid grindad av logga-rutnätet (≥6 bilder). Intent läses
+  // BARA ur rubriken: att skanna kroppen efter "works"/"apps" felträffade
+  // feature-sektioner (asana) i 210-sajtssvepet — övriga typer läser aldrig
+  // rubriken alls.
+  const integrationIntent = /integrat|works with|connect (?:your|to)|\bapps?\b/i.test(heading);
+  // Reliable, tag-anchored cues only (semantic tags / a real table / a form).
+  if (b.videoEmbed) return "video";
+  // Riktig accordion-KLASS räcker; en <details>-baserad widget måste dessutom
+  // bära minst en FRÅGA (annars är det en feature-flik, inte en FAQ).
+  if (b.accordion || (b.details >= 2 && b.faqQuestions >= 1)) return "faq";
+  if (b.tableRows >= 3) return "comparison";
+  // Testimonials via SEMANTISKA bevis-taggar (LLM-revision 2026-07-24) — inte de
+  // lösa text/klass-signaler som drogs i d18f89d. En vägg av <blockquote> (≥4)
+  // eller ett ifyllt stjärnbetyg (≥4 glyfer) ÄR strukturellt socialt bevis och
+  // felträffar inte prosa: enda icke-testimonials-blockquote-träffen på 1902
+  // sektioner var en changelog (bq3), utesluten av tröskeln. Fångar väggar vars
+  // rubrik är en slogan ("Beyond expectations" resend, "3,000,000+" ro,
+  // "Built for businesses of all sizes" zendesk).
+  if (b.blockquotes >= 4 || b.starGlyphs >= 4) return "testimonials";
+  if (b.integrationsClass || (b.images >= 6 && integrationIntent)) return "integrations";
+  if (b.signupForm) return "cta";
+  // features is a NON-evidence label (never a lift target), so an approximate
+  // multi-item signal is acceptable where a wrong evidence type would not be.
+  if (b.featureGridClass || b.subHeadings >= 3 || b.iconListItems >= 3) return "features";
+  // Structural testimonials is ONLY the semantic-tag cues above (blockquote≥4 /
+  // star≥4). Deliberately STILL NO structural pricing / logos, and NO loose
+  // testimonials text/class cues: the 210-site scan (2026-07-24) showed the
+  // price-count and class-token cues false-positive on incidental markup
+  // ("What's the ROI on better work?" → pricing; a stray "reviews"/"brands"
+  // token → testimonials/logos). Those are EVIDENCE types, so a wrong one becomes
+  // a fake lift target — worse than an honest "section". Real pricing/logos
+  // sections are still typed by their heading (classifySectionHeading) and by
+  // proofFromBody's "trusted by"/count text.
   return null;
 }
 
@@ -170,51 +245,88 @@ function refineType(
     const st = structuralType(body, heading);
     if (st) type = st;
   }
-  return { type, containsTrustSignals: proof !== null };
+  // Rubrik-buret bevis FLAGGAR bara (om-typar ALDRIG): "9,300+ customers trust
+  // Front" i en RUBRIK är riktigt bevis för [proof]-taggen och granskas
+  // måltavleval, men en feature-rubrik som råkar nämna ett antal är inte
+  // strukturellt en bevis-strip — så rubrikträffen rör aldrig typen, bara
+  // flaggan (fleet-E2E 2026-07-23: 10 av 43 "None"-sajter bar bevis i en rubrik
+  // som kroppsskannern missade). Typerna hålls golden-stabila.
+  const containsTrustSignals = proof !== null || proofFromBody(heading) !== null;
+  return { type, containsTrustSignals };
 }
 
-function extractSections(html: string): RedesignContentModel["sections"] {
+/** Collect each h1/h2 heading in <main> with its BODY slice — the HTML from the
+ *  end of its heading to the start of the next heading, in DOCUMENT order. The
+ *  last section's slice stops at the first <footer> (granskningsfynd 2026-07-22:
+ *  without <main> the region is the whole doc, so an unbounded last slice sweeps
+ *  the footer's badges/accordions/"Join 50,000 subscribers" and mistypes as
+ *  proof/faq/stats). Shared by extractSections (typing) and sectionBodyExcerpts
+ *  (the LLM ceiling's prompt) so the two never slice differently. */
+function collectSectionBodies(html: string): { level: number; text: string; body: string }[] {
   const main = mainRegion(html);
-  const heads: {
-    level: number;
-    text: string;
-    headStart: number;
-    bodyStart: number;
-    body?: string;
-  }[] = [];
+  const heads: { level: number; text: string; headStart: number; bodyStart: number }[] = [];
   const re = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(main))) {
     const text = stripTags(m[2]);
-    if (text)
-      heads.push({ level: Number(m[1][1]), text, headStart: m.index, bodyStart: re.lastIndex });
+    if (text) heads.push({ level: Number(m[1][1]), text, headStart: m.index, bodyStart: re.lastIndex });
   }
-  // Each section's body = the HTML from the end of its heading to the start of
-  // the next heading, computed in DOCUMENT order (before the hero reshuffle
-  // below, so adjacency is real). The body drives structural/proof typing.
-  // Sista sektionens slice tar SLUT vid första <footer> (granskningsfynd
-  // 2026-07-22): utan <main> är regionen hela dokumentet, och utan taket
-  // sveper sista innehållssektionens body in sidfotens badges/accordions/
-  // "Join 50,000 subscribers" — och blir feltypad som proof/faq/stats.
   const footerIdx = main.search(/<footer\b/i);
   const bodyEnd = footerIdx >= 0 ? footerIdx : main.length;
-  for (let i = 0; i < heads.length; i++) {
-    heads[i].body = main.slice(
-      heads[i].bodyStart,
-      i + 1 < heads.length ? heads[i + 1].headStart : Math.max(heads[i].bodyStart, bodyEnd),
-    );
+  return heads.map((h, i) => ({
+    level: h.level,
+    text: h.text,
+    body: main.slice(h.bodyStart, i + 1 < heads.length ? heads[i + 1].headStart : Math.max(h.bodyStart, bodyEnd)),
+  }));
+}
+
+/** Per-section body excerpt for the LLM section-typer (server-side ceiling). Same
+ *  slices as extractSections, flattened to readable text with IMAGE ALT surfaced
+ *  (image-rendered testimonials carry their copy in alt) and data-URIs dropped,
+ *  capped for a cheap prompt. Deduped by heading like the section model, so the
+ *  excerpts align 1:1 with RedesignContentModel.sections by heading. */
+export function sectionBodyExcerpts(html: string, cap = 600): { heading: string; excerpt: string }[] {
+  const seen = new Set<string>();
+  const out: { heading: string; excerpt: string }[] = [];
+  for (const h of collectSectionBodies(html)) {
+    const heading = h.text.slice(0, 120);
+    const key = heading.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    // <style>/<script>-INNEHÅLL bort först (stripTags tar taggen men lämnar CSS/JS-
+    // texten kvar → brex/plaid/mongodb gav ren CSS till prompten, rapportfynd
+    // 2026-07-24). Sedan lyft <img alt> (delimiter-backreferens \1 så en apostrof
+    // INUTI en dubbelciterad alt inte kapar texten), sist data-URIer bort.
+    const cleaned = h.body
+      .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
+      .replace(/data:[^"')\s]+/gi, " ");
+    const withAlt = cleaned.replace(/<img\b[^>]*?\balt=(["'])([\s\S]*?)\1[^>]*?>/gi, " $2 ");
+    const flat = stripTags(withAlt);
+    out.push({ heading, excerpt: flat.slice(0, cap) });
   }
+  return out;
+}
+
+/** Bygg en rubrik→utdrag-uppslagning från sidan. Kapslar trim/lowercase-nyckeln
+ *  som taket, rankaren och skala-/rapport-skripten annars återuppfinner ordagrant
+ *  (5 kopior av `new Map(...)` + `exc.get(h.trim().toLowerCase()) ?? ""`). */
+export function sectionBodyLookup(html: string, cap = 600): (heading: string) => string {
+  const exc = new Map(sectionBodyExcerpts(html, cap).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]));
+  return (heading: string) => exc.get(heading.trim().toLowerCase()) ?? "";
+}
+
+function extractSections(html: string): RedesignContentModel["sections"] {
+  const heads: { level: number; text: string; body: string }[] = collectSectionBodies(html);
   // The hero leads. If <main> has the h1, move it to front; if the h1 lives
   // OUTSIDE <main> (a header hero), prepend it so the hero isn't lost — while the
   // h2 sections stay scoped to <main> to avoid nav/footer noise.
   const docH1 = primaryH1(html);
   const mainH1Idx = heads.findIndex((h) => h.level === 1);
   if (mainH1Idx > 0) heads.unshift(heads.splice(mainH1Idx, 1)[0]);
-  else if (mainH1Idx < 0 && docH1)
-    heads.unshift({ level: 1, text: docH1, headStart: -1, bodyStart: -1, body: "" });
+  else if (mainH1Idx < 0 && docH1) heads.unshift({ level: 1, text: docH1, body: "" });
   const heroPresent = heads.some((h) => h.level === 1);
 
-  return heads.map((h, i) => {
+  const built = heads.map((h, i) => {
     const headingType = classify(h.text, heroPresent && i === 0);
     // The hero is never re-TYPED from its body (it legitimately wraps media/
     // proof) — but its proof FLAG is still computed (granskningsfynd 2026-07-22):
@@ -222,18 +334,43 @@ function extractSections(html: string): RedesignContentModel["sections"] {
     // must see, or the LLM redundantly moves other proof up beside it.
     const { type, containsTrustSignals } =
       headingType === "hero"
-        ? { type: "hero", containsTrustSignals: proofFromBody(h.body || "") !== null }
+        ? {
+            type: "hero",
+            // Hjälten flaggas från BÅDE rubrik och kropp ("Join 150,000+
+            // businesses" bor ofta i själva hjälterubriken) — men om-typas aldrig.
+            containsTrustSignals: proofFromBody(`${h.text || ""} ${h.body || ""}`) !== null,
+          }
         : refineType(headingType, h.body || "", h.text);
     return {
-      id: `sec-${i + 1}-${type}`,
       type,
-      position: i + 1,
       heading: h.text.slice(0, 120),
       aboveFold: type === "hero", // honest approximation w/o a render: only the hero is above the fold
-      visualWeight: type === "hero" ? 85 : Math.max(20, 60 - i * 4),
       containsTrustSignals,
     };
   });
+  // Dedup EXAKTA rubrikdubbletter (kapaciteten "fånga vad besökaren SER", steg 1):
+  // responsiva teman renderar mobil- OCH desktop-kopior av samma rubrik i DOM:en,
+  // men besökaren ser EN. Den synliga-DOM-serialiseringen uppströms tar bort
+  // display:none-kopiorna; detta fångar resten (synliga exakta dubbletter). Behåll
+  // FÖRSTA förekomsten i dokumentordning; id/position/visualWeight sätts efter
+  // dedup så modellen är sammanhängande. (monday: 16 → 11 riktiga sektioner.)
+  const seen = new Set<string>();
+  return built
+    .filter((s) => {
+      const key = s.heading.trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((s, i) => ({
+      id: `sec-${i + 1}-${s.type}`,
+      type: s.type,
+      position: i + 1,
+      heading: s.heading,
+      aboveFold: s.aboveFold,
+      visualWeight: s.type === "hero" ? 85 : Math.max(20, 60 - i * 4),
+      containsTrustSignals: s.containsTrustSignals,
+    }));
 }
 
 /** A raw anchor/button candidate before intent classification — the input both
@@ -341,6 +478,15 @@ function extractTrustSignals(html: string): RedesignContentModel["trustSignals"]
       ),
     },
     { type: "trusted_by", re: new RegExp(`((?:${TRUSTED_BY_LEADINS_SRC})\\s[^.<]{3,70})`, "i") },
+    // Garanti/pengarna-tillbaka (portad + åtstramad från lab-detektorn,
+    // detectors.generated.ts): fyndet "Inga förtroendesignaler" var OSANT på
+    // sidor vars starkaste bevis ÄR en garanti (activecampaign: "…or get your
+    // money back"). Kräver kontext (money-back / N-day / satisfaction / warranty
+    // / garanti / öppet köp) så ett löst "no guarantee that…" aldrig fångas.
+    {
+      type: "guarantee",
+      re: /((?:\d+[- ]?(?:day|dagars?)\s+)?money[- ]?back(?:\s+guarantee)?|satisfaction guarantee|\d+[- ]?(?:day|dagars?)\s+guarantee|[öo]ppet k[öo]p|n[öo]jd[- ]?kund\w*|\bwarranty\b|\bgaranti\b)/i,
+    },
     { type: "independence", re: /((?:independent|oberoende)[,\s][^.<]{3,70})/i },
     {
       type: "compliance",
@@ -462,7 +608,7 @@ export function extractPriceSnippets(html: string): PriceSnippet[] {
  *  fallbackens citat: ordagrant sidans eget svar när den inte publicerar
  *  belopp. null när sidan saknar användbar rubrik (⇒ inget att citera,
  *  aldrig-hitta-på-regeln vinner). */
-export function extractQuoteAnswer(html: string): PriceSnippet | null {
+function extractQuoteAnswer(html: string): PriceSnippet | null {
   const h1 = primaryH1(html);
   if (h1 && h1.length >= 3 && h1.length <= 140) return { text: h1, tag: "h1" };
   const main = mainRegion(html);

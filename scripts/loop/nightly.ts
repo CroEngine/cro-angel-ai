@@ -22,7 +22,15 @@ import { join } from "node:path";
 import { anthropicDesigner } from "./designer";
 import { generateRedesign } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
-import { extractContentModel, extractQuotables } from "../../src/adaptive/redesign/extract";
+// extractPriceSnippets: latent import-bugg — användes i steg 4 (källsidor)
+// utan att vara importerad; scripts/ typkollas inte av tsc (include: src/**),
+// så kraschen hade väntat tills första cellen med sourcePaths. Fixad här.
+import {
+  extractContentModel,
+  extractPriceSnippets,
+  extractQuotables,
+} from "../../src/adaptive/redesign/extract";
+import { filterToTemplateSections } from "../../src/adaptive/redesign/template-content";
 import {
   DRIFT_HOLD_PREFIX,
   dependenciesOf,
@@ -133,28 +141,6 @@ for (const site of targets) {
     // Query/hash strippas defensivt även här (rollupen normaliserar numera,
     // men ett ?fbclid-filnamn fällde artefakt-uppladdningen i generalrepet
     // 2026-07-17 — filnamn får bara innehålla säkra tecken).
-    // Heatmapens sidor fryses OCKSÅ: dashboardens backdrop hämtar frysta
-    // kopior, och de mest positions-klickade sidorna kan ligga utanför
-    // rollup-toppen (ägarfynd 2026-07-17: heatmapens sida saknade kopia och
-    // föll på den blanka live-spegeln).
-    const { data: clickRows } = await db
-      .from("angel_events")
-      .select("payload")
-      .eq("site", site.slug)
-      .eq("type", "element_click")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    const clickCounts = new Map<string, number>();
-    for (const r of (clickRows ?? []) as { payload: { x?: unknown; path?: unknown } }[]) {
-      if (typeof r.payload?.x !== "number") continue;
-      const raw = typeof r.payload.path === "string" ? r.payload.path : "/";
-      const p = raw.split("#")[0].split("?")[0] || "/";
-      clickCounts.set(p, (clickCounts.get(p) ?? 0) + 1);
-    }
-    const clickPaths = [...clickCounts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([p]) => p);
     // Personbläddrarens sidor fryses OCKSÅ (ägarfynd 2026-07-19: en SPA-sida
     // utan fryst kopia blir en blank live-spegel i steg-för-steg-spelaren).
     // Mest BESÖKTA sidor (pageviews) — en resa går ofta genom sidor som ingen
@@ -176,8 +162,9 @@ for (const site of targets) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([p]) => p);
-    // Löv-toppen kapas FÖRST (10) och unionen därefter (15) — klick-sidorna
-    // (max 5) får aldrig trängas ut av en lång rollup-topp.
+    // Löv-toppen kapas FÖRST (10) och unionen därefter. (Heatmap-vyn är
+    // pensionerad 2026-07-26 — klick-topparna fryses inte längre; resespelarens
+    // och flödesmålens sidor räcker som backdrops.)
     const leafPaths = [
       ...new Set(
         (leaves as { path?: string }[]).map(
@@ -212,7 +199,7 @@ for (const site of targets) {
     // taket som förut.
     const paths = [
       ...new Set([
-        ...[...new Set([...leafPaths, ...clickPaths, ...flowDests, ...journeyPaths])].slice(0, 20),
+        ...[...new Set([...leafPaths, ...flowDests, ...journeyPaths])].slice(0, 20),
         ...depPaths,
       ]),
     ];
@@ -237,10 +224,12 @@ for (const site of targets) {
             const model = extractContentModel(readFileSync(file, "utf8"));
             if (model.sections.length >= 2) {
               pages[p] = file;
-              // Dela kopian med dashboarden: heatmap-backdroppen serverar den
-              // via mirror-endpointens frozen-läge — live-spegeln kan inte
-              // rendera en SPA, men den frysta kopian ÄR den renderade sidan.
-              // Bäst-effort: ett uppladdningsfel fäller aldrig loopen.
+              // Dela kopian med spegel-endpointens frozen-läge: live-spegeln
+              // kan inte rendera en SPA, men den frysta kopian ÄR den
+              // renderade sidan. (Heat-vyn som läste den är pensionerad
+              // 2026-07-26; kopiorna behålls för resespelarens parkerade
+              // sidbilds-spår, ägarbeslut 2026-07-20.) Bäst-effort: ett
+              // uppladdningsfel fäller aldrig loopen.
               const mirrorKey = mirrorStorageKey(site.slug, p);
               const { error: mirrorErr } = await db.storage
                 .from("angel-evidence")
@@ -552,6 +541,12 @@ for (const site of targets) {
         sourcePaths?: string[];
         brief: string;
         cohorts?: string[];
+        /** Mall-celler (mall-nivå 2026-07-26): path är ett mönster ("/blogg/*"),
+         *  exemplaren konkreta sidor, repPath den briefen byggdes ur och
+         *  sharedHeadings mall-snittet (designytan). */
+        templatePages?: string[];
+        repPath?: string;
+        sharedHeadings?: string[];
       }[];
       needsFreeze: unknown[];
     };
@@ -603,9 +598,19 @@ for (const site of targets) {
     //    faller åker ut här och cellen får försöka igen en annan natt.
     const plans: unknown[] = [];
     for (const b of earned.briefed) {
-      const page = pages[b.path];
+      // Mall-celler: designen byggs ur representant-exemplaret, FILTRERAT till
+      // mall-snittet — designern kan bara måla mot sektioner som finns på alla
+      // exemplar, och verify räknar om snittet ur samma frysta filer.
+      const isTpl = Array.isArray(b.templatePages) && b.templatePages.length >= 2;
+      const pagePath = isTpl ? (b.repPath ?? b.templatePages![0]) : b.path;
+      const page = pages[pagePath];
       if (!page) continue;
-      const content = extractContentModel(readFileSync(page, "utf8"));
+      let content = extractContentModel(readFileSync(page, "utf8"));
+      if (isTpl) content = filterToTemplateSections(content, b.sharedHeadings ?? []);
+      if (isTpl && content.sections.length === 0) {
+        console.log(`[loop] ${site.slug} ${b.path}×${b.key}: tomt mall-snitt — hoppar`);
+        continue;
+      }
       const dims = segmentDims(b.key);
       const summary: SegmentSummary = {
         key: b.key,
@@ -640,7 +645,7 @@ for (const site of targets) {
           selector: site.conversion_selector ?? null,
         },
         page: {
-          url: `${base}${b.path}`,
+          url: `${base}${pagePath}`,
           frozenHtmlPath: page,
           screenshotPath: "",
           viewport: { width: 390, height: 844 },
@@ -662,6 +667,10 @@ for (const site of targets) {
         total: b.total,
         observations: b.observations,
         sourcePaths: b.sourcePaths ?? [],
+        // Mall-planer: exemplaren + representanten följer med till verify, som
+        // grindar opsen på VARJE fryst exemplar. path förblir mönstret — det är
+        // exakt värdet decide-vägen matchar via templateOf.
+        ...(isTpl ? { templatePages: b.templatePages, repPath: pagePath } : {}),
         ops: plan.ops,
         cohorts: b.cohorts,
       });
