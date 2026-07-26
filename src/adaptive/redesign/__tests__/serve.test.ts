@@ -388,3 +388,49 @@ describe("kohortscopade varianter (E4b-kopplingen)", () => {
     expect(serveDecision(cfg, [v], direct, "vh-1")?.arm).toBe("variant");
   });
 });
+
+describe("matchVariant — mall-mönster (mall-nivå-generering 2026-07-26)", () => {
+  const gm = (over: Partial<ServableVariant> = {}) => variant("google", "serving", over);
+
+  it("en mall-variant ('/blogg/*') servar mallens konkreta sidor", () => {
+    const tpl = gm({ id: "tpl", path: "/blogg/*" });
+    const m = matchVariant([tpl], visitor("google", "mobile", "se", false, { path: "/blogg/kladdkaka" }));
+    expect(m?.id).toBe("tpl");
+  });
+
+  it("mallen servar INTE listningssidan eller andra mallar", () => {
+    const tpl = gm({ id: "tpl", path: "/blogg/*" });
+    // "/blogg" är sin egen sida (templateOf = null) och restauranger en annan mall.
+    expect(matchVariant([tpl], visitor("google", "mobile", "se", false, { path: "/blogg" }))).toBeNull();
+    expect(
+      matchVariant([tpl], visitor("google", "mobile", "se", false, { path: "/restauranger/tavolo" })),
+    ).toBeNull();
+  });
+
+  it("EXAKT sida vinner över mallen — även när mallen har finare segmentnyckel", () => {
+    const exact = gm({ id: "exact", path: "/blogg/kladdkaka" });
+    const tplFiner = variant("google·mobile·se", "serving", { id: "tpl", path: "/blogg/*" });
+    const m = matchVariant([tplFiner, exact], visitor("google", "mobile", "se", false, { path: "/blogg/kladdkaka" }));
+    // Sid-specifik design verifierades på exakt den sidan — path-finhet före segmentfinhet.
+    expect(m?.id).toBe("exact");
+  });
+
+  it("bland mall-varianter vinner finaste segmentnyckeln som vanligt", () => {
+    const coarse = gm({ id: "coarse", path: "/blogg/*" });
+    const fine = variant("google·mobile·se", "serving", { id: "fine", path: "/blogg/*" });
+    const m = matchVariant([coarse, fine], visitor("google", "mobile", "se", false, { path: "/blogg/x" }));
+    expect(m?.id).toBe("fine");
+  });
+
+  it("serveDecision servar en mall-variant hela vägen (ops + ramp intakt)", () => {
+    const tpl = variant("google", "winner", { id: "tpl", path: "/blogg/*", serveOps });
+    const verdict = serveDecision(
+      { servingEnabled: true, rampPct: 5 },
+      [tpl],
+      { ...visitor("google", "mobile", "se", false, { path: "/blogg/kladdkaka" }), cohorts: [] },
+      "vh-1",
+    );
+    expect(verdict?.variant.id).toBe("tpl");
+    expect(verdict?.arm).toBe("variant"); // winner ⇒ 100 %
+  });
+});

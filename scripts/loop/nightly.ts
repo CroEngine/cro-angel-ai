@@ -22,7 +22,15 @@ import { join } from "node:path";
 import { anthropicDesigner } from "./designer";
 import { generateRedesign } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
-import { extractContentModel, extractQuotables } from "../../src/adaptive/redesign/extract";
+// extractPriceSnippets: latent import-bugg — användes i steg 4 (källsidor)
+// utan att vara importerad; scripts/ typkollas inte av tsc (include: src/**),
+// så kraschen hade väntat tills första cellen med sourcePaths. Fixad här.
+import {
+  extractContentModel,
+  extractPriceSnippets,
+  extractQuotables,
+} from "../../src/adaptive/redesign/extract";
+import { filterToTemplateSections } from "../../src/adaptive/redesign/template-content";
 import {
   DRIFT_HOLD_PREFIX,
   dependenciesOf,
@@ -552,6 +560,12 @@ for (const site of targets) {
         sourcePaths?: string[];
         brief: string;
         cohorts?: string[];
+        /** Mall-celler (mall-nivå 2026-07-26): path är ett mönster ("/blogg/*"),
+         *  exemplaren konkreta sidor, repPath den briefen byggdes ur och
+         *  sharedHeadings mall-snittet (designytan). */
+        templatePages?: string[];
+        repPath?: string;
+        sharedHeadings?: string[];
       }[];
       needsFreeze: unknown[];
     };
@@ -603,9 +617,19 @@ for (const site of targets) {
     //    faller åker ut här och cellen får försöka igen en annan natt.
     const plans: unknown[] = [];
     for (const b of earned.briefed) {
-      const page = pages[b.path];
+      // Mall-celler: designen byggs ur representant-exemplaret, FILTRERAT till
+      // mall-snittet — designern kan bara måla mot sektioner som finns på alla
+      // exemplar, och verify räknar om snittet ur samma frysta filer.
+      const isTpl = Array.isArray(b.templatePages) && b.templatePages.length >= 2;
+      const pagePath = isTpl ? (b.repPath ?? b.templatePages![0]) : b.path;
+      const page = pages[pagePath];
       if (!page) continue;
-      const content = extractContentModel(readFileSync(page, "utf8"));
+      let content = extractContentModel(readFileSync(page, "utf8"));
+      if (isTpl) content = filterToTemplateSections(content, b.sharedHeadings ?? []);
+      if (isTpl && content.sections.length === 0) {
+        console.log(`[loop] ${site.slug} ${b.path}×${b.key}: tomt mall-snitt — hoppar`);
+        continue;
+      }
       const dims = segmentDims(b.key);
       const summary: SegmentSummary = {
         key: b.key,
@@ -640,7 +664,7 @@ for (const site of targets) {
           selector: site.conversion_selector ?? null,
         },
         page: {
-          url: `${base}${b.path}`,
+          url: `${base}${pagePath}`,
           frozenHtmlPath: page,
           screenshotPath: "",
           viewport: { width: 390, height: 844 },
@@ -662,6 +686,10 @@ for (const site of targets) {
         total: b.total,
         observations: b.observations,
         sourcePaths: b.sourcePaths ?? [],
+        // Mall-planer: exemplaren + representanten följer med till verify, som
+        // grindar opsen på VARJE fryst exemplar. path förblir mönstret — det är
+        // exakt värdet decide-vägen matchar via templateOf.
+        ...(isTpl ? { templatePages: b.templatePages, repPath: pagePath } : {}),
         ops: plan.ops,
         cohorts: b.cohorts,
       });

@@ -11,6 +11,7 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
+import { templateOf } from "@/lib/page-template";
 import { hostMatchesDomain, normalizeDomain, originVerdict } from "./domain";
 import { cleanText, scrubPath, stripQueryHash } from "./harvest/sanitize";
 import type { GoalJudgment } from "./goal-judge.server";
@@ -469,11 +470,17 @@ export async function loadServableVariants(
   path: string,
 ): Promise<import("./redesign/serve").ServableVariant[]> {
   try {
+    // Mall-nivå (2026-07-26): en variant kan bära ett mall-mönster ("/blogg/*")
+    // som path-värde. Kandidaterna är exakt två deterministiska nycklar — sidan
+    // och dess mall — så uppslaget förblir indexvänligt (ingen LIKE-skanning).
+    // matchVariant gör själva valet (exakt sida vinner över mall).
+    const tpl = templateOf(path);
+    const pathKeys = tpl ? [path, tpl] : [path];
     const { data, error } = await supabaseAdmin
       .from("angel_variants")
       .select("id,site,path,segment_key,status,ops,serve_ops,required_cohorts")
       .eq("site", site)
-      .eq("path", path)
+      .in("path", pathKeys)
       .in("status", ["serving", "winner"])
       // Maskinellt serveringsstopp (drift-svepet, slice 3): en hållen variant
       // serveras aldrig — men ägarens status står orörd och förhandsvisningen

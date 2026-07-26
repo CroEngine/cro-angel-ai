@@ -49,10 +49,14 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  findEarnedCells,
+  findEarnedCellsWithTemplates,
   type PageSegmentLeaf,
   type TestMetric,
 } from "../../src/adaptive/redesign/earned";
+import {
+  filterToTemplateSections,
+  sharedTemplateHeadings,
+} from "../../src/adaptive/redesign/template-content";
 import { isSegmentPrefix, returningToken, segToken, segmentKeyOf } from "../../src/lib/segment-key";
 import {
   extractContentModel,
@@ -218,7 +222,9 @@ if (mode === "detect") {
   // volymgrinden till engagemangströskeln — utfallet finns i varje session.
   const metric: TestMetric = arg("metric") === "continuation" ? "continuation" : "conversion";
 
-  const cells = findEarnedCells(leaves, existing, cap, metric);
+  // Mall-passet ingår (mall-nivå 2026-07-26): långsvansade sidor som inte når
+  // per-sida-grinden grupperas per sidmall ("/blogg/*") — se earned.ts.
+  const cells = findEarnedCellsWithTemplates(leaves, existing, cap, metric);
   const siteVisits = leaves.reduce((s, l) => s + l.visits, 0);
   const siteConv = leaves.reduce((s, l) => s + l.conversions, 0);
   const siteRate = siteVisits > 0 ? siteConv / siteVisits : 0;
@@ -300,6 +306,53 @@ if (mode === "detect") {
       `Sidan: ${c.path}. Idag når INGEN variant dessa besökare där: ${c.uncoveredLeaves.join(", ")} (${c.incremental.visits} besök, ${c.incremental.conversions} konverteringar i underlaget).`,
       `Cellens konvertering ${(rate * 100).toFixed(1)} % mot sajtsnittet ${(siteRate * 100).toFixed(1)} %.`,
     ];
+    // Mall-celler (mall-nivå 2026-07-26): path är ett MÖNSTER ("/blogg/*") och
+    // exemplaren är frys/verifierings-underlaget. Briefen byggs ur topp-
+    // exemplaret men BARA mall-snittet (rubriker som finns på ALLA frysta
+    // exemplar) erbjuds som mål — en mall-design får aldrig låsa mot sid-unikt
+    // innehåll. Korssid-citat (insert_snippet) ingår inte i mall-v1: hjälte-
+    // ankaret är sid-unikt per definition.
+    if (c.templatePages) {
+      const frozen: { path: string; content: RedesignContentModel }[] = [];
+      for (const tp of c.templatePages) {
+        const pg = await pageFor(tp.path);
+        if (pg) frozen.push({ path: tp.path, content: pg.content });
+      }
+      if (frozen.length < 2) {
+        needsFreeze.push({ ...c, observations }); // exemplaren behöver frysning först
+        continue;
+      }
+      const shared = sharedTemplateHeadings(frozen.map((f) => f.content));
+      if (shared.length === 0) {
+        console.log(
+          `  ${c.path} × ${c.key}: tomt mall-snitt — inga delade sektioner, ingen designyta (ärligt nej)`,
+        );
+        continue;
+      }
+      const rep = frozen[0];
+      observations.unshift(
+        `Detta är en SIDMALL (${c.path}): designen appliceras på ALLA mallens sidor (${frozen.length} frysta exemplar av topp ${c.templatePages.length}).`,
+        `Endast mallens DELADE sektioner får vara mål: ${shared.join(" · ")}. Sidrubrik/hero är sid-unika och får inte röras.`,
+      );
+      const ctx = buildRedesignContext({
+        site,
+        goal: GOAL,
+        page: pageRef(rep.path),
+        content: filterToTemplateSections(rep.content, shared),
+        segment: segmentInsightFrom(summaryFor(c.key, c.total), { observations }),
+        sourcePages: [],
+      });
+      briefed.push({
+        ...c,
+        observations,
+        sourcePaths: [],
+        templatePages: c.templatePages.map((p) => p.path),
+        repPath: rep.path,
+        sharedHeadings: shared,
+        brief: renderRedesignPrompt(ctx),
+      });
+      continue;
+    }
     const flowObs = flowObservation(c.path, c.key);
     if (flowObs) observations.push(flowObs.text);
     // Källsidor för korssid-lyftet — MED ägarens dubbelvisningsvakt
@@ -347,8 +400,12 @@ if (mode === "detect") {
     `earned cells: ${cells.length} (briefed ${briefed.length}, needs freeze ${needsFreeze.length})`,
   );
   for (const c of cells) {
+    // Mall-celler har inget eget path i kartan — deras frys-status är exemplaren.
+    const hasPage = c.templatePages
+      ? c.templatePages.filter((p) => pages[p.path]).length >= 2
+      : !!pages[c.path];
     console.log(
-      `  ${c.path} × ${c.key} — total ${c.total.visits}/${c.total.conversions}, inkrement ${c.incremental.visits}/${c.incremental.conversions}${pages[c.path] ? "" : "  [SAKNAR FRYST SIDA]"}`,
+      `  ${c.path} × ${c.key} — total ${c.total.visits}/${c.total.conversions}, inkrement ${c.incremental.visits}/${c.incremental.conversions}${hasPage ? "" : "  [SAKNAR FRYST SIDA]"}`,
     );
   }
   process.exit(0);
@@ -361,7 +418,8 @@ if (mode !== "verify") {
 }
 
 interface PlanIn {
-  /** Sidan cellen gäller — måste finnas i --pages-kartan. */
+  /** Sidan cellen gäller — måste finnas i --pages-kartan. Mall-planer bär ett
+   *  MÖNSTER ("/blogg/*") här; sidorna kommer då ur templatePages. */
   path: string;
   key: string;
   total: { visits: number; conversions: number };
@@ -369,6 +427,11 @@ interface PlanIn {
   /** Källsidor för insert_snippet (korssid-lyftet) — samma lista som detect
    *  byggde kontexten med, så valideringen ser samma whitelist. */
   sourcePaths?: string[];
+  /** Mall-planer: exemplarens KONKRETA paths (≥2, topp efter besök). Alla med
+   *  fryst kopia grindas; representanten bär mätning + skärmdumpar. */
+  templatePages?: string[];
+  /** Mall-planer: exemplaret briefen/designen byggdes ur. */
+  repPath?: string;
   ops: RedesignOp[];
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
@@ -432,13 +495,67 @@ const sqlParts: string[] = [];
 
 try {
   for (const plan of plans) {
-    const pg = await pageFor(plan.path);
-    if (!pg) {
-      results.push({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
-      console.log(`  ${plan.path} × ${plan.key}: SAKNAR fryst sida — köad`);
+    const isTemplate = Array.isArray(plan.templatePages) && plan.templatePages.length >= 2;
+    // Mall-v1 servar bara move_up/set_text på delade sektioner — insert_snippet
+    // ankrar i hjälten, som är sid-unik per definition. Fail closed.
+    if (isTemplate && plan.ops.some((o) => o.op === "insert_snippet")) {
+      results.push({
+        path: plan.path,
+        key: plan.key,
+        verdict: "rejected_by_validation",
+        reason: "insert_snippet stöds inte för mall-varianter (sid-unikt hjälte-ankare)",
+      });
+      console.log(`  ${plan.path} × ${plan.key}: AVVISAD — insert_snippet i mall-plan`);
       continue;
     }
-    const { html, content } = pg;
+    const repPath = isTemplate ? (plan.repPath ?? plan.templatePages![0]) : plan.path;
+    // Mall-planer läses PLAIN (extractContentModel direkt på de frysta filerna
+    // — samma väg som nattloopens design-steg byggde planen på), så sektions-
+    // id:na designern målade mot aldrig kan glida mot en LLM-berikad
+    // omtolkning här. Snittet räknas om ur exakt de exemplar som finns på disk.
+    let html: string;
+    let content: RedesignContentModel;
+    const exemplarPages: { path: string; html: string }[] = [];
+    if (isTemplate) {
+      const files = (plan.templatePages ?? [])
+        .map((p) => ({ p, file: pages[p] }))
+        .filter((x): x is { p: string; file: string } => !!x.file);
+      if (!pages[repPath] || files.length < 2) {
+        results.push({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
+        console.log(`  ${plan.path} × ${plan.key}: <2 frysta mall-exemplar — köad`);
+        continue;
+      }
+      const models: RedesignContentModel[] = [];
+      let repHtml = "";
+      for (const { p, file } of files) {
+        const h = readFileSync(file, "utf8");
+        models.push(extractContentModel(h));
+        if (p === repPath) repHtml = h;
+        else exemplarPages.push({ path: p, html: h });
+      }
+      const shared = sharedTemplateHeadings(models);
+      if (shared.length === 0) {
+        results.push({
+          path: plan.path,
+          key: plan.key,
+          verdict: "no_serve_ops",
+          reason: "tomt mall-snitt — inga delade sektioner mellan exemplaren",
+        });
+        console.log(`  ${plan.path} × ${plan.key}: tomt mall-snitt — hålls tillbaka`);
+        continue;
+      }
+      html = repHtml;
+      content = filterToTemplateSections(extractContentModel(repHtml), shared);
+    } else {
+      const pg = await pageFor(plan.path);
+      if (!pg) {
+        results.push({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
+        console.log(`  ${plan.path} × ${plan.key}: SAKNAR fryst sida — köad`);
+        continue;
+      }
+      html = pg.html;
+      content = pg.content;
+    }
     // Hit-test-listan = extraherade konverterings-CTA:er ∪ ägarens måltext —
     // måltexten är exakt strängen snippetens conversion_text-fallback matchar
     // på i drift, så grinden vaktar samma element som räknar konverteringar.
@@ -454,13 +571,27 @@ try {
       .replace(/·/g, "-")
       .replace(/[^\p{L}\p{N}-]/gu, "")
       .toLowerCase()}`.replace(/^--/, "");
-    const ctx = (await contextFor(
-      plan.path,
-      plan.key,
-      plan.total,
-      plan.observations,
-      plan.sourcePaths ?? [],
-    ))!;
+    // Mall-planer: kontexten byggs ur den FILTRERADE representant-modellen
+    // (samma designyta som nattloopens design-steg såg) — contextFor kan inte
+    // slå upp ett mönster-path och skulle dessutom ge den oberikade helheten.
+    const ctx = isTemplate
+      ? buildRedesignContext({
+          site,
+          goal: GOAL,
+          page: pageRef(repPath),
+          content,
+          segment: segmentInsightFrom(summaryFor(plan.key, plan.total), {
+            observations: plan.observations,
+          }),
+          sourcePages: [],
+        })
+      : (await contextFor(
+          plan.path,
+          plan.key,
+          plan.total,
+          plan.observations,
+          plan.sourcePaths ?? [],
+        ))!;
     // Den RIKTIGA valideringen: verb i vokabulären, targetId måste finnas,
     // claims-vakten på varje omtextning. Kedjan litar aldrig på designern.
     const validated = await generateRedesign(ctx, async () => JSON.stringify(plan.ops));
@@ -645,6 +776,55 @@ try {
       continue;
     }
 
+    // Mall-bekräftelsepassen (mall-nivå 2026-07-26): SAMMA attemptOps på varje
+    // övrigt exemplar — mallens löfte är att opsen landar på ALLA sidorna, så
+    // varje fryst exemplar måste passera grindarna. Ingen egen retry-stege
+    // (samma princip som viewport-passen): det som servas är EN op-lista för
+    // hela mallen. Faller ett exemplar hålls varianten — hellre overifierad än
+    // servad till en sida vi aldrig tittat på.
+    const exemplarConfirmations: { path: string; verdict: string; reasons: string[] }[] = [];
+    if (isTemplate) {
+      for (const ex of exemplarPages) {
+        const ectx = await browser.newContext({
+          viewport: { width: canonicalVp.width, height: canonicalVp.height },
+        });
+        await ectx.route("**/*", (r) => r.abort());
+        const epage = await ectx.newPage();
+        await epage.setContent(ex.html, { waitUntil: "domcontentloaded", timeout: 20_000 });
+        await epage.waitForTimeout(400);
+        await captureLcpElement(epage);
+        const eraw = await measurePlan(epage, attemptOps, ctaTexts, false, ctaSelectors);
+        if (!eraw.resolvedAll) {
+          exemplarConfirmations.push({
+            path: ex.path,
+            verdict: "fail",
+            reasons: [`ops kunde inte upplösas på ${ex.path} (fail closed)`],
+          });
+          await ectx.close();
+          break;
+        }
+        const egate = evaluateRenderGates(toRenderMeasurements(eraw));
+        exemplarConfirmations.push({ path: ex.path, verdict: egate.verdict, reasons: egate.reasons });
+        await ectx.close();
+        if (egate.verdict !== "pass") break;
+      }
+      const failedEx = exemplarConfirmations.find((c) => c.verdict !== "pass");
+      if (failedEx) {
+        results.push({
+          path: plan.path,
+          key: plan.key,
+          verdict: "gate_fail",
+          reason: `mall-exemplaret ${failedEx.path}: ${failedEx.reasons[0] ?? "grind föll"}`,
+          attempts,
+          exemplarConfirmations,
+        });
+        console.log(
+          `  ${plan.path} × ${plan.key}: GRIND-FAIL på mall-exemplaret ${failedEx.path} — mallen servar alla sidor, alla måste klara. Hålls tillbaka.`,
+        );
+        continue;
+      }
+    }
+
     // Grindat OK → bygg det serverbara + evidensen.
     // Retry-lyftet blir en extra move_up-op per mål så plan/serve_ops/sanning matchar.
     const finalOps: RedesignOp[] = !extraLiftApplied
@@ -699,6 +879,21 @@ try {
           verdict: c.verdict,
         })),
       },
+      // Mall-varianter: mönstret, exemplaren och deras grindutfall — ägaren
+      // ska kunna SE att designen prövades på flera av mallens sidor.
+      ...(isTemplate
+        ? {
+            template: {
+              pattern: plan.path,
+              pages: plan.templatePages ?? [],
+              repPath,
+              exemplarConfirmations: exemplarConfirmations.map((c) => ({
+                path: c.path,
+                verdict: c.verdict,
+              })),
+            },
+          }
+        : {}),
       // Självläkningens krok (ägarbeslut 2026-07-18): varje insatt citat
       // deklarerar sin källsida + exakta text, så drift-svepet kan hålla/
       // uppdatera varianten när källan ändras. Tom lista för planer utan
