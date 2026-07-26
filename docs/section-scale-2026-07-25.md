@@ -162,6 +162,43 @@ sections the static-only run never saw — pricing grids, testimonials, logo wal
 sites and +54 evidence sections for ~5 minutes and a bounded credit spend. The
 next precision gains are in typing (logos/testimonials-vs-stats), not capture.
 
+## Render fidelity — "how do we know we rendered it correctly?" (2026-07-26)
+
+The recovery metric above only proves **"not a shell"** (≥3 sections). A cookie
+wall, bot-challenge, error page, unstyled/broken render, or the **wrong site**
+(`oura.com` → a French transit page) can also clear ≥3 headings. So we verified
+the 38 recovered sites directly (`scripts/redesign/render-fidelity.ts`): render
+each, take an **above-fold screenshot** (uploaded as an artifact), run
+deterministic signature checks (bot-challenge / consent-wall / error / wrong-page
+via brand-token / unstyled / thin), then **eyeball the screenshots** — because
+only the picture confirms "looks like the real page."
+
+**Result (all 38 screenshots reviewed): ~37/38 rendered the real, correct page.**
+The lesson worth keeping: **the automated signature check is a weak proxy** — on
+the first pass it flagged the wrong site (`kyliecosmetics`, a brand-token false
+positive — the page says "Kylie Cosmetics", not the domain label) and *missed*
+the one genuinely broken render (`sofi` came back as an unstyled nav list that
+run). The screenshot is the source of truth; the signature check only points.
+
+**Two capture gaps the screenshots exposed — fixed in `scripts/redesign/render-page.ts`
+(the shared render path used by freeze-page, scale-test, capture-test, fidelity):**
+- **Unstyled/broken renders** (`sofi` that pass) — `pageLooksStyled` (CSSOM rule
+  count) now flags them; scale-test rejects them, freeze-page refuses to freeze
+  them. (The break is transient — `sofi` rendered fine on the re-run — so this is
+  a guard, not a constant.)
+- **Intrusive modals** (auth / email-capture / cookie / onboarding overlays) —
+  `dismissOverlays` presses Escape (a no-op on Stagehand's page, which has no
+  `keyboard` — a bug that first took the whole capture down 38/38 until it was
+  made throw-proof) and clicks a curated allowlist of safe close controls (cookie
+  accept/reject, "no thanks", labeled ×). **Honest limit:** this clears *labeled*
+  modals (glossier's email modal ✓) but not *icon-only* auth modals whose close
+  is an unlabeled SVG (doordash's sign-in modal remains). Partial, best-effort,
+  and it can never fail the capture.
+
+Anti-bot is probabilistic: `hashicorp` served a Vercel "verifying your browser"
+checkpoint on one run and the real page on another — expected, and the fidelity
+check catches it (as not-faithful) rather than silently trusting it.
+
 ## Re-run
 
 GitHub → Actions → **Section scale test** → Run (optional `urls=`). Artifacts:
