@@ -11,8 +11,6 @@ import {
   attachRecent,
   bestPageForSegment,
   rageSignals,
-  clickHeat,
-  clickHeatPages,
   isConsentRef,
   siteSearches,
   bucketByTime,
@@ -800,97 +798,6 @@ describe("rageSignals — frustrationssignaler (diagnostik)", () => {
   });
 });
 
-describe("clickHeat — klick-heatmapens rollup", () => {
-  // Enhets-attributionen går via besökarens pageview (klick bär ingen enhet).
-  const mobVisit = ev("pageview", { path: "/", device: "mobile" }, { visitorHash: "v-mob" });
-  const deskVisit = ev("pageview", { path: "/", device: "desktop" }, { visitorHash: "v-desk" });
-
-  it("bucketar positionsbärande klick i 5%-rutor per layoutklass på mest klickade sidan", () => {
-    const events: DashEvent[] = [
-      mobVisit,
-      deskVisit,
-      ev("element_click", { path: "/", x: 51, y: 42 }, { visitorHash: "v-mob" }),
-      ev("element_click", { path: "/", x: 52, y: 43 }, { visitorHash: "v-mob" }), // samma 5%-ruta
-      ev("element_click", { path: "/", x: 12, y: 80 }, { visitorHash: "v-desk" }),
-      ev("element_click", { path: "/pricing", x: 10, y: 10 }, { visitorHash: "v-mob" }), // annan sida — färre klick
-      ev("element_click", { path: "/" }), // gammalt event utan koordinater → ignoreras
-    ];
-    const heat = clickHeat(events);
-    expect(heat.path).toBe("/");
-    expect(heat.mobile.sampled).toBe(2);
-    expect(heat.mobile.clicks[0]).toEqual({ x: 52, y: 42, n: 2 }); // ruta 10:8 → center 52,42
-    expect(heat.desktop.sampled).toBe(1);
-    expect(heat.desktop.clicks).toEqual([{ x: 12, y: 82, n: 1 }]);
-    expect(heat.unattributed).toBe(0);
-  });
-
-  it("query-strippar sidvägen — klick lagrade före sidvägs-normaliseringen bär ?fbclid", () => {
-    const events: DashEvent[] = [
-      mobVisit,
-      ev("element_click", { path: "/blogg/x?fbclid=abc", x: 10, y: 10 }, { visitorHash: "v-mob" }),
-      ev("element_click", { path: "/blogg/x?fbclid=def", x: 11, y: 11 }, { visitorHash: "v-mob" }),
-      ev("element_click", { path: "/", x: 50, y: 50 }, { visitorHash: "v-mob" }),
-    ];
-    const heat = clickHeat(events);
-    // De två fbclid-varianterna räknas ihop och vinner över "/" (1 klick).
-    expect(heat.path).toBe("/blogg/x");
-    expect(heat.mobile.sampled).toBe(2);
-  });
-
-  it("grupperar rage-punkter per element med medelposition + bursts, i besökarens layoutvy", () => {
-    const events: DashEvent[] = [
-      mobVisit,
-      ev("element_click", { path: "/", x: 50, y: 50 }, { visitorHash: "v-mob" }),
-      ev("rage_click", { path: "/", ref: "button#buy", x: 40, y: 60 }, { visitorHash: "v-mob" }),
-      ev("rage_click", { path: "/", ref: "button#buy", x: 60, y: 80 }, { visitorHash: "v-mob" }),
-      ev("rage_click", { path: "/", ref: "a.nav", x: 10, y: 5 }, { visitorHash: "v-mob" }),
-    ];
-    const heat = clickHeat(events);
-    expect(heat.mobile.rage).toEqual([
-      { ref: "button#buy", x: 50, y: 70, n: 2 },
-      { ref: "a.nav", x: 10, y: 5, n: 1 },
-    ]);
-    expect(heat.desktop.rage).toEqual([]);
-  });
-
-  it("klick utan enhets-attribution räknas i unattributed och ritas inte", () => {
-    const heat = clickHeat([
-      ev("element_click", { path: "/", x: 50, y: 50 }), // ingen visitorHash
-      ev("element_click", { path: "/", x: 10, y: 10 }, { visitorHash: "v-okänd" }), // ingen pageview
-    ]);
-    expect(heat.mobile.sampled).toBe(0);
-    expect(heat.desktop.sampled).toBe(0);
-    expect(heat.unattributed).toBe(2);
-  });
-
-  it("tablet räknas till desktop-layouten (närmast den layoutbredden)", () => {
-    const heat = clickHeat([
-      ev("pageview", { path: "/", device: "tablet" }, { visitorHash: "v-tab" }),
-      ev("element_click", { path: "/", x: 50, y: 50 }, { visitorHash: "v-tab" }),
-    ]);
-    expect(heat.desktop.sampled).toBe(1);
-    expect(heat.mobile.sampled).toBe(0);
-  });
-
-  it("ärligt tomt läge: inga koordinater → sampled 0 och inga punkter", () => {
-    const heat = clickHeat([
-      ev("element_click", { path: "/", ref: "a" }),
-      ev("rage_click", { path: "/", ref: "b", count: 3 }),
-    ]);
-    expect(heat.mobile.sampled).toBe(0);
-    expect(heat.desktop.sampled).toBe(0);
-    expect(heat.mobile.clicks).toEqual([]);
-    expect(heat.desktop.rage).toEqual([]);
-    expect(heat.unattributed).toBe(0);
-  });
-
-  it("avvisar koordinater utanför 0–100", () => {
-    const heat = clickHeat([ev("element_click", { path: "/", x: 120, y: 50 })]);
-    expect(heat.mobile.sampled + heat.desktop.sampled).toBe(0);
-    expect(heat.unattributed).toBe(0);
-  });
-});
-
 describe("segmentSummaries — Fas 2 besökargrupper (grov→fin + volymgrind)", () => {
   let sid = 0;
   const sess = (over: Partial<SessionSummary> = {}): SessionSummary => ({
@@ -1316,49 +1223,6 @@ describe("journeyFlow — rankat vägträd (Journeys v2)", () => {
   });
 });
 
-describe("clickHeatPages — heatmap per sida med sidväljare", () => {
-  it("rankar sidorna efter klickvolym och bygger en karta per sida", () => {
-    const events: DashEvent[] = [
-      ev("pageview", { device: "mobile" }, { visitorHash: "v1" }),
-      ev("element_click", { path: "/restauranger", x: 50, y: 10 }, { visitorHash: "v1" }),
-      ev("element_click", { path: "/restauranger", x: 52, y: 12 }, { visitorHash: "v1" }),
-      ev("element_click", { path: "/blogg", x: 30, y: 40 }, { visitorHash: "v1" }),
-    ];
-    const pages = clickHeatPages(events);
-    expect(pages.map((p) => p.path)).toEqual(["/restauranger", "/blogg"]);
-    expect(pages[0].mobile.sampled).toBe(2);
-    expect(pages[1].mobile.sampled).toBe(1);
-    // bakåtkompatibla ytan är sidväljarens default (klick-toppen)
-    expect(clickHeat(events).path).toBe("/restauranger");
-  });
-
-  it("utan positionsklick finns ändå en tom '/'-post", () => {
-    const pages = clickHeatPages([]);
-    expect(pages).toHaveLength(1);
-    expect(pages[0].path).toBe("/");
-    expect(pages[0].mobile.sampled + pages[0].desktop.sampled).toBe(0);
-    expect(pages[0].mobile.reach).toEqual({ views: 0, p25: 0, p50: 0, p75: 0, p100: 0 });
-  });
-
-  it("scroll-räckvidden räknas per sida+enhet — legacy-events utan path ignoreras ärligt", () => {
-    const events: DashEvent[] = [
-      ev("pageview", { device: "mobile", path: "/a" }, { visitorHash: "v1" }),
-      ev("pageview", { device: "mobile", path: "/a" }, { visitorHash: "v1" }),
-      ev("element_click", { path: "/a", x: 50, y: 10 }, { visitorHash: "v1" }),
-      ev("scroll_depth", { depth: 25, path: "/a" }, { visitorHash: "v1" }),
-      ev("scroll_depth", { depth: 50, path: "/a" }, { visitorHash: "v1" }),
-      // legacy: inget path — kan inte placeras per sida
-      ev("scroll_depth", { depth: 75 }, { visitorHash: "v1" }),
-      // annan sida — får inte blandas in i /a
-      ev("scroll_depth", { depth: 25, path: "/b" }, { visitorHash: "v1" }),
-    ];
-    const [page] = clickHeatPages(events);
-    expect(page.path).toBe("/a");
-    expect(page.mobile.reach).toEqual({ views: 2, p25: 1, p50: 1, p75: 0, p100: 0 });
-    expect(page.desktop.reach.views).toBe(0);
-  });
-});
-
 describe("isConsentRef — samtyckes-klick bort ur resa, heatmap och rage", () => {
   it("stegbyggaren och klickordningen hoppar samtyckes-klick men behåller sajtens egna", () => {
     const events: DashEvent[] = [
@@ -1377,16 +1241,6 @@ describe("isConsentRef — samtyckes-klick bort ur resa, heatmap och rage", () =
     const [s] = sessionSummaries(events);
     expect(s.clickOrder).toEqual(["Kakor"]);
     expect(s.steps[0].clicks.map((c) => c.ref)).toEqual(["Kakor"]);
-  });
-
-  it("heatmapen ritar aldrig samtyckes-klick (fast-positionerad banner mappar inte)", () => {
-    const events: DashEvent[] = [
-      ev("pageview", { device: "mobile", path: "/" }, { visitorHash: "v1" }),
-      ev("element_click", { ref: "Endast nödvändiga", path: "/", x: 50, y: 50 }, { visitorHash: "v1" }),
-      ev("element_click", { ref: "Köp kakor", path: "/", x: 40, y: 30 }, { visitorHash: "v1" }),
-    ];
-    const [page] = clickHeatPages(events);
-    expect(page.mobile.sampled).toBe(1);
   });
 
   it("rage på consent-knappen listas inte som sajtens frustrationssignal", () => {

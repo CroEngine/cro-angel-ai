@@ -108,7 +108,7 @@ export const Route = createFileRoute("/api/sandbox/mirror")({
           ourOrigin,
           site,
           angel,
-          // h=1: heatmap-backdroppen behöver sidans fulla dokumenthöjd.
+          // h=1: låter spegel-konsumenten skala iframen till full dokumenthöjd.
           reportHeight: q.get("h") === "1",
         });
         return new Response(body, {

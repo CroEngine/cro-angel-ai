@@ -141,28 +141,6 @@ for (const site of targets) {
     // Query/hash strippas defensivt även här (rollupen normaliserar numera,
     // men ett ?fbclid-filnamn fällde artefakt-uppladdningen i generalrepet
     // 2026-07-17 — filnamn får bara innehålla säkra tecken).
-    // Heatmapens sidor fryses OCKSÅ: dashboardens backdrop hämtar frysta
-    // kopior, och de mest positions-klickade sidorna kan ligga utanför
-    // rollup-toppen (ägarfynd 2026-07-17: heatmapens sida saknade kopia och
-    // föll på den blanka live-spegeln).
-    const { data: clickRows } = await db
-      .from("angel_events")
-      .select("payload")
-      .eq("site", site.slug)
-      .eq("type", "element_click")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    const clickCounts = new Map<string, number>();
-    for (const r of (clickRows ?? []) as { payload: { x?: unknown; path?: unknown } }[]) {
-      if (typeof r.payload?.x !== "number") continue;
-      const raw = typeof r.payload.path === "string" ? r.payload.path : "/";
-      const p = raw.split("#")[0].split("?")[0] || "/";
-      clickCounts.set(p, (clickCounts.get(p) ?? 0) + 1);
-    }
-    const clickPaths = [...clickCounts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([p]) => p);
     // Personbläddrarens sidor fryses OCKSÅ (ägarfynd 2026-07-19: en SPA-sida
     // utan fryst kopia blir en blank live-spegel i steg-för-steg-spelaren).
     // Mest BESÖKTA sidor (pageviews) — en resa går ofta genom sidor som ingen
@@ -184,8 +162,9 @@ for (const site of targets) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([p]) => p);
-    // Löv-toppen kapas FÖRST (10) och unionen därefter (15) — klick-sidorna
-    // (max 5) får aldrig trängas ut av en lång rollup-topp.
+    // Löv-toppen kapas FÖRST (10) och unionen därefter. (Heatmap-vyn är
+    // pensionerad 2026-07-26 — klick-topparna fryses inte längre; resespelarens
+    // och flödesmålens sidor räcker som backdrops.)
     const leafPaths = [
       ...new Set(
         (leaves as { path?: string }[]).map(
@@ -220,7 +199,7 @@ for (const site of targets) {
     // taket som förut.
     const paths = [
       ...new Set([
-        ...[...new Set([...leafPaths, ...clickPaths, ...flowDests, ...journeyPaths])].slice(0, 20),
+        ...[...new Set([...leafPaths, ...flowDests, ...journeyPaths])].slice(0, 20),
         ...depPaths,
       ]),
     ];
@@ -245,10 +224,12 @@ for (const site of targets) {
             const model = extractContentModel(readFileSync(file, "utf8"));
             if (model.sections.length >= 2) {
               pages[p] = file;
-              // Dela kopian med dashboarden: heatmap-backdroppen serverar den
-              // via mirror-endpointens frozen-läge — live-spegeln kan inte
-              // rendera en SPA, men den frysta kopian ÄR den renderade sidan.
-              // Bäst-effort: ett uppladdningsfel fäller aldrig loopen.
+              // Dela kopian med spegel-endpointens frozen-läge: live-spegeln
+              // kan inte rendera en SPA, men den frysta kopian ÄR den
+              // renderade sidan. (Heat-vyn som läste den är pensionerad
+              // 2026-07-26; kopiorna behålls för resespelarens parkerade
+              // sidbilds-spår, ägarbeslut 2026-07-20.) Bäst-effort: ett
+              // uppladdningsfel fäller aldrig loopen.
               const mirrorKey = mirrorStorageKey(site.slug, p);
               const { error: mirrorErr } = await db.storage
                 .from("angel-evidence")

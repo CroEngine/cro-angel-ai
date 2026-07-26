@@ -42,7 +42,6 @@ import {
 } from "./dashboard/variant-stats";
 
 import type {
-  ClickHeat,
   Overview,
   RageSignal,
   SearchTerm,
@@ -60,7 +59,6 @@ export function OverviewPanel({
   segments,
   sessions,
   rageClicks,
-  heatPages,
   searches,
   variants,
   servingOn,
@@ -71,7 +69,6 @@ export function OverviewPanel({
   segments: SegmentSummary[];
   sessions: SessionSummary[];
   rageClicks: RageSignal[];
-  heatPages: ClickHeat[];
   searches: SearchTerm[];
   variants: VariantView[];
   servingOn: boolean;
@@ -1056,7 +1053,6 @@ export function OverviewPanel({
       {journeysOpen && (
         <JourneysOverlay
           site={site}
-          heatPages={heatPages}
           journeys={selJourneys}
           rageClicks={rageClicks}
           searches={searches}

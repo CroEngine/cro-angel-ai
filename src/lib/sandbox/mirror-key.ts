@@ -1,5 +1,5 @@
 // Lagringsnyckeln för frysta spegel-backdroppar (angel-evidence-bucketen).
-// REN och delad: nattloopen (uppladdaren) och createPagePreview (läsaren)
+// REN och delad: nattloopen (uppladdaren) och spegel-endpointens frozen-läge (läsaren)
 // måste härleda EXAKT samma nyckel ur en sidväg — annars hittas kopiorna
 // aldrig. Samma teckenregel som nattloopens artefaktfilnamn (?fbclid-filnamn
 // fällde uppladdningen i generalrepet 2026-07-17).
