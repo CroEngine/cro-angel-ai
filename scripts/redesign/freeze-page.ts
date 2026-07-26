@@ -25,9 +25,14 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-import type { Page } from "playwright-core";
-
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
+import {
+  acquireRenderPage,
+  autoScroll,
+  dismissOverlays,
+  gotoTolerant,
+  pageLooksStyled,
+} from "./render-page";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const url = arg("url");
@@ -96,93 +101,19 @@ const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
  *  UA-filtrerar auktoritativt, så frysningen kan aldrig förorena mätdatat.
  *  Lazy-svepet scrollar genom sidan så under-folden-innehåll renderas, och
  *  scrollar tillbaka så frysta dokumentet börjar vid toppen. */
-/** Skaffa en render-sida. En FJÄRR-browser (Browserbase) när den är konfigurerad
- *  — den kan nå LEVANDE sajter (SPA-rendering, kapacitet steg 2, 2026-07-24) och
- *  är exakt vägen skördaren redan kör i prod; lokal Chromium når inte levande
- *  URL:er bakom agent-proxyn. Annars lokal Chromium (dev + Actions-runner med en
- *  lokal browser-installation). Returnerar sidan + en cleanup som stänger
- *  browsern OCH släpper Browserbase-sessionen (annars fortsätter den debiteras).
- *  Kan inte köras lokalt i den här containern (Browserbase onåbar via proxyn) —
- *  validering sker i CI/prod där skördaren redan använder samma väg. */
-async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => Promise<void> }> {
-  const apiKey = process.env.BROWSERBASE_API_KEY;
-  const projectId = process.env.BROWSERBASE_PROJECT_ID;
-  if (apiKey && projectId) {
-    // Anslut via Stagehand — INTE chromium.connectOverCDP(session.connectUrl).
-    // Den råa CDP-vägen timeoutade 8/8 i CI (capture-test #1/#2, både 30s och
-    // 90s): createSession() lyckas men CDP-websocketen ansluter aldrig — den var
-    // aldrig den validerade vägen. Stagehand (env:BROWSERBASE + sessionID) är
-    // skördarens bevisade väg (engine.server.ts) och renderade 6/8 sajter i
-    // capture-test #4 — bl.a. gymshark 0→11 sektioner som statiska skalet helt
-    // missade. Sidan lever på stagehand.context, INTE stagehand.page (undefined
-    // i Stagehand 3.x → "undefined is not an object"; #3 föll 8/8 på just det).
-    const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
-    const { Stagehand } = await import("@browserbasehq/stagehand");
-    const session = await createSession();
-    const stagehand = new Stagehand({
-      env: "BROWSERBASE",
-      apiKey,
-      projectId,
-      browserbaseSessionID: session.id,
-      keepAlive: true,
-      disablePino: true,
-    });
-    // Cleanup definieras FÖRE init(): kastar init()/sid-hämtningen får sessionen
-    // ALDRIG läcka (capture-test #3 läckte 8 keepAlive-sessioner till jobb-
-    // timeouten och brände credits). Nu släpps den även vid init-fel.
-    const cleanup = async () => {
-      await stagehand.close().catch(() => {});
-      await closeSession(session.id).catch(() => {});
-    };
-    try {
-      await stagehand.init();
-      const page = (stagehand.context.pages()[0] ??
-        (await stagehand.context.newPage())) as unknown as Page;
-      // Viewporten sätts POSITIONELLT (browserSettings.viewport gäller bara till
-      // första navigeringen — createSession-kommentaren). Stealth/UA: sessionen.
-      await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
-      return { page, cleanup };
-    } catch (err) {
-      await cleanup(); // fail fast, läck aldrig sessionen
-      throw err;
-    }
-  }
-  const { chromium } = await import("playwright-core");
-  const exec = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
-  const browser = await chromium.launch({ headless: true, executablePath: exec });
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, userAgent: UA });
-  return {
-    page,
-    cleanup: async () => {
-      await browser.close().catch(() => {});
-    },
-  };
-}
-
 async function browserRenderedHtml(
   u: string,
 ): Promise<{ html: string; imgPriority: Record<string, { top: number; area: number }> }> {
-  const { errors } = await import("playwright-core");
+  // Render-primitiverna (anslut/goto/svep/avfärda modaler/stylad-koll) delas med
+  // scale-test + render-fidelity via ./render-page — EN bevisad väg (Stagehand,
+  // engine.server.ts), inte fyra kopior. Frysningen nedan är freeze-specifik
+  // (bild-geometri + CSSOM) och stannar här.
   const { page, cleanup } = await acquireRenderPage();
   try {
-    // Tunga SPA:er fyrar ibland aldrig load (öppna connections) — samma
-    // degradera-och-fortsätt som korpus-frysaren (freeze.server.ts): fånga
-    // TIMEOUTEN och jobba vidare på det som renderats. Bara timeouten: ett
-    // hårt navigationsfel (net::ERR_...) har ingen DOM — att fortsätta där
-    // fryser Chromiums egen felsida som vore den sajten.
-    const resp = await page.goto(u, { waitUntil: "load", timeout: 45_000 }).catch((err) => {
-      // Stagehands timeout är INTE en playwright errors.TimeoutError-instans
-      // (capture-test #4: whoop/docker föll på "waitForMainLoadState(load) timed
-      // out after 15000ms", som re-kastades och fällde hela rendern). Matcha
-      // därför även på meddelandet så tunga SPA:er fryses på det renderade läget
-      // i stället för att falla helt — samma degradera-och-fortsätt som förr,
-      // men robust mot Stagehands egen felform. Ett hårt navigationsfel
-      // (net::ERR_...) har ingen DOM och måste fortfarande kasta.
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!(err instanceof errors.TimeoutError) && !/tim(?:e|ed)\s*[- ]?out/i.test(msg)) throw err;
-      console.warn(`[freeze-page] load-event uteblev (${msg}) — fortsätter på renderat läge`);
-      return null;
-    });
+    // Tunga SPA:er fyrar ibland aldrig load (öppna connections) — gotoTolerant
+    // fångar timeouten (även Stagehands egen felform) och jobbar vidare på det
+    // som renderats. Ett hårt navigationsfel (net::ERR_...) kastar fortfarande.
+    const resp = await gotoTolerant(page, u);
     // Samma ärlighetsgräns som statiska vägen (curl-hjälparen): ≥400 är
     // ingen sida att frysa — en WAF-utmaning eller felsida får aldrig
     // bli "den frysta kopian".
@@ -200,15 +131,17 @@ async function browserRenderedHtml(
       await page.waitForTimeout(500);
     }
     await page.waitForTimeout(1_200);
-    await page.evaluate(async () => {
-      const step = window.innerHeight;
-      for (let y = 0; y < document.body.scrollHeight; y += step) {
-        window.scrollTo(0, y);
-        await new Promise((r) => setTimeout(r, 120));
-      }
-      window.scrollTo(0, 0);
-    });
-    await page.waitForTimeout(500);
+    // Avfärda cookie-/auth-/e-post-/onboarding-modaler FÖRE frysningen så den
+    // frysta kopian (och pixelgrindarna) ser den riktiga sidan, inte en overlay
+    // (fidelitetstestet 2026-07-26: ~5 renders doldes av centrerade modaler).
+    await dismissOverlays(page);
+    await autoScroll(page);
+    // Ostylad render = trasig (sofi.com: CSS applicerades aldrig, bara nav-länkar).
+    // Frys den ALDRIG — i --render=browser fäller det körningen, i auto behålls
+    // hellre den statiska kopian (samma ärliga degradering som ett tomt skal).
+    if (!(await pageLooksStyled(page))) {
+      throw new Error("renderad sida är ostylad (CSS applicerades aldrig) — ingen trogen kopia att frysa");
+    }
     // Pinna bildgeometrin FÖRE frysningen: varje <img> stämplas med sin
     // faktiskt renderade width/height (CSS vinner alltid över attribut, så
     // stämpeln ändrar inget som redan är stylat — den pinnar bara det som
