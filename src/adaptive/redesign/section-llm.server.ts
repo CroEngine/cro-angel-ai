@@ -160,12 +160,22 @@ const STAT_NUMBER =
 // med flit — de kan föregå en RIKTIG logga-vägg ("trusted by 500 companies [loggor]").
 const LOGOS_ANTI =
   /\b(?:millions?|thousands?|hundreds?|\d[\d,]*\+?)\s+(?:of\s+)?(?:developers|people|users|members|subscribers|learners|creators|artists|fans|listeners)\b/i;
+// Handels-RUTNÄT-antisignal (typnings-precision, forts. 2026-07-26): ett produkt-/
+// listnings-rutnät (per-enhet-priser + köp-knappar — "Add to cart", "$228 for 2
+// nights", "$61 /day", "Regular price") feltypas som logos ELLER testimonials, men
+// en ÄKTA logga-vägg / ett äkta citat har ALDRIG köp-knappar eller per-enhet-priser.
+// Rör medvetet INTE sentiment-stats ("97% feel healthier" — % men inget $/kundvagn,
+// och stats gasas ändå av STAT_NUMBER, inte här) och INTE pricing (ett handels-
+// rutnät ÄR korrekt pricing) — bara de två FP-klasserna logos + testimonials.
+const COMMERCE_GRID =
+  /\badd to (?:cart|bag|basket|favou?rites?)\b|\bquick view\b|\bregular price\b|\bsale price\b|\bper item\b|[$€£]\s?\d[\d.,]*\s*(?:\/|for\s+\d+\s+)\s*(?:night|day|mo|month|yr|year|week|item|unit)/i;
 export function passesEvidenceGate(type: string, text: string): boolean {
   if (type === "pricing") return PRICE_TOKEN.test(text);
   if (type === "stats") return STAT_NUMBER.test(text); // ett bevis-format tal, inte vilken siffra som helst
   if (type === "recognition") return RECOGNITION_TOKEN.test(text); // en riktig badge/analytiker
-  if (type === "logos") return !LOGOS_ANTI.test(text); // community-size-av-personer är inte en logga-vägg
-  return true; // testimonials/comparison/faq: svårgasade semantiskt — golv-konf. + prompt håller
+  if (type === "logos") return !LOGOS_ANTI.test(text) && !COMMERCE_GRID.test(text); // ej community-storlek, ej produktrutnät
+  if (type === "testimonials") return !COMMERCE_GRID.test(text); // ett citat har inga köp-knappar/per-enhet-priser
+  return true; // comparison/faq: svårgasade semantiskt — golv-konf. + prompt håller
 }
 
 export async function refineSectionTypesLlm(

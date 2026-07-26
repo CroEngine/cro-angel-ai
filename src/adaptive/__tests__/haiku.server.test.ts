@@ -6,7 +6,8 @@ import { callHaikuText } from "../haiku.server";
 // labeler / goal-judge all now depend on (previously 4 untested copies).
 
 function mockFetch(body: unknown, ok = true, status = 200) {
-  const fn = vi.fn(async () =>
+  // Typed like the fetch call so fn.mock.calls[0] is [url, init], not an empty tuple.
+  const fn = vi.fn(async (_url: string, _init?: RequestInit) =>
     ({ ok, status, json: async () => body }) as unknown as Response,
   );
   vi.stubGlobal("fetch", fn);

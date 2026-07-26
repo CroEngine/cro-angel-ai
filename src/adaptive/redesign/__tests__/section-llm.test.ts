@@ -243,6 +243,57 @@ describe("refineSectionTypesLlm — LLM-taket ovanpå det deterministiska typnin
     expect(t("Our customers")).toBe("logos"); // real brand wall survives
     expect(promoted).toBe(2);
   });
+
+  it("commerce-grid gate: product/listing grids aren't logos/testimonials, but sentiment-stats + real proof survive (typing precision 2026-07-26)", async () => {
+    // Two FP classes the scale test surfaced: a listing grid (per-unit prices) mislabeled
+    // testimonials, a product grid (cart actions) mislabeled logos. The controls prove NO
+    // over-tightening — a %-only sentiment stat, a real brand wall, and a real quote all
+    // survive, and pricing is untouched (a commerce grid IS correctly pricing). Guards
+    // against repeating the earlier over-tighten that dropped real HelloFresh-class proof.
+    const html = `<main>
+      <h1>Welcome</h1><p>Intro.</p>
+      <h2>Places to stay</h2><div>Cozy cabin in the woods $228 for 2 nights, superhost rated. Beachfront loft $340 for 2 nights.</div>
+      <h2>Shop the collection</h2><div>Organic cotton tee. Regular price $22. Add to cart. Rental bike $61 /day. Quick view.</div>
+      <h2>Trusted by teams everywhere</h2><div>GitHub, Stripe, Shopify, Airbnb and Netflix build on our platform.</div>
+      <h2>What customers say</h2><div>"This changed how our whole team ships software." — Jane Doe, VP Engineering at Acme.</div>
+      <h2>Loved by home cooks</h2><div>97% of customers feel healthier and save time every single week.</div>
+      <h2>Flexible plans</h2><div>Starter $22/mo. Add to cart. Pro $61/mo for growing teams.</div>
+    </main>`;
+    const content: RedesignContentModel = {
+      sections: [
+        { id: "sec-1-hero", type: "hero", position: 1, heading: "Welcome", aboveFold: true, visualWeight: 85 },
+        { id: "sec-2-section", type: "section", position: 2, heading: "Places to stay", aboveFold: false, visualWeight: 60 },
+        { id: "sec-3-section", type: "section", position: 3, heading: "Shop the collection", aboveFold: false, visualWeight: 56 },
+        { id: "sec-4-section", type: "section", position: 4, heading: "Trusted by teams everywhere", aboveFold: false, visualWeight: 52 },
+        { id: "sec-5-section", type: "section", position: 5, heading: "What customers say", aboveFold: false, visualWeight: 48 },
+        { id: "sec-6-section", type: "section", position: 6, heading: "Loved by home cooks", aboveFold: false, visualWeight: 44 },
+        { id: "sec-7-section", type: "section", position: 7, heading: "Flexible plans", aboveFold: false, visualWeight: 40 },
+      ],
+      trustSignals: [],
+      ctas: [],
+      hero: { headline: "Welcome" },
+    };
+    const promoted = await refineSectionTypesLlm(
+      content,
+      html,
+      fake({
+        "Places to stay": { type: "testimonials", confidence: 0.9 }, // listing grid ($228 for 2 nights) → REJECT
+        "Shop the collection": { type: "logos", confidence: 0.9 }, // product grid (Add to cart / Regular price / $61 /day) → REJECT
+        "Trusted by teams everywhere": { type: "logos", confidence: 0.9 }, // real brand wall → keep
+        "What customers say": { type: "testimonials", confidence: 0.9 }, // real quote + named source → keep
+        "Loved by home cooks": { type: "testimonials", confidence: 0.9 }, // %-only sentiment, no $/cart → keep (no over-tighten)
+        "Flexible plans": { type: "pricing", confidence: 0.9 }, // has "Add to cart" but pricing isn't commerce-gated → keep
+      }),
+    );
+    const t = (h: string) => content.sections.find((s) => s.heading === h)!.type;
+    expect(t("Places to stay")).toBe("section"); // gated: per-unit listing price
+    expect(t("Shop the collection")).toBe("section"); // gated: cart actions + per-unit price
+    expect(t("Trusted by teams everywhere")).toBe("logos"); // real brand wall survives
+    expect(t("What customers say")).toBe("testimonials"); // real quote survives
+    expect(t("Loved by home cooks")).toBe("testimonials"); // %-stat survives (COMMERCE_GRID doesn't fire without $/cart)
+    expect(t("Flexible plans")).toBe("pricing"); // pricing untouched by the commerce gate
+    expect(promoted).toBe(4);
+  });
 });
 
 describe("classifySectionsLlm — nätverkskontraktet", () => {
