@@ -62,6 +62,7 @@ export function OverviewPanel({
   searches,
   variants,
   servingOn,
+  otherDomains = [],
   journey = [],
 }: {
   site: string;
@@ -72,6 +73,10 @@ export function OverviewPanel({
   searches: SearchTerm[];
   variants: VariantView[];
   servingOn: boolean;
+  /** Topp-domänerna bakom "other websites" (ägarbeslut 2026-07-26: samla nu,
+   *  visa senare). Servern tröskelgrindar — tom lista tills hinken bär, och
+   *  blocket nedan är då helt vilande. */
+  otherDomains?: { domain: string; visits: number }[];
   journey?: JourneyMilestone[];
 }) {
   // ── trädet: nycklarna ÄR hierarkin (grov→fin, prefix = förälder) ──────────
@@ -744,6 +749,35 @@ export function OverviewPanel({
                   )}
                 </div>
               ) : null}
+
+              {/* "Other websites" avmystifierad: vilka sajter länkarna faktiskt
+                  kommer från. Renderas BARA för other-valet och BARA när servern
+                  släppt igenom volymen — annars noll yta (brus-principen). */}
+              {segmentDims(sel.key)[0] === "other" && otherDomains.length > 0 && (
+                <div className="mt-6">
+                  <div className="mb-2.5 flex items-baseline gap-2">
+                    <div className="font-heading text-sm font-semibold">Top referring sites</div>
+                    <div className="text-[11.5px] text-stone-400">
+                      where these visitors came from
+                    </div>
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-[#f0eee9]">
+                    {otherDomains.map((d) => (
+                      <div
+                        key={d.domain}
+                        className="flex items-center justify-between border-t border-[#f4f2ef] px-[18px] py-2.5 first:border-t-0"
+                      >
+                        <span className="min-w-0 truncate font-mono text-[12px] text-stone-700">
+                          {d.domain}
+                        </span>
+                        <span className="ml-3 flex-none text-[12px] tabular-nums text-stone-500">
+                          {fmt(d.visits)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* varianterna som hör till valet — ägarens knappar bor här */}
               <div className="mt-6">

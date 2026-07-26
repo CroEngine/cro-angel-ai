@@ -295,6 +295,7 @@ function Dashboard() {
               rageClicks={d.metrics.rageClicks}
               searches={d.metrics.searches}
               variants={d.variants ?? []}
+              otherDomains={d.otherDomains ?? []}
               servingOn={d.siteConfig.servingEnabled}
               journey={d.journey ?? []}
             />
