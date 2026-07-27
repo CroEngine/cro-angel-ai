@@ -34,6 +34,7 @@ import {
   KIND_BY_DEPTH,
   liftFmt,
   liftForKey,
+  metricTableRows,
   pct,
   scopedVariants,
   STATUS_PILL,
@@ -116,6 +117,10 @@ export function OverviewPanel({
   const [q, setQ] = useState("");
   const [journeysOpen, setJourneysOpen] = useState(false);
   const [compareId, setCompareId] = useState<string | null>(null);
+  // Utfällbar mätartabell per variantrad (ägarbeslut 2026-07-27: alla siffror,
+  // men bara bakom ett klick — grundvyn brusfri). Ett id i taget, klick igen
+  // stänger — samma mönster som compareId.
+  const [metricsId, setMetricsId] = useState<string | null>(null);
 
   const sel = selected === "all" ? null : (byKey.get(selected) ?? null);
 
@@ -823,8 +828,30 @@ export function OverviewPanel({
                       return (
                         <div key={v.id} className="border-t border-[#f4f2ef] first:border-t-0">
                           <div className="flex items-center gap-3.5 px-4 py-3">
-                            <div className="min-w-0 flex-1">
+                            <div
+                              className={
+                                "min-w-0 flex-1" +
+                                (v.abTest?.allMetrics ? " cursor-pointer select-none" : "")
+                              }
+                              onClick={
+                                v.abTest?.allMetrics
+                                  ? () => setMetricsId(metricsId === v.id ? null : v.id)
+                                  : undefined
+                              }
+                              title={
+                                v.abTest?.allMetrics
+                                  ? metricsId === v.id
+                                    ? "Hide all metrics"
+                                    : "Show all metrics"
+                                  : undefined
+                              }
+                            >
                               <div className="truncate font-mono text-[12px] text-stone-800">
+                                {v.abTest?.allMetrics && (
+                                  <span className="mr-1 text-stone-400">
+                                    {metricsId === v.id ? "▾" : "▸"}
+                                  </span>
+                                )}
                                 {v.segmentKey} <span className="text-[#c4beb6]">·</span>{" "}
                                 <span className="text-stone-400">{v.path}</span>
                               </div>
@@ -997,6 +1024,37 @@ export function OverviewPanel({
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
+                          {/* Hela mätartabellen — läsning, aldrig besluts-yta:
+                              domslutet fattas av huvudmåttet + skyddsvetona. */}
+                          {metricsId === v.id && v.abTest?.allMetrics && (
+                            <div className="border-t border-[#f4f2ef] bg-[#faf9f7] px-4 py-3">
+                              <div className="flex pb-1.5 text-[10.5px] font-semibold uppercase tracking-[.06em] text-stone-400">
+                                <div className="flex-1">Metric</div>
+                                <div className="w-[130px] text-right" style={{ color: "#065f46" }}>
+                                  Adapted
+                                </div>
+                                <div className="w-[130px] text-right">Control</div>
+                              </div>
+                              {metricTableRows(v.abTest.allMetrics).map((r) => (
+                                <div
+                                  key={r.label}
+                                  className="flex border-t border-[#f0eee9] py-1.5 text-[11.5px]"
+                                >
+                                  <div className="flex-1 text-stone-500">{r.label}</div>
+                                  <div className="w-[130px] text-right font-mono tabular-nums text-stone-800">
+                                    {r.variant}
+                                  </div>
+                                  <div className="w-[130px] text-right font-mono tabular-nums text-stone-500">
+                                    {r.control}
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="mt-2 text-[10.5px] text-stone-400">
+                                Reading only — the verdict is decided by the primary metric, with
+                                guardrail vetoes on harm.
+                              </div>
+                            </div>
+                          )}
                           {compareId === v.id && (
                             <CompareOverlay site={site} v={v} onClose={() => setCompareId(null)} />
                           )}

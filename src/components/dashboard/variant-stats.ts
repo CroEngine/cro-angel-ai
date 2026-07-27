@@ -133,3 +133,45 @@ export const enLabel = (label: string) =>
 
 export const liftFmt = (liftRel: number | null) =>
   liftRel != null ? `${liftRel > 0 ? "+" : ""}${(liftRel * 100).toFixed(0)}%` : "—";
+
+/** En rad i variantradens utfällbara mätartabell (ägarbeslut 2026-07-27:
+ *  alla siffror synliga, men bara bakom ett klick — grundvyn brusfri). */
+export interface MetricTableRow {
+  label: string;
+  /** "1,234" eller "1,234 (56.7%)" — rate bara där en andel är meningsfull. */
+  variant: string;
+  control: string;
+}
+
+/** Bygg mätartabellen ur armarnas fulla räknare. REN LÄSNING — domslutet
+ *  fattas av huvudmåttet + skyddsvetona (winner.ts), aldrig här. Bounce
+ *  härleds som visits − continuations (klampad ≥ 0), samma definition som
+ *  guardSecondariesFromArms. */
+export function metricTableRows(all: {
+  variant: import("@/lib/dashboard/dashboard.functions").ArmAllCounts;
+  control: import("@/lib/dashboard/dashboard.functions").ArmAllCounts;
+}): MetricTableRow[] {
+  const cell = (n: number, of: number | null) =>
+    of === null ? fmt(n) : `${fmt(n)} (${of > 0 ? pct(n / of) : "—"})`;
+  const bounce = (a: { visits: number; continuations: number }) =>
+    Math.max(0, a.visits - a.continuations);
+  const row = (
+    label: string,
+    pick: (a: import("@/lib/dashboard/dashboard.functions").ArmAllCounts) => number,
+    withRate = true,
+  ): MetricTableRow => ({
+    label,
+    variant: cell(pick(all.variant), withRate ? all.variant.visits : null),
+    control: cell(pick(all.control), withRate ? all.control.visits : null),
+  });
+  return [
+    row("Visitors", (a) => a.visits, false),
+    row("Continued (2nd page)", (a) => a.continuations),
+    row("Bounced", (a) => bounce(a)),
+    row("Conversions", (a) => a.conversions),
+    row("CTA clicks", (a) => a.ctaClicks),
+    row("Form submits", (a) => a.formSubmits),
+    row("Engaged (60% scroll / 30s)", (a) => a.engaged),
+    row("Deep scroll (80%)", (a) => a.deepScrolls),
+  ];
+}

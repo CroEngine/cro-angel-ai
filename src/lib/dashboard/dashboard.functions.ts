@@ -188,6 +188,23 @@ export interface VariantAbView {
     neededPerArm: number;
     estDaysAtSiteTraffic: number | null;
   };
+  /** Hela mätartabellen per arm (ägarbeslut 2026-07-27: alla siffror synliga,
+   *  men bara bakom ett klick på variantraden — grundvyn ska vara brusfri).
+   *  Samma RPC-rader som vakterna dömer på; REN LÄSNING — domslutet fattas av
+   *  huvudmåttet + skyddsvetona, aldrig av den här tabellen. Bounce härleds i
+   *  klienten (visits − continuations). */
+  allMetrics?: { variant: ArmAllCounts; control: ArmAllCounts };
+}
+
+/** En arms samtliga räknare ur angel_variant_arms — distinkta besökare. */
+export interface ArmAllCounts {
+  visits: number;
+  conversions: number;
+  continuations: number;
+  ctaClicks: number;
+  formSubmits: number;
+  engaged: number;
+  deepScrolls: number;
 }
 
 export interface VariantRuling {
@@ -472,6 +489,19 @@ export const getDashboard = createServerFn({ method: "POST" })
                 const variantFull = fullArm("variant");
                 const controlFull = fullArm("control");
                 if (variantFull.visits + controlFull.visits === 0) return;
+                // Klick-att-fälla-ut-tabellen: samma rader, ALLA räknare.
+                const allOf = (name: string): ArmAllCounts => {
+                  const row = (arms as ArmsRpcRow[]).find((a) => a.arm === name);
+                  return {
+                    visits: Number(row?.visits) || 0,
+                    conversions: Number(row?.conversions) || 0,
+                    continuations: Number(row?.continuations) || 0,
+                    ctaClicks: Number(row?.cta_clicks) || 0,
+                    formSubmits: Number(row?.form_submits) || 0,
+                    engaged: Number(row?.engaged) || 0,
+                    deepScrolls: Number(row?.deep_scrolls) || 0,
+                  };
+                };
                 const primaryOf = (a: GuardArmCounts) => ({
                   visits: a.visits,
                   conversions: metric === "continuation" ? a.continuations : a.conversions,
@@ -517,6 +547,7 @@ export const getDashboard = createServerFn({ method: "POST" })
                     relativeLift: ev.stats.relativeLift,
                   },
                   ...(prognosis ? { prognosis } : {}),
+                  allMetrics: { variant: allOf("variant"), control: allOf("control") },
                 });
                 // Kontraktsdomslut på live-armarna: variantens success-spec
                 // (eller sajttypens standard om A/B:t startats utan) dömer
