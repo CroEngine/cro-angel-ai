@@ -35,7 +35,6 @@ function Landing() {
     <div className="flex min-h-screen flex-col bg-[#fafaf9] text-stone-900 antialiased">
       <Nav />
       <Hero />
-      <QuietSubstance />
       <Footer />
     </div>
   );
@@ -86,21 +85,15 @@ function Hero() {
       </span>
 
       <div className="relative mx-auto w-full max-w-2xl px-4 py-24 text-center">
-        <h1 className={`${DISPLAY} text-4xl font-semibold tracking-tight sm:text-5xl`}>
-          What&apos;s your website?
+        <h1 className={`${DISPLAY} text-4xl font-semibold leading-[1.08] tracking-tight sm:text-[52px]`}>
+          Turn your website into an algorithm.
+          <br />
+          <span className="text-emerald-700">Convert more.</span>
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-[16px] leading-relaxed text-stone-500">
-          Paste your address. Angel builds a free example on your own page — what it would change,
-          and the numbers behind it.
-        </p>
 
         <TryUrlForm />
 
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 font-mono text-[11px] tracking-wider text-stone-400">
-          <span>[ reads what you publish ]</span>
-          <span>[ proves lift vs a control ]</span>
-          <span>[ never makes it worse ]</span>
-        </div>
+        <SnippetChip />
       </div>
     </main>
   );
@@ -162,65 +155,35 @@ function TryUrlForm() {
           type="submit"
           disabled={busy || !url.trim()}
           aria-label="Show me"
-          className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-stone-900 text-white transition hover:bg-stone-700 disabled:opacity-40"
+          className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-emerald-700 text-white transition hover:bg-emerald-600 disabled:opacity-40"
         >
           <ArrowRight className="h-5 w-5" />
         </button>
       </div>
       <p className="mt-2.5 text-[12.5px] text-stone-400">
-        Free · ready in a few minutes · no signup needed to look
+        Paste your address — free example on your own page in a few minutes. No signup needed.
       </p>
       {error && <p className="mt-2 text-[13px] font-medium text-red-600">{error}</p>}
     </form>
   );
 }
 
-// Under vecket: substansen som EN viskande rad per steg — för den som
-// scrollar, och för sökmotorerna. Inga kort, inga sektioner, inga CTA-block.
-const STEPS = [
-  {
-    tag: "[ 01 · read ]",
-    body: "Angel catalogs what your site already publishes — headlines, CTAs, trust signals. It never invents copy, only re-surfaces yours.",
-  },
-  {
-    tag: "[ 02 · steer ]",
-    body: "Each visitor gets the page tuned toward your goal — the right message per traffic source and device, in small reversible changes.",
-  },
-  {
-    tag: "[ 03 · prove ]",
-    body: "A slice of visitors is deliberately left alone as a control group. You get one honest number: the extra conversions Angel caused.",
-  },
-];
-
-function QuietSubstance() {
+// Den lilla snippet-chippen: "en rad kod" sagt VISUELLT i stället för med
+// säljtext (ägarbeslut 2026-07-27: substanstexterna skapade brus för tidigt —
+// de återkommer senare i tydligare format, inte på heron).
+function SnippetChip() {
   return (
-    <section className="mx-auto w-full max-w-3xl px-6 py-14">
-      <div className="space-y-5">
-        {STEPS.map((s) => (
-          <div key={s.tag} className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
-            <span className="flex-none font-mono text-[11px] tracking-wider text-emerald-700">
-              {s.tag}
-            </span>
-            <p className="text-[14.5px] leading-relaxed text-stone-500">{s.body}</p>
-          </div>
-        ))}
-        <div className="flex flex-col gap-1 border-t border-stone-200 pt-5 sm:flex-row sm:items-baseline sm:gap-4">
-          <span className="flex-none font-mono text-[11px] tracking-wider text-stone-400">
-            [ safety ]
-          </span>
-          <p className="text-[14.5px] leading-relaxed text-stone-500">
-            One async line of code. Never touches your largest content element, never shifts layout,
-            fails open, consent-first.{" "}
-            <Link
-              to="/seo-and-privacy"
-              className="underline decoration-stone-300 underline-offset-2 hover:text-stone-700"
-            >
-              SEO, performance &amp; privacy
-            </Link>
-          </p>
-        </div>
+    <div className="mx-auto mt-12 inline-block text-left">
+      <div className="font-mono text-[10.5px] tracking-wider text-stone-400">
+        [ the whole install — one line ]
       </div>
-    </section>
+      <code className="mt-1.5 block whitespace-pre-wrap break-all rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 font-mono text-[11.5px] leading-relaxed text-stone-500 shadow-[0_1px_0_#e7e5e4]">
+        <span className="text-stone-400">&lt;script</span> async src=
+        <span className="text-emerald-700">&quot;…/adaptive.js&quot;</span> data-site=
+        <span className="text-emerald-700">&quot;your-site&quot;</span>
+        <span className="text-stone-400">&gt;&lt;/script&gt;</span>
+      </code>
+    </div>
   );
 }
 

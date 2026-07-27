@@ -130,12 +130,13 @@ export function AuthForm({ redirect }: { redirect?: string }) {
             <span className="text-xl leading-none text-emerald-700">✳</span>{" "}
             {step === "signup" ? "Create your account" : "Sign in or sign up"}
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {step === "email" && "One form for both — start with your email."}
-            {step === "signin" && "Welcome back — enter your password."}
-            {step === "signup" && "New here — pick a password to get started."}
-            {step === "confirm_sent" && "One click left."}
-          </p>
+          {step !== "email" && (
+            <p className="text-sm text-muted-foreground">
+              {step === "signin" && "Welcome back — enter your password."}
+              {step === "signup" && "New here — pick a password to get started."}
+              {step === "confirm_sent" && "One click left."}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           {step === "email" && (
