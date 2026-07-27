@@ -23,6 +23,7 @@ import { Route as ApiAdaptiveDecideRouteImport } from './routes/api/adaptive/dec
 import { Route as ApiAdaptiveEventsRouteImport } from './routes/api/adaptive/events'
 import { Route as ApiAdaptiveInventoryRouteImport } from './routes/api/adaptive/inventory'
 import { Route as ApiPreviewJobRouteImport } from './routes/api/preview/job'
+import { Route as ApiPreviewPageRouteImport } from './routes/api/preview/page'
 import { Route as ApiPreviewReportRouteImport } from './routes/api/preview/report'
 import { Route as ApiSandboxMirrorRouteImport } from './routes/api/sandbox/mirror'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
@@ -102,6 +103,11 @@ const ApiPreviewJobRoute = ApiPreviewJobRouteImport.update({
   path: '/api/preview/job',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPreviewPageRoute = ApiPreviewPageRouteImport.update({
+  id: '/api/preview/page',
+  path: '/api/preview/page',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPreviewReportRoute = ApiPreviewReportRouteImport.update({
   id: '/api/preview/report',
   path: '/api/preview/report',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/preview/job': typeof ApiPreviewJobRoute
+  '/api/preview/page': typeof ApiPreviewPageRoute
   '/api/preview/report': typeof ApiPreviewReportRoute
   '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/preview/job': typeof ApiPreviewJobRoute
+  '/api/preview/page': typeof ApiPreviewPageRoute
   '/api/preview/report': typeof ApiPreviewReportRoute
   '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
   '/api/adaptive/inventory': typeof ApiAdaptiveInventoryRoute
   '/api/preview/job': typeof ApiPreviewJobRoute
+  '/api/preview/page': typeof ApiPreviewPageRoute
   '/api/preview/report': typeof ApiPreviewReportRoute
   '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/api/adaptive/events'
     | '/api/adaptive/inventory'
     | '/api/preview/job'
+    | '/api/preview/page'
     | '/api/preview/report'
     | '/api/sandbox/mirror'
     | '/api/stripe/webhook'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/api/adaptive/events'
     | '/api/adaptive/inventory'
     | '/api/preview/job'
+    | '/api/preview/page'
     | '/api/preview/report'
     | '/api/sandbox/mirror'
     | '/api/stripe/webhook'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/api/adaptive/events'
     | '/api/adaptive/inventory'
     | '/api/preview/job'
+    | '/api/preview/page'
     | '/api/preview/report'
     | '/api/sandbox/mirror'
     | '/api/stripe/webhook'
@@ -296,6 +308,7 @@ export interface RootRouteChildren {
   ApiAdaptiveEventsRoute: typeof ApiAdaptiveEventsRoute
   ApiAdaptiveInventoryRoute: typeof ApiAdaptiveInventoryRoute
   ApiPreviewJobRoute: typeof ApiPreviewJobRoute
+  ApiPreviewPageRoute: typeof ApiPreviewPageRoute
   ApiPreviewReportRoute: typeof ApiPreviewReportRoute
   ApiSandboxMirrorRoute: typeof ApiSandboxMirrorRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
@@ -405,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPreviewJobRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/preview/page': {
+      id: '/api/preview/page'
+      path: '/api/preview/page'
+      fullPath: '/api/preview/page'
+      preLoaderRoute: typeof ApiPreviewPageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/preview/report': {
       id: '/api/preview/report'
       path: '/api/preview/report'
@@ -472,6 +492,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdaptiveEventsRoute: ApiAdaptiveEventsRoute,
   ApiAdaptiveInventoryRoute: ApiAdaptiveInventoryRoute,
   ApiPreviewJobRoute: ApiPreviewJobRoute,
+  ApiPreviewPageRoute: ApiPreviewPageRoute,
   ApiPreviewReportRoute: ApiPreviewReportRoute,
   ApiSandboxMirrorRoute: ApiSandboxMirrorRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
