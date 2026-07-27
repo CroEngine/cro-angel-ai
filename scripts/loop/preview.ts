@@ -297,9 +297,16 @@ for (const job of jobs) {
   writeFileSync(reportPath, reportHtml);
 
   const storKey = `preview/${job.id}/report.html`;
+  // Explicit Blob-typ (pilotfynd 2026-07-27): en rå Buffer laddas upp som
+  // text/plain trots contentType-optionen, och storage svarar med nosniff —
+  // webbläsaren TVINGAS visa källkod i stället för rapporten. Blob:ens typ
+  // vinner; charset löser även mojibake i äldre visningar.
   const { error: upErr } = await db.storage
     .from("angel-evidence")
-    .upload(storKey, readFileSync(reportPath), { contentType: "text/html", upsert: true });
+    .upload(storKey, new Blob([readFileSync(reportPath)], { type: "text/html; charset=utf-8" }), {
+      contentType: "text/html; charset=utf-8",
+      upsert: true,
+    });
   if (upErr) {
     console.warn(`[preview] ${job.id}: uppladdning föll: ${upErr.message} — failed`);
     await fail(job.id, "upload_failed");
