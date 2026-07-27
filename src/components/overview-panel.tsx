@@ -15,7 +15,7 @@
 // Statistikhjälpare bor i dashboard/variant-stats, popuperna i
 // dashboard/overlays (sajt-genomgången 2026-07-18).
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -1171,23 +1171,61 @@ export function OverviewPanel({
  *  fylliga raden, senaste "done" behåller sin (vad hände nyss + vad pågår).
  *  När det ärliga domslutet finns är berättelsen klar och kortet försvinner —
  *  då ÄR dashboardens riktiga siffror berättelsen. */
+/** Minimeringsvalet minns per webbläsare — kortet är guld första veckorna
+ *  och brus när ägaren kan resan utantill (ägarbeslut 2026-07-27). */
+const ROAD_MIN_KEY = "angel-road-minimized";
+
 function JourneyCard({ journey }: { journey: JourneyMilestone[] }) {
+  // Hooks FÖRE alla early-returns (React-regeln). localStorage läses i en
+  // effect — inte i initialiseraren — så SSR-hydreringen aldrig spricker;
+  // priset är en kort expanderad blink för den som minimerat.
+  const [minimized, setMinimized] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(ROAD_MIN_KEY) === "1") setMinimized(true);
+    } catch {
+      /* lagring blockerad — kortet börjar expanderat */
+    }
+  }, []);
+  const toggle = () =>
+    setMinimized((prev) => {
+      try {
+        localStorage.setItem(ROAD_MIN_KEY, prev ? "0" : "1");
+      } catch {
+        /* valet gäller då bara denna vy */
+      }
+      return !prev;
+    });
+
   if (journey.length === 0) return null;
   const verdictDone = journey.find((m) => m.id === "verdict")?.state === "done";
   if (verdictDone) return null;
   const doneCount = journey.filter((m) => m.state === "done").length;
   const lastDoneIdx = journey.reduce((acc, m, i) => (m.state === "done" ? i : acc), -1);
+  const current = journey.find((m) => m.state === "current");
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-6">
-      <div className="flex items-baseline justify-between">
+    <div className={`rounded-2xl border border-stone-200 bg-white ${minimized ? "px-6 py-4" : "p-6"}`}>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={!minimized}
+        title={minimized ? "Expand" : "Minimize"}
+        className="flex w-full cursor-pointer items-baseline justify-between text-left"
+      >
         <div className="font-mono text-[10.5px] uppercase tracking-[.14em] text-emerald-600">
           The road to proven
         </div>
         <div className="font-mono text-[10.5px] text-stone-400">
-          {doneCount} / {journey.length}
+          {doneCount} / {journey.length} <span className="ml-1">{minimized ? "▸" : "▾"}</span>
         </div>
-      </div>
+      </button>
+      {minimized && current && (
+        <div className="mt-1 text-[12px] text-stone-500">
+          Now: <span className="font-semibold text-stone-700">{current.title}</span>
+        </div>
+      )}
+      {minimized ? null : (
       <ol className="mt-4 space-y-0">
         {journey.map((m, i) => {
           const showDetail = m.state === "current" || i === lastDoneIdx;
@@ -1239,6 +1277,7 @@ function JourneyCard({ journey }: { journey: JourneyMilestone[] }) {
           );
         })}
       </ol>
+      )}
     </div>
   );
 }
