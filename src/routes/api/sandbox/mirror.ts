@@ -10,6 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import {
   frozenBackdropHtml,
+  frozenPreviewHtml,
   guardTargetUrl,
   safeMirrorFetch,
   sandboxSecret,
@@ -48,20 +49,33 @@ export const Route = createFileRoute("/api/sandbox/mirror")({
         // Fryst backdrop (SPA-sajternas väg): servera nattloppens browser-
         // frysta kopia ur angel-evidence i stället för att spegla live —
         // live-spegeln kan inte rendera en SPA (routern ser spegel-URL:en).
-        // Token är bunden till "frozen:"-prefixad nyckel så url-tokens och
-        // frozen-tokens aldrig är utbytbara.
+        // Token är bunden till "frozen:"-prefixad nyckel + medskickad sid-URL
+        // så url-tokens och frozen-tokens aldrig är utbytbara och sidadressen
+        // (som styr snippetens data-site/data-url) inte kan bytas i efterhand.
         const frozenKey = q.get("frozen");
         if (frozenKey) {
           if (!/^mirrors\/[a-z0-9][a-z0-9.-]*\/[A-Za-z0-9._-]+\.html$/.test(frozenKey)) {
             return deny(400, "bad_frozen_key");
           }
-          if (!verifySandboxToken(`frozen:${frozenKey}`, exp, token, secret)) {
+          if (!verifySandboxToken(`frozen:${frozenKey}|${rawUrl}`, exp, token, secret)) {
             return deny(403, "bad_token");
           }
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const dl = await supabaseAdmin.storage.from("angel-evidence").download(frozenKey);
           if (dl.error || !dl.data) return deny(502, "frozen_missing");
-          const body = frozenBackdropHtml(await dl.data.text());
+          // Variantförhandsvisning: med en guardad sid-URL injiceras snippeten
+          // (forceVariant läser ?angel_variant= ur spegel-URL:en) — utan URL
+          // eller med angel=0 serveras den rena backdroppen.
+          const pageGuard = rawUrl ? guardTargetUrl(rawUrl) : null;
+          const body =
+            pageGuard && pageGuard.ok
+              ? frozenPreviewHtml(await dl.data.text(), {
+                  angel,
+                  ourOrigin: new URL(request.url).origin,
+                  site: sandboxSiteSlug(pageGuard.url),
+                  pageUrl: pageGuard.url.href,
+                })
+              : frozenBackdropHtml(await dl.data.text());
           return new Response(body, {
             status: 200,
             headers: {
@@ -70,8 +84,8 @@ export const Route = createFileRoute("/api/sandbox/mirror")({
               "x-robots-tag": "noindex, nofollow",
               "referrer-policy": "no-referrer",
               // Samma opaka sandlåda som spegelvägen — kopian är script-
-              // strippad, men höjdrapportören vi injicerar ska inte kunna
-              // mer än postMessage ändå.
+              // strippad; det som kör är höjdrapportören och (i variant-
+              // förhandsvisningen) Angel-snippeten, aldrig sajtens egen JS.
               "content-security-policy": "sandbox allow-scripts; frame-ancestors 'self'",
             },
           });

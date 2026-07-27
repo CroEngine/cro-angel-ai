@@ -107,20 +107,34 @@ export const createVariantPreview = createServerFn({ method: "POST" })
 
     // Mall-varianter förhandsvisas på representant-sidan — mönstret /blogg/*
     // är ingen riktig URL (vit spegel, buggfynd 2026-07-27).
-    const guarded = guardTargetUrl(
-      `https://${siteRow.domain}${previewPagePath(v.path, v.evidence)}`,
-    );
+    const pagePath = previewPagePath(v.path, v.evidence);
+    const guarded = guardTargetUrl(`https://${siteRow.domain}${pagePath}`);
     if (!guarded.ok) return { ok: false, reason: guarded.reason };
     const secret = sandboxSecret();
     if (!secret) return { ok: false, reason: "unavailable" };
 
     const url = guarded.url.href;
     const exp = Date.now() + SANDBOX_TOKEN_TTL_MS;
-    const t = signSandboxToken(url, exp, secret);
     // Segmentnyckelns dimensioner skiljs med "·" (t.ex. "instagram·mobile·SE").
     const mobile = segmentDims(v.segment_key).includes("mobile");
-    const qs =
-      `url=${encodeURIComponent(url)}&exp=${exp}&t=${t}` + (mobile ? "&angel_device=mobile" : "");
+    const deviceQs = mobile ? "&angel_device=mobile" : "";
+
+    // Frozen-först (SPA-buggfyndet 2026-07-27): finns nattloppens frysta kopia
+    // av sidan serveras DEN — färdigrenderad, deterministisk och samma DOM som
+    // verify:n mätte på — med snippeten applicerad ovanpå. Live-spegeln kan
+    // aldrig rendera en klientrenderad sajt (routern ser spegel-URL:en).
+    // Utan fryst kopia (sajter utanför nattloopen): live-spegeln som förut.
+    const frozenKey = mirrorStorageKey(data.site, pagePath);
+    const slash = frozenKey.lastIndexOf("/");
+    const { data: listed } = await supabaseAdmin.storage
+      .from("angel-evidence")
+      .list(frozenKey.slice(0, slash), { limit: 1, search: frozenKey.slice(slash + 1) });
+    const hasFrozen = (listed ?? []).some((f) => f.name === frozenKey.slice(slash + 1));
+
+    const qs = hasFrozen
+      ? `frozen=${encodeURIComponent(frozenKey)}&url=${encodeURIComponent(url)}&exp=${exp}` +
+        `&t=${signSandboxToken(`frozen:${frozenKey}|${url}`, exp, secret)}${deviceQs}`
+      : `url=${encodeURIComponent(url)}&exp=${exp}&t=${signSandboxToken(url, exp, secret)}${deviceQs}`;
     return {
       ok: true,
       mirrorPath: `/api/sandbox/mirror?${qs}&angel_variant=${encodeURIComponent(v.id)}`,

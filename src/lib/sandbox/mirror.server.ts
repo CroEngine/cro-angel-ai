@@ -276,31 +276,37 @@ export function transformMirrorHtml(html: string, opts: MirrorTransformOptions):
   }
 
   if (opts.angel) {
-    // data-url: motorn ska se kundens RIKTIGA adress (path/pageType/inventory-
-    // uppslag), inte spegel-endpointens — annars klassas varje spegel "other"
-    // och den konfigurerade sajtens skörd hittas aldrig.
-    const snippetTag =
-      `<script async src="${escAttr(opts.ourOrigin)}/adaptive.js"` +
-      ` data-site="${escAttr(opts.site)}" data-endpoint="${escAttr(opts.ourOrigin)}"` +
-      ` data-url="${escAttr(opts.pageUrl)}"></script>`;
-    // The mirror iframe is opaque-origin, so the dashboard can't read
-    // window.AngelAdaptive out of it — the page reports its own result.
-    const reporter =
-      "<script>(function(){var n=0;var t=setInterval(function(){n++;" +
-      "var A=window.AngelAdaptive;" +
-      "if(A&&A.decision){clearInterval(t);try{parent.postMessage({type:'angel-sandbox'," +
-      "site:A.site,applied:A.applied||[]},'*')}catch(e){}}" +
-      "else if(n>60){clearInterval(t);" +
-      "try{parent.postMessage({type:'angel-sandbox',site:" +
-      JSON.stringify(opts.site) +
-      ",applied:[],timedOut:true},'*')}catch(e){}}},250)})();</script>";
-    const inject = snippetTag + reporter;
+    const inject = angelInjection(opts);
     out = out.includes("</head>") ? out.replace("</head>", `${inject}</head>`) : out + inject;
   }
   if (opts.reportHeight) {
     out = withHeightReporter(out);
   }
   return withCmpHidden(out);
+}
+
+// Snippet-taggen + resultat-rapportören — delas av live-spegeln och frozen-
+// lägets variantförhandsvisning så bägge vägarna konfigurerar motorn identiskt.
+// data-url: motorn ska se kundens RIKTIGA adress (path/pageType/inventory-
+// uppslag), inte spegel-endpointens — annars klassas varje spegel "other"
+// och den konfigurerade sajtens skörd hittas aldrig.
+function angelInjection(opts: { ourOrigin: string; site: string; pageUrl: string }): string {
+  const snippetTag =
+    `<script async src="${escAttr(opts.ourOrigin)}/adaptive.js"` +
+    ` data-site="${escAttr(opts.site)}" data-endpoint="${escAttr(opts.ourOrigin)}"` +
+    ` data-url="${escAttr(opts.pageUrl)}"></script>`;
+  // The mirror iframe is opaque-origin, so the dashboard can't read
+  // window.AngelAdaptive out of it — the page reports its own result.
+  const reporter =
+    "<script>(function(){var n=0;var t=setInterval(function(){n++;" +
+    "var A=window.AngelAdaptive;" +
+    "if(A&&A.decision){clearInterval(t);try{parent.postMessage({type:'angel-sandbox'," +
+    "site:A.site,applied:A.applied||[]},'*')}catch(e){}}" +
+    "else if(n>60){clearInterval(t);" +
+    "try{parent.postMessage({type:'angel-sandbox',site:" +
+    JSON.stringify(opts.site) +
+    ",applied:[],timedOut:true},'*')}catch(e){}}},250)})();</script>";
+  return snippetTag + reporter;
 }
 
 // Cookiebanners/CMP-dialoger göms i ALLA spegel-backdroppar (ägarfynd
@@ -352,4 +358,29 @@ function withHeightReporter(html: string): string {
  */
 export function frozenBackdropHtml(html: string): string {
   return withCmpHidden(withHeightReporter(html));
+}
+
+export interface FrozenPreviewOptions {
+  /** false → FÖRE-ramen: ren backdrop utan snippet. */
+  angel: boolean;
+  ourOrigin: string;
+  /** sandbox--<host> — samma slug-regel som live-spegeln. */
+  site: string;
+  /** Sidans RIKTIGA adress (data-url åt motorn). */
+  pageUrl: string;
+}
+
+/**
+ * Fryst kopia som VARIANT-förhandsvisning — SPA-sajternas compare-vy
+ * (buggfynd 2026-07-27: /blogg/*-varianten blev vit — live-spegeln kan aldrig
+ * rendera en SPA, men den frysta kopian ÄR den färdigrenderade sidan).
+ * Kopian är script-strippad, så sajtens egen JS kan inte skriva över DOM:en;
+ * BARA Angel-snippeten injiceras och forceVariant-vägen (?angel_variant= på
+ * spegel-URL:en) applicerar variantens riktiga serve-ops på den frysta sidan.
+ */
+export function frozenPreviewHtml(html: string, opts: FrozenPreviewOptions): string {
+  const base = frozenBackdropHtml(html);
+  if (!opts.angel) return base;
+  const inject = angelInjection(opts);
+  return base.includes("</head>") ? base.replace("</head>", `${inject}</head>`) : inject + base;
 }
