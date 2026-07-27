@@ -1,5 +1,5 @@
 {
-  "// varför": "scripts/ låg utanför ALL typkoll (granskningsfynd 2026-07-28) — nattloopen, preview-arbetaren, katalogkedjan och fleet-runnern kompilerades aldrig av tsc. Tre produktionsbuggar hade fångats här (validated.notes-stavfelet, cohorts/success-tappet, nightly:s let-i-try). CI kör denna via `bun run typecheck:scripts`.",
+  "// varför": "scripts/ låg utanför ALL typkoll (granskningsfynd 2026-07-28) — nattloopen, preview-arbetaren, katalogkedjan och fleet-runnern kompilerades aldrig av tsc. Första körningen fångade fem skarpa buggar: cohorts/success-tappet (kohortvarianter föddes oscopade), validated.notes/plan.notes-fantomfälten, angel-reports --strict-ReferenceError och två tyst ignorerade Stagehand-timeouts. CI kör denna via `bun run typecheck:scripts`.",
   "extends": "./tsconfig.json",
   "include": ["scripts/**/*.ts", "scripts/types/*.d.ts"],
   "exclude": ["node_modules", "dist", "scripts/lab/**"],
