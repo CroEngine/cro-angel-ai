@@ -144,11 +144,19 @@ export const Route = createFileRoute("/api/preview/job")({
             .eq("id", id)
             .maybeSingle();
           if (!row) return json({ ok: false, reason: "not_found" }, 404);
+          // Rapporten serveras via VÅR origin (/api/preview/report) — Supabase
+          // neutraliserar HTML på den publika ytan till text/plain + nosniff
+          // (diag 2026-07-27), så storage-URL:en visar källkod i stället för
+          // rapporten. DB-raden behåller storage-URL:en som sanning om var
+          // bytesen bor; äldre rader med annat nyckelformat lämnas orörda.
+          const ownReport = row.report_url?.includes(`/preview/${id}/report.html`)
+            ? `/api/preview/report?id=${id}`
+            : row.report_url;
           return json({
             ok: true,
             status: row.status,
             url: row.url,
-            reportUrl: row.report_url,
+            reportUrl: ownReport,
             findings: mapFindings(row.findings) ?? row.findings ?? null,
             error: row.error,
           });

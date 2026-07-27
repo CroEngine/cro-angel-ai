@@ -2,15 +2,16 @@
 # samma miljö som preview-arbetaren (samma bun, samma secrets). Se
 # scripts/diag/storage-content-type.ts för vad som testas och varför.
 #
-# Push-trigger på diagnosgrenen är tillfällig (snabb feedbackloop under
-# felsökningen); workflow_dispatch är den bestående vägen.
+# Slutsats 2026-07-27 (runda 2, run 30272507959): lagringen tar typen
+# korrekt för ALLA vägar — men publika ytan skriver om just HTML till
+# text/plain + nosniff vid servering (nätfiskeskydd på supabase.co).
+# PNG/JSON serveras rätt. Därför serveras rapporter via vår egen origin
+# (/api/preview/report). Behålls som dispatch-verktyg för framtida
+# storage-frågor.
 
 name: Storage diag
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - claude/bold-ride-wtqp00
 
 concurrency:
   group: storage-diag

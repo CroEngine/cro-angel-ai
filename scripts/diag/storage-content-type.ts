@@ -7,11 +7,12 @@
 // "Invalid Compact JWS" (nyckeln är nya sb_secret-formatet — kräver
 // apikey-headern, inte rå JWT-Bearer).
 //
-// Runda 2 (denna): hypotesen är att Supabase MEDVETET neutraliserar HTML på
-// den publika ytan (nätfiske-skydd på supabase.co-domänen) — då hjälper ingen
-// uppladdningsvariant och fixen är att servera rapporten via VÅR egen origin.
-// Bevisföring: kontrollfiler (PNG/JSON/HTML) via samma väg + .info()-läsning
-// av LAGRAD mimetype (skiljer lagring från servering) + REST med apikey.
+// Runda 2 (run 30272507959) BEKRÄFTADE: lagringen tar typen korrekt för alla
+// vägar (info() visar text/html), men publika ytan skriver om just HTML till
+// text/plain + nosniff vid SERVERING — PNG→image/png och JSON→application/json
+// serveras däremot rätt. Nätfiske-skydd på supabase.co-domänen; ingen
+// uppladdningsvariant kan kringgå det. Fixen är att servera rapporten via
+// VÅR egen origin: /api/preview/report?id=… sätter rätt headers själv.
 //
 // Kör i preview-arbetarens miljö: bun run scripts/diag/storage-content-type.ts
 // Städar alltid bort _diag-objekten efteråt.
