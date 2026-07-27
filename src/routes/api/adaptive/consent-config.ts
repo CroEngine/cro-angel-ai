@@ -21,6 +21,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { loadSiteConfig } from "@/adaptive/persistence.server";
+import { originVerdict } from "@/adaptive/domain";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -54,6 +55,21 @@ export const Route = createFileRoute("/api/adaptive/consent-config")({
         // No site → privacy-safe default, don't cache the miss.
         if (!site) return json(ANON, "no-store");
         const cfg = await loadSiteConfig(site);
+        // Origin-grind, HÅRDARE än decide/events (granskningsfynd 2026-07-28):
+        // svaret bär kundens konverteringsmål (URL/selector/text = hela
+        // funnel-definitionen), så för domän-registrerade sajter krävs
+        // BEVISAD origin — snippetens fetch från kundens sida är alltid
+        // cross-origin och bär Origin, medan curl/utländska sajter får den
+        // anonyma defaulten (som inte avslöjar något). Sandbox-mappningens
+        // läcka ("?site=sandbox--kund.se") stängs av samma regel. Sajter
+        // utan registrerad domän (legacy/labb) behåller gamla beteendet —
+        // de har inget att bevisa mot.
+        const dv = originVerdict(
+          cfg.domain,
+          request.headers.get("origin"),
+          request.headers.get("referer"),
+        );
+        if (cfg.domain ? !dv.proved : !dv.allowed) return json(ANON, "no-store");
         // Cache at the edge/browser for 5 min: config changes rarely and a stale
         // 'anonymous' only ever under-collects (never over-collects).
         return json(

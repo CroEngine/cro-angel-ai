@@ -30,19 +30,20 @@ interface EventBatch {
   events: AngelEvent[];
 }
 
+// Server-skrivna typer (adaptation_shown/withheld via logDecision,
+// page_structure via inventory-endpointen) togs UR klient-whitelisten
+// (granskningsfynd 2026-07-28): window.AngelAdaptive.track är publikt och
+// decisionId valideras inte — fabricerade exponeringsrader kunde skeva
+// A/B-armarna som vinnarutvärderingen läser. Symmetri är inte ett skäl
+// att öppna en förgiftningsdörr.
 const VALID_TYPES = new Set([
   "pageview",
-  "adaptation_shown",
-  "adaptation_withheld",
   "cta_click",
   "scroll_depth",
   "conversion",
   // Observe-only: fältmätt prestanda (CWV + navigation-timing), en gång per
   // sidladdning. Diagnos, aldrig behandling.
   "page_perf",
-  // Observe-only: strukturell diagnos (formulär/nav/pris) — skrivs server-side
-  // av inventory-endpointen, inte av snippeten, men vitlistas här för symmetri.
-  "page_structure",
   // Journey intelligence (docs/journey-intelligence.md): anonym beteenderesa.
   // element_click bär klickORDNINGEN (intent-signalen); form-lifecyclen visar
   // drop-off; page_leave bär aktiv tid + exit. Aldrig fältvärden.
@@ -75,9 +76,17 @@ export const Route = createFileRoute("/api/adaptive/events")({
         if (isBotUserAgent(request.headers.get("user-agent"))) {
           return new Response(null, { status: 204, headers: CORS_HEADERS });
         }
+        // Payload-tak (granskningsfynd 2026-07-28): antalet events kappades
+        // till 100 men inte BYTES — jsonb-lagringen kunde förgiftas med
+        // godtyckligt stora rader. 128 kB rymmer varje legitim batch med
+        // bred marginal; större släpps tyst (204 — bryt aldrig beacons).
+        const rawBody = await request.text();
+        if (rawBody.length > 128 * 1024) {
+          return new Response(null, { status: 204, headers: CORS_HEADERS });
+        }
         let batch: EventBatch;
         try {
-          batch = (await request.json()) as EventBatch;
+          batch = JSON.parse(rawBody) as EventBatch;
         } catch {
           // sendBeacon may send text — accept gracefully, ack anyway.
           return new Response(null, { status: 204, headers: CORS_HEADERS });

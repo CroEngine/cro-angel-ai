@@ -2,6 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { sseStream, withBrowserPage } from "@/lib/tests/sse.server";
 
+// Intern testyta — AVSTÄNGD i drift utan uttrycklig aktivering
+// (granskningsfynd 2026-07-28): routen var helt oautentiserad och lät vem
+// som helst starta browsersessioner mot godtyckliga URL:er (SSRF +
+// kostnads-DoS). ANGEL_INTERNAL_TESTS=1 sätts bara i utvecklingsmiljön;
+// riktig sessionsbunden auktorisering är dokumenterad kvarvarande skuld.
+const internalTestsEnabled = () => process.env.ANGEL_INTERNAL_TESTS === "1";
+
+
 // On-demand crawl + inventory ingest for ONE url, streamed like the other test
 // routes so the serverless host stays alive during the browser work. Loads the
 // page in Browserbase, runs the same pageAudit the live crawler uses, and feeds
@@ -13,6 +21,7 @@ export const Route = createFileRoute("/api/tests/crawl/stream")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        if (!internalTestsEnabled()) return new Response("disabled", { status: 403 });
         const reqUrl = new URL(request.url);
         const targetUrl = reqUrl.searchParams.get("url");
         const site = reqUrl.searchParams.get("site");
