@@ -324,7 +324,18 @@ const CMP_HIDE_SELECTORS =
   "#cookiescript_injected," +
   "[data-lovable-cookie-root]," +
   "[id*='cookie-consent' i],[class*='cookie-banner' i],[id*='consent-banner' i]";
-const CMP_HIDE_STYLE = `<style>${CMP_HIDE_SELECTORS}{display:none!important;visibility:hidden!important}</style>`;
+// Lovable-mönstret (glutenforum-fyndet 2026-07-27): bannern är ett anonymt
+// Tailwind-kort — inget id, ingen cookie-klass. Stabila signalen är en fixed-
+// container vars löptext länkar cookiepolicyn i ett <p> (menyer och sidfötter
+// länkar den i listor, aldrig i <p>). EGEN regel: en browser utan :has() ska
+// bara tappa denna, aldrig hela listan ovan (en okänd selektor fäller sin
+// regels HELA selektorlista). Bara spegel-kosmetik — mätvägen (measure.ts
+// CMP_ROOTS) behöver ingen motsvarighet: fixed-overlays blir aldrig block.
+const CMP_HIDE_HAS_RULE =
+  "div[class*='fixed']:has(p a[href*='cookiepolic' i])," +
+  "div[class*='fixed']:has(p a[href*='cookie-polic' i])" +
+  "{display:none!important;visibility:hidden!important}";
+const CMP_HIDE_STYLE = `<style>${CMP_HIDE_SELECTORS}{display:none!important;visibility:hidden!important}${CMP_HIDE_HAS_RULE}</style>`;
 
 function withCmpHidden(html: string): string {
   return html.includes("</head>")
