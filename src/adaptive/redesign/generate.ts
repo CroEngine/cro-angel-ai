@@ -148,18 +148,46 @@ export function validateOps(rawOps: unknown[], ctx: RedesignContext): RedesignPl
         continue;
       }
       const sourcePath = typeof o.sourcePath === "string" ? o.sourcePath : "";
-      const src = (ctx.sourcePages ?? []).find((p) => p.path === sourcePath);
-      if (!src) {
-        rejected.push({
-          op: raw,
-          reason: `sourcePath "${sourcePath}" is not an offered source page`,
+      // Placerings-stegen (2026-07-27): den probade/verifierade insättnings-
+      // punkten måste överleva valideringen — annars strippas den och
+      // servas ≠ grindas.
+      const placement = o.placement === "after_h1" ? ("after_h1" as const) : undefined;
+      if (sourcePath) {
+        // Korssid-lyftet: ordagrann post i källsidans snippet-whitelist.
+        const src = (ctx.sourcePages ?? []).find((p) => p.path === sourcePath);
+        if (!src) {
+          rejected.push({
+            op: raw,
+            reason: `sourcePath "${sourcePath}" is not an offered source page`,
+          });
+          continue;
+        }
+        if (!detail || !src.snippets.some((s) => normQuote(s.text) === normQuote(detail))) {
+          rejected.push({
+            op: raw,
+            reason: `insert text is not a VERBATIM quote from ${sourcePath} (paraphrases are invented content)`,
+          });
+          continue;
+        }
+        ops.push({
+          op: "insert_snippet",
+          targetId,
+          detail,
+          why: typeof o.why === "string" ? o.why : "",
+          sourcePath,
+          ...(placement ? { placement } : {}),
         });
         continue;
       }
-      if (!detail || !src.snippets.some((s) => normQuote(s.text) === normQuote(detail))) {
+      // Samma-sida-lyftet (kandidatkatalogen 2026-07-27): utan källsida
+      // måste texten vara ORDAGRANN text som landningssidan redan
+      // publicerar (grounding-korpusen = rubriker, trust-signaler, CTA:er,
+      // hjältetexterna). Samma "aldrig påhitt"-kontrakt som whitelisten —
+      // bara källan skiljer.
+      if (!detail || !normQuote(corpus).toLowerCase().includes(normQuote(detail).toLowerCase())) {
         rejected.push({
           op: raw,
-          reason: `insert text is not a VERBATIM quote from ${sourcePath} (paraphrases are invented content)`,
+          reason: "insert text is not VERBATIM content from this page (paraphrases are invented content)",
         });
         continue;
       }
@@ -168,7 +196,7 @@ export function validateOps(rawOps: unknown[], ctx: RedesignContext): RedesignPl
         targetId,
         detail,
         why: typeof o.why === "string" ? o.why : "",
-        sourcePath,
+        ...(placement ? { placement } : {}),
       });
       continue;
     }

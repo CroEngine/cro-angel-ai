@@ -433,6 +433,10 @@ interface PlanIn {
   /** Mall-planer: exemplaret briefen/designen byggdes ur. */
   repPath?: string;
   ops: RedesignOp[];
+  /** Kandidatkatalogen (2026-07-27): rankade reserver — verify provar dem i
+   *  ordning när huvudvalet inte kan levereras, före bevis-lyftets nödfall.
+   *  Varje reserv valideras precis som huvudplanen innan den provas. */
+  altOps?: RedesignOp[][];
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
 
@@ -753,58 +757,78 @@ try {
     // direkt efter h1-elementet (talentium-fyndet: videoblocket täckte
     // default-punkten). Första placering som passerar vinner och kodas i
     // serve_ops så klienten applicerar exakt det grindade.
+    // Prova en op-lista i egen kontext; vid pass ADOPTERAS den (efter-bevis
+    // tas om från exakt den appliceringen — skärmdumpen ägaren ser måste
+    // komma från det som grindades) och blir planens sanning nedströms.
+    const adoptRun = async (opsList: RedesignOp[], label: string): Promise<boolean> => {
+      const m = toMeasureOps(content, opsList, styleDonor);
+      if (!m) return false;
+      const fctx = await browser.newContext({
+        viewport: { width: canonicalVp.width, height: canonicalVp.height },
+      });
+      await fctx.route("**/*", (r) => r.abort());
+      const fpage = await fctx.newPage();
+      await fpage.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
+      await fpage.waitForTimeout(400);
+      await captureLcpElement(fpage);
+      const fb = await runGatedAttempts(fpage, m, ctaTexts, { ctaSelectors });
+      const fbLast = fb.attempts[fb.attempts.length - 1];
+      if (!fb.unresolvable && fbLast.gate.verdict === "pass") {
+        await measurePlan(fpage, fb.attemptOps, [], true);
+        await fpage.screenshot({
+          path: join(outDir, `${slug}-after.jpg`),
+          type: "jpeg",
+          quality: 60,
+          fullPage: true,
+        });
+        writeFileSync(join(outDir, `${slug}-after.html`), await fpage.content());
+        attempts = [...attempts, ...fb.attempts]; // hela historiken — ärlig rapport
+        attemptOps = fb.attemptOps;
+        extraLiftApplied = false; // reserverna bär sina egna ops som de är
+        effectiveOps = opsList;
+        measureOps = m;
+        last = attempts[attempts.length - 1];
+        fallbackUsed = label;
+        console.log(
+          `  ${plan.path} × ${plan.key}: huvudvalet kunde inte levereras — "${label}" verifierades i stället`,
+        );
+        await fctx.close();
+        return true;
+      }
+      // Ärlig spårbarhet: varje nej ska synas i loggen, inte tystna.
+      console.log(
+        `  ${plan.path} × ${plan.key}: reserven "${label}" hölls också — ${
+          fb.unresolvable ? "lokatorn kunde inte upplösas" : (fbLast.gate.reasons[0] ?? "grind föll")
+        }`,
+      );
+      await fctx.close();
+      return false;
+    };
+
+    // Reserv-stegen: katalogens rankade alternativ (validerade som huvud-
+    // planen — samma ärlighetsregler) → bevis-lyftets nödfall med
+    // placerings-stegen. Aldrig för mall-planer (exemplaren har olika h1).
     const tryProofFallback = async (): Promise<boolean> => {
       if (isTemplate) return false;
+      for (const [i, alt] of (plan.altOps ?? []).entries()) {
+        const altValidated = await generateRedesign(ctx, async () => JSON.stringify(alt));
+        if (altValidated.ops.length !== alt.length) {
+          console.log(
+            `  ${plan.path} × ${plan.key}: reserv alt:${i + 1} föll i valideringen — hoppas`,
+          );
+          continue;
+        }
+        if (await adoptRun(altValidated.ops, `alt:${i + 1}`)) return true;
+      }
       const fbBase = proofInsertFallback(content, validated.ops);
       const placements: ("after_h1" | undefined)[] = [undefined, "after_h1"];
       for (const placement of fbBase ? placements : []) {
         const fbOps = fbBase!.map((o) =>
           o.op === "insert_snippet" && placement ? { ...o, placement } : o,
         );
-        const fbMeasure = toMeasureOps(content, fbOps, styleDonor);
-        if (!fbMeasure) return false;
-        const fctx = await browser.newContext({
-          viewport: { width: canonicalVp.width, height: canonicalVp.height },
-        });
-        await fctx.route("**/*", (r) => r.abort());
-        const fpage = await fctx.newPage();
-        await fpage.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
-        await fpage.waitForTimeout(400);
-        await captureLcpElement(fpage);
-        const fb = await runGatedAttempts(fpage, fbMeasure, ctaTexts, { ctaSelectors });
-        const fbLast = fb.attempts[fb.attempts.length - 1];
-        if (!fb.unresolvable && fbLast.gate.verdict === "pass") {
-          // Efter-bevisen tas om från fallbackens EXAKTA applicering — samma
-          // regel som huvudvägen (skärmdumpen ägaren ser måste komma från
-          // det som grindades).
-          await measurePlan(fpage, fb.attemptOps, [], true);
-          await fpage.screenshot({
-            path: join(outDir, `${slug}-after.jpg`),
-            type: "jpeg",
-            quality: 60,
-            fullPage: true,
-          });
-          writeFileSync(join(outDir, `${slug}-after.html`), await fpage.content());
-          attempts = [...attempts, ...fb.attempts]; // hela historiken — ärlig rapport
-          attemptOps = fb.attemptOps;
-          extraLiftApplied = false; // fallbacken bär inga flyttar
-          effectiveOps = fbOps;
-          measureOps = fbMeasure;
-          last = attempts[attempts.length - 1];
-          fallbackUsed = placement ? `proof_insert:${placement}` : "proof_insert";
-          console.log(
-            `  ${plan.path} × ${plan.key}: flytten kunde inte levereras — bevis-lyftet verifierades i stället (fallback${placement ? `, placering ${placement}` : ""})`,
-          );
-          await fctx.close();
+        if (await adoptRun(fbOps, placement ? `proof_insert:${placement}` : "proof_insert")) {
           return true;
         }
-        // Ärlig spårbarhet: fallbackens nej ska synas i loggen, inte tystna.
-        console.log(
-          `  ${plan.path} × ${plan.key}: fallback-lyftet (${placement ?? "efter hjälten"}) hölls också — ${
-            fb.unresolvable ? "lokatorn kunde inte upplösas" : (fbLast.gate.reasons[0] ?? "grind föll")
-          }`,
-        );
-        await fctx.close();
       }
       return false;
     };

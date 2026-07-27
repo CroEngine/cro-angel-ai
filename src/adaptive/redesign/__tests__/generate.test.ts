@@ -199,9 +199,9 @@ describe("validateOps — insert_snippet (korssid-lyftet: ordagrant · hjälten 
   });
   const QUOTE = "Från 99 kr/mån — alla funktioner ingår.";
 
-  it("adds insert_snippet to the vocabulary ONLY when source pages exist", () => {
+  it("insert_snippet är ALLTID i vokabulären (samma-sida-lyftet 2026-07-27) — källsidor lägger till whitelisten", () => {
     expect(srcCtx.guardrails.ops).toContain("insert_snippet");
-    expect(ctx.guardrails.ops).not.toContain("insert_snippet");
+    expect(ctx.guardrails.ops).toContain("insert_snippet");
   });
 
   it("keeps a VERBATIM quote targeting hero from an offered source page", () => {
@@ -281,13 +281,43 @@ describe("validateOps — insert_snippet (korssid-lyftet: ordagrant · hjälten 
     expect(wrongTarget.ops).toHaveLength(0);
   });
 
-  it("rejects the verb entirely in a single-page context (vocabulary gate)", () => {
+  it("single-page-kontext: källsids-referens utan bjuden källsida avvisas fortfarande", () => {
     const plan = validateOps(
       [{ op: "insert_snippet", targetId: "hero", sourcePath: "/priser", detail: QUOTE, why: "w" }],
       ctx,
     );
     expect(plan.ops).toHaveLength(0);
-    expect(plan.rejected[0].reason).toMatch(/not in allowed vocabulary/);
+    expect(plan.rejected[0].reason).toMatch(/not an offered source page/);
+  });
+
+  // Samma-sida-lyftet (kandidatkatalogen 2026-07-27): utan sourcePath måste
+  // texten vara ORDAGRANN text ur sidans egen grounding-korpus — samma
+  // "aldrig påhitt"-kontrakt som whitelisten, bara källan skiljer.
+  it("samma-sida-insert: ordagrann korpustext accepteras, placement följer med", () => {
+    const heading = ctx.content.sections[1]?.heading ?? ctx.content.hero?.headline ?? "";
+    const plan = validateOps(
+      [
+        {
+          op: "insert_snippet",
+          targetId: "hero",
+          detail: heading,
+          why: "w",
+          placement: "after_h1",
+        },
+      ],
+      ctx,
+    );
+    expect(plan.ops).toHaveLength(1);
+    expect(plan.ops[0]).toMatchObject({ op: "insert_snippet", detail: heading, placement: "after_h1" });
+  });
+
+  it("samma-sida-insert: parafras (text utanför korpusen) avvisas", () => {
+    const plan = validateOps(
+      [{ op: "insert_snippet", targetId: "hero", detail: "Helt påhittad säljrad 12345", why: "w" }],
+      ctx,
+    );
+    expect(plan.ops).toHaveLength(0);
+    expect(plan.rejected[0].reason).toMatch(/not VERBATIM content from this page/);
   });
 });
 

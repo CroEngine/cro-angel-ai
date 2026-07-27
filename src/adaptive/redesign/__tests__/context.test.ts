@@ -199,7 +199,9 @@ describe("sourcePages — korssid-lyftets citerbara material (task #117)", () =>
       segment: segmentInsightFrom(seg(), {}),
     });
     expect(single.sourcePages).toBeUndefined();
-    expect(single.guardrails.ops).not.toContain("insert_snippet");
+    // Samma-sida-lyftet (2026-07-27): verbet är alltid i vokabulären —
+    // whitelist-SEKTIONEN i prompten hör dock fortfarande till källsidorna.
+    expect(single.guardrails.ops).toContain("insert_snippet");
     expect(renderRedesignPrompt(single)).not.toContain("Quotable content");
   });
 });

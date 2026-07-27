@@ -53,6 +53,18 @@ const SIGNAL_TYPE_WEIGHT: Record<string, number> = {
 const MIN_SIGNAL_LEN = 8;
 const MAX_DETAIL_LEN = 90;
 
+/** Trust-signalernas texter är regex-fångster ur PLATT text och kan dra med
+ *  sig angränsande UI-brus (talentium-fixturen: "Trusted by the world's best
+ *  0:30 Product overview Play video…"). Klipp vid första tidskoden/kända
+ *  UI-ordet — kvarvarande prefix är fortfarande ordagrann sidtext (en
+ *  substräng av korpusen), så valideringens samma-sida-krav håller. */
+function tidySignalText(raw: string): string {
+  return raw
+    .split(/\s+\d{1,2}:\d{2}\b/)[0]
+    .split(/\s+(?:Play video|Watch video|Se videon)\b/i)[0]
+    .trim();
+}
+
 /** Generera hela katalogen av lagliga drag ur innehållsmodellen. Ren funktion
  *  utan DOM — browser-förprovningen (probe) annoterar/filtrerar efteråt.
  *  Sorterad: högst poäng först (golvets val = första posten). */
@@ -81,7 +93,7 @@ export function generateCandidates(content: RedesignContentModel): Candidate[] {
   // Dedup på normaliserad text — samma rad ska inte stå två gånger i menyn.
   const seen = new Set<string>();
   content.trustSignals.forEach((t, i) => {
-    const text = t.text.trim().slice(0, MAX_DETAIL_LEN);
+    const text = tidySignalText(t.text).slice(0, MAX_DETAIL_LEN);
     const key = text.replace(/\s+/g, " ").toLowerCase();
     const weight = SIGNAL_TYPE_WEIGHT[t.type] ?? 1;
     if (text.length < MIN_SIGNAL_LEN || seen.has(key)) return;

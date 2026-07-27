@@ -33,6 +33,10 @@ export const DEFAULT_REDESIGN_GUARDRAILS: RedesignGuardrails = {
     "Re-tighten existing copy for focus — same meaning, fewer words. Never new claims.",
     "Reveal already-published-but-hidden content (e.g. a testimonial below the fold).",
     "Condense a long hero to its essentials.",
+    // Samma-sida-lyftet (kandidatkatalogen 2026-07-27): op:en är alltid i
+    // vokabulären — valideringen kräver ordagrann text ur sidans egen
+    // grounding-korpus när ingen källsida bjuds (generate.ts).
+    "Surface ONE line the page ALREADY publishes (a trust signal or section heading, verbatim) as a new block directly below the hero (op insert_snippet) — exact text only, never paraphrased.",
   ],
   forbidden: [
     "Invent any content, copy, number, testimonial or claim not already on the page.",
@@ -44,7 +48,7 @@ export const DEFAULT_REDESIGN_GUARDRAILS: RedesignGuardrails = {
     // få planen underkänd i pixelgrinden efteråt.
     "Move or rewrite the page's largest-paint (LCP) element — usually the hero image or hero headline. The serve-time performance guard blocks such an op for every real visitor, so the verifier rejects the whole variant.",
   ],
-  ops: ["move_up", "set_text", "condense", "reveal"],
+  ops: ["move_up", "set_text", "condense", "reveal", "insert_snippet"],
 };
 
 /** The faithfully-frozen page — the "code + screenshot" the LLM sees. Referenced

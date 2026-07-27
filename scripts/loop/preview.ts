@@ -22,7 +22,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { anthropicDesigner } from "./designer";
-import { generateRedesign } from "../../src/adaptive/redesign/generate";
+import { buildCandidatePlan } from "./candidate-plan";
+import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { segmentDims } from "../../src/lib/segment-key";
@@ -193,24 +194,50 @@ for (const job of jobs) {
     adequate: true,
     recent: null,
   };
-  const ctx = buildRedesignContext({
-    site,
-    goal: { text: null, kind: null, selector: null },
-    page: {
-      url: job.url,
-      frozenHtmlPath: frozen,
-      screenshotPath: "",
-      viewport: { width: 390, height: 844 },
-    },
+  // KATALOGEN FÖRST (kandidatkatalogen 2026-07-27, ägarbeslut "få ihop LLM
+  // och kod"): koden genererar de lagliga dragen, DOM-proben filtrerar, LLM
+  // väljer ur menyn (kan inte avvisas), golvet väljer när LLM:en tystnar.
+  // Den fritt-skapande designern är RESERVEN för sidor utan katalogkandidater
+  // — tratten svarar aldrig mer "kunde inte analysera" på en sida med bevis.
+  let planOps: RedesignOp[];
+  let altOps: RedesignOp[][] = [];
+  let planSource: string;
+  const candPlan = await buildCandidatePlan({
     content,
-    segment: segmentInsightFrom(summary, { observations }),
-    sourcePages: [],
+    frozenPath: frozen,
+    workDir: dir,
+    segmentLabel: dims.join(" · "),
+    observations,
   });
-  const plan = await generateRedesign(ctx, anthropicDesigner);
-  if (plan.ops.length === 0) {
-    console.warn(`[preview] ${job.id}: designern gav ingen giltig plan (${plan.note ?? "tomt"})`);
-    await fail(job.id, "could_not_analyze");
-    continue;
+  if (candPlan) {
+    planOps = candPlan.ops;
+    altOps = candPlan.altOps;
+    planSource = `katalog/${candPlan.source}`;
+    console.log(
+      `  katalogen: ${candPlan.menuSize} kandidater i menyn · val via ${candPlan.source} · ${altOps.length} reserver`,
+    );
+  } else {
+    const ctx = buildRedesignContext({
+      site,
+      goal: { text: null, kind: null, selector: null },
+      page: {
+        url: job.url,
+        frozenHtmlPath: frozen,
+        screenshotPath: "",
+        viewport: { width: 390, height: 844 },
+      },
+      content,
+      segment: segmentInsightFrom(summary, { observations }),
+      sourcePages: [],
+    });
+    const plan = await generateRedesign(ctx, anthropicDesigner);
+    if (plan.ops.length === 0) {
+      console.warn(`[preview] ${job.id}: designern gav ingen giltig plan (${plan.note ?? "tomt"})`);
+      await fail(job.id, "could_not_analyze");
+      continue;
+    }
+    planOps = plan.ops;
+    planSource = "designer";
   }
 
   // 3. Verifiera genom SAMMA grindkedja som produktionen (auto-generate
@@ -229,7 +256,8 @@ for (const job of jobs) {
         total: { visits: 0, conversions: 0 },
         observations,
         sourcePaths: [],
-        ops: plan.ops,
+        ops: planOps,
+        altOps,
       },
     ]),
   );
@@ -299,7 +327,7 @@ for (const job of jobs) {
         text: (o.op === "insert_snippet" ? o.value : o.locator?.text) ?? o.locator?.text ?? "",
         why: o.why ?? "",
       }))
-    : plan.ops.map((o) => ({
+    : planOps.map((o) => ({
         op: o.op,
         text: content.sections.find((s) => s.id === o.targetId)?.heading ?? o.targetId,
         why: o.why,
@@ -398,7 +426,8 @@ for (const job of jobs) {
     gateReasons: (lastAttempt?.gate?.reasons ?? []).slice(0, 3),
     attempts: verifyFirst?.attempts?.length ?? 0,
     sections: content.sections.length,
-    planOps: plan.ops.map((o) => o.op),
+    planOps: planOps.map((o) => o.op),
+    planSource,
     at: new Date().toISOString(),
   };
   const findings = {
