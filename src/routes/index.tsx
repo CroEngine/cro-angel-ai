@@ -46,17 +46,20 @@ function Nav() {
       <div className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
         <span className="text-xl leading-none text-emerald-700">✳</span> Angel
       </div>
-      <nav className="flex items-center gap-1 text-sm">
-        <Link to="/login" className="px-3 py-2 font-medium text-stone-500 hover:text-stone-900">
-          Sign in
-        </Link>
-        <Link
-          to="/signup"
-          className="rounded-lg px-3 py-2 font-medium text-stone-500 transition hover:text-stone-900"
-        >
-          Sign up
-        </Link>
-      </nav>
+      {/* Ägarbeslut 2026-07-27: EN grön "Try Angel" i hörnet — inga
+          sign in/sign up-länkar (inloggningen bor diskret i sidfoten).
+          Knappen fokuserar inklistringsfältet: hela sidan ÄR try-flödet. */}
+      <button
+        type="button"
+        onClick={() => {
+          const el = document.getElementById("try-url") as HTMLInputElement | null;
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          el?.focus();
+        }}
+        className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600"
+      >
+        Try Angel
+      </button>
     </header>
   );
 }
@@ -142,6 +145,7 @@ function TryUrlForm() {
     <form onSubmit={submit} className="mx-auto mt-9 w-full max-w-xl">
       <div className="flex items-center gap-2 rounded-2xl border border-stone-300 bg-white p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)] transition focus-within:border-emerald-600">
         <input
+          id="try-url"
           type="text"
           inputMode="url"
           autoFocus
@@ -194,8 +198,13 @@ function Footer() {
         <div className="flex items-center gap-2 font-bold text-stone-800">
           <span className="text-emerald-700">✳</span> Angel
         </div>
-        <span className="font-mono text-[11px] tracking-wider text-stone-400">
-          [ paste · preview · install · proven ]
+        <span className="flex items-center gap-4">
+          <Link to="/login" className="text-[13px] text-stone-400 hover:text-stone-700">
+            Sign in
+          </Link>
+          <span className="font-mono text-[11px] tracking-wider text-stone-400">
+            [ paste · preview · install · proven ]
+          </span>
         </span>
       </div>
     </footer>
