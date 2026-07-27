@@ -247,13 +247,20 @@ for (const job of jobs) {
   // 4. Rapport ur verify-bevisen. VERIFIED ⇒ riktiga before/after; grind-fail
   //    ⇒ ärlig "hölls tillbaka" med före-bilden. Slug-regeln speglar
   //    auto-generate ("home--google-mobile").
+  // SAMMA verdiktregel som nattloopen (results.filter verdict === "verified"):
+  // verify-report.json innehåller ÄVEN gate_fail-poster — utan filtret sålde
+  // rapporten en tillbakahållen ändring som "Verified" (pilotfynd 2026-07-27,
+  // talentium: movedAboveMain + LCP-skift 671px stoppades av grinden, men
+  // skalet läste aldrig domslutet).
   let verified: { serveOps?: { op?: string; locator?: { text?: string }; why?: string }[] } | null =
     null;
   try {
     const results = JSON.parse(readFileSync(join(dir, "verify-report.json"), "utf8")) as {
+      verdict?: string;
       serveOps?: { op?: string; locator?: { text?: string }; why?: string }[];
     }[];
-    verified = verifyOk && results.length > 0 ? results[0] : null;
+    const passed = results.filter((r) => r.verdict === "verified");
+    verified = verifyOk && passed.length > 0 ? passed[0] : null;
   } catch {
     verified = null;
   }
@@ -300,13 +307,17 @@ for (const job of jobs) {
   }
   const publicUrl = db.storage.from("angel-evidence").getPublicUrl(storKey).data.publicUrl;
 
-  // /try-sidans fynd-rad: rubrikerna designern målade mot + verdiktet.
-  const findings = {
-    headlines: changes.map((c) => c.label).slice(0, 3),
-    liftTest: verified
-      ? "Verified on your page — no layout shift, LCP untouched, fully reversible"
-      : null,
-  };
+  // /try-sidans fynd-rad — skrivs i granska-formen som GET-vägens mapFindings
+  // normaliserar ({fynd: [{rubrik, vikt}], flyttStatus}); min första form
+  // mappades till tomhet. Hölls tillbaka ⇒ inga fynd-rader och ingen
+  // lyft-text — rapporten berättar ärligheten.
+  const findings = verified
+    ? {
+        fynd: changes.map((c, i) => ({ rubrik: c.label, vikt: i })),
+        flyttStatus:
+          "Verified on your page — no layout shift, LCP untouched, fully reversible",
+      }
+    : { fynd: [], flyttStatus: null };
 
   const { error: updErr } = await db
     .from("angel_preview_jobs")
