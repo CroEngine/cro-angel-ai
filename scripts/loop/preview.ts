@@ -28,6 +28,7 @@ import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/g
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { segmentDims } from "../../src/lib/segment-key";
+import { PREVIEW_STALE_HOURS } from "../../src/lib/preview/preview";
 import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
@@ -44,7 +45,9 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 const db = createClient(SUPABASE_URL, SERVICE_KEY);
 const outRoot = arg("out") ?? "preview-out";
 
-const PREVIEW_STALE_HOURS = 48;
+// PREVIEW_STALE_HOURS importeras från src/lib/preview (granskningsfynd
+// 2026-07-28): två oberoende definitioner av samma kontrakt kunde glida isär
+// — API:t hade då lovat en annan livstid än arbetaren höll.
 
 // node:child_process i stället för Bun.spawnSync: den senare saknar timeout,
 // och en hängd frysning/verify åt annars hela jobbets 15 min och lämnade

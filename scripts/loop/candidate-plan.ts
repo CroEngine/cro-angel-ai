@@ -79,8 +79,22 @@ export async function buildCandidatePlan(args: {
     ],
     { stdio: ["ignore", "inherit", "inherit"], timeout: 90_000 },
   );
-  if (probeRun.status !== 0) return null; // probe föll — gamla vägen tar över
-  const probe = JSON.parse(readFileSync(outPath, "utf8")) as ProbeAnnotation[];
+  if (probeRun.status !== 0) {
+    // Synlig orsak (granskningsfynd 2026-07-28): fallet till fria designern
+    // var tyst — i fleet-läsningen gick det inte att skilja "proben kraschade"
+    // från "menyn var tom", två helt olika fel att åtgärda.
+    console.warn(
+      `[katalog] proben föll (exit ${probeRun.status ?? "timeout/signal"}) — fria designern tar över`,
+    );
+    return null;
+  }
+  let probe: ProbeAnnotation[];
+  try {
+    probe = JSON.parse(readFileSync(outPath, "utf8")) as ProbeAnnotation[];
+  } catch (e) {
+    console.warn(`[katalog] probens utfil oläsbar (${String(e).slice(0, 120)}) — fria designern tar över`);
+    return null;
+  }
   const menu = applyProbe(candidates, probe);
   if (menu.length === 0) return null;
 

@@ -12,13 +12,16 @@
 //
 // Strukturerade resultat → fleet-preview/results.json (skrivs om efter VARJE
 // sajt — en krasch tappar aldrig framsteg; omkörning hoppar färdiga sajter).
+// OBS: återupptagningen gäller LOKALT — Actions-runnern (preview-fleet.yml)
+// startar alltid tomt eftersom inget artefakt-återställs mellan körningar;
+// där styrs urvalet i stället med --offset/--limit (vågkörning).
 //
 //   bun run scripts/fleet-loop/preview-fleet.ts [--limit=N] [--offset=N]
 //     [--only=namn1,namn2] [--conc=3]
 //
 // Kräver ANTHROPIC_API_KEY (designern). BROWSERBASE_* frivilligt (SPA-frys).
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -61,15 +64,27 @@ sites = sites.slice(OFFSET, LIMIT ? OFFSET + LIMIT : undefined);
 mkdirSync(OUT_ROOT, { recursive: true });
 
 const resultsPath = join(OUT_ROOT, "results.json");
-const prior: SiteResult[] = existsSync(resultsPath)
-  ? (JSON.parse(readFileSync(resultsPath, "utf8")) as SiteResult[])
-  : [];
+// Vaktad läsning (granskningsfynd 2026-07-28): en halvskriven/korrupt
+// results.json (dödad körning mitt i write) kraschade HELA flottstarten.
+// Nu: varna + börja om — atomic-flushen nedan gör felet osannolikt framåt.
+let prior: SiteResult[] = [];
+if (existsSync(resultsPath)) {
+  try {
+    prior = JSON.parse(readFileSync(resultsPath, "utf8")) as SiteResult[];
+  } catch (e) {
+    console.warn(`[fleet] results.json oläsbar (${String(e).slice(0, 120)}) — börjar om från noll`);
+  }
+}
 const doneNames = new Set(prior.filter((r) => r.status !== "crashed").map((r) => r.name));
 const results: SiteResult[] = [...prior.filter((r) => r.status !== "crashed")];
 const queue = sites.filter((s) => !doneNames.has(s.name));
 console.log(`[fleet] ${queue.length} sajter i kön (${results.length} redan klara), conc=${CONC}`);
 
-const flush = () => writeFileSync(resultsPath, JSON.stringify(results, null, 2));
+// Atomisk flush (tmp+rename): läsare/återupptagning ser aldrig en halv fil.
+const flush = () => {
+  writeFileSync(`${resultsPath}.tmp`, JSON.stringify(results, null, 2));
+  renameSync(`${resultsPath}.tmp`, resultsPath);
+};
 
 function spawnBun(args: string[], timeoutMs: number): boolean {
   const r = spawnSync("bun", ["run", ...args], {
@@ -224,7 +239,20 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
       fallback?: string;
       attempts?: { gate?: { reasons?: string[] } }[];
     };
-    const vr = JSON.parse(readFileSync(join(dir, "verify-report.json"), "utf8")) as Entry[];
+    // Vaktad läsning (granskningsfynd 2026-07-28): kraschade verify INNAN
+    // rapporten fanns kastade readFileSync här — sajten bokfördes "crashed"
+    // med ett ENOENT i stället för sanningen "verify_failed", och grenen på
+    // raden under var onåbar död kod.
+    let vr: Entry[] = [];
+    try {
+      vr = JSON.parse(readFileSync(join(dir, "verify-report.json"), "utf8")) as Entry[];
+    } catch {
+      res.verdict = "verify_failed";
+      res.reason = verifyOk
+        ? "verify-report.json saknas trots exit 0"
+        : "verify kraschade/timade ut innan rapporten skrevs";
+      return res;
+    }
     const first = vr[0];
     res.verdict = first?.verdict ?? (verifyOk ? "no_result" : "verify_failed");
     res.fallback = first?.fallback ?? null;

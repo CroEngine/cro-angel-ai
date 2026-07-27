@@ -82,6 +82,16 @@ await captureLcpElement(page);
 
 const results: ProbeOut[] = [];
 
+/** Färsk sidladdning + ny LCP-markör. Används efter en mätkrasch: ett kast
+ *  mitt i appliceringen lämnar DOM:en muterad, och eftersom EN sida delas av
+ *  alla kandidater vore varje mått därefter tyst korrupt (granskningsfynd
+ *  2026-07-28). Omladdning är den enda garanterat rena återstarten. */
+async function reloadPage(): Promise<void> {
+  await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
+  await page.waitForTimeout(400);
+  await captureLcpElement(page);
+}
+
 /** Kör grindmaskinen för en op-lista; null vid pass ⇒ mätvärden, annars
  *  första grind-orsaken. measurePlan (inuti) återställer alltid DOM:en. */
 async function gateRun(
@@ -123,9 +133,35 @@ async function gateRun(
   };
 }
 
+/** gateRun med krasch-skydd (granskningsfynd 2026-07-28): förut fällde EN
+ *  kraschande kandidat hela proben — menyn som övriga kandidater förtjänat
+ *  försvann och kedjan föll till fria designern. Nu: kandidaten blir
+ *  oprovbar (fail closed), sidan laddas om ren, loopen fortsätter. Kastar
+ *  omladdningen också (död browser) dör proben — det är rätt sista utväg. */
+async function safeGateRun(
+  ops: MeasureOp[],
+): Promise<{ pass: boolean; gate: GateMetrics; reason: string | null } | null> {
+  try {
+    return await gateRun(ops);
+  } catch (e) {
+    console.warn(`[probe] mätkrasch (${String(e).slice(0, 160)}) — laddar om sidan, fortsätter`);
+    await reloadPage();
+    return null;
+  }
+}
+
 for (const c of cands) {
   if (c.kind === "move_up") {
-    const r = await gateRun([{ op: "move_up", tag: c.tag, find: c.find }]);
+    const r = await safeGateRun([{ op: "move_up", tag: c.tag, find: c.find }]);
+    if (!r) {
+      results.push({
+        id: c.id,
+        applicable: false,
+        gateClean: false,
+        reason: "mätmaskinen kraschade på kandidaten",
+      });
+      continue;
+    }
     const resolvable = r.reason !== "lokatorn/sektionen kunde inte upplösas";
     results.push(
       r.pass
@@ -137,8 +173,9 @@ for (const c of cands) {
     const placements: string[] = [];
     let bestGate: GateMetrics | undefined;
     let lastReason: string | null = null;
+    let crashed = false;
     for (const placement of [undefined, "after_h1"] as const) {
-      const r = await gateRun([
+      const r = await safeGateRun([
         {
           op: "insert_snippet",
           tag: c.tag,
@@ -147,6 +184,11 @@ for (const c of cands) {
           ...(placement ? { placement } : {}),
         },
       ]);
+      if (!r) {
+        crashed = true;
+        lastReason = "mätmaskinen kraschade på kandidaten";
+        continue;
+      }
       if (r.pass) {
         placements.push(placement ?? "default");
         if (!bestGate) bestGate = r.gate; // preferensordningen: default först
@@ -154,7 +196,10 @@ for (const c of cands) {
         lastReason = r.reason;
       }
     }
-    const resolvable = lastReason !== "lokatorn/sektionen kunde inte upplösas";
+    // Krasch utan någon grind-ren placering ⇒ fail closed (vi VET ingenting
+    // om kandidaten) — "resolvable" får inte härledas ur en kraschorsak.
+    const resolvable =
+      !crashed && lastReason !== "lokatorn/sektionen kunde inte upplösas";
     results.push(
       placements.length > 0
         ? { id: c.id, applicable: true, gateClean: true, placements, gate: bestGate }

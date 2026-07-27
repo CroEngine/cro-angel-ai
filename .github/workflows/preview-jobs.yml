@@ -1,6 +1,9 @@
 # Prospekt-förhandsvisningens arbetare (trattens topp) — dränerar
-# angel_preview_jobs-kön: granska-site i prospect-läge på prospektets URL →
-# rapport till angel-evidence → jobbraden stämplas. /try-sidan pollar raden.
+# angel_preview_jobs-kön via scripts/loop/preview.ts: frys prospektets sida →
+# innehållsmodell → kandidatkatalog/designer → verify-grindarna → rapport +
+# före/efter-sidor till angel-evidence → jobbraden stämplas med diagnostik.
+# /try-sidan pollar raden. (Header rättad 2026-07-28 — den gamla texten
+# nämnde granska-site, ett skript den här kedjan aldrig kör.)
 #
 # Väcks direkt av submit-API:t via workflow_dispatch (ANGEL_GH_DISPATCH_TOKEN i
 # Netlify-miljön); var 15:e minut som reservväg så kön aldrig fastnar om

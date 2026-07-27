@@ -45,7 +45,7 @@
 // i stället för att gissas fram.
 
 import { chromium, type Page } from "playwright-core";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -583,13 +583,28 @@ const browser = await chromium.launch({ headless: true, executablePath: EXEC });
 const results: unknown[] = [];
 const sqlParts: string[] = [];
 
+// Kraschsäker rapport (granskningsfynd 2026-07-28): rapporten skrevs EN gång
+// efter hela loopen — en krasch/timeout på plan N kastade bort N−1 färdiga
+// domslut (nattloopen, preview-arbetaren och fleeten läser filen efteråt).
+// Nu flushas den efter VARJE domslut, atomiskt (tmp+rename) så en läsare
+// aldrig ser en halvskriven fil.
+const reportPath = join(outDir, "verify-report.json");
+const flushReport = () => {
+  writeFileSync(`${reportPath}.tmp`, JSON.stringify(results, null, 2));
+  renameSync(`${reportPath}.tmp`, reportPath);
+};
+const record = (r: Record<string, unknown>) => {
+  results.push(r);
+  flushReport();
+};
+
 try {
   for (const plan of plans) {
     const isTemplate = Array.isArray(plan.templatePages) && plan.templatePages.length >= 2;
     // Mall-v1 servar bara move_up/set_text på delade sektioner — insert_snippet
     // ankrar i hjälten, som är sid-unik per definition. Fail closed.
     if (isTemplate && plan.ops.some((o) => o.op === "insert_snippet")) {
-      results.push({
+      record({
         path: plan.path,
         key: plan.key,
         verdict: "rejected_by_validation",
@@ -611,7 +626,7 @@ try {
         .map((p) => ({ p, file: pages[p] }))
         .filter((x): x is { p: string; file: string } => !!x.file);
       if (!pages[repPath] || files.length < 2) {
-        results.push({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
+        record({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
         console.log(`  ${plan.path} × ${plan.key}: <2 frysta mall-exemplar — köad`);
         continue;
       }
@@ -625,7 +640,7 @@ try {
       }
       const shared = sharedTemplateHeadings(models);
       if (shared.length === 0) {
-        results.push({
+        record({
           path: plan.path,
           key: plan.key,
           verdict: "no_serve_ops",
@@ -639,7 +654,7 @@ try {
     } else {
       const pg = await pageFor(plan.path);
       if (!pg) {
-        results.push({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
+        record({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
         console.log(`  ${plan.path} × ${plan.key}: SAKNAR fryst sida — köad`);
         continue;
       }
@@ -701,7 +716,7 @@ try {
       // som undefined och fleet-läsaren visade "(okänd orsak)". Valideringens
       // per-op-skäl ÄR diagnosen.
       const reason = validated.rejected.map((r) => r.reason).join("; ") || validated.note || "";
-      results.push({
+      record({
         path: plan.path,
         key: plan.key,
         verdict: "rejected_by_validation",
@@ -721,7 +736,7 @@ try {
     let effectiveOps: RedesignOp[] = validated.ops;
     let measureOps = toMeasureOps(content, effectiveOps, styleDonor);
     if (!measureOps) {
-      results.push({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
+      record({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       console.log(`  ${plan.path} × ${plan.key}: lokator saknas för op — hålls tillbaka`);
       continue;
     }
@@ -855,7 +870,7 @@ try {
     if (unresolvable) {
       await context.close();
       if (!(await tryProofFallback())) {
-        results.push({
+        record({
           path: plan.path,
           key: plan.key,
           verdict: "not_applicable",
@@ -888,7 +903,7 @@ try {
     }
 
     if (last.gate.verdict !== "pass") {
-      results.push({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
+      record({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
       console.log(
         `  ${plan.path} × ${plan.key}: GRIND-FAIL efter ${attempts.length} försök — hålls tillbaka`,
       );
@@ -944,7 +959,7 @@ try {
     }
     const failedConfirm = confirmations.find((c) => c.verdict !== "pass");
     if (failedConfirm) {
-      results.push({
+      record({
         path: plan.path,
         key: plan.key,
         verdict: "gate_fail",
@@ -992,7 +1007,7 @@ try {
       }
       const failedEx = exemplarConfirmations.find((c) => c.verdict !== "pass");
       if (failedEx) {
-        results.push({
+        record({
           path: plan.path,
           key: plan.key,
           verdict: "gate_fail",
@@ -1033,7 +1048,7 @@ try {
         ];
     const serveOps = toServeOps(content, finalOps, styleDonor);
     if (!serveOps) {
-      results.push({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
+      record({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       continue;
     }
 
@@ -1119,7 +1134,7 @@ try {
     );
     // ops med i resultatet så en orkestrerare (nattloopen) kan göra direkta
     // inserts via service-klienten i stället för att köra SQL-filen.
-    results.push({
+    record({
       path: plan.path,
       key: plan.key,
       verdict: "verified",
@@ -1141,7 +1156,9 @@ try {
   await browser.close();
 }
 
-writeFileSync(join(outDir, "verify-report.json"), JSON.stringify(results, null, 2));
+// Slut-flushen täcker tomma körningar (inga record-anrop) — läsarna förväntar
+// sig alltid en fil.
+flushReport();
 if (sqlParts.length)
   writeFileSync(join(outDir, "insert-variants.sql"), sqlParts.join("\n\n") + "\n");
 console.log(

@@ -49,7 +49,10 @@ export async function anthropicSelect(prompt: string): Promise<unknown | null> {
     try {
       return parseJsonObject(text);
     } catch {
-      console.warn(`[loop] väljaren: oparsbart svar`);
+      // Råsvaret med i loggen, trunkerat (granskningsfynd 2026-07-28): utan
+      // det är "oparsbart svar" odiagnostiserbart i efterhand — modellsvar
+      // är flyktiga och kan inte reproduceras.
+      console.warn(`[loop] väljaren: oparsbart svar: ${text.slice(0, 200).replace(/\n/g, " ")}`);
       return null;
     }
   } catch (err) {
