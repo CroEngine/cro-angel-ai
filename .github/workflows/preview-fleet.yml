@@ -3,26 +3,22 @@
 # (scripts/day0-sites.ts) och samlar fördelningen av utfall. Se
 # scripts/fleet-loop/preview-fleet.ts.
 #
-# Push-triggern (endast denna fil, endast diagnosgrenen) är feedbackloopen
-# under fleet-arbetet; workflow_dispatch är den bestående vägen.
-
 name: Preview fleet
 on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "Antal sajter (default hela flottan)"
+        description: "Antal sajter (default 100)"
         required: false
         default: "100"
+      offset:
+        description: "Hoppa över de första N sajterna (vågkörningar)"
+        required: false
+        default: "0"
       conc:
         description: "Samtidiga sajter"
         required: false
         default: "3"
-  push:
-    branches:
-      - claude/bold-ride-wtqp00
-    paths:
-      - ".github/workflows/preview-fleet.yml"
 
 concurrency:
   group: preview-fleet
@@ -54,6 +50,7 @@ jobs:
         run: >
           bun run scripts/fleet-loop/preview-fleet.ts
           --limit=${{ github.event.inputs.limit || '100' }}
+          --offset=${{ github.event.inputs.offset || '0' }}
           --conc=${{ github.event.inputs.conc || '3' }}
 
       - name: Trim heavy artifacts (frozen pages + after-DOM)

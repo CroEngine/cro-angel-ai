@@ -22,7 +22,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { SITES } from "../day0-sites";
+import { FLEET_SITES as SITES } from "./fleet-sites";
 import { anthropicDesigner } from "../loop/designer";
 import { buildCandidatePlan } from "../loop/candidate-plan";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
