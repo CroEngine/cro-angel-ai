@@ -24,6 +24,11 @@ export interface RedesignOp {
   why: string;
   /** insert_snippet only: which offered source page the quote comes from. */
   sourcePath?: string;
+  /** insert_snippet only: verifierad insättningspunkt (placerings-stegen
+   *  2026-07-27). Frånvarande = efter hjältens toppblock; "after_h1" =
+   *  direkt efter h1-elementet, inne i hjälten. Sätts ALDRIG av designern —
+   *  bara av verify-stegens placerings-stege när default-punkten täcks. */
+  placement?: "after_h1";
 }
 
 export interface RedesignPlan {

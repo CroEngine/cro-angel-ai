@@ -453,6 +453,75 @@ function heroLocatorFor(content: RedesignContentModel): ServeOp["locator"] | nul
   return text ? { tag: "h1", text } : null;
 }
 
+/** Sektions-id → mät-ops (delas av huvudplanen och fallback-steget). Null när
+ *  någon lokator saknas — fail closed, samma regel som toServeOps. */
+function toMeasureOps(
+  content: RedesignContentModel,
+  ops: RedesignOp[],
+  styleDonor: string | null,
+): MeasureOp[] | null {
+  const out: MeasureOp[] = [];
+  for (const o of ops) {
+    const loc = o.op === "insert_snippet" ? heroLocatorFor(content) : locatorFor(content, o.targetId);
+    if (!loc) return null;
+    out.push(
+      o.op === "move_up"
+        ? { op: "move_up", tag: loc.tag, find: loc.text }
+        : o.op === "insert_snippet"
+          ? {
+              op: "insert_snippet",
+              tag: loc.tag,
+              find: loc.text,
+              set: o.detail,
+              ...(o.sourcePath ? { href: o.sourcePath } : {}),
+              ...(styleDonor ? { styleClass: styleDonor } : {}),
+              ...(o.placement ? { placement: o.placement } : {}),
+            }
+          : { op: "set_text", tag: loc.tag, find: loc.text, set: o.detail },
+    );
+  }
+  return out;
+}
+
+/** Fallback-steget (ägarbeslut 2026-07-27: tratten ska LEVERERA — men aldrig
+ *  genom en trasig sida): när flytt-planen fälls i grinden provas ett
+ *  bevis-lyft i stället. Texten är ORDAGRANN sidtext — extract.ts garanterar
+ *  att varje trust-signal är en äkta substräng ur sidan, och rubriker kommer
+ *  ur markupen; vi hittar aldrig på. insert_snippet är LCP-säker by
+ *  construction (omankrar under LCP-elementet, vägrar ovanför) — det är
+ *  därför den kan lyckas där flytten inte fick plats. Ingen sourcePath:
+ *  texten kommer från samma sida, så raden renderas som ren text utan länk. */
+function proofInsertFallback(
+  content: RedesignContentModel,
+  ops: RedesignOp[],
+): RedesignOp[] | null {
+  const firstMove = ops.find((o) => o.op === "move_up");
+  if (!firstMove) return null;
+  if (ops.some((o) => o.op === "insert_snippet")) return null; // max EN insert per plan
+  // Textvalet: målsektionens EGEN rubrik först — den kommer ren ur markupen
+  // och är exakt den sektion designern pekade på. Trust-signalerna är
+  // sid-globala regex-fångster ur platt text och kan dra med sig UI-brus
+  // (talentium-fixturen: "0:30 Product overview Play video" följde med) —
+  // de är reserven, inte förstahandsvalet.
+  const sec = content.sections.find((s) => s.id === firstMove.targetId);
+  const signal = ["trusted_by", "social_proof_count", "guarantee"]
+    .map((t) => content.trustSignals.find((s) => s.type === t)?.text)
+    .find((t) => !!t && t.trim().length >= 8);
+  const text = (sec?.heading ?? signal ?? "").trim();
+  if (!text) return null;
+  return [
+    {
+      op: "insert_snippet",
+      targetId: "hero",
+      detail: text,
+      why:
+        "Flytten fick inte plats utan att störa hjälteblocket — i stället lyfts sidans eget bevis ordagrant som en rad direkt under hjälterubriken. " +
+        (firstMove.why || ""),
+    },
+    ...ops.filter((o) => o.op !== "move_up"),
+  ];
+}
+
 function toServeOps(
   content: RedesignContentModel,
   ops: RedesignOp[],
@@ -472,6 +541,9 @@ function toServeOps(
         value: o.detail,
         ...(o.sourcePath ? { href: o.sourcePath } : {}),
         ...(styleDonor ? { styleClass: styleDonor } : {}),
+        // Placerings-stegen (2026-07-27): den verifierade insättningspunkten
+        // följer med till serve_ops — klienten applicerar EXAKT det grindade.
+        ...(o.placement ? { placement: o.placement } : {}),
         why: o.why,
       });
       continue;
@@ -623,30 +695,9 @@ try {
     // applicera för riktiga besökare (granskningsfynd: en enda semantik).
     // Stil-donatorn kommer från LANDNINGSSIDANS egen markup (alt. D).
     const styleDonor = extractLinkStyleDonor(html);
-    const measureOps: MeasureOp[] = [];
-    for (const o of validated.ops) {
-      const loc =
-        o.op === "insert_snippet" ? heroLocatorFor(content) : locatorFor(content, o.targetId);
-      if (!loc) {
-        measureOps.length = 0;
-        break;
-      }
-      measureOps.push(
-        o.op === "move_up"
-          ? { op: "move_up", tag: loc.tag, find: loc.text }
-          : o.op === "insert_snippet"
-            ? {
-                op: "insert_snippet",
-                tag: loc.tag,
-                find: loc.text,
-                set: o.detail,
-                ...(o.sourcePath ? { href: o.sourcePath } : {}),
-                ...(styleDonor ? { styleClass: styleDonor } : {}),
-              }
-            : { op: "set_text", tag: loc.tag, find: loc.text, set: o.detail },
-      );
-    }
-    if (measureOps.length !== validated.ops.length) {
+    let effectiveOps: RedesignOp[] = validated.ops;
+    let measureOps = toMeasureOps(content, effectiveOps, styleDonor);
+    if (!measureOps) {
       results.push({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       console.log(`  ${plan.path} × ${plan.key}: lokator saknas för op — hålls tillbaka`);
       continue;
@@ -682,43 +733,116 @@ try {
     // Grindarna + retry-steget — DELADE (runGatedAttempts i measure.ts):
     // kollision → ETT extra lyft per UNIK måltavla, och mätningen/serve_ops
     // räknar per konstruktion samma antal lyft i alla harness.
-    const { attempts, attemptOps, unresolvable, extraLiftApplied } = await runGatedAttempts(
+    let { attempts, attemptOps, unresolvable, extraLiftApplied } = await runGatedAttempts(
       page,
       measureOps,
       ctaTexts,
       { ctaSelectors },
     );
-    if (unresolvable) {
-      results.push({
-        path: plan.path,
-        key: plan.key,
-        verdict: "not_applicable",
-        reason: "op-mål/sektion kunde inte upplösas på sidan (v3 fail closed)",
-      });
-      console.log(
-        `  ${plan.path} × ${plan.key}: EJ APPLICERBAR — upplösningen vägrade (fail closed)`,
-      );
-      await context.close();
-      continue;
-    }
-    const last = attempts[attempts.length - 1];
+    let last = attempts[attempts.length - 1];
+    let fallbackUsed: string | null = null;
 
-    // EFTER-skärmdump: SAMMA mätfunktion med keepApplied — ingen tredje
-    // appliceringsalgoritm (granskningsfynd: skärmdumpen ägaren godkänner på
-    // måste komma från exakt den applicering som grindades).
-    await measurePlan(page, attemptOps, [], true);
-    await page.screenshot({
-      path: join(outDir, `${slug}-after.jpg`),
-      type: "jpeg",
-      quality: 60,
-      fullPage: true,
-    });
-    // Efter-DOM:en som HEL SIDA — exakt den grindade appliceringen (samma
-    // regel som skärmdumpen ovan; frusna sidor är skriptstrippade så kopian
-    // är statisk). Preview-tratten laddar upp den för Original/Variant-
-    // växlaren i /try; konsumenter grindar själva på verdictet.
-    writeFileSync(join(outDir, `${slug}-after.html`), await page.content());
-    await context.close();
+    // Fallback-steget (ägarbeslut 2026-07-27): när flytt-planen inte kan
+    // levereras provas bevis-lyftet — ordagrann sidtext under hjälten,
+    // LCP-säkert by construction. Gäller BÅDA nej-vägarna: grind-fail OCH
+    // upplösnings-vägran (hibob-fyndet 2026-07-27: flyttmålet kunde inte
+    // upplösas i Elementor-nästlad DOM, men hjälte-h1:an — allt insert-
+    // fallbacken behöver — upplöstes fint). Aldrig för mall-planer
+    // (exemplaren har olika h1, exemplarpasset hade fällt den ändå).
+    // Placerings-stegen: efter hjältens toppblock först (default), sedan
+    // direkt efter h1-elementet (talentium-fyndet: videoblocket täckte
+    // default-punkten). Första placering som passerar vinner och kodas i
+    // serve_ops så klienten applicerar exakt det grindade.
+    const tryProofFallback = async (): Promise<boolean> => {
+      if (isTemplate) return false;
+      const fbBase = proofInsertFallback(content, validated.ops);
+      const placements: ("after_h1" | undefined)[] = [undefined, "after_h1"];
+      for (const placement of fbBase ? placements : []) {
+        const fbOps = fbBase!.map((o) =>
+          o.op === "insert_snippet" && placement ? { ...o, placement } : o,
+        );
+        const fbMeasure = toMeasureOps(content, fbOps, styleDonor);
+        if (!fbMeasure) return false;
+        const fctx = await browser.newContext({
+          viewport: { width: canonicalVp.width, height: canonicalVp.height },
+        });
+        await fctx.route("**/*", (r) => r.abort());
+        const fpage = await fctx.newPage();
+        await fpage.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
+        await fpage.waitForTimeout(400);
+        await captureLcpElement(fpage);
+        const fb = await runGatedAttempts(fpage, fbMeasure, ctaTexts, { ctaSelectors });
+        const fbLast = fb.attempts[fb.attempts.length - 1];
+        if (!fb.unresolvable && fbLast.gate.verdict === "pass") {
+          // Efter-bevisen tas om från fallbackens EXAKTA applicering — samma
+          // regel som huvudvägen (skärmdumpen ägaren ser måste komma från
+          // det som grindades).
+          await measurePlan(fpage, fb.attemptOps, [], true);
+          await fpage.screenshot({
+            path: join(outDir, `${slug}-after.jpg`),
+            type: "jpeg",
+            quality: 60,
+            fullPage: true,
+          });
+          writeFileSync(join(outDir, `${slug}-after.html`), await fpage.content());
+          attempts = [...attempts, ...fb.attempts]; // hela historiken — ärlig rapport
+          attemptOps = fb.attemptOps;
+          extraLiftApplied = false; // fallbacken bär inga flyttar
+          effectiveOps = fbOps;
+          measureOps = fbMeasure;
+          last = attempts[attempts.length - 1];
+          fallbackUsed = placement ? `proof_insert:${placement}` : "proof_insert";
+          console.log(
+            `  ${plan.path} × ${plan.key}: flytten kunde inte levereras — bevis-lyftet verifierades i stället (fallback${placement ? `, placering ${placement}` : ""})`,
+          );
+          await fctx.close();
+          return true;
+        }
+        // Ärlig spårbarhet: fallbackens nej ska synas i loggen, inte tystna.
+        console.log(
+          `  ${plan.path} × ${plan.key}: fallback-lyftet (${placement ?? "efter hjälten"}) hölls också — ${
+            fb.unresolvable ? "lokatorn kunde inte upplösas" : (fbLast.gate.reasons[0] ?? "grind föll")
+          }`,
+        );
+        await fctx.close();
+      }
+      return false;
+    };
+
+    if (unresolvable) {
+      await context.close();
+      if (!(await tryProofFallback())) {
+        results.push({
+          path: plan.path,
+          key: plan.key,
+          verdict: "not_applicable",
+          reason: "op-mål/sektion kunde inte upplösas på sidan (v3 fail closed)",
+        });
+        console.log(
+          `  ${plan.path} × ${plan.key}: EJ APPLICERBAR — upplösningen vägrade (fail closed)`,
+        );
+        continue;
+      }
+    } else {
+      // EFTER-skärmdump: SAMMA mätfunktion med keepApplied — ingen tredje
+      // appliceringsalgoritm (granskningsfynd: skärmdumpen ägaren godkänner på
+      // måste komma från exakt den applicering som grindades).
+      await measurePlan(page, attemptOps, [], true);
+      await page.screenshot({
+        path: join(outDir, `${slug}-after.jpg`),
+        type: "jpeg",
+        quality: 60,
+        fullPage: true,
+      });
+      // Efter-DOM:en som HEL SIDA — exakt den grindade appliceringen (samma
+      // regel som skärmdumpen ovan; frusna sidor är skriptstrippade så kopian
+      // är statisk). Preview-tratten laddar upp den för Original/Variant-
+      // växlaren i /try; konsumenter grindar själva på verdictet.
+      writeFileSync(join(outDir, `${slug}-after.html`), await page.content());
+      await context.close();
+
+      if (last.gate.verdict !== "pass") await tryProofFallback();
+    }
 
     if (last.gate.verdict !== "pass") {
       results.push({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
@@ -843,14 +967,20 @@ try {
     // Grindat OK → bygg det serverbara + evidensen.
     // Retry-lyftet blir en extra move_up-op per mål så plan/serve_ops/sanning matchar.
     const finalOps: RedesignOp[] = !extraLiftApplied
-      ? validated.ops
+      ? effectiveOps
       : [
-          ...validated.ops,
+          ...effectiveOps,
           // ETT extra lyft per UNIK måltavla — exakt vad retry-mätningen
           // körde (attemptOps), så serve_ops == det grindade antalet lyft.
+          // Dedup-nyckeln är den UPPLÖSTA lokatortexten, inte targetId:
+          // runGatedAttempts dedupar på find-strängen, och två sektioner med
+          // samma rubrik ger EN unik find — targetId-dedup hade servat fler
+          // lyft än det grindade (kartläggningsfynd 2026-07-27).
           ...[
             ...new Map(
-              validated.ops.filter((o) => o.op === "move_up").map((o) => [o.targetId, o]),
+              effectiveOps
+                .filter((o) => o.op === "move_up")
+                .map((o) => [locatorFor(content, o.targetId)?.text ?? o.targetId, o]),
             ).values(),
           ].map((o, i, arr) => ({
             ...o,
@@ -866,6 +996,9 @@ try {
 
     const evidence = {
       source: "auto-generate-loop",
+      // Fallback-spårning (2026-07-27): ägaren ska kunna SE att flytten
+      // hölls av grinden och att bevis-lyftet verifierades i dess ställe.
+      ...(fallbackUsed ? { fallback: fallbackUsed } : {}),
       brief: { path: plan.path, key: plan.key, total: plan.total, observations: plan.observations },
       gates: {
         hOverflowIntroducedPx: last.gate.hOverflowIntroducedPx,
@@ -947,6 +1080,7 @@ try {
       path: plan.path,
       key: plan.key,
       verdict: "verified",
+      ...(fallbackUsed ? { fallback: fallbackUsed } : {}),
       attempts,
       ops: finalOps,
       serveOps,
@@ -954,7 +1088,7 @@ try {
       slug,
     });
     console.log(
-      `  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök) — väntar på ägarens knapp`,
+      `  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök${fallbackUsed ? ", via fallback" : ""}) — väntar på ägarens knapp`,
     );
   }
 } finally {

@@ -473,4 +473,76 @@ describe("runtime applier module — real-Chromium unit tests", () => {
       expect(order).toEqual(["sb", "sa", "divider", "sc"]); // above #sa, not a divider swap
     });
   });
+
+  // ── Hjälte-klampen (2026-07-27) ─────────────────────────────────────────
+  // Platt sida: hjälten och sektionerna är SYSKON i samma förälder — exakt
+  // strukturen där gamla appliern flyttade första sektionen OVANFÖR hjälten
+  // (talentium-fyndet: movedAboveMain + LCP-skift 671px fälldes i harnessets
+  // grind, men klienten saknade motsvarande skydd på driftade live-sidor).
+  const FLAT_PAGE = `
+    <main><div class="page">
+      <div class="hero"><h1>Flat hero headline</h1><p>Intro.</p></div>
+      <section id="f1"><h2>Trusted Proof</h2><p>logos</p></section>
+      <section id="f2"><h2>Deep Pricing</h2><p>price</p></section>
+    </div></main>`;
+
+  it("hero clamp: a move that would land ABOVE the hero block is refused (whole variant)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    await scenario(async (page) => {
+      await boot(page, FLAT_PAGE);
+      const before = await mainHtml(page);
+      const r = await run(page, {
+        ops: [{ op: "move_up", locator: { tag: "h2", text: "Trusted Proof" } }],
+      });
+      expect(r.applied).toBe(false);
+      expect(r.undoCount).toBe(0);
+      expect(await mainHtml(page)).toBe(before); // DOM orörd — fail closed
+    });
+  });
+
+  it("hero clamp: a move that stays BELOW the hero block applies as before", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    await scenario(async (page) => {
+      await boot(page, FLAT_PAGE);
+      const r = await run(page, {
+        ops: [{ op: "move_up", locator: { tag: "h2", text: "Deep Pricing" } }],
+      });
+      expect(r.applied).toBe(true);
+      const order = await page.evaluate(() =>
+        [...document.querySelector(".page")!.children].map((c) => c.id || c.className),
+      );
+      expect(order).toEqual(["hero", "f2", "f1"]); // ovanför f1, aldrig ovanför hjälten
+    });
+  });
+
+  it("insert placement after_h1: the line lands DIRECTLY after the h1 element, inside the hero", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    await scenario(async (page) => {
+      await boot(page, WRAPPER_PAGE, { lcp: "h1" });
+      const r = await run(page, {
+        ops: [
+          {
+            op: "insert_snippet",
+            locator: { tag: "h1", text: "Hero headline" },
+            value: "Don't just take our word for it",
+            placement: "after_h1",
+          },
+        ],
+      });
+      expect(r.applied).toBe(true);
+      const placedAfterH1 = await page.evaluate(() => {
+        const h1 = document.querySelector("h1")!;
+        const next = h1.nextElementSibling;
+        return !!next && next.hasAttribute("data-angel-inserted") && next.textContent;
+      });
+      expect(placedAfterH1).toBe("Don't just take our word for it"); // inne i hjälten, under rubriken
+      await page.evaluate(() => {
+        // @ts-expect-error test harness globals
+        window.__reset();
+      });
+      expect(await page.evaluate(() => !!document.querySelector("[data-angel-inserted]"))).toBe(
+        false,
+      );
+    });
+  });
 });

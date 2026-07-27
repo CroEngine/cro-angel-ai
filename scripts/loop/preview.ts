@@ -252,13 +252,28 @@ for (const job of jobs) {
   // rapporten en tillbakahållen ändring som "Verified" (pilotfynd 2026-07-27,
   // talentium: movedAboveMain + LCP-skift 671px stoppades av grinden, men
   // skalet läste aldrig domslutet).
-  let verified: { serveOps?: { op?: string; locator?: { text?: string }; why?: string }[] } | null =
-    null;
+  type ServeOpView = {
+    op?: string;
+    locator?: { text?: string };
+    value?: string;
+    why?: string;
+  };
+  type VerifyEntry = {
+    verdict?: string;
+    reason?: string;
+    fallback?: string;
+    serveOps?: ServeOpView[];
+    attempts?: { gate?: { verdict?: string; reasons?: string[] } }[];
+  };
+  let verified: VerifyEntry | null = null;
+  // Readern (ägarbeslut 2026-07-27): FÖRSTA resultatposten oavsett verdict —
+  // diagnostiken ska berätta vad som hände även när jobbet hölls tillbaka.
+  let verifyFirst: VerifyEntry | null = null;
   try {
-    const results = JSON.parse(readFileSync(join(dir, "verify-report.json"), "utf8")) as {
-      verdict?: string;
-      serveOps?: { op?: string; locator?: { text?: string }; why?: string }[];
-    }[];
+    const results = JSON.parse(
+      readFileSync(join(dir, "verify-report.json"), "utf8"),
+    ) as VerifyEntry[];
+    verifyFirst = results[0] ?? null;
     const passed = results.filter((r) => r.verdict === "verified");
     verified = verifyOk && passed.length > 0 ? passed[0] : null;
   } catch {
@@ -270,13 +285,20 @@ for (const job of jobs) {
   const OP_LABEL: Record<string, string> = {
     move_up: "Lifted higher on the page",
     set_text: "Sharpened the wording",
-    insert_snippet: "Surfaced proof from another page",
+    // Beviset kan komma från en annan sida ELLER samma sida (fallback-steget
+    // 2026-07-27) — etiketten säger vad som händer, inte varifrån.
+    insert_snippet: "Lifted your proof under the headline",
   };
-  // Visningsraderna: VERIFIED ⇒ serve-ops (locator.text är rubriken opsen
-  // låstes mot). Gate-fail-fallback ⇒ designer-ops (targetId → rubrik ur
+  // Visningsraderna: VERIFIED ⇒ serve-ops (för inserts visas den insatta
+  // TEXTEN — det är den ägaren känner igen; annars rubriken opsen låstes
+  // mot). Gate-fail-fallback ⇒ designer-ops (targetId → rubrik ur
   // innehållsmodellen). RedesignOp bär inga locators — det gör bara ServeOp.
   const displayOps = verified?.serveOps?.length
-    ? verified.serveOps.map((o) => ({ op: o.op ?? "", text: o.locator?.text ?? "", why: o.why ?? "" }))
+    ? verified.serveOps.map((o) => ({
+        op: o.op ?? "",
+        text: (o.op === "insert_snippet" ? o.value : o.locator?.text) ?? o.locator?.text ?? "",
+        why: o.why ?? "",
+      }))
     : plan.ops.map((o) => ({
         op: o.op,
         text: content.sections.find((s) => s.id === o.targetId)?.heading ?? o.targetId,
@@ -315,6 +337,20 @@ for (const job of jobs) {
     continue;
   }
 
+  // Readern (ägarbeslut 2026-07-27): hela verify-domslutet arkiveras per
+  // jobb — "vad hände med alla som klistrade in" ska gå att läsa i efterhand
+  // utan att köra om något. Best effort: rapporten står på egna ben.
+  const vrPath = join(dir, "verify-report.json");
+  if (existsSync(vrPath)) {
+    const { error: vrErr } = await db.storage
+      .from("angel-evidence")
+      .upload(`preview/${job.id}/verify-report.json`, readFileSync(vrPath), {
+        contentType: "application/json",
+        upsert: true,
+      });
+    if (vrErr) console.warn(`[preview] ${job.id}: verify-report-arkivet föll: ${vrErr.message}`);
+  }
+
   // Original/Variant-växlaren i /try: hela före/efter-sidorna laddas upp
   // ENDAST när grindarna släppt igenom förslaget — hållna jobb behåller den
   // ärliga rapportvyn (frånvaron av objekten ÄR grinden; /try:s probe får
@@ -350,13 +386,31 @@ for (const job of jobs) {
   // normaliserar ({fynd: [{rubrik, vikt}], flyttStatus}); min första form
   // mappades till tomhet. Hölls tillbaka ⇒ inga fynd-rader och ingen
   // lyft-text — rapporten berättar ärligheten.
-  const findings = verified
-    ? {
-        fynd: changes.map((c, i) => ({ rubrik: c.label, vikt: i })),
-        flyttStatus:
-          "Verified on your page — no layout shift, LCP untouched, fully reversible",
-      }
-    : { fynd: [], flyttStatus: null };
+  // Readern: kompakt diagnostik in i jobbraden (extra nyckel i findings-
+  // jsonb:n — mapFindings visar den aldrig för besökaren, men API:t och
+  // fleet-analysen kan läsa vad som faktiskt hände: verdict, orsak,
+  // fallback-väg, grind-orsaker).
+  const lastAttempt = verifyFirst?.attempts?.[(verifyFirst.attempts?.length ?? 1) - 1];
+  const diagnostics = {
+    verdict: verifyFirst?.verdict ?? (verifyOk ? "no_result" : "verify_failed"),
+    fallback: verifyFirst?.fallback ?? null,
+    reason: verifyFirst?.reason ?? null,
+    gateReasons: (lastAttempt?.gate?.reasons ?? []).slice(0, 3),
+    attempts: verifyFirst?.attempts?.length ?? 0,
+    sections: content.sections.length,
+    planOps: plan.ops.map((o) => o.op),
+    at: new Date().toISOString(),
+  };
+  const findings = {
+    ...(verified
+      ? {
+          fynd: changes.map((c, i) => ({ rubrik: c.label, vikt: i })),
+          flyttStatus:
+            "Verified on your page — no layout shift, LCP untouched, fully reversible",
+        }
+      : { fynd: [], flyttStatus: null }),
+    diagnostics,
+  };
 
   const { error: updErr } = await db
     .from("angel_preview_jobs")

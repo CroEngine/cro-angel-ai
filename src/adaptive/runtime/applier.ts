@@ -39,6 +39,12 @@ export interface ApplierOp {
   value?: string;
   href?: string;
   styleClass?: string;
+  /** insert_snippet: verifierad insättningspunkt (placerings-stegen
+   *  2026-07-27). Frånvarande/okänd = efter hjältens toppblock (default);
+   *  "after_h1" = direkt efter h1-elementet, inne i hjälten — vald av
+   *  verify när default-punkten täcks av ett överlappande block. Servas
+   *  exakt som verifierat. */
+  placement?: string;
 }
 
 /** The variant the server decided to serve (only the fields the applier reads). */
@@ -230,13 +236,22 @@ export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => bo
         // SPEGELVÄND regel i measure.ts — håll i synk.
         if (!op.value) return false;
         var anchor = el;
-        while (
-          anchor.parentElement &&
-          anchor.parentElement !== mainEl &&
-          anchor.parentElement !== document.body &&
-          !bearsCensus(anchor.parentElement)
-        ) {
-          anchor = anchor.parentElement;
+        // Placerings-stegen (2026-07-27): "after_h1" = raden landar DIREKT
+        // efter h1-elementet, inne i hjälten — verifierad av grindarna när
+        // default-punkten (efter hjältens toppblock) täcks av ett
+        // överlappande block (talentium: videosektionen). LCP-elementet (h1)
+        // ligger OVANFÖR raden i båda lägena — largest paint står stilla.
+        // Okänt placement-värde = default (gamla snippets ignorerar fältet).
+        // SPEGELVÄND i measure.ts — håll i synk.
+        if (op.placement !== "after_h1") {
+          while (
+            anchor.parentElement &&
+            anchor.parentElement !== mainEl &&
+            anchor.parentElement !== document.body &&
+            !bearsCensus(anchor.parentElement)
+          ) {
+            anchor = anchor.parentElement;
+          }
         }
         if (!anchor.parentElement || deps.isNoTouch(anchor)) return false;
         // Artikelsidor: LCP-elementet är ofta intro-stycket DIREKT under
@@ -245,7 +260,7 @@ export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => bo
         // landar då under hela hjälte-regionen (rubrik + intro) och largest
         // paint står stilla. SPEGELVÄND i measure.ts — håll i synk.
         var lcp0 = deps.lcpEl();
-        if (lcp0 && !anchor.contains(lcp0)) {
+        if (op.placement !== "after_h1" && lcp0 && !anchor.contains(lcp0)) {
           try {
             if (anchor.compareDocumentPosition(lcp0) & Node.DOCUMENT_POSITION_FOLLOWING) {
               var re: Element = lcp0 as Element;
@@ -304,6 +319,30 @@ export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => bo
       }
     }
 
+    // Hjälte-klampen (2026-07-27): en flytt får ALDRIG landa ovanför hjälte-
+    // blocket — klient-sidans motsvarighet till harnessets movedAboveMain-
+    // grind. Utan den kunde en driftad live-sida (kort sida, målsektion
+    // direkt under hjälten) få flytten OVANFÖR hjälten trots att
+    // verifieringen såg den under. Ankaret = sidans main-scopade h1 (aldrig
+    // header/nav/footer/aside) klättrad till sin HÖGSTA census-fria
+    // förfader — exakt samma klätterregel som insert_snippet-ankaret ovan.
+    // Saknas h1 vilar klampen (självkollen + grindarna står kvar).
+    // SPEGELVÄND regel i scripts/redesign/measure.ts — håll i synk.
+    var heroHead: Element | null = mainEl.querySelector("h1");
+    if (heroHead && heroHead.closest("header,nav,footer,aside")) heroHead = null;
+    var heroClamp: Element | null = null;
+    if (heroHead) {
+      heroClamp = heroHead;
+      while (
+        heroClamp.parentElement &&
+        heroClamp.parentElement !== mainEl &&
+        heroClamp.parentElement !== document.body &&
+        !bearsCensus(heroClamp.parentElement)
+      ) {
+        heroClamp = heroClamp.parentElement;
+      }
+    }
+
     // ── FAS 2: applicera i planordning ────────────────────────────────────
     var undos: (() => void)[] = [];
     var ok = true;
@@ -321,6 +360,28 @@ export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => bo
         if (!prev || prev.parentElement !== r0.sec.parentElement) {
           ok = false;
           break;
+        }
+        // Hjälte-klampen: sitter sektionen NEDANFÖR hjälteblocket och skulle
+        // insertBefore(prev) landa den OVANFÖR (prev är hjälten, omsluter
+        // den, eller föregår den) — vägra hela varianten, fail closed. En
+        // flytt som inte får plats under hjälten har inget säkert mål.
+        // SPEGELVÄND i measure.ts (moveUnappliable) — håll i synk.
+        if (heroClamp && r0.sec !== heroClamp) {
+          try {
+            var secBelowHero = !!(
+              heroClamp.compareDocumentPosition(r0.sec) & Node.DOCUMENT_POSITION_FOLLOWING
+            );
+            var landsAboveHero =
+              prev === heroClamp ||
+              !!(prev.compareDocumentPosition(heroClamp) & Node.DOCUMENT_POSITION_FOLLOWING);
+            if (secBelowHero && landsAboveHero) {
+              ok = false;
+              break;
+            }
+          } catch (e) {
+            /* compareDocumentPosition saknas — klampen vilar, självkollen +
+               harness-grinden movedAboveMain står kvar */
+          }
         }
         var next = r0.sec.nextSibling;
         // Self-check (ADR-001 step 2, ported from the lab's tryOrderMove): a real

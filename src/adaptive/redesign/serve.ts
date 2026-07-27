@@ -71,6 +71,14 @@ export interface ServeOp {
    *  klass som redan finns på landningssidan; sajtens egen stilmall klär
    *  blocket. Utseendet grindas + ägargodkänns per variant. */
   styleClass?: string;
+  /** insert_snippet: verifierad insättningspunkt (placerings-stegen
+   *  2026-07-27). Frånvarande = efter hjältens toppblock (default);
+   *  "after_h1" = direkt efter själva h1-elementet, inne i hjälten — vald
+   *  när grindarna visade att default-punkten täcks (talentium: videoblocket
+   *  överlappade). Servas exakt som verifierat; okända värden ignoreras av
+   *  klienten (default-beteende) — additivt frivilligt fält, gamla rader
+   *  förblir giltiga. */
+  placement?: string;
   why?: string;
 }
 
