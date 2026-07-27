@@ -96,8 +96,37 @@ function Hero() {
         <TryUrlForm />
 
         <SnippetChip />
+
+        <PoweredBy />
       </div>
     </main>
+  );
+}
+
+// "Powered by"-raden (ägarbeslut 2026-07-27): ENBART infrastruktur Angel
+// bevisbart kör på — aldrig kund- eller partnersken, aldrig leverantörer vi
+// inte använder (ChatGPT/OpenAI hölls uttryckligen UTE tills de faktiskt är
+// i stacken; Stripe läggs till när billing armeras). Tysta wordmarks i grått
+// som tonar upp vid hover — samma viskningsnivå som marginalnoteringarna.
+const POWERED_BY = ["Netlify", "Supabase", "Anthropic", "GitHub", "Browserbase"];
+
+function PoweredBy() {
+  return (
+    <div className="mt-14">
+      <div className="font-mono text-[10.5px] tracking-wider text-stone-400">
+        [ powered by modern web infrastructure ]
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
+        {POWERED_BY.map((name) => (
+          <span
+            key={name}
+            className={`${DISPLAY} text-[15px] font-semibold tracking-tight text-stone-300 transition-colors hover:text-stone-500`}
+          >
+            {name}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
