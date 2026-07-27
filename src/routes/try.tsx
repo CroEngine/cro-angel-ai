@@ -70,7 +70,7 @@ function TryPage() {
 
   return (
     <main className="min-h-screen bg-[#faf9f7] px-4 py-16 text-stone-900">
-      <div className="mx-auto w-full max-w-2xl">
+      <div className="mx-auto w-full max-w-3xl">
         <Link to="/" className="text-[13px] font-medium text-stone-500 hover:text-stone-800">
           ← Angel
         </Link>
@@ -140,18 +140,30 @@ function TryPage() {
                 Every finding is a measurement of your live page — nothing is invented. The full
                 report shows your page before and after, using only content you already published.
               </p>
-              {job.reportUrl && (
-                <a
-                  href={job.reportUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-5 inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-[14px] font-semibold text-stone-800 hover:bg-stone-50"
-                >
-                  Open the full report
-                  <ArrowRight className="h-4 w-4" />
-                </a>
-              )}
             </Block>
+
+            {/* Rapporten VISAS direkt (ägarfynd 2026-07-27: "får ingen riktig
+                rapport" — en länk är inte en rapport). Självbärande HTML ur
+                vår egen lagring; länken kvar som sekundär för ny flik. */}
+            {job.reportUrl && (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-stone-100 px-4 py-2">
+                  <span className="font-mono text-[10.5px] uppercase tracking-[.12em] text-stone-400">
+                    [ the report — measured on your live page ]
+                  </span>
+                  <a
+                    href={job.reportUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[12.5px] font-medium text-stone-500 hover:text-stone-800"
+                  >
+                    Open in a new tab
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+                <iframe src={job.reportUrl} title="Angel report" className="h-[72vh] w-full" />
+              </div>
+            )}
 
             <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6">
               <h2 className="text-[17px] font-semibold text-emerald-900">
