@@ -515,6 +515,30 @@ describe("runtime applier module — real-Chromium unit tests", () => {
     });
   });
 
+  it("insert after_h1 med LCP NEDANFÖR h1 ⇒ klientens CWV-vakt vägrar hela varianten (speglad i measure)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    await scenario(async (page) => {
+      // LCP = intro-stycket UNDER rubriken — en rad efter h1 skulle skjuta
+      // largest paint. Klienten vägrar; harnessets spegel (measure.ts
+      // insertRefusedByLcpGuard → render-gates) fäller samma variant så att
+      // den aldrig godkänns. Detta test pinnar KLIENTENS sida av kontraktet.
+      await boot(page, WRAPPER_PAGE, { lcp: "#intro" });
+      const before = await mainHtml(page);
+      const r = await run(page, {
+        ops: [
+          {
+            op: "insert_snippet",
+            locator: { tag: "h1", text: "Hero headline" },
+            value: "Don't just take our word for it",
+            placement: "after_h1",
+          },
+        ],
+      });
+      expect(r.applied).toBe(false);
+      expect(await mainHtml(page)).toBe(before); // fail closed, DOM orörd
+    });
+  });
+
   it("insert placement after_h1: the line lands DIRECTLY after the h1 element, inside the hero", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
     await scenario(async (page) => {

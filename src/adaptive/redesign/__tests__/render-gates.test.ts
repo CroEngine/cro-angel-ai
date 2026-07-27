@@ -229,6 +229,16 @@ describe("evaluateRenderGates — insert_snippet-grindarna (task #117)", () => {
     expect(evaluateRenderGates(clean({ insertedRemoved: false })).verdict).toBe("fail");
   });
 
+  it("FAILS när klientens insert-CWV-vakt skulle vägra (LCP nedanför insättningspunkten)", () => {
+    // Speglingen av snippetens avslutande vakt (2026-07-28): utan denna grind
+    // godkände harnesset varianter som klienten rullar tillbaka för varje
+    // besökare — A/B mätte original mot original.
+    const r = evaluateRenderGates(clean({ insertRefusedByLcpGuard: 1 }));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons.some((x) => x.includes("serve-time CWV guard"))).toBe(true);
+    expect(evaluateRenderGates(clean({ insertRefusedByLcpGuard: 0 })).verdict).toBe("pass");
+  });
+
   it("WARNS (holds back) when the insert landed far below the hero (wrapper anchor)", () => {
     const r = evaluateRenderGates(
       clean({ requestedInserts: 1, appliedInserts: 1, insertedGapToHeroPx: 4200 }),

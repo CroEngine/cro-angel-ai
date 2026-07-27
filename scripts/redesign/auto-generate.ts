@@ -468,21 +468,27 @@ function toMeasureOps(
   for (const o of ops) {
     const loc = o.op === "insert_snippet" ? heroLocatorFor(content) : locatorFor(content, o.targetId);
     if (!loc) return null;
-    out.push(
-      o.op === "move_up"
-        ? { op: "move_up", tag: loc.tag, find: loc.text }
-        : o.op === "insert_snippet"
-          ? {
-              op: "insert_snippet",
-              tag: loc.tag,
-              find: loc.text,
-              set: o.detail,
-              ...(o.sourcePath ? { href: o.sourcePath } : {}),
-              ...(styleDonor ? { styleClass: styleDonor } : {}),
-              ...(o.placement ? { placement: o.placement } : {}),
-            }
-          : { op: "set_text", tag: loc.tag, find: loc.text, set: o.detail },
-    );
+    if (o.op === "move_up") {
+      out.push({ op: "move_up", tag: loc.tag, find: loc.text });
+    } else if (o.op === "insert_snippet") {
+      out.push({
+        op: "insert_snippet",
+        tag: loc.tag,
+        find: loc.text,
+        set: o.detail,
+        ...(o.sourcePath ? { href: o.sourcePath } : {}),
+        ...(styleDonor ? { styleClass: styleDonor } : {}),
+        ...(o.placement ? { placement: o.placement } : {}),
+      });
+    } else if (o.op === "set_text") {
+      out.push({ op: "set_text", tag: loc.tag, find: loc.text, set: o.detail });
+    } else {
+      // condense/reveal serveras inte i v1 (toServeOps vägrar dem) — då får
+      // de inte heller MÄTAS som något annat (granskningsfynd 2026-07-28:
+      // de föll igenom till set_text, klarade grindarna och dog först som
+      // no_serve_ops utan orsak). En enda semantik: omätbart ⇒ null.
+      return null;
+    }
   }
   return out;
 }

@@ -50,7 +50,13 @@ export interface GateMetrics {
 }
 interface ProbeOut {
   id: string;
+  /** Upplösbar + applicerbar (v1-nivån) — reservmenyn när inget är grind-rent. */
   applicable: boolean;
+  /** Passerade FULLA grindmätningen i proben (v2-nivån) — förstahandsmenyn.
+   *  Superset-regeln (mätfynd 2026-07-27: v2 ensam föll till 55% mot v1:s
+   *  61% när tömda menyer skickade svåra sidor till fria designern): båda
+   *  nivåerna behålls, väljaren föredrar grind-rena, applicerbara är reserv. */
+  gateClean: boolean;
   /** insert: grind-rena placeringar i preferensordning. */
   placements?: string[];
   /** Grindmätvärdena för det BÄSTA passet — väljar-menyn + golvets tiebreak. */
@@ -120,10 +126,11 @@ async function gateRun(
 for (const c of cands) {
   if (c.kind === "move_up") {
     const r = await gateRun([{ op: "move_up", tag: c.tag, find: c.find }]);
+    const resolvable = r.reason !== "lokatorn/sektionen kunde inte upplösas";
     results.push(
       r.pass
-        ? { id: c.id, applicable: true, gate: r.gate }
-        : { id: c.id, applicable: false, reason: r.reason ?? undefined },
+        ? { id: c.id, applicable: true, gateClean: true, gate: r.gate }
+        : { id: c.id, applicable: resolvable, gateClean: false, reason: r.reason ?? undefined },
     );
   } else {
     // Insert: proba varje placering — grind-ren placering ⇒ med i menyn.
@@ -147,15 +154,22 @@ for (const c of cands) {
         lastReason = r.reason;
       }
     }
+    const resolvable = lastReason !== "lokatorn/sektionen kunde inte upplösas";
     results.push(
       placements.length > 0
-        ? { id: c.id, applicable: true, placements, gate: bestGate }
-        : { id: c.id, applicable: false, reason: lastReason ?? "alla placeringar föll i grinden" },
+        ? { id: c.id, applicable: true, gateClean: true, placements, gate: bestGate }
+        : {
+            id: c.id,
+            applicable: resolvable,
+            gateClean: false,
+            reason: lastReason ?? "alla placeringar föll i grinden",
+          },
     );
   }
 }
 
 await browser.close();
 writeFileSync(OUT, JSON.stringify(results, null, 2));
-const ok = results.filter((r) => r.applicable).length;
-console.log(`[probe] ${ok}/${results.length} kandidater grind-rena`);
+const clean = results.filter((r) => r.gateClean).length;
+const appl = results.filter((r) => r.applicable).length;
+console.log(`[probe] ${clean}/${results.length} grind-rena · ${appl}/${results.length} applicerbara`);

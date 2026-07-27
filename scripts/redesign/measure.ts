@@ -383,10 +383,18 @@ export async function measurePlan(
             styleClass?: string;
           };
       const resolved: Resolved[] = [];
+      // No-touch-zonerna SPEGLADE (granskningsfynd 2026-07-28): klienten
+      // vägrar HELA varianten när målet ligger i en no-touch-zon
+      // (deps.isNoTouch i applier.ts). CMP-rötterna är redan bortstrippade
+      // ovan (ekvivalent), men ägar-markerade zoner och våra egna badges
+      // fanns INTE speglade — harnesset verifierade varianter klienten
+      // alltid vägrar. Samma vägran här: oupplösbar, fail closed.
+      const NO_TOUCH_MIRROR = "[data-angel-ignore],.angel-badge";
+      let insertRefusedByLcpGuard = 0;
       let resolvedAll = true;
       for (const o of ops) {
         const el = findByLocator(o.tag, o.find);
-        if (!el) {
+        if (!el || el.closest(NO_TOUCH_MIRROR)) {
           resolvedAll = false;
           break;
         }
@@ -448,6 +456,25 @@ export async function measurePlan(
               re = re.parentElement;
             }
             if (re.parentElement) anchor = re;
+          }
+          // Snippetens AVSLUTANDE CWV-vakt SPEGLAD (granskningsfynd
+          // 2026-07-28): klienten vägrar HELA varianten när LCP-elementet
+          // ligger NEDANFÖR den slutliga insättningspunkten (applier.ts,
+          // vakten efter omankringen) — den träffar särskilt after_h1 på
+          // sidor där LCP inte är h1:an (hjältebild/intro under rubriken).
+          // Utan spegling godkände harnesset varianter som klienten alltid
+          // rullar tillbaka ⇒ A/B mäter original mot original. Räknas mot
+          // det SLUTLIGA ankaret, precis som klienten räknar.
+          if (
+            lcpEl &&
+            !anchor.contains(lcpEl) &&
+            anchor.compareDocumentPosition(lcpEl) & Node.DOCUMENT_POSITION_FOLLOWING
+          ) {
+            insertRefusedByLcpGuard++;
+          }
+          if (anchor.closest(NO_TOUCH_MIRROR)) {
+            resolvedAll = false;
+            break;
           }
           resolved.push({
             op: "insert_snippet",
@@ -766,6 +793,7 @@ export async function measurePlan(
         reversedOrderMatches,
         lcpFound: lcpEl !== null,
         opsTouchingLcp,
+        insertRefusedByLcpGuard,
       };
     },
     { ops, ctaTexts, ctaSelectors, keepApplied },
@@ -797,6 +825,7 @@ export function toRenderMeasurements(
     verticalOverlapIntroducedPx: raw.overlapIntroducedPx,
     lcpFound: raw.lcpFound,
     opsTouchingLcp: raw.opsTouchingLcp,
+    insertRefusedByLcpGuard: raw.insertRefusedByLcpGuard,
     requestedInserts: raw.requestedInserts,
     appliedInserts: raw.appliedInserts,
     insertedAboveMain: raw.insertedAboveMain,
