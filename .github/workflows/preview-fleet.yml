@@ -1,0 +1,72 @@
+# Preview-fleet: kör preview-trattens EXAKTA kedja (freeze → designer →
+# verify med hjälte-klamp + bevis-lyftets placerings-stege) över sajtflottan
+# (scripts/day0-sites.ts) och samlar fördelningen av utfall. Se
+# scripts/fleet-loop/preview-fleet.ts.
+#
+# Push-triggern (endast denna fil, endast diagnosgrenen) är feedbackloopen
+# under fleet-arbetet; workflow_dispatch är den bestående vägen.
+
+name: Preview fleet
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Antal sajter (default hela flottan)"
+        required: false
+        default: "100"
+      conc:
+        description: "Samtidiga sajter"
+        required: false
+        default: "3"
+  push:
+    branches:
+      - claude/bold-ride-wtqp00
+    paths:
+      - ".github/workflows/preview-fleet.yml"
+
+concurrency:
+  group: preview-fleet
+  cancel-in-progress: false
+
+jobs:
+  fleet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+      BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium (with system deps)
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run the preview fleet
+        run: >
+          bun run scripts/fleet-loop/preview-fleet.ts
+          --limit=${{ github.event.inputs.limit || '100' }}
+          --conc=${{ github.event.inputs.conc || '3' }}
+
+      - name: Trim heavy artifacts (frozen pages + after-DOM)
+        if: always()
+        run: |
+          find fleet-preview -name "frozen-home.html" -delete 2>/dev/null || true
+          find fleet-preview -name "*-after.html" -delete 2>/dev/null || true
+
+      - name: Upload fleet results (14 dagar)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fleet-preview
+          path: fleet-preview
+          retention-days: 14
+          if-no-files-found: ignore

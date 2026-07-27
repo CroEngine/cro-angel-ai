@@ -258,12 +258,22 @@ for (const job of jobs) {
     value?: string;
     why?: string;
   };
-  let verified: { serveOps?: ServeOpView[] } | null = null;
+  type VerifyEntry = {
+    verdict?: string;
+    reason?: string;
+    fallback?: string;
+    serveOps?: ServeOpView[];
+    attempts?: { gate?: { verdict?: string; reasons?: string[] } }[];
+  };
+  let verified: VerifyEntry | null = null;
+  // Readern (ägarbeslut 2026-07-27): FÖRSTA resultatposten oavsett verdict —
+  // diagnostiken ska berätta vad som hände även när jobbet hölls tillbaka.
+  let verifyFirst: VerifyEntry | null = null;
   try {
-    const results = JSON.parse(readFileSync(join(dir, "verify-report.json"), "utf8")) as {
-      verdict?: string;
-      serveOps?: ServeOpView[];
-    }[];
+    const results = JSON.parse(
+      readFileSync(join(dir, "verify-report.json"), "utf8"),
+    ) as VerifyEntry[];
+    verifyFirst = results[0] ?? null;
     const passed = results.filter((r) => r.verdict === "verified");
     verified = verifyOk && passed.length > 0 ? passed[0] : null;
   } catch {
@@ -327,6 +337,20 @@ for (const job of jobs) {
     continue;
   }
 
+  // Readern (ägarbeslut 2026-07-27): hela verify-domslutet arkiveras per
+  // jobb — "vad hände med alla som klistrade in" ska gå att läsa i efterhand
+  // utan att köra om något. Best effort: rapporten står på egna ben.
+  const vrPath = join(dir, "verify-report.json");
+  if (existsSync(vrPath)) {
+    const { error: vrErr } = await db.storage
+      .from("angel-evidence")
+      .upload(`preview/${job.id}/verify-report.json`, readFileSync(vrPath), {
+        contentType: "application/json",
+        upsert: true,
+      });
+    if (vrErr) console.warn(`[preview] ${job.id}: verify-report-arkivet föll: ${vrErr.message}`);
+  }
+
   // Original/Variant-växlaren i /try: hela före/efter-sidorna laddas upp
   // ENDAST när grindarna släppt igenom förslaget — hållna jobb behåller den
   // ärliga rapportvyn (frånvaron av objekten ÄR grinden; /try:s probe får
@@ -362,13 +386,31 @@ for (const job of jobs) {
   // normaliserar ({fynd: [{rubrik, vikt}], flyttStatus}); min första form
   // mappades till tomhet. Hölls tillbaka ⇒ inga fynd-rader och ingen
   // lyft-text — rapporten berättar ärligheten.
-  const findings = verified
-    ? {
-        fynd: changes.map((c, i) => ({ rubrik: c.label, vikt: i })),
-        flyttStatus:
-          "Verified on your page — no layout shift, LCP untouched, fully reversible",
-      }
-    : { fynd: [], flyttStatus: null };
+  // Readern: kompakt diagnostik in i jobbraden (extra nyckel i findings-
+  // jsonb:n — mapFindings visar den aldrig för besökaren, men API:t och
+  // fleet-analysen kan läsa vad som faktiskt hände: verdict, orsak,
+  // fallback-väg, grind-orsaker).
+  const lastAttempt = verifyFirst?.attempts?.[(verifyFirst.attempts?.length ?? 1) - 1];
+  const diagnostics = {
+    verdict: verifyFirst?.verdict ?? (verifyOk ? "no_result" : "verify_failed"),
+    fallback: verifyFirst?.fallback ?? null,
+    reason: verifyFirst?.reason ?? null,
+    gateReasons: (lastAttempt?.gate?.reasons ?? []).slice(0, 3),
+    attempts: verifyFirst?.attempts?.length ?? 0,
+    sections: content.sections.length,
+    planOps: plan.ops.map((o) => o.op),
+    at: new Date().toISOString(),
+  };
+  const findings = {
+    ...(verified
+      ? {
+          fynd: changes.map((c, i) => ({ rubrik: c.label, vikt: i })),
+          flyttStatus:
+            "Verified on your page — no layout shift, LCP untouched, fully reversible",
+        }
+      : { fynd: [], flyttStatus: null }),
+    diagnostics,
+  };
 
   const { error: updErr } = await db
     .from("angel_preview_jobs")

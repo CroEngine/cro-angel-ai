@@ -739,59 +739,30 @@ try {
       ctaTexts,
       { ctaSelectors },
     );
-    if (unresolvable) {
-      results.push({
-        path: plan.path,
-        key: plan.key,
-        verdict: "not_applicable",
-        reason: "op-mål/sektion kunde inte upplösas på sidan (v3 fail closed)",
-      });
-      console.log(
-        `  ${plan.path} × ${plan.key}: EJ APPLICERBAR — upplösningen vägrade (fail closed)`,
-      );
-      await context.close();
-      continue;
-    }
     let last = attempts[attempts.length - 1];
-
-    // EFTER-skärmdump: SAMMA mätfunktion med keepApplied — ingen tredje
-    // appliceringsalgoritm (granskningsfynd: skärmdumpen ägaren godkänner på
-    // måste komma från exakt den applicering som grindades).
-    await measurePlan(page, attemptOps, [], true);
-    await page.screenshot({
-      path: join(outDir, `${slug}-after.jpg`),
-      type: "jpeg",
-      quality: 60,
-      fullPage: true,
-    });
-    // Efter-DOM:en som HEL SIDA — exakt den grindade appliceringen (samma
-    // regel som skärmdumpen ovan; frusna sidor är skriptstrippade så kopian
-    // är statisk). Preview-tratten laddar upp den för Original/Variant-
-    // växlaren i /try; konsumenter grindar själva på verdictet.
-    writeFileSync(join(outDir, `${slug}-after.html`), await page.content());
-    await context.close();
-
-    // Fallback-steget (ägarbeslut 2026-07-27): fälls flytt-planen i grinden
-    // provas bevis-lyftet — ordagrann sidtext under hjälten, LCP-säkert by
-    // construction. Aldrig för mall-planer (exemplaren har olika h1, så
-    // hjältelokatorn kan inte upplösas på dem — fail closed hade fällt den
-    // i exemplarpasset ändå). Passerar fallbacken tar den planens plats;
-    // annars hålls varianten precis som förut.
     let fallbackUsed: string | null = null;
-    if (last.gate.verdict !== "pass" && !isTemplate) {
+
+    // Fallback-steget (ägarbeslut 2026-07-27): när flytt-planen inte kan
+    // levereras provas bevis-lyftet — ordagrann sidtext under hjälten,
+    // LCP-säkert by construction. Gäller BÅDA nej-vägarna: grind-fail OCH
+    // upplösnings-vägran (hibob-fyndet 2026-07-27: flyttmålet kunde inte
+    // upplösas i Elementor-nästlad DOM, men hjälte-h1:an — allt insert-
+    // fallbacken behöver — upplöstes fint). Aldrig för mall-planer
+    // (exemplaren har olika h1, exemplarpasset hade fällt den ändå).
+    // Placerings-stegen: efter hjältens toppblock först (default), sedan
+    // direkt efter h1-elementet (talentium-fyndet: videoblocket täckte
+    // default-punkten). Första placering som passerar vinner och kodas i
+    // serve_ops så klienten applicerar exakt det grindade.
+    const tryProofFallback = async (): Promise<boolean> => {
+      if (isTemplate) return false;
       const fbBase = proofInsertFallback(content, validated.ops);
-      // Placerings-stegen: efter hjältens toppblock först (default), sedan
-      // direkt efter h1-elementet (talentium-fyndet: videoblocket täckte
-      // default-punkten — inne-i-hjälten-placeringen är den säkra reserven,
-      // LCP:n står still i båda). Första placering som passerar vinner och
-      // kodas i serve_ops så klienten applicerar exakt det grindade.
       const placements: ("after_h1" | undefined)[] = [undefined, "after_h1"];
       for (const placement of fbBase ? placements : []) {
         const fbOps = fbBase!.map((o) =>
           o.op === "insert_snippet" && placement ? { ...o, placement } : o,
         );
         const fbMeasure = toMeasureOps(content, fbOps, styleDonor);
-        if (!fbMeasure) break;
+        if (!fbMeasure) return false;
         const fctx = await browser.newContext({
           viewport: { width: canonicalVp.width, height: canonicalVp.height },
         });
@@ -822,10 +793,10 @@ try {
           last = attempts[attempts.length - 1];
           fallbackUsed = placement ? `proof_insert:${placement}` : "proof_insert";
           console.log(
-            `  ${plan.path} × ${plan.key}: flytten hölls av grinden — bevis-lyftet verifierades i stället (fallback${placement ? `, placering ${placement}` : ""})`,
+            `  ${plan.path} × ${plan.key}: flytten kunde inte levereras — bevis-lyftet verifierades i stället (fallback${placement ? `, placering ${placement}` : ""})`,
           );
           await fctx.close();
-          break;
+          return true;
         }
         // Ärlig spårbarhet: fallbackens nej ska synas i loggen, inte tystna.
         console.log(
@@ -835,6 +806,42 @@ try {
         );
         await fctx.close();
       }
+      return false;
+    };
+
+    if (unresolvable) {
+      await context.close();
+      if (!(await tryProofFallback())) {
+        results.push({
+          path: plan.path,
+          key: plan.key,
+          verdict: "not_applicable",
+          reason: "op-mål/sektion kunde inte upplösas på sidan (v3 fail closed)",
+        });
+        console.log(
+          `  ${plan.path} × ${plan.key}: EJ APPLICERBAR — upplösningen vägrade (fail closed)`,
+        );
+        continue;
+      }
+    } else {
+      // EFTER-skärmdump: SAMMA mätfunktion med keepApplied — ingen tredje
+      // appliceringsalgoritm (granskningsfynd: skärmdumpen ägaren godkänner på
+      // måste komma från exakt den applicering som grindades).
+      await measurePlan(page, attemptOps, [], true);
+      await page.screenshot({
+        path: join(outDir, `${slug}-after.jpg`),
+        type: "jpeg",
+        quality: 60,
+        fullPage: true,
+      });
+      // Efter-DOM:en som HEL SIDA — exakt den grindade appliceringen (samma
+      // regel som skärmdumpen ovan; frusna sidor är skriptstrippade så kopian
+      // är statisk). Preview-tratten laddar upp den för Original/Variant-
+      // växlaren i /try; konsumenter grindar själva på verdictet.
+      writeFileSync(join(outDir, `${slug}-after.html`), await page.content());
+      await context.close();
+
+      if (last.gate.verdict !== "pass") await tryProofFallback();
     }
 
     if (last.gate.verdict !== "pass") {

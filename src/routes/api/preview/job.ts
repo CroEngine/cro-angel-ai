@@ -152,12 +152,19 @@ export const Route = createFileRoute("/api/preview/job")({
           const ownReport = row.report_url?.includes(`/preview/${id}/report.html`)
             ? `/api/preview/report?id=${id}`
             : row.report_url;
+          // Readern (2026-07-27): diagnostiken följer med svaret — verdict,
+          // orsak och fallback-väg per jobb. Jobb-id:n är ogissbara uuid:n
+          // och innehållet är vår egen grind-vokabulär om prospektets EGEN
+          // sida — inget känsligt läcker.
+          const diag =
+            (row.findings as { diagnostics?: unknown } | null)?.diagnostics ?? null;
           return json({
             ok: true,
             status: row.status,
             url: row.url,
             reportUrl: ownReport,
             findings: mapFindings(row.findings) ?? row.findings ?? null,
+            diag,
             error: row.error,
           });
         } catch {
