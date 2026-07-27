@@ -15,7 +15,7 @@
 // Statistikhjälpare bor i dashboard/variant-stats, popuperna i
 // dashboard/overlays (sajt-genomgången 2026-07-18).
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -34,6 +34,7 @@ import {
   KIND_BY_DEPTH,
   liftFmt,
   liftForKey,
+  metricTableRows,
   pct,
   scopedVariants,
   STATUS_PILL,
@@ -116,6 +117,10 @@ export function OverviewPanel({
   const [q, setQ] = useState("");
   const [journeysOpen, setJourneysOpen] = useState(false);
   const [compareId, setCompareId] = useState<string | null>(null);
+  // Utfällbar mätartabell per variantrad (ägarbeslut 2026-07-27: alla siffror,
+  // men bara bakom ett klick — grundvyn brusfri). Ett id i taget, klick igen
+  // stänger — samma mönster som compareId.
+  const [metricsId, setMetricsId] = useState<string | null>(null);
 
   const sel = selected === "all" ? null : (byKey.get(selected) ?? null);
 
@@ -823,8 +828,30 @@ export function OverviewPanel({
                       return (
                         <div key={v.id} className="border-t border-[#f4f2ef] first:border-t-0">
                           <div className="flex items-center gap-3.5 px-4 py-3">
-                            <div className="min-w-0 flex-1">
+                            <div
+                              className={
+                                "min-w-0 flex-1" +
+                                (v.abTest?.allMetrics ? " cursor-pointer select-none" : "")
+                              }
+                              onClick={
+                                v.abTest?.allMetrics
+                                  ? () => setMetricsId(metricsId === v.id ? null : v.id)
+                                  : undefined
+                              }
+                              title={
+                                v.abTest?.allMetrics
+                                  ? metricsId === v.id
+                                    ? "Hide all metrics"
+                                    : "Show all metrics"
+                                  : undefined
+                              }
+                            >
                               <div className="truncate font-mono text-[12px] text-stone-800">
+                                {v.abTest?.allMetrics && (
+                                  <span className="mr-1 text-stone-400">
+                                    {metricsId === v.id ? "▾" : "▸"}
+                                  </span>
+                                )}
                                 {v.segmentKey} <span className="text-[#c4beb6]">·</span>{" "}
                                 <span className="text-stone-400">{v.path}</span>
                               </div>
@@ -997,6 +1024,37 @@ export function OverviewPanel({
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
+                          {/* Hela mätartabellen — läsning, aldrig besluts-yta:
+                              domslutet fattas av huvudmåttet + skyddsvetona. */}
+                          {metricsId === v.id && v.abTest?.allMetrics && (
+                            <div className="border-t border-[#f4f2ef] bg-[#faf9f7] px-4 py-3">
+                              <div className="flex pb-1.5 text-[10.5px] font-semibold uppercase tracking-[.06em] text-stone-400">
+                                <div className="flex-1">Metric</div>
+                                <div className="w-[130px] text-right" style={{ color: "#065f46" }}>
+                                  Adapted
+                                </div>
+                                <div className="w-[130px] text-right">Control</div>
+                              </div>
+                              {metricTableRows(v.abTest.allMetrics).map((r) => (
+                                <div
+                                  key={r.label}
+                                  className="flex border-t border-[#f0eee9] py-1.5 text-[11.5px]"
+                                >
+                                  <div className="flex-1 text-stone-500">{r.label}</div>
+                                  <div className="w-[130px] text-right font-mono tabular-nums text-stone-800">
+                                    {r.variant}
+                                  </div>
+                                  <div className="w-[130px] text-right font-mono tabular-nums text-stone-500">
+                                    {r.control}
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="mt-2 text-[10.5px] text-stone-400">
+                                Reading only — the verdict is decided by the primary metric, with
+                                guardrail vetoes on harm.
+                              </div>
+                            </div>
+                          )}
                           {compareId === v.id && (
                             <CompareOverlay site={site} v={v} onClose={() => setCompareId(null)} />
                           )}
@@ -1113,23 +1171,61 @@ export function OverviewPanel({
  *  fylliga raden, senaste "done" behåller sin (vad hände nyss + vad pågår).
  *  När det ärliga domslutet finns är berättelsen klar och kortet försvinner —
  *  då ÄR dashboardens riktiga siffror berättelsen. */
+/** Minimeringsvalet minns per webbläsare — kortet är guld första veckorna
+ *  och brus när ägaren kan resan utantill (ägarbeslut 2026-07-27). */
+const ROAD_MIN_KEY = "angel-road-minimized";
+
 function JourneyCard({ journey }: { journey: JourneyMilestone[] }) {
+  // Hooks FÖRE alla early-returns (React-regeln). localStorage läses i en
+  // effect — inte i initialiseraren — så SSR-hydreringen aldrig spricker;
+  // priset är en kort expanderad blink för den som minimerat.
+  const [minimized, setMinimized] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(ROAD_MIN_KEY) === "1") setMinimized(true);
+    } catch {
+      /* lagring blockerad — kortet börjar expanderat */
+    }
+  }, []);
+  const toggle = () =>
+    setMinimized((prev) => {
+      try {
+        localStorage.setItem(ROAD_MIN_KEY, prev ? "0" : "1");
+      } catch {
+        /* valet gäller då bara denna vy */
+      }
+      return !prev;
+    });
+
   if (journey.length === 0) return null;
   const verdictDone = journey.find((m) => m.id === "verdict")?.state === "done";
   if (verdictDone) return null;
   const doneCount = journey.filter((m) => m.state === "done").length;
   const lastDoneIdx = journey.reduce((acc, m, i) => (m.state === "done" ? i : acc), -1);
+  const current = journey.find((m) => m.state === "current");
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-6">
-      <div className="flex items-baseline justify-between">
+    <div className={`rounded-2xl border border-stone-200 bg-white ${minimized ? "px-6 py-4" : "p-6"}`}>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={!minimized}
+        title={minimized ? "Expand" : "Minimize"}
+        className="flex w-full cursor-pointer items-baseline justify-between text-left"
+      >
         <div className="font-mono text-[10.5px] uppercase tracking-[.14em] text-emerald-600">
           The road to proven
         </div>
         <div className="font-mono text-[10.5px] text-stone-400">
-          {doneCount} / {journey.length}
+          {doneCount} / {journey.length} <span className="ml-1">{minimized ? "▸" : "▾"}</span>
         </div>
-      </div>
+      </button>
+      {minimized && current && (
+        <div className="mt-1 text-[12px] text-stone-500">
+          Now: <span className="font-semibold text-stone-700">{current.title}</span>
+        </div>
+      )}
+      {minimized ? null : (
       <ol className="mt-4 space-y-0">
         {journey.map((m, i) => {
           const showDetail = m.state === "current" || i === lastDoneIdx;
@@ -1181,6 +1277,7 @@ function JourneyCard({ journey }: { journey: JourneyMilestone[] }) {
           );
         })}
       </ol>
+      )}
     </div>
   );
 }

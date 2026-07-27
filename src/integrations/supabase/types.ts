@@ -785,6 +785,10 @@ export type Database = {
           visitors: number
         }[]
       }
+      angel_email_has_account: {
+        Args: { p_email: string }
+        Returns: boolean
+      }
       angel_page_flow_rollup: {
         Args: { p_since?: string; p_site: string }
         Returns: {
