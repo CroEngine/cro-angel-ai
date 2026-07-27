@@ -21,7 +21,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "0.1.0";
+  var VERSION = "0.1.1";
   // document.currentScript is null when the tag is injected asynchronously
   // (tag managers, SPA route changes), so fall back to locating it by src.
   function findScript() {
@@ -2002,7 +2002,10 @@
         // över sidans inventory med post-adaptations-DOM:en (feedback-loopen
         // som raderade FAQ-posten på glutenforum). Kontrollgruppen (holdout)
         // och laddningar utan adaptationer är de rena skördekällorna.
-        adaptedThisLoad = applied.length > 0;
+        // En variant-arms-laddning räknas som adapterad ÄVEN om första apply
+        // missade: SPA-omförsöket nedan kan applicera sent, mitt under en
+        // pågående skörd — pessimism här är billig, kontrollarmen räcker.
+        adaptedThisLoad = applied.length > 0 || !!(decision.variant && !decision.holdout);
         decideSettled = true;
         // Survive framework hydration: a React/Vue re-render can replace the
         // DOM we just adapted, silently wiping our (already-logged) exposure.
@@ -2027,6 +2030,46 @@
           };
           setTimeout(checkSurvival, 1500);
           setTimeout(checkSurvival, 4000);
+        }
+        // SPA-monteringsracet (pilotfynd 2026-07-27, glutenforum): på en
+        // klientrenderad sida kan decide-svaret landa FÖRE innehållet — då
+        // hittar första apply inga mål, fast exponeringen redan loggats som
+        // visad. Utan omförsök ser besökaren originalet och variant-armen
+        // späds ut till kontrollarmens nivå. Försök tills målen monterats:
+        // 400 ms × 30 ≈ 12 s (samma fönster som skörde-spärren). apply är
+        // idempotent, och en sen lyckad applicering armar sin egen
+        // hydrerings-vakt precis som den snabba vägen ovan.
+        if (decision.variant && !decision.holdout && applied.length === 0) {
+          var lateTries = 0;
+          var lateTimer = setInterval(function () {
+            try {
+              lateTries++;
+              var late = apply(decision);
+              if (late.length > 0 || lateTries >= 30) {
+                clearInterval(lateTimer);
+                if (late.length > 0) {
+                  var lateReapplies = 0;
+                  var lateSurvival = function () {
+                    try {
+                      var res2 = document.querySelectorAll(
+                        "[data-angel-moved],[data-angel-retext],[data-angel-inserted]",
+                      ).length;
+                      if (res2 === 0 && lateReapplies < 2) {
+                        lateReapplies++;
+                        apply(decision);
+                      }
+                    } catch (e) {
+                      /* never break the host page */
+                    }
+                  };
+                  setTimeout(lateSurvival, 1500);
+                  setTimeout(lateSurvival, 4000);
+                }
+              }
+            } catch (e) {
+              clearInterval(lateTimer);
+            }
+          }, 400);
         }
         var ctx = decision.context || {};
         track(
