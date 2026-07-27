@@ -24,8 +24,11 @@ const POLL_MS = 4000;
 const MAX_POLL_MINUTES = 25;
 
 function TryPage() {
-  const id =
-    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("id") : null;
+  // Sökparametern via routern (granskningsfynd 2026-07-28): den gamla
+  // typeof window-läsningen gav id=null vid SSR — servern renderade "We
+  // can't find that preview." som FÖRSTA intryck för varje prospekt, och
+  // hydreringen fick reparera. validateSearch gör id känt redan på servern.
+  const { id } = Route.useSearch();
   const [job, setJob] = useState<JobView | null>(null);
   const [gone, setGone] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
@@ -39,29 +42,49 @@ function TryPage() {
   useEffect(() => {
     if (!id) return;
     let stop = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Pollningen kan aldrig fastna (granskningsfynd 2026-07-28): den gamla
+    // varianten schemalade nästa tick EFTER await — en hängande fetch (mobil-
+    // nät, sovande flik) frös sidan i "Building…" för alltid och timeout-UI:t
+    // nåddes aldrig. Nu: AbortController-timeout per anrop + omschemaläggning
+    // i finally, och cleanup rensar timern så inget setState sker efter unmount.
     const tick = async () => {
       if (stop) return;
+      const controller = new AbortController();
+      const abortTimer = setTimeout(() => controller.abort(), 10_000);
+      let terminal = false;
       try {
-        const res = await fetch(`/api/preview/job?id=${encodeURIComponent(id)}`);
+        const res = await fetch(`/api/preview/job?id=${encodeURIComponent(id)}`, {
+          signal: controller.signal,
+        });
+        if (stop) return;
         if (res.status === 404) {
           setGone(true);
           return;
         }
         const data = (await res.json()) as ({ ok: true } & JobView) | { ok: false };
-        if ("status" in data) setJob(data);
-        if ("status" in data && (data.status === "ok" || data.status === "failed")) return;
+        if (stop) return;
+        if ("status" in data) {
+          setJob(data);
+          terminal = data.status === "ok" || data.status === "failed";
+        }
       } catch {
-        /* nätverksblipp — nästa poll försöker igen */
+        /* nätverksblipp/timeout — nästa poll försöker igen */
+      } finally {
+        clearTimeout(abortTimer);
+        if (!stop && !terminal) {
+          if (Date.now() - started.current > MAX_POLL_MINUTES * 60_000) {
+            setTimedOut(true);
+          } else {
+            timer = setTimeout(tick, POLL_MS);
+          }
+        }
       }
-      if (Date.now() - started.current > MAX_POLL_MINUTES * 60_000) {
-        setTimedOut(true);
-        return;
-      }
-      setTimeout(tick, POLL_MS);
     };
     void tick();
     return () => {
       stop = true;
+      clearTimeout(timer);
     };
   }, [id]);
 
@@ -184,6 +207,7 @@ function TryPage() {
                       <button
                         key={key}
                         type="button"
+                        aria-pressed={arm === key}
                         onClick={() => setArm(key)}
                         className={`rounded-md px-3 py-1 text-[12px] font-semibold transition ${
                           arm === key
@@ -273,4 +297,11 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-export const Route = createFileRoute("/try")({ component: TryPage });
+export const Route = createFileRoute("/try")({
+  // id valideras/normaliseras här så SSR och klient ser samma värde —
+  // aldrig mer serverrenderat "We can't find that preview" för giltiga länkar.
+  validateSearch: (s: Record<string, unknown>) => ({
+    id: typeof s.id === "string" && s.id.length > 0 ? s.id : undefined,
+  }),
+  component: TryPage,
+});

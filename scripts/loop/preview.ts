@@ -20,6 +20,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 
 import { anthropicDesigner } from "./designer";
 import { buildCandidatePlan } from "./candidate-plan";
@@ -45,8 +46,14 @@ const outRoot = arg("out") ?? "preview-out";
 
 const PREVIEW_STALE_HOURS = 48;
 
-const spawnBun = (args: string[]): boolean =>
-  Bun.spawnSync(["bun", "run", ...args], { stdout: "inherit", stderr: "inherit" }).exitCode === 0;
+// node:child_process i stället för Bun.spawnSync: den senare saknar timeout,
+// och en hängd frysning/verify åt annars hela jobbets 15 min och lämnade
+// raden permanent i running (granskningsfynd 2026-07-28, driftbugg #2).
+const spawnBun = (args: string[], timeoutMs = 300_000): boolean =>
+  spawnSync("bun", ["run", ...args], {
+    stdio: ["ignore", "inherit", "inherit"],
+    timeout: timeoutMs,
+  }).status === 0;
 
 const dataUri = (p: string): string | null => {
   try {
@@ -117,6 +124,17 @@ await db
   .update({ status: "failed", error: "expired", updated_at: new Date().toISOString() })
   .eq("status", "queued")
   .lt("created_at", staleBefore);
+// Fastnade running-rader (granskningsfynd 2026-07-28): en runner som dödas
+// av jobbets timeout lämnade raden permanent i running — och POST-dedupen
+// återanvände det döda jobbet för samma URL i 24 h (garanterat spinnerhaveri
+// i trattens topp). 30 min mot updated_at räcker gott: arbetaren själv har
+// hårdare tak per steg numera.
+const runningStale = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+await db
+  .from("angel_preview_jobs")
+  .update({ status: "failed", error: "worker_died", updated_at: new Date().toISOString() })
+  .eq("status", "running")
+  .lt("updated_at", runningStale);
 
 // ── kön ──────────────────────────────────────────────────────────────────────
 const { data: jobs, error: qErr } = await db
@@ -135,10 +153,28 @@ if (!jobs?.length) {
 }
 console.log(`[preview] ${jobs.length} jobb i kön`);
 
-const fail = async (id: string, error: string) => {
+// Felvägarna skriver samma diagnostik-nyckel som ok-vägen (granskningsfynd
+// 2026-07-28: tre olika orsaker kollapsade till "could_not_analyze" och DB
+// bar noll spårbarhet — artefakten raderades efter 7 dagar). stage berättar
+// VAR kedjan föll; detail är kort och aldrig känslig.
+const fail = async (id: string, error: string, stage?: string, detail?: string) => {
   await db
     .from("angel_preview_jobs")
-    .update({ status: "failed", error, updated_at: new Date().toISOString() })
+    .update({
+      status: "failed",
+      error,
+      findings: {
+        fynd: [],
+        flyttStatus: null,
+        diagnostics: {
+          verdict: "failed",
+          stage: stage ?? error,
+          ...(detail ? { detail: detail.slice(0, 200) } : {}),
+          at: new Date().toISOString(),
+        },
+      },
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id);
 };
 
@@ -159,13 +195,13 @@ for (const job of jobs) {
   //    det statiska skalet är för tunt (SPA-luckan som fällde granska-vägen).
   if (!spawnBun(["scripts/redesign/freeze-page.ts", `--url=${job.url}`, `--out=${frozen}`])) {
     console.warn(`[preview] ${job.id}: frysningen föll — failed`);
-    await fail(job.id, "could_not_analyze");
+    await fail(job.id, "could_not_analyze", "freeze_failed");
     continue;
   }
   const content = extractContentModel(readFileSync(frozen, "utf8"));
   if (content.sections.length < 1) {
     console.warn(`[preview] ${job.id}: för tunn sida (${content.sections.length} sektioner)`);
-    await fail(job.id, "could_not_analyze");
+    await fail(job.id, "could_not_analyze", "thin_page");
     continue;
   }
 
@@ -233,7 +269,7 @@ for (const job of jobs) {
     const plan = await generateRedesign(ctx, anthropicDesigner);
     if (plan.ops.length === 0) {
       console.warn(`[preview] ${job.id}: designern gav ingen giltig plan (${plan.note ?? "tomt"})`);
-      await fail(job.id, "could_not_analyze");
+      await fail(job.id, "could_not_analyze", "designer_empty", plan.note ?? undefined);
       continue;
     }
     planOps = plan.ops;
@@ -361,7 +397,7 @@ for (const job of jobs) {
     });
   if (upErr) {
     console.warn(`[preview] ${job.id}: uppladdning föll: ${upErr.message} — failed`);
-    await fail(job.id, "upload_failed");
+    await fail(job.id, "upload_failed", "report_upload", upErr.message);
     continue;
   }
 

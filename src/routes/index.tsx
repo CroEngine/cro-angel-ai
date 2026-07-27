@@ -8,7 +8,7 @@
 // gradients. Allt säljande långstoff är BORTA; en viskande trerads-strip
 // under vecket bär substansen för den som scrollar.
 
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 
@@ -135,6 +135,7 @@ function PoweredBy() {
  *  leder vidare till installationen. Samma jobb-API som förut — bara heron
  *  som bytt skepnad. */
 function TryUrlForm() {
+  const navigate = useNavigate();
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,7 +153,10 @@ function TryUrlForm() {
       });
       const data = (await res.json()) as { ok: boolean; id?: string; reason?: string };
       if (data.ok && data.id) {
-        window.location.href = `/try?id=${data.id}`;
+        // SPA-navigering i stället för full omladdning (granskningsfynd
+        // 2026-07-28): window.location gav en hel serverrundtur rakt in i
+        // /try — långsammare och i onödan via SSR-vägen.
+        void navigate({ to: "/try", search: { id: data.id } });
         return;
       }
       setError(
@@ -195,7 +199,11 @@ function TryUrlForm() {
       <p className="mt-2.5 text-[13px] text-stone-400">
         See your website adapt in minutes. Enter your URL — no signup required.
       </p>
-      {error && <p className="mt-2 text-[13px] font-medium text-red-600">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-[13px] font-medium text-red-600">
+          {error}
+        </p>
+      )}
     </form>
   );
 }
