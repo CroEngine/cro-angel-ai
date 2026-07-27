@@ -29,6 +29,11 @@ function TryPage() {
   const [job, setJob] = useState<JobView | null>(null);
   const [gone, setGone] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
+  // Original/Variant-växlaren: före/efter-sidorna finns i lagringen BARA när
+  // grindarna släppt igenom förslaget — en HEAD-probe avgör om växlaren visas
+  // (hållna jobb får 404 och behåller den ärliga rapportvyn).
+  const [sandboxReady, setSandboxReady] = useState(false);
+  const [arm, setArm] = useState<"after" | "before">("after");
   const started = useRef(Date.now());
 
   useEffect(() => {
@@ -59,6 +64,21 @@ function TryPage() {
       stop = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!id || job?.status !== "ok") return;
+    let cancelled = false;
+    fetch(`/api/preview/page?id=${encodeURIComponent(id)}&which=after`, { method: "HEAD" })
+      .then((res) => {
+        if (!cancelled) setSandboxReady(res.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setSandboxReady(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, job?.status]);
 
   const hostname = (() => {
     try {
@@ -141,6 +161,55 @@ function TryPage() {
                 report shows your page before and after, using only content you already published.
               </p>
             </Block>
+
+            {/* Sandboxen (ägarfråga 2026-07-27: "kommer vi att se hemsidan i
+                sandbox med ett förslag?"): prospektets RIKTIGA sida som
+                skrollbar kopia, växlingsbar Original ⇄ Variant. Visas bara
+                när grindarna släppt igenom förslaget — probe:n ovan får 404
+                för hållna jobb. Mobilbredd med flit: scenariot är en mobil
+                Google-besökare, samma viewport som varianten grindades i. */}
+            {sandboxReady && id && (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-stone-100 px-4 py-2">
+                  <span className="font-mono text-[10.5px] uppercase tracking-[.12em] text-stone-400">
+                    [ your page — try the change ]
+                  </span>
+                  <div className="flex gap-0.5 rounded-lg bg-stone-100 p-0.5">
+                    {(
+                      [
+                        ["before", "Original"],
+                        ["after", "Variant"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setArm(key)}
+                        className={`rounded-md px-3 py-1 text-[12px] font-semibold transition ${
+                          arm === key
+                            ? "bg-white text-emerald-800 shadow-sm"
+                            : "text-stone-500 hover:text-stone-700"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-stone-50 py-4">
+                  <iframe
+                    src={`/api/preview/page?id=${encodeURIComponent(id)}&which=${arm}`}
+                    title={arm === "after" ? "Your page with Angel's change" : "Your page as published"}
+                    sandbox=""
+                    className="mx-auto block h-[72vh] w-[390px] max-w-full rounded-xl border border-stone-200 bg-white shadow-sm"
+                  />
+                </div>
+                <p className="border-t border-stone-100 px-4 py-2 text-[12px] text-stone-400">
+                  A frozen copy of your live page — scroll it. The variant is the exact change the
+                  safety gates verified: no layout shift, LCP untouched, fully reversible.
+                </p>
+              </div>
+            )}
 
             {/* Rapporten VISAS direkt (ägarfynd 2026-07-27: "får ingen riktig
                 rapport" — en länk är inte en rapport). Självbärande HTML ur

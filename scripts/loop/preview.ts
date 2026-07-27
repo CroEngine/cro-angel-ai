@@ -314,6 +314,36 @@ for (const job of jobs) {
     await fail(job.id, "upload_failed");
     continue;
   }
+
+  // Original/Variant-växlaren i /try: hela före/efter-sidorna laddas upp
+  // ENDAST när grindarna släppt igenom förslaget — hållna jobb behåller den
+  // ärliga rapportvyn (frånvaron av objekten ÄR grinden; /try:s probe får
+  // 404). Serveras via /api/preview/page (egen origin — Supabase
+  // neutraliserar HTML på publika ytan). Enhancement, inte krav: faller en
+  // uppladdning loggas den och rapporten står kvar.
+  if (verified) {
+    const afterPage = join(dir, `${slug}-after.html`);
+    const pages: [string, string][] = [
+      ["page-before.html", frozen],
+      ["page-after.html", afterPage],
+    ];
+    for (const [name, path] of pages) {
+      if (!existsSync(path)) {
+        console.warn(`[preview] ${job.id}: ${name} saknar källa (${path}) — växlaren utgår`);
+        break;
+      }
+      const { error: pgErr } = await db.storage
+        .from("angel-evidence")
+        .upload(`preview/${job.id}/${name}`, readFileSync(path), {
+          contentType: "text/html; charset=utf-8",
+          upsert: true,
+        });
+      if (pgErr) {
+        console.warn(`[preview] ${job.id}: ${name} föll: ${pgErr.message} — växlaren utgår`);
+        break;
+      }
+    }
+  }
   const publicUrl = db.storage.from("angel-evidence").getPublicUrl(storKey).data.publicUrl;
 
   // /try-sidans fynd-rad — skrivs i granska-formen som GET-vägens mapFindings

@@ -713,6 +713,11 @@ try {
       quality: 60,
       fullPage: true,
     });
+    // Efter-DOM:en som HEL SIDA — exakt den grindade appliceringen (samma
+    // regel som skärmdumpen ovan; frusna sidor är skriptstrippade så kopian
+    // är statisk). Preview-tratten laddar upp den för Original/Variant-
+    // växlaren i /try; konsumenter grindar själva på verdictet.
+    writeFileSync(join(outDir, `${slug}-after.html`), await page.content());
     await context.close();
 
     if (last.gate.verdict !== "pass") {
