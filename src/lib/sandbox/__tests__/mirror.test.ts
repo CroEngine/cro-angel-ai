@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   blockedIpReason,
   frozenBackdropHtml,
+  frozenPreviewHtml,
   guardTargetUrl,
   normalizeHost,
   sandboxSiteSlug,
@@ -200,6 +201,39 @@ describe("frozenBackdropHtml — fryst kopia som heatmap-backdrop", () => {
   it("länkar lämnas orörda — backdroppen är en karta, inte en browsbar sida", () => {
     const out = frozenBackdropHtml('<html><body><a href="/blogg">B</a></body></html>');
     expect(out).toContain('href="/blogg"');
+  });
+});
+
+describe("frozenPreviewHtml — fryst kopia som variantförhandsvisning (SPA-compare)", () => {
+  const doc = "<html><head></head><body><h2>Vanliga frågor</h2></body></html>";
+  const opts = {
+    ourOrigin: "https://croengine.netlify.app",
+    site: "sandbox--glutenforum.se",
+    pageUrl: "https://glutenforum.se/blogg/den-ultimata-guiden-till-glutenfri-kladdkaka",
+  };
+
+  it("angel=true → snippet med sandbox-slug + riktig data-url, plus rapportörerna", () => {
+    const out = frozenPreviewHtml(doc, { ...opts, angel: true });
+    expect(out).toContain('src="https://croengine.netlify.app/adaptive.js"');
+    expect(out).toContain('data-site="sandbox--glutenforum.se"');
+    expect(out).toContain(
+      'data-url="https://glutenforum.se/blogg/den-ultimata-guiden-till-glutenfri-kladdkaka"',
+    );
+    expect(out).toContain("angel-sandbox"); // resultat-rapportören
+    expect(out).toContain("angel-mirror-height"); // höjdrapportören
+    expect(out).toContain("<h2>Vanliga frågor</h2>"); // innehållet orört
+  });
+
+  it("angel=false → FÖRE-ramen: ren backdrop utan snippet", () => {
+    const out = frozenPreviewHtml(doc, { ...opts, angel: false });
+    expect(out).not.toContain("adaptive.js");
+    expect(out).toContain("angel-mirror-height");
+  });
+
+  it("head-lösa dokument: injektionen prependas i stället för att tappas", () => {
+    const out = frozenPreviewHtml("<h2>Fryst</h2>", { ...opts, angel: true });
+    expect(out).toContain("adaptive.js");
+    expect(out).toContain("<h2>Fryst</h2>");
   });
 });
 
