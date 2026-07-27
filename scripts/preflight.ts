@@ -73,7 +73,10 @@ try {
     // snippeten live) neutraliseras av runnerns prepare-steg — nätverksblock
     // via page.route stöds inte av Stagehand-proxyn (verifierat: FÖRE-bilder
     // med ringen kvar), så runnern städar i DOM:en i stället.
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
+    // timeoutMs, inte Playwright-namnet timeout (typkollsfynd 2026-07-28):
+    // Stagehands goto ignorerade tyst optionen — sidladdningen körde på
+    // default-timeout hela tiden.
+    await page.goto(url, { waitUntil: "domcontentloaded", timeoutMs: 45_000 });
     await waitForContent(page);
     await dismissConsent(page);
     await new Promise((r) => setTimeout(r, 1200));

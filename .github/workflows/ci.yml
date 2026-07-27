@@ -44,6 +44,13 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      # scripts/ låg utanför ALL typkoll (granskningsfynd 2026-07-28) —
+      # nattloopen, preview-arbetaren och fleet-runnern kompilerades aldrig.
+      # Första körningen fångade fem skarpa buggar (bl.a. kohortscopet som
+      # tappades på vägen till insert och ett ReferenceError i --strict).
+      - name: Typecheck scripts
+        run: bun run typecheck:scripts
+
       # Hela enhetssviten (decide, serve, winner, earned, claims, bot, …) —
       # den saknades i CI: bara browser-suiterna kördes, så en trasig ren
       # kärnfunktion kunde passera grönt.

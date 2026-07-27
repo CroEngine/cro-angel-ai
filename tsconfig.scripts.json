@@ -1,0 +1,10 @@
+{
+  "// varför": "scripts/ låg utanför ALL typkoll (granskningsfynd 2026-07-28) — nattloopen, preview-arbetaren, katalogkedjan och fleet-runnern kompilerades aldrig av tsc. Tre produktionsbuggar hade fångats här (validated.notes-stavfelet, cohorts/success-tappet, nightly:s let-i-try). CI kör denna via `bun run typecheck:scripts`.",
+  "extends": "./tsconfig.json",
+  "include": ["scripts/**/*.ts", "scripts/types/*.d.ts"],
+  "exclude": ["node_modules", "dist", "scripts/lab/**"],
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["vite/client"]
+  }
+}

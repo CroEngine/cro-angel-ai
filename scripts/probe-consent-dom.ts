@@ -45,7 +45,8 @@ const stagehand = new Stagehand({
 try {
   await stagehand.init();
   const page = stagehand.context.pages()[0] ?? (await stagehand.context.newPage());
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
+  // timeoutMs — Stagehand-API:t; "timeout" ignorerades tyst (typkollsfynd).
+  await page.goto(url, { waitUntil: "domcontentloaded", timeoutMs: 45_000 });
   // Consent injiceras ofta async — ge taghanteraren tid.
   await new Promise((r) => setTimeout(r, 6000));
 

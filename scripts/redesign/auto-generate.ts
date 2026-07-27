@@ -437,6 +437,14 @@ interface PlanIn {
    *  ordning när huvudvalet inte kan levereras, före bevis-lyftets nödfall.
    *  Varje reserv valideras precis som huvudplanen innan den provas. */
   altOps?: RedesignOp[][];
+  /** Kohortscopade planer (typkollsfynd 2026-07-28): nattloopen skriver
+   *  cohorts/success i plans.json och läser dem ur verify-resultatet för att
+   *  sätta required_cohorts + success-kontraktet vid insert. Fälten passerade
+   *  ALDRIG verify förut — kohortvarianter föddes oscopade (servade till alla
+   *  besökare i stället för sin kohort). Verify agerar inte på dem, bara
+   *  ekar dem oförändrade i det verifierade resultatet. */
+  cohorts?: string[];
+  success?: unknown;
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
 
@@ -688,15 +696,20 @@ try {
     // claims-vakten på varje omtextning. Kedjan litar aldrig på designern.
     const validated = await generateRedesign(ctx, async () => JSON.stringify(plan.ops));
     if (validated.ops.length !== plan.ops.length) {
+      // rejected[].reason, inte "validated.notes" (typkollsfynd 2026-07-28):
+      // fältet fanns aldrig på RedesignPlan — varje avvisning rapporterades
+      // som undefined och fleet-läsaren visade "(okänd orsak)". Valideringens
+      // per-op-skäl ÄR diagnosen.
+      const reason = validated.rejected.map((r) => r.reason).join("; ") || validated.note || "";
       results.push({
         path: plan.path,
         key: plan.key,
         verdict: "rejected_by_validation",
         dropped: plan.ops.length - validated.ops.length,
-        notes: validated.notes,
+        reason,
       });
       console.log(
-        `  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll)`,
+        `  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll: ${reason || "utan angivet skäl"})`,
       );
       continue;
     }
@@ -1116,6 +1129,9 @@ try {
       serveOps,
       evidence,
       slug,
+      // Kohortkontraktet ekas till orkestreraren — se PlanIn-kommentaren.
+      ...(plan.cohorts ? { cohorts: plan.cohorts } : {}),
+      ...(plan.success !== undefined ? { success: plan.success } : {}),
     });
     console.log(
       `  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök${fallbackUsed ? ", via fallback" : ""}) — väntar på ägarens knapp`,

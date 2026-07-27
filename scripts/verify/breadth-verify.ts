@@ -142,11 +142,16 @@ for (const t of targets) {
     });
     const plan = await generateRedesign(ctx, anthropicDesigner);
     if (plan.ops.length === 0) {
+      // rejected[].reason + note, inte "plan.notes" (typkollsfynd 2026-07-28):
+      // fältet fanns aldrig — raden rapporterade alltid "tomt svar" och dolde
+      // valideringens verkliga per-op-skäl.
+      const reasons = [
+        ...plan.rejected.map((r) => r.reason),
+        ...(plan.note ? [plan.note] : []),
+      ];
       row.verdict = "no_valid_plan";
-      row.reasons = plan.notes ?? [];
-      console.log(
-        `  ${t.name}: ingen giltig plan (${(plan.notes ?? []).join("; ") || "tomt svar"})`,
-      );
+      row.reasons = reasons;
+      console.log(`  ${t.name}: ingen giltig plan (${reasons.join("; ") || "tomt svar"})`);
       continue;
     }
     row.designOps = plan.ops.map((o) => ({
