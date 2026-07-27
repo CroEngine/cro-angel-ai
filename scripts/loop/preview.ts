@@ -297,13 +297,15 @@ for (const job of jobs) {
   writeFileSync(reportPath, reportHtml);
 
   const storKey = `preview/${job.id}/report.html`;
-  // Explicit Blob-typ (pilotfynd 2026-07-27): en rå Buffer laddas upp som
-  // text/plain trots contentType-optionen, och storage svarar med nosniff —
-  // webbläsaren TVINGAS visa källkod i stället för rapporten. Blob:ens typ
-  // vinner; charset löser även mojibake i äldre visningar.
+  // Lagringen tar typen korrekt — men Supabases PUBLIKA yta skriver om just
+  // HTML till text/plain + nosniff vid servering (nätfiskeskydd på deras
+  // domän; diag-matris 2026-07-27, scripts/diag/storage-content-type.ts).
+  // Därför serveras rapporten via VÅR origin: /api/preview/report?id=…
+  // sätter rätt headers själv. Publika URL:en i DB-raden är bara var
+  // bytesen bor.
   const { error: upErr } = await db.storage
     .from("angel-evidence")
-    .upload(storKey, new Blob([readFileSync(reportPath)], { type: "text/html; charset=utf-8" }), {
+    .upload(storKey, readFileSync(reportPath), {
       contentType: "text/html; charset=utf-8",
       upsert: true,
     });

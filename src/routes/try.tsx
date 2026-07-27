@@ -161,7 +161,12 @@ function TryPage() {
                     <ArrowRight className="h-3.5 w-3.5" />
                   </a>
                 </div>
-                <iframe src={job.reportUrl} title="Angel report" className="h-[72vh] w-full" />
+                <iframe
+                  src={job.reportUrl}
+                  title="Angel report"
+                  sandbox="allow-popups allow-popups-to-escape-sandbox"
+                  className="h-[72vh] w-full"
+                />
               </div>
             )}
 
