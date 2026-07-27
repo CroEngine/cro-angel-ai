@@ -61,7 +61,13 @@ export async function buildCandidatePlan(args: {
   }));
   const inPath = join(workDir, "candidates-in.json");
   const outPath = join(workDir, "candidates-probed.json");
-  writeFileSync(inPath, JSON.stringify(probeIn));
+  // Grind-i-proben mäter med SAMMA CTA-vakter som verify (spegel av
+  // auto-generates härledning: konverterings-CTA:erna ur innehållsmodellen;
+  // preview har inget mål-selector).
+  const ctaTexts = [
+    ...new Set(content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text)),
+  ];
+  writeFileSync(inPath, JSON.stringify([{ id: "__meta__", ctaTexts }, ...probeIn]));
   const probeRun = spawnSync(
     "bun",
     [

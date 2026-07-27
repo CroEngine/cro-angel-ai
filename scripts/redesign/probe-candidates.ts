@@ -1,18 +1,26 @@
-// Kandidat-proben (kandidatkatalogen, 2026-07-27): förprova varje lagligt
-// drag mot den FRUSNA sidans riktiga DOM innan LLM-väljaren ser menyn.
-// Samma speglade regler som measure/applier (findByLocator, sectionOf,
-// prev-syskon, hjälte-klampen, insert-ankare + täcknings-hit-test) — det
-// som inte kan appliceras ska aldrig kunna väljas. Fail closed per kandidat:
-// oprovbar ⇒ bortfiltrerad, aldrig "kanske".
+// Kandidat-proben v2 (grind-i-proben, ägarbeslut 2026-07-27): kör HELA
+// grindmätningen per kandidat — verify:s EGEN maskin (runGatedAttempts →
+// evaluateRenderGates), applicera → mät → återställ, i en enda browser-
+// session. Principen: EN KANDIDAT SOM REDAN ÄR KÄND SOM UNDERKÄND SKA
+// ALDRIG KUNNA VÄLJAS. Menyn LLM-väljaren ser innehåller bara drag som
+// bevisat passerar grindarna, med mätvärdena bifogade — verify i slutet
+// blir bekräftelse + bevisproduktion, aldrig ett lotteri.
+//
+// Insert-kandidater probas PER PLACERING (default = efter hjältens topp-
+// block; after_h1 = direkt under rubriken) — utfallet per placering följer
+// med ut så väljaren/golvet kan binda den grind-rena placeringen.
 //
 //   bun run scripts/redesign/probe-candidates.ts \
 //     --frozen=<path> --in=<candidates.json> --out=<probed.json>
 //
-// In-formatet är katalogens Candidate[] + per-kandidat lokator (byggd av
-// anroparen ur innehållsmodellen): {id, kind, tag, find, placement?}.
+// In-format per kandidat: {id, kind, tag, find, detail?} + toppnivå
+// {ctaTexts?: string[]} i en meta-post (id "__meta__"). Fail closed per
+// kandidat: oprovbar ⇒ bortfiltrerad, aldrig "kanske".
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
+
+import { captureLcpElement, runGatedAttempts, type MeasureOp } from "./measure";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const FROZEN = arg("frozen");
@@ -30,16 +38,30 @@ interface ProbeIn {
   tag: string;
   find: string;
   detail?: string;
+  ctaTexts?: string[];
+}
+export interface GateMetrics {
+  lcpShiftPx: number | null;
+  overlapPx: number | null;
+  hOverflowPx: number | null;
+  ctaChecked: number | null;
+  ctaBroken: number | null;
+  extraLift: boolean;
 }
 interface ProbeOut {
   id: string;
   applicable: boolean;
-  /** insert: vilka placeringar som är synliga+oskymda ("default"/"after_h1"). */
+  /** insert: grind-rena placeringar i preferensordning. */
   placements?: string[];
+  /** Grindmätvärdena för det BÄSTA passet — väljar-menyn + golvets tiebreak. */
+  gate?: GateMetrics;
   reason?: string;
 }
 
-const cands = JSON.parse(readFileSync(IN, "utf8")) as ProbeIn[];
+const raw = JSON.parse(readFileSync(IN, "utf8")) as ProbeIn[];
+const meta = raw.find((c) => c.id === "__meta__");
+const cands = raw.filter((c) => c.id !== "__meta__");
+const ctaTexts = meta?.ctaTexts ?? [];
 const html = readFileSync(FROZEN, "utf8");
 
 const browser = await chromium.launch({ headless: true, executablePath: EXEC });
@@ -48,154 +70,92 @@ await ctx.route("**/*", (r) => r.abort());
 const page = await ctx.newPage();
 await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
 await page.waitForTimeout(400);
+// LCP-markören sätts EN gång (samma regel som verify: före all mätning);
+// den överlever måtten eftersom varje mätpass återställer DOM:en byte-rent.
+await captureLcpElement(page);
 
-const results = await page.evaluate((cands) => {
-  const mainEl = document.querySelector("main") || document.body;
-  const norm = (s: string) => s.replace(/\s+/g, " ").trim();
-  // ── Spegel av measure/applier-reglerna (håll i synk) ──────────────────
-  const census = Array.from(mainEl.querySelectorAll("h2")).filter(
-    (h) => !h.closest("header,nav,footer,aside"),
+const results: ProbeOut[] = [];
+
+/** Kör grindmaskinen för en op-lista; null vid pass ⇒ mätvärden, annars
+ *  första grind-orsaken. measurePlan (inuti) återställer alltid DOM:en. */
+async function gateRun(
+  ops: MeasureOp[],
+): Promise<{ pass: boolean; gate: GateMetrics; reason: string | null }> {
+  const { attempts, unresolvable, extraLiftApplied } = await runGatedAttempts(
+    page,
+    ops,
+    ctaTexts,
+    {},
   );
-  const censusCount = new Map<Element, number>();
-  for (const h of census) {
-    let w: Element | null = h;
-    while (w && w !== document.documentElement) {
-      censusCount.set(w, (censusCount.get(w) ?? 0) + 1);
-      w = w.parentElement;
-    }
+  if (unresolvable || attempts.length === 0) {
+    return {
+      pass: false,
+      gate: {
+        lcpShiftPx: null,
+        overlapPx: null,
+        hOverflowPx: null,
+        ctaChecked: null,
+        ctaBroken: null,
+        extraLift: false,
+      },
+      reason: "lokatorn/sektionen kunde inte upplösas",
+    };
   }
-  const sectionOf = (el: Element): Element | null => {
-    let n: Element | null = el.parentElement;
-    while (n && n !== document.body && n !== mainEl.parentElement) {
-      if ((censusCount.get(n) ?? 0) === 1) {
-        const p = n.parentElement;
-        if (p)
-          for (const sib of Array.from(p.children)) if (sib !== n && censusCount.has(sib)) return n;
-      }
-      n = n.parentElement;
-    }
-    return null;
+  const last = attempts[attempts.length - 1];
+  const m = last.measurements;
+  return {
+    pass: last.gate.verdict === "pass",
+    gate: {
+      lcpShiftPx: m.lcpShiftPx ?? null,
+      overlapPx: last.gate.verticalOverlapIntroducedPx ?? null,
+      hOverflowPx: last.gate.hOverflowIntroducedPx ?? null,
+      ctaChecked: m.ctaChecked ?? null,
+      ctaBroken: m.ctaBroken ?? null,
+      extraLift: extraLiftApplied,
+    },
+    reason: last.gate.verdict === "pass" ? null : (last.gate.reasons[0] ?? "grind föll"),
   };
-  const findByLocator = (tag: string, find: string): Element | null => {
-    const full = norm(find).toLowerCase();
-    if (!full) return null;
-    const els = Array.from(mainEl.querySelectorAll(tag || "h1,h2,h3"));
-    for (const el of els) if (norm(el.textContent || "").toLowerCase() === full) return el;
-    const needle = full.slice(0, 24);
-    for (const el of els) if (norm(el.textContent || "").toLowerCase().includes(needle)) return el;
-    return null;
-  };
-  let clampHead: Element | null = mainEl.querySelector("h1");
-  if (clampHead && clampHead.closest("header,nav,footer,aside")) clampHead = null;
-  let heroClamp: Element | null = null;
-  if (clampHead) {
-    heroClamp = clampHead;
-    while (
-      heroClamp.parentElement &&
-      heroClamp.parentElement !== mainEl &&
-      heroClamp.parentElement !== document.body &&
-      !censusCount.has(heroClamp.parentElement)
-    ) {
-      heroClamp = heroClamp.parentElement;
-    }
-  }
-  const hitTestable = (node: Element): boolean => {
-    node.scrollIntoView({ block: "center" });
-    const r = node.getBoundingClientRect();
-    if (r.width < 1 || r.height < 1) return false;
-    const cx = Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1);
-    const cy = Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1);
-    const top = document.elementFromPoint(cx, cy);
-    return !!top && (node.contains(top) || top.contains(node));
-  };
+}
 
-  const out: {
-    id: string;
-    applicable: boolean;
-    placements?: string[];
-    reason?: string;
-  }[] = [];
-  for (const c of cands) {
-    if (c.kind === "move_up") {
-      const el = findByLocator(c.tag, c.find);
-      if (!el) {
-        out.push({ id: c.id, applicable: false, reason: "lokatorn upplöses inte" });
-        continue;
-      }
-      const sec = sectionOf(el);
-      if (!sec) {
-        out.push({ id: c.id, applicable: false, reason: "ingen ren sektionsnivå" });
-        continue;
-      }
-      let prev = sec.previousElementSibling;
-      while (prev && !censusCount.has(prev) && prev.getBoundingClientRect().height < 8) {
-        prev = prev.previousElementSibling;
-      }
-      if (!prev || prev.parentElement !== sec.parentElement) {
-        out.push({ id: c.id, applicable: false, reason: "ingen landningsplats ovanför" });
-        continue;
-      }
-      // Hjälte-klampen: samma vägran som applicering skulle göra.
-      if (heroClamp && sec !== heroClamp) {
-        try {
-          const secBelow = !!(
-            heroClamp.compareDocumentPosition(sec) & Node.DOCUMENT_POSITION_FOLLOWING
-          );
-          const landsAbove =
-            prev === heroClamp ||
-            !!(prev.compareDocumentPosition(heroClamp) & Node.DOCUMENT_POSITION_FOLLOWING);
-          if (secBelow && landsAbove) {
-            out.push({ id: c.id, applicable: false, reason: "skulle landa ovanför hjälten" });
-            continue;
-          }
-        } catch {
-          /* klampen vilar utan svar — proben släpper igenom, grinden dömer */
-        }
-      }
-      out.push({ id: c.id, applicable: true });
-    } else {
-      // insert: hjälte-ankaret + täcknings-hit-test per placering, med
-      // temporär nod som städas direkt (proben får aldrig lämna spår).
-      const el = findByLocator(c.tag, c.find);
-      if (!el) {
-        out.push({ id: c.id, applicable: false, reason: "hjälte-lokatorn upplöses inte" });
-        continue;
-      }
-      const placements: string[] = [];
-      // default: efter hjältens toppblock (h1:ans högsta census-fria förfader)
-      let anchor: Element = el;
-      while (
-        anchor.parentElement &&
-        anchor.parentElement !== mainEl &&
-        anchor.parentElement !== document.body &&
-        !censusCount.has(anchor.parentElement)
-      ) {
-        anchor = anchor.parentElement;
-      }
-      for (const [name, a] of [
-        ["default", anchor],
-        ["after_h1", el],
-      ] as const) {
-        if (!a.parentElement) continue;
-        const probeNode = document.createElement("p");
-        probeNode.textContent = c.detail || "probe";
-        a.parentElement.insertBefore(probeNode, a.nextSibling);
-        const ok = hitTestable(probeNode);
-        probeNode.remove();
-        if (ok) placements.push(name);
-      }
-      window.scrollTo(0, 0);
-      if (placements.length === 0) {
-        out.push({ id: c.id, applicable: false, reason: "alla placeringar täckta/osynliga" });
+for (const c of cands) {
+  if (c.kind === "move_up") {
+    const r = await gateRun([{ op: "move_up", tag: c.tag, find: c.find }]);
+    results.push(
+      r.pass
+        ? { id: c.id, applicable: true, gate: r.gate }
+        : { id: c.id, applicable: false, reason: r.reason ?? undefined },
+    );
+  } else {
+    // Insert: proba varje placering — grind-ren placering ⇒ med i menyn.
+    const placements: string[] = [];
+    let bestGate: GateMetrics | undefined;
+    let lastReason: string | null = null;
+    for (const placement of [undefined, "after_h1"] as const) {
+      const r = await gateRun([
+        {
+          op: "insert_snippet",
+          tag: c.tag,
+          find: c.find,
+          set: c.detail ?? "",
+          ...(placement ? { placement } : {}),
+        },
+      ]);
+      if (r.pass) {
+        placements.push(placement ?? "default");
+        if (!bestGate) bestGate = r.gate; // preferensordningen: default först
       } else {
-        out.push({ id: c.id, applicable: true, placements });
+        lastReason = r.reason;
       }
     }
+    results.push(
+      placements.length > 0
+        ? { id: c.id, applicable: true, placements, gate: bestGate }
+        : { id: c.id, applicable: false, reason: lastReason ?? "alla placeringar föll i grinden" },
+    );
   }
-  return out;
-}, cands as unknown as ProbeIn[]);
+}
 
 await browser.close();
-writeFileSync(OUT, JSON.stringify(results satisfies ProbeOut[], null, 2));
+writeFileSync(OUT, JSON.stringify(results, null, 2));
 const ok = results.filter((r) => r.applicable).length;
-console.log(`[probe] ${ok}/${results.length} kandidater applicerbara`);
+console.log(`[probe] ${ok}/${results.length} kandidater grind-rena`);
