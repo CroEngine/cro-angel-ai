@@ -198,6 +198,21 @@ describe("frozenBackdropHtml — fryst kopia som heatmap-backdrop", () => {
     expect(out).toContain("display:none!important");
   });
 
+  it("gömmer Lovable-bannern (anonymt Tailwind-kort — fixed + cookiepolicy-länk i <p>)", () => {
+    // Glutenforum-formen 2026-07-27: <div class="fixed bottom-0..."> utan id,
+    // med "Läs mer i vår cookiepolicy" i ett <p>. Regeln ligger separat så
+    // :has()-okunniga browsers bara tappar den, inte hela CMP-listan.
+    const out = frozenBackdropHtml(
+      '<html><head></head><body><div class="fixed bottom-0 inset-x-0 z-50 p-4">' +
+        '<p>Vi använder cookies. <a href="/cookiepolicy">Läs mer i vår cookiepolicy</a></p>' +
+        "</div></body></html>",
+    );
+    expect(out).toContain("div[class*='fixed']:has(p a[href*='cookiepolic' i])");
+    // :has()-regeln står i EGEN regel: två block med display:none i stilen
+    const styleBlock = /<style>([\s\S]*?)<\/style>/.exec(out)?.[1] ?? "";
+    expect(styleBlock.match(/display:none!important/g)?.length).toBe(2);
+  });
+
   it("länkar lämnas orörda — backdroppen är en karta, inte en browsbar sida", () => {
     const out = frozenBackdropHtml('<html><body><a href="/blogg">B</a></body></html>');
     expect(out).toContain('href="/blogg"');
