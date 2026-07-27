@@ -25,6 +25,10 @@ export interface MeasureOp {
    *  snippetens rendering exakt, annars ljuger evidensbilderna. */
   href?: string;
   styleClass?: string;
+  /** insert_snippet: verifierad insättningspunkt — SPEGLAR ApplierOp.placement
+   *  (håll i synk). Frånvarande = efter hjältens toppblock; "after_h1" =
+   *  direkt efter h1-elementet, inne i hjälten. */
+  placement?: string;
 }
 
 /** Fånga sidans LCP-element och märk det med data-angel-lcp — måste anropas
@@ -243,6 +247,25 @@ export async function measurePlan(
         (h1 && blocks.find((b) => b === h1 || b.contains(h1))) ??
         blocks.slice().sort(docSort)[0] ??
         null;
+      // Hjälte-klampens ankare — SPEGELVÄND snippetens (applier.ts, håll i
+      // synk): main-scopad h1 (aldrig header/nav/footer/aside) klättrad till
+      // sin HÖGSTA census-fria förfader, samma klätterregel som insert-ankaret.
+      // (Skiljer sig medvetet från heroBlock ovan, som är grindarnas
+      // block-modell — klampen måste räkna EXAKT som klienten räknar.)
+      let clampHead: Element | null = h1;
+      if (clampHead && clampHead.closest("header,nav,footer,aside")) clampHead = null;
+      let heroClamp: Element | null = null;
+      if (clampHead) {
+        heroClamp = clampHead;
+        while (
+          heroClamp.parentElement &&
+          heroClamp.parentElement !== mainEl &&
+          heroClamp.parentElement !== document.body &&
+          !censusCount.has(heroClamp.parentElement)
+        ) {
+          heroClamp = heroClamp.parentElement;
+        }
+      }
 
       function hitTest(el: Element): boolean {
         el.scrollIntoView({ block: "center" });
@@ -385,13 +408,18 @@ export async function measurePlan(
             break;
           }
           let anchor: Element = el;
-          while (
-            anchor.parentElement &&
-            anchor.parentElement !== mainEl &&
-            anchor.parentElement !== document.body &&
-            !censusCount.has(anchor.parentElement)
-          ) {
-            anchor = anchor.parentElement;
+          // Placerings-stegen (2026-07-27) — SPEGELVÄND snippetens (håll i
+          // synk): "after_h1" hoppar över klättringen OCH re-ankringen —
+          // raden landar direkt efter h1-elementet, inne i hjälten.
+          if (o.placement !== "after_h1") {
+            while (
+              anchor.parentElement &&
+              anchor.parentElement !== mainEl &&
+              anchor.parentElement !== document.body &&
+              !censusCount.has(anchor.parentElement)
+            ) {
+              anchor = anchor.parentElement;
+            }
           }
           if (!anchor.parentElement) {
             resolvedAll = false;
@@ -405,6 +433,7 @@ export async function measurePlan(
           // står stilla. Djupt liggande LCP ger stora gap som gap-varningen
           // håller tillbaka. SPEGELVÄND i snippeten — håll i synk.
           if (
+            o.placement !== "after_h1" &&
             lcpEl &&
             !anchor.contains(lcpEl) &&
             anchor.compareDocumentPosition(lcpEl) & Node.DOCUMENT_POSITION_FOLLOWING
@@ -503,7 +532,25 @@ export async function measurePlan(
             while (prev && !censusCount.has(prev) && prev.getBoundingClientRect().height < 8) {
               prev = prev.previousElementSibling;
             }
-            if (prev && r.sec.parentElement === prev.parentElement) {
+            // Hjälte-klampen — SPEGELVÄND snippetens (applier.ts, håll i
+            // synk): sitter sektionen nedanför hjälteblocket och skulle
+            // flytten landa den ovanför ⇒ klienten vägrar hela varianten,
+            // så grinden måste räkna samma vägran (moveUnappliable).
+            let clampedByHero = false;
+            if (heroClamp && prev && r.sec !== heroClamp) {
+              try {
+                const secBelowHero = !!(
+                  heroClamp.compareDocumentPosition(r.sec) & Node.DOCUMENT_POSITION_FOLLOWING
+                );
+                const landsAboveHero =
+                  prev === heroClamp ||
+                  !!(prev.compareDocumentPosition(heroClamp) & Node.DOCUMENT_POSITION_FOLLOWING);
+                clampedByHero = secBelowHero && landsAboveHero;
+              } catch {
+                /* som klienten: utan svar vilar klampen */
+              }
+            }
+            if (!clampedByHero && prev && r.sec.parentElement === prev.parentElement) {
               // Per-steg självkoll — SPEGELVÄND snippetens (ADR-001 steg 2):
               // mät sektionens topp + dokumentets höjd/bredd direkt före/efter
               // DENNA insertBefore med exakt klientens trösklar (< 1px = lyfte

@@ -21,7 +21,7 @@
 (function () {
   "use strict";
 
-  var VERSION = "0.1.1";
+  var VERSION = "0.1.2";
   // document.currentScript is null when the tag is injected asynchronously
   // (tag managers, SPA route changes), so fall back to locating it by src.
   function findScript() {
@@ -980,12 +980,14 @@
         } else if (op.op === "insert_snippet") {
           if (!op.value) return false;
           var anchor = el;
-          while (anchor.parentElement && anchor.parentElement !== mainEl && anchor.parentElement !== document.body && !bearsCensus(anchor.parentElement)) {
-            anchor = anchor.parentElement;
+          if (op.placement !== "after_h1") {
+            while (anchor.parentElement && anchor.parentElement !== mainEl && anchor.parentElement !== document.body && !bearsCensus(anchor.parentElement)) {
+              anchor = anchor.parentElement;
+            }
           }
           if (!anchor.parentElement || deps.isNoTouch(anchor)) return false;
           var lcp0 = deps.lcpEl();
-          if (lcp0 && !anchor.contains(lcp0)) {
+          if (op.placement !== "after_h1" && lcp0 && !anchor.contains(lcp0)) {
             try {
               if (anchor.compareDocumentPosition(lcp0) & Node.DOCUMENT_POSITION_FOLLOWING) {
                 var re = lcp0;
@@ -1018,6 +1020,15 @@
           return false;
         }
       }
+      var heroHead = mainEl.querySelector("h1");
+      if (heroHead && heroHead.closest("header,nav,footer,aside")) heroHead = null;
+      var heroClamp = null;
+      if (heroHead) {
+        heroClamp = heroHead;
+        while (heroClamp.parentElement && heroClamp.parentElement !== mainEl && heroClamp.parentElement !== document.body && !bearsCensus(heroClamp.parentElement)) {
+          heroClamp = heroClamp.parentElement;
+        }
+      }
       var undos = [];
       var ok = true;
       for (var a = 0; a < resolved.length && ok; a++) {
@@ -1030,6 +1041,17 @@
           if (!prev || prev.parentElement !== r0.sec.parentElement) {
             ok = false;
             break;
+          }
+          if (heroClamp && r0.sec !== heroClamp) {
+            try {
+              var secBelowHero = !!(heroClamp.compareDocumentPosition(r0.sec) & Node.DOCUMENT_POSITION_FOLLOWING);
+              var landsAboveHero = prev === heroClamp || !!(prev.compareDocumentPosition(heroClamp) & Node.DOCUMENT_POSITION_FOLLOWING);
+              if (secBelowHero && landsAboveHero) {
+                ok = false;
+                break;
+              }
+            } catch (e) {
+            }
           }
           var next = r0.sec.nextSibling;
           var _doc = document.documentElement;

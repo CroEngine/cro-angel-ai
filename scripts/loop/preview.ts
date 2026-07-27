@@ -252,12 +252,17 @@ for (const job of jobs) {
   // rapporten en tillbakahållen ändring som "Verified" (pilotfynd 2026-07-27,
   // talentium: movedAboveMain + LCP-skift 671px stoppades av grinden, men
   // skalet läste aldrig domslutet).
-  let verified: { serveOps?: { op?: string; locator?: { text?: string }; why?: string }[] } | null =
-    null;
+  type ServeOpView = {
+    op?: string;
+    locator?: { text?: string };
+    value?: string;
+    why?: string;
+  };
+  let verified: { serveOps?: ServeOpView[] } | null = null;
   try {
     const results = JSON.parse(readFileSync(join(dir, "verify-report.json"), "utf8")) as {
       verdict?: string;
-      serveOps?: { op?: string; locator?: { text?: string }; why?: string }[];
+      serveOps?: ServeOpView[];
     }[];
     const passed = results.filter((r) => r.verdict === "verified");
     verified = verifyOk && passed.length > 0 ? passed[0] : null;
@@ -270,13 +275,20 @@ for (const job of jobs) {
   const OP_LABEL: Record<string, string> = {
     move_up: "Lifted higher on the page",
     set_text: "Sharpened the wording",
-    insert_snippet: "Surfaced proof from another page",
+    // Beviset kan komma från en annan sida ELLER samma sida (fallback-steget
+    // 2026-07-27) — etiketten säger vad som händer, inte varifrån.
+    insert_snippet: "Lifted your proof under the headline",
   };
-  // Visningsraderna: VERIFIED ⇒ serve-ops (locator.text är rubriken opsen
-  // låstes mot). Gate-fail-fallback ⇒ designer-ops (targetId → rubrik ur
+  // Visningsraderna: VERIFIED ⇒ serve-ops (för inserts visas den insatta
+  // TEXTEN — det är den ägaren känner igen; annars rubriken opsen låstes
+  // mot). Gate-fail-fallback ⇒ designer-ops (targetId → rubrik ur
   // innehållsmodellen). RedesignOp bär inga locators — det gör bara ServeOp.
   const displayOps = verified?.serveOps?.length
-    ? verified.serveOps.map((o) => ({ op: o.op ?? "", text: o.locator?.text ?? "", why: o.why ?? "" }))
+    ? verified.serveOps.map((o) => ({
+        op: o.op ?? "",
+        text: (o.op === "insert_snippet" ? o.value : o.locator?.text) ?? o.locator?.text ?? "",
+        why: o.why ?? "",
+      }))
     : plan.ops.map((o) => ({
         op: o.op,
         text: content.sections.find((s) => s.id === o.targetId)?.heading ?? o.targetId,
