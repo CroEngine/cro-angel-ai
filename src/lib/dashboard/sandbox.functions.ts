@@ -18,6 +18,7 @@ import {
 } from "@/lib/sandbox/mirror.server";
 import { isAdminEmail, ownsSite, type AuthCtx } from "./dashboard.functions";
 import { mirrorStorageKey } from "@/lib/sandbox/mirror-key";
+import { previewPagePath } from "@/lib/sandbox/preview-path";
 import { segmentDims } from "@/lib/segment-key";
 
 export interface SandboxPreview {
@@ -90,7 +91,7 @@ export const createVariantPreview = createServerFn({ method: "POST" })
 
     const { data: v, error } = await supabaseAdmin
       .from("angel_variants")
-      .select("id,path,segment_key,status")
+      .select("id,path,segment_key,status,evidence")
       .eq("id", data.variantId)
       .eq("site", data.site)
       .in("status", ["verified", "serving", "winner"])
@@ -104,7 +105,11 @@ export const createVariantPreview = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!siteRow?.domain) return { ok: false, reason: "no_domain" };
 
-    const guarded = guardTargetUrl(`https://${siteRow.domain}${v.path}`);
+    // Mall-varianter förhandsvisas på representant-sidan — mönstret /blogg/*
+    // är ingen riktig URL (vit spegel, buggfynd 2026-07-27).
+    const guarded = guardTargetUrl(
+      `https://${siteRow.domain}${previewPagePath(v.path, v.evidence)}`,
+    );
     if (!guarded.ok) return { ok: false, reason: guarded.reason };
     const secret = sandboxSecret();
     if (!secret) return { ok: false, reason: "unavailable" };
