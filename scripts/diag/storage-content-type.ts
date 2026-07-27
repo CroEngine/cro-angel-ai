@@ -1,17 +1,20 @@
-// Diagnos: vilken uppladdningsväg får Supabase storage att LAGRA rätt
-// mimetype? (Pilotfynd 2026-07-27: preview-rapporter serverades text/plain +
-// nosniff → webbläsaren visar källkod. Både rå Buffer + contentType-option
-// och Blob-med-typ har misslyckats i drift, trots att lokal tråd-avlyssning
-// visar korrekta request-headers. Bun:s FormData sätter dessutom filename=""
-// i stället för spec:ens "blob" — servern kan då inte läsa ändelsen.)
+// Diagnos: varför serveras preview-rapporterna som text/plain + nosniff?
 //
-// Kör i preview-arbetarens miljö (samma bun, samma secrets, riktiga servern):
-//   bun run scripts/diag/storage-content-type.ts [--heal=<jobb-uuid>]
+// Runda 1 (2026-07-27, run 30272171626): ALLA uppladdningsvägar genom
+// storage-js — rå Buffer + contentType-option, Blob med typ, File med
+// .html-filnamn — lagras/serveras som text/plain, trots att tråd-avlyssning
+// visar korrekta request-headers. Direkt REST med enbart Bearer föll på
+// "Invalid Compact JWS" (nyckeln är nya sb_secret-formatet — kräver
+// apikey-headern, inte rå JWT-Bearer).
 //
-// Matrisen laddar upp små HTML-objekt under preview/_diag/, HEAD:ar den
-// publika URL:en för varje och skriver en resultattabell. Med --heal laddas
-// jobbets befintliga report.html upp på nytt (identiskt innehåll, endast
-// mimetype) med första vinnande metoden. Städar alltid bort _diag-objekten.
+// Runda 2 (denna): hypotesen är att Supabase MEDVETET neutraliserar HTML på
+// den publika ytan (nätfiske-skydd på supabase.co-domänen) — då hjälper ingen
+// uppladdningsvariant och fixen är att servera rapporten via VÅR egen origin.
+// Bevisföring: kontrollfiler (PNG/JSON/HTML) via samma väg + .info()-läsning
+// av LAGRAD mimetype (skiljer lagring från servering) + REST med apikey.
+//
+// Kör i preview-arbetarens miljö: bun run scripts/diag/storage-content-type.ts
+// Städar alltid bort _diag-objekten efteråt.
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -24,138 +27,78 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 
 const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 const BUCKET = "angel-evidence";
-const HTML_TYPE = "text/html; charset=utf-8";
-const html = `<!doctype html><html lang="sv"><head><meta charset="utf-8"><title>diag</title></head><body>hällö ångel — content-type-diagnos</body></html>`;
 
-const publicUrl = (key: string) =>
-  `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${key}`;
+// Minimal äkta PNG (1×1 röd pixel) — innehållssniffning ska känna igen den.
+const PNG_1PX = Uint8Array.from(
+  atob(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  ),
+  (c) => c.charCodeAt(0),
+);
+const HTML = `<!doctype html><html lang="sv"><head><meta charset="utf-8"><title>diag</title></head><body>hällö ångel</body></html>`;
+const JSON_BODY = JSON.stringify({ diag: true, ts: "statisk" });
+
+const publicUrl = (key: string) => `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${key}`;
 
 async function servedType(key: string): Promise<string> {
   const res = await fetch(publicUrl(key), { method: "HEAD" });
-  return `${res.status} ${res.headers.get("content-type") ?? "(ingen)"}`;
+  return `${res.status} ${res.headers.get("content-type") ?? "(ingen)"} · nosniff=${res.headers.get("x-content-type-options") ?? "-"}`;
 }
 
-/** Direkt REST-PUT utan storage-js: rå kropp + explicit Content-Type-header —
- *  inga bibliotekslager som kan tappa typen på vägen. */
-async function restUpload(key: string, body: string | Uint8Array, type: string): Promise<string | null> {
+async function storedType(key: string): Promise<string> {
+  const { data, error } = await db.storage.from(BUCKET).info(key);
+  if (error) return `(info föll: ${error.message})`;
+  return (data as { contentType?: string } | null)?.contentType ?? "(okänd)";
+}
+
+type Probe = { name: string; key: string; body: Uint8Array | string; type: string };
+const probes: Probe[] = [
+  { name: "PNG (äkta bildbytes)", key: "preview/_diag/probe.png", body: PNG_1PX, type: "image/png" },
+  { name: "JSON", key: "preview/_diag/probe.json", body: JSON_BODY, type: "application/json" },
+  { name: "HTML", key: "preview/_diag/probe.html", body: HTML, type: "text/html; charset=utf-8" },
+  { name: "HTML med .txt-nyckel", key: "preview/_diag/probe-html.txt", body: HTML, type: "text/html; charset=utf-8" },
+];
+
+console.log(`[diag] bun ${Bun.version} · runda 2: lagrad vs serverad mimetype per innehållstyp\n`);
+
+for (const p of probes) {
+  const { error } = await db.storage
+    .from(BUCKET)
+    .upload(p.key, new Blob([p.body], { type: p.type }), { contentType: p.type, upsert: true });
+  if (error) {
+    console.log(`  ⚠️ ${p.name}: uppladdning föll: ${error.message}`);
+    continue;
+  }
+  console.log(`  ${p.name} (begärd: ${p.type})`);
+  console.log(`     lagrad:   ${await storedType(p.key)}`);
+  console.log(`     serverad: ${await servedType(p.key)}`);
+}
+
+// REST-vägen med korrekt auth för nya nyckelformatet (apikey-headern) —
+// bekräftar om en handbyggd request kan lagra text/html när storage-js inte kan.
+{
+  const key = "preview/_diag/probe-rest.html";
   const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${key}`, {
     method: "POST",
     headers: {
+      apikey: SERVICE_KEY,
       Authorization: `Bearer ${SERVICE_KEY}`,
-      "Content-Type": type,
+      "Content-Type": "text/html; charset=utf-8",
       "x-upsert": "true",
-      "cache-control": "max-age=3600",
     },
-    body,
+    body: HTML,
   });
-  return res.ok ? null : `${res.status} ${(await res.text()).slice(0, 200)}`;
-}
-
-type Variant = {
-  name: string;
-  key: string;
-  run: (key: string) => Promise<string | null>;
-};
-
-const variants: Variant[] = [
-  {
-    name: "A rå Buffer + contentType-option (storage-js)",
-    key: "preview/_diag/a.html",
-    run: async (key) => {
-      const { error } = await db.storage
-        .from(BUCKET)
-        .upload(key, Buffer.from(html, "utf-8"), { contentType: HTML_TYPE, upsert: true });
-      return error?.message ?? null;
-    },
-  },
-  {
-    name: "B Blob(type) + contentType-option (storage-js, dagens kod)",
-    key: "preview/_diag/b.html",
-    run: async (key) => {
-      const { error } = await db.storage
-        .from(BUCKET)
-        .upload(key, new Blob([html], { type: HTML_TYPE }), { contentType: HTML_TYPE, upsert: true });
-      return error?.message ?? null;
-    },
-  },
-  {
-    name: "C File med filnamn + typ (storage-js)",
-    key: "preview/_diag/c.html",
-    run: async (key) => {
-      const { error } = await db.storage
-        .from(BUCKET)
-        .upload(key, new File([html], "report.html", { type: HTML_TYPE }), { upsert: true });
-      return error?.message ?? null;
-    },
-  },
-  {
-    name: "D direkt REST-POST, rå kropp + header (utan storage-js)",
-    key: "preview/_diag/d.html",
-    run: (key) => restUpload(key, html, HTML_TYPE),
-  },
-  {
-    name: "E rå Buffer UTAN contentType-option (kontroll)",
-    key: "preview/_diag/e.html",
-    run: async (key) => {
-      const { error } = await db.storage
-        .from(BUCKET)
-        .upload(key, Buffer.from(html, "utf-8"), { upsert: true });
-      return error?.message ?? null;
-    },
-  },
-];
-
-console.log(`[diag] bun ${Bun.version} · storage-js via supabase-js\n`);
-
-const winners: Variant[] = [];
-for (const v of variants) {
-  const err = await v.run(v.key);
-  const served = err ? `(uppladdning föll: ${err})` : await servedType(v.key);
-  const ok = !err && /text\/html/.test(served);
-  if (ok) winners.push(v);
-  console.log(`  ${ok ? "✅" : "❌"} ${v.name}\n     → serveras: ${served}`);
-}
-
-// Läk ett befintligt jobb: hämta rapporten från den publika URL:en (identiskt
-// innehåll) och ladda upp igen med första vinnande metoden — bara mimetype
-// ändras. Ingen åtgärd om ingen variant vann.
-const healArg = process.argv.find((a) => a.startsWith("--heal="))?.slice(7);
-if (healArg && /^[0-9a-f-]{36}$/i.test(healArg)) {
-  const key = `preview/${healArg}/report.html`;
-  if (winners.length === 0) {
-    console.log(`\n[diag] --heal=${healArg}: ingen vinnande metod — rör inte objektet.`);
+  if (!res.ok) {
+    console.log(`  REST + apikey: uppladdning föll: ${res.status} ${(await res.text()).slice(0, 160)}`);
   } else {
-    const res = await fetch(publicUrl(key));
-    if (!res.ok) {
-      console.log(`\n[diag] --heal=${healArg}: kunde inte hämta rapporten (${res.status}).`);
-    } else {
-      const bytes = new Uint8Array(await res.arrayBuffer());
-      const w = winners[0];
-      const err =
-        w.key === "preview/_diag/d.html"
-          ? await restUpload(key, bytes, HTML_TYPE)
-          : w.key === "preview/_diag/c.html"
-            ? (
-                await db.storage
-                  .from(BUCKET)
-                  .upload(key, new File([bytes], "report.html", { type: HTML_TYPE }), { upsert: true })
-              ).error?.message ?? null
-            : (
-                await db.storage
-                  .from(BUCKET)
-                  .upload(
-                    key,
-                    w.key === "preview/_diag/b.html" ? new Blob([bytes], { type: HTML_TYPE }) : Buffer.from(bytes),
-                    { contentType: HTML_TYPE, upsert: true },
-                  )
-              ).error?.message ?? null;
-      console.log(
-        `\n[diag] --heal=${healArg} via "${w.name}": ${err ?? "ok"} → serveras nu: ${await servedType(key)}`,
-      );
-    }
+    console.log(`  REST + apikey (begärd: text/html; charset=utf-8)`);
+    console.log(`     lagrad:   ${await storedType(key)}`);
+    console.log(`     serverad: ${await servedType(key)}`);
   }
 }
 
 // Städning: _diag-objekten bort — beviskorgen ska inte samla testskräp.
-const { error: rmErr } = await db.storage.from(BUCKET).remove(variants.map((v) => v.key));
+const { error: rmErr } = await db.storage
+  .from(BUCKET)
+  .remove([...probes.map((p) => p.key), "preview/_diag/probe-rest.html"]);
 console.log(`\n[diag] städning: ${rmErr ? rmErr.message : "ok"}`);
