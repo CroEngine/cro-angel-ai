@@ -104,7 +104,7 @@ ${verdictBlock}
 ${shots}
 ${changeRows ? `<h2>The change, in plain words</h2><ul>${changeRows}</ul>` : ""}
 <p>Angel reads what your site already publishes and re-surfaces your strongest content per visitor — then proves the lift against a held-back control group once installed.</p>
-<a class="cta" href="https://croengine.netlify.app/signup">Install Angel — one line of code</a>
+<a class="cta" target="_blank" rel="noreferrer" href="https://croengine.netlify.app/signup">Install Angel — one line of code</a>
 <p class="note">Honesty note: the visitor scenario used here (a mobile visitor arriving from Google) is illustrative — Angel hasn't seen your real visitors yet. The screenshots and the change above are real and were verified on your actual page. After install, proposals are earned from your real traffic and A/B-proven before anything is called a win.</p>
 </main></body></html>`;
 }
@@ -297,9 +297,16 @@ for (const job of jobs) {
   writeFileSync(reportPath, reportHtml);
 
   const storKey = `preview/${job.id}/report.html`;
+  // Explicit Blob-typ (pilotfynd 2026-07-27): en rå Buffer laddas upp som
+  // text/plain trots contentType-optionen, och storage svarar med nosniff —
+  // webbläsaren TVINGAS visa källkod i stället för rapporten. Blob:ens typ
+  // vinner; charset löser även mojibake i äldre visningar.
   const { error: upErr } = await db.storage
     .from("angel-evidence")
-    .upload(storKey, readFileSync(reportPath), { contentType: "text/html", upsert: true });
+    .upload(storKey, new Blob([readFileSync(reportPath)], { type: "text/html; charset=utf-8" }), {
+      contentType: "text/html; charset=utf-8",
+      upsert: true,
+    });
   if (upErr) {
     console.warn(`[preview] ${job.id}: uppladdning föll: ${upErr.message} — failed`);
     await fail(job.id, "upload_failed");
