@@ -93,10 +93,6 @@ function Hero() {
           <br />
           <span className="text-emerald-700">Convert more.</span>
         </h1>
-        <p className="mx-auto mt-5 max-w-xl text-[16px] leading-relaxed text-stone-500">
-          See your website adapt in minutes. Enter your URL — no signup required.
-        </p>
-
         <TryUrlForm />
 
         <SnippetChip />
@@ -167,6 +163,9 @@ function TryUrlForm() {
           <ArrowRight className="h-5 w-5" />
         </button>
       </div>
+      <p className="mt-2.5 text-[13px] text-stone-400">
+        See your website adapt in minutes. Enter your URL — no signup required.
+      </p>
       {error && <p className="mt-2 text-[13px] font-medium text-red-600">{error}</p>}
     </form>
   );
