@@ -120,7 +120,11 @@ export const Route = createFileRoute("/api/preview/job")({
             .single();
           if (error || !row) return json({ ok: false, reason: "write_failed" }, 500);
 
-          void dispatchWorker();
+          // AWAIT, inte fire-and-forget (pilotfynd 2026-07-27): serverless
+          // fryser funktionen när svaret skickats — ett void:at fetch-anrop
+          // avbryts i flykten och GitHub-väckningen gick ALDRIG iväg. De
+          // ~200 ms väntan är försumbara; dispatchWorker sväljer själv fel.
+          await dispatchWorker();
           return json({ ok: true, id: row.id });
         } catch {
           // Admin-klienten kastar när miljönycklarna saknas — ärligt 503,
