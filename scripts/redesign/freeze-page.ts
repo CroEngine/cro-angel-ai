@@ -295,6 +295,9 @@ async function browserRenderedHtml(
         // jämför över bildernas MINSTA gemensamma höjd (fryst-sidan cappas
         // 8000px), så en lång referens beskärs implicit där.
         const h = await page.evaluate(() => document.documentElement.scrollHeight);
+        // Stagehand skapar INTE föräldrakatalogen vid filskrivning (lokala
+        // Playwright gör det — ENOENT-fyndet 13:17): skapa den själv.
+        mkdirSync(dirname(refShot), { recursive: true });
         await page.screenshot({ path: refShot, type: "png", fullPage: true });
         console.log(`[freeze-page] referensbild → ${refShot} (${h}px full höjd)`);
       } catch (err) {
