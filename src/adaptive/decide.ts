@@ -622,6 +622,19 @@ export function decide(
         declined.push({ pattern: e.id, reason: "layout_level_disabled" });
         return null;
       }
+      // Ägarregeln (2026-07-28, "vi behöver inte hålla på att highlighta
+      // knappar osv heller — vi ska endast skicka runt färdiga stycken"):
+      // dag-1-vokabulären är OMFLYTT av sajtens egna färdiga stycken.
+      // Dekorationsklassen — badges/chips vid knappar (inject_badge), extra
+      // länkar bredvid målet (inject_secondary), knapptext-byten (set_text),
+      // reveal/condense — nomineras aldrig. EN grind här i stället för
+      // katalog-kirurgi: mönstren står kvar som dokumentation, typad decline
+      // förklarar frånvaron i preflight, och godkända varianter (egen
+      // servningsväg via angel_variants) berörs inte.
+      if (getPattern(e.id).op !== "move_up") {
+        declined.push({ pattern: e.id, reason: "op_not_in_owner_vocabulary" });
+        return null;
+      }
       const result = resolve(e.id, e.priority, context, inventory, goal);
       if (typeof result === "string") {
         declined.push({ pattern: e.id, reason: result });

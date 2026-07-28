@@ -227,3 +227,12 @@ describe("sourcePages — offert-fallbackens kind i prompten (slice 4)", () => {
     expect(prompt).toContain("Låt oss ge dig en offert");
   });
 });
+
+describe("ägarregeln 2026-07-28: endast omflytt", () => {
+  it("default-vokabulären är move_up + insert_snippet — inget annat", () => {
+    // "Vi ska endast skicka runt färdiga stycken": omskrivningar (set_text),
+    // reveal och condense är ur GENERERINGEN. En breddning av den här listan
+    // är ett ägarbeslut, inte en refaktorering — testet gör den medveten.
+    expect(DEFAULT_REDESIGN_GUARDRAILS.ops).toEqual(["move_up", "insert_snippet"]);
+  });
+});

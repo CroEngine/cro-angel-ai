@@ -1,7 +1,17 @@
 import { describe, it, expect } from "vitest";
 
-import { buildRedesignContext, type RedesignContext } from "../context";
+import { buildRedesignContext, DEFAULT_REDESIGN_GUARDRAILS, type RedesignContext } from "../context";
 import { parseOpsResponse, validateOps, generateRedesign, MAX_OPS } from "../generate";
+
+/** Bred vokabulär för validerings-MASKINERIETS tester (claims-vakten på
+ *  set_text/condense, MAX_OPS-cappen, netto-nollan): ägarregeln 2026-07-28
+ *  smalnade GENERERINGENS default till omflytt (move_up + insert_snippet),
+ *  men valideringen måste fortsatt kunna granska den breda vokabulären —
+ *  äldre godkända varianter re-valideras med sina ursprungliga guardrails. */
+const WIDE_OPS = {
+  ...DEFAULT_REDESIGN_GUARDRAILS,
+  ops: ["move_up", "set_text", "condense", "reveal", "insert_snippet"],
+};
 
 const ctx: RedesignContext = buildRedesignContext({
   site: "demo",
@@ -49,6 +59,7 @@ const ctx: RedesignContext = buildRedesignContext({
     formAbandonRate: null,
     observations: [],
   },
+  guardrails: WIDE_OPS,
 });
 
 describe("parseOpsResponse", () => {
