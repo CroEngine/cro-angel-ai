@@ -69,7 +69,11 @@ async function countMedia(offline: boolean): Promise<MediaCount> {
       if (r.width < 4 || r.height < 4) continue;
       rows.push({
         painted: img.complete && img.naturalWidth > 3,
-        src: (img.getAttribute("src") || "").slice(0, 90),
+        // 220 tecken, inte 90 (20-sajtssvepet 2026-07-28): en kapad URL kan
+        // aldrig efter-probas — diagnosen probade trunkerade URL:er och fick
+        // 400/404 på ALLT, vilket såg ut som "trasigt även live" fast det
+        // bara var kapningen. data-URI:er förblir korta nog att kännas igen.
+        src: (img.getAttribute("src") || "").slice(0, 220),
         w: Math.round(r.width),
         h: Math.round(r.height),
       });
