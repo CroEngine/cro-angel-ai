@@ -140,11 +140,21 @@ function downscaleVariants(u: string): string[] {
   }
 }
 
-/** Hämta en bild inline-bar: nedskalade CDN-varianter först, originalet sist.
- *  null = ingen kandidat under IMG_CAP/av bildtyp. */
+/** Nedladdnings-inspelningen från browser-vägen (fylls efter rendering):
+ *  bytes browsern själv hämtade, nyckel = slutlig URL. Konsulteras FÖRE all
+ *  curl-omhämtning — bot-väggar och varianter är redan lösta i den. */
+const recordedAssets = new Map<string, { bytes: Uint8Array; type: string }>();
+const assetKey = (u: string) => u.split("#")[0];
+
+/** Hämta en bild inline-bar: inspelningen först, sedan nedskalade CDN-
+ *  varianter, originalet sist. null = ingen kandidat under IMG_CAP/av bildtyp. */
 async function fetchInlineableImage(
   fullUrl: string,
 ): Promise<{ bytes: Uint8Array; type: string } | null> {
+  const rec = recordedAssets.get(assetKey(fullUrl));
+  if (rec && rec.bytes.length <= IMG_CAP && (rec.type.startsWith("image/") || rec.type === "application/octet-stream")) {
+    return { bytes: rec.bytes, type: rec.type.startsWith("image/") ? rec.type : "image/png" };
+  }
   for (const cand of [...downscaleVariants(fullUrl), fullUrl]) {
     const got = await fetchBytes(cand);
     if (got && got.bytes.length <= IMG_CAP && got.type.startsWith("image/")) return got;
@@ -163,13 +173,87 @@ async function fetchInlineableImage(
  *  scrollar tillbaka så frysta dokumentet börjar vid toppen. */
 async function browserRenderedHtml(
   u: string,
-): Promise<{ html: string; imgPriority: Record<string, { top: number; area: number }> }> {
+): Promise<{
+  html: string;
+  imgPriority: Record<string, { top: number; area: number }>;
+  /** Nedladdnings-INSPELNINGEN (ägarbeslut 2026-07-28 "bygg båda"): bytesen
+   *  browsern SJÄLV hämtade under renderingen, nyckel = slutlig URL. Inline-
+   *  steget läser härifrån FÖRST — då spelar bot-väggar ingen roll (anyfin-
+   *  klassen: browsern hade cookies/clearance) och varianten är exakt den
+   *  som renderades. */
+  assets: Map<string, { bytes: Uint8Array; type: string }>;
+}> {
   // Render-primitiverna (anslut/goto/svep/avfärda modaler/stylad-koll) delas med
   // scale-test + render-fidelity via ./render-page — EN bevisad väg (Stagehand,
   // engine.server.ts), inte fyra kopior. Frysningen nedan är freeze-specifik
   // (bild-geometri + CSSOM) och stannar här.
   const { page, cleanup } = await acquireRenderPage();
+  const assets = new Map<string, { bytes: Uint8Array; type: string }>();
+  let assetBytes = 0;
+  const ASSET_TOTAL_CAP = 25_000_000; // ägaren: kvalitet före utrymme
+  const ASSET_FILE_CAP = 2_000_000;
   try {
+    // Passiv nätverksavlyssning — läs svarskroppar direkt i handlern (CDP
+    // bufferten töms snabbt). Får ALDRIG fälla renderingen: allt i try/catch,
+    // och stödjer Stagehand-proxyn inte body() blir kartan bara tom (in-page-
+    // reserven + curl tar över nedströms).
+    page.on("response", (res) => {
+      void (async () => {
+        try {
+          if (assetBytes >= ASSET_TOTAL_CAP) return;
+          const ct = (res.headers()["content-type"] ?? "").split(";")[0].trim();
+          const url = res.url();
+          const looksAsset =
+            /^(image|font)\//.test(ct) ||
+            /\.(woff2?|ttf|otf|png|jpe?g|webp|gif|avif|svg)(\?|$)/i.test(url);
+          if (!looksAsset || res.status() !== 200) return;
+          const buf = await res.body();
+          if (buf.length === 0 || buf.length > ASSET_FILE_CAP) return;
+          if (!assets.has(url)) {
+            assets.set(url, { bytes: new Uint8Array(buf), type: ct || "application/octet-stream" });
+            assetBytes += buf.length;
+          }
+        } catch {
+          /* redirect-/stängd-kropp — hoppa */
+        }
+      })();
+    });
+    // Lazy-TVINGAREN (ägarbeslut 2026-07-28): Next/Nuxt-klassen sätter riktig
+    // bildkälla först när IntersectionObserver säger "syns" — tibbers 20
+    // 1×1-placeholders. Init-skriptet får varje observer att rapportera
+    // allt som synligt DIREKT, innan sidans egna skript hunnit köra.
+    try {
+      await page.addInitScript(() => {
+        const RealIO = window.IntersectionObserver;
+        // @ts-expect-error — medveten override i sid-kontexten
+        window.IntersectionObserver = class {
+          private cb: IntersectionObserverCallback;
+          constructor(cb: IntersectionObserverCallback) {
+            this.cb = cb;
+          }
+          observe(el: Element) {
+            const entry = {
+              isIntersecting: true,
+              intersectionRatio: 1,
+              target: el,
+              time: 0,
+              boundingClientRect: el.getBoundingClientRect(),
+              intersectionRect: el.getBoundingClientRect(),
+              rootBounds: null,
+            } as IntersectionObserverEntry;
+            queueMicrotask(() => this.cb([entry], this as unknown as IntersectionObserver));
+          }
+          unobserve() {}
+          disconnect() {}
+          takeRecords() {
+            return [];
+          }
+        };
+        void RealIO;
+      });
+    } catch (err) {
+      console.warn(`[freeze-page] lazy-tvingarens init-skript föll (${err}) — fortsätter utan`);
+    }
     // Tunga SPA:er fyrar ibland aldrig load (öppna connections) — gotoTolerant
     // fångar timeouten (även Stagehands egen felform) och jobbar vidare på det
     // som renderats. Ett hårt navigationsfel (net::ERR_...) kastar fortfarande.
@@ -196,6 +280,34 @@ async function browserRenderedHtml(
     // (fidelitetstestet 2026-07-26: ~5 renders doldes av centrerade modaler).
     await dismissOverlays(page);
     await autoScroll(page);
+    // Lazy-tvingarens efterpass: eager på allt, generiska data-src-bibliotek
+    // befordras, och vi VÄNTAR in att varje bild faktiskt laddat (cap 8 s) —
+    // serialisera aldrig medan källorna fortfarande är 1×1-placeholders.
+    await page
+      .evaluate(async () => {
+        for (const img of Array.from(document.images)) {
+          img.loading = "eager";
+          (img as HTMLElement).setAttribute("decoding", "sync");
+          const ds = img.getAttribute("data-src") || img.getAttribute("data-lazy-src") || img.getAttribute("data-original");
+          const placeholderish = !img.src || img.src.startsWith("data:image/gif") || img.naturalWidth <= 2;
+          if (ds && placeholderish) img.src = ds;
+        }
+        const pending = Array.from(document.images).filter((i) => !i.complete);
+        await Promise.race([
+          Promise.all(
+            pending.map(
+              (i) =>
+                new Promise<void>((r) => {
+                  i.addEventListener("load", () => r(), { once: true });
+                  i.addEventListener("error", () => r(), { once: true });
+                }),
+            ),
+          ),
+          new Promise<void>((r) => setTimeout(r, 8_000)),
+        ]);
+      })
+      .catch(() => {});
+    await page.waitForTimeout(600);
     // Ostylad render = trasig (sofi.com: CSS applicerades aldrig, bara nav-länkar).
     // Frys den ALDRIG — i --render=browser fäller det körningen, i auto behålls
     // hellre den statiska kopian (samma ärliga degradering som ett tomt skal).
@@ -257,6 +369,14 @@ async function browserRenderedHtml(
       const out: { src: string; top: number; area: number }[] = [];
       for (const source of Array.from(document.querySelectorAll("picture source"))) {
         source.removeAttribute("srcset");
+      }
+      // src ← currentSrc (inspelnings-nyckeln): browsern laddade srcset-valet,
+      // inte nödvändigtvis src-attributet — stämpla SANNINGEN som src så
+      // inline-steget slår upp exakt den URL inspelningen bär.
+      for (const img of Array.from(document.images)) {
+        if (img.currentSrc && !img.currentSrc.startsWith("data:")) {
+          img.setAttribute("src", img.currentSrc);
+        }
       }
       for (const img of Array.from(document.images)) {
         const r = img.getBoundingClientRect();
@@ -328,7 +448,60 @@ async function browserRenderedHtml(
       }
       return "<!doctype html>\n" + document.documentElement.outerHTML;
     });
-    return { html: outHtml, imgPriority: priority };
+    // In-page-fetch-RESERVEN (anyfin-klassen, försäkring om response.body()
+    // inte bär genom Stagehand-proxyn): bilder som inspelningen saknar hämtas
+    // om INNE i sidans kontext — med sidans cookies/clearance — och läggs i
+    // samma karta. Cap: 30 bilder / 10 s, aldrig ett fel som fäller frysningen.
+    try {
+      const missing = await page.evaluate(() => {
+        const urls = new Set<string>();
+        for (const img of Array.from(document.images)) {
+          const s = img.getAttribute("src") || "";
+          if (s && !s.startsWith("data:")) urls.add(new URL(s, location.href).toString());
+        }
+        return [...urls];
+      });
+      const want = missing.filter((url) => !assets.has(url)).slice(0, 30);
+      if (want.length > 0) {
+        const fetched = (await Promise.race([
+          page.evaluate(async (urls: string[]) => {
+            const out: Array<{ url: string; b64: string; type: string }> = [];
+            for (const url of urls) {
+              try {
+                const r = await fetch(url, { credentials: "include" });
+                if (!r.ok) continue;
+                const blob = await r.blob();
+                if (blob.size === 0 || blob.size > 2_000_000) continue;
+                const b64 = await new Promise<string>((res, rej) => {
+                  const fr = new FileReader();
+                  fr.onload = () => res(String(fr.result));
+                  fr.onerror = rej;
+                  fr.readAsDataURL(blob);
+                });
+                out.push({ url, b64: b64.split(",")[1] ?? "", type: blob.type || "image/png" });
+              } catch {
+                /* CORS/nät — nästa */
+              }
+            }
+            return out;
+          }, want),
+          new Promise<Array<{ url: string; b64: string; type: string }>>((r) =>
+            setTimeout(() => r([]), 10_000),
+          ),
+        ])) as Array<{ url: string; b64: string; type: string }>;
+        for (const f of fetched) {
+          if (f.b64 && !assets.has(f.url)) {
+            assets.set(f.url, { bytes: new Uint8Array(Buffer.from(f.b64, "base64")), type: f.type });
+          }
+        }
+        if (fetched.length > 0) {
+          console.log(`[freeze-page] in-page-reserven hämtade ${fetched.length}/${want.length} bilder`);
+        }
+      }
+    } catch {
+      /* reserven är best-effort */
+    }
+    return { html: outHtml, imgPriority: priority, assets };
   } finally {
     await cleanup();
   }
@@ -416,6 +589,11 @@ if (
     if (!rendered) throw lastErr;
     html = rendered.html;
     imgPriority = rendered.imgPriority;
+    for (const [k, v] of rendered.assets) recordedAssets.set(assetKey(k), v);
+    if (rendered.assets.size > 0) {
+      const kb = Math.round([...rendered.assets.values()].reduce((a, x) => a + x.bytes.length, 0) / 1000);
+      console.log(`[freeze-page] inspelningen: ${rendered.assets.size} assets à ${kb} kB från browsern`);
+    }
     // Frysta filen skrivs som UTF-8 och läses utan HTTP-huvuden — dokumentet
     // måste själv deklarera charset, och en gammal deklaration (t.ex.
     // iso-8859-1) skulle mojibakea åäö vid omrendering. Normalisera.
