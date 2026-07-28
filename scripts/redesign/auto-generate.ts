@@ -73,6 +73,7 @@ import {
   segmentInsightFrom,
 } from "../../src/adaptive/redesign/context";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
+import { tidySignalText } from "../../src/adaptive/redesign/candidates";
 import {
   evaluateRenderGates,
   type RenderMeasurements,
@@ -521,11 +522,23 @@ function proofInsertFallback(
   // sid-globala regex-fångster ur platt text och kan dra med sig UI-brus
   // (talentium-fixturen: "0:30 Product overview Play video" följde med) —
   // de är reserven, inte förstahandsvalet.
+  //
+  // SUBSTANSKRAVET (ägarfynd fikajobs 2026-07-28): rubriken måste SJÄLV bära
+  // bevis (minst en siffra — "4,9/5", "12 000+ kunder"). "People love Fika.
+  // Here's what they say." är en LOVNAD om innehåll — lyft ensam blev en tom
+  // rad som lovar testimonials som inte följer med. Hellre hållen variant
+  // (rapporten levereras ändå) än en rad som skadar sidan.
   const sec = content.sections.find((s) => s.id === firstMove.targetId);
+  const headingOk = !!sec?.heading && /\d/.test(sec.heading);
+  // tidySignalText: samma städning som katalogens meny (UI-brus, Framers
+  // SSR-dubbletter) — raden ägaren ser ska vara ren sidtext, inte skarvskräp.
   const signal = ["trusted_by", "social_proof_count", "guarantee"]
-    .map((t) => content.trustSignals.find((s) => s.type === t)?.text)
+    .map((t) => {
+      const raw = content.trustSignals.find((s) => s.type === t)?.text;
+      return raw ? tidySignalText(raw) : undefined;
+    })
     .find((t) => !!t && t.trim().length >= 8);
-  const text = (sec?.heading ?? signal ?? "").trim();
+  const text = ((headingOk ? sec!.heading : null) ?? signal ?? "").trim();
   if (!text) return null;
   return [
     {

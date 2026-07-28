@@ -2,7 +2,7 @@
 // ordning, ordagranna texter, aldrig hjälten som flyttmål, dedup.
 import { describe, it, expect } from "vitest";
 
-import { generateCandidates, candidateToOp, floorWhy } from "../candidates";
+import { generateCandidates, candidateToOp, floorWhy, tidySignalText } from "../candidates";
 import type { RedesignContentModel } from "../context";
 
 const model = (over: Partial<RedesignContentModel> = {}): RedesignContentModel => ({
@@ -107,5 +107,40 @@ describe("generateCandidates", () => {
     expect(insOp.targetId).toBe("hero");
     expect(insOp.detail).toBe(ins.detail);
     expect(insOp.why).toContain("Regelvald toppkandidat");
+  });
+
+  // Framer-klassen (ägarfynd fikajobs 2026-07-28): SSR renderar samma element
+  // per brytpunkt — den platta signaltexten dubblerar sig själv i skarven.
+  it("tidySignalText klipper SSR-dubbletten och behåller ordagrant prefix", () => {
+    expect(
+      tidySignalText(
+        "Trusted by leading startups and companies in Sweden Trusted by leading startups",
+      ),
+    ).toBe("Trusted by leading startups and companies in Sweden");
+    // Utan upprepning: orörd.
+    expect(tidySignalText("Trusted by 4,000+ teams worldwide")).toBe(
+      "Trusted by 4,000+ teams worldwide",
+    );
+    // UI-brus-klippet fungerar fortfarande ihop med upprepnings-klippet.
+    expect(tidySignalText("Trusted by the world's best 0:30 Play video")).toBe(
+      "Trusted by the world's best",
+    );
+  });
+
+  it("menyns insert-detail bär den städade texten (inte SSR-skarven)", () => {
+    const cands = generateCandidates(
+      model({
+        trustSignals: [
+          {
+            type: "trusted_by",
+            text: "Trusted by leading startups and companies in Sweden Trusted by leading startups and",
+            aboveFold: false,
+            section: "body",
+          },
+        ],
+      }),
+    );
+    const ins = cands.find((c) => c.kind === "insert_snippet")!;
+    expect(ins.detail).toBe("Trusted by leading startups and companies in Sweden");
   });
 });

@@ -35,8 +35,12 @@ export const Route = createFileRoute("/api/preview/page")({
               // Frusna kopior: inline-stilar + bilder (data: och de få som
               // inte kunde inlinas), typsnitt ur inlinade stilmallar. Inga
               // skript, inga formulär, inramning endast från vår egen app.
+              // media-src (fikajobs-fyndet 2026-07-28): hjältevideor är
+              // vanliga (Framer-klassen: <video autoplay muted loop> utan JS)
+              // — utan direktivet föll de till default-src 'none' och
+              // växlaren visade ett tomt hål där sidans huvudmedia bor.
               "Content-Security-Policy":
-                "default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; font-src data: https:; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
+                "default-src 'none'; img-src data: https:; media-src data: https:; style-src 'unsafe-inline'; font-src data: https:; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
             },
           });
         } catch {

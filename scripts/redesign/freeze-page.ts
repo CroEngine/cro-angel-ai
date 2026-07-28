@@ -91,6 +91,23 @@ async function fetchBytes(u: string): Promise<{ bytes: Uint8Array; type: string 
 }
 const abs = (href: string) => new URL(href, url).toString();
 const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
+/** Attributvärden i HTML är entitetskodade — hämtningen MÅSTE ske på den
+ *  AVKODADE URL:en (fikajobs-fyndet 2026-07-28: Framer skriver
+ *  src="...?width=200&amp;height=200" och Framers CDN svarar 400 på det
+ *  okodade &amp;-formatet ⇒ 0/20 bilder inlinade, tomma bilder i växlaren).
+ *  Strängbytet i dokumentet sker fortsatt på RÅFORMEN som den står i filen.
+ *  &amp; sist så &amp;lt; inte dubbelavkodas. */
+const decodeEntities = (s: string) =>
+  s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&amp;/g, "&");
+/** Absolut URL för attribut-kontext: & entitetskodas tillbaka så attributet
+ *  är korrekt HTML (webbläsaren avkodar till ren URL vid hämtning). */
+const escAttr = (u: string) => u.replace(/&/g, "&amp;");
 
 /** Rendera sidan färdigt i headless Chromium och returnera den RENDERADE
  *  DOM:ens HTML. Chromium: env-var eller playwrights egen installation
@@ -291,7 +308,7 @@ for (const tag of links) {
   if (!href) continue;
   try {
     // Relativa url(...) i css:en pekas om mot stilmallens egen bas.
-    const cssUrl = abs(href);
+    const cssUrl = abs(decodeEntities(href));
     let sheet = await fetchText(cssUrl);
     sheet = sheet.replace(/url\(\s*(['"]?)(?!data:|https?:|#)([^'")]+)\1\s*\)/gi, (_, q, ref) => {
       try {
@@ -351,12 +368,13 @@ let inlined = 0;
 let spentBytes = 0;
 let overBudget = 0;
 for (const src of srcList) {
-  const full = abs(src);
+  // Hämta AVKODAT, skriv tillbaka entitetskodat — se decodeEntities/escAttr.
+  const full = abs(decodeEntities(src));
   if (spentBytes >= IMG_BUDGET) {
     // Budgeten slut — hämta inte ens; absolutlänken behåller online-visning
     // och (i browser-vägen) är layouten redan pinnad via width/height.
     overBudget++;
-    html = replaceSrc(html, src, full);
+    html = replaceSrc(html, src, escAttr(full));
     continue;
   }
   const got = await fetchBytes(full);
@@ -368,7 +386,7 @@ for (const src of srcList) {
     spentBytes += got.bytes.length;
     html = replaceSrc(html, src, `data:${got.type.split(";")[0]};base64,${b64(got.bytes)}`);
   } else {
-    html = replaceSrc(html, src, full);
+    html = replaceSrc(html, src, escAttr(full));
   }
 }
 if (overBudget > 0) {

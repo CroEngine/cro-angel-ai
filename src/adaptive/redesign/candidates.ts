@@ -57,12 +57,22 @@ const MAX_DETAIL_LEN = 90;
  *  sig angränsande UI-brus (talentium-fixturen: "Trusted by the world's best
  *  0:30 Product overview Play video…"). Klipp vid första tidskoden/kända
  *  UI-ordet — kvarvarande prefix är fortfarande ordagrann sidtext (en
- *  substräng av korpusen), så valideringens samma-sida-krav håller. */
-function tidySignalText(raw: string): string {
-  return raw
+ *  substräng av korpusen), så valideringens samma-sida-krav håller.
+ *
+ *  Upprepnings-klippet (ägarfynd fikajobs 2026-07-28, Framer-klassen): SSR
+ *  renderar samma element EN gång per brytpunkt och den platta texten blir
+ *  "Trusted by … in Sweden Trusted by …" — inledningen som återkommer är
+ *  duplikatets skarv. Klipp där; prefixet är fortfarande ordagrann sidtext.
+ *  Exporterad: bevis-lyftets fallback (auto-generate) delar städningen. */
+export function tidySignalText(raw: string): string {
+  const cut = raw
     .split(/\s+\d{1,2}:\d{2}\b/)[0]
     .split(/\s+(?:Play video|Watch video|Se videon)\b/i)[0]
     .trim();
+  const probe = cut.slice(0, 16).trim();
+  if (probe.length < 12) return cut;
+  const second = cut.indexOf(probe, probe.length);
+  return second > 0 ? cut.slice(0, second).trim() : cut;
 }
 
 /** Generera hela katalogen av lagliga drag ur innehållsmodellen. Ren funktion
