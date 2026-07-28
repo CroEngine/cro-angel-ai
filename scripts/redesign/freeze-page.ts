@@ -346,6 +346,108 @@ async function browserRenderedHtml(
       })
       .catch(() => {});
     await page.waitForTimeout(600);
+    // Poster-BILDRUTAN (klarna/framer-klassen, 20-sajtssvepet 2026-07-28):
+    // spelare utan poster-attribut har inget att baka in — den frysta kopian
+    // visar en svart låda där videon var. Fånga en bildruta ur videon MEDAN
+    // den är laddad i browsern: ljus-DOM-<video> får den som poster; skugg-
+    // hostade videor (mux-kedjan är nästlad skugg-DOM) stämplar sin LJUSA
+    // värd — skugginnehåll överlever aldrig serialiseringen, så bilden måste
+    // bo på värdens bakgrund. CORS-tajntad canvas kastar SecurityError → den
+    // videon hoppas ärligt (räknas och loggas). Aldrig ett fel som fäller.
+    try {
+      // Pass 1: väck oladdade kandidater (muted play startar preload=none).
+      const unreadyCount = await page.evaluate(() => {
+        const vids: HTMLVideoElement[] = [];
+        const collect = (root: Document | ShadowRoot) => {
+          for (const v of Array.from(root.querySelectorAll("video"))) vids.push(v as HTMLVideoElement);
+          for (const el of Array.from(root.querySelectorAll("*"))) {
+            const sr = (el as Element).shadowRoot;
+            if (sr) collect(sr);
+          }
+        };
+        collect(document);
+        let started = 0;
+        for (const v of vids) {
+          const r = v.getBoundingClientRect();
+          if (r.width < 40 || r.height < 40) continue;
+          if (v.readyState < 2) {
+            v.muted = true;
+            v.play().catch(() => {});
+            started++;
+          }
+        }
+        return started;
+      });
+      if (unreadyCount > 0) await page.waitForTimeout(1_200);
+      // Pass 2: rita rutan (≤828 px bred, jpeg) och stämpla poster/bakgrund.
+      const frames = await page.evaluate(() => {
+        const out = { captured: 0, tainted: 0, unready: 0 };
+        const vids: HTMLVideoElement[] = [];
+        const collect = (root: Document | ShadowRoot) => {
+          for (const v of Array.from(root.querySelectorAll("video"))) vids.push(v as HTMLVideoElement);
+          for (const el of Array.from(root.querySelectorAll("*"))) {
+            const sr = (el as Element).shadowRoot;
+            if (sr) collect(sr);
+          }
+        };
+        collect(document);
+        let budget = 12; // rutor à ~60–120 kB — räcker för alla rimliga sidor
+        for (const v of vids) {
+          if (budget <= 0) break;
+          // Ljusa värden: vandra upp genom skugg-rötterna till dokumentet.
+          let node: Element = v;
+          let root = node.getRootNode();
+          while (root instanceof ShadowRoot) {
+            node = root.host;
+            root = node.getRootNode();
+          }
+          const host = node === v ? null : node;
+          const target = host ?? v;
+          const r = target.getBoundingClientRect();
+          if (r.width < 40 || r.height < 40) continue;
+          // Riktig poster finns → poster-steget inlinear den; skriv aldrig över.
+          if (!host && v.getAttribute("poster")) continue;
+          if (host && (host.getAttribute("poster") || (host.getAttribute("style") || "").includes("url("))) {
+            continue;
+          }
+          if (v.readyState < 2 || !v.videoWidth) {
+            out.unready++;
+            continue;
+          }
+          try {
+            const scale = Math.min(1, 828 / v.videoWidth);
+            const c = document.createElement("canvas");
+            c.width = Math.max(2, Math.round(v.videoWidth * scale));
+            c.height = Math.max(2, Math.round(v.videoHeight * scale));
+            const g = c.getContext("2d");
+            if (!g) continue;
+            g.drawImage(v, 0, 0, c.width, c.height);
+            const uri = c.toDataURL("image/jpeg", 0.8); // kastar på CORS-tajnt
+            if (uri.length < 200) continue; // tom ruta — inget värt att frysa
+            if (host) {
+              (host as HTMLElement).style.background = `center / cover no-repeat url(${uri})`;
+              host.setAttribute("poster", uri); // spelare med JS visar den direkt online
+            } else {
+              v.setAttribute("poster", uri);
+            }
+            out.captured++;
+            budget--;
+          } catch {
+            out.tainted++;
+          }
+        }
+        return out;
+      });
+      if (frames.captured + frames.tainted + frames.unready > 0) {
+        console.log(
+          `[freeze-page] poster-bildrutor: ${frames.captured} fångade` +
+            (frames.tainted ? `, ${frames.tainted} CORS-skyddade` : "") +
+            (frames.unready ? `, ${frames.unready} oladdade` : ""),
+        );
+      }
+    } catch {
+      /* bildrute-fångsten är best-effort */
+    }
     // Ostylad render = trasig (sofi.com: CSS applicerades aldrig, bara nav-länkar).
     // Frys den ALDRIG — i --render=browser fäller det körningen, i auto behålls
     // hellre den statiska kopian (samma ärliga degradering som ett tomt skal).
