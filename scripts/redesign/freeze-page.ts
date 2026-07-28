@@ -433,15 +433,60 @@ async function browserRenderedHtml(
             out.captured++;
             budget--;
           } catch {
+            // CORS-tajnt: canvasen vägrar lämna ut pixlarna. Märk målet så
+            // element-skottet (kompositorn, utanför taint-reglerna) tar det.
+            target.setAttribute("data-angel-frame", String(out.tainted));
             out.tainted++;
           }
         }
         return out;
       });
+      // Element-SKOTTET (klarna-klassen: alla 7 spelare CORS-tajntade):
+      // locator.screenshot() läser KOMPOSITORNS pixlar — samma bild som ögat
+      // ser, orörd av canvas-taint. Skjut varje märkt mål och stämpla rutan
+      // som poster/bakgrund, precis som canvas-vägen.
+      let shot = 0;
+      if (frames.tainted > 0) {
+        for (let n = 0; n < frames.tainted && n < 12; n++) {
+          try {
+            const bytes = await page
+              .locator(`[data-angel-frame="${n}"]`)
+              .screenshot({ type: "jpeg", quality: 80, timeout: 6_000 });
+            const uri = `data:image/jpeg;base64,${Buffer.from(bytes).toString("base64")}`;
+            const ok = await page.evaluate(
+              ({ n: idx, uri: u2 }: { n: number; uri: string }) => {
+                const el = document.querySelector(`[data-angel-frame="${idx}"]`);
+                if (!el) return false;
+                el.removeAttribute("data-angel-frame");
+                if (el.tagName === "VIDEO") {
+                  el.setAttribute("poster", u2);
+                } else {
+                  (el as HTMLElement).style.background = `center / cover no-repeat url(${u2})`;
+                  el.setAttribute("poster", u2);
+                }
+                return true;
+              },
+              { n, uri },
+            );
+            if (ok) shot++;
+          } catch {
+            /* skott utanför viewport/element borta — nästa */
+          }
+        }
+        // Städa märken som blev kvar (misslyckade skott) — de ska aldrig frysas.
+        await page
+          .evaluate(() => {
+            for (const el of Array.from(document.querySelectorAll("[data-angel-frame]"))) {
+              el.removeAttribute("data-angel-frame");
+            }
+          })
+          .catch(() => {});
+      }
       if (frames.captured + frames.tainted + frames.unready > 0) {
         console.log(
           `[freeze-page] poster-bildrutor: ${frames.captured} fångade` +
-            (frames.tainted ? `, ${frames.tainted} CORS-skyddade` : "") +
+            (shot ? `, ${shot} via element-skott` : "") +
+            (frames.tainted - shot > 0 ? `, ${frames.tainted - shot} CORS-skyddade` : "") +
             (frames.unready ? `, ${frames.unready} oladdade` : ""),
         );
       }
