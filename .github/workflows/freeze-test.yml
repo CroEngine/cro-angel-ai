@@ -1,0 +1,62 @@
+# Freeze-test (ägarfynd 2026-07-28: frysningens visuella kvalitet): kör
+# högfidelitets-frysningen på EN URL med produktionens browser-väg
+# (Browserbase-nycklarna finns bara här), skjuter skärmdumpar av den frysta
+# kopian och laddar upp till angel-evidence under _diag — publika URL:er i
+# loggen så resultatet kan granskas utan artefakt-nedladdning.
+# Dispatch-bar från vilken gren som helst (workflow-filen följer grenen).
+
+name: Freeze test
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Sida att frysa (https://…)"
+        required: true
+      name:
+        description: "Slug för uppladdningen (t.ex. tibber)"
+        required: true
+
+concurrency:
+  group: freeze-test-${{ inputs.name }}
+  cancel-in-progress: false
+
+jobs:
+  freeze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+      BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium (with system deps)
+        run: bunx playwright install --with-deps chromium
+
+      - name: Freeze (browser-först med Browserbase)
+        run: bun run scripts/redesign/freeze-page.ts --url="${{ inputs.url }}" --out=freeze-out/frozen.html
+
+      - name: Screenshot the frozen copy (nätverk tillåtet)
+        run: bun run scripts/diag/freeze-shot.ts --frozen=freeze-out/frozen.html --out=freeze-out/shots
+
+      - name: Upload to angel-evidence (_diag) + print public URLs
+        run: bun run scripts/diag/freeze-test-upload.ts --name="${{ inputs.name }}" --dir=freeze-out/shots --frozen=freeze-out/frozen.html
+
+      - name: Upload run artifacts (reserv)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freeze-test-${{ inputs.name }}
+          path: freeze-out
+          retention-days: 7
+          if-no-files-found: ignore
