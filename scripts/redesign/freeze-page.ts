@@ -280,6 +280,26 @@ async function browserRenderedHtml(
         ? { top: Math.min(prev.top, m.top), area: Math.max(prev.area, m.area) }
         : { top: m.top, area: m.area };
     }
+    // Referensbild för fidelitetsmåttet (ägarfråga 2026-07-28 "hur vet du
+    // att den fryser komplett?"): det browsern SJÄLV såg efter stegen, i
+    // samma session — facit som den frysta kopians rendering sedan mäts mot
+    // (scripts/diag/freeze-fidelity.ts). Cappad 8000px så måttet täcker det
+    // som granskas; täckningen rapporteras, aldrig antas.
+    const refShot = arg("ref-shot");
+    if (refShot) {
+      try {
+        const h = await page.evaluate(() => document.documentElement.scrollHeight);
+        await page.screenshot({
+          path: refShot,
+          type: "png",
+          fullPage: true,
+          clip: { x: 0, y: 0, width: 390, height: Math.min(8000, h) },
+        });
+        console.log(`[freeze-page] referensbild → ${refShot} (${Math.min(8000, h)}px av ${h}px)`);
+      } catch (err) {
+        console.warn(`[freeze-page] referensbild föll: ${err}`);
+      }
+    }
     const outHtml = await page.evaluate(() => {
       // CSSOM-serialisering (Trello-obduktionen 2026-07-18, varv 2):
       // styled-components m.fl. injicerar i produktionsläge sina regler via

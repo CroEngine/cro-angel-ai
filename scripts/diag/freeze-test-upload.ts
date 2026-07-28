@@ -29,6 +29,17 @@ const files: Array<{ key: string; path: string; type: string }> = [
   { key: `preview/_diag/freeze-test/${NAME}/fullpage.jpg`, path: join(DIR, "fullpage.jpg"), type: "image/jpeg" },
   { key: `preview/_diag/freeze-test/${NAME}/frozen.html`, path: FROZEN, type: "text/html; charset=utf-8" },
 ];
+// Fidelitetsmåttets artefakter (2026-07-28) — med när de finns i katalogen.
+const { existsSync } = await import("node:fs");
+for (const [file, type] of [
+  ["ref.png", "image/png"],
+  ["diff.png", "image/png"],
+  ["fidelity.json", "application/json"],
+] as const) {
+  if (existsSync(join(DIR, file))) {
+    files.push({ key: `preview/_diag/freeze-test/${NAME}/${file}`, path: join(DIR, file), type });
+  }
+}
 for (const f of files) {
   const bytes = readFileSync(f.path);
   const { error } = await db.storage
