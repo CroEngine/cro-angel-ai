@@ -47,6 +47,14 @@ interface MediaCount {
   blanks: Array<{ painted: boolean; src: string; w: number; h: number }>;
   players: number;
   playersPainted: number;
+  bgTotal: number;
+  bgPainted: number;
+  bgBlanks: Array<{ src: string; w: number; h: number }>;
+  bgCapped: boolean;
+  fontsLoaded: number;
+  fontsFailed: number;
+  failedFonts: string[];
+  iframes: number;
   title: string;
   h1: string;
 }
@@ -61,7 +69,7 @@ async function countMedia(offline: boolean): Promise<MediaCount> {
   await page.setContent(frozenHtml, { waitUntil: "domcontentloaded", timeout: 30_000 });
   if (!offline) await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => {});
   await page.waitForTimeout(offline ? 1_200 : 1_500);
-  const res = await page.evaluate(() => {
+  const res = await page.evaluate(async () => {
     const rows: Array<{ painted: boolean; src: string; w: number; h: number }> = [];
     for (const img of Array.from(document.images)) {
       const r = img.getBoundingClientRect();
@@ -90,10 +98,96 @@ async function countMedia(offline: boolean): Promise<MediaCount> {
       const poster = (el.getAttribute("poster") || "").startsWith("data:");
       if (styleBg || poster) playersPainted++;
     }
+    // BAKGRUNDSBILDER (ägarens beställning 2026-07-28: mät i stället för
+    // ögonkolla): varje layoutbärande element (≥40×40 — mindre är dekor)
+    // vars beräknade background-image (inkl. ::before/::after) bär url()
+    // räknas, och varje UNIK url PROVLADDAS på riktigt — data-URI:er laddar
+    // offline, http-länkar klipps av nätspärren och felar. Element vars
+    // url:er inte hann mätas (>100-taket) räknas inte alls, hellre än fel.
+    const pull = (bg: string) => [...bg.matchAll(/url\((["']?)([^)"']+)\1\)/g)].map((m) => m[2]);
+    const bgEls: Array<{ urls: string[]; w: number; h: number }> = [];
+    for (const el of Array.from(document.querySelectorAll("*"))) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 40 || r.height < 40) continue;
+      const urls: string[] = [];
+      const own = getComputedStyle(el).backgroundImage;
+      if (own && own !== "none") urls.push(...pull(own));
+      for (const ps of ["::before", "::after"] as const) {
+        const pbg = getComputedStyle(el, ps).backgroundImage;
+        if (pbg && pbg !== "none") urls.push(...pull(pbg));
+      }
+      const real = urls.filter((u) => u && !u.startsWith("blob:"));
+      if (real.length) bgEls.push({ urls: real, w: Math.round(r.width), h: Math.round(r.height) });
+    }
+    const uniq = [...new Set(bgEls.flatMap((b) => b.urls))];
+    const bgCapped = uniq.length > 100;
+    const okMap = new Map<string, boolean>();
+    await Promise.race([
+      Promise.all(
+        uniq.slice(0, 100).map(
+          (u) =>
+            new Promise<void>((res2) => {
+              const im = new Image();
+              im.onload = () => {
+                okMap.set(u, im.naturalWidth > 1);
+                res2();
+              };
+              im.onerror = () => {
+                okMap.set(u, false);
+                res2();
+              };
+              im.src = u;
+            }),
+        ),
+      ),
+      new Promise<void>((res2) => setTimeout(res2, 6_000)),
+    ]);
+    let bgTotal = 0;
+    let bgPainted = 0;
+    const bgBlanks: Array<{ src: string; w: number; h: number }> = [];
+    for (const b of bgEls) {
+      const measured = b.urls.filter((u) => okMap.has(u));
+      if (!measured.length) continue; // utanför mät-taket — räkna inte alls
+      bgTotal++;
+      if (measured.some((u) => okMap.get(u))) bgPainted++;
+      else if (bgBlanks.length < 8) bgBlanks.push({ src: b.urls[0].slice(0, 220), w: b.w, h: b.h });
+    }
+    // TYPSNITT: bara de sidan faktiskt FÖRSÖKT ladda räknas (unloaded =
+    // oanvänd vikt, inget fel). Offline felar http-typsnitt; inbakade laddar.
+    let fontsLoaded = 0;
+    let fontsFailed = 0;
+    const failedFonts: string[] = [];
+    try {
+      await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 4_000))]);
+      document.fonts.forEach((ff) => {
+        if (ff.status === "loaded") fontsLoaded++;
+        else if (ff.status === "error") {
+          fontsFailed++;
+          if (failedFonts.length < 5 && !failedFonts.includes(ff.family)) failedFonts.push(ff.family);
+        }
+      });
+    } catch {
+      /* FontFaceSet saknas — hoppa */
+    }
+    // IFRAMES: kan per definition aldrig måla offline (inbäddat innehåll) —
+    // räknas separat som känd, ärligt redovisad yta; ingår inte i poängen.
+    let iframes = 0;
+    for (const f of Array.from(document.querySelectorAll("iframe"))) {
+      const r = f.getBoundingClientRect();
+      if (r.width >= 40 && r.height >= 40) iframes++;
+    }
     return {
       rows,
       players,
       playersPainted,
+      bgTotal,
+      bgPainted,
+      bgBlanks,
+      bgCapped,
+      fontsLoaded,
+      fontsFailed,
+      failedFonts,
+      iframes,
       title: (document.title || "").slice(0, 120),
       h1: (document.querySelector("h1")?.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120),
     };
@@ -105,6 +199,14 @@ async function countMedia(offline: boolean): Promise<MediaCount> {
     blanks: res.rows.filter((r) => !r.painted).slice(0, 8),
     players: res.players,
     playersPainted: res.playersPainted,
+    bgTotal: res.bgTotal,
+    bgPainted: res.bgPainted,
+    bgBlanks: res.bgBlanks,
+    bgCapped: res.bgCapped,
+    fontsLoaded: res.fontsLoaded,
+    fontsFailed: res.fontsFailed,
+    failedFonts: res.failedFonts,
+    iframes: res.iframes,
     title: res.title,
     h1: res.h1,
   };
@@ -125,6 +227,13 @@ const pct = (painted: number, total: number) =>
   total > 0 ? Math.round((painted / total) * 1000) / 10 : 100;
 const completeness = pct(media.painted, media.total);
 const completenessOnline = pct(online.painted, online.total);
+const bgCompleteness = pct(media.bgPainted, media.bgTotal);
+const bgCompletenessOnline = pct(online.bgPainted, online.bgTotal);
+// Helheten (ägarens fråga "fångar vi helt korrekt?"): bilder + spelare +
+// bakgrunder i EN siffra. Typsnitt särredovisas — ett fallet typsnitt ger
+// reservtypsnitt (texten syns ändå), en fallen bild ger ett hål.
+const overall = pct(media.painted + media.bgPainted, media.total + media.bgTotal);
+const overallOnline = pct(online.painted + online.bgPainted, online.total + online.bgTotal);
 
 console.log(
   `[fidelity] MEDIA-KOMPLETTHET (offline, självbärande): ${completeness}% — ${media.painted}/${media.total} media-element målar (${media.playersPainted}/${media.players} spelare med poster)`,
@@ -135,6 +244,23 @@ console.log(
 for (const b of media.blanks) {
   console.log(`[fidelity]   tom bild ${b.w}×${b.h}: ${b.src}`);
 }
+console.log(
+  `[fidelity] BAKGRUNDSBILDER (offline): ${bgCompleteness}% — ${media.bgPainted}/${media.bgTotal} ytor målar${media.bgCapped ? " (mät-tak 100 unika url:er nått)" : ""} · nätverk på: ${bgCompletenessOnline}%`,
+);
+for (const b of media.bgBlanks) {
+  console.log(`[fidelity]   tom bakgrund ${b.w}×${b.h}: ${b.src}`);
+}
+console.log(
+  `[fidelity] TYPSNITT (offline): ${media.fontsLoaded} laddade, ${media.fontsFailed} fallna${media.failedFonts.length ? ` (${media.failedFonts.join(", ")})` : ""} — fallna ger reservtypsnitt, texten syns ändå`,
+);
+if (media.iframes > 0) {
+  console.log(
+    `[fidelity] iframes i layouten: ${media.iframes} — inbäddat innehåll kan aldrig måla offline (geometrin pinnad, ingår ej i poängen)`,
+  );
+}
+console.log(
+  `[fidelity] TOTAL (bilder+spelare+bakgrunder, offline): ${overall}% — nätverk på: ${overallOnline}%`,
+);
 if (errorPage) {
   console.log(
     `[fidelity] VARNING: den frysta sidan ser ut som en FELSIDA (titel "${media.title}" / h1 "${media.h1}") — kompletthetssiffran ovan mäter i så fall fel innehåll`,
@@ -267,6 +393,18 @@ writeFileSync(
       playersPainted: media.playersPainted,
       players: media.players,
       blanks: media.blanks,
+      bgCompleteness,
+      bgCompletenessOnline,
+      bgPainted: media.bgPainted,
+      bgTotal: media.bgTotal,
+      bgBlanks: media.bgBlanks,
+      bgCapped: media.bgCapped,
+      fontsLoaded: media.fontsLoaded,
+      fontsFailed: media.fontsFailed,
+      failedFonts: media.failedFonts,
+      iframes: media.iframes,
+      overallCompleteness: overall,
+      overallCompletenessOnline: overallOnline,
       errorPage,
       title: media.title,
       ...(cmp
