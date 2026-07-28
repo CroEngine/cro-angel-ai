@@ -1088,7 +1088,7 @@ for (const src of posterSrcs) {
 //     i dokumentet (style-block + style-attribut; url() förekommer bara i
 //     CSS-kontext) under egen budget. Attributens entitetskodning hanteras
 //     som för bilder: hämta avkodat, ersätt råformen.
-const CSS_ASSET_BUDGET = 4_000_000;
+const CSS_ASSET_BUDGET = 8_000_000; // sats-fyndet: 26 hero-ytor i style-attribut — 4 MB svalt
 let cssAssetBytes = 0;
 let cssAssetsInlined = 0;
 const cssRefs = new Set(
@@ -1096,6 +1096,19 @@ const cssRefs = new Set(
     .map((m) => m[2])
     .filter((s) => !s.startsWith("data:")),
 );
+// Sats-fyndet (20-sajtssvepet, natten mot 2026-07-29): style-ATTRIBUTENS
+// url() är dubbelt entitetskodade i serialiserad HTML — citatet är &quot;
+// och query-strängens & är &amp; (url(&quot;…?f=center&amp;w=1273…&quot;)).
+// Regexen ovan kräver riktiga citattecken → 26/27 bakgrunder förblev
+// länkade och sajten frös till 3,7 %. Fånga båda entitetsformerna; hämtning
+// sker som alltid AVKODAT, ersättning på RÅFORMEN.
+for (const re of [/url\(&quot;(.+?)&quot;\)/gi, /url\(&#0?39;(.+?)&#0?39;\)/gi]) {
+  for (const m of html.matchAll(re)) {
+    const raw = m[1];
+    const dec = decodeEntities(raw).trim();
+    if (/^(https?:)?\/\//.test(dec) || dec.startsWith("/")) cssRefs.add(raw);
+  }
+}
 for (const ref of cssRefs) {
   if (cssAssetBytes >= CSS_ASSET_BUDGET) break;
   const full = abs(decodeEntities(ref));
@@ -1115,11 +1128,14 @@ for (const ref of cssRefs) {
       ? full.match(/\.woff2/i) ? "font/woff2" : full.match(/\.woff/i) ? "font/woff" : "font/ttf"
       : got.type.split(";")[0];
     const dataUri = `data:${mime};base64,${b64(got.bytes)}`;
-    // url() kan vara ociterad — replaceSrc täcker bara "…"/'…'-formerna.
+    // url() kan vara ociterad, citerad eller ENTITETSCITERAD (style-attribut:
+    // &quot;/&#39; — sats-fyndet) — täck alla råformer; no-op där formen saknas.
     html = html
       .split(`url(${ref})`).join(`url(${dataUri})`)
       .split(`url("${ref}")`).join(`url("${dataUri}")`)
-      .split(`url('${ref}')`).join(`url('${dataUri}')`);
+      .split(`url('${ref}')`).join(`url('${dataUri}')`)
+      .split(`url(&quot;${ref}&quot;)`).join(`url(&quot;${dataUri}&quot;)`)
+      .split(`url(&#39;${ref}&#39;)`).join(`url(&#39;${dataUri}&#39;)`);
   }
 }
 if (overBudget > 0) {
