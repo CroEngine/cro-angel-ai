@@ -223,30 +223,44 @@ const median = okAll.length ? okAll.sort((a, b) => a - b)[Math.floor(okAll.lengt
 
 const html = `<title>${esc(TITLE)}</title>
 <style>
-  :root { --ok:#15803d; --mid:#b45309; --bad:#b91c1c; --line:#8884; }
-  body { font: 15px/1.5 system-ui, sans-serif; margin: 0 auto; max-width: 880px; padding: 20px; }
-  h1 { font-size: 1.5rem; } h2 { font-size: 1.15rem; margin: 2.2em 0 .2em; }
-  h3 { font-size: .95rem; margin: .4em 0 .2em; }
-  .chip { font-size: .75rem; padding: .15em .6em; border-radius: 999px; color: #fff; vertical-align: middle; }
+  :root {
+    --bg: #faf9f7; --ink: #1c1d1f; --muted: #6d6a64; --line: #d9d5cd;
+    --card: #ffffff; --accent: #0f766e;
+    --ok: #15803d; --mid: #b45309; --bad: #b91c1c; --ring: #e11d48;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161719; --ink: #e8e6e2; --muted: #98948c; --line: #34363a; --card: #1e2023; --accent: #2dd4bf; }
+  }
+  :root[data-theme="dark"] { --bg: #161719; --ink: #e8e6e2; --muted: #98948c; --line: #34363a; --card: #1e2023; --accent: #2dd4bf; }
+  :root[data-theme="light"] { --bg: #faf9f7; --ink: #1c1d1f; --muted: #6d6a64; --line: #d9d5cd; --card: #ffffff; --accent: #0f766e; }
+  body { font: 15px/1.55 system-ui, sans-serif; background: var(--bg); color: var(--ink); margin: 0 auto; max-width: 900px; padding: 24px 20px 48px; }
+  h1 { font-size: 1.45rem; text-wrap: balance; margin: 0 0 .3em; }
+  h1 + p { color: var(--muted); max-width: 65ch; }
+  h2 { font-size: 1.1rem; margin: 2.6em 0 .15em; padding-top: 1em; border-top: 1px solid var(--line); }
+  h3 { font-size: .8rem; margin: .5em 0 .25em; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  a { color: var(--accent); }
+  .chip { font: 600 .72rem/1.6 ui-monospace, monospace; padding: .1em .6em; border-radius: 999px; color: #fff; vertical-align: 2px; margin-left: .5em; }
   .chip.good { background: var(--ok); } .chip.mid { background: var(--mid); } .chip.bad { background: var(--bad); }
-  .meta { color: #888; margin: .1em 0 .6em; font-size: .85rem; }
-  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  figure { margin: 0; } figcaption { font-size: .75rem; color: #888; margin-bottom: 4px; }
-  .imgwrap { position: relative; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .meta { color: var(--muted); margin: .1em 0 .7em; font-size: .84rem; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  figure { margin: 0; }
+  figcaption { font: 600 .7rem/1.4 ui-monospace, monospace; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 5px; }
+  .imgwrap { position: relative; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
   .imgwrap img { display: block; width: 100%; height: auto; }
-  .ring { position: absolute; left: 2%; width: 96%; border: 2.5px solid #e11d48; border-radius: 10px; box-shadow: 0 0 0 2px #e11d4833; pointer-events: none; }
-  .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: .7em; }
-  .cols ul { margin: .2em 0; padding-left: 1.1em; } .cols li { margin: .18em 0; font-size: .85rem; }
-  .note, .links { font-size: .8rem; color: #888; }
-  table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: .88rem; }
-  th, td { text-align: left; padding: .35em .6em; border-bottom: 1px solid var(--line); }
+  .ring { position: absolute; left: 2%; width: 96%; border: 2.5px solid var(--ring); border-radius: 10px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 25%, transparent); pointer-events: none; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: .8em; }
+  .cols ul { margin: .2em 0; padding-left: 1.05em; } .cols li { margin: .22em 0; font-size: .84rem; }
+  .note, .links { font-size: .8rem; color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; margin: 1.1em 0 .4em; font-size: .87rem; font-variant-numeric: tabular-nums; }
+  th { font: 600 .7rem/1.5 ui-monospace, monospace; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  th, td { text-align: left; padding: .38em .6em; border-bottom: 1px solid var(--line); }
+  td:nth-child(n+2), th:nth-child(n+2) { text-align: right; }
   tr.good td:nth-child(2) { color: var(--ok); font-weight: 600; }
   tr.mid td:nth-child(2) { color: var(--mid); font-weight: 600; }
   tr.bad td:nth-child(2), tr.bad td:first-child { color: var(--bad); }
   .verdict.bad { color: var(--bad); }
-  .missing { padding: 2em 1em; color: #888; font-size: .85rem; }
+  .missing { padding: 2em 1em; color: var(--muted); font-size: .85rem; }
   @media (max-width: 640px) { .pair, .cols { grid-template-columns: 1fr; } }
-  @media (prefers-color-scheme: dark) { body { background: #111; color: #ddd; } }
 </style>
 <h1>${esc(TITLE)}</h1>
 <p>Varje sajt: <strong>live-referensen</strong> (det browsern själv såg i frys-sessionen) bredvid <strong>den frysta kopians offline-rendering</strong>. Röda ringar = pixel-avvikelseband — de inkluderar även ofarliga skillnader (omflöde, frusna animationer, video-stillbilder), därför särredovisas <em>verkliga brister</em> och <em>by design</em> under varje par. Trippel-verifiering per sajt: mediemåttet (målar elementen?), pixel-banden (mot live) och innehållspariteten (rubriker/text).</p>
