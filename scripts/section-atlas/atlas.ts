@@ -78,6 +78,9 @@ interface MoveRow {
   targetHeading: string;
   gateClean: boolean;
   applicable: boolean;
+  /** true = flytten är också KATALOGENS förslag (bevis-viktad) — inte bara
+   *  tekniskt möjlig. Skiljer "flyttbar" från "värd att föreslå". */
+  inCatalogue: boolean;
   reason: string | null;
   gate: { lcpShiftPx: number | null; overlapPx: number | null; ctaChecked: number | null; ctaBroken: number | null } | null;
 }
@@ -242,8 +245,17 @@ async function runSite(
     base.beforeUri = b64(Buffer.from(beforeBuf));
     await ctx.close();
 
-    // 2) Grind-i-proben på katalogens flytt-kandidater (verifys egen maskin).
-    const moveCands = generateCandidates(content).filter((c) => c.kind === "move_up");
+    // 2) Grind-i-proben (verifys egen maskin) på VARJE flyttbar sektion —
+    //    ägarens fråga är "kan vi flytta runt DEN här sektionen snyggt?",
+    //    per sektion, inte bara katalogens bevis-viktade urval. Katalogen
+    //    väljer VILKEN flytt som föreslås; atlasen mäter om VARJE är möjlig.
+    //    (Hjälten är aldrig flyttmål; ovanför folden finns inget att vinna
+    //    men de probas ändå — grindmaskinen fäller meningslösa flyttar själv.)
+    const movable = content.sections.filter((s) => s.type !== "hero" && s.heading);
+    const catalogueIds = new Set(
+      generateCandidates(content).filter((c) => c.kind === "move_up").map((c) => c.targetId),
+    );
+    const moveCands = movable.map((s) => ({ id: `mv-${s.id}`, kind: "move_up" as const, targetId: s.id }));
     if (moveCands.length > 0) {
       const ctaTexts = [
         ...new Set(content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text)),
@@ -273,6 +285,7 @@ async function runSite(
           base.moves.push({
             candidateId: c.id, targetHeading: sec?.heading ?? c.targetId,
             gateClean: !!p?.gateClean, applicable: !!p?.applicable,
+            inCatalogue: catalogueIds.has(c.targetId),
             reason: p?.reason ?? null, gate: p?.gate ?? null,
           });
         }
@@ -281,8 +294,11 @@ async function runSite(
       }
     }
 
-    // 3) Bästa grind-rena flytten: applicera + EFTER-bild.
-    const best = base.moves.find((m) => m.gateClean);
+    // 3) Bästa grind-rena flytten (katalogens bevis-viktade först): applicera
+    //    + EFTER-bild.
+    const best =
+      base.moves.find((m) => m.gateClean && m.inCatalogue) ??
+      base.moves.find((m) => m.gateClean);
     if (best) {
       const cand = moveCands.find((c) => c.id === best.candidateId)!;
       const sec = content.sections.find((x) => x.id === cand.targetId)!;
@@ -374,7 +390,7 @@ const siteHtml = results.map((r) => {
       </td>
     </tr>`).join("");
   const moves = r.moves.map((m) => `
-    <li>${m.gateClean ? "✅" : m.applicable ? "🟡" : "⛔"} <strong>${esc(m.targetHeading.slice(0, 55))}</strong>
+    <li>${m.gateClean ? "✅" : m.applicable ? "🟡" : "⛔"} <strong>${esc(m.targetHeading.slice(0, 55))}</strong>${m.inCatalogue ? ' <span class="tp proof">katalogens förslag</span>' : ""}
       ${m.gateClean && m.gate ? ` — LCP ${m.gate.lcpShiftPx ?? "?"}px · överlapp ${m.gate.overlapPx ?? "?"}px · CTA ${m.gate.ctaBroken ?? "?"}/${m.gate.ctaChecked ?? "?"} trasiga` : ""}
       ${!m.gateClean && m.reason ? ` — ${esc(m.reason)}` : ""}</li>`).join("");
   const ba = r.beforeUri && r.afterUri
@@ -383,7 +399,7 @@ const siteHtml = results.map((r) => {
     : `<p class="meta">Ingen grind-ren flytt att visa${r.moves.length ? " (alla kandidater föll i grinden/bindningen)" : " (inga flytt-kandidater under folden)"}.</p>`;
   return `<section>${head}
     <table><thead><tr><th>Visuell bild</th><th>Identitet + bindning</th><th>Kodkoppling</th></tr></thead><tbody>${rows}</tbody></table>
-    <h3>Flyttdomslut (grind-i-proben — verifys egen maskin)</h3><ul>${moves || "<li><em>inga flytt-kandidater</em></li>"}</ul>
+    <h3>Flyttbarhet per sektion (grind-i-proben — verifys egen maskin)</h3><ul>${moves || "<li><em>inga flyttbara sektioner (bara hjälte/rubriklösa)</em></li>"}</ul>
     ${ba}
   </section>`;
 }).join("\n");
