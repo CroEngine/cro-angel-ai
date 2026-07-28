@@ -222,8 +222,11 @@ async function runSite(
       let crop: string | null = null;
       if (b.bbox) {
         try {
+          // fullPage + clip (empiriskt verifierat 2026-07-28): utan fullPage
+          // når clip bara viewportens 844px och varje under-fold-sektion
+          // förlorade sin bild tyst.
           const buf = await page.screenshot({
-            type: "jpeg", quality: 55,
+            fullPage: true, type: "jpeg", quality: 55,
             clip: { x: b.bbox.x, y: b.bbox.y, width: b.bbox.w, height: b.bbox.h },
           });
           crop = b64(Buffer.from(buf));
