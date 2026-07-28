@@ -25,6 +25,8 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
+import type { Response as PWResponse } from "playwright-core";
+
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import {
   acquireRenderPage,
@@ -194,10 +196,13 @@ async function browserRenderedHtml(
   const ASSET_FILE_CAP = 2_000_000;
   try {
     // Passiv nätverksavlyssning — läs svarskroppar direkt i handlern (CDP
-    // bufferten töms snabbt). Får ALDRIG fälla renderingen: allt i try/catch,
-    // och stödjer Stagehand-proxyn inte body() blir kartan bara tom (in-page-
-    // reserven + curl tar över nedströms).
-    page.on("response", (res) => {
+    // bufferten töms snabbt). Får ALDRIG fälla renderingen: handler-kroppen
+    // är try/catch-ad, och SJÄLVA REGISTRERINGEN kastar synkront på Stagehands
+    // sid-proxy ("Unsupported event: response" — den stödjer bara ett urval
+    // händelser; anyfin/tibber-varvet 2026-07-28 föll HELA browser-vägen på
+    // det och degraderade tyst till statisk). Prova sida → kontext → mjuk
+    // avstängning; utan inspelning tar in-page-reserven + curl över nedströms.
+    const recordResponse = (res: PWResponse) => {
       void (async () => {
         try {
           if (assetBytes >= ASSET_TOTAL_CAP) return;
@@ -217,7 +222,19 @@ async function browserRenderedHtml(
           /* redirect-/stängd-kropp — hoppa */
         }
       })();
-    });
+    };
+    try {
+      page.on("response", recordResponse);
+    } catch {
+      try {
+        page.context().on("response", recordResponse);
+        console.warn("[freeze-page] inspelning via kontexten (sid-proxyn stödjer inte response-händelsen)");
+      } catch (err) {
+        console.warn(
+          `[freeze-page] nätverksinspelning otillgänglig (${err instanceof Error ? err.message : err}) — in-page-reserven + curl tar över`,
+        );
+      }
+    }
     // Lazy-TVINGAREN (ägarbeslut 2026-07-28): Next/Nuxt-klassen sätter riktig
     // bildkälla först när IntersectionObserver säger "syns" — tibbers 20
     // 1×1-placeholders. Init-skriptet får varje observer att rapportera
