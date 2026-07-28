@@ -442,18 +442,74 @@ async function browserRenderedHtml(
         return out;
       });
       // Element-SKOTTET (klarna-klassen: alla 7 spelare CORS-tajntade):
-      // locator.screenshot() läser KOMPOSITORNS pixlar — samma bild som ögat
-      // ser, orörd av canvas-taint. Skjut varje märkt mål och stämpla rutan
-      // som poster/bakgrund, precis som canvas-vägen.
+      // kompositorns pixlar lyder inte under canvas-taint. Första valet är
+      // locator.screenshot() — men Stagehand-proxyn saknar locator (samma
+      // klass som page.context: runda 1 föll 7/7 TYST — därav ska första
+      // felet numera alltid loggas). Reserven bygger enbart på BEVISADE
+      // primitiver: scrolla målet till mitten, ta helskärms-page.screenshot
+      // (ref-skotten har bevisat den på Stagehand), beskär rutan I SIDAN via
+      // canvas — en data-URI-bild är samma origin och tajntar aldrig.
       let shot = 0;
       if (frames.tainted > 0) {
+        let firstErr: string | null = null;
+        const viewportCropShot = async (n: number): Promise<boolean> => {
+          const r2 = await page.evaluate((idx: number) => {
+            const el = document.querySelector(`[data-angel-frame="${idx}"]`);
+            if (!el) return null;
+            (el as HTMLElement).scrollIntoView({ block: "center" });
+            return null;
+          }, n);
+          void r2;
+          await page.waitForTimeout(250);
+          const rect = (await page.evaluate((idx: number) => {
+            const el = document.querySelector(`[data-angel-frame="${idx}"]`);
+            if (!el) return null;
+            const b = el.getBoundingClientRect();
+            return { x: b.x, y: b.y, w: b.width, h: b.height, vw: window.innerWidth, vh: window.innerHeight };
+          }, n)) as { x: number; y: number; w: number; h: number; vw: number; vh: number } | null;
+          if (!rect || rect.w < 40 || rect.h < 40) return false;
+          const png = (await page.screenshot({ type: "png" })) as Buffer;
+          const shotUri = `data:image/png;base64,${Buffer.from(png).toString("base64")}`;
+          return (await page.evaluate(
+            async ({ idx, uri: u3, r }: { idx: number; uri: string; r: { x: number; y: number; w: number; h: number; vw: number; vh: number } }) => {
+              const el = document.querySelector(`[data-angel-frame="${idx}"]`);
+              if (!el) return false;
+              const im = await new Promise<HTMLImageElement>((res, rej) => {
+                const i = new Image();
+                i.onload = () => res(i);
+                i.onerror = rej;
+                i.src = u3;
+              });
+              const sx = im.width / r.vw; // DPR-kompensation
+              const sy = im.height / r.vh;
+              const c = document.createElement("canvas");
+              c.width = Math.max(2, Math.round(r.w * sx));
+              c.height = Math.max(2, Math.round(r.h * sy));
+              const g = c.getContext("2d");
+              if (!g) return false;
+              g.drawImage(im, r.x * sx, r.y * sy, r.w * sx, r.h * sy, 0, 0, c.width, c.height);
+              const u4 = c.toDataURL("image/jpeg", 0.8);
+              if (u4.length < 200) return false;
+              el.removeAttribute("data-angel-frame");
+              if (el.tagName === "VIDEO") {
+                el.setAttribute("poster", u4);
+              } else {
+                (el as HTMLElement).style.background = `center / cover no-repeat url(${u4})`;
+                el.setAttribute("poster", u4);
+              }
+              return true;
+            },
+            { idx: n, uri: shotUri, r: rect },
+          )) as boolean;
+        };
         for (let n = 0; n < frames.tainted && n < 12; n++) {
+          let ok = false;
           try {
             const bytes = await page
               .locator(`[data-angel-frame="${n}"]`)
               .screenshot({ type: "jpeg", quality: 80, timeout: 6_000 });
             const uri = `data:image/jpeg;base64,${Buffer.from(bytes).toString("base64")}`;
-            const ok = await page.evaluate(
+            ok = (await page.evaluate(
               ({ n: idx, uri: u2 }: { n: number; uri: string }) => {
                 const el = document.querySelector(`[data-angel-frame="${idx}"]`);
                 if (!el) return false;
@@ -467,18 +523,26 @@ async function browserRenderedHtml(
                 return true;
               },
               { n, uri },
-            );
-            if (ok) shot++;
-          } catch {
-            /* skott utanför viewport/element borta — nästa */
+            )) as boolean;
+          } catch (err) {
+            if (!firstErr) firstErr = err instanceof Error ? err.message.slice(0, 100) : String(err).slice(0, 100);
+            ok = await viewportCropShot(n).catch((e2) => {
+              if (!firstErr) firstErr = e2 instanceof Error ? e2.message.slice(0, 100) : String(e2).slice(0, 100);
+              return false;
+            });
           }
+          if (ok) shot++;
         }
-        // Städa märken som blev kvar (misslyckade skott) — de ska aldrig frysas.
+        if (firstErr) console.warn(`[freeze-page] element-skottets första fel: ${firstErr}`);
+        // Städa märken som blev kvar (misslyckade skott) — de ska aldrig
+        // frysas — och återställ scrollen: bildprioriteringen läser rect.top
+        // (above-fold-ordningen) och får inte ärva sista skottets position.
         await page
           .evaluate(() => {
             for (const el of Array.from(document.querySelectorAll("[data-angel-frame]"))) {
               el.removeAttribute("data-angel-frame");
             }
+            window.scrollTo(0, 0);
           })
           .catch(() => {});
       }
