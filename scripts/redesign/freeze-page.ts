@@ -136,7 +136,28 @@ function downscaleVariants(u: string): string[] {
       }
       return v.toString();
     };
-    return [mk("w", "h"), mk("width", "height")].filter((x): x is string => !!x);
+    // Cloudinary-klassen (eightsleep-fyndet 2026-07-28): transform-parametrarna
+    // bor i SÖKVÄGEN (…/upload/c_fill,g_auto,w_2620,h_1470/…), inte i query-
+    // strängen. Samma princip: w_ skalas till 828 och h_ proportionellt, övriga
+    // parametrar orörda (c_fill-beskärningen behåller sitt förhållande).
+    let pathVariant: string | null = null;
+    const wm = url.pathname.match(/(^|[/,])w_(\d{3,5})(?=[,/])/);
+    if (wm) {
+      const w = Number(wm[2]);
+      if (w > 900) {
+        const target = 828;
+        let path = url.pathname.replace(/([/,])w_\d{3,5}(?=[,/])/, `$1w_${target}`);
+        const hm = url.pathname.match(/([/,])h_(\d{3,5})(?=[,/])/);
+        if (hm) {
+          const h = Number(hm[2]);
+          path = path.replace(/([/,])h_\d{3,5}(?=[,/])/, `$1h_${Math.round((h * target) / w)}`);
+        }
+        const v = new URL(u);
+        v.pathname = path;
+        pathVariant = v.toString();
+      }
+    }
+    return [mk("w", "h"), mk("width", "height"), pathVariant].filter((x): x is string => !!x);
   } catch {
     return [];
   }
@@ -468,52 +489,68 @@ async function browserRenderedHtml(
     // In-page-fetch-RESERVEN (anyfin-klassen, försäkring om response.body()
     // inte bär genom Stagehand-proxyn): bilder som inspelningen saknar hämtas
     // om INNE i sidans kontext — med sidans cookies/clearance — och läggs i
-    // samma karta. Cap: 30 bilder / 10 s, aldrig ett fel som fäller frysningen.
+    // samma karta. URL-listan tas ur den SERIALISERADE HTML:en, inte ur en ny
+    // DOM-läsning (lovable-fyndet 2026-07-28: karusellen bytte src mellan
+    // serialisering och reserv, så reserven hämtade fel uppsättning och tre
+    // synliga kort förblev länkade). Samma decode+abs som inbaknings-loopen ⇒
+    // nycklarna matchar garanterat. Batchar med partiellt resultat (en lång-
+    // sam batch kostar bara sig själv, inte allt). Aldrig ett fel som fäller.
     try {
-      const missing = await page.evaluate(() => {
-        const urls = new Set<string>();
-        for (const img of Array.from(document.images)) {
-          const s = img.getAttribute("src") || "";
-          if (s && !s.startsWith("data:")) urls.add(new URL(s, location.href).toString());
-        }
-        return [...urls];
-      });
-      const want = missing.filter((url) => !assets.has(url)).slice(0, 30);
-      if (want.length > 0) {
+      const missing = [
+        ...new Set(
+          [...outHtml.matchAll(/<img\b[^>]+src=["']([^"']+)["']/gi)]
+            .map((m) => m[1])
+            .filter((s) => !s.startsWith("data:"))
+            .map((s) => {
+              try {
+                return abs(decodeEntities(s));
+              } catch {
+                return "";
+              }
+            })
+            .filter(Boolean),
+        ),
+      ];
+      const want = missing.filter((u2) => !assets.has(u2)).slice(0, 60);
+      let got = 0;
+      for (let i = 0; i < want.length; i += 12) {
+        const batch = want.slice(i, i + 12);
         const fetched = (await Promise.race([
           page.evaluate(async (urls: string[]) => {
-            const out: Array<{ url: string; b64: string; type: string }> = [];
-            for (const url of urls) {
+            const grab = async (url: string) => {
               try {
                 const r = await fetch(url, { credentials: "include" });
-                if (!r.ok) continue;
+                if (!r.ok) return null;
                 const blob = await r.blob();
-                if (blob.size === 0 || blob.size > 2_000_000) continue;
+                if (blob.size === 0 || blob.size > 2_000_000) return null;
                 const b64 = await new Promise<string>((res, rej) => {
                   const fr = new FileReader();
                   fr.onload = () => res(String(fr.result));
                   fr.onerror = rej;
                   fr.readAsDataURL(blob);
                 });
-                out.push({ url, b64: b64.split(",")[1] ?? "", type: blob.type || "image/png" });
+                return { url, b64: b64.split(",")[1] ?? "", type: blob.type || "image/png" };
               } catch {
-                /* CORS/nät — nästa */
+                return null; /* CORS/nät — nästa */
               }
-            }
-            return out;
-          }, want),
+            };
+            return (await Promise.all(urls.map(grab))).filter(
+              (x): x is { url: string; b64: string; type: string } => !!x,
+            );
+          }, batch),
           new Promise<Array<{ url: string; b64: string; type: string }>>((r) =>
-            setTimeout(() => r([]), 10_000),
+            setTimeout(() => r([]), 8_000),
           ),
         ])) as Array<{ url: string; b64: string; type: string }>;
         for (const f of fetched) {
           if (f.b64 && !assets.has(f.url)) {
             assets.set(f.url, { bytes: new Uint8Array(Buffer.from(f.b64, "base64")), type: f.type });
+            got++;
           }
         }
-        if (fetched.length > 0) {
-          console.log(`[freeze-page] in-page-reserven hämtade ${fetched.length}/${want.length} bilder`);
-        }
+      }
+      if (want.length > 0) {
+        console.log(`[freeze-page] in-page-reserven hämtade ${got}/${want.length} bilder`);
       }
     } catch {
       /* reserven är best-effort */
