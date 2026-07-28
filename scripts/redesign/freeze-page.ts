@@ -109,6 +109,49 @@ const decodeEntities = (s: string) =>
  *  är korrekt HTML (webbläsaren avkodar till ren URL vid hämtning). */
 const escAttr = (u: string) => u.replace(/&/g, "&amp;");
 
+/** Kvalitetsbeslut 2026-07-28 (ägaren: högkvalitativ produkt, utrymme
+ *  sekundärt): stora CDN-bilder begärs om i MOBILBREDD före inline-taket i
+ *  stället för att absolutlänkas (mediegranskningen: tibbers 641 kB-bild
+ *  begärde w=1920 för vår 390px-viewport). Mönstren täcker imgix/Contentful/
+ *  Nexts bildproxy (?w=) och Framer-klassen (?width=&height=). 828px ≈ 390px
+ *  @2x med marginal (Nexts standard-deviceSize). Höjden skalas proportionellt
+ *  när den finns så fit/crop-CDN:er inte förvränger. Originalet är alltid
+ *  sista kandidaten — en otillåten variantbredd (Next 400:ar) kostar bara ett
+ *  extra försök. */
+function downscaleVariants(u: string): string[] {
+  try {
+    const url = new URL(u);
+    const p = url.searchParams;
+    const mk = (wKey: string, hKey: string): string | null => {
+      const w = Number(p.get(wKey));
+      if (!Number.isFinite(w) || w <= 900) return null; // redan rimlig storlek
+      const target = 828;
+      const v = new URL(u);
+      v.searchParams.set(wKey, String(target));
+      const h = Number(p.get(hKey));
+      if (p.has(hKey) && Number.isFinite(h) && h > 0) {
+        v.searchParams.set(hKey, String(Math.round((h * target) / w)));
+      }
+      return v.toString();
+    };
+    return [mk("w", "h"), mk("width", "height")].filter((x): x is string => !!x);
+  } catch {
+    return [];
+  }
+}
+
+/** Hämta en bild inline-bar: nedskalade CDN-varianter först, originalet sist.
+ *  null = ingen kandidat under IMG_CAP/av bildtyp. */
+async function fetchInlineableImage(
+  fullUrl: string,
+): Promise<{ bytes: Uint8Array; type: string } | null> {
+  for (const cand of [...downscaleVariants(fullUrl), fullUrl]) {
+    const got = await fetchBytes(cand);
+    if (got && got.bytes.length <= IMG_CAP && got.type.startsWith("image/")) return got;
+  }
+  return null;
+}
+
 /** Rendera sidan färdigt i headless Chromium och returnera den RENDERADE
  *  DOM:ens HTML. Chromium: env-var eller playwrights egen installation
  *  (Actions-runnern) — samma mönster som serving-smoke. Viewport 390×844 =
@@ -264,13 +307,25 @@ const isUnstyled = (h: string): boolean => {
   for (const t of tokens) if (css.includes(`.${t}`)) covered++;
   return covered / tokens.size < 0.35;
 };
-if (RENDER === "browser" || (RENDER === "auto" && (isShell(html) || isUnstyled(html)))) {
+// Browser-FÖRST när nycklar finns (kvalitetsbeslut 2026-07-28): media-
+// granskningen över 8 sajter visade att JS-stackarna (Next/Framer-klassen)
+// tappar hjältevideor och lazy-bilder i statisk frysning — den renderade
+// DOM:en efter hydrering är enda kopian som bär sidans visuella sanning.
+// Utan nycklar (lokal utveckling) gäller gamla eskaleringen: statisk först,
+// browser bara för skal/ostylat.
+const BROWSER_KEYS = !!(process.env.BROWSERBASE_API_KEY && process.env.BROWSERBASE_PROJECT_ID);
+if (
+  RENDER === "browser" ||
+  (RENDER === "auto" && (BROWSER_KEYS || isShell(html) || isUnstyled(html)))
+) {
   try {
     if (RENDER === "auto" && html) {
       console.log(
         isShell(html)
           ? "[freeze-page] statisk kopia är ett SPA-skal (<2 sektioner) → browser-rendering"
-          : "[freeze-page] statisk kopia saknar sina stilar (CSS-in-JS) → browser-rendering",
+          : isUnstyled(html)
+            ? "[freeze-page] statisk kopia saknar sina stilar (CSS-in-JS) → browser-rendering"
+            : "[freeze-page] browser-först (nycklar finns) — renderad DOM bär videor/lazy-bilder",
       );
     }
     const rendered = await browserRenderedHtml(url);
@@ -377,16 +432,91 @@ for (const src of srcList) {
     html = replaceSrc(html, src, escAttr(full));
     continue;
   }
-  const got = await fetchBytes(full);
-  const ok = got && got.bytes.length <= IMG_CAP && got.type.startsWith("image/");
-  const fits = ok && spentBytes + got.bytes.length <= IMG_BUDGET;
-  if (ok && !fits) overBudget++;
-  if (ok && fits) {
+  // Nedskalade CDN-varianter före originalet — se fetchInlineableImage.
+  const got = await fetchInlineableImage(full);
+  const fits = got && spentBytes + got.bytes.length <= IMG_BUDGET;
+  if (got && !fits) overBudget++;
+  if (got && fits) {
     inlined++;
     spentBytes += got.bytes.length;
     html = replaceSrc(html, src, `data:${got.type.split(";")[0]};base64,${b64(got.bytes)}`);
   } else {
     html = replaceSrc(html, src, escAttr(full));
+  }
+}
+
+// 3b) Video-postrar → data-URI (kvalitetsbeslut 2026-07-28): hjältevideor är
+//     JS-strömmar (Mux/Vimeo/ctfassets — 5 av 8 sajter i mediegranskningen)
+//     som aldrig kan spela i en fryst kopia; postern är videons visuella
+//     sanning och ska synas även offline. Gäller poster-attribut på <video>
+//     och spelar-element (mux-player-klassen). Ogiltiga postrar
+//     ("[object Object]" — Framer-buggen på fikajobs) filtreras bort.
+let postersInlined = 0;
+const posterSrcs = new Set(
+  [...html.matchAll(/<(?:video|mux-player)\b[^>]*\bposter=["']([^"']+)["']/gi)]
+    .map((m) => m[1])
+    .filter((s) => !s.startsWith("data:") && /^(https?:|\/\/|\/)/.test(decodeEntities(s).trim())),
+);
+for (const src of posterSrcs) {
+  const got = await fetchInlineableImage(abs(decodeEntities(src)));
+  if (got && spentBytes + got.bytes.length <= IMG_BUDGET) {
+    spentBytes += got.bytes.length;
+    postersInlined++;
+    const dataUri = `data:${got.type.split(";")[0]};base64,${b64(got.bytes)}`;
+    html = replaceSrc(html, src, dataUri);
+    // Spelar-element (mux-player-klassen) är okända element utan sitt JS —
+    // poster-attributet renderar INGET offline. Bakgrunden på SAMMA element
+    // gör postern synlig utan att ändra DOM-struktur eller layoutmått
+    // (background påverkar aldrig elementets storlek). <video> visar poster
+    // nativt och lämnas orörd.
+    html = html.replace(/<(mux-player)\b([^>]*)>/gi, (tag, name, attrs) => {
+      if (!attrs.includes(dataUri)) return tag;
+      const styled = /style="/.test(attrs)
+        ? attrs.replace(/style="/, `style="background:center/cover no-repeat url(${dataUri});`)
+        : `${attrs} style="background:center/cover no-repeat url(${dataUri})"`;
+      return `<${name}${styled}>`;
+    });
+  }
+}
+
+// 3c) CSS-assets → data-URI (kvalitetsbeslut 2026-07-28): bakgrundsbilder och
+//     typsnitt i url(...) inlinades aldrig — Hedvigs appsektion blev vit och
+//     typografin föll till systemtypsnitt offline. Sveper ALLA url(...)-refar
+//     i dokumentet (style-block + style-attribut; url() förekommer bara i
+//     CSS-kontext) under egen budget. Attributens entitetskodning hanteras
+//     som för bilder: hämta avkodat, ersätt råformen.
+const CSS_ASSET_BUDGET = 4_000_000;
+let cssAssetBytes = 0;
+let cssAssetsInlined = 0;
+const cssRefs = new Set(
+  [...html.matchAll(/url\(\s*(['"]?)((?:https?:)?\/\/[^'")]+|\/[^'")]+)\1\s*\)/gi)]
+    .map((m) => m[2])
+    .filter((s) => !s.startsWith("data:")),
+);
+for (const ref of cssRefs) {
+  if (cssAssetBytes >= CSS_ASSET_BUDGET) break;
+  const full = abs(decodeEntities(ref));
+  const isFontRef = /\.(woff2?|ttf|otf)(\?|$)/i.test(full);
+  let got: { bytes: Uint8Array; type: string } | null = null;
+  if (isFontRef) {
+    const raw = await fetchBytes(full);
+    // Typsnitt serveras ofta som octet-stream — filändelsen är prediket.
+    if (raw && raw.bytes.length <= IMG_CAP) got = raw;
+  } else {
+    got = await fetchInlineableImage(full);
+  }
+  if (got && cssAssetBytes + got.bytes.length <= CSS_ASSET_BUDGET) {
+    cssAssetBytes += got.bytes.length;
+    cssAssetsInlined++;
+    const mime = isFontRef
+      ? full.match(/\.woff2/i) ? "font/woff2" : full.match(/\.woff/i) ? "font/woff" : "font/ttf"
+      : got.type.split(";")[0];
+    const dataUri = `data:${mime};base64,${b64(got.bytes)}`;
+    // url() kan vara ociterad — replaceSrc täcker bara "…"/'…'-formerna.
+    html = html
+      .split(`url(${ref})`).join(`url(${dataUri})`)
+      .split(`url("${ref}")`).join(`url("${dataUri}")`)
+      .split(`url('${ref}')`).join(`url('${dataUri}')`);
   }
 }
 if (overBudget > 0) {
@@ -399,8 +529,14 @@ if (overBudget > 0) {
   );
 }
 
+// Färskhetsstämpeln (kvalitetsbeslut 2026-07-28): frysar åldras — Krys
+// partnerloggor och Matsmarts kampanjkort hann bytas live under media-
+// granskningen. Stämpeln gör åldern maskinläsbar för rapport/växlare
+// ("fryst för N dagar sedan") i stället för låtsad realtid.
+html += `\n<!-- angel-frozen-at:${new Date().toISOString()} -->`;
+
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, html);
 console.log(
-  `[freeze-page] ${url} → ${out} (${renderedVia}, ${html.length} bytes, ${links.length} stilmallar inlinade, ${inlined}/${imgSrcs.size} bilder inlinade à ${Math.round(spentBytes / 1e3)} kB)`,
+  `[freeze-page] ${url} → ${out} (${renderedVia}, ${html.length} bytes, ${links.length} stilmallar inlinade, ${inlined}/${imgSrcs.size} bilder à ${Math.round(spentBytes / 1e3)} kB, ${postersInlined} video-poster, ${cssAssetsInlined} css-assets à ${Math.round(cssAssetBytes / 1e3)} kB)`,
 );
