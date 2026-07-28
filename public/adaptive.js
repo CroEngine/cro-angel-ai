@@ -1184,8 +1184,10 @@
   }
 
   var DEBUG_LABEL = {
-    emphasize_goal: "emphasized the goal button",
-    sticky_goal_cta: "added a sticky shortcut",
+    // emphasize_goal/sticky_goal_cta borttagna (ägarregeln 2026-07-20) —
+    // opsen har inga hanterare och kan aldrig appliceras, så etiketterna
+    // var döda; kvarlämnade fick de koden att se ut att kunna serva en
+    // sticky-knapp (ägarfråga 2026-07-28).
     show_secondary_cta: "added a softer path",
     clarify_cta: "rewrote the button text",
     shorten_hero: "tightened the hero",
