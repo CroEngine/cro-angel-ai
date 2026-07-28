@@ -687,6 +687,33 @@ async function browserRenderedHtml(
         console.warn(`[freeze-page] referensbild föll: ${err}`);
       }
     }
+    // Live-STATISTIK för paritetskollen (ägarens "dubbelkolla på fler än 1
+    // sätt", 2026-07-28): rubriker/text/länk- och bildantal ur den LEVANDE
+    // renderade sidan — facit som den frysta kopians offline-rendering sedan
+    // jämförs mot (scripts/diag/freeze-parity.ts). Oberoende av mediemåttet:
+    // räknar INNEHÅLL, inte pixlar eller medieelement.
+    const statsOut = arg("stats-out");
+    if (statsOut) {
+      try {
+        const stats = await page.evaluate(() => ({
+          title: (document.title || "").slice(0, 200),
+          headings: Array.from(document.querySelectorAll("h1, h2, h3"))
+            .map((h) => (h.textContent || "").replace(/\s+/g, " ").trim())
+            .filter(Boolean)
+            .slice(0, 60),
+          textChars: (document.body?.innerText || "").replace(/\s+/g, " ").trim().length,
+          links: document.querySelectorAll("a[href]").length,
+          images: document.images.length,
+        }));
+        mkdirSync(dirname(statsOut), { recursive: true });
+        writeFileSync(statsOut, JSON.stringify(stats, null, 2));
+        console.log(
+          `[freeze-page] live-statistik → ${statsOut} (${stats.headings.length} rubriker, ${stats.textChars} tecken, ${stats.links} länkar)`,
+        );
+      } catch (err) {
+        console.warn(`[freeze-page] live-statistik föll: ${err}`);
+      }
+    }
     const outHtml = await page.evaluate(() => {
       // CSSOM-serialisering (Trello-obduktionen 2026-07-18, varv 2):
       // styled-components m.fl. injicerar i produktionsläge sina regler via

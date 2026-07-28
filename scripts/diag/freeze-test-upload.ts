@@ -35,6 +35,8 @@ for (const [file, type] of [
   ["ref.png", "image/png"],
   ["diff.png", "image/png"],
   ["fidelity.json", "application/json"],
+  ["live-stats.json", "application/json"],
+  ["parity.json", "application/json"],
 ] as const) {
   if (existsSync(join(DIR, file))) {
     files.push({ key: `preview/_diag/freeze-test/${NAME}/${file}`, path: join(DIR, file), type });
