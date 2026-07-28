@@ -115,28 +115,45 @@ export async function dismissOverlays(page: Page): Promise<void> {
   }
   await page
     .evaluate(() => {
-      const OK = new Set([
+      // REJECT-först (freeze-testfynd 2026-07-28, tibber: svensk CMP täckte
+      // hela fångsten): avvisa-knappar klickas FÖRE acceptera-knappar — det
+      // är integritetskorrekt och stänger dialogen lika bra. Svenska/nordiska
+      // etiketter med i båda listorna; gamla platta listan såg bara engelska.
+      const REJECT = new Set([
+        "reject all", "reject non-essential cookies", "decline optional", "decline all",
+        "avvisa alla", "avvisa", "neka alla", "neka", "endast nödvändiga",
+        "bara nödvändiga", "only necessary", "necessary only", "avslå alla",
+        "no thanks", "no, thanks", "not now", "maybe later", "dismiss", "close",
+        "stäng", "×", "✕", "✖",
+      ]);
+      const ACCEPT = new Set([
         "accept all", "accept all cookies", "accept cookies", "accept", "allow all",
         "agree", "i agree", "got it", "i understand", "ok", "okay",
-        "no thanks", "no, thanks", "not now", "maybe later", "dismiss", "close",
-        "reject all", "reject non-essential cookies", "decline optional",
-        "×", "✕", "✖",
+        "tillåt alla", "acceptera", "acceptera alla", "godkänn", "godkänn alla",
+        "jag förstår", "jag godkänner",
       ]);
       const DENY =
         /sign|log\s?in|subscribe|check\s?out|\bbuy\b|add to|get started|continue with|create account|start free|\btry\b/i;
-      const seen = new Set<string>();
-      for (const el of Array.from(document.querySelectorAll('button,[role="button"],[aria-label]'))) {
-        const raw = (el.getAttribute("aria-label") || el.textContent || "").replace(/\s+/g, " ").trim();
-        const label = raw.toLowerCase();
-        if (!label || label.length > 28 || seen.has(label)) continue;
-        if (DENY.test(label) || !OK.has(label)) continue;
-        seen.add(label);
-        try {
-          (el as HTMLElement).click();
-        } catch {
-          /* ignore */
+      const clickPass = (labels: Set<string>): boolean => {
+        let clicked = false;
+        const seen = new Set<string>();
+        for (const el of Array.from(document.querySelectorAll('button,[role="button"],[aria-label]'))) {
+          const raw = (el.getAttribute("aria-label") || el.textContent || "").replace(/\s+/g, " ").trim();
+          const label = raw.toLowerCase();
+          if (!label || label.length > 28 || seen.has(label)) continue;
+          if (DENY.test(label) || !labels.has(label)) continue;
+          seen.add(label);
+          try {
+            (el as HTMLElement).click();
+            clicked = true;
+          } catch {
+            /* ignore */
+          }
         }
-      }
+        return clicked;
+      };
+      // Accept-passet körs bara när inget avvisades — aldrig båda i samma dialog.
+      if (!clickPass(REJECT)) clickPass(ACCEPT);
     })
     .catch(() => {});
   await page.waitForTimeout(400).catch(() => {});

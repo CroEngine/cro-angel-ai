@@ -209,6 +209,51 @@ async function browserRenderedHtml(
     // frysta src styr i omrenderingen. Samtidigt samlas per-bild-prioritet
     // (above-fold, renderad yta) till inline-budgeten.
     const imgs = await page.evaluate(() => {
+      // CMP-strip i den RENDERADE kopian (freeze-testfynd 2026-07-28, tibber:
+      // dialog täckte hela fångsten trots avfärdaren — okänd svensk CMP).
+      // SPEGELVÄND selektorlista mot measure.ts CMP_ROOTS — håll i synk.
+      // Plus generisk sista utväg: fixerade fullskärms-overlays vars text
+      // andas cookies/samtycke tas bort ur kopian; sidan mäts/visas, inte
+      // tredjeparts-CMP:n.
+      const CMP_ROOTS =
+        "#CybotCookiebotDialog,#CybotCookiebotDialogBodyUnderlay," +
+        "#onetrust-consent-sdk,#onetrust-banner-sdk," +
+        "#usercentrics-root,#uc-center-container," +
+        ".osano-cm-window,.osano-cm-dialog," +
+        "#didomi-host,#didomi-notice," +
+        ".cc-window,.cc-banner," +
+        "#cookiescript_injected," +
+        "[data-lovable-cookie-root]," +
+        "[id*='cookie-consent' i],[class*='cookie-banner' i],[id*='consent-banner' i]";
+      try {
+        for (const el of Array.from(document.querySelectorAll(CMP_ROOTS))) el.remove();
+        for (const el of Array.from(document.querySelectorAll("div,section,aside,dialog"))) {
+          const cs = getComputedStyle(el);
+          if (cs.position !== "fixed" && cs.position !== "sticky") continue;
+          const r = el.getBoundingClientRect();
+          if (r.width < innerWidth * 0.8 || r.height < innerHeight * 0.35) continue;
+          const t = (el.textContent || "").toLowerCase();
+          if (/cookie|samtycke|integritet|consent|gdpr/.test(t) && t.length < 3000) el.remove();
+        }
+      } catch {
+        /* strippning är best-effort — fångsten fortsätter */
+      }
+      // Spelar-klassens geometri pinnas (freeze-testfynd 2026-07-28, tibber:
+      // postern var inlinad med bakgrund men mux-player är 0 px hög utan sitt
+      // JS — custom element utan definition renderas inline). Samma princip
+      // som bild-pinnen nedan: den RENDERADE ytan stämplas som inline-mått så
+      // elementet behåller sin plats offline och poster-bakgrunden får yta.
+      for (const el of Array.from(
+        document.querySelectorAll("mux-player, video, iframe[src*='vimeo'], iframe[src*='youtube']"),
+      )) {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          const he = el as HTMLElement;
+          he.style.width = `${Math.round(r.width)}px`;
+          he.style.height = `${Math.round(r.height)}px`;
+          he.style.display = he.style.display || "block";
+        }
+      }
       const out: { src: string; top: number; area: number }[] = [];
       for (const source of Array.from(document.querySelectorAll("picture source"))) {
         source.removeAttribute("srcset");
