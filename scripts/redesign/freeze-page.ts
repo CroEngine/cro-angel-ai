@@ -657,6 +657,40 @@ html = html.replace(/<(img|source)\b[^>]*>/gi, (tag) =>
     .replace(/\s+sizes\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ""),
 );
 
+// 2c) Placeholder med målad tvilling (tibber-fyndet 2026-07-28): looping-
+//     karuseller klonar slides INNAN hydrering — klonens <img> behåller
+//     1×1-gif-placeholdern för evigt (ingen React-fiber → src byts aldrig),
+//     medan originalet med SAMMA alt-text målar (tibber: 13/13 tomma hade
+//     en målad alt-tvilling). Kopiera tvillingens src (data: före https)
+//     till placeholdern: samma alt = samma avsedda bild. Körs FÖRE bild-
+//     inbakningen så https-promoterade tvillingar flödar in i loopen nedan
+//     och blir data-URI:er (tvillingar delar src-värde → replaceSrc målar
+//     båda). Per-tagg, ALDRIG via replaceSrc — alla placeholders delar
+//     exakt samma gif-värde. Tomt alt ("") deltar aldrig (dekor).
+const TINY_GIF = "R0lGODlhAQABAIAAAAAAAP"; // den universella 1×1-transparenta gifen
+const isPlaceholderSrc = (s: string) =>
+  s.includes(TINY_GIF) || (s.startsWith("data:image/gif;base64,") && s.length < 120);
+const altBest = new Map<string, string>();
+for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
+  const altT = /\balt=["']([^"']+)["']/i.exec(m[0])?.[1]?.trim();
+  const srcT = /\bsrc=["']([^"']+)["']/i.exec(m[0])?.[1];
+  if (!altT || !srcT || isPlaceholderSrc(srcT)) continue;
+  const real = (srcT.startsWith("data:image/") && srcT.length > 200) || /^https?:/.test(srcT);
+  if (!real) continue;
+  const prev = altBest.get(altT);
+  if (!prev || (prev.startsWith("http") && srcT.startsWith("data:"))) altBest.set(altT, srcT);
+}
+let twinsPromoted = 0;
+html = html.replace(/<img\b[^>]*>/gi, (tag) => {
+  const altT = /\balt=["']([^"']+)["']/i.exec(tag)?.[1]?.trim();
+  const srcT = /\bsrc=["']([^"']+)["']/i.exec(tag)?.[1];
+  if (!altT || !srcT || !isPlaceholderSrc(srcT)) return tag;
+  const twin = altBest.get(altT);
+  if (!twin || twin === srcT) return tag;
+  twinsPromoted++;
+  return tag.replace(srcT, () => twin); // funktion: twin får innehålla $-sekvenser
+});
+
 // 3) Bilder → data-URI (layout-ytan), stora/ohämtbara/utanför budget →
 //    absolut URL. Budgeten spenderas där den syns: above-fold först, sedan
 //    störst renderad yta (browser-vägens geometri); statiska vägen saknar
@@ -801,5 +835,5 @@ html += `\n<!-- angel-frozen-at:${new Date().toISOString()} -->`;
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, html);
 console.log(
-  `[freeze-page] ${url} → ${out} (${renderedVia}, ${html.length} bytes, ${links.length} stilmallar inlinade, ${inlined}/${imgSrcs.size} bilder à ${Math.round(spentBytes / 1e3)} kB, ${postersInlined} video-poster, ${cssAssetsInlined} css-assets à ${Math.round(cssAssetBytes / 1e3)} kB)`,
+  `[freeze-page] ${url} → ${out} (${renderedVia}, ${html.length} bytes, ${links.length} stilmallar inlinade, ${inlined}/${imgSrcs.size} bilder à ${Math.round(spentBytes / 1e3)} kB, ${twinsPromoted} tvilling-promoveringar, ${postersInlined} video-poster, ${cssAssetsInlined} css-assets à ${Math.round(cssAssetBytes / 1e3)} kB)`,
 );
