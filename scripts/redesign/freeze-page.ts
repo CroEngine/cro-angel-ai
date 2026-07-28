@@ -394,7 +394,23 @@ if (
             : "[freeze-page] browser-först (nycklar finns) — renderad DOM bär videor/lazy-bilder",
       );
     }
-    const rendered = await browserRenderedHtml(url);
+    // Retry med FÄRSK session (körningsfynd 2026-07-28, voi 13:09: "renderad
+    // sida är ostylad" — samma sajt var perfekt 25 min tidigare; ostylat är
+    // ofta en CSS-race i just den sessionen, inte sajtens natur). Ett nytt
+    // försök innan ärlig degradering till statisk kopia.
+    let rendered: Awaited<ReturnType<typeof browserRenderedHtml>> | null = null;
+    let lastErr: unknown = null;
+    for (let attempt = 1; attempt <= 2 && !rendered; attempt++) {
+      try {
+        rendered = await browserRenderedHtml(url);
+      } catch (err) {
+        lastErr = err;
+        if (attempt < 2) {
+          console.warn(`[freeze-page] browser-försök ${attempt} föll (${err}) — nytt försök med färsk session`);
+        }
+      }
+    }
+    if (!rendered) throw lastErr;
     html = rendered.html;
     imgPriority = rendered.imgPriority;
     // Frysta filen skrivs som UTF-8 och läses utan HTTP-huvuden — dokumentet
