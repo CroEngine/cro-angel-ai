@@ -288,14 +288,15 @@ async function browserRenderedHtml(
     const refShot = arg("ref-shot");
     if (refShot) {
       try {
+        // fullPage UTAN clip (körningsfynd 2026-07-28: Stagehands playwright
+        // vägrar kombinationen — "clip and fullPage cannot be used together";
+        // lokala 1.60 tillät den och sanity-testet missade skillnaden).
+        // Höjd-cappningen sker i stället i jämförelsen: fidelity-skriptet
+        // jämför över bildernas MINSTA gemensamma höjd (fryst-sidan cappas
+        // 8000px), så en lång referens beskärs implicit där.
         const h = await page.evaluate(() => document.documentElement.scrollHeight);
-        await page.screenshot({
-          path: refShot,
-          type: "png",
-          fullPage: true,
-          clip: { x: 0, y: 0, width: 390, height: Math.min(8000, h) },
-        });
-        console.log(`[freeze-page] referensbild → ${refShot} (${Math.min(8000, h)}px av ${h}px)`);
+        await page.screenshot({ path: refShot, type: "png", fullPage: true });
+        console.log(`[freeze-page] referensbild → ${refShot} (${h}px full höjd)`);
       } catch (err) {
         console.warn(`[freeze-page] referensbild föll: ${err}`);
       }
