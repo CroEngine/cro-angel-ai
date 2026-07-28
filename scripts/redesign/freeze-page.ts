@@ -381,7 +381,7 @@ async function browserRenderedHtml(
       if (unreadyCount > 0) await page.waitForTimeout(1_200);
       // Pass 2: rita rutan (≤828 px bred, jpeg) och stämpla poster/bakgrund.
       const frames = await page.evaluate(() => {
-        const out = { captured: 0, tainted: 0, unready: 0 };
+        const out = { captured: 0, tainted: 0, unready: 0, marked: 0 };
         const vids: HTMLVideoElement[] = [];
         const collect = (root: Document | ShadowRoot) => {
           for (const v of Array.from(root.querySelectorAll("video"))) vids.push(v as HTMLVideoElement);
@@ -411,6 +411,12 @@ async function browserRenderedHtml(
             continue;
           }
           if (v.readyState < 2 || !v.videoWidth) {
+            // Lazy-källa (framer-klassen: src sätts först i vy → readyState 0
+            // vid fångsten). Märk för skott-vägen: scrollningen dit väcker
+            // laddaren, play() startar den, och kompositorn skjuts när rutan
+            // målats — samma räddning som taint-fallet.
+            target.setAttribute("data-angel-frame", String(out.marked));
+            out.marked++;
             out.unready++;
             continue;
           }
@@ -435,7 +441,8 @@ async function browserRenderedHtml(
           } catch {
             // CORS-tajnt: canvasen vägrar lämna ut pixlarna. Märk målet så
             // element-skottet (kompositorn, utanför taint-reglerna) tar det.
-            target.setAttribute("data-angel-frame", String(out.tainted));
+            target.setAttribute("data-angel-frame", String(out.marked));
+            out.marked++;
             out.tainted++;
           }
         }
@@ -450,17 +457,24 @@ async function browserRenderedHtml(
       // (ref-skotten har bevisat den på Stagehand), beskär rutan I SIDAN via
       // canvas — en data-URI-bild är samma origin och tajntar aldrig.
       let shot = 0;
-      if (frames.tainted > 0) {
+      if (frames.marked > 0) {
         let firstErr: string | null = null;
         const viewportCropShot = async (n: number): Promise<boolean> => {
           const r2 = await page.evaluate((idx: number) => {
             const el = document.querySelector(`[data-angel-frame="${idx}"]`);
             if (!el) return null;
             (el as HTMLElement).scrollIntoView({ block: "center" });
+            // Lazy-källa-klassen: vyn väcker laddaren, play() startar rutan.
+            const v =
+              el.tagName === "VIDEO" ? (el as HTMLVideoElement) : (el.querySelector("video") as HTMLVideoElement | null);
+            if (v) {
+              v.muted = true;
+              v.play().catch(() => {});
+            }
             return null;
           }, n);
           void r2;
-          await page.waitForTimeout(250);
+          await page.waitForTimeout(800);
           const rect = (await page.evaluate((idx: number) => {
             const el = document.querySelector(`[data-angel-frame="${idx}"]`);
             if (!el) return null;
@@ -502,7 +516,7 @@ async function browserRenderedHtml(
             { idx: n, uri: shotUri, r: rect },
           )) as boolean;
         };
-        for (let n = 0; n < frames.tainted && n < 12; n++) {
+        for (let n = 0; n < frames.marked && n < 14; n++) {
           let ok = false;
           try {
             const bytes = await page
@@ -546,12 +560,12 @@ async function browserRenderedHtml(
           })
           .catch(() => {});
       }
-      if (frames.captured + frames.tainted + frames.unready > 0) {
+      if (frames.captured + frames.marked > 0) {
         console.log(
           `[freeze-page] poster-bildrutor: ${frames.captured} fångade` +
             (shot ? `, ${shot} via element-skott` : "") +
-            (frames.tainted - shot > 0 ? `, ${frames.tainted - shot} CORS-skyddade` : "") +
-            (frames.unready ? `, ${frames.unready} oladdade` : ""),
+            (frames.marked - shot > 0 ? `, ${frames.marked - shot} omålade` : "") +
+            ` (${frames.tainted} tajntade, ${frames.unready} lazy-källor)`,
         );
       }
     } catch {
