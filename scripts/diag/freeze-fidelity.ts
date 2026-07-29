@@ -275,6 +275,7 @@ if (media.total < 3) {
 // ── 2) PIXEL-LIKHET (valfri): fryst med nätverk PÅ vs live-referensen ────────
 let cmp: { width: number; height: number; fidelity: number; bands: Array<{ from: number; to: number }> } | null =
   null;
+let pixelSkipped: string | null = null;
 if (REF) {
   const fctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const fpage = await fctx.newPage();
@@ -304,6 +305,14 @@ if (REF) {
           im.src = src;
         });
       const [ref, froz] = await Promise.all([load(refUri), load(frozenUri)]);
+      // Ärlighetsvakt (morgonfyndet 2026-07-29): referens och fryst i OLIKA
+      // bredd betyder olika viewport — desktop-layout mot mobil-layout. En
+      // pixel-jämförelse där är brus förklätt till mätvärde (nattens band
+      // jämförde vänstra 390px-remsan av en 1273px desktop-bild mot hela
+      // mobil-renderingen). Hoppa och säg varför, i stället för att mäta fel.
+      if (Math.min(ref.width, froz.width) / Math.max(ref.width, froz.width) < 0.92) {
+        return { mismatch: true as const, refW: ref.width, frozW: froz.width };
+      }
       const W = Math.min(ref.width, froz.width);
       const H = Math.min(ref.height, froz.height);
       const draw = (im: HTMLImageElement) => {
@@ -370,15 +379,22 @@ if (REF) {
     { refUri: toDataUri(REF), frozenUri: toDataUri(frozenShot) },
   );
   await cctx.close();
-  writeFileSync(join(OUT, "diff.png"), Buffer.from(result.diffPng.split(",")[1], "base64"));
-  cmp = { width: result.width, height: result.height, fidelity: result.fidelity, bands: result.bands };
-  console.log(
-    `[fidelity] pixel-likhet mot live: ${cmp.fidelity}% (diagnostik-golv — video/animation/omflöde drar ned)`,
-  );
-  console.log(
-    `[fidelity] avvikelseband: ${cmp.bands.map((b) => `y ${b.from}–${b.to}px`).join(" · ") || "inga"}`,
-  );
-  console.log(`[fidelity] diff-bild (gult=avviker): ${join(OUT, "diff.png")}`);
+  if ("mismatch" in result && result.mismatch) {
+    pixelSkipped = `viewport-avvikelse: referens ${result.refW}px vs fryst ${result.frozW}px`;
+    console.warn(
+      `[fidelity] pixel-jämförelsen HOPPAD: referensen är ${result.refW}px bred, frysta renderingen ${result.frozW}px — olika viewport (desktop mot mobil), en jämförelse vore brus. Kompletthetsmåtten ovan gäller oförändrat.`,
+    );
+  } else {
+    writeFileSync(join(OUT, "diff.png"), Buffer.from(result.diffPng.split(",")[1], "base64"));
+    cmp = { width: result.width, height: result.height, fidelity: result.fidelity, bands: result.bands };
+    console.log(
+      `[fidelity] pixel-likhet mot live: ${cmp.fidelity}% (diagnostik-golv — video/animation/omflöde drar ned)`,
+    );
+    console.log(
+      `[fidelity] avvikelseband: ${cmp.bands.map((b) => `y ${b.from}–${b.to}px`).join(" · ") || "inga"}`,
+    );
+    console.log(`[fidelity] diff-bild (gult=avviker): ${join(OUT, "diff.png")}`);
+  }
 }
 await browser.close();
 
@@ -410,6 +426,7 @@ writeFileSync(
       ...(cmp
         ? { pixelFidelity: cmp.fidelity, bands: cmp.bands, width: cmp.width, height: cmp.height }
         : {}),
+      ...(pixelSkipped ? { pixelSkipped } : {}),
     },
     null,
     2,

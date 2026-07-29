@@ -58,6 +58,7 @@ interface Fidelity {
   pixelFidelity?: number;
   bands?: Array<{ from: number; to: number }>;
   height?: number;
+  pixelSkipped?: string;
 }
 interface Parity {
   skipped?: boolean;
@@ -79,8 +80,14 @@ const browser = await chromium.launch({
 });
 const page = await (await browser.newContext({ viewport: { width: 500, height: 600 } })).newPage();
 
-/** Beskär till första CROP_H css-px, skala till W_OUT — jpeg-data-URI + mått. */
-async function shrink(path: string): Promise<{ uri: string; w: number; h: number; fullH: number } | null> {
+/** Beskär till första CROP_H css-px, skala till W_OUT — jpeg-data-URI + mått.
+ *  origW följer med så rapporten kan VÄGRA para olikbreda bilder (morgonfyndet
+ *  2026-07-29: live togs i desktop 1273px, fryst i mobil 390px — paret såg ut
+ *  som "dator mot telefon" och beskärningsmatten visade dessutom ~7800px av
+ *  live-sidan mot fryst-sidans 2400px). */
+async function shrink(
+  path: string,
+): Promise<{ uri: string; w: number; h: number; fullH: number; origW: number } | null> {
   if (!existsSync(path)) return null;
   const b64 = readFileSync(path).toString("base64");
   const type = path.endsWith(".png") ? "image/png" : "image/jpeg";
@@ -100,10 +107,10 @@ async function shrink(path: string): Promise<{ uri: string; w: number; h: number
         c.height = Math.max(2, Math.round(cropPx * scale));
         const g = c.getContext("2d")!;
         g.drawImage(im, 0, 0, im.width, cropPx, 0, 0, c.width, c.height);
-        return { uri: c.toDataURL("image/jpeg", 0.55), w: c.width, h: c.height, fullH: im.height };
+        return { uri: c.toDataURL("image/jpeg", 0.55), w: c.width, h: c.height, fullH: im.height, origW: im.width };
       },
       { src: `data:${type};base64,${b64}`, cropH: CROP_H, wOut: W_OUT },
-    )) as { uri: string; w: number; h: number; fullH: number };
+    )) as { uri: string; w: number; h: number; fullH: number; origW: number };
   } catch {
     return null;
   }
@@ -158,8 +165,14 @@ for (const site of SITES) {
     }
     return { html, deeper };
   };
-  const fr = ringBoxes(froz, fid.bands);
-  const rr = ref ? ringBoxes(ref, fid.bands) : { html: "", deeper: 0 };
+  // Viewport-vakten: olikbreda bilder = olika enhet (desktop mot mobil) — då
+  // är paret ingen jämförelse och banden brus. Visa bilderna men SÄG det, och
+  // rita inga ringar. (Fidelity-skriptet hoppar numera själv pixel-passet vid
+  // breddskev — pixelSkipped bär orsaken hit.)
+  const vpMismatch =
+    !!ref && Math.min(ref.origW, froz.origW) / Math.max(ref.origW, froz.origW) < 0.92;
+  const fr = vpMismatch ? { html: "", deeper: 0 } : ringBoxes(froz, fid.bands);
+  const rr = ref && !vpMismatch ? ringBoxes(ref, fid.bands) : { html: "", deeper: 0 };
 
   const byDesign: string[] = [];
   if ((fid.players ?? 0) > 0) byDesign.push(`${fid.players} video${fid.players === 1 ? "" : "r"} visas som stillbild (poster) — fryst kopia spelar aldrig`);
@@ -197,6 +210,8 @@ for (const site of SITES) {
       <div class="imgwrap"><img src="${froz.uri}" alt="fryst ${esc(site)}">${fr.html}</div>
     </figure>
   </div>
+  ${vpMismatch ? `<p class="note warn">⚠ Olika viewport: live-referensen är ${ref!.origW}px bred, frysta renderingen ${froz.origW}px — desktop mot mobil, paret jämför inte samma layout. Inga ringar ritas; kompletthets- och paritetssiffrorna nedan gäller ändå.</p>` : ""}
+  ${!vpMismatch && fid.pixelSkipped ? `<p class="note warn">Pixel-jämförelsen hoppades i mätningen: ${esc(fid.pixelSkipped)}.</p>` : ""}
   ${fr.deeper > 0 ? `<p class="note">+ ${fr.deeper} avvikelseband nedanför utsnittet (${CROP_H} px) — se fullbilder via länkarna.</p>` : ""}
   <div class="cols">
     <div><h3>Stämmer</h3><ul>
@@ -251,6 +266,7 @@ const html = `<title>${esc(TITLE)}</title>
   .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: .8em; }
   .cols ul { margin: .2em 0; padding-left: 1.05em; } .cols li { margin: .22em 0; font-size: .84rem; }
   .note, .links { font-size: .8rem; color: var(--muted); }
+  .note.warn { color: var(--bad); font-weight: 600; }
   table { border-collapse: collapse; width: 100%; margin: 1.1em 0 .4em; font-size: .87rem; font-variant-numeric: tabular-nums; }
   th { font: 600 .7rem/1.5 ui-monospace, monospace; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
   th, td { text-align: left; padding: .38em .6em; border-bottom: 1px solid var(--line); }

@@ -19,9 +19,31 @@ import { serializeVisibleHtml } from "./visible-dom";
 export const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36";
 
+/** Sätt render-viewporten (390×844 = pipelinens verifierings-viewport) så den
+ *  BITER på båda sid-typerna. Stagehands sid-proxy tar POSITIONELLA (w, h) och
+ *  sväljer tyst Playwright-objektformen {width,height} (CDP-felet .catch:as
+ *  bort internt); lokala Playwright tar objektformen och kastar på positionell.
+ *  Prova därför positionellt FÖRST — provades objektformen först skulle
+ *  Stagehand-vägen "lyckas" tyst och aldrig nå fallbacken. Navigationer nollar
+ *  dessutom Stagehand-överriden till defaulten 1288×711, så anropet måste ske
+ *  EFTER goto (morgonfyndet 2026-07-29: varje live-referens i 20-sajtsvepet
+ *  var desktop-bred medan frysta kopian sköts i 390 — "ena i dator, andra i
+ *  telefon"). Samma läxa som runner.server.ts, nu på delade render-vägen. */
+export async function applyRenderViewport(page: Page, width = 390, height = 844): Promise<void> {
+  try {
+    await (
+      page as unknown as { setViewportSize: (w: number, h: number) => Promise<void> }
+    ).setViewportSize(width, height);
+  } catch {
+    await page.setViewportSize({ width, height }).catch(() => {});
+  }
+  await page.waitForTimeout(400).catch(() => {}); // reflow settle
+}
+
 /** Skaffa en render-sida: Browserbase (Stagehand, bevisad väg) när creds finns,
  *  annars lokal Chromium. Returnerar sidan + en cleanup som ALLTID släpper
- *  sessionen (kastar init:en läcker den aldrig). */
+ *  sessionen (kastar init:en läcker den aldrig). OBS: viewporten här gäller
+ *  bara FRAM TILL första navigationen — anropa applyRenderViewport efter goto. */
 export async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => Promise<void> }> {
   const apiKey = process.env.BROWSERBASE_API_KEY;
   const projectId = process.env.BROWSERBASE_PROJECT_ID;
@@ -46,7 +68,7 @@ export async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => 
     try {
       await stagehand.init();
       const page = (stagehand.context.pages()[0] ?? (await stagehand.context.newPage())) as unknown as Page;
-      await page.setViewportSize({ width: 390, height: 844 }).catch(() => {});
+      await applyRenderViewport(page); // för mätningar före goto; nollas av nav
       return { page, cleanup };
     } catch (err) {
       await cleanup();
@@ -203,6 +225,7 @@ export async function renderVisibleCapture(
     // däremellan är tolerans-/förbättringssteg — ett kast där ska ALDRIG kosta
     // hela rendern (render-fidelity #2: en modal-avfärdning nullade 38/38).
     await gotoTolerant(page, url).catch(() => {}); // partiell render dugar att serialisera
+    await applyRenderViewport(page); // navigationen nollade Stagehand-överriden
     await dismissOverlays(page); // rensa load-tids-modaler före svepet (throw-proof)
     await autoScroll(page);
     await dismissOverlays(page); // och de som dök upp under svepet

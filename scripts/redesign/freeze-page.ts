@@ -30,6 +30,7 @@ import type { Response as PWResponse } from "playwright-core";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import {
   acquireRenderPage,
+  applyRenderViewport,
   autoScroll,
   dismissOverlays,
   gotoTolerant,
@@ -302,6 +303,11 @@ async function browserRenderedHtml(
     if (resp && resp.status() >= 400) {
       throw new Error(`HTTP ${resp.status()} från servern — ingen sida att frysa`);
     }
+    // Viewporten EFTER goto (morgonfyndet 2026-07-29): navigationen nollar
+    // Stagehand-överriden till 1288×711 desktop — utan omtag här fångades
+    // hela frysningen (geometri-pinnar, currentSrc-stämpling, ref-bild,
+    // live-statistik) i desktop medan verifieringen renderar i 390×844.
+    await applyRenderViewport(page);
     // networkidle kan aldrig nås på sidor med long-polling — försök, ge upp tyst.
     await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
     // Innehålls-poll (korpus-frysarens mönster): hydreringen kan släpa efter
