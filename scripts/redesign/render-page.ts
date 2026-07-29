@@ -98,24 +98,44 @@ export async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => 
   const apiKey = process.env.BROWSERBASE_API_KEY;
   const projectId = process.env.BROWSERBASE_PROJECT_ID;
   if (apiKey && projectId) {
+    // Stagehand för ANSLUTNINGEN (kanarie 2–3 29/7: chromium.connectOverCDP
+    // når aldrig gatewayens ws-handshake — Stagehands egen ws-klient med
+    // headers gör det). Sidan lever på stagehand.context, INTE stagehand.page
+    // (undefined i Stagehand 3.x; capture-test #3 föll 8/8).
     const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
-    const { chromium } = await import("playwright-core");
+    const { Stagehand } = await import("@browserbasehq/stagehand");
     const session = await createSession({ viewport: RENDER_VIEWPORT });
-    // Rå Playwright över connectUrl, INTE Stagehand-facaden (kanariefyndet
-    // 29/7 08:35): efter goto "lyckas" både facadens setViewportSize och en
-    // direkt Emulation.setDeviceMetricsOverride på dess mainSession utan
-    // någon effekt — innerWidth förblev 1288 och varje ref-bild desktop.
-    // Playwright äger emuleringens livscykel själv (om-hävdar metrics per
-    // navigation), och page.context() blir äkta — nätverksinspelningen som
-    // loggat "otillgänglig" på Browserbase-vägen kommer åter i drift.
-    const browser = await chromium.connectOverCDP(session.connectUrl, { timeout: 60_000 });
+    const stagehand = new Stagehand({
+      env: "BROWSERBASE",
+      apiKey,
+      projectId,
+      browserbaseSessionID: session.id,
+      // Stagehands configuredViewport läses HÄRIFRÅN (v3.js), aldrig ur den
+      // faktiska sessionens inställningar — utan detta bokför facaden sin
+      // default 1288×711.
+      browserbaseSessionCreateParams: {
+        projectId,
+        browserSettings: { viewport: { width: RENDER_VIEWPORT.width, height: RENDER_VIEWPORT.height } },
+      },
+      keepAlive: true,
+      disablePino: true,
+    });
     const cleanup = async () => {
-      await browser.close().catch(() => {});
+      await stagehand.close().catch(() => {});
       await closeSession(session.id).catch(() => {});
     };
     try {
-      const context = browser.contexts()[0] ?? (await browser.newContext());
-      const page = context.pages()[0] ?? (await context.newPage());
+      await stagehand.init();
+      const page = (stagehand.context.pages()[0] ?? (await stagehand.context.newPage())) as unknown as Page;
+      // Sond FÖRE all emulering: sessionens FYSISKA mått avgör om server-
+      // sidans browserSettings.viewport togs emot (390) eller ignorerades
+      // (1288) — det skiljer emuleringsfel från sessionskonfigurationsfel.
+      const dims = await page
+        .evaluate(() =>
+          [window.innerWidth, window.innerHeight, window.outerWidth, screen.width, screen.height].join("/"),
+        )
+        .catch(() => "?");
+      console.log(`[render] sessionens råmått innerW/innerH/outerW/screenW/screenH: ${dims}`);
       await applyRenderViewport(page); // för mätningar före goto
       return { page, cleanup };
     } catch (err) {

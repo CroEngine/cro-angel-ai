@@ -36,6 +36,7 @@ import {
   gotoTolerant,
   pageLooksStyled,
   RENDER_VIEWPORT,
+  UA,
 } from "./render-page";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
@@ -677,6 +678,7 @@ async function browserRenderedHtml(
     // som granskas; täckningen rapporteras, aldrig antas.
     const refShot = arg("ref-shot");
     if (refShot) {
+      let refOk = false;
       try {
         // fullPage UTAN clip (körningsfynd 2026-07-28: Stagehands playwright
         // vägrar kombinationen — "clip and fullPage cannot be used together";
@@ -699,12 +701,46 @@ async function browserRenderedHtml(
         const refW = ihdr.readUInt32BE(16);
         const refH = ihdr.readUInt32BE(20);
         console.log(`[freeze-page] referensbild → ${refShot} (${refW}×${refH}px, ${h}px scrollhöjd)`);
-        if (refW !== RENDER_VIEWPORT.width)
-          console.warn(
-            `[freeze-page] VARNING: referensbilden är ${refW}px bred, målet ${RENDER_VIEWPORT.width}px — paret blir olika enheter igen`,
-          );
+        refOk = refW === RENDER_VIEWPORT.width;
       } catch (err) {
         console.warn(`[freeze-page] referensbild föll: ${err}`);
+      }
+      // Facit-reserven: kan sessionen inte leverera målbredden (Browserbase-
+      // gatewayen neutraliserar Emulation-överriden efter navigation — svepet
+      // 29/7) tas referensen om i LOKAL chromium vid samma bredd som frysta
+      // kopians rendering, så pixel-banden jämför lika mot lika. Priset
+      // redovisas i loggen: bilden delar inte frys-sessionen (annan IP/AB-
+      // hink kan ge innehållsvarians) — hellre det än ett desktop-facit.
+      if (!refOk) {
+        console.warn(
+          `[freeze-page] sessionen gav inte ${RENDER_VIEWPORT.width}px — tar om facit i lokal chromium (nät på, delar inte frys-sessionen)`,
+        );
+        try {
+          const { chromium } = await import("playwright-core");
+          const lb = await chromium.launch({
+            headless: true,
+            executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+            args: ["--no-sandbox"],
+          });
+          try {
+            const lp = await lb.newPage({ viewport: { ...RENDER_VIEWPORT }, userAgent: UA });
+            await gotoTolerant(lp, u);
+            await lp.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
+            await lp.waitForTimeout(1_200);
+            await dismissOverlays(lp);
+            await autoScroll(lp);
+            await lp.waitForTimeout(800);
+            await lp.screenshot({ path: refShot, type: "png", fullPage: true });
+            const d = readFileSync(refShot);
+            console.log(
+              `[freeze-page] referensbild (lokal reserv) → ${refShot} (${d.readUInt32BE(16)}×${d.readUInt32BE(20)}px)`,
+            );
+          } finally {
+            await lb.close().catch(() => {});
+          }
+        } catch (err) {
+          console.warn(`[freeze-page] lokala facit-reserven föll (${err}) — sessionens bild behålls`);
+        }
       }
     }
     // Live-STATISTIK för paritetskollen (ägarens "dubbelkolla på fler än 1
