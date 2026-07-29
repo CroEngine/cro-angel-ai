@@ -2,9 +2,9 @@
 // test, render-fidelity). Tidigare bar var och en sin egen kopia av "anslut →
 // goto → svep → serialisera" — capture-test #1–4 lärde ut den rätta vägen fyra
 // gånger om. Här bor den EN gång:
-//   • acquireRenderPage  — rå Playwright över Browserbase-sessionens connectUrl
-//     (Stagehand-facaden pensionerad från render-vägen 29/7: dess viewport-
-//     kanal var död efter goto), läck-säker; lokal Chromium som fallback i dev.
+//   • acquireRenderPage  — Stagehand-anslutning (enda ws-klienten som når
+//     gatewayen), viewport 390×844 via sessions-default + Stagehands egna
+//     createParams (kanarie 4 29/7), läck-säker; lokal Chromium i dev.
 //   • gotoTolerant       — goto som tål timeout-felformer bortom Playwrights
 //     egen klass (behållet: ofarligt, och skyddar äldre anropare).
 //   • autoScroll         — lazy-svep så under-folden renderas, sedan till toppen.
@@ -104,17 +104,23 @@ export async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => 
     // (undefined i Stagehand 3.x; capture-test #3 föll 8/8).
     const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
     const { Stagehand } = await import("@browserbasehq/stagehand");
-    const session = await createSession({ viewport: RENDER_VIEWPORT });
+    const session = await createSession({
+      viewport: RENDER_VIEWPORT,
+      meta: { pipeline: "redesign-render" },
+    });
     const stagehand = new Stagehand({
       env: "BROWSERBASE",
       apiKey,
       projectId,
       browserbaseSessionID: session.id,
       // Stagehands configuredViewport läses HÄRIFRÅN (v3.js), aldrig ur den
-      // faktiska sessionens inställningar — utan detta bokför facaden sin
-      // default 1288×711.
+      // faktiska sessionens inställningar — utan browserSettings bokför
+      // facaden sin default 1288×711. Region-fältet routar Stagehands
+      // hostade API (400 utan, om sessionen hamnat i eu-central-1 via
+      // geo-kopplingen).
       browserbaseSessionCreateParams: {
         projectId,
+        region: session.region,
         browserSettings: { viewport: { width: RENDER_VIEWPORT.width, height: RENDER_VIEWPORT.height } },
       },
       keepAlive: true,

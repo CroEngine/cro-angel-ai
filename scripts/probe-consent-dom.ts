@@ -39,6 +39,7 @@ const stagehand = new Stagehand({
   apiKey,
   projectId,
   browserbaseSessionID: session.id,
+  browserbaseSessionCreateParams: { projectId, region: session.region },
   keepAlive: false,
 });
 

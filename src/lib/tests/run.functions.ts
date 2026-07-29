@@ -69,7 +69,7 @@ export const startTestRun = createServerFn({ method: "POST" })
       // Lazy-load the heavy Stagehand/Browserbase chain so it isn't evaluated
       // at Worker isolate init. See .lovable/plan.md (Phase 2a).
       const bb = await import("./browserbase.server");
-      const session = await bb.createSession();
+      const session = await bb.createSession({ meta: { pipeline: "app-crawl", runId } });
       return { runId, liveUrl: session.liveUrl, sessionId: session.id, url: data.url };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

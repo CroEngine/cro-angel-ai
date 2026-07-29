@@ -39,6 +39,19 @@ export interface SiteSpec {
    * capture-time-normaliseringsmönster som prefers-reduced-motion.
    */
   removeSelectors?: string[];
+  /**
+   * Proxy-exit-land (ISO 3166-1 alpha-2, t.ex. "SE"). Svenska siter fryses via
+   * svensk residential-IP så capturen ser det svenska besökare ser — CMP:er,
+   * geo-gates och i18n-routning skiljer per land, och Browserbase default är
+   * best-effort USA (verifierat i browserbase-usage-review 2026-07-29; SE-geo
+   * gav svensk exit-IP). Region följer geo automatiskt (EU → eu-central-1).
+   *
+   * OBS: att sätta/ändra geo ändrar VILKEN consent som rendras. Verifiera
+   * selektorn med --dry-run före nästa write-freeze och räkna med
+   * golden-ompromovering första gången bannern dyker upp under ny IP.
+   * Osatt → dagens beteende (USA-routning).
+   */
+  geo?: string;
   notes?: string;
 }
 
@@ -102,6 +115,7 @@ export const SITES: SiteSpec[] = [
     // PURCHASE — svensk marketplace/webshop ("Köp", varukorg, till kassan).
     name: "cdon",
     url: "https://cdon.se",
+    geo: "SE",
     consentSelector: "#didomi-notice-agree-button",
     notes: "Didomi-CMP. Arketyp: purchase (webshop).",
   },
@@ -113,6 +127,7 @@ export const SITES: SiteSpec[] = [
     // vi fryser slut-URL:en direkt.
     name: "sector-alarm",
     url: "https://www.sectoralarm.se/",
+    geo: "SE",
     // Cookie Information-CMP (policy.app.cookieinformation.com/uc.js) med
     // CUSTOM-mall: accept-knappen är klasslös (".coi-banner__accept" finns
     // inte) — identifierad 2026-07-06 via scripts/probe-consent-dom.ts:
@@ -129,6 +144,7 @@ export const SITES: SiteSpec[] = [
     // START_FLOW — jämförelseportal för elavtal ("Jämför och byt elavtal").
     name: "elskling",
     url: "https://elskling.se",
+    geo: "SE",
     consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
     // Verifierat 2026-07-06: Cookiebot göms (detachas inte), som HubSpot.
     consentDismissCheck: "hidden",
@@ -138,6 +154,7 @@ export const SITES: SiteSpec[] = [
     // DONATE — insamlingsorganisation ("Ge en gåva", "Bli månadsgivare").
     name: "cancerfonden",
     url: "https://www.cancerfonden.se",
+    geo: "SE",
     consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
     // Verifierat 2026-07-06: Cookiebot göms (detachas inte), som HubSpot.
     consentDismissCheck: "hidden",
@@ -150,6 +167,10 @@ export const SITES: SiteSpec[] = [
     // nextory.se → nextory.com/se (redirect), vi fryser slut-URL:en direkt.
     name: "nextory",
     url: "https://nextory.com/se",
+    // OBS geo-skifte: noten nedan ("ingen banner, Cookiebot enbart i server-HTML")
+    // gällde USA-IP. Under svensk IP rendrar Cookiebot sannolikt — kör --dry-run
+    // och sätt consentSelector innan nästa write-freeze.
+    geo: "SE",
     // Verifierat 2026-07-06 via --dry-run --screenshot-before-dismiss:
     // Cookiebot finns i server-HTML:en men ingen banner rendras mot
     // Browserbase-IP (geo-gate, samma som hibob/microsoft) — sidan rendrar
@@ -164,6 +185,7 @@ export const SITES: SiteSpec[] = [
     // (samma disciplin som hibob/microsoft).
     name: "bokadirekt",
     url: "https://www.bokadirekt.se",
+    geo: "SE",
     notes: "Arketyp: booking (bokningsmarknadsplats). CMP okänd — verifiera med dry-run.",
   },
   {
@@ -178,6 +200,7 @@ export const SITES: SiteSpec[] = [
     // Modalen unmountas vid accept → detached (default).
     name: "bokadirekt-service",
     url: "https://www.bokadirekt.se/places/citymassage-457",
+    geo: "SE",
     consentSelector: '[data-cy="allowCookiesButton"]',
     // Determinism: headerns KOLLAPSADE mega-menypaneler (`absolute inset-0
     // h-0 -z-10` — osynliga för besökare, men barnen mäter fulla rects) får

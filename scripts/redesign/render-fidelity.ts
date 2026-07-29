@@ -14,6 +14,7 @@ import { mkdirSync } from "node:fs";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { mapPool } from "./pool";
 import { renderVisibleCapture } from "./render-page";
+import { resolveSessionBudget } from "../../src/lib/tests/browserbase.server";
 
 // De 38 sajter render RÄDDADE i scale-test #3 (REC|-raderna): statiskt skal/fall
 // → >=3 renderade sektioner. Det är EXAKT de vars trohet vi inte vet något om.
@@ -26,7 +27,9 @@ const SITES = [
   "zoom.us", "canva.com", "dropbox.com", "ramp.com", "gusto.com", "quickbooks.intuit.com",
   "launchdarkly.com", "openai.com", "ritual.com",
 ];
-const CONC = 3; // = Browserbase-samtidighetstaket (scale-test #3 höll på 3)
+// Samtidighet = planens riktiga tak (25 verifierat 2026-07-29) minus reserv,
+// cappat till 8 (38 sajter; bredare ger inget). BROWSERBASE_MAX_SESSIONS överstyr.
+const CONC = await resolveSessionBudget({ cap: 8 });
 const OUT = "render-fidelity"; // skärmbilder hamnar här → laddas upp som artefakt
 
 // ── fidelitets-signaturer (körs på den SYNLIGA texten, gemener) ──────────────

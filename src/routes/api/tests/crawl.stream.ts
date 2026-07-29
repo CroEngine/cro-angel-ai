@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/tests/crawl/stream")({
             import("@/adaptive/crawler-inventory"),
           ]);
 
-          await withBrowserPage(async (page) => {
+          await withBrowserPage({ pipeline: "crawl", site }, async (page) => {
             emit("log", { message: `navigating to ${targetUrl}` });
             const resp = await page.goto(targetUrl, {
               waitUntil: "domcontentloaded",

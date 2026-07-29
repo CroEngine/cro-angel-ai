@@ -49,6 +49,7 @@ const consentInstruction = arg("consent-act") ?? spec?.consentInstruction;
 const consentFrame = arg("consent-frame") ?? spec?.consentFrame;
 const notes = arg("notes") ?? spec?.notes ?? undefined;
 const removeSelectors = spec?.removeSelectors;
+const geo = arg("geo") ?? spec?.geo;
 const dryRun = flag("dry-run");
 const screenshotBeforeDismiss = flag("screenshot-before-dismiss");
 
@@ -72,6 +73,7 @@ const mode = dryRun ? "DRY-RUN" : "WRITE";
 console.log(
   `[freeze ${mode}] ${url} -> corpus/${name}/ ` +
     `consent=${consentSelector ?? "(act)"} check=${consentDismissCheck ?? "detached"}` +
+    ` geo=${geo ?? "(default US)"}` +
     (screenshotBeforeDismiss ? " +before-screenshot" : ""),
 );
 
@@ -84,6 +86,7 @@ freezeSite({
   consentFrame,
   notes,
   removeSelectors,
+  geo,
   dryRun,
   screenshotBeforeDismiss,
 })
