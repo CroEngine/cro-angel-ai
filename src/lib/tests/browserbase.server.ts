@@ -68,9 +68,15 @@ export async function createSession(
     session = await client.sessions.create({ ...base, browserSettings: { ...BASE_STEALTH, ...settings } });
   }
   const debug = await client.sessions.debug(session.id);
+  // Anslutnings-URL:en hämtas EFTER skapandet — Stagehands eget mönster
+  // (launch/browserbase.js: sessions.retrieve, aldrig create-svaret).
+  // Kanarie 2 29/7: create-URL:en gav connectOverCDP-timeout mot
+  // wss://connect.usw2… medan Stagehand nådde samma infrastruktur via
+  // retrieve-URL:en minuter tidigare.
+  const live = await client.sessions.retrieve(session.id);
   return {
     id: session.id,
-    connectUrl: session.connectUrl,
+    connectUrl: live.connectUrl ?? session.connectUrl,
     liveUrl: debug.debuggerFullscreenUrl ?? debug.debuggerUrl,
   };
 }

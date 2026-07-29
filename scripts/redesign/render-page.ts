@@ -108,7 +108,7 @@ export async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => 
     // Playwright äger emuleringens livscykel själv (om-hävdar metrics per
     // navigation), och page.context() blir äkta — nätverksinspelningen som
     // loggat "otillgänglig" på Browserbase-vägen kommer åter i drift.
-    const browser = await chromium.connectOverCDP(session.connectUrl);
+    const browser = await chromium.connectOverCDP(session.connectUrl, { timeout: 60_000 });
     const cleanup = async () => {
       await browser.close().catch(() => {});
       await closeSession(session.id).catch(() => {});
