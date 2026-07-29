@@ -19,6 +19,18 @@ on:
         description: "Samtidiga sajter"
         required: false
         default: "3"
+      only:
+        description: "Kör endast dessa sajtnamn (kommaseparerat) — geo-/delmängdssvep"
+        required: false
+        default: ""
+      proxy_country:
+        description: "Geo-proxy exit-land (ISO alpha-2, t.ex. SE) — tomt = default-routning"
+        required: false
+        default: ""
+      results_name:
+        description: "Filnamn för bucket-uppladdningen (default results-<offset>.json)"
+        required: false
+        default: ""
 
 concurrency:
   group: preview-fleet
@@ -34,6 +46,7 @@ jobs:
       BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      BROWSERBASE_PROXY_COUNTRY: ${{ github.event.inputs.proxy_country }}
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +67,7 @@ jobs:
           --limit=${{ github.event.inputs.limit || '100' }}
           --offset=${{ github.event.inputs.offset || '0' }}
           --conc=${{ github.event.inputs.conc || '3' }}
+          ${{ github.event.inputs.only && format('--only={0}', github.event.inputs.only) || '' }}
 
       - name: Trim heavy artifacts (frozen pages + after-DOM)
         if: always()
@@ -68,7 +82,7 @@ jobs:
         if: always()
         run: |
           if [ -f fleet-preview/results.json ]; then
-            bun run scripts/fleet-loop/upload-results.ts --file=fleet-preview/results.json --name=results-${{ github.event.inputs.offset || '0' }}.json
+            bun run scripts/fleet-loop/upload-results.ts --file=fleet-preview/results.json --name=${{ github.event.inputs.results_name || format('results-{0}.json', github.event.inputs.offset || '0') }}
           fi
 
       - name: Upload fleet results (14 dagar)
