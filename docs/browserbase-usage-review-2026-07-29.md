@@ -23,8 +23,8 @@ problems we have *documented in this repo*:
 | # | Gap | Maps to which documented pain | Effort |
 |---|-----|-------------------------------|--------|
 | 1 | No proxy **geo-targeting** — `proxies: true` routes best-effort US | Svensk Fast/Cookiebot rendered no banner against the Browserbase IP (site dropped from corpus, `corpus/README.md`); CMP behaviour noted IP-dependent; whole `i18n-routing` fixture class is geo-sensitive | ~5 lines |
-| 2 | No **region** — every session runs in `us-west-2` (Oregon) fetching mostly-Nordic sites | `load` never fires on heavy SPAs (`loadStateDegraded`), Cloudflare interstitial waits, general capture latency | 1 line |
-| 3 | Hard-coded **concurrency 3** ("plan-gräns") + zero 429 handling | `scale-test.ts`/`render-fidelity.ts` throttled to 3-wide; scale docs call capture throughput the real ceiling | small |
+| 2 | No **region** — every session runs in `us-west-2` (Oregon) fetching mostly-Nordic sites | `load` never fires on heavy SPAs (`loadStateDegraded`), Cloudflare interstitial waits, general capture latency. **Ships together with #1** (see P2) | 1 line |
+| 3 | Hard-coded **concurrency 3** ("plan-gräns") + zero 429 handling — **live-verified 2026-07-29: the project's real limit is 25** | `scale-test.ts`/`render-fidelity.ts` throttled to 12 % of entitlement; scale docs call capture throughput the real ceiling | small |
 | 4 | No **userMetadata** on sessions; dashboard artifacts (video, CDP/network logs — recorded by default, we already pay for them) never linked | "map run hung 3h at site 89"; MHTML `-32000` "root cause not isolated" | small |
 | 5 | No **cost telemetry** — `projects.usage()` and per-session `proxyBytes` unused | Only cost note in repo is "spending more Browserbase sessions" (promote-corpus) | small |
 | 6 | No **Contexts** — every session is a cold profile | Consent re-dismissal on every repeat audit; blocks future logged-in-funnel analysis | medium |
@@ -34,6 +34,28 @@ Items 1+2 are correctness fixes for a Swedish-market CRO product (we currently
 freeze the US-IP rendering of Swedish sites). Items 3–5 are ops/throughput.
 Item 6 is a design decision with a determinism caveat. Item 7 is a pricing
 conversation.
+
+### Live-verified against our actual account (2026-07-29)
+
+The load-bearing claims were checked against the real project (read-only API
+calls + one throwaway 2-minute probe session, released after use):
+
+- `projects.retrieve()` → **`concurrency: 25`**, `defaultTimeout: 300`.
+  `MAX_RENDERS = 3` is confirmed a fossil, not a plan reality. (Our code
+  always overrides the 300 s default with 960 s — fine.)
+- `projects.usage()` → **2 315 browser-minutes, 25.17 GB proxy traffic** to
+  date. The proxy number is the striking one: at metered residential-GB
+  rates that is the dominant cost driver, and nothing in the repo watches it.
+- Docs confirm `proxies: true` routes **best-effort US** ("may route through
+  nearby countries like Canada") — so today's captures really do see the
+  US-IP web.
+- A probe session with `region: "eu-central-1"` +
+  `proxies: [{ type: "browserbase", geolocation: { country: "SE" } }]` +
+  `userMetadata` was **accepted on our plan** (no gating error), and an
+  in-session fetch of an IP-echo service returned **country SE
+  (46.236.108.224)**. P1+P2+P4 work end-to-end on the plan we have today.
+- The one `RUNNING` session found during the check carried **no metadata** —
+  illustrating the attribution gap of P4 exactly.
 
 ## 1. What we use today
 
@@ -158,7 +180,13 @@ the Swedish corpus, unset → current behaviour). Then re-run
 legitimately change (that's the point), so goldens need re-promotion where
 the banner appears for the first time.
 
-### P2 — Region
+Verified live on our plan (2026-07-29): the config is accepted with no
+gating error and the session's traffic exits from a Swedish residential IP
+(see "Live-verified" above). Docs caveat: "if there's no proxy in the
+specified location, the closest proxy is used" — matches the "none in
+region" behaviour already noted in `corpus/README.md`.
+
+### P2 — Region (ships together with P1, not alone)
 
 ```ts
 import type { SessionCreateParams } from "@browserbasehq/sdk/resources/sessions/sessions";
@@ -166,19 +194,36 @@ const region = (process.env.BROWSERBASE_REGION ??
   "eu-central-1") as SessionCreateParams["region"];
 ```
 
-Browsers land in Frankfurt instead of Oregon: shorter RTT to Nordic origins,
-faster settles, likely fewer `load`-timeout degradations
-(`loadStateDegraded`), snappier live view for European users. Env-overridable
-for the odd US-target run.
+**Important nuance found while double-checking:** Browserbase's own region
+guidance optimizes for proximity to *your driver* ("running browser sessions
+in or near your region significantly improves performance") — and our
+drivers are US-hosted (Netlify functions, GitHub Actions runners). What
+makes Frankfurt right for us anyway is the *proxy path*: page loads flow
+browser → proxy → origin, and that path is paid per request (dozens–hundreds
+per page), while the driver ↔ browser CDP hop is one persistent socket paid
+per round-trip (a handful of `evaluate`s per step).
+
+That also means the two changes are coupled:
+
+- **SE proxy + `eu-central-1`** → browser→proxy→origin all short. ✔
+- SE proxy + `us-west-2` (P1 alone) → every page request crosses the
+  Atlantic browser→proxy. Worse than intended.
+- US proxy + `eu-central-1` (P2 alone) → every page request crosses the
+  Atlantic **twice** (Frankfurt→US proxy→SE origin). Actively worse than
+  today. **Don't ship P2 without P1.**
+
+The live-view iframe (the owner, in Sweden) also gets closer with Frankfurt.
+Roll out behind the env override, and measure on a handful of corpus sites:
+freeze wall-time + `loadStateDegraded` rate before/after is the acceptance
+test.
 
 ### P3 — Plan-aware concurrency + 429 handling
 
-`MAX_RENDERS = 3` ("plan-gräns") is almost certainly a Free-tier fossil:
-every session we create uses `keepAlive` + `proxies`, which are paid-plan
-features that work — and our 16-minute timeout exceeds Free's 15-minute
-session cap — so we're on Developer or above, which allows **25** concurrent
-browsers (Startup: 100). We throttle our stated bottleneck to 3 by
-convention.
+`MAX_RENDERS = 3` ("plan-gräns") is a fossil — **verified live 2026-07-29**:
+`projects.retrieve()` returns `concurrency: 25` for our project. Git history
+shows the cap was written in with the comment on day one (`eaddb4b`); nothing
+ever *hit* a limit at 4+ — "höll på 3" meant the run was stable at 3, not
+that more failed. We throttle our stated bottleneck to 12 % of entitlement.
 
 - Size the semaphore at runtime: `(await client.projects.retrieve(projectId)).concurrency`,
   minus a reserve of 1–2 for the interactive app, capped by the script's own
@@ -211,7 +256,10 @@ userMetadata: { pipeline, site, runId },   // ≤512 chars total
 - Nightly summary: one `projects.usage()` call → `{ browserMinutes,
   proxyBytes }` trend line. Per-run: `sessions.retrieve(id).proxyBytes`
   identifies which sites eat proxy GB (billed per GB: ~$12/GB Developer,
-  $10/GB Startup beyond included 1/5 GB).
+  $10/GB Startup beyond included 1/5 GB). **This is not hypothetical: the
+  account has already pushed 25.17 GB through residential proxies**
+  (live-checked 2026-07-29) — at metered rates that dwarfs the
+  browser-minute spend, and no one is watching the number.
 
 ### P6 — Contexts, selectively (design decision)
 
