@@ -36,7 +36,7 @@ import {
   gotoTolerant,
   pageLooksStyled,
   RENDER_VIEWPORT,
-  UA,
+  UA as RENDER_UA,
 } from "./render-page";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
@@ -723,7 +723,7 @@ async function browserRenderedHtml(
             args: ["--no-sandbox"],
           });
           try {
-            const lp = await lb.newPage({ viewport: { ...RENDER_VIEWPORT }, userAgent: UA });
+            const lp = await lb.newPage({ viewport: { ...RENDER_VIEWPORT }, userAgent: RENDER_UA });
             await gotoTolerant(lp, u);
             await lp.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
             await lp.waitForTimeout(1_200);
