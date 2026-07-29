@@ -22,7 +22,7 @@
 //     --out=fixtures/real-sites/example-pricing.html [--render=auto] \
 //     [--img-budget=8000000]   ← total bytes bilddata som inlinas (default 8 MB)
 
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 import type { Response as PWResponse } from "playwright-core";
@@ -35,6 +35,7 @@ import {
   dismissOverlays,
   gotoTolerant,
   pageLooksStyled,
+  RENDER_VIEWPORT,
 } from "./render-page";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
@@ -687,8 +688,21 @@ async function browserRenderedHtml(
         // Stagehand skapar INTE föräldrakatalogen vid filskrivning (lokala
         // Playwright gör det — ENOENT-fyndet 13:17): skapa den själv.
         mkdirSync(dirname(refShot), { recursive: true });
+        // Om-hävda viewporten omedelbart före facit-bilden — frys-stegen mellan
+        // goto och hit kan tappa överriden (20-sajtsvepet 29/7: ref i desktop).
+        await applyRenderViewport(page);
         await page.screenshot({ path: refShot, type: "png", fullPage: true });
-        console.log(`[freeze-page] referensbild → ${refShot} (${h}px full höjd)`);
+        // PNG-vittnet: IHDR bär bildens FAKTISKA bredd — skärmdumpsvägen kan
+        // avvika från innerWidth (captureBeyondViewport ignorerar ibland
+        // emuleringen), så måtten läses ur filen, aldrig antas.
+        const ihdr = readFileSync(refShot);
+        const refW = ihdr.readUInt32BE(16);
+        const refH = ihdr.readUInt32BE(20);
+        console.log(`[freeze-page] referensbild → ${refShot} (${refW}×${refH}px, ${h}px scrollhöjd)`);
+        if (refW !== RENDER_VIEWPORT.width)
+          console.warn(
+            `[freeze-page] VARNING: referensbilden är ${refW}px bred, målet ${RENDER_VIEWPORT.width}px — paret blir olika enheter igen`,
+          );
       } catch (err) {
         console.warn(`[freeze-page] referensbild föll: ${err}`);
       }

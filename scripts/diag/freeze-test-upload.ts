@@ -44,14 +44,28 @@ for (const [file, type] of [
 }
 for (const f of files) {
   const bytes = readFileSync(f.path);
-  const { error } = await db.storage
-    .from(BUCKET)
-    .upload(f.key, new Blob([new Uint8Array(bytes)], { type: f.type }), {
-      contentType: f.type,
-      upsert: true,
-    });
-  if (error) {
-    console.error(`[freeze-test] uppladdning föll (${f.key}): ${error.message}`);
+  // Lagringsytan svarar ibland transient (Gateway Timeout — sinch-körningen
+  // 29/7 föll på ref.png efter tre lyckade filer): tre försök med backoff
+  // innan körningen underkänns.
+  let lastError = "";
+  let uploaded = false;
+  for (const delayMs of [0, 2_000, 5_000]) {
+    if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+    const { error } = await db.storage
+      .from(BUCKET)
+      .upload(f.key, new Blob([new Uint8Array(bytes)], { type: f.type }), {
+        contentType: f.type,
+        upsert: true,
+      });
+    if (!error) {
+      uploaded = true;
+      break;
+    }
+    lastError = error.message;
+    console.warn(`[freeze-test] uppladdningsförsök föll (${f.key}): ${lastError} — försöker igen`);
+  }
+  if (!uploaded) {
+    console.error(`[freeze-test] uppladdning föll efter 3 försök (${f.key}): ${lastError}`);
     process.exit(1);
   }
   console.log(`[freeze-test] ${db.storage.from(BUCKET).getPublicUrl(f.key).data.publicUrl}`);

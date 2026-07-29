@@ -29,7 +29,15 @@ export const UA =
  *  EFTER goto (morgonfyndet 2026-07-29: varje live-referens i 20-sajtsvepet
  *  var desktop-bred medan frysta kopian sköts i 390 — "ena i dator, andra i
  *  telefon"). Samma läxa som runner.server.ts, nu på delade render-vägen. */
-export async function applyRenderViewport(page: Page, width = 390, height = 844): Promise<void> {
+export const RENDER_VIEWPORT = { width: 390, height: 844 } as const;
+
+export async function applyRenderViewport(
+  page: Page,
+  width: number = RENDER_VIEWPORT.width,
+  height: number = RENDER_VIEWPORT.height,
+): Promise<number> {
+  const mät = async () =>
+    (await page.evaluate(() => window.innerWidth).catch(() => 0)) as number;
   try {
     await (
       page as unknown as { setViewportSize: (w: number, h: number) => Promise<void> }
@@ -38,6 +46,44 @@ export async function applyRenderViewport(page: Page, width = 390, height = 844)
     await page.setViewportSize({ width, height }).catch(() => {});
   }
   await page.waitForTimeout(400).catch(() => {}); // reflow settle
+  let w = await mät();
+  if (w !== width) {
+    // Stagehand 3.x-facadens setViewportSize skickar Emulation.setDeviceMetrics-
+    // Override men .catch:ar bort CDP-felet (understudy/page.js) — sveps
+    // körningen hit skickar vi samma override själva på facadens mainSession,
+    // UTAN catch, så det verkliga felet når loggen (20-sajtsvepet 29/7: varje
+    // ref-bild förblev 1273px trots "lyckade" anrop).
+    const cdp = (
+      page as unknown as { mainSession?: { send: (m: string, p?: object) => Promise<unknown> } }
+    ).mainSession;
+    if (cdp) {
+      try {
+        await cdp.send("Emulation.setDeviceMetricsOverride", {
+          width,
+          height,
+          deviceScaleFactor: 1,
+          mobile: false,
+          screenWidth: width,
+          screenHeight: height,
+          positionX: 0,
+          positionY: 0,
+          scale: 1,
+        });
+      } catch (err) {
+        console.warn(
+          `[render] CDP-överriden nekades: ${err instanceof Error ? err.message.slice(0, 160) : String(err)}`,
+        );
+      }
+      await page.waitForTimeout(400).catch(() => {});
+      w = await mät();
+    }
+  }
+  if (w === width) console.log(`[render] viewport ${width}×${height} verifierad (innerWidth=${w})`);
+  else
+    console.warn(
+      `[render] VARNING: viewporten bet inte — innerWidth=${w}, mål ${width}. Bilder fångas i fel enhet.`,
+    );
+  return w;
 }
 
 /** Skaffa en render-sida: Browserbase (Stagehand, bevisad väg) när creds finns,
@@ -52,7 +98,9 @@ export async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => 
     // Stagehand 3.x → "undefined is not an object"; capture-test #3 föll 8/8).
     const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
     const { Stagehand } = await import("@browserbasehq/stagehand");
-    const session = await createSession();
+    // Sessions-nivåns viewport gör 390×844 till sessionens DEFAULT — det
+    // Stagehand "nollar till" efter navigation blir då mobilen, inte 1288×711.
+    const session = await createSession({ viewport: RENDER_VIEWPORT });
     const stagehand = new Stagehand({
       env: "BROWSERBASE",
       apiKey,
