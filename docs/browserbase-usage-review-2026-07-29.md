@@ -1,0 +1,268 @@
+# Browserbase usage review — 2026-07-29
+
+> Question asked (owner, 2026-07-29): *"are we really using browserbase as we
+> should? is there not more and better things it can do?"* This doc is the
+> full answer: every function Browserbase exposes (API + Node SDK v2.16.0,
+> verified against the typings we actually have installed) mapped against what
+> this repo uses, with concrete recommendations. Companion chat review ran the
+> same day; this is the durable version.
+
+## TL;DR
+
+The core pattern is right: Browserbase is our remote stealth Chrome
+(residential proxies + ad-block + captcha solving) plus the live-view iframe,
+driven through Stagehand-as-Playwright-transport, with replay/scoring
+deliberately on local pinned Chromium ("Browserbase adds zero value at
+replay", `snapshot/harness.server.ts`). Session lifecycle hygiene is good:
+one wrapper owns creation, release is explicit and idempotent everywhere,
+and fleet runs recycle sessions before timeout.
+
+But we drive it with three booleans while the platform solves several
+problems we have *documented in this repo*:
+
+| # | Gap | Maps to which documented pain | Effort |
+|---|-----|-------------------------------|--------|
+| 1 | No proxy **geo-targeting** — `proxies: true` routes best-effort US | Svensk Fast/Cookiebot rendered no banner against the Browserbase IP (site dropped from corpus, `corpus/README.md`); CMP behaviour noted IP-dependent; whole `i18n-routing` fixture class is geo-sensitive | ~5 lines |
+| 2 | No **region** — every session runs in `us-west-2` (Oregon) fetching mostly-Nordic sites | `load` never fires on heavy SPAs (`loadStateDegraded`), Cloudflare interstitial waits, general capture latency | 1 line |
+| 3 | Hard-coded **concurrency 3** ("plan-gräns") + zero 429 handling | `scale-test.ts`/`render-fidelity.ts` throttled to 3-wide; scale docs call capture throughput the real ceiling | small |
+| 4 | No **userMetadata** on sessions; dashboard artifacts (video, CDP/network logs — recorded by default, we already pay for them) never linked | "map run hung 3h at site 89"; MHTML `-32000` "root cause not isolated" | small |
+| 5 | No **cost telemetry** — `projects.usage()` and per-session `proxyBytes` unused | Only cost note in repo is "spending more Browserbase sessions" (promote-corpus) | small |
+| 6 | No **Contexts** — every session is a cold profile | Consent re-dismissal on every repeat audit; blocks future logged-in-funnel analysis | medium |
+| 7 | Capture ceiling: `advancedStealth`/`verified` are **Scale-plan-gated** | "the 18% fetch failure is the real ceiling on scale" (`docs/section-scale-2026-07-25.md`) | commercial, not code |
+
+Items 1+2 are correctness fixes for a Swedish-market CRO product (we currently
+freeze the US-IP rendering of Swedish sites). Items 3–5 are ops/throughput.
+Item 6 is a design decision with a determinism caveat. Item 7 is a pricing
+conversation.
+
+## 1. What we use today
+
+All session creation goes through `src/lib/tests/browserbase.server.ts`
+(the only importer of `@browserbasehq/sdk`):
+
+- `sessions.create({ projectId, keepAlive: true, timeout: 960, proxies: true,
+  browserSettings: { blockAds: true, solveCaptchas: true } })`
+  — plus opt-in `{ advancedStealth: true, os: "mac" }` with graceful fallback
+  (currently zero callers; Enterprise/Scale-gated).
+- `sessions.debug(id)` → `debuggerFullscreenUrl` for the live-view iframe
+  (`Viewport.tsx`), replaced by a homegrown frozen screenshot when a run ends.
+- `sessions.update(id, { status: "REQUEST_RELEASE" })` on every exit path.
+- CDP over `connectUrl`: via Stagehand in the app pipelines, via raw
+  `chromium.connectOverCDP` in most scripts. MHTML capture is raw CDP
+  `Page.captureSnapshot`; screenshots are Playwright `page.screenshot()`.
+
+Consumers: the live crawl/audit (`run.functions.ts` → `$runId.stream.ts`),
+`withBrowserPage()` for crawl/robustness SSE routes, the corpus freeze
+(`snapshot/freeze.server.ts`), and ~20 scripts (fleet-shots, scale-test,
+render-fidelity, sweeps, e2e, diagnostics). One-session-per-task everywhere
+except `fleet-shots/run.ts`, which holds one session and recycles at 11 min.
+
+## 2. Full function map: Browserbase API/SDK v2.16.0 vs this repo
+
+Verified against `node_modules/@browserbasehq/sdk` typings (2.16.0) and
+docs.browserbase.com (2026-07). ✔ = used, ◐ = wired but effectively unused,
+✘ = unused.
+
+### `sessions.create` parameters
+
+| Param | Status | Notes / recommendation |
+|---|---|---|
+| `projectId`, `keepAlive`, `timeout` | ✔ | Correct. `keepAlive` is what lets the live iframe outlive the Stagehand attach; timeout 16 min is a sane backstop (max allowed: 6 h). |
+| `proxies: true` | ✔ | **Upgrade to config form.** `proxies` accepts an array: `[{ type: "browserbase", geolocation: { country: "SE" } }]` (ISO 3166-1; `state`/`city` for US). Also supports `domainPattern` routing, `type: "external"` (bring-your-own proxy), `type: "none"` bypass. We use none of it. → **P1** |
+| `region` | ✘ | `us-west-2` (default) \| `us-east-1` \| `eu-central-1` \| `ap-southeast-1`. We never set it; Frankfurt is one line and no documented plan gating. → **P2** |
+| `userMetadata` | ✘ | Arbitrary JSON (≤512 chars), queryable via `sessions.list({ q })`. Zero attribution today across nightly/fleet runs. → **P4** |
+| `extensionId` | ✘ | No use case (no extension needed for capture). Skip. |
+| `proxySettings.caCertificates` | ✘ | Enterprise MITM certs. Skip. |
+| `browserSettings.blockAds` | ✔ | Default is `false`, so keeping it explicit is right. Also trims proxy GB. |
+| `browserSettings.solveCaptchas` | ✔ | Explicit-for-intent (it defaults `true`). Fine. |
+| `browserSettings.advancedStealth` | ◐ | Wired with fallback, zero callers, **Scale plan only**. → **P7** |
+| `browserSettings.verified` | ✘ | Newer Scale-gated mode (fingerprints recognized by bot-protection vendors; supports `os`, locks viewport). The `"mac OS is only available for verified users"` error our comment quotes is this gate. Evaluate together with advancedStealth if/when on Scale. |
+| `browserSettings.os` | ◐ | Only inside the dead `ADVANCED_STEALTH` block. Correct placement (gated). |
+| `browserSettings.viewport` | ✘ | Deliberately unused — session-level viewport only holds until first navigation under Stagehand (documented in `browserbase.server.ts`); per-device emulation happens post-goto. Correct as-is. |
+| `browserSettings.context` | ✘ | `{ id, persist }` — persistent profile attach. → **P6** |
+| `browserSettings.allowedDomains` | ✘ | Main-frame navigation allowlist. Marginal safety net for the crawler; low value (doesn't block subresources). Skip for now. |
+| `browserSettings.captchaImageSelector` / `captchaInputSelector` | ✘ | Custom captcha solving for non-standard captchas. Keep in the toolbox for specific corpus sites; nothing needs it today. |
+| `browserSettings.ignoreCertificateErrors` | ✘ | Defaults `true`; fine. |
+| `browserSettings.logSession` / `recordSession` | ✔ (implicit) | Both default `true` — **every session already records video + CDP/network/console logs**. We pay for this and never look at it. → **P4/P5** |
+
+### Everything else in the SDK
+
+| Function | Status | Notes / recommendation |
+|---|---|---|
+| `sessions.retrieve(id)` | ✘ | Returns `status`, `region`, and **`proxyBytes`** (per-session proxy usage). Cheap per-site cost signal for fleet logs. → **P5** |
+| `sessions.list({ q, status })` | ✘ | Query by metadata (`q: "user_metadata['runId']:'…'"`) or status. Enables (a) run forensics, (b) an **orphan sweep**: list `RUNNING` sessions and `REQUEST_RELEASE` strays after crashed runs — the "3h hang" class currently leaks sessions until timeout. → **P4** |
+| `sessions.update(id, REQUEST_RELEASE)` | ✔ | Still the only/current way to end early. Correct. |
+| `sessions.debug(id)` | ✔ | We use `debuggerFullscreenUrl`. Also returns per-tab `pages[]` (multi-tab live view) and `wsUrl`; our UI is single-tab by design — nothing to do. |
+| `sessions.logs.list(id)` | ✘ | Post-session CDP event log. Attach to freeze failure reports — the standing `-32000 "Failed to generate MHTML"` mystery is exactly what this exists for. → **P5** |
+| `sessions.recording.retrieve(id)` + `sessions.recording.downloads` | ✘ | Session video; MP4 export (POST then poll; source retained 31 days). Post-mortems for nightly failures. → **P5** |
+| `sessions.replays.retrieve(id)` / `retrievePage` | ✘ | HLS playlist of the recording (rrweb DOM replay is deprecated → video replaced it). Optional alternative to MP4 for quick viewing; dashboard link is usually enough. |
+| `sessions.downloads.list(id)` | ✘ | File-download retrieval. No use case (we never download files). Skip. |
+| `sessions.uploads.create(id)` | ✘ | Inject files into a live session. No use case. Skip. |
+| `contexts.create/retrieve/update/delete` | ✘ | Persistent encrypted profiles (cookies, localStorage, IndexedDB — not HTTP cache). → **P6** |
+| `projects.retrieve(id)` | ✘ | Returns **`concurrency`** — the project's real concurrent-session limit. Replaces the hard-coded `MAX_RENDERS = 3`. → **P3** |
+| `projects.usage(id)` | ✘ | `{ browserMinutes, proxyBytes }` — programmatic spend. One call in the nightly summary makes cost drift visible. → **P5** |
+| `projects.list()` | ✘ | Trivial; not needed. |
+| `extensions.create/retrieve/delete` | ✘ | Custom Chrome extensions (ZIP ≤100 MB; slower session start). No use case. Skip. |
+| `certificates.*` | ✘ | TLS cert management for `proxySettings`. Skip. |
+| `fetchAPI.create` | ✘ | Hosted single-page fetch endpoint. We already run our own static-fetch pool; *possibly* a middle tier between static fetch and a full session in scale runs — only worth an experiment if it prices below a browser-minute. Not a priority. |
+| `search.web` | ✘ | Hosted web search. No use case. Skip. |
+| `agents.*` (hosted natural-language browser agents) | ✘ | We *are* the automation; a hosted agent runner doesn't fit. Skip. |
+
+### Platform features with no SDK surface (docs-verified)
+
+- **Webhooks / lifecycle events: do not exist.** Polling + your own CDP
+  connection is the only model — our current architecture is already the
+  right shape. Nothing to adopt.
+- **Functions** (serverless runtime next to the browsers): beta,
+  `us-west-2`-only — wrong region for us. Skip.
+- **Model Gateway** (LLM proxy at list price): we hold our own Anthropic key.
+  Skip.
+- **Director / Agents "generate a script"**: no-code workflow authoring. Skip.
+- **rrweb Session Replay API: deprecated** (replaced by video/HLS/MP4 above).
+  Good thing we never built on it; don't start now.
+- **`browserSettings.fingerprint` (old viewport/locales/httpVersion object):
+  removed from the API.** Only `os` + `viewport` survive. Don't resurrect old
+  examples; our `ADVANCED_STEALTH` shape is still valid.
+
+## 3. Recommended changes, in order
+
+### P1 — Geo-targeted proxies (correctness)
+
+The corpus is Swedish/Nordic-heavy and the product's premise is "analyze what
+real visitors see". Today we capture what an *American* residential IP sees:
+consent walls differ (documented: Svensk Fast's Cookiebot showed no banner →
+site replaced by sector-alarm), i18n routing differs (tradera, klarna,
+spotify-se, ikea-se, dn, svd fixtures), prices/currency can differ.
+
+```ts
+// browserbase.server.ts
+export async function createSession(
+  opts: { advancedStealth?: boolean; proxyCountry?: string } = {},
+) {
+  // …
+  proxies: opts.proxyCountry
+    ? [{ type: "browserbase" as const, geolocation: { country: opts.proxyCountry } }]
+    : true,
+```
+
+Thread a per-site `geo` field through `corpus/sites.ts` (default `"SE"` for
+the Swedish corpus, unset → current behaviour). Then re-run
+`freeze-determinism-check` on a couple of CMP-sensitive sites — captures may
+legitimately change (that's the point), so goldens need re-promotion where
+the banner appears for the first time.
+
+### P2 — Region
+
+```ts
+import type { SessionCreateParams } from "@browserbasehq/sdk/resources/sessions/sessions";
+const region = (process.env.BROWSERBASE_REGION ??
+  "eu-central-1") as SessionCreateParams["region"];
+```
+
+Browsers land in Frankfurt instead of Oregon: shorter RTT to Nordic origins,
+faster settles, likely fewer `load`-timeout degradations
+(`loadStateDegraded`), snappier live view for European users. Env-overridable
+for the odd US-target run.
+
+### P3 — Plan-aware concurrency + 429 handling
+
+`MAX_RENDERS = 3` ("plan-gräns") is almost certainly a Free-tier fossil:
+every session we create uses `keepAlive` + `proxies`, which are paid-plan
+features that work — so we're on Developer or above, which allows **25**
+concurrent browsers (Startup: 100). We throttle our stated bottleneck to 3
+by convention.
+
+- Size the semaphore at runtime: `(await client.projects.retrieve(projectId)).concurrency`,
+  minus a reserve of 1–2 for the interactive app, capped by the script's own
+  `CONC`.
+- Wrap `createSession` in a 429 handler honoring `retry-after` (the API
+  sends it; today a burst just throws). Creates/min limits also exist
+  (Developer 25/min) — the retry handles those too.
+
+### P4 — Attribution + orphan sweep
+
+```ts
+userMetadata: { pipeline, site, runId },   // ≤512 chars total
+```
+
+- Log `https://www.browserbase.com/sessions/${id}` in run artifacts and
+  failure reports — every session already has video + network/console logs
+  waiting in the dashboard (retention: 7 days on Developer, 30 on Startup).
+- Add a tiny `scripts/bb-sweep.ts`: `sessions.list({ status: "RUNNING" })` →
+  `REQUEST_RELEASE` anything older than N minutes with none of our metadata
+  or a dead runId. Crashed fleet runs currently leak sessions until the
+  16-minute timeout bills out.
+
+### P5 — Post-mortems + cost telemetry
+
+- On freeze/fleet failure: fetch `sessions.logs.list(id)`, store alongside
+  `freeze-report.json`; link the recording. First target: the intermittent
+  CDP `-32000` MHTML failure ("root cause not isolated",
+  `freeze.server.ts`) — the CDP event log around the failed
+  `Page.captureSnapshot` is the missing evidence.
+- Nightly summary: one `projects.usage()` call → `{ browserMinutes,
+  proxyBytes }` trend line. Per-run: `sessions.retrieve(id).proxyBytes`
+  identifies which sites eat proxy GB (billed per GB: ~$12/GB Developer,
+  $10/GB Startup beyond included 1/5 GB).
+
+### P6 — Contexts, selectively (design decision)
+
+Persistent profiles fit two paths — and must stay OUT of a third:
+
+- **Repeat audits/previews of the same customer site**: accept the CMP once,
+  persist (`browserSettings.context: { id, persist: true }`), stop
+  re-dismissing consent on every run. One live session per context at a time.
+- **Logged-in funnels (roadmap)**: authenticate once via the live-view
+  iframe (it's interactive — the customer can type credentials into their
+  own site), persist the context, analyze post-login pages. This is the
+  platform-blessed auth pattern and a real product unlock.
+- **Never in the corpus freeze**: N independent cold captures → byte-identical
+  golden is the determinism contract; persisted state would poison it.
+
+### P7 — The capture ceiling is commercial
+
+`advancedStealth` (and the newer `verified`) live on the **Scale plan**. Our
+code is already wired to attempt-and-fallback, so adoption is: upgrade plan,
+flip the opt-in at the call sites that face PerimeterX/Akamai/Cloudflare
+walls, measure the capture-rate delta on the known-blocked list. Given
+`docs/section-scale-2026-07-25.md` ("no typing change beats capturing the
+page"), the ROI question is price-of-Scale vs. value of the blocked ~18%.
+Decide with the pricing page, not more engineering.
+
+## 4. Stagehand (v3.7.0 installed)
+
+Used strictly as a Playwright transport; the AI layer is dead weight today:
+
+- `act`/`extract`/`observe` are reachable only via step kinds nothing emits;
+  `click`/`fill` throw "use act instead"; `agent()` unreferenced; no model
+  configured anywhere. Either wire the one genuinely useful case — consent
+  banners with no stable selector, via the existing-but-throwing
+  `consentInstruction` path — or delete the dead step kinds. If revived:
+  Stagehand v3 has **server-side act caching** (`cacheStatus: HIT/MISS`,
+  disable via `serverCache: false`) and deterministic replay, which blunts
+  the determinism objection; model is a single `"provider/model"` string and
+  we already ship an Anthropic key.
+- Keep the hard-won quirk workarounds documented where they live (positional
+  `setViewportSize`, page-on-`context`-not-`stagehand.page`, no
+  `page.keyboard`, no `page.route`, non-Playwright timeout errors) — they're
+  version-sensitive; re-verify on every Stagehand minor bump. Longer-term
+  cleanup: one connection style per pipeline (Stagehand for app + freeze,
+  raw CDP for scripts) instead of the current mix.
+
+## 5. Housekeeping done in this review
+
+- Deleted `api/browserbase` — a 16-byte stray ("api browserbase") committed
+  accidentally in #131; the `api/` directory carried nothing else.
+
+## 6. What we're already doing right (keep)
+
+- Local pinned Chromium for replay/scoring; Browserbase only where its
+  network position + stealth matter. This is the cost-correct split.
+- Single wrapper owning session lifecycle; explicit idempotent release on
+  every path (timeout is a backstop, not the mechanism).
+- Session recycling at 11 min in fleet runs; bounded create/connect with
+  retries (the 3h-hang fix).
+- The frozen-screenshot live-view replacement (no session minutes burned on
+  backgrounded tabs).
+- Advanced-stealth attempt-with-fallback pre-wiring — ready the day the plan
+  allows it.
