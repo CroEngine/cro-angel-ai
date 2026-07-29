@@ -1,10 +1,12 @@
 // Delad RENDER-väg för alla capture-verktyg (freeze-page, scale-test, capture-
-// test, render-fidelity). Tidigare bar var och en sin egen kopia av "anslut
-// Stagehand → goto → svep → serialisera" — capture-test #1–4 lärde ut den rätta
-// vägen fyra gånger om. Här bor den EN gång:
-//   • acquireRenderPage  — den bevisade Stagehand-anslutningen (engine.server.ts),
-//     läck-säker; lokal Chromium som fallback i dev.
-//   • gotoTolerant       — goto som tål Stagehands egen timeout-felform.
+// test, render-fidelity). Tidigare bar var och en sin egen kopia av "anslut →
+// goto → svep → serialisera" — capture-test #1–4 lärde ut den rätta vägen fyra
+// gånger om. Här bor den EN gång:
+//   • acquireRenderPage  — rå Playwright över Browserbase-sessionens connectUrl
+//     (Stagehand-facaden pensionerad från render-vägen 29/7: dess viewport-
+//     kanal var död efter goto), läck-säker; lokal Chromium som fallback i dev.
+//   • gotoTolerant       — goto som tål timeout-felformer bortom Playwrights
+//     egen klass (behållet: ofarligt, och skyddar äldre anropare).
 //   • autoScroll         — lazy-svep så under-folden renderas, sedan till toppen.
 //   • dismissOverlays    — SÄKER modal-avfärdare (Escape + kurerade stäng-klick,
 //     ALDRIG signup/login/checkout) så cookie-/auth-/e-postmodaler inte förorenar
@@ -48,35 +50,37 @@ export async function applyRenderViewport(
   await page.waitForTimeout(400).catch(() => {}); // reflow settle
   let w = await mät();
   if (w !== width) {
-    // Stagehand 3.x-facadens setViewportSize skickar Emulation.setDeviceMetrics-
-    // Override men .catch:ar bort CDP-felet (understudy/page.js) — sveps
-    // körningen hit skickar vi samma override själva på facadens mainSession,
-    // UTAN catch, så det verkliga felet når loggen (20-sajtsvepet 29/7: varje
-    // ref-bild förblev 1273px trots "lyckade" anrop).
-    const cdp = (
-      page as unknown as { mainSession?: { send: (m: string, p?: object) => Promise<unknown> } }
-    ).mainSession;
-    if (cdp) {
-      try {
-        await cdp.send("Emulation.setDeviceMetricsOverride", {
-          width,
-          height,
-          deviceScaleFactor: 1,
-          mobile: false,
-          screenWidth: width,
-          screenHeight: height,
-          positionX: 0,
-          positionY: 0,
-          scale: 1,
-        });
-      } catch (err) {
-        console.warn(
-          `[render] CDP-överriden nekades: ${err instanceof Error ? err.message.slice(0, 160) : String(err)}`,
-        );
+    // CDP-hammaren, UTAN tyst catch så det verkliga felet når loggen. Två
+    // kanaler: Stagehand-facadens mainSession (om sidan är en facad) eller en
+    // äkta newCDPSession (ren Playwright). Kanariefyndet 29/7: facadens kanal
+    // "lyckas" utan effekt efter goto — därför mäts utfallet, aldrig antas.
+    const override = {
+      width,
+      height,
+      deviceScaleFactor: 1,
+      mobile: false,
+      screenWidth: width,
+      screenHeight: height,
+      positionX: 0,
+      positionY: 0,
+      scale: 1,
+    };
+    try {
+      const facade = (
+        page as unknown as { mainSession?: { send: (m: string, p?: object) => Promise<unknown> } }
+      ).mainSession;
+      if (facade) await facade.send("Emulation.setDeviceMetricsOverride", override);
+      else {
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send("Emulation.setDeviceMetricsOverride", override);
       }
-      await page.waitForTimeout(400).catch(() => {});
-      w = await mät();
+    } catch (err) {
+      console.warn(
+        `[render] CDP-överriden nekades: ${err instanceof Error ? err.message.slice(0, 160) : String(err)}`,
+      );
     }
+    await page.waitForTimeout(400).catch(() => {});
+    w = await mät();
   }
   if (w === width) console.log(`[render] viewport ${width}×${height} verifierad (innerWidth=${w})`);
   else
@@ -94,29 +98,25 @@ export async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => 
   const apiKey = process.env.BROWSERBASE_API_KEY;
   const projectId = process.env.BROWSERBASE_PROJECT_ID;
   if (apiKey && projectId) {
-    // Sidan lever på stagehand.context, INTE stagehand.page (undefined i
-    // Stagehand 3.x → "undefined is not an object"; capture-test #3 föll 8/8).
     const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
-    const { Stagehand } = await import("@browserbasehq/stagehand");
-    // Sessions-nivåns viewport gör 390×844 till sessionens DEFAULT — det
-    // Stagehand "nollar till" efter navigation blir då mobilen, inte 1288×711.
+    const { chromium } = await import("playwright-core");
     const session = await createSession({ viewport: RENDER_VIEWPORT });
-    const stagehand = new Stagehand({
-      env: "BROWSERBASE",
-      apiKey,
-      projectId,
-      browserbaseSessionID: session.id,
-      keepAlive: true,
-      disablePino: true,
-    });
+    // Rå Playwright över connectUrl, INTE Stagehand-facaden (kanariefyndet
+    // 29/7 08:35): efter goto "lyckas" både facadens setViewportSize och en
+    // direkt Emulation.setDeviceMetricsOverride på dess mainSession utan
+    // någon effekt — innerWidth förblev 1288 och varje ref-bild desktop.
+    // Playwright äger emuleringens livscykel själv (om-hävdar metrics per
+    // navigation), och page.context() blir äkta — nätverksinspelningen som
+    // loggat "otillgänglig" på Browserbase-vägen kommer åter i drift.
+    const browser = await chromium.connectOverCDP(session.connectUrl);
     const cleanup = async () => {
-      await stagehand.close().catch(() => {});
+      await browser.close().catch(() => {});
       await closeSession(session.id).catch(() => {});
     };
     try {
-      await stagehand.init();
-      const page = (stagehand.context.pages()[0] ?? (await stagehand.context.newPage())) as unknown as Page;
-      await applyRenderViewport(page); // för mätningar före goto; nollas av nav
+      const context = browser.contexts()[0] ?? (await browser.newContext());
+      const page = context.pages()[0] ?? (await context.newPage());
+      await applyRenderViewport(page); // för mätningar före goto
       return { page, cleanup };
     } catch (err) {
       await cleanup();
