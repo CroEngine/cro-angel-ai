@@ -30,6 +30,10 @@ export interface CandidatePlan {
   altOps: RedesignOp[][];
   source: "selector" | "floor";
   menuSize: number;
+  /** Probens råtal — flottaggregatets yield-mätning (fynd 2026-07-29:
+   *  talen loggades per sajt men aggregerades aldrig; utan dem finns ingen
+   *  "andel sajter med minst ett grind-rent drag"-siffra). */
+  probed: { candidates: number; applicable: number; gateClean: number };
 }
 
 const MAX_ALTS = 2;
@@ -120,5 +124,10 @@ export async function buildCandidatePlan(args: {
       .map((c) => toOps(c, `Reservkandidat ur katalogen: ${c.basis.slice(0, 160)}`)),
     source: selection.source,
     menuSize: menu.length,
+    probed: {
+      candidates: probe.length,
+      applicable: probe.filter((p) => p.applicable).length,
+      gateClean: probe.filter((p) => (p as { gateClean?: boolean }).gateClean === true).length,
+    },
   };
 }

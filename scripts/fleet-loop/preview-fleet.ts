@@ -54,6 +54,10 @@ interface SiteResult {
   sections: number | null;
   planOps: string[];
   planSource: string | null;
+  menuSize: number | null;
+  probeCandidates: number | null;
+  probeApplicable: number | null;
+  probeGateClean: number | null;
   ms: number;
   error: string | null;
 }
@@ -110,6 +114,10 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
     sections: null,
     planOps: [],
     planSource: null,
+    menuSize: null,
+    probeCandidates: null,
+    probeApplicable: null,
+    probeGateClean: null,
     ms: 0,
     error: null,
   };
@@ -175,6 +183,10 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
       planOps = candPlan.ops;
       altOps = candPlan.altOps;
       res.planSource = `katalog/${candPlan.source}`;
+      res.menuSize = candPlan.menuSize;
+      res.probeCandidates = candPlan.probed.candidates;
+      res.probeApplicable = candPlan.probed.applicable;
+      res.probeGateClean = candPlan.probed.gateClean;
     } else {
       const ctx = buildRedesignContext({
         site: `preview--${new URL(site.url).hostname}`,
