@@ -15,6 +15,10 @@ on:
       name:
         description: "Slug för uppladdningen (t.ex. tibber)"
         required: true
+      proxy_country:
+        description: "Geo-proxy exit-land (ISO alpha-2, t.ex. SE) — tomt = default-routning"
+        required: false
+        default: ""
 
 concurrency:
   group: freeze-test-${{ inputs.name }}
@@ -32,6 +36,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
       BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+      BROWSERBASE_PROXY_COUNTRY: ${{ inputs.proxy_country }}
     steps:
       - uses: actions/checkout@v4
 
