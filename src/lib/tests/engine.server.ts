@@ -210,11 +210,18 @@ export async function runSteps(
   if (!apiKey) throw new Error("BROWSERBASE_API_KEY missing");
   if (!projectId) throw new Error("BROWSERBASE_PROJECT_ID missing");
 
+  // The session was created in a different request (startTestRun) — look up
+  // its region so Stagehand's region-pinned hosted API routes correctly
+  // (an eu-central-1 session against the default us-west-2 endpoint = 400).
+  const { getSessionRegion } = await import("./browserbase.server");
+  const region = await getSessionRegion(sessionId);
+
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
     apiKey,
     projectId,
     browserbaseSessionID: sessionId,
+    browserbaseSessionCreateParams: { projectId, region },
     // keepAlive: stagehand.close() should disconnect Stagehand only,
     // not terminate the Browserbase session — the session lives on so the
     // live iframe can keep showing the collect overlay until closeSession()

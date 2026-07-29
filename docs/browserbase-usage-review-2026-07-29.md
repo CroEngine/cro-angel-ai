@@ -57,6 +57,46 @@ calls + one throwaway 2-minute probe session, released after use):
 - The one `RUNNING` session found during the check carried **no metadata** —
   illustrating the attribution gap of P4 exactly.
 
+### Implemented (same day, this branch)
+
+P1–P4 are code now, verified by an end-to-end `--dry-run` freeze of cdon.se
+through the real pipeline (SE residential exit + `eu-central-1` + metadata;
+Didomi banner rendered under Swedish IP and dismissed in 1.3 s;
+`env.proxyCountry: "SE"` stamped in the report):
+
+- `browserbase.server.ts`: `proxyCountry` (+ env `BROWSERBASE_PROXY_COUNTRY`),
+  region-follows-geo (EU → `eu-central-1`; `BROWSERBASE_REGION` override),
+  `userMetadata` stamping (`{pipeline, site, runId}`, script-name fallback),
+  inspector-URL log line, SDK `maxRetries: 5` (Retry-After honored),
+  `resolveSessionBudget()` (plan concurrency − reserve; env override;
+  fallback 3) and `getSessionRegion()`.
+- `corpus/sites.ts`: `geo?: string` on `SiteSpec`; the 7 Swedish sites carry
+  `geo: "SE"`. US/international sites untouched. `freeze-site.ts` takes
+  `--geo=` as override and reports carry `env.proxyCountry`.
+- `scale-test.ts` / `render-fidelity.ts`: session caps read the plan's real
+  concurrency instead of the hard-coded 3.
+- `withBrowserPage(meta, fn)` + `app-crawl`/`crawl`/`robustness`/`freeze`/
+  `redesign-render` pipelines stamped at every creation site.
+- `scripts/bb-sweep.ts`: lists RUNNING sessions with age/metadata/inspector
+  links + prints plan concurrency and usage; `--release` with
+  `--pipeline=`/`--older-than=`/`--all` guards for stray cleanup.
+
+**Discovery from the e2e test (this is why you dry-run):** Stagehand v3's
+hosted API is **region-pinned** — driving an `eu-central-1` session against
+the default endpoint 400:s with "route your request to the eu-central-1
+Stagehand API endpoint". Stagehand only learns the region from
+`browserbaseSessionCreateParams.region` (never from the session ID), so every
+Stagehand attach now forwards the region: from the `createSession` result
+where the session is created locally, via `getSessionRegion()` in the app's
+create-in-POST/attach-in-stream handoff (`engine.server.ts`). Raw
+`connectOverCDP` scripts are unaffected (`connectUrl` is region-correct).
+
+Not implemented (unchanged recommendations): P5 nightly usage telemetry
+beyond bb-sweep's printout, P6 Contexts, P7 Scale-plan stealth. Goldens for
+the 7 Swedish sites re-promote on their next write-freeze — that diff (e.g.
+a consent banner appearing for the first time) is the correctness fix
+landing, not drift.
+
 ## 1. What we use today
 
 All session creation goes through `src/lib/tests/browserbase.server.ts`
