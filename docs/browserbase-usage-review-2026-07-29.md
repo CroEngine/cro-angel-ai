@@ -59,9 +59,15 @@ except `fleet-shots/run.ts`, which holds one session and recycles at 11 min.
 
 ## 2. Full function map: Browserbase API/SDK v2.16.0 vs this repo
 
-Verified against `node_modules/@browserbasehq/sdk` typings (2.16.0) and
-docs.browserbase.com (2026-07). ✔ = used, ◐ = wired but effectively unused,
-✘ = unused.
+Verified against `node_modules/@browserbasehq/sdk` typings (2.16.0) and the
+OpenAPI spec at `docs.browserbase.com/reference/api/openapi.v1.yaml`
+(2026-07-29; 52 REST operations across 10 namespaces — all accounted for
+below). ✔ = used, ◐ = wired but effectively unused, ✘ = unused.
+
+REST-only surface missing from SDK v2.16.0 (none of it needed by us):
+the 11 Functions endpoints, the newer `/v1/downloads` list/get/delete
+namespace, and `POST /v1/agents/runs/{runId}/stop`. Conversely
+`sessions.downloads.list` exists in the SDK but has left the spec.
 
 ### `sessions.create` parameters
 
@@ -90,21 +96,22 @@ docs.browserbase.com (2026-07). ✔ = used, ◐ = wired but effectively unused,
 | Function | Status | Notes / recommendation |
 |---|---|---|
 | `sessions.retrieve(id)` | ✘ | Returns `status`, `region`, and **`proxyBytes`** (per-session proxy usage). Cheap per-site cost signal for fleet logs. → **P5** |
-| `sessions.list({ q, status })` | ✘ | Query by metadata (`q: "user_metadata['runId']:'…'"`) or status. Enables (a) run forensics, (b) an **orphan sweep**: list `RUNNING` sessions and `REQUEST_RELEASE` strays after crashed runs — the "3h hang" class currently leaks sessions until timeout. → **P4** |
+| `sessions.list({ q, status })` | ✘ | Query by metadata (`q: "user_metadata['runId']:'…'"`, string equality only) or status. Enables (a) run forensics, (b) an **orphan sweep**: list `RUNNING` sessions and `REQUEST_RELEASE` strays after crashed runs — the "3h hang" class currently leaks sessions until timeout. → **P4** |
 | `sessions.update(id, REQUEST_RELEASE)` | ✔ | Still the only/current way to end early. Correct. |
 | `sessions.debug(id)` | ✔ | We use `debuggerFullscreenUrl`. Also returns per-tab `pages[]` (multi-tab live view) and `wsUrl`; our UI is single-tab by design — nothing to do. |
 | `sessions.logs.list(id)` | ✘ | Post-session CDP event log. Attach to freeze failure reports — the standing `-32000 "Failed to generate MHTML"` mystery is exactly what this exists for. → **P5** |
-| `sessions.recording.retrieve(id)` + `sessions.recording.downloads` | ✘ | Session video; MP4 export (POST then poll; source retained 31 days). Post-mortems for nightly failures. → **P5** |
-| `sessions.replays.retrieve(id)` / `retrievePage` | ✘ | HLS playlist of the recording (rrweb DOM replay is deprecated → video replaced it). Optional alternative to MP4 for quick viewing; dashboard link is usually enough. |
-| `sessions.downloads.list(id)` | ✘ | File-download retrieval. No use case (we never download files). Skip. |
-| `sessions.uploads.create(id)` | ✘ | Inject files into a live session. No use case. Skip. |
+| `sessions.recording.retrieve(id)` | ✘ | Raw rrweb event stream (legacy replay format, deprecated in favour of video). Skip. |
+| `sessions.recording.downloads.create/list(id)` | ✘ | **MP4 export**, one file per tab: async POST → poll list; signed URL (6 h TTL, re-minted per GET); source retained 31 days; 409 until the session has ended. Post-mortems for nightly failures. → **P5** |
+| `sessions.replays.retrieve(id)` / `retrievePage` | ✘ | HLS replay: page metadata + per-page `.m3u8` playlist. Dashboard link is usually enough. |
+| `sessions.downloads.list(id)` | ✘ | Legacy zip endpoint (SDK-only; the current REST API has a richer `/v1/downloads` list/get/delete namespace with checksums — not in SDK v2.16.0). No use case either way (we never download files). Skip. |
+| `sessions.uploads.create(id)` | ✘ | Multipart upload → file lands at `/tmp/.uploads/` in the session, attached via CDP `DOM.setFileInputFiles`. No use case. Skip. |
 | `contexts.create/retrieve/update/delete` | ✘ | Persistent encrypted profiles (cookies, localStorage, IndexedDB — not HTTP cache). → **P6** |
 | `projects.retrieve(id)` | ✘ | Returns **`concurrency`** — the project's real concurrent-session limit. Replaces the hard-coded `MAX_RENDERS = 3`. → **P3** |
 | `projects.usage(id)` | ✘ | `{ browserMinutes, proxyBytes }` — programmatic spend. One call in the nightly summary makes cost drift visible. → **P5** |
 | `projects.list()` | ✘ | Trivial; not needed. |
 | `extensions.create/retrieve/delete` | ✘ | Custom Chrome extensions (ZIP ≤100 MB; slower session start). No use case. Skip. |
 | `certificates.*` | ✘ | TLS cert management for `proxySettings`. Skip. |
-| `fetchAPI.create` | ✘ | Hosted single-page fetch endpoint. We already run our own static-fetch pool; *possibly* a middle tier between static fetch and a full session in scale runs — only worth an experiment if it prices below a browser-minute. Not a priority. |
+| `fetchAPI.create` | ✘ | Hosted single-page fetch (`format: raw` open to all plans; `json`/`markdown` need project enablement; optional proxies). We already run our own static-fetch pool; *possibly* a middle tier between static fetch and a full session in scale runs — only worth an experiment if it prices below a browser-minute. Not a priority. |
 | `search.web` | ✘ | Hosted web search. No use case. Skip. |
 | `agents.*` (hosted natural-language browser agents) | ✘ | We *are* the automation; a hosted agent runner doesn't fit. Skip. |
 
@@ -168,9 +175,10 @@ for the odd US-target run.
 
 `MAX_RENDERS = 3` ("plan-gräns") is almost certainly a Free-tier fossil:
 every session we create uses `keepAlive` + `proxies`, which are paid-plan
-features that work — so we're on Developer or above, which allows **25**
-concurrent browsers (Startup: 100). We throttle our stated bottleneck to 3
-by convention.
+features that work — and our 16-minute timeout exceeds Free's 15-minute
+session cap — so we're on Developer or above, which allows **25** concurrent
+browsers (Startup: 100). We throttle our stated bottleneck to 3 by
+convention.
 
 - Size the semaphore at runtime: `(await client.projects.retrieve(projectId)).concurrency`,
   minus a reserve of 1–2 for the interactive app, capped by the script's own
