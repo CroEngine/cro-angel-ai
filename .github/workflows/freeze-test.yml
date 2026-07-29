@@ -23,7 +23,10 @@ concurrency:
 jobs:
   freeze:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    # 20, inte 12: playwright-installens apt-steg kan ensamt ta ~10 min på en
+    # långsam runner (dropbox-körningen 29/7 giljotinerades mitt i fidelity-
+    # steget) — själva frysningen behöver bara ~3 min.
+    timeout-minutes: 20
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
