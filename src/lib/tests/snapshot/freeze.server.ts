@@ -17,7 +17,7 @@ import { tmpdir } from "node:os";
 
 import { Stagehand } from "@browserbasehq/stagehand";
 
-import { createSession, closeSession } from "../browserbase.server";
+import { createSession, closeSession, getBrowserbaseClient } from "../browserbase.server";
 import { embedMhtmlFonts } from "./mhtml-fonts.server";
 import {
   MHTML_INLINE_THRESHOLD_BYTES,
@@ -69,6 +69,10 @@ export interface FreezeOptions {
    *  freeze via Swedish residential IP so the capture sees what Swedish
    *  visitors see. Unset → Browserbase default (best-effort US). */
   geo?: string;
+  /** Antal omförsök med FÄRSK session vid transient infra-fel (WS-tunnel,
+   *  CDP-connect, -32000-serialisering, timeout). Default 1. Site-verkliga
+   *  fel (consent, anti-bot, fel sida, tunn sida) retry:as aldrig. */
+  retryTransient?: number;
 }
 
 export interface FreezeResult {
@@ -167,6 +171,18 @@ interface FreezeReport {
      *  Provenance: an old golden frozen pre-geo is expected to differ from a
      *  re-freeze under SE IP — this field is how you tell. */
     proxyCountry?: string | null;
+  } | null;
+  /**
+   * Browserbase-forensik. Sessionen spelar in video + CDP/nätverks/konsol-
+   * loggar by default (retention 7–30 dagar) — inspectorUrl är dörren dit.
+   * `cdpLogPath` sätts vid FEL när CDP-loggen kunde hämtas via API:t och
+   * sparas till en storleksbunden JSON i tmp — bevismaterialet som
+   * -32000-klassen ("root cause not isolated") har saknat.
+   */
+  session?: {
+    id: string;
+    inspectorUrl: string;
+    cdpLogPath: string | null;
   } | null;
   /**
    * Grind 2 — Failure-taxonomy. `null` om freezen lyckades OCH assertCaptureValid
@@ -398,7 +414,7 @@ async function measurePostDismissDomHits(
 }
 
 
-export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
+async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
   const dir = opts.outDir ?? join("corpus", opts.name);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
@@ -447,6 +463,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       removedStalePointer: false,
     },
     env: null,
+    session: null,
     failureClass: null,
     captureValidity: null,
     timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
@@ -460,6 +477,11 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     proxyCountry: opts.geo,
     meta: { pipeline: "freeze", site: opts.name },
   });
+  report.session = {
+    id: session.id,
+    inspectorUrl: `https://www.browserbase.com/sessions/${session.id}`,
+    cdpLogPath: null,
+  };
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
     apiKey,
@@ -994,6 +1016,9 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
   } catch (e) {
     report.error = e instanceof Error ? e.message : String(e);
     report.failureClass = classifyFailure(e, report);
+    // Forensik: hämta sessionens CDP-logg medan sessionen lever (release sker
+    // i finally). Bäst-effort — forensiken får aldrig ändra felutfallet.
+    await saveCdpLogForensics(report, opts.name).catch(() => {});
     throw e;
   } finally {
     // Receipt flushas ALLTID. Detta är hela poängen — utan finally blir
@@ -1014,4 +1039,76 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
     }
     await closeSession(session.id);
   }
+}
+
+// ── Transient-retry + forensik ───────────────────────────────────────────────
+
+/** Transient infra-fel (WS-tunnel/CDP-connect-drop, -32000-serialisering,
+ *  timeout) klarnar erfarenhetsmässigt på en FÄRSK session — samma observation
+ *  som fleet-shots ("session race … usually clear on a fresh session") och
+ *  reproducerad 2026-07-30 (hibob: "[object ErrorEvent]" före goto, grönt på
+ *  omförsöket). Site-verkliga fel är information och retry:as aldrig. */
+const TRANSIENT_ERROR_RE =
+  /errorevent|websocket|econnreset|econnrefused|socket hang up|tunnel|target closed|browser has been closed|connection closed|apiconnection|disconnected/i;
+
+export function isTransientCaptureFailure(
+  failureClass: FreezeReport["failureClass"],
+  err: unknown,
+): boolean {
+  if (failureClass === "mhtml-capture-failed" || failureClass === "timeout") return true;
+  if (failureClass !== "unknown") return false;
+  const s = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  return TRANSIENT_ERROR_RE.test(s);
+}
+
+/** Storleksbunden dump av sessionens CDP-logg vid fel. Skrivs ALLTID till tmp
+ *  (aldrig corpus/ — loggen kan vara MB-stor och ska inte committas). Behåller
+ *  slutet av loggen vid trunkering — felet ligger sist. */
+async function saveCdpLogForensics(report: FreezeReport, siteName: string): Promise<void> {
+  if (!report.session) return;
+  const { client } = getBrowserbaseClient();
+  const entries = (await client.sessions.logs.list(report.session.id)) as unknown[];
+  const MAX_BYTES = 4 * 1024 * 1024;
+  let kept = entries;
+  let dropped = 0;
+  while (JSON.stringify(kept).length > MAX_BYTES && kept.length > 50) {
+    const cut = Math.ceil(kept.length / 4);
+    kept = kept.slice(cut);
+    dropped += cut;
+  }
+  const path = join(
+    tmpdir(),
+    `freeze-${siteName}-${new Date().toISOString().replace(/[:.]/g, "-")}.cdp-log.json`,
+  );
+  writeFileSync(
+    path,
+    JSON.stringify({ sessionId: report.session.id, droppedOldestEntries: dropped, entries: kept }),
+  );
+  report.session.cdpLogPath = path;
+  // eslint-disable-next-line no-console
+  console.log(`[freeze] forensik: CDP-logg (${kept.length} entries) -> ${path}`);
+}
+
+export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
+  const retries = Math.max(0, opts.retryTransient ?? 1);
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await freezeSiteAttempt(opts);
+    } catch (e) {
+      lastErr = e;
+      // Meddelande-klassning räcker här — wrong-page (den enda klass som
+      // behöver report-kontext) är ändå aldrig transient.
+      const cls = classifyFailure(e, { captureValidity: null } as unknown as FreezeReport);
+      if (attempt < retries && isTransientCaptureFailure(cls, e)) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[freeze] transient (${cls}) — omförsök med färsk session (${attempt + 2}/${retries + 1})`,
+        );
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
 }

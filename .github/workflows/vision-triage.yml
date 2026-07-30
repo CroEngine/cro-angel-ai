@@ -1,0 +1,37 @@
+# Vision-triage av frysta skärmbilder — "skärmbilden är sanningen"-prototypen.
+# Kör Claude-vision över korpusens committade screenshot.jpg och publicerar
+# domarna som artefakt + steg-sammanfattning. Advisory (aldrig röd) tills
+# tröskeln är beslutad — då byts sista steget till --strict.
+# Kräver secret: ANTHROPIC_API_KEY (samma som breadth-verify/nightly-loop).
+
+name: Vision triage
+on:
+  workflow_dispatch:
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Triage corpus screenshots
+        run: bun run scripts/vision-triage.ts --out=vision-triage.json --md=vision-triage.md
+      - name: Publish summary
+        if: always()
+        run: cat vision-triage.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload verdicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vision-triage
+          path: |
+            vision-triage.json
+            vision-triage.md
