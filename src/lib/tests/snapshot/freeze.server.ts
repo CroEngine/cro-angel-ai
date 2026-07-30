@@ -65,6 +65,10 @@ export interface FreezeOptions {
    *  so an oversized-but-valid capture is a success, not an externalize failure.
    *  The main corpus leaves this off (it commits to the 10MB-capped repo). */
   skipExternalize?: boolean;
+  /** Proxy exit country (ISO 3166-1 alpha-2) from SiteSpec.geo — Swedish sites
+   *  freeze via Swedish residential IP so the capture sees what Swedish
+   *  visitors see. Unset → Browserbase default (best-effort US). */
+  geo?: string;
 }
 
 export interface FreezeResult {
@@ -159,6 +163,10 @@ interface FreezeReport {
     chromiumVersion: string | null;
     viewport: { width: number; height: number };
     frozenAt: string; // ISO
+    /** Proxy exit country the capture ran under (null = default US routing).
+     *  Provenance: an old golden frozen pre-geo is expected to differ from a
+     *  re-freeze under SE IP — this field is how you tell. */
+    proxyCountry?: string | null;
   } | null;
   /**
    * Grind 2 — Failure-taxonomy. `null` om freezen lyckades OCH assertCaptureValid
@@ -448,12 +456,18 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
   let mhtmlBytes = 0;
   let screenshotBytes = 0;
 
-  const session = await createSession();
+  const session = await createSession({
+    proxyCountry: opts.geo,
+    meta: { pipeline: "freeze", site: opts.name },
+  });
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
     apiKey,
     projectId,
     browserbaseSessionID: session.id,
+    // Region-routning för Stagehands hostade API (annars 400 mot en
+    // eu-central-1-session). Resume styrs av browserbaseSessionID.
+    browserbaseSessionCreateParams: { projectId, region: session.region },
     keepAlive: false,
   });
 
@@ -520,6 +534,7 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       chromiumVersion,
       viewport: { width: FREEZE_VIEWPORT.width, height: FREEZE_VIEWPORT.height },
       frozenAt: new Date().toISOString(),
+      proxyCountry: opts.geo ?? null,
     };
 
     // CDP Network capture: record url -> requestId for every font response during

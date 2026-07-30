@@ -79,7 +79,7 @@ export const Route = createFileRoute("/api/tests/robustness/stream")({
 
           for (const targetUrl of urls) {
             try {
-              await withBrowserPage(async (page) => {
+              await withBrowserPage({ pipeline: "robustness", site }, async (page) => {
                 emit("log", { message: `[${targetUrl}] navigating` });
                 await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeoutMs: 45000 });
 

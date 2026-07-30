@@ -92,17 +92,26 @@ export async function waitForContent(page: Page, budgetMs = 8000): Promise<void>
   }
 }
 
-export async function openPage(sessionId: string): Promise<OpenPage> {
+export async function openPage(
+  sessionId: string,
+  // Stagehands hostade API är region-pinnat: en eu-central-1-session mot
+  // default-endpointen ger 400. Skicka regionen från createSession-resultatet;
+  // utelämnad → slå upp den (extra roundtrip).
+  region?: import("../browserbase.server").BrowserbaseRegion,
+): Promise<OpenPage> {
   const apiKey = process.env.BROWSERBASE_API_KEY;
   const projectId = process.env.BROWSERBASE_PROJECT_ID;
   if (!apiKey) throw new Error("BROWSERBASE_API_KEY missing");
   if (!projectId) throw new Error("BROWSERBASE_PROJECT_ID missing");
 
+  const resolvedRegion =
+    region ?? (await (await import("../browserbase.server")).getSessionRegion(sessionId));
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
     apiKey,
     projectId,
     browserbaseSessionID: sessionId,
+    browserbaseSessionCreateParams: { projectId, region: resolvedRegion },
     keepAlive: true,
     disablePino: true,
   });

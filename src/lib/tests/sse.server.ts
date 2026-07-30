@@ -71,16 +71,18 @@ export function sseStream(task: (sse: SseEmitter) => Promise<void>): Response {
 /**
  * Create a fresh Browserbase session + Stagehand page, run `fn`, and release
  * both (Stagehand disconnect + session release) no matter how `fn` ends.
+ * `meta` stamps the session with attribution (dashboard/API-queryable).
  */
 export async function withBrowserPage<T>(
+  meta: import("./browserbase.server").SessionMeta,
   fn: (page: import("@browserbasehq/stagehand").Page) => Promise<T>,
 ): Promise<T> {
   const [bb, sess] = await Promise.all([
     import("./browserbase.server"),
     import("./robustness/session.server"),
   ]);
-  const session = await bb.createSession();
-  const opened = await sess.openPage(session.id);
+  const session = await bb.createSession({ meta });
+  const opened = await sess.openPage(session.id, session.region);
   try {
     return await fn(opened.page);
   } finally {

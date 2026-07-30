@@ -30,12 +30,15 @@ export async function acquireRenderPage(): Promise<{ page: Page; cleanup: () => 
     // Stagehand 3.x → "undefined is not an object"; capture-test #3 föll 8/8).
     const { createSession, closeSession } = await import("../../src/lib/tests/browserbase.server");
     const { Stagehand } = await import("@browserbasehq/stagehand");
-    const session = await createSession();
+    const session = await createSession({ meta: { pipeline: "redesign-render" } });
     const stagehand = new Stagehand({
       env: "BROWSERBASE",
       apiKey,
       projectId,
       browserbaseSessionID: session.id,
+      // Region-routning för Stagehands hostade API (400 utan, om sessionen
+      // hamnat i eu-central-1 via geo-koppling).
+      browserbaseSessionCreateParams: { projectId, region: session.region },
       keepAlive: true,
       disablePino: true,
     });
