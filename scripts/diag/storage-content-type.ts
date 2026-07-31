@@ -52,7 +52,9 @@ async function storedType(key: string): Promise<string> {
   return (data as { contentType?: string } | null)?.contentType ?? "(okänd)";
 }
 
-type Probe = { name: string; key: string; body: Uint8Array | string; type: string };
+// Uint8Array<ArrayBuffer>: BlobPart accepterar inte ArrayBufferLike (kan vara
+// SharedArrayBuffer) — Uint8Array.from ger alltid en vanlig ArrayBuffer.
+type Probe = { name: string; key: string; body: Uint8Array<ArrayBuffer> | string; type: string };
 const probes: Probe[] = [
   { name: "PNG (äkta bildbytes)", key: "preview/_diag/probe.png", body: PNG_1PX, type: "image/png" },
   { name: "JSON", key: "preview/_diag/probe.json", body: JSON_BODY, type: "application/json" },

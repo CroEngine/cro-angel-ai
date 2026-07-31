@@ -48,11 +48,20 @@ async function ownerEmails(site: string): Promise<string[]> {
   return [...new Set(emails)];
 }
 
+/** E-post maskerad för loggar (granskningsfynd 2026-07-28): kundadresser i
+ *  klartext i server/Actions-loggar är onödig PII-spridning — loggarna läses
+ *  av fler system (och människor) än DB:n. "h***@domän.se" räcker för debug. */
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  return `${email[0]}***@${email.slice(at + 1)}`;
+}
+
 async function deliver(to: string, subject: string, text: string): Promise<"resend" | "log"> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.NOTIFY_FROM; // t.ex. "CROENGINE <notiser@croengine.se>"
   if (!key || !from) {
-    console.log(`[angel notify:log] till=${to} ämne="${subject}"`);
+    console.log(`[angel notify:log] till=${maskEmail(to)} ämne="${subject}"`);
     return "log";
   }
   const res = await fetch("https://api.resend.com/emails", {
@@ -98,7 +107,7 @@ export async function notifyOwners(
         sent++;
       } catch (err) {
         // Leveransen föll — släpp reservationen så nästa körning försöker igen.
-        console.warn(`[angel notify] leverans föll (${kind} → ${email}):`, err);
+        console.warn(`[angel notify] leverans föll (${kind} → ${maskEmail(email)}):`, err);
         await supabaseAdmin
           .from("angel_notifications")
           .delete()

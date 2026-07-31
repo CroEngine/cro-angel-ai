@@ -12,19 +12,23 @@
 //
 // Strukturerade resultat → fleet-preview/results.json (skrivs om efter VARJE
 // sajt — en krasch tappar aldrig framsteg; omkörning hoppar färdiga sajter).
+// OBS: återupptagningen gäller LOKALT — Actions-runnern (preview-fleet.yml)
+// startar alltid tomt eftersom inget artefakt-återställs mellan körningar;
+// där styrs urvalet i stället med --offset/--limit (vågkörning).
 //
 //   bun run scripts/fleet-loop/preview-fleet.ts [--limit=N] [--offset=N]
 //     [--only=namn1,namn2] [--conc=3]
 //
 // Kräver ANTHROPIC_API_KEY (designern). BROWSERBASE_* frivilligt (SPA-frys).
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { SITES } from "../day0-sites";
+import { FLEET_SITES as SITES } from "./fleet-sites";
 import { anthropicDesigner } from "../loop/designer";
-import { generateRedesign } from "../../src/adaptive/redesign/generate";
+import { buildCandidatePlan } from "../loop/candidate-plan";
+import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { segmentDims } from "../../src/lib/segment-key";
@@ -49,6 +53,11 @@ interface SiteResult {
   attempts: number;
   sections: number | null;
   planOps: string[];
+  planSource: string | null;
+  menuSize: number | null;
+  probeCandidates: number | null;
+  probeApplicable: number | null;
+  probeGateClean: number | null;
   ms: number;
   error: string | null;
 }
@@ -59,15 +68,27 @@ sites = sites.slice(OFFSET, LIMIT ? OFFSET + LIMIT : undefined);
 mkdirSync(OUT_ROOT, { recursive: true });
 
 const resultsPath = join(OUT_ROOT, "results.json");
-const prior: SiteResult[] = existsSync(resultsPath)
-  ? (JSON.parse(readFileSync(resultsPath, "utf8")) as SiteResult[])
-  : [];
+// Vaktad läsning (granskningsfynd 2026-07-28): en halvskriven/korrupt
+// results.json (dödad körning mitt i write) kraschade HELA flottstarten.
+// Nu: varna + börja om — atomic-flushen nedan gör felet osannolikt framåt.
+let prior: SiteResult[] = [];
+if (existsSync(resultsPath)) {
+  try {
+    prior = JSON.parse(readFileSync(resultsPath, "utf8")) as SiteResult[];
+  } catch (e) {
+    console.warn(`[fleet] results.json oläsbar (${String(e).slice(0, 120)}) — börjar om från noll`);
+  }
+}
 const doneNames = new Set(prior.filter((r) => r.status !== "crashed").map((r) => r.name));
 const results: SiteResult[] = [...prior.filter((r) => r.status !== "crashed")];
 const queue = sites.filter((s) => !doneNames.has(s.name));
 console.log(`[fleet] ${queue.length} sajter i kön (${results.length} redan klara), conc=${CONC}`);
 
-const flush = () => writeFileSync(resultsPath, JSON.stringify(results, null, 2));
+// Atomisk flush (tmp+rename): läsare/återupptagning ser aldrig en halv fil.
+const flush = () => {
+  writeFileSync(`${resultsPath}.tmp`, JSON.stringify(results, null, 2));
+  renameSync(`${resultsPath}.tmp`, resultsPath);
+};
 
 function spawnBun(args: string[], timeoutMs: number): boolean {
   const r = spawnSync("bun", ["run", ...args], {
@@ -92,6 +113,11 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
     attempts: 0,
     sections: null,
     planOps: [],
+    planSource: null,
+    menuSize: null,
+    probeCandidates: null,
+    probeApplicable: null,
+    probeGateClean: null,
     ms: 0,
     error: null,
   };
@@ -141,28 +167,52 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
       adequate: true,
       recent: null,
     };
-    const ctx = buildRedesignContext({
-      site: `preview--${new URL(site.url).hostname}`,
-      goal: { text: null, kind: null, selector: null },
-      page: {
-        url: site.url,
-        frozenHtmlPath: frozen,
-        screenshotPath: "",
-        viewport: { width: 390, height: 844 },
-      },
+    // KATALOGEN FÖRST (kandidatkatalogen 2026-07-27) — exakt trattens väg:
+    // kod genererar dragen, DOM-proben filtrerar, LLM väljer (golvet när
+    // den tystnar); fritt-skapande designern är reserv för tomma menyer.
+    let planOps: RedesignOp[];
+    let altOps: RedesignOp[][] = [];
+    const candPlan = await buildCandidatePlan({
       content,
-      segment: segmentInsightFrom(summary, { observations }),
-      sourcePages: [],
+      frozenPath: frozen,
+      workDir: dir,
+      segmentLabel: dims.join(" · "),
+      observations,
     });
-    const plan = await generateRedesign(ctx, anthropicDesigner);
-    res.planOps = plan.ops.map((o) => o.op);
-    if (plan.ops.length === 0) {
-      res.status = "designer_empty";
-      res.reason = plan.note ?? null;
-      return res;
+    if (candPlan) {
+      planOps = candPlan.ops;
+      altOps = candPlan.altOps;
+      res.planSource = `katalog/${candPlan.source}`;
+      res.menuSize = candPlan.menuSize;
+      res.probeCandidates = candPlan.probed.candidates;
+      res.probeApplicable = candPlan.probed.applicable;
+      res.probeGateClean = candPlan.probed.gateClean;
+    } else {
+      const ctx = buildRedesignContext({
+        site: `preview--${new URL(site.url).hostname}`,
+        goal: { text: null, kind: null, selector: null },
+        page: {
+          url: site.url,
+          frozenHtmlPath: frozen,
+          screenshotPath: "",
+          viewport: { width: 390, height: 844 },
+        },
+        content,
+        segment: segmentInsightFrom(summary, { observations }),
+        sourcePages: [],
+      });
+      const plan = await generateRedesign(ctx, anthropicDesigner);
+      if (plan.ops.length === 0) {
+        res.status = "designer_empty";
+        res.reason = plan.note ?? null;
+        return res;
+      }
+      planOps = plan.ops;
+      res.planSource = "designer";
     }
+    res.planOps = planOps.map((o) => o.op);
 
-    // 4. Verify — grindkedjan med klamp + fallback + placerings-stege.
+    // 4. Verify — grindkedjan med klamp + reserv-stege + placerings-stege.
     writeFileSync(join(dir, "pages.json"), JSON.stringify({ "/": frozen }));
     writeFileSync(
       join(dir, "site.json"),
@@ -177,7 +227,8 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
           total: { visits: 0, conversions: 0 },
           observations,
           sourcePaths: [],
-          ops: plan.ops,
+          ops: planOps,
+          altOps,
         },
       ]),
     );
@@ -200,7 +251,20 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
       fallback?: string;
       attempts?: { gate?: { reasons?: string[] } }[];
     };
-    const vr = JSON.parse(readFileSync(join(dir, "verify-report.json"), "utf8")) as Entry[];
+    // Vaktad läsning (granskningsfynd 2026-07-28): kraschade verify INNAN
+    // rapporten fanns kastade readFileSync här — sajten bokfördes "crashed"
+    // med ett ENOENT i stället för sanningen "verify_failed", och grenen på
+    // raden under var onåbar död kod.
+    let vr: Entry[] = [];
+    try {
+      vr = JSON.parse(readFileSync(join(dir, "verify-report.json"), "utf8")) as Entry[];
+    } catch {
+      res.verdict = "verify_failed";
+      res.reason = verifyOk
+        ? "verify-report.json saknas trots exit 0"
+        : "verify kraschade/timade ut innan rapporten skrevs";
+      return res;
+    }
     const first = vr[0];
     res.verdict = first?.verdict ?? (verifyOk ? "no_result" : "verify_failed");
     res.fallback = first?.fallback ?? null;

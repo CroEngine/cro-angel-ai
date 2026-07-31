@@ -488,7 +488,9 @@ async function runBatch(root: string): Promise<number> {
     console.log("");
   }
 
-  return strict && (failCount > 0 || driftCount > 0) ? 1 : 0;
+  // replayFail, inte "failCount" (typkollsfynd 2026-07-28): variabeln fanns
+  // aldrig — varje --strict-batchkörning kraschade med ReferenceError här.
+  return strict && (replayFail > 0 || driftCount > 0) ? 1 : 0;
 }
 
 async function main(): Promise<number> {

@@ -45,7 +45,7 @@
 // i stället för att gissas fram.
 
 import { chromium, type Page } from "playwright-core";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -73,6 +73,7 @@ import {
   segmentInsightFrom,
 } from "../../src/adaptive/redesign/context";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
+import { tidySignalText } from "../../src/adaptive/redesign/candidates";
 import {
   evaluateRenderGates,
   type RenderMeasurements,
@@ -433,6 +434,18 @@ interface PlanIn {
   /** Mall-planer: exemplaret briefen/designen byggdes ur. */
   repPath?: string;
   ops: RedesignOp[];
+  /** Kandidatkatalogen (2026-07-27): rankade reserver — verify provar dem i
+   *  ordning när huvudvalet inte kan levereras, före bevis-lyftets nödfall.
+   *  Varje reserv valideras precis som huvudplanen innan den provas. */
+  altOps?: RedesignOp[][];
+  /** Kohortscopade planer (typkollsfynd 2026-07-28): nattloopen skriver
+   *  cohorts/success i plans.json och läser dem ur verify-resultatet för att
+   *  sätta required_cohorts + success-kontraktet vid insert. Fälten passerade
+   *  ALDRIG verify förut — kohortvarianter föddes oscopade (servade till alla
+   *  besökare i stället för sin kohort). Verify agerar inte på dem, bara
+   *  ekar dem oförändrade i det verifierade resultatet. */
+  cohorts?: string[];
+  success?: unknown;
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
 
@@ -464,21 +477,27 @@ function toMeasureOps(
   for (const o of ops) {
     const loc = o.op === "insert_snippet" ? heroLocatorFor(content) : locatorFor(content, o.targetId);
     if (!loc) return null;
-    out.push(
-      o.op === "move_up"
-        ? { op: "move_up", tag: loc.tag, find: loc.text }
-        : o.op === "insert_snippet"
-          ? {
-              op: "insert_snippet",
-              tag: loc.tag,
-              find: loc.text,
-              set: o.detail,
-              ...(o.sourcePath ? { href: o.sourcePath } : {}),
-              ...(styleDonor ? { styleClass: styleDonor } : {}),
-              ...(o.placement ? { placement: o.placement } : {}),
-            }
-          : { op: "set_text", tag: loc.tag, find: loc.text, set: o.detail },
-    );
+    if (o.op === "move_up") {
+      out.push({ op: "move_up", tag: loc.tag, find: loc.text });
+    } else if (o.op === "insert_snippet") {
+      out.push({
+        op: "insert_snippet",
+        tag: loc.tag,
+        find: loc.text,
+        set: o.detail,
+        ...(o.sourcePath ? { href: o.sourcePath } : {}),
+        ...(styleDonor ? { styleClass: styleDonor } : {}),
+        ...(o.placement ? { placement: o.placement } : {}),
+      });
+    } else if (o.op === "set_text") {
+      out.push({ op: "set_text", tag: loc.tag, find: loc.text, set: o.detail });
+    } else {
+      // condense/reveal serveras inte i v1 (toServeOps vägrar dem) — då får
+      // de inte heller MÄTAS som något annat (granskningsfynd 2026-07-28:
+      // de föll igenom till set_text, klarade grindarna och dog först som
+      // no_serve_ops utan orsak). En enda semantik: omätbart ⇒ null.
+      return null;
+    }
   }
   return out;
 }
@@ -503,11 +522,23 @@ function proofInsertFallback(
   // sid-globala regex-fångster ur platt text och kan dra med sig UI-brus
   // (talentium-fixturen: "0:30 Product overview Play video" följde med) —
   // de är reserven, inte förstahandsvalet.
+  //
+  // SUBSTANSKRAVET (ägarfynd fikajobs 2026-07-28): rubriken måste SJÄLV bära
+  // bevis (minst en siffra — "4,9/5", "12 000+ kunder"). "People love Fika.
+  // Here's what they say." är en LOVNAD om innehåll — lyft ensam blev en tom
+  // rad som lovar testimonials som inte följer med. Hellre hållen variant
+  // (rapporten levereras ändå) än en rad som skadar sidan.
   const sec = content.sections.find((s) => s.id === firstMove.targetId);
+  const headingOk = !!sec?.heading && /\d/.test(sec.heading);
+  // tidySignalText: samma städning som katalogens meny (UI-brus, Framers
+  // SSR-dubbletter) — raden ägaren ser ska vara ren sidtext, inte skarvskräp.
   const signal = ["trusted_by", "social_proof_count", "guarantee"]
-    .map((t) => content.trustSignals.find((s) => s.type === t)?.text)
+    .map((t) => {
+      const raw = content.trustSignals.find((s) => s.type === t)?.text;
+      return raw ? tidySignalText(raw) : undefined;
+    })
     .find((t) => !!t && t.trim().length >= 8);
-  const text = (sec?.heading ?? signal ?? "").trim();
+  const text = ((headingOk ? sec!.heading : null) ?? signal ?? "").trim();
   if (!text) return null;
   return [
     {
@@ -565,13 +596,28 @@ const browser = await chromium.launch({ headless: true, executablePath: EXEC });
 const results: unknown[] = [];
 const sqlParts: string[] = [];
 
+// Kraschsäker rapport (granskningsfynd 2026-07-28): rapporten skrevs EN gång
+// efter hela loopen — en krasch/timeout på plan N kastade bort N−1 färdiga
+// domslut (nattloopen, preview-arbetaren och fleeten läser filen efteråt).
+// Nu flushas den efter VARJE domslut, atomiskt (tmp+rename) så en läsare
+// aldrig ser en halvskriven fil.
+const reportPath = join(outDir, "verify-report.json");
+const flushReport = () => {
+  writeFileSync(`${reportPath}.tmp`, JSON.stringify(results, null, 2));
+  renameSync(`${reportPath}.tmp`, reportPath);
+};
+const record = (r: Record<string, unknown>) => {
+  results.push(r);
+  flushReport();
+};
+
 try {
   for (const plan of plans) {
     const isTemplate = Array.isArray(plan.templatePages) && plan.templatePages.length >= 2;
     // Mall-v1 servar bara move_up/set_text på delade sektioner — insert_snippet
     // ankrar i hjälten, som är sid-unik per definition. Fail closed.
     if (isTemplate && plan.ops.some((o) => o.op === "insert_snippet")) {
-      results.push({
+      record({
         path: plan.path,
         key: plan.key,
         verdict: "rejected_by_validation",
@@ -593,7 +639,7 @@ try {
         .map((p) => ({ p, file: pages[p] }))
         .filter((x): x is { p: string; file: string } => !!x.file);
       if (!pages[repPath] || files.length < 2) {
-        results.push({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
+        record({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
         console.log(`  ${plan.path} × ${plan.key}: <2 frysta mall-exemplar — köad`);
         continue;
       }
@@ -607,7 +653,7 @@ try {
       }
       const shared = sharedTemplateHeadings(models);
       if (shared.length === 0) {
-        results.push({
+        record({
           path: plan.path,
           key: plan.key,
           verdict: "no_serve_ops",
@@ -621,7 +667,7 @@ try {
     } else {
       const pg = await pageFor(plan.path);
       if (!pg) {
-        results.push({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
+        record({ path: plan.path, key: plan.key, verdict: "needs_freeze" });
         console.log(`  ${plan.path} × ${plan.key}: SAKNAR fryst sida — köad`);
         continue;
       }
@@ -678,15 +724,20 @@ try {
     // claims-vakten på varje omtextning. Kedjan litar aldrig på designern.
     const validated = await generateRedesign(ctx, async () => JSON.stringify(plan.ops));
     if (validated.ops.length !== plan.ops.length) {
-      results.push({
+      // rejected[].reason, inte "validated.notes" (typkollsfynd 2026-07-28):
+      // fältet fanns aldrig på RedesignPlan — varje avvisning rapporterades
+      // som undefined och fleet-läsaren visade "(okänd orsak)". Valideringens
+      // per-op-skäl ÄR diagnosen.
+      const reason = validated.rejected.map((r) => r.reason).join("; ") || validated.note || "";
+      record({
         path: plan.path,
         key: plan.key,
         verdict: "rejected_by_validation",
         dropped: plan.ops.length - validated.ops.length,
-        notes: validated.notes,
+        reason,
       });
       console.log(
-        `  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll)`,
+        `  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll: ${reason || "utan angivet skäl"})`,
       );
       continue;
     }
@@ -698,7 +749,7 @@ try {
     let effectiveOps: RedesignOp[] = validated.ops;
     let measureOps = toMeasureOps(content, effectiveOps, styleDonor);
     if (!measureOps) {
-      results.push({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
+      record({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       console.log(`  ${plan.path} × ${plan.key}: lokator saknas för op — hålls tillbaka`);
       continue;
     }
@@ -753,58 +804,78 @@ try {
     // direkt efter h1-elementet (talentium-fyndet: videoblocket täckte
     // default-punkten). Första placering som passerar vinner och kodas i
     // serve_ops så klienten applicerar exakt det grindade.
+    // Prova en op-lista i egen kontext; vid pass ADOPTERAS den (efter-bevis
+    // tas om från exakt den appliceringen — skärmdumpen ägaren ser måste
+    // komma från det som grindades) och blir planens sanning nedströms.
+    const adoptRun = async (opsList: RedesignOp[], label: string): Promise<boolean> => {
+      const m = toMeasureOps(content, opsList, styleDonor);
+      if (!m) return false;
+      const fctx = await browser.newContext({
+        viewport: { width: canonicalVp.width, height: canonicalVp.height },
+      });
+      await fctx.route("**/*", (r) => r.abort());
+      const fpage = await fctx.newPage();
+      await fpage.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
+      await fpage.waitForTimeout(400);
+      await captureLcpElement(fpage);
+      const fb = await runGatedAttempts(fpage, m, ctaTexts, { ctaSelectors });
+      const fbLast = fb.attempts[fb.attempts.length - 1];
+      if (!fb.unresolvable && fbLast.gate.verdict === "pass") {
+        await measurePlan(fpage, fb.attemptOps, [], true);
+        await fpage.screenshot({
+          path: join(outDir, `${slug}-after.jpg`),
+          type: "jpeg",
+          quality: 60,
+          fullPage: true,
+        });
+        writeFileSync(join(outDir, `${slug}-after.html`), await fpage.content());
+        attempts = [...attempts, ...fb.attempts]; // hela historiken — ärlig rapport
+        attemptOps = fb.attemptOps;
+        extraLiftApplied = false; // reserverna bär sina egna ops som de är
+        effectiveOps = opsList;
+        measureOps = m;
+        last = attempts[attempts.length - 1];
+        fallbackUsed = label;
+        console.log(
+          `  ${plan.path} × ${plan.key}: huvudvalet kunde inte levereras — "${label}" verifierades i stället`,
+        );
+        await fctx.close();
+        return true;
+      }
+      // Ärlig spårbarhet: varje nej ska synas i loggen, inte tystna.
+      console.log(
+        `  ${plan.path} × ${plan.key}: reserven "${label}" hölls också — ${
+          fb.unresolvable ? "lokatorn kunde inte upplösas" : (fbLast.gate.reasons[0] ?? "grind föll")
+        }`,
+      );
+      await fctx.close();
+      return false;
+    };
+
+    // Reserv-stegen: katalogens rankade alternativ (validerade som huvud-
+    // planen — samma ärlighetsregler) → bevis-lyftets nödfall med
+    // placerings-stegen. Aldrig för mall-planer (exemplaren har olika h1).
     const tryProofFallback = async (): Promise<boolean> => {
       if (isTemplate) return false;
+      for (const [i, alt] of (plan.altOps ?? []).entries()) {
+        const altValidated = await generateRedesign(ctx, async () => JSON.stringify(alt));
+        if (altValidated.ops.length !== alt.length) {
+          console.log(
+            `  ${plan.path} × ${plan.key}: reserv alt:${i + 1} föll i valideringen — hoppas`,
+          );
+          continue;
+        }
+        if (await adoptRun(altValidated.ops, `alt:${i + 1}`)) return true;
+      }
       const fbBase = proofInsertFallback(content, validated.ops);
       const placements: ("after_h1" | undefined)[] = [undefined, "after_h1"];
       for (const placement of fbBase ? placements : []) {
         const fbOps = fbBase!.map((o) =>
           o.op === "insert_snippet" && placement ? { ...o, placement } : o,
         );
-        const fbMeasure = toMeasureOps(content, fbOps, styleDonor);
-        if (!fbMeasure) return false;
-        const fctx = await browser.newContext({
-          viewport: { width: canonicalVp.width, height: canonicalVp.height },
-        });
-        await fctx.route("**/*", (r) => r.abort());
-        const fpage = await fctx.newPage();
-        await fpage.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
-        await fpage.waitForTimeout(400);
-        await captureLcpElement(fpage);
-        const fb = await runGatedAttempts(fpage, fbMeasure, ctaTexts, { ctaSelectors });
-        const fbLast = fb.attempts[fb.attempts.length - 1];
-        if (!fb.unresolvable && fbLast.gate.verdict === "pass") {
-          // Efter-bevisen tas om från fallbackens EXAKTA applicering — samma
-          // regel som huvudvägen (skärmdumpen ägaren ser måste komma från
-          // det som grindades).
-          await measurePlan(fpage, fb.attemptOps, [], true);
-          await fpage.screenshot({
-            path: join(outDir, `${slug}-after.jpg`),
-            type: "jpeg",
-            quality: 60,
-            fullPage: true,
-          });
-          writeFileSync(join(outDir, `${slug}-after.html`), await fpage.content());
-          attempts = [...attempts, ...fb.attempts]; // hela historiken — ärlig rapport
-          attemptOps = fb.attemptOps;
-          extraLiftApplied = false; // fallbacken bär inga flyttar
-          effectiveOps = fbOps;
-          measureOps = fbMeasure;
-          last = attempts[attempts.length - 1];
-          fallbackUsed = placement ? `proof_insert:${placement}` : "proof_insert";
-          console.log(
-            `  ${plan.path} × ${plan.key}: flytten kunde inte levereras — bevis-lyftet verifierades i stället (fallback${placement ? `, placering ${placement}` : ""})`,
-          );
-          await fctx.close();
+        if (await adoptRun(fbOps, placement ? `proof_insert:${placement}` : "proof_insert")) {
           return true;
         }
-        // Ärlig spårbarhet: fallbackens nej ska synas i loggen, inte tystna.
-        console.log(
-          `  ${plan.path} × ${plan.key}: fallback-lyftet (${placement ?? "efter hjälten"}) hölls också — ${
-            fb.unresolvable ? "lokatorn kunde inte upplösas" : (fbLast.gate.reasons[0] ?? "grind föll")
-          }`,
-        );
-        await fctx.close();
       }
       return false;
     };
@@ -812,7 +883,7 @@ try {
     if (unresolvable) {
       await context.close();
       if (!(await tryProofFallback())) {
-        results.push({
+        record({
           path: plan.path,
           key: plan.key,
           verdict: "not_applicable",
@@ -845,7 +916,7 @@ try {
     }
 
     if (last.gate.verdict !== "pass") {
-      results.push({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
+      record({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
       console.log(
         `  ${plan.path} × ${plan.key}: GRIND-FAIL efter ${attempts.length} försök — hålls tillbaka`,
       );
@@ -901,7 +972,7 @@ try {
     }
     const failedConfirm = confirmations.find((c) => c.verdict !== "pass");
     if (failedConfirm) {
-      results.push({
+      record({
         path: plan.path,
         key: plan.key,
         verdict: "gate_fail",
@@ -949,7 +1020,7 @@ try {
       }
       const failedEx = exemplarConfirmations.find((c) => c.verdict !== "pass");
       if (failedEx) {
-        results.push({
+        record({
           path: plan.path,
           key: plan.key,
           verdict: "gate_fail",
@@ -990,7 +1061,7 @@ try {
         ];
     const serveOps = toServeOps(content, finalOps, styleDonor);
     if (!serveOps) {
-      results.push({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
+      record({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       continue;
     }
 
@@ -1076,7 +1147,7 @@ try {
     );
     // ops med i resultatet så en orkestrerare (nattloopen) kan göra direkta
     // inserts via service-klienten i stället för att köra SQL-filen.
-    results.push({
+    record({
       path: plan.path,
       key: plan.key,
       verdict: "verified",
@@ -1086,6 +1157,9 @@ try {
       serveOps,
       evidence,
       slug,
+      // Kohortkontraktet ekas till orkestreraren — se PlanIn-kommentaren.
+      ...(plan.cohorts ? { cohorts: plan.cohorts } : {}),
+      ...(plan.success !== undefined ? { success: plan.success } : {}),
     });
     console.log(
       `  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök${fallbackUsed ? ", via fallback" : ""}) — väntar på ägarens knapp`,
@@ -1095,7 +1169,9 @@ try {
   await browser.close();
 }
 
-writeFileSync(join(outDir, "verify-report.json"), JSON.stringify(results, null, 2));
+// Slut-flushen täcker tomma körningar (inga record-anrop) — läsarna förväntar
+// sig alltid en fil.
+flushReport();
 if (sqlParts.length)
   writeFileSync(join(outDir, "insert-variants.sql"), sqlParts.join("\n\n") + "\n");
 console.log(

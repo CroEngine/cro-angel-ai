@@ -29,58 +29,65 @@ function ctx(overrides: Partial<VisitorContext> = {}): VisitorContext {
 const patternsOf = (c: VisitorContext): PatternId[] =>
   decide("demo", c, demo).adaptations.map((a) => a.pattern);
 
-describe("decide — blueprint scenarios (v1: nivå 1–2 som standard)", () => {
-  it("Visitor 1: LinkedIn, desktop, first visit → B2B-guidning utan layoutingrepp", () => {
+// Ägarregeln (2026-07-28): "vi behöver inte hålla på att highlighta knappar
+// osv heller — vi ska endast skicka runt färdiga stycken." Dag-1-vokabulären
+// är OMFLYTT: dekorationsklassen (badges/chips, sekundärlänkar, knapptext-
+// byten, reveal/condense) declinar alltid med op_not_in_owner_vocabulary.
+// Flytt-mönstren (nivå 3) behåller sitt opt-in-krav — utan opt-in är golvet
+// TYST tills ägaren aktiverat layout eller godkänt en variant.
+describe("decide — blueprint scenarios (ägarregeln: endast omflytt)", () => {
+  it("Visitor 1: LinkedIn, desktop → TYST utan opt-in; dekorationerna declinar typat", () => {
     const d = decide(
       "demo",
       ctx({ trafficSource: "linkedin", device: "desktop", isReturning: false }),
       demo,
     );
-    const patterns = d.adaptations.map((a) => a.pattern);
-    // MAX_ADAPTATIONS (3) is a design-integrity contract: the page must stay
-    // the customer's.
-    expect(patterns.length).toBeLessThanOrEqual(3);
-    // v1: logo-flytten är nivå 3 → declined med typat skäl; case study (reveal,
-    // nivå 2) och clarify tar dess plats.
-    expect(patterns).not.toContain("show_customer_logos_early");
+    expect(d.adaptations).toEqual([]);
+    // Flytten: kvar bakom layout-opt-in (befintlig regel, oförändrad).
     expect((d.declined ?? []).some(
       (x) => x.pattern === "show_customer_logos_early" && x.reason === "layout_level_disabled",
     )).toBe(true);
-    expect(patterns).toContain("show_case_study");
-
-    const cta = d.adaptations.find((a) => a.pattern === "clarify_cta");
-    expect(cta?.op).toBe("set_text");
-    expect(cta?.value).toBe("Book a demo");
+    // Dekorationsklassen: vokabulär-decline, aldrig inventory-skäl.
+    for (const p of ["show_case_study", "clarify_cta"] as const) {
+      expect((d.declined ?? []).some(
+        (x) => x.pattern === p && x.reason === "op_not_in_owner_vocabulary",
+      )).toBe(true);
+    }
+    // Med opt-in: flytten är HELA leveransen.
+    const optIn = decide("demo", ctx({ trafficSource: "linkedin", device: "desktop" }), demo, {}, undefined, {
+      allowLayoutPatterns: true,
+    });
+    expect(optIn.adaptations.map((a) => a.pattern)).toContain("show_customer_logos_early");
+    expect(optIn.adaptations.every((a) => a.op === "move_up")).toBe(true);
   });
 
-  it("Visitor 2: Google, mobile → guidning (clarify) — flyttarna kräver opt-in", () => {
-    const d = decide("demo", ctx({ trafficSource: "google", device: "mobile" }), demo);
-    const patterns = d.adaptations.map((a) => a.pattern);
-    // v1: shorten_hero/move_faq_up är nivå 3 → declined som standard.
+  it("Visitor 2: Google, mobile → condense/set_text ur vokabulären även MED opt-in", () => {
+    const optIn = decide("demo", ctx({ trafficSource: "google", device: "mobile" }), demo, {}, undefined, {
+      allowLayoutPatterns: true,
+    });
+    const patterns = optIn.adaptations.map((a) => a.pattern);
+    // shorten_hero är nivå 3 och passerar nivågrinden med opt-in — men op:en
+    // är condense, inte omflytt ⇒ vokabulär-decline. clarify (set_text) samma.
     expect(patterns).not.toContain("shorten_hero");
-    expect(patterns).not.toContain("move_faq_up");
-    const levelDeclines = (d.declined ?? []).filter((x) => x.reason === "layout_level_disabled");
-    expect(levelDeclines.map((x) => x.pattern)).toEqual(
-      expect.arrayContaining(["shorten_hero", "move_faq_up"]),
-    );
-
-    const cta = d.adaptations.find((a) => a.pattern === "clarify_cta");
-    expect(cta?.value).toBe("Start Free Trial");
+    expect(patterns).not.toContain("clarify_cta");
+    expect((optIn.declined ?? []).some(
+      (x) => x.pattern === "shorten_hero" && x.reason === "op_not_in_owner_vocabulary",
+    )).toBe(true);
+    // Flytten lever: move_faq_up är omflytt av ett färdigt stycke.
+    expect(patterns).toContain("move_faq_up");
   });
 
-  it("Visitor 3: returning + pricing → continue; pris-flytten kräver opt-in men funkar då", () => {
-    // continue_where_left_off är en badge och badges ankras vid målet sedan
-    // granskningen (utan mål = ärlig decline) — scenariot behöver sajtens goal.
+  it("Visitor 3: returning + pricing → pris-FLYTTEN med opt-in; continue-badgen aldrig", () => {
     const goal = { selector: "#cta", text: "Start Free Trial" };
     const c = ctx({ isReturning: true, visitCount: 2, viewedPricing: true });
     const narrow = decide("demo", c, demo, {}, goal);
-    expect(narrow.adaptations.map((a) => a.pattern)).toContain("continue_where_left_off");
-    expect(narrow.adaptations.map((a) => a.pattern)).not.toContain("surface_pricing");
-    // Opt-in (angel_sites.layout_patterns_enabled) återställer nivå 3 exakt
-    // som förr — layouten är ett per-sajt-beslut, inte borttagen förmåga.
+    expect(narrow.adaptations).toEqual([]);
+    expect((narrow.declined ?? []).some(
+      (x) => x.pattern === "continue_where_left_off" && x.reason === "op_not_in_owner_vocabulary",
+    )).toBe(true);
     const optIn = decide("demo", c, demo, {}, goal, { allowLayoutPatterns: true });
     expect(optIn.adaptations.map((a) => a.pattern)).toContain("surface_pricing");
-    expect(optIn.adaptations.map((a) => a.pattern)).toContain("continue_where_left_off");
+    expect(optIn.adaptations.map((a) => a.pattern)).not.toContain("continue_where_left_off");
   });
 });
 
@@ -140,18 +147,19 @@ describe("decide — safety and invariants", () => {
     expect(patterns.length).toBeGreaterThan(0);
   });
 
-  it("minsta-ingrepps-tiebreak: vid lika prioritet vinner lättare op över flytt", () => {
-    // linkedin_b2b nominerar fyra mönster på prio 80. Med layout-opt-in OCH
-    // fullt inventory ska top-3 vara de tre LÄTTASTE (set_text/reveal) — logo-
-    // FLYTTEN (nivå 3, move_up) rankas sist och cap:as ut. "Hur lite behöver
-    // vi förändra sidan?" är kod, inte smak.
+  it("ägarregeln: dekorationsklassen kan ALDRIG vinna en plats — flytten är vokabulären", () => {
+    // Före 2026-07-28 vann de lättaste opsen (set_text/reveal) platserna via
+    // minsta-ingrepps-tiebreaken och flytten cap:ades ut. Med ägarregeln är
+    // dekorationsklassen aldrig nominerbar: flytten tar platsen, resten
+    // declinar typat.
     const d = decide("demo", ctx({ trafficSource: "linkedin", device: "desktop" }), demo, {}, undefined, {
       allowLayoutPatterns: true,
     });
     const patterns = d.adaptations.map((a) => a.pattern);
-    expect(patterns).toContain("clarify_cta");
-    expect(patterns).toContain("show_case_study");
-    expect(patterns).not.toContain("show_customer_logos_early");
+    expect(patterns).toContain("show_customer_logos_early");
+    expect(patterns).not.toContain("clarify_cta");
+    expect(patterns).not.toContain("show_case_study");
+    expect(d.adaptations.every((a) => a.op === "move_up")).toBe(true);
   });
 
   it("caps the number of adaptations", () => {
@@ -180,7 +188,10 @@ describe("decide — safety and invariants", () => {
   });
 
   it("every adaptation carries a non-empty reason", () => {
-    const d = decide("demo", ctx({ trafficSource: "linkedin" }), demo);
+    // Opt-in krävs sedan ägarregeln — utan den är golvet tomt by design.
+    const d = decide("demo", ctx({ trafficSource: "linkedin" }), demo, {}, undefined, {
+      allowLayoutPatterns: true,
+    });
     expect(d.adaptations.length).toBeGreaterThan(0);
     for (const a of d.adaptations) expect(a.reason.length).toBeGreaterThan(0);
   });
@@ -197,28 +208,33 @@ describe("decide — performance feedback (bandit)", () => {
   });
 
   it("suppresses a proven loser so it no longer applies", () => {
+    // Flytt-subjekt sedan ägarregeln (dekorationsklassen nomineras aldrig).
     const c = ctx({ trafficSource: "linkedin", device: "desktop" });
-    const base = decide("demo", c, demo).adaptations.map((a) => a.pattern);
-    expect(base).toContain("show_case_study");
+    const opts = { allowLayoutPatterns: true };
+    const base = decide("demo", c, demo, {}, undefined, opts).adaptations.map((a) => a.pattern);
+    expect(base).toContain("show_customer_logos_early");
 
-    const d = decide("demo", c, demo, { show_case_study: PERF_SUPPRESS });
-    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_case_study");
+    const d = decide("demo", c, demo, { show_customer_logos_early: PERF_SUPPRESS }, undefined, opts);
+    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_customer_logos_early");
   });
 
   it("adds the boost to a winning pattern's effective priority", () => {
-    // clarify_cta comes from the linkedin_b2b rule at priority 80; the boost
-    // must lift its reported priority by exactly PERF_MAX_BOOST.
+    // Logo-flytten kommer ur linkedin_b2b-regeln på prioritet 80; boosten ska
+    // lyfta rapporterad prioritet med exakt PERF_MAX_BOOST.
     const c = ctx({ trafficSource: "linkedin", device: "desktop" });
-    const cta = decide("demo", c, demo, { clarify_cta: PERF_MAX_BOOST }).adaptations.find(
-      (a) => a.pattern === "clarify_cta",
-    );
-    expect(cta).toBeDefined();
-    expect(cta!.priority).toBe(80 + PERF_MAX_BOOST);
+    const mv = decide(
+      "demo", c, demo, { show_customer_logos_early: PERF_MAX_BOOST }, undefined,
+      { allowLayoutPatterns: true },
+    ).adaptations.find((a) => a.pattern === "show_customer_logos_early");
+    expect(mv).toBeDefined();
+    expect(mv!.priority).toBe(80 + PERF_MAX_BOOST);
   });
 
   it("keeps ordering by descending (boosted) priority", () => {
-    const c = ctx({ trafficSource: "linkedin", device: "mobile" });
-    const d = decide("demo", c, demo, { clarify_cta: PERF_MAX_BOOST });
+    const c = ctx({ trafficSource: "linkedin", device: "mobile", isReturning: true, viewedPricing: true });
+    const d = decide("demo", c, demo, { move_faq_up: PERF_MAX_BOOST }, undefined, {
+      allowLayoutPatterns: true,
+    });
     const priorities = d.adaptations.map((a) => a.priority);
     expect(priorities).toEqual([...priorities].sort((x, y) => y - x));
   });
@@ -268,13 +284,11 @@ describe("decide — ägarregeln: målknappen är orörbar (2026-07-20)", () => 
     });
   });
 
-  it("injektioner får fortfarande ANKRA vid målet (badge/secondary rör det inte)", () => {
+  it("injektioner vid målet finns inte längre — dekorationsklassen declinar (ägarregeln 2026-07-28)", () => {
     const d = decide("t", ctx({ isReturning: false, visitCount: 0, pageType: "home" }), demo, {}, goal);
-    for (const a of d.adaptations) {
-      if (a.target === goal.selector) {
-        expect(["inject_badge", "inject_secondary"]).toContain(a.op);
-      }
-    }
+    // INGET får ankra vid målet: badges/secondary är ur vokabulären helt.
+    expect(d.adaptations.find((a) => a.target === goal.selector)).toBeUndefined();
+    expect(d.adaptations.every((a) => a.op === "move_up")).toBe(true);
   });
 
   it("goal presence changes the decisionId (id reflects engine inputs)", () => {
@@ -314,7 +328,10 @@ describe("levers — softer secondary CTA", () => {
     },
   });
 
-  it("cold first-time visitors get a published softer option with its own href", () => {
+  it("secondary declinar ALLTID med vokabulärskälet — även med perfekt publicerat alternativ (ägarregeln 2026-07-28)", () => {
+    // Före ägarregeln var det här mönstrets rika interna vakter (distinkt
+    // alternativ, href-hygien, mål-dubblettskydd) i drift — nu nomineras
+    // op-klassen aldrig, så vakterna är vilande och kontraktet är declinen.
     const cold = decide(
       "t",
       ctx({ isReturning: false, visitCount: 0, pageType: "home" }),
@@ -322,65 +339,10 @@ describe("levers — softer secondary CTA", () => {
       {},
       goal,
     );
-    const alt = cold.adaptations.find((a) => a.pattern === "show_secondary_cta");
-    expect(alt?.op).toBe("inject_secondary");
-    expect(alt?.value).toBe("Se hur det fungerar");
-    expect(alt?.href).toBe("/sa-funkar-det");
-
-    const warm = decide(
-      "t",
-      ctx({ isReturning: true, visitCount: 3, pageType: "home" }),
-      invWithAlt(),
-      {},
-      goal,
-    );
-    expect(warm.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
-  });
-
-  it("secondary never fires without a distinct published alternative or with a javascript: href", () => {
-    const onlyGoal = decide(
-      "t",
-      ctx({ isReturning: false, visitCount: 0 }),
-      {
-        site: "t",
-        slots: {
-          cta: [
-            {
-              id: "c-goal",
-              slot: "cta" as const,
-              text: "Skapa konto",
-              selector: "#signup",
-              meta: { role: "acquisition", href: "/skapa-konto" },
-            },
-          ],
-        },
-      },
-      {},
-      goal,
-    );
-    expect(onlyGoal.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
-
-    const evil = decide(
-      "t",
-      ctx({ isReturning: false, visitCount: 0 }),
-      {
-        site: "t",
-        slots: {
-          cta: [
-            {
-              id: "c-evil",
-              slot: "cta" as const,
-              text: "Se mer",
-              selector: "#e",
-              meta: { role: "acquisition", href: "javascript:alert(1)" },
-            },
-          ],
-        },
-      },
-      {},
-      goal,
-    );
-    expect(evil.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
+    expect(cold.adaptations.find((a) => a.pattern === "show_secondary_cta")).toBeUndefined();
+    expect((cold.declined ?? []).some(
+      (x) => x.pattern === "show_secondary_cta" && x.reason === "op_not_in_owner_vocabulary",
+    )).toBe(true);
   });
 });
 
@@ -422,10 +384,12 @@ describe("design integrity — the page stays the customer's", () => {
     const injects = d.adaptations.filter((a) =>
       ["inject_secondary", "inject_badge"].includes(a.op),
     );
-    expect(injects.length).toBe(1);
+    // Skärpt av ägarregeln 2026-07-28: injektionsbudgeten var "max EN" —
+    // nu är den NOLL. Angel lägger aldrig till element på sidan.
+    expect(injects.length).toBe(0);
   });
 
-  it("desktop cold visitors get the secondary link as their single injection", () => {
+  it("desktop cold visitors: ingen injektion alls — endast omflytt (ägarregeln)", () => {
     const d = decide(
       "t",
       ctx({ device: "desktop", isReturning: false, visitCount: 0, pageType: "home" }),
@@ -436,14 +400,15 @@ describe("design integrity — the page stays the customer's", () => {
     const injects = d.adaptations.filter((a) =>
       ["inject_sticky", "inject_secondary", "inject_badge"].includes(a.op),
     );
-    expect(injects.map((a) => a.pattern)).toEqual(["show_secondary_cta"]);
+    expect(injects).toEqual([]);
+    expect(d.adaptations.every((a) => a.op === "move_up")).toBe(true);
   });
 });
 
-describe("clarify_cta — goal-kind-aware label preference (one goal vocabulary)", () => {
-  it("a confirmed contact/lead goal steers clarify_cta to the sales label, not demo", () => {
-    // Lead-gen site: the judge ranked "contact" as the goal kind and the owner
-    // confirmed it. The engine must not undo that by assuming SaaS demo/trial.
+describe("clarify_cta — ur vokabulären (ägarregeln 2026-07-28)", () => {
+  it("knapptext-byten nomineras aldrig — även perfekt intent-stämplat inventory declinar typat", () => {
+    // Den goal-kind-medvetna etikettpreferensen (sales/demo/trial-kedjan)
+    // ligger vilande bakom vokabulärgrinden — knappens text är kundens.
     const d = decide(
       "leadgen",
       ctx({ trafficSource: "linkedin" }),
@@ -451,60 +416,10 @@ describe("clarify_cta — goal-kind-aware label preference (one goal vocabulary)
       {},
       { selector: "#goal", text: "Kontakta oss", kind: "contact" },
     );
-    const cta = d.adaptations.find((a) => a.pattern === "clarify_cta");
-    expect(cta?.value).toBe("Contact Sales");
-    expect(cta?.reason).toContain("sales");
-  });
-
-  it("sales-only inventories are reachable via the preference chain (no dead inventory)", () => {
-    // Before: ctaIntent() only ever asked for demo|trial, so a site whose only
-    // published variants are the sales motion never clarified anything.
-    const inv = emptyInventory("salesled");
-    inv.slots.cta = [
-      {
-        id: "c-1",
-        slot: "cta",
-        text: "Kontakta säljteamet",
-        selector: "#cta",
-        meta: { role: "acquisition", intent: "sales" },
-      },
-      {
-        id: "c-2",
-        slot: "cta",
-        text: "Prata med oss",
-        selector: "#cta",
-        meta: { role: "acquisition", intent: "sales" },
-      },
-    ];
-    const d = decide("salesled", ctx({ trafficSource: "google_ads" }), inv);
-    const cta = d.adaptations.find((a) => a.pattern === "clarify_cta");
-    expect(cta?.value).toBe("Kontakta säljteamet");
-    expect(cta?.reason).toContain("sales"); // strict match — never misreported
-  });
-
-  it("no wrong-intent fallback: unstamped multi-label CTAs stay untouched", () => {
-    // Two labels on the same element but NO intent stamps: the old first-item
-    // fallback would have retexted this to "Läs mer" and reported
-    // "(intent: trial)". Strict matching declines instead.
-    const inv = emptyInventory("plain");
-    inv.slots.cta = [
-      {
-        id: "c-a",
-        slot: "cta",
-        text: "Läs mer",
-        selector: "#only",
-        meta: { role: "acquisition" }, // no intent stamped at all
-      },
-      {
-        id: "c-b",
-        slot: "cta",
-        text: "Utforska mer",
-        selector: "#only",
-        meta: { role: "acquisition" },
-      },
-    ];
-    const d = decide("plain", ctx({ trafficSource: "google_ads" }), inv);
     expect(d.adaptations.map((a) => a.pattern)).not.toContain("clarify_cta");
+    expect((d.declined ?? []).some(
+      (x) => x.pattern === "clarify_cta" && x.reason === "op_not_in_owner_vocabulary",
+    )).toBe(true);
   });
 
   it("the goal kind is a real engine input: it changes the decisionId", () => {
@@ -568,35 +483,39 @@ describe("decide — decline reasons (C3) and the micro-nudge floor (D3)", () =>
   });
 
   it("thin inventories decline with inventory reasons, not silence", () => {
-    const d = decide("t", ctx(), emptyInventory("t"));
+    // Flytt-subjekt sedan ägarregeln: med opt-in når flytt-mönstren
+    // inventeringsgrinden — tom slot ⇒ typat inventory-skäl, aldrig tystnad.
+    const d = decide(
+      "t",
+      ctx({ trafficSource: "google", device: "mobile" }),
+      emptyInventory("t"),
+      {},
+      undefined,
+      { allowLayoutPatterns: true },
+    );
     expect(d.adaptations).toEqual([]);
-    expect((d.declined ?? []).length).toBeGreaterThan(0);
-    expect((d.declined ?? []).some((x) => x.reason === "no_goal_configured")).toBe(true);
+    expect((d.declined ?? []).some(
+      (x) => x.pattern === "move_faq_up" && x.reason === "no_inventory_for_slot",
+    )).toBe(true);
   });
 
-  it("a micro nudge can demote but never zero out the baseline pattern (D3)", () => {
-    // Inventory with ONLY setup_time microcopy: show_2min_setup is the sole
-    // injectable nominee (no_credit_card/continuity decline for lack of
-    // content), so the injection budget can't mask the floor under test.
-    // A -10 engagement nudge used to hit the priority>0 filter and silently
-    // kill the priority-10 baseline site-wide; now it floors at 1 and fires.
-    // (Badges är målankrade sedan granskningen — utan mål avböjer de, så
-    // scenariot behöver sajtens goal.)
+  it("en mikro-nudge demoterar men nollar aldrig — bara PERF_SUPPRESS tar bort (D3)", () => {
+    // D3-golvet på flytt-subjekt sedan ägarregeln (baseline-badgen som förr
+    // bevisade ===1-golvet ligger bakom vokabulärgrinden och kan inte eldas).
     const inv = emptyInventory("lowvol");
-    inv.slots.microcopy = [
-      { id: "mc-setup", slot: "microcopy", text: "2 minute setup", meta: { kind: "setup_time" } },
-    ];
-    const c = ctx();
-    const base = decide("lowvol", c, inv, {}, goal).adaptations.map((a) => a.pattern);
-    expect(base).toContain("show_2min_setup");
-    const nudged = decide("lowvol", c, inv, { show_2min_setup: -10 }, goal);
-    expect(nudged.adaptations.map((a) => a.pattern)).toContain("show_2min_setup");
-    expect(
-      nudged.adaptations.find((a) => a.pattern === "show_2min_setup")!.priority,
-    ).toBe(1);
+    inv.slots.faq = [{ id: "f", slot: "faq", selector: "#faq", text: "Vanliga frågor" }];
+    const c = ctx({ trafficSource: "google", device: "mobile" });
+    const opts = { allowLayoutPatterns: true };
+    const base = decide("lowvol", c, inv, {}, goal, opts);
+    const basePrio = base.adaptations.find((a) => a.pattern === "move_faq_up")?.priority;
+    expect(basePrio).toBeDefined();
+    const nudged = decide("lowvol", c, inv, { move_faq_up: -10 }, goal, opts);
+    const nudgedMv = nudged.adaptations.find((a) => a.pattern === "move_faq_up");
+    expect(nudgedMv).toBeDefined();
+    expect(nudgedMv!.priority).toBe(basePrio! - 10);
     // Only a significant-conversion verdict may remove it.
-    const suppressed = decide("lowvol", c, inv, { show_2min_setup: PERF_SUPPRESS }, goal);
-    expect(suppressed.adaptations.map((a) => a.pattern)).not.toContain("show_2min_setup");
+    const suppressed = decide("lowvol", c, inv, { move_faq_up: PERF_SUPPRESS }, goal, opts);
+    expect(suppressed.adaptations.map((a) => a.pattern)).not.toContain("move_faq_up");
   });
 });
 
@@ -644,34 +563,35 @@ describe("decide — goal-conditioned pattern eligibility (target arch step 4)",
     expect(buyer.adaptations.map((a) => a.pattern)).not.toContain("show_enterprise_testimonial");
   });
 
-  it("the same SaaS patterns DO fire for a confirmed trial goal (positive control)", () => {
-    // Isolate the injection budget: ONLY setup_time microcopy, so
-    // show_2min_setup (baseline, inject_badge) is the sole inject candidate and
-    // isn't out-competed by a higher-priority inject (e.g. show_no_credit_card).
+  it("rätt måltyp FÅR flytten att elda (positiv kontroll, flytt-subjekt sedan ägarregeln)", () => {
     const inv = emptyInventory("t");
-    inv.slots.microcopy = [
-      { id: "mc-setup", slot: "microcopy", text: "2 minute setup", meta: { kind: "setup_time" } },
-    ];
-    const trial = decide("t", ctx(), inv, {}, { selector: "#t", text: "Prova gratis", kind: "trial" });
-    // trial is in show_2min_setup.appliesTo → eligible, so it fires.
-    expect(trial.adaptations.map((a) => a.pattern)).toContain("show_2min_setup");
-    // ...and it is NOT recorded as a goal-kind decline.
-    expect((trial.declined ?? []).some((d) => d.pattern === "show_2min_setup")).toBe(false);
+    inv.slots.customer_logos = [{ id: "l", slot: "customer_logos", selector: "#logos" }];
+    const trial = decide(
+      "t",
+      ctx({ trafficSource: "linkedin", device: "desktop" }),
+      inv,
+      {},
+      { selector: "#t", text: "Prova gratis", kind: "trial" },
+      { allowLayoutPatterns: true },
+    );
+    // trial ∈ show_customer_logos_early.appliesTo → eldar.
+    expect(trial.adaptations.map((a) => a.pattern)).toContain("show_customer_logos_early");
+    expect((trial.declined ?? []).some((d) => d.pattern === "show_customer_logos_early")).toBe(false);
   });
 
-  it("no confirmed kind → no gating (backward compatible with every prior test)", () => {
+  it("no confirmed kind → no gating (backward compatible), flytt-subjekt", () => {
     const inv = emptyInventory("t");
-    inv.slots.microcopy = [
-      { id: "mc-setup", slot: "microcopy", text: "2 minute setup", meta: { kind: "setup_time" } },
-    ];
-    const withKind = decide("t", ctx(), inv, {}, { selector: "#g", text: "x", kind: "donate" });
-    const noKind = decide("t", ctx(), inv, {}, { selector: "#g", text: "x" }); // kind undefined
-    // The donate site loses the SaaS badge (gated); the no-kind site keeps it.
-    expect(withKind.adaptations.map((a) => a.pattern)).not.toContain("show_2min_setup");
+    inv.slots.customer_logos = [{ id: "l", slot: "customer_logos", selector: "#logos" }];
+    const c = ctx({ trafficSource: "linkedin", device: "desktop" });
+    const opts = { allowLayoutPatterns: true };
+    const withKind = decide("t", c, inv, {}, { selector: "#g", text: "x", kind: "donate" }, opts);
+    const noKind = decide("t", c, inv, {}, { selector: "#g", text: "x" }, opts);
+    // Donate-sajten förlorar logo-flytten (gated); no-kind-sajten behåller den.
+    expect(withKind.adaptations.map((a) => a.pattern)).not.toContain("show_customer_logos_early");
     expect((withKind.declined ?? []).some(
-      (d) => d.pattern === "show_2min_setup" && d.reason === "goal_kind_mismatch",
+      (d) => d.pattern === "show_customer_logos_early" && d.reason === "goal_kind_mismatch",
     )).toBe(true);
-    expect(noKind.adaptations.map((a) => a.pattern)).toContain("show_2min_setup");
+    expect(noKind.adaptations.map((a) => a.pattern)).toContain("show_customer_logos_early");
   });
 
   it("agnostiska mönster grindas ALDRIG på goal-kind, oavsett kind", () => {
@@ -694,90 +614,40 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
   // (docs/wave8-pattern-spec.md testplaner) så enhetstesterna pinnar samma
   // beteende som robustness-körningarna verifierar mot capturen.
 
-  it("S4 donate (cancerfonden): månadsgivar-CTA:n injiceras bredvid gåvomålet", () => {
+  // Ägarregeln (2026-07-28): hela våg 8:s injektionsklass (S2–S6 — betyg,
+  // betaltrygghet, månadsgivare, callback, avsluta-när-du-vill) ligger
+  // vilande bakom vokabulärgrinden. De rika interna vakterna
+  // (SECONDARY_TEXT-vokabulären, sifferformen, kind-spliten, mål-dubblett-
+  // skyddet) testades här förr — de nås inte längre. Kontraktet är: typad
+  // decline MED perfekt inventory och RÄTT måltyp, för varje mönster.
+  it("våg 8-injektionerna declinar ALLTID på vokabulären — även med perfekt inventory", () => {
     const inv = emptyInventory("t");
     inv.slots.cta = [
-      { id: "c1", slot: "cta", text: "Bli månadsgivare", selector: "#m",
-        meta: { href: "/stod-oss/bli-manadsgivare" } },
-      { id: "c2", slot: "cta", text: "Företag", selector: "#f", meta: { href: "/foretag" } },
+      { id: "c1", slot: "cta", text: "Bli månadsgivare", selector: "#m", meta: { href: "/manad" } },
+      { id: "c2", slot: "cta", text: "Vi ringer upp dig", selector: "#cb", meta: { href: "/cb" } },
     ];
-    const d = decide("t", ctx(), inv, {}, { selector: "#gava", text: "Ge en gåva", kind: "donate" });
-    const monthly = d.adaptations.find((a) => a.pattern === "show_monthly_giving_option");
-    expect(monthly?.op).toBe("inject_secondary");
-    expect(monthly?.value).toBe("Bli månadsgivare");
-    expect(monthly?.href).toBe("/stod-oss/bli-manadsgivare");
-    expect(monthly?.target).toBe("#gava");
-    // Den specialiserade motionen (56) vinner injektionsbudgeten över den
-    // generiska show_secondary_cta (55).
-    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_secondary_cta");
-  });
-
-  it("S4 declinar utan publicerad månadsgivar-CTA — hittar aldrig på en", () => {
-    const inv = emptyInventory("t");
-    inv.slots.cta = [
-      { id: "c1", slot: "cta", text: "Swisha", selector: "#s", meta: { href: "/swish" } },
-    ];
-    const d = decide("t", ctx(), inv, {}, { selector: "#gava", text: "Ge en gåva", kind: "donate" });
-    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_monthly_giving_option");
-    expect((d.declined ?? []).some(
-      (x) => x.pattern === "show_monthly_giving_option" && x.reason === "no_secondary_alternative",
-    )).toBe(true);
-  });
-
-  it("S5 lead/quote (sector-alarm): callback-CTA:n injiceras bredvid prismålet", () => {
-    const inv = emptyInventory("t");
-    inv.slots.cta = [
-      { id: "c1", slot: "cta", text: "Låt oss kontakta dig!", selector: "#cb",
-        meta: { href: "/kontakta-oss" } },
-    ];
-    const d = decide("t", ctx(), inv, {}, { selector: "#pris", text: "Få pris på larm", kind: "quote" });
-    const cb = d.adaptations.find((a) => a.pattern === "show_callback_option");
-    expect(cb?.value).toBe("Låt oss kontakta dig!");
-    expect(cb?.href).toBe("/kontakta-oss");
-  });
-
-  it("S2 booking (bokadirekt-service): sajtens eget betyg blir badge vid målet", () => {
-    const inv = emptyInventory("t");
     inv.slots.trust_badge = [
-      { id: "r1", slot: "trust_badge", text: "2138 betyg", selector: "#rating",
-        meta: { trustType: "review_rating" } },
+      { id: "r", slot: "trust_badge", text: "4.8 · 2138 betyg", selector: "#r",
+        meta: { trustType: "stars_aggregate" } },
     ];
-    const d = decide("t", ctx(), inv, {}, { selector: "#boka", text: "Boka", kind: "booking" });
-    const badge = d.adaptations.find((a) => a.pattern === "show_rating_near_goal");
-    expect(badge?.op).toBe("inject_badge");
-    expect(badge?.value).toBe("2138 betyg");
-    // W8-E1: målankrad, inte demo-slot-konventionen.
-    expect(badge?.target).toBe("#boka");
-    expect(badge?.anchorText).toBe("Boka");
-  });
-
-  it("S2: en certifiering får ALDRIG rendera under betygsetiketten (predikat + form)", () => {
-    const inv = emptyInventory("t");
-    inv.slots.trust_badge = [
-      { id: "cert", slot: "trust_badge", text: "GDPR-certifierad", selector: "#c",
-        meta: { trustType: "certification" } },
-    ];
-    const d = decide("t", ctx(), inv, {}, { selector: "#boka", text: "Boka", kind: "booking" });
-    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_rating_near_goal");
-    expect((d.declined ?? []).some(
-      (x) => x.pattern === "show_rating_near_goal" && x.reason === "no_inventory_for_slot",
-    )).toBe(true);
-  });
-
-  it("S3 purchase (cdon): publicerad betaltrygghet blir badge; declinar ärligt utan", () => {
-    const inv = emptyInventory("t");
     inv.slots.microcopy = [
       { id: "ps", slot: "microcopy", text: "Säker betalning", meta: { kind: "payment_security" } },
+      { id: "ca", slot: "microcopy", text: "Avsluta när du vill", meta: { kind: "cancel_anytime" } },
     ];
-    const d = decide("t", ctx(), inv, {}, { selector: "#kop", text: "Köp nu", kind: "purchase" });
-    const badge = d.adaptations.find((a) => a.pattern === "show_payment_security");
-    expect(badge?.value).toBe("Säker betalning");
-    expect(badge?.target).toBe("#kop");
-
-    const bare = decide("t", ctx(), emptyInventory("t"), {}, { selector: "#kop", text: "Köp nu", kind: "purchase" });
-    expect((bare.declined ?? []).some(
-      (x) => x.pattern === "show_payment_security" && x.reason === "no_microcopy",
-    )).toBe(true);
+    const cases: [PatternId, string][] = [
+      ["show_monthly_giving_option", "donate"],
+      ["show_callback_option", "quote"],
+      ["show_rating_near_goal", "booking"],
+      ["show_payment_security", "purchase"],
+      ["show_cancel_anytime", "subscribe"],
+    ];
+    for (const [pattern, kind] of cases) {
+      const d = decide("t", ctx(), inv, {}, { selector: "#goal", text: "Gör det", kind });
+      expect(d.adaptations.map((a) => a.pattern)).not.toContain(pattern);
+      expect((d.declined ?? []).some(
+        (x) => x.pattern === pattern && x.reason === "op_not_in_owner_vocabulary",
+      )).toBe(true);
+    }
   });
 
   it("S3/S6 gate:as på fel måltyp (signup/lead får ingen betal-/avsluta-badge)", () => {
@@ -790,94 +660,6 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
     const declinedKinds = (d.declined ?? []).filter((x) => x.reason === "goal_kind_mismatch");
     expect(declinedKinds.map((x) => x.pattern)).toContain("show_payment_security");
     expect(declinedKinds.map((x) => x.pattern)).toContain("show_cancel_anytime");
-  });
-
-  it("S6 subscribe (nextory): 'Avsluta när du vill' blir badge när betaltrygghet saknas", () => {
-    const inv = emptyInventory("t");
-    inv.slots.microcopy = [
-      { id: "g", slot: "microcopy", text: "Avsluta när du vill", meta: { kind: "cancel_anytime" } },
-    ];
-    const d = decide("t", ctx(), inv, {}, { selector: "#prova", text: "Prova gratis nu", kind: "subscribe" });
-    const badge = d.adaptations.find((a) => a.pattern === "show_cancel_anytime");
-    expect(badge?.value).toBe("Avsluta när du vill");
-    expect(badge?.target).toBe("#prova");
-  });
-
-  it("S6: ett refund-löfte får ALDRIG rendera under avsluta-etiketten (kind-split)", () => {
-    // Granskningsfynd: med delad guarantee-kind ockuperade "30 dagar pengarna
-    // tillbaka" platsen och blev cancel-anytime-badgens text.
-    const inv = emptyInventory("t");
-    inv.slots.microcopy = [
-      { id: "mb", slot: "microcopy", text: "30 dagar pengarna tillbaka", meta: { kind: "guarantee" } },
-    ];
-    const d = decide("t", ctx(), inv, {}, { selector: "#prova", text: "Prova gratis", kind: "subscribe" });
-    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_cancel_anytime");
-    expect((d.declined ?? []).some(
-      (x) => x.pattern === "show_cancel_anytime" && x.reason === "no_microcopy",
-    )).toBe(true);
-  });
-
-  it("S4/S5: när den specialiserade CTA:n ÄR målet declinas — målet dubbleras aldrig", () => {
-    // Granskningsfynd (verifierat via körning): utan destination-guard
-    // injicerades målet bredvid sig självt när goal.url == CTA:ns href,
-    // och en skiftlägesvariant av måltexten kringgick textjämförelsen.
-    const inv = emptyInventory("t");
-    inv.slots.cta = [
-      { id: "c1", slot: "cta", text: "Bli månadsgivare", selector: "#m",
-        meta: { href: "https://x.se/stod-oss/bli-manadsgivare/" } },
-    ];
-    const sameDest = decide("t", ctx(), inv, {}, {
-      selector: "#m", text: "BLI MÅNADSGIVARE", kind: "donate",
-      url: "/stod-oss/bli-manadsgivare",
-    });
-    expect(sameDest.adaptations.map((a) => a.pattern)).not.toContain("show_monthly_giving_option");
-    expect((sameDest.declined ?? []).some(
-      (x) => x.pattern === "show_monthly_giving_option" && x.reason === "no_secondary_alternative",
-    )).toBe(true);
-  });
-
-  it("S5 pinnar vokabulär + gating: icke-callback-CTA duger inte, fel måltyp gate:as", () => {
-    const inv = emptyInventory("t");
-    inv.slots.cta = [
-      { id: "c1", slot: "cta", text: "Läs mer om larm", selector: "#l", meta: { href: "/larm" } },
-    ];
-    // Vokabulären: en icke-callback-CTA matchar inte SECONDARY_TEXT → decline.
-    const d = decide("t", ctx(), inv, {}, { selector: "#pris", text: "Få pris", kind: "quote" });
-    expect(d.adaptations.map((a) => a.pattern)).not.toContain("show_callback_option");
-    expect((d.declined ?? []).some(
-      (x) => x.pattern === "show_callback_option" && x.reason === "no_secondary_alternative",
-    )).toBe(true);
-    // Gatingen: en purchase-sajt får aldrig callback-mönstret nominerat skarpt.
-    const inv2 = emptyInventory("t");
-    inv2.slots.cta = [
-      { id: "cb", slot: "cta", text: "Vi ringer upp dig", selector: "#cb", meta: { href: "/callback" } },
-    ];
-    const buyer = decide("t", ctx(), inv2, {}, { selector: "#k", text: "Köp nu", kind: "purchase" });
-    expect(buyer.adaptations.map((a) => a.pattern)).not.toContain("show_callback_option");
-    expect((buyer.declined ?? []).some(
-      (x) => x.pattern === "show_callback_option" && x.reason === "goal_kind_mismatch",
-    )).toBe(true);
-  });
-
-  it("S2 pinnar sifferformen: rätt trustType men pratig text declinar; interpunkt-formen eldar", () => {
-    const talky = emptyInventory("t");
-    talky.slots.trust_badge = [
-      { id: "t", slot: "trust_badge", text: "Våra kunder älskar oss", selector: "#t",
-        meta: { trustType: "stars" } },
-    ];
-    const d1 = decide("t", ctx(), talky, {}, { selector: "#boka", text: "Boka", kind: "booking" });
-    expect(d1.adaptations.map((a) => a.pattern)).not.toContain("show_rating_near_goal");
-
-    // Dokumenterad spec-avvikelse: interpunkt (·) ingår i sifferklassen —
-    // "4.8 · 2138 betyg" är standardformen på ratingsammanfattningar.
-    const dotted = emptyInventory("t");
-    dotted.slots.trust_badge = [
-      { id: "r", slot: "trust_badge", text: "4.8 · 2138 betyg", selector: "#r",
-        meta: { trustType: "stars_aggregate" } },
-    ];
-    const d2 = decide("t", ctx(), dotted, {}, { selector: "#boka", text: "Boka", kind: "booking" });
-    expect(d2.adaptations.find((a) => a.pattern === "show_rating_near_goal")?.value)
-      .toBe("4.8 · 2138 betyg");
   });
 
   it("S1 (alla köptunga vertikaler): recensionsflytten kräver layout-opt-in (nivå 3)", () => {
@@ -937,7 +719,7 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
     expect(onHome.adaptations.map((a) => a.pattern)).toContain("move_faq_up");
   });
 
-  it("W8-E1-regression: badges målankras när mål finns — utan mål ärlig decline", () => {
+  it("W8-E1 efter ägarregeln: badgen declinar på vokabulären — aldrig applicering, aldrig mätförorening", () => {
     const inv = emptyInventory("t");
     inv.slots.microcopy = [
       { id: "mc", slot: "microcopy", text: "No credit card required", meta: { kind: "no_credit_card" } },
@@ -946,19 +728,9 @@ describe("decide — våg 8: vertikala mönster mot arketypformade inventorier",
       "t", ctx({ trafficSource: "google_ads" }), inv, {},
       { selector: "#trial", text: "Prova gratis", kind: "trial" },
     );
-    const anchored = withGoal.adaptations.find((a) => a.pattern === "show_no_credit_card");
-    expect(anchored?.target).toBe("#trial");
-    expect(anchored?.anchorText).toBe("Prova gratis");
-
-    // Demo-slot-fallbacken är borta med /demo: utan mål finns inget ankare på
-    // en riktig sida — badgen no-op:ade tyst men loggades som exposure
-    // (mätförorening). Nu typad decline i stället.
-    const noGoal = decide("t", ctx({ trafficSource: "google_ads" }), inv);
-    expect(noGoal.adaptations.map((a) => a.pattern)).not.toContain("show_no_credit_card");
-    expect(
-      (noGoal.declined ?? []).some(
-        (d) => d.pattern === "show_no_credit_card" && d.reason === "no_goal_configured",
-      ),
-    ).toBe(true);
+    expect(withGoal.adaptations.map((a) => a.pattern)).not.toContain("show_no_credit_card");
+    expect((withGoal.declined ?? []).some(
+      (d) => d.pattern === "show_no_credit_card" && d.reason === "op_not_in_owner_vocabulary",
+    )).toBe(true);
   });
 });

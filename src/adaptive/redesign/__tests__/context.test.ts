@@ -199,7 +199,9 @@ describe("sourcePages — korssid-lyftets citerbara material (task #117)", () =>
       segment: segmentInsightFrom(seg(), {}),
     });
     expect(single.sourcePages).toBeUndefined();
-    expect(single.guardrails.ops).not.toContain("insert_snippet");
+    // Samma-sida-lyftet (2026-07-27): verbet är alltid i vokabulären —
+    // whitelist-SEKTIONEN i prompten hör dock fortfarande till källsidorna.
+    expect(single.guardrails.ops).toContain("insert_snippet");
     expect(renderRedesignPrompt(single)).not.toContain("Quotable content");
   });
 });
@@ -223,5 +225,14 @@ describe("sourcePages — offert-fallbackens kind i prompten (slice 4)", () => {
     const prompt = renderRedesignPrompt(ctx);
     expect(prompt).toContain("publishes no prices");
     expect(prompt).toContain("Låt oss ge dig en offert");
+  });
+});
+
+describe("ägarregeln 2026-07-28: endast omflytt", () => {
+  it("default-vokabulären är move_up + insert_snippet — inget annat", () => {
+    // "Vi ska endast skicka runt färdiga stycken": omskrivningar (set_text),
+    // reveal och condense är ur GENERERINGEN. En breddning av den här listan
+    // är ett ägarbeslut, inte en refaktorering — testet gör den medveten.
+    expect(DEFAULT_REDESIGN_GUARDRAILS.ops).toEqual(["move_up", "insert_snippet"]);
   });
 });

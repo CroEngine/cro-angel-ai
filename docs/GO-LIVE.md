@@ -24,7 +24,8 @@ Two ways:
   `mode=list` first to preview pending migrations, then run again with
   `mode=push` to apply. Requires repo secrets `SUPABASE_ACCESS_TOKEN` and
   `SUPABASE_DB_PASSWORD` (see §3).
-- **Local CLI:** `supabase link --project-ref upvthvbhqzqqimsyjpxw && supabase db push`.
+- **Local CLI:** `supabase link --project-ref <project-ref> && supabase db push`
+  (the ref is in the Supabase dashboard URL, or `supabase projects list`).
 
 After applying, regenerate the typed client if the schema changed:
 `supabase gen types typescript --linked > src/integrations/supabase/types.ts`.
@@ -62,7 +63,7 @@ Repo → Settings → Secrets and variables → Actions.
 | Secret | Used by | Required? |
 |---|---|---|
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | nightly-loop, preview-jobs, day0-review | **yes** (loops no-op without them) |
-| `ANTHROPIC_API_KEY` | nightly-loop (variant generation), preview granska | **yes** for variants + `/try` reports |
+| `ANTHROPIC_API_KEY` | nightly-loop (variant generation), preview-jobs (the `/try` chain: candidate selection + designer) | **yes** for variants + `/try` reports |
 | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` | **DB migrate** workflow | for the one-click apply in §1 |
 | `GOOGLE_PAGESPEED_API_KEY` | CWV gate | optional |
 | `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID` | crawler **+ SPA rendering** of the paste-URL freeze (a remote stealth browser that reaches live sites and dodges datacenter bot-blocks; without it, SPA shells fall back to the static copy) | recommended |
@@ -89,7 +90,10 @@ card waits until the robot has earned it.
 ## 5. Verify the funnel (the "can we sell it" walkthrough)
 
 1. **Paste** a real URL on `/` (or `/try`) → within ~15 min (instant with the
-   dispatch token) an honest example + full before/after report appears.
+   dispatch token) an honest example + full before/after report appears. When
+   the gates pass the proposal, `/try` also shows the **Original ⇄ Variant
+   toggle**: the prospect's real page as a scrollable frozen copy with the
+   verified change applied (served from our own origin — see ADR-002).
 2. **Start free** → `/signup` → create an account → land on the dashboard.
 3. Confirm the conversion goal → **add card** → Stripe Checkout opens (test mode
    first). Card captured, subscription `trialing`, nothing charged.

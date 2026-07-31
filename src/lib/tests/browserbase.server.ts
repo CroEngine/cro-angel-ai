@@ -35,6 +35,8 @@ export interface CreateSessionOpts {
    *  to env BROWSERBASE_PROXY_COUNTRY, then to default routing. */
   proxyCountry?: string;
   meta?: SessionMeta;
+  /** Sessionens default-viewport (render-vägen: 390×844) — se OBS i createSession. */
+  viewport?: { width: number; height: number };
 }
 
 type Region = BrowserbaseRegion;
@@ -150,19 +152,23 @@ export async function createSession(opts: CreateSessionOpts = {}): Promise<Brows
     region: resolveRegion(proxyCountry),
     userMetadata,
   };
-  // OBS viewport: sessions-nivåns browserSettings.viewport gäller bara tills
-  // första navigationen — Stagehand återställer sedan sin default (1288×711).
-  // Per-enhet-emulering görs därför i robustness-runnern via Stagehands
-  // POSITIONELLA page.setViewportSize(w, h), efter goto.
+  // OBS viewport: opts.viewport gör måtten till sessionens DEFAULT — och med
+  // browserbaseSessionCreateParams satt i attachen består de även efter
+  // navigation (kanarie 4 29/7: innerWidth 390 genom hela frysningen).
+  // Per-enhet-VÄXLING i robustness-runnern sker fortsatt via Stagehands
+  // positionella page.setViewportSize(w, h), efter goto.
   // Opt-in so normal sessions stay on the ungated path (no wasted 403/400
   // round-trip); when a caller requests it we attempt the Enterprise tier and
   // fall back to basic stealth on rejection, so it's ready once the plan allows.
   const wantAdvanced = opts.advancedStealth ?? false;
+  const settings = opts.viewport ? { viewport: opts.viewport } : {};
   let session;
   try {
     session = await client.sessions.create({
       ...base,
-      browserSettings: wantAdvanced ? { ...BASE_STEALTH, ...ADVANCED_STEALTH } : BASE_STEALTH,
+      browserSettings: wantAdvanced
+        ? { ...BASE_STEALTH, ...ADVANCED_STEALTH, ...settings }
+        : { ...BASE_STEALTH, ...settings },
     });
   } catch (err) {
     if (!wantAdvanced) throw err;
@@ -171,7 +177,7 @@ export async function createSession(opts: CreateSessionOpts = {}): Promise<Brows
         err instanceof Error ? err.message.slice(0, 140) : String(err)
       }); falling back to basic stealth`,
     );
-    session = await client.sessions.create({ ...base, browserSettings: BASE_STEALTH });
+    session = await client.sessions.create({ ...base, browserSettings: { ...BASE_STEALTH, ...settings } });
   }
   // Inspector link: the session records video + network/console logs by
   // default — this line is what makes them findable from run output.
@@ -183,9 +189,15 @@ export async function createSession(opts: CreateSessionOpts = {}): Promise<Brows
       `https://www.browserbase.com/sessions/${session.id}`,
   );
   const debug = await client.sessions.debug(session.id);
+  // Anslutnings-URL:en hämtas EFTER skapandet — Stagehands eget mönster
+  // (launch/browserbase.js: sessions.retrieve, aldrig create-svaret).
+  // Kanarie 2 29/7: create-URL:en gav connectOverCDP-timeout mot
+  // wss://connect.usw2… medan Stagehand nådde samma infrastruktur via
+  // retrieve-URL:en minuter tidigare.
+  const live = await client.sessions.retrieve(session.id);
   return {
     id: session.id,
-    connectUrl: session.connectUrl,
+    connectUrl: live.connectUrl ?? session.connectUrl,
     liveUrl: debug.debuggerFullscreenUrl ?? debug.debuggerUrl,
     region: session.region,
   };

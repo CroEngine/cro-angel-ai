@@ -1,6 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { buildSteps } from "@/lib/tests/run.functions";
 
+// Intern testyta — AVSTÄNGD i drift utan uttrycklig aktivering
+// (granskningsfynd 2026-07-28): routen var helt oautentiserad och lät vem
+// som helst starta browsersessioner mot godtyckliga URL:er (SSRF +
+// kostnads-DoS). ANGEL_INTERNAL_TESTS=1 sätts bara i utvecklingsmiljön;
+// riktig sessionsbunden auktorisering är dokumenterad kvarvarande skuld.
+const internalTestsEnabled = () => process.env.ANGEL_INTERNAL_TESTS === "1";
+
+
 // The crawl runs INSIDE this streaming request. The serverless host keeps the
 // function alive for as long as the SSE response body is open, so step
 // execution happens within an active request instead of a fire-and-forget

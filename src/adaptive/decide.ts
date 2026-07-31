@@ -156,9 +156,11 @@ const RULES: Rule[] = [
   },
   // ---- Våg 8 (docs/wave8-pattern-spec.md) — prioriteter är avsiktligt
   // kalibrerade mot befintliga regler: payment_trust (64) under goal_focus
-  // (65); decision_point_proof (62) under mobile_sticky_goal (72) så stickyn
-  // vinner injektionsbudgeten på mobil; donate/callback-vägarna (56) slår
-  // generiska cold_soft_path (55) så den specialiserade motionen vinner.
+  // (65); donate/callback-vägarna (56) slår generiska cold_soft_path (55) så
+  // den specialiserade motionen vinner. (decision_point_proof (62) var en
+  // gång kalibrerad under mobile_sticky_goal (72) — den regeln är borttagen
+  // med ägarregeln 2026-07-20, ingen sticky finns i katalogen; kommentaren
+  // rättad 2026-07-28 när den fick ägaren att tro att stickyn levde kvar.)
   {
     id: "first_time_social_proof",
     priority: 58,
@@ -618,6 +620,19 @@ export function decide(
       // frånvaron ska vara förklarad, inte tyst.
       if (getPattern(e.id).level === 3 && !options?.allowLayoutPatterns) {
         declined.push({ pattern: e.id, reason: "layout_level_disabled" });
+        return null;
+      }
+      // Ägarregeln (2026-07-28, "vi behöver inte hålla på att highlighta
+      // knappar osv heller — vi ska endast skicka runt färdiga stycken"):
+      // dag-1-vokabulären är OMFLYTT av sajtens egna färdiga stycken.
+      // Dekorationsklassen — badges/chips vid knappar (inject_badge), extra
+      // länkar bredvid målet (inject_secondary), knapptext-byten (set_text),
+      // reveal/condense — nomineras aldrig. EN grind här i stället för
+      // katalog-kirurgi: mönstren står kvar som dokumentation, typad decline
+      // förklarar frånvaron i preflight, och godkända varianter (egen
+      // servningsväg via angel_variants) berörs inte.
+      if (getPattern(e.id).op !== "move_up") {
+        declined.push({ pattern: e.id, reason: "op_not_in_owner_vocabulary" });
         return null;
       }
       const result = resolve(e.id, e.priority, context, inventory, goal);

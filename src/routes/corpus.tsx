@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -22,6 +23,14 @@ const corpusQuery = queryOptions({
 });
 
 export const Route = createFileRoute("/corpus")({
+  beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined") return;
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      throw redirect({ to: "/login", search: { redirect: location.href } });
+    }
+  },
+
   head: () => ({
     meta: [
       { title: "Corpus inspector — frysningsartefakter" },

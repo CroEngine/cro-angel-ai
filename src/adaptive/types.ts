@@ -195,7 +195,12 @@ export type DeclineReason =
   /** Ägarregeln (2026-07-20): sajtens egen målknapp är orörbar — en op som
    *  muterar sitt målelement (text/flytt/kollaps/reveal) får aldrig träffa
    *  det deklarerade målet. Injektioner ankrar bredvid utan att röra det. */
-  | "goal_element_untouchable";
+  | "goal_element_untouchable"
+  /** Ägarregeln (2026-07-28): "vi ska endast skicka runt färdiga stycken" —
+   *  hela dag-1-vokabulären är OMFLYTT av sajtens egna färdiga stycken.
+   *  Dekorationsklassen (badges/chips vid knappar, extra länkar bredvid
+   *  målet, knapptext-byten, reveal/condense) nomineras aldrig. */
+  | "op_not_in_owner_vocabulary";
 
 export interface Decision {
   /** Deterministic hash of (site + normalized context). Stable for replay. */

@@ -709,6 +709,10 @@ for (const site of targets) {
       serveOps?: unknown;
       evidence?: { comparison?: { screenshots?: { before: string | null; after: string | null } } };
       slug?: string;
+      /** Ekade ur plans.json av verify (typkollsfynd 2026-07-28) — förut
+       *  tappades de på vägen och required_cohorts blev alltid null. */
+      cohorts?: unknown;
+      success?: unknown;
     }[];
 
     // 6. Verifierade → ladda upp skärmdumpar till storage + direkta inserts.
@@ -758,14 +762,10 @@ for (const site of targets) {
         // Kohortscopade planer (den generativa våningen läser
         // cohort-opportunities.json) föds med sitt scope + kontrakt — samma
         // fält live-vägen grindar respektive mäter på. Utan scope: null = som förut.
-        required_cohorts: Array.isArray((r as { cohorts?: unknown }).cohorts)
-          ? ((r as { cohorts: unknown[] }).cohorts.filter(
-              (c): c is string => typeof c === "string",
-            ) as string[])
+        required_cohorts: Array.isArray(r.cohorts)
+          ? r.cohorts.filter((c): c is string => typeof c === "string")
           : null,
-        success:
-          validateSuccessSpec((r as { success?: unknown }).success) ??
-          (defaultSuccessSpec() as unknown as null),
+        success: validateSuccessSpec(r.success) ?? (defaultSuccessSpec() as unknown as null),
       });
       if (insErr) console.warn(`[loop] ${site.slug}: insert föll: ${insErr.message}`);
       else

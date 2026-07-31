@@ -2,12 +2,21 @@
 // crawler/analysis tool. It used to live at "/"; the public landing page now
 // occupies "/" and this moved here.
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 
 import { AppNav } from "@/components/app-nav";
 import { BrowserShell } from "@/components/browser-shell/BrowserShell";
 
 export const Route = createFileRoute("/agent")({
+  beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined") return;
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      throw redirect({ to: "/login", search: { redirect: location.href } });
+    }
+  },
+
   head: () => ({
     meta: [
       { title: "SEO & CRO Agent" },

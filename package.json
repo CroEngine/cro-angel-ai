@@ -26,7 +26,8 @@
     "structure-evidence": "bun run scripts/structure-evidence.ts",
     "snapshot": "vitest run src/lib/tests/snapshot",
     "snapshot:update": "SNAPSHOT_UPDATE=1 vitest run src/lib/tests/snapshot",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typecheck:scripts": "tsc -p tsconfig.scripts.json --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",

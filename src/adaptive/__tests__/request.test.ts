@@ -47,14 +47,13 @@ describe("server request path", () => {
     expect(context.os).toBe("macos");
     expect(context.country).toBe("US");
 
-    const patterns = decision.adaptations.map((a) => a.pattern);
-    // v1: logo-flytten är nivå 3 (layout) → declined som standard; guidnings-
-    // mönstren bär B2B-anpassningen.
-    expect(patterns).not.toContain("show_customer_logos_early");
-    expect(patterns).toContain("show_case_study");
-    expect(decision.adaptations.find((a) => a.pattern === "clarify_cta")?.value).toBe(
-      "Book a demo",
-    );
+    // Ägarregeln (2026-07-28, endast omflytt): dekorationsklassen declinar
+    // och flytten kräver layout-opt-in — dag-1-beslutet är TYST by design.
+    // Klassificeringen ovan är testets egentliga ärende och står orörd.
+    expect(decision.adaptations).toEqual([]);
+    expect((decision.declined ?? []).some(
+      (x) => x.pattern === "show_case_study" && x.reason === "op_not_in_owner_vocabulary",
+    )).toBe(true);
   });
 
   it("classifies an iPhone visitor as mobile from the UA alone", () => {
@@ -67,12 +66,10 @@ describe("server request path", () => {
     expect(context.os).toBe("ios");
     expect(context.language).toBe("sv");
 
-    const patterns = decision.adaptations.map((a) => a.pattern);
-    // v1: hero-komprimeringen är nivå 3 → declined som standard på mobil.
-    expect(patterns).not.toContain("shorten_hero");
-    expect(decision.adaptations.find((a) => a.pattern === "clarify_cta")?.value).toBe(
-      "Start Free Trial",
-    );
+    // Ägarregeln (2026-07-28): clarify (set_text) är ur vokabulären — mobil-
+    // beslutet är tomt utan layout-opt-in; klassificeringen är testets ärende.
+    expect(decision.adaptations.map((a) => a.pattern)).not.toContain("shorten_hero");
+    expect(decision.adaptations.map((a) => a.pattern)).not.toContain("clarify_cta");
   });
 
   it("returns a well-formed Decision payload (the JSON contract the snippet expects)", () => {

@@ -35,10 +35,19 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-/** Avsändarens IP ur proxy-headers (Netlify sätter x-forwarded-for). */
+/** Avsändarens IP. Netlifys egen header först (granskningsfynd 2026-07-28):
+ *  x-forwarded-for:s VÄNSTRA post är klient-satt — Netlify appenderar den
+ *  riktiga IP:n — så en angripare kunde välja sin rate-limit-nyckel fritt
+ *  och taket 3/dygn var i praktiken avstängt. x-nf-client-connection-ip
+ *  sätts av plattformen och kan inte spoofas; XFF:s SISTA post är reserven. */
 function clientIp(request: Request): string | null {
+  const nf = request.headers.get("x-nf-client-connection-ip");
+  if (nf) return nf.trim();
   const xf = request.headers.get("x-forwarded-for");
-  if (xf) return xf.split(",")[0].trim();
+  if (xf) {
+    const parts = xf.split(",");
+    return parts[parts.length - 1].trim();
+  }
   return request.headers.get("x-real-ip");
 }
 

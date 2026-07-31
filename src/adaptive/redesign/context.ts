@@ -27,12 +27,18 @@ export interface RedesignGuardrails {
 }
 
 export const DEFAULT_REDESIGN_GUARDRAILS: RedesignGuardrails = {
+  // Ägarregeln (2026-07-28, "vi ska endast skicka runt färdiga stycken"):
+  // vokabulären är OMFLYTT — flytta hela befintliga sektioner, eller lyft EN
+  // färdig rad sidan redan publicerar (ordagrant). Omskrivningar (set_text),
+  // reveal och condense är borttagna ur genereringen; redan GODKÄNDA varianter
+  // med äldre ops servas oförändrat (appliceraren behåller stödet).
   allowed: [
     "Reorder existing sections (e.g. move social proof above pricing).",
     "Move an existing block higher/lower on the page.",
-    "Re-tighten existing copy for focus — same meaning, fewer words. Never new claims.",
-    "Reveal already-published-but-hidden content (e.g. a testimonial below the fold).",
-    "Condense a long hero to its essentials.",
+    // Samma-sida-lyftet (kandidatkatalogen 2026-07-27): op:en är alltid i
+    // vokabulären — valideringen kräver ordagrann text ur sidans egen
+    // grounding-korpus när ingen källsida bjuds (generate.ts).
+    "Surface ONE line the page ALREADY publishes (a trust signal or section heading, verbatim) as a new block directly below the hero (op insert_snippet) — exact text only, never paraphrased.",
   ],
   forbidden: [
     "Invent any content, copy, number, testimonial or claim not already on the page.",
@@ -44,7 +50,7 @@ export const DEFAULT_REDESIGN_GUARDRAILS: RedesignGuardrails = {
     // få planen underkänd i pixelgrinden efteråt.
     "Move or rewrite the page's largest-paint (LCP) element — usually the hero image or hero headline. The serve-time performance guard blocks such an op for every real visitor, so the verifier rejects the whole variant.",
   ],
-  ops: ["move_up", "set_text", "condense", "reveal"],
+  ops: ["move_up", "insert_snippet"],
 };
 
 /** The faithfully-frozen page — the "code + screenshot" the LLM sees. Referenced
@@ -176,9 +182,10 @@ export function buildRedesignContext(inputs: {
   sourcePages?: SourcePageContent[];
 }): RedesignContext {
   const sourcePages = (inputs.sourcePages ?? []).filter((p) => p.snippets.length > 0);
-  // insert_snippet finns i vokabulären ENDAST när det finns citerbara källsidor
-  // — en enkelsidig kontext behåller exakt den gamla vokabulären, så inget
-  // befintligt flöde ändrar beteende av misstag.
+  // Korssid-lyftet: med citerbara källsidor får designern även källsides-
+  // raden i allowed. (insert_snippet ligger redan i grundvokabulärens ops
+  // sedan samma-sida-lyftet 2026-07-27 — den gamla op-appendrade dubbletten
+  // borttagen 2026-07-28.)
   const guardrails =
     inputs.guardrails ??
     (sourcePages.length === 0
@@ -189,7 +196,6 @@ export function buildRedesignContext(inputs: {
             ...DEFAULT_REDESIGN_GUARDRAILS.allowed,
             "Insert ONE of the listed verbatim quotes from another page of the SAME site as a new block directly below the hero (op insert_snippet) — exact text only, never paraphrased.",
           ],
-          ops: [...DEFAULT_REDESIGN_GUARDRAILS.ops, "insert_snippet"],
         });
   return {
     site: inputs.site,

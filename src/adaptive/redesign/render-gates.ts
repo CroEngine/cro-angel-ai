@@ -75,6 +75,11 @@ export interface RenderMeasurements {
    *  variant can never reach a real visitor (only sandbox mirrors bypass the
    *  guard). Optional as above. */
   opsTouchingLcp?: number;
+  /** Snippetens avslutande insert-CWV-vakt SPEGLAD (2026-07-28): antal
+   *  inserts vars slutliga ankare har LCP-elementet NEDANFÖR sig — klienten
+   *  rullar tillbaka HELA varianten för varje besökare, så harnesset måste
+   *  fälla samma variant här (annars mäter A/B original mot original). */
+  insertRefusedByLcpGuard?: number;
   /** How far (px) the LCP element's absolute document position moved between
    *  BEFORE and AFTER apply. touchesLcp only sees ops ON the element — an
    *  insert/move ABOVE it shifts it without touching it, and that shift is a
@@ -244,6 +249,11 @@ export function evaluateRenderGates(m: RenderMeasurements): RenderGateResult {
   if ((m.lcpShiftPx ?? 0) > LCP_SHIFT_FAIL_PX) {
     fail(
       `apply shifted the page's LCP element by ${m.lcpShiftPx}px — a layout shift on the largest paint for every visitor`,
+    );
+  }
+  if ((m.insertRefusedByLcpGuard ?? 0) > 0) {
+    fail(
+      `${m.insertRefusedByLcpGuard} insert(s) would land with the LCP element BELOW the insertion point — the serve-time CWV guard rolls the whole variant back for every visitor`,
     );
   }
   if ((m.insertedAboveMain ?? 0) > 0) {
