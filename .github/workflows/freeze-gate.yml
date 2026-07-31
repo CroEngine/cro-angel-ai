@@ -1,0 +1,62 @@
+# Nattlig frys-kvalitetsgrind (genomgången 2026-07-30, steg 2): #179:s
+# media-kompletthetsmått + vision-triage som BLOCKERANDE grind över en fast
+# provuppsättning. Röd körning = en grindad sajts frysning har kollapsat
+# (kompletthet under golvet, felsida eller vision "broken") — det är själva
+# larmet, inte brus. Observerade sajter (kända trasiga klasser) mäts men
+# grindar aldrig. Trösklar/urval: scripts/freeze-gate.ts.
+
+name: Freeze gate
+on:
+  schedule:
+    - cron: "40 3 * * *"
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Kommaseparerade sajtnamn (tomt = hela provuppsättningen)"
+        required: false
+        default: ""
+
+concurrency:
+  group: freeze-gate
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+      BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Install Playwright Chromium (with system deps)
+        run: bunx playwright install --with-deps chromium
+      - name: Run the freeze gate
+        run: |
+          if [ -n "${{ inputs.only }}" ]; then
+            bun run scripts/freeze-gate.ts --only="${{ inputs.only }}"
+          else
+            bun run scripts/freeze-gate.ts
+          fi
+      - name: Publish summary
+        if: always()
+        run: cat gate-out/freeze-gate.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freeze-gate
+          path: |
+            gate-out/**/freeze-gate.*
+            gate-out/**/fidelity.json
+            gate-out/**/shots/*.jpg
+            gate-out/vision-triage.*
+          retention-days: 14
+          if-no-files-found: ignore
