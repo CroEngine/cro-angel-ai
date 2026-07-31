@@ -24,6 +24,8 @@
 import { readdirSync, readFileSync, statSync, writeFileSync, existsSync } from "node:fs";
 import { join, extname, basename } from "node:path";
 
+import jpeg from "jpeg-js";
+
 type Problem =
   | "blank_or_near_blank"
   | "black_media_hole"
@@ -81,7 +83,57 @@ function resolveInputs(): string[] {
   return out.sort();
 }
 
-const PROMPT = `You are triaging a screenshot of a FROZEN COPY of a company web page (an offline capture that may have lost media, styling or content). Judge ONLY what is visible.
+// ── Tiling ───────────────────────────────────────────────────────────────────
+// Anthropics vision-API avvisar bilder där någon dimension överstiger 8000 px
+// (första liveluppet 2026-07-30: 5/10 korpusskärmbilder föll, 9446–12685 px
+// höga fullPage-captures). Höga bilder delas i vertikala tiles (överlapp så
+// element vid snittet inte halveras) och skickas som FLERA bilder i SAMMA
+// meddelande → en dom per sida, ingen aggregering. Cap 4 tiles (~24k px)
+// räcker corpusens högsta med marginal; fler droppas med notis i loggen.
+const MAX_DIM = 7500; // egen marginal under API:ts 8000
+const TILE_H = 6000;
+const TILE_OVERLAP = 200;
+const MAX_TILES = 4;
+const TILE_QUALITY = 72;
+
+interface ImagePart {
+  mediaType: "image/jpeg" | "image/png";
+  base64: string;
+}
+
+function prepareParts(file: string): { parts: ImagePart[]; tiledFrom: number | null } {
+  const bytes = readFileSync(file);
+  const isPng = extname(file).toLowerCase() === ".png";
+  if (isPng) {
+    // PNG tilas inte i prototypen (jpeg-js är jpeg-only) — skickas som den är;
+    // en >8000 px png ger API-fel som syns ärligt i verdict.error.
+    return {
+      parts: [{ mediaType: "image/png", base64: bytes.toString("base64") }],
+      tiledFrom: null,
+    };
+  }
+  const decoded = jpeg.decode(bytes, { maxMemoryUsageInMB: 768 });
+  if (decoded.height <= MAX_DIM && decoded.width <= MAX_DIM) {
+    return {
+      parts: [{ mediaType: "image/jpeg", base64: bytes.toString("base64") }],
+      tiledFrom: null,
+    };
+  }
+  const rowBytes = decoded.width * 4;
+  const parts: ImagePart[] = [];
+  let y = 0;
+  while (y < decoded.height && parts.length < MAX_TILES) {
+    const h = Math.min(TILE_H, decoded.height - y);
+    const slice = decoded.data.subarray(y * rowBytes, (y + h) * rowBytes);
+    const encoded = jpeg.encode({ data: slice, width: decoded.width, height: h }, TILE_QUALITY);
+    parts.push({ mediaType: "image/jpeg", base64: Buffer.from(encoded.data).toString("base64") });
+    if (y + h >= decoded.height) break;
+    y += TILE_H - TILE_OVERLAP;
+  }
+  return { parts, tiledFrom: decoded.height };
+}
+
+const PROMPT = `You are triaging a screenshot of a FROZEN COPY of a company web page (an offline capture that may have lost media, styling or content). If several images are attached, they are sequential top-to-bottom vertical tiles of ONE page (with slight overlap) — give ONE combined verdict for the whole page. Judge ONLY what is visible.
 
 Answer with STRICT JSON, no prose, matching:
 {"verdict":"ok"|"suspect"|"broken","problems":[…],"note":"≤120 chars"}
@@ -125,8 +177,15 @@ async function triageOne(
   file: string,
 ): Promise<Verdict> {
   try {
-    const bytes = readFileSync(file);
-    const mediaType = extname(file).toLowerCase() === ".png" ? "image/png" : "image/jpeg";
+    const { parts, tiledFrom } = prepareParts(file);
+    if (tiledFrom) {
+      console.log(
+        `[vision-triage] ${file}: ${tiledFrom}px hög → ${parts.length} tile(s)` +
+          (tiledFrom > TILE_H * MAX_TILES
+            ? ` (botten under ~${TILE_H * MAX_TILES}px droppad)`
+            : ""),
+      );
+    }
     const res = await anthropic.messages.create({
       model,
       max_tokens: 300,
@@ -134,10 +193,13 @@ async function triageOne(
         {
           role: "user",
           content: [
-            {
-              type: "image",
-              source: { type: "base64", media_type: mediaType, data: bytes.toString("base64") },
-            },
+            ...parts.map(
+              (p) =>
+                ({
+                  type: "image",
+                  source: { type: "base64", media_type: p.mediaType, data: p.base64 },
+                }) as const,
+            ),
             { type: "text", text: PROMPT },
           ],
         },
@@ -183,6 +245,18 @@ if (inputs.length === 0) {
 if (flag("dry-list")) {
   for (const f of inputs) console.log(f);
   console.log(`[vision-triage] ${inputs.length} bild(er) — dry-list, inga API-anrop.`);
+  process.exit(0);
+}
+if (flag("probe-tiles")) {
+  // Lokal validering av tilingen (decode → slice → re-encode) utan API-anrop.
+  for (const f of inputs) {
+    const t0 = Date.now();
+    const { parts, tiledFrom } = prepareParts(f);
+    const kb = parts.reduce((s, p) => s + Math.round((p.base64.length * 3) / 4 / 1024), 0);
+    console.log(
+      `${f}: ${parts.length} part(s)${tiledFrom ? ` (tiled från ${tiledFrom}px)` : ""} · ${kb}kb · ${Date.now() - t0}ms`,
+    );
+  }
   process.exit(0);
 }
 
