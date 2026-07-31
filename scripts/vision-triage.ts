@@ -205,10 +205,7 @@ async function triageOne(
         },
       ],
     });
-    const text = res.content
-      .filter((b): b is { type: "text"; text: string } => b.type === "text")
-      .map((b) => b.text)
-      .join("");
+    const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
     return { file, ...parseVerdict(text) };
   } catch (e) {
     return {
