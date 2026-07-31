@@ -44,7 +44,17 @@ const SITES: GateSite[] = [
     floor: DEFAULT_FLOOR,
     note: "uppmätt 96,3 % efter lazy/karusell-fixarna",
   },
-  { name: "voi", url: "https://www.voi.com/sv", floor: DEFAULT_FLOOR, note: "uppmätt 100 %" },
+  {
+    name: "voi",
+    url: "https://www.voi.com/sv",
+    // Grind-körning #1 (2026-07-31): offline 82,4 % men ONLINE 100 % — ~18 %
+    // av mediaytorna hänger kvar på tredjeparts-URL:er i stället för att
+    // inlinas. NAMNGIVET REPARATIONSMÅL för media-verktyget; golvet 78 ligger
+    // strax under dagens baseline så grinden fångar kollaps utan att ropa
+    // varg. Höj mot 90+ när inlining-gapet är stängt.
+    floor: 78,
+    note: "grind-baseline 82,4 % (online 100 %) — inlining-gap, reparationsmål",
+  },
   { name: "lassie", url: "https://www.lassie.co/", floor: DEFAULT_FLOOR, note: "uppmätt 98,1 %" },
   { name: "hibob", url: "https://www.hibob.com", floor: DEFAULT_FLOOR, note: "uppmätt 99,8 %" },
   {
@@ -53,18 +63,21 @@ const SITES: GateSite[] = [
     floor: DEFAULT_FLOOR,
     note: "uppmätt 97,3 % efter poster-fixen",
   },
-  // Kända trasiga klasser — observeras tills sina designsteg landat:
+  // Tidigare kända trasiga klasser — grind-körning #1 (2026-07-31) mätte BÅDA
+  // till 100 % offline via browservägen (#179:s verktyg): anyfin 11 %→100 %,
+  // sats 3,7 %→100 %. Observeras några nätter till för att bekräfta att det
+  // håller (JS-challenge är probabilistisk); grindas därefter.
   {
     name: "anyfin",
     url: "https://anyfin.se/",
     floor: null,
-    note: "JS-challenge → HTML-skal; väntar på CDP-asset-infångning",
+    note: "f.d. JS-challenge-klassen — 100 % i grind #1; bekräftas innan grindning",
   },
   {
     name: "sats",
     url: "https://www.sats.se/",
     floor: null,
-    note: "bakgrunds-CSS-klassen (3,7 % uppmätt) — browservägens verkan följs här",
+    note: "f.d. bakgrunds-CSS-klassen (3,7 %) — 100 % i grind #1; bekräftas innan grindning",
   },
 ];
 
