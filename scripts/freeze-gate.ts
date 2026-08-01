@@ -114,9 +114,25 @@ interface SiteResult {
   errorPage: boolean | null;
   vision: string | null;
   visionProblems: string[];
+  /** Rubrik-täckning live↔fryst (0–1). null = paritet ej mätbar (statisk väg). */
+  headingsRecall: number | null;
+  /** Fryst textmängd / live (0–1+). */
+  textRatio: number | null;
   fail: string[];
   warn: string[];
 }
+
+// Paritetsgolven stänger mediemåttets blinda fläck: en HEL sektion som
+// försvinner ur DOM:en före serialisering lämnar inga ytor att räkna — men
+// dess rubriker saknas i den frysta kopian. VARNING som default första
+// nätterna (kalibreringsläxan från grind #1: gissa aldrig golv — mät först);
+// FREEZE_GATE_PARITY_STRICT=1 gör dem FÄLLANDE för grindade sajter när
+// baselines observerats.
+// OBS skalorna (smoke-fyndet 2026-07-31): headingsRecall är PROCENT (0–100),
+// textRatio är KVOT (0–1) — freeze-paritys egna enheter.
+const PARITY_RECALL_FLOOR = Number(process.env.FREEZE_GATE_PARITY_RECALL ?? 80);
+const PARITY_TEXT_FLOOR = Number(process.env.FREEZE_GATE_PARITY_TEXT ?? 0.8);
+const PARITY_STRICT = process.env.FREEZE_GATE_PARITY_STRICT === "1";
 
 const results: SiteResult[] = [];
 
@@ -135,6 +151,8 @@ for (const site of sites) {
     errorPage: null,
     vision: null,
     visionProblems: [],
+    headingsRecall: null,
+    textRatio: null,
     fail: [],
     warn: [],
   };
@@ -201,6 +219,52 @@ for (const site of sites) {
     ["bun", "run", "scripts/diag/freeze-shot.ts", `--frozen=${frozen}`, `--out=${shots}`],
     120_000,
   );
+
+  // Paritet (innehåll, inte pixlar): rubrik-täckning + text-kvot live↔fryst.
+  await run(
+    [
+      "bun",
+      "run",
+      "scripts/diag/freeze-parity.ts",
+      `--frozen=${frozen}`,
+      `--stats=${join(shots, "live-stats.json")}`,
+      `--out=${shots}`,
+    ],
+    120_000,
+  );
+  const parityPath = join(shots, "parity.json");
+  if (existsSync(parityPath)) {
+    const p = JSON.parse(readFileSync(parityPath, "utf8")) as {
+      skipped?: boolean;
+      headingsRecall?: number;
+      textRatio?: number;
+      missingHeadings?: string[];
+    };
+    if (!p.skipped) {
+      r.headingsRecall = p.headingsRecall ?? null;
+      r.textRatio = p.textRatio ?? null;
+      const parityIssues: string[] = [];
+      if (r.headingsRecall !== null && r.headingsRecall < PARITY_RECALL_FLOOR) {
+        parityIssues.push(
+          `rubrik-täckning ${r.headingsRecall} < ${PARITY_RECALL_FLOOR}` +
+            (p.missingHeadings?.length
+              ? ` (saknas: ${p.missingHeadings.slice(0, 3).join(" · ")})`
+              : ""),
+        );
+      }
+      if (r.textRatio !== null && r.textRatio < PARITY_TEXT_FLOOR) {
+        parityIssues.push(`text-kvot ${r.textRatio} < ${PARITY_TEXT_FLOOR}`);
+      }
+      if (parityIssues.length) {
+        if (PARITY_STRICT && site.floor !== null) r.fail.push(...parityIssues);
+        else r.warn.push(...parityIssues);
+      }
+      console.log(
+        `[freeze-gate] ${site.name}: paritet rubriker ${r.headingsRecall ?? "—"} · text-kvot ${r.textRatio ?? "—"}` +
+          (parityIssues.length ? ` · ${PARITY_STRICT ? "FÄLLER" : "varning"}` : ""),
+      );
+    }
+  }
 }
 
 // ── Vision-pass över de frysta kopiornas skärmdumpar (en batch) ─────────────
@@ -260,8 +324,12 @@ for (const r of results) {
       (r.fail.length ? ` · ${r.fail.join("; ")}` : "") +
       (r.warn.length ? ` · varning: ${r.warn.join("; ")}` : ""),
   );
+  const parity =
+    r.headingsRecall !== null || r.textRatio !== null
+      ? `${r.headingsRecall ?? "—"} / ${r.textRatio ?? "—"}`
+      : "—";
   rows.push(
-    `| ${r.name} | ${r.gated ? `${r.floor}%` : "obs"} | ${r.completeness ?? "—"}% | ${r.completenessOnline ?? "—"}% | ${r.vision ?? "—"} | ${status} | ${[...r.fail, ...r.warn].join("; ").replace(/\|/g, "\\|") || "—"} |`,
+    `| ${r.name} | ${r.gated ? `${r.floor}%` : "obs"} | ${r.completeness ?? "—"}% | ${r.completenessOnline ?? "—"}% | ${parity} | ${r.vision ?? "—"} | ${status} | ${[...r.fail, ...r.warn].join("; ").replace(/\|/g, "\\|") || "—"} |`,
   );
 }
 
@@ -271,7 +339,7 @@ writeFileSync(join(OUT, "freeze-gate.json"), JSON.stringify({ results }, null, 2
 writeFileSync(
   join(OUT, "freeze-gate.md"),
   `## Freeze-grind — ${gatedPass}/${gatedCount} grindade PASS${gateFailed ? " · **RÖD**" : " · grön"}\n\n` +
-    `| sajt | golv | offline | online | vision | status | detalj |\n|---|---|---|---|---|---|---|\n${rows.join("\n")}\n\n` +
+    `| sajt | golv | offline | online | paritet (rubrik/text) | vision | status | detalj |\n|---|---|---|---|---|---|---|---|\n${rows.join("\n")}\n\n` +
     `_Offline-kompletthet = frysta kopian renderad med ALLT nätverk blockerat (självbärande-måttet ur #179). ` +
     `Observerade sajter (obs) är kända trasiga klasser som mäts men inte grindar._\n`,
 );

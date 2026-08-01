@@ -39,6 +39,10 @@ import type { CollectedElement } from "../schema";
 export interface ReplayResult {
   collect: { target: string; elements: CollectedElement[]; count: number };
   pageAudit: unknown;
+  /** sha256 för de MHTML-bytes som faktiskt replayades — bindningen mellan
+   *  golden och capturen. snapshot:update skriver den till
+   *  golden.provenance.json; replay asserterar mot samma fil. */
+  mhtmlSha256: string;
 }
 
 interface Meta {
@@ -141,10 +145,8 @@ async function awaitVisualSettle(page: Page, label = ""): Promise<void> {
   // 6-20s/sajt 2026-07-06). Den är också onödig — Blink-layout är synkron vid
   // läsning: COLLECT_SCRIPTs getBoundingClientRect tvingar själv fram färsk
   // layout från det settlade font-/bildtillståndet ovan.
-  // eslint-disable-next-line no-console
-  console.log(
-    `[replay] visual-settle${label ? ` ${label}` : ""} ${receipt} ${Date.now() - t0}ms`,
-  );
+
+  console.log(`[replay] visual-settle${label ? ` ${label}` : ""} ${receipt} ${Date.now() - t0}ms`);
 }
 
 // Node-driven scroll loop. Re-reads scrollHeight before each step so lazy-load
@@ -266,7 +268,9 @@ async function nodeLoopStampCookieRoot(page: Page, budgetMs = 2500, gapMs = 150)
         );
         if (!found) return false;
         const r = found.getBoundingClientRect();
-        const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano|ppms|piwik/i.test(found.id || "");
+        const isKnownVendor = /onetrust|cookiebot|usercentrics|didomi|osano|ppms|piwik/i.test(
+          found.id || "",
+        );
         if (!(isKnownVendor || (r.width > 50 && r.height > 30))) return false;
         // v1.20: never stamp a page-enveloping root (body/html state class) —
         // see the identical guard + rationale in pageAudit.server.ts.
@@ -402,12 +406,38 @@ export async function replayCorpus(
         );
       }
     } else {
-      // eslint-disable-next-line no-console
       console.warn(
         `corpus/${name}: pekaren saknar sha256 (pre-Fas 1 pekare). Replay fortsätter utan integritets-check.`,
       );
     }
     writeFileSync(tmpFile, buf);
+  }
+
+  // GOLDEN↔MHTML-BINDNING (ägarfråga 2026-07-31: "hur vet vi att sektionen
+  // och koden i mhtml hör ihop?"). golden.provenance.json bär sha256 för de
+  // bytes golden välsignades ur. Finns sidofilen asserteras den HÄR, före
+  // extraktionen — en om-fryst/utbytt MHTML utan om-välsignelse faller med
+  // tydligt fel i stället för som en mystisk sektionsdiff (eller, värre,
+  // grönt om paret byttes ihop). Saknas den (pre-bindnings-golden) varnas
+  // det bara; snapshot:update skriver den färskt. Samma A1-mönster som
+  // externaliserade pointers, nu även för lokala captures.
+  const mhtmlSha256 = sha256OfBuffer(readFileSync(tmpFile));
+  const provenancePath = join(dir, "golden.provenance.json");
+  if (existsSync(provenancePath)) {
+    const prov = JSON.parse(readFileSync(provenancePath, "utf8")) as { mhtmlSha256?: string };
+    if (prov.mhtmlSha256 && prov.mhtmlSha256 !== mhtmlSha256) {
+      throw new Error(
+        `corpus/${name}: page.mhtml (sha256 ${mhtmlSha256.slice(0, 12)}…) matchar INTE hashen ` +
+          `golden välsignades mot (${prov.mhtmlSha256.slice(0, 12)}…). MHTML:en har om-frysts ` +
+          `eller bytts utan om-välsignelse. Avsiktlig re-freeze? Kör SNAPSHOT_UPDATE=1 ` +
+          `vitest run src/lib/tests/snapshot och committa golden.json + golden.provenance.json IHOP.`,
+      );
+    }
+  } else {
+    console.warn(
+      `corpus/${name}: golden.provenance.json saknas — obunden golden (pre-bindning). ` +
+        `Nästa snapshot:update skriver bindningen.`,
+    );
   }
 
   // Backfill: pre-Fas-1-rapporter saknar embeddedFamilies. Parsa MHTML on-disk
@@ -418,13 +448,11 @@ export async function replayCorpus(
       const mhtmlText = readFileSync(tmpFile, "utf8");
       embeddedFamilies = extractEmbeddedFamilies(mhtmlText);
       if (embeddedFamilies.length > 0) {
-        // eslint-disable-next-line no-console
         console.log(
           `[replay] embeddedFamilies backfill från MHTML: ${embeddedFamilies.length} familjer (rapporten saknade fältet)`,
         );
       }
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.warn(
         `[replay] embeddedFamilies backfill misslyckades: ${e instanceof Error ? e.message : String(e)}`,
       );
@@ -565,7 +593,6 @@ export async function replayCorpus(
         declaredFamilies,
       });
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.warn(
         `[replay] render-canary kraschade (icke-blockerande): ${e instanceof Error ? e.message : String(e)}`,
       );
@@ -587,7 +614,6 @@ export async function replayCorpus(
       // INTE filen, och loggar varför. Inspector ser "✗ families.json" och
       // det är en VALID signal: "denna replay går inte att jämföra med övriga".
       if (canary.env && canary.env.pinned === false) {
-        // eslint-disable-next-line no-console
         console.warn(
           `[replay] render-canary.families.json EJ skriven: pinned=false ` +
             `(chromiumPath=${canary.env.chromiumPath}). Skippas medvetet — ` +
@@ -620,7 +646,6 @@ export async function replayCorpus(
         }
       }
 
-      // eslint-disable-next-line no-console
       console.log(
         `[replay] canary expected=${canary.expected.length} ok=${canary.ok} ` +
           `missing=${canary.missing.length} unusedRegistered=${canary.unusedRegistered.length} ` +
@@ -628,7 +653,6 @@ export async function replayCorpus(
           `docFonts=${canary.diagnostics.documentFontsSize}/${canary.diagnostics.documentFontsLoaded}`,
       );
       if (canary.ghosts.length > 0) {
-        // eslint-disable-next-line no-console
         console.warn(`[replay] canary ghosts (non-blocking): ${canary.ghosts.join(", ")}`);
       }
       if (!canary.ok) {
@@ -642,7 +666,6 @@ export async function replayCorpus(
         // still yields findings. Default stays strict — the promoted corpus and
         // snapshot determinism are unaffected.
         if (opts.lenientCanary) {
-          // eslint-disable-next-line no-console
           console.warn(`${msg} (lenientCanary — continuing)`);
         } else {
           throw new Error(msg);
@@ -650,7 +673,6 @@ export async function replayCorpus(
       }
     }
 
-    // eslint-disable-next-line no-console
     console.log(`[replay] url=${page.url()} navHistory=${JSON.stringify(seenUrls)}`);
 
     // Node-driven scroll. Each step is a trivially short evaluate, so a torn
@@ -666,7 +688,7 @@ export async function replayCorpus(
     await awaitVisualSettle(page, "pre-collect");
 
     const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
-    // eslint-disable-next-line no-console
+
     console.log(`[replay] collected ${elements.length} elements`);
     const pageAudit = await runPageAudit(page as unknown as Parameters<typeof runPageAudit>[0], {
       skipScrollWarmup: true,
@@ -676,6 +698,7 @@ export async function replayCorpus(
     return {
       collect: { target: "clickables", elements, count: elements.length },
       pageAudit,
+      mhtmlSha256,
     };
   } finally {
     try {

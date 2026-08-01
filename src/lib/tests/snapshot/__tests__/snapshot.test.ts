@@ -44,7 +44,6 @@ beforeAll(async () => {
     probeBrowser = undefined;
     chromiumAvailable = true;
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[snapshot.test] Chromium kunde inte starta — skip:ar suiten. ` +
         `(${e instanceof Error ? e.message.split("\n")[0] : e})`,
@@ -75,13 +74,10 @@ describe.skipIf(sites.length === 0)("snapshot diff", () => {
 
         // Skip-link suspect-räknare: observation, ej gate. När korpus
         // expanderar ser vi per-sajt-läckage direkt i CI-loggen.
-        const suspects = (fresh.collect.elements ?? []).filter(
-          (e) => e.suspectOffFlow,
-        );
-        // eslint-disable-next-line no-console
+        const suspects = (fresh.collect.elements ?? []).filter((e) => e.suspectOffFlow);
+
         console.log(`[snapshot] ${name}: ${suspects.length} off-flow suspects`);
         if (suspects.length > 0) {
-          // eslint-disable-next-line no-console
           console.log(
             `[snapshot] ${name} suspect selectors:`,
             suspects.slice(0, 5).map((e) => e.selector),
@@ -97,6 +93,16 @@ describe.skipIf(sites.length === 0)("snapshot diff", () => {
 
         if (UPDATE || !existsSync(goldenPath)) {
           writeFileSync(goldenPath, JSON.stringify(normalized, null, 2));
+          // Bindningen: golden hör till EXAKT dessa mhtml-bytes. Committas
+          // alltid ihop med golden.json — replayen asserterar mot den.
+          writeFileSync(
+            join(CORPUS_ROOT, name, "golden.provenance.json"),
+            JSON.stringify(
+              { mhtmlSha256: fresh.mhtmlSha256, boundAt: new Date().toISOString() },
+              null,
+              2,
+            ),
+          );
           return;
         }
 
@@ -118,8 +124,5 @@ describe.skipIf(sites.length === 0)("snapshot diff", () => {
 });
 
 if (sites.length === 0) {
-  // eslint-disable-next-line no-console
-  console.warn(
-    "snapshot.test.ts: no frozen corpus sites found — run `bun run freeze` first.",
-  );
+  console.warn("snapshot.test.ts: no frozen corpus sites found — run `bun run freeze` first.");
 }
