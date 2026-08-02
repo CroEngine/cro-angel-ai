@@ -8,6 +8,8 @@
 // Debug-flaggor (för 6-site-utrullning):
 //   --dry-run                      Skriv inget till corpus/. Receipt -> /tmp.
 //   --screenshot-before-dismiss    Extra screenshot innan consent-klick.
+//   --fingerprint                  Realistisk desktop-fingerprint (eskalering
+//                                  för fingerprint-baserat bot-skydd, DataDome).
 //
 // Override (one-off, kringgår SSOT):
 //   --url=... --consent='<css>' --consent-check=detached|hidden --consent-act='...'
@@ -47,6 +49,7 @@ const consentCheckArg = arg("consent-check") as "detached" | "hidden" | undefine
 const consentDismissCheck = consentCheckArg ?? spec?.consentDismissCheck;
 const consentInstruction = arg("consent-act") ?? spec?.consentInstruction;
 const consentOptional = flag("consent-optional") || !!spec?.consentOptional;
+const fingerprint = flag("fingerprint") || !!spec?.fingerprint;
 const consentFrame = arg("consent-frame") ?? spec?.consentFrame;
 const notes = arg("notes") ?? spec?.notes ?? undefined;
 const removeSelectors = spec?.removeSelectors;
@@ -89,6 +92,7 @@ freezeSite({
   notes,
   removeSelectors,
   geo,
+  fingerprint,
   dryRun,
   screenshotBeforeDismiss,
 })
