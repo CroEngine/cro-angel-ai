@@ -1,50 +1,11 @@
 {
   "collect": {
     "target": "clickables",
-    "count": 507,
+    "count": 505,
     "summary": {
       "topVisualWeight": []
     },
     "elements": [
-      {
-        "text": "Deals",
-        "tagName": "a",
-        "category": "cta_primary",
-        "intent": "conversion",
-        "section": "cards",
-        "aboveFold": true,
-        "href": "www.bokadirekt.se",
-        "disabled": false,
-        "yBand": 600,
-        "score": 50,
-        "area": 80000
-      },
-      {
-        "text": "Frisör",
-        "tagName": "a",
-        "category": "cta_primary",
-        "intent": "conversion",
-        "section": "cards",
-        "aboveFold": true,
-        "href": "www.bokadirekt.se",
-        "disabled": false,
-        "yBand": 600,
-        "score": 50,
-        "area": 80000
-      },
-      {
-        "text": "Massage",
-        "tagName": "a",
-        "category": "cta_primary",
-        "intent": "conversion",
-        "section": "cards",
-        "aboveFold": true,
-        "href": "www.bokadirekt.se",
-        "disabled": false,
-        "yBand": 600,
-        "score": 50,
-        "area": 80000
-      },
       {
         "text": "VISA ALLA KATEGORIER",
         "tagName": "button",
@@ -54,13 +15,13 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 1400,
-        "score": 50,
+        "yBand": 1800,
+        "score": 20,
         "bgContrast": 1,
         "area": 70000
       },
       {
-        "text": "Fillers",
+        "text": "Deals",
         "tagName": "a",
         "category": "link",
         "intent": "unknown",
@@ -68,12 +29,12 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 1200,
-        "score": 50,
+        "yBand": 1000,
+        "score": 10,
         "area": 80000
       },
       {
-        "text": "Friskvård",
+        "text": "Frisör",
         "tagName": "a",
         "category": "link",
         "intent": "unknown",
@@ -81,12 +42,12 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 1200,
-        "score": 50,
+        "yBand": 1000,
+        "score": 10,
         "area": 80000
       },
       {
-        "text": "Träning",
+        "text": "Massage",
         "tagName": "a",
         "category": "link",
         "intent": "unknown",
@@ -94,8 +55,8 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 1200,
-        "score": 50,
+        "yBand": 1000,
+        "score": 10,
         "area": 80000
       },
       {
@@ -107,8 +68,8 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 800,
-        "score": 50,
+        "yBand": 1200,
+        "score": 10,
         "area": 80000
       },
       {
@@ -120,8 +81,8 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 800,
-        "score": 50,
+        "yBand": 1200,
+        "score": 10,
         "area": 80000
       },
       {
@@ -133,8 +94,47 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 800,
-        "score": 50,
+        "yBand": 1200,
+        "score": 10,
+        "area": 80000
+      },
+      {
+        "text": "Fillers",
+        "tagName": "a",
+        "category": "link",
+        "intent": "unknown",
+        "section": "cards",
+        "aboveFold": false,
+        "href": "www.bokadirekt.se",
+        "disabled": false,
+        "yBand": 1400,
+        "score": 10,
+        "area": 80000
+      },
+      {
+        "text": "Friskvård",
+        "tagName": "a",
+        "category": "link",
+        "intent": "unknown",
+        "section": "cards",
+        "aboveFold": false,
+        "href": "www.bokadirekt.se",
+        "disabled": false,
+        "yBand": 1400,
+        "score": 10,
+        "area": 80000
+      },
+      {
+        "text": "Träning",
+        "tagName": "a",
+        "category": "link",
+        "intent": "unknown",
+        "section": "cards",
+        "aboveFold": false,
+        "href": "www.bokadirekt.se",
+        "disabled": false,
+        "yBand": 1400,
+        "score": 10,
         "area": 80000
       },
       {
@@ -146,7 +146,7 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 2000,
+        "yBand": 2400,
         "score": 40,
         "bgContrast": 11,
         "area": 9000
@@ -160,7 +160,7 @@
         "aboveFold": false,
         "href": "business.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 40,
         "bgContrast": 11,
         "area": 4000
@@ -174,7 +174,7 @@
         "aboveFold": false,
         "href": "www.facebook.com",
         "disabled": false,
-        "yBand": 2400,
+        "yBand": 2800,
         "score": 0,
         "bgContrast": 1,
         "area": 1000
@@ -188,7 +188,7 @@
         "aboveFold": false,
         "href": "instagram.com",
         "disabled": false,
-        "yBand": 2400,
+        "yBand": 2800,
         "score": 0,
         "bgContrast": 1,
         "area": 1000
@@ -202,7 +202,7 @@
         "aboveFold": false,
         "href": "www.linkedin.com",
         "disabled": false,
-        "yBand": 2400,
+        "yBand": 2800,
         "score": 0,
         "bgContrast": 1,
         "area": 1000
@@ -216,7 +216,7 @@
         "aboveFold": false,
         "href": null,
         "disabled": false,
-        "yBand": 2400,
+        "yBand": 2800,
         "score": 10,
         "bgContrast": 1,
         "area": 8000
@@ -230,7 +230,7 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2400,
         "score": 10,
         "bgContrast": 1,
         "area": 5000
@@ -244,7 +244,7 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2400,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 5000
@@ -258,7 +258,21 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2400,
+        "score": 10,
+        "bgContrast": 1,
+        "area": 3000
+      },
+      {
+        "text": "Etisk policy",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "help.bokadirekt.se",
+        "disabled": false,
+        "yBand": 2400,
         "score": 10,
         "bgContrast": 1,
         "area": 3000
@@ -272,7 +286,7 @@
         "aboveFold": false,
         "href": "bokadirekt.smart.link",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 5000
@@ -286,7 +300,7 @@
         "aboveFold": false,
         "href": "bokadirekt.smart.link",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 5000
@@ -300,7 +314,7 @@
         "aboveFold": false,
         "href": "help.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 4000
@@ -314,24 +328,10 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 6000
-      },
-      {
-        "text": "Etisk policy",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "help.bokadirekt.se",
-        "disabled": false,
-        "yBand": 2200,
-        "score": 10,
-        "bgContrast": 1,
-        "area": 3000
       },
       {
         "text": "Fakta & Råd",
@@ -342,7 +342,7 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 4000
@@ -356,7 +356,7 @@
         "aboveFold": false,
         "href": "portal.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 6000
@@ -370,7 +370,7 @@
         "aboveFold": false,
         "href": "help.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 5000
@@ -384,7 +384,7 @@
         "aboveFold": false,
         "href": "careers.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 2000
@@ -398,7 +398,7 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 5000
@@ -412,7 +412,7 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 4000
@@ -426,7 +426,7 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 6000
@@ -440,7 +440,7 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 5000
@@ -454,7 +454,7 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2400,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 2000
@@ -468,7 +468,7 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 2000
@@ -482,7 +482,7 @@
         "aboveFold": false,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 2200,
+        "yBand": 2600,
         "score": 10,
         "bgContrast": 1,
         "area": 9000
@@ -502,34 +502,6 @@
         "area": 4000
       },
       {
-        "text": "Anpassa",
-        "tagName": "a",
-        "category": "cta_primary",
-        "intent": "conversion",
-        "section": "hero",
-        "aboveFold": true,
-        "href": "www.bokadirekt.se",
-        "disabled": false,
-        "yBand": 400,
-        "score": 10,
-        "bgContrast": 1,
-        "area": 10000
-      },
-      {
-        "text": "Tillåt alla cookies",
-        "tagName": "button",
-        "category": "cta_primary",
-        "intent": "utility",
-        "section": "hero",
-        "aboveFold": true,
-        "href": null,
-        "disabled": false,
-        "yBand": 400,
-        "score": 40,
-        "bgContrast": 11,
-        "area": 10000
-      },
-      {
         "text": "",
         "tagName": "button",
         "category": "icon_button",
@@ -544,18 +516,17 @@
         "area": 2000
       },
       {
-        "text": "Läs mer om vår cookiepolicy",
+        "text": "",
         "tagName": "a",
         "category": "link",
-        "intent": "utility",
+        "intent": "unknown",
         "section": "hero",
         "aboveFold": true,
         "href": "www.bokadirekt.se",
         "disabled": false,
-        "yBand": 400,
-        "score": 10,
-        "bgContrast": 1,
-        "area": 1000
+        "yBand": 600,
+        "score": 50,
+        "area": 400000
       },
       {
         "text": "Fransar & Bryn nära mig",
@@ -7112,21 +7083,21 @@
     },
     "hero": {
       "headline": "Skönhet",
-      "primaryCtaText": "Deals",
-      "primaryCtaIntent": "conversion",
+      "primaryCtaText": "",
+      "primaryCtaIntent": "",
       "aboveFold": true
     },
     "images": {
-      "total": 78,
+      "total": 79,
       "missingAlt": 69,
       "modernCount": 9,
-      "legacyCount": 6,
+      "legacyCount": 7,
       "formats": {
         "avif": 0,
         "gif": 0,
         "jpg": 1,
         "other": 0,
-        "png": 5,
+        "png": 6,
         "svg": 63,
         "unknown": 0,
         "webp": 9
@@ -7145,9 +7116,9 @@
       }
     },
     "ctaSummary": {
-      "total": 22,
-      "primary": 18,
-      "aboveFold": 17
+      "total": 17,
+      "primary": 13,
+      "aboveFold": 12
     },
     "sectionOrder": [
       "header",
@@ -7186,9 +7157,9 @@
       "content",
       "content",
       "content",
+      "content",
+      "content",
       "footer",
-      "content",
-      "content",
       "content",
       "content",
       "content",

@@ -3,22 +3,30 @@
   "error": null,
   "dryRun": false,
   "consent": {
-    "selector": null,
-    "dismissCheck": null,
-    "matchCountBeforeClick": null,
-    "visibleBeforeClick": null,
-    "dismissedAfterMs": null,
-    "postDismissDomHits": null
+    "selector": "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    "dismissCheck": "hidden",
+    "matchCountBeforeClick": 1,
+    "visibleBeforeClick": true,
+    "dismissedAfterMs": 615,
+    "postDismissDomHits": {
+      "accept all": 0,
+      "decline all": 0,
+      "reject all": 0,
+      "cookie": 2
+    },
+    "skippedNotVisible": null
   },
   "capture": {
-    "mhtmlKb": 2693,
-    "screenshotKb": 618,
+    "mhtmlKb": 2786,
+    "screenshotKb": 660,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 17,
-    "mhtmlKbBeforeFontEmbed": 1793,
+    "sizeGatedLoadedOnly": false,
+    "sizeGatedDroppedCount": 0,
+    "mhtmlKbBeforeFontEmbed": 1885,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Nextory Sans Headline Demi-Bold",
@@ -46,21 +54,27 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-07-06T21:46:19.650Z"
+    "frozenAt": "2026-08-02T14:40:47.876Z",
+    "proxyCountry": null
+  },
+  "session": {
+    "id": "6fa1e05b-3c5d-4052-b74e-357d403162e5",
+    "inspectorUrl": "https://www.browserbase.com/sessions/6fa1e05b-3c5d-4052-b74e-357d403162e5",
+    "cdpLogPath": null
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 5169,
-    "interactiveCount": 584,
+    "textLen": 5286,
+    "interactiveCount": 645,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 5513,
-    "consentMs": 0,
-    "scrollMs": 3465,
-    "captureMs": 10354
+    "gotoMs": 11474,
+    "consentMs": 1807,
+    "scrollMs": 3514,
+    "captureMs": 2368
   }
 }

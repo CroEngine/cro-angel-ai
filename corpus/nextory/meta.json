@@ -1,16 +1,16 @@
 {
   "url": "https://nextory.com/se",
   "name": "nextory",
-  "captured_at": "2026-07-06T21:46:39.256Z",
+  "captured_at": "2026-08-02T14:41:07.249Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
-  "consentSelector": null,
+  "consentSelector": "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
   "consentInstruction": null,
-  "notes": "Ingen consent-banner i Browserbase-region (geo-gate; Cookiebot enbart i server-HTML). Arketyp: subscribe/trial (abonnemang).",
+  "notes": "Intermittent Cookiebot (rendrerade i juni-frysningen, ej i proberna) — consentOptional. Arketyp: subscribe/trial (abonnemang).",
   "ttlDays": 90,
-  "frozenAt": "2026-07-06T21:46:39.256Z",
-  "expiresAt": "2026-10-04T21:46:39.256Z",
+  "frozenAt": "2026-08-02T14:41:07.249Z",
+  "expiresAt": "2026-10-31T14:41:07.249Z",
   "refreezeReason": "manual"
 }

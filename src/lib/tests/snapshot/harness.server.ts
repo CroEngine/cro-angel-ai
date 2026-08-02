@@ -426,12 +426,22 @@ export async function replayCorpus(
   if (existsSync(provenancePath)) {
     const prov = JSON.parse(readFileSync(provenancePath, "utf8")) as { mhtmlSha256?: string };
     if (prov.mhtmlSha256 && prov.mhtmlSha256 !== mhtmlSha256) {
-      throw new Error(
-        `corpus/${name}: page.mhtml (sha256 ${mhtmlSha256.slice(0, 12)}…) matchar INTE hashen ` +
-          `golden välsignades mot (${prov.mhtmlSha256.slice(0, 12)}…). MHTML:en har om-frysts ` +
-          `eller bytts utan om-välsignelse. Avsiktlig re-freeze? Kör SNAPSHOT_UPDATE=1 ` +
-          `vitest run src/lib/tests/snapshot och committa golden.json + golden.provenance.json IHOP.`,
-      );
+      // I update-läget är mismatchen förväntad (om-fryst MHTML som ska om-
+      // välsignas) — throw här skulle deadlocka exakt den kommandorad fel-
+      // texten hänvisar till. Utanför update-läget är den ett stoppfel.
+      if (process.env.SNAPSHOT_UPDATE === "1") {
+        console.log(
+          `corpus/${name}: om-fryst MHTML (${prov.mhtmlSha256.slice(0, 12)}… → ` +
+            `${mhtmlSha256.slice(0, 12)}…) — om-välsignas nu.`,
+        );
+      } else {
+        throw new Error(
+          `corpus/${name}: page.mhtml (sha256 ${mhtmlSha256.slice(0, 12)}…) matchar INTE hashen ` +
+            `golden välsignades mot (${prov.mhtmlSha256.slice(0, 12)}…). MHTML:en har om-frysts ` +
+            `eller bytts utan om-välsignelse. Avsiktlig re-freeze? Kör SNAPSHOT_UPDATE=1 ` +
+            `vitest run src/lib/tests/snapshot och committa golden.json + golden.provenance.json IHOP.`,
+        );
+      }
     }
   } else {
     console.warn(
