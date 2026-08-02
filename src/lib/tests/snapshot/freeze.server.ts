@@ -19,11 +19,7 @@ import { Stagehand } from "@browserbasehq/stagehand";
 
 import { createSession, closeSession, getBrowserbaseClient } from "../browserbase.server";
 import { embedMhtmlFonts } from "./mhtml-fonts.server";
-import {
-  MHTML_INLINE_THRESHOLD_BYTES,
-  uploadAsset,
-  type AssetPointer,
-} from "./externalize.server";
+import { MHTML_INLINE_THRESHOLD_BYTES, uploadAsset, type AssetPointer } from "./externalize.server";
 
 // Must match the viewport Browserbase uses for live test runs so aboveFold /
 // section bucketing in golden.json matches what the live engine produces.
@@ -41,6 +37,13 @@ export interface FreezeOptions {
   name: string;
   consentSelector?: string;
   consentDismissCheck?: "detached" | "hidden";
+  /** Intermittent CMP (nextory-fyndet 2026-08-02: juni-frysningen bär en fullt
+   *  rendrerad Cookiebot-dialog, juli- och augustiproberna ser ingen banner
+   *  alls mot samma IP). true = klicka när selektorn blir synlig, men fäll
+   *  INTE frysningen när den uteblir — utfallet bokförs i
+   *  consent.skippedNotVisible och postDismissDomHits + vision-triagen vaktar
+   *  att ingen vägg smugit sig in ändå. Default false = selektor är krav. */
+  consentOptional?: boolean;
   consentInstruction?: string;
   /** iframe-based CMP (e.g. Sourcepoint `sp_message_iframe`): the accept button
    *  lives inside this iframe, so it's clicked via frameLocator and dismissal is
@@ -94,6 +97,9 @@ interface FreezeReport {
     visibleBeforeClick: boolean | null;
     dismissedAfterMs: number | null;
     postDismissDomHits: Record<string, number> | null;
+    /** true = consentOptional-selektorn blev aldrig synlig och klicket hoppades
+     *  över (intermittent CMP). null = ej tillämpligt / selektor var krav. */
+    skippedNotVisible: boolean | null;
   };
   capture: {
     mhtmlKb: number;
@@ -299,10 +305,7 @@ async function assertCaptureValid(
 // Klassificera en thrown error mot failure-taxonomin. Heuristik baserad på
 // error-meddelande + redan inmätta receipt-fält. "unknown" är fallback men
 // förbjuden i grön breadth-rapport — om vi ser den måste vi utöka klassificeraren.
-function classifyFailure(
-  err: unknown,
-  report: FreezeReport,
-): FreezeReport["failureClass"] {
+function classifyFailure(err: unknown, report: FreezeReport): FreezeReport["failureClass"] {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
   // CDP MHTML serializer failure (observed: "-32000 Failed to generate MHTML").
   // Root cause not isolated — may be intermittent; see corpus/README.md
@@ -340,8 +343,6 @@ function classifyFailure(
   if (report.captureValidity && !report.captureValidity.ok) return "captured-wrong-page";
   return "unknown";
 }
-
-
 
 async function lazyScroll(page: import("@browserbasehq/stagehand").Page) {
   for (const pct of [0, 25, 50, 75, 100]) {
@@ -413,7 +414,6 @@ async function measurePostDismissDomHits(
   return (await page.evaluate(script)) as Record<string, number>;
 }
 
-
 async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
   const dir = opts.outDir ?? join("corpus", opts.name);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -436,11 +436,12 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
     dryRun: !!opts.dryRun,
     consent: {
       selector: opts.consentSelector ?? null,
-      dismissCheck: opts.consentSelector ? opts.consentDismissCheck ?? "detached" : null,
+      dismissCheck: opts.consentSelector ? (opts.consentDismissCheck ?? "detached") : null,
       matchCountBeforeClick: null,
       visibleBeforeClick: null,
       dismissedAfterMs: null,
       postDismissDomHits: null,
+      skippedNotVisible: null,
     },
     capture: {
       mhtmlKb: 0,
@@ -468,7 +469,6 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
     captureValidity: null,
     timing: { gotoMs: 0, consentMs: 0, scrollMs: 0, captureMs: 0 },
   };
-
 
   let mhtmlBytes = 0;
   let screenshotBytes = 0;
@@ -568,7 +568,10 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
     const fontReqIds = new Map<string, string>();
     type CdpSessionLike = {
       send: (method: string, params?: unknown) => Promise<unknown>;
-      on: (event: string, cb: (p: { requestId: string; response?: { url?: string; mimeType?: string } }) => void) => void;
+      on: (
+        event: string,
+        cb: (p: { requestId: string; response?: { url?: string; mimeType?: string } }) => void,
+      ) => void;
     };
     let cdpNet: CdpSessionLike | null = null;
     try {
@@ -581,7 +584,10 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
         sess.on("Network.responseReceived", (p) => {
           const url = p.response?.url ?? "";
           const mime = p.response?.mimeType ?? "";
-          if (url && (/font|woff|ttf|otf/i.test(mime) || /\.(woff2?|ttf|otf|eot)(\?|$)/i.test(url))) {
+          if (
+            url &&
+            (/font|woff|ttf|otf/i.test(mime) || /\.(woff2?|ttf|otf|eot)(\?|$)/i.test(url))
+          ) {
             fontReqIds.set(url, p.requestId);
           }
         });
@@ -603,7 +609,7 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
       // the page is genuinely empty. Re-throw anything that is NOT a load-timeout.
       if (!/timed?\s*out|timeout/i.test(String((e as Error)?.message ?? e))) throw e;
       report.capture.loadStateDegraded = true;
-      // eslint-disable-next-line no-console
+
       console.log(
         `[freeze] '${opts.name}': load event did not fire within 60s — proceeding ` +
           `on domcontentloaded (heavy SPA); assertCaptureValid is the backstop`,
@@ -641,7 +647,6 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
         await new Promise((r) => setTimeout(r, 1000));
       }
       if (!ready) {
-        // eslint-disable-next-line no-console
         console.log(
           `[freeze] '${opts.name}': content not ready within ${CONTENT_WAIT_MS}ms ` +
             `(sparse page or persistent challenge) — proceeding; assertCaptureValid is the backstop`,
@@ -692,74 +697,102 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
       }
       report.consent.dismissedAfterMs = Date.now() - tClick;
       await new Promise((r) => setTimeout(r, 800));
-      report.consent.postDismissDomHits = await measurePostDismissDomHits(page, POST_DISMISS_NEEDLES);
+      report.consent.postDismissDomHits = await measurePostDismissDomHits(
+        page,
+        POST_DISMISS_NEEDLES,
+      );
     } else if (opts.consentSelector) {
       // Vänta in bannern (consent injiceras ofta async via taghanterare).
-      // Om DENNA waiten timear ut är det stale selektor / banner laddade aldrig
-      // — det är ett legitimt freeze-fel och vi loggar det explicit i error.
+      // Om DENNA waiten timear ut är det ett legitimt freeze-fel — UTOM när
+      // consentOptional är satt (intermittent CMP): då bokförs uteblivandet
+      // och capturen fortsätter utan klick.
+      let consentNotVisible = false;
       try {
         await page.waitForSelector(opts.consentSelector, {
           state: "visible",
           timeout: 5000,
         });
       } catch {
-        // Spara debug-screenshot om begärt — annars är felet en ren gissning.
-        if (opts.screenshotBeforeDismiss) {
-          try {
-            const failShot = await page.screenshot({ type: "jpeg", quality: 70, fullPage: false });
-            const failPath = opts.dryRun
-              ? join(tmpdir(), `freeze-${opts.name}-${ts}.timeout.jpg`)
-              : join(dir, "screenshot.timeout.jpg");
-            writeFileSync(failPath, Buffer.from(failShot));
-            report.capture.beforeDismissScreenshotPath = failPath;
-          } catch {
-            /* screenshot best-effort */
+        if (opts.consentOptional) {
+          consentNotVisible = true;
+          report.consent.skippedNotVisible = true;
+          report.consent.matchCountBeforeClick = 0;
+          report.consent.visibleBeforeClick = false;
+          // Observation ändå: dyker consent-fraser upp i synlig DOM trots att
+          // selektorn aldrig blev synlig är det en varningssignal i receiptet.
+          report.consent.postDismissDomHits = await measurePostDismissDomHits(
+            page,
+            POST_DISMISS_NEEDLES,
+          );
+
+          console.log(
+            `[freeze] consentOptional: selektorn blev aldrig synlig (${opts.name}) — capture fortsätter utan klick`,
+          );
+        } else {
+          // Spara debug-screenshot om begärt — annars är felet en ren gissning.
+          if (opts.screenshotBeforeDismiss) {
+            try {
+              const failShot = await page.screenshot({
+                type: "jpeg",
+                quality: 70,
+                fullPage: false,
+              });
+              const failPath = opts.dryRun
+                ? join(tmpdir(), `freeze-${opts.name}-${ts}.timeout.jpg`)
+                : join(dir, "screenshot.timeout.jpg");
+              writeFileSync(failPath, Buffer.from(failShot));
+              report.capture.beforeDismissScreenshotPath = failPath;
+            } catch {
+              /* screenshot best-effort */
+            }
           }
+          throw new Error(
+            `[freeze] consent-selektor blev aldrig synlig inom 5s: ${opts.consentSelector} (${opts.name}). ` +
+              `Stale selektor, A/B-variant, eller banner laddade aldrig. Verifiera i --dry-run med --screenshot-before-dismiss.`,
+          );
         }
-        throw new Error(
-          `[freeze] consent-selektor blev aldrig synlig inom 5s: ${opts.consentSelector} (${opts.name}). ` +
-            `Stale selektor, A/B-variant, eller banner laddade aldrig. Verifiera i --dry-run med --screenshot-before-dismiss.`,
+      }
+
+      if (!consentNotVisible) {
+        // Mät EFTER settle, inte vid rå load — undviker spöke-nollor.
+        report.consent.matchCountBeforeClick = (await page.evaluate(
+          `document.querySelectorAll(${JSON.stringify(opts.consentSelector)}).length`,
+        )) as number;
+        report.consent.visibleBeforeClick = true; // waitForSelector(visible) lyckades
+
+        if (opts.screenshotBeforeDismiss) {
+          const beforeShot = await page.screenshot({ type: "jpeg", quality: 70, fullPage: false });
+          const beforePath = opts.dryRun
+            ? join(tmpdir(), `freeze-${opts.name}-${ts}.before-dismiss.jpg`)
+            : join(dir, "screenshot.before-dismiss.jpg");
+          writeFileSync(beforePath, Buffer.from(beforeShot));
+          report.capture.beforeDismissScreenshotPath = beforePath;
+        }
+
+        const tClick = Date.now();
+        await page.locator(opts.consentSelector).click(); // INGEN try/catch
+        try {
+          await page.waitForSelector(opts.consentSelector, {
+            state: dismissState,
+            timeout: 5000,
+          });
+        } catch {
+          throw new Error(
+            `[freeze] consent kvar efter klick (state=${dismissState}): ${opts.name} — capture avbruten. ` +
+              `Byt consentDismissCheck i corpus/sites.ts (detached↔hidden) eller uppdatera selektorn.`,
+          );
+        }
+        report.consent.dismissedAfterMs = Date.now() - tClick;
+        await new Promise((r) => setTimeout(r, 800));
+
+        // Mät synlig text i post-dismiss-DOM. Detta är den pålitliga check som
+        // ersätter rg-mot-MHTML — speglar collectorns synlighetslogik så
+        // postDismissDomHits["accept all"]=0 faktiskt förutsäger en ren golden.
+        report.consent.postDismissDomHits = await measurePostDismissDomHits(
+          page,
+          POST_DISMISS_NEEDLES,
         );
       }
-
-      // Mät EFTER settle, inte vid rå load — undviker spöke-nollor.
-      report.consent.matchCountBeforeClick = (await page.evaluate(
-        `document.querySelectorAll(${JSON.stringify(opts.consentSelector)}).length`,
-      )) as number;
-      report.consent.visibleBeforeClick = true; // waitForSelector(visible) lyckades
-
-      if (opts.screenshotBeforeDismiss) {
-        const beforeShot = await page.screenshot({ type: "jpeg", quality: 70, fullPage: false });
-        const beforePath = opts.dryRun
-          ? join(tmpdir(), `freeze-${opts.name}-${ts}.before-dismiss.jpg`)
-          : join(dir, "screenshot.before-dismiss.jpg");
-        writeFileSync(beforePath, Buffer.from(beforeShot));
-        report.capture.beforeDismissScreenshotPath = beforePath;
-      }
-
-      const tClick = Date.now();
-      await page.locator(opts.consentSelector).click(); // INGEN try/catch
-      try {
-        await page.waitForSelector(opts.consentSelector, {
-          state: dismissState,
-          timeout: 5000,
-        });
-      } catch {
-        throw new Error(
-          `[freeze] consent kvar efter klick (state=${dismissState}): ${opts.name} — capture avbruten. ` +
-            `Byt consentDismissCheck i corpus/sites.ts (detached↔hidden) eller uppdatera selektorn.`,
-        );
-      }
-      report.consent.dismissedAfterMs = Date.now() - tClick;
-      await new Promise((r) => setTimeout(r, 800));
-
-      // Mät synlig text i post-dismiss-DOM. Detta är den pålitliga check som
-      // ersätter rg-mot-MHTML — speglar collectorns synlighetslogik så
-      // postDismissDomHits["accept all"]=0 faktiskt förutsäger en ren golden.
-      report.consent.postDismissDomHits = await measurePostDismissDomHits(
-        page,
-        POST_DISMISS_NEEDLES,
-      );
     } else if (opts.consentInstruction) {
       throw new Error(
         `[freeze] consentInstruction utan consentSelector för verifiering: ${opts.name}. ` +
@@ -800,7 +833,7 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
           ` for (const s of sels) { try { document.querySelectorAll(s).forEach((el) => { el.remove(); n++; }); } catch (e) {} }` +
           ` return n; })()`,
       )) as number;
-      // eslint-disable-next-line no-console
+
       console.log(
         `[freeze] removeSelectors: stripped ${removed} overlay element(s) ` +
           `(${opts.removeSelectors.length} selectors) before capture`,
@@ -913,14 +946,14 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
     // observability överlever även när externalFontSrcCount > 0.
     report.capture.fontUrls = embedded.fontUrlSummary;
 
-
     // Gate on fonts the browser LOADED but we couldn't embed (real render-drift).
     // Referenced-but-unused survivors are score-neutral. If the loaded-signal is
     // unavailable (empty), fall back to the strict total so a missing signal never
     // silently passes. Existing corpus sites have 0 survivors → unaffected.
     const gateFonts =
       loadedFontUrls.length > 0 ? embedded.unembeddedLoadedFontUrls : embedded.unembeddedFontUrls;
-    const gateFails = loadedFontUrls.length > 0 ? gateFonts.length > 0 : embedded.externalFontSrcCount > 0;
+    const gateFails =
+      loadedFontUrls.length > 0 ? gateFonts.length > 0 : embedded.externalFontSrcCount > 0;
     if (gateFails) {
       throw new Error(
         `[freeze] A2 gate: ${gateFonts.length} render-relevant font(s) unembeddable after rewrite ` +
@@ -943,10 +976,7 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
       // Stora MHTML → CDN, pekare i repo. Liten MHTML → direkt i repo som förr.
       // Tröskel ligger marginal under repo-gränsen 10 MB (se externalize.server.ts).
       if (mhtmlBytes > MHTML_INLINE_THRESHOLD_BYTES && !opts.skipExternalize) {
-        const pointer: AssetPointer = uploadAsset(
-          Buffer.from(finalMhtml, "utf8"),
-          "page.mhtml",
-        );
+        const pointer: AssetPointer = uploadAsset(Buffer.from(finalMhtml, "utf8"), "page.mhtml");
         writeFileSync(pointerPath, JSON.stringify(pointer, null, 2));
         report.capture.externalized = true;
         report.capture.externalAssetUrl = pointer.resolvedUrl;
@@ -958,10 +988,10 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
         if (existsSync(localMhtmlPath)) {
           unlinkSync(localMhtmlPath);
           report.capture.removedStaleLocalMhtml = true;
-          // eslint-disable-next-line no-console
+
           console.log(`[freeze] tog bort stale lokal ${localMhtmlPath} (flyttad över tröskeln)`);
         }
-        // eslint-disable-next-line no-console
+
         console.log(
           `[freeze] mhtml ${Math.round(mhtmlBytes / 1024)}kb > ${Math.round(MHTML_INLINE_THRESHOLD_BYTES / 1024)}kb tröskel ` +
             `— externaliserat sha256=${pointer.sha256.slice(0, 12)}… url=${pointer.resolvedUrl}`,
@@ -974,7 +1004,7 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
         if (existsSync(pointerPath)) {
           unlinkSync(pointerPath);
           report.capture.removedStalePointer = true;
-          // eslint-disable-next-line no-console
+
           console.log(`[freeze] tog bort stale pekare ${pointerPath} (under tröskeln igen)`);
         }
       }
@@ -1003,8 +1033,6 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
       writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2));
     }
 
-
-
     report.ok = true;
     return {
       dir,
@@ -1026,10 +1054,9 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
     // inte kan se matchCountBeforeClick=0 i efterhand.
     try {
       writeFileSync(reportPath, JSON.stringify(report, null, 2));
-      // eslint-disable-next-line no-console
+
       console.log(`[freeze] report -> ${reportPath}`);
     } catch (writeErr) {
-      // eslint-disable-next-line no-console
       console.error(`[freeze] kunde inte skriva report: ${writeErr}`);
     }
     try {
@@ -1085,7 +1112,7 @@ async function saveCdpLogForensics(report: FreezeReport, siteName: string): Prom
     JSON.stringify({ sessionId: report.session.id, droppedOldestEntries: dropped, entries: kept }),
   );
   report.session.cdpLogPath = path;
-  // eslint-disable-next-line no-console
+
   console.log(`[freeze] forensik: CDP-logg (${kept.length} entries) -> ${path}`);
 }
 
@@ -1101,7 +1128,6 @@ export async function freezeSite(opts: FreezeOptions): Promise<FreezeResult> {
       // behöver report-kontext) är ändå aldrig transient.
       const cls = classifyFailure(e, { captureValidity: null } as unknown as FreezeReport);
       if (attempt < retries && isTransientCaptureFailure(cls, e)) {
-        // eslint-disable-next-line no-console
         console.warn(
           `[freeze] transient (${cls}) — omförsök med färsk session (${attempt + 2}/${retries + 1})`,
         );

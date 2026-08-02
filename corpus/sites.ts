@@ -21,6 +21,11 @@ export interface SiteSpec {
    * Saknas → default "detached".
    */
   consentDismissCheck?: "detached" | "hidden";
+  /** Intermittent CMP (nextory-klassen: Cookiebot rendrerade i juni-frysningen
+   *  men inte i juli/augusti-proberna, samma IP): klicka när selektorn syns,
+   *  fäll inte frysningen när den uteblir. Utfallet bokförs i receiptets
+   *  consent.skippedNotVisible; postDismissDomHits + vision-triagen vaktar. */
+  consentOptional?: boolean;
   /** Stagehand-fallback om CSS inte räcker. Samma assertion-krav. */
   consentInstruction?: string;
   /** iframe-baserad CMP (t.ex. Sourcepoint sp_message_iframe): accept-knappen
@@ -191,12 +196,19 @@ export const SITES: SiteSpec[] = [
     // när valideringen på engelska siter är i hamn. Tills dess fryser siten
     // som idag (default USA-routning) — inga golden-ändringar.
     // geo: "SE",
-    // Verifierat 2026-07-06 via --dry-run --screenshot-before-dismiss:
-    // Cookiebot finns i server-HTML:en men ingen banner rendras mot
-    // Browserbase-IP (geo-gate, samma som hibob/microsoft) — sidan rendrar
-    // fullt med "Prova gratis nu"-hero. Lägg INTE tillbaka selektorn utan att
-    // först verifiera att bannern faktiskt rendras i capture-miljön.
-    notes: "Ingen consent-banner i Browserbase-region (geo-gate; Cookiebot enbart i server-HTML). Arketyp: subscribe/trial (abonnemang).",
+    // INTERMITTENT Cookiebot (bevisläge 2026-08-02): juni-frysningens
+    // committade screenshot bär en FULLT RENDRERAD Cookiebot-dialog ("Allow
+    // all cookies") över heron — men proberna 2026-07-06 och 2026-08-02 såg
+    // ingen banner alls mot samma default-IP. CMP:n är alltså probabilistisk,
+    // inte rent geo-gated som noten tidigare sa. Därför consentOptional:
+    // klicka när dialogen finns (standard-Cookiebot-id + hidden, som
+    // elskling), fäll inte frysningen när den uteblir. Receiptets
+    // skippedNotVisible säger vilketdera som hände per capture.
+    consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    consentDismissCheck: "hidden",
+    consentOptional: true,
+    notes:
+      "Intermittent Cookiebot (rendrerade i juni-frysningen, ej i proberna) — consentOptional. Arketyp: subscribe/trial (abonnemang).",
   },
   {
     // BOOKING — bokningsmarknadsplats ("Boka tid"). Ingen CMP-vendor synlig i
@@ -210,7 +222,14 @@ export const SITES: SiteSpec[] = [
     // när valideringen på engelska siter är i hamn. Tills dess fryser siten
     // som idag (default USA-routning) — inga golden-ändringar.
     // geo: "SE",
-    notes: "Arketyp: booking (bokningsmarknadsplats). CMP okänd — verifiera med dry-run.",
+    // CMP identifierad 2026-08-02 via probe-consent-dom (vision-triagens fynd
+    // 2026-07-30: committade skärmbilden bär en odismissad dialog över ~40 %
+    // av sidan): SAMMA egna React-modal som tjänstesidan ("Vi värdesätter
+    // dina val") — klasserna är hashade, data-cy är den stabila kroken.
+    // Modalen unmountas vid accept → detached (default), som tjänstesidan.
+    consentSelector: 'button[data-cy="allowCookiesButton"]',
+    notes:
+      "Egen consent-dialog (React-modal, data-cy-krok — samma som tjänstesidan). Arketyp: booking (bokningsmarknadsplats).",
   },
   {
     // BOOKING (strikt) — TJÄNSTESIDA på bokadirekt, där de riktiga "Boka"-
@@ -245,7 +264,8 @@ export const SITES: SiteSpec[] = [
     // kategoriraden) flippade likadant (±200px, "Deals"/"För företag") när
     // panelerna väl var borta — samma dolda-header-klass, samma bot.
     removeSelectors: [".mega-menu-categories-category", "#mega-menu-manager-container"],
-    notes: "Egen consent-dialog (React-modal, data-cy-krok). Arketyp: booking strikt (tjänstesida med Boka-CTA:er).",
+    notes:
+      "Egen consent-dialog (React-modal, data-cy-krok). Arketyp: booking strikt (tjänstesida med Boka-CTA:er).",
   },
   // Salesforce, Slack, Kry, Monday: ej tillagda än.
   // Salesforce testad 2026-06-10: ingen consent-banner mot Browserbase-IP
