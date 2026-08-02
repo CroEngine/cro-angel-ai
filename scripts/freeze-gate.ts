@@ -63,21 +63,20 @@ const SITES: GateSite[] = [
     floor: DEFAULT_FLOOR,
     note: "uppmätt 97,3 % efter poster-fixen",
   },
-  // Tidigare kända trasiga klasser — grind-körning #1 (2026-07-31) mätte BÅDA
-  // till 100 % offline via browservägen (#179:s verktyg): anyfin 11 %→100 %,
-  // sats 3,7 %→100 %. Observeras några nätter till för att bekräfta att det
-  // håller (JS-challenge är probabilistisk); grindas därefter.
+  // F.d. kända trasiga klasser — GRINDADE 2026-08-02 efter fyra raka 100 %
+  // offline (körning #1, #2, #4, #5): anyfin 11 %→100 %, sats 3,7 %→100 %.
+  // #179:s medieverktyg stängde klasserna; grinden vaktar nu att det håller.
   {
     name: "anyfin",
     url: "https://anyfin.se/",
-    floor: null,
-    note: "f.d. JS-challenge-klassen — 100 % i grind #1; bekräftas innan grindning",
+    floor: DEFAULT_FLOOR,
+    note: "f.d. JS-challenge-klassen (11 %) — grindad 2026-08-02 efter 4 raka 100 %",
   },
   {
     name: "sats",
     url: "https://www.sats.se/",
-    floor: null,
-    note: "f.d. bakgrunds-CSS-klassen (3,7 %) — 100 % i grind #1; bekräftas innan grindning",
+    floor: DEFAULT_FLOOR,
+    note: "f.d. bakgrunds-CSS-klassen (3,7 %) — grindad 2026-08-02 efter 4 raka 100 %",
   },
 ];
 
