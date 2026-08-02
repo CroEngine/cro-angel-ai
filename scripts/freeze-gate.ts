@@ -47,13 +47,11 @@ const SITES: GateSite[] = [
   {
     name: "voi",
     url: "https://www.voi.com/sv",
-    // Grind-körning #1 (2026-07-31): offline 82,4 % men ONLINE 100 % — ~18 %
-    // av mediaytorna hänger kvar på tredjeparts-URL:er i stället för att
-    // inlinas. NAMNGIVET REPARATIONSMÅL för media-verktyget; golvet 78 ligger
-    // strax under dagens baseline så grinden fångar kollaps utan att ropa
-    // varg. Höj mot 90+ när inlining-gapet är stängt.
-    floor: 78,
-    note: "grind-baseline 82,4 % (online 100 %) — inlining-gap, reparationsmål",
+    // Inlining-gapet STÄNGT 2026-08-02 (82,4 % → 100 % verifierat): Hygraph/
+    // graphassets-klassen i downscaleVariants + raster-magic-sniff av felmärkt
+    // Content-Type (freeze-page.ts). Golvet upp till 90 som övriga.
+    floor: DEFAULT_FLOOR,
+    note: "f.d. inlining-gapet (82,4 % ×4) — stängt 2026-08-02, 100 % verifierat",
   },
   { name: "lassie", url: "https://www.lassie.co/", floor: DEFAULT_FLOOR, note: "uppmätt 98,1 %" },
   { name: "hibob", url: "https://www.hibob.com", floor: DEFAULT_FLOOR, note: "uppmätt 99,8 %" },
