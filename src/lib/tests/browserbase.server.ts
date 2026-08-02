@@ -29,6 +29,12 @@ export interface SessionMeta {
 
 export interface CreateSessionOpts {
   advancedStealth?: boolean;
+  /** Realistisk desktop-fingerprint (devices/OS/locale). Icke-Enterprise-lever
+   *  mot fingerprint-baserad bot-detektering (DataDome m.fl.) — till skillnad
+   *  från advancedStealth/os:"mac"/verified mode, som är Enterprise-gatade.
+   *  Verifierat tillåtet på vår plan 2026-08-02. Default: av (Browserbases
+   *  egen default-fingerprint), så vanliga captures är oförändrade. */
+  fingerprint?: boolean;
   /** Proxy exit country, ISO 3166-1 alpha-2 (e.g. "SE"). Unset → Browserbase
    *  default routing, which is best-effort US — so Swedish sites captured
    *  without this see the US-IP web (CMP/geo-gates/i18n differ). Falls back
@@ -75,6 +81,20 @@ const BASE_STEALTH = {
 const ADVANCED_STEALTH = {
   advancedStealth: true,
   os: "mac" as const,
+};
+// Realistisk desktop-fingerprint. Till skillnad från ADVANCED_STEALTH är
+// devices/operatingSystems/locales TILLÅTNA på vår plan (verifierat 2026-08-02
+// via stealth-gate-proben: `fingerprint`-objektet accepteras, medan
+// advancedStealth och os:"mac" ger 403 "verified mode ... Enterprise").
+// Detta ger DataDome/fingerprint-baserade skydd en trovärdig desktop-signatur
+// i stället för Browserbases default. Opt-in per caller — vanliga captures rör
+// den inte.
+const DESKTOP_FINGERPRINT = {
+  fingerprint: {
+    devices: ["desktop" as const],
+    operatingSystems: ["macos" as const, "windows" as const],
+    locales: ["en-US"],
+  },
 };
 
 // Region follows the proxy exit — they must move TOGETHER (browserbase-usage-
@@ -161,14 +181,16 @@ export async function createSession(opts: CreateSessionOpts = {}): Promise<Brows
   // round-trip); when a caller requests it we attempt the Enterprise tier and
   // fall back to basic stealth on rejection, so it's ready once the plan allows.
   const wantAdvanced = opts.advancedStealth ?? false;
+  const wantFingerprint = opts.fingerprint ?? false;
   const settings = opts.viewport ? { viewport: opts.viewport } : {};
+  const fp = wantFingerprint ? DESKTOP_FINGERPRINT : {};
   let session;
   try {
     session = await client.sessions.create({
       ...base,
       browserSettings: wantAdvanced
-        ? { ...BASE_STEALTH, ...ADVANCED_STEALTH, ...settings }
-        : { ...BASE_STEALTH, ...settings },
+        ? { ...BASE_STEALTH, ...ADVANCED_STEALTH, ...fp, ...settings }
+        : { ...BASE_STEALTH, ...fp, ...settings },
     });
   } catch (err) {
     if (!wantAdvanced) throw err;
@@ -177,7 +199,10 @@ export async function createSession(opts: CreateSessionOpts = {}): Promise<Brows
         err instanceof Error ? err.message.slice(0, 140) : String(err)
       }); falling back to basic stealth`,
     );
-    session = await client.sessions.create({ ...base, browserSettings: { ...BASE_STEALTH, ...settings } });
+    session = await client.sessions.create({
+      ...base,
+      browserSettings: { ...BASE_STEALTH, ...fp, ...settings },
+    });
   }
   // Inspector link: the session records video + network/console logs by
   // default — this line is what makes them findable from run output.

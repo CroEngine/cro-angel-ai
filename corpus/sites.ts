@@ -57,6 +57,17 @@ export interface SiteSpec {
    * Osatt → dagens beteende (USA-routning).
    */
   geo?: string;
+  /**
+   * Realistisk desktop-fingerprint på Browserbase-sessionen. Opt-in per site,
+   * eskaleringssteg för sajter med fingerprint-baserat bot-skydd (DataDome
+   * m.fl.). Icke-Enterprise-lever: devices/OS/locale är tillåtna på vår plan
+   * (verifierat 2026-08-02), till skillnad från advancedStealth/verified mode.
+   * Löser INTE hårda pre-emptiva väggar (g2/DataDome ger 403 slide-CAPTCHA
+   * ändå — se browserbase-usage-review). Default av: vanliga captures kör på
+   * Browserbases default-fingerprint (bevisat tillräckligt för nike/Akamai,
+   * zalando/DataDome-med-SE-IP). Sätt bara om en site faktiskt blockeras utan.
+   */
+  fingerprint?: boolean;
   notes?: string;
 }
 

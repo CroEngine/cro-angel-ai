@@ -20,6 +20,7 @@ import { Stagehand } from "@browserbasehq/stagehand";
 import { createSession, closeSession, getBrowserbaseClient } from "../browserbase.server";
 import { embedMhtmlFonts } from "./mhtml-fonts.server";
 import { MHTML_INLINE_THRESHOLD_BYTES, uploadAsset, type AssetPointer } from "./externalize.server";
+import { HARD_WALL_MARKERS, CHALLENGE_TITLE_MARKERS } from "./bot-wall";
 
 // Must match the viewport Browserbase uses for live test runs so aboveFold /
 // section bucketing in golden.json matches what the live engine produces.
@@ -76,6 +77,11 @@ export interface FreezeOptions {
    *  CDP-connect, -32000-serialisering, timeout). Default 1. Site-verkliga
    *  fel (consent, anti-bot, fel sida, tunn sida) retry:as aldrig. */
   retryTransient?: number;
+  /** Realistisk desktop-fingerprint på sessionen (icke-Enterprise-lever mot
+   *  fingerprint-baserade bot-skydd, t.ex. DataDome). Opt-in per site: vanliga
+   *  captures kör oförändrat på Browserbases default-fingerprint. Löser INTE
+   *  Enterprise-gatade väggar (verified mode) — se browserbase-usage-review. */
+  fingerprint?: boolean;
 }
 
 export interface FreezeResult {
@@ -238,18 +244,25 @@ interface FreezeReport {
 // Inte gating för consent-flöden där vi avsiktligt dismissar (sker före), utan
 // säkerhetsnät: om consent-klicket inte tog, eller om sajten serverade
 // Cloudflare/PerimeterX/hCaptcha, syns det här.
-const CHALLENGE_MARKERS = [
-  "checking your browser",
-  "please enable javascript",
-  "verify you are human",
-  "cf-challenge",
-  "cf-browser-verification",
-  "hcaptcha",
-  "perimeterx",
-  "px-captcha",
-  "access denied",
-  "are you a robot",
-] as const;
+// Bas-listan (historisk) + de patognomona vendor-markörerna från bot-wall.ts.
+// HARD_WALL_MARKERS är patognomona (aldrig i legitim marknadstext) så de kan
+// vara hård-failande här; de bredare interstitial-titlarna ligger kvar i
+// CHALLENGE_TITLE_MARKERS och används bara av vänta-ut-heuristiken nedan.
+const CHALLENGE_MARKERS: string[] = Array.from(
+  new Set([
+    "checking your browser",
+    "please enable javascript",
+    "verify you are human",
+    "cf-challenge",
+    "cf-browser-verification",
+    "hcaptcha",
+    "perimeterx",
+    "px-captcha",
+    "access denied",
+    "are you a robot",
+    ...HARD_WALL_MARKERS,
+  ]),
+);
 
 // Consent-vokabulär — om hero-rubriken är en av dessa har vi fångat consent-väggen.
 const CONSENT_HEADING_PATTERNS = [
@@ -475,6 +488,7 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
 
   const session = await createSession({
     proxyCountry: opts.geo,
+    fingerprint: opts.fingerprint,
     meta: { pipeline: "freeze", site: opts.name },
   });
   report.session = {
@@ -629,14 +643,20 @@ async function freezeSiteAttempt(opts: FreezeOptions): Promise<FreezeResult> {
     {
       const CONTENT_WAIT_MS = 12_000;
       const CONTENT_MIN_CHARS = 400;
+      // Vänta-ut-mönstret byggs ur den delade titel-listan (bot-wall.ts) så
+      // detektionen täcker alla vendorer, inte bara Cloudflare. Escapa regex-
+      // specialtecken (markörer som "reference #", "automated (bot) activity")
+      // och lägg till "performing security verification" (CF-varianten).
+      const challengeAlt = [...CHALLENGE_TITLE_MARKERS, "performing security verification"]
+        .map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("|");
       const tReady = Date.now();
       let ready = false;
       while (Date.now() - tReady < CONTENT_WAIT_MS) {
         const st = (await page
           .evaluate(
             `(() => { const txt = (document.body?.innerText || "").trim(); return { len: txt.length, ` +
-              `challenge: /just a moment|verify you are human|performing security verification|` +
-              `attention required|enable javascript to continue|checking your browser/i` +
+              `challenge: new RegExp(${JSON.stringify(challengeAlt)}, "i")` +
               `.test(txt + " " + document.title) }; })()`,
           )
           .catch(() => ({ len: 0, challenge: false }))) as { len: number; challenge: boolean };
