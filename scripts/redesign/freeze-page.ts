@@ -76,10 +76,23 @@ function curl(u: string): { bytes: Uint8Array; type: string } | null {
   const tmp = joinPath(dir, "body");
   try {
     const proc = Bun.spawnSync([
-      "curl", "-sSL", "--max-time", "60", "-A", UA, "-o", tmp, "-w", "%{content_type} %{http_code}", u,
+      "curl",
+      "-sSL",
+      "--max-time",
+      "60",
+      "-A",
+      UA,
+      "-o",
+      tmp,
+      "-w",
+      "%{content_type} %{http_code}",
+      u,
     ]);
     if (proc.exitCode !== 0) return null;
-    const [type, code] = proc.stdout.toString().trim().split(/\s+(?=\d+$)/);
+    const [type, code] = proc.stdout
+      .toString()
+      .trim()
+      .split(/\s+(?=\d+$)/);
     if (!code || Number(code) >= 400) return null;
     return { bytes: new Uint8Array(readF(tmp)), type: type || "application/octet-stream" };
   } finally {
@@ -160,7 +173,26 @@ function downscaleVariants(u: string): string[] {
         pathVariant = v.toString();
       }
     }
-    return [mk("w", "h"), mk("width", "height"), pathVariant].filter((x): x is string => !!x);
+    // Hygraph/graphassets-klassen (voi-fyndet 2026-08-02, grindens första
+    // namngivna reparationsmål): asset-URL:er är ändelselösa handles
+    // (…graphassets.com/<env>/<handle>) och original-jpeg:arna (434–679 kB)
+    // överskrider IMG_CAP — utan variant länkades de absolut och frysta
+    // kopian stannade på 82,4 % offline. CDN:ens transform-segment skjuts in
+    // FÖRE handlen: …/<env>/resize=width:828/<handle> (verifierat: 434 kB →
+    // 108 kB image/jpeg). Bara URL:er utan befintligt transform-segment
+    // (= exakt två sökvägssegment) kandiderar — annars dubblas transformer.
+    let graphassetsVariant: string | null = null;
+    if (/\.graphassets\.com$/i.test(url.hostname)) {
+      const segs = url.pathname.split("/").filter(Boolean);
+      if (segs.length === 2) {
+        const v = new URL(u);
+        v.pathname = `/${segs[0]}/resize=width:828/${segs[1]}`;
+        graphassetsVariant = v.toString();
+      }
+    }
+    return [mk("w", "h"), mk("width", "height"), pathVariant, graphassetsVariant].filter(
+      (x): x is string => !!x,
+    );
   } catch {
     return [];
   }
@@ -172,18 +204,50 @@ function downscaleVariants(u: string): string[] {
 const recordedAssets = new Map<string, { bytes: Uint8Array; type: string }>();
 const assetKey = (u: string) => u.split("#")[0];
 
+/** Raster-magic vinner över Content-Type-headern (voi-fyndet 2026-08-02:
+ *  Hygraphs resize-transform RASTRERAR svg-registrerade assets till jpeg men
+ *  behåller `image/svg+xml` i headern — jpeg-bytes deklarerade som svg målar
+ *  aldrig i browsern). Äkta svg:er saknar rastermagic och behåller sin typ. */
+function sniffRasterMime(b: Uint8Array): string | null {
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8) return "image/jpeg";
+  if (b.length > 7 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47)
+    return "image/png";
+  if (
+    b.length > 11 &&
+    b[0] === 0x52 &&
+    b[1] === 0x49 &&
+    b[2] === 0x46 &&
+    b[3] === 0x46 &&
+    b[8] === 0x57 &&
+    b[9] === 0x45 &&
+    b[10] === 0x42 &&
+    b[11] === 0x50
+  )
+    return "image/webp";
+  if (b.length > 5 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38)
+    return "image/gif";
+  return null;
+}
+
 /** Hämta en bild inline-bar: inspelningen först, sedan nedskalade CDN-
  *  varianter, originalet sist. null = ingen kandidat under IMG_CAP/av bildtyp. */
 async function fetchInlineableImage(
   fullUrl: string,
 ): Promise<{ bytes: Uint8Array; type: string } | null> {
   const rec = recordedAssets.get(assetKey(fullUrl));
-  if (rec && rec.bytes.length <= IMG_CAP && (rec.type.startsWith("image/") || rec.type === "application/octet-stream")) {
-    return { bytes: rec.bytes, type: rec.type.startsWith("image/") ? rec.type : "image/png" };
+  if (
+    rec &&
+    rec.bytes.length <= IMG_CAP &&
+    (rec.type.startsWith("image/") || rec.type === "application/octet-stream")
+  ) {
+    const headerType = rec.type.startsWith("image/") ? rec.type : "image/png";
+    return { bytes: rec.bytes, type: sniffRasterMime(rec.bytes) ?? headerType };
   }
   for (const cand of [...downscaleVariants(fullUrl), fullUrl]) {
     const got = await fetchBytes(cand);
-    if (got && got.bytes.length <= IMG_CAP && got.type.startsWith("image/")) return got;
+    if (got && got.bytes.length <= IMG_CAP && got.type.startsWith("image/")) {
+      return { bytes: got.bytes, type: sniffRasterMime(got.bytes) ?? got.type };
+    }
   }
   return null;
 }
@@ -197,9 +261,7 @@ async function fetchInlineableImage(
  *  UA-filtrerar auktoritativt, så frysningen kan aldrig förorena mätdatat.
  *  Lazy-svepet scrollar genom sidan så under-folden-innehåll renderas, och
  *  scrollar tillbaka så frysta dokumentet börjar vid toppen. */
-async function browserRenderedHtml(
-  u: string,
-): Promise<{
+async function browserRenderedHtml(u: string): Promise<{
   html: string;
   imgPriority: Record<string, { top: number; area: number }>;
   /** Nedladdnings-INSPELNINGEN (ägarbeslut 2026-07-28 "bygg båda"): bytesen
@@ -252,7 +314,9 @@ async function browserRenderedHtml(
     } catch {
       try {
         page.context().on("response", recordResponse);
-        console.warn("[freeze-page] inspelning via kontexten (sid-proxyn stödjer inte response-händelsen)");
+        console.warn(
+          "[freeze-page] inspelning via kontexten (sid-proxyn stödjer inte response-händelsen)",
+        );
       } catch (err) {
         console.warn(
           `[freeze-page] nätverksinspelning otillgänglig (${err instanceof Error ? err.message : err}) — in-page-reserven + curl tar över`,
@@ -334,8 +398,12 @@ async function browserRenderedHtml(
         for (const img of Array.from(document.images)) {
           img.loading = "eager";
           (img as HTMLElement).setAttribute("decoding", "sync");
-          const ds = img.getAttribute("data-src") || img.getAttribute("data-lazy-src") || img.getAttribute("data-original");
-          const placeholderish = !img.src || img.src.startsWith("data:image/gif") || img.naturalWidth <= 2;
+          const ds =
+            img.getAttribute("data-src") ||
+            img.getAttribute("data-lazy-src") ||
+            img.getAttribute("data-original");
+          const placeholderish =
+            !img.src || img.src.startsWith("data:image/gif") || img.naturalWidth <= 2;
           if (ds && placeholderish) img.src = ds;
         }
         const pending = Array.from(document.images).filter((i) => !i.complete);
@@ -367,7 +435,8 @@ async function browserRenderedHtml(
       const unreadyCount = await page.evaluate(() => {
         const vids: HTMLVideoElement[] = [];
         const collect = (root: Document | ShadowRoot) => {
-          for (const v of Array.from(root.querySelectorAll("video"))) vids.push(v as HTMLVideoElement);
+          for (const v of Array.from(root.querySelectorAll("video")))
+            vids.push(v as HTMLVideoElement);
           for (const el of Array.from(root.querySelectorAll("*"))) {
             const sr = (el as Element).shadowRoot;
             if (sr) collect(sr);
@@ -392,7 +461,8 @@ async function browserRenderedHtml(
         const out = { captured: 0, tainted: 0, unready: 0, marked: 0 };
         const vids: HTMLVideoElement[] = [];
         const collect = (root: Document | ShadowRoot) => {
-          for (const v of Array.from(root.querySelectorAll("video"))) vids.push(v as HTMLVideoElement);
+          for (const v of Array.from(root.querySelectorAll("video")))
+            vids.push(v as HTMLVideoElement);
           for (const el of Array.from(root.querySelectorAll("*"))) {
             const sr = (el as Element).shadowRoot;
             if (sr) collect(sr);
@@ -415,7 +485,10 @@ async function browserRenderedHtml(
           if (r.width < 40 || r.height < 40) continue;
           // Riktig poster finns → poster-steget inlinear den; skriv aldrig över.
           if (!host && v.getAttribute("poster")) continue;
-          if (host && (host.getAttribute("poster") || (host.getAttribute("style") || "").includes("url("))) {
+          if (
+            host &&
+            (host.getAttribute("poster") || (host.getAttribute("style") || "").includes("url("))
+          ) {
             continue;
           }
           if (v.readyState < 2 || !v.videoWidth) {
@@ -474,7 +547,9 @@ async function browserRenderedHtml(
             (el as HTMLElement).scrollIntoView({ block: "center" });
             // Lazy-källa-klassen: vyn väcker laddaren, play() startar rutan.
             const v =
-              el.tagName === "VIDEO" ? (el as HTMLVideoElement) : (el.querySelector("video") as HTMLVideoElement | null);
+              el.tagName === "VIDEO"
+                ? (el as HTMLVideoElement)
+                : (el.querySelector("video") as HTMLVideoElement | null);
             if (v) {
               v.muted = true;
               v.play().catch(() => {});
@@ -487,13 +562,28 @@ async function browserRenderedHtml(
             const el = document.querySelector(`[data-angel-frame="${idx}"]`);
             if (!el) return null;
             const b = el.getBoundingClientRect();
-            return { x: b.x, y: b.y, w: b.width, h: b.height, vw: window.innerWidth, vh: window.innerHeight };
+            return {
+              x: b.x,
+              y: b.y,
+              w: b.width,
+              h: b.height,
+              vw: window.innerWidth,
+              vh: window.innerHeight,
+            };
           }, n)) as { x: number; y: number; w: number; h: number; vw: number; vh: number } | null;
           if (!rect || rect.w < 40 || rect.h < 40) return false;
           const png = (await page.screenshot({ type: "png" })) as Buffer;
           const shotUri = `data:image/png;base64,${Buffer.from(png).toString("base64")}`;
           return (await page.evaluate(
-            async ({ idx, uri: u3, r }: { idx: number; uri: string; r: { x: number; y: number; w: number; h: number; vw: number; vh: number } }) => {
+            async ({
+              idx,
+              uri: u3,
+              r,
+            }: {
+              idx: number;
+              uri: string;
+              r: { x: number; y: number; w: number; h: number; vw: number; vh: number };
+            }) => {
               const el = document.querySelector(`[data-angel-frame="${idx}"]`);
               if (!el) return false;
               const im = await new Promise<HTMLImageElement>((res, rej) => {
@@ -547,9 +637,13 @@ async function browserRenderedHtml(
               { n, uri },
             )) as boolean;
           } catch (err) {
-            if (!firstErr) firstErr = err instanceof Error ? err.message.slice(0, 100) : String(err).slice(0, 100);
+            if (!firstErr)
+              firstErr =
+                err instanceof Error ? err.message.slice(0, 100) : String(err).slice(0, 100);
             ok = await viewportCropShot(n).catch((e2) => {
-              if (!firstErr) firstErr = e2 instanceof Error ? e2.message.slice(0, 100) : String(e2).slice(0, 100);
+              if (!firstErr)
+                firstErr =
+                  e2 instanceof Error ? e2.message.slice(0, 100) : String(e2).slice(0, 100);
               return false;
             });
           }
@@ -583,7 +677,9 @@ async function browserRenderedHtml(
     // Frys den ALDRIG — i --render=browser fäller det körningen, i auto behålls
     // hellre den statiska kopian (samma ärliga degradering som ett tomt skal).
     if (!(await pageLooksStyled(page))) {
-      throw new Error("renderad sida är ostylad (CSS applicerades aldrig) — ingen trogen kopia att frysa");
+      throw new Error(
+        "renderad sida är ostylad (CSS applicerades aldrig) — ingen trogen kopia att frysa",
+      );
     }
     // Pinna bildgeometrin FÖRE frysningen: varje <img> stämplas med sin
     // faktiskt renderade width/height (CSS vinner alltid över attribut, så
@@ -627,7 +723,9 @@ async function browserRenderedHtml(
       // som bild-pinnen nedan: den RENDERADE ytan stämplas som inline-mått så
       // elementet behåller sin plats offline och poster-bakgrunden får yta.
       for (const el of Array.from(
-        document.querySelectorAll("mux-player, video, iframe[src*='vimeo'], iframe[src*='youtube']"),
+        document.querySelectorAll(
+          "mux-player, video, iframe[src*='vimeo'], iframe[src*='youtube']",
+        ),
       )) {
         const r = el.getBoundingClientRect();
         if (r.width > 0 && r.height > 0) {
@@ -700,7 +798,9 @@ async function browserRenderedHtml(
         const ihdr = readFileSync(refShot);
         const refW = ihdr.readUInt32BE(16);
         const refH = ihdr.readUInt32BE(20);
-        console.log(`[freeze-page] referensbild → ${refShot} (${refW}×${refH}px, ${h}px scrollhöjd)`);
+        console.log(
+          `[freeze-page] referensbild → ${refShot} (${refW}×${refH}px, ${h}px scrollhöjd)`,
+        );
         refOk = refW === RENDER_VIEWPORT.width;
       } catch (err) {
         console.warn(`[freeze-page] referensbild föll: ${err}`);
@@ -739,7 +839,9 @@ async function browserRenderedHtml(
             await lb.close().catch(() => {});
           }
         } catch (err) {
-          console.warn(`[freeze-page] lokala facit-reserven föll (${err}) — sessionens bild behålls`);
+          console.warn(
+            `[freeze-page] lokala facit-reserven föll (${err}) — sessionens bild behålls`,
+          );
         }
       }
     }
@@ -852,7 +954,10 @@ async function browserRenderedHtml(
         ])) as Array<{ url: string; b64: string; type: string }>;
         for (const f of fetched) {
           if (f.b64 && !assets.has(f.url)) {
-            assets.set(f.url, { bytes: new Uint8Array(Buffer.from(f.b64, "base64")), type: f.type });
+            assets.set(f.url, {
+              bytes: new Uint8Array(Buffer.from(f.b64, "base64")),
+              type: f.type,
+            });
             got++;
           }
         }
@@ -944,7 +1049,9 @@ if (
       } catch (err) {
         lastErr = err;
         if (attempt < 2) {
-          console.warn(`[freeze-page] browser-försök ${attempt} föll (${err}) — nytt försök med färsk session`);
+          console.warn(
+            `[freeze-page] browser-försök ${attempt} föll (${err}) — nytt försök med färsk session`,
+          );
         }
       }
     }
@@ -953,8 +1060,12 @@ if (
     imgPriority = rendered.imgPriority;
     for (const [k, v] of rendered.assets) recordedAssets.set(assetKey(k), v);
     if (rendered.assets.size > 0) {
-      const kb = Math.round([...rendered.assets.values()].reduce((a, x) => a + x.bytes.length, 0) / 1000);
-      console.log(`[freeze-page] inspelningen: ${rendered.assets.size} assets à ${kb} kB från browsern`);
+      const kb = Math.round(
+        [...rendered.assets.values()].reduce((a, x) => a + x.bytes.length, 0) / 1000,
+      );
+      console.log(
+        `[freeze-page] inspelningen: ${rendered.assets.size} assets à ${kb} kB från browsern`,
+      );
     }
     // Frysta filen skrivs som UTF-8 och läses utan HTTP-huvuden — dokumentet
     // måste själv deklarera charset, och en gammal deklaration (t.ex.
@@ -1181,17 +1292,26 @@ for (const ref of cssRefs) {
     cssAssetBytes += got.bytes.length;
     cssAssetsInlined++;
     const mime = isFontRef
-      ? full.match(/\.woff2/i) ? "font/woff2" : full.match(/\.woff/i) ? "font/woff" : "font/ttf"
+      ? full.match(/\.woff2/i)
+        ? "font/woff2"
+        : full.match(/\.woff/i)
+          ? "font/woff"
+          : "font/ttf"
       : got.type.split(";")[0];
     const dataUri = `data:${mime};base64,${b64(got.bytes)}`;
     // url() kan vara ociterad, citerad eller ENTITETSCITERAD (style-attribut:
     // &quot;/&#39; — sats-fyndet) — täck alla råformer; no-op där formen saknas.
     html = html
-      .split(`url(${ref})`).join(`url(${dataUri})`)
-      .split(`url("${ref}")`).join(`url("${dataUri}")`)
-      .split(`url('${ref}')`).join(`url('${dataUri}')`)
-      .split(`url(&quot;${ref}&quot;)`).join(`url(&quot;${dataUri}&quot;)`)
-      .split(`url(&#39;${ref}&#39;)`).join(`url(&#39;${dataUri}&#39;)`);
+      .split(`url(${ref})`)
+      .join(`url(${dataUri})`)
+      .split(`url("${ref}")`)
+      .join(`url("${dataUri}")`)
+      .split(`url('${ref}')`)
+      .join(`url('${dataUri}')`)
+      .split(`url(&quot;${ref}&quot;)`)
+      .join(`url(&quot;${dataUri}&quot;)`)
+      .split(`url(&#39;${ref}&#39;)`)
+      .join(`url(&#39;${dataUri}&#39;)`);
   }
 }
 if (overBudget > 0) {
