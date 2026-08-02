@@ -1,16 +1,16 @@
 {
   "url": "https://www.bokadirekt.se",
   "name": "bokadirekt",
-  "captured_at": "2026-07-06T20:17:03.908Z",
+  "captured_at": "2026-08-02T14:40:40.331Z",
   "viewport": {
     "width": 1280,
     "height": 720
   },
-  "consentSelector": null,
+  "consentSelector": "button[data-cy=\"allowCookiesButton\"]",
   "consentInstruction": null,
-  "notes": "Arketyp: booking (bokningsmarknadsplats). CMP okänd — verifiera med dry-run.",
+  "notes": "Egen consent-dialog (React-modal, data-cy-krok — samma som tjänstesidan). Arketyp: booking (bokningsmarknadsplats).",
   "ttlDays": 90,
-  "frozenAt": "2026-07-06T20:17:03.908Z",
-  "expiresAt": "2026-10-04T20:17:03.908Z",
+  "frozenAt": "2026-08-02T14:40:40.331Z",
+  "expiresAt": "2026-10-31T14:40:40.331Z",
   "refreezeReason": "manual"
 }

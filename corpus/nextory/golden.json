@@ -1,7 +1,7 @@
 {
   "collect": {
     "target": "clickables",
-    "count": 114,
+    "count": 118,
     "summary": {
       "topVisualWeight": []
     },
@@ -20,7 +20,7 @@
         "area": 30000
       },
       {
-        "text": "Ny",
+        "text": "Topp 10",
         "tagName": "a",
         "category": "cta_primary",
         "intent": "conversion",
@@ -33,7 +33,7 @@
         "area": 30000
       },
       {
-        "text": "Ny",
+        "text": "Topp 10",
         "tagName": "a",
         "category": "cta_primary",
         "intent": "conversion",
@@ -46,7 +46,7 @@
         "area": 30000
       },
       {
-        "text": "Ny",
+        "text": "Topp 10",
         "tagName": "a",
         "category": "cta_primary",
         "intent": "conversion",
@@ -245,7 +245,7 @@
         "area": 30000
       },
       {
-        "text": "Topp 50",
+        "text": "Topp 10",
         "tagName": "a",
         "category": "cta_primary",
         "intent": "conversion",
@@ -379,6 +379,20 @@
         "area": 40000
       },
       {
+        "text": "Topp 10 4.4 #1 Sommarskuggan och halloween-buset Tina Mackic",
+        "tagName": "a",
+        "category": "link",
+        "intent": "unknown",
+        "section": "cards",
+        "aboveFold": false,
+        "href": "nextory.com",
+        "disabled": false,
+        "yBand": 3200,
+        "score": 80,
+        "bgContrast": 20,
+        "area": 40000
+      },
+      {
         "text": "Topp 10 4.4 #1 Välkommen Pelle Svanslös Michael Rönn, Åsa Rönn, Gösta Knutsson",
         "tagName": "a",
         "category": "link",
@@ -408,20 +422,6 @@
       },
       {
         "text": "Topp 100 4.4 Husdjur Josefine Sundström",
-        "tagName": "a",
-        "category": "link",
-        "intent": "unknown",
-        "section": "cards",
-        "aboveFold": false,
-        "href": "nextory.com",
-        "disabled": false,
-        "yBand": 3200,
-        "score": 70,
-        "bgContrast": 20,
-        "area": 40000
-      },
-      {
-        "text": "Topp 50 3.8 #1 Varuhuset Petrus Dahlin",
         "tagName": "a",
         "category": "link",
         "intent": "unknown",
@@ -799,6 +799,62 @@
         "area": 1000
       },
       {
+        "text": "Next slide",
+        "tagName": "button",
+        "category": "cta_secondary",
+        "intent": "unknown",
+        "section": "content",
+        "aboveFold": false,
+        "href": null,
+        "disabled": false,
+        "yBand": 3000,
+        "score": 10,
+        "bgContrast": 1,
+        "area": 1000
+      },
+      {
+        "text": "Previous slide",
+        "tagName": "button",
+        "category": "cta_secondary",
+        "intent": "unknown",
+        "section": "content",
+        "aboveFold": false,
+        "href": null,
+        "disabled": true,
+        "yBand": 3000,
+        "score": 10,
+        "bgContrast": 1,
+        "area": 1000
+      },
+      {
+        "text": "Next slide",
+        "tagName": "button",
+        "category": "cta_secondary",
+        "intent": "unknown",
+        "section": "content",
+        "aboveFold": false,
+        "href": null,
+        "disabled": false,
+        "yBand": 3400,
+        "score": 10,
+        "bgContrast": 1,
+        "area": 1000
+      },
+      {
+        "text": "Previous slide",
+        "tagName": "button",
+        "category": "cta_secondary",
+        "intent": "unknown",
+        "section": "content",
+        "aboveFold": false,
+        "href": null,
+        "disabled": true,
+        "yBand": 3400,
+        "score": 10,
+        "bgContrast": 1,
+        "area": 1000
+      },
+      {
         "text": "Populära barnböcker",
         "tagName": "a",
         "category": "link",
@@ -808,9 +864,9 @@
         "href": "nextory.com",
         "disabled": false,
         "yBand": 3000,
-        "score": 70,
+        "score": 60,
         "bgContrast": 20,
-        "area": 30000
+        "area": 20000
       },
       {
         "text": "Populära karaktärer",
@@ -822,9 +878,9 @@
         "href": "nextory.com",
         "disabled": false,
         "yBand": 3400,
-        "score": 70,
+        "score": 60,
         "bgContrast": 20,
-        "area": 30000
+        "area": 20000
       },
       {
         "text": "Hjälp och kontakt",
@@ -919,7 +975,7 @@
         "aboveFold": false,
         "href": "www.facebook.com",
         "disabled": false,
-        "yBand": 6200,
+        "yBand": 6400,
         "score": 40,
         "bgContrast": 14,
         "area": 600
@@ -933,7 +989,7 @@
         "aboveFold": false,
         "href": "www.instagram.com",
         "disabled": false,
-        "yBand": 6200,
+        "yBand": 6400,
         "score": 40,
         "bgContrast": 14,
         "area": 600
@@ -1177,20 +1233,6 @@
         "area": 9000
       },
       {
-        "text": "Bokserier",
-        "tagName": "a",
-        "category": "nav_item",
-        "intent": "unknown",
-        "section": "footer",
-        "aboveFold": false,
-        "href": "nextory.com",
-        "disabled": false,
-        "yBand": 6200,
-        "score": 40,
-        "bgContrast": 14,
-        "area": 9000
-      },
-      {
         "text": "För barn",
         "tagName": "a",
         "category": "nav_item",
@@ -1343,6 +1385,20 @@
         "score": 40,
         "bgContrast": 14,
         "area": 2000
+      },
+      {
+        "text": "Bokserier",
+        "tagName": "a",
+        "category": "nav_item",
+        "intent": "unknown",
+        "section": "footer",
+        "aboveFold": false,
+        "href": "nextory.com",
+        "disabled": false,
+        "yBand": 6400,
+        "score": 40,
+        "bgContrast": 14,
+        "area": 9000
       },
       {
         "text": "Integritetspolicy",
@@ -1513,7 +1569,7 @@
         "area": 7000
       },
       {
-        "text": "Pausa banneranimering",
+        "text": "Spela upp banneranimering",
         "tagName": "button",
         "category": "other",
         "intent": "unknown",
@@ -1593,18 +1649,18 @@
     "headings": {
       "h1Count": 1,
       "h1": [
-        "6 veckor med gratis ljudböcker börjar här"
+        "Ljudböcker & e-böcker gratis i 42 dagar"
       ]
     },
     "hero": {
-      "headline": "6 veckor med gratis ljudböcker börjar här",
+      "headline": "Ljudböcker & e-böcker gratis i 42 dagar",
       "primaryCtaText": "Prova gratis nu",
       "primaryCtaIntent": "conversion",
       "aboveFold": true
     },
     "images": {
-      "total": 95,
-      "missingAlt": 28,
+      "total": 111,
+      "missingAlt": 29,
       "modernCount": 0,
       "legacyCount": 92,
       "formats": {
@@ -1614,7 +1670,7 @@
         "other": 0,
         "png": 0,
         "svg": 3,
-        "unknown": 0,
+        "unknown": 16,
         "webp": 0
       }
     },
@@ -1630,11 +1686,12 @@
     "trustEvidence": {
       "rollup": {
         "hierarchy-dedup/rejected/descendant of kept entry": 1,
-        "quote-block/accepted/container with attribution": 1
+        "quote-block/accepted/container with attribution": 1,
+        "text-pattern/rejected/incidental-keyword-in-long-prose": 2
       }
     },
     "ctaSummary": {
-      "total": 71,
+      "total": 75,
       "primary": 69,
       "aboveFold": 62
     },
