@@ -131,13 +131,16 @@ export const SITES: SiteSpec[] = [
     // PURCHASE — svensk marketplace/webshop ("Köp", varukorg, till kassan).
     name: "cdon",
     url: "https://cdon.se",
-    // GEO GATED AV (ägarens ord 2026-07-29: "Lets only go on English sites
-    // until we know it works!"): aktivera genom att avkommentera raden nedan
-    // när valideringen på engelska siter är i hamn. Tills dess fryser siten
-    // som idag (default USA-routning) — inga golden-ändringar.
-    // geo: "SE",
+    // SE-GEO AKTIVERAD 2026-08-03 (pilot, ägaren delegerade beslutet efter att
+    // engelska-först-valideringen var i hamn: freeze-gate 7/7, consent, bot-vägg,
+    // provenance). Först av de svenska siterna att gå live på svensk residential-
+    // IP. Dry-run under SE 2026-08-03 verifierade att Didomi-selektorn matchar
+    // identiskt (1 träff, detached 1328 ms, validity ok 14k tecken) INNAN
+    // skarp write-freeze — geo ändrar vilken consent som rendras, så selektorn
+    // om-probas alltid före aktivering. Golden om-blessad under denna IP.
+    geo: "SE",
     consentSelector: "#didomi-notice-agree-button",
-    notes: "Didomi-CMP. Arketyp: purchase (webshop).",
+    notes: "Didomi-CMP (SE-IP). Arketyp: purchase (webshop).",
   },
   {
     // LEAD — hemlarm med "bli uppringd"/kostnadsfritt hembesök som primär
