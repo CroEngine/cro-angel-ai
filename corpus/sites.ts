@@ -150,11 +150,11 @@ export const SITES: SiteSpec[] = [
     // vi fryser slut-URL:en direkt.
     name: "sector-alarm",
     url: "https://www.sectoralarm.se/",
-    // GEO GATED AV (ägarens ord 2026-07-29: "Lets only go on English sites
-    // until we know it works!"): aktivera genom att avkommentera raden nedan
-    // när valideringen på engelska siter är i hamn. Tills dess fryser siten
-    // som idag (default USA-routning) — inga golden-ändringar.
-    // geo: "SE",
+    // SE-GEO AKTIVERAD 2026-08-03 (runda 2, ägaren: "Kör nu"). Dry-run under
+    // SE verifierade consent-selektorn på svensk IP INNAN write-freeze — geo
+    // ändrar vilken consent/vilket innehåll som rendras. Golden om-blessad
+    // under denna IP. Per-site dry-run-kvitto i commit-meddelandet.
+    geo: "SE",
     // Cookie Information-CMP (policy.app.cookieinformation.com/uc.js) med
     // CUSTOM-mall: accept-knappen är klasslös (".coi-banner__accept" finns
     // inte) — identifierad 2026-07-06 via scripts/probe-consent-dom.ts:
@@ -171,10 +171,15 @@ export const SITES: SiteSpec[] = [
     // START_FLOW — jämförelseportal för elavtal ("Jämför och byt elavtal").
     name: "elskling",
     url: "https://elskling.se",
-    // GEO GATED AV (ägarens ord 2026-07-29: "Lets only go on English sites
-    // until we know it works!"): aktivera genom att avkommentera raden nedan
-    // när valideringen på engelska siter är i hamn. Tills dess fryser siten
-    // som idag (default USA-routning) — inga golden-ändringar.
+    // SE-GEO HÅLLS GATAD (runda 2, 2026-08-03): dry-run + capture under SE är
+    // KORREKT (hero = "Jämför elavtal och spara pengar" + offertformulär), MEN
+    // SE-landningssidan leder med ett sparkonto-korsförsäljningsblock ("Öppna
+    // konto") som den deterministiska mål-floor:en rankar ÖVER elavtals-CTA:n,
+    // och hero-knappen "Se mina bästa priser" typas som lead — archetype-goals-
+    // testet (start_flow/quote) faller. Att ändra mål-klassificeraren är kärn-
+    // produktlogik med egna tester, utanför geo-aktiveringen. Väntar ägarbeslut:
+    // utöka klassificeraren för svenska jämförelse-CTA:er, eller acceptera lead-
+    // arketyp. Tills dess fryser elskling som idag (US-routning).
     // geo: "SE",
     consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
     // Verifierat 2026-07-06: Cookiebot göms (detachas inte), som HubSpot.
@@ -185,11 +190,11 @@ export const SITES: SiteSpec[] = [
     // DONATE — insamlingsorganisation ("Ge en gåva", "Bli månadsgivare").
     name: "cancerfonden",
     url: "https://www.cancerfonden.se",
-    // GEO GATED AV (ägarens ord 2026-07-29: "Lets only go on English sites
-    // until we know it works!"): aktivera genom att avkommentera raden nedan
-    // när valideringen på engelska siter är i hamn. Tills dess fryser siten
-    // som idag (default USA-routning) — inga golden-ändringar.
-    // geo: "SE",
+    // SE-GEO AKTIVERAD 2026-08-03 (runda 2, ägaren: "Kör nu"). Dry-run under
+    // SE verifierade consent-selektorn på svensk IP INNAN write-freeze — geo
+    // ändrar vilken consent/vilket innehåll som rendras. Golden om-blessad
+    // under denna IP. Per-site dry-run-kvitto i commit-meddelandet.
+    geo: "SE",
     consentSelector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
     // Verifierat 2026-07-06: Cookiebot göms (detachas inte), som HubSpot.
     consentDismissCheck: "hidden",
@@ -202,14 +207,14 @@ export const SITES: SiteSpec[] = [
     // nextory.se → nextory.com/se (redirect), vi fryser slut-URL:en direkt.
     name: "nextory",
     url: "https://nextory.com/se",
-    // OBS geo-skifte: noten nedan ("ingen banner, Cookiebot enbart i server-HTML")
-    // gällde USA-IP. Under svensk IP rendrar Cookiebot sannolikt — kör --dry-run
-    // och sätt consentSelector innan nästa write-freeze.
-    // GEO GATED AV (ägarens ord 2026-07-29: "Lets only go on English sites
-    // until we know it works!"): aktivera genom att avkommentera raden nedan
-    // när valideringen på engelska siter är i hamn. Tills dess fryser siten
-    // som idag (default USA-routning) — inga golden-ändringar.
-    // geo: "SE",
+    // Geo-skifte verifierat 2026-08-03: dry-run under SE gav skippedNotVisible
+    // (Cookiebot uteblev även på svensk IP den körningen) — intermittensen
+    // består oavsett geo; consentOptional kvar som säkerhetsnät.
+    // SE-GEO AKTIVERAD 2026-08-03 (runda 2, ägaren: "Kör nu"). Dry-run under
+    // SE verifierade consent-selektorn på svensk IP INNAN write-freeze — geo
+    // ändrar vilken consent/vilket innehåll som rendras. Golden om-blessad
+    // under denna IP. Per-site dry-run-kvitto i commit-meddelandet.
+    geo: "SE",
     // INTERMITTENT Cookiebot (bevisläge 2026-08-02): juni-frysningens
     // committade screenshot bär en FULLT RENDRERAD Cookiebot-dialog ("Allow
     // all cookies") över heron — men proberna 2026-07-06 och 2026-08-02 såg
@@ -231,11 +236,11 @@ export const SITES: SiteSpec[] = [
     // (samma disciplin som hibob/microsoft).
     name: "bokadirekt",
     url: "https://www.bokadirekt.se",
-    // GEO GATED AV (ägarens ord 2026-07-29: "Lets only go on English sites
-    // until we know it works!"): aktivera genom att avkommentera raden nedan
-    // när valideringen på engelska siter är i hamn. Tills dess fryser siten
-    // som idag (default USA-routning) — inga golden-ändringar.
-    // geo: "SE",
+    // SE-GEO AKTIVERAD 2026-08-03 (runda 2, ägaren: "Kör nu"). Dry-run under
+    // SE verifierade consent-selektorn på svensk IP INNAN write-freeze — geo
+    // ändrar vilken consent/vilket innehåll som rendras. Golden om-blessad
+    // under denna IP. Per-site dry-run-kvitto i commit-meddelandet.
+    geo: "SE",
     // CMP identifierad 2026-08-02 via probe-consent-dom (vision-triagens fynd
     // 2026-07-30: committade skärmbilden bär en odismissad dialog över ~40 %
     // av sidan): SAMMA egna React-modal som tjänstesidan ("Vi värdesätter
@@ -257,11 +262,11 @@ export const SITES: SiteSpec[] = [
     // Modalen unmountas vid accept → detached (default).
     name: "bokadirekt-service",
     url: "https://www.bokadirekt.se/places/citymassage-457",
-    // GEO GATED AV (ägarens ord 2026-07-29: "Lets only go on English sites
-    // until we know it works!"): aktivera genom att avkommentera raden nedan
-    // när valideringen på engelska siter är i hamn. Tills dess fryser siten
-    // som idag (default USA-routning) — inga golden-ändringar.
-    // geo: "SE",
+    // SE-GEO AKTIVERAD 2026-08-03 (runda 2, ägaren: "Kör nu"). Dry-run under
+    // SE verifierade consent-selektorn på svensk IP INNAN write-freeze — geo
+    // ändrar vilken consent/vilket innehåll som rendras. Golden om-blessad
+    // under denna IP. Per-site dry-run-kvitto i commit-meddelandet.
+    geo: "SE",
     consentSelector: '[data-cy="allowCookiesButton"]',
     // Determinism: headerns KOLLAPSADE mega-menypaneler (`absolute inset-0
     // h-0 -z-10` — osynliga för besökare, men barnen mäter fulla rects) får

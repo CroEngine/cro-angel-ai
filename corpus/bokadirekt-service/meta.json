@@ -1,7 +1,7 @@
 {
   "url": "https://www.bokadirekt.se/places/citymassage-457",
   "name": "bokadirekt-service",
-  "captured_at": "2026-07-06T23:26:59.343Z",
+  "captured_at": "2026-08-03T14:23:59.804Z",
   "viewport": {
     "width": 1280,
     "height": 720
@@ -10,7 +10,7 @@
   "consentInstruction": null,
   "notes": "Egen consent-dialog (React-modal, data-cy-krok). Arketyp: booking strikt (tjänstesida med Boka-CTA:er).",
   "ttlDays": 90,
-  "frozenAt": "2026-07-06T23:26:59.343Z",
-  "expiresAt": "2026-10-04T23:26:59.343Z",
+  "frozenAt": "2026-08-03T14:23:59.804Z",
+  "expiresAt": "2026-11-01T14:23:59.804Z",
   "refreezeReason": "manual"
 }

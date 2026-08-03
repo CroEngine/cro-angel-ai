@@ -1,7 +1,7 @@
 {
   "url": "https://nextory.com/se",
   "name": "nextory",
-  "captured_at": "2026-08-02T14:41:07.249Z",
+  "captured_at": "2026-08-03T14:23:57.031Z",
   "viewport": {
     "width": 1280,
     "height": 720
@@ -10,7 +10,7 @@
   "consentInstruction": null,
   "notes": "Intermittent Cookiebot (rendrerade i juni-frysningen, ej i proberna) — consentOptional. Arketyp: subscribe/trial (abonnemang).",
   "ttlDays": 90,
-  "frozenAt": "2026-08-02T14:41:07.249Z",
-  "expiresAt": "2026-10-31T14:41:07.249Z",
+  "frozenAt": "2026-08-03T14:23:57.031Z",
+  "expiresAt": "2026-11-01T14:23:57.031Z",
   "refreezeReason": "manual"
 }

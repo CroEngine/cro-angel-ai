@@ -5,20 +5,20 @@
   "consent": {
     "selector": "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
     "dismissCheck": "hidden",
-    "matchCountBeforeClick": 1,
-    "visibleBeforeClick": true,
-    "dismissedAfterMs": 615,
+    "matchCountBeforeClick": 0,
+    "visibleBeforeClick": false,
+    "dismissedAfterMs": null,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
       "reject all": 0,
       "cookie": 2
     },
-    "skippedNotVisible": null
+    "skippedNotVisible": true
   },
   "capture": {
-    "mhtmlKb": 2786,
-    "screenshotKb": 660,
+    "mhtmlKb": 3515,
+    "screenshotKb": 714,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
@@ -26,7 +26,7 @@
     "embeddedFontCount": 17,
     "sizeGatedLoadedOnly": false,
     "sizeGatedDroppedCount": 0,
-    "mhtmlKbBeforeFontEmbed": 1885,
+    "mhtmlKbBeforeFontEmbed": 2615,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Nextory Sans Headline Demi-Bold",
@@ -54,27 +54,27 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-08-02T14:40:47.876Z",
-    "proxyCountry": null
+    "frozenAt": "2026-08-03T14:23:35.876Z",
+    "proxyCountry": "SE"
   },
   "session": {
-    "id": "6fa1e05b-3c5d-4052-b74e-357d403162e5",
-    "inspectorUrl": "https://www.browserbase.com/sessions/6fa1e05b-3c5d-4052-b74e-357d403162e5",
+    "id": "e811a567-a7a8-4de9-8742-e10e72b40874",
+    "inspectorUrl": "https://www.browserbase.com/sessions/e811a567-a7a8-4de9-8742-e10e72b40874",
     "cdpLogPath": null
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 5286,
-    "interactiveCount": 645,
+    "textLen": 6171,
+    "interactiveCount": 614,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 11474,
-    "consentMs": 1807,
-    "scrollMs": 3514,
-    "captureMs": 2368
+    "gotoMs": 5617,
+    "consentMs": 5627,
+    "scrollMs": 4302,
+    "captureMs": 5130
   }
 }
