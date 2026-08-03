@@ -1,7 +1,7 @@
 {
   "url": "https://www.sectoralarm.se/",
   "name": "sector-alarm",
-  "captured_at": "2026-07-06T21:36:53.588Z",
+  "captured_at": "2026-08-03T14:24:05.336Z",
   "viewport": {
     "width": 1280,
     "height": 720
@@ -10,7 +10,7 @@
   "consentInstruction": null,
   "notes": "Cookie Information-CMP (custom-mall). Arketyp: lead (hemlarm, callback/hembesök).",
   "ttlDays": 90,
-  "frozenAt": "2026-07-06T21:36:53.588Z",
-  "expiresAt": "2026-10-04T21:36:53.588Z",
+  "frozenAt": "2026-08-03T14:24:05.336Z",
+  "expiresAt": "2026-11-01T14:24:05.336Z",
   "refreezeReason": "manual"
 }

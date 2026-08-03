@@ -1357,11 +1357,11 @@
     "headings": {
       "h1Count": 1,
       "h1": [
-        "Skydda ditt hem med ett uppkopplat larm"
+        "Skydda ditt hem med ett uppkopplat larm Med över 30 års erfarenhet och branschens nöjdaste kunder."
       ]
     },
     "hero": {
-      "headline": "Skydda ditt hem med ett uppkopplat larm",
+      "headline": "Skydda ditt hem med ett uppkopplat larm Med över 30 års erfarenhet och branschens nöjdaste kunder.",
       "primaryCtaText": "Få ditt pris på larm",
       "primaryCtaIntent": "conversion",
       "aboveFold": true
@@ -1383,12 +1383,13 @@
       }
     },
     "trustSummary": {
-      "total": 10,
+      "total": 11,
       "aboveFold": 2,
       "byType": {
         "org_number": 1,
         "testimonial": 6,
         "review_rating": 2,
+        "review_badges": 1,
         "contact_info": 1
       }
     },

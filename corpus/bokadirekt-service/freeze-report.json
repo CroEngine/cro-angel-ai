@@ -7,23 +7,26 @@
     "dismissCheck": "detached",
     "matchCountBeforeClick": 1,
     "visibleBeforeClick": true,
-    "dismissedAfterMs": 632,
+    "dismissedAfterMs": 1325,
     "postDismissDomHits": {
       "accept all": 0,
       "decline all": 0,
       "reject all": 0,
       "cookie": 1
-    }
+    },
+    "skippedNotVisible": null
   },
   "capture": {
-    "mhtmlKb": 1718,
-    "screenshotKb": 304,
+    "mhtmlKb": 1722,
+    "screenshotKb": 305,
     "beforeDismissScreenshotPath": null,
     "loadStateDegraded": null,
     "externalFontSrcCount": 0,
     "unembeddedFontUrls": [],
     "embeddedFontCount": 11,
-    "mhtmlKbBeforeFontEmbed": 854,
+    "sizeGatedLoadedOnly": false,
+    "sizeGatedDroppedCount": 0,
+    "mhtmlKbBeforeFontEmbed": 858,
     "fontFetchFailures": [],
     "embeddedFamilies": [
       "Brown",
@@ -50,21 +53,27 @@
       "width": 1280,
       "height": 720
     },
-    "frozenAt": "2026-07-06T23:26:30.675Z"
+    "frozenAt": "2026-08-03T14:23:38.284Z",
+    "proxyCountry": "SE"
+  },
+  "session": {
+    "id": "f6347da7-cc4e-401e-be1b-d7aa1bf5469f",
+    "inspectorUrl": "https://www.browserbase.com/sessions/f6347da7-cc4e-401e-be1b-d7aa1bf5469f",
+    "cdpLogPath": null
   },
   "failureClass": null,
   "captureValidity": {
     "ok": true,
-    "textLen": 9924,
+    "textLen": 9942,
     "interactiveCount": 531,
     "heroHasMeaningfulHeading": true,
     "challengeMarkersFound": [],
     "reason": null
   },
   "timing": {
-    "gotoMs": 12583,
-    "consentMs": 1780,
-    "scrollMs": 3573,
-    "captureMs": 10440
+    "gotoMs": 10666,
+    "consentMs": 2946,
+    "scrollMs": 4498,
+    "captureMs": 2624
   }
 }
