@@ -60,20 +60,46 @@ export const SECTIONS_SCRIPT = `(() => {
   }
 
   // Heading text as a human reads it: innerText (drops display:none responsive/
-  // a11y copies) + collapse an exact whole-phrase repetition (>=3-word unit) so
-  // a headline duplicated 2-3x into one element isn't read as "X X X". Mirror of
-  // the helper in pageAudit.ts (scripts are self-contained, no shared imports).
+  // a11y copies) + collapse animated word-rotators to their first item + collapse
+  // an exact whole-phrase repetition (>=3-word unit) so a headline duplicated
+  // 2-3x isn't read as "X X X". Mirror of the helper in pageAudit.ts (scripts are
+  // self-contained, no shared imports) — keep the two in sync.
   function cleanHeadingText(el) {
     if (!el) return '';
-    var t = ((el.innerText || el.textContent || '') + '').trim().replace(/\\s+/g, ' ');
-    var w = t.split(' ');
-    for (var p = 3; p <= w.length / 2; p++) {
-      if (w.length % p !== 0) continue;
-      var ok = true;
-      for (var i = p; i < w.length; i++) { if (w[i] !== w[i % p]) { ok = false; break; } }
-      if (ok) { w = w.slice(0, p); break; }
+    // See pageAudit.ts for the rationale: a rotating hero word (<ul>/<ol> of
+    // alternatives, or a class-tagged wrapper of sibling spans) is all present in
+    // the DOM, so innerText concatenates every alternative. Hide all but the
+    // first item of each rotator, read, then restore.
+    var hidden = [];
+    try {
+      var rotators = [];
+      var lists = el.querySelectorAll('ul, ol');
+      for (var a = 0; a < lists.length; a++) {
+        if (lists[a].children.length >= 2) rotators.push(lists[a]);
+      }
+      var tagged = el.querySelectorAll('[class*="animat" i],[class*="rotat" i],[class*="cycl" i],[class*="typed" i]');
+      for (var b = 0; b < tagged.length; b++) {
+        if (tagged[b].children.length >= 2 && rotators.indexOf(tagged[b]) === -1) rotators.push(tagged[b]);
+      }
+      for (var r = 0; r < rotators.length; r++) {
+        var kids = rotators[r].children;
+        for (var k = 1; k < kids.length; k++) {
+          hidden.push([kids[k], kids[k].style.display]);
+          kids[k].style.display = 'none';
+        }
+      }
+      var t = ((el.innerText || el.textContent || '') + '').trim().replace(/\\s+/g, ' ');
+      var w = t.split(' ');
+      for (var p = 3; p <= w.length / 2; p++) {
+        if (w.length % p !== 0) continue;
+        var ok = true;
+        for (var i = p; i < w.length; i++) { if (w[i] !== w[i % p]) { ok = false; break; } }
+        if (ok) { w = w.slice(0, p); break; }
+      }
+      return w.join(' ');
+    } finally {
+      for (var hi = 0; hi < hidden.length; hi++) { hidden[hi][0].style.display = hidden[hi][1]; }
     }
-    return w.join(' ');
   }
 
   // Largest-font visible text run inside a section — the DISPLAY headline for a
