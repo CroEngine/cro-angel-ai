@@ -2,8 +2,55 @@
   "collect": {
     "target": "clickables",
     "count": 144,
+    "byCategory": {
+      "cta_primary": 7,
+      "cta_secondary": 3,
+      "link": 121,
+      "nav_item": 8,
+      "other": 1
+    },
     "summary": {
-      "topVisualWeight": []
+      "total": 140,
+      "aboveFold": 12,
+      "primaryConversionCtaCount": 3,
+      "competingAboveFold": 2,
+      "intentBreakdown": {
+        "contact": 4,
+        "conversion": 3,
+        "engagement": 6,
+        "information": 3,
+        "navigation": 2,
+        "social": 3,
+        "unknown": 119
+      },
+      "bySection": {
+        "cards": 111,
+        "content": 17,
+        "hero": 2,
+        "nav": 10
+      },
+      "topVisualWeight": [
+        {
+          "text": "",
+          "score": 50
+        },
+        {
+          "text": "Ge en gåva",
+          "score": 40
+        },
+        {
+          "text": "Fler kontaktvägar",
+          "score": 40
+        },
+        {
+          "text": "Stöd oss",
+          "score": 40
+        },
+        {
+          "text": "Om oss",
+          "score": 40
+        }
+      ]
     },
     "elements": [
       {

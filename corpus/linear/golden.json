@@ -2,8 +2,59 @@
   "collect": {
     "target": "clickables",
     "count": 157,
+    "byCategory": {
+      "cta_primary": 4,
+      "cta_secondary": 8,
+      "icon_button": 6,
+      "link": 12,
+      "nav_item": 44,
+      "other": 60
+    },
     "summary": {
-      "topVisualWeight": []
+      "total": 134,
+      "aboveFold": 24,
+      "primaryConversionCtaCount": 2,
+      "competingAboveFold": 2,
+      "intentBreakdown": {
+        "contact": 3,
+        "conversion": 7,
+        "engagement": 3,
+        "information": 1,
+        "navigation": 4,
+        "social": 2,
+        "unknown": 112,
+        "utility": 2
+      },
+      "bySection": {
+        "cards": 18,
+        "content": 41,
+        "footer": 39,
+        "header": 10,
+        "hero": 1,
+        "nav": 25
+      },
+      "topVisualWeight": [
+        {
+          "text": "Our speed is intense and Linear helps us be action biased. Nik Koblov Head of Engineering, Ramp",
+          "score": 50
+        },
+        {
+          "text": "import React from 'react' import { View, ActivityIndicator } from 'react-native' import { useVehicleState } from '@hooks",
+          "score": 50
+        },
+        {
+          "text": "Get started",
+          "score": 40
+        },
+        {
+          "text": "Sign up",
+          "score": 40
+        },
+        {
+          "text": "You’ll probably build a better product, just because of the craft that using Linear infuses on your brain. Gabriel Peal",
+          "score": 30
+        }
+      ]
     },
     "elements": [
       {

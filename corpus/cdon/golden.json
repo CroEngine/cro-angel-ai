@@ -2,8 +2,57 @@
   "collect": {
     "target": "clickables",
     "count": 135,
+    "byCategory": {
+      "cta_primary": 57,
+      "cta_secondary": 4,
+      "icon_button": 3,
+      "link": 22,
+      "nav_item": 35,
+      "other": 2
+    },
     "summary": {
-      "topVisualWeight": []
+      "total": 123,
+      "aboveFold": 25,
+      "primaryConversionCtaCount": 7,
+      "competingAboveFold": 6,
+      "intentBreakdown": {
+        "conversion": 9,
+        "information": 2,
+        "navigation": 4,
+        "social": 2,
+        "unknown": 103,
+        "utility": 3
+      },
+      "bySection": {
+        "cards": 68,
+        "content": 9,
+        "footer": 27,
+        "header": 4,
+        "hero": 7,
+        "nav": 8
+      },
+      "topVisualWeight": [
+        {
+          "text": "Skönhet",
+          "score": 50
+        },
+        {
+          "text": "Hushåll & kök",
+          "score": 50
+        },
+        {
+          "text": "Äntligen vardag",
+          "score": 50
+        },
+        {
+          "text": "",
+          "score": 50
+        },
+        {
+          "text": "",
+          "score": 50
+        }
+      ]
     },
     "elements": [
       {

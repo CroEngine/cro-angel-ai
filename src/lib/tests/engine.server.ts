@@ -6,7 +6,7 @@ import { COLLECT_SCRIPT } from "./scripts/collect";
 import { OVERLAY_FN } from "./scripts/overlay";
 import { runPageAudit } from "./runners/pageAudit.server";
 
-import { groupRepeatedControls } from "./audit-helpers";
+import { summarizeCollected } from "./collect-summary";
 
 import type {
   CollectedElement,
@@ -111,21 +111,6 @@ function summarize(step: Step): string {
     case "pageAudit":
       return `pageAudit`;
   }
-}
-
-function filterCollected(all: CollectedElement[], target: CollectTarget): CollectedElement[] {
-  if (target === "buttons") {
-    // Strict: real <button>, <input type=submit|button>, role=button only.
-    return all.filter(
-      (el) =>
-        el.tagName === "button" ||
-        el.tagName === "input[type=submit]" ||
-        el.tagName === "input[type=button]" ||
-        el.tagName === "[role=button]",
-    );
-  }
-  // "clickables" → everything we collected.
-  return all;
 }
 
 async function scrollWarmup(
@@ -335,50 +320,15 @@ export async function runSteps(
 
             // Now run COLLECT_SCRIPT — document height matches the JPEG.
             const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
-            const filtered = filterCollected(elements, step.target);
-
-            // Mark duplicate controls as groupedAway so aggregates aren't dominated.
-            const groups = groupRepeatedControls(filtered);
-
-            const byCategory: Record<string, number> = {};
-            const intentBreakdown: Record<string, number> = {};
-            const bySection: Record<string, number> = {};
-            let aboveFold = 0;
-            let primaryConversionCtaCount = 0;
-            let conversionCtasAboveFold = 0;
-            for (const el of filtered) {
-              if (el.groupedAway) continue; // dedupe from aggregates
-              byCategory[el.category] = (byCategory[el.category] ?? 0) + 1;
-              intentBreakdown[el.intent] = (intentBreakdown[el.intent] ?? 0) + 1;
-              bySection[el.section] = (bySection[el.section] ?? 0) + 1;
-              if (el.position.viewportZone === "above_fold") aboveFold++;
-              if (el.category === "cta_primary" && el.intent === "conversion")
-                primaryConversionCtaCount++;
-              if (
-                (el.category === "cta_primary" ||
-                  el.category === "cta_secondary" ||
-                  el.category === "form_submit") &&
-                el.position.viewportZone === "above_fold" &&
-                el.intent !== "navigation"
-              )
-                conversionCtasAboveFold++;
-            }
-            // "Competing" reserves one slot for the primary itself (B8): the
-            // ideal single-CTA page reads 0, matching the per-CTA
-            // competingActions self-exclusion convention in CTAS_SCRIPT.
-            const competingAboveFold = Math.max(
-              0,
-              conversionCtasAboveFold - (primaryConversionCtaCount > 0 ? 1 : 0),
-            );
-            const topVisualWeight = [...filtered]
-              .filter((el) => !el.groupedAway)
-              .sort((a, b) => b.visualWeight.score - a.visualWeight.score)
-              .slice(0, 5)
-              .map((el) => ({
-                selector: el.selector,
-                text: el.text,
-                score: el.visualWeight.score,
-              }));
+            // Filter + group + summarize via the shared pure summarizer so the
+            // offline replay harness produces a byte-identical summary (steg 1).
+            const {
+              filtered,
+              count: uniqueCount,
+              totalCount,
+              byCategory,
+              summary,
+            } = summarizeCollected(elements, step.target);
 
             // Overlay still draws on ALL elements so user sees real density.
             const overlayElements = filtered.map((el) => ({
@@ -396,30 +346,19 @@ export async function runSteps(
               });
             }
 
-            const uniqueCount = filtered.filter((el) => !el.groupedAway).length;
             data = {
               target: step.target,
               count: uniqueCount,
-              totalCount: filtered.length,
+              totalCount,
               byCategory,
-              summary: {
-                total: uniqueCount,
-                aboveFold,
-                primaryConversionCtaCount,
-                conversionCtasAboveFold,
-                competingAboveFold,
-                topVisualWeight,
-                intentBreakdown,
-                bySection,
-                groups,
-              },
+              summary,
               elements: filtered,
               overlayElements,
               screenshot,
             };
             onEvent({
               type: "log",
-              message: `collect ${step.target}: ${uniqueCount} unique (${filtered.length} total) · ${aboveFold} above fold · ${primaryConversionCtaCount} primary-conversion CTA · competing: ${competingAboveFold} · groups: ${groups.length}`,
+              message: `collect ${step.target}: ${uniqueCount} unique (${totalCount} total) · ${summary.aboveFold} above fold · ${summary.primaryConversionCtaCount} primary-conversion CTA · competing: ${summary.competingAboveFold} · groups: ${summary.groups?.length ?? 0}`,
             });
             break;
           }

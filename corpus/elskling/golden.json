@@ -2,8 +2,56 @@
   "collect": {
     "target": "clickables",
     "count": 101,
+    "byCategory": {
+      "cta_primary": 19,
+      "cta_secondary": 3,
+      "form_submit": 1,
+      "link": 3,
+      "nav_item": 40,
+      "other": 33
+    },
     "summary": {
-      "topVisualWeight": []
+      "total": 99,
+      "aboveFold": 19,
+      "primaryConversionCtaCount": 1,
+      "competingAboveFold": 0,
+      "intentBreakdown": {
+        "contact": 4,
+        "conversion": 14,
+        "information": 1,
+        "navigation": 1,
+        "unknown": 78,
+        "utility": 1
+      },
+      "bySection": {
+        "cards": 53,
+        "content": 4,
+        "footer": 31,
+        "hero": 1,
+        "nav": 10
+      },
+      "topVisualWeight": [
+        {
+          "text": "El Fast eller rörligt elavtal inför vintern? Så tänker du Frågan om fast eller rörligt elpris dyker upp varje höst, och",
+          "score": 50
+        },
+        {
+          "text": "El Norgepris på el – Så bör svenskar göra med elavtalet I en reviderad statsbudget har den norska regeringen enats om et",
+          "score": 50
+        },
+        {
+          "text": "El Rekordlåga elpriser i Sverige – läge att binda ditt elpris? Augusti blev den billigaste elmånaden sedan våren 2021, t",
+          "score": 50
+        },
+        {
+          "text": "Jämför el",
+          "score": 30
+        },
+        {
+          "text": "Erbjudanden",
+          "score": 30
+        }
+      ]
     },
     "elements": [
       {

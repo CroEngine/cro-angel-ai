@@ -2,8 +2,55 @@
   "collect": {
     "target": "clickables",
     "count": 97,
+    "byCategory": {
+      "cta_primary": 10,
+      "cta_secondary": 9,
+      "icon_button": 4,
+      "link": 3,
+      "nav_item": 29,
+      "other": 27
+    },
     "summary": {
-      "topVisualWeight": []
+      "total": 82,
+      "aboveFold": 31,
+      "primaryConversionCtaCount": 2,
+      "competingAboveFold": 1,
+      "intentBreakdown": {
+        "conversion": 6,
+        "information": 1,
+        "navigation": 10,
+        "social": 3,
+        "unknown": 59,
+        "utility": 3
+      },
+      "bySection": {
+        "cards": 34,
+        "footer": 24,
+        "header": 3,
+        "nav": 21
+      },
+      "topVisualWeight": [
+        {
+          "text": "Bilder",
+          "score": 50
+        },
+        {
+          "text": "Visa tjänster",
+          "score": 40
+        },
+        {
+          "text": "Läs mer",
+          "score": 40
+        },
+        {
+          "text": "",
+          "score": 40
+        },
+        {
+          "text": "Välj tjänst",
+          "score": 40
+        }
+      ]
     },
     "elements": [
       {

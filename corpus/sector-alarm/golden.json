@@ -2,8 +2,57 @@
   "collect": {
     "target": "clickables",
     "count": 96,
+    "byCategory": {
+      "cta_primary": 13,
+      "cta_secondary": 30,
+      "icon_button": 3,
+      "link": 8,
+      "nav_item": 26,
+      "other": 16
+    },
     "summary": {
-      "topVisualWeight": []
+      "total": 96,
+      "aboveFold": 51,
+      "primaryConversionCtaCount": 8,
+      "competingAboveFold": 35,
+      "intentBreakdown": {
+        "contact": 3,
+        "conversion": 8,
+        "engagement": 2,
+        "information": 2,
+        "navigation": 4,
+        "unknown": 75,
+        "utility": 2
+      },
+      "bySection": {
+        "cards": 18,
+        "footer": 26,
+        "header": 4,
+        "hero": 3,
+        "nav": 45
+      },
+      "topVisualWeight": [
+        {
+          "text": "Varför behöver jag ett larm?",
+          "score": 50
+        },
+        {
+          "text": "Vilket larm är bäst?",
+          "score": 50
+        },
+        {
+          "text": "Vad kostar ett larm?",
+          "score": 50
+        },
+        {
+          "text": "VIlket larm är billigast?",
+          "score": 50
+        },
+        {
+          "text": "Hur larmar jag på?",
+          "score": 50
+        }
+      ]
     },
     "elements": [
       {

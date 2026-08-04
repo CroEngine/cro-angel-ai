@@ -2,8 +2,57 @@
   "collect": {
     "target": "clickables",
     "count": 118,
+    "byCategory": {
+      "cta_primary": 12,
+      "cta_secondary": 6,
+      "link": 27,
+      "nav_item": 43,
+      "other": 10
+    },
     "summary": {
-      "topVisualWeight": []
+      "total": 98,
+      "aboveFold": 9,
+      "primaryConversionCtaCount": 10,
+      "competingAboveFold": 4,
+      "intentBreakdown": {
+        "contact": 2,
+        "conversion": 11,
+        "information": 2,
+        "navigation": 5,
+        "social": 2,
+        "unknown": 74,
+        "utility": 2
+      },
+      "bySection": {
+        "cards": 33,
+        "content": 11,
+        "footer": 47,
+        "header": 1,
+        "hero": 2,
+        "nav": 4
+      },
+      "topVisualWeight": [
+        {
+          "text": "Topp 10 4.5 #1 En helt vanlig vecka med familjen Jansson Martin Widmark, Petter Lidbeck",
+          "score": 80
+        },
+        {
+          "text": "Toppbetyg 4.8 #1 Musse & Helium. Mysteriet med hålet i väggen Camilla Brinck",
+          "score": 80
+        },
+        {
+          "text": "Topp 10 4.4 #1 Välkommen Pelle Svanslös Michael Rönn, Åsa Rönn, Gösta Knutsson",
+          "score": 80
+        },
+        {
+          "text": "Toppbetyg 4.6 #1 Familjen Knyckertz och födelsedagskuppen Anders Sparring",
+          "score": 80
+        },
+        {
+          "text": "Topp 10 4.4 #1 Sommarskuggan och halloween-buset Tina Mackic",
+          "score": 80
+        }
+      ]
     },
     "elements": [
       {
