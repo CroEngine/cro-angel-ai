@@ -560,20 +560,52 @@
   }
 
   // Heading text as a human reads it: innerText (drops display:none responsive/
-  // a11y copies) + collapse an exact whole-phrase repetition (>=3-word unit) so
-  // a headline duplicated 2-3x into one element isn't read as "X X X". Mirror of
-  // the helper in pageAudit.ts (scripts are self-contained, no shared imports).
+  // a11y copies) + collapse animated word-rotators to their first item + collapse
+  // an exact whole-phrase repetition (>=3-word unit) so a headline duplicated
+  // 2-3x isn't read as "X X X". Mirror of the helper in pageAudit.ts (scripts are
+  // self-contained, no shared imports) — keep the two in sync.
   function cleanHeadingText(el) {
     if (!el) return '';
-    var t = ((el.innerText || el.textContent || '') + '').trim().replace(/\s+/g, ' ');
-    var w = t.split(' ');
-    for (var p = 3; p <= w.length / 2; p++) {
-      if (w.length % p !== 0) continue;
-      var ok = true;
-      for (var i = p; i < w.length; i++) { if (w[i] !== w[i % p]) { ok = false; break; } }
-      if (ok) { w = w.slice(0, p); break; }
+    // See pageAudit.ts for the rationale: a rotating hero word (<ul>/<ol> of
+    // alternatives, or a class-tagged wrapper of sibling spans) is all present in
+    // the DOM, so innerText concatenates every alternative. Hide all but the
+    // first item of each rotator, read, then restore.
+    var hidden = [];
+    try {
+      var rotators = [];
+      var lists = el.querySelectorAll('ul, ol');
+      for (var a = 0; a < lists.length; a++) {
+        if (lists[a].children.length >= 2) rotators.push(lists[a]);
+      }
+      // Curated rotator class-tokens (see pageAudit.ts) — specific enough not to
+      // collide with animation utilities (Tailwind animate-*/rotate-*,
+      // Animate.css animate__*/rotateIn), which a bare substring would over-match.
+      var ROT = ['rotating','rotator','typewriter','animated-list','animated-word','animated-text','animated-headline','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
+      var tagged = el.querySelectorAll('[class]');
+      for (var b = 0; b < tagged.length; b++) {
+        if (tagged[b].children.length < 2 || rotators.indexOf(tagged[b]) !== -1) continue;
+        var cls = (tagged[b].getAttribute('class') || '').toLowerCase();
+        for (var z = 0; z < ROT.length; z++) { if (cls.indexOf(ROT[z]) !== -1) { rotators.push(tagged[b]); break; } }
+      }
+      for (var r = 0; r < rotators.length; r++) {
+        var kids = rotators[r].children;
+        for (var k = 1; k < kids.length; k++) {
+          hidden.push([kids[k], kids[k].style.display]);
+          kids[k].style.display = 'none';
+        }
+      }
+      var t = ((el.innerText || el.textContent || '') + '').trim().replace(/\s+/g, ' ');
+      var w = t.split(' ');
+      for (var p = 3; p <= w.length / 2; p++) {
+        if (w.length % p !== 0) continue;
+        var ok = true;
+        for (var i = p; i < w.length; i++) { if (w[i] !== w[i % p]) { ok = false; break; } }
+        if (ok) { w = w.slice(0, p); break; }
+      }
+      return w.join(' ');
+    } finally {
+      for (var hi = 0; hi < hidden.length; hi++) { hidden[hi][0].style.display = hidden[hi][1]; }
     }
-    return w.join(' ');
   }
 
   // Largest-font visible text run inside a section — the DISPLAY headline for a
@@ -2237,15 +2269,53 @@
   // intentional short repeats ("Go go go") are never touched.
   function cleanHeadingText(el) {
     if (!el) return '';
-    var t = ((el.innerText || el.textContent || '') + '').trim().replace(/\s+/g, ' ');
-    var w = t.split(' ');
-    for (var p = 3; p <= w.length / 2; p++) {
-      if (w.length % p !== 0) continue;
-      var ok = true;
-      for (var i = p; i < w.length; i++) { if (w[i] !== w[i % p]) { ok = false; break; } }
-      if (ok) { w = w.slice(0, p); break; }
+    // Collapse animated WORD-ROTATORS before reading. Sites render a rotating
+    // hero word as a <ul>/<ol> of alternatives (hubspot's
+    // .wf-page-header_heading-animated-list) — or a class-tagged wrapper of
+    // sibling spans — all present in the DOM, so innerText concatenates every
+    // alternative ("grow scale close retain grow"). Temporarily hide all but the
+    // FIRST item of each rotator, read the visible text (the primary frame), then
+    // restore. Verified on the frozen hubspot capture: 5 <li> render as a visible
+    // column at replay time, so a rect-overlap test would miss it — the
+    // list/class structure is the reliable signal. Value stays verbatim page text.
+    var hidden = [];
+    try {
+      var rotators = [];
+      var lists = el.querySelectorAll('ul, ol');
+      for (var a = 0; a < lists.length; a++) {
+        if (lists[a].children.length >= 2) rotators.push(lists[a]);
+      }
+      // Curated rotator class-tokens. Deliberately SPECIFIC — a bare
+      // "animat"/"rotat" substring collides with the ubiquitous animation
+      // UTILITIES (Tailwind animate-*/rotate-*, Animate.css animate__*/rotateIn)
+      // and would over-collapse a real multi-child heading. These strings do not
+      // appear in those utilities. (ul/ol above already covers hubspot.)
+      var ROT = ['rotating','rotator','typewriter','animated-list','animated-word','animated-text','animated-headline','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
+      var tagged = el.querySelectorAll('[class]');
+      for (var b = 0; b < tagged.length; b++) {
+        if (tagged[b].children.length < 2 || rotators.indexOf(tagged[b]) !== -1) continue;
+        var cls = (tagged[b].getAttribute('class') || '').toLowerCase();
+        for (var z = 0; z < ROT.length; z++) { if (cls.indexOf(ROT[z]) !== -1) { rotators.push(tagged[b]); break; } }
+      }
+      for (var r = 0; r < rotators.length; r++) {
+        var kids = rotators[r].children; // live, but display:none never mutates .children
+        for (var k = 1; k < kids.length; k++) {
+          hidden.push([kids[k], kids[k].style.display]);
+          kids[k].style.display = 'none';
+        }
+      }
+      var t = ((el.innerText || el.textContent || '') + '').trim().replace(/\s+/g, ' ');
+      var w = t.split(' ');
+      for (var p = 3; p <= w.length / 2; p++) {
+        if (w.length % p !== 0) continue;
+        var ok = true;
+        for (var i = p; i < w.length; i++) { if (w[i] !== w[i % p]) { ok = false; break; } }
+        if (ok) { w = w.slice(0, p); break; }
+      }
+      return w.join(' ');
+    } finally {
+      for (var hi = 0; hi < hidden.length; hi++) { hidden[hi][0].style.display = hidden[hi][1]; }
     }
-    return w.join(' ');
   }
   function meta(name) {
     const el = document.querySelector('meta[name="' + name + '"]');
