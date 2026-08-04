@@ -77,9 +77,15 @@ export const SECTIONS_SCRIPT = `(() => {
       for (var a = 0; a < lists.length; a++) {
         if (lists[a].children.length >= 2) rotators.push(lists[a]);
       }
-      var tagged = el.querySelectorAll('[class*="animat" i],[class*="rotat" i],[class*="cycl" i],[class*="typed" i]');
+      // Curated rotator class-tokens (see pageAudit.ts) — specific enough not to
+      // collide with animation utilities (Tailwind animate-*/rotate-*,
+      // Animate.css animate__*/rotateIn), which a bare substring would over-match.
+      var ROT = ['rotating','rotator','typewriter','animated-list','animated-word','animated-text','animated-headline','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
+      var tagged = el.querySelectorAll('[class]');
       for (var b = 0; b < tagged.length; b++) {
-        if (tagged[b].children.length >= 2 && rotators.indexOf(tagged[b]) === -1) rotators.push(tagged[b]);
+        if (tagged[b].children.length < 2 || rotators.indexOf(tagged[b]) !== -1) continue;
+        var cls = (tagged[b].getAttribute('class') || '').toLowerCase();
+        for (var z = 0; z < ROT.length; z++) { if (cls.indexOf(ROT[z]) !== -1) { rotators.push(tagged[b]); break; } }
       }
       for (var r = 0; r < rotators.length; r++) {
         var kids = rotators[r].children;
