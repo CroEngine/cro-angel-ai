@@ -2,8 +2,56 @@
   "collect": {
     "target": "clickables",
     "count": 138,
+    "byCategory": {
+      "cta_primary": 4,
+      "cta_secondary": 12,
+      "link": 13,
+      "nav_item": 60,
+      "other": 42
+    },
     "summary": {
-      "topVisualWeight": []
+      "total": 131,
+      "aboveFold": 21,
+      "primaryConversionCtaCount": 3,
+      "competingAboveFold": 4,
+      "intentBreakdown": {
+        "contact": 2,
+        "conversion": 10,
+        "information": 16,
+        "navigation": 2,
+        "social": 7,
+        "unknown": 90,
+        "utility": 4
+      },
+      "bySection": {
+        "cards": 37,
+        "content": 13,
+        "footer": 60,
+        "hero": 3,
+        "nav": 18
+      },
+      "topVisualWeight": [
+        {
+          "text": "Popular Features",
+          "score": 70
+        },
+        {
+          "text": "Your Privacy Choices",
+          "score": 60
+        },
+        {
+          "text": "Website Accessibility",
+          "score": 50
+        },
+        {
+          "text": "Free Tools",
+          "score": 50
+        },
+        {
+          "text": "Company",
+          "score": 50
+        }
+      ]
     },
     "elements": [
       {

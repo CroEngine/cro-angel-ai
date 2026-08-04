@@ -2,8 +2,57 @@
   "collect": {
     "target": "clickables",
     "count": 505,
+    "byCategory": {
+      "cta_primary": 13,
+      "cta_secondary": 5,
+      "icon_button": 1,
+      "link": 10,
+      "nav_item": 454,
+      "other": 20
+    },
     "summary": {
-      "topVisualWeight": []
+      "total": 503,
+      "aboveFold": 251,
+      "primaryConversionCtaCount": 10,
+      "competingAboveFold": 9,
+      "intentBreakdown": {
+        "conversion": 19,
+        "information": 1,
+        "navigation": 5,
+        "social": 3,
+        "unknown": 473,
+        "utility": 2
+      },
+      "bySection": {
+        "cards": 10,
+        "content": 1,
+        "footer": 24,
+        "header": 1,
+        "hero": 2,
+        "nav": 465
+      },
+      "topVisualWeight": [
+        {
+          "text": "",
+          "score": 50
+        },
+        {
+          "text": "Köp",
+          "score": 40
+        },
+        {
+          "text": "Köp",
+          "score": 40
+        },
+        {
+          "text": "Hitta en deal",
+          "score": 40
+        },
+        {
+          "text": "Läs mer",
+          "score": 40
+        }
+      ]
     },
     "elements": [
       {

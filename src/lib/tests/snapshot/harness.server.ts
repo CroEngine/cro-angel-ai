@@ -33,11 +33,21 @@ import { runRenderCanary, type RenderCanaryReport } from "./render-canary.server
 import { FamiliesReceiptFileSchema, type FamiliesReceiptFile } from "./render-canary-receipt";
 import { CANARY_VIEWPORT } from "./canary-constants";
 import { extractEmbeddedFamilies, extractMainDocumentFamilies } from "./mhtml-fonts.server";
+import { summarizeCollected } from "../collect-summary";
 
-import type { CollectedElement } from "../schema";
+import type { CollectedElement, CollectSummary } from "../schema";
 
 export interface ReplayResult {
-  collect: { target: string; elements: CollectedElement[]; count: number };
+  collect: {
+    target: string;
+    elements: CollectedElement[];
+    count: number;
+    // steg 1: replay bygger nu collect.summary IDENTISKT med live-motorn, så
+    // competing/primaryConversion/aboveFold inte längre är tyst null offline.
+    totalCount: number;
+    byCategory: Record<string, number>;
+    summary: CollectSummary;
+  };
   pageAudit: unknown;
   /** sha256 för de MHTML-bytes som faktiskt replayades — bindningen mellan
    *  golden och capturen. snapshot:update skriver den till
@@ -698,6 +708,11 @@ export async function replayCorpus(
     await awaitVisualSettle(page, "pre-collect");
 
     const elements = (await page.evaluate(COLLECT_SCRIPT)) as CollectedElement[];
+    // Samma filter + gruppering + summering som live-motorn (steg 1). För
+    // "clickables" är filterCollected passthrough, så elementlistan är oförändrad
+    // (bara groupedAway-markörer läggs till, som normElement ignorerar) — golden-
+    // diffen blir därför rent additiv: byCategory + summary fylls i.
+    const summarized = summarizeCollected(elements, "clickables");
 
     console.log(`[replay] collected ${elements.length} elements`);
     const pageAudit = await runPageAudit(page as unknown as Parameters<typeof runPageAudit>[0], {
@@ -706,7 +721,14 @@ export async function replayCorpus(
     });
 
     return {
-      collect: { target: "clickables", elements, count: elements.length },
+      collect: {
+        target: "clickables",
+        elements: summarized.filtered,
+        count: summarized.count,
+        totalCount: summarized.totalCount,
+        byCategory: summarized.byCategory,
+        summary: summarized.summary,
+      },
       pageAudit,
       mhtmlSha256,
     };
