@@ -17,8 +17,6 @@
 // join 81,0 %; missarna är rubriker censusen aldrig ser — klassen rollupens
 // null-grind finns för.
 
-import { appendFileSync } from "node:fs"; // AUDIT INSTRUMENTATION (temporary)
-
 /** Applierns normalisering, byte-speglad (applier.ts:153): ihopfällt
  *  blanksteg, trim, gemener. */
 export const normHeadingKey = (s: string): string => s.replace(/\s+/g, " ").trim().toLowerCase();
@@ -60,19 +58,7 @@ export function joinSection(
   // Pass 2 — applierns driftstoleranta 24-teckens prefix (indexOf, inte bara
   // startsWith: speglar applier.ts:168 exakt).
   const needle = aKey.slice(0, 24);
-  const prefix = bHeadings.filter((b) => {
-    const idx = normHeadingKey(b).indexOf(needle);
-    if (idx >= 0 && process.env.JOIN_AUDIT_FILE) {
-      try {
-        // AUDIT INSTRUMENTATION (temporary): record every pass-2 match position.
-        appendFileSync(
-          process.env.JOIN_AUDIT_FILE,
-          JSON.stringify({ pos: idx, needle, b: normHeadingKey(b).slice(0, 100) }) + "\n",
-        );
-      } catch {}
-    }
-    return idx >= 0;
-  });
+  const prefix = bHeadings.filter((b) => normHeadingKey(b).indexOf(needle) >= 0);
   if (prefix.length === 1)
     return { ...base, verdict: "UNIK", via: "prefix", matchedBHeadings: prefix };
   if (prefix.length > 1)
