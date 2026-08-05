@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { generateCandidates } from "../../../../adaptive/redesign/candidates";
 import { extractContentModel } from "../../../../adaptive/redesign/extract";
 
-import { assertNoFabrication, gainSweep, runFacit, seedSweep } from "../facit";
+import { assertNoFabrication, gainSweep, runFacit, runRollupFacit, seedSweep } from "../facit";
 import { makeWorld } from "../simulator";
 
 // Ett brett svep — deterministiskt, så talen är låsta; N stort nog att
@@ -114,6 +114,29 @@ describe("reco-eval facit — baslinjen mot dold sanning", () => {
     expect(w1.content.sections.some((s) => s.id === w1.goldSectionId)).toBe(true);
     // Golds är ett BEVIS-sektions-id (aldrig hjälten — hjälten är inget lyftmål).
     expect(w1.goldSectionId).not.toBe("sec-0-hero");
+  });
+});
+
+describe("steg 8: rollupen genom facit:et — ofullkomlig input ersätter den perfekta", () => {
+  // Kedjan steg 9-events (rubrik-keyade) → rollup → säte, på samma världar som
+  // steg 6/7. Deterministiskt: inga nya slumpdrag, allt härlett ur världarna.
+  const R = runRollupFacit(seedSweep(300));
+
+  it("ren rubrik-keyad input är FÖRLUSTFRI — rollup-medierad pick == direkta sätets", () => {
+    expect(R.cleanAgrees).toBe(R.worlds);
+  });
+
+  it("garblade census-rubriker (rotator-klassen) räddas av prefix-passet — samma pick", () => {
+    expect(R.garbleAgrees).toBe(R.worlds);
+  });
+
+  it("tunn data ⇒ null på VARJE tunn värld (ingen fantomvikt någonsin)", () => {
+    expect(R.thinNull).toBe(R.worlds);
+  });
+
+  it("okrediterbar majoritetsmassa ⇒ null, och null-vägen ger exakt baslinjens pick", () => {
+    expect(R.missNull).toBe(R.worlds);
+    expect(R.nullFallsBackToBaseline).toBe(R.worlds);
   });
 });
 

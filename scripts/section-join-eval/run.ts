@@ -147,22 +147,19 @@ async function nodeScroll(page: Page, steps = 8, gap = 150): Promise<void> {
   }
 }
 
-/** Applierns normalisering, byte-speglad (applier.ts:153): ihopfällt blanksteg,
- *  trim, gemener. */
-const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+// Join-kärnan (norm/joinSection/injektivitet) BOR i src/adaptive/redesign/
+// section-join.ts sedan steg 8 — produktionens rollup och den här eval:en
+// måste döma exakt likadant, så regeln finns på ETT ställe. Re-exporteras för
+// bakåtkompatibla imports i testerna.
+import {
+  claimJoins,
+  joinSection,
+  normHeadingKey as norm,
+  type JoinVerdict,
+  type SectionJoin,
+} from "../../src/adaptive/redesign/section-join";
 
-export type JoinVerdict = "UNIK" | "FLERTYDIG" | "OUPPLÖST";
-
-export interface SectionJoin {
-  aId: string;
-  aType: string;
-  aHeading: string;
-  isCandidateTarget: boolean;
-  verdict: JoinVerdict;
-  /** Vilken pass som avgjorde (exakt/prefix) — bara för UNIK/FLERTYDIG. */
-  via: "exact" | "prefix" | null;
-  matchedBHeadings: string[];
-}
+export { joinSection, type JoinVerdict, type SectionJoin };
 
 export interface SiteJoinResult {
   site: string;
@@ -197,33 +194,9 @@ interface BSection {
   heading: string;
 }
 
-/** Joina EN A-sektion mot census-rubrikerna med applierns tvåpass-regel. Ren
- *  funktion — testbar utan chromium. */
-export function joinSection(
-  a: { id: string; type: string; heading: string },
-  bHeadings: string[],
-  isCandidateTarget: boolean,
-): SectionJoin {
-  const aKey = norm(a.heading);
-  const base = { aId: a.id, aType: a.type, aHeading: a.heading, isCandidateTarget };
-  if (!aKey) return { ...base, verdict: "OUPPLÖST", via: null, matchedBHeadings: [] };
-  const exact = bHeadings.filter((b) => norm(b) === aKey);
-  if (exact.length === 1) return { ...base, verdict: "UNIK", via: "exact", matchedBHeadings: exact };
-  if (exact.length > 1)
-    return { ...base, verdict: "FLERTYDIG", via: "exact", matchedBHeadings: exact };
-  // Pass 2 — applierns driftstoleranta 24-teckens prefix (indexOf, inte bara
-  // startsWith: speglar applier.ts:168 exakt).
-  const needle = aKey.slice(0, 24);
-  const prefix = bHeadings.filter((b) => norm(b).indexOf(needle) >= 0);
-  if (prefix.length === 1)
-    return { ...base, verdict: "UNIK", via: "prefix", matchedBHeadings: prefix };
-  if (prefix.length > 1)
-    return { ...base, verdict: "FLERTYDIG", via: "prefix", matchedBHeadings: prefix };
-  return { ...base, verdict: "OUPPLÖST", via: null, matchedBHeadings: [] };
-}
-
 /** Räkna ihop en sajts join ur redan-insamlade sidor — ren funktion, testbar
- *  utan chromium; chromium-vägen nedan är bara insamling. */
+ *  utan chromium; chromium-vägen nedan är bara insamling. Joinen + injektivi-
+ *  tetspasset är den DELADE kärnan (claimJoins) — samma dom som rollupen. */
 export function scoreSiteJoin(
   site: string,
   aModelSections: { id: string; type: string; heading: string }[],
@@ -233,28 +206,7 @@ export function scoreSiteJoin(
   const NON_CONTENT = new Set(["nav", "header", "footer", "aside"]);
   const bContentSections = bSectionsAll.filter((b) => !NON_CONTENT.has(b.type));
   const bHeadings = bContentSections.map((b) => b.heading).filter((h) => h.length > 0);
-  const joins = aModelSections.map((a) => joinSection(a, bHeadings, candidateTargetIds.has(a.id)));
-
-  // INJEKTIVITETSPASSET (granskningsfix 2026-08-05): två A-sektioner kan
-  // annars bägge bli UNIK mot SAMMA enda census-rubrik (en exakt + en prefix
-  // vars 24-teckens nål råkar ligga i den) — och samma sektions engagemang
-  // hade dubbelkrediterats. En census-rubrik får vara mål för EXAKT EN
-  // A-sektion: exakt träff slår prefix, därefter dokumentordning; förlorarna
-  // demoteras till FLERTYDIG (kreditering vore en gissning).
-  const claimed = new Map<string, SectionJoin>();
-  for (const j of joins) {
-    if (j.verdict !== "UNIK") continue;
-    const key = norm(j.matchedBHeadings[0] ?? "");
-    const prev = claimed.get(key);
-    if (!prev) {
-      claimed.set(key, j);
-    } else if (prev.via === "prefix" && j.via === "exact") {
-      prev.verdict = "FLERTYDIG";
-      claimed.set(key, j);
-    } else {
-      j.verdict = "FLERTYDIG";
-    }
-  }
+  const { joins, claimedBy } = claimJoins(aModelSections, bHeadings, candidateTargetIds);
 
   const unik = joins.filter((j) => j.verdict === "UNIK").length;
   const flertydig = joins.filter((j) => j.verdict === "FLERTYDIG").length;
@@ -263,9 +215,9 @@ export function scoreSiteJoin(
   const candUnik = cand.filter((j) => j.verdict === "UNIK").length;
 
   // Krediterbarhet: en B-rubrik KAN krediteras omm den är någon A-sektions
-  // unika mål efter injektivitetspasset — samma regel som rollupen kommer
-  // använda, inte en egen (exakt-bara) sidoregel.
-  const creditedKeys = new Set(claimed.keys());
+  // unika mål efter injektivitetspasset — SAMMA upplösning (claimedBy) som
+  // rollupen krediterar genom, inte en egen sidoregel.
+  const creditedKeys = new Set(claimedBy.keys());
   const creditedB = bHeadings.filter((b) => creditedKeys.has(norm(b))).length;
   return {
     site,

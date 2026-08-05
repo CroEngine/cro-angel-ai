@@ -72,6 +72,26 @@ candidate the catalog can emit is checked to be in the production vocabulary
 real section. `generate.test.ts` proves the _validator_ rejects violations; this
 fuzzes the _generator_ so a violation never even arises.
 
+## The step-8 rollup gate (`runRollupFacit`)
+
+Step 7's plumbing test fed the seat a perfect signal. Step 8 measures the real
+chain **step-9 events → rollup → seat** on the same worlds, with imperfect
+input — deterministically derived from each world, no new random draws:
+
+- **clean** heading-keyed observations → the rollup-mediated pick must equal
+  the direct seat's pick (lossless resolution),
+- **garbled** census headings (suffix drift, the rotator class) → the shared
+  join's 24-char prefix pass must rescue them (same pick),
+- **thin** worlds (below `MIN_VISITS`) → the rollup must answer `null`,
+- **majority unattributable mass** (consent/list-noise class) → `null`, and the
+  caller's null path (no behaviour input) must give exactly the baseline pick.
+
+All four gates hold 2000/2000 in the CLI and 300/300 in the committed test.
+The rollup itself lives in `src/adaptive/redesign/engagement-rollup.ts` and
+resolves headings through `section-join.ts` — the SAME rule the offline
+join eval (`scripts/section-join-eval/`) measures on frozen pages, moved to
+`src/` so production and measurement can never diverge.
+
 ## Run it
 
 ```bash

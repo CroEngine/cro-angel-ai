@@ -25,6 +25,7 @@ import {
   type BehaviorInput,
   type Candidate,
 } from "../../../adaptive/redesign/candidates";
+import { rollupEngagement, type SectionObservation } from "../../../adaptive/redesign/engagement-rollup";
 import { applyProbe, floorSelection } from "../../../adaptive/redesign/select";
 
 import { argmaxKey, makeWorld, type World } from "./simulator";
@@ -223,6 +224,94 @@ export function runFacit(seeds: number[], behaviorGain?: number): FacitReport {
     anchorViolationCount,
     fabricationViolations,
     scores,
+  };
+}
+
+// ── Steg 8: rollupen genom facit:et — OFULLKOMLIG input ersätter den perfekta ─
+// Steg 7:s rör-test matade sätet med exakt samma karta oraklet argmax:ar. Det
+// här mäter kedjan STEG 9-EVENTS → ROLLUP → SÄTE på samma världar: observa-
+// tioner keyade på census-RUBRIKER (inte id:n), garblade rubriker (rotator-
+// klassen), tunna världar och okrediterbar massa. Deterministiskt — inga nya
+// slumpdrag, allt härleds ur världens befintliga fält.
+
+export interface RollupFacitReport {
+  worlds: number;
+  /** Ren rubrik-keyad input ⇒ rollup-medierad pick == direkta sätets pick. */
+  cleanAgrees: number;
+  /** Census-rubriker garblade (suffix-drift) ⇒ prefix-passet räddar; samma pick. */
+  garbleAgrees: number;
+  /** Tunna världar (under besöksgolvet) ⇒ rollupen svarar null. */
+  thinNull: number;
+  /** Majoritet okrediterbar massa ⇒ null. */
+  missNull: number;
+  /** När rollupen är null ger den beteende-lösa katalogen baslinjens pick. */
+  nullFallsBackToBaseline: number;
+}
+
+/** Kör rollup-facit:et: fyra deterministiska scenarier per värld. Varje
+ *  räknare ska nå `worlds` — kedjan är förlustfri på ren OCH garblad input,
+ *  och null-grindarna slår till exakt när de ska. */
+export function runRollupFacit(seeds: number[]): RollupFacitReport {
+  let cleanAgrees = 0;
+  let garbleAgrees = 0;
+  let thinNull = 0;
+  let missNull = 0;
+  let nullFallsBackToBaseline = 0;
+  const VISITS_PER_SECTION = 800;
+  for (const seed of seeds) {
+    const w = makeWorld(seed);
+    const sections = w.content.sections.map((s) => ({
+      id: s.id,
+      type: s.type,
+      heading: s.heading,
+    }));
+    const proof = sections.filter((s) => s.id in w.observed);
+    const cleanObs: SectionObservation[] = proof.map((s) => ({
+      heading: s.heading,
+      visits: VISITS_PER_SECTION,
+      engagement: w.observed[s.id],
+    }));
+    const directPick = floorMovePick(
+      generateCandidates(w.content, { sectionWeight: w.observed }),
+    );
+    const pickVia = (weights: Record<string, number>) =>
+      floorMovePick(generateCandidates(w.content, { sectionWeight: weights }));
+
+    // 1) Ren rubrik-keyad input — upplösningen ska vara förlustfri.
+    const clean = rollupEngagement(sections, cleanObs);
+    if (clean && pickVia(clean.sectionWeight) === directPick) cleanAgrees++;
+
+    // 2) Garblad census (suffix-drift, rotator-klassen) — prefix-passet bär.
+    const garbled = rollupEngagement(
+      sections,
+      cleanObs.map((o) => ({ ...o, heading: `${o.heading} spring update v2` })),
+    );
+    if (garbled && pickVia(garbled.sectionWeight) === directPick) garbleAgrees++;
+
+    // 3) Tunn värld — under besöksgolvet ska svaret vara null, aldrig brus.
+    if (rollupEngagement(sections, cleanObs.map((o) => ({ ...o, visits: 100 }))) === null)
+      thinNull++;
+
+    // 4) Okrediterbar majoritetsmassa (samtyckes-/list-brusklassen) — null,
+    //    och anroparens null-väg (ingen behavior) ger exakt baslinjens pick.
+    const junkVisits = Math.ceil(cleanObs.reduce((a, o) => a + o.visits, 0) * 1.6);
+    const missy = rollupEngagement(sections, [
+      ...cleanObs,
+      { heading: "Cookie consent preferences", visits: junkVisits, engagement: 0.1 },
+    ]);
+    if (missy === null) {
+      missNull++;
+      if (floorMovePick(generateCandidates(w.content)) === w.priorSectionId)
+        nullFallsBackToBaseline++;
+    }
+  }
+  return {
+    worlds: seeds.length,
+    cleanAgrees,
+    garbleAgrees,
+    thinNull,
+    missNull,
+    nullFallsBackToBaseline,
   };
 }
 
