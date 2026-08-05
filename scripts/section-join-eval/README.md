@@ -44,6 +44,21 @@ Corpus: every `corpus/*/page.mhtml` (auto-discovered) + 10 labeled marketing
 pages from `fixtures/drift-survey/`. Cookie-wall/iframe/media controls are
 deliberately excluded (labeled with zero section types; nothing to credit).
 
+## Measured (2026-08-05, 20 sites)
+
+| metric | result |
+| --- | --- |
+| **candidate move targets → unique join** (the number step 8 stands on) | **88.2 % (15/17)** |
+| all A sections → unique join | 71.7 % (170/237; 5 FLERTYDIG, 62 OUPPLÖST) |
+| reverse: census heading → some A section | 73.0 % (176/241) |
+
+The all-section number is dragged by two honest finding classes, not by the
+join rule: extract **over-segments** list pages (bokadirekt-service: every
+service item is an h2) and the census **under-segments** some pages
+(cancerfonden sees 2 of 13; patagonia 1; supabase's tabbed features are hidden
+per tab). Rotator garble is rescued by the prefix pass in practice (hubspot
+7/7 despite the garbled hero).
+
 ## The committed gate
 
 `__tests__/section-join.test.ts` runs in the CI unit sweep:

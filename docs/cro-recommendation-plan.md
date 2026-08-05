@@ -71,10 +71,22 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
 
 ### Block B — Linjalen (FÖRE motorn)
 
-5. **Bevisa sektions-joinen offline** — kör den *riktiga* `adaptive.js`-census via
-   `page.evaluate` mot den frusna DOM:en (inte en TS-omport — kritikerns fix) och
-   mät join-miss-täckningen. Kan runtime-engagemang återkopplas till `extract.ts`
-   sektions-id:n? Billigast att få veta nu. [D3]
+5. **Bevisa sektions-joinen offline** — ✅ **KLAR.** `scripts/section-join-eval/`:
+   den RIKTIGA skörde-censusen (`SECTIONS_SCRIPT` via `runPageAudit`, samma sträng
+   `adaptive-harvest.js` serverar besökare — ingen TS-omport) via `page.evaluate`
+   mot 20 frusna sidor, joinad mot produktionens sida A (`serializeVisibleHtml` →
+   `extractContentModel`) med serving-lokatorns exakta tvåpass-regel (`applier.ts`:
+   exakt rubrik, sedan 24-teckens prefix) och atlas-graderingen UNIK/FLERTYDIG/
+   OUPPLÖST. **Uppmätt 2026-08-05: KANDIDAT-flyttmålen (sätets nycklar) joinar
+   88,2 % unikt (15/17)** — rollupens grund håller. Alla A-sektioner 71,7 %
+   (170/237), draget av två ärliga fyndklasser (inte join-regeln): extraktionen
+   ÖVERSEGMENTERAR listsidor (bokadirekt-service: varje tjänst en h2) och censusen
+   UNDERSEGMENTERAR vissa sidor (cancerfonden 2 av 13, patagonia 1, supabase-
+   flikar dolda per tab). Omvänt kan 73 % av census-rubrikerna krediteras någon
+   A-sektion — resten är förlorad signal (aldrig felkreditering). Rotator-garble
+   räddas i praktiken av prefix-passet (hubspot 7/7). CI-grind: rena
+   join-regel-tester + chromium-replay över corpus/ med golv strax under uppmätt
+   (kandidat ≥ 0,80; total ≥ 0,62). `bun run join-eval`. [D3]
 6. **Bygg facit-riggen + baslinje** — ✅ **KLAR.** `src/lib/tests/reco-eval/` med
    dold-sanning+brus-simulatorn (ovan). Icke-cirkulär: sanningen dras oberoende av
    sektionstyp. Baslinjen (dagens `PROOF_TYPE_WEIGHT`, = golvets högsta `move_up` på
