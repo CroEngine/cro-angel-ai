@@ -460,10 +460,44 @@ function tidy(flat: string, m: RegExpExecArray): string {
   return t.trim();
 }
 
+/** Sektions-hemvist för en signaltext: id:t för FÖRSTA sektionen (dokument-
+ *  ordning) vars rubrik+kropp ordagrant innehåller texten, annars "body"
+ *  (utanför sektionerna — header/nav/footer — eller ej entydigt lokaliserbar).
+ *  Steg 7-fyndet (granskning 2026-08-05): beteende-sätet förankrar inserts via
+ *  `t.section`, men fältet var hårdkodat "body" — förankringen av ordagranna
+ *  bevis-rader var död kod i produktion. Bindningen ändrar ALDRIG signalens
+ *  text (matchningen sker oförändrat mot hela dokumentets platta text) — bara
+ *  hemvist-fältet. */
+function locateSignalSection(
+  text: string,
+  sections: RedesignContentModel["sections"],
+  html: string,
+): string {
+  const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+  const needle = norm(text);
+  if (!needle) return "body";
+  // Samma skivor + samma första-förekomst-per-rubrik-dedup som extractSections,
+  // så kropparna radar upp sig 1:1 mot de FÄRDIGA sektionerna via rubriknyckeln.
+  const byHeading = new Map<string, string>();
+  for (const h of collectSectionBodies(html)) {
+    const key = h.text.slice(0, 120).trim().toLowerCase();
+    if (key && !byHeading.has(key)) byHeading.set(key, h.body);
+  }
+  for (const s of sections) {
+    const body = byHeading.get(s.heading.trim().toLowerCase()) ?? "";
+    if (norm(`${s.heading} ${body ? stripTags(body) : ""}`).includes(needle)) return s.id;
+  }
+  return "body";
+}
+
 /** Detect trust / social-proof phrases literally present in the copy. Each entry's
  *  text is a real substring of the page — never synthesized. The leading count
- *  requires a real digit so a stray "." can't masquerade as a number. */
-function extractTrustSignals(html: string): RedesignContentModel["trustSignals"] {
+ *  requires a real digit so a stray "." can't masquerade as a number.
+ *  `sections` används BARA för hemvist-bindningen (aldrig för matchningen). */
+function extractTrustSignals(
+  html: string,
+  sections: RedesignContentModel["sections"],
+): RedesignContentModel["trustSignals"] {
   const flat = stripTags(html);
   const signals: RedesignContentModel["trustSignals"] = [];
   // Substantiv/inledningar ur den delade vokabulären (vocab.ts, task #90):
@@ -495,13 +529,15 @@ function extractTrustSignals(html: string): RedesignContentModel["trustSignals"]
   ];
   for (const p of patterns) {
     const m = p.re.exec(flat);
-    if (m)
+    if (m) {
+      const text = tidy(flat, m).slice(0, 90);
       signals.push({
         type: p.type,
-        text: tidy(flat, m).slice(0, 90),
+        text,
         aboveFold: false,
-        section: "body",
+        section: locateSignalSection(text, sections, html),
       });
+    }
   }
   return signals;
 }
@@ -528,7 +564,7 @@ export function extractContentModel(html: string): RedesignContentModel {
   const sections = extractSections(html);
   return {
     sections,
-    trustSignals: extractTrustSignals(html),
+    trustSignals: extractTrustSignals(html, sections),
     ctas: extractCtas(html),
     hero: extractHero(sections, html),
   };

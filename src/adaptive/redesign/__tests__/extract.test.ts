@@ -142,6 +142,25 @@ describe("extractContentModel — HTML → content model loader", () => {
     expect(indep.startsWith("independent")).toBe(true);
   });
 
+  // Steg 7-fyndet (granskning 2026-08-05): section var hårdkodad "body" ⇒
+  // beteende-förankringen av ordagranna bevis-rader var död kod i produktion.
+  it("binder trust-signalen till sektionen som ordagrant bär den — annars 'body'", () => {
+    const page = `<main><h1>Acme</h1><p>The intro paragraph.</p>
+      <section><h2>Loved by teams</h2><p>Trusted by Acme and Globex partners.</p></section>
+      <section><h2>Simple pricing</h2><p>30-day money-back guarantee included.</p></section>
+      </main><footer>GDPR compliant consent handling</footer>`;
+    const m = extractContentModel(page);
+    const secId = (heading: string) => m.sections.find((s) => s.heading === heading)!.id;
+    const sig = (type: string) => m.trustSignals.find((t) => t.type === type)!;
+    // Raden bor i en sektionskropp ⇒ bind till den sektionens id.
+    expect(sig("trusted_by").section).toBe(secId("Loved by teams"));
+    expect(sig("guarantee").section).toBe(secId("Simple pricing"));
+    // Footern är utanför sektionerna ⇒ ärlig "body"-hemvist (neutral term).
+    expect(sig("compliance").section).toBe("body");
+    // Bindningen ändrar aldrig texten — den är fortfarande ordagrann sidtext.
+    expect(sig("trusted_by").text).toContain("Trusted by Acme and Globex");
+  });
+
   it("builds a hero with the real headline and first paragraph as subheadline", () => {
     expect(model.hero?.headline).toBe("The privacy-first analytics tool");
     expect(model.hero?.subheadline).toContain("lightweight analytics");

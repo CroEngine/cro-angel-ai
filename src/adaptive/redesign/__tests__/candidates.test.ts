@@ -2,7 +2,13 @@
 // ordning, ordagranna texter, aldrig hjälten som flyttmål, dedup.
 import { describe, it, expect } from "vitest";
 
-import { generateCandidates, candidateToOp, floorWhy, tidySignalText } from "../candidates";
+import {
+  BEHAVIOR_GAIN,
+  generateCandidates,
+  candidateToOp,
+  floorWhy,
+  tidySignalText,
+} from "../candidates";
 import type { RedesignContentModel } from "../context";
 
 const model = (over: Partial<RedesignContentModel> = {}): RedesignContentModel => ({
@@ -125,6 +131,74 @@ describe("generateCandidates", () => {
     expect(tidySignalText("Trusted by the world's best 0:30 Play video")).toBe(
       "Trusted by the world's best",
     );
+  });
+
+  // ── Beteende-sätet (steg 7, D3) ────────────────────────────────────────────
+  it("utan beteende-input är katalogen BYTE-IDENTISK (neutralt säte)", () => {
+    const plain = generateCandidates(model());
+    expect(generateCandidates(model(), undefined)).toEqual(plain);
+    expect(generateCandidates(model(), { sectionWeight: {} })).toEqual(plain);
+    // Vikter för sektioner som inte finns i modellen är också neutrala.
+    expect(generateCandidates(model(), { sectionWeight: { "sec-99-ghost": 0.9 } })).toEqual(plain);
+    // gain 0 ⇒ termen är 0 oavsett vikt — också identiskt.
+    expect(
+      generateCandidates(model(), { sectionWeight: { "sec-4-logos": 0.9 }, gain: 0 }),
+    ).toEqual(plain);
+  });
+
+  it("beteendet omrankar flyttarna: het logos-sektion slår kall testimonials", () => {
+    // Priorn säger testimonials (3+1) > logos (2,5) — men besökarna säger tvärtom.
+    const c = generateCandidates(model(), {
+      sectionWeight: { "sec-4-logos": 0.9, "sec-3-testimonials": 0.05 },
+    });
+    const idx = (id: string) => c.findIndex((x) => x.id === id);
+    expect(idx("mv-sec-4-logos")).toBeLessThan(idx("mv-sec-3-testimonials"));
+    // ...och samma input får ALDRIG ändra kandidat-mängden, bara ordningen.
+    const ids = (cs: ReturnType<typeof generateCandidates>) => cs.map((x) => x.id).sort();
+    expect(ids(c)).toEqual(ids(generateCandidates(model())));
+  });
+
+  it("insert-reserven förankras till SIN sektions engagemang (kritikerns fix)", () => {
+    // Het logos-sektion ⇒ även dess rubrik-insert (insh-sec-4-logos) ska bära
+    // beteende-termen och slå den kalla testimonials-rubrikens insert.
+    const c = generateCandidates(model(), { sectionWeight: { "sec-4-logos": 0.8 } });
+    const hot = c.find((x) => x.id === "insh-sec-4-logos")!;
+    const cold = c.find((x) => x.id === "insh-sec-3-testimonials")!;
+    expect(hot.score).toBeGreaterThan(cold.score);
+    expect(hot.score).toBeCloseTo(2.5 * 0.6 + BEHAVIOR_GAIN * 0.8, 10);
+  });
+
+  it("trust-signal-inserts: körsektionens vikt räknas bara när sektionen finns", () => {
+    // section:"body" är ingen riktig sektion ⇒ neutral term (som idag)...
+    const plainTb = generateCandidates(model()).find((x) => x.id.startsWith("ins-trusted_by"))!;
+    const stillTb = generateCandidates(model(), {
+      sectionWeight: { "sec-4-logos": 0.8 },
+    }).find((x) => x.id.startsWith("ins-trusted_by"))!;
+    expect(stillTb.score).toBe(plainTb.score);
+    // ...men en signal extraktionen KAN sektionsbinda får sin sektions term.
+    const bound = generateCandidates(
+      model({
+        trustSignals: [
+          {
+            type: "trusted_by",
+            text: "Trusted by the world's best",
+            aboveFold: false,
+            section: "sec-4-logos",
+          },
+        ],
+      }),
+      { sectionWeight: { "sec-4-logos": 0.5 } },
+    ).find((x) => x.id.startsWith("ins-trusted_by"))!;
+    expect(bound.score).toBeCloseTo(3 + BEHAVIOR_GAIN * 0.5, 10);
+  });
+
+  it("beteende-vikter klampas till [0,1] — en trasig rollup kan inte skena", () => {
+    const c = generateCandidates(model(), { sectionWeight: { "sec-4-logos": 999 } });
+    const mv = c.find((x) => x.id === "mv-sec-4-logos")!;
+    expect(mv.score).toBeCloseTo(2.5 + 4 * 0.05 + BEHAVIOR_GAIN * 1, 10);
+    // NaN/Infinity är neutralt, aldrig NaN-poäng.
+    const bad = generateCandidates(model(), { sectionWeight: { "sec-4-logos": Number.NaN } });
+    expect(bad).toEqual(generateCandidates(model()));
   });
 
   it("menyns insert-detail bär den städade texten (inte SSR-skarven)", () => {

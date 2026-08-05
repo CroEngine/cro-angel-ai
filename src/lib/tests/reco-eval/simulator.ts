@@ -55,6 +55,13 @@ export interface World {
   priorSectionId: string;
   /** Håller priorn med facit i just denna värld? */
   priorAgrees: boolean;
+  /** Sektionen världens SEKTIONSBUNDNA trust-rad bor i (extract.ts binder nu
+   *  hemvist) — dess ins-kandidat ska bära exakt den sektionens beteende-term. */
+  boundSectionId: string;
+  /** Den bundna radens ordagranna text (== dess kandidats detail). */
+  boundText: string;
+  /** "body"-radens text — dess kandidat ska förbli beteende-NEUTRAL. */
+  unboundText: string;
 }
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -89,6 +96,23 @@ export function makeWorld(seed: number): World {
     visualWeight: 10,
   }));
 
+  // Dold sanning: OBEROENDE av typ (kärnan i icke-cirkulariteten).
+  const hiddenValue: Record<string, number> = {};
+  const observed: Record<string, number> = {};
+  for (const s of proofSections) {
+    const truth = rnd(); // 0..1, helt oberoende av s.type
+    hiddenValue[s.id] = truth;
+    observed[s.id] = clamp01(truth + gaussian(rnd) * NOISE_SD);
+  }
+
+  // Trust-rader (steg 7-granskningens fynd: utan dem fanns inga ins-kandidater
+  // i världarna och insert-förankringen var omätt). En rad BUNDEN till en
+  // slumpad bevis-sektion (extract.ts binder hemvist på riktiga sidor) och en
+  // "body"-rad (footer-klassen) som ska förbli neutral. Dras EFTER sannings-
+  // dragen så steg 6-talens frö-sekvens är orörd.
+  const bound = proofSections[Math.floor(rnd() * k)];
+  const boundText = `Trusted by ${1000 + Math.floor(rnd() * 9000)} teams`;
+  const unboundText = "30-day money-back guarantee";
   const content: RedesignContentModel = {
     sections: [
       {
@@ -101,21 +125,17 @@ export function makeWorld(seed: number): World {
       },
       ...proofSections,
     ],
-    trustSignals: [],
+    trustSignals: [
+      { type: "trusted_by", text: boundText, aboveFold: false, section: bound.id },
+      { type: "guarantee", text: unboundText, aboveFold: false, section: "body" },
+    ],
     ctas: [{ text: "Start free", aboveFold: true }],
     hero: { headline: "Build faster with Acme" },
   };
 
-  const pageText = content.sections.map((s) => s.heading).join(" \n ") + " Start free";
-
-  // Dold sanning: OBEROENDE av typ (kärnan i icke-cirkulariteten).
-  const hiddenValue: Record<string, number> = {};
-  const observed: Record<string, number> = {};
-  for (const s of proofSections) {
-    const truth = rnd(); // 0..1, helt oberoende av s.type
-    hiddenValue[s.id] = truth;
-    observed[s.id] = clamp01(truth + gaussian(rnd) * NOISE_SD);
-  }
+  const pageText =
+    content.sections.map((s) => s.heading).join(" \n ") +
+    ` \n ${boundText} \n ${unboundText} \n Start free`;
 
   const goldSectionId = argmaxKey(hiddenValue);
   const priorWeights: Record<string, number> = {};
@@ -131,6 +151,9 @@ export function makeWorld(seed: number): World {
     goldSectionId,
     priorSectionId,
     priorAgrees: goldSectionId === priorSectionId,
+    boundSectionId: bound.id,
+    boundText,
+    unboundText,
   };
 }
 

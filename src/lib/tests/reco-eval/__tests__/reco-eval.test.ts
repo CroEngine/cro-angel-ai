@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { generateCandidates } from "../../../../adaptive/redesign/candidates";
 import { extractContentModel } from "../../../../adaptive/redesign/extract";
 
-import { assertNoFabrication, runFacit, seedSweep } from "../facit";
+import { assertNoFabrication, gainSweep, runFacit, seedSweep } from "../facit";
 import { makeWorld } from "../simulator";
 
 // Ett brett svep — deterministiskt, så talen är låsta; N stort nog att
@@ -46,12 +46,64 @@ describe("reco-eval facit — baslinjen mot dold sanning", () => {
     expect(REPORT.fabricationViolations).toBe(0);
   });
 
+  it("steg 7 RÖR-TESTET: sätet bär ett perfekt signal förlustfritt till referens-taket", () => {
+    // ÄRLIG LÄSNING (granskning 2026-08-05): sätet matas här med SAMMA karta
+    // oraklet argmax:ar, så att det når taket är väntat by construction. Det
+    // som bevisas är att den RIKTIGA katalog→golv-kedjan inte tappar/förvränger
+    // signalen och att gain-styrkan räcker för att beteendet ska leda över
+    // priorn. Att riktig rollup-data förutsäger konvertering bevisas i steg
+    // 8–10, på samma rigg, när ofullkomlig input ersätter den perfekta.
+    expect(REPORT.behaviorHitRate).toBeGreaterThan(0.7);
+    expect(REPORT.behaviorHitRate).toBeGreaterThanOrEqual(REPORT.oracleHitRate - 0.05);
+    expect(REPORT.behaviorHitRate).toBeGreaterThanOrEqual(REPORT.baselineHitRate + 0.3);
+    // Kvot av headroom — kan överstiga 1 av tie-brus (referens-takets tiebreak
+    // är alfabetiskt, sätets är priorn; nära-lika avgörs olika ±1 pp).
+    expect(REPORT.headroomClosed).toBeGreaterThan(0.85);
+  });
+
+  it("steg 7: term-förankringen är MÄTT — flyttar och inserts bär exakt sin sektions term", () => {
+    // Varje världs katalog diffas kandidat för kandidat (med − utan beteende):
+    // mv → målsektionens term, insh → sin sektions term, bunden trust-rad →
+    // sin hemvists term, "body"-raden → exakt 0. Detta är grinden som gör
+    // insert-förankringen bevisad i facit:et, inte bara påstådd i en enhetstest.
+    expect(REPORT.anchorViolationCount).toBe(0);
+    // Och världarna INNEHÅLLER faktiskt bägge insert-klasserna (annars vore
+    // grinden tom): en sektionsbunden trust-rad + en neutral "body"-rad.
+    const w = makeWorld(42);
+    expect(w.content.trustSignals.some((t) => t.section === w.boundSectionId)).toBe(true);
+    expect(w.content.trustSignals.some((t) => t.section === "body")).toBe(true);
+    expect(w.pageText).toContain(w.boundText);
+    expect(w.pageText).toContain(w.unboundText);
+  });
+
+  it("steg 7: sätet omrankar BARA — exakt samma kandidat-mängd som utan beteende", () => {
+    // D1-vakt: beteendedata får aldrig skapa eller ta bort ett drag, bara
+    // ändra ordningen mellan drag som ändå var lagliga.
+    expect(REPORT.catalogDrift).toBe(0);
+  });
+
+  it("steg 7: gain-svepet motiverar BEHAVIOR_GAIN — stiger till mättnad, valet nära platån", () => {
+    // OBS: "monoton" gäller UPP TILL mättnad — på platån är ordningen frö-brus
+    // (±1 pp mellan fröbaser), så svepet grindar närhet-till-mättnad, aldrig
+    // vilken platå-punkt som råkar ligga högst på en enskild bas.
+    const sweep = gainSweep(seedSweep(300), [0, 5, 40, 100]);
+    const at = (g: number) => sweep.find((s) => s.gain === g)!.hitRate;
+    // gain 0 ≡ baslinjen (sätet är neutralt utan styrka)...
+    expect(at(0)).toBeCloseTo(runFacit(seedSweep(300), 0).baselineHitRate, 10);
+    // ...styrkan lyfter mot mättnad...
+    expect(at(5)).toBeGreaterThan(at(0) + 0.25);
+    expect(at(40)).toBeGreaterThan(at(5));
+    // ...och det valda värdet ÄR på platån (mer styrka flyttar < 3 pp åt något håll).
+    expect(Math.abs(at(100) - at(40))).toBeLessThan(0.03);
+  });
+
   it("reproducerbart — samma frön in, samma rapport ut", () => {
     const a = runFacit(seedSweep(300));
     const b = runFacit(seedSweep(300));
     expect(a.baselineHitRate).toBe(b.baselineHitRate);
     expect(a.oracleHitRate).toBe(b.oracleHitRate);
     expect(a.headroom).toBe(b.headroom);
+    expect(a.behaviorHitRate).toBe(b.behaviorHitRate);
     expect(a.fabricationViolations).toBe(b.fabricationViolations);
   });
 
@@ -102,6 +154,15 @@ describe("reco-eval facit — D2 genom den riktiga extraktionen", () => {
     expect(content.sections.length).toBeGreaterThanOrEqual(3);
     expect(content.trustSignals.length).toBeGreaterThanOrEqual(1);
     expect(candidates.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("extraktionen binder trust-rader till sina hemvist-sektioner (steg 7-fyndet)", () => {
+    // Garantiraden bor i prissektionens kropp ⇒ extract.ts binder den dit, och
+    // därmed kan beteende-sätet förankra dess insert i produktion (var förut
+    // hårdkodad "body" ⇒ förankringen var död kod på riktiga sidor).
+    const pricing = content.sections.find((s) => s.type === "pricing")!;
+    const guarantee = content.trustSignals.find((t) => t.type === "guarantee")!;
+    expect(guarantee.section).toBe(pricing.id);
   });
 
   it("katalogen täcker BÅDA op-typerna (flytt + ordagrann insert)", () => {

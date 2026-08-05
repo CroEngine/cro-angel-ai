@@ -53,6 +53,41 @@ const SIGNAL_TYPE_WEIGHT: Record<string, number> = {
 const MIN_SIGNAL_LEN = 8;
 const MAX_DETAIL_LEN = 90;
 
+// ── Beteende-sätet (steg 7, D3) ──────────────────────────────────────────────
+// Katalogens rangordning ska grundas i vad besökarna på JUST den sidan gör,
+// inte i typvikterna ovan. Sätet: ett valfritt per-sektion-engagemang [0,1]
+// som ADDERAS på priorn — beteendet leder när data finns, priorn bryter lika
+// och bär hela rangordningen när data saknas (byte-identisk default).
+// Datakvalitet är INTE sätets ansvar: rollupen (steg 8) lämnar null vid tunn
+// data/hög join-miss, och då anropas katalogen utan säte precis som idag.
+
+export interface BehaviorInput {
+  /** Sektions-id → observerat engagemang i [0,1] (andel/rate ur rollupen).
+   *  Sektioner utan post tävlar på priorn ensam (term 0 — neutralt). */
+  sectionWeight: Record<string, number>;
+  /** Styrkan beteendet väger mot typ-priorn. Default BEHAVIOR_GAIN — vald av
+   *  facit-svepet (reco-eval), inte tyckande. Överstyrs bara av eval:er. */
+  gain?: number;
+}
+
+/** Facit-valt (reco-eval gain-svep 2026-08-05): från ~20 återfinner
+ *  beteende-rankningen den dolda sanningen inom ett par punkter från
+ *  orakel-taket; 40 ger marginal (flippar hela prior-spannet ~2,9 redan vid
+ *  Δengagemang ≈ 0,07 — halva brus-SD:n) utan att priorn förlorar
+ *  tiebreak-rollen vid exakta lika. */
+export const BEHAVIOR_GAIN = 40;
+
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+
+/** Beteende-termen för en kandidat förankrad i sektion `sectionId`. 0 när
+ *  sätet inte matas eller sektionen saknar data — då är katalogen byte-
+ *  identisk med den beteende-blinda. */
+function behaviorTerm(behavior: BehaviorInput | undefined, sectionId: string): number {
+  const w = behavior?.sectionWeight?.[sectionId];
+  if (typeof w !== "number" || !Number.isFinite(w)) return 0;
+  return (behavior?.gain ?? BEHAVIOR_GAIN) * clamp01(w);
+}
+
 /** Trust-signalernas texter är regex-fångster ur PLATT text och kan dra med
  *  sig angränsande UI-brus (talentium-fixturen: "Trusted by the world's best
  *  0:30 Product overview Play video…"). Klipp vid första tidskoden/kända
@@ -77,9 +112,18 @@ export function tidySignalText(raw: string): string {
 
 /** Generera hela katalogen av lagliga drag ur innehållsmodellen. Ren funktion
  *  utan DOM — browser-förprovningen (probe) annoterar/filtrerar efteråt.
- *  Sorterad: högst poäng först (golvets val = första posten). */
-export function generateCandidates(content: RedesignContentModel): Candidate[] {
+ *  Sorterad: högst poäng först (golvets val = första posten).
+ *
+ *  `behavior` (steg 7, D3): per-sektion-engagemang som väger OM rangordningen
+ *  — utelämnat ⇒ byte-identisk katalog med den beteende-blinda (låst av test).
+ *  ÄVEN insert-kandidater förankras till sin källsektions engagemang — annars
+ *  når beteendet aldrig en-rad-under-heron-förmågan. */
+export function generateCandidates(
+  content: RedesignContentModel,
+  behavior?: BehaviorInput,
+): Candidate[] {
   const out: Candidate[] = [];
+  const sectionIds = new Set(content.sections.map((s) => s.id));
 
   // Flytt-kandidater: bevisbärande sektioner under folden. Hjälten är aldrig
   // ett flyttmål, och sektioner ovanför folden har inget att vinna.
@@ -94,7 +138,7 @@ export function generateCandidates(content: RedesignContentModel): Candidate[] {
       kind: "move_up",
       targetId: s.id,
       detail: "",
-      score: typeWeight + trustBonus + Math.min(s.position, 8) * 0.05,
+      score: typeWeight + trustBonus + Math.min(s.position, 8) * 0.05 + behaviorTerm(behavior, s.id),
       basis: `${s.type}${s.containsTrustSignals ? " [proof]" : ""} below the fold (position ${s.position}): "${s.heading.slice(0, 60)}"`,
     });
   }
@@ -115,7 +159,12 @@ export function generateCandidates(content: RedesignContentModel): Candidate[] {
       detail: text,
       // Redan-ovanför-folden-signaler är svagare kandidater (redan synliga),
       // men inte noll: en rad DIREKT under rubriken slår en rad i sidfoten.
-      score: weight - (t.aboveFold ? 1 : 0),
+      // Beteende-förankring via signalens KÄLLSEKTION när extraktionen vet den
+      // ("body"/okänd ⇒ neutral term 0 — priorn ensam, precis som utan säte).
+      score:
+        weight -
+        (t.aboveFold ? 1 : 0) +
+        (sectionIds.has(t.section) ? behaviorTerm(behavior, t.section) : 0),
       basis: `${t.type}${t.aboveFold ? " (already above the fold)" : ""}: "${text}"`,
     });
   });
@@ -135,7 +184,10 @@ export function generateCandidates(content: RedesignContentModel): Candidate[] {
       kind: "insert_snippet",
       targetId: "hero",
       detail: text,
-      score: (typeWeight || 1.5) * 0.6,
+      // Rubrik-reserven förankras till SIN sektions engagemang (kritikerns
+      // fix): är sektionen sidans hetaste ska även dess en-rads-lyft kunna slå
+      // en kallare sektions flytt — annars är insert-förmågan beteende-blind.
+      score: (typeWeight || 1.5) * 0.6 + behaviorTerm(behavior, s.id),
       basis: `heading of the ${s.type} section: "${text}"`,
     });
   }
