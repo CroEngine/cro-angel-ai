@@ -9,10 +9,18 @@
 //     SECTIONS_SCRIPT-sträng som public/adaptive-harvest.js serverar riktiga
 //     besökare (ingen TS-omport — kritikerns krav) — via page.evaluate mot den
 //     frusna DOM:en i pinnad chromium.
-//   • Sida A (server): samma väg som nightly/auto-generate — synlig-DOM-
-//     serialisering (serializeVisibleHtml) → extractContentModel → sektioner
-//     med id "sec-N-typ", plus generateCandidates för att peka ut just de
-//     sektioner sätet faktiskt rankar (flyttmålen).
+//   • Sida A (server): PRODUKTIONENS SERIALISERINGSPOLICY — nightly/auto-
+//     generate kör extractContentModel på freeze-page-utdata, som är RÅ
+//     `"<!doctype html>\n" + document.documentElement.outerHTML` (dolda
+//     delträd KVAR — granskningsfynd 2026-08-05: en tidigare version använde
+//     serializeVisibleHtml här, vilket mätte en RENARE modell än produktionen
+//     har). Sedan generateCandidates för sätets faktiska nycklar (flyttmålen).
+//     Ärliga avvikelser som INTE går att brygga offline: produktionens
+//     redesign-frys renderas 390×844 (mobil) medan korpusens mhtml är frysta
+//     vid sina egna viewports, och nightly kan efter extraktionen köra LLM-
+//     om-typaren som byter typ-SUFFIXET i id:t (`sec-N-typ`) — rubriken,
+//     join-nyckeln här, rörs aldrig av den, men konsumenter måste slå upp id
+//     via modellens AKTUELLA sektioner, aldrig via sparade id-strängar.
 //
 // Join-regeln SPEGLAR produktionens serving-lokator (applier.ts findByLocator,
 // CI-pinnad in i public/adaptive.js): pass 1 exakt normaliserad rubrik, pass 2
@@ -31,8 +39,6 @@ import { readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-
-import { serializeVisibleHtml } from "../redesign/visible-dom";
 
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
 import { generateCandidates } from "../../src/adaptive/redesign/candidates";
@@ -59,6 +65,11 @@ function corpusSites(): { name: string; path: string }[] {
     name,
     path: join("fixtures", "drift-survey", cat, name, "page.mhtml"),
   });
+  // ALLA drift-survey-sidor med sektions-etiketter i structure-eval/labels.json
+  // (granskningsfynd 2026-08-05: ett tidigare urval utelämnade 8 etiketterade
+  // sidor — 6 av dem ecommerce, just den klass som översegmenterar — och
+  // README:n påstod ändå komplett urval). Utanför står bara de etiketterade
+  // NOLL-sektions-kontrollerna (cookie-wall/iframe/media/spa-flöden).
   out.push(
     drift("saas-landing", "intercom"),
     drift("saas-landing", "supabase"),
@@ -69,7 +80,15 @@ function corpusSites(): { name: string; path: string }[] {
     drift("spa", "trello"),
     drift("i18n-routing", "klarna"),
     drift("i18n-routing", "uber"),
+    drift("i18n-routing", "booking"),
+    drift("i18n-routing", "tradera"),
     drift("ecommerce", "patagonia"),
+    drift("ecommerce", "glossier"),
+    drift("ecommerce", "ikea-se"),
+    drift("ecommerce", "rei"),
+    drift("ecommerce", "shopify-store-allbirds"),
+    drift("ecommerce", "shopify-store-gymshark"),
+    drift("ecommerce", "warby-parker"),
   );
   return out;
 }
@@ -161,11 +180,15 @@ export interface SiteJoinResult {
   candUnik: number;
   /** UNIK över kandidat-flyttmålen — talet som avgör steg 8:s rollup. */
   candCoverage: number;
-  /** Omvänt: B-innehållssektioner (med rubrik) vars rubrik exakt når någon
-   *  A-sektion — engagemang på resten kan aldrig krediteras något id. */
-  reverseExact: number;
+  /** B-innehållssektioner (med rubrik) som är NÅGON A-sektions unika mål
+   *  efter injektivitetspasset — engagemang där KAN krediteras ett id.
+   *  Resten är förlorad signal (granskningsfix 2026-08-05: räknades förut
+   *  exakt-bara, vilket falskt stämplade prefix-räddade rubriker — hubspots
+   *  hero! — som "aldrig krediterbara" samtidigt som framåt-joinen
+   *  krediterade dem). */
+  creditedB: number;
   bContentWithHeading: number;
-  reverseCoverage: number;
+  creditRate: number;
   error?: string;
 }
 
@@ -211,13 +234,39 @@ export function scoreSiteJoin(
   const bContentSections = bSectionsAll.filter((b) => !NON_CONTENT.has(b.type));
   const bHeadings = bContentSections.map((b) => b.heading).filter((h) => h.length > 0);
   const joins = aModelSections.map((a) => joinSection(a, bHeadings, candidateTargetIds.has(a.id)));
+
+  // INJEKTIVITETSPASSET (granskningsfix 2026-08-05): två A-sektioner kan
+  // annars bägge bli UNIK mot SAMMA enda census-rubrik (en exakt + en prefix
+  // vars 24-teckens nål råkar ligga i den) — och samma sektions engagemang
+  // hade dubbelkrediterats. En census-rubrik får vara mål för EXAKT EN
+  // A-sektion: exakt träff slår prefix, därefter dokumentordning; förlorarna
+  // demoteras till FLERTYDIG (kreditering vore en gissning).
+  const claimed = new Map<string, SectionJoin>();
+  for (const j of joins) {
+    if (j.verdict !== "UNIK") continue;
+    const key = norm(j.matchedBHeadings[0] ?? "");
+    const prev = claimed.get(key);
+    if (!prev) {
+      claimed.set(key, j);
+    } else if (prev.via === "prefix" && j.via === "exact") {
+      prev.verdict = "FLERTYDIG";
+      claimed.set(key, j);
+    } else {
+      j.verdict = "FLERTYDIG";
+    }
+  }
+
   const unik = joins.filter((j) => j.verdict === "UNIK").length;
   const flertydig = joins.filter((j) => j.verdict === "FLERTYDIG").length;
   const oupplöst = joins.filter((j) => j.verdict === "OUPPLÖST").length;
   const cand = joins.filter((j) => j.isCandidateTarget);
   const candUnik = cand.filter((j) => j.verdict === "UNIK").length;
-  const aKeys = new Set(aModelSections.map((a) => norm(a.heading)).filter(Boolean));
-  const reverseExact = bHeadings.filter((b) => aKeys.has(norm(b))).length;
+
+  // Krediterbarhet: en B-rubrik KAN krediteras omm den är någon A-sektions
+  // unika mål efter injektivitetspasset — samma regel som rollupen kommer
+  // använda, inte en egen (exakt-bara) sidoregel.
+  const creditedKeys = new Set(claimed.keys());
+  const creditedB = bHeadings.filter((b) => creditedKeys.has(norm(b))).length;
   return {
     site,
     aSections: aModelSections.length,
@@ -231,9 +280,9 @@ export function scoreSiteJoin(
     candTotal: cand.length,
     candUnik,
     candCoverage: cand.length ? candUnik / cand.length : 1,
-    reverseExact,
+    creditedB,
     bContentWithHeading: bHeadings.length,
-    reverseCoverage: bHeadings.length ? reverseExact / bHeadings.length : 1,
+    creditRate: bHeadings.length ? creditedB / bHeadings.length : 1,
   };
 }
 
@@ -242,29 +291,34 @@ async function collectSite(browser: Browser, capturePath: string): Promise<{
   candidateTargetIds: Set<string>;
   bSections: BSection[];
 }> {
-  const tmp = mkdtempSync(join(tmpdir(), "section-join-"));
-  const tmpFile = join(tmp, "page.mhtml");
-  copyFileSync(capturePath, tmpFile);
-  const ctx = await browser.newContext({
-    viewport: { width: 1280, height: 900 },
-    deviceScaleFactor: 1,
-  });
-  await ctx.route("**/*", (r) =>
-    r.request().url().startsWith("file://") ? r.continue() : r.abort(),
-  );
-  await ctx.addInitScript(() => {
-    try {
-      const n = () => {};
-      history.pushState = n as typeof history.pushState;
-      history.replaceState = n as typeof history.replaceState;
-      (window.location as unknown as { assign: () => void }).assign = n;
-      (window.location as unknown as { replace: () => void }).replace = n;
-    } catch {
-      /* ignore */
-    }
-  });
-  const page = await ctx.newPage();
+  // ALLT förvärv sker inne i try:n (granskningsfix 2026-08-05: mkdtemp/copy/
+  // newContext låg före — en krasch i fönstret läckte tmp-katalog + context
+  // per kvarvarande sajt efter en webbläsardöd, ~100 MB på ett 20-sajtsvep).
+  let tmp: string | null = null;
+  let ctx: Awaited<ReturnType<Browser["newContext"]>> | null = null;
   try {
+    tmp = mkdtempSync(join(tmpdir(), "section-join-"));
+    const tmpFile = join(tmp, "page.mhtml");
+    copyFileSync(capturePath, tmpFile);
+    ctx = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      deviceScaleFactor: 1,
+    });
+    await ctx.route("**/*", (r) =>
+      r.request().url().startsWith("file://") ? r.continue() : r.abort(),
+    );
+    await ctx.addInitScript(() => {
+      try {
+        const n = () => {};
+        history.pushState = n as typeof history.pushState;
+        history.replaceState = n as typeof history.replaceState;
+        (window.location as unknown as { assign: () => void }).assign = n;
+        (window.location as unknown as { replace: () => void }).replace = n;
+      } catch {
+        /* ignore */
+      }
+    });
+    const page = await ctx.newPage();
     await page.goto(`file://${tmpFile}`, { waitUntil: "load", timeout: 30_000 });
     let lu = page.url();
     for (let i = 0; i < 40; i++) {
@@ -278,10 +332,15 @@ async function collectSite(browser: Browser, capturePath: string): Promise<{
     await nodeScroll(page);
     await waitStable(page);
 
-    // Sida A FÖRST, på ostörd sida: produktionens exakta väg (auto-generate
-    // :135) — synlig-DOM-serialisering in i extractContentModel.
-    const visibleHtml = await serializeVisibleHtml(page);
-    const model = extractContentModel(visibleHtml);
+    // Sida A FÖRST, på ostörd sida: PRODUKTIONENS serialiseringspolicy
+    // (freeze-page.ts:897) — RÅ outerHTML med dolda delträd kvar, exakt det
+    // nightly/auto-generate matar extractContentModel med. (Granskningsfix
+    // 2026-08-05: serializeVisibleHtml här mätte en renare modell än
+    // produktionens.)
+    const rawHtml = (await page.evaluate(
+      () => "<!doctype html>\n" + document.documentElement.outerHTML,
+    )) as string;
+    const model = extractContentModel(rawHtml);
     const candidateTargetIds = new Set(
       generateCandidates(model)
         .filter((c) => c.kind === "move_up")
@@ -289,18 +348,29 @@ async function collectSite(browser: Browser, capturePath: string): Promise<{
     );
 
     // Sida B: den riktiga skörde-censusen (SECTIONS_SCRIPT via runPageAudit).
+    // OFFLINE-VAKT (granskningsfix 2026-08-05): pageAudits headCheck HEAD:ar
+    // sidans canonical-URL via Nodes fetch — routing-aborten når inte dit och
+    // 19/20 captures bär riktiga https-canonicals. Stubba fetch under audit-
+    // anropet så eval:en aldrig rör nätet; headCheck sväljer felet själv.
     type Audit = { sections?: Array<{ type: string; heading?: string; displayHeading?: string }> };
     let audit: Audit | null = null;
-    for (let a = 0; a < 3 && !audit; a++) {
-      try {
-        audit = (await runPageAudit(page as unknown as Parameters<typeof runPageAudit>[0], {
-          skipScrollWarmup: true,
-          skipCookiePoll: true,
-        })) as Audit;
-      } catch (e) {
-        await waitStable(page);
-        if (a === 2) throw e;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (() =>
+      Promise.reject(new Error("section-join-eval: network disabled"))) as typeof fetch;
+    try {
+      for (let a = 0; a < 3 && !audit; a++) {
+        try {
+          audit = (await runPageAudit(page as unknown as Parameters<typeof runPageAudit>[0], {
+            skipScrollWarmup: true,
+            skipCookiePoll: true,
+          })) as Audit;
+        } catch (e) {
+          await waitStable(page);
+          if (a === 2) throw e;
+        }
       }
+    } finally {
+      globalThis.fetch = realFetch;
     }
     // Rubriknyckeln som skulle bära engagemanget: census-rubriken, med
     // displayHeading som reserv — samma prioritet som lab-inventeringen
@@ -315,8 +385,8 @@ async function collectSite(browser: Browser, capturePath: string): Promise<{
       bSections,
     };
   } finally {
-    await ctx.close();
-    rmSync(tmp, { recursive: true, force: true });
+    if (ctx) await ctx.close().catch(() => {});
+    if (tmp) rmSync(tmp, { recursive: true, force: true });
   }
 }
 
@@ -333,8 +403,8 @@ export interface JoinEvalResult {
   totalCandUnik: number;
   candCoverage: number;
   totalBContentWithHeading: number;
-  totalReverseExact: number;
-  reverseCoverage: number;
+  totalCreditedB: number;
+  creditRate: number;
 }
 
 export async function evalSectionJoin(
@@ -373,9 +443,9 @@ export async function evalSectionJoin(
           candTotal: 0,
           candUnik: 0,
           candCoverage: 0,
-          reverseExact: 0,
+          creditedB: 0,
           bContentWithHeading: 0,
-          reverseCoverage: 0,
+          creditRate: 0,
           error: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
         });
       }
@@ -389,7 +459,7 @@ export async function evalSectionJoin(
   const totalCand = sum((r) => r.candTotal);
   const totalCandUnik = sum((r) => r.candUnik);
   const totalBContentWithHeading = sum((r) => r.bContentWithHeading);
-  const totalReverseExact = sum((r) => r.reverseExact);
+  const totalCreditedB = sum((r) => r.creditedB);
   return {
     scored,
     skipped,
@@ -402,12 +472,14 @@ export async function evalSectionJoin(
     totalCandUnik,
     candCoverage: totalCand ? totalCandUnik / totalCand : 0,
     totalBContentWithHeading,
-    totalReverseExact,
-    reverseCoverage: totalBContentWithHeading ? totalReverseExact / totalBContentWithHeading : 0,
+    totalCreditedB,
+    creditRate: totalBContentWithHeading ? totalCreditedB / totalBContentWithHeading : 0,
   };
 }
 
-// CLI
+// CLI — exit 0 bara när ALLA närvarande sajter mättes utan fel; havererade
+// sajter (eller ett harness-haveri) ger exit 1 så skript/CI aldrig läser ett
+// tomt svep som ett lyckat (granskningsfix 2026-08-05).
 if (import.meta.url === `file://${process.argv[1]}`) {
   const only = process.argv.slice(2).filter((a) => !a.startsWith("--"));
   evalSectionJoin({ only }).then((r) => {
@@ -424,7 +496,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         continue;
       }
       console.log(
-        `  ${s.site.padEnd(18)} ${String(s.aSections).padStart(6)} ${String(s.bContent).padStart(7)} ${String(s.unik).padStart(5)} ${String(s.flertydig).padStart(5)} ${String(s.oupplöst).padStart(5)} ${pct(s.coverage).padStart(7)} ${`${s.candUnik}/${s.candTotal}`.padStart(9)} ${pct(s.reverseCoverage).padStart(7)}`,
+        `  ${s.site.padEnd(18)} ${String(s.aSections).padStart(6)} ${String(s.bContent).padStart(7)} ${String(s.unik).padStart(5)} ${String(s.flertydig).padStart(5)} ${String(s.oupplöst).padStart(5)} ${pct(s.coverage).padStart(7)} ${`${s.candUnik}/${s.candTotal}`.padStart(9)} ${pct(s.creditRate).padStart(7)}`,
       );
     }
     console.log(``);
@@ -436,7 +508,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       `  KANDIDAT-flyttmål → unik    : ${pct(r.candCoverage)}  (${r.totalCandUnik}/${r.totalCand})   <- talet steg 8:s rollup står på`,
     );
     console.log(
-      `  omvänt: B-rubrik → någon A  : ${pct(r.reverseCoverage)}  (${r.totalReverseExact}/${r.totalBContentWithHeading}; resten kan aldrig krediteras)`,
+      `  krediterbara B-rubriker     : ${pct(r.creditRate)}  (${r.totalCreditedB}/${r.totalBContentWithHeading}; resten är förlorad signal — aldrig felkreditering)`,
     );
     console.log(``);
     for (const s of r.scored) {
@@ -448,6 +520,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
           `    ${m.verdict.padEnd(9)} ${m.aId}${m.isCandidateTarget ? " [kandidat]" : ""} "${m.aHeading.slice(0, 60)}"${m.matchedBHeadings.length ? ` ↔ ${m.matchedBHeadings.length} B-träffar` : ""}`,
         );
     }
-    process.exit(0);
+    const failed = r.scored.filter((s) => s.error);
+    if (failed.length) console.error(`\n${failed.length} sajt(er) havererade — exit 1`);
+    process.exit(failed.length || r.scored.length === 0 ? 1 : 0);
+  }).catch((e) => {
+    console.error("join-eval havererade:", e instanceof Error ? e.message : e);
+    process.exit(1);
   });
 }

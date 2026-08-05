@@ -74,19 +74,28 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
 5. **Bevisa sektions-joinen offline** — ✅ **KLAR.** `scripts/section-join-eval/`:
    den RIKTIGA skörde-censusen (`SECTIONS_SCRIPT` via `runPageAudit`, samma sträng
    `adaptive-harvest.js` serverar besökare — ingen TS-omport) via `page.evaluate`
-   mot 20 frusna sidor, joinad mot produktionens sida A (`serializeVisibleHtml` →
-   `extractContentModel`) med serving-lokatorns exakta tvåpass-regel (`applier.ts`:
-   exakt rubrik, sedan 24-teckens prefix) och atlas-graderingen UNIK/FLERTYDIG/
-   OUPPLÖST. **Uppmätt 2026-08-05: KANDIDAT-flyttmålen (sätets nycklar) joinar
-   88,2 % unikt (15/17)** — rollupens grund håller. Alla A-sektioner 71,7 %
-   (170/237), draget av två ärliga fyndklasser (inte join-regeln): extraktionen
-   ÖVERSEGMENTERAR listsidor (bokadirekt-service: varje tjänst en h2) och censusen
-   UNDERSEGMENTERAR vissa sidor (cancerfonden 2 av 13, patagonia 1, supabase-
-   flikar dolda per tab). Omvänt kan 73 % av census-rubrikerna krediteras någon
-   A-sektion — resten är förlorad signal (aldrig felkreditering). Rotator-garble
-   räddas i praktiken av prefix-passet (hubspot 7/7). CI-grind: rena
-   join-regel-tester + chromium-replay över corpus/ med golv strax under uppmätt
-   (kandidat ≥ 0,80; total ≥ 0,62). `bun run join-eval`. [D3]
+   mot 28 frusna sidor, joinad mot produktionens sida A (**freeze-policyn: rå
+   `outerHTML` med dolda delträd kvar** — granskningsrundan fällde en första
+   version som mätte på synlig-DOM och därmed en renare modell än produktionens)
+   med serving-lokatorns tvåpass-regel (`applier.ts`: exakt rubrik, sedan
+   24-teckens prefix), atlas-graderingen UNIK/FLERTYDIG/OUPPLÖST och ett
+   injektivitetspass (en census-rubrik kan aldrig krediteras två id:n).
+   **Uppmätt 2026-08-05: KANDIDAT-flyttmålEN (sätets nycklar) joinar 81,0 %
+   unikt (17/21)** — rollupens grund håller; de fyra missarna är sektioner vars
+   rubriker censusen aldrig ser (exakt missklassen steg 8:s per-sida-null-grind
+   finns för). Alla A-sektioner 61,2 % (218/356), draget av ärliga fyndklasser
+   (inte join-regeln): extraktionen ÖVERSEGMENTERAR listsidor/ecommerce
+   (warby-parker 29 A-sektioner) och rå sida A bär fantomsektioner censusen
+   aldrig kan se (sector-alarms display:none-video); censusen UNDERSEGMENTERAR
+   vissa sidor (cancerfonden 2 av 13). 64,7 % av census-rubrikerna är
+   krediterbara under SAMMA tvåpass-regel — resten är förlorad signal, aldrig
+   felkreditering. CI-grind: rena join-regel-tester (inkl. injektivitet) +
+   chromium-replay över corpus/ med populationsgrindar (tyst korpuskrympning
+   fäller) och golv med uttalad diskret marginal (kandidat ≥ 0,70 tål en
+   flippad; total ≥ 0,62 ≈ 9 sektioners marginal). Kända gränser dokumenterade:
+   redesign-frysen renderar 390×844 mobilt (omvalidera på riktig freeze-utdata
+   i steg 8) och LLM-om-typaren kan byta id-SUFFIX (rubriken, join-nyckeln,
+   rörs aldrig — id:n slås upp via aktuell modell). `bun run join-eval`. [D3]
 6. **Bygg facit-riggen + baslinje** — ✅ **KLAR.** `src/lib/tests/reco-eval/` med
    dold-sanning+brus-simulatorn (ovan). Icke-cirkulär: sanningen dras oberoende av
    sektionstyp. Baslinjen (dagens `PROOF_TYPE_WEIGHT`, = golvets högsta `move_up` på
