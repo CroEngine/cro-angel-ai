@@ -47,9 +47,10 @@ console.log(``);
 const ru = runRollupFacit(seeds);
 console.log(`ROLLUPEN (steg 8: rubrik-keyade events → rollup → säte, ofullkomlig input)`);
 console.log(`  ren input förlustfri        : ${ru.cleanAgrees}/${ru.worlds}   <- rollup-medierad pick == direkta sätets`);
-console.log(`  garblad census räddas       : ${ru.garbleAgrees}/${ru.worlds}   <- prefix-passet (rotator-klassen)`);
-console.log(`  tunn data ⇒ null            : ${ru.thinNull}/${ru.worlds}`);
-console.log(`  hög miss-massa ⇒ null       : ${ru.missNull}/${ru.worlds}  (null-vägen ⇒ baslinjens pick: ${ru.nullFallsBackToBaseline}/${ru.worlds})`);
+console.log(`  suffix-drift bärs           : ${ru.garbleAgrees}/${ru.worlds}   <- mekanism-kontroll av prefix-vägen (A-sida-garble mäts i join-eval)`);
+console.log(`  tunn-grind: golv−1 ⇒ null   : ${ru.thinNullJustBelow}/${ru.worlds}  · exakt golv ⇒ svar: ${ru.thinAnswerAtFloor}/${ru.worlds}`);
+console.log(`  miss-grind: över ⇒ null     : ${ru.missNullJustOver}/${ru.worlds}  · under ⇒ svar+synlig junk: ${ru.missAnswerJustUnder}/${ru.worlds}`);
+console.log(`  null-väg ⇒ priorns pick     : ${ru.nullFallsBackToBaseline}/${ru.worlds}  (konsistens-invariant)`);
 console.log(``);
 console.log(`GAIN-SVEP (facit väljer styrkan — stiger till mättnad; platån ovanför är frö-brus ±1 pp)`);
 for (const { gain, hitRate } of gainSweep(seeds, [0, 5, 10, 20, 40, 100])) {
@@ -71,8 +72,10 @@ const ok =
   r.behaviorHitRate >= r.baselineHitRate + 0.3 &&
   ru.cleanAgrees === ru.worlds &&
   ru.garbleAgrees === ru.worlds &&
-  ru.thinNull === ru.worlds &&
-  ru.missNull === ru.worlds &&
+  ru.thinNullJustBelow === ru.worlds &&
+  ru.thinAnswerAtFloor === ru.worlds &&
+  ru.missNullJustOver === ru.worlds &&
+  ru.missAnswerJustUnder === ru.worlds &&
   ru.nullFallsBackToBaseline === ru.worlds;
 console.log(
   `VERDICT: ${ok ? "FACIT HÅLLER — baslinjen på slump, rör-testet vid referens-taket, förankring + noll fabricering" : "UTANFÖR BOMMARNA — se raderna ovan"}`,

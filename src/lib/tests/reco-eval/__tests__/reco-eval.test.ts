@@ -126,16 +126,22 @@ describe("steg 8: rollupen genom facit:et — ofullkomlig input ersätter den pe
     expect(R.cleanAgrees).toBe(R.worlds);
   });
 
-  it("garblade census-rubriker (rotator-klassen) räddas av prefix-passet — samma pick", () => {
+  it("suffix-driftade census-rubriker bärs av prefix-vägen (mekanism-kontroll) — samma pick", () => {
+    // Ärligt märkt: nålen är per konstruktion ett prefix av den driftade
+    // nyckeln, så join-nivån kan inte fallera här — det som grindas är att
+    // HELA rollup-vägen (aggregat → join → vikter → säte) bär den förlustfritt.
     expect(R.garbleAgrees).toBe(R.worlds);
   });
 
-  it("tunn data ⇒ null på VARJE tunn värld (ingen fantomvikt någonsin)", () => {
-    expect(R.thinNull).toBe(R.worlds);
+  it("tunn-grinden flippar på EXAKT besöksgolvet — bägge sidor, varje värld", () => {
+    expect(R.thinNullJustBelow).toBe(R.worlds);
+    expect(R.thinAnswerAtFloor).toBe(R.worlds);
   });
 
-  it("okrediterbar majoritetsmassa ⇒ null, och null-vägen ger exakt baslinjens pick", () => {
-    expect(R.missNull).toBe(R.worlds);
+  it("miss-grinden flippar kring taket — null strax över, svar med synlig junk strax under", () => {
+    expect(R.missNullJustOver).toBe(R.worlds);
+    expect(R.missAnswerJustUnder).toBe(R.worlds);
+    // Konsistens-invariant (delar beräkningsväg med baselineEqualsPrior).
     expect(R.nullFallsBackToBaseline).toBe(R.worlds);
   });
 });

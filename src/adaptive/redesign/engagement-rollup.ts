@@ -107,6 +107,11 @@ export function rollupEngagement(
     (o) => o.type === undefined || !NON_CONTENT_SECTION_TYPES.has(o.type),
   );
   const totalVisits = clean.reduce((a, o) => a + o.visits, 0);
+  // NOLL-VAKTEN FÖRE ALLT (granskningsfynd 2026-08-05): med minVisits: 0 (eller
+  // negativt) släppte tunn-grinden igenom totalVisits === 0 och massorna blev
+  // 0/0 = NaN — och `NaN > maxMiss` är false, så miss-grinden kringgicks TYST.
+  // Inga observationer är aldrig ett svar, oavsett hur trösklarna ställs.
+  if (totalVisits <= 0) return null;
   if (totalVisits < minVisits) return null; // tunn data — ingen fantomvikt
 
   // AGGREGERA PER NYCKEL FÖRST: event-strömmen är rubriknyckel-keyad, så
