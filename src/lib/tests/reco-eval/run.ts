@@ -13,7 +13,7 @@
 
 import { BEHAVIOR_GAIN } from "../../../adaptive/redesign/candidates";
 
-import { gainSweep, runFacit, seedSweep } from "./facit";
+import { gainSweep, runFacit, runRollupFacit, seedSweep } from "./facit";
 
 const N = Number(process.argv[2] ?? 2000);
 const BASE = Number(process.argv[3] ?? 1);
@@ -44,6 +44,14 @@ console.log(
   `D1/D2 icke-fabricering      : ${r.fabricationViolations === 0 ? "PASS" : "FAIL"} (${r.fabricationViolations} brott över ${r.worlds} världar)`,
 );
 console.log(``);
+const ru = runRollupFacit(seeds);
+console.log(`ROLLUPEN (steg 8: rubrik-keyade events → rollup → säte, ofullkomlig input)`);
+console.log(`  ren input förlustfri        : ${ru.cleanAgrees}/${ru.worlds}   <- rollup-medierad pick == direkta sätets`);
+console.log(`  suffix-drift bärs           : ${ru.garbleAgrees}/${ru.worlds}   <- mekanism-kontroll av prefix-vägen (A-sida-garble mäts i join-eval)`);
+console.log(`  tunn-grind: golv−1 ⇒ null   : ${ru.thinNullJustBelow}/${ru.worlds}  · exakt golv ⇒ svar: ${ru.thinAnswerAtFloor}/${ru.worlds}`);
+console.log(`  miss-grind: över ⇒ null     : ${ru.missNullJustOver}/${ru.worlds}  · under ⇒ svar+synlig junk: ${ru.missAnswerJustUnder}/${ru.worlds}`);
+console.log(`  null-väg ⇒ priorns pick     : ${ru.nullFallsBackToBaseline}/${ru.worlds}  (konsistens-invariant)`);
+console.log(``);
 console.log(`GAIN-SVEP (facit väljer styrkan — stiger till mättnad; platån ovanför är frö-brus ±1 pp)`);
 for (const { gain, hitRate } of gainSweep(seeds, [0, 5, 10, 20, 40, 100])) {
   const mark = gain === BEHAVIOR_GAIN ? "  <- vald (BEHAVIOR_GAIN: nära mättnad med marginal)" : "";
@@ -61,7 +69,14 @@ const ok =
   r.headroom > 0.2 &&
   Math.abs(r.baselineHitRate - r.chanceRate) < 0.07 &&
   r.behaviorHitRate >= r.oracleHitRate - 0.05 &&
-  r.behaviorHitRate >= r.baselineHitRate + 0.3;
+  r.behaviorHitRate >= r.baselineHitRate + 0.3 &&
+  ru.cleanAgrees === ru.worlds &&
+  ru.garbleAgrees === ru.worlds &&
+  ru.thinNullJustBelow === ru.worlds &&
+  ru.thinAnswerAtFloor === ru.worlds &&
+  ru.missNullJustOver === ru.worlds &&
+  ru.missAnswerJustUnder === ru.worlds &&
+  ru.nullFallsBackToBaseline === ru.worlds;
 console.log(
   `VERDICT: ${ok ? "FACIT HÅLLER — baslinjen på slump, rör-testet vid referens-taket, förankring + noll fabricering" : "UTANFÖR BOMMARNA — se raderna ovan"}`,
 );

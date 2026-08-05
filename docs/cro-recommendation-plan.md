@@ -127,9 +127,19 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
    på samma rigg, när ofullkomlig input (aggregering, join-täckning, tunn data)
    ersätter den perfekta. Rollupen (steg 8) äger datakvaliteten: tunn data ⇒
    null ⇒ katalogen anropas utan säte, precis som idag. [D3]
-8. **Ren engagemangs-rollup** — datamotsvarigheten till `PROOF_TYPE_WEIGHT`. Tunn
-   data → null (ingen fantomvikt). Hög join-miss → också null (ingen skev
-   delbild). [D3, D2]
+8. **Ren engagemangs-rollup** — ✅ **KLAR.** `engagement-rollup.ts`:
+   rubrik-keyade runtime-observationer → sätets `sectionWeight` (sec-N-typ-id:n)
+   via den DELADE join-regeln (`section-join.ts`, utflyttad ur steg 5-eval:en så
+   produktion och mätning dömer identiskt: tvåpass + injektivitet). Ärligheten
+   är returvärdet: **tunn data (< 1 000 besök) ⇒ null; besöksviktad
+   okrediterbar massa > 50 % ⇒ null** — null ⇒ sätet matas inte ⇒ byte-identisk
+   katalog. Samma-nyckel-observationer aggregeras före joinen (dagsbuckets ≠
+   dubblettsektioner). **Facit-mätt på reco-eval-riggen med OFULLKOMLIG input**
+   (2 000 världar): ren rubrik-keyad input förlustfri 2000/2000 (rollup-medierad
+   pick == direkta sätets), garblad census räddad av prefix-passet 2000/2000,
+   tunn ⇒ null 2000/2000, hög miss-massa ⇒ null 2000/2000 med exakt
+   baslinje-fallback. Kvar till steg 10: kalibrera trösklarna mot riktiga sidor
+   när steg 9 levererar massa. [D3, D2]
 9. **Sänd per-sektion-event från runtime** — observera-bara, samtyckesgrindat,
    reversibelt. Börjar samla "tusentals besök"-datan. [D3]
 10. **Koppla ihop** rollup → sätet hos katalog-anroparna + visa engagemang i

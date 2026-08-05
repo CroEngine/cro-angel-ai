@@ -25,6 +25,11 @@ import {
   type BehaviorInput,
   type Candidate,
 } from "../../../adaptive/redesign/candidates";
+import {
+  MIN_VISITS,
+  rollupEngagement,
+  type SectionObservation,
+} from "../../../adaptive/redesign/engagement-rollup";
 import { applyProbe, floorSelection } from "../../../adaptive/redesign/select";
 
 import { argmaxKey, makeWorld, type World } from "./simulator";
@@ -223,6 +228,132 @@ export function runFacit(seeds: number[], behaviorGain?: number): FacitReport {
     anchorViolationCount,
     fabricationViolations,
     scores,
+  };
+}
+
+// ── Steg 8: rollupen genom facit:et — OFULLKOMLIG input ersätter den perfekta ─
+// Steg 7:s rör-test matade sätet med exakt samma karta oraklet argmax:ar. Det
+// här mäter kedjan STEG 9-EVENTS → ROLLUP → SÄTE på samma världar: observa-
+// tioner keyade på census-RUBRIKER (inte id:n), garblade rubriker (rotator-
+// klassen), tunna världar och okrediterbar massa. Deterministiskt — inga nya
+// slumpdrag, allt härleds ur världens befintliga fält.
+
+export interface RollupFacitReport {
+  worlds: number;
+  /** Ren rubrik-keyad input ⇒ rollup-medierad pick == direkta sätets pick. */
+  cleanAgrees: number;
+  /** Suffix-driftade census-rubriker ⇒ prefix-passet bär; samma pick. OBS
+   *  ärlig läsning (granskning 2026-08-05): nålen är PER KONSTRUKTION ett
+   *  prefix av den driftade nyckeln, så det här är en MEKANISM-kontroll av
+   *  prefix-vägen genom rollupen — inte ett stresstest av rotator-klassen
+   *  (A-sida-garble mot ren census mäts i join-eval:en på riktiga sidor). */
+  garbleAgrees: number;
+  /** GRÄNSTEST tunn data: total exakt 1 under golvet ⇒ null... */
+  thinNullJustBelow: number;
+  /** ...och exakt PÅ golvet ⇒ svar — grinden testas från BÅDA håll per värld
+   *  (granskningsfix: fasta 300/400-mot-1000 var en enda punkt långt från
+   *  gränsen utklädd till svep). */
+  thinAnswerAtFloor: number;
+  /** GRÄNSTEST miss-massa: strax ÖVER taket ⇒ null... */
+  missNullJustOver: number;
+  /** ...och strax UNDER ⇒ svar med junk-nyckeln synlig i unattributed. */
+  missAnswerJustUnder: number;
+  /** Konsistens-invariant (INTE oberoende upptäckt — beräkningen delar väg
+   *  med baselineEqualsPrior): null-vägens katalog ger typ-priorns pick. */
+  nullFallsBackToBaseline: number;
+}
+
+/** Kör rollup-facit:et: deterministiska scenarier per värld, med BÅDA
+ *  tröskelgrindarna testade från bägge sidor om sina gränser. Varje räknare
+ *  ska nå `worlds`. */
+export function runRollupFacit(seeds: number[]): RollupFacitReport {
+  let cleanAgrees = 0;
+  let garbleAgrees = 0;
+  let thinNullJustBelow = 0;
+  let thinAnswerAtFloor = 0;
+  let missNullJustOver = 0;
+  let missAnswerJustUnder = 0;
+  let nullFallsBackToBaseline = 0;
+  const VISITS_PER_SECTION = 800;
+  for (const seed of seeds) {
+    const w = makeWorld(seed);
+    const sections = w.content.sections.map((s) => ({
+      id: s.id,
+      type: s.type,
+      heading: s.heading,
+    }));
+    const proof = sections.filter((s) => s.id in w.observed);
+    const k = proof.length;
+    const cleanObs: SectionObservation[] = proof.map((s) => ({
+      heading: s.heading,
+      visits: VISITS_PER_SECTION,
+      engagement: w.observed[s.id],
+    }));
+    const directPick = floorMovePick(
+      generateCandidates(w.content, { sectionWeight: w.observed }),
+    );
+    const pickVia = (weights: Record<string, number>) =>
+      floorMovePick(generateCandidates(w.content, { sectionWeight: weights }));
+
+    // 1) Ren rubrik-keyad input — upplösningen ska vara förlustfri.
+    const clean = rollupEngagement(sections, cleanObs);
+    if (clean && pickVia(clean.sectionWeight) === directPick) cleanAgrees++;
+
+    // 2) Suffix-drift på census-sidan — mekanism-kontroll av prefix-vägen
+    //    (se fältdoc: nålen är per konstruktion ett prefix; kan inte fallera
+    //    på join-nivån — det som mäts är att HELA rollup-vägen bär den).
+    const garbled = rollupEngagement(
+      sections,
+      cleanObs.map((o) => ({ ...o, heading: `${o.heading} spring update v2` })),
+    );
+    if (garbled && pickVia(garbled.sectionWeight) === directPick) garbleAgrees++;
+
+    // 3) GRÄNSTEST tunn data: fördela total = golv−1 respektive golv exakt
+    //    över sektionerna — grinden ska flippa på EXAKT gränsen, varje värld.
+    const spread = (total: number): SectionObservation[] =>
+      proof.map((s, i) => ({
+        heading: s.heading,
+        visits: Math.floor(total / k) + (i < total % k ? 1 : 0),
+        engagement: w.observed[s.id],
+      }));
+    if (rollupEngagement(sections, spread(MIN_VISITS - 1)) === null) thinNullJustBelow++;
+    if (rollupEngagement(sections, spread(MIN_VISITS)) !== null) thinAnswerAtFloor++;
+
+    // 4) GRÄNSTEST miss-massa: junk-besök som lägger massan strax ÖVER
+    //    respektive strax UNDER taket (C = ren massa ⇒ junk C+800 ger
+    //    (C+800)/(2C+800) > 1/2; junk C−800 ger < 1/2). Under-fallet ska
+    //    svara OCH lista junk-nyckeln som okrediterbar.
+    const C = VISITS_PER_SECTION * k;
+    const JUNK = "Cookie consent preferences";
+    const missOver = rollupEngagement(sections, [
+      ...cleanObs,
+      { heading: JUNK, visits: C + VISITS_PER_SECTION, engagement: 0.1 },
+    ]);
+    if (missOver === null) {
+      missNullJustOver++;
+      if (floorMovePick(generateCandidates(w.content)) === w.priorSectionId)
+        nullFallsBackToBaseline++;
+    }
+    const missUnder = rollupEngagement(sections, [
+      ...cleanObs,
+      { heading: JUNK, visits: C - VISITS_PER_SECTION, engagement: 0.1 },
+    ]);
+    if (
+      missUnder !== null &&
+      missUnder.unattributed.includes(JUNK) &&
+      pickVia(missUnder.sectionWeight) === directPick
+    )
+      missAnswerJustUnder++;
+  }
+  return {
+    worlds: seeds.length,
+    cleanAgrees,
+    garbleAgrees,
+    thinNullJustBelow,
+    thinAnswerAtFloor,
+    missNullJustOver,
+    missAnswerJustUnder,
+    nullFallsBackToBaseline,
   };
 }
 
