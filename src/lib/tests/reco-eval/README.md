@@ -36,18 +36,35 @@ Every world runs through the **real** catalog → floor pipeline
 | number | meaning |
 | --- | --- |
 | **baseline hit-rate** | today's engine (floor's top `move_up` = the type-prior) recovering gold — expected ≈ chance |
-| **oracle hit-rate** | `argmax(observed)` recovering gold — the best a behaviour engine could do on the same noisy signal (the **ceiling**) |
-| **headroom** | ceiling − floor — the measured, non-circular room step 7 must close |
-| **behaviour hit-rate** (step 7) | the same floor with the `BehaviorInput` seat fed `observed` — must sit at the ceiling |
-| **headroom closed** | (behaviour − baseline) / headroom — step 7's success metric |
+| **oracle hit-rate** | `argmax(observed)` recovering gold — the **reference ceiling** (an argmax with alphabetical tiebreak; at saturated/near-ties the seat's prior-tiebreak can win the coin flip, so the seat may land ±1pp *above* it and `headroomClosed` can exceed 100%) |
+| **headroom** | ceiling − floor — the measured, non-circular room a behaviour engine can win |
+| **behaviour hit-rate** (step 7) | the same floor with the `BehaviorInput` seat fed `observed` — must reach the reference ceiling |
+| **headroom closed** | (behaviour − baseline) / headroom |
+
+**Honest reading of the step-7 number (review finding 2026-08-05):** the seat is
+fed a *perfect* per-section signal — the exact map the oracle argmaxes over —
+so reaching the ceiling is expected **by construction**. What the number proves
+is a **plumbing test**: the real `generateCandidates → applyProbe →
+floorSelection` machinery transports the signal losslessly (and the gain is
+strong enough for behaviour to lead over the prior). What it does **not** prove
+is that real engagement data predicts conversions — that is steps 8–10,
+measured on this same rig when the rollup's imperfect input (aggregation,
+join coverage, thin data) replaces the oracle-perfect one.
 
 Step 7's seat (`generateCandidates(content, {sectionWeight})`) is gated here on
 three invariants besides the hit-rate: **byte-identical** default (no input →
 same catalog), **rerank-only** (behaviour never adds/removes a candidate —
-`catalogDrift === 0`), and insert candidates **anchored to their source
-section's** engagement. `BEHAVIOR_GAIN` was chosen by the CLI's gain sweep
-(`gainSweep`) — measured, not opined: hit-rate is monotone in gain and saturates
-at the oracle; 40 is within noise of 100 while keeping the prior as tiebreak.
+`catalogDrift === 0`), and **term anchoring measured per candidate**
+(`anchorViolationCount === 0`): every world's catalog is diffed with vs without
+behaviour — moves carry exactly their target section's term, heading-inserts
+their section's term, a section-bound trust line its home section's term, and
+the "body" line exactly 0. The worlds contain both insert classes (a bound
+trust line + a "body" line), and `extract.ts` now binds a signal's home section
+on real pages (it used to hard-code `"body"`, which made insert anchoring dead
+code in production — the review caught it). `BEHAVIOR_GAIN` was chosen by the
+CLI's gain sweep (`gainSweep`) — measured, not opined: hit-rate rises with gain
+up to saturation (beyond it differences are seed noise, ±1pp between seed
+bases); 40 sits on the plateau while keeping the prior as tiebreak.
 
 Plus a **D1/D2 no-fabrication** tally: over every randomized world, each
 candidate the catalog can emit is checked to be in the production vocabulary

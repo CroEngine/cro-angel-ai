@@ -92,12 +92,20 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
    [0,1] ADDERAS på priorn (beteendet leder, priorn bryter lika). Byte-identisk
    default (låst av test), omranka-ENDAST (katalog-driften grindad till 0 — beteende
    kan aldrig skapa/ta bort ett drag, D1-vakt), och ÄVEN `insert_snippet`-raderna
-   förankrade till sin källsektions vikt (kritikerns fix). `BEHAVIOR_GAIN = 40`
-   **facit-valt via gain-svep** (0→29,6 %, 5→69,3 %, 20→75,4 %, 40→76,3 %,
-   100→76,4 % — monotont, mättat vid taket). Facit-utfall: sätet återfinner dolda
-   sanningen på **76,3 % ≈ orakel-taket (75,8 %) ⇒ hela steg 6-headroom:et stängt
-   (~101 %)**. Rollupen (steg 8) äger datakvaliteten: tunn data ⇒ null ⇒ katalogen
-   anropas utan säte, precis som idag. [D3]
+   förankrade till sin källsektions vikt — granskningens fynd: `extract.ts`
+   hårdkodade hemvisten `"body"` så den förankringen var död kod i produktion;
+   nu binder extraktionen raden till sektionen som ordagrant bär den (annars
+   ärlig `"body"` = neutral), och facit:et grindar förankringen per kandidat
+   (`anchorViolationCount === 0`). `BEHAVIOR_GAIN = 40` **facit-valt via
+   gain-svep** (0→29,6 %, 5→69,3 %, 20→75,4 %, 40→76,3 %, 100→76,4 % — stiger
+   till mättnad; platån ovanför är frö-brus, 40 ligger på platån). **Ärlig
+   läsning av facit-utfallet:** sätet matat med perfekt signal når referens-
+   taket (76,3 % ≈ 75,8 %) — det är ett **RÖR-TEST by construction** som bevisar
+   att kedjan bär signalen förlustfritt och att styrkan räcker för att beteendet
+   ska leda; att RIKTIG rollup-data förutsäger konvertering bevisas i steg 8–10
+   på samma rigg, när ofullkomlig input (aggregering, join-täckning, tunn data)
+   ersätter den perfekta. Rollupen (steg 8) äger datakvaliteten: tunn data ⇒
+   null ⇒ katalogen anropas utan säte, precis som idag. [D3]
 8. **Ren engagemangs-rollup** — datamotsvarigheten till `PROOF_TYPE_WEIGHT`. Tunn
    data → null (ingen fantomvikt). Hög join-miss → också null (ingen skev
    delbild). [D3, D2]

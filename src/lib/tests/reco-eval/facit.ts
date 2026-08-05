@@ -19,6 +19,7 @@
 // slumpade strukturer så ett brott aldrig ens når validatorn.
 
 import {
+  BEHAVIOR_GAIN,
   candidateToOp,
   generateCandidates,
   type BehaviorInput,
@@ -83,6 +84,11 @@ export interface WorldScore {
   /** Beteende-katalogen har EXAKT samma kandidater (id + detail) som den
    *  beteende-blinda — sätet får bara omranka, aldrig lägga till/ta bort. */
   behaviorSameCatalog: boolean;
+  /** Term-förankringen: varje kandidats poäng-delta (med − utan beteende) är
+   *  EXAKT sin förankringssektions term — flyttar OCH inserts. Den bundna
+   *  trust-raden bär sin sektions term; "body"-raden är neutral. Detta är
+   *  grinden som gör insert-förankringen MÄTT, inte bara påstådd. */
+  anchorViolations: string[];
   fabrication: FabricationCheck;
 }
 
@@ -98,9 +104,20 @@ function floorMovePick(candidates: Candidate[]): string | null {
   return topMove ? topMove.targetId : null;
 }
 
+/** Kandidatens förankringssektion: mv → målet; insh → sektionen ur id:t;
+ *  ins → signalens hemvist via detail-matchning (simulatorns texter är korta
+ *  och ostädade, så detail == signaltext). null ⇒ ingen förankring (term 0). */
+function anchorSection(c: Candidate, w: World): string | null {
+  if (c.kind === "move_up") return c.targetId;
+  if (c.id.startsWith("insh-")) return c.id.slice("insh-".length);
+  const sig = w.content.trustSignals.find((t) => t.text === c.detail);
+  if (!sig) return null;
+  return sig.section in w.observed ? sig.section : null;
+}
+
 /** Poängsätt EN värld: kör den riktiga katalog→golv-kedjan utan och med
  *  beteende-sätet, läs bägge pickarna, räkna orakel-taket och kolla
- *  icke-fabricerings- + samma-katalog-invarianterna. */
+ *  icke-fabricerings-, samma-katalog- och term-förankrings-invarianterna. */
 export function scoreWorld(w: World, behaviorGain?: number): WorldScore {
   const candidates = generateCandidates(w.content);
   const behavior: BehaviorInput = { sectionWeight: w.observed, gain: behaviorGain };
@@ -114,6 +131,19 @@ export function scoreWorld(w: World, behaviorGain?: number): WorldScore {
   const oraclePick = argmaxKey(w.observed);
   const behaviorPick = floorMovePick(behaviorCandidates);
   const sectionIds = new Set(w.content.sections.map((s) => s.id));
+
+  // Term-förankringen: delta == gain·observerat för kandidatens sektion, 0 för
+  // oförankrade (t.ex. "body"-radens insert). Mätt mot BÄGGE katalogerna.
+  const gain = behaviorGain ?? BEHAVIOR_GAIN;
+  const behScore = new Map(behaviorCandidates.map((c) => [c.id, c.score]));
+  const anchorViolations: string[] = [];
+  for (const c of candidates) {
+    const sec = anchorSection(c, w);
+    const expected = sec !== null && sec in w.observed ? gain * w.observed[sec] : 0;
+    const delta = (behScore.get(c.id) ?? Number.NaN) - c.score;
+    if (!(Math.abs(delta - expected) < 1e-9))
+      anchorViolations.push(`${c.id}: delta ${delta} ≠ förväntad term ${expected}`);
+  }
   return {
     seed: w.seed,
     k: Object.keys(w.hiddenValue).length,
@@ -126,6 +156,7 @@ export function scoreWorld(w: World, behaviorGain?: number): WorldScore {
     behaviorPick,
     behaviorHit: behaviorPick === w.goldSectionId,
     behaviorSameCatalog: catalogKey(candidates) === catalogKey(behaviorCandidates),
+    anchorViolations,
     fabrication: assertNoFabrication(candidates, w.pageText, sectionIds),
   };
 }
@@ -138,9 +169,17 @@ export interface FacitReport {
   oracleHitRate: number;
   /** tak − golv: det mätta, icke-cirkulära headroom:et för steg 7. */
   headroom: number;
-  /** Steg 7: beteende-sätets träffgrad — ska ligga vid taket, inte golvet. */
+  /** Steg 7: beteende-sätets träffgrad. OBS ärlig läsning: sätet matas här med
+   *  ett PERFEKT per-sektion-signal (samma karta oraklet argmax:ar), så att den
+   *  når referens-taket är väntat BY CONSTRUCTION — detta är ett RÖR-TEST som
+   *  bevisar att den riktiga katalog→golv-kedjan bär signalen förlustfritt och
+   *  att gain-styrkan räcker för att beteendet ska leda över priorn. Att RIKTIG
+   *  rollup-data förutsäger konvertering bevisas inte här — det är steg 8–10,
+   *  mätta på samma rigg när rollupens ofullkomliga input ersätter den perfekta. */
   behaviorHitRate: number;
-  /** Hur mycket av headroom:et sätet stängt: (beteende−golv)/(tak−golv). */
+  /** (beteende−golv)/(tak−golv). Kan överstiga 1: referens-taket är argmax med
+   *  alfabetiskt tiebreak; vid mätta/nära-lika observationer bryter sätet med
+   *  priorn i stället och kan vinna slantsinglingen (±1 pp tie-brus). */
   headroomClosed: number;
   /** mean(1/k): slump-referensen baslinjen bör ligga på. */
   chanceRate: number;
@@ -148,6 +187,8 @@ export interface FacitReport {
   baselineEqualsPrior: number;
   /** Världar där beteende-katalogen inte var samma kandidat-mängd (måste vara 0). */
   catalogDrift: number;
+  /** Totalt antal term-förankringsbrott (flyttar + inserts) — måste vara 0. */
+  anchorViolationCount: number;
   /** Totalt antal D1/D2-brott över alla världar (måste vara 0). */
   fabricationViolations: number;
   scores: WorldScore[];
@@ -167,6 +208,7 @@ export function runFacit(seeds: number[], behaviorGain?: number): FacitReport {
   const headroom = oracleHitRate - baselineHitRate;
   const baselineEqualsPrior = scores.filter((s) => s.baselinePick === s.priorSectionId).length;
   const catalogDrift = scores.filter((s) => !s.behaviorSameCatalog).length;
+  const anchorViolationCount = scores.reduce((a, s) => a + s.anchorViolations.length, 0);
   const fabricationViolations = scores.reduce((a, s) => a + s.fabrication.violations.length, 0);
   return {
     worlds: scores.length,
@@ -178,13 +220,17 @@ export function runFacit(seeds: number[], behaviorGain?: number): FacitReport {
     chanceRate,
     baselineEqualsPrior,
     catalogDrift,
+    anchorViolationCount,
     fabricationViolations,
     scores,
   };
 }
 
 /** Gain-svepet som VALDE BEHAVIOR_GAIN (öppet beslut → mätt beslut): träffgrad
- *  per gain-värde, samma världar. gain 0 ≡ baslinjen; stort gain → taket. */
+ *  per gain-värde, samma världar. gain 0 ≡ baslinjen; träffgraden stiger med
+ *  gain UPP TILL mättnad — ovanför mättnad är skillnaderna frö-brus (±1 pp
+ *  mellan fröbaser), så "40 vs 100" avgörs av närhet-till-mättnad, inte av
+ *  vilken som råkar ligga högst på en enskild bas. */
 export function gainSweep(seeds: number[], gains: number[]): { gain: number; hitRate: number }[] {
   return gains.map((gain) => ({ gain, hitRate: runFacit(seeds, gain).behaviorHitRate }));
 }
