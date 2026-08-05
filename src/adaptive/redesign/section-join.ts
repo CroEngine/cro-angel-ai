@@ -21,6 +21,13 @@
  *  blanksteg, trim, gemener. */
 export const normHeadingKey = (s: string): string => s.replace(/\s+/g, " ").trim().toLowerCase();
 
+/** Census-typer som ALDRIG bär krediterbart engagemang — eval:en filtrerar
+ *  bort dem före joinen och rollupen MÅSTE göra detsamma (granskningsfynd
+ *  2026-08-05: utan filtret kunde en footer-rubriks observation vinna exakt-
+ *  passet och sno krediten från en driftad innehållsrubrik). EN konstant,
+ *  delad, så domarna aldrig glider isär. */
+export const NON_CONTENT_SECTION_TYPES = new Set(["nav", "header", "footer", "aside"]);
+
 export type JoinVerdict = "UNIK" | "FLERTYDIG" | "OUPPLÖST";
 
 export interface SectionJoin {

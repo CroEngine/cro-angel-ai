@@ -20,7 +20,7 @@
 // ALDRIG max-normaliserade: min-max hade blåst upp brus-skillnader till full
 // skala (steg 6-fyndet); sätets gain äger skalningen.
 
-import { claimJoins, normHeadingKey } from "./section-join";
+import { NON_CONTENT_SECTION_TYPES, claimJoins, normHeadingKey } from "./section-join";
 
 /** En runtime-observation för EN census-sektion (steg 9:s event-aggregat):
  *  rubriknyckeln censusen såg, hur många besök som exponerades för sektionen
@@ -31,6 +31,18 @@ export interface SectionObservation {
   visits: number;
   /** Engagemangsandel i [0,1] av sektionens exponerade besök. */
   engagement: number;
+  /** Censusens sektionstyp när avsändaren vet den. Icke-innehåll (nav/header/
+   *  footer/aside) SLÄPPS — eval:en (steg 5) exkluderade dem ur joinen, och
+   *  utan filtret kunde en footer-rubrik sno kredit (granskningsfynd
+   *  2026-08-05). Utelämnad typ = innehåll (A3-censusen förfiltrerar redan
+   *  via closest("header,nav,footer,aside")). */
+  type?: string;
+  /** Antal census-INSTANSER bakom nyckeln på sidan (avsändaren ser censusen).
+   *  > 1 ⇒ äkta dubblettrubriker ⇒ krediteras ALDRIG (samma dom som eval:ens
+   *  FLERTYDIG — granskningsfynd 2026-08-05: poolningen dolde annars
+   *  instansstrukturen och krediterade det eval:en mätte som miss).
+   *  Utelämnad = 1. */
+  instances?: number;
 }
 
 export interface RollupOptions {
@@ -60,6 +72,12 @@ export interface EngagementRollup {
   joinMissMass: number;
   /** Observationer (rubriker) som inte kunde krediteras — diagnostik. */
   unattributed: string[];
+  /** Besök i bortsläppta icke-innehålls-observationer (nav/footer-klassen) —
+   *  utanför ALLA nämnare (eval:ens semantik), men aldrig osynliga. */
+  droppedNonContentVisits: number;
+  /** Besök vars rubrik normaliserar till tomt — okrediterbara per definition,
+   *  räknas i miss-massan men kan inte listas per rubrik (diagnostik-fyndet). */
+  headinglessVisits: number;
 }
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -75,8 +93,18 @@ export function rollupEngagement(
   const minVisits = opts.minVisits ?? MIN_VISITS;
   const maxMiss = opts.maxJoinMissMass ?? MAX_JOIN_MISS_MASS;
 
-  const clean = observations.filter(
+  const valid = observations.filter(
     (o) => Number.isFinite(o.visits) && o.visits > 0 && Number.isFinite(o.engagement),
+  );
+  // Icke-innehålls-observationer (nav/header/footer/aside) SLÄPPS före alla
+  // nämnare — samma dom som eval:ens innehållsfilter. De är inte "miss"
+  // (inget engagemang att förlora), de är utanför mätningen — men synliga i
+  // diagnostiken så en fel-taggande avsändare inte försvinner tyst.
+  const droppedNonContentVisits = valid
+    .filter((o) => o.type !== undefined && NON_CONTENT_SECTION_TYPES.has(o.type))
+    .reduce((a, o) => a + o.visits, 0);
+  const clean = valid.filter(
+    (o) => o.type === undefined || !NON_CONTENT_SECTION_TYPES.has(o.type),
   );
   const totalVisits = clean.reduce((a, o) => a + o.visits, 0);
   if (totalVisits < minVisits) return null; // tunn data — ingen fantomvikt
@@ -85,24 +113,38 @@ export function rollupEngagement(
   // flera observationer med samma normaliserade nyckel (mobil/desktop- eller
   // dagsbuckets) är SAMMA logiska sektion — besöksviktat medel, aldrig
   // dubblettinstanser in i joinen (två lika nycklar hade dömts FLERTYDIG som
-  // om sidan bar två sektioner). Äkta samma-rubrik-dubbletter på EN sida
-  // poolas också hit — och extract.ts dedupar dem till ETT sektions-id med
-  // samma första-förekomst-semantik, så krediteringen förblir id-konsistent.
-  const byKey = new Map<string, { heading: string; visits: number; engagedVisits: number }>();
+  // om sidan bar två sektioner). ÄKTA samma-rubrik-dubbletter på EN sida är
+  // en annan sak: avsändaren ser censusen och rapporterar `instances`; > 1 ⇒
+  // nyckeln krediteras aldrig (eval:ens FLERTYDIG-dom — granskningsfix
+  // 2026-08-05: poolningen dolde annars instansstrukturen).
+  const byKey = new Map<
+    string,
+    { heading: string; visits: number; engagedVisits: number; maxInstances: number }
+  >();
+  let headinglessVisits = 0;
   for (const o of clean) {
     const key = normHeadingKey(o.heading);
-    if (!key) continue;
-    const acc = byKey.get(key) ?? { heading: o.heading, visits: 0, engagedVisits: 0 };
+    if (!key) {
+      headinglessVisits += o.visits;
+      continue;
+    }
+    const acc =
+      byKey.get(key) ?? { heading: o.heading, visits: 0, engagedVisits: 0, maxInstances: 1 };
     acc.visits += o.visits;
     acc.engagedVisits += o.visits * clamp01(o.engagement);
+    acc.maxInstances = Math.max(acc.maxInstances, Math.floor(o.instances ?? 1));
     byKey.set(key, acc);
   }
-
-  // Upplösningen: modellsektioner → unika census-nycklar (delade regeln).
-  const { claimedBy } = claimJoins(
-    sections,
-    [...byKey.values()].map((k) => k.heading),
-  );
+  // Upplösningen: modellsektioner → census-nycklar genom den delade regeln.
+  // Dubblettinstans-nycklar går in som TVÅ instanser i join-listan så
+  // claimJoins själv dömer FLERTYDIG — exakt samma dom (och samma påverkan på
+  // ANDRA sektioners prefix-upplösning) som eval:ens instans-lista gav.
+  const joinHeadings: string[] = [];
+  for (const agg of byKey.values()) {
+    joinHeadings.push(agg.heading);
+    if (agg.maxInstances > 1) joinHeadings.push(agg.heading);
+  }
+  const { claimedBy } = claimJoins(sections, joinHeadings);
 
   // Kreditera varje nyckel till sin ÄGANDE sektion (injektivt).
   const perSection = new Map<string, { visits: number; engagedVisits: number }>();
@@ -129,5 +171,13 @@ export function rollupEngagement(
   for (const [aId, acc] of perSection)
     sectionWeight[aId] = acc.visits > 0 ? clamp01(acc.engagedVisits / acc.visits) : 0;
 
-  return { sectionWeight, totalVisits, attributedMass, joinMissMass, unattributed };
+  return {
+    sectionWeight,
+    totalVisits,
+    attributedMass,
+    joinMissMass,
+    unattributed,
+    droppedNonContentVisits,
+    headinglessVisits,
+  };
 }

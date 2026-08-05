@@ -132,6 +132,52 @@ describe("rollupEngagement — kreditering genom delade joinen", () => {
     expect(r.sectionWeight["sec-3-pricing"]).toBe(1);
   });
 
+  it("icke-innehålls-observationer (footer-klassen) släpps FÖRE joinen — kan aldrig sno kredit", () => {
+    // Granskningsfynd 2026-08-05: en footer-rubrik vars nyckel exakt-matchar
+    // kunde annars vinna över en driftad innehållsrubrik. Eval:en filtrerar
+    // innehåll före joinen — rollupen måste döma likadant.
+    const sections = [{ id: "sec-2-pricing", type: "pricing", heading: "Simple honest pricing" }];
+    const r = rollupEngagement(sections, [
+      { heading: "Simple honest pricing", visits: 900, engagement: 0.05, type: "footer" },
+      { heading: "Simple honest pricing plans and more", visits: 1100, engagement: 0.9 },
+    ])!;
+    expect(r).not.toBeNull();
+    // Footern är utanför alla nämnare men synlig i diagnostiken; innehålls-
+    // observationen vinner via prefix-passet med SIN engagemang.
+    expect(r.droppedNonContentVisits).toBe(900);
+    expect(r.totalVisits).toBe(1100);
+    expect(r.sectionWeight["sec-2-pricing"]).toBeCloseTo(0.9, 10);
+  });
+
+  it("äkta dubblettinstanser (instances > 1) krediteras ALDRIG — eval:ens FLERTYDIG-dom", () => {
+    // Avsändaren ser censusen: två sektioner bär samma rubrik. Poolningen får
+    // inte dölja instansstrukturen och kreditera det eval:en mätte som miss.
+    const r = rollupEngagement(
+      SECTIONS,
+      [
+        obs("Loved by teams everywhere", 700, 0.9),
+        { heading: "Simple honest pricing", visits: 500, engagement: 0.4, instances: 2 },
+      ],
+      { maxJoinMissMass: 0.6 },
+    )!;
+    expect(r).not.toBeNull();
+    expect("sec-3-pricing" in r.sectionWeight).toBe(false);
+    expect(r.sectionWeight["sec-2-testimonials"]).toBeCloseTo(0.9, 10);
+    expect(r.joinMissMass).toBeCloseTo(500 / 1200, 10);
+    expect(r.unattributed).toContain("Simple honest pricing");
+  });
+
+  it("rubriklösa observationer räknas i miss-massan OCH syns i diagnostiken", () => {
+    const r = rollupEngagement(
+      SECTIONS,
+      [obs("Loved by teams everywhere", 900, 0.8), obs("   ", 300, 0.5)],
+      { maxJoinMissMass: 0.5 },
+    )!;
+    expect(r).not.toBeNull();
+    expect(r.headinglessVisits).toBe(300);
+    expect(r.joinMissMass).toBeCloseTo(0.25, 10);
+  });
+
   it("default-konstanterna är de dokumenterade (planbeslut: konservativt)", () => {
     expect(MIN_VISITS).toBe(1000);
     expect(MAX_JOIN_MISS_MASS).toBe(0.5);
