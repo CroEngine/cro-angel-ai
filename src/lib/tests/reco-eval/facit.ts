@@ -21,6 +21,7 @@
 import {
   candidateToOp,
   generateCandidates,
+  type BehaviorInput,
   type Candidate,
 } from "../../../adaptive/redesign/candidates";
 import { applyProbe, floorSelection } from "../../../adaptive/redesign/select";
@@ -76,23 +77,42 @@ export interface WorldScore {
   /** argmax(observerat) — beteende-taket på samma brusiga signal. */
   oraclePick: string;
   oracleHit: boolean;
+  /** Steg 7: golvets move_up när sätet matas med w.observed. */
+  behaviorPick: string | null;
+  behaviorHit: boolean;
+  /** Beteende-katalogen har EXAKT samma kandidater (id + detail) som den
+   *  beteende-blinda — sätet får bara omranka, aldrig lägga till/ta bort. */
+  behaviorSameCatalog: boolean;
   fabrication: FabricationCheck;
 }
 
-/** Poängsätt EN värld: kör den riktiga katalog→golv-kedjan, läs baslinjens pick,
- *  räkna orakel-taket och kolla icke-fabricerings-invarianten. */
-export function scoreWorld(w: World): WorldScore {
-  const candidates = generateCandidates(w.content);
-  // Ingen live-DOM offline, så varje kandidat är "applicerbar" (proben är ett
-  // säkerhetsfilter, inte en rankare — floorSelection rankar ändå på poäng).
+/** Golvets högst rankade move_up ur en katalog (proben är ett säkerhetsfilter,
+ *  inte en rankare — offline utan live-DOM är varje kandidat "applicerbar"). */
+function floorMovePick(candidates: Candidate[]): string | null {
   const menu = applyProbe(
     candidates,
     candidates.map((c) => ({ id: c.id, applicable: true })),
   );
   const sel = floorSelection(menu);
   const topMove = sel?.ordered.find((c) => c.kind === "move_up") ?? null;
-  const baselinePick = topMove ? topMove.targetId : null;
+  return topMove ? topMove.targetId : null;
+}
+
+/** Poängsätt EN värld: kör den riktiga katalog→golv-kedjan utan och med
+ *  beteende-sätet, läs bägge pickarna, räkna orakel-taket och kolla
+ *  icke-fabricerings- + samma-katalog-invarianterna. */
+export function scoreWorld(w: World, behaviorGain?: number): WorldScore {
+  const candidates = generateCandidates(w.content);
+  const behavior: BehaviorInput = { sectionWeight: w.observed, gain: behaviorGain };
+  const behaviorCandidates = generateCandidates(w.content, behavior);
+  const catalogKey = (cs: Candidate[]) =>
+    cs
+      .map((c) => `${c.id}::${c.detail}`)
+      .sort()
+      .join("\n");
+  const baselinePick = floorMovePick(candidates);
   const oraclePick = argmaxKey(w.observed);
+  const behaviorPick = floorMovePick(behaviorCandidates);
   const sectionIds = new Set(w.content.sections.map((s) => s.id));
   return {
     seed: w.seed,
@@ -103,6 +123,9 @@ export function scoreWorld(w: World): WorldScore {
     baselineHit: baselinePick === w.goldSectionId,
     oraclePick,
     oracleHit: oraclePick === w.goldSectionId,
+    behaviorPick,
+    behaviorHit: behaviorPick === w.goldSectionId,
+    behaviorSameCatalog: catalogKey(candidates) === catalogKey(behaviorCandidates),
     fabrication: assertNoFabrication(candidates, w.pageText, sectionIds),
   };
 }
@@ -115,36 +138,55 @@ export interface FacitReport {
   oracleHitRate: number;
   /** tak − golv: det mätta, icke-cirkulära headroom:et för steg 7. */
   headroom: number;
+  /** Steg 7: beteende-sätets träffgrad — ska ligga vid taket, inte golvet. */
+  behaviorHitRate: number;
+  /** Hur mycket av headroom:et sätet stängt: (beteende−golv)/(tak−golv). */
+  headroomClosed: number;
   /** mean(1/k): slump-referensen baslinjen bör ligga på. */
   chanceRate: number;
   /** Världar där golvets flytt-pick == typ-priorn (måste vara ALLA). */
   baselineEqualsPrior: number;
+  /** Världar där beteende-katalogen inte var samma kandidat-mängd (måste vara 0). */
+  catalogDrift: number;
   /** Totalt antal D1/D2-brott över alla världar (måste vara 0). */
   fabricationViolations: number;
   scores: WorldScore[];
 }
 
 /** Kör facit:et över en frölista. Ren + deterministisk — samma frön in, samma
- *  rapport ut (hela skälet till att det kan vara ett committat test). */
-export function runFacit(seeds: number[]): FacitReport {
-  const scores = seeds.map((s) => scoreWorld(makeWorld(s)));
+ *  rapport ut (hela skälet till att det kan vara ett committat test).
+ *  `behaviorGain` är BARA för gain-svepet — produktionen kör default-gainen. */
+export function runFacit(seeds: number[], behaviorGain?: number): FacitReport {
+  const scores = seeds.map((s) => scoreWorld(makeWorld(s), behaviorGain));
   const n = scores.length || 1;
   const mean = (f: (s: WorldScore) => number) => scores.reduce((a, s) => a + f(s), 0) / n;
   const baselineHitRate = mean((s) => (s.baselineHit ? 1 : 0));
   const oracleHitRate = mean((s) => (s.oracleHit ? 1 : 0));
+  const behaviorHitRate = mean((s) => (s.behaviorHit ? 1 : 0));
   const chanceRate = mean((s) => 1 / s.k);
+  const headroom = oracleHitRate - baselineHitRate;
   const baselineEqualsPrior = scores.filter((s) => s.baselinePick === s.priorSectionId).length;
+  const catalogDrift = scores.filter((s) => !s.behaviorSameCatalog).length;
   const fabricationViolations = scores.reduce((a, s) => a + s.fabrication.violations.length, 0);
   return {
     worlds: scores.length,
     baselineHitRate,
     oracleHitRate,
-    headroom: oracleHitRate - baselineHitRate,
+    headroom,
+    behaviorHitRate,
+    headroomClosed: headroom > 0 ? (behaviorHitRate - baselineHitRate) / headroom : 0,
     chanceRate,
     baselineEqualsPrior,
+    catalogDrift,
     fabricationViolations,
     scores,
   };
+}
+
+/** Gain-svepet som VALDE BEHAVIOR_GAIN (öppet beslut → mätt beslut): träffgrad
+ *  per gain-värde, samma världar. gain 0 ≡ baslinjen; stort gain → taket. */
+export function gainSweep(seeds: number[], gains: number[]): { gain: number; hitRate: number }[] {
+  return gains.map((gain) => ({ gain, hitRate: runFacit(seeds, gain).behaviorHitRate }));
 }
 
 /** Standard-frösvepet, DEKORRELERAT med en prim-stride (samma idiom som

@@ -28,7 +28,7 @@ For each seeded world (`simulator.ts`):
 The engine only ever sees the noisy signal; the facit is the hidden truth. So
 "does behaviour beat the type-prior?" cannot be an artefact of the generator.
 
-## The three numbers (`facit.ts` → `runFacit`)
+## The numbers (`facit.ts` → `runFacit`)
 
 Every world runs through the **real** catalog → floor pipeline
 (`generateCandidates → applyProbe → floorSelection`), never a re-implementation:
@@ -38,6 +38,16 @@ Every world runs through the **real** catalog → floor pipeline
 | **baseline hit-rate** | today's engine (floor's top `move_up` = the type-prior) recovering gold — expected ≈ chance |
 | **oracle hit-rate** | `argmax(observed)` recovering gold — the best a behaviour engine could do on the same noisy signal (the **ceiling**) |
 | **headroom** | ceiling − floor — the measured, non-circular room step 7 must close |
+| **behaviour hit-rate** (step 7) | the same floor with the `BehaviorInput` seat fed `observed` — must sit at the ceiling |
+| **headroom closed** | (behaviour − baseline) / headroom — step 7's success metric |
+
+Step 7's seat (`generateCandidates(content, {sectionWeight})`) is gated here on
+three invariants besides the hit-rate: **byte-identical** default (no input →
+same catalog), **rerank-only** (behaviour never adds/removes a candidate —
+`catalogDrift === 0`), and insert candidates **anchored to their source
+section's** engagement. `BEHAVIOR_GAIN` was chosen by the CLI's gain sweep
+(`gainSweep`) — measured, not opined: hit-rate is monotone in gain and saturates
+at the oracle; 40 is within noise of 100 while keeping the prior as tiebreak.
 
 Plus a **D1/D2 no-fabrication** tally: over every randomized world, each
 candidate the catalog can emit is checked to be in the production vocabulary

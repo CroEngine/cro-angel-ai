@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { generateCandidates } from "../../../../adaptive/redesign/candidates";
 import { extractContentModel } from "../../../../adaptive/redesign/extract";
 
-import { assertNoFabrication, runFacit, seedSweep } from "../facit";
+import { assertNoFabrication, gainSweep, runFacit, seedSweep } from "../facit";
 import { makeWorld } from "../simulator";
 
 // Ett brett svep — deterministiskt, så talen är låsta; N stort nog att
@@ -46,12 +46,41 @@ describe("reco-eval facit — baslinjen mot dold sanning", () => {
     expect(REPORT.fabricationViolations).toBe(0);
   });
 
+  it("steg 7: beteende-sätet återfinner facit VID TAKET — headroom:et stängt", () => {
+    // Samma golv, samma världar — enda skillnaden är att sätet matas med det
+    // observerade engagemanget. Träffgraden ska lämna slumpnivån och lägga sig
+    // vid orakel-taket: det mätta headroom:et från steg 6 är stängt.
+    expect(REPORT.behaviorHitRate).toBeGreaterThan(0.7);
+    expect(REPORT.behaviorHitRate).toBeGreaterThanOrEqual(REPORT.oracleHitRate - 0.05);
+    expect(REPORT.behaviorHitRate).toBeGreaterThanOrEqual(REPORT.baselineHitRate + 0.3);
+    expect(REPORT.headroomClosed).toBeGreaterThan(0.85);
+  });
+
+  it("steg 7: sätet omrankar BARA — exakt samma kandidat-mängd som utan beteende", () => {
+    // D1-vakt: beteendedata får aldrig skapa eller ta bort ett drag, bara
+    // ändra ordningen mellan drag som ändå var lagliga.
+    expect(REPORT.catalogDrift).toBe(0);
+  });
+
+  it("steg 7: gain-svepet motiverar BEHAVIOR_GAIN — monotont mot taket, valet nära mättnad", () => {
+    const sweep = gainSweep(seedSweep(300), [0, 5, 40, 100]);
+    const at = (g: number) => sweep.find((s) => s.gain === g)!.hitRate;
+    // gain 0 ≡ baslinjen (sätet är neutralt utan styrka)...
+    expect(at(0)).toBeCloseTo(runFacit(seedSweep(300), 0).baselineHitRate, 10);
+    // ...styrkan lyfter mot taket...
+    expect(at(5)).toBeGreaterThan(at(0) + 0.25);
+    expect(at(40)).toBeGreaterThan(at(5));
+    // ...och det valda värdet är nära mättnad (mer styrka köper < 3 pp).
+    expect(Math.abs(at(100) - at(40))).toBeLessThan(0.03);
+  });
+
   it("reproducerbart — samma frön in, samma rapport ut", () => {
     const a = runFacit(seedSweep(300));
     const b = runFacit(seedSweep(300));
     expect(a.baselineHitRate).toBe(b.baselineHitRate);
     expect(a.oracleHitRate).toBe(b.oracleHitRate);
     expect(a.headroom).toBe(b.headroom);
+    expect(a.behaviorHitRate).toBe(b.behaviorHitRate);
     expect(a.fabricationViolations).toBe(b.fabricationViolations);
   });
 

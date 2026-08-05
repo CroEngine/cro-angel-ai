@@ -87,9 +87,17 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
 
 ### Block C — Beteende-motorn (varje steg grindat av facit)
 
-7. **Neutralt `behaviorWeight`-säte** i `generateCandidates` (byte-identisk
-   default). Förankra ÄVEN `insert_snippet`-raderna till sin sektions vikt —
-   annars når beteendet aldrig en-rad-under-heron-förmågan (kritikerns fix). [D3]
+7. **Neutralt `behaviorWeight`-säte** — ✅ **KLAR.** `generateCandidates(content,
+   behavior?)` med `BehaviorInput { sectionWeight, gain? }`: per-sektion-engagemang
+   [0,1] ADDERAS på priorn (beteendet leder, priorn bryter lika). Byte-identisk
+   default (låst av test), omranka-ENDAST (katalog-driften grindad till 0 — beteende
+   kan aldrig skapa/ta bort ett drag, D1-vakt), och ÄVEN `insert_snippet`-raderna
+   förankrade till sin källsektions vikt (kritikerns fix). `BEHAVIOR_GAIN = 40`
+   **facit-valt via gain-svep** (0→29,6 %, 5→69,3 %, 20→75,4 %, 40→76,3 %,
+   100→76,4 % — monotont, mättat vid taket). Facit-utfall: sätet återfinner dolda
+   sanningen på **76,3 % ≈ orakel-taket (75,8 %) ⇒ hela steg 6-headroom:et stängt
+   (~101 %)**. Rollupen (steg 8) äger datakvaliteten: tunn data ⇒ null ⇒ katalogen
+   anropas utan säte, precis som idag. [D3]
 8. **Ren engagemangs-rollup** — datamotsvarigheten till `PROOF_TYPE_WEIGHT`. Tunn
    data → null (ingen fantomvikt). Hög join-miss → också null (ingen skev
    delbild). [D3, D2]

@@ -11,13 +11,16 @@
 // Speglar structure-eval/run.ts: samma ren-funktion (runFacit) driver både
 // CLI:t här och CI-regressionstestet (reco-eval.test.ts).
 
-import { runFacit, seedSweep } from "./facit";
+import { BEHAVIOR_GAIN } from "../../../adaptive/redesign/candidates";
+
+import { gainSweep, runFacit, seedSweep } from "./facit";
 
 const N = Number(process.argv[2] ?? 2000);
 const BASE = Number(process.argv[3] ?? 1);
 const pct = (x: number) => (x * 100).toFixed(1) + "%";
 
-const r = runFacit(seedSweep(N, BASE));
+const seeds = seedSweep(N, BASE);
+const r = runFacit(seeds);
 
 console.log(`\n===== CRO RECOMMENDATION FACIT (syntetisk dold sanning + brus) =====`);
 console.log(`världar: ${r.worlds}  (prim-strid-frön från bas ${BASE})`);
@@ -30,11 +33,20 @@ console.log(``);
 console.log(`ORAKEL (bästa en beteende-motor KUNDE nå ur samma brusiga signal)`);
 console.log(`  träffgrad mot dold sanning : ${pct(r.oracleHitRate)}   <- taket`);
 console.log(``);
-console.log(`HEADROOM (tak - golv)        : ${pct(r.headroom)}   <- mätt, icke-cirkulärt utrymme för steg 7`);
+console.log(`BETEENDE-SÄTET (steg 7: samma golv, sätet matat med observerat, gain ${BEHAVIOR_GAIN})`);
+console.log(`  träffgrad mot dold sanning : ${pct(r.behaviorHitRate)}   <- ska ligga vid taket`);
+console.log(`  headroom stängt            : ${pct(r.headroomClosed)}  (av tak-golv ${pct(r.headroom)})`);
+console.log(`  katalog-drift              : ${r.catalogDrift}   <- sätet får bara omranka, aldrig ändra menyn`);
 console.log(``);
 console.log(
   `D1/D2 icke-fabricering      : ${r.fabricationViolations === 0 ? "PASS" : "FAIL"} (${r.fabricationViolations} brott över ${r.worlds} världar)`,
 );
+console.log(``);
+console.log(`GAIN-SVEP (facit väljer styrkan — gain 0 = baslinjen, stort = taket)`);
+for (const { gain, hitRate } of gainSweep(seeds, [0, 5, 10, 20, 40, 100])) {
+  const mark = gain === BEHAVIOR_GAIN ? "  <- vald (BEHAVIOR_GAIN)" : "";
+  console.log(`  gain ${String(gain).padStart(3)} : ${pct(hitRate)}${mark}`);
+}
 console.log(``);
 
 // Samma bommar som testet grindar på — CLI:t exitar !=0 om facit:et brister,
@@ -42,9 +54,12 @@ console.log(``);
 const ok =
   r.fabricationViolations === 0 &&
   r.baselineEqualsPrior === r.worlds &&
+  r.catalogDrift === 0 &&
   r.headroom > 0.2 &&
-  Math.abs(r.baselineHitRate - r.chanceRate) < 0.07;
+  Math.abs(r.baselineHitRate - r.chanceRate) < 0.07 &&
+  r.behaviorHitRate >= r.oracleHitRate - 0.05 &&
+  r.behaviorHitRate >= r.baselineHitRate + 0.3;
 console.log(
-  `VERDICT: ${ok ? "FACIT HÅLLER — baslinjen på slump, riktigt headroom ovanför, noll fabricering" : "UTANFÖR BOMMARNA — se raderna ovan"}`,
+  `VERDICT: ${ok ? "FACIT HÅLLER — baslinjen på slump, beteende-sätet vid taket, noll fabricering" : "UTANFÖR BOMMARNA — se raderna ovan"}`,
 );
 process.exit(ok ? 0 : 1);
