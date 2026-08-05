@@ -71,10 +71,31 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
 
 ### Block B — Linjalen (FÖRE motorn)
 
-5. **Bevisa sektions-joinen offline** — kör den *riktiga* `adaptive.js`-census via
-   `page.evaluate` mot den frusna DOM:en (inte en TS-omport — kritikerns fix) och
-   mät join-miss-täckningen. Kan runtime-engagemang återkopplas till `extract.ts`
-   sektions-id:n? Billigast att få veta nu. [D3]
+5. **Bevisa sektions-joinen offline** — ✅ **KLAR.** `scripts/section-join-eval/`:
+   den RIKTIGA skörde-censusen (`SECTIONS_SCRIPT` via `runPageAudit`, samma sträng
+   `adaptive-harvest.js` serverar besökare — ingen TS-omport) via `page.evaluate`
+   mot 28 frusna sidor, joinad mot produktionens sida A (**freeze-policyn: rå
+   `outerHTML` med dolda delträd kvar** — granskningsrundan fällde en första
+   version som mätte på synlig-DOM och därmed en renare modell än produktionens)
+   med serving-lokatorns tvåpass-regel (`applier.ts`: exakt rubrik, sedan
+   24-teckens prefix), atlas-graderingen UNIK/FLERTYDIG/OUPPLÖST och ett
+   injektivitetspass (en census-rubrik kan aldrig krediteras två id:n).
+   **Uppmätt 2026-08-05: KANDIDAT-flyttmålEN (sätets nycklar) joinar 81,0 %
+   unikt (17/21)** — rollupens grund håller; de fyra missarna är sektioner vars
+   rubriker censusen aldrig ser (exakt missklassen steg 8:s per-sida-null-grind
+   finns för). Alla A-sektioner 61,2 % (218/356), draget av ärliga fyndklasser
+   (inte join-regeln): extraktionen ÖVERSEGMENTERAR listsidor/ecommerce
+   (warby-parker 29 A-sektioner) och rå sida A bär fantomsektioner censusen
+   aldrig kan se (sector-alarms display:none-video); censusen UNDERSEGMENTERAR
+   vissa sidor (cancerfonden 2 av 13). 64,7 % av census-rubrikerna är
+   krediterbara under SAMMA tvåpass-regel — resten är förlorad signal, aldrig
+   felkreditering. CI-grind: rena join-regel-tester (inkl. injektivitet) +
+   chromium-replay över corpus/ med populationsgrindar (tyst korpuskrympning
+   fäller) och golv med uttalad diskret marginal (kandidat ≥ 0,70 tål en
+   flippad; total ≥ 0,62 ≈ 9 sektioners marginal). Kända gränser dokumenterade:
+   redesign-frysen renderar 390×844 mobilt (omvalidera på riktig freeze-utdata
+   i steg 8) och LLM-om-typaren kan byta id-SUFFIX (rubriken, join-nyckeln,
+   rörs aldrig — id:n slås upp via aktuell modell). `bun run join-eval`. [D3]
 6. **Bygg facit-riggen + baslinje** — ✅ **KLAR.** `src/lib/tests/reco-eval/` med
    dold-sanning+brus-simulatorn (ovan). Icke-cirkulär: sanningen dras oberoende av
    sektionstyp. Baslinjen (dagens `PROOF_TYPE_WEIGHT`, = golvets högsta `move_up` på
