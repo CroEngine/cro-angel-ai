@@ -93,20 +93,20 @@ export function segmentKeyForScope(scope: CohortScope): string | null {
 export function cohortBriefLines(scope: CohortScope): string[] {
   const key = scope.cohorts[0] ?? "";
   const lines = [
-    `Kohortcell: besökare i kohorten ${scope.cohorts.join("+")} — ${scope.visitorsInWindow} exponerade besökare senaste 30 dagarna; ett eget A/B når domslut på ~${scope.estimatedDaysToVerdict} dagar vid nuvarande trafik.`,
-    `Kohortens egen konvertering är ännu omätt (mål-join per kohort saknas) — designa på kohortens INTENT nedan; mätningen sker efteråt genom variantens kontrakt.`,
+    `Cohort cell: visitors in cohort ${scope.cohorts.join("+")} — ${scope.visitorsInWindow} exposed visitors in the last 30 days; a dedicated A/B reaches a verdict in ~${scope.estimatedDaysToVerdict} days at current traffic.`,
+    `The cohort's own conversion is not yet measured (per-cohort goal join missing) — design for the cohort's INTENT below; measurement happens afterward via the variant's contract.`,
   ];
   if (key === "src:linkedin") {
     lines.push(
-      "Designhypotes (märkt hypotes, inte data): LinkedIn-ankomster är ofta kollegor som utvärderar via delning — social proof och peer-bevis tidigt väger tyngre än featurelistor.",
+      "Design hypothesis (labeled hypothesis, not data): LinkedIn arrivals are often colleagues evaluating via a shared link — social proof and peer evidence early weigh more than feature lists.",
     );
   } else if (key === "src:google" || key === "src:bing") {
     lines.push(
-      "Designhypotes (märkt hypotes, inte data): sökankomster jämför alternativ — svara på 'varför just vi' med konkreta resultat före featurelistan.",
+      "Design hypothesis (labeled hypothesis, not data): search arrivals are comparing alternatives — answer 'why us' with concrete results before the feature list.",
     );
   } else if (key.startsWith("src:")) {
     lines.push(
-      `Designhypotes (märkt hypotes, inte data): ankomster från ${key.slice(4)} bär källans kontext — möt den referensramen i första skärmen i stället för generiskt budskap.`,
+      `Design hypothesis (labeled hypothesis, not data): arrivals from ${key.slice(4)} carry the source's context — meet that frame of reference in the first screen instead of a generic message.`,
     );
   }
   return lines;

@@ -66,8 +66,8 @@ describe("segmentKeyForScope + cohortBriefLines", () => {
   });
   it("briefen bär mätdata + tydligt märkt hypotes, aldrig påhittad konvertering", () => {
     const lines = cohortBriefLines(scope("src:linkedin"));
-    expect(lines[0]).toContain("9000 exponerade");
-    expect(lines[1]).toContain("omätt");
-    expect(lines.some((l) => l.includes("hypotes") && l.includes("peer-bevis"))).toBe(true);
+    expect(lines[0]).toContain("9000 exposed");
+    expect(lines[1]).toContain("not yet measured");
+    expect(lines.some((l) => l.includes("hypothesis") && l.includes("peer evidence"))).toBe(true);
   });
 });

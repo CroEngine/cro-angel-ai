@@ -95,7 +95,7 @@ export function generateCandidates(content: RedesignContentModel): Candidate[] {
       targetId: s.id,
       detail: "",
       score: typeWeight + trustBonus + Math.min(s.position, 8) * 0.05,
-      basis: `${s.type}${s.containsTrustSignals ? " [proof]" : ""} under folden (position ${s.position}): "${s.heading.slice(0, 60)}"`,
+      basis: `${s.type}${s.containsTrustSignals ? " [proof]" : ""} below the fold (position ${s.position}): "${s.heading.slice(0, 60)}"`,
     });
   }
 
@@ -116,7 +116,7 @@ export function generateCandidates(content: RedesignContentModel): Candidate[] {
       // Redan-ovanför-folden-signaler är svagare kandidater (redan synliga),
       // men inte noll: en rad DIREKT under rubriken slår en rad i sidfoten.
       score: weight - (t.aboveFold ? 1 : 0),
-      basis: `${t.type}${t.aboveFold ? " (redan ovanför folden)" : ""}: "${text}"`,
+      basis: `${t.type}${t.aboveFold ? " (already above the fold)" : ""}: "${text}"`,
     });
   });
 
@@ -136,7 +136,7 @@ export function generateCandidates(content: RedesignContentModel): Candidate[] {
       targetId: "hero",
       detail: text,
       score: (typeWeight || 1.5) * 0.6,
-      basis: `rubriken för ${s.type}-sektionen: "${text}"`,
+      basis: `heading of the ${s.type} section: "${text}"`,
     });
   }
 
@@ -147,12 +147,12 @@ export function generateCandidates(content: RedesignContentModel): Candidate[] {
  *  golvets) motivering — den blir ägar-/rapporttexten. */
 export function candidateToOp(c: Candidate, why: string): RedesignOp {
   return c.kind === "move_up"
-    ? { op: "move_up", targetId: c.targetId, detail: "Lyft bevissektionen högre på sidan", why }
+    ? { op: "move_up", targetId: c.targetId, detail: "Move this section higher on the page", why }
     : { op: "insert_snippet", targetId: "hero", detail: c.detail, why };
 }
 
 /** Golvets motivering när LLM-väljaren inte svarat — ärligt märkt som
  *  regelvald, aldrig som modellens omdöme. */
 export function floorWhy(c: Candidate): string {
-  return `Regelvald toppkandidat (deterministiskt golv): ${c.basis}. Socialt bevis ska synas där besökaren landar.`;
+  return `Rule-selected top candidate (deterministic floor): ${c.basis}.`;
 }
