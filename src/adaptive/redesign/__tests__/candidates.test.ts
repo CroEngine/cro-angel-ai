@@ -99,14 +99,14 @@ describe("generateCandidates", () => {
     expect(candidateToOp(move, "därför")).toEqual({
       op: "move_up",
       targetId: move.targetId,
-      detail: "Lyft bevissektionen högre på sidan",
+      detail: "Move this section higher on the page",
       why: "därför",
     });
     const insOp = candidateToOp(ins, floorWhy(ins));
     expect(insOp.op).toBe("insert_snippet");
     expect(insOp.targetId).toBe("hero");
     expect(insOp.detail).toBe(ins.detail);
-    expect(insOp.why).toContain("Regelvald toppkandidat");
+    expect(insOp.why).toContain("Rule-selected top candidate");
   });
 
   // Framer-klassen (ägarfynd fikajobs 2026-07-28): SSR renderar samma element

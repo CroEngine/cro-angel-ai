@@ -546,7 +546,7 @@ function proofInsertFallback(
       targetId: "hero",
       detail: text,
       why:
-        "Flytten fick inte plats utan att störa hjälteblocket — i stället lyfts sidans eget bevis ordagrant som en rad direkt under hjälterubriken. " +
+        "The move didn't fit without disturbing the hero block — instead the page's own proof is surfaced verbatim as a line directly below the hero heading. " +
         (firstMove.why || ""),
     },
     ...ops.filter((o) => o.op !== "move_up"),
@@ -1055,8 +1055,8 @@ try {
             ).values(),
           ].map((o, i, arr) => ({
             ...o,
-            detail: `extra lyft ${i + 1}/${arr.length} — kollisionsgrindens retry fann ren placering ett steg högre`,
-            why: `försök 1 introducerade +${attempts[0].gate.verticalOverlapIntroducedPx}px överlapp; försök 2 +${last.gate.verticalOverlapIntroducedPx}px`,
+            detail: `extra move ${i + 1}/${arr.length} — the collision gate's retry found a clean placement one step higher`,
+            why: `attempt 1 introduced +${attempts[0].gate.verticalOverlapIntroducedPx}px overlap; attempt 2 +${last.gate.verticalOverlapIntroducedPx}px`,
           })),
         ];
     const serveOps = toServeOps(content, finalOps, styleDonor);

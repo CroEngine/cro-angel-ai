@@ -84,7 +84,7 @@ describe("resolveSelection", () => {
     const s = floorSelection(menu)!;
     expect(s.source).toBe("floor");
     expect(s.ordered[0].id).toBe("mv-sec-3");
-    expect(s.why).toContain("Regelvald");
+    expect(s.why).toContain("Rule-selected");
     expect(floorSelection([])).toBeNull();
   });
 });

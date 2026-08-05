@@ -121,7 +121,7 @@ export async function buildCandidatePlan(args: {
     ops: toOps(chosen, selection.why),
     altOps: rest
       .slice(0, MAX_ALTS)
-      .map((c) => toOps(c, `Reservkandidat ur katalogen: ${c.basis.slice(0, 160)}`)),
+      .map((c) => toOps(c, `Reserve candidate from the catalog: ${c.basis.slice(0, 160)}`)),
     source: selection.source,
     menuSize: menu.length,
     probed: {
