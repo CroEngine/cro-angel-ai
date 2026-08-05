@@ -25,6 +25,7 @@
     "structure-eval": "bun run src/lib/tests/structure-eval/run.ts",
     "structure-evidence": "bun run scripts/structure-evidence.ts",
     "reco-eval": "bun run src/lib/tests/reco-eval/run.ts",
+    "join-eval": "bun run scripts/section-join-eval/run.ts",
     "snapshot": "vitest run src/lib/tests/snapshot",
     "snapshot:update": "SNAPSHOT_UPDATE=1 vitest run src/lib/tests/snapshot",
     "typecheck": "tsc --noEmit",
