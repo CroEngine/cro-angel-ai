@@ -50,19 +50,24 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
    `competingAboveFold` / `primaryConversionCtaCount` / `aboveFold` var tyst null i
    `angel`-rapporten OCH i alla goldens; nu identiska med live. Golden-diffen rent
    additiv, provenance orörd (mhtml oförändrad). Enhetstest låser aritmetiken.
-2. **Fixa hero-garbeln** — roterande-ord-heron ("…go to grow scale close retain
-   grow", `pageAudit.ts` `cleanHeadingText`) ska ta den fastfrusna frame:n, inte
-   klistra ihop alla ord. Fortfarande ordagrann sidtext. [D2]
-3. **Engelsk motivering** — byt de hårdkodade svenska strängarna
-   (`candidates.ts` `candidateToOp`/`floorWhy`/`basis`, `candidate-plan.ts`,
-   `auto-generate.ts`, **och `cohort-scopes.ts`** — kritikerns tillägg) mot
-   engelska. Gör "varför"-texten pick-neutral (påstå inte att socialt bevis är
-   svaret när beteendet senare kan välja pris). [D2, engelsk kvalitet]
+2. **Fixa hero-garbeln** — ✅ **KLAR.** Roterande-ord-heron (`pageAudit.ts`/
+   `sections.ts` `cleanHeadingText`) tar den fastfrusna frame:n i stället för att
+   klistra ihop alla ord. Kurerad rotator-tokenlista (inte bred substräng —
+   `heading-rotator.test.ts` låser att Tailwind/Animate.css-utils inte
+   överkollapsar). Fortfarande ordagrann sidtext. [D2]
+3. **Engelsk motivering** — ✅ **KLAR.** Svenska strängarna i `candidates.ts`
+   (`candidateToOp`/`floorWhy`/`basis`), `candidate-plan.ts`, `auto-generate.ts`
+   och `cohort-scopes.ts` bytta mot engelska; "varför"-texten gjord pick-neutral
+   (påstår inte att socialt bevis är svaret innan beteendet vägts). [D2, engelsk kvalitet]
 4. **Koppla in spakarna** — `rageRefs` + `formAbandonRate` matas in i alla
    produktionsanrop (defaultar tomma idag). Snabbaste riktiga beteendedatan in i
    det som *faktiskt serveras* (fri-designern renderar dem redan). Först: verifiera
    att validatorn (`nightly.ts`) avvisar icke-ordagranna ops innan designern får
    rikare input. [D3, D1-vakt]
+   **⏸ SKJUTEN:** rollup-RPC:n (`angel_page_segment_rollup`) returnerar i dag ingen
+   form-abandon/rage *per segment*, så "mata in spakarna" vore en no-op utan en
+   DB-migration. Ägaren valde facit-först (steg 6) i stället; tas när steg 8–9 ändå
+   rör datavägen.
 
 ### Block B — Linjalen (FÖRE motorn)
 
@@ -70,11 +75,15 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
    `page.evaluate` mot den frusna DOM:en (inte en TS-omport — kritikerns fix) och
    mät join-miss-täckningen. Kan runtime-engagemang återkopplas till `extract.ts`
    sektions-id:n? Billigast att få veta nu. [D3]
-6. **Bygg facit-riggen + baslinje** — `src/lib/tests/reco-eval/`, syntetisk
-   simulator med dold sanning + brus (ovan). Invarianten skopas rätt: ordagrann
-   bara för `insert_snippet.detail`; för `move_up` att `targetId` är ett riktigt
-   sektions-id. Registrera dagens `PROOF_TYPE_WEIGHT` som baslinjen motorn ska slå.
-   [D4, D1/D2]
+6. **Bygg facit-riggen + baslinje** — ✅ **KLAR.** `src/lib/tests/reco-eval/` med
+   dold-sanning+brus-simulatorn (ovan). Icke-cirkulär: sanningen dras oberoende av
+   sektionstyp. Baslinjen (dagens `PROOF_TYPE_WEIGHT`, = golvets högsta `move_up` på
+   varje värld) återfinner facit på **slumpnivå (~29 %, = mean(1/k))**; orakel-på-
+   observerat på **~76 %** ⇒ **~47 % mätt, icke-cirkulärt headroom** för steg 7.
+   Noll fabricering över 2 000+ slumpade världar (invarianten skopad rätt: ordagrann
+   bara för `insert_snippet.detail`, riktigt `targetId` för `move_up`) — plus D2
+   genom den riktiga `extractContentModel` på en HTML-fixtur. Committat grindtest +
+   `bun run reco-eval`. [D4, D1/D2]
 
 ### Block C — Beteende-motorn (varje steg grindat av facit)
 
