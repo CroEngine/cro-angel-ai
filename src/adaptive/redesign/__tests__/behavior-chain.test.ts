@@ -85,8 +85,8 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
       menu,
       engagementBySection: rollup!.sectionWeight,
     });
-    expect(prompt).toContain("seen ≥1s by 90% of visitors");
-    expect(prompt).toContain("seen ≥1s by 15% of visitors");
+    expect(prompt).toContain("seen ≥1s in 90% of its views");
+    expect(prompt).toContain("seen ≥1s in 15% of its views");
   });
 
   it("null-vägen: för lite data ⇒ rollup null ⇒ katalogen byte-identisk (sätet matas aldrig)", () => {

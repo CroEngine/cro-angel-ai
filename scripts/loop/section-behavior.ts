@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { scrubPath, stripQueryHash } from "../../src/adaptive/harvest/sanitize";
 import type { BehaviorInput } from "../../src/adaptive/redesign/candidates";
 import { rollupEngagement } from "../../src/adaptive/redesign/engagement-rollup";
 import {
@@ -30,7 +31,11 @@ export async function fetchSectionBehavior(
   sections: { id: string; type: string; heading: string }[],
 ): Promise<BehaviorInput | null> {
   try {
-    const path = pagePath.split("#")[0].split("?")[0] || "/";
+    // SAMMA transform som skriv-sidan (granskningsfynd 2026-08-08: lagrade
+    // paths är scrubPath(stripQueryHash(...)) — "/artikel/12345678" lagras som
+    // "/artikel/[redacted]"; en RÅ jämförelse matchar aldrig på id-bärande
+    // sidor och rollupen blev null för evigt just där).
+    const path = scrubPath(stripQueryHash(pagePath)) || "/";
     const cutoff = new Date(Date.now() - FRESH_DAYS * 24 * 3600 * 1000).toISOString();
     const { data, error } = await db
       .from("angel_events")

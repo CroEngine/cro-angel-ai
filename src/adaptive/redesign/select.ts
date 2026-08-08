@@ -82,11 +82,14 @@ export function buildSelectionPrompt(args: {
       : "";
     // Beteende-raden (steg 10): bara för flytt-kandidater vars målsektion har
     // uppmätt data — aldrig en påhittad siffra för sektioner utan mätning.
+    // Ordvalet är EXAKT (granskningsfynd 2026-08-08): andelen är av sidvisningar
+    // DÄR SEKTIONEN FANNS — "of visitors" hade överdrivit för sektioner som
+    // bara vissa laddningar bar (SPA-varianter, A/B-yta).
     const eng =
       c.kind === "move_up" ? args.engagementBySection?.[c.targetId] : undefined;
     const engLine =
       typeof eng === "number" && Number.isFinite(eng)
-        ? ` [measured: seen ≥1s by ${Math.round(Math.max(0, Math.min(1, eng)) * 100)}% of visitors]`
+        ? ` [measured: seen ≥1s in ${Math.round(Math.max(0, Math.min(1, eng)) * 100)}% of its views]`
         : "";
     L.push(
       `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${c.basis}${engLine}${gateLine}`,
