@@ -1808,6 +1808,7 @@
     var sectionsPath = safePath();
     if (OBSERVE_SECTIONS && typeof IntersectionObserver !== "undefined") {
       try {
+        var wireSectionCensus = function () {
         var secMain = document.querySelector("main") || document.body;
         var secAllH2 = secMain.querySelectorAll("h2");
         var secFiltered = [];
@@ -1868,6 +1869,33 @@
           });
         };
         for (var sw = 0; sw < secCensus.length; sw++) wireSectionObserve(secCensus[sw]);
+        if (sectionEntries.length) sectionsPath = safePath();
+        return sectionEntries.length;
+        };
+        // Sen-hydrerings-slingan (granskningsfynd 2026-08-08): censusen körs
+        // vid wireJourney — på SPA-/hydreringstunga sidor finns h2:orna inte
+        // ännu och observatören blev tyst för hela laddningen. Appliern löser
+        // SAMMA race med sin 400 ms-omkörning (glutenforum-fyndet) — samma
+        // budget här: prova om var 400:e ms tills censusen bär, max 30 försök.
+        // Flushad (sectionEntries=null) eller lyckad wiring stoppar slingan.
+        if (wireSectionCensus() === 0) {
+          var secRetries = 0;
+          var secTimer = setInterval(function () {
+            secRetries++;
+            try {
+              if (
+                sectionEntries === null ||
+                sectionEntries.length > 0 ||
+                secRetries >= 30 ||
+                wireSectionCensus() > 0
+              ) {
+                clearInterval(secTimer);
+              }
+            } catch (e) {
+              clearInterval(secTimer);
+            }
+          }, 400);
+        }
       } catch (e) {
         sectionEntries = null;
         sectionFlushes = null;

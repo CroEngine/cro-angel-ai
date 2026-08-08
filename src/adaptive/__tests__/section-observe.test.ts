@@ -238,6 +238,40 @@ describe("snippetens per-sektion-synlighet (steg 9, riktig chromium)", () => {
     }
   }, 30_000);
 
+  it("sen hydrering: h2:or som dyker upp EFTER wiring fångas av re-census-slingan", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      // Main är TOM vid load — sektionerna hydreras in efter 1,2 s (SPA-
+      // klassen; applierns glutenforum-race). Utan slingan blev observatören
+      // tyst hela laddningen.
+      const { bodies } = await boot(
+        page,
+        "1",
+        `<!doctype html><html><body><main id="root"></main>
+        <script src="${ORIGIN}/adaptive.js" data-site="e2e" data-consent="granted" DATA_ATTR_SLOT></script>
+        <script>
+          setTimeout(function () {
+            document.getElementById("root").innerHTML =
+              "<h1>Hydrated hero</h1><h2>Late pricing section</h2><div style='height:200px'></div><h2>Late testimonials</h2>";
+          }, 1200);
+        </script>
+        </body></html>`,
+      );
+      await settle(page, 3400); // hydrering + minst en retry-tick + ≥1s dwell
+      await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+      await settle(page, 300);
+      const secEvents = allEvents(bodies()).filter((e) => e.type === "section_engagement");
+      expect(secEvents).toHaveLength(1);
+      const sections = (secEvents[0].payload?.sections ?? []) as { h: string; d: number }[];
+      expect(sections.map((s) => s.h)).toContain("Late pricing section");
+      expect(sections.map((s) => s.h)).toContain("Late testimonials");
+      expect(sections.find((s) => s.h === "Late pricing section")!.d).toBeGreaterThan(800);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
   it("REVERSIBELT: utan attributet skickas ingen section_engagement (av = dagens snippet)", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
     const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
