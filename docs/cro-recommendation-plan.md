@@ -154,8 +154,20 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
    cleanText-skrubbad; n 1–9; d ≤ 10 min). Bevisat i riktig chromium på
    RIKTIGA snippeten: census-urval, dwell-mönster (sedd > 0, osedd = 0),
    dubblett-n, och att av-läget är byte-exakt dagens beteende. [D3]
-10. **Koppla ihop** rollup → sätet hos katalog-anroparna + visa engagemang i
-    selector-menyn. CI-grindar på den deterministiska vägen (inte LLM). [D3, D4]
+10. **Koppla ihop** — ✅ **KLAR.** Hela röret events → observationer
+    (`section-events.ts`, ren aggregering: visits = laddningar som bar
+    sektionen, engagement = andel med sedd-tid ≥ 1 s, instances = max n) →
+    rollup → `BehaviorInput` in i katalog-anroparen (`buildCandidatePlan`
+    `behavior?`-param; `fetchSectionBehavior` är db-hämtningen med null hela
+    vägen när datan inte bär). Väljar-menyn visar den UPPMÄTTA andelen per
+    flytt-kandidat ("seen ≥1s by 63% of visitors") — aldrig en siffra för
+    sektioner utan mätning. CI-grind på hela deterministiska kedjan
+    (`behavior-chain.test.ts`): besökssignalen vänder typ-priorns
+    rangordning, null-vägen är byte-identisk, menyraden utan data är exakt
+    dagens. ÄRLIG NOT: preview/fleet är prospekt-flöden (oinstallerade
+    sajter ⇒ ingen data ⇒ null-vägen) — röret är inkopplat och bevisat,
+    men riktig trafik flödar genom det först när steg 11 konvergerar
+    installerade sajters serverade väg till katalogen. [D3, D4]
 
 ### Block D — Skarpt (högst blast radius, sist)
 

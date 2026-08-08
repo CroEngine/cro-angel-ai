@@ -1,0 +1,60 @@
+// Steg 10: hela beteende-röret för katalog-anropare — events → observationer
+// → rollup → BehaviorInput. Tunn db-hämtning ovanpå RENA delar (aggregering
+// + rollup är src-side och CI-grindade); null hela vägen när datan inte bär
+// (ingen snippet-data, tunn data, hög join-miss) ⇒ katalogen byte-identisk
+// med idag. Prospekt-förhandsvisningar har per definition ingen data (sajten
+// är oinstallerad) — röret är ändå inkopplat där, så konvergensen (steg 11)
+// bara behöver peka installerade sajters flöde genom SAMMA väg.
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import type { BehaviorInput } from "../../src/adaptive/redesign/candidates";
+import { rollupEngagement } from "../../src/adaptive/redesign/engagement-rollup";
+import {
+  aggregateSectionObservations,
+  type SectionEngagementPayload,
+} from "../../src/adaptive/redesign/section-events";
+
+/** Senaste-fönstret: nog för tunn-grindens 1000-besöksgolv per sida med god
+ *  marginal, litet nog att en query räcker. Klient-sidig path-filtrering
+ *  (payload är jsonb) — samma mönster som nightlys pageview-toppar. */
+const FETCH_LIMIT = 5000;
+
+export async function fetchSectionBehavior(
+  db: SupabaseClient,
+  site: string,
+  pagePath: string,
+  sections: { id: string; type: string; heading: string }[],
+): Promise<BehaviorInput | null> {
+  try {
+    const { data, error } = await db
+      .from("angel_events")
+      .select("payload")
+      .eq("site", site)
+      .eq("type", "section_engagement")
+      .order("created_at", { ascending: false })
+      .limit(FETCH_LIMIT);
+    if (error || !data) return null;
+    const path = pagePath.split("#")[0].split("?")[0] || "/";
+    const payloads = (data as {
+      payload: SectionEngagementPayload & { path?: unknown; simulated?: unknown };
+    }[])
+      .map((r) => r.payload)
+      // Demo-simulatorns sessioner (?angel_source= m.fl.) märks simulated:true
+      // av snippeten — LÄSLAGRET exkluderar (granskningsdom 2026-08-08, samma
+      // kontrakt som all annan läsning): syntetiska besök får aldrig bli
+      // beteendevikter.
+      .filter((p) => p?.simulated !== true)
+      .filter((p) => ((typeof p?.path === "string" ? p.path : "/") || "/") === path);
+    const observations = aggregateSectionObservations(payloads);
+    if (observations.length === 0) return null;
+    const rollup = rollupEngagement(sections, observations);
+    if (!rollup) return null;
+    console.log(
+      `  [beteende] ${path}: ${rollup.totalVisits} besök, ${Math.round(rollup.attributedMass * 100)}% krediterat över ${Object.keys(rollup.sectionWeight).length} sektioner — sätet matas`,
+    );
+    return { sectionWeight: rollup.sectionWeight };
+  } catch {
+    return null; // beteendedata är alltid valfritt — aldrig fälla en preview
+  }
+}

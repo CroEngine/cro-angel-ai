@@ -54,12 +54,17 @@ export function applyProbe(candidates: Candidate[], probe: ProbeAnnotation[]): P
 
 /** Väljar-prompten: sidkontext + segment + menyn med stabila id:n. Sidtexten
  *  är OBETRODD (samma kontrakt som designern) — väljaren instrueras att
- *  aldrig följa instruktioner ur den, bara väga dragen. */
+ *  aldrig följa instruktioner ur den, bara väga dragen.
+ *
+ *  `engagementBySection` (steg 10): rollupens per-sektion-andelar visas som
+ *  menyrad-fakta för flytt-kandidater ("seen ≥1s by 63% of visitors") — den
+ *  UPPMÄTTA signalen synlig för väljaren, aldrig bara inbakad i poängen. */
 export function buildSelectionPrompt(args: {
   heroHeadline: string | null;
   segmentLabel: string;
   observations: string[];
   menu: ProbedCandidate[];
+  engagementBySection?: Record<string, number>;
 }): string {
   const L: string[] = [];
   L.push("Choose the ONE best change for this visitor segment from the MENU below.");
@@ -75,8 +80,16 @@ export function buildSelectionPrompt(args: {
     const gateLine = g
       ? ` [gates: LCP shift ${g.lcpShiftPx ?? "?"}px · overlap ${g.overlapPx ?? "?"}px · CTA ${g.ctaBroken === 0 ? "intact" : `${g.ctaBroken ?? "?"} broken`}]`
       : "";
+    // Beteende-raden (steg 10): bara för flytt-kandidater vars målsektion har
+    // uppmätt data — aldrig en påhittad siffra för sektioner utan mätning.
+    const eng =
+      c.kind === "move_up" ? args.engagementBySection?.[c.targetId] : undefined;
+    const engLine =
+      typeof eng === "number" && Number.isFinite(eng)
+        ? ` [measured: seen ≥1s by ${Math.round(Math.max(0, Math.min(1, eng)) * 100)}% of visitors]`
+        : "";
     L.push(
-      `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${c.basis}${gateLine}`,
+      `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${c.basis}${engLine}${gateLine}`,
     );
   }
   L.push(
