@@ -335,7 +335,11 @@ export interface AngelEvent {
     | "page_leave"
     | "rage_click"
     | "site_search"
-    | "video_watch";
+    | "video_watch"
+    // Per-sektion-synlighet (steg 9, CRO-planen): {sections: [{h, n, d}]} —
+    // rubrik, instansantal, sedd-ms. Opt-in per install; saneras hårt i
+    // buildEventRows.
+    | "section_engagement";
   decisionId?: string;
   payload?: Record<string, unknown>;
   /** Client timestamp (ms epoch). */

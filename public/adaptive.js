@@ -87,6 +87,10 @@
   // The goal's visible label — resilience for click detection when the CSS
   // selector doesn't resolve on a page (structures differ across pages).
   var CONVERSION_TEXT = script.getAttribute("data-conversion-text") || "";
+  // Per-sektion-synlighet (steg 9): opt-in PER INSTALL via tag-attribut —
+  // av (default) = exakt dagens snippet, inte en rad extra kod körs.
+  var OBSERVE_SECTIONS_ATTR = script.getAttribute("data-observe-sections") || "";
+  var OBSERVE_SECTIONS = OBSERVE_SECTIONS_ATTR === "1" || OBSERVE_SECTIONS_ATTR === "true";
 
   var qp = new URLSearchParams(location.search);
 
@@ -1784,6 +1788,145 @@
       },
       true,
     );
+    // ---- per-sektion-synlighet (steg 9, opt-in: data-observe-sections) ----
+    // Observera-bara: VILKA sektioner besökaren faktiskt såg och hur länge —
+    // datat beteende-rankningen (steg 7-8) står på. Censusen SPEGLAR applierns
+    // v3-census (main-h2:or utan header/nav/footer/aside — genererade blocket,
+    // håll i synk): samma sektionsbegrepp i mätning som i servering.
+    // Rubriknyckel + instansantal är exakt rollupens kontrakt
+    // (SectionObservation, engagement-rollup.ts): dubblettrubriker rapporteras
+    // med n>1 så de ALDRIG krediteras (rollupens FLERTYDIG-dom), och rubriken
+    // observeras i stället för sektions-wrappern — kort element ⇒ tröskeln
+    // fungerar även för sektioner högre än viewporten, samma proxy för alla
+    // sektioner (rättvist för rankningen). Ingen DOM rörs någonsin.
+    var sectionEntries = null;
+    var sectionFlushes = null;
+    var sectionIos = [];
+    // Sektionernas HEMVIST-rutt låses vid uppkopplingen (granskningsfynd
+    // 2026-08-08: leave() stämplade annars SPA-lämningens NYA rutt på GAMLA
+    // sidans sektioner — kontaminerad attribution).
+    var sectionsPath = safePath();
+    if (OBSERVE_SECTIONS && typeof IntersectionObserver !== "undefined") {
+      try {
+        var wireSectionCensus = function () {
+        var secMain = document.querySelector("main") || document.body;
+        var secAllH2 = secMain.querySelectorAll("h2");
+        var secFiltered = [];
+        for (var sc = 0; sc < secAllH2.length; sc++) {
+          if (!secAllH2[sc].closest("header,nav,footer,aside")) secFiltered.push(secAllH2[sc]);
+        }
+        // Instansräkningen görs över HELA filtrerade censusen med EXAKT samma
+        // nyckelhärledning som uppslaget (slice 120 FÖRE gemener) — cap-först
+        // räknade en dubblett bortom taket som 1, och osliceade nycklar
+        // missade uppslag för rubriker > 120 tecken (granskningsfynd
+        // 2026-08-08): bägge fick rollupen att kreditera det den ska vägra.
+        var secCounts = {};
+        for (var sk = 0; sk < secFiltered.length; sk++) {
+          var skKey = (secFiltered[sk].textContent || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 120)
+            .toLowerCase();
+          if (skKey) secCounts[skKey] = (secCounts[skKey] || 0) + 1;
+        }
+        var SECTION_CAP = 24; // payload-budget: ~3,5 KB värsta fall, långt under beacon-taket
+        var secCensus = secFiltered.slice(0, SECTION_CAP);
+        sectionEntries = [];
+        sectionFlushes = [];
+        var wireSectionObserve = function (h2el) {
+          var htext = (h2el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120);
+          if (!htext) return;
+          var entry = { h: htext, n: secCounts[htext.toLowerCase()] || 1, d: 0 };
+          sectionEntries.push(entry);
+          var visSince = 0;
+          var isIn = false;
+          var io = new IntersectionObserver(
+            function (entries) {
+              for (var k = 0; k < entries.length; k++) {
+                isIn = entries[k].isIntersecting;
+                if (isIn) {
+                  if (!visSince && document.visibilityState === "visible") visSince = Date.now();
+                } else if (visSince) {
+                  entry.d += Date.now() - visSince;
+                  visSince = 0;
+                }
+              }
+            },
+            { threshold: 0.5 },
+          );
+          io.observe(h2el);
+          sectionIos.push(io);
+          // Flikväxlingar: IO reagerar inte på visibilitychange, så bakgrunds-
+          // tid hade annars räknats som tittande. Flusha vid hidden, åter-arma
+          // vid visible om rubriken alltjämt är i viewporten.
+          sectionFlushes.push(function (becameVisible) {
+            if (becameVisible) {
+              if (isIn && !visSince) visSince = Date.now();
+            } else if (visSince) {
+              entry.d += Date.now() - visSince;
+              visSince = 0;
+            }
+          });
+        };
+        for (var sw = 0; sw < secCensus.length; sw++) wireSectionObserve(secCensus[sw]);
+        if (sectionEntries.length) sectionsPath = safePath();
+        return sectionEntries.length;
+        };
+        // Sen-hydrerings-slingan (granskningsfynd 2026-08-08): censusen körs
+        // vid wireJourney — på SPA-/hydreringstunga sidor finns h2:orna inte
+        // ännu och observatören blev tyst för hela laddningen. Appliern löser
+        // SAMMA race med sin 400 ms-omkörning (glutenforum-fyndet) — samma
+        // budget här: prova om var 400:e ms tills censusen bär, max 30 försök.
+        // Flushad (sectionEntries=null) eller lyckad wiring stoppar slingan.
+        if (wireSectionCensus() === 0) {
+          var secRetries = 0;
+          var secTimer = setInterval(function () {
+            secRetries++;
+            try {
+              if (
+                sectionEntries === null ||
+                sectionEntries.length > 0 ||
+                secRetries >= 30 ||
+                wireSectionCensus() > 0
+              ) {
+                clearInterval(secTimer);
+              }
+            } catch (e) {
+              clearInterval(secTimer);
+            }
+          }, 400);
+        }
+      } catch (e) {
+        sectionEntries = null;
+        sectionFlushes = null;
+      }
+    }
+    // EN section_engagement per SIDA (inte per laddning-slut): flushas vid
+    // pagehide ELLER vid SPA-ruttbyte — alltid stämplad med hemvist-rutten.
+    // Efter flushen slutar observationen (senare SPA-rutters sektioner mäts
+    // inte denna laddning — ärlig under-insamling hellre än fel attribution).
+    function emitSectionsOnce() {
+      if (!sectionEntries || !sectionEntries.length) return;
+      for (var sf2 = 0; sf2 < sectionFlushes.length; sf2++) sectionFlushes[sf2](false);
+      var secsOut = [];
+      for (var so = 0; so < sectionEntries.length; so++) {
+        secsOut.push({
+          h: sectionEntries[so].h,
+          n: sectionEntries[so].n,
+          d: Math.min(600000, Math.round(sectionEntries[so].d)),
+        });
+      }
+      sectionEntries = null;
+      for (var di = 0; di < sectionIos.length; di++) {
+        try {
+          sectionIos[di].disconnect();
+        } catch (e) {
+          /* aldrig bryta sidan */
+        }
+      }
+      track("section_engagement", { sections: secsOut, path: sectionsPath }, decisionId);
+    }
+
     // Aktiv tid + exit: räkna bara SYNLIG tid (visibilitychange), skicka vid
     // pagehide tillsammans med ev. form-abandon. sendBeacon överlever unload.
     var engagedMs = 0;
@@ -1797,8 +1940,12 @@
     document.addEventListener("visibilitychange", function () {
       // Endast tidsackumulering — INTE exit: en flikväxling (hidden→visible)
       // får aldrig felaktigt trigga form_abandon/page_leave.
-      if (document.visibilityState === "visible") lastVisible = Date.now();
+      var vis = document.visibilityState === "visible";
+      if (vis) lastVisible = Date.now();
       else accrue();
+      if (sectionFlushes) {
+        for (var sf = 0; sf < sectionFlushes.length; sf++) sectionFlushes[sf](vis);
+      }
     });
     var left = false;
     function leave() {
@@ -1806,6 +1953,8 @@
       left = true;
       accrue();
       flushVideos();
+      // Sektions-synligheten: flush med hemvist-rutten (delad med SPA-vägen).
+      emitSectionsOnce();
       for (var ref in started) {
         if (!submitted[ref]) {
           track("form_abandon", { ref: ref, kind: started[ref], path: safePath() }, decisionId);
@@ -1835,8 +1984,11 @@
         lastJourneyPath = p;
         routePageviews++;
         // Videotid flushas per rutt — posternas path sattes när videon hittades,
-        // så en sen flush attribuerar ändå till rätt sida.
+        // så en sen flush attribuerar ändå till rätt sida. Sektionerna flushas
+        // här av SAMMA skäl (granskningsfynd 2026-08-08: pagehide-stämpeln bar
+        // annars nya rutten på gamla sidans sektioner).
         flushVideos();
+        emitSectionsOnce();
         track("pageview", { path: p, spa: true }, decisionId);
       } catch (err) {
         /* aldrig bryta sidan */
