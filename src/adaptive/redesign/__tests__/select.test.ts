@@ -57,6 +57,41 @@ describe("applyProbe", () => {
     ]);
     expect(menu.map((c) => c.id)).toEqual(["mv-sec-3"]);
   });
+
+  it("grind-UNDERKÄND kandidat står aldrig i menyn när en grind-ren finns", () => {
+    // Granskningsfynd 2026-08-08: applicable=true + gateClean=false gick förr
+    // rakt in i en meny vars prompt påstod "already passed the full gates".
+    const menu = applyProbe(menuOf(), [
+      { id: "mv-sec-3", applicable: true, gateClean: false, reason: "LCP-skift 210px" },
+      { id: "ins-trusted_by-0", applicable: true, gateClean: true, placements: ["default"] },
+      { id: "insh-sec-3", applicable: false },
+    ]);
+    expect(menu.map((c) => c.id)).toEqual(["ins-trusted_by-0"]);
+    expect(menu[0].gateClean).toBe(true);
+  });
+
+  it("reservnivån: när INGET drag är grind-rent behålls de applicerbara (61%>55%-mätningen)", () => {
+    const menu = applyProbe(menuOf(), [
+      { id: "mv-sec-3", applicable: true, gateClean: false },
+      { id: "ins-trusted_by-0", applicable: true, gateClean: false, placements: [] },
+      { id: "insh-sec-3", applicable: false, gateClean: false },
+    ]);
+    // ins-trusted_by-0 föll på placeringsregeln, insh-sec-3 på applicable —
+    // reserven är exakt de drag som fortfarande är LAGLIGA att prova.
+    expect(menu.map((c) => c.id)).toEqual(["mv-sec-3"]);
+    expect(menu[0].gateClean).toBe(false);
+  });
+
+  it("annotering utan gateClean-fält (äldre utfiler/offline) är förstahandsnivån", () => {
+    const menu = applyProbe(menuOf(), [
+      { id: "mv-sec-3", applicable: true },
+      { id: "ins-trusted_by-0", applicable: true, gateClean: false, placements: ["default"] },
+      { id: "insh-sec-3", applicable: true, gateClean: true, placements: ["default"] },
+    ]);
+    // Okänd nivå räknas som ren (offline-anropare probar inte) — den
+    // UNDERKÄNDA raden är den enda som åker ut.
+    expect(menu.map((c) => c.id)).toEqual(["mv-sec-3", "insh-sec-3"]);
+  });
 });
 
 describe("resolveSelection", () => {
@@ -100,5 +135,30 @@ describe("buildSelectionPrompt", () => {
     for (const c of menuOf()) expect(p).toContain(`[${c.id}]`);
     expect(p).toContain("untrusted page content");
     expect(p).toContain('"chosenId"');
+  });
+
+  it("menyns säkerhetspåstående är SANT per nivå: proven ⇔ 'ALREADY PASSED'", () => {
+    // Förstahandsnivån (gateClean true/okänd) får bära beviset …
+    const proven = buildSelectionPrompt({
+      heroHeadline: null,
+      segmentLabel: "s",
+      observations: [],
+      menu: applyProbe(menuOf(), menuOf().map((c) => ({ id: c.id, applicable: true }))),
+    });
+    expect(proven).toContain("ALREADY PASSED");
+    // … reservnivån (alla grind-underkända) får ALDRIG göra det — den säger
+    // i stället uttryckligen att grindkedjan återstår.
+    const reserve = buildSelectionPrompt({
+      heroHeadline: null,
+      segmentLabel: "s",
+      observations: [],
+      menu: applyProbe(
+        menuOf(),
+        menuOf().map((c) => ({ id: c.id, applicable: true, gateClean: false })),
+      ),
+    });
+    expect(reserve).not.toContain("ALREADY PASSED");
+    expect(reserve).toContain("NOT gate-proven");
+    expect(reserve).toContain("full gate chain");
   });
 });

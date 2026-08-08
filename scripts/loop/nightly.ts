@@ -16,6 +16,7 @@
 //   bun run scripts/loop/nightly.ts [--site=<slug>] [--cap=3]
 
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -414,6 +415,7 @@ for (const site of targets) {
         );
         const ev = (row.evidence ?? {}) as {
           brief?: { total?: { visits: number; conversions: number }; observations?: string[] };
+          planSource?: unknown;
         };
         const refreshDir = join(dir, `refresh-${action.id}`);
         mkdirSync(refreshDir, { recursive: true });
@@ -495,6 +497,12 @@ for (const site of targets) {
             ...((refreshed.evidence as { comparison?: object } | undefined)?.comparison ?? {}),
             screenshots: shots,
           },
+          // Provenance överlever prisuppdateringen (granskningsfynd
+          // 2026-08-08): refresh-planen bär inget planSource och verify-
+          // rapportens evidence saknar det — utan sammanslagningen hade
+          // varje refresh tyst nollställt variantens härkomst. Källan är
+          // OFÖRÄNDRAD av en textuppdatering, så gamla värdet är sanningen.
+          planSource: typeof ev.planSource === "string" ? ev.planSource : "designer",
         };
         const { error: updErr } = await db
           .from("angel_variants")
@@ -659,8 +667,13 @@ for (const site of targets) {
       let planAltOps: RedesignOp[][] = [];
       let planSource = "designer";
       if (!isTpl) {
+        // Katalogens arbetsfiler är per CELL — hash-suffixet gör katalognamnet
+        // kollisionsfritt (granskningsfynd 2026-08-08: teckenvitlistan kunde
+        // vika två olika (path, key)-par till samma slug, t.ex. "/a-b"×"c" och
+        // "/a"×"b-c" — cellernas probe-filer hade då skrivit över varandra).
         const cellSafe = `${b.path}-${b.key}`.replace(/[^A-Za-z0-9._-]/g, "-").replace(/-+/g, "-");
-        const cellDir = join(dir, `cell-${cellSafe.replace(/^-|-$/g, "") || "home"}`);
+        const cellHash = createHash("sha1").update(`${b.path}\n${b.key}`).digest("hex").slice(0, 8);
+        const cellDir = join(dir, `cell-${cellSafe.replace(/^-|-$/g, "") || "home"}-${cellHash}`);
         mkdirSync(cellDir, { recursive: true });
         const behavior = await fetchSectionBehavior(db, site.slug, pagePath, content.sections);
         const candPlan = await buildCandidatePlan({
@@ -670,6 +683,12 @@ for (const site of targets) {
           segmentLabel: dims.join(" · "),
           observations: b.observations,
           behavior: behavior ?? undefined,
+          // Ägarens mål ur angel_sites — probens grind vaktar samma element
+          // som verify (måltext + mål-selector), aldrig en delmängd.
+          goal: {
+            text: site.conversion_text ?? null,
+            selector: site.conversion_selector ?? null,
+          },
         });
         if (candPlan) {
           planOps = candPlan.ops;
