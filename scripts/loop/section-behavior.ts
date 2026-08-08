@@ -15,10 +15,13 @@ import {
   type SectionEngagementPayload,
 } from "../../src/adaptive/redesign/section-events";
 
-/** Senaste-fönstret: nog för tunn-grindens 1000-besöksgolv per sida med god
- *  marginal, litet nog att en query räcker. Klient-sidig path-filtrering
- *  (payload är jsonb) — samma mönster som nightlys pageview-toppar. */
+/** Senaste-fönstret: nog för tunn-grindens 1000-laddningsgolv per sida med
+ *  god marginal, litet nog att en query räcker. */
 const FETCH_LIMIT = 5000;
+/** Färskhetsfönster (granskningsfynd 2026-08-08: utan tidsgräns blandades
+ *  månadsgamla layouters events in och kunde dominera dagens sida): samma
+ *  30-dagarshorisont som kohortplaneraren räknar mätbarhet på. */
+const FRESH_DAYS = 30;
 
 export async function fetchSectionBehavior(
   db: SupabaseClient,
@@ -27,15 +30,21 @@ export async function fetchSectionBehavior(
   sections: { id: string; type: string; heading: string }[],
 ): Promise<BehaviorInput | null> {
   try {
+    const path = pagePath.split("#")[0].split("?")[0] || "/";
+    const cutoff = new Date(Date.now() - FRESH_DAYS * 24 * 3600 * 1000).toISOString();
     const { data, error } = await db
       .from("angel_events")
       .select("payload")
       .eq("site", site)
       .eq("type", "section_engagement")
+      // PATH-FILTRET I SQL (granskningsfynd 2026-08-08: global limit FÖRE
+      // klient-filtret svalt tysta sidor på livliga sajter — en sida med 2 %
+      // av strömmen kom aldrig över tunn-golvet hur mycket data den än hade).
+      .eq("payload->>path", path)
+      .gte("created_at", cutoff)
       .order("created_at", { ascending: false })
       .limit(FETCH_LIMIT);
     if (error || !data) return null;
-    const path = pagePath.split("#")[0].split("?")[0] || "/";
     const payloads = (data as {
       payload: SectionEngagementPayload & { path?: unknown; simulated?: unknown };
     }[])

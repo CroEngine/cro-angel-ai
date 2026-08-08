@@ -274,7 +274,8 @@ export function runRollupFacit(seeds: number[]): RollupFacitReport {
   let missNullJustOver = 0;
   let missAnswerJustUnder = 0;
   let nullFallsBackToBaseline = 0;
-  const VISITS_PER_SECTION = 800;
+  // Över laddningsgolvet (rollupens max-per-nyckel-proxy) med marginal.
+  const VISITS_PER_SECTION = 1200;
   for (const seed of seeds) {
     const w = makeWorld(seed);
     const sections = w.content.sections.map((s) => ({
@@ -308,12 +309,14 @@ export function runRollupFacit(seeds: number[]): RollupFacitReport {
     );
     if (garbled && pickVia(garbled.sectionWeight) === directPick) garbleAgrees++;
 
-    // 3) GRÄNSTEST tunn data: fördela total = golv−1 respektive golv exakt
-    //    över sektionerna — grinden ska flippa på EXAKT gränsen, varje värld.
-    const spread = (total: number): SectionObservation[] =>
-      proof.map((s, i) => ({
+    // 3) GRÄNSTEST tunn data: laddningsgolvet mäter LADDNINGAR (max per
+    //    nyckel — granskningsfix 2026-08-08, enhetsinflationen): varje sektion
+    //    bärs av SAMMA antal laddningar v — grinden ska flippa exakt på
+    //    v = golv, varje värld.
+    const spread = (v: number): SectionObservation[] =>
+      proof.map((s) => ({
         heading: s.heading,
-        visits: Math.floor(total / k) + (i < total % k ? 1 : 0),
+        visits: v,
         engagement: w.observed[s.id],
       }));
     if (rollupEngagement(sections, spread(MIN_VISITS - 1)) === null) thinNullJustBelow++;

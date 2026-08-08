@@ -53,8 +53,9 @@ export interface RollupOptions {
 }
 
 /** Konservativa default (planens öppna beslut #2: "~tusen besök,
- *  volym-viktad"). Steg 10 kan kalibrera mot riktiga sidor — konstanterna är
- *  medvetet synliga här, inte begravda i anropare. */
+ *  volym-viktad"). Golvet mäter SIDLADDNINGAR via laddnings-proxyn (max besök
+ *  per rubriknyckel) — aldrig sektions-summan, som växer med sektionsantalet
+ *  (granskningsfix 2026-08-08). Konstanterna är medvetet synliga här. */
 export const MIN_VISITS = 1000;
 /** Minst halva den observerade massan måste vara krediterbar. Steg 5 mätte
  *  ~65 % krediterbara RUBRIKER på 28 sajter; massan (besöksviktad) väntas
@@ -112,7 +113,6 @@ export function rollupEngagement(
   // 0/0 = NaN — och `NaN > maxMiss` är false, så miss-grinden kringgicks TYST.
   // Inga observationer är aldrig ett svar, oavsett hur trösklarna ställs.
   if (totalVisits <= 0) return null;
-  if (totalVisits < minVisits) return null; // tunn data — ingen fantomvikt
 
   // AGGREGERA PER NYCKEL FÖRST: event-strömmen är rubriknyckel-keyad, så
   // flera observationer med samma normaliserade nyckel (mobil/desktop- eller
@@ -140,6 +140,17 @@ export function rollupEngagement(
     acc.maxInstances = Math.max(acc.maxInstances, Math.floor(o.instances ?? 1));
     byKey.set(key, acc);
   }
+
+  // TUNN-GOLVET MÄTER LADDNINGAR, INTE SEKTIONS-SUMMAN (granskningsfynd
+  // 2026-08-08): en laddning bär ALLA sina sektioner, så summan växer med
+  // sektionsantalet — 42 laddningar på en 24-sektionssida "nådde" tusen och
+  // golvet blev 24× svagare än planens "~tusen besök". Laddnings-proxyn är
+  // MAX besök per nyckel (sektionen som bars av flest laddningar ≈ antalet
+  // laddningar). Summan behålls för MASSORNA (andelar av observerad volym).
+  let loadProxyVisits = 0;
+  for (const agg of byKey.values()) loadProxyVisits = Math.max(loadProxyVisits, agg.visits);
+  if (loadProxyVisits < minVisits) return null; // tunn data — ingen fantomvikt
+
   // Upplösningen: modellsektioner → census-nycklar genom den delade regeln.
   // Dubblettinstans-nycklar går in som TVÅ instanser i join-listan så
   // claimJoins själv dömer FLERTYDIG — exakt samma dom (och samma påverkan på
