@@ -272,6 +272,59 @@ describe("snippetens per-sektion-synlighet (steg 9, riktig chromium)", () => {
     }
   }, 30_000);
 
+  it("dwell pausar vid flikbyte och flushar vid lämnad viewport (granskningens sista lucka)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      const { bodies } = await boot(
+        page,
+        "1",
+        `<!doctype html><html><body><main>
+          <h2>Pause section</h2><div style="height:120px"></div>
+          <div style="height:3000px">spacer</div>
+          <h2>Below fold section</h2>
+        </main>
+        <script src="${ORIGIN}/adaptive.js" data-site="e2e" data-consent="granted" DATA_ATTR_SLOT></script>
+        </body></html>`,
+      );
+      // Fas 1: synlig ~700 ms.
+      await settle(page, 700);
+      // Fas 2: flik göms ~1000 ms — får INTE räknas (visibilitychange-pausen).
+      await page.evaluate(() => {
+        Object.defineProperty(document, "visibilityState", {
+          configurable: true,
+          get: () => "hidden",
+        });
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      await settle(page, 1000);
+      // Fas 3: åter synlig ~700 ms — åter-armningen ska ticka igen.
+      await page.evaluate(() => {
+        Object.defineProperty(document, "visibilityState", {
+          configurable: true,
+          get: () => "visible",
+        });
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      await settle(page, 700);
+      // Fas 4: scrolla bort rubriken (IO-flushen) — tiden därefter räknas inte.
+      await page.evaluate(() => window.scrollTo(0, 1800));
+      await settle(page, 900);
+      await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+      await settle(page, 300);
+      const secEvents = allEvents(bodies()).filter((e) => e.type === "section_engagement");
+      expect(secEvents).toHaveLength(1);
+      const sections = (secEvents[0].payload?.sections ?? []) as { h: string; d: number }[];
+      const d = sections.find((s) => s.h === "Pause section")!.d;
+      // Ärlig dwell = fas 1 + fas 3 ≈ 1400 ms. Hade flik-tiden räknats ⇒
+      // ~2400+; hade scroll-bort-tiden räknats ⇒ ~2300+. Generösa CI-band.
+      expect(d).toBeGreaterThan(900);
+      expect(d).toBeLessThan(2100);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
   it("REVERSIBELT: utan attributet skickas ingen section_engagement (av = dagens snippet)", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
     const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
