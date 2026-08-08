@@ -87,12 +87,25 @@ export function buildSelectionPrompt(args: {
     // bara vissa laddningar bar (SPA-varianter, A/B-yta).
     const eng =
       c.kind === "move_up" ? args.engagementBySection?.[c.targetId] : undefined;
-    const engLine =
+    // Kantavrundning (granskningsfynd 2026-08-08): 99,6 % fick inte visas som
+    // "100%" (påstår ALLA) och 0,4 % inte som "0%" (påstår INGEN) — exakta
+    // 0/1 är de enda som får skriva ut extremerna.
+    const engPct =
       typeof eng === "number" && Number.isFinite(eng)
-        ? ` [measured: seen ≥1s in ${Math.round(Math.max(0, Math.min(1, eng)) * 100)}% of its views]`
-        : "";
+        ? eng <= 0
+          ? 0
+          : eng >= 1
+            ? 100
+            : Math.min(99, Math.max(1, Math.round(eng * 100)))
+        : null;
+    const engLine = engPct !== null ? ` [measured: seen ≥1s in ${engPct}% of its views]` : "";
+    // Basis/detail är ORDAGRANN sidtext = OBETRODD (samma kontrakt som hela
+    // prompten): en sidrubrik som själv innehåller "[measured:" får inte kunna
+    // smida en mätrad för en omätt sektion — avväpna markören i den obetrodda
+    // delen (granskningsfynd 2026-08-08, prompt-injektionsklassen).
+    const safeBasis = c.basis.replace(/\[\s*measured\s*:/gi, "[page-text:");
     L.push(
-      `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${c.basis}${engLine}${gateLine}`,
+      `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${safeBasis}${engLine}${gateLine}`,
     );
   }
   L.push(

@@ -9,6 +9,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { scrubPath, stripQueryHash } from "../../src/adaptive/harvest/sanitize";
+import { cleanEvents } from "../../src/lib/dashboard/data-hygiene";
+import type { DashEvent } from "../../src/lib/dashboard/aggregate";
 import type { BehaviorInput } from "../../src/adaptive/redesign/candidates";
 import { rollupEngagement } from "../../src/adaptive/redesign/engagement-rollup";
 import {
@@ -39,7 +41,7 @@ export async function fetchSectionBehavior(
     const cutoff = new Date(Date.now() - FRESH_DAYS * 24 * 3600 * 1000).toISOString();
     const { data, error } = await db
       .from("angel_events")
-      .select("payload")
+      .select("type, payload, visitor_hash, decision_id, created_at")
       .eq("site", site)
       .eq("type", "section_engagement")
       // PATH-FILTRET I SQL (granskningsfynd 2026-08-08: global limit FÖRE
@@ -50,15 +52,26 @@ export async function fetchSectionBehavior(
       .order("created_at", { ascending: false })
       .limit(FETCH_LIMIT);
     if (error || !data) return null;
-    const payloads = (data as {
-      payload: SectionEngagementPayload & { path?: unknown; simulated?: unknown };
-    }[])
-      .map((r) => r.payload)
-      // Demo-simulatorns sessioner (?angel_source= m.fl.) märks simulated:true
-      // av snippeten — LÄSLAGRET exkluderar (granskningsdom 2026-08-08, samma
-      // kontrakt som all annan läsning): syntetiska besök får aldrig bli
-      // beteendevikter.
-      .filter((p) => p?.simulated !== true)
+    // HELA läs-hygienkontraktet, inte ett eget urval (granskningsdom
+    // 2026-08-08: bara simulated-flaggan räckte inte — cleanEvents är samma
+    // filter som dashboard/motor-läsarna kör: simulated + lasttest-fönster +
+    // ägar-/dev-hashar + ägarsessioner + simulatorkällor). Syntetiska eller
+    // ägar-genererade besök får aldrig bli beteendevikter.
+    const rows: DashEvent[] = (data as {
+      type: string;
+      payload: SectionEngagementPayload & { path?: unknown };
+      visitor_hash: string | null;
+      decision_id: string | null;
+      created_at: string;
+    }[]).map((r) => ({
+      type: r.type,
+      payload: r.payload as Record<string, unknown>,
+      visitorHash: r.visitor_hash,
+      decisionId: r.decision_id,
+      createdAt: r.created_at,
+    }));
+    const payloads = cleanEvents(site, rows)
+      .map((e) => e.payload as SectionEngagementPayload & { path?: unknown })
       .filter((p) => ((typeof p?.path === "string" ? p.path : "/") || "/") === path);
     const observations = aggregateSectionObservations(payloads);
     if (observations.length === 0) return null;
