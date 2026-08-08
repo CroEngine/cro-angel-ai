@@ -50,6 +50,35 @@ describe("buildEventRows — journey privacy boundary", () => {
     expect((rows[0].payload as Record<string, unknown>).sessionId).toBeUndefined();
   });
 
+  it("section_engagement: cappar, klampar och PII-skrubbar sections-aggregatet", () => {
+    // PII/trasiga poster FÖRST (cap-slicen tar de 24 första — läggs de sist
+    // testar vi ingenting), sedan filler över 24-taket.
+    const sections: unknown[] = [
+      { h: "Ring 070-123 45 67 idag", n: 99, d: 9e9 }, // skrubb + klamp
+      { h: "", n: 1, d: 5 }, // tom rubrik — släpps
+      "garbage", // fel form — släpps
+    ];
+    for (let i = 0; i < 28; i++) sections.push({ h: `Section ${i}`, n: 1, d: 1000 });
+    const rows = buildEventRows(
+      "acme",
+      "v",
+      [{ type: "section_engagement", payload: { sections, path: "/" } }],
+      "s1",
+    );
+    const p = rows[0].payload as { sections: { h: string; n: number; d: number }[] };
+    expect(p.sections.length).toBeLessThanOrEqual(24);
+    const first = p.sections[0];
+    expect(first.h).not.toContain("070-123"); // cleanText-redaktion
+    expect(first.n).toBe(9); // 99 → taket
+    expect(first.d).toBe(600000); // 9e9 → taket
+    expect(p.sections.some((s) => s.h === "")).toBe(false);
+    for (const s of p.sections) {
+      expect(s.n).toBeGreaterThanOrEqual(1);
+      expect(s.d).toBeGreaterThanOrEqual(0);
+      expect(s.h.length).toBeLessThanOrEqual(120);
+    }
+  });
+
   it("preserves non-text journey fields untouched (seq, engagedMs, kind)", () => {
     const rows = buildEventRows(
       "acme",

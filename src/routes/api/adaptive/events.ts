@@ -62,6 +62,12 @@ const VALID_TYPES = new Set([
   // Videotittande (ägarbeslut 2026-07-19, berättelse-tidslinjen): en summerad
   // "tittade N ms"-signal per video och sidväg — aldrig innehåll eller position.
   "video_watch",
+  // Per-sektion-synlighet (steg 9, CRO-planen): EN händelse per sidladdning
+  // med {sections: [{h: rubrik, n: instanser, d: sedd-ms}]} — datat
+  // beteende-rankningen (steg 7-8) står på. Opt-in per install
+  // (data-observe-sections). Rubriker är sidans egen publika copy; payloaden
+  // saneras + cappas hårt i buildEventRows.
+  "section_engagement",
 ]);
 
 export const Route = createFileRoute("/api/adaptive/events")({

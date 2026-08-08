@@ -140,8 +140,20 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
    tunn ⇒ null 2000/2000, hög miss-massa ⇒ null 2000/2000 med exakt
    baslinje-fallback. Kvar till steg 10: kalibrera trösklarna mot riktiga sidor
    när steg 9 levererar massa. [D3, D2]
-9. **Sänd per-sektion-event från runtime** — observera-bara, samtyckesgrindat,
-   reversibelt. Börjar samla "tusentals besök"-datan. [D3]
+9. **Sänd per-sektion-event från runtime** — ✅ **KLAR.** Observera-bara,
+   samtyckesgrindat (samma `send()`-grind som allt annat: GPC/DNT + consent),
+   reversibelt (opt-in per install via `data-observe-sections`; av = exakt
+   dagens snippet). Snippeten bygger applierns v3-census (main-h2:or utan
+   header/nav/footer/aside — spegelkommentar, håll i synk), observerar
+   RUBRIKEN per sektion (kort element ⇒ IntersectionObserver-tröskeln
+   fungerar även för höga sektioner; samma proxy för alla = rättvis
+   rankning), pausar vid flikväxling, och skickar EN `section_engagement`
+   per sidladdning vid pagehide: `{sections: [{h, n, d}]}` — rubrik,
+   instansantal (rollupens dubblettdom matas ärligt), sedd-tid. Server:
+   typen vitlistad + hård sanering i `buildEventRows` (cap 24; h≤120
+   cleanText-skrubbad; n 1–9; d ≤ 10 min). Bevisat i riktig chromium på
+   RIKTIGA snippeten: census-urval, dwell-mönster (sedd > 0, osedd = 0),
+   dubblett-n, och att av-läget är byte-exakt dagens beteende. [D3]
 10. **Koppla ihop** rollup → sätet hos katalog-anroparna + visa engagemang i
     selector-menyn. CI-grindar på den deterministiska vägen (inte LLM). [D3, D4]
 

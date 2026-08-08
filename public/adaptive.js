@@ -87,6 +87,10 @@
   // The goal's visible label — resilience for click detection when the CSS
   // selector doesn't resolve on a page (structures differ across pages).
   var CONVERSION_TEXT = script.getAttribute("data-conversion-text") || "";
+  // Per-sektion-synlighet (steg 9): opt-in PER INSTALL via tag-attribut —
+  // av (default) = exakt dagens snippet, inte en rad extra kod körs.
+  var OBSERVE_SECTIONS_ATTR = script.getAttribute("data-observe-sections") || "";
+  var OBSERVE_SECTIONS = OBSERVE_SECTIONS_ATTR === "1" || OBSERVE_SECTIONS_ATTR === "true";
 
   var qp = new URLSearchParams(location.search);
 
@@ -1784,6 +1788,76 @@
       },
       true,
     );
+    // ---- per-sektion-synlighet (steg 9, opt-in: data-observe-sections) ----
+    // Observera-bara: VILKA sektioner besökaren faktiskt såg och hur länge —
+    // datat beteende-rankningen (steg 7-8) står på. Censusen SPEGLAR applierns
+    // v3-census (main-h2:or utan header/nav/footer/aside — genererade blocket,
+    // håll i synk): samma sektionsbegrepp i mätning som i servering.
+    // Rubriknyckel + instansantal är exakt rollupens kontrakt
+    // (SectionObservation, engagement-rollup.ts): dubblettrubriker rapporteras
+    // med n>1 så de ALDRIG krediteras (rollupens FLERTYDIG-dom), och rubriken
+    // observeras i stället för sektions-wrappern — kort element ⇒ tröskeln
+    // fungerar även för sektioner högre än viewporten, samma proxy för alla
+    // sektioner (rättvist för rankningen). Ingen DOM rörs någonsin.
+    var sectionEntries = null;
+    var sectionFlushes = null;
+    if (OBSERVE_SECTIONS && typeof IntersectionObserver !== "undefined") {
+      try {
+        var secMain = document.querySelector("main") || document.body;
+        var secAllH2 = secMain.querySelectorAll("h2");
+        var secCensus = [];
+        var SECTION_CAP = 24; // payload-budget: ~3,5 KB värsta fall, långt under beacon-taket
+        for (var sc = 0; sc < secAllH2.length && secCensus.length < SECTION_CAP; sc++) {
+          if (!secAllH2[sc].closest("header,nav,footer,aside")) secCensus.push(secAllH2[sc]);
+        }
+        var secCounts = {};
+        for (var sk = 0; sk < secCensus.length; sk++) {
+          var skKey = (secCensus[sk].textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+          if (skKey) secCounts[skKey] = (secCounts[skKey] || 0) + 1;
+        }
+        sectionEntries = [];
+        sectionFlushes = [];
+        var wireSectionObserve = function (h2el) {
+          var htext = (h2el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120);
+          if (!htext) return;
+          var entry = { h: htext, n: secCounts[htext.toLowerCase()] || 1, d: 0 };
+          sectionEntries.push(entry);
+          var visSince = 0;
+          var isIn = false;
+          var io = new IntersectionObserver(
+            function (entries) {
+              for (var k = 0; k < entries.length; k++) {
+                isIn = entries[k].isIntersecting;
+                if (isIn) {
+                  if (!visSince && document.visibilityState === "visible") visSince = Date.now();
+                } else if (visSince) {
+                  entry.d += Date.now() - visSince;
+                  visSince = 0;
+                }
+              }
+            },
+            { threshold: 0.5 },
+          );
+          io.observe(h2el);
+          // Flikväxlingar: IO reagerar inte på visibilitychange, så bakgrunds-
+          // tid hade annars räknats som tittande. Flusha vid hidden, åter-arma
+          // vid visible om rubriken alltjämt är i viewporten.
+          sectionFlushes.push(function (becameVisible) {
+            if (becameVisible) {
+              if (isIn && !visSince) visSince = Date.now();
+            } else if (visSince) {
+              entry.d += Date.now() - visSince;
+              visSince = 0;
+            }
+          });
+        };
+        for (var sw = 0; sw < secCensus.length; sw++) wireSectionObserve(secCensus[sw]);
+      } catch (e) {
+        sectionEntries = null;
+        sectionFlushes = null;
+      }
+    }
+
     // Aktiv tid + exit: räkna bara SYNLIG tid (visibilitychange), skicka vid
     // pagehide tillsammans med ev. form-abandon. sendBeacon överlever unload.
     var engagedMs = 0;
@@ -1797,8 +1871,12 @@
     document.addEventListener("visibilitychange", function () {
       // Endast tidsackumulering — INTE exit: en flikväxling (hidden→visible)
       // får aldrig felaktigt trigga form_abandon/page_leave.
-      if (document.visibilityState === "visible") lastVisible = Date.now();
+      var vis = document.visibilityState === "visible";
+      if (vis) lastVisible = Date.now();
       else accrue();
+      if (sectionFlushes) {
+        for (var sf = 0; sf < sectionFlushes.length; sf++) sectionFlushes[sf](vis);
+      }
     });
     var left = false;
     function leave() {
@@ -1806,6 +1884,20 @@
       left = true;
       accrue();
       flushVideos();
+      // Sektions-synligheten: EN händelse per sidladdning, vid lämnandet —
+      // aggregatet (rubrik + instansantal + sedd-tid) och inget annat.
+      if (sectionEntries && sectionEntries.length) {
+        for (var se = 0; se < sectionFlushes.length; se++) sectionFlushes[se](false);
+        var secsOut = [];
+        for (var so = 0; so < sectionEntries.length; so++) {
+          secsOut.push({
+            h: sectionEntries[so].h,
+            n: sectionEntries[so].n,
+            d: Math.min(600000, Math.round(sectionEntries[so].d)),
+          });
+        }
+        track("section_engagement", { sections: secsOut, path: safePath() }, decisionId);
+      }
       for (var ref in started) {
         if (!submitted[ref]) {
           track("form_abandon", { ref: ref, kind: started[ref], path: safePath() }, decisionId);

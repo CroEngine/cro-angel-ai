@@ -83,6 +83,27 @@ export function buildEventRows(
     // mejl + långa siffror och kapar längden. Serverns gräns utöver snippetens
     // egna vakter (bara kvalade sökfält, bara skickade termer).
     if (typeof raw.term === "string") payload.term = cleanText(raw.term).slice(0, 80);
+    // Sektions-synligheten (section_engagement): sections är rubrik-keyade
+    // aggregat — sidans EGEN publika copy, men rubriker kan bära inbäddad
+    // PII på illa byggda sidor, så cleanText-skrubben gäller även här.
+    // Hård cap (24 poster; h≤120, n 1-9, d 0-600000ms) — servern litar
+    // aldrig på klientens storleksdisciplin.
+    if (Array.isArray(raw.sections)) {
+      payload.sections = raw.sections.slice(0, 24).flatMap((s) => {
+        if (!s || typeof s !== "object") return [];
+        const o = s as Record<string, unknown>;
+        if (typeof o.h !== "string" || !o.h.trim()) return [];
+        const n = typeof o.n === "number" && Number.isFinite(o.n) ? o.n : 1;
+        const d = typeof o.d === "number" && Number.isFinite(o.d) ? o.d : 0;
+        return [
+          {
+            h: cleanText(o.h).slice(0, 120),
+            n: Math.max(1, Math.min(9, Math.round(n))),
+            d: Math.max(0, Math.min(600000, Math.round(d))),
+          },
+        ];
+      });
+    }
     if (sid) payload.sessionId = sid;
     return {
       site,
