@@ -174,6 +174,70 @@ describe("snippetens per-sektion-synlighet (steg 9, riktig chromium)", () => {
     }
   }, 30_000);
 
+  it("instansräkningen överlever cappen och långa rubriker (granskningsfixar)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      // 26 main-h2:or: dubbletten ligger på position 1 och 26 (bortom 24-
+      // cappen) — n måste ändå bli 2. Plus ett 138-teckens dubblettpar där
+      // nyckeln måste vara 120-slicad för att träffa.
+      const longH = "This is a deliberately very long heading that keeps going well past one hundred and twenty characters to exercise key slicing";
+      const mids = Array.from(
+        { length: 21 },
+        (_, i) => `<h2>Filler section number ${i + 1}</h2><div style="height:40px"></div>`,
+      ).join("");
+      const { bodies } = await boot(
+        page,
+        "1",
+        `<!doctype html><html><body><main>
+          <h2>Dup heading</h2><div style="height:40px"></div>
+          <h2>${longH} A</h2><div style="height:40px"></div>
+          <h2>${longH} B</h2><div style="height:40px"></div>
+          ${mids}
+          <h2>Dup heading</h2>
+        </main>
+        <script src="${ORIGIN}/adaptive.js" data-site="e2e" data-consent="granted" DATA_ATTR_SLOT></script>
+        </body></html>`,
+      );
+      await settle(page, 400);
+      await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+      await settle(page, 300);
+      const secEvents = allEvents(bodies()).filter((e) => e.type === "section_engagement");
+      expect(secEvents).toHaveLength(1);
+      const sections = (secEvents[0].payload?.sections ?? []) as { h: string; n: number }[];
+      expect(sections.length).toBeLessThanOrEqual(24); // observations-cappen håller
+      // Dubblett bortom cappen räknas ändå i n (räkningen sker före cappen).
+      expect(sections.find((s) => s.h === "Dup heading")?.n).toBe(2);
+      // 120-slicade nycklar: de två långa rubrikerna delar nyckel ⇒ n=2 på bägge.
+      const longs = sections.filter((s) => s.h.length === 120);
+      expect(longs.length).toBeGreaterThanOrEqual(2);
+      for (const l of longs) expect(l.n).toBe(2);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it("SPA-ruttbyte flushar med HEMVIST-rutten — aldrig nya ruttens stämpel på gamla sektioner", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      const { bodies } = await boot(page, "1");
+      await settle(page, 1200); // dwell på ursprungssidan
+      await page.evaluate(() => history.pushState({}, "", "/other-route"));
+      await settle(page, 300);
+      const afterRoute = allEvents(bodies()).filter((e) => e.type === "section_engagement");
+      expect(afterRoute).toHaveLength(1); // flushad AV ruttbytet...
+      expect(afterRoute[0].payload?.path).toBe("/page"); // ...med hemvist-rutten
+      // ...och pagehide efteråt ger INGEN andra händelse (en per sida).
+      await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+      await settle(page, 300);
+      const all = allEvents(bodies()).filter((e) => e.type === "section_engagement");
+      expect(all).toHaveLength(1);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
   it("REVERSIBELT: utan attributet skickas ingen section_engagement (av = dagens snippet)", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
     const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } });

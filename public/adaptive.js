@@ -1801,20 +1801,35 @@
     // sektioner (rättvist för rankningen). Ingen DOM rörs någonsin.
     var sectionEntries = null;
     var sectionFlushes = null;
+    var sectionIos = [];
+    // Sektionernas HEMVIST-rutt låses vid uppkopplingen (granskningsfynd
+    // 2026-08-08: leave() stämplade annars SPA-lämningens NYA rutt på GAMLA
+    // sidans sektioner — kontaminerad attribution).
+    var sectionsPath = safePath();
     if (OBSERVE_SECTIONS && typeof IntersectionObserver !== "undefined") {
       try {
         var secMain = document.querySelector("main") || document.body;
         var secAllH2 = secMain.querySelectorAll("h2");
-        var secCensus = [];
-        var SECTION_CAP = 24; // payload-budget: ~3,5 KB värsta fall, långt under beacon-taket
-        for (var sc = 0; sc < secAllH2.length && secCensus.length < SECTION_CAP; sc++) {
-          if (!secAllH2[sc].closest("header,nav,footer,aside")) secCensus.push(secAllH2[sc]);
+        var secFiltered = [];
+        for (var sc = 0; sc < secAllH2.length; sc++) {
+          if (!secAllH2[sc].closest("header,nav,footer,aside")) secFiltered.push(secAllH2[sc]);
         }
+        // Instansräkningen görs över HELA filtrerade censusen med EXAKT samma
+        // nyckelhärledning som uppslaget (slice 120 FÖRE gemener) — cap-först
+        // räknade en dubblett bortom taket som 1, och osliceade nycklar
+        // missade uppslag för rubriker > 120 tecken (granskningsfynd
+        // 2026-08-08): bägge fick rollupen att kreditera det den ska vägra.
         var secCounts = {};
-        for (var sk = 0; sk < secCensus.length; sk++) {
-          var skKey = (secCensus[sk].textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        for (var sk = 0; sk < secFiltered.length; sk++) {
+          var skKey = (secFiltered[sk].textContent || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 120)
+            .toLowerCase();
           if (skKey) secCounts[skKey] = (secCounts[skKey] || 0) + 1;
         }
+        var SECTION_CAP = 24; // payload-budget: ~3,5 KB värsta fall, långt under beacon-taket
+        var secCensus = secFiltered.slice(0, SECTION_CAP);
         sectionEntries = [];
         sectionFlushes = [];
         var wireSectionObserve = function (h2el) {
@@ -1839,6 +1854,7 @@
             { threshold: 0.5 },
           );
           io.observe(h2el);
+          sectionIos.push(io);
           // Flikväxlingar: IO reagerar inte på visibilitychange, så bakgrunds-
           // tid hade annars räknats som tittande. Flusha vid hidden, åter-arma
           // vid visible om rubriken alltjämt är i viewporten.
@@ -1856,6 +1872,31 @@
         sectionEntries = null;
         sectionFlushes = null;
       }
+    }
+    // EN section_engagement per SIDA (inte per laddning-slut): flushas vid
+    // pagehide ELLER vid SPA-ruttbyte — alltid stämplad med hemvist-rutten.
+    // Efter flushen slutar observationen (senare SPA-rutters sektioner mäts
+    // inte denna laddning — ärlig under-insamling hellre än fel attribution).
+    function emitSectionsOnce() {
+      if (!sectionEntries || !sectionEntries.length) return;
+      for (var sf2 = 0; sf2 < sectionFlushes.length; sf2++) sectionFlushes[sf2](false);
+      var secsOut = [];
+      for (var so = 0; so < sectionEntries.length; so++) {
+        secsOut.push({
+          h: sectionEntries[so].h,
+          n: sectionEntries[so].n,
+          d: Math.min(600000, Math.round(sectionEntries[so].d)),
+        });
+      }
+      sectionEntries = null;
+      for (var di = 0; di < sectionIos.length; di++) {
+        try {
+          sectionIos[di].disconnect();
+        } catch (e) {
+          /* aldrig bryta sidan */
+        }
+      }
+      track("section_engagement", { sections: secsOut, path: sectionsPath }, decisionId);
     }
 
     // Aktiv tid + exit: räkna bara SYNLIG tid (visibilitychange), skicka vid
@@ -1884,20 +1925,8 @@
       left = true;
       accrue();
       flushVideos();
-      // Sektions-synligheten: EN händelse per sidladdning, vid lämnandet —
-      // aggregatet (rubrik + instansantal + sedd-tid) och inget annat.
-      if (sectionEntries && sectionEntries.length) {
-        for (var se = 0; se < sectionFlushes.length; se++) sectionFlushes[se](false);
-        var secsOut = [];
-        for (var so = 0; so < sectionEntries.length; so++) {
-          secsOut.push({
-            h: sectionEntries[so].h,
-            n: sectionEntries[so].n,
-            d: Math.min(600000, Math.round(sectionEntries[so].d)),
-          });
-        }
-        track("section_engagement", { sections: secsOut, path: safePath() }, decisionId);
-      }
+      // Sektions-synligheten: flush med hemvist-rutten (delad med SPA-vägen).
+      emitSectionsOnce();
       for (var ref in started) {
         if (!submitted[ref]) {
           track("form_abandon", { ref: ref, kind: started[ref], path: safePath() }, decisionId);
@@ -1927,8 +1956,11 @@
         lastJourneyPath = p;
         routePageviews++;
         // Videotid flushas per rutt — posternas path sattes när videon hittades,
-        // så en sen flush attribuerar ändå till rätt sida.
+        // så en sen flush attribuerar ändå till rätt sida. Sektionerna flushas
+        // här av SAMMA skäl (granskningsfynd 2026-08-08: pagehide-stämpeln bar
+        // annars nya rutten på gamla sidans sektioner).
         flushVideos();
+        emitSectionsOnce();
         track("pageview", { path: p, spa: true }, decisionId);
       } catch (err) {
         /* aldrig bryta sidan */
