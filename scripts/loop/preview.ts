@@ -24,6 +24,7 @@ import { spawnSync } from "node:child_process";
 
 import { anthropicDesigner } from "./designer";
 import { buildCandidatePlan } from "./candidate-plan";
+import { fetchSectionBehavior } from "./section-behavior";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
@@ -241,12 +242,22 @@ for (const job of jobs) {
   let planOps: RedesignOp[];
   let altOps: RedesignOp[][] = [];
   let planSource: string;
+  // Steg 10: beteende-röret är inkopplat — för prospekt finns ingen snippet-
+  // data (fetchen ger null ⇒ byte-identisk katalog), men vägen är DENSAMMA
+  // som installerade sajter får vid konvergensen (steg 11).
+  const behavior = await fetchSectionBehavior(
+    db,
+    site,
+    new URL(job.url).pathname || "/",
+    content.sections,
+  );
   const candPlan = await buildCandidatePlan({
     content,
     frozenPath: frozen,
     workDir: dir,
     segmentLabel: dims.join(" · "),
     observations,
+    behavior: behavior ?? undefined,
   });
   if (candPlan) {
     planOps = candPlan.ops;

@@ -14,7 +14,11 @@ import { spawnSync } from "node:child_process";
 
 import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
 import type { RedesignOp } from "../../src/adaptive/redesign/generate";
-import { generateCandidates, candidateToOp } from "../../src/adaptive/redesign/candidates";
+import {
+  generateCandidates,
+  candidateToOp,
+  type BehaviorInput,
+} from "../../src/adaptive/redesign/candidates";
 import {
   applyProbe,
   buildSelectionPrompt,
@@ -44,9 +48,12 @@ export async function buildCandidatePlan(args: {
   workDir: string;
   segmentLabel: string;
   observations: string[];
+  /** Steg 10: rollupens per-sektion-engagemang (null-grindad uppströms —
+   *  utelämnad ⇒ byte-identisk katalog, typ-priorn ensam precis som idag). */
+  behavior?: BehaviorInput;
 }): Promise<CandidatePlan | null> {
   const { content, frozenPath, workDir } = args;
-  const candidates = generateCandidates(content);
+  const candidates = generateCandidates(content, args.behavior);
   if (candidates.length === 0) return null;
 
   // Probens in-format: kandidat + lokator (samma upplösning som toServeOps —
@@ -107,6 +114,7 @@ export async function buildCandidatePlan(args: {
     segmentLabel: args.segmentLabel,
     observations: args.observations,
     menu,
+    engagementBySection: args.behavior?.sectionWeight,
   });
   const raw = await anthropicSelect(prompt);
   const selection = (raw ? resolveSelection(raw, menu) : null) ?? floorSelection(menu);

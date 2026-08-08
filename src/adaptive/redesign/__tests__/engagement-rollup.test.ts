@@ -28,6 +28,22 @@ describe("rollupEngagement — null-grindarna", () => {
     expect(rollupEngagement(SECTIONS, [obs("Loved by teams everywhere", MIN_VISITS, 0.8)])).not.toBeNull();
   });
 
+  it("laddningsgolvet mäter LADDNINGAR, inte sektions-summan (24 sektioner ≠ 24× data)", () => {
+    // Granskningsfynd 2026-08-08: summan växte med sektionsantalet — 42
+    // laddningar på en 24-sektionssida "nådde" 1000. Max per nyckel är
+    // laddnings-proxyn: 42 laddningar ⇒ null oavsett sektionsantal.
+    const wide = Array.from({ length: 24 }, (_, i) =>
+      obs(`Wide section number ${i + 1}`, 42, 0.5),
+    );
+    expect(rollupEngagement(SECTIONS, wide)).toBeNull();
+    // Två sektioner burna av 1000 laddningar var ⇒ svar (proxyn = 1000).
+    const deep = [
+      obs("Loved by teams everywhere", 1000, 0.7),
+      obs("Simple honest pricing", 1000, 0.3),
+    ];
+    expect(rollupEngagement(SECTIONS, deep)).not.toBeNull();
+  });
+
   it("hög okrediterbar massa ⇒ null (skev delbild serveras aldrig)", () => {
     // 60 % av besöksmassan bor i rubriker som inte joinar någon sektion.
     const skewed = [
@@ -35,13 +51,14 @@ describe("rollupEngagement — null-grindarna", () => {
       obs("Random list item one", 300, 0.2),
       obs("Random list item two", 300, 0.2),
     ];
-    expect(rollupEngagement(SECTIONS, skewed)).toBeNull();
+    // minVisits sänkt: här prövas MISS-grinden, inte laddningsgolvet.
+    expect(rollupEngagement(SECTIONS, skewed, { minVisits: 300 })).toBeNull();
     // Samma observationer men majoriteten krediterbar ⇒ svar.
     const ok = [
       obs("Loved by teams everywhere", 700, 0.9),
       obs("Random list item one", 300, 0.2),
     ];
-    const r = rollupEngagement(SECTIONS, ok);
+    const r = rollupEngagement(SECTIONS, ok, { minVisits: 300 });
     expect(r).not.toBeNull();
     expect(r!.joinMissMass).toBeCloseTo(0.3, 10);
     expect(r!.unattributed).toEqual(["Random list item one"]);
@@ -64,7 +81,7 @@ describe("rollupEngagement — kreditering genom delade joinen", () => {
       obs("Loved by teams everywhere", 600, 0.9),
       obs("  loved   BY teams everywhere ", 200, 0.5), // samma nyckel efter norm
       obs("Simple honest pricing", 400, 0.25),
-    ])!;
+    ], { minVisits: 500 })!;
     expect(r).not.toBeNull();
     // (600·0,9 + 200·0,5) / 800 = 0,8
     expect(r.sectionWeight["sec-2-testimonials"]).toBeCloseTo(0.8, 10);
@@ -105,7 +122,7 @@ describe("rollupEngagement — kreditering genom delade joinen", () => {
         obs("Simple honest pricing plans for startups", 300, 0.3),
         obs("Simple honest pricing plans for enterprise", 300, 0.5),
       ],
-      { maxJoinMissMass: 0.6 },
+      { maxJoinMissMass: 0.6, minVisits: 500 },
     )!;
     expect(r).not.toBeNull();
     expect("sec-2-pricing" in r.sectionWeight).toBe(false);
@@ -158,7 +175,7 @@ describe("rollupEngagement — kreditering genom delade joinen", () => {
         obs("Loved by teams everywhere", 700, 0.9),
         { heading: "Simple honest pricing", visits: 500, engagement: 0.4, instances: 2 },
       ],
-      { maxJoinMissMass: 0.6 },
+      { maxJoinMissMass: 0.6, minVisits: 500 },
     )!;
     expect(r).not.toBeNull();
     expect("sec-3-pricing" in r.sectionWeight).toBe(false);
@@ -171,11 +188,25 @@ describe("rollupEngagement — kreditering genom delade joinen", () => {
     const r = rollupEngagement(
       SECTIONS,
       [obs("Loved by teams everywhere", 900, 0.8), obs("   ", 300, 0.5)],
-      { maxJoinMissMass: 0.5 },
+      { maxJoinMissMass: 0.5, minVisits: 500 },
     )!;
     expect(r).not.toBeNull();
     expect(r.headinglessVisits).toBe(300);
     expect(r.joinMissMass).toBeCloseTo(0.25, 10);
+  });
+
+  it("per-sektions-golvet: n=30-brus får varken vikt eller mätrad — bara diagnostik", () => {
+    // Granskningsfynd 2026-08-08: sidgolvet passerades av de ANDRA
+    // sektionernas massa medan en sällsynt sektion (30 av 2030 laddningar)
+    // fick vikt 0,93 och en "measured"-rad från rent brus.
+    const r = rollupEngagement(SECTIONS, [
+      obs("Loved by teams everywhere", 2000, 0.6),
+      obs("Simple honest pricing", 30, 0.93),
+    ])!;
+    expect(r).not.toBeNull();
+    expect("sec-3-pricing" in r.sectionWeight).toBe(false); // ingen vikt...
+    expect(r.thinSections).toContain("sec-3-pricing"); // ...men synlig
+    expect(r.sectionWeight["sec-2-testimonials"]).toBeCloseTo(0.6, 10);
   });
 
   it("default-konstanterna är de dokumenterade (planbeslut: konservativt)", () => {
