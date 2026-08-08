@@ -88,6 +88,9 @@ export function buildEventRows(
     // PII på illa byggda sidor, så cleanText-skrubben gäller även här.
     // Hård cap (24 poster; h≤120, n 1-9, d 0-600000ms) — servern litar
     // aldrig på klientens storleksdisciplin.
+    // Icke-array (förfalskad via publika track: en PII-bärande STRÄNG skulle
+    // annars överleva {...raw}-spreaden ordagrant) ⇒ fältet släpps helt.
+    if ("sections" in raw && !Array.isArray(raw.sections)) delete payload.sections;
     if (Array.isArray(raw.sections)) {
       payload.sections = raw.sections.slice(0, 24).flatMap((s) => {
         if (!s || typeof s !== "object") return [];

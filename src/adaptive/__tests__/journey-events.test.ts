@@ -65,6 +65,21 @@ describe("buildEventRows — journey privacy boundary", () => {
       [{ type: "section_engagement", payload: { sections, path: "/" } }],
       "s1",
     );
+    // Förfalskat icke-array-sections (publika track): släpps HELT — en
+    // PII-bärande sträng får aldrig överleva spread-kopian ordagrant.
+    const forged = buildEventRows(
+      "acme",
+      "v",
+      [
+        {
+          type: "section_engagement",
+          payload: { sections: "Ring 070-123 45 67 " + "X".repeat(500) },
+        },
+      ],
+      "s1",
+    );
+    expect((forged[0].payload as Record<string, unknown>).sections).toBeUndefined();
+
     const p = rows[0].payload as { sections: { h: string; n: number; d: number }[] };
     expect(p.sections.length).toBeLessThanOrEqual(24);
     const first = p.sections[0];
