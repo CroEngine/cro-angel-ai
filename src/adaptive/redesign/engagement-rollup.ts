@@ -62,11 +62,23 @@ export const MIN_VISITS = 1000;
  *  högre eftersom missklassen domineras av list-/svansrubriker — men tills
  *  steg 9 mäter riktig massa är 0,5 ett golv med marginal åt bägge håll. */
 export const MAX_JOIN_MISS_MASS = 0.5;
+/** PER-SEKTIONS-golv (granskningsfynd 2026-08-08): sidgolvet räcker inte — en
+ *  sektion buren av bara 30 av 2 000 laddningar fick annars vikt + mätrad
+ *  från n=30. Vid n=200 är andelens SE ≈ 3,5 pp och två sektioners DIFFERENS-
+ *  SE ≈ 5 pp — under gain-flippens tröskel (Δ≈7 pp flippar hela prior-
+ *  spannet), så brus ensamt kan inte vända rangordningen. Under golvet ⇒
+ *  ingen post (neutralt säte, ingen menyrad), synlig i diagnostiken. */
+export const MIN_SECTION_VISITS = 200;
 
 export interface EngagementRollup {
   /** Sätets input: sektions-id → engagemangsandel [0,1]. Bara UNIKT joinade
-   *  sektioner får poster — saknad post = neutral i sätet (priorn ensam). */
+   *  sektioner MED egen n ≥ MIN_SECTION_VISITS får poster — saknad post =
+   *  neutral i sätet (priorn ensam), ingen menyrad. */
   sectionWeight: Record<string, number>;
+  /** Sektioner som joinade unikt men föll under per-sektions-golvet —
+   *  diagnostik, aldrig vikter (granskningsfynd 2026-08-08: n=30-brus fick
+   *  annars både vikt och "measured"-rad). */
+  thinSections: string[];
   totalVisits: number;
   /** Andel av besöksmassan som kunde krediteras en unik sektion. */
   attributedMass: number;
@@ -184,11 +196,20 @@ export function rollupEngagement(
   if (joinMissMass > maxMiss) return null; // skev delbild — hellre inget
 
   const sectionWeight: Record<string, number> = {};
-  for (const [aId, acc] of perSection)
+  const thinSections: string[] = [];
+  for (const [aId, acc] of perSection) {
+    // Per-sektions-golvet: för lite egen n ⇒ ingen vikt, ingen menyrad —
+    // sektionen är neutral i sätet (priorn ensam), aldrig en brus-siffra.
+    if (acc.visits < MIN_SECTION_VISITS) {
+      thinSections.push(aId);
+      continue;
+    }
     sectionWeight[aId] = acc.visits > 0 ? clamp01(acc.engagedVisits / acc.visits) : 0;
+  }
 
   return {
     sectionWeight,
+    thinSections,
     totalVisits,
     attributedMass,
     joinMissMass,

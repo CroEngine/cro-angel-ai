@@ -195,6 +195,20 @@ describe("rollupEngagement — kreditering genom delade joinen", () => {
     expect(r.joinMissMass).toBeCloseTo(0.25, 10);
   });
 
+  it("per-sektions-golvet: n=30-brus får varken vikt eller mätrad — bara diagnostik", () => {
+    // Granskningsfynd 2026-08-08: sidgolvet passerades av de ANDRA
+    // sektionernas massa medan en sällsynt sektion (30 av 2030 laddningar)
+    // fick vikt 0,93 och en "measured"-rad från rent brus.
+    const r = rollupEngagement(SECTIONS, [
+      obs("Loved by teams everywhere", 2000, 0.6),
+      obs("Simple honest pricing", 30, 0.93),
+    ])!;
+    expect(r).not.toBeNull();
+    expect("sec-3-pricing" in r.sectionWeight).toBe(false); // ingen vikt...
+    expect(r.thinSections).toContain("sec-3-pricing"); // ...men synlig
+    expect(r.sectionWeight["sec-2-testimonials"]).toBeCloseTo(0.6, 10);
+  });
+
   it("default-konstanterna är de dokumenterade (planbeslut: konservativt)", () => {
     expect(MIN_VISITS).toBe(1000);
     expect(MAX_JOIN_MISS_MASS).toBe(0.5);

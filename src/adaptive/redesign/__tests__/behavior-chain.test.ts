@@ -156,7 +156,13 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
     );
     expect(rollup).toBeNull();
     // Anropar-mönstret (candidate-plan): null ⇒ behavior utelämnas helt.
-    expect(generateCandidates(CONTENT, undefined)).toEqual(generateCandidates(CONTENT));
+    // ICKE-vakuöst (granskningsfynd: undefined-vs-inget var en tautologi):
+    // beteende-input ÄNDRAR katalogen — och tomma vikter gör det INTE.
+    const plain = generateCandidates(CONTENT);
+    expect(generateCandidates(CONTENT, { sectionWeight: { "sec-3-pricing": 0.9 } })).not.toEqual(
+      plain,
+    );
+    expect(generateCandidates(CONTENT, { sectionWeight: {} })).toEqual(plain);
   });
 
   it("menyraden utan beteendedata är exakt dagens (ingen påhittad siffra)", () => {
