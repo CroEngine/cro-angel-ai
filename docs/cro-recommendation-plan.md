@@ -171,9 +171,23 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
 
 ### Block D — Skarpt (högst blast radius, sist)
 
-11. **Konvergera den serverade generatorn** (`nightly.ts`, som idag kringgår
-    katalogen) till den beteende-rankade katalogen; fri-designern kvar som
-    fallback. Grinda på **live icke-underlägsenhet**, inte bara offline-tal. [D3]
+11. **Konvergera den serverade generatorn** — ✅ **KLAR.** `nightly.ts` kör nu
+    KATALOGEN FÖRST i den serverade vägen (samma superset som preview/fleet:
+    kod genererar dragen, DOM-proben filtrerar, LLM väljer ur menyn, golvet
+    väljer när den tystnar), med **beteende-sätet matat av steg 10-röret**
+    (events → rollup → `BehaviorInput`; null vid tunn/oren data ⇒ typ-priorn
+    ensam) och fri-designern kvar som RESERV för celler utan katalog-
+    kandidater. Katalogens rankade reserver (`altOps`) tråds genom verify:s
+    alt-stege, och **provenance** (`katalog/selector` | `katalog/floor` |
+    `designer`) ekas genom verify in i variantens `evidence` — ägaren ser var
+    varje plan kom ifrån. **Live icke-underlägsenheten**: konvergensen ändrar
+    INGET i grindkedjan — varje katalog-plan går genom samma verify (riktig
+    Chromium), ägarens knapp, ramp (max 50 %) och **guardrail-svepets hold på
+    uppmätt förlust/breach ur riktiga armar** (`angel_variant_arms` →
+    `planGuardrailSweep`) som designer-planer alltid gjort; en katalog-variant
+    som mäter sämre live hålls automatiskt. Avgränsning v1 (dokumenterad):
+    mall-celler stannar hos designern (alt-stegen är avstängd för mallar och
+    katalog-proben går mot en fryst fil). [D3]
 
 ## Där perspektiven skilde sig
 

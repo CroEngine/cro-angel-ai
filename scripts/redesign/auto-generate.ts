@@ -446,6 +446,11 @@ interface PlanIn {
    *  ekar dem oförändrade i det verifierade resultatet. */
   cohorts?: string[];
   success?: unknown;
+  /** Provenance (steg 11-konvergensen): "katalog/selector" | "katalog/floor"
+   *  | "designer". Verify agerar aldrig på det — ekas oförändrat till
+   *  resultatet så varianten kan bära sin källa i evidence (ägaren och
+   *  guardrail-diagnosen ser VAR planen kom ifrån). */
+  planSource?: string;
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
 
@@ -1160,6 +1165,7 @@ try {
       // Kohortkontraktet ekas till orkestreraren — se PlanIn-kommentaren.
       ...(plan.cohorts ? { cohorts: plan.cohorts } : {}),
       ...(plan.success !== undefined ? { success: plan.success } : {}),
+      ...(plan.planSource ? { planSource: plan.planSource } : {}),
     });
     console.log(
       `  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök${fallbackUsed ? ", via fallback" : ""}) — väntar på ägarens knapp`,
