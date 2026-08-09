@@ -65,7 +65,7 @@ interface VerifyRow {
   path: string;
   key: string;
   ops?: { op: string; targetId: string }[];
-  serveOps?: unknown[];
+  serveOps?: { op: string; locator?: { tag?: string; text?: string }; why?: string }[];
   evidence?: Record<string, unknown>;
   planSource?: string;
   reason?: string;
@@ -156,17 +156,40 @@ describe("plans.json → verify (riktig process, riktig Chromium)", () => {
       // 1) Provenansen är kvar hela vägen ut i resultatet.
       expect(main.verdict).toBe("verified");
       expect(main.planSource).toBe("katalog/selector");
-      expect(main.ops?.map((o) => o.targetId)).toContain("sec-4-pricing");
-      // serve_ops finns och matchar antalet grindade ops (ingen tappad/extra).
-      expect(Array.isArray(main.serveOps)).toBe(true);
-      expect((main.serveOps as unknown[]).length).toBe(main.ops!.length);
+      expect(main.ops?.map((o) => o.targetId)).toEqual(["sec-4-pricing"]);
+      // serve_ops är det KLIENTEN kommer att applicera. Antalsjämförelsen mot
+      // ops var vakuös (granskningsfynd 2026-08-08: båda härleds ur samma
+      // lista, så likheten höll även om lokatorn pekat fel). Kontraktet är
+      // EXAKT form: rätt verb, rätt tagg och rätt rubriktext — sektionen som
+      // faktiskt grindades, inte någon annan på sidan.
+      expect(main.serveOps).toEqual([
+        {
+          op: "move_up",
+          locator: { tag: "h2", text: "Simple honest pricing" },
+          why: "proof closer to the decision",
+        },
+      ]);
 
       // 2) Reserven räddade cellen — förut blev den rejected_by_validation och
       //    natten gav ingenting för den cellen.
       expect(recovered.verdict).toBe("verified");
       expect(recovered.planSource).toBe("katalog/floor");
       expect(recovered.ops?.map((o) => o.targetId)).toEqual(["sec-4-pricing"]);
+      // Reservens lokator — INTE huvudvalets (som pekade på en sektion som
+      // inte finns): serve-vägen bär den plan som faktiskt grindades.
+      expect(recovered.serveOps).toEqual([
+        {
+          op: "move_up",
+          locator: { tag: "h2", text: "Simple honest pricing" },
+          why: "proof closer to the decision",
+        },
+      ]);
       expect(recovered.evidence?.validationRecovery).toBe("alt:1");
+      // Återhämtningen syns även på RADEN, inte bara i evidence — annars är
+      // den osynlig i just de fall cellen sedan faller i grinden.
+      expect((recovered as unknown as { validationRecovery?: string }).validationRecovery).toBe(
+        "alt:1",
+      );
     },
     240_000,
   );
