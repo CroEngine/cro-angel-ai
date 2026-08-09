@@ -91,7 +91,8 @@
   // en rad extra kod körs. Två opt-in-vägar, samma kontrakt som hold-out och
   // konverteringsmålet: TAGGEN vinner som explicit per-install-override, annars
   // gäller sajtens dashboard-konfig (applySiteConfig nedan). Sajtkonfigen finns
-  // för att påslag OCH avstängning inte ska kräva en release på kundens sajt.
+  // för att påslag OCH avstängning inte ska kräva en release på kundens sajt
+  // (konfigsvaret cachas 5 min, så en ändring slår igenom inom det fönstret).
   var OBSERVE_SECTIONS_ATTR = script.getAttribute("data-observe-sections") || "";
   var OBSERVE_SECTIONS_SET_BY_TAG = OBSERVE_SECTIONS_ATTR !== "";
   var OBSERVE_SECTIONS = OBSERVE_SECTIONS_ATTR === "1" || OBSERVE_SECTIONS_ATTR === "true";

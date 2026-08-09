@@ -87,8 +87,10 @@ export const Route = createFileRoute("/api/adaptive/consent-config")({
             },
             // Per-sektion-synligheten (CRO-planen steg 9): sajt-konfig i
             // stället för enbart taggattribut, så påslag och — viktigare —
-            // AVSTÄNGNING inte kräver en release på kundens sajt. Taggens
-            // data-observe-sections vinner fortfarande (explicit override).
+            // AVSTÄNGNING inte kräver en release på kundens sajt. OBS cachen
+            // ovan (5 min): en ändring slår igenom inom det fönstret, inte
+            // omedelbart. Taggens data-observe-sections vinner fortfarande
+            // (explicit per-install-override).
             observeSections: cfg.observeSections,
           },
           "public, max-age=300",

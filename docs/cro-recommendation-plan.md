@@ -144,7 +144,9 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
    samtyckesgrindat (samma `send()`-grind som allt annat: GPC/DNT + consent),
    reversibelt (av = exakt dagens snippet). Två opt-in-vägar: sajtkonfigen
    (`angel_sites.observe_sections` → `/api/adaptive/consent-config`) så påslag
-   OCH avstängning går på sekunden utan en release på kundens sajt, och
+   OCH avstängning inte kräver en release på kundens sajt — svaret cachas
+   5 minuter, så en ändring slår igenom inom det fönstret, inte omedelbart —
+   och
    `data-observe-sections` på taggen som VINNER som explicit per-install-
    override (samma kontrakt som `data-holdout`). Bägge vägarna bevisade i
    riktig Chromium (`section-observe.test.ts`). Snippeten bygger applierns v3-census (main-h2:or utan

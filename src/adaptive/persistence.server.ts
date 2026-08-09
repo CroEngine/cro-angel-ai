@@ -493,6 +493,10 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
           holdoutPct: 0,
           ingestKey: null,
           adaptationsEnabled: true,
+          // Mätmaskineriet ska ALDRIG gå i en förhandsgranskning: sandbox-slugs
+          // skriver inga events (logEvents no-op:ar), så observationen hade bara
+          // kostat besökaren arbete och skickat data som kastas.
+          observeSections: false,
         };
     }
     return (await fetchSiteConfigRow(slug)) ?? DEFAULT_SITE_CONFIG;
