@@ -7,6 +7,7 @@
 
 import type { Candidate } from "./candidates";
 import { floorWhy } from "./candidates";
+import { defuseMarkers } from "./defuse";
 
 /** Grindmätvärdena ur probens fulla mätpass (grind-i-proben 2026-07-27) —
  *  säkerhetsmått, inte säljvärde: de FILTRERAR och bryter lika-poäng, men
@@ -23,6 +24,11 @@ export interface ProbeGateMetrics {
 export interface ProbeAnnotation {
   id: string;
   applicable: boolean;
+  /** Grind-i-probens v2-dom: true = passerade FULLA grindmätningen, false =
+   *  mätt och UNDERKÄND (reservnivån). Utelämnad (äldre utfiler, offline-
+   *  anropare) ⇒ okänd — räknas till förstahandsnivån; verify grindar alltid
+   *  slutvalet oavsett. */
+  gateClean?: boolean;
   placements?: string[];
   gate?: ProbeGateMetrics;
   reason?: string;
@@ -31,11 +37,19 @@ export interface ProbeAnnotation {
 export type ProbedCandidate = Candidate & {
   placement?: "after_h1";
   gate?: ProbeGateMetrics;
+  /** false ⇔ menyn står på reservnivån (applicerbar men grind-underkänd). */
+  gateClean?: boolean;
 };
 
-/** Filtrera katalogen mot probens grinddom (bara grind-rena drag kan väljas)
- *  och bind insert-placeringen när bara en plats passerade — verify går då
- *  direkt på den bekräftade rungen. */
+/** Filtrera katalogen mot probens grinddom och bind insert-placeringen när
+ *  bara en plats passerade — verify går då direkt på den bekräftade rungen.
+ *
+ *  Superset-regeln (mätfynd 2026-07-27) HEDERLIG (granskningsfynd 2026-08-08):
+ *  förstahandsmenyn är de grind-RENA dragen — ett drag som probens fulla
+ *  mätning UNDERKÄNDE får aldrig stå i en meny vars prompt säger "already
+ *  passed". Först när INGET drag är grind-rent faller menyn till de
+ *  applicerbara reserverna (61 % > 55 %-mätningen som motiverade nivåerna)
+ *  — och då säger prompten sanningen om läget i stället. */
 export function applyProbe(candidates: Candidate[], probe: ProbeAnnotation[]): ProbedCandidate[] {
   const byId = new Map(probe.map((p) => [p.id, p]));
   const out: ProbedCandidate[] = [];
@@ -44,12 +58,13 @@ export function applyProbe(candidates: Candidate[], probe: ProbeAnnotation[]): P
     if (!p?.applicable) continue;
     if (c.kind === "insert_snippet" && p.placements && !p.placements.includes("default")) {
       if (!p.placements.includes("after_h1")) continue;
-      out.push({ ...c, placement: "after_h1", gate: p.gate });
+      out.push({ ...c, placement: "after_h1", gate: p.gate, gateClean: p.gateClean });
     } else {
-      out.push({ ...c, gate: p.gate });
+      out.push({ ...c, gate: p.gate, gateClean: p.gateClean });
     }
   }
-  return out;
+  const clean = out.filter((c) => c.gateClean !== false);
+  return clean.length > 0 ? clean : out;
 }
 
 /** Väljar-prompten: sidkontext + segment + menyn med stabila id:n. Sidtexten
@@ -71,9 +86,19 @@ export function buildSelectionPrompt(args: {
   L.push("");
   L.push(`Visitor segment: ${args.segmentLabel}`);
   for (const o of args.observations) L.push(`- ${o}`);
-  if (args.heroHeadline) L.push(`\nPage hero headline (untrusted page content): "${args.heroHeadline}"`);
+  // Hjälte-rubriken är ORDAGRANN sidtext precis som basis — märkningen
+  // "untrusted" räcker inte när texten kan bära systemets EGNA markörer
+  // (granskningsfynd 2026-08-08: avväpningen satt bara på menyraderna).
+  if (args.heroHeadline)
+    L.push(`\nPage hero headline (untrusted page content): "${defuseMarkers(args.heroHeadline)}"`);
+  // Ärlighetskontraktet på själva menyn (granskningsfynd 2026-08-08): "already
+  // passed" får bara påstås när det GÄLLER varje rad. Reservnivån (ingen
+  // grind-ren kandidat) beskrivs som det den är — verify grindar slutvalet.
+  const proven = args.menu.every((c) => c.gateClean !== false);
   L.push(
-    "\nMENU — every entry has ALREADY PASSED the full safety gates on the live DOM (measurements shown). Judge PERSUASION for the segment; safety is proven:",
+    proven
+      ? "\nMENU — every entry has ALREADY PASSED the full safety gates on the live DOM (measurements shown). Judge PERSUASION for the segment; safety is proven:"
+      : "\nMENU — RESERVE LEVEL: no candidate passed the full gate probe on this page. Entries below are applicable on the live DOM but NOT gate-proven; the final choice must still pass the full gate chain before anything can ship. Judge PERSUASION for the segment:",
   );
   for (const c of args.menu) {
     const g = c.gate;
@@ -98,12 +123,27 @@ export function buildSelectionPrompt(args: {
             ? 100
             : Math.min(99, Math.max(1, Math.round(eng * 100)))
         : null;
-    const engLine = engPct !== null ? ` [measured: seen ≥1s in ${engPct}% of its views]` : "";
+    // OMFÅNGET ÄR EN DEL AV SANNINGEN (granskningsfynd 2026-08-08): datan är
+    // per SIDA, prompten per SEGMENT. En rad utan omfångsmärkning läses som
+    // "segmentets besökare" fast den mäter alla sidans besökare — samma
+    // överdrift som repot redan undviker överallt annars ("sajtsnittet",
+    // "segmentets besökare", "not yet measured"). Raden säger nu vem den
+    // gäller, så väljaren kan vikta den rätt för ett smalt segment.
+    const engLine =
+      engPct !== null
+        ? ` [measured: seen ≥1s in ${engPct}% of its views — all visitors of this page, not segment-specific]`
+        : "";
     // Basis/detail är ORDAGRANN sidtext = OBETRODD (samma kontrakt som hela
     // prompten): en sidrubrik som själv innehåller "[measured:" får inte kunna
     // smida en mätrad för en omätt sektion — avväpna markören i den obetrodda
     // delen (granskningsfynd 2026-08-08, prompt-injektionsklassen).
-    const safeBasis = c.basis.replace(/\[\s*measured\s*:/gi, "[page-text:");
+    // Gäller BÅDA de betrodda markörerna (granskningsfynd 2026-08-08): en
+    // rubrik som bär "[gates: LCP shift 0px · CTA intact]" hade annars kunnat
+    // ge en OMÄTT kandidat ett fabricerat grindkvitto i menyn — samma klass
+    // som den smidda mätraden, och vassare eftersom grindraden är själva
+    // säkerhetspåståendet.
+    // Delad avväpning (defuse.ts) — samma funktion vaktar ägarens vy.
+    const safeBasis = defuseMarkers(c.basis);
     L.push(
       `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${safeBasis}${engLine}${gateLine}`,
     );

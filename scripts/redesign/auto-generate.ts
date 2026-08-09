@@ -73,6 +73,7 @@ import {
   segmentInsightFrom,
 } from "../../src/adaptive/redesign/context";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
+import { withExtraLift } from "../../src/adaptive/redesign/extra-lift";
 import { tidySignalText } from "../../src/adaptive/redesign/candidates";
 import {
   evaluateRenderGates,
@@ -446,6 +447,12 @@ interface PlanIn {
    *  ekar dem oförändrade i det verifierade resultatet. */
   cohorts?: string[];
   success?: unknown;
+  /** Provenance (steg 11-konvergensen): "katalog/selector" | "katalog/floor"
+   *  | "designer". Verify agerar aldrig på det — ekas oförändrat till
+   *  resultatet så varianten kan bära sin källa i evidence, där dashboardens
+   *  variantlista visar den för ägaren. Guardrail-svepet ser den aldrig
+   *  (skyddsbeslut dömer på armar, inte härkomst). */
+  planSource?: string;
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
 
@@ -722,24 +729,56 @@ try {
         ))!;
     // Den RIKTIGA valideringen: verb i vokabulären, targetId måste finnas,
     // claims-vakten på varje omtextning. Kedjan litar aldrig på designern.
-    const validated = await generateRedesign(ctx, async () => JSON.stringify(plan.ops));
+    let validated = await generateRedesign(ctx, async () => JSON.stringify(plan.ops));
+    /** Satt när huvudvalet föll i VALIDERINGEN och en katalogreserv tog över
+     *  (skilt från fallbackUsed, som gäller grind-/upplösningsfall). */
+    let validationRecovery: string | null = null;
+    /** Cellens rader bär ALLTID återhämtningen (granskningsfynd 2026-08-08):
+     *  låg den bara i evidence på den verifierade vägen försvann signalen i
+     *  exakt det fall den betyder mest — reserven togs in och FÖLL sedan i
+     *  grinden. Då rapporterades ett gate_fail som såg ut att gälla huvudvalet
+     *  medan det mätta var reserven, och drivet mellan katalogens modell och
+     *  verifys blev osynligt. Läses vid anropet (mutabel let). */
+    const recordCell = (r: Record<string, unknown>) =>
+      record(validationRecovery ? { ...r, validationRecovery } : r);
     if (validated.ops.length !== plan.ops.length) {
       // rejected[].reason, inte "validated.notes" (typkollsfynd 2026-07-28):
       // fältet fanns aldrig på RedesignPlan — varje avvisning rapporterades
       // som undefined och fleet-läsaren visade "(okänd orsak)". Valideringens
       // per-op-skäl ÄR diagnosen.
       const reason = validated.rejected.map((r) => r.reason).join("; ") || validated.note || "";
-      record({
-        path: plan.path,
-        key: plan.key,
-        verdict: "rejected_by_validation",
-        dropped: plan.ops.length - validated.ops.length,
-        reason,
-      });
-      console.log(
-        `  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll: ${reason || "utan angivet skäl"})`,
-      );
-      continue;
+      // ALT-STEGEN GÄLLER ÄVEN HÄR (granskningsfynd 2026-08-08): förut
+      // `continue`:ade valideringsavslaget FÖRE reservstegen, så en cell vars
+      // huvudval föll i valideringen gav ingenting den natten — trots att
+      // katalogen skickat med rankade reserver. Två LEVANDE avslagsvägar
+      // finns: (1) verify validerar mot den LLM-BERIKADE modellen medan
+      // katalogen byggdes på den oberikade (typtaket kan skriva om ett
+      // sektions-id), (2) net-no-op-vakten fäller en flytt av första
+      // sektionen på en hjältelös sida. Varje reserv valideras med SAMMA
+      // validator som huvudplanen — ingen genväg, bara en andra chans.
+      for (const [i, alt] of (isTemplate ? [] : (plan.altOps ?? [])).entries()) {
+        const av = await generateRedesign(ctx, async () => JSON.stringify(alt));
+        if (av.ops.length !== alt.length || av.ops.length === 0) continue;
+        validated = av;
+        validationRecovery = `alt:${i + 1}`;
+        console.log(
+          `  ${plan.path} × ${plan.key}: huvudvalet föll i valideringen (${reason || "utan angivet skäl"}) — reserv alt:${i + 1} validerade, fortsätter med den`,
+        );
+        break;
+      }
+      if (!validationRecovery) {
+        recordCell({
+          path: plan.path,
+          key: plan.key,
+          verdict: "rejected_by_validation",
+          dropped: plan.ops.length - validated.ops.length,
+          reason,
+        });
+        console.log(
+          `  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll: ${reason || "utan angivet skäl"})`,
+        );
+        continue;
+      }
     }
 
     // Serve-formade mät-ops i PLANORDNING — exakt det snippeten kommer att
@@ -749,7 +788,7 @@ try {
     let effectiveOps: RedesignOp[] = validated.ops;
     let measureOps = toMeasureOps(content, effectiveOps, styleDonor);
     if (!measureOps) {
-      record({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
+      recordCell({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       console.log(`  ${plan.path} × ${plan.key}: lokator saknas för op — hålls tillbaka`);
       continue;
     }
@@ -792,6 +831,10 @@ try {
     );
     let last = attempts[attempts.length - 1];
     let fallbackUsed: string | null = null;
+    /** Försöken från den körning som bestämde de FINALA opsen (huvudvalet,
+     *  eller reservens egen körning efter adoption) — lyftets why-rad läser
+     *  kollisionstalen härifrån. */
+    let liftAttempts = attempts;
 
     // Fallback-steget (ägarbeslut 2026-07-27): när flytt-planen inte kan
     // levereras provas bevis-lyftet — ordagrann sidtext under hjälten,
@@ -831,7 +874,18 @@ try {
         writeFileSync(join(outDir, `${slug}-after.html`), await fpage.content());
         attempts = [...attempts, ...fb.attempts]; // hela historiken — ärlig rapport
         attemptOps = fb.attemptOps;
-        extraLiftApplied = false; // reserverna bär sina egna ops som de är
+        // Reservens EGEN grinddom följer med (granskningsfynd 2026-08-08,
+        // serverings-säkerhetsklassen): en reserv som bara passerade tack vare
+        // kollisions-retryns extra lyft grindades, mättes och skärmdumpades
+        // med TVÅ lyft. Nollställdes flaggan här servades ETT lyft — exakt den
+        // layout försök 1 mätte som UNDERKÄND, med försök 2:s rena tal i
+        // bevispåsen. Klassen var oåtkomlig före steg 11 (den enda reserven,
+        // proof_insert, innehåller inga flyttar) och blev nåbar när katalogens
+        // move_up-reserver trådades in i den serverade vägen.
+        extraLiftApplied = fb.extraLiftApplied;
+        // Lyftets grindtal ska komma från den ADOPTERADE körningen, inte från
+        // huvudvalets historik (why-raden i ägarens bevispåse).
+        liftAttempts = fb.attempts;
         effectiveOps = opsList;
         measureOps = m;
         last = attempts[attempts.length - 1];
@@ -858,6 +912,9 @@ try {
     const tryProofFallback = async (): Promise<boolean> => {
       if (isTemplate) return false;
       for (const [i, alt] of (plan.altOps ?? []).entries()) {
+        // Reserven som redan tog över i VALIDERINGEN är just den som nyss
+        // föll i grinden — prova nästa i stället för att köra om samma.
+        if (validationRecovery === `alt:${i + 1}`) continue;
         const altValidated = await generateRedesign(ctx, async () => JSON.stringify(alt));
         if (altValidated.ops.length !== alt.length) {
           console.log(
@@ -883,7 +940,7 @@ try {
     if (unresolvable) {
       await context.close();
       if (!(await tryProofFallback())) {
-        record({
+        recordCell({
           path: plan.path,
           key: plan.key,
           verdict: "not_applicable",
@@ -916,7 +973,7 @@ try {
     }
 
     if (last.gate.verdict !== "pass") {
-      record({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
+      recordCell({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
       console.log(
         `  ${plan.path} × ${plan.key}: GRIND-FAIL efter ${attempts.length} försök — hålls tillbaka`,
       );
@@ -972,7 +1029,7 @@ try {
     }
     const failedConfirm = confirmations.find((c) => c.verdict !== "pass");
     if (failedConfirm) {
-      record({
+      recordCell({
         path: plan.path,
         key: plan.key,
         verdict: "gate_fail",
@@ -1020,7 +1077,7 @@ try {
       }
       const failedEx = exemplarConfirmations.find((c) => c.verdict !== "pass");
       if (failedEx) {
-        record({
+        recordCell({
           path: plan.path,
           key: plan.key,
           verdict: "gate_fail",
@@ -1037,31 +1094,21 @@ try {
 
     // Grindat OK → bygg det serverbara + evidensen.
     // Retry-lyftet blir en extra move_up-op per mål så plan/serve_ops/sanning matchar.
-    const finalOps: RedesignOp[] = !extraLiftApplied
-      ? effectiveOps
-      : [
-          ...effectiveOps,
-          // ETT extra lyft per UNIK måltavla — exakt vad retry-mätningen
-          // körde (attemptOps), så serve_ops == det grindade antalet lyft.
-          // Dedup-nyckeln är den UPPLÖSTA lokatortexten, inte targetId:
-          // runGatedAttempts dedupar på find-strängen, och två sektioner med
-          // samma rubrik ger EN unik find — targetId-dedup hade servat fler
-          // lyft än det grindade (kartläggningsfynd 2026-07-27).
-          ...[
-            ...new Map(
-              effectiveOps
-                .filter((o) => o.op === "move_up")
-                .map((o) => [locatorFor(content, o.targetId)?.text ?? o.targetId, o]),
-            ).values(),
-          ].map((o, i, arr) => ({
-            ...o,
-            detail: `extra move ${i + 1}/${arr.length} — the collision gate's retry found a clean placement one step higher`,
-            why: `attempt 1 introduced +${attempts[0].gate.verticalOverlapIntroducedPx}px overlap; attempt 2 +${last.gate.verticalOverlapIntroducedPx}px`,
-          })),
-        ];
+    // ETT extra lyft per UNIK måltavla — exakt vad retry-mätningen körde
+    // (attemptOps), så serve_ops == det grindade antalet lyft. Räkningen är
+    // DELAD med grind-loopen (extraLiftFinds ⇄ uniqueLiftTargets, samma
+    // dedup på den upplösta lokatortexten) så de två sidorna inte kan glida
+    // isär tyst — granskningsfynd 2026-08-08.
+    const finalOps: RedesignOp[] = withExtraLift(effectiveOps, {
+      extraLiftApplied,
+      locatorTextFor: (id) => locatorFor(content, id)?.text ?? null,
+      overlapAttempt1: liftAttempts[0]?.gate.verticalOverlapIntroducedPx ?? null,
+      overlapAttempt2:
+        liftAttempts[liftAttempts.length - 1]?.gate.verticalOverlapIntroducedPx ?? null,
+    });
     const serveOps = toServeOps(content, finalOps, styleDonor);
     if (!serveOps) {
-      record({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
+      recordCell({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       continue;
     }
 
@@ -1070,6 +1117,9 @@ try {
       // Fallback-spårning (2026-07-27): ägaren ska kunna SE att flytten
       // hölls av grinden och att bevis-lyftet verifierades i dess ställe.
       ...(fallbackUsed ? { fallback: fallbackUsed } : {}),
+      // Samma spårbarhet när huvudvalet föll redan i VALIDERINGEN och en
+      // katalogreserv tog över (2026-08-08).
+      ...(validationRecovery ? { validationRecovery } : {}),
       brief: { path: plan.path, key: plan.key, total: plan.total, observations: plan.observations },
       gates: {
         hOverflowIntroducedPx: last.gate.hOverflowIntroducedPx,
@@ -1141,13 +1191,27 @@ try {
       },
     };
     const esc = (s: string) => s.replace(/'/g, "''");
+    // Reservvägen (handpåläggning): nattloopen inserterar via service-klienten,
+    // men den här filen finns för labbet/manuella körningar — och saknade
+    // required_cohorts (granskningsfynd 2026-08-08). En kohortscopad variant
+    // applicerad härifrån hade fötts OSCOPAD och servat ALLA besökare, inte
+    // sin kohort. Fältet skrivs nu på samma villkor som direkt-inserten.
+    // Kolumnen är text[] (20260721190000_angel_variants_required_cohorts.sql)
+    // — array-literal, inte jsonb.
+    const cohortStrs = Array.isArray(plan.cohorts)
+      ? plan.cohorts.filter((c): c is string => typeof c === "string")
+      : [];
+    const cohortsSql =
+      cohortStrs.length > 0
+        ? `array[${cohortStrs.map((c) => `'${esc(c)}'`).join(", ")}]::text[]`
+        : "null";
     sqlParts.push(
-      `insert into angel_variants (site, path, segment_key, status, ops, serve_ops, evidence)\n` +
-        `values ('${site}', '${esc(plan.path)}', '${esc(plan.key)}', 'verified', '${esc(JSON.stringify(finalOps))}'::jsonb, '${esc(JSON.stringify(serveOps))}'::jsonb, '${esc(JSON.stringify(evidence))}'::jsonb);`,
+      `insert into angel_variants (site, path, segment_key, status, ops, serve_ops, evidence, required_cohorts)\n` +
+        `values ('${site}', '${esc(plan.path)}', '${esc(plan.key)}', 'verified', '${esc(JSON.stringify(finalOps))}'::jsonb, '${esc(JSON.stringify(serveOps))}'::jsonb, '${esc(JSON.stringify(evidence))}'::jsonb, ${cohortsSql});`,
     );
     // ops med i resultatet så en orkestrerare (nattloopen) kan göra direkta
     // inserts via service-klienten i stället för att köra SQL-filen.
-    record({
+    recordCell({
       path: plan.path,
       key: plan.key,
       verdict: "verified",
@@ -1160,6 +1224,22 @@ try {
       // Kohortkontraktet ekas till orkestreraren — se PlanIn-kommentaren.
       ...(plan.cohorts ? { cohorts: plan.cohorts } : {}),
       ...(plan.success !== undefined ? { success: plan.success } : {}),
+      // Provenansen gäller det SERVERADE, inte planen som föll (granskningsfynd
+      // 2026-08-08). Bevis-lyftets nödfall (proof_insert) syntetiseras HÄR ur
+      // sidans egen text — den opsen stod aldrig i katalogens meny och ingen
+      // modell valde den. Ekades "katalog/selector" ändå sa dashboarden "from
+      // catalog (model pick)" om en rad som inte kom därifrån. Katalogens egna
+      // reserver (alt:N) är däremot fortfarande katalogens.
+      ...(plan.planSource
+        ? {
+            // String(...) medvetet: fallbackUsed sätts bara inuti adoptRun-
+            // closuren, så tsc smalnar av typen till null här och `?.` blir
+            // ett kompileringsfel. Värdet är korrekt i körtid.
+            planSource: String(fallbackUsed ?? "").startsWith("proof_insert")
+              ? "proof-insert"
+              : plan.planSource,
+          }
+        : {}),
     });
     console.log(
       `  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök${fallbackUsed ? ", via fallback" : ""}) — väntar på ägarens knapp`,

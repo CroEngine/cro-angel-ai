@@ -14,8 +14,10 @@
 //     --frozen=<path> --in=<candidates.json> --out=<probed.json>
 //
 // In-format per kandidat: {id, kind, tag, find, detail?} + toppnivå
-// {ctaTexts?: string[]} i en meta-post (id "__meta__"). Fail closed per
-// kandidat: oprovbar ⇒ bortfiltrerad, aldrig "kanske".
+// {ctaTexts?: string[], ctaSelectors?: string[]} i en meta-post (id
+// "__meta__") — samma vakter som verify: måltext i hit-listan, mål-selector
+// i selektor-vakten. Fail closed per kandidat: oprovbar ⇒ bortfiltrerad,
+// aldrig "kanske".
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
@@ -39,6 +41,7 @@ interface ProbeIn {
   find: string;
   detail?: string;
   ctaTexts?: string[];
+  ctaSelectors?: string[];
 }
 export interface GateMetrics {
   lcpShiftPx: number | null;
@@ -68,6 +71,7 @@ const raw = JSON.parse(readFileSync(IN, "utf8")) as ProbeIn[];
 const meta = raw.find((c) => c.id === "__meta__");
 const cands = raw.filter((c) => c.id !== "__meta__");
 const ctaTexts = meta?.ctaTexts ?? [];
+const ctaSelectors = meta?.ctaSelectors ?? [];
 const html = readFileSync(FROZEN, "utf8");
 
 const browser = await chromium.launch({ headless: true, executablePath: EXEC });
@@ -101,7 +105,7 @@ async function gateRun(
     page,
     ops,
     ctaTexts,
-    {},
+    { ctaSelectors },
   );
   if (unresolvable || attempts.length === 0) {
     return {

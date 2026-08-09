@@ -171,9 +171,69 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
 
 ### Block D — Skarpt (högst blast radius, sist)
 
-11. **Konvergera den serverade generatorn** (`nightly.ts`, som idag kringgår
-    katalogen) till den beteende-rankade katalogen; fri-designern kvar som
-    fallback. Grinda på **live icke-underlägsenhet**, inte bara offline-tal. [D3]
+11. **Konvergera den serverade generatorn** — ✅ **KLAR.** `nightly.ts` kör nu
+    KATALOGEN FÖRST i den serverade vägen (samma superset som preview/fleet:
+    kod genererar dragen, DOM-proben filtrerar, LLM väljer ur menyn, golvet
+    väljer när den tystnar), med **beteende-sätet matat av steg 10-röret**
+    (events → rollup → `BehaviorInput`; null vid tunn/oren data ⇒ typ-priorn
+    ensam) och fri-designern kvar som RESERV för celler utan katalog-
+    kandidater. Katalogens rankade reserver (`altOps`) tråds genom verify:s
+    alt-stege, och **provenance** (`katalog/selector` | `katalog/floor` |
+    `designer`) ekas genom verify in i variantens `evidence` och **visas i
+    dashboardens variantlista** ("from catalog (model pick)" m.fl.) — ägaren
+    ser var varje plan kom ifrån. Guardrail-svepet ser den däremot ALDRIG:
+    skyddsbeslut dömer på uppmätta armar, aldrig på härkomst.
+    **Live icke-underlägsenheten**: konvergensen ändrar
+    INGET i grindkedjan — varje katalog-plan går genom samma verify (riktig
+    Chromium), ägarens knapp, ramp (max 50 %) och **guardrail-svepets hold på
+    uppmätt förlust/breach ur riktiga armar** (`angel_variant_arms` →
+    `planGuardrailSweep`) som designer-planer alltid gjort; en katalog-variant
+    som mäter sämre live hålls automatiskt.
+
+    **Avgränsningar v1 (medvetna carve-outs, båda testade i `cell-plan.test.ts`):**
+    (a) *mall-celler* stannar hos designern — alt-stegen är avstängd för mallar
+    och katalog-proben går mot EN fryst fil; (b) *korssid-celler* (de som
+    förtjänats på pris-flödessignalen och fått `sourcePaths`) stannar hos
+    designern — katalogen genererar bara drag på den egna sidan och kan aldrig
+    CITERA en annan sida, och utan citatet tystnar även drift-självläkningen
+    (`evidence.dependencies`).
+
+    *Kohortceller* går däremot katalog-först som vilken ensidig cell som helst
+    — kohortens avsikt kommer in som `observations` i väljar-prompten, exakt
+    samma rader designern fick (och utan designer-promptens påhittade
+    "0,0 % konvertering / adequate" för en cell vars kohort ännu inte mätts).
+    `required_cohorts` sätts oberoende av vägen.
+
+    **Beteende-sätets arm-stängsel:** laddningar där VI flyttade om sidan får
+    aldrig bli "besökarnas beteende" — annars mäter sätet sin egen effekt och
+    rankar den högre nästa natt (självförstärkning). Två lager:
+    (a) *markören*: snippeten stämplar varje `section_engagement` med
+    `adapted` (0/1) ur samma sanning som skörde-spärren använder — en exakt
+    PER-LADDNING-signal som filtreras redan i SQL, så det organiska underlaget
+    inte stympas av hämtningstaket. Bevisad i riktig Chromium
+    (`section-observe.test.ts`: orörd laddning ⇒ 0, variant-arm ⇒ 1) och
+    normaliserad till 0/1 på serversidan (`journey-events.test.ts`).
+    (b) *events utan markör*: bara `decision_id` finns, och den är en
+    kontext-hash som delas av båda armarna — stängslet blir trubbigt (kontroll-
+    armens rena laddningar faller med). MÄTT LÄGE 2026-08-09: det finns ännu
+    noll `section_engagement`-rader i produktion (ingen sajt har slagit på
+    observationen), så varje rad som någonsin skrivs kommer att bära markören —
+    lager (b) är rent försvarsdjup, inte en väg vi räknar med att gå.
+    Faller uppslaget ⇒ null; svarar servern med färre rader än sitt eget
+    `count` (radtak) ⇒ hela satsen stängslas. Okänt tolkas aldrig som
+    "oexponerad".
+
+    **Vad som är testat (och vad som inte är det):** gränsen `plans.json` →
+    verify körs på riktigt i `verify-plan-boundary.test.ts` (riktig process +
+    riktig Chromium: provenansen överlever, reserverna överlever OCH räddar ett
+    valideringsavslag, serve_ops matchar de grindade opsen); sömmens beslut
+    (arbetskatalog, carve-outs, radform) i `cell-plan.test.ts`; grind-loopens
+    och serve-vägens lyfträkning i `extra-lift.test.ts`; arm-stängslet i
+    `section-behavior.test.ts`. ÄRLIG NOT: `nightly.ts` är ett toppnivå-skript
+    som inte kan importeras av ett test — dess IO-kropp (frysning, db-svep,
+    inserts) körs fortfarande bara i produktion, och kollisions-retryns
+    ADOPTION av en reserv är bevisad på den rena räknaren, inte i en levande
+    kollision. [D3]
 
 ## Där perspektiven skilde sig
 

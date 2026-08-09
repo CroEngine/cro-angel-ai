@@ -20,14 +20,13 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { anthropicDesigner } from "./designer";
-import { generateRedesign } from "../../src/adaptive/redesign/generate";
+import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
+import { buildCandidatePlan } from "./candidate-plan";
+import { catalogEligible, cellWorkDir, planRow } from "./cell-plan";
+import { fetchSectionBehavior } from "./section-behavior";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
-// extractPriceSnippets: latent import-bugg — användes i steg 4 (källsidor)
-// utan att vara importerad; scripts/ typkollas inte av tsc (include: src/**),
-// så kraschen hade väntat tills första cellen med sourcePaths. Fixad här.
 import {
   extractContentModel,
-  extractPriceSnippets,
   extractQuotables,
 } from "../../src/adaptive/redesign/extract";
 import { filterToTemplateSections } from "../../src/adaptive/redesign/template-content";
@@ -412,6 +411,7 @@ for (const site of targets) {
         );
         const ev = (row.evidence ?? {}) as {
           brief?: { total?: { visits: number; conversions: number }; observations?: string[] };
+          planSource?: unknown;
         };
         const refreshDir = join(dir, `refresh-${action.id}`);
         mkdirSync(refreshDir, { recursive: true });
@@ -493,6 +493,12 @@ for (const site of targets) {
             ...((refreshed.evidence as { comparison?: object } | undefined)?.comparison ?? {}),
             screenshots: shots,
           },
+          // Provenance överlever prisuppdateringen (granskningsfynd
+          // 2026-08-08): refresh-planen bär inget planSource och verify-
+          // rapportens evidence saknar det — utan sammanslagningen hade
+          // varje refresh tyst nollställt variantens härkomst. Källan är
+          // OFÖRÄNDRAD av en textuppdatering, så gamla värdet är sanningen.
+          planSource: typeof ev.planSource === "string" ? ev.planSource : "designer",
         };
         const { error: updErr } = await db
           .from("angel_variants")
@@ -632,52 +638,147 @@ for (const site of targets) {
         adequate: true,
         recent: null,
       };
-      // Källsidorna (korssid-lyftet): samma frysta kopior + prisextraktion som
-      // detect-steget använde — kontexten designern ser ÄR den verify grindar.
-      const sourcePages = [];
+      // Källsidorna (korssid-lyftet): samma frysta kopior och SAMMA läsning som
+      // detect, verify och drift-svepet — extractQuotables, inte den snävare
+      // extractPriceSnippets (granskningsfynd 2026-08-08). Skillnaden är inte
+      // kosmetisk: en offertsida utan priser ger [] ur prisläsaren men en
+      // citerbar huvudutsaga ur quotables. Med den gamla läsningen såg cellen
+      // källlös ut här — designern fick inget att citera, och efter steg 11
+      // föll dessutom korssid-carve-outen så katalogen tog cellen som om
+      // signalen aldrig funnits. `kind` följer med så prompten renderar
+      // offert-formen (context.ts branchar på den).
+      const sourcePages: {
+        path: string;
+        snippets: { text: string; tag: string }[];
+        kind?: "price" | "answer";
+      }[] = [];
       for (const sp of b.sourcePaths ?? []) {
         const srcFile = pages[sp];
         if (!srcFile) continue;
-        const snippets = extractPriceSnippets(readFileSync(srcFile, "utf8"));
-        if (snippets.length > 0) sourcePages.push({ path: sp, snippets });
+        const q = extractQuotables(readFileSync(srcFile, "utf8"));
+        if (q.snippets.length > 0) sourcePages.push({ path: sp, snippets: q.snippets, kind: q.kind });
       }
-      const ctx = buildRedesignContext({
-        site: site.slug,
-        goal: {
-          text: site.conversion_text ?? null,
-          kind: site.conversion_kind ?? null,
-          selector: site.conversion_selector ?? null,
-        },
-        page: {
-          url: `${base}${pagePath}`,
-          frozenHtmlPath: page,
-          screenshotPath: "",
-          viewport: { width: 390, height: 844 },
-        },
-        content,
-        segment: segmentInsightFrom(summary, { observations: b.observations }),
-        sourcePages,
-      });
-      const plan = await generateRedesign(ctx, anthropicDesigner);
-      if (plan.ops.length === 0) {
+      // KATALOGEN FÖRST (steg 11-konvergensen — planens sista steg): samma
+      // superset som preview/fleet kör sedan kandidatkatalogen 2026-07-27 —
+      // koden genererar de lagliga dragen, DOM-proben filtrerar, LLM väljer ur
+      // menyn (kan inte avvisas), golvet väljer när den tystnar; fri-designern
+      // är RESERVEN för celler utan katalogkandidater. Beteende-sätet matas av
+      // steg 10-röret: events → rollup → BehaviorInput, null hela vägen vid
+      // tunn/oren data ⇒ typ-priorn ensam, byte-identisk katalog (kedjetest-
+      // låst kontrakt). Live-grinden är OFÖRÄNDRAD och täcker källorna lika:
+      // verify → ägarens knapp → ramp → guardrail-svepets hold på uppmätt
+      // förlust/breach — icke-underlägsenheten döms av riktiga armar, aldrig
+      // bara offline-tal. Mall-celler stannar hos designern i v1 (alt-stegen
+      // är avstängd för mallar och katalog-proben går mot EN fryst fil).
+      let planOps: RedesignOp[] | null = null;
+      let planAltOps: RedesignOp[][] = [];
+      let planSource = "designer";
+      // KORSSID-CELLERNA STANNAR HOS DESIGNERN (granskningsfynd 2026-08-08):
+      // en cell som FÖRTJÄNATS på pris-flödessignalen (detect ger den
+      // sourcePaths, och nattloopen fryser flödesmålen just för den) kan bara
+      // betjänas av designern — katalogen genererar enbart drag på den egna
+      // sidan och kan aldrig producera ett insert_snippet som CITERAR en annan
+      // sida. Utan undantaget hade konvergensen tyst tagit bort korssid-lyftet
+      // (och därmed drift-självläkningen, som lever på evidence.dependencies)
+      // för exakt de celler som förtjänats på den signalen.
+      // VARJE väg till designern SÄGS ut (granskningsfynd 2026-08-08): förut
+      // loggade bara katalog-vägen, så en natt där alla celler var mall-celler
+      // såg identisk ut med "katalogen körde och valde ingenting". Operatören
+      // ska kunna läsa VARFÖR ur loggen, inte gissa ur frånvaron av rader.
+      const eligibility = catalogEligible({ isTemplate: isTpl, crossPageSources: sourcePages.length });
+      if (eligibility.skip === "template") {
         console.log(
-          `[loop] ${site.slug} ${b.path}×${b.key}: designern gav ingen giltig plan (${plan.note ?? "tomt"})`,
+          `[loop] ${site.slug} ${b.path}×${b.key}: mall-cell (${b.templatePages?.length ?? 0} exemplar) — designern äger den, katalogen hoppas över (v1)`,
         );
-        continue;
+      } else if (eligibility.skip === "cross-page") {
+        console.log(
+          `[loop] ${site.slug} ${b.path}×${b.key}: korssid-cell (${sourcePages.map((s) => s.path).join(", ")}) — designern äger den, katalogen hoppas över`,
+        );
       }
-      plans.push({
-        path: b.path,
-        key: b.key,
-        total: b.total,
-        observations: b.observations,
-        sourcePaths: b.sourcePaths ?? [],
-        // Mall-planer: exemplaren + representanten följer med till verify, som
-        // grindar opsen på VARJE fryst exemplar. path förblir mönstret — det är
-        // exakt värdet decide-vägen matchar via templateOf.
-        ...(isTpl ? { templatePages: b.templatePages, repPath: pagePath } : {}),
-        ops: plan.ops,
-        cohorts: b.cohorts,
-      });
+      if (eligibility.eligible) {
+        // Katalogens arbetsfiler är per CELL — kollisionsfri katalog (se
+        // cellWorkDir: teckenvitlistan ensam kunde vika två olika (path, key)-
+        // par till samma namn och cellerna skrev över varandras probe-filer).
+        const cellDir = cellWorkDir(dir, b.path, b.key);
+        mkdirSync(cellDir, { recursive: true });
+        const behavior = await fetchSectionBehavior(db, site.slug, pagePath, content.sections);
+        const candPlan = await buildCandidatePlan({
+          content,
+          frozenPath: page,
+          workDir: cellDir,
+          segmentLabel: dims.join(" · "),
+          observations: b.observations,
+          behavior: behavior ?? undefined,
+          // Ägarens mål ur angel_sites — probens grind vaktar samma element
+          // som verify (måltext + mål-selector), aldrig en delmängd.
+          goal: {
+            text: site.conversion_text ?? null,
+            selector: site.conversion_selector ?? null,
+          },
+        });
+        if (candPlan) {
+          planOps = candPlan.ops;
+          planAltOps = candPlan.altOps;
+          planSource = `katalog/${candPlan.source}`;
+          console.log(
+            `[loop] ${site.slug} ${b.path}×${b.key}: katalogen — ${candPlan.menuSize} i menyn · val via ${candPlan.source}${behavior ? " · beteende-säte matat" : " · utan beteendedata (priorn)"}`,
+          );
+        } else {
+          console.log(
+            `[loop] ${site.slug} ${b.path}×${b.key}: katalogen gav ingen kandidat (tom meny eller fallen probe) — fria designern tar över`,
+          );
+        }
+      }
+      if (!planOps) {
+        const ctx = buildRedesignContext({
+          site: site.slug,
+          goal: {
+            text: site.conversion_text ?? null,
+            kind: site.conversion_kind ?? null,
+            selector: site.conversion_selector ?? null,
+          },
+          page: {
+            url: `${base}${pagePath}`,
+            frozenHtmlPath: page,
+            screenshotPath: "",
+            viewport: { width: 390, height: 844 },
+          },
+          content,
+          segment: segmentInsightFrom(summary, { observations: b.observations }),
+          sourcePages,
+        });
+        const plan = await generateRedesign(ctx, anthropicDesigner);
+        if (plan.ops.length === 0) {
+          console.log(
+            `[loop] ${site.slug} ${b.path}×${b.key}: designern gav ingen giltig plan (${plan.note ?? "tomt"})`,
+          );
+          continue;
+        }
+        planOps = plan.ops;
+      }
+      // Raden byggs av den RENA producenten (cell-plan.ts) — samma funktion
+      // som gränssnitts-testet matar verify med, så plans.json-formen inte kan
+      // glida isär från PlanIn utan att ett test faller.
+      plans.push(
+        planRow({
+          path: b.path,
+          key: b.key,
+          total: b.total,
+          observations: b.observations,
+          sourcePaths: b.sourcePaths ?? [],
+          // Mall-planer: exemplaren + representanten följer med till verify,
+          // som grindar opsen på VARJE fryst exemplar. path förblir mönstret —
+          // exakt värdet decide-vägen matchar via templateOf.
+          ...(isTpl ? { templatePages: b.templatePages, repPath: pagePath } : {}),
+          ops: planOps,
+          // Katalogens rankade reserver — verify provar dem i ordning (auto-
+          // generate:s alt-stege) innan bevis-lyftets nödfall.
+          altOps: planAltOps,
+          // Provenance: ekas genom verify in i variantens evidence.
+          planSource,
+          cohorts: b.cohorts,
+        }),
+      );
     }
     if (plans.length === 0) continue;
     writeFileSync(join(dir, "plans.json"), JSON.stringify(plans));
@@ -713,6 +814,7 @@ for (const site of targets) {
        *  tappades de på vägen och required_cohorts blev alltid null. */
       cohorts?: unknown;
       success?: unknown;
+      planSource?: string;
     }[];
 
     // 6. Verifierade → ladda upp skärmdumpar till storage + direkta inserts.
@@ -750,6 +852,14 @@ for (const site of targets) {
       const evidence = {
         ...(r.evidence ?? {}),
         comparison: { ...(r.evidence?.comparison ?? {}), screenshots: shots },
+        // Provenance (steg 11): "katalog/selector" | "katalog/floor" |
+        // "designer" — LÄSES av dashboardens variantlista (VariantView.
+        // planSource → "from catalog (model pick)" m.fl.), så ägaren ser var
+        // förslaget kom ifrån. Guardrail-svepet ser den INTE: planGuardrailSweep
+        // får bara {id, heldReason, success, arms} och dömer på uppmätta armar
+        // — härkomst får aldrig påverka ett skyddsbeslut. I evidence-jsonb:n
+        // (spårbarhetspåsen) — ingen migration.
+        planSource: typeof r.planSource === "string" ? r.planSource : "designer",
       };
       const { error: insErr } = await db.from("angel_variants").insert({
         site: site.slug,

@@ -26,6 +26,7 @@ import {
   floorSelection,
   type ProbeAnnotation,
 } from "../../src/adaptive/redesign/select";
+import { defuseMarkers } from "../../src/adaptive/redesign/defuse";
 import { anthropicSelect } from "./selector";
 
 export interface CandidatePlan {
@@ -51,6 +52,13 @@ export async function buildCandidatePlan(args: {
   /** Steg 10: rollupens per-sektion-engagemang (null-grindad uppströms —
    *  utelämnad ⇒ byte-identisk katalog, typ-priorn ensam precis som idag). */
   behavior?: BehaviorInput;
+  /** Ägarens konfigurerade konverteringsmål (angel_sites-raden). Med målet
+   *  vaktar probens grind SAMMA element som verify: måltexten i hit-listan,
+   *  mål-selectorn i selektor-vakten (granskningsfynd 2026-08-08: utan dem
+   *  kunde proben grind-godkänna ett drag som verify sedan fäller — eller
+   *  tvärtom). Utelämnad (preview utan sajtkonfig) ⇒ bara extraherade
+   *  konverterings-CTA:er, som förut. */
+  goal?: { text?: string | null; selector?: string | null };
 }): Promise<CandidatePlan | null> {
   const { content, frozenPath, workDir } = args;
   const candidates = generateCandidates(content, args.behavior);
@@ -73,12 +81,16 @@ export async function buildCandidatePlan(args: {
   const inPath = join(workDir, "candidates-in.json");
   const outPath = join(workDir, "candidates-probed.json");
   // Grind-i-proben mäter med SAMMA CTA-vakter som verify (spegel av
-  // auto-generates härledning: konverterings-CTA:erna ur innehållsmodellen;
-  // preview har inget mål-selector).
+  // auto-generates härledning): konverterings-CTA:erna ur innehållsmodellen
+  // ∪ ägarens måltext, plus mål-selectorn när den finns.
   const ctaTexts = [
-    ...new Set(content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text)),
+    ...new Set([
+      ...content.ctas.filter((c) => c.intent === "conversion").map((c) => c.text),
+      ...(args.goal?.text ? [args.goal.text] : []),
+    ]),
   ];
-  writeFileSync(inPath, JSON.stringify([{ id: "__meta__", ctaTexts }, ...probeIn]));
+  const ctaSelectors = args.goal?.selector ? [args.goal.selector] : [];
+  writeFileSync(inPath, JSON.stringify([{ id: "__meta__", ctaTexts, ctaSelectors }, ...probeIn]));
   const probeRun = spawnSync(
     "bun",
     [
@@ -129,13 +141,13 @@ export async function buildCandidatePlan(args: {
     ops: toOps(chosen, selection.why),
     altOps: rest
       .slice(0, MAX_ALTS)
-      .map((c) => toOps(c, `Reserve candidate from the catalog: ${c.basis.slice(0, 160)}`)),
+      .map((c) => toOps(c, `Reserve candidate from the catalog: ${defuseMarkers(c.basis).slice(0, 160)}`)),
     source: selection.source,
     menuSize: menu.length,
     probed: {
       candidates: probe.length,
       applicable: probe.filter((p) => p.applicable).length,
-      gateClean: probe.filter((p) => (p as { gateClean?: boolean }).gateClean === true).length,
+      gateClean: probe.filter((p) => p.gateClean === true).length,
     },
   };
 }

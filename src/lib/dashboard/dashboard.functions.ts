@@ -229,6 +229,11 @@ export interface VariantView {
   ops: VariantOpView[];
   /** Grind-utfall ur evidence.gates (nyckel → tal/boolean), tomt när okänt. */
   gates: Record<string, number | boolean>;
+  /** Planens HÄRKOMST ur evidence.planSource (steg 11): "katalog/selector" |
+   *  "katalog/floor" | "designer". null för varianter födda före provenansen.
+   *  Ägaren ska kunna se VAR ett förslag kom ifrån — utan den här raden var
+   *  fältet skrivet men oläst (granskningsfynd 2026-08-08). */
+  planSource: string | null;
   comparison: VariantComparison | null;
   /** Bara för serving/winner-varianter; null tills exponeringar finns. */
   abTest: VariantAbView | null;
@@ -601,6 +606,7 @@ export const getDashboard = createServerFn({ method: "POST" })
                 };
               }),
               gates,
+              planSource: str(ev.planSource),
               comparison: cmpRaw
                 ? {
                     headline: str(cmpRaw.headline),
