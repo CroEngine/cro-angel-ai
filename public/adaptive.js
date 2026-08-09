@@ -1907,9 +1907,12 @@
       }
     }
     // EN section_engagement per SIDA (inte per laddning-slut): flushas vid
-    // pagehide ELLER vid SPA-ruttbyte — alltid stämplad med hemvist-rutten.
-    // Efter flushen slutar observationen (senare SPA-rutters sektioner mäts
-    // inte denna laddning — ärlig under-insamling hellre än fel attribution).
+    // FÖRSTA av hidden (flikbyte/bakgrundning — det tillfälle som faktiskt
+    // inträffar på mobil), pagehide, eller SPA-ruttbyte — alltid stämplad med
+    // hemvist-rutten. Efter flushen slutar observationen (senare tid och senare
+    // SPA-rutters sektioner mäts inte denna laddning — ärlig under-insamling
+    // hellre än fel attribution, och aldrig två payloads för en laddning:
+    // aggregeringen räknar en payload = en laddning).
     function emitSectionsOnce() {
       if (!sectionEntries || !sectionEntries.length) return;
       for (var sf2 = 0; sf2 < sectionFlushes.length; sf2++) sectionFlushes[sf2](false);
@@ -1962,6 +1965,22 @@
       if (sectionFlushes) {
         for (var sf = 0; sf < sectionFlushes.length; sf++) sectionFlushes[sf](vis);
       }
+      // SEKTIONS-CENSUSEN FLUSHAS REDAN VID HIDDEN (mätt 2026-08-09):
+      // bara 27,2 % av sidvisningarna på pilotsajten producerade ett
+      // pagehide-flush — mobil som bakgrundas, bfcache och dödade flikar äter
+      // resten. Tre av fyra laddningar föll alltså bort ur beteendemätningen,
+      // och de som blev kvar är inte nödvändigtvis representativa (längre
+      // sessioner, desktop) — en skevhet som inget nedströms kunde upptäcka.
+      // hidden är det tillfälle som FAKTISKT inträffar på mobil.
+      //
+      // Priset, uttalat: emitSectionsOnce är en gång per laddning (aggregeringen
+      // räknar en payload = en laddning), så tid EFTER första bakgrundningen
+      // mäts inte. Sätet använder bara sektionernas INBÖRDES andelar, mätta
+      // över samma fönster för alla sektioner, så rangordningen överlever —
+      // vi byter alltså bort svansen av dwell mot att inte tappa 73 % av
+      // laddningarna. page_leave/form_abandon rörs INTE här: en flikväxling
+      // får aldrig se ut som en exit.
+      if (!vis) emitSectionsOnce();
     });
     var left = false;
     function leave() {

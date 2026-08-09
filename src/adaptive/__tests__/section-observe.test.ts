@@ -413,7 +413,7 @@ describe("snippetens per-sektion-synlighet (steg 9, riktig chromium)", () => {
     }
   }, 30_000);
 
-  it("dwell pausar vid flikbyte och flushar vid lämnad viewport (granskningens sista lucka)", async (ctx) => {
+  it("censusen flushas vid HIDDEN (mobilens verkliga exit), pausen håller, och aldrig två payloads", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
     const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
     try {
@@ -430,7 +430,9 @@ describe("snippetens per-sektion-synlighet (steg 9, riktig chromium)", () => {
       );
       // Fas 1: synlig ~700 ms.
       await settle(page, 700);
-      // Fas 2: flik göms ~1000 ms — får INTE räknas (visibilitychange-pausen).
+      // Fas 2: fliken göms. NYTT KONTRAKT (mätt 2026-08-09: bara 27,2 % av
+      // sidvisningarna nådde ett pagehide-flush): censusen skickas HÄR, för
+      // hidden är det tillfälle som faktiskt inträffar på mobil.
       await page.evaluate(() => {
         Object.defineProperty(document, "visibilityState", {
           configurable: true,
@@ -438,8 +440,20 @@ describe("snippetens per-sektion-synlighet (steg 9, riktig chromium)", () => {
         });
         document.dispatchEvent(new Event("visibilitychange"));
       });
-      await settle(page, 1000);
-      // Fas 3: åter synlig ~700 ms — åter-armningen ska ticka igen.
+      await settle(page, 300);
+      const atHide = allEvents(bodies()).filter((e) => e.type === "section_engagement");
+      expect(atHide).toHaveLength(1);
+      const sections = (atHide[0].payload?.sections ?? []) as { h: string; d: number }[];
+      const d = sections.find((s) => s.h === "Pause section")!.d;
+      // Dwell = fas 1 ≈ 700 ms. Pausen gäller alltjämt: hade bakgrundstiden
+      // räknats vore talet mycket större. Generösa CI-band.
+      expect(d).toBeGreaterThan(350);
+      expect(d).toBeLessThan(1400);
+
+      // Fas 3-4: besökaren kommer TILLBAKA, tittar mer och lämnar sedan sidan.
+      // Priset för det nya kontraktet, uttalat i test: den tiden mäts inte —
+      // men det får ALDRIG bli en andra payload (aggregeringen räknar en
+      // payload = en laddning; två hade dubbelräknat laddningen).
       await page.evaluate(() => {
         Object.defineProperty(document, "visibilityState", {
           configurable: true,
@@ -448,19 +462,15 @@ describe("snippetens per-sektion-synlighet (steg 9, riktig chromium)", () => {
         document.dispatchEvent(new Event("visibilitychange"));
       });
       await settle(page, 700);
-      // Fas 4: scrolla bort rubriken (IO-flushen) — tiden därefter räknas inte.
       await page.evaluate(() => window.scrollTo(0, 1800));
-      await settle(page, 900);
+      await settle(page, 400);
       await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
       await settle(page, 300);
       const secEvents = allEvents(bodies()).filter((e) => e.type === "section_engagement");
       expect(secEvents).toHaveLength(1);
-      const sections = (secEvents[0].payload?.sections ?? []) as { h: string; d: number }[];
-      const d = sections.find((s) => s.h === "Pause section")!.d;
-      // Ärlig dwell = fas 1 + fas 3 ≈ 1400 ms. Hade flik-tiden räknats ⇒
-      // ~2400+; hade scroll-bort-tiden räknats ⇒ ~2300+. Generösa CI-band.
-      expect(d).toBeGreaterThan(900);
-      expect(d).toBeLessThan(2100);
+      // …och exit-vägen är orörd: page_leave skickas fortfarande vid pagehide,
+      // aldrig vid flikväxlingen.
+      expect(allEvents(bodies()).filter((e) => e.type === "page_leave")).toHaveLength(1);
     } finally {
       await page.close();
     }
