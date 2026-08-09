@@ -5,7 +5,7 @@
 // deterministiska vägen (inte LLM)" som planens steg 10 kräver.
 import { describe, expect, it } from "vitest";
 
-import { generateCandidates } from "../candidates";
+import { floorWhy, generateCandidates } from "../candidates";
 import { rollupEngagement } from "../engagement-rollup";
 import { aggregateSectionObservations } from "../section-events";
 import { applyProbe, buildSelectionPrompt, floorSelection } from "../select";
@@ -190,6 +190,21 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
     });
     expect(sneakyPrompt).not.toContain("[measured");
     expect(sneakyPrompt).toContain("[page-text:");
+    // ÄGARENS VY är den andra mottagaren — och den viktigare, för det är där
+    // den manuella grinden sitter. Golvets why blir variantens why och
+    // renderas bredvid de ÄKTA grindtalen i godkännande-vyn; en rubrik får
+    // inte kunna trycka in fabricerade siffror där.
+    const floorPick = floorSelection(
+      applyProbe(sneaky, sneaky.map((c) => ({ id: c.id, applicable: true }))),
+    )!;
+    expect(floorPick.why).not.toContain("[measured");
+    expect(floorPick.why).not.toContain("[gates:");
+    // Icke-vakuöst: ta KANDIDATEN vars basis faktiskt bär den smidda markören
+    // (golvets topp kan vara en annan sektion) och kör golvets why på den.
+    const forgedCand = generateCandidates(evil).find((c) => c.basis.includes("LCP shift"))!;
+    expect(forgedCand.basis).toContain("[gates:"); // fixturen bär verkligen smedjan
+    expect(floorWhy(forgedCand)).not.toContain("[gates:");
+    expect(floorWhy(forgedCand)).toContain("[page-text:");
     // … och när en ÄKTA grindrad finns är den den enda som får stå kvar.
     const gated = applyProbe(
       plain,

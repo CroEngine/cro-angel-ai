@@ -7,6 +7,7 @@
 
 import type { Candidate } from "./candidates";
 import { floorWhy } from "./candidates";
+import { defuseMarkers } from "./defuse";
 
 /** Grindmätvärdena ur probens fulla mätpass (grind-i-proben 2026-07-27) —
  *  säkerhetsmått, inte säljvärde: de FILTRERAR och bryter lika-poäng, men
@@ -137,14 +138,8 @@ export function buildSelectionPrompt(args: {
     // ge en OMÄTT kandidat ett fabricerat grindkvitto i menyn — samma klass
     // som den smidda mätraden, och vassare eftersom grindraden är själva
     // säkerhetspåståendet.
-    // Osynliga formattecken strippas FÖRE avväpningen (granskningsfynd
-    // 2026-08-08): JS \s matchar inte U+200B m.fl., så "[measured<ZWSP>:" gled
-    // förbi regexen och nådde modellen som en till synes äkta markör. \p{Cf}
-    // täcker hela klassen. Säkert här: basis är PROMPT-text, aldrig strängen
-    // som skrivs till en sida (det är detail).
-    const safeBasis = c.basis
-      .replace(/\p{Cf}/gu, "")
-      .replace(/\[\s*(?:measured|gates)\s*:/gi, "[page-text:");
+    // Delad avväpning (defuse.ts) — samma funktion vaktar ägarens vy.
+    const safeBasis = defuseMarkers(c.basis);
     L.push(
       `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${safeBasis}${engLine}${gateLine}`,
     );

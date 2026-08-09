@@ -12,6 +12,7 @@
 // grindarna dömer precis som förut, och browser-förprovningen (probe-steget)
 // filtrerar bara bort det som ändå aldrig hade kunnat appliceras.
 
+import { defuseMarkers } from "./defuse";
 import type { RedesignContentModel } from "./context";
 import type { RedesignOp } from "./generate";
 
@@ -206,5 +207,11 @@ export function candidateToOp(c: Candidate, why: string): RedesignOp {
 /** Golvets motivering när LLM-väljaren inte svarat — ärligt märkt som
  *  regelvald, aldrig som modellens omdöme. */
 export function floorWhy(c: Candidate): string {
-  return `Rule-selected top candidate (deterministic floor): ${c.basis}.`;
+  // basis bär ORDAGRANN sidtext och den här strängen blir variantens `why` —
+  // den ägaren läser bredvid de ÄKTA grindtalen i godkännande-vyn. En rubrik
+  // som själv innehåller "[gates: …]" hade annars tryckt fabricerade
+  // säkerhetssiffror rakt in i den manuella grinden (granskningsfynd
+  // 2026-08-08: samma injektionsklass som väljar-prompten, men mot en
+  // mottagare som FAKTISKT bestämmer om varianten får serva).
+  return `Rule-selected top candidate (deterministic floor): ${defuseMarkers(c.basis)}.`;
 }

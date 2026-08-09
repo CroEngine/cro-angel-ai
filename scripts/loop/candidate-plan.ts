@@ -26,6 +26,7 @@ import {
   floorSelection,
   type ProbeAnnotation,
 } from "../../src/adaptive/redesign/select";
+import { defuseMarkers } from "../../src/adaptive/redesign/defuse";
 import { anthropicSelect } from "./selector";
 
 export interface CandidatePlan {
@@ -140,7 +141,7 @@ export async function buildCandidatePlan(args: {
     ops: toOps(chosen, selection.why),
     altOps: rest
       .slice(0, MAX_ALTS)
-      .map((c) => toOps(c, `Reserve candidate from the catalog: ${c.basis.slice(0, 160)}`)),
+      .map((c) => toOps(c, `Reserve candidate from the catalog: ${defuseMarkers(c.basis).slice(0, 160)}`)),
     source: selection.source,
     menuSize: menu.length,
     probed: {
