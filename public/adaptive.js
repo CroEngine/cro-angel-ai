@@ -87,9 +87,13 @@
   // The goal's visible label — resilience for click detection when the CSS
   // selector doesn't resolve on a page (structures differ across pages).
   var CONVERSION_TEXT = script.getAttribute("data-conversion-text") || "";
-  // Per-sektion-synlighet (steg 9): opt-in PER INSTALL via tag-attribut —
-  // av (default) = exakt dagens snippet, inte en rad extra kod körs.
+  // Per-sektion-synlighet (steg 9): av (default) = exakt dagens snippet, inte
+  // en rad extra kod körs. Två opt-in-vägar, samma kontrakt som hold-out och
+  // konverteringsmålet: TAGGEN vinner som explicit per-install-override, annars
+  // gäller sajtens dashboard-konfig (applySiteConfig nedan). Sajtkonfigen finns
+  // för att påslag OCH avstängning inte ska kräva en release på kundens sajt.
   var OBSERVE_SECTIONS_ATTR = script.getAttribute("data-observe-sections") || "";
+  var OBSERVE_SECTIONS_SET_BY_TAG = OBSERVE_SECTIONS_ATTR !== "";
   var OBSERVE_SECTIONS = OBSERVE_SECTIONS_ATTR === "1" || OBSERVE_SECTIONS_ATTR === "true";
 
   var qp = new URLSearchParams(location.search);
@@ -2338,6 +2342,14 @@
       if (!CONVERSION_TEXT && cfg.conversion.text) {
         CONVERSION_TEXT = String(cfg.conversion.text);
       }
+    }
+    // Sektionsobservationen ur sajtkonfigen — bara när taggen INTE uttalat sig
+    // (ett explicit data-observe-sections="0" måste kunna stänga av lokalt).
+    // Konfigen hämtas FÖRE beslutet och censusen kopplas efter det, så flaggan
+    // hinner fram; på en laddning där konfig-hämtningen tajmar ut (1,5 s) blir
+    // laddningen omätt — ärlig under-insamling, aldrig fel data.
+    if (!OBSERVE_SECTIONS_SET_BY_TAG && typeof cfg.observeSections === "boolean") {
+      OBSERVE_SECTIONS = cfg.observeSections;
     }
     if (cfg.mode === "attested") upgradeConsent("site_attested");
     // Already consented before this config arrived (CMP sync grant / override):

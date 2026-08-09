@@ -10,6 +10,7 @@
 //                 regardless — attestation never overrides a visitor opt-out.
 //   holdoutPct  — % of consented visitors held out as measurement control.
 //   conversion  — what counts as a conversion (URL substring / CSS selector).
+//   observeSections — per-section visibility measurement on/off for the site.
 //
 // Tag attributes (data-holdout, data-conversion-*) win over these values, as
 // explicit per-install overrides. See docs/consent-gate.md.
@@ -44,6 +45,9 @@ const ANON = {
   mode: "anonymous",
   holdoutPct: 0,
   conversion: { url: null, selector: null, text: null },
+  // Mätning är avstängd i den anonyma defaulten — en obevisad origin ska
+  // aldrig kunna starta sektionsobservationen.
+  observeSections: false,
 };
 
 export const Route = createFileRoute("/api/adaptive/consent-config")({
@@ -81,6 +85,11 @@ export const Route = createFileRoute("/api/adaptive/consent-config")({
               selector: cfg.conversionSelector,
               text: cfg.conversionText,
             },
+            // Per-sektion-synligheten (CRO-planen steg 9): sajt-konfig i
+            // stället för enbart taggattribut, så påslag och — viktigare —
+            // AVSTÄNGNING inte kräver en release på kundens sajt. Taggens
+            // data-observe-sections vinner fortfarande (explicit override).
+            observeSections: cfg.observeSections,
           },
           "public, max-age=300",
         );

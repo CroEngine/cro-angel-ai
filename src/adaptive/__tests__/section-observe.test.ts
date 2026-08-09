@@ -57,6 +57,9 @@ async function boot(
   /** Svar från /api/adaptive/decide. Utelämnat ⇒ 500 (snippetens catch-väg,
    *  sidan orörd). Sätts för att köra laddningen som en VARIANT-arm. */
   decideBody?: Record<string, unknown>,
+  /** Svar från /api/adaptive/consent-config. Utelämnat ⇒ dagens default
+   *  (anonymt, ingen sektionsobservation). */
+  configBody?: Record<string, unknown>,
 ): Promise<{ bodies: () => unknown[] }> {
   const captured: unknown[] = [];
   const html = (htmlOverride ?? PAGE_HTML).replace(
@@ -94,7 +97,9 @@ async function boot(
     if (url.includes("/api/adaptive/consent-config")) {
       return route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ mode: "anonymous", holdoutPct: 0, conversion: {} }),
+        body: JSON.stringify(
+          configBody ?? { mode: "anonymous", holdoutPct: 0, conversion: {} },
+        ),
       });
     }
     if (decideBody && url.includes("/api/adaptive/decide")) {
@@ -119,6 +124,67 @@ const allEvents = (bodies: unknown[]) =>
   bodies.flatMap((b) => ((b as EventsBody).events ?? []).map((e) => e));
 
 describe("snippetens per-sektion-synlighet (steg 9, riktig chromium)", () => {
+  it("SAJTKONFIGEN kan slå på observationen utan taggattribut — och taggen vinner alltid", async (ctx) => {
+    // Steg 1 i uppföljningsplanen: observationen ska gå att slå på (och av)
+    // från vår sida, utan en release på kundens sajt. Kontraktet är samma som
+    // hold-out/konverteringsmål: taggen är en explicit per-install-override.
+    if (!chromiumAvailable) return ctx.skip();
+
+    // (a) Ingen tagg + konfig på ⇒ censusen körs.
+    const onPage = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      const { bodies } = await boot(onPage, "", undefined, undefined, {
+        mode: "anonymous",
+        holdoutPct: 0,
+        conversion: {},
+        observeSections: true,
+      });
+      await settle(onPage, 1300);
+      await onPage.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+      await settle(onPage, 300);
+      const sec = allEvents(bodies()).filter((e) => e.type === "section_engagement");
+      expect(sec).toHaveLength(1);
+      expect(Array.isArray(sec[0].payload?.sections)).toBe(true);
+    } finally {
+      await onPage.close();
+    }
+
+    // (b) Tagg "0" + konfig på ⇒ AVSTÄNGD. Ett install som uttryckligen sagt
+    //     nej får aldrig slås på av en dashboard-flagga.
+    const offPage = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      const { bodies } = await boot(offPage, "0", undefined, undefined, {
+        mode: "anonymous",
+        holdoutPct: 0,
+        conversion: {},
+        observeSections: true,
+      });
+      await settle(offPage, 1300);
+      await offPage.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+      await settle(offPage, 300);
+      expect(allEvents(bodies()).filter((e) => e.type === "section_engagement")).toHaveLength(0);
+    } finally {
+      await offPage.close();
+    }
+
+    // (c) Konfig AV (default) och ingen tagg ⇒ exakt dagens snippet.
+    const defPage = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      const { bodies } = await boot(defPage, "", undefined, undefined, {
+        mode: "anonymous",
+        holdoutPct: 0,
+        conversion: {},
+        observeSections: false,
+      });
+      await settle(defPage, 1300);
+      await defPage.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+      await settle(defPage, 300);
+      expect(allEvents(bodies()).filter((e) => e.type === "section_engagement")).toHaveLength(0);
+    } finally {
+      await defPage.close();
+    }
+  });
+
   it("ARM-MARKÖREN: orörd laddning stämplas 0, variant-arm stämplas 1", async (ctx) => {
     // Steg 11-stängslets grund: läsvägen kan bara skilja vår EGEN omflyttning
     // från besökarnas beteende om censusen bär armen PER LADDNING. Utan den
