@@ -248,6 +248,7 @@ export type Database = {
           ingest_key: string | null
           layout_patterns_enabled: boolean
           name: string | null
+          observe_sections: boolean
           ramp_pct: number
           serving_enabled: boolean
           slug: string
@@ -276,6 +277,7 @@ export type Database = {
           ingest_key?: string | null
           layout_patterns_enabled?: boolean
           name?: string | null
+          observe_sections?: boolean
           ramp_pct?: number
           serving_enabled?: boolean
           slug: string
@@ -304,6 +306,7 @@ export type Database = {
           ingest_key?: string | null
           layout_patterns_enabled?: boolean
           name?: string | null
+          observe_sections?: boolean
           ramp_pct?: number
           serving_enabled?: boolean
           slug?: string

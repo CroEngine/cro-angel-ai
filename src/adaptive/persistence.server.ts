@@ -424,6 +424,11 @@ export interface SiteConfig {
    *  per-segment-varianter serveras, oavsett variantstatus. Manuell dashboard-
    *  toggle (ägarbeslut 2026-07-12). */
   servingEnabled: boolean;
+  /** Per-sektion-synlighet (CRO-planen steg 9): false (default) → snippeten
+   *  mäter inga sektioner alls. Levereras till snippeten via consent-config så
+   *  påslag OCH avstängning går på sekunden, utan en release på kundens sajt.
+   *  Taggens data-observe-sections vinner som explicit per-install-override. */
+  observeSections: boolean;
   /** Fas 4 steg 3: andel (1–50 %) av segment-matchade besökare som får
    *  variant-armen; resten är kontrollarm. Ägarbeslut 2026-07-12: manuell ramp
    *  5 → 10 → 25 → 50, aldrig 50/50 från start. Läses bara när
@@ -452,6 +457,7 @@ const DEFAULT_SITE_CONFIG: SiteConfig = {
   layoutPatternsEnabled: false,
   adaptationsEnabled: false,
   servingEnabled: false,
+  observeSections: false,
   rampPct: 5,
   billingStatus: "exempt",
   domain: null,
@@ -487,6 +493,10 @@ export async function loadSiteConfig(slug: string): Promise<SiteConfig> {
           holdoutPct: 0,
           ingestKey: null,
           adaptationsEnabled: true,
+          // Mätmaskineriet ska ALDRIG gå i en förhandsgranskning: sandbox-slugs
+          // skriver inga events (logEvents no-op:ar), så observationen hade bara
+          // kostat besökaren arbete och skickat data som kastas.
+          observeSections: false,
         };
     }
     return (await fetchSiteConfigRow(slug)) ?? DEFAULT_SITE_CONFIG;
@@ -501,7 +511,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
   const { data, error } = await supabaseAdmin
     .from("angel_sites")
     .select(
-      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled,serving_enabled,ramp_pct,domain,domain_verified_at,billing_status",
+      "consent_mode,holdout_pct,conversion_url,conversion_selector,conversion_text,conversion_kind,ingest_key,layout_patterns_enabled,adaptations_enabled,serving_enabled,observe_sections,ramp_pct,domain,domain_verified_at,billing_status",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -518,6 +528,7 @@ async function fetchSiteConfigRow(slug: string): Promise<SiteConfig | null> {
     layoutPatternsEnabled: data.layout_patterns_enabled === true,
     adaptationsEnabled: data.adaptations_enabled === true,
     servingEnabled: data.serving_enabled === true,
+    observeSections: data.observe_sections === true,
     rampPct: typeof data.ramp_pct === "number" ? data.ramp_pct : 5,
     billingStatus: typeof data.billing_status === "string" ? data.billing_status : "exempt",
     domain: data.domain ?? null,
