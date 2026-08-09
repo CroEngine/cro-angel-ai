@@ -213,9 +213,12 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
     inte stympas av hämtningstaket. Bevisad i riktig Chromium
     (`section-observe.test.ts`: orörd laddning ⇒ 0, variant-arm ⇒ 1) och
     normaliserad till 0/1 på serversidan (`journey-events.test.ts`).
-    (b) *äldre events utan markör*: bara `decision_id` finns, och den är en
+    (b) *events utan markör*: bara `decision_id` finns, och den är en
     kontext-hash som delas av båda armarna — stängslet blir trubbigt (kontroll-
-    armens rena laddningar faller med) men gäller bara den krympande svansen.
+    armens rena laddningar faller med). MÄTT LÄGE 2026-08-09: det finns ännu
+    noll `section_engagement`-rader i produktion (ingen sajt har slagit på
+    observationen), så varje rad som någonsin skrivs kommer att bära markören —
+    lager (b) är rent försvarsdjup, inte en väg vi räknar med att gå.
     Faller uppslaget ⇒ null; svarar servern med färre rader än sitt eget
     `count` (radtak) ⇒ hela satsen stängslas. Okänt tolkas aldrig som
     "oexponerad".

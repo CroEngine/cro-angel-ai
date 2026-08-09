@@ -33,14 +33,18 @@ const EXPOSURE_ID_BATCH = 100;
  *  id:t — resten stängslas konservativt (se exposedDecisionIds). */
 const EXPOSURE_LIMIT = 20_000;
 
-/** ÄLDRE-EVENTENS arm-stängsel (granskningsfynd 2026-08-08). Nya census-rader
+/** OMARKERADE EVENTS arm-stängsel (granskningsfynd 2026-08-08). Census-rader
  *  bär `payload.adapted` (0/1) — en exakt PER-LADDNING-markör som filtreras
- *  redan i SQL. Rader från tiden före markören har bara decision_id att gå på,
- *  och den är en KONTEXT-hash: delad av båda armarna och av varje laddning i
- *  samma kontext. Stängslet nedan är därför trubbigt — kontrollarmens rena
- *  mätningar faller med — men det gäller bara den krympande svansen av gamla
- *  events, och trubbigheten pekar åt rätt håll (hellre mindre underlag än en
- *  vikt vi inte kan försvara).
+ *  redan i SQL. En rad utan markören har bara decision_id att gå på, och den
+ *  är en KONTEXT-hash: delad av båda armarna och av varje laddning i samma
+ *  kontext. Stängslet nedan är därför trubbigt — kontrollarmens rena mätningar
+ *  faller med — men trubbigheten pekar åt rätt håll (hellre mindre underlag än
+ *  en vikt vi inte kan försvara).
+ *
+ *  MÄTT LÄGE 2026-08-09: noll section_engagement-rader finns i produktion
+ *  (ingen sajt har slagit på observationen ännu), så varje rad som någonsin
+ *  skrivs bär markören. Vägen här är försvarsdjup — mot en framtida klient som
+ *  inte sätter fältet — inte en väg vi räknar med att gå.
  *
  *  Mekanik: logDecision skriver EN adaptation_shown-rad per serverad laddning
  *  (kontrollarmen får adaptation_withheld) med samma decision_id som
