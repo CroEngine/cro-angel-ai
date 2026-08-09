@@ -94,6 +94,31 @@ describe("buildEventRows — journey privacy boundary", () => {
     }
   });
 
+  it("arm-markören normaliseras till 0/1 — läsvägens SQL-filter kan inte luras", () => {
+    // adapted stängslar sätet (steg 11). Ett förfalskat värde får aldrig
+    // överleva spreaden som något annat än 0 eller 1: payload->>adapted
+    // jämförs med "0" i SQL, och en sträng som "0abc" eller ett objekt hade
+    // annars hamnat på fel sida av filtret.
+    const val = (v: unknown) =>
+      (
+        buildEventRows("acme", "v", [
+          { type: "section_engagement", payload: { sections: [], path: "/", adapted: v } },
+        ])[0].payload as { adapted: unknown }
+      ).adapted;
+    expect(val(1)).toBe(1);
+    expect(val(0)).toBe(0);
+    expect(val(true)).toBe(1);
+    expect(val("0")).toBe(1); // en icke-tom sträng är sanning ⇒ stängslas
+    expect(val("")).toBe(0);
+    expect(val({ nested: "objekt" })).toBe(1);
+    // Utan fältet (äldre snippet) läggs det ALDRIG till — läsvägen skiljer
+    // "omarkerad" från "markerad 0" och stängslar de omarkerade på decisionId.
+    const legacy = buildEventRows("acme", "v", [
+      { type: "section_engagement", payload: { sections: [], path: "/" } },
+    ])[0].payload as Record<string, unknown>;
+    expect("adapted" in legacy).toBe(false);
+  });
+
   it("preserves non-text journey fields untouched (seq, engagedMs, kind)", () => {
     const rows = buildEventRows(
       "acme",

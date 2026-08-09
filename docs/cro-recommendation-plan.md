@@ -204,15 +204,21 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
     "0,0 % konvertering / adequate" för en cell vars kohort ännu inte mätts).
     `required_cohorts` sätts oberoende av vägen.
 
-    **Beteende-sätets arm-stängsel:** census-rader från laddningar där en
-    variant VISADES (`decision_id` ∈ `adaptation_shown` på samma sida) släpps
-    innan rollupen — annars mäter sätet vår egen omflyttning och rankar den
-    högre nästa natt (självförstärkning). Stängslet är medvetet trubbigt:
-    `decisionId` är en kontext-hash som delas av båda armarna, så kontroll-
-    armens rena laddningar faller med. Faller uppslaget (db-fel) ⇒ null;
-    trunkeras det ⇒ den okända resten stängslas (aldrig tolkas som
-    "oexponerad"), så en tung sajt får ett mindre men obiased underlag i
-    stället för inget alls.
+    **Beteende-sätets arm-stängsel:** laddningar där VI flyttade om sidan får
+    aldrig bli "besökarnas beteende" — annars mäter sätet sin egen effekt och
+    rankar den högre nästa natt (självförstärkning). Två lager:
+    (a) *markören*: snippeten stämplar varje `section_engagement` med
+    `adapted` (0/1) ur samma sanning som skörde-spärren använder — en exakt
+    PER-LADDNING-signal som filtreras redan i SQL, så det organiska underlaget
+    inte stympas av hämtningstaket. Bevisad i riktig Chromium
+    (`section-observe.test.ts`: orörd laddning ⇒ 0, variant-arm ⇒ 1) och
+    normaliserad till 0/1 på serversidan (`journey-events.test.ts`).
+    (b) *äldre events utan markör*: bara `decision_id` finns, och den är en
+    kontext-hash som delas av båda armarna — stängslet blir trubbigt (kontroll-
+    armens rena laddningar faller med) men gäller bara den krympande svansen.
+    Faller uppslaget ⇒ null; svarar servern med färre rader än sitt eget
+    `count` (radtak) ⇒ hela satsen stängslas. Okänt tolkas aldrig som
+    "oexponerad".
 
     **Vad som är testat (och vad som inte är det):** gränsen `plans.json` →
     verify körs på riktigt i `verify-plan-boundary.test.ts` (riktig process +

@@ -54,6 +54,9 @@ async function boot(
   page: Page,
   observeAttr: string,
   htmlOverride?: string,
+  /** Svar från /api/adaptive/decide. Utelämnat ⇒ 500 (snippetens catch-väg,
+   *  sidan orörd). Sätts för att köra laddningen som en VARIANT-arm. */
+  decideBody?: Record<string, unknown>,
 ): Promise<{ bodies: () => unknown[] }> {
   const captured: unknown[] = [];
   const html = (htmlOverride ?? PAGE_HTML).replace(
@@ -94,6 +97,12 @@ async function boot(
         body: JSON.stringify({ mode: "anonymous", holdoutPct: 0, conversion: {} }),
       });
     }
+    if (decideBody && url.includes("/api/adaptive/decide")) {
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(decideBody),
+      });
+    }
     // decide m.fl. — snippetens catch-vägar tål 500 (wireJourney körs ändå).
     return route.fulfill({ status: 500, body: "" });
   });
@@ -110,6 +119,48 @@ const allEvents = (bodies: unknown[]) =>
   bodies.flatMap((b) => ((b as EventsBody).events ?? []).map((e) => e));
 
 describe("snippetens per-sektion-synlighet (steg 9, riktig chromium)", () => {
+  it("ARM-MARKÖREN: orörd laddning stämplas 0, variant-arm stämplas 1", async (ctx) => {
+    // Steg 11-stängslets grund: läsvägen kan bara skilja vår EGEN omflyttning
+    // från besökarnas beteende om censusen bär armen PER LADDNING. Utan den
+    // fanns bara decisionId, som är en kontext-hash delad av båda armarna.
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      // decide faller (500) ⇒ sidan är orörd ⇒ 0.
+      const { bodies } = await boot(page, "1");
+      await settle(page, 1300);
+      await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+      await settle(page, 300);
+      const plain = allEvents(bodies()).filter((e) => e.type === "section_engagement");
+      expect(plain).toHaveLength(1);
+      expect(plain[0].payload?.adapted).toBe(0);
+    } finally {
+      await page.close();
+    }
+
+    const armed = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      // En BESLUTAD variant i variant-armen ⇒ 1, även om ops-listan är tom och
+      // ingenting hann appliceras (samma pessimism som skörde-spärren).
+      const { bodies } = await boot(armed, "1", undefined, {
+        decisionId: "dec-e2e",
+        site: "e2e",
+        adaptations: [],
+        holdout: false,
+        variant: { id: "var-1", segmentKey: "google·desktop", ops: [] },
+        context: {},
+      });
+      await settle(armed, 1300);
+      await armed.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+      await settle(armed, 300);
+      const sec = allEvents(bodies()).filter((e) => e.type === "section_engagement");
+      expect(sec).toHaveLength(1);
+      expect(sec[0].payload?.adapted).toBe(1);
+    } finally {
+      await armed.close();
+    }
+  });
+
   it("opt-in: EN section_engagement vid pagehide — rätt census, rätt dwell-mönster", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
     const page = await browser!.newPage({ viewport: { width: 1280, height: 900 } });

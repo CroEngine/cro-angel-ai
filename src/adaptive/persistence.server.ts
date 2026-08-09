@@ -107,6 +107,10 @@ export function buildEventRows(
         ];
       });
     }
+    // Arm-markören (section_engagement): 0/1, aldrig något annat. Klienten
+    // skickar en siffra; en förfalskad sträng/objekt får inte överleva
+    // spreaden och bli ett osorterbart värde i läsvägens SQL-filter.
+    if ("adapted" in raw) payload.adapted = raw.adapted ? 1 : 0;
     if (sid) payload.sessionId = sid;
     return {
       site,

@@ -23,6 +23,11 @@ import type { SectionObservation } from "./engagement-rollup";
  *  buildEventRows sanering: h≤120 skrubbad, n 1–9, d 0–600000). */
 export interface SectionEngagementPayload {
   sections?: { h?: unknown; n?: unknown; d?: unknown }[];
+  /** Arm-markören (2026-08-08): 1 = laddningen bar en tillämpad variant, 0 =
+   *  orörd sida. Läsvägen stängslar på den så sätet aldrig mäter vår EGEN
+   *  omflyttning som "besökarnas beteende". Saknas fältet är eventet äldre än
+   *  markören — då gäller det trubbigare decisionId-stängslet. */
+  adapted?: unknown;
 }
 
 /** Sedd-tröskeln: så länge måste rubriken ha varit synlig (≥50 %) för att

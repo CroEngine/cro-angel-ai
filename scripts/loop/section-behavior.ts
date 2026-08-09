@@ -33,23 +33,21 @@ const EXPOSURE_ID_BATCH = 100;
  *  id:t — resten stängslas konservativt (se exposedDecisionIds). */
 const EXPOSURE_LIMIT = 20_000;
 
-/** Arm-stängslet (granskningsfynd 2026-08-08, den självförstärkande klassen):
- *  laddningar där VI SJÄLVA flyttade om sidan får aldrig bli "besökarnas
- *  beteende". En serverad move_up lyfter sektionen ovanför folden, dwell-
- *  mätningen stiger, nästa natt rankar sätet samma sektion högst — och
- *  menyraden påstår att BESÖKARNA gjorde det. Repot stängslar redan exakt den
- *  här klassen för skördaren (adaptedThisLoad); censusen saknade stängslet.
+/** ÄLDRE-EVENTENS arm-stängsel (granskningsfynd 2026-08-08). Nya census-rader
+ *  bär `payload.adapted` (0/1) — en exakt PER-LADDNING-markör som filtreras
+ *  redan i SQL. Rader från tiden före markören har bara decision_id att gå på,
+ *  och den är en KONTEXT-hash: delad av båda armarna och av varje laddning i
+ *  samma kontext. Stängslet nedan är därför trubbigt — kontrollarmens rena
+ *  mätningar faller med — men det gäller bara den krympande svansen av gamla
+ *  events, och trubbigheten pekar åt rätt håll (hellre mindre underlag än en
+ *  vikt vi inte kan försvara).
  *
  *  Mekanik: logDecision skriver EN adaptation_shown-rad per serverad laddning
  *  (kontrollarmen får adaptation_withheld) med samma decision_id som
- *  section_engagement bär. Vi släpper varje census-rad vars decision_id
- *  förekommer som adaptation_shown på SAMMA sida i fönstret.
+ *  section_engagement bär. Varje omarkerad census-rad vars decision_id
+ *  förekommer som adaptation_shown på SAMMA sida i fönstret släpps.
  *
- *  Trubbigheten är MEDVETEN och åt rätt håll: decisionId är en kontext-hash
- *  som delas av båda armarna, så kontrollarmens rena laddningar faller med.
- *  Hellre ett mindre men oförorenat underlag än en vikt vi inte kan försvara.
- *  Returnerar null när stängslet inte kan bevisas komplett (db-fel/trunkering)
- *  — samma "hellre tyst än gissa" som resten av röret. */
+ *  Returnerar null när uppslaget faller — "hellre tyst än gissa". */
 async function exposedDecisionIds(
   db: SupabaseClient,
   site: string,
@@ -61,28 +59,26 @@ async function exposedDecisionIds(
   for (let i = 0; i < ids.length; i += EXPOSURE_ID_BATCH) {
     // SORTERAD sats + sorterat svar: det gör trunkeringen hanterbar i stället
     // för fatal (se nedan).
-    const batch = ids.slice(i, i + EXPOSURE_ID_BATCH).sort();
-    const { data, error } = await db
+    const batch = ids.slice(i, i + EXPOSURE_ID_BATCH);
+    const { data, error, count } = await db
       .from("angel_events")
-      .select("decision_id")
+      .select("decision_id", { count: "exact" })
       .eq("site", site)
       .eq("type", "adaptation_shown")
       .eq("payload->>path", path)
       .gte("created_at", cutoff)
       .in("decision_id", batch)
-      .order("decision_id", { ascending: true })
       .limit(EXPOSURE_LIMIT);
     if (error || !data) return null;
     const rows = data as { decision_id: string | null }[];
     for (const r of rows) if (r.decision_id) exposed.add(r.decision_id);
-    // Trunkering: svaret är komplett upp till det SIST sedda id:t (ordningen
-    // är stigande), resten är okänd. En okänd rest får aldrig tolkas som
-    // "oexponerad" — den stängslas. Att svara null i stället hade dödat sätet
-    // helt på de mest trafikerade sajterna, alltså precis där föroreningen är
-    // störst; en delmängd i hash-ordning är obiased och det ÄRLIGA valet.
-    if (rows.length >= EXPOSURE_LIMIT) {
-      const lastSeen = rows[rows.length - 1]?.decision_id ?? "";
-      for (const id of batch) if (id > lastSeen) exposed.add(id);
+    // TRUNKERING mäts mot serverns EGET facit (count: "exact"), inte mot vår
+    // begärda limit (granskningsfynd 2026-08-08: PostgREST kan ha ett eget
+    // radtak, och då hade `rows.length >= EXPOSURE_LIMIT` aldrig slagit till —
+    // stängslet blivit tyst ofullständigt). Fattas rader vet vi inte vilka
+    // id:n de bar ⇒ hela satsen stängslas. Okänt får aldrig bli "oexponerad".
+    if (typeof count === "number" && rows.length < count) {
+      for (const id of batch) exposed.add(id);
     }
   }
   return exposed;
@@ -111,6 +107,12 @@ export async function fetchSectionBehavior(
       // av strömmen kom aldrig över tunn-golvet hur mycket data den än hade).
       .eq("payload->>path", path)
       .gte("created_at", cutoff)
+      // ARM-FILTRET I SQL (granskningsfynd 2026-08-08): stängslades armen först
+      // på klienten åt de adapterade raderna upp FETCH_LIMIT-taket, så en sida
+      // med en serverad variant fick ett stympat organiskt underlag och sätet
+      // tystnade av fel skäl. Äldre rader saknar fältet (is.null) och stängslas
+      // i stället via decision_id nedan.
+      .or("payload->>adapted.is.null,payload->>adapted.eq.0")
       .order("created_at", { ascending: false })
       .limit(FETCH_LIMIT);
     if (error || !data) return null;
@@ -138,18 +140,34 @@ export async function fetchSectionBehavior(
           ? ((e.payload as { path?: string }).path as string)
           : "/") || "/") === path,
     );
-    // Arm-stängslet: släpp census-rader från laddningar där en variant VISADES.
-    const candidateIds = [...new Set(clean.map((e) => e.decisionId).filter((d): d is string => !!d))];
-    let organic = clean;
-    if (candidateIds.length > 0) {
-      const exposed = await exposedDecisionIds(db, site, path, cutoff, candidateIds);
+    // ARM-STÄNGSLET, två lager.
+    // 1) Markerade rader: `adapted` är en exakt per-laddnings-sanning från
+    //    samma snippet som mätte dwell-tiderna. SQL har redan släppt 1:orna;
+    //    den här raden är bältet till hängslena om filtret skulle glida.
+    const marked = clean.filter((e) => (e.payload as { adapted?: unknown }).adapted !== undefined);
+    const unmarked = clean.filter(
+      (e) => (e.payload as { adapted?: unknown }).adapted === undefined,
+    );
+    const markedOrganic = marked.filter((e) => !(e.payload as { adapted?: unknown }).adapted);
+    // 2) Omarkerade (äldre) rader: bara kontext-hashen finns — trubbigt
+    //    stängsel, se exposedDecisionIds.
+    let legacyOrganic = unmarked;
+    const legacyIds = [
+      ...new Set(unmarked.map((e) => e.decisionId).filter((d): d is string => !!d)),
+    ];
+    if (legacyIds.length > 0) {
+      const exposed = await exposedDecisionIds(db, site, path, cutoff, legacyIds);
       if (!exposed) return null; // stängslet kunde inte bevisas ⇒ hellre tyst
       if (exposed.size > 0) {
-        organic = clean.filter((e) => !(e.decisionId && exposed.has(e.decisionId)));
-        console.log(
-          `  [beteende] ${path}: ${clean.length - organic.length}/${clean.length} census-rader låg i en serverad arm — stängslade (självmätning)`,
-        );
+        legacyOrganic = unmarked.filter((e) => !(e.decisionId && exposed.has(e.decisionId)));
       }
+    }
+    const organic = [...markedOrganic, ...legacyOrganic];
+    const fenced = clean.length - organic.length;
+    if (fenced > 0) {
+      console.log(
+        `  [beteende] ${path}: ${fenced}/${clean.length} census-rader låg i en serverad arm — stängslade (självmätning)`,
+      );
     }
     const payloads = organic.map((e) => e.payload as SectionEngagementPayload & { path?: unknown });
     const observations = aggregateSectionObservations(payloads);

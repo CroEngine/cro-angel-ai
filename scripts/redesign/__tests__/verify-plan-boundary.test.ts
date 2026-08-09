@@ -16,13 +16,31 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { chromium } from "playwright-core";
 
 import { planRow } from "../../loop/cell-plan";
 
 import type { RedesignOp } from "../../../src/adaptive/redesign/generate";
 
 const REPO = join(import.meta.dirname, "..", "..", "..");
+
+// Samma probe/skip-mönster som repots övriga browser-tester (applier,
+// section-observe, snapshot): utan chromium hoppas testet över i stället för
+// att fälla sviten på en maskin som saknar browsern. CI installerar den.
+let chromiumAvailable = false;
+beforeAll(async () => {
+  try {
+    const b = await chromium.launch({
+      headless: true,
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+    });
+    await b.close();
+    chromiumAvailable = true;
+  } catch {
+    chromiumAvailable = false;
+  }
+});
 
 /** Fryst fixtur: hjälte + tre sektioner, gott om luft så en flytt inte
  *  kolliderar (grindarna är inte det som testas här — gränssnittet är det). */
@@ -108,7 +126,8 @@ const moveOp = (targetId: string): RedesignOp => ({
 describe("plans.json → verify (riktig process, riktig Chromium)", () => {
   it(
     "planSource och altOps överlever gränsen; reserven räddar ett valideringsavslag",
-    async () => {
+    async (ctx) => {
+      if (!chromiumAvailable) return ctx.skip();
       // Raderna byggs av nattloopens EGEN producent — glider planRow och
       // PlanIn isär faller det här testet, inte produktionen en natt i tysthet.
       const rows = runVerify([
@@ -154,7 +173,8 @@ describe("plans.json → verify (riktig process, riktig Chromium)", () => {
 
   it(
     "utan reserv är ett valideringsavslag fortfarande ett ÄRLIGT nej",
-    async () => {
+    async (ctx) => {
+      if (!chromiumAvailable) return ctx.skip();
       const rows = runVerify([
         planRow({ ...basePlan, ops: [moveOp("sec-9-finns-inte")], planSource: "katalog/floor" }),
       ]);

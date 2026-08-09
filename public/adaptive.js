@@ -1924,7 +1924,18 @@
           /* aldrig bryta sidan */
         }
       }
-      track("section_engagement", { sections: secsOut, path: sectionsPath }, decisionId);
+      // ARM-MARKÖREN (2026-08-08): bar laddningen en TILLÄMPAD variant? Utan
+      // den kan läsvägen bara stängsla på decisionId, som är en KONTEXT-hash
+      // delad av båda armarna och av alla laddningar i samma kontext — då
+      // faller kontrollarmens rena mätningar med, och en SPA-rutt vars census
+      // bär en annan path än exponeringsraden stängslas inte alls. Samma
+      // sanning som skörde-spärren använder (adaptedThisLoad): pessimistisk —
+      // en beslutad variant räknas som visad även om appliceringen kom sent.
+      track(
+        "section_engagement",
+        { sections: secsOut, path: sectionsPath, adapted: adaptedThisLoad ? 1 : 0 },
+        decisionId,
+      );
     }
 
     // Aktiv tid + exit: räkna bara SYNLIG tid (visibilitychange), skicka vid

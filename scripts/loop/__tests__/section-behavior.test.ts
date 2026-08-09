@@ -13,6 +13,7 @@ interface CapturedQuery {
   eqs: Record<string, unknown>;
   gte: { column: string; value: string } | null;
   limit: number | null;
+  or: string | null;
 }
 
 /** Minimal query-builder-stub: fångar filtren, resolvar med givna rader.
@@ -22,14 +23,18 @@ interface CapturedQuery {
 function stubDb(
   rows: unknown[],
   error: unknown = null,
-  exposures: { rows?: unknown[]; error?: unknown } = {},
+  exposures: { rows?: unknown[]; error?: unknown; count?: number } = {},
 ): { db: SupabaseClient; q: CapturedQuery; exposureIds: string[][] } {
-  const q: CapturedQuery = { eqs: {}, gte: null, limit: null };
+  const q: CapturedQuery = { eqs: {}, gte: null, limit: null, or: null };
   const exposureIds: string[][] = [];
   const makeBuilder = () => {
     const state: { type?: string; ins: string[] } = { ins: [] };
     const builder: Record<string, unknown> = {
       select: () => builder,
+      or: (expr: string) => {
+        if (state.type !== "adaptation_shown") q.or = expr;
+        return builder;
+      },
       eq: (col: string, val: unknown) => {
         if (col === "type") state.type = String(val);
         // Census-frågans filter är de som testas; exponerings-uppslaget har
@@ -50,7 +55,15 @@ function stubDb(
       limit: (n: number) => {
         if (state.type === "adaptation_shown") {
           const err = exposures.error ?? null;
-          return Promise.resolve({ data: err ? null : (exposures.rows ?? []), error: err });
+          const exRows = exposures.rows ?? [];
+          return Promise.resolve({
+            data: err ? null : exRows,
+            error: err,
+            // Serverns facit: default = precis så många som returnerades
+            // (inget bortfall); testet kan sätta ett HÖGRE count för att
+            // simulera ett serverradtak.
+            count: exposures.count ?? exRows.length,
+          });
         }
         q.limit = n;
         return Promise.resolve({ data: error ? null : rows, error });
@@ -120,7 +133,35 @@ describe("fetchSectionBehavior", () => {
     expect(r!.sectionWeight["sec-3-testimonials"]).toBeCloseTo(0, 10);
   });
 
-  it("ARM-STÄNGSLET: laddningar där varianten VISADES blir aldrig beteendevikter", async () => {
+  it("ARM-MARKÖREN filtreras i SQL och respekteras även om filtret skulle glida", async () => {
+    // Nya census-rader bär payload.adapted (0/1) — en exakt per-laddnings-
+    // sanning. SQL-filtret ska be om de omarkerade + 0:orna, och en 1:a som
+    // ändå kom med (glidande filter) ska ändå aldrig forma vikterna.
+    const rows = [
+      ...Array.from({ length: 4000 }, () => ({
+        ...row({
+          adapted: 1,
+          sections: [
+            { h: "Simple honest pricing", n: 1, d: 0 },
+            { h: "Loved by teams", n: 1, d: 9000 },
+          ],
+        }),
+        decision_id: "dec-any",
+      })),
+      ...Array.from({ length: 1100 }, () => ({ ...row({ adapted: 0 }), decision_id: "dec-any" })),
+    ];
+    const { db, q, exposureIds } = stubDb(rows);
+    const r = await fetchSectionBehavior(db, "acme", "/artikel/12345678", SECTIONS);
+    expect(q.or).toBe("payload->>adapted.is.null,payload->>adapted.eq.0");
+    // Markerade rader behöver INGET decisionId-uppslag — det trubbiga
+    // stängslet gäller bara den gamla svansen.
+    expect(exposureIds).toEqual([]);
+    expect(r).not.toBeNull();
+    expect(r!.sectionWeight["sec-2-pricing"]).toBeCloseTo(1, 10);
+    expect(r!.sectionWeight["sec-3-testimonials"]).toBeCloseTo(0, 10);
+  });
+
+  it("ARM-STÄNGSLET (äldre events utan markör): laddningar där varianten VISADES blir aldrig beteendevikter", async () => {
     // Den självförstärkande klassen (granskningsfynd 2026-08-08): en serverad
     // move_up lyfter testimonials ovanför folden ⇒ dwell stiger ⇒ nästa natt
     // rankar sätet samma sektion högst och menyraden påstår att BESÖKARNA
@@ -169,31 +210,19 @@ describe("fetchSectionBehavior", () => {
     expect(ok!.sectionWeight["sec-2-pricing"]).toBeCloseTo(1, 10);
   });
 
-  it("trunkerat exponerings-svar stängslar den OKÄNDA resten (aldrig 'oexponerad' på gissning)", async () => {
-    // Taket nås ⇒ svaret är komplett bara upp till sist sedda id. Här kommer
-    // 20 000 rader tillbaka för "dec-a"; "dec-z" ligger efter i ordningen och
-    // är alltså okänd — den ska stängslas, inte släppas in.
-    const rows = [
-      ...Array.from({ length: 3000 }, () => ({
-        ...row({
-          sections: [
-            { h: "Simple honest pricing", n: 1, d: 0 },
-            { h: "Loved by teams", n: 1, d: 9000 },
-          ],
-        }),
-        decision_id: "dec-z",
-      })),
-      ...Array.from({ length: 1100 }, () => ({ ...row(), decision_id: "dec-a" })),
-    ];
+  it("serverns radtak (count > returnerade rader) stängslar HELA satsen", async () => {
+    // Granskningsfynd 2026-08-08: trunkering mättes mot VÅR limit, så ett
+    // server-radtak (PostgREST db-max-rows) hade gjort stängslet tyst
+    // ofullständigt. Nu jämförs mot serverns eget count.
+    const rows = Array.from({ length: 1100 }, () => ({ ...row(), decision_id: "dec-a" }));
     const r = await fetchSectionBehavior(
-      stubDb(rows, null, {
-        rows: Array.from({ length: 20_000 }, () => ({ decision_id: "dec-a" })),
-      }).db,
+      // Servern svarar med EN rad men säger att det finns 9 999 ⇒ bortfall ⇒
+      // hela satsen (inkl. "dec-a") stängslas ⇒ inget underlag kvar.
+      stubDb(rows, null, { rows: [{ decision_id: "dec-b" }], count: 9999 }).db,
       "acme",
       "/artikel/12345678",
       SECTIONS,
     );
-    // Bägge id:n stängslades (dec-a sett, dec-z okänd) ⇒ inget underlag kvar.
     expect(r).toBeNull();
   });
 
