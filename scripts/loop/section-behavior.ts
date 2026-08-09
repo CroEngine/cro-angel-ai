@@ -29,8 +29,8 @@ const FRESH_DAYS = 30;
  *  är en KONTEXT-hash, så antalet distinkta id:n är litet även på stora
  *  strömmar; satsen håller URL-längden nere. */
 const EXPOSURE_ID_BATCH = 100;
-/** Tak per sats. Nås det kan vi inte längre BEVISA vilka id:n som exponerats
- *  (trunkeringen döljer resten) ⇒ hela svaret blir null. */
+/** Tak per sats. Nås det är svaret komplett bara upp till det sist sedda
+ *  id:t — resten stängslas konservativt (se exposedDecisionIds). */
 const EXPOSURE_LIMIT = 20_000;
 
 /** Arm-stängslet (granskningsfynd 2026-08-08, den självförstärkande klassen):
@@ -59,7 +59,9 @@ async function exposedDecisionIds(
 ): Promise<Set<string> | null> {
   const exposed = new Set<string>();
   for (let i = 0; i < ids.length; i += EXPOSURE_ID_BATCH) {
-    const batch = ids.slice(i, i + EXPOSURE_ID_BATCH);
+    // SORTERAD sats + sorterat svar: det gör trunkeringen hanterbar i stället
+    // för fatal (se nedan).
+    const batch = ids.slice(i, i + EXPOSURE_ID_BATCH).sort();
     const { data, error } = await db
       .from("angel_events")
       .select("decision_id")
@@ -68,12 +70,20 @@ async function exposedDecisionIds(
       .eq("payload->>path", path)
       .gte("created_at", cutoff)
       .in("decision_id", batch)
+      .order("decision_id", { ascending: true })
       .limit(EXPOSURE_LIMIT);
     if (error || !data) return null;
     const rows = data as { decision_id: string | null }[];
-    // Trunkering ⇒ okänd rest ⇒ stängslet kan inte bevisas komplett.
-    if (rows.length >= EXPOSURE_LIMIT) return null;
     for (const r of rows) if (r.decision_id) exposed.add(r.decision_id);
+    // Trunkering: svaret är komplett upp till det SIST sedda id:t (ordningen
+    // är stigande), resten är okänd. En okänd rest får aldrig tolkas som
+    // "oexponerad" — den stängslas. Att svara null i stället hade dödat sätet
+    // helt på de mest trafikerade sajterna, alltså precis där föroreningen är
+    // störst; en delmängd i hash-ordning är obiased och det ÄRLIGA valet.
+    if (rows.length >= EXPOSURE_LIMIT) {
+      const lastSeen = rows[rows.length - 1]?.decision_id ?? "";
+      for (const id of batch) if (id > lastSeen) exposed.add(id);
+    }
   }
   return exposed;
 }

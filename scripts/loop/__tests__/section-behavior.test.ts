@@ -169,6 +169,34 @@ describe("fetchSectionBehavior", () => {
     expect(ok!.sectionWeight["sec-2-pricing"]).toBeCloseTo(1, 10);
   });
 
+  it("trunkerat exponerings-svar stängslar den OKÄNDA resten (aldrig 'oexponerad' på gissning)", async () => {
+    // Taket nås ⇒ svaret är komplett bara upp till sist sedda id. Här kommer
+    // 20 000 rader tillbaka för "dec-a"; "dec-z" ligger efter i ordningen och
+    // är alltså okänd — den ska stängslas, inte släppas in.
+    const rows = [
+      ...Array.from({ length: 3000 }, () => ({
+        ...row({
+          sections: [
+            { h: "Simple honest pricing", n: 1, d: 0 },
+            { h: "Loved by teams", n: 1, d: 9000 },
+          ],
+        }),
+        decision_id: "dec-z",
+      })),
+      ...Array.from({ length: 1100 }, () => ({ ...row(), decision_id: "dec-a" })),
+    ];
+    const r = await fetchSectionBehavior(
+      stubDb(rows, null, {
+        rows: Array.from({ length: 20_000 }, () => ({ decision_id: "dec-a" })),
+      }).db,
+      "acme",
+      "/artikel/12345678",
+      SECTIONS,
+    );
+    // Bägge id:n stängslades (dec-a sett, dec-z okänd) ⇒ inget underlag kvar.
+    expect(r).toBeNull();
+  });
+
   it("stängslet kan tömma underlaget — då är svaret null, inte en tunn gissning", async () => {
     const rows = Array.from({ length: 1100 }, () => ({ ...row(), decision_id: "dec-exposed" }));
     const r = await fetchSectionBehavior(

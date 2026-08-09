@@ -209,8 +209,10 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
     innan rollupen — annars mäter sätet vår egen omflyttning och rankar den
     högre nästa natt (självförstärkning). Stängslet är medvetet trubbigt:
     `decisionId` är en kontext-hash som delas av båda armarna, så kontroll-
-    armens rena laddningar faller med. Kan stängslet inte bevisas komplett
-    (db-fel/trunkering) ⇒ null, som resten av röret.
+    armens rena laddningar faller med. Faller uppslaget (db-fel) ⇒ null;
+    trunkeras det ⇒ den okända resten stängslas (aldrig tolkas som
+    "oexponerad"), så en tung sajt får ett mindre men obiased underlag i
+    stället för inget alls.
 
     **Vad som är testat (och vad som inte är det):** gränsen `plans.json` →
     verify körs på riktigt i `verify-plan-boundary.test.ts` (riktig process +
