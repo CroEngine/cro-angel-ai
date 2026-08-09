@@ -198,6 +198,12 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
     CITERA en annan sida, och utan citatet tystnar även drift-självläkningen
     (`evidence.dependencies`).
 
+    *Kohortceller* går däremot katalog-först som vilken ensidig cell som helst
+    — kohortens avsikt kommer in som `observations` i väljar-prompten, exakt
+    samma rader designern fick (och utan designer-promptens påhittade
+    "0,0 % konvertering / adequate" för en cell vars kohort ännu inte mätts).
+    `required_cohorts` sätts oberoende av vägen.
+
     **Beteende-sätets arm-stängsel:** census-rader från laddningar där en
     variant VISADES (`decision_id` ∈ `adaptation_shown` på samma sida) släpps
     innan rollupen — annars mäter sätet vår egen omflyttning och rankar den

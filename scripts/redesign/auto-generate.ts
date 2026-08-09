@@ -1183,9 +1183,23 @@ try {
       },
     };
     const esc = (s: string) => s.replace(/'/g, "''");
+    // Reservvägen (handpåläggning): nattloopen inserterar via service-klienten,
+    // men den här filen finns för labbet/manuella körningar — och saknade
+    // required_cohorts (granskningsfynd 2026-08-08). En kohortscopad variant
+    // applicerad härifrån hade fötts OSCOPAD och servat ALLA besökare, inte
+    // sin kohort. Fältet skrivs nu på samma villkor som direkt-inserten.
+    // Kolumnen är text[] (20260721190000_angel_variants_required_cohorts.sql)
+    // — array-literal, inte jsonb.
+    const cohortStrs = Array.isArray(plan.cohorts)
+      ? plan.cohorts.filter((c): c is string => typeof c === "string")
+      : [];
+    const cohortsSql =
+      cohortStrs.length > 0
+        ? `array[${cohortStrs.map((c) => `'${esc(c)}'`).join(", ")}]::text[]`
+        : "null";
     sqlParts.push(
-      `insert into angel_variants (site, path, segment_key, status, ops, serve_ops, evidence)\n` +
-        `values ('${site}', '${esc(plan.path)}', '${esc(plan.key)}', 'verified', '${esc(JSON.stringify(finalOps))}'::jsonb, '${esc(JSON.stringify(serveOps))}'::jsonb, '${esc(JSON.stringify(evidence))}'::jsonb);`,
+      `insert into angel_variants (site, path, segment_key, status, ops, serve_ops, evidence, required_cohorts)\n` +
+        `values ('${site}', '${esc(plan.path)}', '${esc(plan.key)}', 'verified', '${esc(JSON.stringify(finalOps))}'::jsonb, '${esc(JSON.stringify(serveOps))}'::jsonb, '${esc(JSON.stringify(evidence))}'::jsonb, ${cohortsSql});`,
     );
     // ops med i resultatet så en orkestrerare (nattloopen) kan göra direkta
     // inserts via service-klienten i stället för att köra SQL-filen.
