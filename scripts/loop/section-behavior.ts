@@ -161,8 +161,14 @@ export async function fetchSectionBehavior(
     ];
     if (legacyIds.length > 0) {
       const exposed = await exposedDecisionIds(db, site, path, cutoff, legacyIds);
-      if (!exposed) return null; // stängslet kunde inte bevisas ⇒ hellre tyst
-      if (exposed.size > 0) {
+      if (!exposed) {
+        // Uppslaget föll ⇒ de OMARKERADE kan inte bevisas rena och släpps.
+        // De MARKERADE rörs inte (granskningsfynd 2026-08-08: att svara null
+        // för hela sidan lät en enda gammal rad kasta bort ett underlag som
+        // bevisligen var organiskt — försiktighet ska drabba det osäkra, inte
+        // det bevisade). Blir resten för tunn faller null-grinden ändå.
+        legacyOrganic = [];
+      } else if (exposed.size > 0) {
         legacyOrganic = unmarked.filter((e) => !(e.decisionId && exposed.has(e.decisionId)));
       }
     }

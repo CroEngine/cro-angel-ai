@@ -107,10 +107,13 @@ export function buildEventRows(
         ];
       });
     }
-    // Arm-markören (section_engagement): 0/1, aldrig något annat. Klienten
-    // skickar en siffra; en förfalskad sträng/objekt får inte överleva
-    // spreaden och bli ett osorterbart värde i läsvägens SQL-filter.
-    if ("adapted" in raw) payload.adapted = raw.adapted ? 1 : 0;
+    // Arm-markören: 0/1, aldrig något annat. Klienten skickar en siffra; en
+    // förfalskad sträng/objekt får inte överleva spreaden och bli ett värde
+    // läsvägens SQL-filter inte kan sortera. ENDAST section_engagement
+    // (granskningsfynd 2026-08-08): normaliseringen gällde alla typer och hade
+    // skrivit om ett kundägt "adapted"-fält i t.ex. en conversion-payload till
+    // en siffra — vi äger namnet bara i vårt eget event.
+    if (e.type === "section_engagement" && "adapted" in raw) payload.adapted = raw.adapted ? 1 : 0;
     if (sid) payload.sessionId = sid;
     return {
       site,

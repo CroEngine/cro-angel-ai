@@ -159,6 +159,30 @@ describe("snippetens per-sektion-synlighet (steg 9, riktig chromium)", () => {
     } finally {
       await armed.close();
     }
+
+    // KONTROLLARMEN är hela poängen med stängslet: sidan är ORÖRD trots att ett
+    // beslut finns, så dess mätning är äkta besökarbeteende och MÅSTE räknas.
+    // Stämplas den 1 kastar stängslet bort exakt den data det finns till för
+    // att bevara (granskningsfynd 2026-08-08: e2e:t saknade fallet).
+    const held = await browser!.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      const { bodies } = await boot(held, "1", undefined, {
+        decisionId: "dec-holdout",
+        site: "e2e",
+        adaptations: [],
+        holdout: true,
+        variant: null,
+        context: {},
+      });
+      await settle(held, 1300);
+      await held.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+      await settle(held, 300);
+      const sec = allEvents(bodies()).filter((e) => e.type === "section_engagement");
+      expect(sec).toHaveLength(1);
+      expect(sec[0].payload?.adapted).toBe(0);
+    } finally {
+      await held.close();
+    }
   });
 
   it("opt-in: EN section_engagement vid pagehide — rätt census, rätt dwell-mönster", async (ctx) => {

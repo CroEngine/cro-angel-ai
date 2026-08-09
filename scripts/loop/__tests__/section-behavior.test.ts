@@ -189,6 +189,32 @@ describe("fetchSectionBehavior", () => {
     expect(r!.sectionWeight["sec-3-testimonials"]).toBeCloseTo(0, 10);
   });
 
+  it("ett fallet uppslag drabbar bara de OMARKERADE — bevisat organiska rader står kvar", async () => {
+    // Granskningsfynd 2026-08-08: en enda gammal rad kunde annars kasta bort
+    // ett underlag som bevisligen var organiskt (markörens 0:or).
+    const rows = [
+      ...Array.from({ length: 1100 }, () => ({ ...row({ adapted: 0 }), decision_id: "dec-m" })),
+      ...Array.from({ length: 20 }, () => ({
+        ...row({
+          sections: [
+            { h: "Simple honest pricing", n: 1, d: 0 },
+            { h: "Loved by teams", n: 1, d: 9000 },
+          ],
+        }),
+        decision_id: "dec-legacy",
+      })),
+    ];
+    const r = await fetchSectionBehavior(
+      stubDb(rows, null, { error: { message: "exposure lookup down" } }).db,
+      "acme",
+      "/artikel/12345678",
+      SECTIONS,
+    );
+    expect(r).not.toBeNull();
+    expect(r!.sectionWeight["sec-2-pricing"]).toBeCloseTo(1, 10);
+    expect(r!.sectionWeight["sec-3-testimonials"]).toBeCloseTo(0, 10);
+  });
+
   it("stängslet måste kunna BEVISAS: exponerings-uppslaget faller ⇒ null (aldrig oprövad vikt)", async () => {
     const rows = Array.from({ length: 1100 }, () => ({ ...row(), decision_id: "dec-1" }));
     expect(
