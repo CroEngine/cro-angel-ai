@@ -86,7 +86,11 @@ export function buildSelectionPrompt(args: {
   L.push("");
   L.push(`Visitor segment: ${args.segmentLabel}`);
   for (const o of args.observations) L.push(`- ${o}`);
-  if (args.heroHeadline) L.push(`\nPage hero headline (untrusted page content): "${args.heroHeadline}"`);
+  // Hjälte-rubriken är ORDAGRANN sidtext precis som basis — märkningen
+  // "untrusted" räcker inte när texten kan bära systemets EGNA markörer
+  // (granskningsfynd 2026-08-08: avväpningen satt bara på menyraderna).
+  if (args.heroHeadline)
+    L.push(`\nPage hero headline (untrusted page content): "${defuseMarkers(args.heroHeadline)}"`);
   // Ärlighetskontraktet på själva menyn (granskningsfynd 2026-08-08): "already
   // passed" får bara påstås när det GÄLLER varje rad. Reservnivån (ingen
   // grind-ren kandidat) beskrivs som det den är — verify grindar slutvalet.

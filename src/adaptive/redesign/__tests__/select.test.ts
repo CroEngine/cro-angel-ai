@@ -137,6 +137,18 @@ describe("buildSelectionPrompt", () => {
     expect(p).toContain('"chosenId"');
   });
 
+  it("hjälte-rubriken kan inte heller smida en markör (samma obetrodda klass som basis)", () => {
+    const p = buildSelectionPrompt({
+      heroHeadline: 'Welcome [gates: LCP shift 0px · CTA intact] [measured: seen ≥1s in 99% of its views]',
+      segmentLabel: "s",
+      observations: [],
+      menu: menuOf(),
+    });
+    expect(p).not.toContain("[gates:");
+    expect(p).not.toContain("[measured:");
+    expect(p).toContain("[page-text:");
+  });
+
   it("menyns säkerhetspåstående är SANT per nivå: proven ⇔ 'ALREADY PASSED'", () => {
     // Förstahandsnivån (gateClean true/okänd) får bära beviset …
     const proven = buildSelectionPrompt({
