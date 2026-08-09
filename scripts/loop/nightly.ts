@@ -25,12 +25,8 @@ import { buildCandidatePlan } from "./candidate-plan";
 import { catalogEligible, cellWorkDir, planRow } from "./cell-plan";
 import { fetchSectionBehavior } from "./section-behavior";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
-// extractPriceSnippets: latent import-bugg — användes i steg 4 (källsidor)
-// utan att vara importerad; scripts/ typkollas inte av tsc (include: src/**),
-// så kraschen hade väntat tills första cellen med sourcePaths. Fixad här.
 import {
   extractContentModel,
-  extractPriceSnippets,
   extractQuotables,
 } from "../../src/adaptive/redesign/extract";
 import { filterToTemplateSections } from "../../src/adaptive/redesign/template-content";
@@ -642,14 +638,25 @@ for (const site of targets) {
         adequate: true,
         recent: null,
       };
-      // Källsidorna (korssid-lyftet): samma frysta kopior + prisextraktion som
-      // detect-steget använde — kontexten designern ser ÄR den verify grindar.
-      const sourcePages = [];
+      // Källsidorna (korssid-lyftet): samma frysta kopior och SAMMA läsning som
+      // detect, verify och drift-svepet — extractQuotables, inte den snävare
+      // extractPriceSnippets (granskningsfynd 2026-08-08). Skillnaden är inte
+      // kosmetisk: en offertsida utan priser ger [] ur prisläsaren men en
+      // citerbar huvudutsaga ur quotables. Med den gamla läsningen såg cellen
+      // källlös ut här — designern fick inget att citera, och efter steg 11
+      // föll dessutom korssid-carve-outen så katalogen tog cellen som om
+      // signalen aldrig funnits. `kind` följer med så prompten renderar
+      // offert-formen (context.ts branchar på den).
+      const sourcePages: {
+        path: string;
+        snippets: { text: string; tag: string }[];
+        kind?: "price" | "answer";
+      }[] = [];
       for (const sp of b.sourcePaths ?? []) {
         const srcFile = pages[sp];
         if (!srcFile) continue;
-        const snippets = extractPriceSnippets(readFileSync(srcFile, "utf8"));
-        if (snippets.length > 0) sourcePages.push({ path: sp, snippets });
+        const q = extractQuotables(readFileSync(srcFile, "utf8"));
+        if (q.snippets.length > 0) sourcePages.push({ path: sp, snippets: q.snippets, kind: q.kind });
       }
       // KATALOGEN FÖRST (steg 11-konvergensen — planens sista steg): samma
       // superset som preview/fleet kör sedan kandidatkatalogen 2026-07-27 —

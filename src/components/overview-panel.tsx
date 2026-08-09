@@ -60,6 +60,9 @@ function planSourceLabel(src: string | null): string | null {
   if (src === "katalog/selector") return "from catalog (model pick)";
   if (src === "katalog/floor") return "from catalog (rule pick)";
   if (src === "designer") return "from designer";
+  // Bevis-lyftets nödfall: raden syntetiserades i verifieringen ur sidans egen
+  // text när det valda draget hölls av grinden — varken katalog eller designer.
+  if (src === "proof-insert") return "from proof lift (gate fallback)";
   return null;
 }
 

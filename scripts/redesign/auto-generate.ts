@@ -1224,7 +1224,22 @@ try {
       // Kohortkontraktet ekas till orkestreraren — se PlanIn-kommentaren.
       ...(plan.cohorts ? { cohorts: plan.cohorts } : {}),
       ...(plan.success !== undefined ? { success: plan.success } : {}),
-      ...(plan.planSource ? { planSource: plan.planSource } : {}),
+      // Provenansen gäller det SERVERADE, inte planen som föll (granskningsfynd
+      // 2026-08-08). Bevis-lyftets nödfall (proof_insert) syntetiseras HÄR ur
+      // sidans egen text — den opsen stod aldrig i katalogens meny och ingen
+      // modell valde den. Ekades "katalog/selector" ändå sa dashboarden "from
+      // catalog (model pick)" om en rad som inte kom därifrån. Katalogens egna
+      // reserver (alt:N) är däremot fortfarande katalogens.
+      ...(plan.planSource
+        ? {
+            // String(...) medvetet: fallbackUsed sätts bara inuti adoptRun-
+            // closuren, så tsc smalnar av typen till null här och `?.` blir
+            // ett kompileringsfel. Värdet är korrekt i körtid.
+            planSource: String(fallbackUsed ?? "").startsWith("proof_insert")
+              ? "proof-insert"
+              : plan.planSource,
+          }
+        : {}),
     });
     console.log(
       `  ${plan.path} × ${plan.key}: VERIFIED (${attempts.length} försök${fallbackUsed ? ", via fallback" : ""}) — väntar på ägarens knapp`,
