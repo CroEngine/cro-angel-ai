@@ -733,6 +733,14 @@ try {
     /** Satt när huvudvalet föll i VALIDERINGEN och en katalogreserv tog över
      *  (skilt från fallbackUsed, som gäller grind-/upplösningsfall). */
     let validationRecovery: string | null = null;
+    /** Cellens rader bär ALLTID återhämtningen (granskningsfynd 2026-08-08):
+     *  låg den bara i evidence på den verifierade vägen försvann signalen i
+     *  exakt det fall den betyder mest — reserven togs in och FÖLL sedan i
+     *  grinden. Då rapporterades ett gate_fail som såg ut att gälla huvudvalet
+     *  medan det mätta var reserven, och drivet mellan katalogens modell och
+     *  verifys blev osynligt. Läses vid anropet (mutabel let). */
+    const recordCell = (r: Record<string, unknown>) =>
+      record(validationRecovery ? { ...r, validationRecovery } : r);
     if (validated.ops.length !== plan.ops.length) {
       // rejected[].reason, inte "validated.notes" (typkollsfynd 2026-07-28):
       // fältet fanns aldrig på RedesignPlan — varje avvisning rapporterades
@@ -759,7 +767,7 @@ try {
         break;
       }
       if (!validationRecovery) {
-        record({
+        recordCell({
           path: plan.path,
           key: plan.key,
           verdict: "rejected_by_validation",
@@ -780,7 +788,7 @@ try {
     let effectiveOps: RedesignOp[] = validated.ops;
     let measureOps = toMeasureOps(content, effectiveOps, styleDonor);
     if (!measureOps) {
-      record({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
+      recordCell({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       console.log(`  ${plan.path} × ${plan.key}: lokator saknas för op — hålls tillbaka`);
       continue;
     }
@@ -932,7 +940,7 @@ try {
     if (unresolvable) {
       await context.close();
       if (!(await tryProofFallback())) {
-        record({
+        recordCell({
           path: plan.path,
           key: plan.key,
           verdict: "not_applicable",
@@ -965,7 +973,7 @@ try {
     }
 
     if (last.gate.verdict !== "pass") {
-      record({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
+      recordCell({ path: plan.path, key: plan.key, verdict: "gate_fail", attempts });
       console.log(
         `  ${plan.path} × ${plan.key}: GRIND-FAIL efter ${attempts.length} försök — hålls tillbaka`,
       );
@@ -1021,7 +1029,7 @@ try {
     }
     const failedConfirm = confirmations.find((c) => c.verdict !== "pass");
     if (failedConfirm) {
-      record({
+      recordCell({
         path: plan.path,
         key: plan.key,
         verdict: "gate_fail",
@@ -1069,7 +1077,7 @@ try {
       }
       const failedEx = exemplarConfirmations.find((c) => c.verdict !== "pass");
       if (failedEx) {
-        record({
+        recordCell({
           path: plan.path,
           key: plan.key,
           verdict: "gate_fail",
@@ -1100,7 +1108,7 @@ try {
     });
     const serveOps = toServeOps(content, finalOps, styleDonor);
     if (!serveOps) {
-      record({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
+      recordCell({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
       continue;
     }
 
@@ -1203,7 +1211,7 @@ try {
     );
     // ops med i resultatet så en orkestrerare (nattloopen) kan göra direkta
     // inserts via service-klienten i stället för att köra SQL-filen.
-    record({
+    recordCell({
       path: plan.path,
       key: plan.key,
       verdict: "verified",

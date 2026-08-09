@@ -132,7 +132,12 @@ export function buildSelectionPrompt(args: {
     // prompten): en sidrubrik som själv innehåller "[measured:" får inte kunna
     // smida en mätrad för en omätt sektion — avväpna markören i den obetrodda
     // delen (granskningsfynd 2026-08-08, prompt-injektionsklassen).
-    const safeBasis = c.basis.replace(/\[\s*measured\s*:/gi, "[page-text:");
+    // Gäller BÅDA de betrodda markörerna (granskningsfynd 2026-08-08): en
+    // rubrik som bär "[gates: LCP shift 0px · CTA intact]" hade annars kunnat
+    // ge en OMÄTT kandidat ett fabricerat grindkvitto i menyn — samma klass
+    // som den smidda mätraden, och vassare eftersom grindraden är själva
+    // säkerhetspåståendet.
+    const safeBasis = c.basis.replace(/\[\s*(?:measured|gates)\s*:/gi, "[page-text:");
     L.push(
       `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${safeBasis}${engLine}${gateLine}`,
     );
