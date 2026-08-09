@@ -165,6 +165,26 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
     expect(generateCandidates(CONTENT, { sectionWeight: {} })).toEqual(plain);
   });
 
+  it("mätraden bär sitt OMFÅNG: sid-data i en segment-prompt får inte läsas som segmentets", () => {
+    // Granskningsfynd 2026-08-08: datan är per SIDA (rollupen har ingen
+    // segmentdimension) medan prompten öppnar "Visitor segment: …". En omärkt
+    // rad läses som segmentets besökare — samma överdrift repot undviker
+    // överallt annars ("sajtsnittet", "segmentets besökare").
+    const plain = generateCandidates(CONTENT);
+    const menu = applyProbe(plain, plain.map((c) => ({ id: c.id, applicable: true })));
+    const prompt = buildSelectionPrompt({
+      heroHeadline: null,
+      segmentLabel: "google · mobile",
+      observations: [],
+      menu,
+      engagementBySection: { "sec-3-pricing": 0.7 },
+    });
+    expect(prompt).toContain("Visitor segment: google · mobile");
+    const row = prompt.split("\n").find((l) => l.includes("[mv-sec-3-pricing]"))!;
+    expect(row).toContain("seen ≥1s in 70% of its views");
+    expect(row).toContain("all visitors of this page, not segment-specific");
+  });
+
   it("menyraden utan beteendedata är exakt dagens (ingen påhittad siffra)", () => {
     const plain = generateCandidates(CONTENT);
     const menu = applyProbe(plain, plain.map((c) => ({ id: c.id, applicable: true })));

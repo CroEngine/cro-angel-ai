@@ -179,15 +179,44 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
     ensam) och fri-designern kvar som RESERV för celler utan katalog-
     kandidater. Katalogens rankade reserver (`altOps`) tråds genom verify:s
     alt-stege, och **provenance** (`katalog/selector` | `katalog/floor` |
-    `designer`) ekas genom verify in i variantens `evidence` — ägaren ser var
-    varje plan kom ifrån. **Live icke-underlägsenheten**: konvergensen ändrar
+    `designer`) ekas genom verify in i variantens `evidence` och **visas i
+    dashboardens variantlista** ("from catalog (model pick)" m.fl.) — ägaren
+    ser var varje plan kom ifrån. Guardrail-svepet ser den däremot ALDRIG:
+    skyddsbeslut dömer på uppmätta armar, aldrig på härkomst.
+    **Live icke-underlägsenheten**: konvergensen ändrar
     INGET i grindkedjan — varje katalog-plan går genom samma verify (riktig
     Chromium), ägarens knapp, ramp (max 50 %) och **guardrail-svepets hold på
     uppmätt förlust/breach ur riktiga armar** (`angel_variant_arms` →
     `planGuardrailSweep`) som designer-planer alltid gjort; en katalog-variant
-    som mäter sämre live hålls automatiskt. Avgränsning v1 (dokumenterad):
-    mall-celler stannar hos designern (alt-stegen är avstängd för mallar och
-    katalog-proben går mot en fryst fil). [D3]
+    som mäter sämre live hålls automatiskt.
+
+    **Avgränsningar v1 (medvetna carve-outs, båda testade i `cell-plan.test.ts`):**
+    (a) *mall-celler* stannar hos designern — alt-stegen är avstängd för mallar
+    och katalog-proben går mot EN fryst fil; (b) *korssid-celler* (de som
+    förtjänats på pris-flödessignalen och fått `sourcePaths`) stannar hos
+    designern — katalogen genererar bara drag på den egna sidan och kan aldrig
+    CITERA en annan sida, och utan citatet tystnar även drift-självläkningen
+    (`evidence.dependencies`).
+
+    **Beteende-sätets arm-stängsel:** census-rader från laddningar där en
+    variant VISADES (`decision_id` ∈ `adaptation_shown` på samma sida) släpps
+    innan rollupen — annars mäter sätet vår egen omflyttning och rankar den
+    högre nästa natt (självförstärkning). Stängslet är medvetet trubbigt:
+    `decisionId` är en kontext-hash som delas av båda armarna, så kontroll-
+    armens rena laddningar faller med. Kan stängslet inte bevisas komplett
+    (db-fel/trunkering) ⇒ null, som resten av röret.
+
+    **Vad som är testat (och vad som inte är det):** gränsen `plans.json` →
+    verify körs på riktigt i `verify-plan-boundary.test.ts` (riktig process +
+    riktig Chromium: provenansen överlever, reserverna överlever OCH räddar ett
+    valideringsavslag, serve_ops matchar de grindade opsen); sömmens beslut
+    (arbetskatalog, carve-outs, radform) i `cell-plan.test.ts`; grind-loopens
+    och serve-vägens lyfträkning i `extra-lift.test.ts`; arm-stängslet i
+    `section-behavior.test.ts`. ÄRLIG NOT: `nightly.ts` är ett toppnivå-skript
+    som inte kan importeras av ett test — dess IO-kropp (frysning, db-svep,
+    inserts) körs fortfarande bara i produktion, och kollisions-retryns
+    ADOPTION av en reserv är bevisad på den rena räknaren, inte i en levande
+    kollision. [D3]
 
 ## Där perspektiven skilde sig
 

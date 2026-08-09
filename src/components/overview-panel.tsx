@@ -54,6 +54,15 @@ import type { JourneyMilestone } from "@/lib/dashboard/journey";
 import type { ArmVerdict } from "./dashboard/variant-stats";
 import type { SuccessSpec } from "@/adaptive-lab/metrics";
 
+/** Planens härkomst i ägarens språk. Okända/saknade värden ger ingen rad alls
+ *  — hellre tyst än en gissad etikett (varianter födda före provenansen). */
+function planSourceLabel(src: string | null): string | null {
+  if (src === "katalog/selector") return "from catalog (model pick)";
+  if (src === "katalog/floor") return "from catalog (rule pick)";
+  if (src === "designer") return "from designer";
+  return null;
+}
+
 export function OverviewPanel({
   site,
   overview,
@@ -854,6 +863,22 @@ export function OverviewPanel({
                                 )}
                                 {v.segmentKey} <span className="text-[#c4beb6]">·</span>{" "}
                                 <span className="text-stone-400">{v.path}</span>
+                                {/* Härkomsten (steg 11): kom förslaget ur den
+                                    beteende-rankade katalogen eller ur den fria
+                                    designern? Skrevs i evidence men lästes av
+                                    ingen förrän nu (granskningsfynd 2026-08-08). */}
+                                {planSourceLabel(v.planSource) ? (
+                                  <>
+                                    {" "}
+                                    <span className="text-[#c4beb6]">·</span>{" "}
+                                    <span
+                                      className="text-stone-400"
+                                      title={`Plan source: ${v.planSource}`}
+                                    >
+                                      {planSourceLabel(v.planSource)}
+                                    </span>
+                                  </>
+                                ) : null}
                               </div>
                               <div className="mt-0.5 text-[11.5px] text-stone-500">
                                 {arms?.arms ? (

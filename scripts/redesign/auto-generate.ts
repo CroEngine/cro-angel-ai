@@ -73,6 +73,7 @@ import {
   segmentInsightFrom,
 } from "../../src/adaptive/redesign/context";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
+import { withExtraLift } from "../../src/adaptive/redesign/extra-lift";
 import { tidySignalText } from "../../src/adaptive/redesign/candidates";
 import {
   evaluateRenderGates,
@@ -448,8 +449,9 @@ interface PlanIn {
   success?: unknown;
   /** Provenance (steg 11-konvergensen): "katalog/selector" | "katalog/floor"
    *  | "designer". Verify agerar aldrig på det — ekas oförändrat till
-   *  resultatet så varianten kan bära sin källa i evidence (ägaren och
-   *  guardrail-diagnosen ser VAR planen kom ifrån). */
+   *  resultatet så varianten kan bära sin källa i evidence, där dashboardens
+   *  variantlista visar den för ägaren. Guardrail-svepet ser den aldrig
+   *  (skyddsbeslut dömer på armar, inte härkomst). */
   planSource?: string;
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
@@ -727,24 +729,48 @@ try {
         ))!;
     // Den RIKTIGA valideringen: verb i vokabulären, targetId måste finnas,
     // claims-vakten på varje omtextning. Kedjan litar aldrig på designern.
-    const validated = await generateRedesign(ctx, async () => JSON.stringify(plan.ops));
+    let validated = await generateRedesign(ctx, async () => JSON.stringify(plan.ops));
+    /** Satt när huvudvalet föll i VALIDERINGEN och en katalogreserv tog över
+     *  (skilt från fallbackUsed, som gäller grind-/upplösningsfall). */
+    let validationRecovery: string | null = null;
     if (validated.ops.length !== plan.ops.length) {
       // rejected[].reason, inte "validated.notes" (typkollsfynd 2026-07-28):
       // fältet fanns aldrig på RedesignPlan — varje avvisning rapporterades
       // som undefined och fleet-läsaren visade "(okänd orsak)". Valideringens
       // per-op-skäl ÄR diagnosen.
       const reason = validated.rejected.map((r) => r.reason).join("; ") || validated.note || "";
-      record({
-        path: plan.path,
-        key: plan.key,
-        verdict: "rejected_by_validation",
-        dropped: plan.ops.length - validated.ops.length,
-        reason,
-      });
-      console.log(
-        `  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll: ${reason || "utan angivet skäl"})`,
-      );
-      continue;
+      // ALT-STEGEN GÄLLER ÄVEN HÄR (granskningsfynd 2026-08-08): förut
+      // `continue`:ade valideringsavslaget FÖRE reservstegen, så en cell vars
+      // huvudval föll i valideringen gav ingenting den natten — trots att
+      // katalogen skickat med rankade reserver. Två LEVANDE avslagsvägar
+      // finns: (1) verify validerar mot den LLM-BERIKADE modellen medan
+      // katalogen byggdes på den oberikade (typtaket kan skriva om ett
+      // sektions-id), (2) net-no-op-vakten fäller en flytt av första
+      // sektionen på en hjältelös sida. Varje reserv valideras med SAMMA
+      // validator som huvudplanen — ingen genväg, bara en andra chans.
+      for (const [i, alt] of (isTemplate ? [] : (plan.altOps ?? [])).entries()) {
+        const av = await generateRedesign(ctx, async () => JSON.stringify(alt));
+        if (av.ops.length !== alt.length || av.ops.length === 0) continue;
+        validated = av;
+        validationRecovery = `alt:${i + 1}`;
+        console.log(
+          `  ${plan.path} × ${plan.key}: huvudvalet föll i valideringen (${reason || "utan angivet skäl"}) — reserv alt:${i + 1} validerade, fortsätter med den`,
+        );
+        break;
+      }
+      if (!validationRecovery) {
+        record({
+          path: plan.path,
+          key: plan.key,
+          verdict: "rejected_by_validation",
+          dropped: plan.ops.length - validated.ops.length,
+          reason,
+        });
+        console.log(
+          `  ${plan.path} × ${plan.key}: AVVISAD i valideringen (${plan.ops.length - validated.ops.length} op(s) föll: ${reason || "utan angivet skäl"})`,
+        );
+        continue;
+      }
     }
 
     // Serve-formade mät-ops i PLANORDNING — exakt det snippeten kommer att
@@ -797,6 +823,10 @@ try {
     );
     let last = attempts[attempts.length - 1];
     let fallbackUsed: string | null = null;
+    /** Försöken från den körning som bestämde de FINALA opsen (huvudvalet,
+     *  eller reservens egen körning efter adoption) — lyftets why-rad läser
+     *  kollisionstalen härifrån. */
+    let liftAttempts = attempts;
 
     // Fallback-steget (ägarbeslut 2026-07-27): när flytt-planen inte kan
     // levereras provas bevis-lyftet — ordagrann sidtext under hjälten,
@@ -836,7 +866,18 @@ try {
         writeFileSync(join(outDir, `${slug}-after.html`), await fpage.content());
         attempts = [...attempts, ...fb.attempts]; // hela historiken — ärlig rapport
         attemptOps = fb.attemptOps;
-        extraLiftApplied = false; // reserverna bär sina egna ops som de är
+        // Reservens EGEN grinddom följer med (granskningsfynd 2026-08-08,
+        // serverings-säkerhetsklassen): en reserv som bara passerade tack vare
+        // kollisions-retryns extra lyft grindades, mättes och skärmdumpades
+        // med TVÅ lyft. Nollställdes flaggan här servades ETT lyft — exakt den
+        // layout försök 1 mätte som UNDERKÄND, med försök 2:s rena tal i
+        // bevispåsen. Klassen var oåtkomlig före steg 11 (den enda reserven,
+        // proof_insert, innehåller inga flyttar) och blev nåbar när katalogens
+        // move_up-reserver trådades in i den serverade vägen.
+        extraLiftApplied = fb.extraLiftApplied;
+        // Lyftets grindtal ska komma från den ADOPTERADE körningen, inte från
+        // huvudvalets historik (why-raden i ägarens bevispåse).
+        liftAttempts = fb.attempts;
         effectiveOps = opsList;
         measureOps = m;
         last = attempts[attempts.length - 1];
@@ -863,6 +904,9 @@ try {
     const tryProofFallback = async (): Promise<boolean> => {
       if (isTemplate) return false;
       for (const [i, alt] of (plan.altOps ?? []).entries()) {
+        // Reserven som redan tog över i VALIDERINGEN är just den som nyss
+        // föll i grinden — prova nästa i stället för att köra om samma.
+        if (validationRecovery === `alt:${i + 1}`) continue;
         const altValidated = await generateRedesign(ctx, async () => JSON.stringify(alt));
         if (altValidated.ops.length !== alt.length) {
           console.log(
@@ -1042,28 +1086,18 @@ try {
 
     // Grindat OK → bygg det serverbara + evidensen.
     // Retry-lyftet blir en extra move_up-op per mål så plan/serve_ops/sanning matchar.
-    const finalOps: RedesignOp[] = !extraLiftApplied
-      ? effectiveOps
-      : [
-          ...effectiveOps,
-          // ETT extra lyft per UNIK måltavla — exakt vad retry-mätningen
-          // körde (attemptOps), så serve_ops == det grindade antalet lyft.
-          // Dedup-nyckeln är den UPPLÖSTA lokatortexten, inte targetId:
-          // runGatedAttempts dedupar på find-strängen, och två sektioner med
-          // samma rubrik ger EN unik find — targetId-dedup hade servat fler
-          // lyft än det grindade (kartläggningsfynd 2026-07-27).
-          ...[
-            ...new Map(
-              effectiveOps
-                .filter((o) => o.op === "move_up")
-                .map((o) => [locatorFor(content, o.targetId)?.text ?? o.targetId, o]),
-            ).values(),
-          ].map((o, i, arr) => ({
-            ...o,
-            detail: `extra move ${i + 1}/${arr.length} — the collision gate's retry found a clean placement one step higher`,
-            why: `attempt 1 introduced +${attempts[0].gate.verticalOverlapIntroducedPx}px overlap; attempt 2 +${last.gate.verticalOverlapIntroducedPx}px`,
-          })),
-        ];
+    // ETT extra lyft per UNIK måltavla — exakt vad retry-mätningen körde
+    // (attemptOps), så serve_ops == det grindade antalet lyft. Räkningen är
+    // DELAD med grind-loopen (extraLiftFinds ⇄ uniqueLiftTargets, samma
+    // dedup på den upplösta lokatortexten) så de två sidorna inte kan glida
+    // isär tyst — granskningsfynd 2026-08-08.
+    const finalOps: RedesignOp[] = withExtraLift(effectiveOps, {
+      extraLiftApplied,
+      locatorTextFor: (id) => locatorFor(content, id)?.text ?? null,
+      overlapAttempt1: liftAttempts[0]?.gate.verticalOverlapIntroducedPx ?? null,
+      overlapAttempt2:
+        liftAttempts[liftAttempts.length - 1]?.gate.verticalOverlapIntroducedPx ?? null,
+    });
     const serveOps = toServeOps(content, finalOps, styleDonor);
     if (!serveOps) {
       record({ path: plan.path, key: plan.key, verdict: "no_serve_ops" });
@@ -1075,6 +1109,9 @@ try {
       // Fallback-spårning (2026-07-27): ägaren ska kunna SE att flytten
       // hölls av grinden och att bevis-lyftet verifierades i dess ställe.
       ...(fallbackUsed ? { fallback: fallbackUsed } : {}),
+      // Samma spårbarhet när huvudvalet föll redan i VALIDERINGEN och en
+      // katalogreserv tog över (2026-08-08).
+      ...(validationRecovery ? { validationRecovery } : {}),
       brief: { path: plan.path, key: plan.key, total: plan.total, observations: plan.observations },
       gates: {
         hOverflowIntroducedPx: last.gate.hOverflowIntroducedPx,

@@ -843,6 +843,14 @@ export interface GatedAttempt {
   gate: ReturnType<typeof evaluateRenderGates>;
 }
 
+/** Retryns lyft-mål: unika move_up-lokatorer i planordning. EXPORTERAD för att
+ *  serve-vägen ska kunna räkna EXAKT samma antal lyft (src/adaptive/redesign/
+ *  extra-lift.ts) — divergerar de två räkningarna servas en annan layout än
+ *  den som grindades (granskningsfynd 2026-08-08). */
+export function extraLiftFinds(ops: MeasureOp[]): string[] {
+  return [...new Set(ops.filter((o) => o.op === "move_up").map((o) => o.find))];
+}
+
 /** Den delade grind-loopen: mät → grinda → vid vertikal kollision EN retry
  *  med ett extra lyft per UNIKT flyttmål (prototyp-opens tag följer med).
  *  Fail-closed: oupplösbart mål ⇒ unresolvable, inga försök rapporteras som
@@ -860,8 +868,7 @@ export async function runGatedAttempts(
   unresolvable: boolean;
   extraLiftApplied: boolean;
 }> {
-  const uniqueMoveFinds = [...new Set(ops.filter((o) => o.op === "move_up").map((o) => o.find))];
-  const extraLiftOps: MeasureOp[] = uniqueMoveFinds.map((find) => {
+  const extraLiftOps: MeasureOp[] = extraLiftFinds(ops).map((find) => {
     const proto = ops.find((o) => o.op === "move_up" && o.find === find)!;
     return { op: "move_up", tag: proto.tag, find };
   });

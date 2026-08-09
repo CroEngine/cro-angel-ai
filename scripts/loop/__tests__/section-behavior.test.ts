@@ -15,27 +15,51 @@ interface CapturedQuery {
   limit: number | null;
 }
 
-/** Minimal query-builder-stub: fångar filtren, resolvar med givna rader. */
-function stubDb(rows: unknown[], error: unknown = null): { db: SupabaseClient; q: CapturedQuery } {
+/** Minimal query-builder-stub: fångar filtren, resolvar med givna rader.
+ *  Två frågor kan ställas per anrop — census-strömmen (type=section_engagement)
+ *  och arm-stängslets exponerings-uppslag (type=adaptation_shown); stubben
+ *  svarar per type så bägge kontrakten kan testas i samma körning. */
+function stubDb(
+  rows: unknown[],
+  error: unknown = null,
+  exposures: { rows?: unknown[]; error?: unknown } = {},
+): { db: SupabaseClient; q: CapturedQuery; exposureIds: string[][] } {
   const q: CapturedQuery = { eqs: {}, gte: null, limit: null };
-  const builder: Record<string, unknown> = {
-    select: () => builder,
-    eq: (col: string, val: unknown) => {
-      q.eqs[col] = val;
-      return builder;
-    },
-    gte: (col: string, val: string) => {
-      q.gte = { column: col, value: val };
-      return builder;
-    },
-    order: () => builder,
-    limit: (n: number) => {
-      q.limit = n;
-      return Promise.resolve({ data: error ? null : rows, error });
-    },
+  const exposureIds: string[][] = [];
+  const makeBuilder = () => {
+    const state: { type?: string; ins: string[] } = { ins: [] };
+    const builder: Record<string, unknown> = {
+      select: () => builder,
+      eq: (col: string, val: unknown) => {
+        if (col === "type") state.type = String(val);
+        // Census-frågans filter är de som testas; exponerings-uppslaget har
+        // sina egna och ska inte skriva över dem.
+        if (state.type !== "adaptation_shown") q.eqs[col] = val;
+        return builder;
+      },
+      gte: (col: string, val: string) => {
+        if (state.type !== "adaptation_shown") q.gte = { column: col, value: val };
+        return builder;
+      },
+      in: (_col: string, vals: string[]) => {
+        state.ins = vals;
+        exposureIds.push(vals);
+        return builder;
+      },
+      order: () => builder,
+      limit: (n: number) => {
+        if (state.type === "adaptation_shown") {
+          const err = exposures.error ?? null;
+          return Promise.resolve({ data: err ? null : (exposures.rows ?? []), error: err });
+        }
+        q.limit = n;
+        return Promise.resolve({ data: error ? null : rows, error });
+      },
+    };
+    return builder;
   };
-  const db = { from: () => builder } as unknown as SupabaseClient;
-  return { db, q };
+  const db = { from: () => makeBuilder() } as unknown as SupabaseClient;
+  return { db, q, exposureIds };
 }
 
 const SECTIONS = [
@@ -94,6 +118,66 @@ describe("fetchSectionBehavior", () => {
     expect(r).not.toBeNull();
     expect(r!.sectionWeight["sec-2-pricing"]).toBeCloseTo(1, 10);
     expect(r!.sectionWeight["sec-3-testimonials"]).toBeCloseTo(0, 10);
+  });
+
+  it("ARM-STÄNGSLET: laddningar där varianten VISADES blir aldrig beteendevikter", async () => {
+    // Den självförstärkande klassen (granskningsfynd 2026-08-08): en serverad
+    // move_up lyfter testimonials ovanför folden ⇒ dwell stiger ⇒ nästa natt
+    // rankar sätet samma sektion högst och menyraden påstår att BESÖKARNA
+    // gjorde det. Här bär de exponerade raderna motsatt signal mot de
+    // organiska; utan stängslet vinner vår egen omflyttning.
+    const exposedRow = row({
+      sections: [
+        { h: "Simple honest pricing", n: 1, d: 0 },
+        { h: "Loved by teams", n: 1, d: 9000 },
+      ],
+    });
+    const rows = [
+      ...Array.from({ length: 4000 }, () => ({ ...exposedRow, decision_id: "dec-exposed" })),
+      ...Array.from({ length: 1100 }, () => ({ ...row(), decision_id: "dec-organic" })),
+    ];
+    const { db, exposureIds } = stubDb(rows, null, {
+      rows: [{ decision_id: "dec-exposed" }],
+    });
+    const r = await fetchSectionBehavior(db, "acme", "/artikel/12345678", SECTIONS);
+    // Uppslaget frågade på de distinkta id:n census-raderna bar.
+    expect(exposureIds[0]).toEqual(["dec-exposed", "dec-organic"]);
+    expect(r).not.toBeNull();
+    // Bara de organiska raderna formade vikterna.
+    expect(r!.sectionWeight["sec-2-pricing"]).toBeCloseTo(1, 10);
+    expect(r!.sectionWeight["sec-3-testimonials"]).toBeCloseTo(0, 10);
+  });
+
+  it("stängslet måste kunna BEVISAS: exponerings-uppslaget faller ⇒ null (aldrig oprövad vikt)", async () => {
+    const rows = Array.from({ length: 1100 }, () => ({ ...row(), decision_id: "dec-1" }));
+    expect(
+      await fetchSectionBehavior(
+        stubDb(rows, null, { error: { message: "exposure lookup down" } }).db,
+        "acme",
+        "/artikel/12345678",
+        SECTIONS,
+      ),
+    ).toBeNull();
+    // Inga exponeringar alls ⇒ hela strömmen är organisk och svaret står kvar.
+    const ok = await fetchSectionBehavior(
+      stubDb(rows, null, { rows: [] }).db,
+      "acme",
+      "/artikel/12345678",
+      SECTIONS,
+    );
+    expect(ok).not.toBeNull();
+    expect(ok!.sectionWeight["sec-2-pricing"]).toBeCloseTo(1, 10);
+  });
+
+  it("stängslet kan tömma underlaget — då är svaret null, inte en tunn gissning", async () => {
+    const rows = Array.from({ length: 1100 }, () => ({ ...row(), decision_id: "dec-exposed" }));
+    const r = await fetchSectionBehavior(
+      stubDb(rows, null, { rows: [{ decision_id: "dec-exposed" }] }).db,
+      "acme",
+      "/artikel/12345678",
+      SECTIONS,
+    );
+    expect(r).toBeNull();
   });
 
   it("null-vägarna: db-fel ⇒ null, tunn data ⇒ null, tom ström ⇒ null", async () => {

@@ -25,6 +25,58 @@ const FETCH_LIMIT = 5000;
  *  månadsgamla layouters events in och kunde dominera dagens sida): samma
  *  30-dagarshorisont som kohortplaneraren räknar mätbarhet på. */
 const FRESH_DAYS = 30;
+/** Exponerings-uppslaget (arm-stängslet nedan) hämtas i satser — decisionId
+ *  är en KONTEXT-hash, så antalet distinkta id:n är litet även på stora
+ *  strömmar; satsen håller URL-längden nere. */
+const EXPOSURE_ID_BATCH = 100;
+/** Tak per sats. Nås det kan vi inte längre BEVISA vilka id:n som exponerats
+ *  (trunkeringen döljer resten) ⇒ hela svaret blir null. */
+const EXPOSURE_LIMIT = 20_000;
+
+/** Arm-stängslet (granskningsfynd 2026-08-08, den självförstärkande klassen):
+ *  laddningar där VI SJÄLVA flyttade om sidan får aldrig bli "besökarnas
+ *  beteende". En serverad move_up lyfter sektionen ovanför folden, dwell-
+ *  mätningen stiger, nästa natt rankar sätet samma sektion högst — och
+ *  menyraden påstår att BESÖKARNA gjorde det. Repot stängslar redan exakt den
+ *  här klassen för skördaren (adaptedThisLoad); censusen saknade stängslet.
+ *
+ *  Mekanik: logDecision skriver EN adaptation_shown-rad per serverad laddning
+ *  (kontrollarmen får adaptation_withheld) med samma decision_id som
+ *  section_engagement bär. Vi släpper varje census-rad vars decision_id
+ *  förekommer som adaptation_shown på SAMMA sida i fönstret.
+ *
+ *  Trubbigheten är MEDVETEN och åt rätt håll: decisionId är en kontext-hash
+ *  som delas av båda armarna, så kontrollarmens rena laddningar faller med.
+ *  Hellre ett mindre men oförorenat underlag än en vikt vi inte kan försvara.
+ *  Returnerar null när stängslet inte kan bevisas komplett (db-fel/trunkering)
+ *  — samma "hellre tyst än gissa" som resten av röret. */
+async function exposedDecisionIds(
+  db: SupabaseClient,
+  site: string,
+  path: string,
+  cutoff: string,
+  ids: string[],
+): Promise<Set<string> | null> {
+  const exposed = new Set<string>();
+  for (let i = 0; i < ids.length; i += EXPOSURE_ID_BATCH) {
+    const batch = ids.slice(i, i + EXPOSURE_ID_BATCH);
+    const { data, error } = await db
+      .from("angel_events")
+      .select("decision_id")
+      .eq("site", site)
+      .eq("type", "adaptation_shown")
+      .eq("payload->>path", path)
+      .gte("created_at", cutoff)
+      .in("decision_id", batch)
+      .limit(EXPOSURE_LIMIT);
+    if (error || !data) return null;
+    const rows = data as { decision_id: string | null }[];
+    // Trunkering ⇒ okänd rest ⇒ stängslet kan inte bevisas komplett.
+    if (rows.length >= EXPOSURE_LIMIT) return null;
+    for (const r of rows) if (r.decision_id) exposed.add(r.decision_id);
+  }
+  return exposed;
+}
 
 export async function fetchSectionBehavior(
   db: SupabaseClient,
@@ -70,9 +122,26 @@ export async function fetchSectionBehavior(
       decisionId: r.decision_id,
       createdAt: r.created_at,
     }));
-    const payloads = cleanEvents(site, rows)
-      .map((e) => e.payload as SectionEngagementPayload & { path?: unknown })
-      .filter((p) => ((typeof p?.path === "string" ? p.path : "/") || "/") === path);
+    const clean = cleanEvents(site, rows).filter(
+      (e) =>
+        ((typeof (e.payload as { path?: unknown })?.path === "string"
+          ? ((e.payload as { path?: string }).path as string)
+          : "/") || "/") === path,
+    );
+    // Arm-stängslet: släpp census-rader från laddningar där en variant VISADES.
+    const candidateIds = [...new Set(clean.map((e) => e.decisionId).filter((d): d is string => !!d))];
+    let organic = clean;
+    if (candidateIds.length > 0) {
+      const exposed = await exposedDecisionIds(db, site, path, cutoff, candidateIds);
+      if (!exposed) return null; // stängslet kunde inte bevisas ⇒ hellre tyst
+      if (exposed.size > 0) {
+        organic = clean.filter((e) => !(e.decisionId && exposed.has(e.decisionId)));
+        console.log(
+          `  [beteende] ${path}: ${clean.length - organic.length}/${clean.length} census-rader låg i en serverad arm — stängslade (självmätning)`,
+        );
+      }
+    }
+    const payloads = organic.map((e) => e.payload as SectionEngagementPayload & { path?: unknown });
     const observations = aggregateSectionObservations(payloads);
     if (observations.length === 0) return null;
     const rollup = rollupEngagement(sections, observations);

@@ -118,7 +118,16 @@ export function buildSelectionPrompt(args: {
             ? 100
             : Math.min(99, Math.max(1, Math.round(eng * 100)))
         : null;
-    const engLine = engPct !== null ? ` [measured: seen ≥1s in ${engPct}% of its views]` : "";
+    // OMFÅNGET ÄR EN DEL AV SANNINGEN (granskningsfynd 2026-08-08): datan är
+    // per SIDA, prompten per SEGMENT. En rad utan omfångsmärkning läses som
+    // "segmentets besökare" fast den mäter alla sidans besökare — samma
+    // överdrift som repot redan undviker överallt annars ("sajtsnittet",
+    // "segmentets besökare", "not yet measured"). Raden säger nu vem den
+    // gäller, så väljaren kan vikta den rätt för ett smalt segment.
+    const engLine =
+      engPct !== null
+        ? ` [measured: seen ≥1s in ${engPct}% of its views — all visitors of this page, not segment-specific]`
+        : "";
     // Basis/detail är ORDAGRANN sidtext = OBETRODD (samma kontrakt som hela
     // prompten): en sidrubrik som själv innehåller "[measured:" får inte kunna
     // smida en mätrad för en omätt sektion — avväpna markören i den obetrodda
