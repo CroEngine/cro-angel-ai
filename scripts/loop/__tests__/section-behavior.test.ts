@@ -269,12 +269,12 @@ describe("fetchSectionBehavior", () => {
     ).toBeNull();
     expect(
       await fetchSectionBehavior(
-        stubDb(Array.from({ length: 50 }, () => row({ path: "/" }))).db,
+        stubDb(Array.from({ length: 20 }, () => row({ path: "/" }))).db,
         "acme",
         "/",
         SECTIONS,
       ),
-    ).toBeNull(); // 50 laddningar < golvet
+    ).toBeNull(); // 20 laddningar < dynamiska golvets 30
     expect(await fetchSectionBehavior(stubDb([]).db, "acme", "/", SECTIONS)).toBeNull();
   });
 });

@@ -127,6 +127,7 @@ export async function buildCandidatePlan(args: {
     observations: args.observations,
     menu,
     engagementBySection: args.behavior?.sectionWeight,
+    sectionVisitsBySection: args.behavior?.sectionVisits,
   });
   const raw = await anthropicSelect(prompt);
   const selection = (raw ? resolveSelection(raw, menu) : null) ?? floorSelection(menu);

@@ -258,6 +258,13 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
 1. **Engagemangsvikt:** dwell/scroll vs klick-rate vs blend → *rek: blend, låt
    facit välja balansen.*
 2. **Tunn-data-tröskel** innan beteende slår priorn → *rek: konservativ (~tusen
-   besök), volym-viktad.*
+   besök), volym-viktad.* **AVGJORT 2026-08-10 (mätt, ägarbeslut):** ersatt av
+   det dynamiska golvet — `MIN_SECTION_VISITS=30` + sätets krympning
+   `gain·n/(n+50)` per sektion. Floor-svepet (`bun run reco-eval:floor`) mätte
+   att den hårda 1000-grinden kastade bort 84,9 % träffgrad vid n=30 (priorn:
+   29,4), medan krympningen + golvet dominerar både grinden och en
+   z-tilltrosregel i bägge världsfamiljerna. Join-miss-grinden orörd (skyddar
+   mot skevhet, inte tunnhet). Ärlig gräns: "täta" världar är syntetiska —
+   beslutet görs om mot riktig spridning när censusen samlat några veckor.
 3. **Serverad väg:** katalog-primär med designer-fallback vs full cutover → *rek:
    katalog-primär, designer som fallback.*

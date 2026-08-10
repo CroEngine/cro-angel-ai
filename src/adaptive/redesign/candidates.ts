@@ -66,6 +66,13 @@ export interface BehaviorInput {
   /** Sektions-id → observerat engagemang i [0,1] (andel/rate ur rollupen).
    *  Sektioner utan post tävlar på priorn ensam (term 0 — neutralt). */
   sectionWeight: Record<string, number>;
+  /** Sektions-id → antal laddningar andelen mättes på (rollupens
+   *  sectionVisits). Med posten krymper sektionens term med n/(n+N0) —
+   *  DYNAMISKA GOLVET (floor-svepet 2026-08-09): inflytande proportionellt
+   *  mot evidensen i stället för allt-eller-inget vid en hård tröskel.
+   *  Utelämnad (rör-testets perfekta signal, äldre anropare) ⇒ ingen
+   *  krympning — exakt dagens semantik. */
+  sectionVisits?: Record<string, number>;
   /** Styrkan beteendet väger mot typ-priorn. Default BEHAVIOR_GAIN — vald av
    *  facit-svepet (reco-eval), inte tyckande. Överstyrs bara av eval:er. */
   gain?: number;
@@ -78,15 +85,40 @@ export interface BehaviorInput {
  *  tiebreak-rollen vid exakta lika. */
 export const BEHAVIOR_GAIN = 40;
 
+/** Krympningens halvvärdespunkt: vid n = N0 laddningar väger beteendet
+ *  hälften av vad det någonsin kan väga (n=30 ⇒ gain 15, n=100 ⇒ 27,
+ *  n=1000 ⇒ 38). Facit-valt (floor-svepet 2026-08-10, reco-eval:floor):
+ *  volymkrympningen + rollupens golv vid 30 dominerar både den hårda
+ *  1000-grinden (som kastar bort 84,9 % träff vid n=30 mot priorns 29,4)
+ *  och z-tilltrosregeln (54,7 % vid n=30) — överallt, bägge världs-
+ *  familjerna. Svepet är körbart: `bun run reco-eval:floor`. */
+export const BEHAVIOR_SHRINK_N0 = 50;
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 /** Beteende-termen för en kandidat förankrad i sektion `sectionId`. 0 när
  *  sätet inte matas eller sektionen saknar data — då är katalogen byte-
- *  identisk med den beteende-blinda. */
+ *  identisk med den beteende-blinda. Med sectionVisits krymper termen med
+ *  n/(n+N0): en andel mätt på 31 laddningar väger ~15/40 av en mätt på
+ *  tusen — brus dämpas i proportion till sin storlek, aldrig via en hård
+ *  grind som kastar bort mätbar signal (floor-svepet 2026-08-09). */
 function behaviorTerm(behavior: BehaviorInput | undefined, sectionId: string): number {
   const w = behavior?.sectionWeight?.[sectionId];
   if (typeof w !== "number" || !Number.isFinite(w)) return 0;
-  return (behavior?.gain ?? BEHAVIOR_GAIN) * clamp01(w);
+  // Kontraktet är på KART-nivå (granskningsfynd 2026-08-10): finns
+  // sectionVisits alls ska VARJE viktad sektion ha sin n där — en vikt vars
+  // n saknas eller är trasig (NaN/negativ) döms neutral, aldrig okrympt.
+  // Annars hade en buggig producent gett sektionen UTAN evidensräkning
+  // fullt gain medan de mätta krymptes — motsatsen till golvets mening.
+  // Helt utelämnad karta = gamla kontraktet (rör-testets perfekta signal).
+  const nMap = behavior?.sectionVisits;
+  let shrink = 1;
+  if (nMap) {
+    const n = nMap[sectionId];
+    shrink =
+      typeof n === "number" && Number.isFinite(n) && n > 0 ? n / (n + BEHAVIOR_SHRINK_N0) : 0;
+  }
+  return (behavior?.gain ?? BEHAVIOR_GAIN) * shrink * clamp01(w);
 }
 
 /** Trust-signalernas texter är regex-fångster ur PLATT text och kan dra med

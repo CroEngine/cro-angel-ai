@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   MAX_JOIN_MISS_MASS,
+  MIN_SECTION_VISITS,
   MIN_VISITS,
   rollupEngagement,
 } from "../engagement-rollup";
@@ -29,17 +30,17 @@ describe("rollupEngagement — null-grindarna", () => {
   });
 
   it("laddningsgolvet mäter LADDNINGAR, inte sektions-summan (24 sektioner ≠ 24× data)", () => {
-    // Granskningsfynd 2026-08-08: summan växte med sektionsantalet — 42
-    // laddningar på en 24-sektionssida "nådde" 1000. Max per nyckel är
-    // laddnings-proxyn: 42 laddningar ⇒ null oavsett sektionsantal.
+    // Granskningsfynd 2026-08-08: summan växte med sektionsantalet — golvet
+    // blev sektionsantalet× svagare än avsett. Max per nyckel är laddnings-
+    // proxyn: 20 laddningar på en 24-sektionssida (summa 480) ⇒ null.
     const wide = Array.from({ length: 24 }, (_, i) =>
-      obs(`Wide section number ${i + 1}`, 42, 0.5),
+      obs(`Wide section number ${i + 1}`, MIN_VISITS - 10, 0.5),
     );
     expect(rollupEngagement(SECTIONS, wide)).toBeNull();
-    // Två sektioner burna av 1000 laddningar var ⇒ svar (proxyn = 1000).
+    // Två sektioner burna av golv-många laddningar var ⇒ svar (proxyn = 30).
     const deep = [
-      obs("Loved by teams everywhere", 1000, 0.7),
-      obs("Simple honest pricing", 1000, 0.3),
+      obs("Loved by teams everywhere", MIN_VISITS, 0.7),
+      obs("Simple honest pricing", MIN_VISITS, 0.3),
     ];
     expect(rollupEngagement(SECTIONS, deep)).not.toBeNull();
   });
@@ -195,22 +196,44 @@ describe("rollupEngagement — kreditering genom delade joinen", () => {
     expect(r.joinMissMass).toBeCloseTo(0.25, 10);
   });
 
-  it("per-sektions-golvet: n=30-brus får varken vikt eller mätrad — bara diagnostik", () => {
-    // Granskningsfynd 2026-08-08: sidgolvet passerades av de ANDRA
-    // sektionernas massa medan en sällsynt sektion (30 av 2030 laddningar)
-    // fick vikt 0,93 och en "measured"-rad från rent brus.
+  it("per-sektions-golvet flippar på exakt 30 — under: diagnostik, på: vikt + n", () => {
+    // Dynamiska golvet: under golvet varken vikt eller mätrad (som förut,
+    // granskningsfynd 2026-08-08) — men PÅ golvet släpps mätningen fram,
+    // för sätets krympning (n/(n+50)) dämpar den i proportion i stället
+    // för att en hård grind kastar bort den.
     const r = rollupEngagement(SECTIONS, [
       obs("Loved by teams everywhere", 2000, 0.6),
-      obs("Simple honest pricing", 30, 0.93),
+      obs("Simple honest pricing", MIN_SECTION_VISITS - 1, 0.93),
     ])!;
     expect(r).not.toBeNull();
     expect("sec-3-pricing" in r.sectionWeight).toBe(false); // ingen vikt...
     expect(r.thinSections).toContain("sec-3-pricing"); // ...men synlig
     expect(r.sectionWeight["sec-2-testimonials"]).toBeCloseTo(0.6, 10);
+    const atFloor = rollupEngagement(SECTIONS, [
+      obs("Loved by teams everywhere", 2000, 0.6),
+      obs("Simple honest pricing", MIN_SECTION_VISITS, 0.93),
+    ])!;
+    expect(atFloor.sectionWeight["sec-3-pricing"]).toBeCloseTo(0.93, 10);
+    expect(atFloor.sectionVisits["sec-3-pricing"]).toBe(MIN_SECTION_VISITS);
+    expect(atFloor.thinSections).toEqual([]);
   });
 
-  it("default-konstanterna är de dokumenterade (planbeslut: konservativt)", () => {
-    expect(MIN_VISITS).toBe(1000);
-    expect(MAX_JOIN_MISS_MASS).toBe(0.5);
+  it("sectionVisits speglar sectionWeight: samma nycklar, aggregerad n per sektion", () => {
+    // Sätets krympning läser n härifrån — nycklarna får aldrig divergera
+    // från vikterna (en vikt utan n hade fått FULLT inflytande av misstag).
+    const r = rollupEngagement(SECTIONS, [
+      obs("Loved by teams everywhere", 600, 0.9),
+      obs("  loved   BY teams everywhere ", 200, 0.5),
+      obs("Simple honest pricing", 400, 0.25),
+    ])!;
+    expect(Object.keys(r.sectionVisits).sort()).toEqual(Object.keys(r.sectionWeight).sort());
+    expect(r.sectionVisits["sec-2-testimonials"]).toBe(800); // 600+200 aggregerat
+    expect(r.sectionVisits["sec-3-pricing"]).toBe(400);
+  });
+
+  it("default-konstanterna är de dokumenterade (dynamiska golvet 2026-08-09)", () => {
+    expect(MIN_VISITS).toBe(30);
+    expect(MIN_SECTION_VISITS).toBe(30);
+    expect(MAX_JOIN_MISS_MASS).toBe(0.5); // medvetet orörd — skyddar mot skevhet, inte tunnhet
   });
 });

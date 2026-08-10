@@ -80,6 +80,11 @@ export function buildSelectionPrompt(args: {
   observations: string[];
   menu: ProbedCandidate[];
   engagementBySection?: Record<string, number>;
+  /** Sektions-id → laddningar bakom andelen (rollupens sectionVisits).
+   *  Dynamiska golvet släpper fram mätningar från n=30 — utan omfånget i
+   *  raden läses en 31-laddningars andel som lika säker som en tusen-
+   *  laddningars, och väljaren kan inte vikta evidensen. */
+  sectionVisitsBySection?: Record<string, number>;
 }): string {
   const L: string[] = [];
   L.push("Choose the ONE best change for this visitor segment from the MENU below.");
@@ -129,9 +134,19 @@ export function buildSelectionPrompt(args: {
     // överdrift som repot redan undviker överallt annars ("sajtsnittet",
     // "segmentets besökare", "not yet measured"). Raden säger nu vem den
     // gäller, så väljaren kan vikta den rätt för ett smalt segment.
+    // Evidensens storlek hör till sanningen (dynamiska golvet 2026-08-09):
+    // från n=30 släpps mätrader fram, och en 31-laddningars andel får inte
+    // läsas som en tusen-laddningars. Heltalsgolvad — "över 30 laddningar"
+    // får aldrig visa fler än de faktiskt var.
+    const nVisits =
+      c.kind === "move_up" ? args.sectionVisitsBySection?.[c.targetId] : undefined;
+    const nPart =
+      typeof nVisits === "number" && Number.isFinite(nVisits) && nVisits > 0
+        ? ` over ${Math.floor(nVisits)} loads`
+        : "";
     const engLine =
       engPct !== null
-        ? ` [measured: seen ≥1s in ${engPct}% of its views — all visitors of this page, not segment-specific]`
+        ? ` [measured: seen ≥1s in ${engPct}% of its views${nPart} — all visitors of this page, not segment-specific]`
         : "";
     // Basis/detail är ORDAGRANN sidtext = OBETRODD (samma kontrakt som hela
     // prompten): en sidrubrik som själv innehåller "[measured:" får inte kunna

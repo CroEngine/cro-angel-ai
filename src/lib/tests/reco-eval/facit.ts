@@ -98,8 +98,10 @@ export interface WorldScore {
 }
 
 /** Golvets högst rankade move_up ur en katalog (proben är ett säkerhetsfilter,
- *  inte en rankare — offline utan live-DOM är varje kandidat "applicerbar"). */
-function floorMovePick(candidates: Candidate[]): string | null {
+ *  inte en rankare — offline utan live-DOM är varje kandidat "applicerbar").
+ *  Exporterad: floor-svepet (floor.ts) MÅSTE mäta exakt samma kedja — en
+ *  egen kopia hade kunnat divergera tyst (granskningsfynd 2026-08-10). */
+export function floorMovePick(candidates: Candidate[]): string | null {
   const menu = applyProbe(
     candidates,
     candidates.map((c) => ({ id: c.id, applicable: true })),
@@ -290,15 +292,24 @@ export function runRollupFacit(seeds: number[]): RollupFacitReport {
       visits: VISITS_PER_SECTION,
       engagement: w.observed[s.id],
     }));
+    // Direktvägen får SAMMA inputform som produktionen (dynamiska golvet):
+    // vikter + per-sektion-n. Uniform n ⇒ krympningen är gemensam för alla
+    // termer, och jämförelsen mäter fortfarande join-troheten ensam.
+    const uniformVisits = Object.fromEntries(proof.map((s) => [s.id, VISITS_PER_SECTION]));
     const directPick = floorMovePick(
-      generateCandidates(w.content, { sectionWeight: w.observed }),
+      generateCandidates(w.content, {
+        sectionWeight: w.observed,
+        sectionVisits: uniformVisits,
+      }),
     );
-    const pickVia = (weights: Record<string, number>) =>
-      floorMovePick(generateCandidates(w.content, { sectionWeight: weights }));
+    const pickVia = (weights: Record<string, number>, visits: Record<string, number>) =>
+      floorMovePick(
+        generateCandidates(w.content, { sectionWeight: weights, sectionVisits: visits }),
+      );
 
     // 1) Ren rubrik-keyad input — upplösningen ska vara förlustfri.
     const clean = rollupEngagement(sections, cleanObs);
-    if (clean && pickVia(clean.sectionWeight) === directPick) cleanAgrees++;
+    if (clean && pickVia(clean.sectionWeight, clean.sectionVisits) === directPick) cleanAgrees++;
 
     // 2) Suffix-drift på census-sidan — mekanism-kontroll av prefix-vägen
     //    (se fältdoc: nålen är per konstruktion ett prefix; kan inte fallera
@@ -307,7 +318,8 @@ export function runRollupFacit(seeds: number[]): RollupFacitReport {
       sections,
       cleanObs.map((o) => ({ ...o, heading: `${o.heading} spring update v2` })),
     );
-    if (garbled && pickVia(garbled.sectionWeight) === directPick) garbleAgrees++;
+    if (garbled && pickVia(garbled.sectionWeight, garbled.sectionVisits) === directPick)
+      garbleAgrees++;
 
     // 3) GRÄNSTEST tunn data: laddningsgolvet mäter LADDNINGAR (max per
     //    nyckel — granskningsfix 2026-08-08, enhetsinflationen): varje sektion
@@ -344,7 +356,7 @@ export function runRollupFacit(seeds: number[]): RollupFacitReport {
     if (
       missUnder !== null &&
       missUnder.unattributed.includes(JUNK) &&
-      pickVia(missUnder.sectionWeight) === directPick
+      pickVia(missUnder.sectionWeight, missUnder.sectionVisits) === directPick
     )
       missAnswerJustUnder++;
   }

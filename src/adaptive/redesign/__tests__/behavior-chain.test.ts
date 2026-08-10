@@ -84,6 +84,7 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
       observations: [],
       menu,
       engagementBySection: rollup!.sectionWeight,
+      sectionVisitsBySection: rollup!.sectionVisits,
     });
     // RAD-parning, inte hela-prompten (granskningsfynd 2026-08-08: två
     // toContain över hela prompten hade passerat även med SWAPPADE andelar):
@@ -92,6 +93,19 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
     const rowOf = (id: string) => lines.find((l) => l.includes(`[${id}]`))!;
     expect(rowOf("mv-sec-3-pricing")).toContain("seen ≥1s in 90% of its views");
     expect(rowOf("mv-sec-2-testimonials")).toContain("seen ≥1s in 15% of its views");
+    // Dynamiska golvet: omfånget (n) står i raden — en 30-laddningars andel
+    // får inte läsas som en tusen-laddningars. Utan visits-kartan utelämnas
+    // delen (bakåtkompatibelt), aldrig ett påhittat tal.
+    expect(rowOf("mv-sec-3-pricing")).toMatch(/of its views over \d+ loads/);
+    const noN = buildSelectionPrompt({
+      heroHeadline: null,
+      segmentLabel: "s",
+      observations: [],
+      menu,
+      engagementBySection: rollup!.sectionWeight,
+    });
+    expect(noN).toContain("of its views —");
+    expect(noN).not.toMatch(/over \d+ loads/);
   });
 
   it("kantavrundningen ljuger aldrig: 99,6 % ≠ '100%', 0,4 % ≠ '0%'", () => {
@@ -233,7 +247,9 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
   });
 
   it("null-vägen: för lite data ⇒ rollup null ⇒ katalogen byte-identisk (sätet matas aldrig)", () => {
-    const thin = aggregateSectionObservations(loads().slice(0, 100)); // 200 besök < golvet
+    // Under dynamiska golvets 30-laddningars proxy (dagsljusgolvet är lågt
+    // numera — tunnhet dämpas i sätet, men UNDER 30 är svaret fortfarande null).
+    const thin = aggregateSectionObservations(loads().slice(0, 14)); // proxy 14 laddningar < 30
     const rollup = rollupEngagement(
       CONTENT.sections.map((s) => ({ id: s.id, type: s.type, heading: s.heading })),
       thin,
