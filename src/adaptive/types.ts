@@ -341,11 +341,23 @@ export interface AngelEvent {
     // buildEventRows.
     | "section_engagement"
     // Ärlig utebliven applicering (flimmervakten): {variantId, reason, path}.
-    // reason ∈ {viewport-guard, targets-missing, wiped-not-restored} — vitlistas
-    // i buildEventRows.
+    // reason ∈ APPLY_SKIP_REASONS — vitlistas i buildEventRows.
     | "variant_apply_skipped";
   decisionId?: string;
   payload?: Record<string, unknown>;
   /** Client timestamp (ms epoch). */
   ts?: number;
 }
+
+/** KANONISKA vitlistan för variant_apply_skipped.reason — EN källa
+ *  (granskningsfynd 2026-08-10: tre handhållna kopior driftade annars tyst:
+ *  snippetens emit, serverns sanering, dashboardens gruppering — en ny orsak
+ *  hade blivit ett oförklarat "other" i diagnostiken utan typfel). Servern
+ *  (persistence.server) och dashboarden (aggregate) importerar härifrån;
+ *  snippeten är handskriven JS och pinnas av serving-smoke + e2e i stället. */
+export const APPLY_SKIP_REASONS = [
+  "viewport-guard",
+  "targets-missing",
+  "wiped-not-restored",
+] as const;
+export type ApplySkipReason = (typeof APPLY_SKIP_REASONS)[number];

@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { segmentKeyOf } from "../../segment-key";
 import {
   aggregate,
+  applySkipsByVariant,
   proofSummary,
   sessionSummaries,
   journeyFlow,
@@ -1394,5 +1395,49 @@ describe("bestPageForSegment — ärlig per-sida-progress mot genererings-grinde
       page("/a", "google", "mobile", "SE", false, 10),
     ];
     expect(bestPageForSegment(tie, "google·mobile")).toEqual({ path: "/a", visits: 10 });
+  });
+});
+
+describe("applySkipsByVariant — utspädningsdiagnostiken (flimmervakten)", () => {
+  it("grupperar per variant-id och räknar per vitlistad orsak", () => {
+    const events: DashEvent[] = [
+      ev("variant_apply_skipped", { variantId: "var-1", reason: "viewport-guard" }),
+      ev("variant_apply_skipped", { variantId: "var-1", reason: "viewport-guard" }),
+      ev("variant_apply_skipped", { variantId: "var-1", reason: "targets-missing" }),
+      ev("variant_apply_skipped", { variantId: "var-2", reason: "wiped-not-restored" }),
+      // Andra eventtyper rör aldrig räknarna — även med förvillande payload.
+      ev("pageview", { variantId: "var-1", reason: "viewport-guard" }),
+    ];
+    const m = applySkipsByVariant(events);
+    expect(m.get("var-1")).toEqual({
+      total: 3,
+      byReason: { "viewport-guard": 2, "targets-missing": 1, "wiped-not-restored": 0, other: 0 },
+    });
+    expect(m.get("var-2")).toEqual({
+      total: 1,
+      byReason: { "viewport-guard": 0, "targets-missing": 0, "wiped-not-restored": 1, other: 0 },
+    });
+  });
+
+  it("defensiv läsning: okänd reason ⇒ other, saknat/icke-sträng variant-id släpps", () => {
+    // Servern vitlistar reason och capar variantId — men payloaden är
+    // klient-skriven och läsningen får inte lita på det (försvarsdjup).
+    const events: DashEvent[] = [
+      ev("variant_apply_skipped", { variantId: "var-1", reason: "min@epost.se" }),
+      ev("variant_apply_skipped", { variantId: "var-1" }), // reason saknas
+      ev("variant_apply_skipped", { reason: "viewport-guard" }), // id saknas
+      ev("variant_apply_skipped", { variantId: 12345, reason: "viewport-guard" }),
+      ev("variant_apply_skipped", { variantId: "", reason: "viewport-guard" }),
+    ];
+    const m = applySkipsByVariant(events);
+    expect(m.size).toBe(1);
+    expect(m.get("var-1")).toEqual({
+      total: 2,
+      byReason: { "viewport-guard": 0, "targets-missing": 0, "wiped-not-restored": 0, other: 2 },
+    });
+  });
+
+  it("tomt fönster ⇒ tom karta — panelen visar ingen rad (aldrig en nollrad)", () => {
+    expect(applySkipsByVariant([ev("pageview", {})]).size).toBe(0);
   });
 });

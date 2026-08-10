@@ -7,6 +7,7 @@
 // dashboard.functions.ts feeds it real rows from Supabase.
 
 import { stripQueryHash } from "../../adaptive/harvest/sanitize";
+import { APPLY_SKIP_REASONS, type ApplySkipReason } from "../../adaptive/types";
 import {
   RETURNING_TOKEN,
   isDimsPrefix,
@@ -330,6 +331,55 @@ export function armStatValid(exposures: number, conversions: number): boolean {
 }
 
 const armValid = (s: VariantStat): boolean => armStatValid(s.exposures, s.conversions);
+
+// ── Utspädningsdiagnostiken (flimmervakten 2026-08-10) ───────────────────────
+// variant_apply_skipped = en laddning där exponeringen loggades som visad
+// variant men besökaren FICK originalet — utspädning av variantarmen. Den
+// drar det MÄTTA utfallet mot noll (kontrollarmens nivå): en bra variants
+// lyft underskattas, och en SKADLIG variants skada kan maskeras — bägge är
+// skäl att hålla skip-talen synliga och låga, inte att rycka på axlarna
+// (granskningsfynd 2026-08-10: "aldrig bättre" var fel åt harm-hållet).
+// reason säger varför, och de kräver OLIKA åtgärder: viewport-guard betyder
+// att designen fungerar men besökaren stod i regionen hela fönstret (tajming),
+// targets-missing att selektorerna aldrig hittade sina mål (drift/hydrering),
+// wiped-not-restored att en framework-omrendering åt en applicerad variant.
+
+/** Vitlistan är DELAD med serverns sanering — en källa (adaptive/types.ts),
+ *  återexporterad för dashboardens konsumenter: allt utanför ⇒ "other". */
+export { APPLY_SKIP_REASONS, type ApplySkipReason };
+
+export interface ApplySkipSummary {
+  /** Skippade laddningar i det lästa händelsefönstret — INTE hela historiken
+   *  (dashboarden läser senaste EVENT_LIMIT-fönstret; märk ytan därefter). */
+  total: number;
+  byReason: Record<ApplySkipReason | "other", number>;
+}
+
+/** Gruppera variant_apply_skipped per variant-id. Defensiv läsning trots
+ *  serverns sanering (payloaden är klient-skriven): reason utanför vitlistan
+ *  räknas som "other", rader utan variant-id släpps (kan inte krediteras). */
+export function applySkipsByVariant(events: DashEvent[]): Map<string, ApplySkipSummary> {
+  const byVariant = new Map<string, ApplySkipSummary>();
+  for (const e of events) {
+    if (e.type !== "variant_apply_skipped") continue;
+    const variantId = e.payload.variantId;
+    if (typeof variantId !== "string" || variantId.length === 0) continue;
+    const summary =
+      byVariant.get(variantId) ??
+      ({
+        total: 0,
+        byReason: { "viewport-guard": 0, "targets-missing": 0, "wiped-not-restored": 0, other: 0 },
+      } satisfies ApplySkipSummary);
+    const raw = e.payload.reason;
+    const reason = (APPLY_SKIP_REASONS as readonly string[]).includes(raw as string)
+      ? (raw as ApplySkipReason)
+      : "other";
+    summary.total += 1;
+    summary.byReason[reason] += 1;
+    byVariant.set(variantId, summary);
+  }
+  return byVariant;
+}
 
 const ms = (iso: string): number => {
   const t = Date.parse(iso);
