@@ -13,6 +13,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 import { templateOf } from "@/lib/page-template";
 import { hostMatchesDomain, normalizeDomain, originVerdict } from "./domain";
+import { APPLY_SKIP_REASONS } from "./types";
 import { cleanText, scrubPath, stripQueryHash } from "./harvest/sanitize";
 import type { GoalJudgment } from "./goal-judge.server";
 import type {
@@ -112,12 +113,11 @@ export function buildEventRows(
     // oskrubbad fritextkanal i diagnostiken. variantId capas (UUID är 36).
     if (e.type === "variant_apply_skipped") {
       payload.variantId = typeof raw.variantId === "string" ? raw.variantId.slice(0, 80) : "";
-      payload.reason =
-        raw.reason === "viewport-guard" ||
-        raw.reason === "targets-missing" ||
-        raw.reason === "wiped-not-restored"
-          ? raw.reason
-          : "other";
+      // Vitlistan är delad med dashboardens gruppering (types.ts) — en ny
+      // orsak landar i bägge eller ingen, aldrig som tyst "other"-drift.
+      payload.reason = (APPLY_SKIP_REASONS as readonly string[]).includes(raw.reason as string)
+        ? (raw.reason as string)
+        : "other";
     }
     // Arm-markören: 0/1, aldrig något annat. Klienten skickar en siffra; en
     // förfalskad sträng/objekt får inte överleva spreaden och bli ett värde

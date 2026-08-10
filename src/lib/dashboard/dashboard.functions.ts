@@ -30,12 +30,14 @@ import { buildJourney, type JourneyMilestone } from "./journey";
 import { cleanEvents } from "./data-hygiene";
 import {
   aggregate,
+  applySkipsByVariant,
   expandSegmentLeaves,
   attachRecent,
   bestPageForSegment,
   RECENT_WINDOW_DAYS,
   SEGMENT_MIN_VISITS,
   SEGMENT_MIN_VISITS_ENGAGEMENT,
+  type ApplySkipSummary,
   type DashboardMetrics,
   type DashEvent,
   type InventoryEntry,
@@ -235,6 +237,13 @@ export interface VariantView {
    *  fältet skrivet men oläst (granskningsfynd 2026-08-08). */
   planSource: string | null;
   comparison: VariantComparison | null;
+  /** Utspädningsdiagnostiken (flimmervakten 2026-08-10): laddningar i det
+   *  lästa händelsefönstret där exponeringen loggades som visad variant men
+   *  besökaren fick originalet — per orsak. null = inga skip i fönstret.
+   *  Utspädning drar mätningen mot noll: den underskattar en bra variants
+   *  lyft och kan MASKERA en skadlig variants skada — ägaren ska SE den,
+   *  inte ana den. */
+  applySkips: ApplySkipSummary | null;
   /** Bara för serving/winner-varianter; null tills exponeringar finns. */
   abTest: VariantAbView | null;
   /** Kontraktsdomslutet (evaluateRuleWithSpec) på LIVE-armarna: guardrail-
@@ -440,12 +449,20 @@ export const getDashboard = createServerFn({ method: "POST" })
       // referenser). Best-effort — tom tills genereringskedjan skriver hit.
       let variants: VariantView[] = [];
       try {
-        const { data: vRows, error: vErr } = await supabaseAdmin
-          .from("angel_variants")
-          .select("id,path,segment_key,status,ops,evidence,held_reason,updated_at,success")
-          .eq("site", site)
-          .order("updated_at", { ascending: false })
-          .limit(50);
+        // TENANT-VAKTEN (granskningsfynd 2026-08-10): service-role-klienten
+        // kringgår RLS, så ägarskapsfiltret MÅSTE stå här — utan spärren
+        // kunde varje inloggad användare läsa en annan kunds varianter
+        // (ops-texter, segment, armräknare) genom att posta dess site-slug.
+        // Samma dom som events/inventory ovan: får du inte se sajten är
+        // listan tom, aldrig en delvis.
+        const { data: vRows, error: vErr } = canView
+          ? await supabaseAdmin
+              .from("angel_variants")
+              .select("id,path,segment_key,status,ops,evidence,held_reason,updated_at,success")
+              .eq("site", site)
+              .order("updated_at", { ascending: false })
+              .limit(50)
+          : { data: [], error: null };
         if (!vErr && Array.isArray(vRows)) {
           const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
           const strs = (v: unknown): string[] =>
@@ -575,6 +592,9 @@ export const getDashboard = createServerFn({ method: "POST" })
               }
             }),
           );
+          // Skip-diagnostiken ur de redan lästa, redan städade eventen —
+          // ingen extra DB-fråga (samma mönster som trafiktakten ovan).
+          const skipsById = applySkipsByVariant(events);
           variants = vRows.map((v) => {
             const ev = (v.evidence ?? {}) as Record<string, unknown>;
             const cmpRaw = ev.comparison as Record<string, unknown> | undefined;
@@ -622,6 +642,7 @@ export const getDashboard = createServerFn({ method: "POST" })
                     },
                   }
                 : null,
+              applySkips: skipsById.get(v.id) ?? null,
               abTest: abById.get(v.id) ?? null,
               ruling: rulingById.get(v.id) ?? null,
             };

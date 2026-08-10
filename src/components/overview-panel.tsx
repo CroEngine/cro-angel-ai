@@ -927,6 +927,38 @@ export function OverviewPanel({
                                   "measuring — too early to read"
                                 )}
                               </div>
+                              {/* Utspädningsdiagnostiken (flimmervakten): laddningar
+                                  som loggades som visad variant men fick originalet.
+                                  Riktningen är konservativ (varianten ser sämre ut än
+                                  den är), men ägaren ska SE den — orsakerna kräver
+                                  olika åtgärder. Räknat i det lästa händelsefönstret. */}
+                              {v.applySkips && v.applySkips.total > 0 && (
+                                <div
+                                  className="mt-0.5 text-[11px] text-amber-700"
+                                  title={
+                                    "Loads counted as exposed to the variant where the visitor actually saw the original (recent event window). " +
+                                    "viewport-guard: the visitor stayed in the target region the whole window, so the flicker guard refused a visible move. " +
+                                    "targets-missing: the variant's targets never appeared on the page. " +
+                                    "wiped-not-restored: the site's framework re-rendered and wiped an applied variant. " +
+                                    "Dilution pulls the measured effect toward zero: it understates a good variant's lift and can mask a harmful one's damage — keep this number low."
+                                  }
+                                >
+                                  {v.applySkips.total} skipped{" "}
+                                  {v.applySkips.total === 1 ? "apply" : "applies"}
+                                  {" — "}
+                                  {(
+                                    [
+                                      ["viewport-guard", v.applySkips.byReason["viewport-guard"]],
+                                      ["targets-missing", v.applySkips.byReason["targets-missing"]],
+                                      ["wiped", v.applySkips.byReason["wiped-not-restored"]],
+                                      ["other", v.applySkips.byReason.other],
+                                    ] as const
+                                  )
+                                    .filter(([, n]) => n > 0)
+                                    .map(([label, n]) => `${n} ${label}`)
+                                    .join(" · ")}
+                                </div>
+                              )}
                             </div>
                             <span
                               className="flex-none rounded-full px-[9px] py-[3px] text-[11px] font-semibold"
