@@ -18,8 +18,9 @@ import {
   type SectionEngagementPayload,
 } from "../../src/adaptive/redesign/section-events";
 
-/** Senaste-fönstret: nog för tunn-grindens 1000-laddningsgolv per sida med
- *  god marginal, litet nog att en query räcker. */
+/** Senaste-fönstret: dimensionerar LÄSNINGEN, inte grinden — rymmer långt
+ *  över dynamiska golvets 30-laddningsproxy och mättar krympningen n/(n+50)
+ *  (5000 rader ≈ gain 39,6/40), litet nog att en query räcker. */
 const FETCH_LIMIT = 5000;
 /** Färskhetsfönster (granskningsfynd 2026-08-08: utan tidsgräns blandades
  *  månadsgamla layouters events in och kunde dominera dagens sida): samma
@@ -187,7 +188,9 @@ export async function fetchSectionBehavior(
     console.log(
       `  [beteende] ${path}: ${rollup.totalVisits} besök, ${Math.round(rollup.attributedMass * 100)}% krediterat över ${Object.keys(rollup.sectionWeight).length} sektioner — sätet matas`,
     );
-    return { sectionWeight: rollup.sectionWeight };
+    // sectionVisits med: sätet krymper varje sektions term med n/(n+50)
+    // (dynamiska golvet) och menyraden visar omfånget.
+    return { sectionWeight: rollup.sectionWeight, sectionVisits: rollup.sectionVisits };
   } catch {
     return null; // beteendedata är alltid valfritt — aldrig fälla en preview
   }

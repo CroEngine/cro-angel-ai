@@ -4,6 +4,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   BEHAVIOR_GAIN,
+  BEHAVIOR_SHRINK_N0,
   generateCandidates,
   candidateToOp,
   floorWhy,
@@ -199,6 +200,67 @@ describe("generateCandidates", () => {
     // NaN/Infinity är neutralt, aldrig NaN-poäng.
     const bad = generateCandidates(model(), { sectionWeight: { "sec-4-logos": Number.NaN } });
     expect(bad).toEqual(generateCandidates(model()));
+  });
+
+  it("dynamiska golvet: termen krymper med n/(n+N0) — halva vikten vid n=N0", () => {
+    // Floor-svepet 2026-08-09: inflytande proportionellt mot evidensen.
+    const at = (n: number) =>
+      generateCandidates(model(), {
+        sectionWeight: { "sec-4-logos": 0.8 },
+        sectionVisits: { "sec-4-logos": n },
+      }).find((x) => x.id === "mv-sec-4-logos")!.score;
+    const base = 2.5 + 4 * 0.05;
+    expect(at(BEHAVIOR_SHRINK_N0)).toBeCloseTo(base + BEHAVIOR_GAIN * 0.5 * 0.8, 10);
+    expect(at(30)).toBeCloseTo(base + BEHAVIOR_GAIN * (30 / 80) * 0.8, 10);
+    expect(at(1000)).toBeCloseTo(base + BEHAVIOR_GAIN * (1000 / 1050) * 0.8, 10);
+    // n=0 ⇒ termen är exakt 0 — katalogen byte-identisk med den beteende-blinda.
+    expect(
+      generateCandidates(model(), {
+        sectionWeight: { "sec-4-logos": 0.8 },
+        sectionVisits: { "sec-4-logos": 0 },
+      }),
+    ).toEqual(generateCandidates(model()));
+  });
+
+  it("dynamiska golvet: utan sectionVisits INGEN krympning — rör-testets kontrakt orört", () => {
+    // Bakåtkompatibelt: äldre anropare (och facit:ets perfekta signal) ger
+    // bara vikter — termen är då exakt gain·w som före förändringen.
+    const withMap = generateCandidates(model(), { sectionWeight: { "sec-4-logos": 0.8 } });
+    expect(withMap.find((x) => x.id === "mv-sec-4-logos")!.score).toBeCloseTo(
+      2.5 + 4 * 0.05 + BEHAVIOR_GAIN * 0.8,
+      10,
+    );
+    // NÄRVARANDE men trasigt n (NaN/negativt ur en buggig rollup) döms som
+    // vikternas egna trasiga värden: NEUTRALT — aldrig fullt inflytande av
+    // misstag, aldrig NaN-poäng.
+    const nan = generateCandidates(model(), {
+      sectionWeight: { "sec-4-logos": 0.8 },
+      sectionVisits: { "sec-4-logos": Number.NaN },
+    });
+    expect(nan).toEqual(generateCandidates(model()));
+    const neg = generateCandidates(model(), {
+      sectionWeight: { "sec-4-logos": 0.8 },
+      sectionVisits: { "sec-4-logos": -100 },
+    });
+    expect(neg).toEqual(generateCandidates(model()));
+  });
+
+  it("dynamiska golvet: kart-kontraktet — vikt vars n SAKNAS i en närvarande karta är neutral", () => {
+    // Granskningsfynd 2026-08-10: per-nyckel-fallback hade gett sektionen
+    // UTAN evidensräkning fullt gain medan de mätta krymptes — motsatsen
+    // till golvets mening. Finns kartan gäller den varje viktad sektion.
+    const droppedKey = generateCandidates(model(), {
+      sectionWeight: { "sec-4-logos": 0.8, "sec-3-testimonials": 0.6 },
+      sectionVisits: { "sec-3-testimonials": 35 }, // logos-nyckeln tappad
+    });
+    const idx = (cs: ReturnType<typeof generateCandidates>, id: string) =>
+      cs.findIndex((x) => x.id === id);
+    // Logos-termen är 0 (neutral) — den mätta testimonials-sektionen leder.
+    const mvLogos = droppedKey.find((x) => x.id === "mv-sec-4-logos")!;
+    expect(mvLogos.score).toBeCloseTo(2.5 + 4 * 0.05, 10); // bara priorn
+    expect(idx(droppedKey, "mv-sec-3-testimonials")).toBeLessThan(
+      idx(droppedKey, "mv-sec-4-logos"),
+    );
   });
 
   it("menyns insert-detail bär den städade texten (inte SSR-skarven)", () => {

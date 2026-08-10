@@ -5,8 +5,11 @@
 // EXAKT samma join-regel som offline-eval:en mäter (section-join.ts).
 //
 // ÄRLIGHETEN ÄR RETURVÄRDET: rollupen svarar hellre null än gissar.
-//   • TUNN DATA ⇒ null. Under MIN_VISITS totala besök är andelarna brus —
-//     ingen fantomvikt (planens rekommendation: konservativt ~tusen besök).
+//   • TUNN DATA ⇒ null. Under MIN_VISITS laddningar kan ingen sektion bära
+//     vikt — ingen fantomvikt. Golvet är LÅGT (30) sedan dynamiska golvet
+//     (floor-svepet 2026-08-09): tunnhet dämpas numera proportionellt i
+//     sätet (termen krymper med n/(n+50) per sektion via sectionVisits),
+//     inte med en hård allt-eller-inget-grind vid tusen.
 //   • HÖG JOIN-MISS ⇒ null. Kan inte tillräckligt av det OBSERVERADE
 //     engagemanget (besöksviktat) krediteras en unik sektion är bilden skev —
 //     en delbild hade systematiskt gynnat sektioner med snälla rubriker.
@@ -52,29 +55,45 @@ export interface RollupOptions {
   maxJoinMissMass?: number;
 }
 
-/** Konservativa default (planens öppna beslut #2: "~tusen besök,
- *  volym-viktad"). Golvet mäter SIDLADDNINGAR via laddnings-proxyn (max besök
- *  per rubriknyckel) — aldrig sektions-summan, som växer med sektionsantalet
+/** DYNAMISKA GOLVET (floor-svepet 2026-08-10, ersätter planens öppna beslut
+ *  #2 "~tusen besök"): den hårda 1000-grinden kastade bort mätbar signal —
+ *  vid n=30 träffar volymkrympt beteende 84,9 % mot priorns 29,4 (spridda
+ *  världar; svepet är körbart: `bun run reco-eval:floor`). Inflytandet
+ *  skalas i stället i SÄTET med n/(n+50) per sektion (BEHAVIOR_SHRINK_N0),
+ *  så sidgolvet här är bara "kan någon sektion alls bära vikt?": under 30
+ *  laddningar når ingen sektion sektionsgolvet, och null håller kontraktets
+ *  form. Golvet mäter SIDLADDNINGAR via laddnings-proxyn (max besök per
+ *  rubriknyckel) — aldrig sektions-summan, som växer med sektionsantalet
  *  (granskningsfix 2026-08-08). Konstanterna är medvetet synliga här. */
-export const MIN_VISITS = 1000;
+export const MIN_VISITS = 30;
 /** Minst halva den observerade massan måste vara krediterbar. Steg 5 mätte
  *  ~65 % krediterbara RUBRIKER på 28 sajter; massan (besöksviktad) väntas
  *  högre eftersom missklassen domineras av list-/svansrubriker — men tills
- *  steg 9 mäter riktig massa är 0,5 ett golv med marginal åt bägge håll. */
+ *  steg 9 mäter riktig massa är 0,5 ett golv med marginal åt bägge håll.
+ *  MEDVETET ORÖRD av dynamiska golvet: grinden skyddar mot SKEV delbild,
+ *  inte tunn data — skevheten blir inte ärligare av fler laddningar. */
 export const MAX_JOIN_MISS_MASS = 0.5;
-/** PER-SEKTIONS-golv (granskningsfynd 2026-08-08): sidgolvet räcker inte — en
- *  sektion buren av bara 30 av 2 000 laddningar fick annars vikt + mätrad
- *  från n=30. Vid n=200 är andelens SE ≈ 3,5 pp och två sektioners DIFFERENS-
- *  SE ≈ 5 pp — under gain-flippens tröskel (Δ≈7 pp flippar hela prior-
- *  spannet), så brus ensamt kan inte vända rangordningen. Under golvet ⇒
- *  ingen post (neutralt säte, ingen menyrad), synlig i diagnostiken. */
-export const MIN_SECTION_VISITS = 200;
+/** PER-SEKTIONS-golv. Sänkt 200 → 30 med dynamiska golvet: bruset som
+ *  motiverade 200 (n=30-sektionen som fick vikt 0,93 och en mätrad,
+ *  granskningsfynd 2026-08-08) dämpas nu av sätets krympning i stället —
+ *  vid n=30 väger termen 15/40, så en flip kräver Δengagemang ≈ 0,19 i
+ *  stället för 0,07 (mer än brusets hela SD). Under 30 är bägge policyer
+ *  tysta: floor-svepet mätte att volymregeln UTAN golv sönderdelar en
+ *  korrekt prior i 9,6 % av täta världar vid n=10 — golvet är det som gör
+ *  krympningen säker. Under golvet ⇒ ingen post (neutralt säte, ingen
+ *  menyrad), synlig i diagnostiken. */
+export const MIN_SECTION_VISITS = 30;
 
 export interface EngagementRollup {
   /** Sätets input: sektions-id → engagemangsandel [0,1]. Bara UNIKT joinade
    *  sektioner MED egen n ≥ MIN_SECTION_VISITS får poster — saknad post =
    *  neutral i sätet (priorn ensam), ingen menyrad. */
   sectionWeight: Record<string, number>;
+  /** Sektions-id → antal laddningar andelen mättes på — samma nycklar som
+   *  sectionWeight. Sätet krymper termen med n/(n+50) (dynamiska golvet);
+   *  andelarna ovan förblir RÅA (sätets gain äger skalningen — min-max-
+   *  fyndet steg 6), så menyraden visar det som faktiskt mättes. */
+  sectionVisits: Record<string, number>;
   /** Sektioner som joinade unikt men föll under per-sektions-golvet —
    *  diagnostik, aldrig vikter (granskningsfynd 2026-08-08: n=30-brus fick
    *  annars både vikt och "measured"-rad). */
@@ -196,6 +215,7 @@ export function rollupEngagement(
   if (joinMissMass > maxMiss) return null; // skev delbild — hellre inget
 
   const sectionWeight: Record<string, number> = {};
+  const sectionVisits: Record<string, number> = {};
   const thinSections: string[] = [];
   for (const [aId, acc] of perSection) {
     // Per-sektions-golvet: för lite egen n ⇒ ingen vikt, ingen menyrad —
@@ -205,10 +225,12 @@ export function rollupEngagement(
       continue;
     }
     sectionWeight[aId] = acc.visits > 0 ? clamp01(acc.engagedVisits / acc.visits) : 0;
+    sectionVisits[aId] = acc.visits;
   }
 
   return {
     sectionWeight,
+    sectionVisits,
     thinSections,
     totalVisits,
     attributedMass,

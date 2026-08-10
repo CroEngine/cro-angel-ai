@@ -82,7 +82,9 @@ input — deterministically derived from each world, no new random draws:
   the direct seat's pick (lossless resolution),
 - **garbled** census headings (suffix drift, the rotator class) → the shared
   join's 24-char prefix pass must rescue them (same pick),
-- **thin** worlds (below `MIN_VISITS`) → the rollup must answer `null`,
+- **thin** worlds (below `MIN_VISITS`, now the 30-load "can anything bear
+  weight at all" floor — the old hard 1000 gate was replaced by the dynamic
+  floor, see `floor.ts`) → the rollup must answer `null`,
 - **majority unattributable mass** (consent/list-noise class) → `null`, and the
   caller's null path (no behaviour input) must give exactly the baseline pick.
 
@@ -98,6 +100,11 @@ join eval (`scripts/section-join-eval/`) measures on frozen pages, moved to
 bun run reco-eval           # 2000 worlds (default)
 bun run reco-eval 5000      # more worlds
 bun run reco-eval 2000 500  # worlds, seed base
+
+bun run reco-eval:floor     # the dynamic-floor sweep (floor.ts) — the tool
+                            # that CHOSE MIN_SECTION_VISITS=30 + n/(n+50);
+                            # re-run it against real spread once the census
+                            # has collected a few weeks of data
 ```
 
 The CLI exits non-zero if the facit breaks its bars (baseline off chance, no
@@ -122,4 +129,10 @@ asserts the scientific claims on locked seeds:
 - `simulator.ts` — `makeWorld(seed)`: the hidden-truth + noise world.
 - `facit.ts` — `runFacit(seeds)`: the scoring + D1/D2 invariant, pure.
 - `run.ts` — CLI report.
+- `floor.ts` / `floor-run.ts` — the dynamic-floor sweep: five floor policies
+  (old hard 1000 gate, the owner's 100 threshold, the deployed shrinkage rule
+  imported from production constants, shrinkage without a floor, and a
+  z-confidence rule) against the same hidden truth, on a sample-size ladder,
+  in two world families (spread truth / compressed "hard page" truth — the
+  latter is synthetic, an honest limit).
 - `__tests__/reco-eval.test.ts` — the committed regression gate.

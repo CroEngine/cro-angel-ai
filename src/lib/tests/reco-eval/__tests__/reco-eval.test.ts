@@ -12,6 +12,7 @@ import { generateCandidates } from "../../../../adaptive/redesign/candidates";
 import { extractContentModel } from "../../../../adaptive/redesign/extract";
 
 import { assertNoFabrication, gainSweep, runFacit, runRollupFacit, seedSweep } from "../facit";
+import { runFloorSweep } from "../floor";
 import { makeWorld } from "../simulator";
 
 // Ett brett svep — deterministiskt, så talen är låsta; N stort nog att
@@ -143,6 +144,61 @@ describe("steg 8: rollupen genom facit:et — ofullkomlig input ersätter den pe
     expect(R.missAnswerJustUnder).toBe(R.worlds);
     // Konsistens-invariant (delar beräkningsväg med baselineEqualsPrior).
     expect(R.nullFallsBackToBaseline).toBe(R.worlds);
+  });
+});
+
+describe("dynamiska golvet — floor-svepet motiverar MIN_SECTION_VISITS=30 + n/(n+50)", () => {
+  // Samma verktyg som `bun run reco-eval:floor` (4000-världars-talen i
+  // floor.ts-huvudet), här med färre världar som CI-grind. Jämförelserna är
+  // PARADE (samma världar, samma observerade counts för varje policy), så
+  // differenserna är stabila långt under stickprovets egen ±SE.
+  const spridda = runFloorSweep({ worlds: 300, ladder: [10, 30, 1000] });
+  const täta = runFloorSweep({ worlds: 300, ladder: [10, 1000], compress: 0.2 });
+  const at = (rows: typeof spridda, n: number) => rows.find((r) => r.n === n)!;
+
+  it("n=30: den valda regeln tar större delen av orakelgapet — hårda 1000-grinden står på priorn", () => {
+    const r = at(spridda, 30);
+    // Mätt @4000 (prim-strid): vald 84,9 %, prior 29,4, orakel 85,8.
+    expect(r.hit.vald).toBeGreaterThan(0.75);
+    expect(r.hit.idag1000).toBe(r.priorHit); // grinden: exakt priorns pick
+    expect(r.hit.vald).toBeGreaterThan(r.hit.idag1000 + 0.4);
+    // Och ägarens "efter ex 100"-tröskel är också blind här — n=30 < 100.
+    expect(r.hit["tröskel100"]).toBe(r.priorHit);
+  });
+
+  it("n=30: volymkrympningen slår z-tilltrosregeln (giltighetsregeln svälter tilltron)", () => {
+    const r = at(spridda, 30);
+    // Mätt @4000 (prim-strid): 84,9 mot 54,7 — parad differens, stabil även @300.
+    expect(r.hit.vald).toBeGreaterThan(r.hit.tilltro + 0.1);
+  });
+
+  it("n=10 (under golvet): vald är EXAKT priorn — golvet tystar helt, aldrig halvvägs", () => {
+    const r = at(spridda, 10);
+    expect(r.hit.vald).toBe(r.priorHit);
+    expect(r.brokeCorrectPrior.vald).toBe(0);
+  });
+
+  it("täta världar n=10: golvet är det som gör krympningen säker", () => {
+    // Utan golv sönderdelar volymregeln korrekta priors på svår-sidorna
+    // (mätt @4000: 9,6 %) — med golvet: exakt 0. Detta är hela skälet till
+    // att golvet vid 30 följer med krympningen.
+    const r = at(täta, 10);
+    expect(r.brokeCorrectPrior.vald).toBe(0);
+    expect(r.brokeCorrectPrior.volymUtanGolv).toBeGreaterThan(0.02);
+  });
+
+  it("n=1000: bytet kostar inget där datan är riklig — vald ≈ gamla hårda grinden", () => {
+    // Parad jämförelse: enda skillnaden är krympningen 1000/1050 ≈ 0,95.
+    const s = at(spridda, 1000);
+    expect(Math.abs(s.hit.vald - s.hit.idag1000)).toBeLessThan(0.03);
+    const t = at(täta, 1000);
+    expect(Math.abs(t.hit.vald - t.hit.idag1000)).toBeLessThan(0.05);
+  });
+
+  it("reproducerbart — samma frön in, samma rader ut", () => {
+    const a = runFloorSweep({ worlds: 50, ladder: [30] });
+    const b = runFloorSweep({ worlds: 50, ladder: [30] });
+    expect(a).toEqual(b);
   });
 });
 
