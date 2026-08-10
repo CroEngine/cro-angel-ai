@@ -919,7 +919,7 @@
     }
   }
   function createApplyVariant(deps) {
-    return function applyVariant(v) {
+    return function applyVariant(v, guard) {
       if (!v || !v.ops || !v.ops.length) return false;
       try {
         if (document.querySelector("[data-angel-moved],[data-angel-retext],[data-angel-inserted]"))
@@ -1038,6 +1038,25 @@
           heroClamp = heroClamp.parentElement;
         }
       }
+      var guardOn = !!guard && !deps.isSandbox;
+      try {
+        if (guardOn && document.visibilityState === "hidden") guardOn = false;
+      } catch (e) {
+      }
+      var viewH = 0;
+      if (guardOn) {
+        viewH = window.innerHeight || document.documentElement && document.documentElement.clientHeight || 0;
+        try {
+          var vv = window.visualViewport;
+          if (vv && typeof vv.height === "number") {
+            var vvBottom = (vv.offsetTop || 0) + vv.height;
+            if (vvBottom > viewH) viewH = vvBottom;
+          }
+        } catch (e) {
+        }
+        if (!viewH) guardOn = false;
+      }
+      var guardBlocked = false;
       var undos = [];
       var ok = true;
       for (var a = 0; a < resolved.length && ok; a++) {
@@ -1060,6 +1079,15 @@
                 break;
               }
             } catch (e) {
+            }
+          }
+          if (guardOn) {
+            var gPrev = prev.getBoundingClientRect();
+            var gSec = r0.sec.getBoundingClientRect();
+            if (Math.min(gPrev.top, gSec.top) < viewH) {
+              guardBlocked = true;
+              ok = false;
+              break;
             }
           }
           var next = r0.sec.nextSibling;
@@ -1089,6 +1117,14 @@
           deps.touched(r0.sec, "variant_moved");
         } else if (r0.op === "insert_snippet") {
           if (!document.querySelector("[data-angel-inserted]")) {
+            if (guardOn) {
+              var gAnchor = r0.anchor.getBoundingClientRect();
+              if (gAnchor.bottom < viewH) {
+                guardBlocked = true;
+                ok = false;
+                break;
+              }
+            }
             var insNode = document.createElement("p");
             if (r0.href) {
               var insLink = document.createElement("a");
@@ -1112,6 +1148,14 @@
             deps.touched(insNode, "variant_inserted");
           }
         } else {
+          if (guardOn) {
+            var gEl = r0.el.getBoundingClientRect();
+            if ((gEl.width > 0 || gEl.height > 0) && gEl.top < viewH) {
+              guardBlocked = true;
+              ok = false;
+              break;
+            }
+          }
           var prevHtml = r0.el.innerHTML;
           var normA = (r0.el.textContent || "").replace(/\s+/g, " ").trim();
           var normB = String(r0.value).replace(/\s+/g, " ").trim();
@@ -1135,6 +1179,12 @@
           } catch (e) {
           }
         }
+        if (guardBlocked && deps.blocked) {
+          try {
+            deps.blocked("viewport");
+          } catch (e) {
+          }
+        }
         return false;
       }
       for (var rr = 0; rr < undos.length; rr++) deps.record(undos[rr]);
@@ -1147,6 +1197,10 @@
   // stället för att nå snippet-globaler. lcpEl läses via getter (muterbart
   // state); touchedEls via closure över VARIABELN — apply() binder om arrayen
   // per körning, en direkt referens hade pushat till en förbrukad array.
+  // Flimmervaktens ärlighetskanal: sätts av appliceraren när vakten (inte
+  // upplösningen) sa nej — skiljer "besökaren står i regionen" från "målen
+  // finns inte" när utebliven applicering loggas. Nollas per apply()-körning.
+  var lastApplyBlocked = null;
   var applyVariant = createApplyVariant({
     isNoTouch: isNoTouch,
     touchesLcp: touchesLcp,
@@ -1158,15 +1212,44 @@
     touched: function (el, pattern) {
       touchedEls.push({ el: el, pattern: pattern });
     },
+    blocked: function (reason) {
+      lastApplyBlocked = reason;
+    },
   });
+
+  // NÅDFÖNSTRET (flimmermätningen 2026-08-09): inom 500 ms efter första
+  // målningen är sidan fortfarande i uppbyggnad — en applicering där mättes
+  // till CLS 0,06 (under "bra"-gränsen 0,1) och släpps ovaktad, exakt dagens
+  // beteende. EFTER fönstret aktiveras flimmervakten i appliceraren: en sen
+  // applicering (långsam decide, hydrerings-omförsöket, överlevnadsvakten)
+  // får då bara röra regioner helt nedanför viewporten — den uppmätta
+  // 0,34-klassen var precis en sen flytt i besökarens synfält. Före första
+  // målningen kan inget flimra (inget är ritat) ⇒ ovaktat. Saknar webbläsaren
+  // paint-timing faller vi öppet till dagens beteende — hellre dagens kända
+  // läge än en vakt som dömer utan mätpunkt.
+  function applyGuardActive() {
+    try {
+      var fcp = 0;
+      var paints = performance.getEntriesByType("paint");
+      for (var i = 0; i < paints.length; i++) {
+        if (paints[i].name === "first-contentful-paint") fcp = paints[i].startTime;
+      }
+      if (!fcp) return false;
+      return performance.now() > fcp + 500;
+    } catch (e) {
+      return false;
+    }
+  }
 
   function apply(decision) {
     ensureStyles();
     touchedEls = [];
+    lastApplyBlocked = null;
     var applied = [];
     if (decision.variant) {
       try {
-        if (applyVariant(decision.variant)) applied.push("variant:" + decision.variant.id);
+        if (applyVariant(decision.variant, applyGuardActive()))
+          applied.push("variant:" + decision.variant.id);
       } catch (e) {
         /* variant must never break the host page */
       }
@@ -2130,6 +2213,28 @@
         );
       })
       .join("");
+    // Omritning (sena appliceringen ritar om panelen med färskt state): EN
+    // panel åt gången — utan städningen staplades två, och getElementById
+    // nedan hade bundit stängningskrysset till fel panel.
+    var prevPanel = document.getElementById("angel-debug");
+    if (prevPanel && prevPanel.parentElement) prevPanel.parentElement.removeChild(prevPanel);
+    // Variantens rad (granskningsfynd 2026-08-09): panelen byggde bara på
+    // decision.adaptations — på variantladdningar stod "No adaptations" hur
+    // adapterad sidan än var. applied-listan är sanningen om DENNA rendering.
+    var variantApplied = false;
+    for (var va = 0; va < (applied || []).length; va++) {
+      if (String(applied[va]).indexOf("variant:") === 0) variantApplied = true;
+    }
+    var variantRow = decision.variant
+      ? '<li style="margin-bottom:6px"><b>variant ' +
+        esc(decision.variant.id) +
+        "</b><br>" +
+        '<span style="opacity:.65">' +
+        (decision.variant.ops || []).length +
+        " op(s) · " +
+        (variantApplied ? "applied" : "not applied (yet)") +
+        "</span></li>"
+      : "";
     var el = document.createElement("div");
     el.id = "angel-debug";
     el.style.cssText =
@@ -2145,13 +2250,13 @@
       (decision.adaptations || []).length +
       " adaptation(s)</div>" +
       '<ul style="list-style:none;margin:0;padding:0">' +
-      (rows || '<li style="opacity:.6">No adaptations for this visitor.</li>') +
+      (variantRow + rows || '<li style="opacity:.6">No adaptations for this visitor.</li>') +
       "</ul>" +
       '<div style="margin-top:8px;font-size:11px;opacity:.5">site: ' +
       esc(decision.site) +
       "</div>";
     document.body.appendChild(el);
-    var x = document.getElementById("angel-debug-x");
+    var x = el.querySelector("#angel-debug-x");
     if (x)
       x.onclick = function () {
         if (el.parentElement) el.parentElement.removeChild(el);
@@ -2224,23 +2329,63 @@
         // apply, re-apply once or twice — all ops are idempotent (classList
         // adds, same-value set_text, DOM-checked badge dedup), so a re-apply
         // on a surviving page is a no-op.
+        // Delad per-laddning-spärr för variant_apply_skipped: vägarna (snabb
+        // wipe / sen wipe / sen utebliven) är ömsesidigt uteslutande redan,
+        // flaggan gör högst-en-gång STRUKTURELLT i stället för emergent.
+        var skipTracked = false;
         if (applied.length > 0) {
           var reapplies = 0;
-          var checkSurvival = function () {
+          var checkSurvival = function (finalAttempt) {
             try {
               var residue = document.querySelectorAll(
                 ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext],[data-angel-inserted]",
               ).length;
               if (residue === 0 && reapplies < 2) {
                 reapplies++;
-                apply(decision);
+                var re = apply(decision);
+                // ÄRLIG UTSPÄDNING även på wipe-vägen (granskningsfynd
+                // 2026-08-09): fast-vägens applicering + framework-wipe +
+                // blockerad återapplicering armar ALDRIG sena loopen — utan
+                // spåret här stod laddningen som visad variant med baslinjen
+                // på skärmen, osynligt för mätningen. Bara SISTA försöket
+                // loggar (första kan ännu räddas av det andra).
+                if (
+                  finalAttempt &&
+                  re.length === 0 &&
+                  decision.variant &&
+                  !decision.holdout &&
+                  !skipTracked
+                ) {
+                  skipTracked = true;
+                  // Publika statet får inte fortsätta hävda en applicerad
+                  // variant på en sida där baslinjen står på skärmen.
+                  window.AngelAdaptive.applied = [];
+                  document.dispatchEvent(
+                    new CustomEvent("angel:applied", { detail: window.AngelAdaptive }),
+                  );
+                  if (isDebug()) renderDebug(decision, []);
+                  track(
+                    "variant_apply_skipped",
+                    {
+                      variantId: String(decision.variant.id || ""),
+                      reason:
+                        lastApplyBlocked === "viewport" ? "viewport-guard" : "wiped-not-restored",
+                      path: safePath(),
+                    },
+                    decision.decisionId,
+                  );
+                }
               }
             } catch (e) {
               /* never break the host page */
             }
           };
-          setTimeout(checkSurvival, 1500);
-          setTimeout(checkSurvival, 4000);
+          setTimeout(function () {
+            checkSurvival(false);
+          }, 1500);
+          setTimeout(function () {
+            checkSurvival(true);
+          }, 4000);
         }
         // SPA-monteringsracet (pilotfynd 2026-07-27, glutenforum): på en
         // klientrenderad sida kan decide-svaret landa FÖRE innehållet — då
@@ -2252,29 +2397,91 @@
         // hydrerings-vakt precis som den snabba vägen ovan.
         if (decision.variant && !decision.holdout && applied.length === 0) {
           var lateTries = 0;
+          // Flimmervaktens spår över HELA fönstret: blockerade vakten någon
+          // gång är det skälet till utebliven applicering — inte "målen fanns
+          // aldrig". lastApplyBlocked nollas per apply()-anrop, så utan
+          // ackumulatorn hade ett sista omförsök mot en bortdriven rubrik
+          // maskerat trettio vakt-nej som targets-missing.
+          var everViewportBlocked = lastApplyBlocked === "viewport";
           var lateTimer = setInterval(function () {
             try {
               lateTries++;
               var late = apply(decision);
+              if (lastApplyBlocked === "viewport") everViewportBlocked = true;
               if (late.length > 0 || lateTries >= 30) {
                 clearInterval(lateTimer);
                 if (late.length > 0) {
+                  // Sena appliceringen ÄR laddningens applicering — spegla den
+                  // i publika state + eventet (granskningsfynd 2026-08-09:
+                  // debug-panelen sa "No adaptations" på en sida som
+                  // bevisligen var adapterad, och angel:applied-lyssnare
+                  // missade den sena vägen helt).
+                  window.AngelAdaptive.applied = late;
+                  document.dispatchEvent(
+                    new CustomEvent("angel:applied", { detail: window.AngelAdaptive }),
+                  );
+                  if (isDebug()) renderDebug(decision, late);
                   var lateReapplies = 0;
-                  var lateSurvival = function () {
+                  var lateSurvival = function (finalAttempt) {
                     try {
                       var res2 = document.querySelectorAll(
                         "[data-angel-moved],[data-angel-retext],[data-angel-inserted]",
                       ).length;
                       if (res2 === 0 && lateReapplies < 2) {
                         lateReapplies++;
-                        apply(decision);
+                        var re2 = apply(decision);
+                        // Samma wipe-ärlighet som checkSurvival ovan.
+                        if (finalAttempt && re2.length === 0 && !skipTracked) {
+                          skipTracked = true;
+                          window.AngelAdaptive.applied = [];
+                          document.dispatchEvent(
+                            new CustomEvent("angel:applied", { detail: window.AngelAdaptive }),
+                          );
+                          if (isDebug()) renderDebug(decision, []);
+                          track(
+                            "variant_apply_skipped",
+                            {
+                              variantId: String(decision.variant.id || ""),
+                              reason:
+                                lastApplyBlocked === "viewport"
+                                  ? "viewport-guard"
+                                  : "wiped-not-restored",
+                              path: safePath(),
+                            },
+                            decision.decisionId,
+                          );
+                        }
                       }
                     } catch (e) {
                       /* never break the host page */
                     }
                   };
-                  setTimeout(lateSurvival, 1500);
-                  setTimeout(lateSurvival, 4000);
+                  setTimeout(function () {
+                    lateSurvival(false);
+                  }, 1500);
+                  setTimeout(function () {
+                    lateSurvival(true);
+                  }, 4000);
+                } else {
+                  // ÄRLIG UTEBLIVEN APPLICERING: servern loggade exponeringen
+                  // som visad vid decide — utan spåret här är utspädningen av
+                  // variantarmen OSYNLIG. reason skiljer vaktens nej (besökaren
+                  // stod i regionen hela fönstret — designen fungerar, tajmingen
+                  // förbjöd den) från targets-missing (hydrering/drift — målen
+                  // fanns aldrig). Bäst-effort: lämnar besökaren sidan före
+                  // fönstrets slut hinner spåret inte skickas.
+                  if (!skipTracked) {
+                    skipTracked = true;
+                    track(
+                      "variant_apply_skipped",
+                      {
+                        variantId: String(decision.variant.id || ""),
+                        reason: everViewportBlocked ? "viewport-guard" : "targets-missing",
+                        path: safePath(),
+                      },
+                      decision.decisionId,
+                    );
+                  }
                 }
               }
             } catch (e) {

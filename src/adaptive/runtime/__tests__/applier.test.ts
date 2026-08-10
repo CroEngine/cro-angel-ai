@@ -54,7 +54,11 @@ async function boot(
           `\nwindow.__mod = { createApplyVariant: createApplyVariant, retextPreserve: retextPreserve };`,
       );
       const lcpEl = cfg.lcp ? document.querySelector(cfg.lcp) : null;
-      const state = { undos: [] as (() => void)[], touched: [] as string[] };
+      const state = {
+        undos: [] as (() => void)[],
+        touched: [] as string[],
+        blockedReasons: [] as string[],
+      };
       const deps = {
         isNoTouch: (el: Element) => !!el.closest(cfg.noTouch || "[data-no-touch]"),
         touchesLcp: (el: Element) => {
@@ -66,6 +70,7 @@ async function boot(
         isSandbox: !!cfg.sandbox,
         record: (fn: () => void) => state.undos.push(fn),
         touched: (_el: Element, pattern: string) => state.touched.push(pattern),
+        blocked: (reason: string) => state.blockedReasons.push(reason),
       };
       // @ts-expect-error test harness globals
       window.__apply = window.__mod.createApplyVariant(deps);
@@ -568,5 +573,226 @@ describe("runtime applier module — real-Chromium unit tests", () => {
         false,
       );
     });
+  });
+});
+
+// ── Flimmervakten (guard-argumentet) — geometrin, isolerad ────────────────────
+// Mätningen 2026-08-09: sena appliceringar i besökarens synfält gav layout-
+// skift 0,34 (kontrollarmen 0). Vakten: med guard=true rörs bara regioner HELT
+// nedanför viewporten. Här bevisas geometrin mot appliceraren direkt; timing-
+// policyn (nådfönstret) ägs av snippeten och bevisas i flicker-guard.test.ts.
+describe("flimmervakten — applyVariant(v, guard)", () => {
+  // 390×500-viewport: hjälten + sektion A fyller första skärmen; B och C
+  // ligger helt nedanför. C→flytt landar ovanför B — hela spannet under vyn.
+  const TALL_PAGE = `
+    <main><div class="page">
+      <div class="hero" style="min-height:340px"><h1>Hero headline</h1><p id="intro">Intro.</p></div>
+      <div class="wrapper">
+        <section id="sa" style="min-height:420px"><h2>Alpha Features</h2><p>a</p></section>
+        <section id="sb" style="min-height:420px"><h2>Beta Proof</h2><p>b</p></section>
+        <section id="sc" style="min-height:420px"><h2>Gamma Pricing</h2><p>c</p></section>
+      </div>
+    </div></main>`;
+  const guardRun = (page: Page, variant: unknown, guard: boolean) =>
+    page.evaluate(
+      ({ v, g }) => {
+        // @ts-expect-error test harness globals
+        const applied = window.__apply(v, g);
+        // @ts-expect-error test harness globals
+        const st = window.__state;
+        return {
+          applied,
+          undoCount: st.undos.length,
+          blocked: st.blockedReasons.slice(),
+          touched: st.touched.slice(),
+          main: (document.querySelector("main") as HTMLElement).innerHTML,
+        };
+      },
+      { v: variant, g: guard },
+    );
+  const mv = (text: string) => ({ id: "v1", ops: [{ op: "move_up", locator: { tag: "h2", text } }] });
+
+  it("guard: flytt vars spann HELT under viewporten appliceras (osynlig = tillåten)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 390, height: 500 } });
+    try {
+      await boot(page, TALL_PAGE);
+      const r = await guardRun(page, mv("Gamma Pricing"), true);
+      expect(r.applied).toBe(true);
+      expect(r.blocked).toEqual([]);
+      expect(r.main).toContain('data-angel-moved');
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("guard: flytt vars destination syns i viewporten blockeras — byte-ren sida + reason", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 390, height: 500 } });
+    try {
+      await boot(page, TALL_PAGE);
+      const before = await mainHtml(page);
+      // Beta→flytt landar ovanför Alpha, vars topp (~340px) syns i 500-vyn.
+      const r = await guardRun(page, mv("Beta Proof"), true);
+      expect(r.applied).toBe(false);
+      expect(r.blocked).toEqual(["viewport"]);
+      expect(r.undoCount).toBe(0); // inget att ångra — blockerad FÖRE mutation
+      expect(r.main).toBe(before); // byte-ren
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("utan guard är samma flytt dagens beteende (nådfönstrets väg)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 390, height: 500 } });
+    try {
+      await boot(page, TALL_PAGE);
+      const r = await guardRun(page, mv("Beta Proof"), false);
+      expect(r.applied).toBe(true);
+      expect(r.blocked).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("dold flik ⇒ vakten vilar (inget syns, inget kan flimra)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 390, height: 500 } });
+    try {
+      await boot(page, TALL_PAGE);
+      await page.evaluate(() => {
+        Object.defineProperty(document, "visibilityState", {
+          configurable: true,
+          get: () => "hidden",
+        });
+      });
+      const r = await guardRun(page, mv("Beta Proof"), true);
+      expect(r.applied).toBe(true);
+      expect(r.blocked).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("sandbox ⇒ vakten vilar (admin VILL se varianten direkt)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 390, height: 500 } });
+    try {
+      await boot(page, TALL_PAGE, { sandbox: true });
+      const r = await guardRun(page, mv("Beta Proof"), true);
+      expect(r.applied).toBe(true);
+      expect(r.blocked).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("guard: insert under hjälten blockeras när insättningspunkten syns — släpps när den ligger under vyn", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Kort hjälte: insättningspunkten (hjältens nederkant ~120px) syns i vyn.
+    const page = await browser!.newPage({ viewport: { width: 390, height: 500 } });
+    try {
+      await boot(page, TALL_PAGE.replace('min-height:340px', 'min-height:120px'));
+      const ins = {
+        id: "v2",
+        ops: [{ op: "insert_snippet", locator: { tag: "h1", text: "Hero headline" }, value: "Intro." }],
+      };
+      const r = await guardRun(page, ins, true);
+      expect(r.applied).toBe(false);
+      expect(r.blocked).toEqual(["viewport"]);
+      // Scrolla förbi hjälten ⇒ punkten ligger OVANFÖR vyn — fortfarande
+      // blockerad (Safari saknar scroll anchoring; ovanför = scroll-hopp).
+      await page.evaluate(() => window.scrollTo(0, 2000));
+      const r2 = await guardRun(page, ins, true);
+      expect(r2.applied).toBe(false);
+      expect(r2.blocked).toEqual(["viewport", "viewport"]);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("guard: insert vars punkt ligger UNDER vyn släpps — osynlig = tillåten", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Hög hjälte: insättningspunkten (hjältens nederkant ~608px) ligger under
+    // 500-vyn. Utan detta test överlever en alltid-blockera-mutation varje
+    // nät — och dödar korssid-lyftets sena insättningsväg i tysthet.
+    const page = await browser!.newPage({ viewport: { width: 390, height: 500 } });
+    try {
+      await boot(page, TALL_PAGE.replace("min-height:340px", "min-height:600px"));
+      const ins = {
+        id: "v2b",
+        ops: [{ op: "insert_snippet", locator: { tag: "h1", text: "Hero headline" }, value: "Intro." }],
+      };
+      const r = await guardRun(page, ins, true);
+      expect(r.applied).toBe(true);
+      expect(r.blocked).toEqual([]);
+      expect(r.main).toContain("data-angel-inserted");
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("guard: set_text på rubrik i vyn blockeras — byte-ren sida + reason", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Alpha-rubriken (topp ~340px) syns i 500-vyn — ett sent textbyte där är
+    // exakt flimmerklassen vakten finns för.
+    const page = await browser!.newPage({ viewport: { width: 390, height: 500 } });
+    try {
+      await boot(page, TALL_PAGE);
+      const before = await mainHtml(page);
+      const r = await guardRun(
+        page,
+        { id: "v4", ops: [{ op: "set_text", locator: { tag: "h2", text: "Alpha Features" }, value: "Alpha Features nu" }] },
+        true,
+      );
+      expect(r.applied).toBe(false);
+      expect(r.blocked).toEqual(["viewport"]);
+      expect(r.undoCount).toBe(0);
+      expect(r.main).toBe(before);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("guard: set_text på rubrik HELT under vyn appliceras (osynlig = tillåten)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Gamma-rubriken (topp ~1180px) ligger under 500-vyn — inverterad
+    // jämförelse i vakten fälls här.
+    const page = await browser!.newPage({ viewport: { width: 390, height: 500 } });
+    try {
+      await boot(page, TALL_PAGE);
+      const r = await guardRun(
+        page,
+        { id: "v5", ops: [{ op: "set_text", locator: { tag: "h2", text: "Gamma Pricing" }, value: "Gamma Pricing nu" }] },
+        true,
+      );
+      expect(r.applied).toBe(true);
+      expect(r.blocked).toEqual([]);
+      expect(r.touched).toContain("variant_retext");
+      expect(r.main).toContain("Gamma Pricing nu");
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("guard: dold (display:none) set_text blockeras INTE — orenderat kan inte flimra", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const page = await browser!.newPage({ viewport: { width: 390, height: 500 } });
+    try {
+      await boot(
+        page,
+        TALL_PAGE.replace("<h2>Alpha Features</h2>", '<h2 style="display:none">Alpha Features</h2>'),
+      );
+      const r = await guardRun(
+        page,
+        { id: "v3", ops: [{ op: "set_text", locator: { tag: "h2", text: "Alpha Features" }, value: "Alpha Features nu" }] },
+        true,
+      );
+      expect(r.applied).toBe(true);
+      expect(r.blocked).toEqual([]);
+    } finally {
+      await page.close();
+    }
   });
 });

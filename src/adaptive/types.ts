@@ -339,7 +339,11 @@ export interface AngelEvent {
     // Per-sektion-synlighet (steg 9, CRO-planen): {sections: [{h, n, d}]} —
     // rubrik, instansantal, sedd-ms. Opt-in per install; saneras hårt i
     // buildEventRows.
-    | "section_engagement";
+    | "section_engagement"
+    // Ärlig utebliven applicering (flimmervakten): {variantId, reason, path}.
+    // reason ∈ {viewport-guard, targets-missing, wiped-not-restored} — vitlistas
+    // i buildEventRows.
+    | "variant_apply_skipped";
   decisionId?: string;
   payload?: Record<string, unknown>;
   /** Client timestamp (ms epoch). */

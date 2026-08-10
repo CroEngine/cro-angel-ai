@@ -69,6 +69,10 @@ export interface ApplierDeps {
   record(undo: () => void): void;
   /** Feed the debug outline: `el` was modified by `pattern` this apply() run. */
   touched(el: Element, pattern: string): void;
+  /** Flimmervakten sa nej (reason "viewport"): appliceringen vägrade röra en
+   *  region besökaren ser. Valfri — anroparen kan skilja "vakten stoppade"
+   *  från "målen fanns inte" i sin ärlighetslogg. */
+  blocked?(reason: string): void;
 }
 
 // Behåll rubrikens inline-format vid retext (ägarfynd: plausible-hemsidans
@@ -129,13 +133,27 @@ export function retextPreserve(el: Element, value: string): void {
 // platta artikelsidor, delrenderade SPA-vyer och sidor utan sektionsstruktur
 // till ärliga vägranden i stället för att hela innehållet flyttas ovanför
 // headern (granskningens reproducerade haverier).
-/** Build the applier. Returns applyVariant(v): true ⇔ the WHOLE variant landed
- *  (or its residue already marks the page — hydration re-run). Fail-closed and
- *  atomic: any op that cannot resolve or apply safely rolls EVERYTHING back
- *  byte-clean and returns false — a visitor sees the exact approved variant or
- *  the untouched baseline, never a half-variant. */
-export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => boolean {
-  return function applyVariant(v: ApplierVariant): boolean {
+/** Build the applier. Returns applyVariant(v, guard?): true ⇔ the WHOLE
+ *  variant landed (or its residue already marks the page — hydration re-run).
+ *  Fail-closed and atomic: any op that cannot resolve or apply safely rolls
+ *  EVERYTHING back byte-clean and returns false — a visitor sees the exact
+ *  approved variant or the untouched baseline, never a half-variant.
+ *
+ *  FLIMMERVAKTEN (guard=true — uppmätt 2026-08-09): en applicering som sker
+ *  EFTER att besökaren sett sidan får bara röra regioner HELT NEDANFÖR
+ *  viewporten. Mätningen som drev regeln: den sena omförsöks-slingan flyttade
+ *  en sektion besökaren scrollat till 1,7–9,3 s in i läsningen, layoutskift
+ *  0,34 (Googles "dåligt" går vid 0,25) — kontrollarmen hade 0. Under-
+ *  viewport-appliceringar är osynliga (uppmätt 0,00) och släpps igenom; allt
+ *  i eller OVANFÖR viewporten blockeras (ovanför = scroll-hopp i Safari, som
+ *  saknar scroll anchoring). Dold flik ⇒ inget syns ⇒ vakten vilar. Sandbox-
+ *  previews (admin VILL se varianten direkt) ⇒ vakten vilar. Anroparen äger
+ *  NÄR vakten gäller (nådfönstret efter första målningen) — geometrin bor
+ *  här, hos elementen. */
+export function createApplyVariant(
+  deps: ApplierDeps,
+): (v: ApplierVariant, guard?: boolean) => boolean {
+  return function applyVariant(v: ApplierVariant, guard?: boolean): boolean {
     if (!v || !v.ops || !v.ops.length) return false;
     // Hydrerings-omkörning: syns variant-residue redan är designen på plats —
     // en andra applicering skulle dubbel-lyfta sektionen.
@@ -343,6 +361,49 @@ export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => bo
       }
     }
 
+    // ── Flimmervakten (se funktionshuvudet) ───────────────────────────────
+    // Aktiv bara när anroparen begärt den, aldrig i sandbox och aldrig i en
+    // dold flik (inget syns ⇒ inget kan flimra). "Helt nedanför viewporten"
+    // döms PER OP precis före dess mutation — rects är viewport-relativa, och
+    // en tidigare op i samma variant kan ha ändrat geometrin. En blockerad op
+    // fäller hela varianten via samma återställning som alla andra nej
+    // (atomicitet), men rapporteras särskilt via deps.blocked.
+    var guardOn = !!guard && !deps.isSandbox;
+    try {
+      if (guardOn && document.visibilityState === "hidden") guardOn = false;
+    } catch (e) {
+      /* visibilityState saknas ⇒ behåll vakten */
+    }
+    var viewH = 0;
+    if (guardOn) {
+      viewH =
+        window.innerHeight ||
+        (document.documentElement && document.documentElement.clientHeight) ||
+        0;
+      // Pinch-zoom (granskningsfynd 2026-08-09): på iOS följer innerHeight den
+      // VISUELLA viewporten medan rects är layout-relativa — en zoomad+panorerad
+      // besökare kan se innehåll under innerHeight-linjen. Lyft domlinjen till
+      // visuella viewportens nederkant i layout-koordinater när API:t finns.
+      try {
+        var vv = window.visualViewport;
+        if (vv && typeof vv.height === "number") {
+          var vvBottom = (vv.offsetTop || 0) + vv.height;
+          if (vvBottom > viewH) viewH = vvBottom;
+        }
+      } catch (e) {
+        /* visualViewport saknas — innerHeight-linjen står */
+      }
+      if (!viewH) guardOn = false; // omätbar viewport ⇒ ingen grund att döma
+      // MEDVETET KONSERVATIVT (avviker från ett granskningsförslag): i en
+      // sömlös auto-höjd-iframe är innerHeight ≈ hela innehållet och ALLT döms
+      // "i vyn" — sena appliceringar blockeras permanent där. Det är rätt
+      // läsning av regeln: vi kan inte se förälderns scroll, alltså är
+      // osynlighet OBEVISBAR, och ägarkravet är inget flimmer — hellre ärligt
+      // loggad utspädning (variant_apply_skipped) än en synlig omflyttning i
+      // förälderns vy. Nådfönstret påverkas inte (tidiga appliceringar går).
+    }
+    var guardBlocked = false;
+
     // ── FAS 2: applicera i planordning ────────────────────────────────────
     var undos: (() => void)[] = [];
     var ok = true;
@@ -381,6 +442,18 @@ export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => bo
           } catch (e) {
             /* compareDocumentPosition saknas — klampen vilar, självkollen +
                harness-grinden movedAboveMain står kvar */
+          }
+        }
+        // Flimmervakten: flytten påverkar hela spannet [destination, sektion]
+        // — allt däremellan skiftar. Bara ett spann HELT nedanför viewporten
+        // är osynligt (ovanför = scroll-hopp i Safari utan scroll anchoring).
+        if (guardOn) {
+          var gPrev = prev.getBoundingClientRect();
+          var gSec = r0.sec.getBoundingClientRect();
+          if (Math.min(gPrev.top, gSec.top) < viewH) {
+            guardBlocked = true;
+            ok = false;
+            break;
           }
         }
         var next = r0.sec.nextSibling;
@@ -433,6 +506,17 @@ export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => bo
         // Hydrerings-dedupe (DOM-koll, badge-precedens): finns vårt block redan
         // är designen på plats — hoppa i stället för att skapa en dubblett.
         if (!document.querySelector("[data-angel-inserted]")) {
+          // Flimmervakten: raden sätts in direkt EFTER ankaret — allt nedanför
+          // insättningspunkten skjuts. Osynligt bara när punkten ligger vid
+          // eller under viewportens nederkant.
+          if (guardOn) {
+            var gAnchor = r0.anchor.getBoundingClientRect();
+            if (gAnchor.bottom < viewH) {
+              guardBlocked = true;
+              ok = false;
+              break;
+            }
+          }
           var insNode = document.createElement("p");
           // ALLTID textContent, aldrig innerHTML — värdet är data, inte markup;
           // en komprometterad DB-rad kan därför aldrig bli en skriptkanal.
@@ -462,6 +546,21 @@ export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => bo
           deps.touched(insNode, "variant_inserted");
         }
       } else {
+        // Flimmervakten: en omtextning av ett synligt element är per
+        // definition ett synligt byte — bara helt under viewporten släpps.
+        // Noll-rect (display:none — samma test som markTouched) är ORENDERAT:
+        // en mutation i ett dolt subträd kan inte skifta layout, och utan
+        // undantaget blockerades den som "synlig" på rect (0,0)
+        // (granskningsrepro 2026-08-09). Flytt/insert behåller blockeringen
+        // vid noll-rect — där är det DESTINATIONEN som är obevisbar.
+        if (guardOn) {
+          var gEl = r0.el.getBoundingClientRect();
+          if ((gEl.width > 0 || gEl.height > 0) && gEl.top < viewH) {
+            guardBlocked = true;
+            ok = false;
+            break;
+          }
+        }
         // Ångra via innerHTML, inte textContent: en rubrik kan bära egen markup
         // (spans/radbrytningar) som textContent-skrivningen ersätter — reset
         // måste ge tillbaka sidan BYTE-exakt, inte bara samma text.
@@ -489,6 +588,18 @@ export function createApplyVariant(deps: ApplierDeps): (v: ApplierVariant) => bo
           undos[u]();
         } catch (e) {
           /* en trasig ångring får inte stoppa de övriga */
+        }
+      }
+      // Vaktens nej rapporteras SÄRSKILT: anroparen ska kunna skilja "besökaren
+      // står i regionen" (försök igen senare / logga ärligt) från "målen finns
+      // inte" (hydrering/drift). En op som blockerats FÖRE mutation lämnar
+      // ingen ångring — sidan är redan orörd; tidigare ops i varianten rullades
+      // tillbaka ovan (osynligt: de passerade vakten, alltså under viewporten).
+      if (guardBlocked && deps.blocked) {
+        try {
+          deps.blocked("viewport");
+        } catch (e) {
+          /* ärlighetslogg får aldrig bryta sidan */
         }
       }
       return false;
