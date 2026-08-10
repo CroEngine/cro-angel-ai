@@ -68,6 +68,12 @@ const VALID_TYPES = new Set([
   // (data-observe-sections). Rubriker är sidans egen publika copy; payloaden
   // saneras + cappas hårt i buildEventRows.
   "section_engagement",
+  // Ärlig utebliven applicering (flimmervakten 2026-08-09): en variant vars
+  // exponering redan loggats som visad applicerades ALDRIG på laddningen —
+  // vakten stoppade (besökaren stod i regionen) eller målen fanns inte
+  // (hydrering/drift). Utan spåret är variantarmens utspädning osynlig.
+  // Payloaden saneras hårt i buildEventRows (reason-vitlista, längdcap).
+  "variant_apply_skipped",
 ]);
 
 export const Route = createFileRoute("/api/adaptive/events")({

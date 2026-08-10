@@ -94,6 +94,24 @@ describe("buildEventRows — journey privacy boundary", () => {
     }
   });
 
+  it("variant_apply_skipped saneras: reason vitlistas, variantId capas", () => {
+    // Payloaden är klient-skrivbar via publika track — en fri reason-sträng
+    // hade blivit en oskrubbad fritextkanal i diagnostiken.
+    const row = (payload: Record<string, unknown>) =>
+      buildEventRows("acme", "v", [{ type: "variant_apply_skipped", payload }])[0].payload as {
+        variantId: string;
+        reason: string;
+      };
+    expect(row({ variantId: "var-1", reason: "viewport-guard" }).reason).toBe("viewport-guard");
+    expect(row({ variantId: "var-1", reason: "targets-missing" }).reason).toBe("targets-missing");
+    expect(row({ variantId: "var-1", reason: "wiped-not-restored" }).reason).toBe(
+      "wiped-not-restored",
+    );
+    expect(row({ variantId: "var-1", reason: "min@epost.se ring 070" }).reason).toBe("other");
+    expect(row({ variantId: 12345, reason: "viewport-guard" }).variantId).toBe("");
+    expect(row({ variantId: "x".repeat(300), reason: "viewport-guard" }).variantId).toHaveLength(80);
+  });
+
   it("arm-markören normaliseras till 0/1 — läsvägens SQL-filter kan inte luras", () => {
     // adapted stängslar sätet (steg 11). Ett förfalskat värde får aldrig
     // överleva spreaden som något annat än 0 eller 1: payload->>adapted

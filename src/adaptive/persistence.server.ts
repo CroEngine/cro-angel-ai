@@ -107,6 +107,18 @@ export function buildEventRows(
         ];
       });
     }
+    // Utebliven applicering (flimmervakten): reason vitlistas — payloaden är
+    // klient-skrivbar via publika track, och en fri sträng här hade blivit en
+    // oskrubbad fritextkanal i diagnostiken. variantId capas (UUID är 36).
+    if (e.type === "variant_apply_skipped") {
+      payload.variantId = typeof raw.variantId === "string" ? raw.variantId.slice(0, 80) : "";
+      payload.reason =
+        raw.reason === "viewport-guard" ||
+        raw.reason === "targets-missing" ||
+        raw.reason === "wiped-not-restored"
+          ? raw.reason
+          : "other";
+    }
     // Arm-markören: 0/1, aldrig något annat. Klienten skickar en siffra; en
     // förfalskad sträng/objekt får inte överleva spreaden och bli ett värde
     // läsvägens SQL-filter inte kan sortera. ENDAST section_engagement
