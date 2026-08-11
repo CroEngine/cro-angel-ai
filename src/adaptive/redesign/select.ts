@@ -9,6 +9,15 @@ import type { Candidate } from "./candidates";
 import { floorWhy } from "./candidates";
 import { defuseMarkers } from "./defuse";
 
+/** Kantavrundnings-ärligheten (granskningsfynd 2026-08-08), DELAD regel:
+ *  99,6 % får inte visas som "100%" (påstår ALLA) och 0,4 % inte som "0%"
+ *  (påstår INGEN) — exakta 0/1 är de enda som får skriva ut extremerna.
+ *  Väljar-menyn och dashboardens läsvy renderar genom SAMMA funktion så
+ *  regeln inte kan drifta (granskningsfynd 2026-08-11). */
+export function honestPercent(share: number): number {
+  return share <= 0 ? 0 : share >= 1 ? 100 : Math.min(99, Math.max(1, Math.round(share * 100)));
+}
+
 /** Grindmätvärdena ur probens fulla mätpass (grind-i-proben 2026-07-27) —
  *  säkerhetsmått, inte säljvärde: de FILTRERAR och bryter lika-poäng, men
  *  rangordningen mellan grind-rena drag är väljarens (eller poängens) sak. */
@@ -115,19 +124,9 @@ export function buildSelectionPrompt(args: {
     // Ordvalet är EXAKT (granskningsfynd 2026-08-08): andelen är av sidvisningar
     // DÄR SEKTIONEN FANNS — "of visitors" hade överdrivit för sektioner som
     // bara vissa laddningar bar (SPA-varianter, A/B-yta).
-    const eng =
-      c.kind === "move_up" ? args.engagementBySection?.[c.targetId] : undefined;
-    // Kantavrundning (granskningsfynd 2026-08-08): 99,6 % fick inte visas som
-    // "100%" (påstår ALLA) och 0,4 % inte som "0%" (påstår INGEN) — exakta
-    // 0/1 är de enda som får skriva ut extremerna.
-    const engPct =
-      typeof eng === "number" && Number.isFinite(eng)
-        ? eng <= 0
-          ? 0
-          : eng >= 1
-            ? 100
-            : Math.min(99, Math.max(1, Math.round(eng * 100)))
-        : null;
+    const eng = c.kind === "move_up" ? args.engagementBySection?.[c.targetId] : undefined;
+    // Kantavrundning: delade regeln honestPercent ovan.
+    const engPct = typeof eng === "number" && Number.isFinite(eng) ? honestPercent(eng) : null;
     // OMFÅNGET ÄR EN DEL AV SANNINGEN (granskningsfynd 2026-08-08): datan är
     // per SIDA, prompten per SEGMENT. En rad utan omfångsmärkning läses som
     // "segmentets besökare" fast den mäter alla sidans besökare — samma
@@ -138,8 +137,7 @@ export function buildSelectionPrompt(args: {
     // från n=30 släpps mätrader fram, och en 31-laddningars andel får inte
     // läsas som en tusen-laddningars. Heltalsgolvad — "över 30 laddningar"
     // får aldrig visa fler än de faktiskt var.
-    const nVisits =
-      c.kind === "move_up" ? args.sectionVisitsBySection?.[c.targetId] : undefined;
+    const nVisits = c.kind === "move_up" ? args.sectionVisitsBySection?.[c.targetId] : undefined;
     const nPart =
       typeof nVisits === "number" && Number.isFinite(nVisits) && nVisits > 0
         ? ` over ${Math.floor(nVisits)} loads`

@@ -4,6 +4,7 @@ import { segmentKeyOf } from "../../segment-key";
 import {
   aggregate,
   applySkipsByVariant,
+  topSections,
   proofSummary,
   sessionSummaries,
   journeyFlow,
@@ -1439,5 +1440,81 @@ describe("applySkipsByVariant — utspädningsdiagnostiken (flimmervakten)", () 
 
   it("tomt fönster ⇒ tom karta — panelen visar ingen rad (aldrig en nollrad)", () => {
     expect(applySkipsByVariant([ev("pageview", {})]).size).toBe(0);
+  });
+});
+
+describe("topSections — blockbibliotekets läsvy (mest engagerande stycken)", () => {
+  // En census-laddning: sections = [{h, n, d}] där d = sedd-ms.
+  const load = (
+    path: string,
+    sections: { h: string; n?: number; d: number }[],
+    adapted?: unknown,
+  ) =>
+    ev("section_engagement", {
+      path,
+      sections,
+      ...(adapted !== undefined ? { adapted } : {}),
+    });
+  const many = (count: number, mk: (i: number) => ReturnType<typeof load>) =>
+    Array.from({ length: count }, (_, i) => mk(i));
+
+  it("räknar andel laddningar med ≥1s synlighet, per sida+rubrik, över golvet", () => {
+    // 40 laddningar: "Priser" sedd ≥1s i 30 (75%), "Om oss" i 10 (25%).
+    const events = many(40, (i) =>
+      load("/", [
+        { h: "Priser", d: i < 30 ? 1500 : 200 },
+        { h: "Om oss", d: i < 10 ? 2000 : 0 },
+      ]),
+    );
+    const rows = topSections(events);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toEqual({ path: "/", heading: "Priser", engagement: 0.75, visits: 40 });
+    expect(rows[1].heading).toBe("Om oss");
+    expect(rows[1].engagement).toBeCloseTo(0.25, 10);
+  });
+
+  it("under evidensgolvet (30) ⇒ ingen rad — brus-siffror visas aldrig", () => {
+    const thin = many(29, () => load("/", [{ h: "Tunn sektion", d: 5000 }]));
+    expect(topSections(thin)).toEqual([]);
+    const atFloor = many(30, () => load("/", [{ h: "Tunn sektion", d: 5000 }]));
+    expect(topSections(atFloor)).toHaveLength(1);
+  });
+
+  it("arm-stängslet: laddningar med tillämpad variant räknas INTE (mäter vår egen flytt)", () => {
+    const events = [
+      ...many(30, () => load("/", [{ h: "Priser", d: 1500 }], 0)),
+      ...many(100, () => load("/", [{ h: "Priser", d: 1500 }], 1)),
+    ];
+    const rows = topSections(events);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].visits).toBe(30); // bara de organiska
+  });
+
+  it("sorteringen är evidensviktad: 90% på 30 laddningar toppar INTE 80% på 5000", () => {
+    const events = [
+      ...many(30, (i) => load("/tunn", [{ h: "Brusig topp", d: i < 27 ? 2000 : 0 }])),
+      ...many(5000, (i) => load("/", [{ h: "Solid tvåa", d: i < 4000 ? 2000 : 0 }])),
+    ];
+    const rows = topSections(events);
+    expect(rows[0].heading).toBe("Solid tvåa"); // 0,8·(5000/5050)=0,79 > 0,9·(30/80)=0,34
+    expect(rows[1].heading).toBe("Brusig topp");
+    expect(rows[1].engagement).toBeCloseTo(0.9, 10); // rå andel visas oskalad
+  });
+
+  it("dubblettrubriker (instances > 1) visas aldrig — FLERTYDIG är ingen mätning", () => {
+    const events = many(40, () => load("/", [{ h: "Priser", n: 2, d: 1500 }]));
+    expect(topSections(events)).toEqual([]);
+  });
+
+  it("cappar listan och släpper trasiga payloads tyst", () => {
+    const events: DashEvent[] = [];
+    for (let s = 0; s < 15; s++) {
+      for (let i = 0; i < 40; i++) {
+        events.push(load("/", [{ h: `Sektion nummer ${s}`, d: 1500 }]));
+      }
+    }
+    events.push(ev("section_engagement", { path: "/", sections: "garbage" }));
+    events.push(ev("section_engagement", {}));
+    expect(topSections(events)).toHaveLength(10); // MAX_TOP_SECTIONS
   });
 });

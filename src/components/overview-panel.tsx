@@ -48,7 +48,9 @@ import type {
   SearchTerm,
   SegmentSummary,
   SessionSummary,
+  TopSection,
 } from "@/lib/dashboard/aggregate";
+import { honestPercent } from "@/adaptive/redesign/select";
 import type { VariantView } from "@/lib/dashboard/dashboard.functions";
 import type { JourneyMilestone } from "@/lib/dashboard/journey";
 import type { ArmVerdict } from "./dashboard/variant-stats";
@@ -77,6 +79,7 @@ export function OverviewPanel({
   servingOn,
   otherDomains = [],
   journey = [],
+  topSections = [],
 }: {
   site: string;
   overview: Overview;
@@ -91,6 +94,9 @@ export function OverviewPanel({
    *  blocket nedan är då helt vilande. */
   otherDomains?: { domain: string; visits: number }[];
   journey?: JourneyMilestone[];
+  /** Blockbibliotekets läsvy (ägarfråga 2026-08-10): sajtens mest engagerande
+   *  sektioner ur censusen. Tom lista ⇒ kortet är helt vilande. */
+  topSections?: TopSection[];
 }) {
   // ── trädet: nycklarna ÄR hierarkin (grov→fin, prefix = förälder) ──────────
   const byKey = useMemo(() => new Map(segments.map((s) => [s.key, s])), [segments]);
@@ -1201,6 +1207,55 @@ export function OverviewPanel({
           )}
         </div>
       </div>
+
+      {/* rad 3 — blockbibliotekets läsvy (ägarfråga 2026-08-10: "mest omtyckta
+          styckena"). ÄRLIGHETEN I RUBRIKVALET: detta är uppmätt UPPMÄRKSAMHET
+          (≥1 s synlighet på orörda laddningar) — inte bevisad konvertering;
+          attribution utan test är positionsbias. Sorteringen är evidensviktad
+          med sätets krympning så tunna stickprov inte toppar. Tom lista
+          (censusen ung / under evidensgolvet) ⇒ hela kortet vilar. */}
+      {topSections.length > 0 && (
+        <div className="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+          <div className="px-[22px] pt-6">
+            <div className="flex items-baseline gap-2">
+              <div className="font-heading text-[15px] font-semibold">Most engaging sections</div>
+              <div className="text-[11px] text-stone-400">
+                what visitors actually stop and look at
+              </div>
+            </div>
+            <div className="mt-0.5 text-[11.5px] text-stone-400">
+              Share of untouched loads where the section stayed in view ≥1s — measured attention,
+              not proven conversion. Ranked with the same evidence weighting the engine uses, so
+              thin samples can&apos;t top the list.
+            </div>
+          </div>
+          <div className="mt-3.5">
+            <div className="flex bg-[#faf9f7] px-[22px] py-2.5 text-[10.5px] font-semibold uppercase tracking-[.06em] text-stone-400">
+              <span className="flex-1">Section</span>
+              <span className="w-[84px] text-right">Seen ≥1s</span>
+              <span className="w-[84px] text-right">Loads</span>
+            </div>
+            {topSections.map((s) => (
+              <div
+                key={`${s.path}::${s.heading}`}
+                className="flex items-center border-t border-[#f0eee9] px-[22px] py-2.5 text-[13px]"
+              >
+                <span className="min-w-0 flex-1 truncate">
+                  {s.heading}{" "}
+                  <span className="font-mono text-[11.5px] text-stone-400">{s.path}</span>
+                </span>
+                {/* honestPercent: delad kantavrundnings-regel med väljar-menyn. */}
+                <span className="w-[84px] text-right font-semibold tabular-nums">
+                  {honestPercent(s.engagement)}%
+                </span>
+                <span className="w-[84px] text-right tabular-nums text-stone-500">
+                  {s.visits.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {journeysOpen && (
         <JourneysOverlay
