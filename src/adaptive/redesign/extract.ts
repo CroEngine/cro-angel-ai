@@ -24,7 +24,11 @@ import { SOCIAL_PROOF_NOUNS_SRC, TRUSTED_BY_LEADINS_SRC, classifySectionHeading 
 
 import type { RedesignContentModel } from "./context";
 
-const stripTags = (s: string): string =>
+/** Exporterad (granskningsfynd 2026-08-11): återbrukets dubbelvisningsvakt
+ *  (reuse.ts flattenHtml) måste avkoda entiteter med EXAKT samma regler som
+ *  whitelist-extraktionen — en egen kopia hade kunnat drifta och släppa
+ *  igenom en entitetskodad sida som redan visar fröets text. */
+export const stripTags = (s: string): string =>
   s
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/g, " ")
@@ -160,7 +164,9 @@ function readBodyFacts(body: string): BodyFacts {
     // Ett <summary> som är en FRÅGA (innehåller "?") — skiljer en riktig FAQ från
     // en <details>-baserad feature-tab/flik-widget (precisionsfynd 2026-07-24:
     // monday-fliken och vantas testimonial-i-<details> feltypades faq → fel lyftmål).
-    faqQuestions: count(/<summary\b[^>]*>(?:(?!<\/summary>)[\s\S])*?\?(?:(?!<\/summary>)[\s\S])*?<\/summary>/gi),
+    faqQuestions: count(
+      /<summary\b[^>]*>(?:(?!<\/summary>)[\s\S])*?\?(?:(?!<\/summary>)[\s\S])*?<\/summary>/gi,
+    ),
     accordion: cls(/^(?:accordion|faq)(?:s|[_-]\w+)?$/i) || /data-accordion/i.test(body),
     tableRows: count(/<tr[\s/>]/gi),
     images: count(/<img[\s/>]/gi),
@@ -169,7 +175,9 @@ function readBodyFacts(body: string): BodyFacts {
       /<form[\s>]/i.test(body) &&
       (/<input[^>]+type=["']?email/i.test(body) ||
         cls(/^(?:signup|subscribe|newsletter|waitlist)(?:[_-]\w+)?$/i)),
-    featureGridClass: cls(/^(?:features?|feature[_-]?grid|cards?|card[_-]?grid|benefits?)(?:[_-]\w+)?$/i),
+    featureGridClass: cls(
+      /^(?:features?|feature[_-]?grid|cards?|card[_-]?grid|benefits?)(?:[_-]\w+)?$/i,
+    ),
     subHeadings: count(/<h[34][\s>]/gi),
     iconListItems: count(/<li\b[^>]*>(?:(?!<\/li>)[\s\S]){0,400}?<(?:svg|img)\b/gi),
     // Semantiska bevis-taggar (LLM-revision 2026-07-24). <blockquote> är den
@@ -269,14 +277,18 @@ function collectSectionBodies(html: string): { level: number; text: string; body
   let m: RegExpExecArray | null;
   while ((m = re.exec(main))) {
     const text = stripTags(m[2]);
-    if (text) heads.push({ level: Number(m[1][1]), text, headStart: m.index, bodyStart: re.lastIndex });
+    if (text)
+      heads.push({ level: Number(m[1][1]), text, headStart: m.index, bodyStart: re.lastIndex });
   }
   const footerIdx = main.search(/<footer\b/i);
   const bodyEnd = footerIdx >= 0 ? footerIdx : main.length;
   return heads.map((h, i) => ({
     level: h.level,
     text: h.text,
-    body: main.slice(h.bodyStart, i + 1 < heads.length ? heads[i + 1].headStart : Math.max(h.bodyStart, bodyEnd)),
+    body: main.slice(
+      h.bodyStart,
+      i + 1 < heads.length ? heads[i + 1].headStart : Math.max(h.bodyStart, bodyEnd),
+    ),
   }));
 }
 
@@ -285,7 +297,10 @@ function collectSectionBodies(html: string): { level: number; text: string; body
  *  (image-rendered testimonials carry their copy in alt) and data-URIs dropped,
  *  capped for a cheap prompt. Deduped by heading like the section model, so the
  *  excerpts align 1:1 with RedesignContentModel.sections by heading. */
-export function sectionBodyExcerpts(html: string, cap = 600): { heading: string; excerpt: string }[] {
+export function sectionBodyExcerpts(
+  html: string,
+  cap = 600,
+): { heading: string; excerpt: string }[] {
   const seen = new Set<string>();
   const out: { heading: string; excerpt: string }[] = [];
   for (const h of collectSectionBodies(html)) {
@@ -311,7 +326,9 @@ export function sectionBodyExcerpts(html: string, cap = 600): { heading: string;
  *  som taket, rankaren och skala-/rapport-skripten annars återuppfinner ordagrant
  *  (5 kopior av `new Map(...)` + `exc.get(h.trim().toLowerCase()) ?? ""`). */
 export function sectionBodyLookup(html: string, cap = 600): (heading: string) => string {
-  const exc = new Map(sectionBodyExcerpts(html, cap).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]));
+  const exc = new Map(
+    sectionBodyExcerpts(html, cap).map((e) => [e.heading.trim().toLowerCase(), e.excerpt]),
+  );
   return (heading: string) => exc.get(heading.trim().toLowerCase()) ?? "";
 }
 

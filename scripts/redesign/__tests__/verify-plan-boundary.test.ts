@@ -71,11 +71,19 @@ interface VerifyRow {
   reason?: string;
 }
 
-function runVerify(plans: unknown[]): VerifyRow[] {
+function runVerify(plans: unknown[], extraPages: Record<string, string> = {}): VerifyRow[] {
   const dir = mkdtempSync(join(tmpdir(), "verify-boundary-"));
   const frozen = join(dir, "home.html");
   writeFileSync(frozen, HTML);
-  writeFileSync(join(dir, "pages.json"), JSON.stringify({ "/": frozen }));
+  const pages: Record<string, string> = { "/": frozen };
+  // Extra frysta sidor (återbrukets källsidor): path → html-innehåll.
+  let n = 0;
+  for (const [p, html] of Object.entries(extraPages)) {
+    const f = join(dir, `extra-${n++}.html`);
+    writeFileSync(f, html);
+    pages[p] = f;
+  }
+  writeFileSync(join(dir, "pages.json"), JSON.stringify(pages));
   writeFileSync(join(dir, "plans.json"), JSON.stringify(plans));
   const run = spawnSync(
     "bun",
@@ -124,87 +132,139 @@ const moveOp = (targetId: string): RedesignOp => ({
 });
 
 describe("plans.json → verify (riktig process, riktig Chromium)", () => {
-  it(
-    "planSource och altOps överlever gränsen; reserven räddar ett valideringsavslag",
-    async (ctx) => {
-      if (!chromiumAvailable) return ctx.skip();
-      // Raderna byggs av nattloopens EGEN producent — glider planRow och
-      // PlanIn isär faller det här testet, inte produktionen en natt i tysthet.
-      const rows = runVerify([
-        // 1) Vanlig katalogplan: härkomsten ska ekas tillbaka oförändrad.
+  it("planSource och altOps överlever gränsen; reserven räddar ett valideringsavslag", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Raderna byggs av nattloopens EGEN producent — glider planRow och
+    // PlanIn isär faller det här testet, inte produktionen en natt i tysthet.
+    const rows = runVerify([
+      // 1) Vanlig katalogplan: härkomsten ska ekas tillbaka oförändrad.
+      planRow({
+        ...basePlan,
+        ops: [moveOp("sec-4-pricing")],
+        altOps: [[moveOp("sec-3-testimonials")]],
+        planSource: "katalog/selector",
+      }),
+      // 2) Huvudvalet pekar på ett sektions-id som INTE finns (samma form som
+      //    när verify validerar mot en berikad modell där katalogens id
+      //    skrivits om) ⇒ valideringen fäller det ⇒ reserven ska ta över.
+      planRow({
+        ...basePlan,
+        key: "direkt·mobile",
+        ops: [moveOp("sec-9-finns-inte")],
+        altOps: [[moveOp("sec-4-pricing")]],
+        planSource: "katalog/floor",
+      }),
+    ]);
+
+    expect(rows).toHaveLength(2);
+
+    const [main, recovered] = rows;
+    // 1) Provenansen är kvar hela vägen ut i resultatet.
+    expect(main.verdict).toBe("verified");
+    expect(main.planSource).toBe("katalog/selector");
+    expect(main.ops?.map((o) => o.targetId)).toEqual(["sec-4-pricing"]);
+    // serve_ops är det KLIENTEN kommer att applicera. Antalsjämförelsen mot
+    // ops var vakuös (granskningsfynd 2026-08-08: båda härleds ur samma
+    // lista, så likheten höll även om lokatorn pekat fel). Kontraktet är
+    // EXAKT form: rätt verb, rätt tagg och rätt rubriktext — sektionen som
+    // faktiskt grindades, inte någon annan på sidan.
+    expect(main.serveOps).toEqual([
+      {
+        op: "move_up",
+        locator: { tag: "h2", text: "Simple honest pricing" },
+        why: "proof closer to the decision",
+      },
+    ]);
+
+    // 2) Reserven räddade cellen — förut blev den rejected_by_validation och
+    //    natten gav ingenting för den cellen.
+    expect(recovered.verdict).toBe("verified");
+    expect(recovered.planSource).toBe("katalog/floor");
+    expect(recovered.ops?.map((o) => o.targetId)).toEqual(["sec-4-pricing"]);
+    // Reservens lokator — INTE huvudvalets (som pekade på en sektion som
+    // inte finns): serve-vägen bär den plan som faktiskt grindades.
+    expect(recovered.serveOps).toEqual([
+      {
+        op: "move_up",
+        locator: { tag: "h2", text: "Simple honest pricing" },
+        why: "proof closer to the decision",
+      },
+    ]);
+    expect(recovered.evidence?.validationRecovery).toBe("alt:1");
+    // Återhämtningen syns även på RADEN, inte bara i evidence — annars är
+    // den osynlig i just de fall cellen sedan faller i grinden.
+    expect((recovered as unknown as { validationRecovery?: string }).validationRecovery).toBe(
+      "alt:1",
+    );
+  }, 240_000);
+
+  it("utan reserv är ett valideringsavslag fortfarande ett ÄRLIGT nej", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    const rows = runVerify([
+      planRow({ ...basePlan, ops: [moveOp("sec-9-finns-inte")], planSource: "katalog/floor" }),
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].verdict).toBe("rejected_by_validation");
+    expect(rows[0].reason).toBeTruthy();
+  }, 240_000);
+
+  it("evidence.reuse skrivs när blocket överlever — och ALDRIG när fallbacken bytte bort det", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Källsidan vars frysta whitelist validerar citatet (extractQuotables:
+    // en löv-rad med pris). Texten nedan är EXAKT whitelist-raden.
+    const QUOTE = "Från 299 kr per månad – avsluta när du vill";
+    const PRISER_HTML = `<!doctype html><html lang="sv"><head><meta charset="utf-8">
+<title>Priser</title></head><body><main>
+<section><h1>Våra priser</h1><p>${QUOTE}</p><p>${"Prisdetaljer. ".repeat(30)}</p></section>
+<section><h2>Vanliga frågor</h2><p>${"Svar. ".repeat(40)}</p></section>
+</main></body></html>`;
+    const offer = {
+      variantId: "11111111-aaaa-bbbb-cccc-000000000001",
+      provedOnPath: "/enterprise",
+      sourcePath: "/priser",
+      text: QUOTE,
+    };
+    const reuseInsert: RedesignOp = {
+      op: "insert_snippet",
+      targetId: "hero",
+      detail: QUOTE,
+      sourcePath: "/priser",
+      why: "proven block reused",
+    };
+    const rows = runVerify(
+      [
+        // 1) Återbruket ÄR huvudvalet och överlever grinden ⇒ proveniens.
         planRow({
           ...basePlan,
-          ops: [moveOp("sec-4-pricing")],
-          altOps: [[moveOp("sec-3-testimonials")]],
+          ops: [reuseInsert],
           planSource: "katalog/selector",
+          reuseOffers: [offer],
         }),
-        // 2) Huvudvalet pekar på ett sektions-id som INTE finns (samma form som
-        //    när verify validerar mot en berikad modell där katalogens id
-        //    skrivits om) ⇒ valideringen fäller det ⇒ reserven ska ta över.
+        // 2) Huvudvalet faller i valideringen, reserven (en flytt) tar
+        //    över ⇒ blocket bärs INTE av finalOps ⇒ INGEN proveniens —
+        //    en proof-etikett på en variant utan blocket vore en lögn.
         planRow({
           ...basePlan,
           key: "direkt·mobile",
           ops: [moveOp("sec-9-finns-inte")],
           altOps: [[moveOp("sec-4-pricing")]],
-          planSource: "katalog/floor",
+          planSource: "katalog/selector",
+          reuseOffers: [offer],
         }),
-      ]);
-
-      expect(rows).toHaveLength(2);
-
-      const [main, recovered] = rows;
-      // 1) Provenansen är kvar hela vägen ut i resultatet.
-      expect(main.verdict).toBe("verified");
-      expect(main.planSource).toBe("katalog/selector");
-      expect(main.ops?.map((o) => o.targetId)).toEqual(["sec-4-pricing"]);
-      // serve_ops är det KLIENTEN kommer att applicera. Antalsjämförelsen mot
-      // ops var vakuös (granskningsfynd 2026-08-08: båda härleds ur samma
-      // lista, så likheten höll även om lokatorn pekat fel). Kontraktet är
-      // EXAKT form: rätt verb, rätt tagg och rätt rubriktext — sektionen som
-      // faktiskt grindades, inte någon annan på sidan.
-      expect(main.serveOps).toEqual([
-        {
-          op: "move_up",
-          locator: { tag: "h2", text: "Simple honest pricing" },
-          why: "proof closer to the decision",
-        },
-      ]);
-
-      // 2) Reserven räddade cellen — förut blev den rejected_by_validation och
-      //    natten gav ingenting för den cellen.
-      expect(recovered.verdict).toBe("verified");
-      expect(recovered.planSource).toBe("katalog/floor");
-      expect(recovered.ops?.map((o) => o.targetId)).toEqual(["sec-4-pricing"]);
-      // Reservens lokator — INTE huvudvalets (som pekade på en sektion som
-      // inte finns): serve-vägen bär den plan som faktiskt grindades.
-      expect(recovered.serveOps).toEqual([
-        {
-          op: "move_up",
-          locator: { tag: "h2", text: "Simple honest pricing" },
-          why: "proof closer to the decision",
-        },
-      ]);
-      expect(recovered.evidence?.validationRecovery).toBe("alt:1");
-      // Återhämtningen syns även på RADEN, inte bara i evidence — annars är
-      // den osynlig i just de fall cellen sedan faller i grinden.
-      expect((recovered as unknown as { validationRecovery?: string }).validationRecovery).toBe(
-        "alt:1",
-      );
-    },
-    240_000,
-  );
-
-  it(
-    "utan reserv är ett valideringsavslag fortfarande ett ÄRLIGT nej",
-    async (ctx) => {
-      if (!chromiumAvailable) return ctx.skip();
-      const rows = runVerify([
-        planRow({ ...basePlan, ops: [moveOp("sec-9-finns-inte")], planSource: "katalog/floor" }),
-      ]);
-      expect(rows).toHaveLength(1);
-      expect(rows[0].verdict).toBe("rejected_by_validation");
-      expect(rows[0].reason).toBeTruthy();
-    },
-    240_000,
-  );
+      ],
+      { "/priser": PRISER_HTML },
+    );
+    expect(rows).toHaveLength(2);
+    const [survived, swapped] = rows;
+    expect(survived.verdict).toBe("verified");
+    expect(survived.evidence?.reuse).toEqual({
+      variantId: offer.variantId,
+      provedOnPath: "/enterprise",
+    });
+    // Driftsvepets kontrakt följer med gratis: beroendet deklarerat.
+    expect(survived.evidence?.dependencies).toEqual([{ path: "/priser", textSnapshot: QUOTE }]);
+    expect(swapped.verdict).toBe("verified");
+    expect(swapped.ops?.map((o) => o.targetId)).toEqual(["sec-4-pricing"]);
+    expect(swapped.evidence?.reuse).toBeUndefined();
+  }, 240_000);
 });

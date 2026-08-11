@@ -23,6 +23,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
 
 import { captureLcpElement, runGatedAttempts, type MeasureOp } from "./measure";
+import { extractLinkStyleDonor } from "../../src/adaptive/redesign/extract";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const FROZEN = arg("frozen");
@@ -40,6 +41,11 @@ interface ProbeIn {
   tag: string;
   find: string;
   detail?: string;
+  /** Återbrukskandidater (blockbiblioteket steg 2): källsidan. Med den mäter
+   *  proben SAMMA rendering som verify/serve — donor-stylad LÄNK, inte ren
+   *  text (granskningsfynd 2026-08-11: pariteten bröts exakt för
+   *  återbruksklassen — länkens höjd/stil kan flytta grindutfallet). */
+  sourcePath?: string;
   ctaTexts?: string[];
   ctaSelectors?: string[];
 }
@@ -73,6 +79,9 @@ const cands = raw.filter((c) => c.id !== "__meta__");
 const ctaTexts = meta?.ctaTexts ?? [];
 const ctaSelectors = meta?.ctaSelectors ?? [];
 const html = readFileSync(FROZEN, "utf8");
+// Stil-donatorn härleds ur SAMMA frysta fil som verify använder (auto-
+// generate:s toMeasureOps) — pariteten kan inte drifta när källan är delad.
+const styleDonor = extractLinkStyleDonor(html);
 
 const browser = await chromium.launch({ headless: true, executablePath: EXEC });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -101,12 +110,9 @@ async function reloadPage(): Promise<void> {
 async function gateRun(
   ops: MeasureOp[],
 ): Promise<{ pass: boolean; gate: GateMetrics; reason: string | null }> {
-  const { attempts, unresolvable, extraLiftApplied } = await runGatedAttempts(
-    page,
-    ops,
-    ctaTexts,
-    { ctaSelectors },
-  );
+  const { attempts, unresolvable, extraLiftApplied } = await runGatedAttempts(page, ops, ctaTexts, {
+    ctaSelectors,
+  });
   if (unresolvable || attempts.length === 0) {
     return {
       pass: false,
@@ -185,6 +191,10 @@ for (const c of cands) {
           tag: c.tag,
           find: c.find,
           set: c.detail ?? "",
+          // Återbruk (källsida given): proba EXAKT det verify/serve renderar —
+          // donor-stylad länk till källsidan, aldrig ren text (pariteten).
+          ...(c.sourcePath ? { href: c.sourcePath } : {}),
+          ...(c.sourcePath && styleDonor ? { styleClass: styleDonor } : {}),
           ...(placement ? { placement } : {}),
         },
       ]);
@@ -202,8 +212,7 @@ for (const c of cands) {
     }
     // Krasch utan någon grind-ren placering ⇒ fail closed (vi VET ingenting
     // om kandidaten) — "resolvable" får inte härledas ur en kraschorsak.
-    const resolvable =
-      !crashed && lastReason !== "lokatorn/sektionen kunde inte upplösas";
+    const resolvable = !crashed && lastReason !== "lokatorn/sektionen kunde inte upplösas";
     results.push(
       placements.length > 0
         ? { id: c.id, applicable: true, gateClean: true, placements, gate: bestGate }
@@ -221,4 +230,6 @@ await browser.close();
 writeFileSync(OUT, JSON.stringify(results, null, 2));
 const clean = results.filter((r) => r.gateClean).length;
 const appl = results.filter((r) => r.applicable).length;
-console.log(`[probe] ${clean}/${results.length} grind-rena · ${appl}/${results.length} applicerbara`);
+console.log(
+  `[probe] ${clean}/${results.length} grind-rena · ${appl}/${results.length} applicerbara`,
+);

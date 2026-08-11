@@ -19,6 +19,7 @@ import {
   candidateToOp,
   type BehaviorInput,
 } from "../../src/adaptive/redesign/candidates";
+import type { ReuseSeed } from "../../src/adaptive/redesign/reuse";
 import {
   applyProbe,
   buildSelectionPrompt,
@@ -59,9 +60,13 @@ export async function buildCandidatePlan(args: {
    *  tvärtom). Utelämnad (preview utan sajtkonfig) ⇒ bara extraherade
    *  konverterings-CTA:er, som förut. */
   goal?: { text?: string | null; selector?: string | null };
+  /** Blockbiblioteket steg 2: vinnarnas bevisade block, redan sållade av
+   *  nattloopens frö-vakter (viabilitet, dubbelvisning, mättnad). Utelämnad
+   *  ⇒ byte-identisk katalog — precis som behavior. */
+  reuse?: ReuseSeed[];
 }): Promise<CandidatePlan | null> {
   const { content, frozenPath, workDir } = args;
-  const candidates = generateCandidates(content, args.behavior);
+  const candidates = generateCandidates(content, args.behavior, args.reuse);
   if (candidates.length === 0) return null;
 
   // Probens in-format: kandidat + lokator (samma upplösning som toServeOps —
@@ -77,6 +82,9 @@ export async function buildCandidatePlan(args: {
         ? (content.sections.find((s) => s.id === c.targetId)?.heading ?? "")
         : heroHeading,
     detail: c.detail,
+    // Återbruk: källsidan med — proben mäter då donor-stylad LÄNK, exakt det
+    // verify/serve renderar (paritetsfyndet 2026-08-11).
+    ...(c.sourcePath ? { sourcePath: c.sourcePath } : {}),
   }));
   const inPath = join(workDir, "candidates-in.json");
   const outPath = join(workDir, "candidates-probed.json");
@@ -115,7 +123,9 @@ export async function buildCandidatePlan(args: {
   try {
     probe = JSON.parse(readFileSync(outPath, "utf8")) as ProbeAnnotation[];
   } catch (e) {
-    console.warn(`[katalog] probens utfil oläsbar (${String(e).slice(0, 120)}) — fria designern tar över`);
+    console.warn(
+      `[katalog] probens utfil oläsbar (${String(e).slice(0, 120)}) — fria designern tar över`,
+    );
     return null;
   }
   const menu = applyProbe(candidates, probe);
@@ -142,7 +152,9 @@ export async function buildCandidatePlan(args: {
     ops: toOps(chosen, selection.why),
     altOps: rest
       .slice(0, MAX_ALTS)
-      .map((c) => toOps(c, `Reserve candidate from the catalog: ${defuseMarkers(c.basis).slice(0, 160)}`)),
+      .map((c) =>
+        toOps(c, `Reserve candidate from the catalog: ${defuseMarkers(c.basis).slice(0, 160)}`),
+      ),
     source: selection.source,
     menuSize: menu.length,
     probed: {

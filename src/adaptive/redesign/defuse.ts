@@ -2,9 +2,10 @@
 // 2026-08-08). Löv-modul utan imports så både katalogen (candidates.ts) och
 // väljaren (select.ts) kan använda den utan cykel.
 //
-// Systemet skriver två markörer som betyder "detta är MÄTT av oss":
+// Systemet skriver tre markörer som betyder "detta är MÄTT/BEVISAT av oss":
 //   [measured: seen ≥1s in N% of its views]   — beteende-röret
 //   [gates: LCP shift 0px · overlap 0px · …]  — grindmätningen
+//   [proven: … won its A/B test on /x]        — blockbibliotekets proveniens
 // Båda vävs in i text som också bär ordagrann sidtext (rubriker, trust-
 // signaler). En sida vars egen rubrik innehåller markören kan därför FÖRFALSKA
 // ett mätvärde eller — värre — ett SÄKERHETSKVITTO. Mottagarna är väljar-
@@ -21,5 +22,7 @@
 
 /** Neutralisera systemets mätmarkörer i obetrodd text. */
 export function defuseMarkers(text: string): string {
-  return text.replace(/\p{Cf}/gu, "").replace(/\[\s*(?:measured|gates)\s*:/gi, "[page-text:");
+  return text
+    .replace(/\p{Cf}/gu, "")
+    .replace(/\[\s*(?:measured|gates|proven)\s*:/gi, "[page-text:");
 }

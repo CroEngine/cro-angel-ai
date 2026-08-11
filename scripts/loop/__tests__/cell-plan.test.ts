@@ -97,3 +97,42 @@ describe("planRow — producentsidan av plans.json-kontraktet", () => {
     expect("templatePages" in notTpl).toBe(false);
   });
 });
+
+describe("planRow — återbrukserbjudandena (blockbiblioteket steg 2)", () => {
+  const base = {
+    path: "/om-oss",
+    key: "google·mobile",
+    total: { visits: 100, conversions: 5 },
+    observations: [],
+    ops: [{ op: "move_up" as const, targetId: "sec-2", detail: "", why: "w" }],
+    planSource: "katalog/selector",
+  };
+  const offer = {
+    variantId: "11111111-aaaa-bbbb-cccc-000000000001",
+    provedOnPath: "/priser",
+    sourcePath: "/priser",
+    text: "Från 299 kr per månad",
+  };
+
+  it("erbjudandena följer med KATALOG-raden — och källsidorna unionas in i sourcePaths", () => {
+    // Unionen är verify-whitelistens kontrakt: utan källsidan i sourcePaths
+    // hade validateOps fällt ett drag som proben redan grind-godkänt.
+    const row = planRow({ ...base, sourcePaths: ["/flode"], reuseOffers: [offer] });
+    expect(row.reuseOffers).toEqual([offer]);
+    expect(row.sourcePaths).toEqual(["/flode", "/priser"]);
+    // Dubbletter unionas bort.
+    const dup = planRow({ ...base, sourcePaths: ["/priser"], reuseOffers: [offer] });
+    expect(dup.sourcePaths).toEqual(["/priser"]);
+  });
+
+  it("designer-planer bär ALDRIG erbjudanden — gaten sitter i planRow, inte hos anroparen", () => {
+    const row = planRow({ ...base, planSource: "designer", reuseOffers: [offer] });
+    expect("reuseOffers" in row).toBe(false);
+    expect(row.sourcePaths).toEqual([]); // ingen union heller
+  });
+
+  it("tom/utelämnad lista utelämnas helt (verify läser plan.reuseOffers ?? [])", () => {
+    expect("reuseOffers" in planRow({ ...base })).toBe(false);
+    expect("reuseOffers" in planRow({ ...base, reuseOffers: [] })).toBe(false);
+  });
+});
