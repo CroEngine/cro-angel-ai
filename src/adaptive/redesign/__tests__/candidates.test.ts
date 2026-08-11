@@ -5,6 +5,7 @@ import { describe, it, expect } from "vitest";
 import {
   BEHAVIOR_GAIN,
   BEHAVIOR_SHRINK_N0,
+  REUSE_PROVEN_SCORE,
   generateCandidates,
   candidateToOp,
   floorWhy,
@@ -142,9 +143,9 @@ describe("generateCandidates", () => {
     // Vikter för sektioner som inte finns i modellen är också neutrala.
     expect(generateCandidates(model(), { sectionWeight: { "sec-99-ghost": 0.9 } })).toEqual(plain);
     // gain 0 ⇒ termen är 0 oavsett vikt — också identiskt.
-    expect(
-      generateCandidates(model(), { sectionWeight: { "sec-4-logos": 0.9 }, gain: 0 }),
-    ).toEqual(plain);
+    expect(generateCandidates(model(), { sectionWeight: { "sec-4-logos": 0.9 }, gain: 0 })).toEqual(
+      plain,
+    );
   });
 
   it("beteendet omrankar flyttarna: het logos-sektion slår kall testimonials", () => {
@@ -261,6 +262,107 @@ describe("generateCandidates", () => {
     expect(idx(droppedKey, "mv-sec-3-testimonials")).toBeLessThan(
       idx(droppedKey, "mv-sec-4-logos"),
     );
+  });
+
+  it("återbruksfrön blir kandidater: full text, källsida, proveniens — och rätt rang", () => {
+    // Blockbiblioteket steg 2: fröet står ÖVER alla obevisade priors (max
+    // 3+1+0,4=4,4) men UNDER en beteende-ledd kandidat — målsidans egna
+    // besökare slår importerat bevis.
+    const seed = {
+      variantId: "11111111-aaaa-bbbb-cccc-000000000001",
+      provedOnPath: "/priser",
+      sourcePath: "/priser",
+      text: "Från 299 kr per månad, avsluta utan bindningstid när du vill",
+    };
+    const c = generateCandidates(model(), undefined, [seed]);
+    const r = c.find((x) => x.id.startsWith("rins-"))!;
+    expect(r.kind).toBe("insert_snippet");
+    expect(r.targetId).toBe("hero");
+    expect(r.detail).toBe(seed.text); // ALDRIG trunkerad — exakt-likheten kräver det
+    expect(r.sourcePath).toBe("/priser");
+    expect(r.proven).toEqual({ provedOnPath: "/priser", variantId: seed.variantId });
+    expect(r.score).toBe(REUSE_PROVEN_SCORE);
+    // Rang: över varje obevisad kandidat i fixturen...
+    const others = c.filter((x) => !x.id.startsWith("rins-"));
+    for (const o of others) expect(r.score).toBeGreaterThan(o.score);
+    // ...INKLUSIVE prior-TAKET självt (granskningsfynd 2026-08-11: utan
+    // gränspinnarna överlevde både 4,2 och 6,5 som poäng): en testimonials-
+    // sektion med trust på position 8 når exakt 3+1+0,4 = 4,4 — och fröet
+    // står strax över.
+    const maxPrior = generateCandidates(
+      model({
+        sections: [
+          ...model().sections,
+          {
+            id: "sec-8-proofmax",
+            type: "testimonials",
+            position: 8,
+            heading: "Loved by thousands of happy customers",
+            aboveFold: false,
+            visualWeight: 3,
+            containsTrustSignals: true,
+          },
+        ],
+      }),
+      undefined,
+      [seed],
+    );
+    const cap = maxPrior.find((x) => x.id === "mv-sec-8-proofmax")!;
+    expect(cap.score).toBeCloseTo(4.4, 10);
+    expect(maxPrior.find((x) => x.id.startsWith("rins-"))!.score).toBeGreaterThan(cap.score);
+    // ...men under en beteende-ledd flytt STRAX över gränsen: w=0,16 vid
+    // golv-n (30) ger 2,5+0,2+40·(30/80)·0,16 = 5,1 > 5 — målsidans egna
+    // besökare vinner med minsta marginal, inte bara med bred.
+    const behaved = generateCandidates(
+      model(),
+      { sectionWeight: { "sec-4-logos": 0.16 }, sectionVisits: { "sec-4-logos": 30 } },
+      [seed],
+    );
+    const hot = behaved.find((x) => x.id === "mv-sec-4-logos")!;
+    expect(hot.score).toBeCloseTo(5.1, 10);
+    const idx = (id: string) => behaved.findIndex((x) => x.id === id);
+    expect(idx("mv-sec-4-logos")).toBeLessThan(
+      idx(behaved.find((x) => x.id.startsWith("rins-"))!.id),
+    );
+  });
+
+  it("återbruk: utan frön byte-identisk katalog; dubblett-text mot sidans egna dedupas", () => {
+    expect(generateCandidates(model(), undefined, [])).toEqual(generateCandidates(model()));
+    // Ett frö vars text redan är en signal på sidan får ALDRIG stå två
+    // gånger i menyn (uppströms-vakterna ska ha sållat det — bältet hängslen).
+    const plain = generateCandidates(model());
+    const existingInsert = plain.find((x) => x.kind === "insert_snippet")!;
+    const dup = generateCandidates(model(), undefined, [
+      {
+        variantId: "22222222-bbbb-cccc-dddd-000000000002",
+        provedOnPath: "/x",
+        sourcePath: "/x",
+        text: existingInsert.detail,
+      },
+    ]);
+    expect(dup.filter((x) => x.id.startsWith("rins-"))).toEqual([]);
+  });
+
+  it("candidateToOp bär sourcePath för återbruk — validateOps exakta gren kräver den", () => {
+    const c = generateCandidates(model(), undefined, [
+      {
+        variantId: "33333333-cccc-dddd-eeee-000000000003",
+        provedOnPath: "/priser",
+        sourcePath: "/priser",
+        text: "En bevisad rad som inte finns i fixturens modell",
+      },
+    ]).find((x) => x.id.startsWith("rins-"))!;
+    const op = candidateToOp(c, "why");
+    expect(op).toEqual({
+      op: "insert_snippet",
+      targetId: "hero",
+      detail: "En bevisad rad som inte finns i fixturens modell",
+      sourcePath: "/priser",
+      why: "why",
+    });
+    // Samma-sida-inserts bär ALDRIG sourcePath (substräng-grenen gäller dem).
+    const plainIns = generateCandidates(model()).find((x) => x.kind === "insert_snippet")!;
+    expect("sourcePath" in candidateToOp(plainIns, "w")).toBe(false);
   });
 
   it("menyns insert-detail bär den städade texten (inte SSR-skarven)", () => {

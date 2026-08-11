@@ -15,6 +15,7 @@
 import { defuseMarkers } from "./defuse";
 import type { RedesignContentModel } from "./context";
 import type { RedesignOp } from "./generate";
+import type { ReuseSeed } from "./reuse";
 
 export interface Candidate {
   /** Stabilt id LLM-väljaren låses till ("mv-sec-3-testimonials", "ins-trusted_by-0"). */
@@ -28,6 +29,14 @@ export interface Candidate {
   score: number;
   /** Människoläsbar grund för poängen — går in i väljar-prompten som menyrad. */
   basis: string;
+  /** Återbrukskandidater (blockbiblioteket steg 2): sidan vars frysta
+   *  whitelist validerar citatet — följer med in i op.sourcePath så
+   *  validateOps exakta-likhets-gren och driftsvepet tar över orörda. */
+  sourcePath?: string;
+  /** Proveniensen för ett bevisat block: var det vann och vilken variant.
+   *  Renderas som BETRODD [proven:]-rad i menyn (vår egen data, inte
+   *  sidtext) och blir evidence.reuse när blocket överlever verify. */
+  proven?: { provedOnPath: string; variantId: string };
 }
 
 /** Bevisbärande sektionstyper i fallande säljvikt — testimonials är starkast
@@ -94,6 +103,17 @@ export const BEHAVIOR_GAIN = 40;
  *  familjerna. Svepet är körbart: `bun run reco-eval:floor`. */
 export const BEHAVIOR_SHRINK_N0 = 50;
 
+/** Återbrukskandidatens golv-poäng (blockbiblioteket steg 2). Härledd ur
+ *  prior-taken, inte tyckt: varje OBEVISAD prior-kombination når högst
+ *  3 (typ) + 1 (trust) + 0,4 (position) = 4,4 — ett block som VANN ett
+ *  riktigt A/B ska stå över alla obevisade priors. Men beteende-ledda
+ *  kandidater ska stå ÖVER återbruket: redan vid golv-n (30) adderar en
+ *  het sektion (w ≈ 0,3) 15·0,3 ≈ 4,5 och passerar. Ordningen är
+ *  principen från 2026-08-10-samtalet: målsidans egna besökare > importerat
+ *  bevis > obevisade priors. Överföringen är OBEVISAD tills cellens eget
+ *  test körts — poängen är en hypotes-rankning, aldrig ett facit. */
+export const REUSE_PROVEN_SCORE = 5;
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 /** Beteende-termen för en kandidat förankrad i sektion `sectionId`. 0 när
@@ -154,6 +174,7 @@ export function tidySignalText(raw: string): string {
 export function generateCandidates(
   content: RedesignContentModel,
   behavior?: BehaviorInput,
+  reuse?: ReuseSeed[],
 ): Candidate[] {
   const out: Candidate[] = [];
   const sectionIds = new Set(content.sections.map((s) => s.id));
@@ -171,7 +192,8 @@ export function generateCandidates(
       kind: "move_up",
       targetId: s.id,
       detail: "",
-      score: typeWeight + trustBonus + Math.min(s.position, 8) * 0.05 + behaviorTerm(behavior, s.id),
+      score:
+        typeWeight + trustBonus + Math.min(s.position, 8) * 0.05 + behaviorTerm(behavior, s.id),
       basis: `${s.type}${s.containsTrustSignals ? " [proof]" : ""} below the fold (position ${s.position}): "${s.heading.slice(0, 60)}"`,
     });
   }
@@ -225,6 +247,29 @@ export function generateCandidates(
     });
   }
 
+  // Återbrukskandidater (blockbiblioteket steg 2): vinnarnas bevisade block,
+  // erbjudna av nattloopen efter alla frö-vakter (mättnad, dubbelvisning,
+  // viabilitet). detail är ALDRIG trunkerad — validateOps kräver exakt
+  // likhet mot källsidans whitelist, och en klippt text hade fällts där.
+  // Dedup mot samma-sida-kandidaterna via samma seen-mängd: bär sidan redan
+  // texten som signal/rubrik är fröet överflödigt (uppströms-vakterna ska ha
+  // sållat det, men menyn får aldrig visa samma text två gånger).
+  (reuse ?? []).forEach((r, i) => {
+    const key = r.text.replace(/\s+/g, " ").toLowerCase().trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      id: `rins-${i}-${r.variantId.slice(0, 8)}`,
+      kind: "insert_snippet",
+      targetId: "hero",
+      detail: r.text,
+      sourcePath: r.sourcePath,
+      proven: { provedOnPath: r.provedOnPath, variantId: r.variantId },
+      score: REUSE_PROVEN_SCORE,
+      basis: `proven block from ${r.provedOnPath}: "${r.text.slice(0, 60)}"`,
+    });
+  });
+
   return out.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 }
 
@@ -233,7 +278,15 @@ export function generateCandidates(
 export function candidateToOp(c: Candidate, why: string): RedesignOp {
   return c.kind === "move_up"
     ? { op: "move_up", targetId: c.targetId, detail: "Move this section higher on the page", why }
-    : { op: "insert_snippet", targetId: "hero", detail: c.detail, why };
+    : {
+        op: "insert_snippet",
+        targetId: "hero",
+        detail: c.detail,
+        // Återbruk: källsidan följer med så validateOps kör exakta-likhets-
+        // grenen mot dess frysta whitelist (aldrig substräng mot målsidan).
+        ...(c.sourcePath ? { sourcePath: c.sourcePath } : {}),
+        why,
+      };
 }
 
 /** Golvets motivering när LLM-väljaren inte svarat — ärligt märkt som

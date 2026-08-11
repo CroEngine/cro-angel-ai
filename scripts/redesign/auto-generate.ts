@@ -73,6 +73,7 @@ import {
   segmentInsightFrom,
 } from "../../src/adaptive/redesign/context";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
+import { reuseSurvived } from "../../src/adaptive/redesign/reuse";
 import { withExtraLift } from "../../src/adaptive/redesign/extra-lift";
 import { tidySignalText } from "../../src/adaptive/redesign/candidates";
 import {
@@ -453,6 +454,11 @@ interface PlanIn {
    *  variantlista visar den för ägaren. Guardrail-svepet ser den aldrig
    *  (skyddsbeslut dömer på armar, inte härkomst). */
   planSource?: string;
+  /** Blockbiblioteket steg 2: cellens erbjudna återbruksfrön. Verify matchar
+   *  finalOps mot listan (reuseSurvived) och skriver evidence.reuse för det
+   *  block som faktiskt överlevde grind- och fallback-stegen — proveniensen
+   *  får aldrig hamna på en variant som slutade bära blocket. */
+  reuseOffers?: { variantId: string; provedOnPath: string; sourcePath: string; text: string }[];
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
 
@@ -482,7 +488,8 @@ function toMeasureOps(
 ): MeasureOp[] | null {
   const out: MeasureOp[] = [];
   for (const o of ops) {
-    const loc = o.op === "insert_snippet" ? heroLocatorFor(content) : locatorFor(content, o.targetId);
+    const loc =
+      o.op === "insert_snippet" ? heroLocatorFor(content) : locatorFor(content, o.targetId);
     if (!loc) return null;
     if (o.op === "move_up") {
       out.push({ op: "move_up", tag: loc.tag, find: loc.text });
@@ -899,7 +906,9 @@ try {
       // Ärlig spårbarhet: varje nej ska synas i loggen, inte tystna.
       console.log(
         `  ${plan.path} × ${plan.key}: reserven "${label}" hölls också — ${
-          fb.unresolvable ? "lokatorn kunde inte upplösas" : (fbLast.gate.reasons[0] ?? "grind föll")
+          fb.unresolvable
+            ? "lokatorn kunde inte upplösas"
+            : (fbLast.gate.reasons[0] ?? "grind föll")
         }`,
       );
       await fctx.close();
@@ -1071,7 +1080,11 @@ try {
           break;
         }
         const egate = evaluateRenderGates(toRenderMeasurements(eraw));
-        exemplarConfirmations.push({ path: ex.path, verdict: egate.verdict, reasons: egate.reasons });
+        exemplarConfirmations.push({
+          path: ex.path,
+          verdict: egate.verdict,
+          reasons: egate.reasons,
+        });
         await ectx.close();
         if (egate.verdict !== "pass") break;
       }
@@ -1170,6 +1183,15 @@ try {
       dependencies: finalOps
         .filter((o) => o.op === "insert_snippet" && o.sourcePath)
         .map((o) => ({ path: o.sourcePath!, textSnapshot: o.detail })),
+      // Blockbiblioteket steg 2: proveniensen skrivs BARA när det bevisade
+      // blocket faktiskt överlevde till finalOps (alt-stegen/bevis-lyftet kan
+      // ha bytt ut det) — matchning på exakt text + källsida, aldrig antagande.
+      ...(() => {
+        const survived = (plan.reuseOffers ?? []).find((r) => reuseSurvived(finalOps, r));
+        return survived
+          ? { reuse: { variantId: survived.variantId, provedOnPath: survived.provedOnPath } }
+          : {};
+      })(),
       comparison: {
         headline: measureOps.find((o) => o.op === "set_text" && o.tag === "h1")?.set ?? null,
         orderBefore: last.measurements.beforeOrder,

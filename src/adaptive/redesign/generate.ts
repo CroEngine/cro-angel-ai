@@ -99,8 +99,10 @@ function groundingCorpus(ctx: RedesignContext): string {
 /** Validate raw LLM ops against the guardrails + content model. Pure. Every
  *  surviving op is expressible as a reversible op on EXISTING content. */
 /** Whitespace-normalisering för ordagrann-jämförelsen — radbrytningar i markup
- *  ändrar inte vad som ORDAGRANT står på källsidan. */
-const normQuote = (s: string) => s.replace(/\s+/g, " ").trim();
+ *  ändrar inte vad som ORDAGRANT står på källsidan. Exporterad: blockbibliotekets
+ *  återbruk (reuse.ts) MÅSTE jämföra med exakt samma norm som valideringen —
+ *  en egen kopia hade kunnat drifta och erbjuda frön som valideringen fäller. */
+export const normQuote = (s: string): string => s.replace(/\s+/g, " ").trim();
 
 export function validateOps(rawOps: unknown[], ctx: RedesignContext): RedesignPlan {
   const allowed = new Set(ctx.guardrails.ops);
@@ -187,7 +189,8 @@ export function validateOps(rawOps: unknown[], ctx: RedesignContext): RedesignPl
       if (!detail || !normQuote(corpus).toLowerCase().includes(normQuote(detail).toLowerCase())) {
         rejected.push({
           op: raw,
-          reason: "insert text is not VERBATIM content from this page (paraphrases are invented content)",
+          reason:
+            "insert text is not VERBATIM content from this page (paraphrases are invented content)",
         });
         continue;
       }

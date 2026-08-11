@@ -98,8 +98,12 @@ export function buildSelectionPrompt(args: {
   const L: string[] = [];
   L.push("Choose the ONE best change for this visitor segment from the MENU below.");
   L.push("");
-  L.push(`Visitor segment: ${args.segmentLabel}`);
-  for (const o of args.observations) L.push(`- ${o}`);
+  // Avväpnade vid enda chokepointen (granskningsfynd 2026-08-11): segment-
+  // etiketten och observationerna bär härledd text — ingen legitim rad
+  // innehåller någonsin en systemmarkör, så avväpningen är förlustfri och
+  // stänger alla tre betrodda markörerna även här.
+  L.push(`Visitor segment: ${defuseMarkers(args.segmentLabel)}`);
+  for (const o of args.observations) L.push(`- ${defuseMarkers(o)}`);
   // Hjälte-rubriken är ORDAGRANN sidtext precis som basis — märkningen
   // "untrusted" räcker inte när texten kan bära systemets EGNA markörer
   // (granskningsfynd 2026-08-08: avväpningen satt bara på menyraderna).
@@ -157,8 +161,16 @@ export function buildSelectionPrompt(args: {
     // säkerhetspåståendet.
     // Delad avväpning (defuse.ts) — samma funktion vaktar ägarens vy.
     const safeBasis = defuseMarkers(c.basis);
+    // Återbruksraden (blockbiblioteket steg 2): BETRODD markör — proveniensen
+    // är vår egen DB-data, inte sidtext. Pathen avväpnas ändå (en besökar-URL
+    // kan i princip bära markörtecken), och raden säger ÄRLIGT att
+    // överföringen är obevisad: väljaren ska väga ett riktigt testutfall
+    // någon annanstans mot målsidans egna signaler, inte läsa det som facit.
+    const provenLine = c.proven
+      ? ` [proven: this exact text won its A/B test on ${defuseMarkers(c.proven.provedOnPath)} — transfer to THIS page is unproven until tested here]`
+      : "";
     L.push(
-      `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${safeBasis}${engLine}${gateLine}`,
+      `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${safeBasis}${provenLine}${engLine}${gateLine}`,
     );
   }
   L.push(

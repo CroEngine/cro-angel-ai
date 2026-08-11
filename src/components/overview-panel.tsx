@@ -814,8 +814,8 @@ export function OverviewPanel({
                         SIDA, så gruppens sajtsumma kan se "klar" ut medan ingen
                         enskild sida bär volymen. Visa progressen mot det som
                         faktiskt låser upp — bästa sidan mot per-sida-grinden. */}
-                    None yet — Angel designs per page, and proposes one once a single page
-                    gathers enough of this group.
+                    None yet — Angel designs per page, and proposes one once a single page gathers
+                    enough of this group.
                     {sel.bestPage ? (
                       <div className="mt-2.5 flex items-center gap-2.5 text-[12px]">
                         <span className="flex-none text-stone-500">Closest page:</span>
@@ -885,6 +885,22 @@ export function OverviewPanel({
                                       title={`Plan source: ${v.planSource}`}
                                     >
                                       {planSourceLabel(v.planSource)}
+                                    </span>
+                                  </>
+                                ) : null}
+                                {/* Blockbibliotekets proveniens: återbrukat
+                                    bevisat block — ägaren ska se VAR det vann.
+                                    Överföringen hit är obevisad tills cellens
+                                    eget A/B körts (tooltip säger det rakt ut). */}
+                                {v.reusedFrom ? (
+                                  <>
+                                    {" "}
+                                    <span className="text-[#c4beb6]">·</span>{" "}
+                                    <span
+                                      className="text-emerald-700"
+                                      title={`Reused proven block: this exact text won its A/B test on ${v.reusedFrom}. Whether it works on THIS page is unproven until this test runs.`}
+                                    >
+                                      reused · won on {v.reusedFrom}
                                     </span>
                                   </>
                                 ) : null}
@@ -1320,7 +1336,9 @@ function JourneyCard({ journey }: { journey: JourneyMilestone[] }) {
   const current = journey.find((m) => m.state === "current");
 
   return (
-    <div className={`rounded-2xl border border-stone-200 bg-white ${minimized ? "px-6 py-4" : "p-6"}`}>
+    <div
+      className={`rounded-2xl border border-stone-200 bg-white ${minimized ? "px-6 py-4" : "p-6"}`}
+    >
       <button
         type="button"
         onClick={toggle}
@@ -1341,57 +1359,62 @@ function JourneyCard({ journey }: { journey: JourneyMilestone[] }) {
         </div>
       )}
       {minimized ? null : (
-      <ol className="mt-4 space-y-0">
-        {journey.map((m, i) => {
-          const showDetail = m.state === "current" || i === lastDoneIdx;
-          return (
-            <li key={m.id} className="relative flex gap-3 pb-3 last:pb-0">
-              {i < journey.length - 1 && (
-                <span
-                  className="absolute left-[7px] top-5 h-full w-px"
-                  style={{ background: m.state === "done" ? "#a7f3d0" : "#e7e5e4" }}
-                />
-              )}
-              <span
-                className="relative mt-1 flex h-[15px] w-[15px] flex-none items-center justify-center rounded-full text-[9px] font-bold"
-                style={{
-                  background:
-                    m.state === "done" ? "#047857" : m.state === "current" ? "#ecfdf5" : "#f5f5f4",
-                  color: m.state === "done" ? "#fff" : "#a8a29e",
-                  border: m.state === "current" ? "1.5px solid #047857" : "1.5px solid transparent",
-                }}
-              >
-                {m.state === "done" ? "✓" : ""}
-                {m.state === "current" && (
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-700" />
+        <ol className="mt-4 space-y-0">
+          {journey.map((m, i) => {
+            const showDetail = m.state === "current" || i === lastDoneIdx;
+            return (
+              <li key={m.id} className="relative flex gap-3 pb-3 last:pb-0">
+                {i < journey.length - 1 && (
+                  <span
+                    className="absolute left-[7px] top-5 h-full w-px"
+                    style={{ background: m.state === "done" ? "#a7f3d0" : "#e7e5e4" }}
+                  />
                 )}
-              </span>
-              <div className="min-w-0">
-                <div
-                  className={`text-[13px] font-semibold ${
-                    m.state === "upcoming"
-                      ? "text-stone-400"
-                      : m.state === "current"
-                        ? "text-stone-900"
-                        : "text-stone-600"
-                  }`}
+                <span
+                  className="relative mt-1 flex h-[15px] w-[15px] flex-none items-center justify-center rounded-full text-[9px] font-bold"
+                  style={{
+                    background:
+                      m.state === "done"
+                        ? "#047857"
+                        : m.state === "current"
+                          ? "#ecfdf5"
+                          : "#f5f5f4",
+                    color: m.state === "done" ? "#fff" : "#a8a29e",
+                    border:
+                      m.state === "current" ? "1.5px solid #047857" : "1.5px solid transparent",
+                  }}
                 >
-                  {m.title}
-                </div>
-                {showDetail && (
-                  <p
-                    className={`mt-0.5 text-[12.5px] leading-relaxed ${
-                      m.state === "current" ? "text-stone-600" : "text-stone-400"
+                  {m.state === "done" ? "✓" : ""}
+                  {m.state === "current" && (
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-700" />
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <div
+                    className={`text-[13px] font-semibold ${
+                      m.state === "upcoming"
+                        ? "text-stone-400"
+                        : m.state === "current"
+                          ? "text-stone-900"
+                          : "text-stone-600"
                     }`}
                   >
-                    {m.detail}
-                  </p>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+                    {m.title}
+                  </div>
+                  {showDetail && (
+                    <p
+                      className={`mt-0.5 text-[12.5px] leading-relaxed ${
+                        m.state === "current" ? "text-stone-600" : "text-stone-400"
+                      }`}
+                    >
+                      {m.detail}
+                    </p>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       )}
     </div>
   );

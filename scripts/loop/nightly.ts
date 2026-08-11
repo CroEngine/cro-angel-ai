@@ -24,11 +24,16 @@ import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/g
 import { buildCandidatePlan } from "./candidate-plan";
 import { catalogEligible, cellWorkDir, planRow } from "./cell-plan";
 import { fetchSectionBehavior } from "./section-behavior";
-import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import {
-  extractContentModel,
-  extractQuotables,
-} from "../../src/adaptive/redesign/extract";
+  filterViableSeeds,
+  flattenHtml,
+  harvestReuseSeeds,
+  offerSeedsForCell,
+  type ReuseSeed,
+  type ReuseVariantRow,
+} from "../../src/adaptive/redesign/reuse";
+import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
+import { extractContentModel, extractQuotables } from "../../src/adaptive/redesign/extract";
 import { filterToTemplateSections } from "../../src/adaptive/redesign/template-content";
 import {
   DRIFT_HOLD_PREFIX,
@@ -115,7 +120,13 @@ for (const site of targets) {
       .from("angel_variants")
       .select("id,path,segment_key,status,held_reason,ops,evidence,success,required_cohorts")
       .eq("site", site.slug)
-      .neq("status", "retired");
+      .neq("status", "retired")
+      // Deterministisk ordning (granskningsfynd 2026-08-11): utan ORDER BY
+      // var återbrukets text-dedup ("äldsta vinnaren äger blocket"),
+      // per-cell-taket och rins-id:na körningsberoende. created_at + id
+      // (uuid-tiebreak vid transaktionslika tider) ger en total ordning.
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true });
     // Sidflödet (korssid-lyftets signal, task #117): "andel av segmentet som
     // landar på P och senare når Q". Tomt är ett ÄRLIGT utfall (ensidiga
     // sessioner) — detect-steget kräver volym innan observationen skrivs.
@@ -187,10 +198,15 @@ for (const site of targets) {
     // omverifieringen. Mängden är liten (max en källa + en landning per
     // beroende-variant), så taket behåller sin mening för rullnings-toppen.
     const depVariants = (variants ?? []).filter((v) => dependenciesOf(v.evidence).length > 0);
+    // Blockbiblioteket steg 2: vinnarnas bevisade block skördas HÄR (samma
+    // radläsning som drift-svepet) — deras källsidor måste också frysas, för
+    // ett frö vars whitelist inte kan byggas om är inget erbjudande.
+    const reuseSeeds = harvestReuseSeeds(variants ?? []);
     const depPaths = [
-      ...new Set(
-        depVariants.flatMap((v) => [v.path, ...dependenciesOf(v.evidence).map((d) => d.path)]),
-      ),
+      ...new Set([
+        ...depVariants.flatMap((v) => [v.path, ...dependenciesOf(v.evidence).map((d) => d.path)]),
+        ...reuseSeeds.map((s) => s.sourcePath),
+      ]),
     ];
     // Taket höjt 15 → 20 när resesidorna kom in (spelarens backdrops) —
     // resesidorna står SIST i prioritetsordningen och tar bara platser som
@@ -254,6 +270,46 @@ for (const site of targets) {
     }
     writeFileSync(join(dir, "pages.json"), JSON.stringify(pages));
 
+    // Blockbiblioteket steg 2 — VIABILITETSKOLLEN (ren funktion i reuse.ts,
+    // testbar): ett frö erbjuds bara om vinnartexten fortfarande finns i
+    // källsidans NYFRYSTA quotables-whitelist (samma dom som driftsvepet,
+    // samma likhet som validateOps). Sållning är synlig i loggen, aldrig tyst.
+    const quotablesCache = new Map<string, string[] | null>();
+    const quotablesFor = (sourcePath: string): string[] | null => {
+      if (!quotablesCache.has(sourcePath)) {
+        const srcFile = pages[sourcePath];
+        quotablesCache.set(
+          sourcePath,
+          srcFile
+            ? extractQuotables(readFileSync(srcFile, "utf8")).snippets.map((s) => s.text)
+            : null,
+        );
+      }
+      return quotablesCache.get(sourcePath)!;
+    };
+    const { viable: viableReuseSeeds, dropped: droppedSeeds } = filterViableSeeds(
+      reuseSeeds,
+      quotablesFor,
+    );
+    for (const d of droppedSeeds) {
+      console.log(
+        d.reason === "unfrozen"
+          ? `[loop] ${site.slug}: återbruksfrö från ${d.seed.provedOnPath} sållas — källsidan ${d.seed.sourcePath} kunde inte frysas`
+          : `[loop] ${site.slug}: återbruksfrö från ${d.seed.provedOnPath} sållas — texten finns inte längre i ${d.seed.sourcePath}:s whitelist (driftsvepet tar vinnaren)`,
+      );
+    }
+    if (viableReuseSeeds.length > 0) {
+      console.log(
+        `[loop] ${site.slug}: ${viableReuseSeeds.length} bevisat block redo för återbruk (av ${reuseSeeds.length} skördade)`,
+      );
+    }
+    // Nattens maskinella holds (granskningsfynd 2026-08-11): skörden läste
+    // start-snapshotens held_reason, men guardrail-/driftsvepen nedanför kan
+    // hålla en vinnare I NATT — och ett hållet bevis är inget bevis. Varje
+    // hold registreras här och sållas vid erbjudandet. Deklarerad FÖRE
+    // svepets try (scoping-läxan 2026-07-26 — läses efter catch:en).
+    const heldTonight = new Set<string>();
+
     // 2b. Självläkningen (korssid-lyftet slice 3, ägarbeslut 2026-07-18):
     //     varianter vars insatta citat pekar på en källsida kontrolleras mot
     //     nattens NYFRYSTA kopia. Källtext kvar → inget händer (eller vårt
@@ -288,6 +344,11 @@ for (const site of targets) {
         }
       }
       const holdVariant = async (id: string, label: string, reason: string) => {
+        // Återbruket sållar nattens holds vid erbjudandet — registrera FÖRE
+        // db-skrivningen så sållningen håller även om uppdateringen faller
+        // (konservativ riktning: hellre ett tappat erbjudande än ett hållet
+        // "bevis" i menyn).
+        heldTonight.add(id);
         const heldAt = new Date().toISOString();
         await db
           .from("angel_variants")
@@ -499,6 +560,11 @@ for (const site of targets) {
           // varje refresh tyst nollställt variantens härkomst. Källan är
           // OFÖRÄNDRAD av en textuppdatering, så gamla värdet är sanningen.
           planSource: typeof ev.planSource === "string" ? ev.planSource : "designer",
+          // Blockbiblioteket steg 2 (granskningsfynd 2026-08-11): en drift-
+          // uppdaterad vinnare bär text som ALDRIG körde sitt A/B — vinsten
+          // tillhör den gamla lydelsen. Markören stoppar återbruksskörden
+          // från att sätta [proven:]-etiketten på den nya texten.
+          refreshedAt: new Date().toISOString(),
         };
         const { error: updErr } = await db
           .from("angel_variants")
@@ -607,6 +673,21 @@ for (const site of targets) {
     //    generateRedesign validerar (verb, mål-finns, claims-vakten) — ops som
     //    faller åker ut här och cellen får försöka igen en annan natt.
     const plans: unknown[] = [];
+    // Blockbiblioteket steg 2 — nattens egna erbjudanden räknas (gransknings-
+    // fynd 2026-08-11): mättnadstaket och redan-här-vakten dömde annars mot
+    // start-snapshoten, så EN natt kunde erbjuda samma block till fler celler
+    // än taket tillåter. Varje cell vars plan bär erbjudanden lägger
+    // syntetiska rader i offerRows, som nästa cell dömer mot. Att räkna
+    // ERBJUDANDEN (inte adopterade varianter) är den konservativa riktningen.
+    const offerRows: ReuseVariantRow[] = [...(variants ?? [])];
+    // Nattens holds sållas EN gång, synligt — inte per cell (logg-brus).
+    const offerableSeeds = viableReuseSeeds.filter((s) => {
+      if (!heldTonight.has(s.variantId)) return true;
+      console.log(
+        `[loop] ${site.slug}: återbruksfrö från ${s.provedOnPath} sållas — vinnaren hölls i nattens svep (ett hållet bevis är inget bevis)`,
+      );
+      return false;
+    });
     for (const b of earned.briefed) {
       // Mall-celler: designen byggs ur representant-exemplaret, FILTRERAT till
       // mall-snittet — designern kan bara måla mot sektioner som finns på alla
@@ -656,7 +737,8 @@ for (const site of targets) {
         const srcFile = pages[sp];
         if (!srcFile) continue;
         const q = extractQuotables(readFileSync(srcFile, "utf8"));
-        if (q.snippets.length > 0) sourcePages.push({ path: sp, snippets: q.snippets, kind: q.kind });
+        if (q.snippets.length > 0)
+          sourcePages.push({ path: sp, snippets: q.snippets, kind: q.kind });
       }
       // KATALOGEN FÖRST (steg 11-konvergensen — planens sista steg): samma
       // superset som preview/fleet kör sedan kandidatkatalogen 2026-07-27 —
@@ -673,6 +755,12 @@ for (const site of targets) {
       let planOps: RedesignOp[] | null = null;
       let planAltOps: RedesignOp[][] = [];
       let planSource = "designer";
+      // Blockbiblioteket steg 2: cellens erbjudna återbruksfrön — fylls bara
+      // på katalogvägen (designer-/mall-celler får inga i v1), men läses vid
+      // planRow-bygget nedanför, så deklarationen bor här (scoping-läxan
+      // 2026-07-26: let-i-try + användning efter är en körtidsbomb tsc
+      // aldrig ser i scripts/).
+      let cellReuse: ReuseSeed[] = [];
       // KORSSID-CELLERNA STANNAR HOS DESIGNERN (granskningsfynd 2026-08-08):
       // en cell som FÖRTJÄNATS på pris-flödessignalen (detect ger den
       // sourcePaths, och nattloopen fryser flödesmålen just för den) kan bara
@@ -685,7 +773,10 @@ for (const site of targets) {
       // loggade bara katalog-vägen, så en natt där alla celler var mall-celler
       // såg identisk ut med "katalogen körde och valde ingenting". Operatören
       // ska kunna läsa VARFÖR ur loggen, inte gissa ur frånvaron av rader.
-      const eligibility = catalogEligible({ isTemplate: isTpl, crossPageSources: sourcePages.length });
+      const eligibility = catalogEligible({
+        isTemplate: isTpl,
+        crossPageSources: sourcePages.length,
+      });
       if (eligibility.skip === "template") {
         console.log(
           `[loop] ${site.slug} ${b.path}×${b.key}: mall-cell (${b.templatePages?.length ?? 0} exemplar) — designern äger den, katalogen hoppas över (v1)`,
@@ -702,6 +793,20 @@ for (const site of targets) {
         const cellDir = cellWorkDir(dir, b.path, b.key);
         mkdirSync(cellDir, { recursive: true });
         const behavior = await fetchSectionBehavior(db, site.slug, pagePath, content.sections);
+        // Blockbiblioteket steg 2: cellens återbrukserbjudanden — frö-vakterna
+        // (egen sida, dubbelvisning, redan-här, mättnadstak) döms i
+        // offerSeedsForCell mot den frysta målsidan + sajtens variantrader.
+        cellReuse = offerSeedsForCell({
+          seeds: offerableSeeds,
+          cellPath: b.path,
+          landingFlatHtml: flattenHtml(readFileSync(page, "utf8")),
+          rows: offerRows,
+        });
+        if (cellReuse.length > 0) {
+          console.log(
+            `[loop] ${site.slug} ${b.path}×${b.key}: ${cellReuse.length} bevisat block i menyn (från ${cellReuse.map((s) => s.provedOnPath).join(", ")})`,
+          );
+        }
         const candPlan = await buildCandidatePlan({
           content,
           frozenPath: page,
@@ -709,6 +814,7 @@ for (const site of targets) {
           segmentLabel: dims.join(" · "),
           observations: b.observations,
           behavior: behavior ?? undefined,
+          reuse: cellReuse.length > 0 ? cellReuse : undefined,
           // Ägarens mål ur angel_sites — probens grind vaktar samma element
           // som verify (måltext + mål-selector), aldrig en delmängd.
           goal: {
@@ -759,6 +865,23 @@ for (const site of targets) {
       // Raden byggs av den RENA producenten (cell-plan.ts) — samma funktion
       // som gränssnitts-testet matar verify med, så plans.json-formen inte kan
       // glida isär från PlanIn utan att ett test faller.
+      // Blockbiblioteket steg 2: planRow äger gate-beslutet (källsidornas
+      // union in i sourcePaths + reuseOffers bara på katalog-planer) —
+      // uttrycket här styr enbart nattens offerRows-ackumulator.
+      const catalogRanWithReuse = planSource.startsWith("katalog") && cellReuse.length > 0;
+      // Nattens erbjudanden in i vakternas underlag (se offerRows ovan):
+      // syntetiska icke-pensionerade rader med exakt den form seedSaturated/
+      // alreadyHere räknar på (path + insert-detail).
+      if (catalogRanWithReuse) {
+        for (const s of cellReuse) {
+          offerRows.push({
+            id: `natt-erbjudande-${s.variantId}-${b.path}-${b.key}`,
+            path: b.path,
+            status: "verified",
+            ops: [{ op: "insert_snippet", detail: s.text, sourcePath: s.sourcePath }],
+          });
+        }
+      }
       plans.push(
         planRow({
           path: b.path,
@@ -776,6 +899,9 @@ for (const site of targets) {
           altOps: planAltOps,
           // Provenance: ekas genom verify in i variantens evidence.
           planSource,
+          // Återbrukserbjudandena — planRow gate:ar dem på planSource och
+          // unionar källsidorna in i sourcePaths (verify:s whitelist).
+          ...(cellReuse.length > 0 ? { reuseOffers: cellReuse } : {}),
           cohorts: b.cohorts,
         }),
       );

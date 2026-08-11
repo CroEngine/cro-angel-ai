@@ -40,10 +40,10 @@ export type CatalogSkip = "template" | "cross-page";
  *    betjänas av den fria designern — katalogen genererar enbart drag på den
  *    egna sidan och kan aldrig citera en annan sida (och utan citatet finns
  *    inga evidence.dependencies, så drift-självläkningen tystnar också). */
-export function catalogEligible(args: {
-  isTemplate: boolean;
-  crossPageSources: number;
-}): { eligible: boolean; skip: CatalogSkip | null } {
+export function catalogEligible(args: { isTemplate: boolean; crossPageSources: number }): {
+  eligible: boolean;
+  skip: CatalogSkip | null;
+} {
   if (args.isTemplate) return { eligible: false, skip: "template" };
   if (args.crossPageSources > 0) return { eligible: false, skip: "cross-page" };
   return { eligible: true, skip: null };
@@ -67,22 +67,42 @@ export interface PlanRowInput {
   /** "katalog/selector" | "katalog/floor" | "designer" — ALLTID med, så en
    *  variant aldrig föds utan känd härkomst. */
   planSource: string;
+  /** Blockbiblioteket steg 2: cellens ERBJUDNA återbruksfrön (inte bara det
+   *  valda — verify:s alt-stege kan adoptera en återbruksreserv, och även
+   *  den ska bära sin proveniens). Verify matchar finalOps mot listan
+   *  (reuseSurvived) och skriver evidence.reuse för det block som faktiskt
+   *  överlevde — aldrig en etikett på något som föll i fallback-stegen.
+   *  planRow äger gate-beslutet: erbjudandena (och deras källsidors union in
+   *  i sourcePaths — verify:s whitelist byggs ur den) följer bara med när
+   *  KATALOGEN körde (planSource "katalog/…"). En designer-plan föreslog
+   *  aldrig återbruk, och en union där hade bara vidgat whitelisten i onödan. */
+  reuseOffers?: { variantId: string; provedOnPath: string; sourcePath: string; text: string }[];
 }
 
 /** Raden verify läser. Formen är kontraktet — fältnamnen här måste matcha
  *  PlanIn i auto-generate.ts exakt. */
 export function planRow(input: PlanRowInput): Record<string, unknown> {
   const isTpl = Array.isArray(input.templatePages) && input.templatePages.length >= 2;
+  // Återbruks-gaten (se PlanRowInput.reuseOffers): bara katalog-planer bär
+  // erbjudanden, och deras källsidor unionas in i sourcePaths så verify:s
+  // contextFor bygger whitelisten som validerar dem.
+  const reuse =
+    input.planSource.startsWith("katalog") && input.reuseOffers && input.reuseOffers.length > 0
+      ? input.reuseOffers
+      : null;
   return {
     path: input.path,
     key: input.key,
     total: input.total,
     observations: input.observations,
-    sourcePaths: input.sourcePaths ?? [],
+    sourcePaths: reuse
+      ? [...new Set([...(input.sourcePaths ?? []), ...reuse.map((r) => r.sourcePath)])]
+      : (input.sourcePaths ?? []),
     ...(isTpl ? { templatePages: input.templatePages, repPath: input.repPath } : {}),
     ops: input.ops,
     ...(input.altOps && input.altOps.length > 0 ? { altOps: input.altOps } : {}),
     planSource: input.planSource,
+    ...(reuse ? { reuseOffers: reuse } : {}),
     cohorts: input.cohorts,
   };
 }
