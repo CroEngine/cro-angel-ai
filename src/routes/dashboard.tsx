@@ -298,6 +298,7 @@ function Dashboard() {
               otherDomains={d.otherDomains ?? []}
               servingOn={d.siteConfig.servingEnabled}
               journey={d.journey ?? []}
+              topSections={d.metrics.topSections ?? []}
             />
           </>
         )}

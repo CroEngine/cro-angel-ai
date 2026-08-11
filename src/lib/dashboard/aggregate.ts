@@ -7,6 +7,12 @@
 // dashboard.functions.ts feeds it real rows from Supabase.
 
 import { stripQueryHash } from "../../adaptive/harvest/sanitize";
+import { BEHAVIOR_SHRINK_N0 } from "../../adaptive/redesign/candidates";
+import { MIN_SECTION_VISITS } from "../../adaptive/redesign/engagement-rollup";
+import {
+  aggregateSectionObservations,
+  type SectionEngagementPayload,
+} from "../../adaptive/redesign/section-events";
 import { APPLY_SKIP_REASONS, type ApplySkipReason } from "../../adaptive/types";
 import {
   RETURNING_TOKEN,
@@ -245,6 +251,10 @@ export interface DashboardMetrics {
   /** Fas 2: besökargrupper (kanal×enhet×land×ny/återkommande), grov→fin, med
    *  utfall + datatillräcklighet. Insikt-substrat — ingen adaptation. */
   segmentGroups: SegmentSummary[];
+  /** Blockbibliotekets läsvy (ägarfråga 2026-08-10 "mest omtyckta styckena"):
+   *  sajtens mest engagerande sektioner över alla sidor, ur censusen. Tom
+   *  tills sektioner klarar evidensgolvet. */
+  topSections: TopSection[];
 }
 
 /** En upprullad sajtsökning. Termen är server-skrubbad (cleanText: mejl +
@@ -331,6 +341,77 @@ export function armStatValid(exposures: number, conversions: number): boolean {
 }
 
 const armValid = (s: VariantStat): boolean => armStatValid(s.exposures, s.conversions);
+
+// ── Blockbibliotekets läsvy: mest engagerande sektioner ──────────────────────
+// Ägarfrågan 2026-08-10: "mest omtyckta styckena — så vi visar det folk vill
+// se". Detta är LÄSVYN (steg 1 av blockbiblioteket): censusens mätning rankad
+// och synlig för ägaren. Ingen adaptation följer av listan — återanvändnings-
+// kandidater (steg 2) går genom hela bevis-kedjan när de byggs.
+//
+// ÄRLIGHETEN: "engagemang" är andel laddningar där sektionen var synlig ≥1 s
+// (censusens definition, INTE bevisad konvertering — attribution utan test är
+// positionsbias). Bara organiska laddningar räknas (arm-markören stängslar
+// vår egen omflyttning), bara sektioner över samma evidensgolv som sätet, och
+// SORTERINGEN är evidensviktad med samma krympning som sätet — en 30-
+// laddningars 90 % får inte stå över en 5000-laddningars 80 %.
+
+/** En rad i läsvyn: rubriken är server-skrubbad sidtext (cleanText i
+ *  buildEventRows) — aldrig rå besökardata. */
+export interface TopSection {
+  path: string;
+  heading: string;
+  /** Andel av sektionens exponerade laddningar med ≥1 s synlighet [0,1]. */
+  engagement: number;
+  /** Laddningar bakom mätningen — omfånget är en del av sanningen. */
+  visits: number;
+}
+
+export const MAX_TOP_SECTIONS = 10;
+
+/** Sajtens mest engagerande sektioner över alla sidor i det lästa fönstret.
+ *  Ren funktion över redan städade events — delar aggregeringen med rollupen
+ *  (aggregateSectionObservations) så "engagemang" betyder EXAKT samma sak i
+ *  menyn, sätet och ägarvyn. */
+export function topSections(events: DashEvent[], limit = MAX_TOP_SECTIONS): TopSection[] {
+  // Gruppera per sida — census-payloaden är per laddning av EN path.
+  const byPath = new Map<string, SectionEngagementPayload[]>();
+  for (const e of events) {
+    if (e.type !== "section_engagement") continue;
+    const p = e.payload as SectionEngagementPayload & { path?: unknown };
+    // Arm-stängslet: laddningar med tillämpad variant mäter VÅR omflyttning,
+    // inte besökarnas preferens. Omärkta äldre rader passerar (dashboarden
+    // har inget exponeringsuppslag — nattloopens rollup är den strikta
+    // vägen); riktiga sajter kör markör-snippeten sedan 2026-08-08.
+    if (p.adapted === 1 || p.adapted === true) continue;
+    const path = typeof p.path === "string" && p.path.length > 0 ? p.path : "/";
+    const arr = byPath.get(path) ?? [];
+    arr.push(p);
+    byPath.set(path, arr);
+  }
+  const rows: TopSection[] = [];
+  for (const [path, payloads] of byPath) {
+    for (const obs of aggregateSectionObservations(payloads)) {
+      // Samma domar som rollupen: under evidensgolvet ⇒ ingen rad (brus-
+      // siffror visas aldrig); dubblettrubriker (FLERTYDIG) ⇒ aldrig — två
+      // sektioner poolade under en rubrik är ingen mätning av någon av dem.
+      if (obs.visits < MIN_SECTION_VISITS) continue;
+      if ((obs.instances ?? 1) > 1) continue;
+      rows.push({ path, heading: obs.heading, engagement: obs.engagement, visits: obs.visits });
+    }
+  }
+  // Evidensviktad sortering (sätets krympning): visa rå andel + n, ranka på
+  // andel·n/(n+N0) — annars toppar tunt brus listan.
+  const score = (r: TopSection) => r.engagement * (r.visits / (r.visits + BEHAVIOR_SHRINK_N0));
+  return rows
+    .sort(
+      (a, b) =>
+        score(b) - score(a) ||
+        b.visits - a.visits ||
+        // Pinnad locale — samma determinism-regel som section-events sorterar med.
+        a.heading.localeCompare(b.heading, "sv"),
+    )
+    .slice(0, limit);
+}
 
 // ── Utspädningsdiagnostiken (flimmervakten 2026-08-10) ───────────────────────
 // variant_apply_skipped = en laddning där exponeringen loggades som visad
@@ -1642,6 +1723,7 @@ export function aggregate(
     rageClicks: rageSignals(events),
     searches: siteSearches(events),
     segmentGroups: segmentSummaries(allSessions),
+    topSections: topSections(events),
   };
 }
 
