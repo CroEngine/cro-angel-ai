@@ -38,3 +38,10 @@ export const CORPUS_DOMAINS: string[] = [
   "zendesk.com","intercom.com","twilio.com","okta.com","datadoghq.com","snowflake.com",
   "databricks.com","confluent.io","hashicorp.com","gitpod.io","replit.com","huggingface.co",
 ];
+
+/** Katalognamnet för en domän — den DELADE härledningen (granskningsfynd
+ *  2026-08-12: tre inline-kopior av uttrycket kunde drifta var för sig, och
+ *  freeze-corpus katalog-först-vinner mot link-corpus Map-sist-vinner kunde
+ *  då para en fryst sida med fel URL — tyst). */
+export const nameForDomain = (d: string): string =>
+  d.replace(/\.[a-z.]+$/, "").replace(/[^a-z0-9]/gi, "-");

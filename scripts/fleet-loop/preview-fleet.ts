@@ -17,17 +17,29 @@
 // där styrs urvalet i stället med --offset/--limit (vågkörning).
 //
 //   bun run scripts/fleet-loop/preview-fleet.ts [--limit=N] [--offset=N]
-//     [--only=namn1,namn2] [--conc=3]
+//     [--only=namn1,namn2] [--conc=3] [--sites-file=sites.json]
+//     [--fake-traffic=1] [--seed-base=1]
 //
 // Kräver ANTHROPIC_API_KEY (designern). BROWSERBASE_* frivilligt (SPA-frys).
+//
+// FULLSKALETESTET (ägarbeslut 2026-08-12): --fake-traffic=1 syntetiserar
+// besökardata per sida (traffic-sim.ts: dold sanning → census-payloads →
+// produktionens aggregering/rollup → BehaviorInput) och matar sätet — som om
+// snippeten varit installerad och trafiken rullat. Resultatraden bär facit
+// (guldsektionen) + utfallet (behaviorFollowed), så analysen kan mäta om
+// motorn flyttar det besökarna faktiskt engagerade i. Utan ANTHROPIC_API_KEY
+// är körningen HELT deterministisk (golv-väljaren; ingen designer-reserv).
+// --sites-file kör en egen [{name,url}]-lista (t.ex. en redan fryst korpus).
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { FLEET_SITES as SITES } from "./fleet-sites";
+import { FLEET_SITES } from "./fleet-sites";
+import { fakeTrafficForPage, seedForSite } from "./traffic-sim";
 import { anthropicDesigner } from "../loop/designer";
 import { buildCandidatePlan } from "../loop/candidate-plan";
+import type { BehaviorInput } from "../../src/adaptive/redesign/candidates";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { extractContentModel } from "../../src/adaptive/redesign/extract";
@@ -39,8 +51,25 @@ const ONLY = arg("only")?.split(",").filter(Boolean);
 const LIMIT = arg("limit") ? Number(arg("limit")) : undefined;
 const OFFSET = arg("offset") ? Number(arg("offset")) : 0;
 const CONC = Math.max(1, Number(arg("conc") ?? 3));
+const FAKE_TRAFFIC = arg("fake-traffic") === "1";
+const SEED_BASE = Number(arg("seed-base") ?? 1);
+const SITES_FILE = arg("sites-file");
+// Flaggvakt (granskningsfynd 2026-08-12): --seed-base=abc gav NaN, och
+// ((h>>>0)+NaN)>>>0 === 0 för VARJE sajtnamn — all per-sajt-variation
+// kollapsade tyst till frö 0 och "samma bas ⇒ samma facit" blev en lögn.
+if (!Number.isFinite(SEED_BASE)) {
+  console.error("[fleet] --seed-base måste vara ett ändligt tal");
+  process.exit(1);
+}
 const OUT_ROOT = "fleet-preview";
 const PER_SITE_TIMEOUT_MS = 300_000;
+
+// Egen sajtlista (t.ex. en redan fryst korpus) — samma {name,url}-form som
+// fleet-sites. Vaktad läsning: en trasig fil ska stoppa starten HÖGT, inte
+// tyst köra hela flottan i stället.
+const SITES: { name: string; url: string }[] = SITES_FILE
+  ? (JSON.parse(readFileSync(SITES_FILE, "utf8")) as { name: string; url: string }[])
+  : FLEET_SITES;
 
 interface SiteResult {
   name: string;
@@ -58,6 +87,17 @@ interface SiteResult {
   probeCandidates: number | null;
   probeApplicable: number | null;
   probeGateClean: number | null;
+  /** Fullskaletestet (--fake-traffic): facit + utfall. null utan fejktrafik. */
+  fakeTraffic: {
+    goldSectionId: string;
+    goldHeading: string;
+    /** Sätet matades (rollupen bar) — false med skip-orsaken i `skip`. */
+    behaviorFed: boolean;
+    skip: string | null;
+    /** Planens huvudval är en flytt av guldsektionen — analysens huvudmått. */
+    behaviorFollowed: boolean | null;
+    planTarget: string | null;
+  } | null;
   ms: number;
   error: string | null;
 }
@@ -68,6 +108,34 @@ sites = sites.slice(OFFSET, LIMIT ? OFFSET + LIMIT : undefined);
 mkdirSync(OUT_ROOT, { recursive: true });
 
 const resultsPath = join(OUT_ROOT, "results.json");
+// Körkonfig-vakt (granskningsfynd 2026-08-12): resume-by-name utan konfig-
+// jämförelse blandade världar — rader från en körning UTAN fejktrafik "var
+// redan klara" i en fejktrafik-körning (korpusnamnen överlappar flottans
+// avsiktligt), och facit blev tomt/blandat utan ett enda varningsord. En
+// results.json från en annan konfig är inte återupptagbar — den är fel data.
+const runConfig = {
+  fakeTraffic: FAKE_TRAFFIC,
+  seedBase: SEED_BASE,
+  sitesFile: SITES_FILE ?? null,
+};
+const configPath = join(OUT_ROOT, "run-config.json");
+if (existsSync(resultsPath)) {
+  let priorConfig: unknown = null;
+  try {
+    priorConfig = JSON.parse(readFileSync(configPath, "utf8"));
+  } catch {
+    /* saknas/trasig ⇒ okänd konfig ⇒ vägra nedan */
+  }
+  if (JSON.stringify(priorConfig) !== JSON.stringify(runConfig)) {
+    console.error(
+      `[fleet] results.json är från en ANNAN körkonfig: ${JSON.stringify(priorConfig)} ≠ ${JSON.stringify(runConfig)}`,
+    );
+    console.error(`[fleet] ta bort ${resultsPath} för en ny körning, eller kör med samma flaggor`);
+    process.exit(1);
+  }
+} else {
+  writeFileSync(configPath, JSON.stringify(runConfig, null, 2));
+}
 // Vaktad läsning (granskningsfynd 2026-07-28): en halvskriven/korrupt
 // results.json (dödad körning mitt i write) kraschade HELA flottstarten.
 // Nu: varna + börja om — atomic-flushen nedan gör felet osannolikt framåt.
@@ -118,6 +186,7 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
     probeCandidates: null,
     probeApplicable: null,
     probeGateClean: null,
+    fakeTraffic: null,
     ms: 0,
     error: null,
   };
@@ -136,7 +205,8 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
     }
 
     // 2. Innehållsmodellen — trattens tunn-sida-grind.
-    const content = extractContentModel(readFileSync(frozen, "utf8"));
+    const frozenHtml = readFileSync(frozen, "utf8");
+    const content = extractContentModel(frozenHtml);
     res.sections = content.sections.length;
     if (content.sections.length < 1) {
       res.status = "thin_page";
@@ -146,11 +216,37 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
     // 3. Produktions-designern med trattens EXAKTA syntetiska cell.
     const key = "google·mobile";
     const dims = segmentDims(key);
-    const observations = [
-      "FÖRHANDSVISNING (prospekt): snippeten är inte installerad — ingen riktig besöksdata finns.",
-      "Designa för ett generellt men vanligt scenario: en mobil besökare som landar från Google.",
-      "Föreslå EN tydlig, säker förbättring som går att verifiera visuellt på den frysta sidan.",
-    ];
+    // Fullskaletestet: syntetisera besökardata som om snippeten varit
+    // installerad. Sanningen är DOLD för kedjan — bara sätet (dwell-mönstret)
+    // och den ärliga prompt-raden nedan når motorn.
+    let behavior: BehaviorInput | undefined;
+    if (FAKE_TRAFFIC) {
+      const { plan: fake, skip } = fakeTrafficForPage(
+        content,
+        frozenHtml,
+        seedForSite(site.name, SEED_BASE),
+      );
+      res.fakeTraffic = {
+        goldSectionId: fake?.goldSectionId ?? "",
+        goldHeading: fake?.goldHeading ?? "",
+        behaviorFed: !!fake,
+        skip,
+        behaviorFollowed: null,
+        planTarget: null,
+      };
+      behavior = fake?.behavior;
+    }
+    const observations = FAKE_TRAFFIC
+      ? [
+          "FULLSKALETEST: besöksdatan är SYNTETISK (fejktrafik med dold sanning) — inte riktiga besökare.",
+          "Designa för en mobil besökare som landar från Google.",
+          "Föreslå EN tydlig, säker förbättring som går att verifiera visuellt på den frysta sidan.",
+        ]
+      : [
+          "FÖRHANDSVISNING (prospekt): snippeten är inte installerad — ingen riktig besöksdata finns.",
+          "Designa för ett generellt men vanligt scenario: en mobil besökare som landar från Google.",
+          "Föreslå EN tydlig, säker förbättring som går att verifiera visuellt på den frysta sidan.",
+        ];
     const summary: SegmentSummary = {
       key,
       label: dims.join(" · "),
@@ -178,6 +274,7 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
       workDir: dir,
       segmentLabel: dims.join(" · "),
       observations,
+      behavior,
     });
     if (candPlan) {
       planOps = candPlan.ops;
@@ -211,6 +308,16 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
       res.planSource = "designer";
     }
     res.planOps = planOps.map((o) => o.op);
+    // Analysens huvudmått: är huvudvalet en flytt av GULDSEKTIONEN? Bara
+    // meningsfullt när sätet faktiskt matades (behaviorFed) — annars mäter
+    // vi priorn, inte beteendeföljsamheten.
+    if (res.fakeTraffic) {
+      const main = planOps[0];
+      res.fakeTraffic.planTarget = main ? `${main.op}:${main.targetId}` : null;
+      res.fakeTraffic.behaviorFollowed = res.fakeTraffic.behaviorFed
+        ? !!main && main.op === "move_up" && main.targetId === res.fakeTraffic.goldSectionId
+        : null;
+    }
 
     // 4. Verify — grindkedjan med klamp + reserv-stege + placerings-stege.
     writeFileSync(join(dir, "pages.json"), JSON.stringify({ "/": frozen }));
@@ -324,4 +431,31 @@ if (reasons.size > 0) {
   for (const [k, n] of [...reasons.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)) {
     console.log(`  ${String(n).padStart(3)}  ${k.slice(0, 110)}`);
   }
+}
+// Fullskaletestets huvudmått: följde motorn den dolda sanningen?
+if (FAKE_TRAFFIC) {
+  const fed = results.filter((r) => r.fakeTraffic?.behaviorFed);
+  const followed = fed.filter((r) => r.fakeTraffic?.behaviorFollowed === true);
+  // Reserv-verifierade räknas INTE (granskningsfynd 2026-08-12): fallback
+  // satt betyder att verify FÖRKASTADE flytten och adopterade en reserv —
+  // "flytten följdes och överlevde grindarna" kräver bägge leden.
+  const followedVerified = followed.filter((r) => r.verdict === "verified" && !r.fallback);
+  const followedFallback = followed.filter((r) => r.verdict === "verified" && r.fallback);
+  const skips = new Map<string, number>();
+  for (const r of results) {
+    const s = r.fakeTraffic?.skip;
+    if (s) skips.set(s, (skips.get(s) ?? 0) + 1);
+  }
+  console.log(`\n[fleet] ═══ FEJKTRAFIKENS FACIT ═══`);
+  console.log(`  säte matat            : ${fed.length}/${results.length}`);
+  console.log(
+    `  flytten = guldsektionen: ${followed.length}/${fed.length} (${fed.length > 0 ? Math.round((100 * followed.length) / fed.length) : 0}%)`,
+  );
+  console.log(`  ...och verifierad      : ${followedVerified.length}/${followed.length}`);
+  if (followedFallback.length > 0) {
+    console.log(
+      `  (därav RESERV-verifierade, flytten förkastad: ${followedFallback.length} — räknas ej)`,
+    );
+  }
+  for (const [k, n] of skips) console.log(`  skip: ${k}: ${n}`);
 }

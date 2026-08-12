@@ -71,7 +71,7 @@ import { mkdtempSync, readFileSync as readF, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join as joinPath } from "node:path";
 
-function curl(u: string): { bytes: Uint8Array; type: string } | null {
+function curl(u: string, maxTimeS = 60): { bytes: Uint8Array; type: string } | null {
   const dir = mkdtempSync(joinPath(tmpdir(), "freeze-"));
   const tmp = joinPath(dir, "body");
   try {
@@ -79,7 +79,7 @@ function curl(u: string): { bytes: Uint8Array; type: string } | null {
       "curl",
       "-sSL",
       "--max-time",
-      "60",
+      String(maxTimeS),
       "-A",
       UA,
       "-o",
@@ -99,13 +99,32 @@ function curl(u: string): { bytes: Uint8Array; type: string } | null {
     rmSync(dir, { recursive: true, force: true });
   }
 }
+/** Huvuddokumentet får hela 60 s-budgeten — utan det finns ingen sida. */
 async function fetchText(u: string): Promise<string> {
   const got = curl(u);
   if (!got) throw new Error(`fetch failed: ${u}`);
   return Buffer.from(got.bytes).toString("utf8");
 }
+/** Asset-hämtningar (bilder/stilmallar) failar SNABBT (fullskaletestet
+ *  2026-08-12): bakom en proxy kan en blockerad CDN-värd HÄNGA i stället
+ *  för att vägra — med 60 s per asset åt en enda sådan värd upp hela
+ *  sidbudgeten (0/160 frysta i korpuskörningen). En missad bild degraderar
+ *  en skärmdump; en hängd frysning ger ingenting alls. */
+const ASSET_MAX_TIME_S = 8;
+/** Stilmallar är LAYOUTSANNING, inte dekor (granskningsfynd 2026-08-12): en
+ *  missad bild degraderar en skärmdump, men en missad stilmall fryser en
+ *  OLAYOUTAD sida som extract/probe/verify sedan mäter på fullt allvar —
+ *  inget nedströms kontrollerar att en statiskt fryst kopia är stylad.
+ *  Eget, högre tak: få stilmallar per sida, så värsta fallet är ändå
+ *  begränsat (3 hängande CSS-värdar ≈ 60 s, under korpusens 90 s-tak). */
+const STYLESHEET_MAX_TIME_S = 20;
+async function fetchAssetText(u: string): Promise<string> {
+  const got = curl(u, STYLESHEET_MAX_TIME_S);
+  if (!got) throw new Error(`fetch failed: ${u}`);
+  return Buffer.from(got.bytes).toString("utf8");
+}
 async function fetchBytes(u: string): Promise<{ bytes: Uint8Array; type: string } | null> {
-  return curl(u);
+  return curl(u, ASSET_MAX_TIME_S);
 }
 const abs = (href: string) => new URL(href, url).toString();
 const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
@@ -1100,7 +1119,7 @@ for (const tag of links) {
   try {
     // Relativa url(...) i css:en pekas om mot stilmallens egen bas.
     const cssUrl = abs(decodeEntities(href));
-    let sheet = await fetchText(cssUrl);
+    let sheet = await fetchAssetText(cssUrl);
     sheet = sheet.replace(/url\(\s*(['"]?)(?!data:|https?:|#)([^'")]+)\1\s*\)/gi, (_, q, ref) => {
       try {
         return `url(${new URL(ref, cssUrl).toString()})`;
