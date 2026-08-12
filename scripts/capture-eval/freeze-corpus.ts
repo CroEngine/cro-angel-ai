@@ -4,13 +4,17 @@
 // (kapacitet steg 1). Statisk frysning (curl-vägen fungerar lokalt); sajter som
 // bot-blockar/timear hoppas (freeze_failed). Återupptagbart: redan frysta hoppas.
 //
-//   bun run scripts/capture-eval/freeze-corpus.ts [--conc=6]
+//   bun run scripts/capture-eval/freeze-corpus.ts [--conc=6] [--timeout-s=60] [--render=auto]
 
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const CONC = Math.max(1, Number(arg("conc") ?? 6));
+const TIMEOUT_MS = Math.max(10, Number(arg("timeout-s") ?? 60)) * 1000;
+// Vidarebefordras till freeze-page: i sandlådan saknar Chromium nät, så
+// --render=static hoppar browservägen (som annars äter ~95 s per sajt i onödan).
+const RENDER = arg("render") ?? "auto";
 const OUT = "capture-corpus";
 mkdirSync(OUT, { recursive: true });
 
@@ -35,10 +39,14 @@ async function worker(): Promise<void> {
     }
     mkdirSync(join(OUT, site.name), { recursive: true });
     const proc = Bun.spawn(
-      ["bun", "run", "scripts/redesign/freeze-page.ts", `--url=${site.url}`, `--out=${out}`],
+      ["bun", "run", "scripts/redesign/freeze-page.ts", `--url=${site.url}`, `--out=${out}`, `--render=${RENDER}`],
       { stdout: "ignore", stderr: "ignore" },
     );
-    const timer = setTimeout(() => proc.kill(), 60_000);
+    // Per-sida-taket är en FLAGGA (fullskaletestet 2026-08-12): bakom en
+    // proxy kan EN hängande asset-hämtning ensam äta 60 s (curl --max-time),
+    // och det gamla hårda taket dödade då varje frysning innan den hann bli
+    // klar — 0/160 utan ett enda fel i loggen. Default oförändrad.
+    const timer = setTimeout(() => proc.kill(), TIMEOUT_MS);
     const code = await proc.exited;
     clearTimeout(timer);
     if (code === 0 && existsSync(out)) {
