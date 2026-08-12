@@ -944,7 +944,7 @@ export const setVariantStatus = createServerFn({ method: "POST" })
     }
     const { data: row, error: readErr } = await supabaseAdmin
       .from("angel_variants")
-      .select("id,status,success")
+      .select("id,status,success,evidence")
       .eq("id", variantId)
       .eq("site", site)
       .maybeSingle();
@@ -1005,9 +1005,29 @@ export const setVariantStatus = createServerFn({ method: "POST" })
       status === "serving" && !validateSuccessSpec(row.success)
         ? { success: defaultSuccessSpec() as unknown as Json }
         : {};
+    // Vinnar-avvecklingen (blockbibliotekets steg 3, granskningsfynd
+    // 2026-08-11): winner→retired är en LEGAL ägartransition — men utan
+    // markören hade transfer-lärandet läst en vunnen-och-tillbakadragen
+    // återbruksvariant som ett MISSLYCKANDE och kunnat falsifiera ett block
+    // som vann varje test det körde. Markören bevarar historien: raden var
+    // en vinnare när den drogs tillbaka.
+    const winnerWithdrawal =
+      row.status === "winner" && status === "retired"
+        ? {
+            evidence: {
+              ...((row.evidence as Record<string, unknown> | null) ?? {}),
+              wasWinner: true,
+            } as unknown as Json,
+          }
+        : {};
     const { error } = await supabaseAdmin
       .from("angel_variants")
-      .update({ status, updated_at: new Date().toISOString(), ...successFill })
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+        ...successFill,
+        ...winnerWithdrawal,
+      })
       .eq("id", variantId)
       .eq("site", site)
       .eq("status", row.status); // optimistiskt lås — samtidiga klick blir no-op

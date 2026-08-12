@@ -340,6 +340,29 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
     });
     expect(markedPrompt).not.toContain("[measured:");
     expect(markedPrompt).toContain("[page-text:");
+    // Meritlistan (steg 3): flera vunna sidor listas i raden — och caveaten
+    // om den OPRÖVADE målsidan står kvar.
+    const multiSeed = {
+      variantId: "66666666-ffff-0000-1111-000000000006",
+      provedOnPath: "/priser",
+      sourcePath: "/priser",
+      text: "Från 299 kr per månad utan bindningstid",
+      alsoWonOn: ["/enterprise", "/foretag"],
+    };
+    const multi = generateCandidates(CONTENT, undefined, [multiSeed]);
+    const multiPrompt = buildSelectionPrompt({
+      heroHeadline: null,
+      segmentLabel: "s",
+      observations: [],
+      menu: applyProbe(
+        multi,
+        multi.map((c) => ({ id: c.id, applicable: true })),
+      ),
+    });
+    expect(multiPrompt).toContain(
+      "[proven: this exact text won its A/B test on /priser and /enterprise and /foretag",
+    );
+    expect(multiPrompt).toContain("unproven until tested here");
   });
 
   it("null-vägen: för lite data ⇒ rollup null ⇒ katalogen byte-identisk (sätet matas aldrig)", () => {

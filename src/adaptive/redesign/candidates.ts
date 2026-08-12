@@ -35,8 +35,10 @@ export interface Candidate {
   sourcePath?: string;
   /** Proveniensen för ett bevisat block: var det vann och vilken variant.
    *  Renderas som BETRODD [proven:]-rad i menyn (vår egen data, inte
-   *  sidtext) och blir evidence.reuse när blocket överlever verify. */
-  proven?: { provedOnPath: string; variantId: string };
+   *  sidtext) och blir evidence.reuse när blocket överlever verify.
+   *  alsoProvedOn (steg 3): ANDRA sidor där samma block också vunnit —
+   *  meritlistan väljaren väger. */
+  proven?: { provedOnPath: string; variantId: string; alsoProvedOn?: string[] };
 }
 
 /** Bevisbärande sektionstyper i fallande säljvikt — testimonials är starkast
@@ -264,7 +266,11 @@ export function generateCandidates(
       targetId: "hero",
       detail: r.text,
       sourcePath: r.sourcePath,
-      proven: { provedOnPath: r.provedOnPath, variantId: r.variantId },
+      proven: {
+        provedOnPath: r.provedOnPath,
+        variantId: r.variantId,
+        ...(r.alsoWonOn && r.alsoWonOn.length > 0 ? { alsoProvedOn: r.alsoWonOn } : {}),
+      },
       score: REUSE_PROVEN_SCORE,
       basis: `proven block from ${r.provedOnPath}: "${r.text.slice(0, 60)}"`,
     });
