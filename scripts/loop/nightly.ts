@@ -25,10 +25,15 @@ import { buildCandidatePlan } from "./candidate-plan";
 import { catalogEligible, cellWorkDir, planRow } from "./cell-plan";
 import { fetchSectionBehavior } from "./section-behavior";
 import {
+  REUSE_FALSIFIED_AT,
+  blockTransferRecords,
+  decorateSeedsWithTransfer,
   filterViableSeeds,
   flattenHtml,
   harvestReuseSeeds,
   offerSeedsForCell,
+  partitionFalsified,
+  type BlockTransferRecord,
   type ReuseSeed,
   type ReuseVariantRow,
 } from "../../src/adaptive/redesign/reuse";
@@ -125,6 +130,18 @@ for (const site of targets) {
       // var återbrukets text-dedup ("äldsta vinnaren äger blocket"),
       // per-cell-taket och rins-id:na körningsberoende. created_at + id
       // (uuid-tiebreak vid transaktionslika tider) ger en total ordning.
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true });
+    // Transfer-lärandet (steg 3): misslyckandena bor i PENSIONERADE
+    // återbruksrader, som huvudläsningen ovan exkluderar — hämtas separat
+    // (bara rader födda som återbruk: evidence.reuse satt). Bäst-effort:
+    // faller läsningen körs natten utan meriter, aldrig utan frön.
+    const { data: retiredReuse, error: retiredReuseErr } = await db
+      .from("angel_variants")
+      .select("id,path,status,held_reason,ops,evidence")
+      .eq("site", site.slug)
+      .eq("status", "retired")
+      .not("evidence->reuse", "is", null)
       .order("created_at", { ascending: true })
       .order("id", { ascending: true });
     // Sidflödet (korssid-lyftets signal, task #117): "andel av segmentet som
@@ -681,13 +698,49 @@ for (const site of targets) {
     // ERBJUDANDEN (inte adopterade varianter) är den konservativa riktningen.
     const offerRows: ReuseVariantRow[] = [...(variants ?? [])];
     // Nattens holds sållas EN gång, synligt — inte per cell (logg-brus).
-    const offerableSeeds = viableReuseSeeds.filter((s) => {
+    const unheldSeeds = viableReuseSeeds.filter((s) => {
       if (!heldTonight.has(s.variantId)) return true;
       console.log(
         `[loop] ${site.slug}: återbruksfrö från ${s.provedOnPath} sållas — vinnaren hölls i nattens svep (ett hållet bevis är inget bevis)`,
       );
       return false;
     });
+    // Transfer-lärandet (steg 3): meriterna byggs ur levande rader + de
+    // pensionerade återbruksraderna; falsifierade block (fallna på
+    // REUSE_FALSIFIED_AT distinkta sidor) lämnar biblioteket — synligt.
+    // Resten dekoreras med meritlistan och rankas: bevisade resenärer först.
+    // TVÅ vakter (granskningsfynd 2026-08-11): (a) faller misslyckande-
+    // läsningen körs natten UTAN erbjudanden — meriter utan demeriter vore
+    // fel åt det anti-konservativa hållet (falsifierade block hade smugit
+    // tillbaka); (b) vinnare som hölls I NATT räknas inte som vinster i
+    // meritlistan — samma dom som frö-sållningen ("ett hållet bevis är
+    // inget bevis"), annars hade menyraden skrutit om en vinst svepet
+    // just höll för uppmätt skada.
+    let offerableSeeds: ReuseSeed[] = [];
+    let cellRecords: Map<string, BlockTransferRecord> | undefined;
+    if (retiredReuseErr) {
+      if (unheldSeeds.length > 0) {
+        console.warn(
+          `[loop] ${site.slug}: misslyckande-läsningen föll (${retiredReuseErr.message}) — inga återbrukserbjudanden i natt (meriter utan demeriter vore skevt)`,
+        );
+      }
+    } else {
+      const transferRecords = blockTransferRecords([
+        ...(variants ?? []).filter((v) => !heldTonight.has(v.id)),
+        ...((retiredReuse ?? []) as ReuseVariantRow[]),
+      ]);
+      const { kept: unfalsifiedSeeds, falsified } = partitionFalsified(
+        unheldSeeds,
+        transferRecords,
+      );
+      for (const s of falsified) {
+        console.log(
+          `[loop] ${site.slug}: återbruksfrö från ${s.provedOnPath} FALSIFIERAT — pensionerat på ${REUSE_FALSIFIED_AT}+ sidor, blocket lämnar biblioteket`,
+        );
+      }
+      offerableSeeds = decorateSeedsWithTransfer(unfalsifiedSeeds, transferRecords);
+      cellRecords = transferRecords;
+    }
     for (const b of earned.briefed) {
       // Mall-celler: designen byggs ur representant-exemplaret, FILTRERAT till
       // mall-snittet — designern kan bara måla mot sektioner som finns på alla
@@ -801,6 +854,7 @@ for (const site of targets) {
           cellPath: b.path,
           landingFlatHtml: flattenHtml(readFileSync(page, "utf8")),
           rows: offerRows,
+          records: cellRecords,
         });
         if (cellReuse.length > 0) {
           console.log(

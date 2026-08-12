@@ -7,10 +7,13 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_REUSE_OFFERS_PER_CELL,
   REUSE_MAX_SPREAD,
+  blockTransferRecords,
+  decorateSeedsWithTransfer,
   filterViableSeeds,
   flattenHtml,
   harvestReuseSeeds,
   offerSeedsForCell,
+  partitionFalsified,
   reuseSurvived,
   seedSaturated,
   textPresent,
@@ -415,5 +418,137 @@ describe("reuseSurvived — proveniens bara när blocket faktiskt överlevde", (
         reuse,
       ),
     ).toBe(false);
+  });
+});
+
+describe("transfer-lärandet (steg 3) — meriter, rank, falsifiering", () => {
+  const reuseWinner = (id: string, path: string): ReuseVariantRow => ({
+    id,
+    path,
+    status: "winner",
+    ops: [
+      {
+        op: "insert_snippet",
+        targetId: "hero",
+        detail: "Från 299 kr per månad, avsluta när du vill",
+        sourcePath: "/priser",
+        why: "reuse won",
+      },
+    ],
+    evidence: { reuse: { variantId: "orig", provedOnPath: "/priser" } },
+  });
+  const retiredReuse = (id: string, path: string, text?: string): ReuseVariantRow => ({
+    id,
+    path,
+    status: "retired",
+    ops: [
+      {
+        op: "insert_snippet",
+        targetId: "hero",
+        detail: text ?? "Från 299 kr per månad, avsluta när du vill",
+        sourcePath: "/priser",
+        why: "reuse lost",
+      },
+    ],
+    evidence: { reuse: { variantId: "orig", provedOnPath: "/priser" } },
+  });
+
+  it("meriterna: vinster per distinkt sida, misslyckanden bara ur pensionerade ÅTERBRUKS-rader", () => {
+    const rows = [
+      winner(), // originalvinsten på /priser
+      reuseWinner("rw-1", "/enterprise"), // transfern vann på /enterprise
+      retiredReuse("rr-1", "/om-oss"), // transfern föll på /om-oss
+      // Pensionerad rad UTAN evidence.reuse (pensionerat original) är INTE
+      // ett transfer-misslyckande.
+      { ...winner({ id: "orig-retired", path: "/gammal", status: "retired" }), evidence: {} },
+    ];
+    const records = blockTransferRecords(rows);
+    const r = records.get("från 299 kr per månad, avsluta när du vill")!;
+    expect(r.wonOnPaths).toEqual(["/priser", "/enterprise"]);
+    expect(r.failedOnPaths).toEqual(["/om-oss"]);
+  });
+
+  it("VUNNEN-och-tillbakadragen (wasWinner) är INTE ett misslyckande — neutral", () => {
+    // Granskningsfynd 2026-08-11: winner→retired är en legal ägartransition;
+    // utan markören hade två avvecklingar av ett block som vann varje test
+    // falsifierat det. setVariantStatus skriver wasWinner vid övergången.
+    const withdrawn = retiredReuse("rr-w", "/enterprise");
+    (withdrawn.evidence as Record<string, unknown>).wasWinner = true;
+    const records = blockTransferRecords([winner(), withdrawn]);
+    const r = records.get("från 299 kr per månad, avsluta när du vill")!;
+    expect(r.failedOnPaths).toEqual([]);
+    expect(r.wonOnPaths).toEqual(["/priser"]);
+  });
+
+  it("hållna/drift-uppdaterade vinnare räknas inte som vinster (samma dom som skörden)", () => {
+    const records = blockTransferRecords([
+      winner({ held_reason: "guardrail: harm" }),
+      winner({ id: "w2", path: "/b", evidence: { refreshedAt: "2026-08-11T00:00:00Z" } }),
+    ]);
+    expect(records.get("från 299 kr per månad, avsluta när du vill")).toBeUndefined();
+  });
+
+  it("dekoration + rank: fler-sidors-vinnare först, meritlistan sorterad utan egna sidan", () => {
+    const multiWin = harvestReuseSeeds([winner()])[0]; // /priser
+    const singleWin = harvestReuseSeeds([
+      winner({
+        id: "44444444-dddd-eeee-ffff-000000000004",
+        path: "/annan",
+        ops: [
+          {
+            op: "insert_snippet",
+            targetId: "hero",
+            detail: "En annan bevisad rad med bara en vinst",
+            sourcePath: "/annan",
+            why: "w",
+          },
+        ],
+      }),
+    ])[0];
+    const records = blockTransferRecords([winner(), reuseWinner("rw-1", "/enterprise")]);
+    // singleWin FÖRST i skördeordningen — ranken ska vända på det.
+    const ranked = decorateSeedsWithTransfer([singleWin, multiWin], records);
+    expect(ranked[0].text).toBe("Från 299 kr per månad, avsluta när du vill");
+    expect(ranked[0].alsoWonOn).toEqual(["/enterprise"]);
+    expect(ranked[1].alsoWonOn).toBeUndefined();
+    // Stabilt: lika meriter behåller ordningen.
+    const tie = decorateSeedsWithTransfer([singleWin, multiWin], new Map());
+    expect(tie.map((s) => s.text)).toEqual([singleWin.text, multiWin.text]);
+  });
+
+  it("falsifiering: fallit på 2 distinkta sidor ⇒ ut ur biblioteket; 1 ⇒ kvar", () => {
+    const seed = harvestReuseSeeds([winner()])[0];
+    const one = blockTransferRecords([winner(), retiredReuse("rr-1", "/om-oss")]);
+    expect(partitionFalsified([seed], one)).toEqual({ kept: [seed], falsified: [] });
+    const two = blockTransferRecords([
+      winner(),
+      retiredReuse("rr-1", "/om-oss"),
+      retiredReuse("rr-2", "/kontakt"),
+    ]);
+    expect(partitionFalsified([seed], two)).toEqual({ kept: [], falsified: [seed] });
+    // Två pensioneringar på SAMMA sida är EN fallen sida — inte falsifierat.
+    const samePage = blockTransferRecords([
+      winner(),
+      retiredReuse("rr-1", "/om-oss"),
+      retiredReuse("rr-2", "/om-oss"),
+    ]);
+    expect(partitionFalsified([seed], samePage).kept).toEqual([seed]);
+  });
+
+  it("vakt 3: en sida där blocket pensionerats får ALDRIG samma erbjudande igen", () => {
+    const seed = harvestReuseSeeds([winner()])[0];
+    const records = blockTransferRecords([winner(), retiredReuse("rr-1", "/om-oss")]);
+    const args = {
+      seeds: [seed],
+      rows: [winner()],
+      landingFlatHtml: flattenHtml("<p>Om oss.</p>"),
+      records,
+    };
+    // Prövad-och-pensionerad sida: inget om-erbjudande...
+    expect(offerSeedsForCell({ ...args, cellPath: "/om-oss" })).toEqual([]);
+    // ...men en oprövad sida får det fortfarande.
+    expect(offerSeedsForCell({ ...args, cellPath: "/kontakt" })).toEqual([seed]);
+    // Utan meriter (äldre anropare) vilar vakten — bakåtkompatibelt.
+    expect(offerSeedsForCell({ ...args, records: undefined, cellPath: "/om-oss" })).toEqual([seed]);
   });
 });

@@ -166,8 +166,16 @@ export function buildSelectionPrompt(args: {
     // kan i princip bära markörtecken), och raden säger ÄRLIGT att
     // överföringen är obevisad: väljaren ska väga ett riktigt testutfall
     // någon annanstans mot målsidans egna signaler, inte läsa det som facit.
+    // Meritlistan (steg 3): flera vunna sidor listas — ett block som bevisat
+    // reser väger tyngre för väljaren än en enkelvinst. Caveaten står kvar:
+    // just DEN HÄR sidan är fortfarande oprövad.
+    const provenPaths = c.proven
+      ? [c.proven.provedOnPath, ...(c.proven.alsoProvedOn ?? [])]
+          .map((p) => defuseMarkers(p))
+          .join(" and ")
+      : "";
     const provenLine = c.proven
-      ? ` [proven: this exact text won its A/B test on ${defuseMarkers(c.proven.provedOnPath)} — transfer to THIS page is unproven until tested here]`
+      ? ` [proven: this exact text won its A/B test on ${provenPaths} — transfer to THIS page is unproven until tested here]`
       : "";
     L.push(
       `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${safeBasis}${provenLine}${engLine}${gateLine}`,
