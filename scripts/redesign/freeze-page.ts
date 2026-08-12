@@ -111,9 +111,15 @@ async function fetchText(u: string): Promise<string> {
  *  sidbudgeten (0/160 frysta i korpuskörningen). En missad bild degraderar
  *  en skärmdump; en hängd frysning ger ingenting alls. */
 const ASSET_MAX_TIME_S = 8;
-/** Stilmallar hämtas med asset-taket — de går genom fetchAssetText nedan. */
+/** Stilmallar är LAYOUTSANNING, inte dekor (granskningsfynd 2026-08-12): en
+ *  missad bild degraderar en skärmdump, men en missad stilmall fryser en
+ *  OLAYOUTAD sida som extract/probe/verify sedan mäter på fullt allvar —
+ *  inget nedströms kontrollerar att en statiskt fryst kopia är stylad.
+ *  Eget, högre tak: få stilmallar per sida, så värsta fallet är ändå
+ *  begränsat (3 hängande CSS-värdar ≈ 60 s, under korpusens 90 s-tak). */
+const STYLESHEET_MAX_TIME_S = 20;
 async function fetchAssetText(u: string): Promise<string> {
-  const got = curl(u, ASSET_MAX_TIME_S);
+  const got = curl(u, STYLESHEET_MAX_TIME_S);
   if (!got) throw new Error(`fetch failed: ${u}`);
   return Buffer.from(got.bytes).toString("utf8");
 }

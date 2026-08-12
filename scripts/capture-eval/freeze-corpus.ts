@@ -11,19 +11,34 @@ import { join } from "node:path";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const CONC = Math.max(1, Number(arg("conc") ?? 6));
-const TIMEOUT_MS = Math.max(10, Number(arg("timeout-s") ?? 60)) * 1000;
+const TIMEOUT_S = Number(arg("timeout-s") ?? 60);
 // Vidarebefordras till freeze-page: i sandlådan saknar Chromium nät, så
 // --render=static hoppar browservägen (som annars äter ~95 s per sajt i onödan).
 const RENDER = arg("render") ?? "auto";
+// Flaggvakt (granskningsfynd 2026-08-12): --timeout-s=6O (typo) gav NaN →
+// setTimeout(kill, NaN) sköt DIREKT och dödade varje frysning vid spawn;
+// felstavad --render föll som usage-fel i varje barn — med stderr: "ignore"
+// blev bägge exakt den tysta 0/160-massdöd den här runnern nyss felsöktes för.
+if (
+  !Number.isFinite(CONC) ||
+  !Number.isFinite(TIMEOUT_S) ||
+  !["auto", "static", "browser"].includes(RENDER)
+) {
+  console.error(
+    "usage: freeze-corpus.ts [--conc=6] [--timeout-s=60] [--render=auto|static|browser]",
+  );
+  process.exit(1);
+}
+const TIMEOUT_MS = Math.max(10, TIMEOUT_S) * 1000;
 const OUT = "capture-corpus";
 mkdirSync(OUT, { recursive: true });
 
 // ~160 riktiga, upplösbara domäner tvärs sidtyper. Overlap med flottan är ok —
 // separat korpus. Vikten ligger på ICKE-SaaS (e-handel/media/konsument) där
 // capture-robusthet aldrig testats.
-import { CORPUS_DOMAINS as DOMAINS } from "./corpus-domains";
+import { CORPUS_DOMAINS as DOMAINS, nameForDomain } from "./corpus-domains";
 
-const names = [...new Set(DOMAINS)].map((d) => ({ name: d.replace(/\.[a-z.]+$/, "").replace(/[^a-z0-9]/gi, "-"), url: `https://${d}/` }));
+const names = [...new Set(DOMAINS)].map((d) => ({ name: nameForDomain(d), url: `https://${d}/` }));
 console.log(`[freeze-corpus] ${names.length} domäner`);
 
 let idx = 0;

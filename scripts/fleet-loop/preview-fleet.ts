@@ -54,6 +54,13 @@ const CONC = Math.max(1, Number(arg("conc") ?? 3));
 const FAKE_TRAFFIC = arg("fake-traffic") === "1";
 const SEED_BASE = Number(arg("seed-base") ?? 1);
 const SITES_FILE = arg("sites-file");
+// Flaggvakt (granskningsfynd 2026-08-12): --seed-base=abc gav NaN, och
+// ((h>>>0)+NaN)>>>0 === 0 för VARJE sajtnamn — all per-sajt-variation
+// kollapsade tyst till frö 0 och "samma bas ⇒ samma facit" blev en lögn.
+if (!Number.isFinite(SEED_BASE)) {
+  console.error("[fleet] --seed-base måste vara ett ändligt tal");
+  process.exit(1);
+}
 const OUT_ROOT = "fleet-preview";
 const PER_SITE_TIMEOUT_MS = 300_000;
 
@@ -101,6 +108,34 @@ sites = sites.slice(OFFSET, LIMIT ? OFFSET + LIMIT : undefined);
 mkdirSync(OUT_ROOT, { recursive: true });
 
 const resultsPath = join(OUT_ROOT, "results.json");
+// Körkonfig-vakt (granskningsfynd 2026-08-12): resume-by-name utan konfig-
+// jämförelse blandade världar — rader från en körning UTAN fejktrafik "var
+// redan klara" i en fejktrafik-körning (korpusnamnen överlappar flottans
+// avsiktligt), och facit blev tomt/blandat utan ett enda varningsord. En
+// results.json från en annan konfig är inte återupptagbar — den är fel data.
+const runConfig = {
+  fakeTraffic: FAKE_TRAFFIC,
+  seedBase: SEED_BASE,
+  sitesFile: SITES_FILE ?? null,
+};
+const configPath = join(OUT_ROOT, "run-config.json");
+if (existsSync(resultsPath)) {
+  let priorConfig: unknown = null;
+  try {
+    priorConfig = JSON.parse(readFileSync(configPath, "utf8"));
+  } catch {
+    /* saknas/trasig ⇒ okänd konfig ⇒ vägra nedan */
+  }
+  if (JSON.stringify(priorConfig) !== JSON.stringify(runConfig)) {
+    console.error(
+      `[fleet] results.json är från en ANNAN körkonfig: ${JSON.stringify(priorConfig)} ≠ ${JSON.stringify(runConfig)}`,
+    );
+    console.error(`[fleet] ta bort ${resultsPath} för en ny körning, eller kör med samma flaggor`);
+    process.exit(1);
+  }
+} else {
+  writeFileSync(configPath, JSON.stringify(runConfig, null, 2));
+}
 // Vaktad läsning (granskningsfynd 2026-07-28): en halvskriven/korrupt
 // results.json (dödad körning mitt i write) kraschade HELA flottstarten.
 // Nu: varna + börja om — atomic-flushen nedan gör felet osannolikt framåt.
@@ -170,7 +205,8 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
     }
 
     // 2. Innehållsmodellen — trattens tunn-sida-grind.
-    const content = extractContentModel(readFileSync(frozen, "utf8"));
+    const frozenHtml = readFileSync(frozen, "utf8");
+    const content = extractContentModel(frozenHtml);
     res.sections = content.sections.length;
     if (content.sections.length < 1) {
       res.status = "thin_page";
@@ -185,7 +221,11 @@ async function runSite(site: { name: string; url: string }): Promise<SiteResult>
     // och den ärliga prompt-raden nedan når motorn.
     let behavior: BehaviorInput | undefined;
     if (FAKE_TRAFFIC) {
-      const { plan: fake, skip } = fakeTrafficForPage(content, seedForSite(site.name, SEED_BASE));
+      const { plan: fake, skip } = fakeTrafficForPage(
+        content,
+        frozenHtml,
+        seedForSite(site.name, SEED_BASE),
+      );
       res.fakeTraffic = {
         goldSectionId: fake?.goldSectionId ?? "",
         goldHeading: fake?.goldHeading ?? "",
@@ -396,7 +436,11 @@ if (reasons.size > 0) {
 if (FAKE_TRAFFIC) {
   const fed = results.filter((r) => r.fakeTraffic?.behaviorFed);
   const followed = fed.filter((r) => r.fakeTraffic?.behaviorFollowed === true);
-  const followedVerified = followed.filter((r) => r.verdict === "verified");
+  // Reserv-verifierade räknas INTE (granskningsfynd 2026-08-12): fallback
+  // satt betyder att verify FÖRKASTADE flytten och adopterade en reserv —
+  // "flytten följdes och överlevde grindarna" kräver bägge leden.
+  const followedVerified = followed.filter((r) => r.verdict === "verified" && !r.fallback);
+  const followedFallback = followed.filter((r) => r.verdict === "verified" && r.fallback);
   const skips = new Map<string, number>();
   for (const r of results) {
     const s = r.fakeTraffic?.skip;
@@ -408,5 +452,10 @@ if (FAKE_TRAFFIC) {
     `  flytten = guldsektionen: ${followed.length}/${fed.length} (${fed.length > 0 ? Math.round((100 * followed.length) / fed.length) : 0}%)`,
   );
   console.log(`  ...och verifierad      : ${followedVerified.length}/${followed.length}`);
+  if (followedFallback.length > 0) {
+    console.log(
+      `  (därav RESERV-verifierade, flytten förkastad: ${followedFallback.length} — räknas ej)`,
+    );
+  }
   for (const [k, n] of skips) console.log(`  skip: ${k}: ${n}`);
 }

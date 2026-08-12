@@ -10,20 +10,23 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { CORPUS_DOMAINS } from "../capture-eval/corpus-domains";
+import { CORPUS_DOMAINS, nameForDomain } from "../capture-eval/corpus-domains";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const OUT = arg("out") ?? join("fleet-preview", "corpus-sites.json");
 const SRC = "capture-corpus";
 const DST = "fleet-preview";
 
-// Samma namnform som freeze-corpus använder — annars länkar vi fel katalog.
-const urlByName = new Map(
-  [...new Set(CORPUS_DOMAINS)].map((d) => [
-    d.replace(/\.[a-z.]+$/, "").replace(/[^a-z0-9]/gi, "-"),
-    `https://${d}/`,
-  ]),
-);
+// DELAD namnhärledning (nameForDomain) — annars länkar vi fel katalog. FÖRST-
+// vinner vid namnkollision, för det är freeze-corpus semantik (första domänen
+// med namnet skapar katalogen; senare hoppas som "redan fryst") — sist-vinner
+// hade parat den frysta sidan med FEL domäns URL, tyst.
+const urlByName = new Map<string, string>();
+for (const d of [...new Set(CORPUS_DOMAINS)]) {
+  const name = nameForDomain(d);
+  if (!urlByName.has(name)) urlByName.set(name, `https://${d}/`);
+  else console.warn(`[link-corpus] namnkollision: ${d} → ${name} (först vinner)`);
+}
 
 const sites: { name: string; url: string }[] = [];
 for (const name of readdirSync(SRC).sort()) {

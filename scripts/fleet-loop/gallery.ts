@@ -9,7 +9,7 @@
 //   bun run scripts/fleet-loop/gallery.ts [--out=fleet-preview/gallery.html]
 //     [--max-pairs=24] [--thumb-width=420]
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { chromium } from "playwright-core";
@@ -73,7 +73,8 @@ const fed = results.filter((r) => r.fakeTraffic?.behaviorFed);
 const followed = fed.filter((r) => r.fakeTraffic?.behaviorFollowed === true);
 const buckets = new Map<string, number>();
 for (const r of results) {
-  const k = r.status === "ok" ? (r.verdict ?? "?") : r.status;
+  const base = r.status === "ok" ? (r.verdict ?? "?") : r.status;
+  const k = base === "verified" && r.fallback ? "verified (reserv)" : base;
   buckets.set(k, (buckets.get(k) ?? 0) + 1);
 }
 const skipCounts = new Map<string, number>();
@@ -82,11 +83,18 @@ for (const r of results) {
   if (s) skipCounts.set(s, (skipCounts.get(s) ?? 0) + 1);
 }
 
-// Urval till galleriet: verifierade med facit-träff först (det ägaren vill
-// SE), därefter övriga verifierade — capat, och cappen redovisas.
+// Reserv-verifierade är INTE flyttens bevis (granskningsfynd 2026-08-12):
+// fallback satt betyder att verify FÖRKASTADE huvudvalet och adopterade en
+// reserv — skärmdumpen visar då reserven, och att bildtexta den som "flytt =
+// besökarnas favorit" vore att visa fel ingrepp som facit-träff.
+const isRealFollow = (r: SiteResult) =>
+  r.fakeTraffic?.behaviorFollowed === true && !r.fallback;
+
+// Urval till galleriet: äkta facit-träffar först (det ägaren vill SE),
+// därefter övriga verifierade — capat, och cappen redovisas.
 const gallery = [
-  ...verified.filter((r) => r.fakeTraffic?.behaviorFollowed === true),
-  ...verified.filter((r) => r.fakeTraffic?.behaviorFollowed !== true),
+  ...verified.filter(isRealFollow),
+  ...verified.filter((r) => !isRealFollow(r)),
 ].slice(0, MAX_PAIRS);
 
 const browser = await chromium.launch({
@@ -95,17 +103,44 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({ viewport: { width: THUMB_W + 40, height: THUMB_MAX_H + 40 } });
 
+// Skärmdumpsparet upptäcks på DISK (granskningsfynd 2026-08-12): en
+// hårdkodad slug duplicerade auto-generates slug-härledning — driftade den
+// blev galleriet tyst tomt. Första kompletta *-before/-after-paret gäller.
+function pairFor(name: string): { before: string; after: string } | null {
+  let files: string[] = [];
+  try {
+    files = readdirSync(join(ROOT, name));
+  } catch {
+    return null;
+  }
+  for (const bf of files.filter((f) => f.endsWith("-before.jpg")).sort()) {
+    const af = bf.replace(/-before\.jpg$/, "-after.jpg");
+    if (files.includes(af))
+      return { before: join(ROOT, name, bf), after: join(ROOT, name, af) };
+  }
+  return null;
+}
+
 const cards: string[] = [];
+let missingPairs = 0;
 for (const r of gallery) {
-  const slug = "home--google-mobile";
-  const before = await thumb(page, join(ROOT, r.name, `${slug}-before.jpg`));
-  const after = await thumb(page, join(ROOT, r.name, `${slug}-after.jpg`));
-  if (!before || !after) continue;
+  const pair = pairFor(r.name);
+  const before = pair ? await thumb(page, pair.before) : null;
+  const after = pair ? await thumb(page, pair.after) : null;
+  if (!before || !after) {
+    missingPairs++;
+    continue;
+  }
   const ft = r.fakeTraffic;
+  const badge = isRealFollow(r)
+    ? '<span class="badge ok">flytt = besökarnas favorit</span>'
+    : r.fallback
+      ? '<span class="badge">verifierad (reserv — flytten grindades)</span>'
+      : '<span class="badge">verifierad</span>';
   cards.push(`<div class="card">
   <div class="card-head">
     <strong>${esc(r.name)}</strong> <span class="muted">${esc(r.url)}</span>
-    ${ft?.behaviorFollowed ? '<span class="badge ok">flytt = besökarnas favorit</span>' : '<span class="badge">verifierad</span>'}
+    ${badge}
   </div>
   <div class="meta">${
     ft?.behaviorFed
@@ -157,7 +192,7 @@ const html = `<!doctype html><html lang="sv"><head><meta charset="utf-8">
   <div class="stat"><div class="n">${pct(followed.length, fed.length)}</div><div class="l">flytt = besökarnas favorit (${followed.length}/${fed.length} med säte)</div></div>
 </div>
 <table>${bucketRows}${skipRows}</table>
-<div class="honest">ÄRLIGT LÄSSÄTT: trafiken är syntetisk (binomialbrus kring en dold per-sida-sanning), väljaren är det deterministiska golvet (ingen LLM i den här körningen — körningen är reproducerbar per frö), och "flytt = besökarnas favorit" mäter att motorn valde exakt den sektion fejktrafiken pekade ut. Verify-grindarna (LCP, överlapp, CTA-hit-test, reversibilitet) är den riktiga produktionskedjan. Galleriet visar ${cards.length} av ${verified.length} verifierade (capat), toppklippta miniatyrer — fullstora skärmdumpar ligger i fleet-preview/&lt;namn&gt;/.</div>
+<div class="honest">ÄRLIGT LÄSSÄTT: trafiken är syntetisk (binomialbrus kring en dold per-sida-sanning), väljaren är det deterministiska golvet (ingen LLM i den här körningen — körningen är reproducerbar per frö), och "flytt = besökarnas favorit" mäter att motorn valde exakt den sektion fejktrafiken pekade ut. Verify-grindarna (LCP, överlapp, CTA-hit-test, reversibilitet) är den riktiga produktionskedjan. Galleriet visar ${cards.length} av ${verified.length} verifierade (capat${missingPairs > 0 ? `; ${missingPairs} utan komplett skärmdumpspar hoppades` : ""}), toppklippta miniatyrer — fullstora skärmdumpar ligger i fleet-preview/&lt;namn&gt;/.</div>
 ${cards.join("\n")}
 </body></html>`;
 
