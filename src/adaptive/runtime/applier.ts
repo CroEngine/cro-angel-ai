@@ -73,6 +73,20 @@ export interface ApplierDeps {
    *  region besökaren ser. Valfri — anroparen kan skilja "vakten stoppade"
    *  från "målen fanns inte" i sin ärlighetslogg. */
   blocked?(reason: string): void;
+  /** Vittnena för hydrerings-överlevnaden (fullskaletestets fynd
+   *  2026-08-13): en framework-RECONCILIATION återanvänder noderna — flyttar
+   *  tillbaka sektionen (eller reverterar texten) med markören KVAR — så
+   *  residue-räkningen i snippetens överlevnadskoll ser friskt ut fast
+   *  baslinjen står på skärmen. Varje lyckad flytt rapporteras som
+   *  (sec, prev) — flytten gäller bara så länge sec står FÖRE prev — och
+   *  varje lyckad retext som (el, value) — texten ska stå på värdet.
+   *  reset() vid varje riktig appliceringskörning. Valfri — själva
+   *  överlevnadskollen bor i snippetens handskrivna zon. */
+  witness?: {
+    reset(): void;
+    move(sec: Element, prev: Element): void;
+    text(el: Element, value: string): void;
+  };
 }
 
 // Behåll rubrikens inline-format vid retext (ägarfynd: plausible-hemsidans
@@ -237,6 +251,28 @@ export function createApplyVariant(
     for (var i = 0; i < v.ops.length; i++) {
       var op = v.ops[i];
       var el = findByLocator(op.locator);
+      if (!el && op.op === "set_text" && op.value) {
+        // Hydrerings-återappliceringen (fullskaletestets fynd 2026-08-13):
+        // efter en partiell wipe kan målet redan BÄRA värdet — texten
+        // överlevde re-rendern men markören ströks — och lokatorn pekar då
+        // på en originaltext som inte längre finns. Utan fallback fällde
+        // allt-eller-inget HELA varianten (flytten med) och överlevnadens
+        // andra fönster skippade ärligt men i onödan. EXAKT träff ENBART
+        // (granskningsfynd samma dag: findByLocators 24-teckens nål kunde
+        // upplösa en ANNAN, aldrig verifierad rubrik och skriva om den —
+        // "samma värde, ofarligt" håller bara vid exakt likhet). Medvetet EJ
+        // speglad i measure.ts — verify startar alltid från baslinjen där
+        // originallokatorn upplöser.
+        var wantValue = String(op.value).replace(/\s+/g, " ").trim().toLowerCase();
+        var vEls = mainEl.querySelectorAll((op.locator && op.locator.tag) || "h1,h2,h3");
+        for (var vi = 0; vi < vEls.length; vi++) {
+          var vTxt = (vEls[vi].textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+          if (vTxt === wantValue) {
+            el = vEls[vi];
+            break;
+          }
+        }
+      }
       if (!el || deps.isNoTouch(el)) return false;
       if (op.op === "move_up") {
         var sec = sectionOf(el);
@@ -403,6 +439,7 @@ export function createApplyVariant(
       // förälderns vy. Nådfönstret påverkas inte (tidiga appliceringar går).
     }
     var guardBlocked = false;
+    if (deps.witness) deps.witness.reset(); // ny riktig applicering ⇒ färska vittnen
 
     // ── FAS 2: applicera i planordning ────────────────────────────────────
     var undos: (() => void)[] = [];
@@ -493,6 +530,7 @@ export function createApplyVariant(
           break;
         }
         r0.sec.setAttribute("data-angel-moved", "");
+        if (deps.witness) deps.witness.move(r0.sec, prev);
         undos.push(
           (function (s, n) {
             return function () {
@@ -571,6 +609,7 @@ export function createApplyVariant(
         // Markören håller skörde-spärren + hydrerings-kollen seende: variant-
         // text får ALDRIG skördas som sidans egen baslinje (feedback-loopen).
         r0.el.setAttribute("data-angel-retext", "");
+        if (deps.witness) deps.witness.text(r0.el, r0.value);
         undos.push(
           (function (e, hh) {
             return function () {

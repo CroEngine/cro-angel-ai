@@ -426,6 +426,60 @@
   // laddningen får aldrig skördas (se loadHarvest + kommentaren vid apply).
   var decideSettled = false;
   var adaptedThisLoad = false;
+  // Vittnena för hydrerings-överlevnaden (fullskaletestets fynd 2026-08-13):
+  // en framework-RECONCILIATION återanvänder noderna — flyttar tillbaka
+  // sektionen (eller reverterar texten) med markören KVAR — så residue-
+  // räkningen ser friskt ut fast baslinjen står på skärmen. Appliceraren
+  // rapporterar genom witness-kroken (källan: applier.ts); kollen bor här.
+  var movedWitnesses = [];
+  var textWitnesses = [];
+  // Delad brutna-spår-detektor för BÅDA överlevnadsvägarna (granskningsfynd
+  // 2026-08-13: sena SPA-vägen hade kvar residue-enbart och därmed hela
+  // lögnklassen på exakt de klientrenderade sidor som reconcilar mest).
+  //   "wiped" — residue 0 (remount; noderna återskapade).
+  //   "order" — flyttvittne brutet: sec står inte längre före prev, ELLER
+  //             prev är borta medan sec lever (flytten kan inte valideras —
+  //             aldrig-kreditera-hellre-än-gissa, granskningsfynd).
+  //   "text"  — retextvittne brutet: texten reverterad med markören kvar.
+  function angelTracesBroken() {
+    try {
+      var residue = document.querySelectorAll(
+        ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext],[data-angel-inserted]",
+      ).length;
+      if (residue === 0) return "wiped";
+      for (var i = 0; i < movedWitnesses.length; i++) {
+        var w0 = movedWitnesses[i];
+        if (!w0.sec.isConnected) continue; // remount-klassen: residue-vägen täcker
+        if (!w0.prev.isConnected) return "order";
+        if (!(w0.sec.compareDocumentPosition(w0.prev) & Node.DOCUMENT_POSITION_FOLLOWING))
+          return "order";
+      }
+      for (var j = 0; j < textWitnesses.length; j++) {
+        var t0 = textWitnesses[j];
+        if (!t0.el.isConnected) continue;
+        var tA = (t0.el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        var tB = String(t0.value).replace(/\s+/g, " ").trim().toLowerCase();
+        if (tA !== tB) return "text";
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+  // Återhämtningen: REN baslinje via ångra-stacken FÖRE återförsöket
+  // (granskningsfynd 2026-08-13: den förra städningen raderade synliga
+  // inserted-noder ovaktat och kunde lämna variant-text kvar på en laddning
+  // som loggades "skippad" — undos återställer byte-exakt, döda referenser
+  // hoppas per post). Vägras återappliceringen står besökaren på ren
+  // baslinje och den ärliga skippen stämmer med skärmen.
+  function angelRecover(decision) {
+    try {
+      window.AngelAdaptive.reset();
+    } catch (e) {
+      /* trasig undo får aldrig stoppa återförsöket */
+    }
+    return apply(decision);
+  }
   // Public trigger: the customer calls window.AngelAdaptive.convert(value?, meta?)
   // (or configures a URL / selector). Carries visitorHash (via send) + the last
   // decisionId so the conversion can be attributed to what was shown.
@@ -978,6 +1032,17 @@
       for (var i = 0; i < v.ops.length; i++) {
         var op = v.ops[i];
         var el = findByLocator(op.locator);
+        if (!el && op.op === "set_text" && op.value) {
+          var wantValue = String(op.value).replace(/\s+/g, " ").trim().toLowerCase();
+          var vEls = mainEl.querySelectorAll(op.locator && op.locator.tag || "h1,h2,h3");
+          for (var vi = 0; vi < vEls.length; vi++) {
+            var vTxt = (vEls[vi].textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+            if (vTxt === wantValue) {
+              el = vEls[vi];
+              break;
+            }
+          }
+        }
         if (!el || deps.isNoTouch(el)) return false;
         if (op.op === "move_up") {
           var sec = sectionOf(el);
@@ -1057,6 +1122,7 @@
         if (!viewH) guardOn = false;
       }
       var guardBlocked = false;
+      if (deps.witness) deps.witness.reset();
       var undos = [];
       var ok = true;
       for (var a = 0; a < resolved.length && ok; a++) {
@@ -1106,6 +1172,7 @@
             break;
           }
           r0.sec.setAttribute("data-angel-moved", "");
+          if (deps.witness) deps.witness.move(r0.sec, prev);
           undos.push(
             /* @__PURE__ */ (function(s, n) {
               return function() {
@@ -1161,6 +1228,7 @@
           var normB = String(r0.value).replace(/\s+/g, " ").trim();
           if (normA !== normB) retextPreserve(r0.el, r0.value);
           r0.el.setAttribute("data-angel-retext", "");
+          if (deps.witness) deps.witness.text(r0.el, r0.value);
           undos.push(
             /* @__PURE__ */ (function(e, hh) {
               return function() {
@@ -1214,6 +1282,20 @@
     },
     blocked: function (reason) {
       lastApplyBlocked = reason;
+    },
+    // Vittnena bor HÄR (handskrivna zonen) — överlevnadskollen läser dem;
+    // appliceraren rapporterar bara genom kroken (källan: applier.ts).
+    witness: {
+      reset: function () {
+        movedWitnesses = [];
+        textWitnesses = [];
+      },
+      move: function (sec, prev) {
+        movedWitnesses.push({ sec: sec, prev: prev });
+      },
+      text: function (el, value) {
+        textWitnesses.push({ el: el, value: value });
+      },
     },
   });
 
@@ -2337,12 +2419,16 @@
           var reapplies = 0;
           var checkSurvival = function (finalAttempt) {
             try {
-              var residue = document.querySelectorAll(
-                ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext],[data-angel-inserted]",
-              ).length;
-              if (residue === 0 && reapplies < 2) {
+              // Delade detektorn (angelTracesBroken): wiped/order/text —
+              // ordnings- och textvittnena fångar det residue-räkningen
+              // missar (reconciliation med markörer kvar). Återhämtningen
+              // (angelRecover) går via ångra-stacken till REN baslinje före
+              // återförsöket — aldrig punktstädning som själv kan radera
+              // synligt innehåll vakten sedan vägrar återställa.
+              var broken = angelTracesBroken();
+              if (broken && reapplies < 2) {
                 reapplies++;
-                var re = apply(decision);
+                var re = angelRecover(decision);
                 // ÄRLIG UTSPÄDNING även på wipe-vägen (granskningsfynd
                 // 2026-08-09): fast-vägens applicering + framework-wipe +
                 // blockerad återapplicering armar ALDRIG sena loopen — utan
@@ -2424,12 +2510,14 @@
                   var lateReapplies = 0;
                   var lateSurvival = function (finalAttempt) {
                     try {
-                      var res2 = document.querySelectorAll(
-                        "[data-angel-moved],[data-angel-retext],[data-angel-inserted]",
-                      ).length;
-                      if (res2 === 0 && lateReapplies < 2) {
+                      // Samma delade detektor/återhämtning som checkSurvival
+                      // (granskningsfynd 2026-08-13: residue-enbart här
+                      // lämnade kvar hela lögnklassen på just de SPA-sidor
+                      // som reconcilar mest).
+                      var broken2 = angelTracesBroken();
+                      if (broken2 && lateReapplies < 2) {
                         lateReapplies++;
-                        var re2 = apply(decision);
+                        var re2 = angelRecover(decision);
                         // Samma wipe-ärlighet som checkSurvival ovan.
                         if (finalAttempt && re2.length === 0 && !skipTracked) {
                           skipTracked = true;
