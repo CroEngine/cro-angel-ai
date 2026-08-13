@@ -92,15 +92,31 @@ export const Route = createFileRoute("/api/adaptive/events")({
         // till 100 men inte BYTES — jsonb-lagringen kunde förgiftas med
         // godtyckligt stora rader. 128 kB rymmer varje legitim batch med
         // bred marginal; större släpps tyst (204 — bryt aldrig beacons).
-        const rawBody = await request.text();
-        if (rawBody.length > 128 * 1024) {
+        //
+        // Två granskningsfynd 2026-08-13:
+        //  1) request.text() låg UTANFÖR try:et nedan — en avbruten beacon
+        //     (sidan stängs mitt i uppladdning) kastade då 500 utan CORS i
+        //     stället för det 204 rutten LOVAR. Nu innanför.
+        //  2) Content-Length FÖRST: rawBody.length räknar UTF-16-kodenheter,
+        //     så en multibyte-payload (CJK/emoji, 3–4 byte/tecken) passerade
+        //     på ~131k "tecken" men lagrades som ~384–512 kB. Headern är
+        //     byte-sanningen och slipper dessutom buffra jättekroppen alls;
+        //     byte-taket på den lästa kroppen är bältet till hängslet.
+        const MAX_BYTES = 128 * 1024;
+        const declared = Number(request.headers.get("content-length") ?? "");
+        if (Number.isFinite(declared) && declared > MAX_BYTES) {
           return new Response(null, { status: 204, headers: CORS_HEADERS });
         }
         let batch: EventBatch;
         try {
+          const rawBody = await request.text();
+          if (Buffer.byteLength(rawBody, "utf8") > MAX_BYTES) {
+            return new Response(null, { status: 204, headers: CORS_HEADERS });
+          }
           batch = JSON.parse(rawBody) as EventBatch;
         } catch {
-          // sendBeacon may send text — accept gracefully, ack anyway.
+          // Avbruten/trasig kropp ELLER icke-JSON (sendBeacon kan skicka text)
+          // — kvittera ändå 204, bryt aldrig en beacon.
           return new Response(null, { status: 204, headers: CORS_HEADERS });
         }
 

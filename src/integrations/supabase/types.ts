@@ -851,6 +851,10 @@ export type Database = {
           visits: number
         }[]
       }
+      angel_retire_winner: {
+        Args: { p_site: string; p_variant: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

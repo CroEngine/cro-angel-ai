@@ -1,14 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { sseStream, withBrowserPage } from "@/lib/tests/sse.server";
-
-// Intern testyta — AVSTÄNGD i drift utan uttrycklig aktivering
-// (granskningsfynd 2026-07-28): routen var helt oautentiserad och lät vem
-// som helst starta browsersessioner mot godtyckliga URL:er (SSRF +
-// kostnads-DoS). ANGEL_INTERNAL_TESTS=1 sätts bara i utvecklingsmiljön;
-// riktig sessionsbunden auktorisering är dokumenterad kvarvarande skuld.
-const internalTestsEnabled = () => process.env.ANGEL_INTERNAL_TESTS === "1";
-
+import { guardInternalTests, sseStream, withBrowserPage } from "@/lib/tests/sse.server";
 
 // On-demand crawl + inventory ingest for ONE url, streamed like the other test
 // routes so the serverless host stays alive during the browser work. Loads the
@@ -21,7 +13,8 @@ export const Route = createFileRoute("/api/tests/crawl/stream")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!internalTestsEnabled()) return new Response("disabled", { status: 403 });
+        const gate = guardInternalTests();
+        if (gate) return gate;
         const reqUrl = new URL(request.url);
         const targetUrl = reqUrl.searchParams.get("url");
         const site = reqUrl.searchParams.get("site");
@@ -60,9 +53,8 @@ export const Route = createFileRoute("/api/tests/crawl/stream")({
               };
             }
 
-            const { dismissConsent, waitForContent } = await import(
-              "@/lib/tests/robustness/session.server"
-            );
+            const { dismissConsent, waitForContent } =
+              await import("@/lib/tests/robustness/session.server");
             emit("log", { message: "settling (consent + hydrate)" });
             await dismissConsent(page);
             await waitForContent(page);
