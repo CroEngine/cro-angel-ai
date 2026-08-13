@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // Type-only — erased by esbuild, contributes nothing to the runtime graph.
 // Keep as `import type` so a future refactor can't accidentally promote it
 // to a value import and re-leak Stagehand into Worker isolate-init.
@@ -60,7 +62,15 @@ export function buildSteps(url: string, steps?: Step[]): Step[] {
 // the execution context is frozen once the response is sent, so the crawl
 // never actually ran. Driving it from the stream request fixes that and also
 // removes the need for a cross-instance, process-local event bus.
+// Auktorisering (granskningsfynd 2026-08-13): utan middleware var detta en
+// ÖPPEN Browserbase-sessions-mintare — vem som helst kunde POST:a mot RPC-
+// endpointen och starta riktiga (kostsamma) browsersessioner. /agent-sidans
+// beforeLoad är bara en KLIENT-redirect (`typeof window === "undefined"`
+// hoppar över den på servern) och skyddar aldrig server-fn:en. Kräver nu
+// samma inloggning som sidan själv (requireSupabaseAuth) — stänger anonym
+// kostnads-DoS utan att bryta den inloggade användarens flöde.
 export const startTestRun = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input) => inputSchema.parse(input))
   .handler(async ({ data }) => {
     const runId = newRunId();
