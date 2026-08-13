@@ -191,8 +191,15 @@ async function settleForShot(p: Page): Promise<void> {
   await p.evaluate(() => {
     const ae = document.activeElement as HTMLElement | null;
     if (ae && typeof ae.blur === "function") ae.blur();
+    // scroll-behavior:smooth (55/120 frysta flottsidor) animerar annars
+    // scrollTo i upp till ~700 ms — en fast väntan hade skjutit dumpen
+    // MITT i scrollen och återinfört exakt artefakten fixen tar bort.
+    document.documentElement.style.scrollBehavior = "auto";
     window.scrollTo(0, 0);
   });
+  await p
+    .waitForFunction(() => window.scrollY === 0, undefined, { timeout: 2_000 })
+    .catch(() => {});
   await p.waitForTimeout(120);
 }
 

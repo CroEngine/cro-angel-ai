@@ -10,14 +10,28 @@
 //   bun run scripts/fleet-loop/sandbox.ts [--sites=calm,intercom,...]
 //     [--out=fleet-preview/sandbox.html] [--max-bytes=11000000]
 
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { chromium } from "playwright-core";
 
+import { esc, pairFor } from "./shot-pairs";
+
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const OUT = arg("out") ?? join("fleet-preview", "sandbox.html");
 const MAX_BYTES = Number(arg("max-bytes") ?? 11_000_000);
+// Flaggvakt (granskningsfynd): --max-bytes=11mb ⇒ NaN ⇒ "spent + cost > NaN"
+// alltid falskt ⇒ budgeten slår aldrig till och artefakten spränger taket.
+// --sites= (tomt) gav tyst tom pool i stället för default-urvalet.
+if (!Number.isFinite(MAX_BYTES)) {
+  console.error("[sandbox] --max-bytes måste vara ett tal (bytes)");
+  process.exit(1);
+}
+const sitesRaw = process.argv.find((a) => a.startsWith("--sites="))?.split("=")[1];
+if (sitesRaw !== undefined && sitesRaw.split(",").filter(Boolean).length === 0) {
+  console.error("[sandbox] --sites= är tom — ange namn eller utelämna flaggan");
+  process.exit(1);
+}
 const ROOT = "fleet-preview";
 const HEADER_BAND_PX = 140;
 
@@ -46,23 +60,6 @@ const wanted = arg("sites")?.split(",").filter(Boolean);
 const pool = wanted
   ? verified.filter((r) => wanted.includes(r.name))
   : verified.filter((r) => r.fakeTraffic?.behaviorFollowed === true && !r.fallback);
-
-function pairFor(name: string): { before: string; after: string } | null {
-  let files: string[] = [];
-  try {
-    files = readdirSync(join(ROOT, name));
-  } catch {
-    return null;
-  }
-  for (const bf of files.filter((f) => f.endsWith("-before.jpg")).sort()) {
-    const af = bf.replace(/-before\.jpg$/, "-after.jpg");
-    if (files.includes(af)) return { before: join(ROOT, name, bf), after: join(ROOT, name, af) };
-  }
-  return null;
-}
-
-const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 // ── raddiff i Chromium (inga bildbibliotek i sandlådan) ──────────────────────
 interface DiffBand {
@@ -146,7 +143,29 @@ async function rowDiff(beforeB64: string, afterB64: string): Promise<SiteDiff> {
   );
 }
 
-// ── bygg sajtblocken inom bytesbudgeten ──────────────────────────────────────
+// ── två pass (granskningsfynd: budget FÖRE sortering kunde klippa bort just
+// de header-flaggade sajterna — granskningsmålet — medan oflaggade åt upp
+// budgeten): pass 1 diffar ALLA par, sedan sorteras flaggade först, och
+// FÖRST DÄREFTER spenderas bytesbudgeten i den ordningen. ──────────────────
+interface Prepared {
+  r: SiteResult;
+  b64b: string;
+  b64a: string;
+  diff: SiteDiff;
+}
+const prepared: Prepared[] = [];
+const headerFlags: { name: string; bands: number; headerChanged: boolean }[] = [];
+for (const r of pool) {
+  const pair = pairFor(ROOT, r.name);
+  if (!pair) continue;
+  const b64b = readFileSync(pair.before).toString("base64");
+  const b64a = readFileSync(pair.after).toString("base64");
+  const diff = await rowDiff(b64b, b64a);
+  headerFlags.push({ name: r.name, bands: diff.bands.length, headerChanged: diff.headerChanged });
+  prepared.push({ r, b64b, b64a, diff });
+}
+prepared.sort((x, y) => Number(y.diff.headerChanged) - Number(x.diff.headerChanged));
+
 interface Card {
   html: string;
   headerChanged: boolean;
@@ -156,15 +175,7 @@ interface Card {
 const cards: Card[] = [];
 let spent = 0;
 let dropped = 0;
-const headerFlags: { name: string; bands: number; headerChanged: boolean }[] = [];
-
-for (const r of pool) {
-  const pair = pairFor(r.name);
-  if (!pair) continue;
-  const b64b = readFileSync(pair.before).toString("base64");
-  const b64a = readFileSync(pair.after).toString("base64");
-  const diff = await rowDiff(b64b, b64a);
-  headerFlags.push({ name: r.name, bands: diff.bands.length, headerChanged: diff.headerChanged });
+for (const { r, b64b, b64a, diff } of prepared) {
   const cost = b64b.length + b64a.length;
   if (spent + cost > MAX_BYTES) {
     dropped++;
@@ -205,9 +216,6 @@ for (const r of pool) {
   });
 }
 await browser.close();
-
-// Sajter med header-flagga FÖRST — det är felklassen ägaren ska granska.
-cards.sort((x, y) => Number(y.headerChanged) - Number(x.headerChanged));
 
 const flagged = headerFlags.filter((f) => f.headerChanged);
 const html = `<!doctype html><html lang="sv"><head><meta charset="utf-8">
@@ -251,5 +259,9 @@ document.addEventListener("click", (e) => {
 </body></html>`;
 
 writeFileSync(OUT, html);
-console.log(`[sandbox] ${OUT}: ${cards.length} sajter, ${Math.round(Buffer.byteLength(html) / 1e6)} MB${dropped ? `, ${dropped} klipptes (budget)` : ""}`);
-console.log(`[sandbox] header-flaggade: ${flagged.length}/${headerFlags.length} — ${flagged.map((f) => f.name).join(", ") || "inga"}`);
+console.log(
+  `[sandbox] ${OUT}: ${cards.length} sajter, ${Math.round(Buffer.byteLength(html) / 1e6)} MB${dropped ? `, ${dropped} klipptes (budget)` : ""}`,
+);
+console.log(
+  `[sandbox] header-flaggade: ${flagged.length}/${headerFlags.length} — ${flagged.map((f) => f.name).join(", ") || "inga"}`,
+);
