@@ -426,6 +426,14 @@
   // laddningen får aldrig skördas (se loadHarvest + kommentaren vid apply).
   var decideSettled = false;
   var adaptedThisLoad = false;
+  // Flytt-vittnena för hydrerings-överlevnaden (fullskaletestets fynd
+  // 2026-08-13): en framework-RECONCILIATION återanvänder noderna — flyttar
+  // tillbaka sektionen med data-angel-moved KVAR — så residue-räkningen ser
+  // friskt ut fast baslinjen står på skärmen. Varje lyckad flytt registrerar
+  // (sec, prev): flytten gäller bara så länge sec står FÖRE prev. Ordningen
+  // bruten ⇒ samma väg som total wipe (städa spåren + återapplicera, annars
+  // ärlig variant_apply_skipped).
+  var movedWitnesses = [];
   // Public trigger: the customer calls window.AngelAdaptive.convert(value?, meta?)
   // (or configures a URL / selector). Carries visitorHash (via send) + the last
   // decisionId so the conversion can be attributed to what was shown.
@@ -978,6 +986,19 @@
       for (var i = 0; i < v.ops.length; i++) {
         var op = v.ops[i];
         var el = findByLocator(op.locator);
+        if (!el && op.op === "set_text" && op.value) {
+          // Hydrerings-återappliceringen (fullskaletestets fynd 2026-08-13):
+          // efter en partiell wipe kan målet redan BÄRA värdet — texten
+          // överlevde re-rendern men markören ströks — och lokatorn pekar då
+          // på en originaltext som inte längre finns. Utan fallback fällde
+          // allt-eller-inget HELA varianten (flytten med) och andra
+          // överlevnadsfönstret skippade ärligt men i onödan. Ett mål som
+          // redan står på värdet är idempotent-upplösbart: hitta det via
+          // värdet; om-sättningen är samma-värde och ofarlig. Medvetet EJ
+          // speglad i measure.ts — verify startar alltid från baslinjen där
+          // originallokatorn upplöser.
+          el = findByLocator({ tag: op.locator && op.locator.tag, text: op.value });
+        }
         if (!el || deps.isNoTouch(el)) return false;
         if (op.op === "move_up") {
           var sec = sectionOf(el);
@@ -1059,6 +1080,7 @@
       var guardBlocked = false;
       var undos = [];
       var ok = true;
+      movedWitnesses = []; // ny riktig applicering ⇒ färska vittnen
       for (var a = 0; a < resolved.length && ok; a++) {
         var r0 = resolved[a];
         if (r0.op === "move_up") {
@@ -1106,6 +1128,7 @@
             break;
           }
           r0.sec.setAttribute("data-angel-moved", "");
+          movedWitnesses.push({ sec: r0.sec, prev: prev });
           undos.push(
             /* @__PURE__ */ (function(s, n) {
               return function() {
@@ -2340,8 +2363,42 @@
               var residue = document.querySelectorAll(
                 ".angel-revealed,.angel-emphasized,.angel-condensed,[data-angel-injected],[data-angel-moved],[data-angel-retext],[data-angel-inserted]",
               ).length;
-              if (residue === 0 && reapplies < 2) {
+              // Ordningsvittnena (fullskaletestets fynd 2026-08-13): en
+              // reconciliation ÅTERANVÄNDER noderna — sektionen flyttas
+              // tillbaka med data-angel-moved kvar — så residue ser friskt
+              // ut fast baslinjen står på skärmen (LIE på 3/3 testade sidor
+              // i hydration-check). Flytten gäller bara så länge sec står
+              // FÖRE prev; frånkopplade vittnen är remount-fallet och täcks
+              // av residue-vägen.
+              var orderBroken = false;
+              for (var mw = 0; mw < movedWitnesses.length; mw++) {
+                var w0 = movedWitnesses[mw];
+                if (!w0.sec.isConnected || !w0.prev.isConnected) continue;
+                if (!(w0.sec.compareDocumentPosition(w0.prev) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+                  orderBroken = true;
+                  break;
+                }
+              }
+              if ((residue === 0 || orderBroken) && reapplies < 2) {
                 reapplies++;
+                if (orderBroken) {
+                  // Städa överlevande spår FÖRE återappliceringen — annars
+                  // studsar den på applyVariants toppvakt ("markör finns ⇒
+                  // redan applicerad") och gör ingenting. Inserted-noder tas
+                  // bort så om-inserten inte dubblerar; retext är samma-
+                  // värde-idempotent och får markören åter vid om-sättning.
+                  var stale = document.querySelectorAll("[data-angel-moved],[data-angel-retext]");
+                  for (var st = 0; st < stale.length; st++) {
+                    stale[st].removeAttribute("data-angel-moved");
+                    stale[st].removeAttribute("data-angel-retext");
+                  }
+                  var staleIns = document.querySelectorAll("[data-angel-inserted]");
+                  for (var si = 0; si < staleIns.length; si++) {
+                    if (staleIns[si].parentElement)
+                      staleIns[si].parentElement.removeChild(staleIns[si]);
+                  }
+                  movedWitnesses = [];
+                }
                 var re = apply(decision);
                 // ÄRLIG UTSPÄDNING även på wipe-vägen (granskningsfynd
                 // 2026-08-09): fast-vägens applicering + framework-wipe +

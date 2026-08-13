@@ -223,6 +223,111 @@ async function runSuite(label, snippet) {
     await page.close();
   }
 
+  // 2c) Hydrerings-överlevnaden mot RECONCILIATION (fullskaletestets fynd
+  //     2026-08-13): ett framework som ÅTERANVÄNDER noderna flyttar tillbaka
+  //     sektionen med data-angel-moved KVAR — residue-räkningen ser då friskt
+  //     ut fast baslinjen står på skärmen, och varianten hävdas applicerad
+  //     (LIE-läget; 3/3 riktiga sidor före fixen). Ordningsvittnena i
+  //     checkSurvival ska upptäcka den brutna ordningen, städa spåren och
+  //     återapplicera. Körs genom RIKTIGA decide-vägen — bara där armar
+  //     överlevnadstimers (1,5 s + 4 s).
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.route("**/api/adaptive/decide", (r) =>
+      r.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          decisionId: "smoke-hyd",
+          holdout: false,
+          adaptations: [],
+          variant: VARIANT,
+        }),
+      }),
+    );
+    await page.route("**/*", (r) => {
+      const u = r.request().url();
+      if (u.startsWith("data:")) return r.continue();
+      // fallback(), INTE continue(): continue() går till riktiga nätet —
+      // fallback() faller vidare till decide-handlern ovan.
+      if (u.includes("/api/adaptive/decide")) return r.fallback();
+      return r.abort();
+    });
+    await page.setContent(html, { waitUntil: "domcontentloaded" });
+    await page.evaluate(
+      ({ src }) => {
+        window.PerformanceObserver = undefined;
+        window.__ANGEL_HARNESS__ = true;
+        window.__origBody = document.body.innerHTML;
+        const m = document.createElement("script");
+        m.type = "text/plain";
+        m.setAttribute("data-site", "smoke");
+        m.setAttribute("data-endpoint", "https://harness.invalid");
+        m.setAttribute("src", "data:text/plain,adaptive.js");
+        document.head.appendChild(m);
+        (0, eval)(src);
+      },
+      { src: snippet },
+    );
+    const decided = await page
+      .waitForFunction(
+        () =>
+          window.AngelAdaptive &&
+          Array.isArray(window.AngelAdaptive.applied) &&
+          window.AngelAdaptive.applied.length > 0,
+        undefined,
+        { timeout: 12_000 },
+      )
+      .then(() => true)
+      .catch(() => false);
+    check("decide-vägen applicerar varianten (överlevnadstimers armade)", decided);
+    const appliedState = await state(page);
+    // Reconciliation: flytta tillbaka sektionen till originalpositionen med
+    // attributen orörda (samma teknik som hydration-check.ts).
+    await page.evaluate(() => {
+      const moved = document.querySelector("[data-angel-moved]");
+      const parent = moved && moved.parentElement;
+      if (!moved || !parent) return;
+      const key = (el) => (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
+      const tpl = document.createElement("template");
+      tpl.innerHTML = String(window.__origBody);
+      let origEl = null;
+      for (const el of tpl.content.querySelectorAll(moved.tagName)) {
+        if (key(el) === key(moved)) {
+          origEl = el;
+          break;
+        }
+      }
+      const origNext = origEl && origEl.nextElementSibling;
+      if (origNext) {
+        for (const el of parent.children) {
+          if (el !== moved && el.tagName === origNext.tagName && key(el) === key(origNext)) {
+            parent.insertBefore(moved, el);
+            return;
+          }
+        }
+      } else if (origEl) {
+        parent.appendChild(moved);
+      }
+    });
+    // Förbi bägge överlevnadsfönstren.
+    await page.waitForTimeout(6_500);
+    const after = await state(page);
+    check(
+      "reconciliation-wipe ⇒ flytten ÅTERapplicerad (ordningen är variantens igen)",
+      after.peopleIdx === appliedState.peopleIdx && after.moved >= 1,
+    );
+    check(
+      "reconciliation-wipe ⇒ retexten återmarkerad (multi-op-varianten hel)",
+      after.retext >= 1 && after.h1.startsWith("Privacy-friendly Google Analytics"),
+    );
+    check(
+      "reconciliation-wipe ⇒ publika statet hävdar varianten ÄRLIGT (den syns ju igen)",
+      await page.evaluate(() => window.AngelAdaptive.applied.length > 0),
+    );
+    await page.close();
+  }
+
   // 3) Allt-eller-inget.
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
