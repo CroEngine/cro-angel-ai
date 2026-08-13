@@ -180,6 +180,22 @@ function summaryFor(key: string, total: { visits: number; conversions: number })
   };
 }
 
+/** Skärmdumpssanning (fullskaletestets "headern flyttad"-fynd 2026-08-12):
+ *  fullPage-dumpen målar position:fixed-element vid AKTUELLT scrolläge, och
+ *  hit-testerna har scrollIntoView:at mitt i sidan — utan återställning
+ *  visade efter-bilden headern mitt på/längst ner fast DOM:en var korrekt
+ *  (verklighetskollen serve-check.ts: 21/21 headern kvar överst). Scroll
+ *  till toppen + släpp fokus (skip-länkar blir synliga vid fokus) före
+ *  VARJE dump — före-bilderna med, så bägge tas från samma läge. */
+async function settleForShot(p: Page): Promise<void> {
+  await p.evaluate(() => {
+    const ae = document.activeElement as HTMLElement | null;
+    if (ae && typeof ae.blur === "function") ae.blur();
+    window.scrollTo(0, 0);
+  });
+  await p.waitForTimeout(120);
+}
+
 async function contextFor(
   path: string,
   key: string,
@@ -820,6 +836,7 @@ try {
     console.log(
       `  ${plan.path} × ${plan.key}: LCP-element ${lcp.found ? `<${lcp.tag}> "${lcp.text ?? ""}"` : "EJ observerat — servbarhets-kollen blir vakuös"}`,
     );
+    await settleForShot(page);
     await page.screenshot({
       path: join(outDir, `${slug}-before.jpg`),
       type: "jpeg",
@@ -872,6 +889,7 @@ try {
       const fbLast = fb.attempts[fb.attempts.length - 1];
       if (!fb.unresolvable && fbLast.gate.verdict === "pass") {
         await measurePlan(fpage, fb.attemptOps, [], true);
+        await settleForShot(fpage);
         await fpage.screenshot({
           path: join(outDir, `${slug}-after.jpg`),
           type: "jpeg",
@@ -965,6 +983,7 @@ try {
       // appliceringsalgoritm (granskningsfynd: skärmdumpen ägaren godkänner på
       // måste komma från exakt den applicering som grindades).
       await measurePlan(page, attemptOps, [], true);
+      await settleForShot(page);
       await page.screenshot({
         path: join(outDir, `${slug}-after.jpg`),
         type: "jpeg",
@@ -1004,6 +1023,7 @@ try {
       await cpage.setContent(html, { waitUntil: "domcontentloaded", timeout: 20_000 });
       await cpage.waitForTimeout(400);
       await captureLcpElement(cpage);
+      await settleForShot(cpage);
       await cpage.screenshot({
         path: join(outDir, `${slug}-${vp.label}-before.jpg`),
         type: "jpeg",
@@ -1026,6 +1046,7 @@ try {
         // EFTER-skärmdump från exakt den grindade appliceringen — samma regel
         // som den kanoniska viewporten.
         await measurePlan(cpage, attemptOps, [], true);
+        await settleForShot(cpage);
         await cpage.screenshot({
           path: join(outDir, `${slug}-${vp.label}-after.jpg`),
           type: "jpeg",
