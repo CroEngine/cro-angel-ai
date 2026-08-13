@@ -987,16 +987,6 @@
         var op = v.ops[i];
         var el = findByLocator(op.locator);
         if (!el && op.op === "set_text" && op.value) {
-          // Hydrerings-återappliceringen (fullskaletestets fynd 2026-08-13):
-          // efter en partiell wipe kan målet redan BÄRA värdet — texten
-          // överlevde re-rendern men markören ströks — och lokatorn pekar då
-          // på en originaltext som inte längre finns. Utan fallback fällde
-          // allt-eller-inget HELA varianten (flytten med) och andra
-          // överlevnadsfönstret skippade ärligt men i onödan. Ett mål som
-          // redan står på värdet är idempotent-upplösbart: hitta det via
-          // värdet; om-sättningen är samma-värde och ofarlig. Medvetet EJ
-          // speglad i measure.ts — verify startar alltid från baslinjen där
-          // originallokatorn upplöser.
           el = findByLocator({ tag: op.locator && op.locator.tag, text: op.value });
         }
         if (!el || deps.isNoTouch(el)) return false;
@@ -1078,9 +1068,9 @@
         if (!viewH) guardOn = false;
       }
       var guardBlocked = false;
+      if (deps.moveWitness) deps.moveWitness.reset();
       var undos = [];
       var ok = true;
-      movedWitnesses = []; // ny riktig applicering ⇒ färska vittnen
       for (var a = 0; a < resolved.length && ok; a++) {
         var r0 = resolved[a];
         if (r0.op === "move_up") {
@@ -1128,7 +1118,7 @@
             break;
           }
           r0.sec.setAttribute("data-angel-moved", "");
-          movedWitnesses.push({ sec: r0.sec, prev: prev });
+          if (deps.moveWitness) deps.moveWitness.record(r0.sec, prev);
           undos.push(
             /* @__PURE__ */ (function(s, n) {
               return function() {
@@ -1237,6 +1227,16 @@
     },
     blocked: function (reason) {
       lastApplyBlocked = reason;
+    },
+    // Flytt-vittnena bor HÄR (handskrivna zonen) — checkSurvival läser dem;
+    // appliceraren rapporterar bara genom kroken (källan: applier.ts).
+    moveWitness: {
+      reset: function () {
+        movedWitnesses = [];
+      },
+      record: function (sec, prev) {
+        movedWitnesses.push({ sec: sec, prev: prev });
+      },
     },
   });
 
