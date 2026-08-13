@@ -22,7 +22,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { loadSiteConfig } from "@/adaptive/persistence.server";
-import { originVerdict } from "@/adaptive/domain";
+import { normalizeDomain, originVerdict } from "@/adaptive/domain";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -37,6 +37,12 @@ const json = (body: unknown, cache: string) =>
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": cache,
+      // Vary: Origin (granskningsfynd 2026-08-13): svaret varierar med Origin
+      // (bevisad origin → full config, obevisad → ANON). Den cachebara
+      // proved-varianten (public, max-age=300) UTAN Vary lät en delad
+      // CDN-cache servera den bevisade konverteringstratten till en obevisad
+      // anropare. Ofarlig på no-store-svaren; korrekt på det cachebara.
+      Vary: "Origin",
       ...CORS_HEADERS,
     },
   });
@@ -73,7 +79,15 @@ export const Route = createFileRoute("/api/adaptive/consent-config")({
           request.headers.get("origin"),
           request.headers.get("referer"),
         );
-        if (cfg.domain ? !dv.proved : !dv.allowed) return json(ANON, "no-store");
+        // Grinden måste nyckla på SAMMA "bevisbar domän"-begrepp som verdiktet
+        // (granskningsfynd 2026-08-13): originVerdict klassar via
+        // normalizeDomain, så en sann men icke-normaliserbar domän (t.ex. en-
+        // etiketts "localhost" från en labb-crawl) ger alltid proved:false.
+        // Nyckla man på RÅ cfg.domain blev sådana sajter TYST låsta till ANON
+        // för varje origin. Bevisbar ⇒ kräv proved; annars (legacy/labb) ⇒
+        // gamla allowed-beteendet, precis som verdiktet självt behandlar dem.
+        const provable = normalizeDomain(cfg.domain) !== null;
+        if (provable ? !dv.proved : !dv.allowed) return json(ANON, "no-store");
         // Cache at the edge/browser for 5 min: config changes rarely and a stale
         // 'anonymous' only ever under-collects (never over-collects).
         return json(

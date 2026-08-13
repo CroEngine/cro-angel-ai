@@ -1,13 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { buildSteps } from "@/lib/tests/run.functions";
-
-// Intern testyta — AVSTÄNGD i drift utan uttrycklig aktivering
-// (granskningsfynd 2026-07-28): routen var helt oautentiserad och lät vem
-// som helst starta browsersessioner mot godtyckliga URL:er (SSRF +
-// kostnads-DoS). ANGEL_INTERNAL_TESTS=1 sätts bara i utvecklingsmiljön;
-// riktig sessionsbunden auktorisering är dokumenterad kvarvarande skuld.
-const internalTestsEnabled = () => process.env.ANGEL_INTERNAL_TESTS === "1";
-
+import { guardInternalTests } from "@/lib/tests/sse.server";
 
 // The crawl runs INSIDE this streaming request. The serverless host keeps the
 // function alive for as long as the SSE response body is open, so step
@@ -21,6 +14,12 @@ export const Route = createFileRoute("/api/tests/$runId/stream")({
   server: {
     handlers: {
       GET: async ({ params, request }) => {
+        // Vakten FÖRST (granskningsfynd 2026-08-13): denna rutt startar
+        // riktiga Browserbase-sessioner mot en anroparstyrd URL och skriver
+        // (via ingestSite) inventarium till en anroparnamngiven sajt — utan
+        // grinden är det oautentiserad SSRF + kostnads-DoS + tvärtenant-skriv.
+        const gate = guardInternalTests();
+        if (gate) return gate;
         const runId = params.runId;
         const reqUrl = new URL(request.url);
         const sessionId = reqUrl.searchParams.get("sessionId");
@@ -144,7 +143,11 @@ export const Route = createFileRoute("/api/tests/$runId/stream")({
                     failed: result.failed,
                   });
                 } else {
-                  emit("done", { aborted: result.aborted, passed: result.passed, failed: result.failed });
+                  emit("done", {
+                    aborted: result.aborted,
+                    passed: result.passed,
+                    failed: result.failed,
+                  });
                 }
               } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);

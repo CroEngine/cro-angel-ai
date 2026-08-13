@@ -61,6 +61,43 @@ export function isAdminEmail(email: unknown): boolean {
 export type AuthCtx = { userId: string; claims: { email?: string } };
 
 /** True if the caller may see/configure `slug`: an admin, or a member of it. */
+/** Minimal admin-klient-form retireWinner behöver — bara rpc-sömmen.
+ *  PromiseLike (inte Promise): supabase-js rpc() returnerar en thenable
+ *  PostgrestFilterBuilder, inte en naken Promise. */
+type RpcAdmin = {
+  rpc: (
+    name: "angel_retire_winner",
+    args: { p_site: string; p_variant: string },
+  ) => PromiseLike<{ data: boolean | null; error: { message: string } | null }>;
+};
+
+/**
+ * winner→retired ATOMISKT via angel_retire_winner (granskningsfynd 2026-08-13):
+ * RPC:n gör statusövergången OCH `evidence || {"wasWinner":true}` i EN sats, så
+ * en samtidig nattloop-skrivning av evidence.comparison/screenshots aldrig
+ * klobbras av en läs-modifiera-skriv av hela blobben. Egen exporterad hjälpare
+ * så kontraktet (RPC, aldrig en evidence-blob-update; false ⇒ no-op; fel ⇒
+ * write failed) kan pinnas i test utan server-fn-maskineriet.
+ */
+export async function retireWinner(
+  admin: RpcAdmin,
+  site: string,
+  variantId: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data: ok, error: rpcErr } = await admin.rpc("angel_retire_winner", {
+    p_site: site,
+    p_variant: variantId,
+  });
+  if (rpcErr) {
+    console.warn(`[angel] angel_retire_winner failed: ${rpcErr.message}`);
+    return { ok: false, reason: "write failed" };
+  }
+  // false = raden var inte längre 'winner' (samtidig/redan utförd övergång) —
+  // samma no-op-semantik som det gamla optimistiska .eq(status)-låset.
+  if (!ok) return { ok: false, reason: "illegal transition winner → retired" };
+  return { ok: true };
+}
+
 export async function ownsSite(
   admin: { from: (t: string) => any },
   ctx: AuthCtx,
@@ -1011,22 +1048,24 @@ export const setVariantStatus = createServerFn({ method: "POST" })
     // återbruksvariant som ett MISSLYCKANDE och kunnat falsifiera ett block
     // som vann varje test det körde. Markören bevarar historien: raden var
     // en vinnare när den drogs tillbaka.
-    const winnerWithdrawal =
-      row.status === "winner" && status === "retired"
-        ? {
-            evidence: {
-              ...((row.evidence as Record<string, unknown> | null) ?? {}),
-              wasWinner: true,
-            } as unknown as Json,
-          }
-        : {};
+    //
+    // ATOMISK jsonb-merge via RPC (granskningsfynd 2026-08-13): den gamla
+    // vägen läste hela evidence och skrev tillbaka det — det optimistiska
+    // .eq(status)-låset skyddade bara status, så en SAMTIDIG nattloop-
+    // skrivning av evidence.comparison/screenshots klobbrades tyst med en
+    // inaktuell kopia. angel_retire_winner gör övergången + `|| wasWinner` i
+    // EN sats, så samtidiga evidence-fält överlever. Statusövergången och
+    // markören är dessutom oskiljaktiga (inte två separata skrivningar som kan
+    // lämna en retired rad UTAN markör).
+    if (row.status === "winner" && status === "retired") {
+      return await retireWinner(supabaseAdmin, site, variantId);
+    }
     const { error } = await supabaseAdmin
       .from("angel_variants")
       .update({
         status,
         updated_at: new Date().toISOString(),
         ...successFill,
-        ...winnerWithdrawal,
       })
       .eq("id", variantId)
       .eq("site", site)

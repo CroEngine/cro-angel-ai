@@ -5,6 +5,30 @@
 // one-off Browserbase session + Stagehand page and release both when done.
 // These two helpers capture that boilerplate so each route is just its task.
 
+/**
+ * The internal test routes drive real Browserbase sessions against a
+ * caller-supplied URL and (for the crawl route) write the resulting inventory
+ * into a caller-named site. Left open that is unauthenticated SSRF, a
+ * Browserbase cost-DoS, and a cross-tenant inventory write (granskningsfynd
+ * 2026-07-28). They are gated behind an env flag that is only set in the dev
+ * environment; real session-bound authorization is documented residual debt.
+ *
+ * DELAD (granskningsfynd 2026-08-13): denna vakt låg copy-pastad i tre rutter
+ * och $runId.stream.ts fick definitionen men glömde ANROPET — routen stod helt
+ * öppen. En enda delad grind (och guardInternalTests-hjälparen nedan) gör att
+ * den inte kan glömmas per rutt.
+ */
+export const internalTestsEnabled = (): boolean => process.env.ANGEL_INTERNAL_TESTS === "1";
+
+/**
+ * Returns a 403 Response when the internal test surface is disabled, else null.
+ * Call at the top of every internal test route: `const gate =
+ * guardInternalTests(); if (gate) return gate;`.
+ */
+export function guardInternalTests(): Response | null {
+  return internalTestsEnabled() ? null : new Response("disabled", { status: 403 });
+}
+
 export interface SseEmitter {
   /** Emit a named SSE event with a JSON payload (a `ts` is added). */
   emit: (type: string, data?: Record<string, unknown>) => void;
