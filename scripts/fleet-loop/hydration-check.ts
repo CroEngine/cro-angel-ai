@@ -227,6 +227,38 @@ async function runMode(
       }
     }, mode);
 
+    // Vakuositetsvakt (granskningsfynd 2026-08-13): en attack som tyst
+    // no-op:ar (mall-uppslaget missar — retextad rubrik, entitetsskillnad)
+    // hade certifierat SURVIVED utan att överlevnaden någonsin prövades.
+    // Bevisa att ordningen faktiskt är BRUTEN innan fönstren får läka den.
+    const postAttack = (await page.evaluate(`((loc) => {
+      const norm = (s) => (s || "").replace(/\\s+/g, " ").trim().toLowerCase();
+      const want = norm(loc);
+      const els = [...document.querySelectorAll("h1,h2,h3")];
+      let hit = els.find((x) => norm(x.textContent) === want);
+      if (!hit && want.length >= 8) {
+        const needle = want.slice(0, 24);
+        hit = els.find((x) => norm(x.textContent).indexOf(needle) !== -1);
+      }
+      return {
+        targetTop: hit ? hit.getBoundingClientRect().top + window.scrollY : null,
+        baseline: window.__targetTopBaseline ?? null,
+      };
+    })(${JSON.stringify(locText)})`)) as { targetTop: number | null; baseline: number | null };
+    const attackEffective =
+      postAttack.targetTop !== null && postAttack.baseline !== null
+        ? postAttack.baseline - postAttack.targetTop <= 60
+        : false;
+    if (!attackEffective) {
+      return {
+        bucket: "OTHER",
+        orderIsVariant: null,
+        claimedApplied: true,
+        residue: -1,
+        skipReason: null,
+        detail: "attack-noop: ordningen bröts aldrig — överlevnaden oprövad",
+      };
+    }
     return await finishMeasure(page, locText, nodeEvents);
   } finally {
     await page.close();

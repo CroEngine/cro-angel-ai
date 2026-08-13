@@ -215,7 +215,10 @@ async function runSuite(label, snippet) {
       "självkoll: fail-closed ⇒ DOM byte-identisk med baslinjen",
       after.mainHtml === before.mainHtml,
     );
-    check("självkoll: noll markörer (den giltiga första flytten offrad)", after.moved === 0 && after.retext === 0);
+    check(
+      "självkoll: noll markörer (den giltiga första flytten offrad)",
+      after.moved === 0 && after.retext === 0,
+    );
     check(
       "självkoll: noll residue (inget kvar att återställa)",
       (await page.evaluate(() => window.__angel.residue())) === 0,
@@ -310,6 +313,15 @@ async function runSuite(label, snippet) {
         parent.appendChild(moved);
       }
     });
+    // Vakuositetsvakt (granskningsfynd 2026-08-13): om simulerade
+    // reconciliationen tyst no-op:ar (mall-uppslag missar) är resten av
+    // fallet trivialt sant och grinden vaktar ingenting — bevisa att
+    // attacken faktiskt bröt ordningen INNAN överlevnadsfönstren.
+    const attacked = await state(page);
+    check(
+      "attacken bröt ordningen (annars är överlevnadsasserten vakuös)",
+      attacked.peopleIdx !== appliedState.peopleIdx,
+    );
     // Förbi bägge överlevnadsfönstren.
     await page.waitForTimeout(6_500);
     const after = await state(page);
