@@ -7,6 +7,7 @@
 // dashboard.functions.ts feeds it real rows from Supabase.
 
 import { stripQueryHash } from "../../adaptive/harvest/sanitize";
+import { pooledTwoProportionZ } from "../stats/two-proportion";
 import { BEHAVIOR_SHRINK_N0 } from "../../adaptive/redesign/candidates";
 import { MIN_SECTION_VISITS } from "../../adaptive/redesign/engagement-rollup";
 import {
@@ -1229,15 +1230,12 @@ export function segmentSummaries(
 }
 
 /** Exported so the variant winner-evaluator (adaptive/redesign/winner.ts) reuses
- *  the SAME significance math as pattern attribution — one definition, no drift. */
+ *  the SAME significance math as pattern attribution — one definition, no drift.
+ *  Sedan städsvepet 2026-08-14 bor själva formeln i lib/stats/two-proportion,
+ *  delad med adaptive-lab/measure.ts; null-kontraktet (tom arm, nolldivision)
+ *  är oförändrat och ägs fortfarande här. */
 export function twoProportionZ(c1: number, n1: number, c2: number, n2: number): number | null {
-  if (n1 <= 0 || n2 <= 0) return null;
-  const p1 = c1 / n1;
-  const p2 = c2 / n2;
-  const pooled = (c1 + c2) / (n1 + n2);
-  const denom = Math.sqrt(pooled * (1 - pooled) * (1 / n1 + 1 / n2));
-  if (denom === 0) return null;
-  return (p1 - p2) / denom;
+  return pooledTwoProportionZ(c1, n1, c2, n2);
 }
 
 /**
