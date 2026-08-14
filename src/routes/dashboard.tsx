@@ -61,7 +61,9 @@ const dashboardQuery = (site: string) => {
   const tzOffsetMinutes = typeof window === "undefined" ? 0 : new Date().getTimezoneOffset();
   return queryOptions({
     queryKey: ["dashboard", site, tzOffsetMinutes],
-    queryFn: () => getDashboard({ data: { site, tzOffsetMinutes } }),
+    // Tom sajt (seed innan listan kommit) skickas inte med — validatorns
+    // min(1) skulle förkasta den; sajtlistan följer ändå med svaret.
+    queryFn: () => getDashboard({ data: { site: site || undefined, tzOffsetMinutes } }),
   });
 };
 
@@ -88,19 +90,23 @@ export const Route = createFileRoute("/dashboard")({
 
 function Dashboard() {
   const navigate = useNavigate();
-  const [site, setSite] = useState("hubspot");
+  // Ingen gissad sajt: tom seed tills getDashboard levererat användarens
+  // lista, sedan väljer effekten nedan första riktiga sajten. Den gamla
+  // hårdkodade "hubspot"-seeden hämtade och målade fel sajts data för alla
+  // andra konton, med en blank omflash ovanpå (fynd 2026-08-14).
+  const [site, setSite] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const { data, isFetching } = useQuery(dashboardQuery(site));
+  const { data, isFetching, isError, refetch } = useQuery(dashboardQuery(site));
 
   async function signOut() {
     await supabase.auth.signOut();
     navigate({ to: "/login" });
   }
 
-  // If the selected site isn't in the list (the seed is just a fallback),
-  // fall over to the first real site so the picker never shows a ghost.
+  // If the selected site isn't in the list (the empty seed, or a removed
+  // site), fall over to the first real site so the picker never shows a ghost.
   const sites = data?.sites ?? [];
   useEffect(() => {
     if (sites.length > 0 && !sites.some((s) => s.slug === site)) {
@@ -109,7 +115,49 @@ function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  if (!data) return null;
+  // En misslyckad hämtning (nät, utgången session, kastande server-fn) gav
+  // tidigare en permanent vit sida — error-läget renderades aldrig (fynd
+  // 2026-08-14). Ärligt besked + försök igen; ett bakgrundsfel medan data
+  // finns kvar rör inte vyn.
+  if (isError && !data) {
+    return (
+      <div className="min-h-screen bg-[#fafaf9] text-stone-900">
+        <main className="mx-auto max-w-6xl px-6 pt-7">
+          <Card className="border-stone-200 shadow-none">
+            <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  The dashboard couldn&apos;t load
+                </h2>
+                <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                  The server didn&apos;t answer — usually a dropped connection or an expired
+                  session. Your data is untouched. Try again, or sign in again if this keeps
+                  happening.
+                </p>
+              </div>
+              <Button variant="outline" disabled={isFetching} onClick={() => refetch()}>
+                {isFetching ? "Trying…" : "Try again"}
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+  // Ingen data för vald sajt än (första hämtningen, eller omvalet från tomma
+  // seeden) — en tyst laddrad i stället för en vit sida, och aldrig en annan
+  // sajts data i väntan på rätt.
+  if (!data || (sites.length > 0 && !sites.some((s) => s.slug === site))) {
+    return (
+      <div className="min-h-screen bg-[#fafaf9]">
+        <main className="mx-auto max-w-6xl px-6 pt-7">
+          <div className="animate-pulse font-mono text-[10.5px] uppercase tracking-[.14em] text-stone-400">
+            loading…
+          </div>
+        </main>
+      </div>
+    );
+  }
   const d: DashboardResponse = data;
   // The snippet is "installed" once the site has reported any traffic —
   // exposures are server-logged for all visitors (anonymous included), and
@@ -821,6 +869,40 @@ function AccountControl({
   );
 }
 
+/** createSites serverside-validering (zod via standard-schema) når klienten
+ *  som ett Error vars message är JSON-serialiserade issues — plocka ut första
+ *  läsbara meddelandet så ägaren ser VARFÖR (t.ex. ett auto-härlett id med
+ *  ':' eller 'ü' utanför regexen). Allt annat (nät, 500) får det vanliga
+ *  ärliga fallbacket. */
+function describeCreateSiteError(err: unknown): string {
+  const FIELD_LABEL: Record<string, string> = {
+    slug: "Site id",
+    name: "Name",
+    domain: "Website",
+  };
+  if (err instanceof Error && err.message) {
+    try {
+      const issues: unknown = JSON.parse(err.message);
+      if (Array.isArray(issues)) {
+        const first = issues.find(
+          (i): i is { message: string; path?: unknown[] } =>
+            typeof (i as { message?: unknown } | null)?.message === "string",
+        );
+        if (first) {
+          const key = Array.isArray(first.path) ? first.path[0] : undefined;
+          const label = typeof key === "string" ? FIELD_LABEL[key] : undefined;
+          return label
+            ? `${label}: ${first.message}`
+            : `Couldn't create the site — ${first.message}`;
+        }
+      }
+    } catch {
+      /* inte validator-JSON — vanligt transport-/serverfel */
+    }
+  }
+  return "Couldn't reach the server — try again.";
+}
+
 function AddSiteControl({
   onCreated,
   open,
@@ -862,6 +944,10 @@ function AddSiteControl({
       setDomain("");
       setError(null);
     },
+    // Utan denna dog knappen tyst när serverns inputValidator förkastade det
+    // auto-härledda id:t — "Creating…" flippade tillbaka utan ett ord
+    // (fynd 2026-08-14).
+    onError: (err) => setError(describeCreateSiteError(err)),
   });
 
   return (

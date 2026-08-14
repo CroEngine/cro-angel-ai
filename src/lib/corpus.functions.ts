@@ -14,6 +14,34 @@ import {
   loadGolden,
 } from "./corpus-bundle";
 
+// Binärerna serveras som static assets ur public/corpus/<name>/ — existensen
+// avgörs av VERKLIGA filer vid byggtid via glob-nycklarna (granskningsfynd
+// 2026-08-14: "finns om meta.json finns" fabricerade gröna badges, trasig
+// screenshot och döda nedladdningsknappar för sajter vars binärer aldrig
+// kopierats hit — t.ex. corpus/linear utan public/corpus/linear). `?url`
+// bundlar aldrig innehållet; bara nyckellistan används — samma mönster som
+// corpus-bundles hasGolden/hasFamilies.
+const publicMhtmlByPath = import.meta.glob("../../public/corpus/*/page.mhtml", {
+  query: "?url",
+  import: "default",
+});
+const publicScreenshotByPath = import.meta.glob("../../public/corpus/*/screenshot.jpg", {
+  query: "?url",
+  import: "default",
+});
+
+function sitesWithPublicFile(globMap: Record<string, unknown>): Set<string> {
+  const out = new Set<string>();
+  for (const path of Object.keys(globMap)) {
+    const m = path.match(/\/corpus\/([^/]+)\//);
+    if (m) out.add(m[1]);
+  }
+  return out;
+}
+
+const sitesWithMhtml = sitesWithPublicFile(publicMhtmlByPath);
+const sitesWithScreenshot = sitesWithPublicFile(publicScreenshotByPath);
+
 export const ARTIFACT_FILES = [
   "golden.json",
   "meta.json",
@@ -82,11 +110,11 @@ export const listCorpus = createServerFn({ method: "GET" }).handler(
           exists: freezeReport != null,
           sizeBytes: freezeReport ? jsonByteSize(freezeReport) : null,
         },
-        // Binärerna ligger i public/corpus/<name>/ — antas finnas om
-        // sajten har en meta.json. Storlek serveras inte (no-op).
-        "page.mhtml": { exists: meta != null, sizeBytes: null },
+        // Binärerna ligger i public/corpus/<name>/ — bara filer som faktiskt
+        // FINNS där listas (byggtids-globben ovan). Storlek serveras inte.
+        "page.mhtml": { exists: sitesWithMhtml.has(name), sizeBytes: null },
         "page.mhtml.asset.json": { exists: false, sizeBytes: null },
-        "screenshot.jpg": { exists: meta != null, sizeBytes: null },
+        "screenshot.jpg": { exists: sitesWithScreenshot.has(name), sizeBytes: null },
       };
 
       return {

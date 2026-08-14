@@ -59,6 +59,7 @@ function TryPage() {
         });
         if (stop) return;
         if (res.status === 404) {
+          terminal = true;
           setGone(true);
           return;
         }
@@ -67,6 +68,13 @@ function TryPage() {
         if ("status" in data) {
           setJob(data);
           terminal = data.status === "ok" || data.status === "failed";
+        } else if (res.status >= 400 && res.status < 500) {
+          // Terminalt klientfel stoppar pollingen (granskningsfynd 2026-08-14):
+          // ett stympat id ger 400 {ok:false, reason:"bad_id"} — utan detta
+          // snurrade "Building your example…" i 25 minuter i stället för det
+          // ärliga "We can't find that preview". 5xx lämnas åt nästa poll.
+          terminal = true;
+          setGone(true);
         }
       } catch {
         /* nätverksblipp/timeout — nästa poll försöker igen */
@@ -223,7 +231,9 @@ function TryPage() {
                 <div className="bg-stone-50 py-4">
                   <iframe
                     src={`/api/preview/page?id=${encodeURIComponent(id)}&which=${arm}`}
-                    title={arm === "after" ? "Your page with Angel's change" : "Your page as published"}
+                    title={
+                      arm === "after" ? "Your page with Angel's change" : "Your page as published"
+                    }
                     sandbox=""
                     className="mx-auto block h-[72vh] w-[390px] max-w-full rounded-xl border border-stone-200 bg-white shadow-sm"
                   />

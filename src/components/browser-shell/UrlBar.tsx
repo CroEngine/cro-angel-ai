@@ -15,9 +15,20 @@ interface UrlBarProps {
   onResume: () => void;
 }
 
-export function UrlBar({ value, sessionState, onSubmit, onRun, onStop, onResume }: UrlBarProps) {
+export function UrlBar({
+  value,
+  sessionState,
+  statusMessage,
+  liveStartedAt,
+  onSubmit,
+  onRun,
+  onStop,
+  onResume,
+}: UrlBarProps) {
   const [draft, setDraft] = useState(value);
-  useEffect(() => { setDraft(value); }, [value]);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -25,6 +36,18 @@ export function UrlBar({ value, sessionState, onSubmit, onRun, onStop, onResume 
   };
 
   const isLive = sessionState === "live";
+
+  // Tickande klocka för live-räknaren — liveStartedAt sätts först när
+  // Browserbase bekräftat sessionen (session_started), se BrowserShell.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!isLive || liveStartedAt === null) return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(id);
+  }, [isLive, liveStartedAt]);
+  const elapsedS =
+    isLive && liveStartedAt !== null ? Math.max(0, Math.floor((now - liveStartedAt) / 1000)) : null;
 
   return (
     <div className="flex items-center gap-2 border-b border-border bg-background px-3 py-2">
@@ -37,8 +60,33 @@ export function UrlBar({ value, sessionState, onSubmit, onRun, onStop, onResume 
         />
       </form>
 
+      {/* Statusytan (granskningsfynd 2026-08-14): props:en fanns men
+          renderades aldrig — körningsfel var helt tysta för ägaren. */}
+      {elapsedS !== null && (
+        <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-live="off">
+          live · {elapsedS}s
+        </span>
+      )}
+      {statusMessage && (
+        <span
+          role="status"
+          title={statusMessage}
+          className={`max-w-[40ch] truncate text-xs ${
+            sessionState === "error" ? "text-destructive" : "text-muted-foreground"
+          }`}
+        >
+          {statusMessage}
+        </span>
+      )}
+
       {isLive ? (
-        <Button variant="destructive" size="sm" className="h-8 gap-1" type="button" onClick={onStop}>
+        <Button
+          variant="destructive"
+          size="sm"
+          className="h-8 gap-1"
+          type="button"
+          onClick={onStop}
+        >
           <Square className="h-3.5 w-3.5" />
           Stop
         </Button>

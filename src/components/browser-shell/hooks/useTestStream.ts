@@ -5,7 +5,7 @@ export interface StreamEvent {
   data: Record<string, unknown>;
 }
 
-export type StreamStatus = "idle" | "open" | "done" | "error";
+export type StreamStatus = "idle" | "open" | "done" | "aborted" | "error";
 
 // Opens the SSE stream that BOTH drives and reports the crawl. The crawl runs
 // server-side inside this streaming request, so closing the EventSource (stop)
@@ -34,23 +34,33 @@ export function useTestStream(
     const qs = params.toString();
     const es = new EventSource(`/api/tests/${runId}/stream?${qs}`);
     esRef.current = es;
+    // Sant när servern redan avslutat körningen (done/error) — då är en
+    // efterföljande onerror bara den stängda anslutningen, inget nytt fel.
+    let terminal = false;
 
     const handle = (type: string) => (ev: MessageEvent) => {
       if (typeof ev.data === "string" && ev.data.length > 500_000) {
-        console.warn(`[useTestStream] large ${type} payload: ${(ev.data.length / 1024).toFixed(0)}kb — consider offloading to storage`);
+        console.warn(
+          `[useTestStream] large ${type} payload: ${(ev.data.length / 1024).toFixed(0)}kb — consider offloading to storage`,
+        );
       }
       let parsed: Record<string, unknown> = {};
-      try { parsed = JSON.parse(ev.data); } catch { /* keep empty */ }
+      try {
+        parsed = JSON.parse(ev.data);
+      } catch {
+        /* keep empty */
+      }
       setEvents((prev) => [...prev, { type, data: parsed }]);
       if (type === "done") {
+        terminal = true;
         setStatus("done");
         es.close();
       } else if (type === "error") {
+        terminal = true;
         setStatus("error");
         es.close();
       }
     };
-
 
     es.addEventListener("session_started", handle("session_started"));
     es.addEventListener("log", handle("log"));
@@ -61,10 +71,21 @@ export function useTestStream(
     es.addEventListener("done", handle("done"));
     es.addEventListener("error", handle("error"));
     es.onerror = () => {
-      // EventSource auto-retries; only treat as terminal if we never opened.
-      if (es.readyState === EventSource.CLOSED) {
-        setStatus((s) => (s === "open" ? "error" : s));
-      }
+      if (terminal) return;
+      // INGEN auto-reconnect (granskningsfynd 2026-08-14): crawlen körs INUTI
+      // själva GET-requesten (se $runId.stream.ts), så EventSource:s inbyggda
+      // retry skulle re-issua GET:en och STARTA OM hela crawlen under samma
+      // runId — med duplicerade events appendade på den behållna arrayen.
+      // Stäng i stället strömmen och rapportera ett ärligt fel; eventet
+      // plockas upp av BrowserShells terminal-promotion precis som ett
+      // serverutsänt error.
+      terminal = true;
+      es.close();
+      setStatus("error");
+      setEvents((prev) => [
+        ...prev,
+        { type: "error", data: { message: "connection lost — run aborted", ts: Date.now() } },
+      ]);
     };
 
     return () => {
@@ -78,7 +99,9 @@ export function useTestStream(
   // already received are kept so the frozen view/console survive.
   const stop = useCallback(() => {
     esRef.current?.close();
-    setStatus((s) => (s === "open" ? "done" : s));
+    // "aborted", inte "done" (granskningsfynd 2026-08-14): en stoppad körning
+    // är inte färdig — statusen ska låta vyerna skilja avbrutet från klart.
+    setStatus((s) => (s === "open" ? "aborted" : s));
   }, []);
 
   return { events, status, stop };

@@ -700,62 +700,70 @@ export const getDashboard = createServerFn({ method: "POST" })
       // mot ett glidande färskt fönster och ljuger vid riktig trafik. Två anrop:
       // livstid + senaste RECENT_WINDOW_DAYS (för "över tid"-kolumnen). Bäst-
       // effort: faller tillbaka på den fönster-baserade rollupen om RPC:n dör.
-      try {
-        const [allRes, recentRes, pageRes] = await Promise.all([
-          supabaseAdmin.rpc("angel_segment_rollup", { p_site: site }),
-          supabaseAdmin.rpc("angel_segment_rollup", {
-            p_site: site,
-            p_since: new Date(Date.now() - RECENT_WINDOW_DAYS * 86_400_000).toISOString(),
-          }),
-          // Per-SIDA-rollupen (samma RPC nattloopen matar findEarnedCells med):
-          // designer genereras per sida, så segmentkortets ärliga progress är
-          // "bästa sida × grinden", inte sajtsumman ovan.
-          supabaseAdmin.rpc("angel_page_segment_rollup", { p_site: site }),
-        ]);
-        const toLeaves = (rows: NonNullable<typeof allRes.data>) =>
-          rows.map((r) => ({
-            channel: r.channel,
-            device: r.device,
-            country: r.country,
-            returning: r.is_returning === true,
-            visits: Number(r.visits) || 0,
-            conversions: Number(r.conversions) || 0,
-            formStarts: Number(r.form_starts) || 0,
-            formAbandons: Number(r.form_abandons) || 0,
-          }));
-        if (!allRes.error && Array.isArray(allRes.data)) {
-          const allTime = expandSegmentLeaves(toLeaves(allRes.data));
-          const recent =
-            !recentRes.error && Array.isArray(recentRes.data)
-              ? expandSegmentLeaves(toLeaves(recentRes.data))
-              : [];
-          metrics.segmentGroups = attachRecent(allTime, recent);
-          // Ärlig per-sida-progress (glutenforum-fyndet 2026-07-26): sajtnivån
-          // kan bära 230 besök medan bästa sidan har 34 — och grinden räknar
-          // per sida. Bäst-effort: saknas per-sida-rollupen lämnas fältet och
-          // UI:t faller tillbaka på den generiska texten.
-          if (!pageRes.error && Array.isArray(pageRes.data)) {
-            const pageRows: PageSegmentVisits[] = pageRes.data.map((r) => ({
-              path: String(r.path ?? "/"),
-              channel: String(r.channel ?? ""),
-              device: String(r.device ?? ""),
-              country: String(r.country ?? ""),
+      //
+      // BAKOM canView (UI-buggjaktens fynd 2026-08-14, tvärtenant-läcka):
+      // events/inventory/varianter grindades vid läsning ovan, men rollup-
+      // RPC:erna här låg 200 rader senare och kördes för VILKEN site-slug som
+      // helst — varje inloggad användare kunde läsa en annan kunds segment-
+      // metrik (besök, konverteringar, per-sida-rollup). Samma dom som ovan:
+      // får du inte se sajten är segmenten den tomma aggregeringens.
+      if (canView)
+        try {
+          const [allRes, recentRes, pageRes] = await Promise.all([
+            supabaseAdmin.rpc("angel_segment_rollup", { p_site: site }),
+            supabaseAdmin.rpc("angel_segment_rollup", {
+              p_site: site,
+              p_since: new Date(Date.now() - RECENT_WINDOW_DAYS * 86_400_000).toISOString(),
+            }),
+            // Per-SIDA-rollupen (samma RPC nattloopen matar findEarnedCells med):
+            // designer genereras per sida, så segmentkortets ärliga progress är
+            // "bästa sida × grinden", inte sajtsumman ovan.
+            supabaseAdmin.rpc("angel_page_segment_rollup", { p_site: site }),
+          ]);
+          const toLeaves = (rows: NonNullable<typeof allRes.data>) =>
+            rows.map((r) => ({
+              channel: r.channel,
+              device: r.device,
+              country: r.country,
               returning: r.is_returning === true,
               visits: Number(r.visits) || 0,
+              conversions: Number(r.conversions) || 0,
+              formStarts: Number(r.form_starts) || 0,
+              formAbandons: Number(r.form_abandons) || 0,
             }));
-            const gate =
-              siteConfig.testMetric === "continuation"
-                ? SEGMENT_MIN_VISITS_ENGAGEMENT
-                : SEGMENT_MIN_VISITS;
-            for (const g of metrics.segmentGroups) {
-              const best = bestPageForSegment(pageRows, g.key);
-              g.bestPage = best ? { ...best, gate } : null;
+          if (!allRes.error && Array.isArray(allRes.data)) {
+            const allTime = expandSegmentLeaves(toLeaves(allRes.data));
+            const recent =
+              !recentRes.error && Array.isArray(recentRes.data)
+                ? expandSegmentLeaves(toLeaves(recentRes.data))
+                : [];
+            metrics.segmentGroups = attachRecent(allTime, recent);
+            // Ärlig per-sida-progress (glutenforum-fyndet 2026-07-26): sajtnivån
+            // kan bära 230 besök medan bästa sidan har 34 — och grinden räknar
+            // per sida. Bäst-effort: saknas per-sida-rollupen lämnas fältet och
+            // UI:t faller tillbaka på den generiska texten.
+            if (!pageRes.error && Array.isArray(pageRes.data)) {
+              const pageRows: PageSegmentVisits[] = pageRes.data.map((r) => ({
+                path: String(r.path ?? "/"),
+                channel: String(r.channel ?? ""),
+                device: String(r.device ?? ""),
+                country: String(r.country ?? ""),
+                returning: r.is_returning === true,
+                visits: Number(r.visits) || 0,
+              }));
+              const gate =
+                siteConfig.testMetric === "continuation"
+                  ? SEGMENT_MIN_VISITS_ENGAGEMENT
+                  : SEGMENT_MIN_VISITS;
+              for (const g of metrics.segmentGroups) {
+                const best = bestPageForSegment(pageRows, g.key);
+                g.bestPage = best ? { ...best, gate } : null;
+              }
             }
           }
+        } catch (segErr) {
+          console.warn(`[angel] segment rollup unavailable, using window fallback:`, segErr);
         }
-      } catch (segErr) {
-        console.warn(`[angel] segment rollup unavailable, using window fallback:`, segErr);
-      }
 
       // Resan till bevisat (stanna-tills-bevisat, ägarmodellen 2026-07-23):
       // ren härledning ur det som redan lästs — inga extra frågor.
@@ -777,6 +785,12 @@ export const getDashboard = createServerFn({ method: "POST" })
         testMetric: siteConfig.testMetric,
       });
 
+      // "Andra hänvisande sajter"-panelen (overview-panel: segment "other"):
+      // fältet fanns i payloaden och konsumenten renderade det, men loadern
+      // anropades ALDRIG (UI-buggjaktens fynd 2026-08-14) — panelen kunde
+      // därför aldrig visas. Bakom canView (tenant-data); bäst-effort.
+      const otherDomains = canView ? await loadTopReferrerDomains(site) : [];
+
       return {
         site,
         sites,
@@ -786,6 +800,7 @@ export const getDashboard = createServerFn({ method: "POST" })
         siteConfig,
         variants,
         journey,
+        otherDomains,
         isAdmin: admin,
       };
     } catch (err) {

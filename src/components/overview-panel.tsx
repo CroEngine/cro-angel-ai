@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { setVariantStatus, setVariantSuccess } from "@/lib/dashboard/dashboard.functions";
 import { parentSegmentKey, segmentDims } from "@/lib/segment-key";
+import { abMetricLabels, measuredHeadline, type AbMetric } from "./dashboard/ab-metric-labels";
 import { CompareOverlay, JourneysOverlay } from "./dashboard/overlays";
 import {
   enLabel,
@@ -181,16 +182,27 @@ export function OverviewPanel({
       setStatusError(res.ok ? null : (res.reason ?? "couldn't save"));
       queryClient.invalidateQueries({ queryKey: ["dashboard", site] });
     },
+    // Transportfel efter ett BEKRÄFTAT statusbyte gav noll återkoppling
+    // (UI-buggjaktens fynd 2026-08-14) — rejection landar i samma felyta.
+    onError: () => setStatusError("couldn't save — network error; nothing was changed"),
   });
   // Kontraktsredigeraren: ägaren väljer primärt mått + guardrails per variant.
+  // {ok:false} är ett RESOLVED svar — utan koll stängde editorn som om det
+  // sparats och ägarens val försvann tyst (UI-buggjaktens fynd 2026-08-14).
+  const [contractError, setContractError] = useState<string | null>(null);
   const contract = useMutation({
     mutationFn: (args: { variantId: string; success: SuccessSpec }) =>
       setVariantSuccess({ data: { site, ...args } }),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      setContractError(res.ok ? null : (res.reason ?? "couldn't save"));
       queryClient.invalidateQueries({ queryKey: ["dashboard", site] });
     },
+    onError: () => setContractError("couldn't save — network error; your edit is kept"),
   });
-  const [editingContract, setEditingContract] = useState(false);
+  // Draften hör till EN variant: nyckeln är variant-id, inte en boolean —
+  // annars överlever variant A:s öppna draft ett segmentbyte och sparas på
+  // variant B (UI-buggjaktens fynd 2026-08-14).
+  const [editingContract, setEditingContract] = useState<string | null>(null);
   const [draftPrimary, setDraftPrimary] = useState("conversion");
   const [draftGuards, setDraftGuards] = useState<string[]>(["bounce", "engaged"]);
   // Varje trafikpåverkande statusbyte bekräftas — en felklickning ska inte
@@ -203,6 +215,17 @@ export function OverviewPanel({
 
   // ── svarskortet: summerade armar över allt som serverar ───────────────────
   const siteVerdict = judgeArms(sumArms(variants));
+  // Vad `conversions`-fälten FAKTISKT räknar: sajtens testMetric är gemensamt
+  // för alla varianter, så första levande armen bär sanningen för summan.
+  const siteMetric: AbMetric | null =
+    variants.find((v) => (v.status === "serving" || v.status === "winner") && v.abTest)?.abTest
+      ?.metric ?? null;
+  // Rubriken firar bara ett win-domslut, och kontrollarm utan konverteringar
+  // (liftRel null) får en egen ärlig mening i stället för ett tomt kort.
+  const siteHeadline =
+    siteVerdict.state === "measured"
+      ? measuredHeadline(siteVerdict.measured?.verdict, siteVerdict.liftRel, siteMetric)
+      : null;
 
   // ── valet: armar + resor + varianter ──────────────────────────────────────
   const selVariant = sel ? variantFor(variants, sel.key) : null;
@@ -245,110 +268,120 @@ export function OverviewPanel({
     return_visit: "return visits",
     bounce: "bounce",
   };
-  const armsBlock = (verdict: ArmVerdict, success?: SuccessSpec | null) => (
-    <div className="mt-6">
-      <div className="mb-2.5 font-heading text-sm font-semibold">Adapted vs control</div>
-      {verdict.arms ? (
-        <>
-          <div className="overflow-hidden rounded-xl border border-[#f0eee9]">
-            <div className="flex bg-[#faf9f7] px-[18px] py-2.5 text-[10.5px] font-semibold uppercase tracking-[.06em] text-stone-400">
-              <span className="flex-1">Arm</span>
-              <span className="w-[92px] text-right">Visitors</span>
-              <span className="w-[100px] text-right">Conv. rate</span>
-              <span className="w-[92px] text-right">Conversions</span>
-            </div>
-            {(
-              [
-                ["Adapted", verdict.arms.variant, "#065f46"],
-                ["Control", verdict.arms.control, "#78716c"],
-              ] as const
-            ).map(([label, arm, color]) => (
-              <div
-                key={label}
-                className="flex items-center border-t border-[#f0eee9] px-[18px] py-3 text-[13px] tabular-nums"
-              >
-                <span className="flex-1 font-semibold" style={{ color }}>
-                  {label}
-                </span>
-                <span className="w-[92px] text-right">{fmt(arm.visits)}</span>
-                <span className="w-[100px] text-right font-semibold">
-                  {arm.visits > 0 ? pct(arm.conversions / arm.visits) : "—"}
-                </span>
-                <span className="w-[92px] text-right">{fmt(arm.conversions)}</span>
+  const armsBlock = (
+    verdict: ArmVerdict,
+    success?: SuccessSpec | null,
+    metric?: AbMetric | null,
+  ) => {
+    // Rubrikerna följer VariantAbView.metric: i continuation-läget bär
+    // `conversions`-fälten fortsättningar (UI-buggjaktens fynd 2026-08-14) —
+    // continuation-tal ska aldrig visas under conversion-rubriker.
+    const labels = abMetricLabels(metric);
+    return (
+      <div className="mt-6">
+        <div className="mb-2.5 font-heading text-sm font-semibold">Adapted vs control</div>
+        {verdict.arms ? (
+          <>
+            <div className="overflow-hidden rounded-xl border border-[#f0eee9]">
+              <div className="flex bg-[#faf9f7] px-[18px] py-2.5 text-[10.5px] font-semibold uppercase tracking-[.06em] text-stone-400">
+                <span className="flex-1">Arm</span>
+                <span className="w-[92px] text-right">Visitors</span>
+                <span className="w-[100px] text-right">{labels.rateLabel}</span>
+                <span className="w-[92px] text-right">{labels.countLabel}</span>
               </div>
-            ))}
-          </div>
-          {verdict.state === "measured" && verdict.prob !== null ? (
-            <div className="mt-3 flex items-center gap-2.5">
-              <div className="h-1.5 max-w-[240px] flex-1 overflow-hidden rounded-full bg-stone-200">
+              {(
+                [
+                  ["Adapted", verdict.arms.variant, "#065f46"],
+                  ["Control", verdict.arms.control, "#78716c"],
+                ] as const
+              ).map(([label, arm, color]) => (
                 <div
-                  className="h-full rounded-full bg-emerald-600"
-                  style={{ width: `${Math.round(verdict.prob * 100)}%` }}
-                />
-              </div>
-              <span className="text-[12.5px] text-stone-600">
-                <b className="text-emerald-900">{Math.round(verdict.prob * 100)}%</b> probability
-                the lift is real
-              </span>
+                  key={label}
+                  className="flex items-center border-t border-[#f0eee9] px-[18px] py-3 text-[13px] tabular-nums"
+                >
+                  <span className="flex-1 font-semibold" style={{ color }}>
+                    {label}
+                  </span>
+                  <span className="w-[92px] text-right">{fmt(arm.visits)}</span>
+                  <span className="w-[100px] text-right font-semibold">
+                    {arm.visits > 0 ? pct(arm.conversions / arm.visits) : "—"}
+                  </span>
+                  <span className="w-[92px] text-right">{fmt(arm.conversions)}</span>
+                </div>
+              ))}
             </div>
-          ) : (
-            <div className="mt-3 text-[12.5px] text-stone-400">
-              {verdict.measured
-                ? verdict.measured.reason
-                : "Too few conversions on one of the arms yet — no probability is claimed until the math holds."}
-            </div>
-          )}
-          {verdict.state === "measured" && verdict.measured ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-stone-500">
-              <span
-                className="rounded-full px-2 py-0.5 font-semibold"
-                style={
-                  verdict.measured.verdict === "win"
-                    ? { background: "#d1fae5", color: "#065f46" }
-                    : verdict.measured.verdict === "loss"
-                      ? { background: "#fee2e2", color: "#991b1b" }
-                      : { background: "#f5f5f4", color: "#57534e" }
-                }
-              >
-                {verdict.measured.verdict.replace("_", " ")}
-              </span>
-              {verdict.measured.upliftRelCi ? (
-                <span className="tabular-nums">
-                  lift CI {Math.round(verdict.measured.upliftRelCi[0] * 100)}%…
-                  {Math.round(verdict.measured.upliftRelCi[1] * 100)}%
+            {verdict.state === "measured" && verdict.prob !== null ? (
+              <div className="mt-3 flex items-center gap-2.5">
+                <div className="h-1.5 max-w-[240px] flex-1 overflow-hidden rounded-full bg-stone-200">
+                  <div
+                    className="h-full rounded-full bg-emerald-600"
+                    style={{ width: `${Math.round(verdict.prob * 100)}%` }}
+                  />
+                </div>
+                <span className="text-[12.5px] text-stone-600">
+                  <b className="text-emerald-900">{Math.round(verdict.prob * 100)}%</b> probability
+                  the lift is real
                 </span>
-              ) : null}
+              </div>
+            ) : (
+              <div className="mt-3 text-[12.5px] text-stone-400">
+                {verdict.measured
+                  ? verdict.measured.reason
+                  : "Too few conversions on one of the arms yet — no probability is claimed until the math holds."}
+              </div>
+            )}
+            {verdict.state === "measured" && verdict.measured ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-stone-500">
+                <span
+                  className="rounded-full px-2 py-0.5 font-semibold"
+                  style={
+                    verdict.measured.verdict === "win"
+                      ? { background: "#d1fae5", color: "#065f46" }
+                      : verdict.measured.verdict === "loss"
+                        ? { background: "#fee2e2", color: "#991b1b" }
+                        : { background: "#f5f5f4", color: "#57534e" }
+                  }
+                >
+                  {verdict.measured.verdict.replace("_", " ")}
+                </span>
+                {verdict.measured.upliftRelCi ? (
+                  <span className="tabular-nums">
+                    lift CI {Math.round(verdict.measured.upliftRelCi[0] * 100)}%…
+                    {Math.round(verdict.measured.upliftRelCi[1] * 100)}%
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            {verdict.state === "measured" &&
+            verdict.measured?.verdict === "no_effect" &&
+            success?.mdeRel &&
+            verdict.measured.upliftRelCi &&
+            (verdict.measured.upliftRelCi[1] >= success.mdeRel ||
+              verdict.measured.upliftRelCi[0] <= -success.mdeRel) ? (
+              <div className="mt-2 text-[12px] text-stone-500">
+                The CI still allows ±{Math.round(success.mdeRel * 100)}% — underpowered, keep
+                measuring rather than calling it flat.
+              </div>
+            ) : null}
+            <div className="mt-2 text-[11.5px] text-stone-400">
+              {success
+                ? `Judged on ${METRIC_EN[success.primary] ?? success.primary} only (MDE ±${Math.round((success.mdeRel ?? 0.1) * 100)}%); ${
+                    success.guardrails.length
+                      ? success.guardrails.map((g) => METRIC_EN[g] ?? g).join(" & ") +
+                        " guard the test — they can pause it, never win it."
+                      : "no guardrails declared."
+                  }`
+                : `Judged on ${labels.judgedOn} only; engagement and bounce guard the test — they can pause it, never win it (docs/metric-hierarchy.md).`}
             </div>
-          ) : null}
-          {verdict.state === "measured" &&
-          verdict.measured?.verdict === "no_effect" &&
-          success?.mdeRel &&
-          verdict.measured.upliftRelCi &&
-          (verdict.measured.upliftRelCi[1] >= success.mdeRel ||
-            verdict.measured.upliftRelCi[0] <= -success.mdeRel) ? (
-            <div className="mt-2 text-[12px] text-stone-500">
-              The CI still allows ±{Math.round(success.mdeRel * 100)}% — underpowered, keep
-              measuring rather than calling it flat.
-            </div>
-          ) : null}
-          <div className="mt-2 text-[11.5px] text-stone-400">
-            {success
-              ? `Judged on ${METRIC_EN[success.primary] ?? success.primary} only (MDE ±${Math.round((success.mdeRel ?? 0.1) * 100)}%); ${
-                  success.guardrails.length
-                    ? success.guardrails.map((g) => METRIC_EN[g] ?? g).join(" & ") +
-                      " guard the test — they can pause it, never win it."
-                    : "no guardrails declared."
-                }`
-              : "Judged on conversions only; engagement and bounce guard the test — they can pause it, never win it (docs/metric-hierarchy.md)."}
+          </>
+        ) : (
+          <div className="rounded-xl border border-dashed border-stone-200 px-[18px] py-5 text-[13px] text-stone-400">
+            No test is running {sel ? "for this group" : ""} yet.
           </div>
-        </>
-      ) : (
-        <div className="rounded-xl border border-dashed border-stone-200 px-[18px] py-5 text-[13px] text-stone-400">
-          No test is running {sel ? "for this group" : ""} yet.
-        </div>
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   // ── dashboardvyn ───────────────────────────────────────────────────────────
   return (
@@ -363,14 +396,10 @@ export function OverviewPanel({
         <div
           className="rounded-2xl border p-6"
           style={{
-            borderColor:
-              siteVerdict.state === "measured" && (siteVerdict.liftRel ?? 0) > 0
-                ? "#d1fae5"
-                : "#e7e5e4",
-            background:
-              siteVerdict.state === "measured" && (siteVerdict.liftRel ?? 0) > 0
-                ? "linear-gradient(180deg,#f0fdf7,#ffffff)"
-                : "#fff",
+            borderColor: siteHeadline?.celebrate ? "#d1fae5" : "#e7e5e4",
+            background: siteHeadline?.celebrate
+              ? "linear-gradient(180deg,#f0fdf7,#ffffff)"
+              : "#fff",
           }}
         >
           <div className="font-mono text-[10.5px] uppercase tracking-[.14em] text-emerald-600">
@@ -399,20 +428,15 @@ export function OverviewPanel({
               </p>
             </>
           )}
-          {siteVerdict.state === "measured" && siteVerdict.liftRel !== null && (
+          {siteHeadline && (
             <>
               <div
                 className="mt-2 font-heading text-3xl font-bold tracking-tight"
-                style={{ color: siteVerdict.liftRel > 0 ? "#065f46" : "#78350f" }}
+                style={{ color: siteHeadline.celebrate ? "#065f46" : "#78350f" }}
               >
-                {siteVerdict.liftRel > 0
-                  ? `Yes — +${(siteVerdict.liftRel * 100).toFixed(0)}% lift`
-                  : `Not yet — ${(siteVerdict.liftRel * 100).toFixed(0)}%`}
+                {siteHeadline.title}
               </div>
-              <p className="mt-2 text-[13.5px] text-stone-600">
-                Adapted visitors convert {siteVerdict.liftRel > 0 ? "more" : "less"} than the
-                held-back control group.
-              </p>
+              <p className="mt-2 text-[13.5px] text-stone-600">{siteHeadline.body}</p>
               {siteVerdict.prob !== null && (
                 <div className="mt-4 flex items-center gap-2.5">
                   <div className="h-1.5 max-w-[300px] flex-1 overflow-hidden rounded-full bg-stone-200">
@@ -581,7 +605,7 @@ export function OverviewPanel({
                 </div>
               </div>
 
-              {armsBlock(siteVerdict)}
+              {armsBlock(siteVerdict, null, siteMetric)}
 
               <div className="mt-6">
                 <div className="mb-2.5 flex items-baseline gap-2">
@@ -679,10 +703,10 @@ export function OverviewPanel({
                 </div>
               </div>
 
-              {armsBlock(selArms, selVariant?.success)}
+              {armsBlock(selArms, selVariant?.success, selVariant?.abTest?.metric)}
               {selVariant ? (
                 <div className="mt-2">
-                  {!editingContract ? (
+                  {editingContract !== selVariant.id ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -692,7 +716,8 @@ export function OverviewPanel({
                         };
                         setDraftPrimary(sp.primary);
                         setDraftGuards([...sp.guardrails]);
-                        setEditingContract(true);
+                        setContractError(null);
+                        setEditingContract(selVariant.id);
                       }}
                       className="text-[11.5px] font-semibold text-stone-500 underline decoration-dotted hover:text-stone-700"
                     >
@@ -754,7 +779,14 @@ export function OverviewPanel({
                                 mdeRel: selVariant.success?.mdeRel ?? 0.1,
                               },
                             },
-                            { onSuccess: () => setEditingContract(false) },
+                            // Stäng bara vid VERKLIG lyckad skrivning — vid
+                            // {ok:false}/nätverksfel står editorn kvar med
+                            // draften och felet nedan.
+                            {
+                              onSuccess: (res) => {
+                                if (res.ok) setEditingContract(null);
+                              },
+                            },
                           )
                         }
                         className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11.5px] font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
@@ -763,11 +795,16 @@ export function OverviewPanel({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setEditingContract(false)}
+                        onClick={() => setEditingContract(null)}
                         className="text-[11.5px] font-semibold text-stone-500 hover:text-stone-700"
                       >
                         Cancel
                       </button>
+                      {contractError && (
+                        <span className="text-[11.5px] font-semibold text-red-600">
+                          {contractError}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

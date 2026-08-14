@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,12 @@ function fmtCls(v: number | null): string {
 
 function ScoreCard({ label, score }: { label: string; score: number | null }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center rounded-lg border p-3", scoreBg(score))}>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-lg border p-3",
+        scoreBg(score),
+      )}
+    >
       <div className={cn("text-2xl font-bold tabular-nums", scoreColor(score))}>
         {score === null ? "—" : score}
       </div>
@@ -80,7 +85,9 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
 
       <div className="rounded border border-border bg-muted/30 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Core Web Vitals (Lab)</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Core Web Vitals (Lab)
+          </div>
           {result.vitals.hasFieldData && (
             <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[9px] font-medium">
               + CrUX field data
@@ -92,21 +99,27 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
             <div className="text-[10px] text-muted-foreground">LCP</div>
             <div className="font-mono tabular-nums">{fmtMs(result.vitals.lcpMs)}</div>
             {result.vitals.fieldLcpMs !== null && (
-              <div className="text-[10px] text-muted-foreground">field: {fmtMs(result.vitals.fieldLcpMs)}</div>
+              <div className="text-[10px] text-muted-foreground">
+                field: {fmtMs(result.vitals.fieldLcpMs)}
+              </div>
             )}
           </div>
           <div className="rounded border border-border bg-background/50 p-2">
             <div className="text-[10px] text-muted-foreground">FCP</div>
             <div className="font-mono tabular-nums">{fmtMs(result.vitals.fcpMs)}</div>
             {result.vitals.fieldFcpMs !== null && (
-              <div className="text-[10px] text-muted-foreground">field: {fmtMs(result.vitals.fieldFcpMs)}</div>
+              <div className="text-[10px] text-muted-foreground">
+                field: {fmtMs(result.vitals.fieldFcpMs)}
+              </div>
             )}
           </div>
           <div className="rounded border border-border bg-background/50 p-2">
             <div className="text-[10px] text-muted-foreground">CLS</div>
             <div className="font-mono tabular-nums">{fmtCls(result.vitals.cls)}</div>
             {result.vitals.fieldClsP75 !== null && (
-              <div className="text-[10px] text-muted-foreground">field p75: {fmtCls(result.vitals.fieldClsP75)}</div>
+              <div className="text-[10px] text-muted-foreground">
+                field p75: {fmtCls(result.vitals.fieldClsP75)}
+              </div>
             )}
           </div>
           <div className="rounded border border-border bg-background/50 p-2">
@@ -121,7 +134,9 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
             <div className="text-[10px] text-muted-foreground">TTI</div>
             <div className="font-mono tabular-nums">{fmtMs(result.vitals.ttiMs)}</div>
             {result.vitals.fieldInpMs !== null && (
-              <div className="text-[10px] text-muted-foreground">field INP: {fmtMs(result.vitals.fieldInpMs)}</div>
+              <div className="text-[10px] text-muted-foreground">
+                field INP: {fmtMs(result.vitals.fieldInpMs)}
+              </div>
             )}
           </div>
         </div>
@@ -140,7 +155,9 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
                 </span>
                 <span className="flex-1 truncate text-foreground">{o.title}</span>
                 {o.displayValue && (
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{o.displayValue}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                    {o.displayValue}
+                  </span>
                 )}
               </li>
             ))}
@@ -150,13 +167,17 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
 
       {result.audits.diagnostics.length > 0 && (
         <div className="rounded border border-border bg-muted/30 p-3">
-          <div className="mb-2 text-[10px] uppercase tracking-wide text-muted-foreground">Diagnostics</div>
+          <div className="mb-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+            Diagnostics
+          </div>
           <ul className="space-y-1">
             {result.audits.diagnostics.map((d) => (
               <li key={d.id} className="flex items-center gap-2 text-xs">
                 <span className="flex-1 truncate text-foreground">{d.title}</span>
                 {d.displayValue && (
-                  <span className="shrink-0 text-[10px] text-muted-foreground">{d.displayValue}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                    {d.displayValue}
+                  </span>
                 )}
               </li>
             ))}
@@ -167,9 +188,14 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
       {(() => {
         const rs = result.resourceSummary;
         const parts: Array<[string, number | null]> = [
-          ["JS", rs.scriptKib], ["CSS", rs.stylesheetKib], ["IMG", rs.imageKib],
-          ["Font", rs.fontKib], ["Doc", rs.documentKib], ["Media", rs.mediaKib],
-          ["3rd-party", rs.thirdPartyKib], ["Other", rs.otherKib],
+          ["JS", rs.scriptKib],
+          ["CSS", rs.stylesheetKib],
+          ["IMG", rs.imageKib],
+          ["Font", rs.fontKib],
+          ["Doc", rs.documentKib],
+          ["Media", rs.mediaKib],
+          ["3rd-party", rs.thirdPartyKib],
+          ["Other", rs.otherKib],
         ];
         const shown = parts.filter(([, v]) => v !== null && v > 0);
         if (shown.length === 0 && rs.totalKib === null) return null;
@@ -186,7 +212,10 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
             </div>
             <div className="flex flex-wrap gap-1.5 text-xs">
               {shown.map(([label, kib]) => (
-                <span key={label} className="rounded border border-border bg-background/50 px-2 py-0.5 font-mono tabular-nums">
+                <span
+                  key={label}
+                  className="rounded border border-border bg-background/50 px-2 py-0.5 font-mono tabular-nums"
+                >
                   <span className="text-muted-foreground">{label}</span>{" "}
                   <span className="text-foreground">{kib!.toLocaleString()} KiB</span>
                 </span>
@@ -204,15 +233,21 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
           <ul className="space-y-1">
             {result.renderBlockingResources.map((r) => {
               const filename = (() => {
-                try { return new URL(r.url).pathname.split("/").pop() || r.url; }
-                catch { return r.url; }
+                try {
+                  return new URL(r.url).pathname.split("/").pop() || r.url;
+                } catch {
+                  return r.url;
+                }
               })();
               return (
                 <li key={r.url} className="flex items-center gap-2 text-xs">
                   <span className="inline-flex h-5 min-w-12 shrink-0 items-center justify-center rounded bg-red-500/20 px-1 text-[10px] font-bold tabular-nums text-red-600">
                     -{Math.round(r.wastedMs)}ms
                   </span>
-                  <span className="flex-1 truncate font-mono text-[11px] text-foreground" title={r.url}>
+                  <span
+                    className="flex-1 truncate font-mono text-[11px] text-foreground"
+                    title={r.url}
+                  >
                     {filename}
                   </span>
                   <span className="shrink-0 text-[10px] text-muted-foreground">
@@ -228,78 +263,162 @@ function StrategyPanel({ result }: { result: PsiStrategyResult }) {
   );
 }
 
+export type PsiRunState = {
+  url: string;
+  mobile: PsiStrategyResult | null;
+  desktop: PsiStrategyResult | null;
+  mobileLoading: boolean;
+  desktopLoading: boolean;
+};
+
+type PsiRunPatch = Partial<Omit<PsiRunState, "url">>;
+
+// Store på modulnivå med flit: ConsolePanel renderar vyn i en TabsContent som
+// avmonterar den vid varje flikbyte, så komponent-state och refs nollställs.
+// Utan minne här re-fyrade varje återbesök till fliken tyst två PSI-anrop och
+// kastade resultaten användaren just tittade på (granskningsfynd 2026-08-14).
+// start() delar dessutom ut en settle-funktion bunden till senaste körningens
+// token — stale svar från en tidigare körning (PSI tar 15–30 s) får aldrig
+// skriva över nyare resultat eller släcka loading-flaggorna i förtid.
+// eslint-disable-next-line react-refresh/only-export-components -- ren logik, exporterad för test
+export function createPsiRunStore() {
+  let state: PsiRunState | null = null;
+  let runSeq = 0;
+  const listeners = new Set<() => void>();
+  const emit = () => {
+    for (const l of listeners) l();
+  };
+  return {
+    subscribe(listener: () => void): () => void {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    getState(): PsiRunState | null {
+      return state;
+    },
+    /** Startar en ny körning; bara den returnerade settle-funktionen från den
+     *  SENASTE körningen får skriva state — äldre körningars settle är no-op. */
+    start(url: string): (patch: PsiRunPatch) => void {
+      const token = ++runSeq;
+      state = { url, mobile: null, desktop: null, mobileLoading: true, desktopLoading: true };
+      emit();
+      return (patch) => {
+        if (runSeq !== token || state === null) return;
+        state = { ...state, ...patch };
+        emit();
+      };
+    },
+    /** Nollar storen (ny BrowserShell-session). Bumpar runSeq så en INFLYGANDE
+     *  settle från förra sessionen inte kan skriva efter nollningen. */
+    reset() {
+      runSeq++;
+      state = null;
+      emit();
+    },
+  };
+}
+
+const psiStore = createPsiRunStore();
+
+// Ren ska-köra-beslutslogik för auto-triggern: kör bara när BrowserShell
+// signalerat en NY explicit Run (runKey ökat). runKey === 0 är mount utan Run;
+// runKey === lastHandled är remount efter flikbyte. URL:en ingår medvetet inte
+// i beslutet — Enter i URL-fältet ska inte starta PSI mot en aldrig körd URL,
+// och Run efter URL-ändring ska inte dubbelfyra (granskningsfynd 2026-08-14).
+// eslint-disable-next-line react-refresh/only-export-components -- ren logik, exporterad för test
+export function shouldAutoRun(runKey: number, lastHandled: number): boolean {
+  return runKey > 0 && runKey !== lastHandled;
+}
+
+// Modulnivå av samma skäl som storen: överlever remount vid flikbyte.
+let lastHandledRunKey = 0;
+
+/** Nollställ PSI-modulstaten. BrowserShell anropar den EN gång per montering
+ *  (granskningsfynd 2026-08-14, regression i UI-fixen): storen + räknaren låg
+ *  på modulnivå för att överleva flik-avmontering (PageInsightsView monteras
+ *  av när fliken byts), men överlevde då ÄVEN en hel BrowserShell-remontering
+ *  (ny session) där psiRunKey nollas till 0 — då kunde en ny Run (runKey→1)
+ *  bli undertryckt av ett kvarhängande lastHandledRunKey===1, och förra
+ *  sessionens resultat visas direkt för default-URL:en. En mount-nollning
+ *  (BrowserShell överlever flikbyten men remonteras per session) ger rätt
+ *  skop: resultat överlever flikbyte, men aldrig en ny session. */
+export function resetPsiRuns(): void {
+  lastHandledRunKey = 0;
+  psiStore.reset();
+}
+
+function psiErrorResult(strategy: "mobile" | "desktop", e: unknown): PsiStrategyResult {
+  return {
+    strategy,
+    fetchedAt: new Date().toISOString(),
+    scores: { performance: null, accessibility: null, bestPractices: null, seo: null },
+    vitals: {
+      lcpMs: null,
+      fcpMs: null,
+      tbtMs: null,
+      cls: null,
+      speedIndexMs: null,
+      ttiMs: null,
+      fieldLcpMs: null,
+      fieldFcpMs: null,
+      fieldClsP75: null,
+      fieldInpMs: null,
+      hasFieldData: false,
+    },
+    audits: { opportunities: [], diagnostics: [] },
+    resourceSummary: {
+      totalKib: null,
+      scriptKib: null,
+      imageKib: null,
+      stylesheetKib: null,
+      fontKib: null,
+      documentKib: null,
+      mediaKib: null,
+      otherKib: null,
+      thirdPartyKib: null,
+      totalRequests: null,
+    },
+    renderBlockingResources: [],
+    thirdPartyEntities: [],
+    thirdPartyBlockingTotalMs: 0,
+    thirdPartyAuditMissing: true,
+    error: e instanceof Error ? e.message : String(e),
+  };
+}
+
 export function PageInsightsView({ url, runKey = 0 }: { url: string; runKey?: number }) {
   const psiMobile = useServerFn(runPsiMobile);
   const psiDesktop = useServerFn(runPsiDesktop);
-  const [mobile, setMobile] = useState<PsiStrategyResult | null>(null);
-  const [desktop, setDesktop] = useState<PsiStrategyResult | null>(null);
-  const [mobileLoading, setMobileLoading] = useState(false);
-  const [desktopLoading, setDesktopLoading] = useState(false);
   const [strategy, setStrategy] = useState<"mobile" | "desktop">("mobile");
+  // Resultaten bor i modulstoren (se ovan). Visa dem bara när de hör till
+  // URL:en i panelen — annars visades en gammal körnings siffror under fel
+  // rubrik efter Enter i URL-fältet.
+  const state = useSyncExternalStore(psiStore.subscribe, psiStore.getState, psiStore.getState);
+  const run = state !== null && state.url === url ? state : null;
+  const mobile = run?.mobile ?? null;
+  const desktop = run?.desktop ?? null;
+  const mobileLoading = run?.mobileLoading ?? false;
+  const desktopLoading = run?.desktopLoading ?? false;
 
   const runBoth = () => {
-    setMobile(null);
-    setDesktop(null);
-    setMobileLoading(true);
-    setDesktopLoading(true);
+    const settle = psiStore.start(url);
     psiMobile({ data: { url } })
-      .then((r) => setMobile(r))
-      .catch((e) =>
-        setMobile({
-          strategy: "mobile",
-          fetchedAt: new Date().toISOString(),
-          scores: { performance: null, accessibility: null, bestPractices: null, seo: null },
-          vitals: {
-            lcpMs: null, fcpMs: null, tbtMs: null, cls: null, speedIndexMs: null, ttiMs: null,
-            fieldLcpMs: null, fieldFcpMs: null, fieldClsP75: null, fieldInpMs: null, hasFieldData: false,
-          },
-          audits: { opportunities: [], diagnostics: [] },
-          resourceSummary: {
-            totalKib: null, scriptKib: null, imageKib: null, stylesheetKib: null,
-            fontKib: null, documentKib: null, mediaKib: null, otherKib: null,
-            thirdPartyKib: null, totalRequests: null,
-          },
-          renderBlockingResources: [],
-          thirdPartyEntities: [],
-          thirdPartyBlockingTotalMs: 0,
-          thirdPartyAuditMissing: true,
-          error: e instanceof Error ? e.message : String(e),
-        }),
-      )
-      .finally(() => setMobileLoading(false));
+      .then((r) => settle({ mobile: r, mobileLoading: false }))
+      .catch((e) => settle({ mobile: psiErrorResult("mobile", e), mobileLoading: false }));
     psiDesktop({ data: { url } })
-      .then((r) => setDesktop(r))
-      .catch((e) =>
-        setDesktop({
-          strategy: "desktop",
-          fetchedAt: new Date().toISOString(),
-          scores: { performance: null, accessibility: null, bestPractices: null, seo: null },
-          vitals: {
-            lcpMs: null, fcpMs: null, tbtMs: null, cls: null, speedIndexMs: null, ttiMs: null,
-            fieldLcpMs: null, fieldFcpMs: null, fieldClsP75: null, fieldInpMs: null, hasFieldData: false,
-          },
-          audits: { opportunities: [], diagnostics: [] },
-          resourceSummary: {
-            totalKib: null, scriptKib: null, imageKib: null, stylesheetKib: null,
-            fontKib: null, documentKib: null, mediaKib: null, otherKib: null,
-            thirdPartyKib: null, totalRequests: null,
-          },
-          renderBlockingResources: [],
-          thirdPartyEntities: [],
-          thirdPartyBlockingTotalMs: 0,
-          thirdPartyAuditMissing: true,
-          error: e instanceof Error ? e.message : String(e),
-        }),
-      )
-      .finally(() => setDesktopLoading(false));
+      .then((r) => settle({ desktop: r, desktopLoading: false }))
+      .catch((e) => settle({ desktop: psiErrorResult("desktop", e), desktopLoading: false }));
   };
 
-  // Auto-trigger when BrowserShell signals a new Run. Skip mount (runKey === 0).
+  // Auto-trigger bara på ny explicit Run — se shouldAutoRun ovan.
   useEffect(() => {
-    if (runKey === 0) return;
+    if (!shouldAutoRun(runKey, lastHandledRunKey)) return;
+    lastHandledRunKey = runKey;
     runBoth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, runKey]);
+  }, [runKey]);
 
   const loading = mobileLoading || desktopLoading;
   const hasAny = mobile !== null || desktop !== null;
@@ -365,8 +484,8 @@ export function PageInsightsView({ url, runKey = 0 }: { url: string; runKey?: nu
 
       {!hasAny && !loading && (
         <div className="rounded border border-dashed border-border bg-muted/20 p-6 text-center text-xs text-muted-foreground">
-          Klistra in en URL och klicka <span className="font-medium text-foreground">Run</span> — PSI startar
-          automatiskt parallellt med Browserbase. Du kan också köra manuellt via{" "}
+          Klistra in en URL och klicka <span className="font-medium text-foreground">Run</span> —
+          PSI startar automatiskt parallellt med Browserbase. Du kan också köra manuellt via{" "}
           <span className="font-medium text-foreground">Run PSI</span>.
         </div>
       )}
