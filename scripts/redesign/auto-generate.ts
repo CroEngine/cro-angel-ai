@@ -76,21 +76,11 @@ import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/g
 import { moveReuseSurvived, reuseSurvived } from "../../src/adaptive/redesign/reuse";
 import { withExtraLift } from "../../src/adaptive/redesign/extra-lift";
 import { evaluateRenderGates } from "../../src/adaptive/redesign/render-gates";
-import {
-  captureLcpElement,
-  measurePlan,
-  runGatedAttempts,
-  toRenderMeasurements,
-} from "./measure";
+import { captureLcpElement, measurePlan, runGatedAttempts, toRenderMeasurements } from "./measure";
 import { viewportsForSegmentKey } from "../../src/adaptive/redesign/viewports";
 import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
 import { segmentSummaryFor } from "../../src/lib/dashboard/segment-summary";
-import {
-  locatorFor,
-  proofInsertFallback,
-  toMeasureOps,
-  toServeOps,
-} from "./plan-ops";
+import { locatorFor, proofInsertFallback, toMeasureOps, toServeOps } from "./plan-ops";
 
 // Env-var eller undefined — playwright-core hittar sin egen installation på
 // Actions-runnern (samma mönster som serving-smoke; pilotfynd 2026-07-17).

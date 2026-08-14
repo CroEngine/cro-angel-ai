@@ -61,7 +61,16 @@ describe("locatorFor / heroLocatorFor", () => {
     expect(locatorFor(model(), "sec-9-finns-inte")).toBeNull();
     const headless = model({
       sections: [
-        { id: "sec-2-logos", type: "logos", position: 2, aboveFold: false, visualWeight: 1 },
+        // heading är obligatorisk i modellen — tom sträng ÄR "saknar rubrik"
+        // för locatorFor (som testar falsighet), inte ett utelämnat fält.
+        {
+          id: "sec-2-logos",
+          type: "logos",
+          position: 2,
+          heading: "",
+          aboveFold: false,
+          visualWeight: 1,
+        },
       ],
     });
     expect(locatorFor(headless, "sec-2-logos")).toBeNull();

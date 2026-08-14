@@ -21,7 +21,10 @@ import type { MeasureOp } from "./measure";
 /** Sektions-id → DOM-lokator för serve_ops, per sidas innehållsmodell.
  *  Hjälte-sektionen bor i h1, allt annat i h2 — samma struktur extract.ts
  *  läste ur sidan. */
-export function locatorFor(content: RedesignContentModel, targetId: string): ServeOp["locator"] | null {
+export function locatorFor(
+  content: RedesignContentModel,
+  targetId: string,
+): ServeOp["locator"] | null {
   const sec = content.sections.find((s) => s.id === targetId);
   if (!sec?.heading) return null;
   return { tag: sec.type === "hero" ? "h1" : "h2", text: sec.heading };
