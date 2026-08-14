@@ -9,7 +9,7 @@
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, ShieldCheck, Shield } from "lucide-react";
@@ -49,7 +49,6 @@ import {
   type ConsentMode,
   type DashboardResponse,
   type SiteConfigView,
-  type VariantView,
 } from "@/lib/dashboard/dashboard.functions";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
 import { RECENT_WINDOW_DAYS } from "@/lib/dashboard/aggregate";

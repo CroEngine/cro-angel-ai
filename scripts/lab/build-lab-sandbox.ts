@@ -19,7 +19,7 @@
 //
 //   bun run scripts/lab/build-lab-sandbox.ts
 
-import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, extname } from "node:path";
 
 const REPO = join(import.meta.dir, "../..");

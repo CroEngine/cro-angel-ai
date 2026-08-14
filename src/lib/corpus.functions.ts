@@ -7,7 +7,6 @@ import { createServerFn } from "@tanstack/react-start";
 import {
   getFreezeReport,
   getMeta,
-  hasFamilies,
   hasGolden,
   jsonByteSize,
   listSiteNames,

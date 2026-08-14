@@ -9,7 +9,6 @@ import {
   isDimsPrefix,
   isSegmentPrefix,
   parentSegmentKey,
-  returningToken,
   segToken,
   segmentDepth,
   segmentDims,

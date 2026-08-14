@@ -9,15 +9,7 @@
 // (element_click bär rage/intent/ordning — resorna och rage-listan lever på
 // det), så vyn kan återinföras utan datalucka om den saknas.
 
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -31,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { journeyFlow } from "@/lib/dashboard/aggregate";
 import { createVariantPreview } from "@/lib/dashboard/sandbox.functions";
-import { enLabel, fmt, STATUS_PILL } from "./variant-stats";
+import { enLabel, STATUS_PILL } from "./variant-stats";
 
 import type { FlowNode, RageSignal, SearchTerm, SessionSummary } from "@/lib/dashboard/aggregate";
 import type { VariantView } from "@/lib/dashboard/dashboard.functions";

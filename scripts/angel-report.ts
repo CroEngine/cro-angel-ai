@@ -186,7 +186,6 @@ async function audit(siteName: string, root: string): Promise<AuditResult> {
       pageAudit: normalizePageAudit(fresh.pageAudit),
     };
     const a = normalized.pageAudit;
-    const col = normalized.collect;
     row.ok = true;
     row.h1Count = a.headings?.h1Count;
     row.hero = (a.hero?.headline ?? "").trim();

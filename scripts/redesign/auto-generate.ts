@@ -76,10 +76,7 @@ import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/g
 import { moveReuseSurvived, reuseSurvived } from "../../src/adaptive/redesign/reuse";
 import { withExtraLift } from "../../src/adaptive/redesign/extra-lift";
 import { tidySignalText } from "../../src/adaptive/redesign/candidates";
-import {
-  evaluateRenderGates,
-  type RenderMeasurements,
-} from "../../src/adaptive/redesign/render-gates";
+import { evaluateRenderGates } from "../../src/adaptive/redesign/render-gates";
 import {
   captureLcpElement,
   measurePlan,

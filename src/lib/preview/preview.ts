@@ -11,8 +11,6 @@
 
 import { createHash } from "node:crypto";
 
-export type PreviewJobStatus = "queued" | "running" | "ok" | "failed";
-
 /** Max förhandsvisningar per avsändare och dygn — prospekt klistrar 1-2 URL:er;
  *  fler är skrapning. */
 export const PREVIEW_MAX_PER_DAY = 3;

@@ -10,9 +10,10 @@
 //   - UI-ändringar, kommentarer, refactor utan beteendeändring
 //   - Provenance/diagnostik (env-stämplar, performanceProxy, pagespeed)
 //
-// Stämpeln måste bäras på varje audit-resultat OCH varje emitterad score
-// (när score-aggregator byggs). En score utan extractorVersion är per
-// definition ojämförbar med någon annan score.
+// Stämpeln måste bäras på varje audit-resultat och varje emitterad score —
+// konsumenterna (pageAudit-runnern, rescore-corpus) importerar konstanten
+// direkt. En score utan extractorVersion är per definition ojämförbar med
+// någon annan score.
 //
 // Changelog:
 //   1.0.0 — initial. Lock-in efter att hero-headline / skip-link /
@@ -427,23 +428,3 @@
 //           (vercel labeling, gymshark replay instability).
 
 export const EXTRACTOR_VERSION = "1.22.0" as const;
-
-export type ExtractorStamp = {
-  extractorVersion: string;
-  capturedAt: string; // ISO; tidpunkt extractor körde (inte capture-time)
-};
-
-export function stampExtractor(): ExtractorStamp {
-  return {
-    extractorVersion: EXTRACTOR_VERSION,
-    capturedAt: new Date().toISOString(),
-  };
-}
-
-/**
- * Wrap any score-payload med extractor-stämpel. Future score-aggregator
- * MÅSTE använda den här istället för att hardkoda strängar.
- */
-export function stampScore<T extends Record<string, unknown>>(payload: T): T & ExtractorStamp {
-  return { ...payload, ...stampExtractor() };
-}

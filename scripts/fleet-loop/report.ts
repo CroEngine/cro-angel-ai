@@ -51,14 +51,6 @@ const rows = results.map((r) => {
   };
 });
 
-const cal = summary.calibration as Any;
-const w = cal.winner as Any,
-  nu = cal.null as Any,
-  tr = cal.trap as Any;
-const conv = rows.filter((r) => r.primary === "conversion" && r.outcome === "measured").length;
-const eng = rows.filter((r) => r.primary === "engaged" && r.outcome === "measured").length;
-const proxy = rows.filter((r) => r.primary === "cta_click" && r.outcome === "measured").length;
-
 const payload = JSON.stringify({ rows, summary });
 
 const html = `<title>Angel Adaptive — fleet loop across ${summary.sites} sites</title>
