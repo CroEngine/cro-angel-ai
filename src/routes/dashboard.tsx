@@ -1,8 +1,10 @@
 // /dashboard — the customer dashboard (blueprint Step 8).
 //
-// Three views, one owner-question each: Overview (how is it going?), Visitors
-// (who was here and what did they do?), and What's working (is Angel earning
-// its keep?). Everything operational lives in the header Settings dialog.
+// ONE view answering three owner-questions: how is it going, who was here and
+// what did they do, and is Angel earning its keep. (It was three tabs once —
+// the source explorer and Journeys & signals absorbed the other two; see the
+// note at the OverviewPanel call.) Everything operational lives in the header
+// Settings dialog.
 // Data comes from getDashboard (server function → Supabase via service role),
 // aggregated by src/lib/dashboard. When the DB is unavailable the dashboard
 // renders a clean empty state.

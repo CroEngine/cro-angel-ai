@@ -291,16 +291,19 @@ export function CompareOverlay({
 }
 
 /** Journeys v2 (ägarorder 2026-07-18, efter Hotjar/Clarity-research): samma
- *  popup-idiom som Compare, nu i tre lägen med en gemensam filterrad
- *  (kanal · enhet · utfall) som definierar kohorten:
+ *  popup-idiom som Compare, med en gemensam filterrad (kanal · enhet ·
+ *  utfall) som definierar kohorten. Två ytor:
  *
  *  - FLOW (default): det rankade vägträdet (Clarity-formen, ägarens val) —
  *    entrésidor → nästa steg → utfall med procent och konverterade per väg.
  *    Tål tunn data: tio sessioner ger ett litet men korrekt träd.
- *  - HEATMAP: klick-/rage-kartan över sandbox-spegeln (oförändrad mekanik).
- *  - PERSON: klicka en session i listan → steg-för-steg-spelare på spegel-
- *    backdrops med personens klick som numrerade punkter, Prev/Next steg och
- *    Prev/Next person genom hela den filtrerade kohorten (Hotjar-mönstret).
+ *  - PERSON: klicka en session i listan → den berättade tidslinjen (sid-
+ *    sekvens + klick i text), med Prev/Next genom hela den filtrerade
+ *    kohorten. INGEN sidbild och ingen stegspelare — de togs bort
+ *    2026-07-20, se noten vid renderingen.
+ *
+ *  Klick-/rage-heatmapen som en gång var ett tredje läge är PENSIONERAD
+ *  (ägarbeslut 2026-07-26) — se filens huvud.
  *
  *  MEDVETET ingen videoinspelning/musspårning — integritetsbeslutet från
  *  pivoten står: sidsekvens + klick räcker för att förstå resan. Spegeln
