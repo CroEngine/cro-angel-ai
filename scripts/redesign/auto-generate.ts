@@ -87,8 +87,7 @@ import {
 import { viewportsForSegmentKey } from "../../src/adaptive/redesign/viewports";
 import type { ServeOp } from "../../src/adaptive/redesign/serve";
 import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
-import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
-import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
+import { segmentSummaryFor } from "../../src/lib/dashboard/segment-summary";
 
 // Env-var eller undefined — playwright-core hittar sin egen installation på
 // Actions-runnern (samma mönster som serving-smoke; pilotfynd 2026-07-17).
@@ -156,27 +155,6 @@ function pageRef(path: string) {
   };
 }
 
-/** SegmentSummary ur detektorns fynd — underlaget för briefen. */
-function summaryFor(key: string, total: { visits: number; conversions: number }): SegmentSummary {
-  const dims = segmentDims(key);
-  return {
-    key,
-    label: dims.join(" · "),
-    depth: dims.length,
-    channel: dims[0] ?? null,
-    device: dims[1] ?? null,
-    country: dims[2] ?? null,
-    returning: dims.length >= 4 ? dims[3] === RETURNING_TOKEN : null,
-    visits: total.visits,
-    conversions: total.conversions,
-    conversionRate: total.visits > 0 ? total.conversions / total.visits : 0,
-    formStarts: 0,
-    formAbandons: 0,
-    adequate: true,
-    recent: null,
-  };
-}
-
 /** Skärmdumpssanning (fullskaletestets "headern flyttad"-fynd 2026-08-12):
  *  fullPage-dumpen målar position:fixed-element vid AKTUELLT scrolläge, och
  *  hit-testerna har scrollIntoView:at mitt i sidan — utan återställning
@@ -226,7 +204,7 @@ async function contextFor(
     goal: GOAL,
     page: pageRef(path),
     content: page.content,
-    segment: segmentInsightFrom(summaryFor(key, total), { observations }),
+    segment: segmentInsightFrom(segmentSummaryFor(key, total), { observations }),
     sourcePages,
   });
 }
@@ -362,7 +340,7 @@ if (mode === "detect") {
         goal: GOAL,
         page: pageRef(rep.path),
         content: filterToTemplateSections(rep.content, shared),
-        segment: segmentInsightFrom(summaryFor(c.key, c.total), { observations }),
+        segment: segmentInsightFrom(segmentSummaryFor(c.key, c.total), { observations }),
         sourcePages: [],
       });
       briefed.push({
@@ -747,7 +725,7 @@ try {
           goal: GOAL,
           page: pageRef(repPath),
           content,
-          segment: segmentInsightFrom(summaryFor(plan.key, plan.total), {
+          segment: segmentInsightFrom(segmentSummaryFor(plan.key, plan.total), {
             observations: plan.observations,
           }),
           sourcePages: [],

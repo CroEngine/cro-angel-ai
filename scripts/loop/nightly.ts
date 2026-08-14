@@ -64,9 +64,9 @@ import {
   segmentKeyForScope,
 } from "../../src/adaptive/redesign/cohort-scopes";
 import { defaultSuccessSpec, validateSuccessSpec } from "../../src/adaptive-lab/metrics";
-import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
+import { segmentSummaryFor } from "../../src/lib/dashboard/segment-summary";
 import { mirrorStorageKey } from "../../src/lib/sandbox/mirror-key";
-import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
+import { segmentDims } from "../../src/lib/segment-key";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const CAP = Number(arg("cap") ?? 3); // max nya varianter per sajt och natt
@@ -790,23 +790,9 @@ for (const site of targets) {
         console.log(`[loop] ${site.slug} ${b.path}×${b.key}: tomt mall-snitt — hoppar`);
         continue;
       }
+      // dims används även nedanför (segmentLabel till katalogen) — behåll den.
       const dims = segmentDims(b.key);
-      const summary: SegmentSummary = {
-        key: b.key,
-        label: dims.join(" · "),
-        depth: dims.length,
-        channel: dims[0] ?? null,
-        device: dims[1] ?? null,
-        country: dims[2] ?? null,
-        returning: dims.length >= 4 ? dims[3] === RETURNING_TOKEN : null,
-        visits: b.total.visits,
-        conversions: b.total.conversions,
-        conversionRate: b.total.visits > 0 ? b.total.conversions / b.total.visits : 0,
-        formStarts: 0,
-        formAbandons: 0,
-        adequate: true,
-        recent: null,
-      };
+      const summary = segmentSummaryFor(b.key, b.total);
       // Källsidorna (korssid-lyftet): samma frysta kopior och SAMMA läsning som
       // detect, verify och drift-svepet — extractQuotables, inte den snävare
       // extractPriceSnippets (granskningsfynd 2026-08-08). Skillnaden är inte
