@@ -1,4 +1,4 @@
-import { Play, RotateCw, Snowflake } from "lucide-react";
+import { CircleAlert, Play, RotateCw, Snowflake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export type SessionState = "cold" | "live" | "frozen" | "error";
@@ -51,17 +51,27 @@ export function Viewport({ sessionState, liveUrl, frozen, onResume }: ViewportPr
     );
   }
 
-  if (sessionState === "frozen") {
+  // Frozen ELLER error (granskningsfynd 2026-08-14): en fångad snapshot är
+  // giltig data även när ett senare steg fallerade — släng den inte genom att
+  // rendera kalla "Enter a URL"-skärmen på felvägen.
+  if (sessionState === "frozen" || sessionState === "error") {
+    const errored = sessionState === "error";
     if (frozen) {
-      return <FrozenViewport frozen={frozen} onResume={onResume} />;
+      return <FrozenViewport frozen={frozen} errored={errored} onResume={onResume} />;
     }
     // Session ended but no snapshot was captured (e.g. collect failed).
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-muted/20 text-muted-foreground">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-          <Snowflake className="h-5 w-5" />
+          {errored ? (
+            <CircleAlert className="h-5 w-5 text-destructive" />
+          ) : (
+            <Snowflake className="h-5 w-5" />
+          )}
         </div>
-        <p className="text-sm">Session ended · no snapshot captured.</p>
+        <p className="text-sm">
+          {errored ? "Run failed · no snapshot captured." : "Session ended · no snapshot captured."}
+        </p>
         {onResume && (
           <Button size="sm" onClick={onResume} className="gap-1.5">
             <RotateCw className="h-3.5 w-3.5" />
@@ -72,25 +82,42 @@ export function Viewport({ sessionState, liveUrl, frozen, onResume }: ViewportPr
     );
   }
 
-  // Cold (or error)
+  // Cold
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-muted/20 text-muted-foreground">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
         <Play className="h-5 w-5" />
       </div>
       <p className="text-sm">
-        Enter a URL and click <span className="font-medium text-foreground">Run</span> to start a session.
+        Enter a URL and click <span className="font-medium text-foreground">Run</span> to start a
+        session.
       </p>
     </div>
   );
 }
 
-
-function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume?: () => void }) {
+function FrozenViewport({
+  frozen,
+  errored = false,
+  onResume,
+}: {
+  frozen: FrozenSnapshot;
+  errored?: boolean;
+  onResume?: () => void;
+}) {
   const { screenshotUrl, viewport, overlayElements } = frozen;
 
   return (
     <div className="relative flex-1 overflow-y-auto overflow-x-hidden bg-muted/20">
+      {errored && (
+        <div
+          role="alert"
+          className="sticky top-0 z-30 flex items-center gap-1.5 border-b border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs text-destructive"
+        >
+          <CircleAlert className="h-3.5 w-3.5 shrink-0" />
+          Run ended with errors — showing last captured snapshot.
+        </div>
+      )}
       <div
         className="relative mx-auto"
         style={{
@@ -106,7 +133,10 @@ function FrozenViewport({ frozen, onResume }: { frozen: FrozenSnapshot; onResume
           draggable={false}
         />
         {overlayElements
-          .filter((el) => el.rect.y + el.rect.h > 0 && el.rect.y < viewport.h && el.rect.w > 0 && el.rect.h > 0)
+          .filter(
+            (el) =>
+              el.rect.y + el.rect.h > 0 && el.rect.y < viewport.h && el.rect.w > 0 && el.rect.h > 0,
+          )
           .map((el, i) => {
             const color = CATEGORY_COLORS[el.category] ?? CATEGORY_COLORS.other;
             return (

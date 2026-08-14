@@ -78,7 +78,9 @@ function Note({ className, children }: { className: string; children: string }) 
 
 function Hero() {
   return (
-    <main className={`relative flex flex-1 items-center justify-center border-y border-stone-200 ${GRID_BG}`}>
+    <main
+      className={`relative flex flex-1 items-center justify-center border-y border-stone-200 ${GRID_BG}`}
+    >
       <Note className="left-6 top-12">[ visitor: mobile · google ]</Note>
       <Note className="right-6 top-24">[ lift: +0.9pp vs control ]</Note>
       <Note className="bottom-16 left-8">[ cwv: untouched ]</Note>
@@ -88,7 +90,9 @@ function Hero() {
       </span>
 
       <div className="relative mx-auto w-full max-w-2xl px-4 py-24 text-center">
-        <h1 className={`${DISPLAY} text-4xl font-semibold leading-[1.08] tracking-tight sm:text-[52px]`}>
+        <h1
+          className={`${DISPLAY} text-4xl font-semibold leading-[1.08] tracking-tight sm:text-[52px]`}
+        >
           Turn your website into an algorithm.
           <br />
           <span className="text-emerald-700">Convert more.</span>
@@ -159,12 +163,18 @@ function TryUrlForm() {
         void navigate({ to: "/try", search: { id: data.id } });
         return;
       }
+      // Serverfel skyller aldrig på användaren (granskningsfynd 2026-08-14):
+      // 503 disabled/unavailable och 500 write_failed föll tidigare ner i
+      // "We couldn't read that as a website address" — falsk anklagelse mot
+      // en helt giltig URL under ett driftavbrott på VÅR sida.
       setError(
         data.reason === "rate_limited"
           ? "That's the daily limit from your network — try again tomorrow."
           : data.reason === "private_host" || data.reason === "not_public"
             ? "That address isn't publicly reachable — paste your live site's URL."
-            : "We couldn't read that as a website address — try the full URL.",
+            : res.status >= 500
+              ? "Something went wrong on our side — try again in a minute."
+              : "We couldn't read that as a website address — try the full URL.",
       );
     } catch {
       setError("Something went wrong on our side — try again in a minute.");

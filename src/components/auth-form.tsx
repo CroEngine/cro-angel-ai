@@ -17,6 +17,40 @@ import { Label } from "@/components/ui/label";
 
 type Step = "email" | "signin" | "signup" | "confirm_sent";
 
+// Ärlig felöversättning för inloggningen (granskningsfynd 2026-08-14): ALLA
+// signInWithPassword-fel visades som "fel lösenord" — även "Email not
+// confirmed" (användaren skickades på lösenordsåterställning i stället för
+// till bekräftelsemejlet) och rena nätfel. Ren, exporterad funktion så
+// mappningen kan vitest-testas utan DOM — repots mönster.
+export function signInErrorMessage(error: {
+  code?: string;
+  status?: number;
+  name?: string;
+  message?: string;
+}): string {
+  const message = error.message ?? "";
+  if (error.code === "email_not_confirmed" || /email not confirmed/i.test(message)) {
+    return "Your email isn't confirmed yet — click the link in the email we sent you, then sign in.";
+  }
+  if (error.code === "invalid_credentials" || /invalid login credentials/i.test(message)) {
+    return "That password doesn't match this account — try again.";
+  }
+  if (error.code === "over_request_rate_limit" || error.status === 429) {
+    return "Too many attempts — wait a minute and try again.";
+  }
+  // AuthRetryableFetchError: nätfel (status 0) eller 5xx hos Supabase — inget
+  // svar hanns fås ⇒ status saknas. Aldrig användarens fel.
+  if (
+    error.name === "AuthRetryableFetchError" ||
+    error.status === undefined ||
+    error.status === 0 ||
+    error.status >= 500
+  ) {
+    return "We couldn't reach the sign-in service — check your connection and try again.";
+  }
+  return message || "Something went wrong signing you in — try again.";
+}
+
 export function AuthForm({ redirect }: { redirect?: string }) {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("email");
@@ -56,7 +90,7 @@ export function AuthForm({ redirect }: { redirect?: string }) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) {
-      setError("That password doesn't match this account — try again.");
+      setError(signInErrorMessage(error));
       return;
     }
     navigate({ to: dest });
@@ -218,10 +252,10 @@ export function AuthForm({ redirect }: { redirect?: string }) {
                   />
                   <span className="text-xs leading-relaxed text-stone-600">
                     To measure real lift, Angel uses <strong>visitor information</strong> — a
-                    persistent visitor id and conversion events — on the sites I connect. I confirm I
-                    have a lawful basis or visitor consent for this and remain the data controller.
-                    Visitors who signal Global Privacy Control or Do&nbsp;Not&nbsp;Track are always
-                    excluded.
+                    persistent visitor id and conversion events — on the sites I connect. I confirm
+                    I have a lawful basis or visitor consent for this and remain the data
+                    controller. Visitors who signal Global Privacy Control or Do&nbsp;Not&nbsp;Track
+                    are always excluded.
                   </span>
                 </label>
               </div>

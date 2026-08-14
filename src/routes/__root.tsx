@@ -72,19 +72,28 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+// Riktiga metadata i stället för Lovable-mallens platshållare (gransknings-
+// fynd 2026-08-14): og:title "Lovable App" + twitter:site "@Lovable" skeppade
+// på varje sida, så delade länkkort bar fel varumärke. Titel/beskrivning är
+// landningssidans egna (src/routes/index.tsx); barnrutter skriver över title
+// och description men og:* var-bara satta här. Ingen twitter:site — CROENGINE
+// har inget känt handle i repot, och ett påhittat vore värre än inget.
+const SITE_TITLE = "Angel — paste your website, see what it could do better";
+const SITE_DESCRIPTION =
+  "Paste your website's address. Angel builds a free example on your own page — what it would change and the numbers behind it — then installs with one line of code and proves the lift against a held-back control group.";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: SITE_TITLE },
+      { name: "description", content: SITE_DESCRIPTION },
+      { name: "author", content: "CROENGINE" },
+      { property: "og:title", content: SITE_TITLE },
+      { property: "og:description", content: SITE_DESCRIPTION },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

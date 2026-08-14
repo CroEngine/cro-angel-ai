@@ -43,18 +43,38 @@ const f = (category: FindingCategory, label: string, detail?: string): Finding =
 
 function seoFindings(a: PageAuditData): Finding[] {
   return [
-    f("seo", "Title", a.head.title ? `"${a.head.title}" (${a.head.title.length} chars)` : "not set"),
-    f("seo", "Meta description", a.head.description ? `${a.head.description.length} chars` : "not set"),
+    f(
+      "seo",
+      "Title",
+      a.head.title ? `"${a.head.title}" (${a.head.title.length} chars)` : "not set",
+    ),
+    f(
+      "seo",
+      "Meta description",
+      a.head.description ? `${a.head.description.length} chars` : "not set",
+    ),
     f("seo", "Canonical", a.head.canonical || "not set"),
     f("seo", "lang attribute", a.head.lang || "not set"),
     f("seo", "Open Graph image", a.head.ogImage ? "set" : "not set"),
-    f("seo", "Headings", `h1:${a.headings.h1Count} · h2:${a.headings.h2Count} · h3:${a.headings.h3Count}`),
-    f("seo", "Images alt", `${a.images.total} total · ${a.images.missingAlt} missing alt (${a.images.missingAltPct}%)`),
+    f(
+      "seo",
+      "Headings",
+      `h1:${a.headings.h1Count} · h2:${a.headings.h2Count} · h3:${a.headings.h3Count}`,
+    ),
+    f(
+      "seo",
+      "Images alt",
+      `${a.images.total} total · ${a.images.missingAlt} missing alt (${a.images.missingAltPct}%)`,
+    ),
     f("seo", "Schema.org", a.schema.count > 0 ? a.schema.types.join(", ") : "none"),
     f("seo", "robots.txt", a.robotsTxt.exists ? "found" : "not found"),
     f("seo", "sitemap.xml", a.sitemap.exists ? `found (${a.sitemap.urlCount} urls)` : "not found"),
     f("seo", "Word count", String(a.content.wordCount)),
-    f("seo", "Links", `${a.links.total} total · internal ${a.links.internal} · external ${a.links.external}`),
+    f(
+      "seo",
+      "Links",
+      `${a.links.total} total · internal ${a.links.internal} · external ${a.links.external}`,
+    ),
   ];
 }
 
@@ -73,7 +93,10 @@ function croFindings(c: CollectData): Finding[] {
       f(
         "cro",
         "Repeated controls",
-        s.groups.slice(0, 4).map((g) => `×${g.count} ${g.label}`).join(" · "),
+        s.groups
+          .slice(0, 4)
+          .map((g) => `×${g.count} ${g.label}`)
+          .join(" · "),
       ),
     );
   }
@@ -98,8 +121,11 @@ function uxFindings(c: CollectData): Finding[] {
   if (s) {
     out.push(f("ux", "Above fold", `${s.aboveFold} / ${s.total} elements`));
   }
-  const hiddenInteractive = c.elements.filter((e) => !e.visible).length;
-  out.push(f("ux", "Hidden interactive elements", String(hiddenInteractive)));
+  // "Hidden interactive elements" borttagen (granskningsfynd 2026-08-14):
+  // COLLECT_SCRIPT filtrerar bort osynliga element före emit och hårdkodar
+  // visible: true, så mätaren var strukturellt alltid 0 — en död mätare
+  // presenterad som revisionsresultat. Återinför bara om kollektorn faktiskt
+  // börjar emittera osynliga element.
   return out;
 }
 
@@ -139,7 +165,9 @@ function structureFindings(a: PageAuditData): Finding[] {
     f(
       "ux",
       "Sections detected",
-      Object.entries(typeCounts).map(([k, v]) => `${k} ${v}`).join(" · "),
+      Object.entries(typeCounts)
+        .map(([k, v]) => `${k} ${v}`)
+        .join(" · "),
     ),
   );
 
@@ -186,11 +214,7 @@ function trustFindings(a: PageAuditData): Finding[] {
   const byType = Object.entries(sum.byType).sort((a, b) => b[1] - a[1]);
   if (byType.length > 0) {
     out.push(
-      f(
-        "cro",
-        "By type",
-        byType.map(([k, v]) => `${k.replace(/_/g, " ")} ×${v}`).join(" · "),
-      ),
+      f("cro", "By type", byType.map(([k, v]) => `${k.replace(/_/g, " ")} ×${v}`).join(" · ")),
     );
   }
 
@@ -204,13 +228,29 @@ function trustFindings(a: PageAuditData): Finding[] {
   }
   // stars entries never reach findings — the collector collapses them into
   // one stars_aggregate (which now carries the review volume, B7).
-  const totalReviewCount = signals
-    .filter((s) => s.type === "review_rating" || s.type === "stars_aggregate")
-    .reduce((sum, s) => sum + (s.reviewCount ?? 0), 0);
+  //
+  // Dedup (granskningsfynd 2026-08-14): rak summering dubbelräknade samma
+  // recensionskorpus när widgets återberättar den (header + footer, eller
+  // stars_aggregate + review_rating). I kollektorns egen B7-anda ("max, not
+  // sum"): max per namngiven källa, summera distinkta källor; källösa
+  // signaler antas återberätta en namngiven källa och höjer bara totalen om
+  // deras max överstiger den (= sajtvid aggregat utan källetikett).
+  const maxBySource = new Map<string, number>();
+  let sourcelessMax = 0;
+  for (const s of signals) {
+    if (s.type !== "review_rating" && s.type !== "stars_aggregate") continue;
+    const n = s.reviewCount ?? 0;
+    if (n <= 0) continue;
+    const key = s.reviewSource?.trim().toLowerCase();
+    if (key) maxBySource.set(key, Math.max(maxBySource.get(key) ?? 0, n));
+    else sourcelessMax = Math.max(sourcelessMax, n);
+  }
+  let namedSourceTotal = 0;
+  for (const n of maxBySource.values()) namedSourceTotal += n;
+  const totalReviewCount = Math.max(namedSourceTotal, sourcelessMax);
   if (totalReviewCount > 0) {
     out.push(f("cro", "Total review count", String(totalReviewCount)));
   }
-
 
   const brands = new Set<string>();
   for (const s of signals) {
@@ -239,6 +279,11 @@ function trustFindings(a: PageAuditData): Finding[] {
   return out;
 }
 
+// ctas.ts minDist() returnerar sentinelen 9999 när sidan saknar <form> — ett
+// "finns ingen form"-värde, aldrig ett uppmätt avstånd, och får inte renderas
+// med px-suffix (granskningsfynd 2026-08-14).
+const NO_FORM_SENTINEL = 9999;
+
 function ctaFindings(a: PageAuditData): Finding[] {
   const out: Finding[] = [];
   const ctas = a.ctas ?? [];
@@ -254,11 +299,17 @@ function ctaFindings(a: PageAuditData): Finding[] {
     );
   }
   for (const c of ctas.filter((x) => x.category === "cta_primary").slice(0, 6)) {
+    const formBit =
+      c.nearestFormDistance === 0
+        ? "in"
+        : c.nearestFormDistance === NO_FORM_SENTINEL
+          ? "none"
+          : c.nearestFormDistance + "px";
     out.push(
       f(
         "cro",
         `"${c.text || "(no text)"}"`,
-        `${c.section}${c.aboveFold ? " · af" : ""} · ${c.intent} · competing ${c.competingActions} · trust ${c.nearestTrustSignalDistance === null ? "–" : c.nearestTrustSignalDistance + "px"} · form ${c.nearestFormDistance === 0 ? "in" : c.nearestFormDistance + "px"}`,
+        `${c.section}${c.aboveFold ? " · af" : ""} · ${c.intent} · competing ${c.competingActions} · trust ${c.nearestTrustSignalDistance === null ? "–" : c.nearestTrustSignalDistance + "px"} · form ${formBit}`,
       ),
     );
   }
@@ -357,7 +408,8 @@ export function buildPageReports(events: StreamEvent[]): PageReport[] {
       reports.push(current);
     }
     if (ev.data.kind === "pageAudit" && isPageAudit(ev.data.data)) {
-      if (current.url === "(unknown url)" || current.url === "(no goto)") current.url = ev.data.data.url;
+      if (current.url === "(unknown url)" || current.url === "(no goto)")
+        current.url = ev.data.data.url;
       current.rawPageAudit = ev.data.data;
       current.findings.push(
         ...seoFindings(ev.data.data),

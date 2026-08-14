@@ -9,7 +9,15 @@
 // (element_click bär rage/intent/ordning — resorna och rage-listan lever på
 // det), så vyn kan återinföras utan datalucka om den saknas.
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 
@@ -25,17 +33,16 @@ import { journeyFlow } from "@/lib/dashboard/aggregate";
 import { createVariantPreview } from "@/lib/dashboard/sandbox.functions";
 import { enLabel, fmt, STATUS_PILL } from "./variant-stats";
 
-import type {
-  FlowNode,
-  RageSignal,
-  SearchTerm,
-  SessionSummary,
-} from "@/lib/dashboard/aggregate";
+import type { FlowNode, RageSignal, SearchTerm, SessionSummary } from "@/lib/dashboard/aggregate";
 import type { VariantView } from "@/lib/dashboard/dashboard.functions";
 
 /** Mänskligt läsbara ändrings-chips för Compare-toppraden: "Moved 'X' #4 → #2"
- *  ur comparison-ordningen, "Rewrote a heading" för retext. Max 3 + "+N". */
-function changeChips(v: VariantView): { shown: string[]; more: number } {
+ *  ur comparison-ordningen, "Rewrote a heading" för retext, "Added a line …"
+ *  för insert_snippet (blockåterbruket). Max 3 + "+N". Exporterad för test. */
+export function changeChips(v: Pick<VariantView, "ops" | "comparison">): {
+  shown: string[];
+  more: number;
+} {
   const cmp = v.comparison;
   const out: string[] = [];
   for (const o of v.ops) {
@@ -53,12 +60,43 @@ function changeChips(v: VariantView): { shown: string[]; more: number } {
       }
     } else if (o.op === "set_text") {
       out.push("Rewrote a heading");
+    } else if (o.op === "insert_snippet") {
+      // Ordagrann sajttext som lyfts in under hjälten (blockåterbruket) —
+      // den råa op-tokenen vore grekiska i en ägarvänd chip.
+      out.push("Added a line from the site below the hero");
     } else {
       out.push(o.op);
     }
   }
   const dedup = out.filter((c, i) => out.indexOf(c) === i);
   return { shown: dedup.slice(0, 3), more: Math.max(0, dedup.length - 3) };
+}
+
+/** Persontidslinjens enhetsord — besökarens FAKTISKA enhet, samma sanning som
+ *  sessionslistans råa etikett. Medvetet skild från kohortattributionen
+ *  deviceOf (tablet → desktop): den bucketen är för FILTER, men berättelsen
+ *  påstår fakta om besöket och en tablet ska inte berättas som "on desktop".
+ *  Okänd enhet ⇒ null: raden utelämnar "on …" hellre än gissar. */
+export function narratedDevice(device: string | null): "mobile" | "desktop" | "tablet" | null {
+  return device === "mobile" || device === "desktop" || device === "tablet" ? device : null;
+}
+
+/** Backdropens "klick utanför stänger" på HELA gesten: en textmarkering som
+ *  dras från panelen och släpps över dimman dispatchar click-eventet på deras
+ *  gemensamma förälder — backdropen själv — så panelens stopPropagation
+ *  hjälper inte och overlayn stängdes mitt i kopieringen. Kräv därför
+ *  mousedown OCH mouseup direkt på dimman innan onClose. */
+function useBackdropClose(onClose: () => void) {
+  const downOnBackdrop = useRef(false);
+  return {
+    onMouseDown: (e: ReactMouseEvent<HTMLDivElement>) => {
+      downOnBackdrop.current = e.target === e.currentTarget;
+    },
+    onMouseUp: (e: ReactMouseEvent<HTMLDivElement>) => {
+      if (downOnBackdrop.current && e.target === e.currentTarget) onClose();
+      downOnBackdrop.current = false;
+    },
+  };
 }
 
 /** Compare i HELSKÄRM (ägarbeslut: panelen blev för liten): EN stor spegel av
@@ -81,20 +119,46 @@ export function CompareOverlay({
     queryFn: () => createVariantPreview({ data: { site, variantId: v.id } }),
     // Spegel-tokens lever 30 min — återanvänd svaret medan vyn togglas.
     staleTime: 5 * 60 * 1000,
+    // Fönster-refokus efter staleTime myntade annars NYA token-URL:er → bägge
+    // speglarna hårdladdades om och tappade scrolläget mitt i granskningen.
+    // Blotta återfokuseringen är ingen anledning att ladda om spegeln.
+    refetchOnWindowFocus: false,
   });
   const [mode, setMode] = useState<"variant" | "original">("variant");
   const stageRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState({ w: 1280, h: 800 });
+  const backdrop = useBackdropClose(onClose);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
+    };
+    // "Esc stänger"-löftet ska överleva klick i spegeln: iframarna är opak
+    // origin (sandbox="allow-scripts"), så ett klick där flyttar tangentbords-
+    // fokus in i iframen och Esc når aldrig dashboardens fönster. Klicket
+    // självt är osynligt härifrån, men fokusflytten syns som window-blur med
+    // iframen som activeElement — släpp då fokus tillbaka till dashboard-
+    // dokumentet. Spegeln är en ren läsvy (skriver aldrig events, tar ingen
+    // inmatning), så den förlorar inget på att inte behålla fokus.
+    //
+    // BARA el.blur() (granskningsfynd 2026-08-14): iframe-blur returnerar
+    // fokus till dokumentet, så Esc-lyssnaren nås. window.focus() FÖRR drog
+    // dessutom tillbaka fönstret — men samma blur-event fyras när användaren
+    // alt-tabbar bort med iframen fokuserad, och då yankade window.focus()
+    // dem aggressivt tillbaka. Släpp bara iframen; yanka aldrig fönstret.
+    const onBlur = () => {
+      const el = document.activeElement;
+      if (el instanceof HTMLIFrameElement && stageRef.current?.contains(el)) {
+        el.blur();
+      }
     };
     window.addEventListener("keydown", onKey);
+    window.addEventListener("blur", onBlur);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("blur", onBlur);
       document.body.style.overflow = prevOverflow;
     };
   }, [onClose]);
@@ -119,12 +183,9 @@ export function CompareOverlay({
     // spegeln får plats; ingen skugga (designspråket), bakgrunden separerar.
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4 md:p-8"
-      onClick={onClose}
+      {...backdrop}
     >
-      <div
-        className="flex h-[min(88vh,900px)] w-full max-w-[1160px] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-[#faf9f7]"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flex h-[min(88vh,900px)] w-full max-w-[1160px] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-[#faf9f7]">
         {/* topprad: identitet till vänster, ändrings-chips i mitten, växeln till höger */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-stone-200 bg-white px-5 py-3">
           <button
@@ -362,7 +423,7 @@ export function JourneysOverlay({
     }
   }, [personId, filtered]);
   const personSteps = person?.steps ?? [];
-  const personDevice = person?.device === "mobile" ? "mobile" : "desktop";
+  const personDevice = person ? narratedDevice(person.device) : null;
   const openPerson = (s: SessionSummary) => setPersonId(s.sessionId);
   const movePerson = (delta: number) => {
     if (personIdx < 0 || filtered.length === 0) return;
@@ -374,9 +435,14 @@ export function JourneysOverlay({
   // trasigt ut. Berättelsen bär sig själv; ev. återinförande kräver först
   // ~100 % frysning av besökta sidor (parkerat som senare-jobb).
 
+  const backdrop = useBackdropClose(onClose);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // En öppen FilterMenu tar Esc först: Radix DismissableLayer stänger
+      // menyn och preventDefault:ar samma keydown — då gäller Esc menyn,
+      // inte overlayn (annars försvann hela vyn med ägarens filterval).
+      if (e.key === "Escape" && !e.defaultPrevented) onClose();
     };
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -423,12 +489,9 @@ export function JourneysOverlay({
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4 md:p-8"
-      onClick={onClose}
+      {...backdrop}
     >
-      <div
-        className="flex h-[min(88vh,900px)] w-full max-w-[1160px] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-[#faf9f7]"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flex h-[min(88vh,900px)] w-full max-w-[1160px] flex-col overflow-hidden rounded-2xl border border-stone-200 bg-[#faf9f7]">
         {/* topprad: identitet till vänster, lägesväxlarna till höger */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-stone-200 bg-white px-5 py-3">
           <button
@@ -439,9 +502,7 @@ export function JourneysOverlay({
             ← {person ? "All journeys" : "Back"}
           </button>
           <span className="font-heading text-[14px] font-semibold">Journeys &amp; signals</span>
-          <span className="truncate font-mono text-[12px] text-stone-400">
-            {contextLabel}
-          </span>
+          <span className="truncate font-mono text-[12px] text-stone-400">{contextLabel}</span>
           <div className="ml-auto flex items-center gap-3">
             {person ? (
               // Hotjar-mönstret: bläddra vidare till nästa person i kohorten
@@ -548,8 +609,8 @@ export function JourneysOverlay({
                     <span className="mt-[2px] h-[17px] w-[17px] flex-none rounded-full border-2 border-white bg-stone-400 shadow-[0_0_0_1px_#e7e5e4]" />
                     <div className="min-w-0 text-[12.5px] leading-snug text-stone-700">
                       Came from{" "}
-                      <span className="font-semibold">{person.channel ?? "an unknown source"}</span>{" "}
-                      on {personDevice}
+                      <span className="font-semibold">{person.channel ?? "an unknown source"}</span>
+                      {personDevice != null && ` on ${personDevice}`}
                       {person.isReturning ? " — returning visitor" : " — first visit"}
                     </div>
                   </div>
@@ -757,49 +818,49 @@ export function JourneysOverlay({
                 {/* Avbrusning 2026-07-19: tomma diagnostikkort tystnar helt —
                     lugnande första gången, brus var gång därefter. */}
                 {rageClicks.length > 0 && (
-                <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
-                  <div className="font-heading text-sm font-semibold">Frustration signals</div>
-                  {rageClicks.map((g) => (
-                    <div
-                      key={g.ref}
-                      className="flex items-center justify-between border-t border-[#f4f2ef] py-[11px]"
-                    >
-                      <span
-                        className="min-w-0 truncate font-mono text-[11.5px] text-stone-600"
-                        title={g.ref}
+                  <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+                    <div className="font-heading text-sm font-semibold">Frustration signals</div>
+                    {rageClicks.map((g) => (
+                      <div
+                        key={g.ref}
+                        className="flex items-center justify-between border-t border-[#f4f2ef] py-[11px]"
                       >
-                        {g.ref}
-                      </span>
-                      <span className="ml-3 flex-none text-[12px] font-semibold text-amber-600">
-                        {g.bursts} rage bursts
-                      </span>
+                        <span
+                          className="min-w-0 truncate font-mono text-[11.5px] text-stone-600"
+                          title={g.ref}
+                        >
+                          {g.ref}
+                        </span>
+                        <span className="ml-3 flex-none text-[12px] font-semibold text-amber-600">
+                          {g.bursts} rage bursts
+                        </span>
+                      </div>
+                    ))}
+                    <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
+                      Site-wide diagnostics — Angel never changes anything automatically from these.
                     </div>
-                  ))}
-                  <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
-                    Site-wide diagnostics — Angel never changes anything automatically from these.
                   </div>
-                </div>
                 )}
                 {searches.length > 0 && (
-                <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
-                  <div className="font-heading text-sm font-semibold">Site search</div>
-                  {searches.map((s) => (
-                    <div
-                      key={s.term}
-                      className="flex items-center justify-between border-t border-[#f4f2ef] py-[9px]"
-                    >
-                      <span
-                        className="min-w-0 truncate text-[12.5px] text-stone-700"
-                        title={s.term}
+                  <div className="rounded-2xl border border-stone-200 bg-white px-5 py-[18px]">
+                    <div className="font-heading text-sm font-semibold">Site search</div>
+                    {searches.map((s) => (
+                      <div
+                        key={s.term}
+                        className="flex items-center justify-between border-t border-[#f4f2ef] py-[9px]"
                       >
-                        {s.term}
-                      </span>
-                      <span className="ml-3 flex-none font-mono text-[11.5px] text-stone-400">
-                        ×{s.count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                        <span
+                          className="min-w-0 truncate text-[12.5px] text-stone-700"
+                          title={s.term}
+                        >
+                          {s.term}
+                        </span>
+                        <span className="ml-3 flex-none font-mono text-[11.5px] text-stone-400">
+                          ×{s.count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -807,8 +868,8 @@ export function JourneysOverlay({
           {/* Integritetsraden EN gång för hela popupen (avbrusning 2026-07-19
               — stod tidigare i både listvyn och spelaren). */}
           <div className="mt-4 pb-1 text-center text-[10.5px] text-stone-300">
-            Page sequence, clicks, scroll depth, video watch time and submitted site-search
-            terms — Angel never records screens, mouse movement or keystrokes.
+            Page sequence, clicks, scroll depth, video watch time and submitted site-search terms —
+            Angel never records screens, mouse movement or keystrokes.
           </div>
         </div>
       </div>
@@ -829,10 +890,7 @@ function foldedCount(nodes: FlowNode[]): number {
 }
 function FoldedLine({ n, depth }: { n: number; depth: number }) {
   return (
-    <div
-      className="py-[3px] text-[11px] text-stone-400"
-      style={{ paddingLeft: depth * 22 }}
-    >
+    <div className="py-[3px] text-[11px] text-stone-400" style={{ paddingLeft: depth * 22 }}>
       + {n} visitor{n === 1 ? "" : "s"} continued to different pages (one each)
     </div>
   );

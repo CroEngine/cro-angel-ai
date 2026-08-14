@@ -4,7 +4,15 @@ import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query"
 import { useState } from "react";
 
 import { AppNav } from "@/components/app-nav";
-import { Download, FileJson, ChevronDown, ChevronRight, ExternalLink, Check, X } from "lucide-react";
+import {
+  Download,
+  FileJson,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Check,
+  X,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +76,8 @@ function CorpusPage() {
         <header>
           <h1 className="font-heading text-[23px] font-bold tracking-tight">Corpus inspector</h1>
           <p className="mt-2 text-sm text-stone-500">
-            {sites.length} site{sites.length === 1 ? "" : "s"} in <code>corpus/</code>. Download artifacts or browse the JSON inline.
+            {sites.length} site{sites.length === 1 ? "" : "s"} in <code>corpus/</code>. Download
+            artifacts or browse the JSON inline.
           </p>
         </header>
 
@@ -88,7 +97,12 @@ function CorpusPage() {
 
 function SiteCard({ site }: { site: CorpusSite }) {
   const [downloading, setDownloading] = useState<ArtifactFile | null>(null);
-  const meta = site.meta as { url?: string; captured_at?: string; viewport?: { width: number; height: number }; notes?: string } | null;
+  const meta = site.meta as {
+    url?: string;
+    captured_at?: string;
+    viewport?: { width: number; height: number };
+    notes?: string;
+  } | null;
   const fr = site.freezeReport as any;
 
   const goldenExists = site.files["golden.json"].exists;
@@ -104,9 +118,7 @@ function SiteCard({ site }: { site: CorpusSite }) {
     setDownloading(file);
     try {
       const isBinary = file === "page.mhtml" || file === "screenshot.jpg";
-      const url = isBinary
-        ? binaryUrl(site.name, file)
-        : `${jsonUrl(site.name, file)}?download=1`;
+      const url = isBinary ? binaryUrl(site.name, file) : `${jsonUrl(site.name, file)}?download=1`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Download failed: ${res.status}`);
       const blob = await res.blob();
@@ -133,20 +145,36 @@ function SiteCard({ site }: { site: CorpusSite }) {
           <div className="space-y-1">
             <CardTitle className="text-xl">{site.name}</CardTitle>
             {meta?.url && (
-              <a href={meta.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+              <a
+                href={meta.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
                 {meta.url} <ExternalLink className="h-3 w-3" />
               </a>
             )}
             <div className="flex flex-wrap gap-2 pt-1 text-xs text-muted-foreground">
               {meta?.captured_at && <span>captured {meta.captured_at.slice(0, 10)}</span>}
-              {meta?.viewport && <span>{meta.viewport.width}×{meta.viewport.height}</span>}
+              {meta?.viewport && (
+                <span>
+                  {meta.viewport.width}×{meta.viewport.height}
+                </span>
+              )}
               {fr?.ok != null && (
-                <Badge variant={fr.ok ? "default" : "destructive"}>{fr.ok ? "freeze ok" : "freeze failed"}</Badge>
+                <Badge variant={fr.ok ? "default" : "destructive"}>
+                  {fr.ok ? "freeze ok" : "freeze failed"}
+                </Badge>
               )}
             </div>
           </div>
           {site.files["screenshot.jpg"].exists && (
-            <a href={binaryUrl(site.name, "screenshot.jpg")} target="_blank" rel="noopener noreferrer" className="block shrink-0">
+            <a
+              href={binaryUrl(site.name, "screenshot.jpg")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block shrink-0"
+            >
               <img
                 src={binaryUrl(site.name, "screenshot.jpg")}
                 alt={`${site.name} screenshot`}
@@ -163,8 +191,16 @@ function SiteCard({ site }: { site: CorpusSite }) {
           {ARTIFACT_FILES.map((f) => {
             const info = site.files[f];
             return (
-              <Badge key={f} variant={info.exists ? "secondary" : "outline"} className="gap-1 font-mono text-xs">
-                {info.exists ? <Check className="h-3 w-3 text-green-600" /> : <X className="h-3 w-3 text-red-500" />}
+              <Badge
+                key={f}
+                variant={info.exists ? "secondary" : "outline"}
+                className="gap-1 font-mono text-xs"
+              >
+                {info.exists ? (
+                  <Check className="h-3 w-3 text-green-600" />
+                ) : (
+                  <X className="h-3 w-3 text-red-500" />
+                )}
                 {f} · {formatKb(info.sizeBytes)}
               </Badge>
             );
@@ -185,10 +221,19 @@ function SiteCard({ site }: { site: CorpusSite }) {
                 <Stat label="competing (AF)" value={g.competingAboveFold} />
                 <Stat label="H1" value={g.h1[0] ?? "—"} mono />
                 <Stat label="hero headline" value={g.heroHeadline ?? "—"} mono />
-                <Stat label="hero CTA" value={g.heroCtaText ? `${g.heroCtaText} (${g.heroCtaIntent ?? "?"})` : "—"} mono />
+                <Stat
+                  label="hero CTA"
+                  value={g.heroCtaText ? `${g.heroCtaText} (${g.heroCtaIntent ?? "?"})` : "—"}
+                  mono
+                />
                 {g.title && <Stat label="<title>" value={g.title} mono className="sm:col-span-3" />}
                 {g.sectionOrder && g.sectionOrder.length > 0 && (
-                  <Stat label="sectionOrder" value={g.sectionOrder.join(" → ")} mono className="sm:col-span-3" />
+                  <Stat
+                    label="sectionOrder"
+                    value={g.sectionOrder.join(" → ")}
+                    mono
+                    className="sm:col-span-3"
+                  />
                 )}
               </>
             )}
@@ -257,7 +302,9 @@ function Stat({
   return (
     <div className={className}>
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={mono ? "truncate font-mono text-sm text-foreground" : "text-sm text-foreground"}>
+      <div
+        className={mono ? "truncate font-mono text-sm text-foreground" : "text-sm text-foreground"}
+      >
         {value ?? "—"}
       </div>
     </div>
@@ -267,21 +314,32 @@ function Stat({
 function JsonInline({ site, file }: { site: string; file: ArtifactFile }) {
   const [open, setOpen] = useState(false);
   const [content, setContent] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const toggle = async () => {
     const next = !open;
     setOpen(next);
     if (next && content == null) {
+      // Fel visas, aldrig tyst tom panel (granskningsfynd 2026-08-14): en
+      // fallerad fetch lämnade en blank grå ruta, och non-OK-svar renderade
+      // serverns feltext som om den vore artefaktens innehåll.
       setLoading(true);
+      setError(null);
       try {
         const res = await fetch(jsonUrl(site, file));
+        if (!res.ok) {
+          setError(`Couldn't load ${file} (HTTP ${res.status}).`);
+          return;
+        }
         const text = await res.text();
         try {
           setContent(JSON.stringify(JSON.parse(text), null, 2));
         } catch {
           setContent(text);
         }
+      } catch {
+        setError(`Couldn't load ${file} — network error. Close and reopen to retry.`);
       } finally {
         setLoading(false);
       }
@@ -302,11 +360,14 @@ function JsonInline({ site, file }: { site: string; file: ArtifactFile }) {
         </span>
         <span className="text-xs text-muted-foreground">{open ? "hide" : "show"}</span>
       </button>
-      {open && (
-        <pre className="max-h-96 overflow-auto border-t border-border bg-muted/30 p-3 font-mono text-xs leading-relaxed text-foreground">
-          {loading ? "laddar…" : content}
-        </pre>
-      )}
+      {open &&
+        (error ? (
+          <p className="border-t border-border bg-muted/30 p-3 text-xs text-rose-600">{error}</p>
+        ) : (
+          <pre className="max-h-96 overflow-auto border-t border-border bg-muted/30 p-3 font-mono text-xs leading-relaxed text-foreground">
+            {loading ? "laddar…" : content}
+          </pre>
+        ))}
     </div>
   );
 }

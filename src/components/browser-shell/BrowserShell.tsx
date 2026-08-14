@@ -4,6 +4,7 @@ import { TabStrip } from "./TabStrip";
 import { UrlBar } from "./UrlBar";
 import { Viewport, type FrozenSnapshot, type OverlayElement, type SessionState } from "./Viewport";
 import { ConsolePanel } from "./ConsolePanel";
+import { resetPsiRuns } from "./PageInsightsView";
 import { useTestStream } from "./hooks/useTestStream";
 import { startTestRun } from "@/lib/tests/run.functions";
 
@@ -11,6 +12,18 @@ const DEFAULT_URL = "https://glutenforum.se/";
 const HIDDEN_FREEZE_MS = 15_000;
 
 export function BrowserShell() {
+  // Nolla PSI-modulstaten vid varje ny session (granskningsfynd 2026-08-14):
+  // storen/räknaren i PageInsightsView ligger på modulnivå för att överleva
+  // flik-avmontering, men skulle annars läcka förra sessionens resultat och
+  // undertrycka den första nya Run:en efter en BrowserShell-remontering.
+  // I RENDER (ref-vaktad, en gång) — inte i en effekt: barn-effekter kör FÖRE
+  // förälderns, så en mount-effekt hade nollat FÖR SENT (efter att
+  // PageInsightsView redan läst den inaktuella storen).
+  const psiResetRef = useRef(false);
+  if (!psiResetRef.current) {
+    resetPsiRuns();
+    psiResetRef.current = true;
+  }
   const [url, setUrl] = useState(DEFAULT_URL);
 
   const [runId, setRunId] = useState<string | null>(null);
@@ -26,6 +39,12 @@ export function BrowserShell() {
   const [psiRunKey, setPsiRunKey] = useState(0);
 
   const startFn = useServerFn(startTestRun);
+
+  // Avbrottsflagga för uppstartsfönstret (granskningsfynd 2026-08-14): Stop
+  // under pågående createSession kan inte stänga någon ström (den har inte
+  // öppnats än), så handleRun:s fortsättning måste själv respektera flaggan —
+  // annars startar körningen ändå och skriver över aborted-statusen.
+  const startAbortRef = useRef<{ aborted: boolean } | null>(null);
 
   // Persist the crawled inventory under a per-domain slug so the server can
   // diff it against the previous crawl (drift tracking). Derived from the run's
@@ -52,7 +71,10 @@ export function BrowserShell() {
       if (e.type !== "step_passed") continue;
       if (e.data.kind !== "collect") continue;
       const d = e.data.data as
-        | { screenshot?: { dataUrl: string; viewport: { w: number; h: number } }; overlayElements?: OverlayElement[] }
+        | {
+            screenshot?: { dataUrl: string; viewport: { w: number; h: number } };
+            overlayElements?: OverlayElement[];
+          }
         | undefined;
       if (d?.screenshot) {
         next = {
@@ -107,6 +129,15 @@ export function BrowserShell() {
     }
   }, [events]);
 
+  const handleStop = useCallback(() => {
+    // Markera pågående uppstart som avbruten FÖRE stop(): esRef är null tills
+    // strömmen öppnats, så flaggan är enda sättet att stoppa i det fönstret.
+    if (startAbortRef.current) startAbortRef.current.aborted = true;
+    stop();
+    setSessionState((prev) => (prev === "error" ? prev : "frozen"));
+    setStatusMessage("done · aborted");
+  }, [stop]);
+
   // 15s hidden-tab freeze trigger: while Live and tab hidden, schedule a stop.
   const hiddenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -122,11 +153,9 @@ export function BrowserShell() {
       // staplade flera timers.
       clearTimer();
       if (document.visibilityState === "hidden") {
-        hiddenTimer.current = setTimeout(() => {
-          stop();
-          setSessionState((prev) => (prev === "error" ? prev : "frozen"));
-          setStatusMessage("done · aborted");
-        }, HIDDEN_FREEZE_MS);
+        // Via handleStop så även en pågående uppstart avbryts (samma
+        // stopp-semantik som Stop-knappen).
+        hiddenTimer.current = setTimeout(handleStop, HIDDEN_FREEZE_MS);
       }
     };
     document.addEventListener("visibilitychange", onChange);
@@ -134,48 +163,53 @@ export function BrowserShell() {
       document.removeEventListener("visibilitychange", onChange);
       clearTimer();
     };
-  }, [sessionState, stop]);
-
+  }, [sessionState, handleStop]);
 
   const hostname = useMemo(() => {
-    try { return new URL(url).hostname; } catch { return url; }
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
   }, [url]);
 
-  const handleRun = useCallback(async (nextUrl: string) => {
-    setUrl(nextUrl);
-    setSessionState("live");
-    setLiveStartedAt(null); // wait for session_started event
-    setStatusMessage(undefined);
-    setLiveUrl(null);
-    setRunId(null);
-    setSessionId(null);
-    setRunUrl(null);
-    setFrozen(null); // drop previous snapshot so a crashed new run can't show stale data
-    try {
-      const res = await startFn({ data: { url: nextUrl } });
-      setLiveUrl(res.liveUrl);
-      // Set sessionId + runUrl before runId so the stream opens once, with all
-      // three present (the effect keys on all of them).
-      setSessionId(res.sessionId);
-      setRunUrl(nextUrl);
-      setRunId(res.runId);
-      // Trigger PSI in parallel AFTER Browserbase started, so page audit data
-      // never lags behind PSI results in the UI.
-      setPsiRunKey((k) => k + 1);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setSessionState("error");
-      setStatusMessage(message);
-      setLiveStartedAt(null);
-    }
-  }, [startFn]);
-
-
-  const handleStop = useCallback(() => {
-    stop();
-    setSessionState((prev) => (prev === "error" ? prev : "frozen"));
-    setStatusMessage("done · aborted");
-  }, [stop]);
+  const handleRun = useCallback(
+    async (nextUrl: string) => {
+      const startToken = { aborted: false };
+      startAbortRef.current = startToken;
+      setUrl(nextUrl);
+      setSessionState("live");
+      setLiveStartedAt(null); // wait for session_started event
+      setStatusMessage(undefined);
+      setLiveUrl(null);
+      setRunId(null);
+      setSessionId(null);
+      setRunUrl(null);
+      setFrozen(null); // drop previous snapshot so a crashed new run can't show stale data
+      try {
+        const res = await startFn({ data: { url: nextUrl } });
+        // Stop klickad medan createSession var pending: starta INTE körningen
+        // (ingen runId ⇒ strömmen öppnas aldrig) och rör inte aborted-statusen.
+        if (startToken.aborted) return;
+        setLiveUrl(res.liveUrl);
+        // Set sessionId + runUrl before runId so the stream opens once, with all
+        // three present (the effect keys on all of them).
+        setSessionId(res.sessionId);
+        setRunUrl(nextUrl);
+        setRunId(res.runId);
+        // Trigger PSI in parallel AFTER Browserbase started, so page audit data
+        // never lags behind PSI results in the UI.
+        setPsiRunKey((k) => k + 1);
+      } catch (err) {
+        if (startToken.aborted) return; // avbruten uppstart — behåll aborted-statusen
+        const message = err instanceof Error ? err.message : String(err);
+        setSessionState("error");
+        setStatusMessage(message);
+        setLiveStartedAt(null);
+      }
+    },
+    [startFn],
+  );
 
   const handleResume = useCallback(() => {
     void handleRun(url);
