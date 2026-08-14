@@ -7,8 +7,17 @@
 // den. Ett A/B-vunnet citat är den enda blockform vars ordagranna text,
 // källsida och driftkontrakt (evidence.dependencies) redan finns i systemet —
 // och vars "bevis" är ett riktigt testutfall, inte attribution (positions-
-// bias). move_up-vinnare och census-heta sektioner är MEDVETET utanför v1:
-// deras överföringsform är en annan hypotesklass.
+// bias). Census-heta sektioner är MEDVETET utanför: deras "bevis" är
+// attribution, inte testutfall.
+//
+// FLYTT-VINNARNAS TRANSFERFORM (steg 4, ägarbeslut 2026-08-14 "Flytta!"):
+// en move_up-vinnares överföringsform är TYPKLASSEN, inte innehållet — "att
+// lyfta en testimonials-sektion över folden vann sitt A/B på /X". Fröet bär
+// bara sektionstypen (ur targetId:ts sec-N-typ-form); på målsidan annoteras
+// målsidans EGEN move_up-kandidat av samma typ med proveniensen och ett
+// poänggolv. Inget importeras — kandidaten fanns redan i målsidans katalog,
+// så D2 (aldrig fabricera) håller by construction, och hela grindkedjan
+// (probe → verify → ägarens knapp → ramp → guardrail-svep) är oförändrad.
 //
 // ÖVERFÖRINGEN ÄR OBEVISAD TILLS DEN TESTAS: fröet är en hypotesgenerator med
 // proveniens, aldrig ett facit. Menyraden säger det rakt ut, poängen läggs
@@ -169,11 +178,16 @@ export function blockTransferRecords(rows: ReuseVariantRow[]): Map<string, Block
     const ins = insertOps(row)[0];
     if (!ins) continue;
     const key = recordKey(ins.detail);
-    const ev = row.evidence as { reuse?: unknown; wasWinner?: unknown } | null | undefined;
+    const ev = row.evidence as
+      { reuse?: { kind?: unknown }; wasWinner?: unknown } | null | undefined;
     if (isProvenWinnerRow(row)) {
       const r = rec(key);
       if (!r.wonOnPaths.includes(row.path)) r.wonOnPaths.push(row.path);
-    } else if (row.status === "retired" && ev?.reuse) {
+      // Flytt-återbrukets pensioneringar hör till FLYTT-meritlistan
+      // (transferformen steg 4) — en rad född som typklass-överföring får
+      // aldrig döma ett textblock, ens om den råkar bära en insert-op.
+      // Frånvarande kind = textblock (raderna som fanns före steg 4).
+    } else if (row.status === "retired" && ev?.reuse && ev.reuse.kind !== "move") {
       // VUNNEN-och-tillbakadragen är INTE ett misslyckande (granskningsfynd
       // 2026-08-11): winner→retired är en legal ägartransition, och utan
       // wasWinner-markören (skriven av setVariantStatus) hade två sådana
@@ -344,5 +358,216 @@ export function reuseSurvived(
       o.op === "insert_snippet" &&
       o.sourcePath === reuse.sourcePath &&
       normQuote(o.detail ?? "") === normQuote(reuse.text),
+  );
+}
+
+// ── Flytt-vinnares transferform (steg 4, ägarbeslut 2026-08-14 "Flytta!") ────
+// Spegeln av textblocks-maskineriet ovan, keyad på SEKTIONSTYP i stället för
+// normaliserad text. Delarna är medvetet parallella småfunktioner (inte en
+// generisk abstraktion): nycklarna, vakterna och ärlighetsgränserna skiljer
+// sig i detaljer som en delad kärna hade tvingat ihop.
+
+/** Ett skördat flytt-frö: typklassen som vann + var den vann. */
+export interface MoveSeed {
+  variantId: string;
+  provedOnPath: string;
+  /** Sektionstypen ur vinnar-opens targetId (sec-N-typ) — den ENDA delen av
+   *  vinnaren som reser. Målsidans kandidat är målsidans egen sektion. */
+  sectionType: string;
+  /** Transfer-meriterna: ANDRA sidor där samma typklass också vunnit. */
+  alsoWonOn?: string[];
+}
+
+/** Typer vars flytt-vinst INTE är en meningsfull hypotesklass: "section"/
+ *  "content" är rubrik-klassificeringens ärliga "vet inte" — två otypade
+ *  sektioner på olika sidor delar ingenting semantiskt, så "otypade flyttar
+ *  vinner" reser inte. hero är aldrig ett flyttmål alls. */
+const NON_TRANSFERABLE_MOVE_TYPES = new Set(["section", "content", "hero"]);
+
+/** Sektionstypen ur ett move_up-targetId ("sec-3-testimonials" →
+ *  "testimonials"). Null för allt som inte bär extract.ts sec-N-typ-form —
+ *  hellre inget frö än ett gissat. */
+export function moveSectionType(targetId: unknown): string | null {
+  if (typeof targetId !== "string") return null;
+  const m = /^sec-\d+-(.+)$/.exec(targetId);
+  return m ? m[1] : null;
+}
+
+interface MoveOpLike {
+  op?: unknown;
+  targetId?: unknown;
+}
+
+/** Radens move_up-ops som sektionstyper (oparsbara targetId sållas). */
+const moveTypes = (row: ReuseVariantRow): string[] => {
+  if (!Array.isArray(row.ops)) return [];
+  const out: string[] = [];
+  for (const raw of row.ops as MoveOpLike[]) {
+    if (!raw || raw.op !== "move_up") continue;
+    const t = moveSectionType(raw.targetId);
+    if (t) out.push(t);
+  }
+  return out;
+};
+
+/** Skörda flytt-frön ur sajtens variantrader. Samma vinnardefinition som
+ *  textskörden (isProvenWinnerRow — vinnare, ohållen, aldrig drift-
+ *  uppdaterad), första move-open per vinnare, aldrig otypade klasser
+ *  (NON_TRANSFERABLE_MOVE_TYPES), dedup på typ (två vinnare av samma
+ *  typklass är ETT bevis — äldsta vinnaren äger det, samma attribution
+ *  som textskörden). */
+export function harvestMoveSeeds(rows: ReuseVariantRow[]): MoveSeed[] {
+  const seeds: MoveSeed[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (!isProvenWinnerRow(row)) continue;
+    const type = moveTypes(row).find((t) => !NON_TRANSFERABLE_MOVE_TYPES.has(t));
+    if (!type || seen.has(type)) continue;
+    seen.add(type);
+    seeds.push({ variantId: row.id, provedOnPath: row.path, sectionType: type });
+  }
+  return seeds;
+}
+
+/** Flytt-meriterna, keyade på sektionstyp. Vinster: bevisade vinnarrader med
+ *  en move-op av typen (även organiska — en vinst är en vinst, precis som
+ *  textsidan räknar varje vinnare som bär texten). Misslyckanden: BARA
+ *  pensionerade rader födda som återbruk (evidence.reuse) vars op är en
+ *  flytt — samma ärliga gräns och samma wasWinner-neutralitet som
+ *  blockTransferRecords. Text- och flytt-raderna kontaminerar aldrig
+ *  varandra: textrecorden keyar på insert-ops, den här på move-ops. */
+export function moveTransferRecords(rows: ReuseVariantRow[]): Map<string, BlockTransferRecord> {
+  const records = new Map<string, BlockTransferRecord>();
+  const rec = (key: string): BlockTransferRecord => {
+    const r = records.get(key) ?? { wonOnPaths: [], failedOnPaths: [] };
+    records.set(key, r);
+    return r;
+  };
+  for (const row of rows) {
+    const type = moveTypes(row).find((t) => !NON_TRANSFERABLE_MOVE_TYPES.has(t));
+    if (!type) continue;
+    const ev = row.evidence as
+      { reuse?: { kind?: unknown }; wasWinner?: unknown } | null | undefined;
+    if (isProvenWinnerRow(row)) {
+      const r = rec(type);
+      if (!r.wonOnPaths.includes(row.path)) r.wonOnPaths.push(row.path);
+      // BARA rader födda som FLYTT-återbruk är flytt-misslyckanden: en
+      // pensionerad textblocks-variant som råkar bära en move-op säger
+      // ingenting om typklassens överförbarhet.
+    } else if (
+      row.status === "retired" &&
+      (ev?.reuse as { kind?: unknown } | undefined)?.kind === "move"
+    ) {
+      // Vunnen-och-tillbakadragen är neutral — samma dom som textsidan.
+      if (ev?.wasWinner) continue;
+      const r = rec(type);
+      if (!r.failedOnPaths.includes(row.path)) r.failedOnPaths.push(row.path);
+    }
+  }
+  return records;
+}
+
+/** Dekorera flytt-fröna med meritlistan och ranka: flest ANDRA vunna sidor
+ *  först, stabil ordning vid lika — spegeln av decorateSeedsWithTransfer. */
+export function decorateMoveSeedsWithTransfer(
+  seeds: MoveSeed[],
+  records: Map<string, BlockTransferRecord>,
+): MoveSeed[] {
+  const decorated = seeds.map((seed) => {
+    const r = records.get(seed.sectionType);
+    const alsoWonOn = (r?.wonOnPaths ?? []).filter((p) => p !== seed.provedOnPath).sort();
+    return alsoWonOn.length > 0 ? { ...seed, alsoWonOn } : { ...seed };
+  });
+  return decorated
+    .map((seed, i) => ({ seed, i, wins: seed.alsoWonOn?.length ?? 0 }))
+    .sort((a, b) => b.wins - a.wins || a.i - b.i)
+    .map((x) => x.seed);
+}
+
+/** Falsifierings-delningen för flyttar — samma tröskel (REUSE_FALSIFIED_AT
+ *  distinkta fallna sidor) och samma kontrakt: anroparen loggar, aldrig tyst. */
+export function partitionFalsifiedMoves(
+  seeds: MoveSeed[],
+  records: Map<string, BlockTransferRecord>,
+): { kept: MoveSeed[]; falsified: MoveSeed[] } {
+  const kept: MoveSeed[] = [];
+  const falsified: MoveSeed[] = [];
+  for (const seed of seeds) {
+    const r = records.get(seed.sectionType);
+    if ((r?.failedOnPaths.length ?? 0) >= REUSE_FALSIFIED_AT) falsified.push(seed);
+    else kept.push(seed);
+  }
+  return { kept, falsified };
+}
+
+/** Är typklassen redan mättad? Distinkta icke-pensionerade ANDRA sidor (utöver
+ *  vinnarens egen) som bär en move-op av samma typ — samma tak
+ *  (REUSE_MAX_SPREAD) som textblocken. */
+export function moveSeedSaturated(seed: MoveSeed, rows: ReuseVariantRow[]): boolean {
+  const paths = new Set<string>();
+  for (const row of rows) {
+    if (row.status === "retired") continue;
+    if (row.path === seed.provedOnPath) continue;
+    if (moveTypes(row).includes(seed.sectionType)) paths.add(row.path);
+  }
+  return paths.size >= REUSE_MAX_SPREAD;
+}
+
+/** Flytt-fröna EN cell faktiskt erbjuds. Vakterna, i ordning:
+ *  1. aldrig sidan flytten vann på (varianten står redan där),
+ *  2. viabiliteten: målsidans EGEN katalog måste bära en move-kandidat av
+ *     typen (catalogMoveTypes — byggd av anroparen ur generateCandidates på
+ *     målsidans innehållsmodell, så viabiliteten ÄR katalogen, aldrig en
+ *     egen kopia av dess predikat). Täcker också dubbelvisnings-analogen:
+ *     en sektion som redan står över folden genererar ingen kandidat,
+ *  3. aldrig en sida där typklassen redan PRÖVATS och pensionerats
+ *     (transfer-lärandet — om-erbjudande är anti-lärande),
+ *  4. aldrig en sida som redan HAR en icke-pensionerad flytt-variant av
+ *     typen (samma erbjudande två gånger är brus),
+ *  5. aldrig över mättnadstaket (REUSE_MAX_SPREAD distinkta sidor),
+ *  6. högst MAX_REUSE_OFFERS_PER_CELL frön per cell. Taket är eget (inte
+ *     delat med textfröna): flytt-frön ADDERAR inga menyrader — de
+ *     annoterar rader som redan finns — så en gemensam budget hade svultit
+ *     en form utan att minska bruset. */
+export function offerMoveSeedsForCell(args: {
+  seeds: MoveSeed[];
+  cellPath: string;
+  /** Sektionstyperna målsidans katalog faktiskt genererar move-kandidater
+   *  för — anroparen bygger den ur generateCandidates(content). */
+  catalogMoveTypes: Set<string>;
+  rows: ReuseVariantRow[];
+  records?: Map<string, BlockTransferRecord>;
+}): MoveSeed[] {
+  const out: MoveSeed[] = [];
+  for (const seed of args.seeds) {
+    if (out.length >= MAX_REUSE_OFFERS_PER_CELL) break;
+    if (seed.provedOnPath === args.cellPath) continue;
+    if (!args.catalogMoveTypes.has(seed.sectionType)) continue;
+    if (args.records?.get(seed.sectionType)?.failedOnPaths.includes(args.cellPath)) continue;
+    const alreadyHere = args.rows.some(
+      (row) =>
+        row.status !== "retired" &&
+        row.path === args.cellPath &&
+        moveTypes(row).includes(seed.sectionType),
+    );
+    if (alreadyHere) continue;
+    if (moveSeedSaturated(seed, args.rows)) continue;
+    out.push(seed);
+  }
+  return out;
+}
+
+/** Överlevde flytt-återbruket verify-stegen? Alt-stegen kan ha bytt till en
+ *  annan kandidat — proveniensen skrivs bara när den slutliga varianten
+ *  faktiskt flyttar en sektion av fröets typ. (En organisk flytt av samma
+ *  typ på en cell där fröet ERBJÖDS attribueras också: hypotesen "typ-T-
+ *  flytten reser hit" prövas av varianten oavsett om väljaren nådde den via
+ *  golvet eller poänggolvet — det är exakt det transfer-lärandet ska räkna.) */
+export function moveReuseSurvived(
+  finalOps: { op: string; targetId?: string }[],
+  offer: { sectionType: string },
+): boolean {
+  return finalOps.some(
+    (o) => o.op === "move_up" && moveSectionType(o.targetId) === offer.sectionType,
   );
 }

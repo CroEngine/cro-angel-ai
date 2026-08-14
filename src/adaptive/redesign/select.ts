@@ -174,8 +174,12 @@ export function buildSelectionPrompt(args: {
           .map((p) => defuseMarkers(p))
           .join(" and ")
       : "";
+    // Flytt-frön (transferformen steg 4) bevisar TYPKLASSEN, inte texten —
+    // raden säger exakt det, med samma obevisad-här-caveat som textblocken.
     const provenLine = c.proven
-      ? ` [proven: this exact text won its A/B test on ${provenPaths} — transfer to THIS page is unproven until tested here]`
+      ? c.kind === "move_up"
+        ? ` [proven: moving this section type up won its A/B test on ${provenPaths} — transfer to THIS page is unproven until tested here]`
+        : ` [proven: this exact text won its A/B test on ${provenPaths} — transfer to THIS page is unproven until tested here]`
       : "";
     L.push(
       `[${c.id}] ${c.kind === "move_up" ? "MOVE section up" : "INSERT verbatim proof line under the hero"} — ${safeBasis}${provenLine}${engLine}${gateLine}`,

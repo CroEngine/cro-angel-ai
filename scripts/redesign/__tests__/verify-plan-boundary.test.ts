@@ -267,4 +267,54 @@ describe("plans.json → verify (riktig process, riktig Chromium)", () => {
     expect(swapped.ops?.map((o) => o.targetId)).toEqual(["sec-4-pricing"]);
     expect(swapped.evidence?.reuse).toBeUndefined();
   }, 240_000);
+
+  it("flytt-återbruket: kind 'move' skrivs när typklassen överlever, aldrig när alt-stegen bytte typ", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Transferformen steg 4: erbjudandet bär BARA typklassen — ingen text,
+    // ingen källsida. Verify ska eka den genom gränsen och stämpla
+    // proveniensen först när slutvarianten faktiskt flyttar en sådan sektion.
+    const moveOffer = {
+      variantId: "22222222-aaaa-bbbb-cccc-000000000002",
+      provedOnPath: "/enterprise",
+      sectionType: "pricing",
+    };
+    const rows = runVerify([
+      // 1) Flytten av typklassen är huvudvalet och överlever ⇒ proveniens.
+      planRow({
+        ...basePlan,
+        ops: [moveOp("sec-4-pricing")],
+        planSource: "katalog/selector",
+        moveReuseOffers: [moveOffer],
+      }),
+      // 2) Huvudvalet faller i valideringen, reserven flyttar en ANNAN
+      //    typklass ⇒ ingen proveniens: hypotesen som prövas är inte fröets.
+      planRow({
+        ...basePlan,
+        key: "direkt·mobile",
+        ops: [moveOp("sec-9-finns-inte")],
+        altOps: [[moveOp("sec-3-testimonials")]],
+        planSource: "katalog/selector",
+        moveReuseOffers: [moveOffer],
+      }),
+    ]);
+    expect(rows).toHaveLength(2);
+    const [survived, swapped] = rows;
+    expect(survived.verdict).toBe("verified");
+    expect(survived.evidence?.reuse).toEqual({
+      kind: "move",
+      variantId: moveOffer.variantId,
+      provedOnPath: "/enterprise",
+      sectionType: "pricing",
+    });
+    // En flytt citerar ingen källsida: inga beroenden, ingen vidgad whitelist.
+    expect(survived.evidence?.dependencies).toEqual([]);
+    expect(swapped.verdict).toBe("verified");
+    // Vilken reserv/nödfall som räddade cellen är inte poängen (grindarna
+    // avgör det) — poängen är att INGEN pricing-flytt bärs av slutvarianten,
+    // och att proveniensen därför uteblir.
+    expect(swapped.ops?.some((o) => o.op === "move_up" && o.targetId === "sec-4-pricing")).toBe(
+      false,
+    );
+    expect(swapped.evidence?.reuse).toBeUndefined();
+  }, 240_000);
 });

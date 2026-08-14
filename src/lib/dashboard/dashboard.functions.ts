@@ -28,6 +28,7 @@ import {
 import { loadTopReferrerDomains } from "@/adaptive/persistence.server";
 import { buildJourney, type JourneyMilestone } from "./journey";
 import { cleanEvents } from "./data-hygiene";
+import { reusedKindOf } from "./reuse-provenance";
 import {
   aggregate,
   applySkipsByVariant,
@@ -277,6 +278,12 @@ export interface VariantView {
    *  bär med sig — ägaren ska SE att förslaget är ett återbrukat bevisat
    *  block, inte en ny idé. null för allt som inte är återbruk. */
   reusedFrom: string | null;
+  /** VAD som bevisades (transferformen steg 4): "text" = den ordagranna
+   *  raden vann sitt A/B, "move" = att lyfta EN SEKTION AV DEN TYPEN vann.
+   *  Skillnaden är hela sanningen i ägarens etikett — en flytt-överföring
+   *  får aldrig påstå att texten är bevisad. null när varianten inte är
+   *  återbruk. Rader födda före steg 4 saknar kind ⇒ "text" (de var det). */
+  reusedKind: "text" | "move" | null;
   comparison: VariantComparison | null;
   /** Utspädningsdiagnostiken (flimmervakten 2026-08-10): laddningar i det
    *  lästa händelsefönstret där exponeringen loggades som visad variant men
@@ -669,6 +676,7 @@ export const getDashboard = createServerFn({ method: "POST" })
               gates,
               planSource: str(ev.planSource),
               reusedFrom: str((ev.reuse as Record<string, unknown> | undefined)?.provedOnPath),
+              reusedKind: reusedKindOf(ev.reuse),
               comparison: cmpRaw
                 ? {
                     headline: str(cmpRaw.headline),

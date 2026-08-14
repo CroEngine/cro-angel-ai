@@ -19,7 +19,7 @@ import {
   candidateToOp,
   type BehaviorInput,
 } from "../../src/adaptive/redesign/candidates";
-import type { ReuseSeed } from "../../src/adaptive/redesign/reuse";
+import type { MoveSeed, ReuseSeed } from "../../src/adaptive/redesign/reuse";
 import {
   applyProbe,
   buildSelectionPrompt,
@@ -64,9 +64,14 @@ export async function buildCandidatePlan(args: {
    *  nattloopens frö-vakter (viabilitet, dubbelvisning, mättnad). Utelämnad
    *  ⇒ byte-identisk katalog — precis som behavior. */
   reuse?: ReuseSeed[];
+  /** Transferformen steg 4: flytt-vinnarnas typklass-frön, redan sållade av
+   *  nattloopens flytt-vakter (viabilitet mot målsidans katalog, mättnad,
+   *  fallna-sidor-bannet). Annoterar målsidans egna move-kandidater —
+   *  utelämnad ⇒ byte-identisk katalog. */
+  moveReuse?: MoveSeed[];
 }): Promise<CandidatePlan | null> {
   const { content, frozenPath, workDir } = args;
-  const candidates = generateCandidates(content, args.behavior, args.reuse);
+  const candidates = generateCandidates(content, args.behavior, args.reuse, args.moveReuse);
   if (candidates.length === 0) return null;
 
   // Probens in-format: kandidat + lokator (samma upplösning som toServeOps —

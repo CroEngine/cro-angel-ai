@@ -73,7 +73,7 @@ import {
   segmentInsightFrom,
 } from "../../src/adaptive/redesign/context";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
-import { reuseSurvived } from "../../src/adaptive/redesign/reuse";
+import { moveReuseSurvived, reuseSurvived } from "../../src/adaptive/redesign/reuse";
 import { withExtraLift } from "../../src/adaptive/redesign/extra-lift";
 import { tidySignalText } from "../../src/adaptive/redesign/candidates";
 import {
@@ -482,6 +482,11 @@ interface PlanIn {
    *  block som faktiskt överlevde grind- och fallback-stegen — proveniensen
    *  får aldrig hamna på en variant som slutade bära blocket. */
   reuseOffers?: { variantId: string; provedOnPath: string; sourcePath: string; text: string }[];
+  /** Transferformen steg 4: cellens erbjudna FLYTT-frön (typklasser). Verify
+   *  matchar finalOps mot listan (moveReuseSurvived) och skriver
+   *  evidence.reuse med kind "move" för den typklass som faktiskt överlevde.
+   *  Ingen påverkan på whitelisten — en flytt citerar ingen källsida. */
+  moveReuseOffers?: { variantId: string; provedOnPath: string; sectionType: string }[];
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
 
@@ -1214,10 +1219,25 @@ try {
       // Blockbiblioteket steg 2: proveniensen skrivs BARA när det bevisade
       // blocket faktiskt överlevde till finalOps (alt-stegen/bevis-lyftet kan
       // ha bytt ut det) — matchning på exakt text + källsida, aldrig antagande.
+      // Transferformen steg 4: samma ärlighetsregel för flytt-frön — kind
+      // "move" skiljer typklass-överföringen från textblockets, så transfer-
+      // lärandets två meritlistor aldrig kan räkna varandras utfall.
+      // Textblocket har företräde: dess påstående ("exakt DEN här texten")
+      // är det starkare, och en op är ändå antingen insert eller flytt.
       ...(() => {
         const survived = (plan.reuseOffers ?? []).find((r) => reuseSurvived(finalOps, r));
-        return survived
-          ? { reuse: { variantId: survived.variantId, provedOnPath: survived.provedOnPath } }
+        if (survived)
+          return { reuse: { variantId: survived.variantId, provedOnPath: survived.provedOnPath } };
+        const moved = (plan.moveReuseOffers ?? []).find((r) => moveReuseSurvived(finalOps, r));
+        return moved
+          ? {
+              reuse: {
+                kind: "move" as const,
+                variantId: moved.variantId,
+                provedOnPath: moved.provedOnPath,
+                sectionType: moved.sectionType,
+              },
+            }
           : {};
       })(),
       comparison: {
