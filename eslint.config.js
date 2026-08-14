@@ -36,5 +36,14 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  // Snippet-källan skriver AVSIKTLIGT gammaldags JS (applier.ts:14-17: "OLD-
+  // SCHOOL BODIES … deliberately conservative JS for maximal browser
+  // coverage") och är dessutom byte-pinnad av gen:applier:check. Regeln
+  // stängs av för just den filen i stället för att filen ändras — alla 75
+  // no-var-fel i repot bodde här och maskerade resten av lint-utfallet.
+  {
+    files: ["src/adaptive/runtime/applier.ts"],
+    rules: { "no-var": "off" },
+  },
   eslintPluginPrettier,
 );
