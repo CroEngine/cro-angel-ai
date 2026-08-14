@@ -26,9 +26,6 @@ function ctx(overrides: Partial<VisitorContext> = {}): VisitorContext {
   };
 }
 
-const patternsOf = (c: VisitorContext): PatternId[] =>
-  decide("demo", c, demo).adaptations.map((a) => a.pattern);
-
 // Ägarregeln (2026-07-28): "vi behöver inte hålla på att highlighta knappar
 // osv heller — vi ska endast skicka runt färdiga stycken." Dag-1-vokabulären
 // är OMFLYTT: dekorationsklassen (badges/chips, sekundärlänkar, knapptext-

@@ -2,9 +2,11 @@
 // svarskort + KPI:er → tvåpanels källutforskare med KOLLAPSAT träd + filter,
 // "All sources"-översikt som default (rankade kanaler), scopad variantlista
 // med riktiga åtgärder + "se live", hopslagna Recent journeys med rage-bursts
-// som EN siffra, och "Journeys & signals" med klick-heatmap som POPUP i samma
-// idiom som Compare (ägarbeslut 2026-07-17: "exakt så som vi ser compare, ska
-// vi se journey och rageclicks — ett popupfönster med sandbox-spegeln").
+// som EN siffra, och "Journeys & signals" som POPUP i samma idiom som Compare
+// (ägarbeslut 2026-07-17: "exakt så som vi ser compare, ska vi se journey och
+// rageclicks — ett popupfönster med sandbox-spegeln"). Klick-heatmapen som
+// popupen en gång bar är PENSIONERAD (ägarbeslut 2026-07-26); kvar är
+// vägträdet och den berättade tidslinjen.
 //
 // Prototypens siffror var demo. Här driver RIKTIG data varje yta, med ärliga
 // lägen i stället för påhitt: inga servande varianter ⇒ "Observing"; för tunt
@@ -1324,9 +1326,9 @@ export function OverviewPanel({
           rageClicks={rageClicks}
           searches={searches}
           contextLabel={sel ? enLabel(sel.label) : "All sources"}
-          // Segmentets enhetsdimension låser heatmap-vyn (tablet ⇒ desktop-
-          // layouten, samma bucketing som attributionen); okänd enhet låser
-          // inte — då är växeln fortfarande meningsfull.
+          // Segmentets enhetsdimension låser kohortens enhetsfilter (tablet ⇒
+          // desktop-layouten, samma bucketing som attributionen); okänd enhet
+          // låser inte — då är växeln fortfarande meningsfull.
           lockedDevice={
             selDims[1] === "mobile"
               ? "mobile"

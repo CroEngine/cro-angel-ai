@@ -1558,7 +1558,7 @@
       p.cls = Math.round(clsValue * 1000) / 1000; // 3 decimaler räcker
       // Preferenser (INTE fingeravtryck): dessa två styr faktiska
       // skönhetsgrindar — reduced-motion stänger av emfas-pulsen, dark mode
-      // temaanpassar injektionerna (se ensureStyles/prefsClass). Vi loggar
+      // temaanpassar injektionerna (se ensureStyles @media-blocket). Vi loggar
       // dem också så andelen syns i diagnosen. Enhets-fingeravtryck (minne,
       // kärnor, uppkoppling, tidszon) samlas MEDVETET INTE — de är
       // oanvändbara vid SMB-trafik och ren integritetsyta (steg 2-analysen).

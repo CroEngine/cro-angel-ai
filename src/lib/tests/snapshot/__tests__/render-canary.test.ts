@@ -300,9 +300,10 @@ describe("runRenderCanary — Gate 1 reason taxonomy", () => {
 
     // Query for "Brnad" (typo): no FontFace has this descriptor → manifest
     // names a family no @font-face declares → descriptor_missing with the
-    // actionable error message. Fix lives in extractDeclaredFamilies, NOT in
-    // check-string canonicalization — which is why this is a distinct reason
-    // from check_mismatch.
+    // actionable error message. Fix lives in the manifest producers
+    // (mhtml-fonts.server: extractMainDocumentFamilies / extractEmbeddedFamilies),
+    // NOT in check-string canonicalization — which is why this is a distinct
+    // reason from check_mismatch.
     const report = await runRenderCanary(page, ["Brnad"], {
       fontLoadTimeoutMs: 1000,
     });

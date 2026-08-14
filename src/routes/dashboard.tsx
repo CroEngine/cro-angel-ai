@@ -1,15 +1,17 @@
 // /dashboard — the customer dashboard (blueprint Step 8).
 //
-// Three views, one owner-question each: Overview (how is it going?), Visitors
-// (who was here and what did they do?), and What's working (is Angel earning
-// its keep?). Everything operational lives in the header Settings dialog.
+// ONE view answering three owner-questions: how is it going, who was here and
+// what did they do, and is Angel earning its keep. (It was three tabs once —
+// the source explorer and Journeys & signals absorbed the other two; see the
+// note at the OverviewPanel call.) Everything operational lives in the header
+// Settings dialog.
 // Data comes from getDashboard (server function → Supabase via service role),
 // aggregated by src/lib/dashboard. When the DB is unavailable the dashboard
 // renders a clean empty state.
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, ShieldCheck, Shield } from "lucide-react";
@@ -49,7 +51,6 @@ import {
   type ConsentMode,
   type DashboardResponse,
   type SiteConfigView,
-  type VariantView,
 } from "@/lib/dashboard/dashboard.functions";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
 import { RECENT_WINDOW_DAYS } from "@/lib/dashboard/aggregate";

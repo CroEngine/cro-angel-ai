@@ -125,9 +125,6 @@ if (parts.length > 1) {
   }
 }
 
-const esc = (s: unknown) =>
-  String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-
 function shell(partSites: Site[], part: number, total: number): string {
   const payload = JSON.stringify(partSites);
   return `<title>Angel Adaptive — page map audit (part ${part}/${total})</title>

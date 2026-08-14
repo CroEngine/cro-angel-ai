@@ -162,7 +162,6 @@ const height = (len: number) => Math.round(Math.min(300, Math.max(20, 20 + 42 * 
 
 const okSites = sites.filter((s) => s.ok);
 const tabs = okSites.map((s, i) => {
-  const ev = s.secs.filter((x) => EVIDENCE.has(effType(x))).length;
   const d = diagnose(s.secs);
   const dot = d.tone === "over" ? "#f97316" : d.tone === "under" ? "#eab308" : "#10b981";
   return `<button class="tab${i === 0 ? " on" : ""}" data-i="${i}"><span class="tdot" style="background:${dot}"></span><span class="tname">${esc(s.label)}</span><span class="tmeta">${s.secs.length}→${groupSecs(s.secs).length}</span></button>`;
@@ -206,7 +205,6 @@ function groupCard(g: Group): string {
 const panels = okSites.map((s, i) => {
   const d = diagnose(s.secs);
   const groups = groupSecs(s.secs);
-  const generic = s.secs.filter((x) => x.type === "section" || x.type === "content").length;
   const evidence = s.secs.filter((x) => EVIDENCE.has(effType(x))).length;
   const promoted = s.secs.filter((x) => x.llm).length;
   const merged = s.secs.length - groups.length;

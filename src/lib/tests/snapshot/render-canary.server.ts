@@ -33,7 +33,9 @@
 //   descriptor_missing— load resolved with faceCount===0 AND NO descriptor for
 //                       the family exists in document.fonts. The manifest's
 //                       expectedFamilies names a family no @font-face declares.
-//                       Fix lives in extractDeclaredFamilies (mhtml-fonts.server),
+//                       Fix lives in the manifest producers
+//                       (mhtml-fonts.server: extractMainDocumentFamilies, with
+//                       extractEmbeddedFamilies as the fail-closed fallback),
 //                       NOT in canonicalization of the check string. Gate-1 fail.
 //   check_mismatch    — width says loaded (>EPS) AND fonts.check === false.
 //                       DEFENSIVE branch, near-unreachable by construction:
@@ -337,9 +339,10 @@ export async function runRenderCanary(
         ) {
           // A2-no-descriptor: empty load result AND no FontFace with a matching
           // family descriptor exists in document.fonts. The manifest names a
-          // family no @font-face declares. Fix lives in extractDeclaredFamilies
-          // (mhtml-fonts.server), NOT in check-string canonicalization — that's
-          // why this is a distinct reason from check_mismatch.
+          // family no @font-face declares. Fix lives in the manifest producers
+          // (mhtml-fonts.server: extractMainDocumentFamilies, falling back to
+          // extractEmbeddedFamilies), NOT in check-string canonicalization —
+          // that's why this is a distinct reason from check_mismatch.
           //
           // pass=false is provisional: a CSS-hopeful family (referenced but
           // never embedded) belongs on a per-corpus known-list as a soft

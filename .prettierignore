@@ -6,3 +6,17 @@ pnpm-lock.yaml
 package-lock.json
 bun.lock
 routeTree.gen.ts
+
+# Kodgenererade och byte-pinnade filer (städsvepet 2026-08-14). `bun run
+# format` skrev om dem och RÖDADE CI: 35 av prettier-anmärkningarna i
+# public/adaptive.js ligger INNE i GENERATED APPLIER-blocket, som
+# gen:applier:check jämför byte för byte mot src/adaptive/runtime/applier.ts —
+# och adaptive-harvest.js går samma väg via build:harvest-pinnen.
+public/adaptive.js
+public/adaptive-harvest.js
+src/integrations/supabase/types.ts
+
+# Committade guldunderlag: omformatering ändrar inga värden men skapar
+# tusentals rader diff-brus i filer vars enda syfte är att vara oförändrade.
+corpus/
+fixtures/

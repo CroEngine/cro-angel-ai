@@ -16,7 +16,7 @@
 //   bun run scripts/redesign/breadth-test.ts --targets=targets.json --out=out
 //   targets.json: [{ "name": "hubspot", "type": "mhtml"|"html", "path": "..." }]
 
-import { chromium, type Page } from "playwright-core";
+import { chromium } from "playwright-core";
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

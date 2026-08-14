@@ -75,23 +75,12 @@ import {
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
 import { moveReuseSurvived, reuseSurvived } from "../../src/adaptive/redesign/reuse";
 import { withExtraLift } from "../../src/adaptive/redesign/extra-lift";
-import { tidySignalText } from "../../src/adaptive/redesign/candidates";
-import {
-  evaluateRenderGates,
-  type RenderMeasurements,
-} from "../../src/adaptive/redesign/render-gates";
-import {
-  captureLcpElement,
-  measurePlan,
-  runGatedAttempts,
-  toRenderMeasurements,
-  type MeasureOp,
-} from "./measure";
+import { evaluateRenderGates } from "../../src/adaptive/redesign/render-gates";
+import { captureLcpElement, measurePlan, runGatedAttempts, toRenderMeasurements } from "./measure";
 import { viewportsForSegmentKey } from "../../src/adaptive/redesign/viewports";
-import type { ServeOp } from "../../src/adaptive/redesign/serve";
 import type { RedesignContentModel } from "../../src/adaptive/redesign/context";
-import type { SegmentSummary } from "../../src/lib/dashboard/aggregate";
-import { RETURNING_TOKEN, segmentDims } from "../../src/lib/segment-key";
+import { segmentSummaryFor } from "../../src/lib/dashboard/segment-summary";
+import { locatorFor, proofInsertFallback, toMeasureOps, toServeOps } from "./plan-ops";
 
 // Env-var eller undefined — playwright-core hittar sin egen installation på
 // Actions-runnern (samma mönster som serving-smoke; pilotfynd 2026-07-17).
@@ -159,27 +148,6 @@ function pageRef(path: string) {
   };
 }
 
-/** SegmentSummary ur detektorns fynd — underlaget för briefen. */
-function summaryFor(key: string, total: { visits: number; conversions: number }): SegmentSummary {
-  const dims = segmentDims(key);
-  return {
-    key,
-    label: dims.join(" · "),
-    depth: dims.length,
-    channel: dims[0] ?? null,
-    device: dims[1] ?? null,
-    country: dims[2] ?? null,
-    returning: dims.length >= 4 ? dims[3] === RETURNING_TOKEN : null,
-    visits: total.visits,
-    conversions: total.conversions,
-    conversionRate: total.visits > 0 ? total.conversions / total.visits : 0,
-    formStarts: 0,
-    formAbandons: 0,
-    adequate: true,
-    recent: null,
-  };
-}
-
 /** Skärmdumpssanning (fullskaletestets "headern flyttad"-fynd 2026-08-12):
  *  fullPage-dumpen målar position:fixed-element vid AKTUELLT scrolläge, och
  *  hit-testerna har scrollIntoView:at mitt i sidan — utan återställning
@@ -229,7 +197,7 @@ async function contextFor(
     goal: GOAL,
     page: pageRef(path),
     content: page.content,
-    segment: segmentInsightFrom(summaryFor(key, total), { observations }),
+    segment: segmentInsightFrom(segmentSummaryFor(key, total), { observations }),
     sourcePages,
   });
 }
@@ -365,7 +333,7 @@ if (mode === "detect") {
         goal: GOAL,
         page: pageRef(rep.path),
         content: filterToTemplateSections(rep.content, shared),
-        segment: segmentInsightFrom(summaryFor(c.key, c.total), { observations }),
+        segment: segmentInsightFrom(segmentSummaryFor(c.key, c.total), { observations }),
         sourcePages: [],
       });
       briefed.push({
@@ -490,147 +458,6 @@ interface PlanIn {
 }
 const plans = JSON.parse(readFileSync(arg("plans")!, "utf8")) as PlanIn[];
 
-/** Sektions-id → DOM-lokator för serve_ops, per sidas innehållsmodell.
- *  Hjälte-sektionen bor i h1, allt annat i h2 — samma struktur extract.ts
- *  läste ur sidan. */
-function locatorFor(content: RedesignContentModel, targetId: string): ServeOp["locator"] | null {
-  const sec = content.sections.find((s) => s.id === targetId);
-  if (!sec?.heading) return null;
-  return { tag: sec.type === "hero" ? "h1" : "h2", text: sec.heading };
-}
-
-/** Hjältens h1-lokator — insert_snippet-opens ankare. "hero" är ett syntetiskt
- *  targetId (ingen sektionsrad), så locatorFor kan inte slå upp det. */
-function heroLocatorFor(content: RedesignContentModel): ServeOp["locator"] | null {
-  const heroSec = content.sections.find((s) => s.type === "hero");
-  const text = heroSec?.heading || content.hero?.headline;
-  return text ? { tag: "h1", text } : null;
-}
-
-/** Sektions-id → mät-ops (delas av huvudplanen och fallback-steget). Null när
- *  någon lokator saknas — fail closed, samma regel som toServeOps. */
-function toMeasureOps(
-  content: RedesignContentModel,
-  ops: RedesignOp[],
-  styleDonor: string | null,
-): MeasureOp[] | null {
-  const out: MeasureOp[] = [];
-  for (const o of ops) {
-    const loc =
-      o.op === "insert_snippet" ? heroLocatorFor(content) : locatorFor(content, o.targetId);
-    if (!loc) return null;
-    if (o.op === "move_up") {
-      out.push({ op: "move_up", tag: loc.tag, find: loc.text });
-    } else if (o.op === "insert_snippet") {
-      out.push({
-        op: "insert_snippet",
-        tag: loc.tag,
-        find: loc.text,
-        set: o.detail,
-        ...(o.sourcePath ? { href: o.sourcePath } : {}),
-        ...(styleDonor ? { styleClass: styleDonor } : {}),
-        ...(o.placement ? { placement: o.placement } : {}),
-      });
-    } else if (o.op === "set_text") {
-      out.push({ op: "set_text", tag: loc.tag, find: loc.text, set: o.detail });
-    } else {
-      // condense/reveal serveras inte i v1 (toServeOps vägrar dem) — då får
-      // de inte heller MÄTAS som något annat (granskningsfynd 2026-07-28:
-      // de föll igenom till set_text, klarade grindarna och dog först som
-      // no_serve_ops utan orsak). En enda semantik: omätbart ⇒ null.
-      return null;
-    }
-  }
-  return out;
-}
-
-/** Fallback-steget (ägarbeslut 2026-07-27: tratten ska LEVERERA — men aldrig
- *  genom en trasig sida): när flytt-planen fälls i grinden provas ett
- *  bevis-lyft i stället. Texten är ORDAGRANN sidtext — extract.ts garanterar
- *  att varje trust-signal är en äkta substräng ur sidan, och rubriker kommer
- *  ur markupen; vi hittar aldrig på. insert_snippet är LCP-säker by
- *  construction (omankrar under LCP-elementet, vägrar ovanför) — det är
- *  därför den kan lyckas där flytten inte fick plats. Ingen sourcePath:
- *  texten kommer från samma sida, så raden renderas som ren text utan länk. */
-function proofInsertFallback(
-  content: RedesignContentModel,
-  ops: RedesignOp[],
-): RedesignOp[] | null {
-  const firstMove = ops.find((o) => o.op === "move_up");
-  if (!firstMove) return null;
-  if (ops.some((o) => o.op === "insert_snippet")) return null; // max EN insert per plan
-  // Textvalet: målsektionens EGEN rubrik först — den kommer ren ur markupen
-  // och är exakt den sektion designern pekade på. Trust-signalerna är
-  // sid-globala regex-fångster ur platt text och kan dra med sig UI-brus
-  // (talentium-fixturen: "0:30 Product overview Play video" följde med) —
-  // de är reserven, inte förstahandsvalet.
-  //
-  // SUBSTANSKRAVET (ägarfynd fikajobs 2026-07-28): rubriken måste SJÄLV bära
-  // bevis (minst en siffra — "4,9/5", "12 000+ kunder"). "People love Fika.
-  // Here's what they say." är en LOVNAD om innehåll — lyft ensam blev en tom
-  // rad som lovar testimonials som inte följer med. Hellre hållen variant
-  // (rapporten levereras ändå) än en rad som skadar sidan.
-  const sec = content.sections.find((s) => s.id === firstMove.targetId);
-  const headingOk = !!sec?.heading && /\d/.test(sec.heading);
-  // tidySignalText: samma städning som katalogens meny (UI-brus, Framers
-  // SSR-dubbletter) — raden ägaren ser ska vara ren sidtext, inte skarvskräp.
-  const signal = ["trusted_by", "social_proof_count", "guarantee"]
-    .map((t) => {
-      const raw = content.trustSignals.find((s) => s.type === t)?.text;
-      return raw ? tidySignalText(raw) : undefined;
-    })
-    .find((t) => !!t && t.trim().length >= 8);
-  const text = ((headingOk ? sec!.heading : null) ?? signal ?? "").trim();
-  if (!text) return null;
-  return [
-    {
-      op: "insert_snippet",
-      targetId: "hero",
-      detail: text,
-      why:
-        "The move didn't fit without disturbing the hero block — instead the page's own proof is surfaced verbatim as a line directly below the hero heading. " +
-        (firstMove.why || ""),
-    },
-    ...ops.filter((o) => o.op !== "move_up"),
-  ];
-}
-
-function toServeOps(
-  content: RedesignContentModel,
-  ops: RedesignOp[],
-  // Klickväg + stil-donator (ägarbeslut 2026-07-18 alt. D): citatet länkar
-  // till sin källsida och klär sig i landningssidans egen mest använda
-  // länkklass — sajtens stilmall bestämmer utseendet, aldrig vår.
-  styleDonor: string | null = null,
-): ServeOp[] | null {
-  const out: ServeOp[] = [];
-  for (const o of ops) {
-    if (o.op === "insert_snippet") {
-      const locator = heroLocatorFor(content);
-      if (!locator) return null;
-      out.push({
-        op: "insert_snippet",
-        locator,
-        value: o.detail,
-        ...(o.sourcePath ? { href: o.sourcePath } : {}),
-        ...(styleDonor ? { styleClass: styleDonor } : {}),
-        // Placerings-stegen (2026-07-27): den verifierade insättningspunkten
-        // följer med till serve_ops — klienten applicerar EXAKT det grindade.
-        ...(o.placement ? { placement: o.placement } : {}),
-        why: o.why,
-      });
-      continue;
-    }
-    const locator = locatorFor(content, o.targetId);
-    if (!locator) return null;
-    if (o.op === "move_up") out.push({ op: "move_up", locator, why: o.why });
-    else if (o.op === "set_text")
-      out.push({ op: "set_text", locator, value: o.detail, why: o.why });
-    else return null; // condense/reveal serveras inte i v1 — fail closed
-  }
-  return out;
-}
-
 /** Applicera en HEL plan (flyttar + omtextningar) i sidan och mät grindarnas
  *  underlag. Samma mätning som slice 3b, plus set_text före mätningen så att
  *  text som ändrar layouten (radbrytningar → overflow/CTA under folden) syns. */
@@ -750,7 +577,7 @@ try {
           goal: GOAL,
           page: pageRef(repPath),
           content,
-          segment: segmentInsightFrom(summaryFor(plan.key, plan.total), {
+          segment: segmentInsightFrom(segmentSummaryFor(plan.key, plan.total), {
             observations: plan.observations,
           }),
           sourcePages: [],

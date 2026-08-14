@@ -8,27 +8,11 @@ import { runPageAudit } from "./runners/pageAudit.server";
 
 import { summarizeCollected } from "./collect-summary";
 
-import type {
-  CollectedElement,
-  CollectTarget,
-  CTAEntity,
-  EngineEvent,
-  FormEntity,
-  NavigationData,
-  PageAuditData,
-  PageSection,
-  PageSummary,
-  Rect,
-  RepeatedGroup,
-  SectionKind,
-  SectionType,
-  Step,
-  TrustSignal,
-  TrustSignalType,
-  TrustSummary,
-  ViewportZone,
-  VisualHierarchyEntry,
-} from "./schema";
+// Bara de typer filens EGEN kropp läser. Re-exporten nedan är ett separat
+// kontrakt med egen from-klausul — den löser mot ./schema direkt och har
+// aldrig läst de här bindningarna (städsvepet 2026-08-14: 15 namn stod här
+// enbart för att de också re-exporteras).
+import type { CollectedElement, EngineEvent, PageAuditData, Step } from "./schema";
 
 // Re-export schema types so existing imports of `engine.server` keep working.
 export type {

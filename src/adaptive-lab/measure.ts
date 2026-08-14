@@ -7,6 +7,8 @@
 // so the exact same math runs in the simulator today and on collector data
 // later; anything murky is "inconclusive", never a win.
 
+import { pooledTwoProportionZ } from "../lib/stats/two-proportion";
+
 export type ArmStats = { n: number; conversions: number };
 
 export type MeasureResult = {
@@ -53,15 +55,14 @@ export function wilsonInterval(conversions: number, n: number, z = 1.96): [numbe
   return [Math.max(0, center - half), Math.min(1, center + half)];
 }
 
-/** Two-proportion z-test (pooled). Returns z and the two-sided p-value. */
+/** Two-proportion z-test (pooled). Returns z and the two-sided p-value.
+ *  Formeln delas med dashboardens/motorns twoProportionZ sedan städsvepet
+ *  2026-08-14 (lib/stats/two-proportion) — DEN HÄR sidans kontrakt är
+ *  oförändrat: tom arm eller nolldivision svarar { z: 0, p: 1 } ("ingen
+ *  mätbar skillnad"), där aggregate-sidan svarar null. */
 export function twoProportionTest(a: ArmStats, b: ArmStats): { z: number; p: number } {
-  if (a.n === 0 || b.n === 0) return { z: 0, p: 1 };
-  const p1 = a.conversions / a.n;
-  const p2 = b.conversions / b.n;
-  const pooled = (a.conversions + b.conversions) / (a.n + b.n);
-  const se = Math.sqrt(pooled * (1 - pooled) * (1 / a.n + 1 / b.n));
-  if (se === 0) return { z: 0, p: 1 };
-  const z = (p1 - p2) / se;
+  const z = pooledTwoProportionZ(a.conversions, a.n, b.conversions, b.n);
+  if (z === null) return { z: 0, p: 1 };
   return { z, p: 2 * (1 - normalCdf(Math.abs(z))) };
 }
 

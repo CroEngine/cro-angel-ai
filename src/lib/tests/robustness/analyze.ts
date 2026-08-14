@@ -121,13 +121,6 @@ export interface VisualSanity {
   hOverflowIntroducedPx: number;
 }
 
-export const EMPTY_VISUAL: VisualSanity = {
-  movedCount: 0,
-  movedAboveMain: 0,
-  mainAnchorFound: false,
-  hOverflowIntroducedPx: 0,
-};
-
 export type Verdict = "pass" | "warn" | "fail";
 
 export interface RobustnessReport {
