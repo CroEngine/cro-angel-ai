@@ -15,7 +15,7 @@
 import { defuseMarkers } from "./defuse";
 import type { RedesignContentModel } from "./context";
 import type { RedesignOp } from "./generate";
-import type { ReuseSeed } from "./reuse";
+import type { MoveSeed, ReuseSeed } from "./reuse";
 
 export interface Candidate {
   /** Stabilt id LLM-väljaren låses till ("mv-sec-3-testimonials", "ins-trusted_by-0"). */
@@ -177,18 +177,25 @@ export function generateCandidates(
   content: RedesignContentModel,
   behavior?: BehaviorInput,
   reuse?: ReuseSeed[],
+  moveReuse?: MoveSeed[],
 ): Candidate[] {
   const out: Candidate[] = [];
   const sectionIds = new Set(content.sections.map((s) => s.id));
 
   // Flytt-kandidater: bevisbärande sektioner under folden. Hjälten är aldrig
   // ett flyttmål, och sektioner ovanför folden har inget att vinna.
+  // Flytt-fröna (transferformen steg 4) annoterar i efterhand — kandidat-
+  // mängden är alltid målsidans egen, fröet rör bara poäng + proveniens.
+  const moveIdxByType = new Map<string, number[]>();
   for (const s of content.sections) {
     if (s.type === "hero" || s.aboveFold) continue;
     const typeWeight = PROOF_TYPE_WEIGHT[s.type] ?? 0;
     const trustBonus = s.containsTrustSignals ? 1 : 0;
     if (typeWeight + trustBonus <= 0) continue;
     if (!s.heading) continue;
+    const idxs = moveIdxByType.get(s.type) ?? [];
+    idxs.push(out.length);
+    moveIdxByType.set(s.type, idxs);
     out.push({
       id: `mv-${s.id}`,
       kind: "move_up",
@@ -198,6 +205,29 @@ export function generateCandidates(
         typeWeight + trustBonus + Math.min(s.position, 8) * 0.05 + behaviorTerm(behavior, s.id),
       basis: `${s.type}${s.containsTrustSignals ? " [proof]" : ""} below the fold (position ${s.position}): "${s.heading.slice(0, 60)}"`,
     });
+  }
+
+  // Flytt-vinnares transferform (steg 4): fröet lyfter målsidans EGEN
+  // kandidat av samma typ till bevisgolvet (max — aldrig sänkning: en
+  // beteende-het sektion behåller sin högre poäng) och fäster proveniensen.
+  // Bär sidan flera sektioner av typen annoteras bara den STARKASTE
+  // (högst egen poäng, dokumentordning vid lika) — typklassens bevis ska
+  // inte blåsa upp menyn med [proven:]-rader. Utelämnad ⇒ byte-identisk
+  // katalog, samma kontrakt som behavior/reuse.
+  for (const seed of moveReuse ?? []) {
+    const idxs = moveIdxByType.get(seed.sectionType);
+    if (!idxs || idxs.length === 0) continue;
+    const best = idxs.reduce((a, b) => (out[b].score > out[a].score ? b : a));
+    if (out[best].proven) continue; // första fröet per typ äger annoteringen
+    out[best] = {
+      ...out[best],
+      score: Math.max(out[best].score, REUSE_PROVEN_SCORE),
+      proven: {
+        provedOnPath: seed.provedOnPath,
+        variantId: seed.variantId,
+        ...(seed.alsoWonOn && seed.alsoWonOn.length > 0 ? { alsoProvedOn: seed.alsoWonOn } : {}),
+      },
+    };
   }
 
   // Insert-kandidater: ordagranna trust-rader lyfta till under hjälten.

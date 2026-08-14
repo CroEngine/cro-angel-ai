@@ -135,4 +135,36 @@ describe("planRow — återbrukserbjudandena (blockbiblioteket steg 2)", () => {
     expect("reuseOffers" in planRow({ ...base })).toBe(false);
     expect("reuseOffers" in planRow({ ...base, reuseOffers: [] })).toBe(false);
   });
+
+  // ── Flytt-erbjudandena (transferformen steg 4) ────────────────────────────
+  const moveOffer = {
+    variantId: "22222222-aaaa-bbbb-cccc-000000000002",
+    provedOnPath: "/enterprise",
+    sectionType: "testimonials",
+  };
+
+  it("flytt-erbjudandena följer med katalog-raden UTAN att vidga whitelisten", () => {
+    // En flytt citerar ingen källsida: en union här hade tyst mjukat upp
+    // D2-kontrollen (verify:s whitelist byggs ur sourcePaths).
+    const row = planRow({ ...base, sourcePaths: ["/flode"], moveReuseOffers: [moveOffer] });
+    expect(row.moveReuseOffers).toEqual([moveOffer]);
+    expect(row.sourcePaths).toEqual(["/flode"]);
+  });
+
+  it("designer-planer bär aldrig flytt-erbjudanden heller", () => {
+    const row = planRow({ ...base, planSource: "designer", moveReuseOffers: [moveOffer] });
+    expect("moveReuseOffers" in row).toBe(false);
+  });
+
+  it("tom/utelämnad flyttlista utelämnas helt", () => {
+    expect("moveReuseOffers" in planRow({ ...base })).toBe(false);
+    expect("moveReuseOffers" in planRow({ ...base, moveReuseOffers: [] })).toBe(false);
+  });
+
+  it("bägge formerna kan bäras samtidigt — bara textens källsida unionas", () => {
+    const row = planRow({ ...base, reuseOffers: [offer], moveReuseOffers: [moveOffer] });
+    expect(row.reuseOffers).toEqual([offer]);
+    expect(row.moveReuseOffers).toEqual([moveOffer]);
+    expect(row.sourcePaths).toEqual(["/priser"]);
+  });
 });

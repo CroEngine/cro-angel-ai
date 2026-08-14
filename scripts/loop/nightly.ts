@@ -27,16 +27,24 @@ import { fetchSectionBehavior } from "./section-behavior";
 import {
   REUSE_FALSIFIED_AT,
   blockTransferRecords,
+  decorateMoveSeedsWithTransfer,
   decorateSeedsWithTransfer,
   filterViableSeeds,
   flattenHtml,
+  harvestMoveSeeds,
   harvestReuseSeeds,
+  moveSectionType,
+  moveTransferRecords,
+  offerMoveSeedsForCell,
   offerSeedsForCell,
   partitionFalsified,
+  partitionFalsifiedMoves,
   type BlockTransferRecord,
+  type MoveSeed,
   type ReuseSeed,
   type ReuseVariantRow,
 } from "../../src/adaptive/redesign/reuse";
+import { generateCandidates } from "../../src/adaptive/redesign/candidates";
 import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
 import { extractContentModel, extractQuotables } from "../../src/adaptive/redesign/extract";
 import { filterToTemplateSections } from "../../src/adaptive/redesign/template-content";
@@ -219,6 +227,10 @@ for (const site of targets) {
     // radläsning som drift-svepet) — deras källsidor måste också frysas, för
     // ett frö vars whitelist inte kan byggas om är inget erbjudande.
     const reuseSeeds = harvestReuseSeeds(variants ?? []);
+    // Transferformen steg 4: flytt-vinnarnas typklasser. Till skillnad från
+    // textfröna behöver de INGEN källsida fryst — fröet bär bara typklassen,
+    // och målsidans egen katalog är hela viabilitetskollen.
+    const moveSeeds = harvestMoveSeeds(variants ?? []);
     const depPaths = [
       ...new Set([
         ...depVariants.flatMap((v) => [v.path, ...dependenciesOf(v.evidence).map((d) => d.path)]),
@@ -718,17 +730,27 @@ for (const site of targets) {
     // just höll för uppmätt skada.
     let offerableSeeds: ReuseSeed[] = [];
     let cellRecords: Map<string, BlockTransferRecord> | undefined;
+    // Transferformen steg 4: flytt-frönas motsvarigheter — samma två vakter
+    // (hållna vinnare räknas inte, misslyckande-läsningen måste ha gått).
+    let offerableMoveSeeds: MoveSeed[] = [];
+    let cellMoveRecords: Map<string, BlockTransferRecord> | undefined;
+    const unheldMoveSeeds = moveSeeds.filter((s) => {
+      if (!heldTonight.has(s.variantId)) return true;
+      console.log(
+        `[loop] ${site.slug}: flytt-frö (${s.sectionType}) från ${s.provedOnPath} sållas — vinnaren hölls i nattens svep (ett hållet bevis är inget bevis)`,
+      );
+      return false;
+    });
     if (retiredReuseErr) {
-      if (unheldSeeds.length > 0) {
+      if (unheldSeeds.length > 0 || unheldMoveSeeds.length > 0) {
         console.warn(
           `[loop] ${site.slug}: misslyckande-läsningen föll (${retiredReuseErr.message}) — inga återbrukserbjudanden i natt (meriter utan demeriter vore skevt)`,
         );
       }
     } else {
-      const transferRecords = blockTransferRecords([
-        ...(variants ?? []).filter((v) => !heldTonight.has(v.id)),
-        ...((retiredReuse ?? []) as ReuseVariantRow[]),
-      ]);
+      const liveRows = (variants ?? []).filter((v) => !heldTonight.has(v.id));
+      const retiredRows = (retiredReuse ?? []) as ReuseVariantRow[];
+      const transferRecords = blockTransferRecords([...liveRows, ...retiredRows]);
       const { kept: unfalsifiedSeeds, falsified } = partitionFalsified(
         unheldSeeds,
         transferRecords,
@@ -740,6 +762,19 @@ for (const site of targets) {
       }
       offerableSeeds = decorateSeedsWithTransfer(unfalsifiedSeeds, transferRecords);
       cellRecords = transferRecords;
+
+      const moveRecords = moveTransferRecords([...liveRows, ...retiredRows]);
+      const { kept: unfalsifiedMoves, falsified: falsifiedMoves } = partitionFalsifiedMoves(
+        unheldMoveSeeds,
+        moveRecords,
+      );
+      for (const s of falsifiedMoves) {
+        console.log(
+          `[loop] ${site.slug}: flytt-frö (${s.sectionType}) från ${s.provedOnPath} FALSIFIERAT — pensionerat på ${REUSE_FALSIFIED_AT}+ sidor, typklassen lämnar biblioteket`,
+        );
+      }
+      offerableMoveSeeds = decorateMoveSeedsWithTransfer(unfalsifiedMoves, moveRecords);
+      cellMoveRecords = moveRecords;
     }
     for (const b of earned.briefed) {
       // Mall-celler: designen byggs ur representant-exemplaret, FILTRERAT till
@@ -814,6 +849,8 @@ for (const site of targets) {
       // 2026-07-26: let-i-try + användning efter är en körtidsbomb tsc
       // aldrig ser i scripts/).
       let cellReuse: ReuseSeed[] = [];
+      // Transferformen steg 4: samma sak för flytt-fröna (typklasserna).
+      let cellMoveReuse: MoveSeed[] = [];
       // KORSSID-CELLERNA STANNAR HOS DESIGNERN (granskningsfynd 2026-08-08):
       // en cell som FÖRTJÄNATS på pris-flödessignalen (detect ger den
       // sourcePaths, och nattloopen fryser flödesmålen just för den) kan bara
@@ -861,6 +898,28 @@ for (const site of targets) {
             `[loop] ${site.slug} ${b.path}×${b.key}: ${cellReuse.length} bevisat block i menyn (från ${cellReuse.map((s) => s.provedOnPath).join(", ")})`,
           );
         }
+        // Transferformen steg 4: viabiliteten ÄR målsidans egen katalog —
+        // typerna hämtas ur generateCandidates på samma innehållsmodell
+        // buildCandidatePlan kör (utan säte: beteendet ändrar poäng, aldrig
+        // VILKA move-kandidater som finns), så viabilitetsregeln aldrig kan
+        // drifta från kandidatgenereringen.
+        cellMoveReuse = offerMoveSeedsForCell({
+          seeds: offerableMoveSeeds,
+          cellPath: b.path,
+          catalogMoveTypes: new Set(
+            generateCandidates(content)
+              .filter((c) => c.kind === "move_up")
+              .map((c) => moveSectionType(c.targetId))
+              .filter((t): t is string => t !== null),
+          ),
+          rows: offerRows,
+          records: cellMoveRecords,
+        });
+        if (cellMoveReuse.length > 0) {
+          console.log(
+            `[loop] ${site.slug} ${b.path}×${b.key}: ${cellMoveReuse.length} bevisad flytt-typklass i menyn (${cellMoveReuse.map((s) => `${s.sectionType} från ${s.provedOnPath}`).join(", ")})`,
+          );
+        }
         const candPlan = await buildCandidatePlan({
           content,
           frozenPath: page,
@@ -869,6 +928,7 @@ for (const site of targets) {
           observations: b.observations,
           behavior: behavior ?? undefined,
           reuse: cellReuse.length > 0 ? cellReuse : undefined,
+          moveReuse: cellMoveReuse.length > 0 ? cellMoveReuse : undefined,
           // Ägarens mål ur angel_sites — probens grind vaktar samma element
           // som verify (måltext + mål-selector), aldrig en delmängd.
           goal: {
@@ -936,6 +996,23 @@ for (const site of targets) {
           });
         }
       }
+      // Transferformen steg 4: samma ackumulator för flytt-erbjudandena, med
+      // den form moveSeedSaturated/alreadyHere räknar på (path + move-op).
+      // targetId måste bära sec-N-typ-formen — moveSectionType parsar den.
+      // evidence.reuse.kind = "move" krävs av mättnadsräkningen (den räknar
+      // bibliotekets spridning, inte organiska flyttar) — utan markören hade
+      // nattens egna erbjudanden inte räknats mot taket.
+      if (planSource.startsWith("katalog") && cellMoveReuse.length > 0) {
+        for (const s of cellMoveReuse) {
+          offerRows.push({
+            id: `natt-flytterbjudande-${s.variantId}-${b.path}-${b.key}`,
+            path: b.path,
+            status: "verified",
+            ops: [{ op: "move_up", targetId: `sec-0-${s.sectionType}` }],
+            evidence: { reuse: { kind: "move", provedOnPath: s.provedOnPath } },
+          });
+        }
+      }
       plans.push(
         planRow({
           path: b.path,
@@ -956,6 +1033,17 @@ for (const site of targets) {
           // Återbrukserbjudandena — planRow gate:ar dem på planSource och
           // unionar källsidorna in i sourcePaths (verify:s whitelist).
           ...(cellReuse.length > 0 ? { reuseOffers: cellReuse } : {}),
+          // Flytt-erbjudandena (transferformen steg 4) — samma gate, ingen
+          // sourcePaths-union (en flytt citerar ingen källsida).
+          ...(cellMoveReuse.length > 0
+            ? {
+                moveReuseOffers: cellMoveReuse.map((s) => ({
+                  variantId: s.variantId,
+                  provedOnPath: s.provedOnPath,
+                  sectionType: s.sectionType,
+                })),
+              }
+            : {}),
           cohorts: b.cohorts,
         }),
       );

@@ -365,6 +365,121 @@ describe("generateCandidates", () => {
     expect("sourcePath" in candidateToOp(plainIns, "w")).toBe(false);
   });
 
+  // ── Flytt-vinnarnas transferform (steg 4) ──────────────────────────────────
+  // Kontraktet som skiljer den från textblockens: fröet lägger ALDRIG till en
+  // kandidat — det annoterar en som redan fanns i målsidans egen katalog.
+  const moveSeed = (over: Partial<{ sectionType: string; alsoWonOn: string[] }> = {}) => ({
+    variantId: "55555555-eeee-ffff-0000-000000000005",
+    provedOnPath: "/priser",
+    sectionType: "testimonials",
+    ...over,
+  });
+
+  it("flytt-frö: utan frön byte-identisk katalog", () => {
+    expect(generateCandidates(model(), undefined, undefined, [])).toEqual(
+      generateCandidates(model()),
+    );
+  });
+
+  it("flytt-frö annoterar målsidans EGEN kandidat — ingen ny rad, ingen importerad text", () => {
+    const plain = generateCandidates(model());
+    const withSeed = generateCandidates(model(), undefined, undefined, [moveSeed()]);
+    expect(withSeed).toHaveLength(plain.length);
+    const annotated = withSeed.find((c) => c.id === "mv-sec-3-testimonials")!;
+    expect(annotated.targetId).toBe("sec-3-testimonials");
+    expect(annotated.detail).toBe("");
+    expect(annotated.proven).toEqual({
+      provedOnPath: "/priser",
+      variantId: "55555555-eeee-ffff-0000-000000000005",
+    });
+    // Priorn var 4,15 — bevisgolvet lyfter den över alla obevisade priors.
+    expect(annotated.score).toBe(REUSE_PROVEN_SCORE);
+    // Basis är oförändrad ordagrann sidtext: bevisraden är select.ts jobb.
+    expect(annotated.basis).toBe(plain.find((c) => c.id === "mv-sec-3-testimonials")!.basis);
+  });
+
+  it("flytt-frö utan matchande kandidat på sidan är en no-op (aldrig fabricering)", () => {
+    const plain = generateCandidates(model());
+    expect(
+      generateCandidates(model(), undefined, undefined, [moveSeed({ sectionType: "faq" })]),
+    ).toEqual(plain);
+    // Även en typ som FINNS men står över folden (ingen move-kandidat).
+    const aboveFold = model({
+      sections: model().sections.map((s) =>
+        s.id === "sec-3-testimonials" ? { ...s, aboveFold: true } : s,
+      ),
+    });
+    expect(generateCandidates(aboveFold, undefined, undefined, [moveSeed()])).toEqual(
+      generateCandidates(aboveFold),
+    );
+  });
+
+  it("bevisgolvet höjer men SÄNKER aldrig — målsidans heta sektion behåller sin poäng", () => {
+    const behavior = {
+      sectionWeight: { "sec-3-testimonials": 0.5 },
+      sectionVisits: { "sec-3-testimonials": 1000 },
+    };
+    const hot = generateCandidates(model(), behavior).find(
+      (c) => c.id === "mv-sec-3-testimonials",
+    )!;
+    expect(hot.score).toBeGreaterThan(REUSE_PROVEN_SCORE);
+    const seeded = generateCandidates(model(), behavior, undefined, [moveSeed()]).find(
+      (c) => c.id === "mv-sec-3-testimonials",
+    )!;
+    expect(seeded.score).toBe(hot.score);
+    expect(seeded.proven).toBeDefined();
+  });
+
+  it("flera sektioner av samma typ: bara den STARKASTE annoteras", () => {
+    const twoTestimonials = model({
+      sections: [
+        ...model().sections,
+        {
+          id: "sec-9-testimonials",
+          type: "testimonials",
+          position: 9,
+          heading: "Fler kundröster",
+          aboveFold: false,
+          visualWeight: 2,
+          containsTrustSignals: true,
+        },
+      ],
+    });
+    const out = generateCandidates(twoTestimonials, undefined, undefined, [moveSeed()]);
+    const proven = out.filter((c) => c.proven);
+    expect(proven).toHaveLength(1);
+    // Lika typ + trust ⇒ positionstermen avgör: 0,4 (kapad vid 8) mot 0,15.
+    expect(proven[0].id).toBe("mv-sec-9-testimonials");
+  });
+
+  it("två frön av samma typklass annoterar bara en gång (första äger)", () => {
+    const out = generateCandidates(model(), undefined, undefined, [
+      moveSeed(),
+      moveSeed({ sectionType: "testimonials" }),
+    ]);
+    expect(out.filter((c) => c.proven)).toHaveLength(1);
+    expect(out.find((c) => c.proven)!.proven!.provedOnPath).toBe("/priser");
+  });
+
+  it("meritlistan följer med som alsoProvedOn", () => {
+    const out = generateCandidates(model(), undefined, undefined, [
+      moveSeed({ alsoWonOn: ["/a", "/b"] }),
+    ]);
+    expect(out.find((c) => c.proven)!.proven!.alsoProvedOn).toEqual(["/a", "/b"]);
+  });
+
+  it("candidateToOp på en bevisad flytt ger en VANLIG move_up-op (ingen sourcePath)", () => {
+    const c = generateCandidates(model(), undefined, undefined, [moveSeed()]).find(
+      (x) => x.proven,
+    )!;
+    expect(candidateToOp(c, "why")).toEqual({
+      op: "move_up",
+      targetId: "sec-3-testimonials",
+      detail: "Move this section higher on the page",
+      why: "why",
+    });
+  });
+
   it("menyns insert-detail bär den städade texten (inte SSR-skarven)", () => {
     const cands = generateCandidates(
       model({

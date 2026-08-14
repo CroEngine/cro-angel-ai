@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { setVariantStatus, setVariantSuccess } from "@/lib/dashboard/dashboard.functions";
 import { parentSegmentKey, segmentDims } from "@/lib/segment-key";
+import { reuseProvenanceLabel } from "@/lib/dashboard/reuse-provenance";
 import { abMetricLabels, measuredHeadline, type AbMetric } from "./dashboard/ab-metric-labels";
 import { CompareOverlay, JourneysOverlay } from "./dashboard/overlays";
 import {
@@ -935,9 +936,15 @@ export function OverviewPanel({
                                     <span className="text-[#c4beb6]">·</span>{" "}
                                     <span
                                       className="text-emerald-700"
-                                      title={`Reused proven block: this exact text won its A/B test on ${v.reusedFrom}. Whether it works on THIS page is unproven until this test runs.`}
+                                      title={
+                                        reuseProvenanceLabel(v.reusedKind ?? "text", v.reusedFrom)
+                                          .title
+                                      }
                                     >
-                                      reused · won on {v.reusedFrom}
+                                      {
+                                        reuseProvenanceLabel(v.reusedKind ?? "text", v.reusedFrom)
+                                          .label
+                                      }
                                     </span>
                                   </>
                                 ) : null}

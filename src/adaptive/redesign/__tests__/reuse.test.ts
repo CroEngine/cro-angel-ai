@@ -59,7 +59,10 @@ describe("harvestReuseSeeds — vem är ett bevisat block", () => {
     expect(harvestReuseSeeds([winner({ held_reason: "drift: källtexten ändrad" })])).toEqual([]);
   });
 
-  it("vinnare utan insert-op (flytt-vinnare) skördas inte i v1", () => {
+  it("flytt-vinnare skördas ALDRIG som textblock — de har en egen transferform", () => {
+    // Formerna hålls isär (transferformen steg 4): textskörden bevisar den
+    // ordagranna raden, harvestMoveSeeds typklassen. En flytt-vinnare utan
+    // insert-op bär ingen text att citera.
     const moveWinner = winner({
       ops: [{ op: "move_up", targetId: "sec-3-testimonials", detail: "", why: "won" }],
     });

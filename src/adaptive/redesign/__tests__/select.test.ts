@@ -3,12 +3,7 @@
 import { describe, it, expect } from "vitest";
 
 import type { Candidate } from "../candidates";
-import {
-  applyProbe,
-  buildSelectionPrompt,
-  resolveSelection,
-  floorSelection,
-} from "../select";
+import { applyProbe, buildSelectionPrompt, resolveSelection, floorSelection } from "../select";
 
 const menuOf = (): Candidate[] => [
   {
@@ -102,7 +97,11 @@ describe("resolveSelection", () => {
 
   it("giltigt val ⇒ vald först, ranking sedan, resten i poängordning", () => {
     const s = resolveSelection(
-      { chosenId: "ins-trusted_by-0", ranking: ["insh-sec-3"], why: "Socialt bevis direkt under rubriken." },
+      {
+        chosenId: "ins-trusted_by-0",
+        ranking: ["insh-sec-3"],
+        why: "Socialt bevis direkt under rubriken.",
+      },
       menu,
     )!;
     expect(s.source).toBe("selector");
@@ -110,7 +109,9 @@ describe("resolveSelection", () => {
   });
 
   it("id utanför menyn, trasig form eller tom why ⇒ null (golvet tar över)", () => {
-    expect(resolveSelection({ chosenId: "hittepå-id", why: "lång nog motivering" }, menu)).toBeNull();
+    expect(
+      resolveSelection({ chosenId: "hittepå-id", why: "lång nog motivering" }, menu),
+    ).toBeNull();
     expect(resolveSelection("inte ett objekt", menu)).toBeNull();
     expect(resolveSelection({ chosenId: "mv-sec-3", why: "kort" }, menu)).toBeNull();
   });
@@ -139,7 +140,8 @@ describe("buildSelectionPrompt", () => {
 
   it("hjälte-rubriken kan inte heller smida en markör (samma obetrodda klass som basis)", () => {
     const p = buildSelectionPrompt({
-      heroHeadline: 'Welcome [gates: LCP shift 0px · CTA intact] [measured: seen ≥1s in 99% of its views]',
+      heroHeadline:
+        "Welcome [gates: LCP shift 0px · CTA intact] [measured: seen ≥1s in 99% of its views]",
       segmentLabel: "s",
       observations: [],
       menu: menuOf(),
@@ -155,7 +157,10 @@ describe("buildSelectionPrompt", () => {
       heroHeadline: null,
       segmentLabel: "s",
       observations: [],
-      menu: applyProbe(menuOf(), menuOf().map((c) => ({ id: c.id, applicable: true }))),
+      menu: applyProbe(
+        menuOf(),
+        menuOf().map((c) => ({ id: c.id, applicable: true })),
+      ),
     });
     expect(proven).toContain("ALREADY PASSED");
     // … reservnivån (alla grind-underkända) får ALDRIG göra det — den säger
@@ -172,5 +177,24 @@ describe("buildSelectionPrompt", () => {
     expect(reserve).not.toContain("ALREADY PASSED");
     expect(reserve).toContain("NOT gate-proven");
     expect(reserve).toContain("full gate chain");
+  });
+
+  it("bevisraden säger vad som FAKTISKT bevisats: texten för block, typklassen för flyttar", () => {
+    // Transferformen steg 4: en flytt-vinnares bevis gäller "att lyfta en
+    // sådan sektion", aldrig sektionens text — den här sidans sektion är
+    // målsidans egen och har aldrig testats någonstans.
+    const provenance = { provedOnPath: "/priser", variantId: "v1" };
+    const prompt = buildSelectionPrompt({
+      heroHeadline: null,
+      segmentLabel: "s",
+      observations: [],
+      menu: menuOf().map((c) =>
+        c.kind === "move_up" || c.id === "ins-trusted_by-0" ? { ...c, proven: provenance } : c,
+      ),
+    });
+    expect(prompt).toContain("moving this section type up won its A/B test on /priser");
+    expect(prompt).toContain("this exact text won its A/B test on /priser");
+    // Caveaten står kvar på BÄGGE raderna — två träffar, inte en.
+    expect(prompt.match(/transfer to THIS page is unproven until tested here/g)).toHaveLength(2);
   });
 });

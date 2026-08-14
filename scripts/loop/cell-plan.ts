@@ -77,6 +77,12 @@ export interface PlanRowInput {
    *  KATALOGEN körde (planSource "katalog/…"). En designer-plan föreslog
    *  aldrig återbruk, och en union där hade bara vidgat whitelisten i onödan. */
   reuseOffers?: { variantId: string; provedOnPath: string; sourcePath: string; text: string }[];
+  /** Transferformen steg 4: cellens ERBJUDNA flytt-frön. Verify matchar
+   *  finalOps mot listan (moveReuseSurvived) och skriver evidence.reuse
+   *  (kind "move") för typklassen som faktiskt överlevde. Samma katalog-gate
+   *  som reuseOffers — men ingen sourcePaths-union: en flytt citerar ingen
+   *  källsida, så whitelisten ska inte vidgas. */
+  moveReuseOffers?: { variantId: string; provedOnPath: string; sectionType: string }[];
 }
 
 /** Raden verify läser. Formen är kontraktet — fältnamnen här måste matcha
@@ -89,6 +95,16 @@ export function planRow(input: PlanRowInput): Record<string, unknown> {
   const reuse =
     input.planSource.startsWith("katalog") && input.reuseOffers && input.reuseOffers.length > 0
       ? input.reuseOffers
+      : null;
+  // Flytt-erbjudandena (transferformen steg 4) går genom SAMMA katalog-gate,
+  // men UTAN sourcePaths-union: en flytt citerar ingen källsida, så verify:s
+  // whitelist ska inte vidgas av dem (en onödigt vid whitelist är en tyst
+  // uppmjukning av D2-kontrollen).
+  const moveReuse =
+    input.planSource.startsWith("katalog") &&
+    input.moveReuseOffers &&
+    input.moveReuseOffers.length > 0
+      ? input.moveReuseOffers
       : null;
   return {
     path: input.path,
@@ -103,6 +119,7 @@ export function planRow(input: PlanRowInput): Record<string, unknown> {
     ...(input.altOps && input.altOps.length > 0 ? { altOps: input.altOps } : {}),
     planSource: input.planSource,
     ...(reuse ? { reuseOffers: reuse } : {}),
+    ...(moveReuse ? { moveReuseOffers: moveReuse } : {}),
     cohorts: input.cohorts,
   };
 }
