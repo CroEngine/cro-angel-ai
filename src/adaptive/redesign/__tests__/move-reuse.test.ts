@@ -93,6 +93,28 @@ describe("harvestMoveSeeds — vem är en bevisad flytt", () => {
     expect(seeds[0].provedOnPath).toBe("/priser");
   });
 
+  it("BARA radens primära flytt skördas — en tvåflytts-vinnare är ett kombinationsbevis", () => {
+    // Samma regel som textskördens "första insert-op": vann varianten med två
+    // flyttar är ingen av dem bevisad var för sig, så bara den primära reser.
+    const twoMoves = moveWinner({
+      ops: [
+        { op: "move_up", targetId: "sec-2-section" }, // otypad — hoppas över
+        { op: "move_up", targetId: "sec-4-pricing" }, // primär transferbar
+        { op: "move_up", targetId: "sec-6-testimonials" },
+      ],
+    });
+    expect(harvestMoveSeeds([twoMoves])).toEqual([
+      {
+        variantId: "11111111-aaaa-bbbb-cccc-000000000001",
+        provedOnPath: "/priser",
+        sectionType: "pricing",
+      },
+    ]);
+    // …och meritlistan dömer likadant, så frön och meriter aldrig glider isär.
+    const recs = moveTransferRecords([twoMoves]);
+    expect([...recs.keys()]).toEqual(["pricing"]);
+  });
+
   it("trasiga ops-former släpps tyst", () => {
     expect(harvestMoveSeeds([moveWinner({ ops: "garbage" })])).toEqual([]);
     expect(harvestMoveSeeds([moveWinner({ ops: null })])).toEqual([]);
@@ -250,15 +272,51 @@ describe("offerMoveSeedsForCell — vakterna", () => {
     expect(offer({ rows: [{ ...rows[0], status: "retired" }] })).toHaveLength(1);
   });
 
-  it("mättnadstaket: högst REUSE_MAX_SPREAD andra sidor bär typklassen samtidigt", () => {
-    const rows: ReuseVariantRow[] = Array.from({ length: REUSE_MAX_SPREAD }, (_, i) => ({
+  it("redan-här-vakten räknar ALLA flyttar på cellen — även organiska", () => {
+    // Till skillnad från mättnadstaket: att erbjuda en hypotes sidan redan
+    // prövar är brus oavsett var draget kom ifrån.
+    const organicHere: ReuseVariantRow[] = [
+      {
+        id: "o1",
+        path: "/kunder",
+        status: "serving",
+        ops: [{ op: "move_up", targetId: "sec-6-testimonials" }],
+      },
+    ];
+    expect(offer({ rows: organicHere })).toEqual([]);
+  });
+
+  it("mättnadstaket: högst REUSE_MAX_SPREAD andra sidor som BIBLIOTEKET spritt till", () => {
+    const spread: ReuseVariantRow[] = Array.from({ length: REUSE_MAX_SPREAD }, (_, i) => ({
       id: `r${i}`,
       path: `/annan-${i}`,
       status: "serving",
       ops: [{ op: "move_up", targetId: "sec-3-testimonials" }],
+      evidence: { reuse: { kind: "move", provedOnPath: "/priser" } },
     }));
-    expect(offer({ rows })).toEqual([]);
-    expect(offer({ rows: rows.slice(0, REUSE_MAX_SPREAD - 1) })).toHaveLength(1);
+    expect(offer({ rows: spread })).toEqual([]);
+    expect(offer({ rows: spread.slice(0, REUSE_MAX_SPREAD - 1) })).toHaveLength(1);
+  });
+
+  it("ORGANISKA flyttar mättar inte typklassen (granskningsfynd 2026-08-14)", () => {
+    // move_up är katalogens vanligaste drag: räknades organiska flyttar hade
+    // två sidor med en testimonials-flytt permanent tystat typklassen — och
+    // just på sajterna med mest bevis. Ingen dubbelvisning finns heller:
+    // varje sida flyttar sin EGEN sektion.
+    const organic: ReuseVariantRow[] = Array.from({ length: REUSE_MAX_SPREAD + 3 }, (_, i) => ({
+      id: `o${i}`,
+      path: `/organisk-${i}`,
+      status: "serving",
+      ops: [{ op: "move_up", targetId: "sec-3-testimonials" }],
+    }));
+    expect(moveSeedSaturated(seeds[0], organic)).toBe(false);
+    expect(offer({ rows: organic })).toHaveLength(1);
+    // Textblocks-återbruk på andra sidor mättar inte heller flytt-typklassen.
+    const textReuse: ReuseVariantRow[] = organic.map((r) => ({
+      ...r,
+      evidence: { reuse: { provedOnPath: "/priser" } },
+    }));
+    expect(moveSeedSaturated(seeds[0], textReuse)).toBe(false);
   });
 
   it("vinnarens EGEN sida räknas inte mot mättnadstaket", () => {
@@ -268,6 +326,7 @@ describe("offerMoveSeedsForCell — vakterna", () => {
         path: "/priser",
         status: "winner",
         ops: [{ op: "move_up", targetId: "sec-4-testimonials" }],
+        evidence: { reuse: { kind: "move", provedOnPath: "/x" } },
       },
     ];
     expect(moveSeedSaturated(seeds[0], rows)).toBe(false);

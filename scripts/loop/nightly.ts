@@ -999,6 +999,9 @@ for (const site of targets) {
       // Transferformen steg 4: samma ackumulator för flytt-erbjudandena, med
       // den form moveSeedSaturated/alreadyHere räknar på (path + move-op).
       // targetId måste bära sec-N-typ-formen — moveSectionType parsar den.
+      // evidence.reuse.kind = "move" krävs av mättnadsräkningen (den räknar
+      // bibliotekets spridning, inte organiska flyttar) — utan markören hade
+      // nattens egna erbjudanden inte räknats mot taket.
       if (planSource.startsWith("katalog") && cellMoveReuse.length > 0) {
         for (const s of cellMoveReuse) {
           offerRows.push({
@@ -1006,6 +1009,7 @@ for (const site of targets) {
             path: b.path,
             status: "verified",
             ops: [{ op: "move_up", targetId: `sec-0-${s.sectionType}` }],
+            evidence: { reuse: { kind: "move", provedOnPath: s.provedOnPath } },
           });
         }
       }

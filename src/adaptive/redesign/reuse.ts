@@ -412,10 +412,14 @@ const moveTypes = (row: ReuseVariantRow): string[] => {
 
 /** Skörda flytt-frön ur sajtens variantrader. Samma vinnardefinition som
  *  textskörden (isProvenWinnerRow — vinnare, ohållen, aldrig drift-
- *  uppdaterad), första move-open per vinnare, aldrig otypade klasser
- *  (NON_TRANSFERABLE_MOVE_TYPES), dedup på typ (två vinnare av samma
- *  typklass är ETT bevis — äldsta vinnaren äger det, samma attribution
- *  som textskörden). */
+ *  uppdaterad), aldrig otypade klasser (NON_TRANSFERABLE_MOVE_TYPES), dedup
+ *  på typ (två vinnare av samma typklass är ETT bevis — äldsta vinnaren äger
+ *  det, samma attribution som textskörden).
+ *
+ *  BARA RADENS PRIMÄRA FLYTT (första transferbara move-open), spegel av
+ *  textskördens "första insert-open" — och av samma skäl: en variant med två
+ *  flyttar vann som HELHET, så ingen av opsen är bevisad var för sig. Att
+ *  skörda bägge hade gjort ett kombinationsbevis till två enskilda. */
 export function harvestMoveSeeds(rows: ReuseVariantRow[]): MoveSeed[] {
   const seeds: MoveSeed[] = [];
   const seen = new Set<string>();
@@ -429,9 +433,10 @@ export function harvestMoveSeeds(rows: ReuseVariantRow[]): MoveSeed[] {
   return seeds;
 }
 
-/** Flytt-meriterna, keyade på sektionstyp. Vinster: bevisade vinnarrader med
- *  en move-op av typen (även organiska — en vinst är en vinst, precis som
- *  textsidan räknar varje vinnare som bär texten). Misslyckanden: BARA
+/** Flytt-meriterna, keyade på sektionstyp. Vinster: bevisade vinnarrader vars
+ *  PRIMÄRA flytt är av typen (även organiska — en vinst är en vinst, precis
+ *  som textsidan räknar varje vinnare som bär texten; samma primär-regel som
+ *  skörden, så meritlistan och fröna aldrig dömer olika). Misslyckanden: BARA
  *  pensionerade rader födda som återbruk (evidence.reuse) vars op är en
  *  flytt — samma ärliga gräns och samma wasWinner-neutralitet som
  *  blockTransferRecords. Text- och flytt-raderna kontaminerar aldrig
@@ -501,13 +506,25 @@ export function partitionFalsifiedMoves(
 }
 
 /** Är typklassen redan mättad? Distinkta icke-pensionerade ANDRA sidor (utöver
- *  vinnarens egen) som bär en move-op av samma typ — samma tak
- *  (REUSE_MAX_SPREAD) som textblocken. */
+ *  vinnarens egen) där BIBLIOTEKET spritt typklassen — samma tak
+ *  (REUSE_MAX_SPREAD) som textblocken.
+ *
+ *  BARA ÅTERBRUKSFÖDDA RADER RÄKNAS (granskningsfynd 2026-08-14). Taket mäter
+ *  hur långt bibliotekets hypotes redan spridits, inte hur många sidor som
+ *  råkar testa en flytt. På textsidan är de sakerna nästan samma sak (en
+ *  ordagrann rad bärs i praktiken bara av återbruket), men move_up är
+ *  katalogens VANLIGASTE drag: räknades organiska flyttar hade två sidor med
+ *  en testimonials-flytt permanent tystat typklassen — och just på sajterna
+ *  med mest bevis. Ingen visar heller besökaren något dubbelt: varje sida
+ *  flyttar sin EGEN sektion. (Att sidan redan testar typklassen fångas
+ *  separat av redan-här-vakten, som med flit räknar ALLA flyttar.) */
 export function moveSeedSaturated(seed: MoveSeed, rows: ReuseVariantRow[]): boolean {
   const paths = new Set<string>();
   for (const row of rows) {
     if (row.status === "retired") continue;
     if (row.path === seed.provedOnPath) continue;
+    if ((row.evidence as { reuse?: { kind?: unknown } } | null | undefined)?.reuse?.kind !== "move")
+      continue;
     if (moveTypes(row).includes(seed.sectionType)) paths.add(row.path);
   }
   return paths.size >= REUSE_MAX_SPREAD;
@@ -518,13 +535,20 @@ export function moveSeedSaturated(seed: MoveSeed, rows: ReuseVariantRow[]): bool
  *  2. viabiliteten: målsidans EGEN katalog måste bära en move-kandidat av
  *     typen (catalogMoveTypes — byggd av anroparen ur generateCandidates på
  *     målsidans innehållsmodell, så viabiliteten ÄR katalogen, aldrig en
- *     egen kopia av dess predikat). Täcker också dubbelvisnings-analogen:
- *     en sektion som redan står över folden genererar ingen kandidat,
+ *     egen kopia av dess predikat). ÄRLIG GRÄNS: katalogens aboveFold-flagga
+ *     är bara sann för hjälten (extract.ts kan inte veta var folden går utan
+ *     rendering), så vakten filtrerar INTE sektioner som redan står högt.
+ *     Det gör DOM-proben, som kör i riktig Chromium och dömer en flytt utan
+ *     rum som inapplicable innan menyn byggs — och verify efter den.
+ *     Textblockens dubbelvisningsvakt har ingen motsvarighet här och behövs
+ *     inte: en flytt visar ingen ny text, den flyttar sidans egen sektion,
  *  3. aldrig en sida där typklassen redan PRÖVATS och pensionerats
  *     (transfer-lärandet — om-erbjudande är anti-lärande),
  *  4. aldrig en sida som redan HAR en icke-pensionerad flytt-variant av
- *     typen (samma erbjudande två gånger är brus),
- *  5. aldrig över mättnadstaket (REUSE_MAX_SPREAD distinkta sidor),
+ *     typen — ALLA flyttar räknas här, även organiska: att erbjuda en
+ *     hypotes sidan redan prövar är brus oavsett var draget kom ifrån,
+ *  5. aldrig över mättnadstaket (REUSE_MAX_SPREAD distinkta sidor där
+ *     BIBLIOTEKET spritt typklassen — se moveSeedSaturated),
  *  6. högst MAX_REUSE_OFFERS_PER_CELL frön per cell. Taket är eget (inte
  *     delat med textfröna): flytt-frön ADDERAR inga menyrader — de
  *     annoterar rader som redan finns — så en gemensam budget hade svultit
