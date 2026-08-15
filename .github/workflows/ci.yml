@@ -79,18 +79,17 @@ jobs:
       - name: Run snapshot diff tests
         run: bunx vitest run src/lib/tests/snapshot/__tests__/snapshot.test.ts
 
-      - name: Run extractor unit tests
-        run: >-
-          bunx vitest run
-          src/lib/tests/__tests__/audit-helpers.test.ts
-          src/lib/tests/snapshot/__tests__/fetch-records.test.ts
-          src/lib/tests/scripts/__tests__/sections-walker.test.ts
-          src/lib/tests/scripts/__tests__/ctas-logo.test.ts
-          src/lib/tests/scripts/__tests__/trust-signals.test.ts
-          src/lib/tests/scripts/__tests__/collect-visibility.test.ts
+      # Bara den fil som ligger UTANFÖR enhetssviten behöver ett eget steg:
+      # "Run unit tests" ovan excluderar enbart snapshot/**, så de fem övriga
+      # extractor-testerna kördes två gånger per push (städsvepet 2026-08-15).
+      - name: Run extractor unit tests (outside the unit suite)
+        run: bunx vitest run src/lib/tests/snapshot/__tests__/fetch-records.test.ts
 
-      - name: Run trust-signal benchmark gate (committed corpus)
-        run: bunx vitest run src/lib/tests/trust-eval/__tests__/trust-eval.test.ts
+      # Borttaget 2026-08-15: trust-eval-grinden ligger redan i enhetssviten
+      # ovan och kördes alltså två gånger — bägge körningarna spelar upp hela
+      # den incheckade korpusen i riktig Chromium. Grinden är oförändrad; den
+      # döms nu av "Run unit tests", som verifierat EXEKVERAR den (P/R-raden
+      # skrivs ut med sitt filprefix, inte tyst skippad).
 
       - name: Run archetype goal-kind tests
         run: bunx vitest run src/lib/tests/snapshot/__tests__/archetype-goals.test.ts
