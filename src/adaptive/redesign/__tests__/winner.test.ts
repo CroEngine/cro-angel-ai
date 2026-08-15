@@ -284,3 +284,95 @@ describe("evaluateWinnerWithGuards — Monte-Carlo trust bars", () => {
     expect(winnerRate(12000, 0.065, 0.05, 200)).toBeGreaterThanOrEqual(0.9);
   });
 });
+
+// ── Riktningen (bounce-bytet 2026-08-15) ─────────────────────────────────────
+// För mått där LÄGRE är bättre (metrikkatalogens direction: "down") måste
+// domen vändas. Utan flaggan dömde regeln alltid "högre = bättre" och hade
+// utropat den variant som får FLER att studsa till vinnare. Testerna kör
+// SAMMA armar genom bägge riktningarna, så en borttagen vändning fäller dem.
+describe("evaluateWinner — riktning för mått där lägre är bättre", () => {
+  // Bounce: variant 44 %, kontroll 56 % — en tydlig FÖRBÄTTRING.
+  const bounceVariant = arm(2000, 880);
+  const bounceControl = arm(2000, 1120);
+
+  it("lägre-är-bättre: en sänkning är en VINNARE, inte ett stopp", () => {
+    const down = evaluateWinner(bounceVariant, bounceControl, [], undefined, false);
+    expect(down.outcome).toBe("recommend_winner");
+    expect(down.reasons[0]).toContain("lower is better");
+  });
+
+  it("SAMMA armar med default (högre-är-bättre) ger motsatt dom — vändningen är verklig", () => {
+    const up = evaluateWinner(bounceVariant, bounceControl);
+    expect(up.outcome).toBe("recommend_stop");
+  });
+
+  it("lägre-är-bättre: en ÖKNING stoppas", () => {
+    const worse = evaluateWinner(bounceControl, bounceVariant, [], undefined, false);
+    expect(worse.outcome).toBe("recommend_stop");
+    expect(worse.reasons[0]).toContain("lower is better");
+  });
+
+  it("stats bär de RÅA talen — bara domen vänds, aldrig datan", () => {
+    const down = evaluateWinner(bounceVariant, bounceControl, [], undefined, false);
+    expect(down.stats.variantRate).toBeCloseTo(0.44, 10);
+    expect(down.stats.controlRate).toBeCloseTo(0.56, 10);
+    // Rå z är NEGATIV (varianten har lägre rate) trots att den vann.
+    expect(down.stats.z!).toBeLessThan(0);
+    expect(down.stats.relativeLift!).toBeLessThan(0);
+  });
+
+  it("lyftgolvet mäts på FÖRBÄTTRINGEN, inte på det råa tecknet", () => {
+    // 2 % sänkning (0,490 mot 0,500) — signifikant vid n=200k men under
+    // WINNER_MIN_REL_LIFT, alltså ingen vinnare.
+    const r = evaluateWinner(arm(200_000, 98_000), arm(200_000, 100_000), [], undefined, false);
+    expect(r.outcome).toBe("no_winner");
+    expect(r.reasons[0]).toContain("below the practical minimum");
+  });
+});
+
+// ── Bounce som primärmått (ägarbeslut 2026-08-15) ────────────────────────────
+// Bounce är en PROXY precis som continuation och körs genom samma målvakt —
+// men LÄGRE är bättre. Testerna nedan låser bägge egenskaperna.
+describe("evaluateWinnerWithGuards — bounce som primärmått", () => {
+  /** Armar där bounce SJUNKER under varianten (en förbättring), målet orört. */
+  const bounceArm = (visits: number, bounces: number, conversions = 0): GuardArmCounts => ({
+    visits,
+    conversions,
+    continuations: 0,
+    engaged: 0,
+    bounces,
+  });
+
+  it("en SÄNKT bounce är en vinnare — inte ett stopp", () => {
+    const r = evaluateWinnerWithGuards(bounceArm(1000, 440), bounceArm(1000, 560), "bounce");
+    expect(r.outcome).toBe("recommend_winner");
+    expect(r.reasons.join(" ")).toContain("lower is better");
+  });
+
+  it("en HÖJD bounce stoppas", () => {
+    const r = evaluateWinnerWithGuards(bounceArm(1000, 560), bounceArm(1000, 440), "bounce");
+    expect(r.outcome).toBe("recommend_stop");
+  });
+
+  it("bounce är en proxy: en signifikant SÄMRE måluppfyllelse drar tillbaka vinsten", () => {
+    // Bounce förbättras kraftigt, men konverteringarna rasar 8 % → 2 %.
+    const v = { ...bounceArm(2000, 880, 40), engaged: 0 };
+    const c = { ...bounceArm(2000, 1120, 160), engaged: 0 };
+    const r = evaluateWinnerWithGuards(v, c, "bounce");
+    expect(r.outcome).toBe("no_winner");
+    expect(r.reasons[0]).toContain("GOAL conversions are significantly WORSE");
+  });
+
+  it("saknad bounce-kolumn (äldre RPC) ger 'för lite data', aldrig en gissad vinnare", () => {
+    const v: GuardArmCounts = { visits: 1000, conversions: 0, continuations: 0, engaged: 0 };
+    const c: GuardArmCounts = { visits: 1000, conversions: 0, continuations: 0, engaged: 0 };
+    expect(evaluateWinnerWithGuards(v, c, "bounce").outcome).toBe("insufficient_data");
+  });
+
+  it("volymgolvet är proxy-golvet, inte konverteringsgolvet", () => {
+    // 300 besök/arm räcker för en proxy (ENGAGEMENT_MIN_VISITS=200) men aldrig
+    // för konvertering (WINNER_MIN_VISITS=1000).
+    const r = evaluateWinnerWithGuards(bounceArm(300, 120), bounceArm(300, 180), "bounce");
+    expect(r.outcome).not.toBe("insufficient_data");
+  });
+});

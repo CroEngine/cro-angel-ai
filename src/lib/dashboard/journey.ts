@@ -56,7 +56,9 @@ export interface JourneyInput {
     segmentKey: string;
     abOutcome?: string | null;
   }[];
-  testMetric: "conversion" | "continuation";
+  /** Proxy-måtten (continuation/bounce) har ett utfall i nästan varje besök
+   *  och når därför volymgolvet långt tidigare än målet självt. */
+  testMetric: "conversion" | "continuation" | "bounce";
 }
 
 const fmt = (n: number): string => n.toLocaleString("en-US");
@@ -85,8 +87,8 @@ export function buildJourney(input: JourneyInput): JourneyMilestone[] {
   // Närmast förtjänad grupp — ärlig progress mot volymgolvet (continuation-
   // läget kräver bara besök; conversion-läget även konverteringar).
   const needVisits =
-    input.testMetric === "continuation" ? SEGMENT_MIN_VISITS_ENGAGEMENT : SEGMENT_MIN_VISITS;
-  const needConv = input.testMetric === "continuation" ? 0 : SEGMENT_MIN_CONVERSIONS;
+    input.testMetric !== "conversion" ? SEGMENT_MIN_VISITS_ENGAGEMENT : SEGMENT_MIN_VISITS;
+  const needConv = input.testMetric !== "conversion" ? 0 : SEGMENT_MIN_CONVERSIONS;
   const progressOf = (g: { visits: number; conversions: number }): number =>
     Math.min(
       g.visits / needVisits,

@@ -40,7 +40,13 @@ export const METRIC_CATALOG: MetricDef[] = [
   { id: "engaged", label: "Engagerad (≥60 % scroll eller ≥30 s)", direction: "up", source: "client", baseRateHint: 0.4 },
   { id: "deep_scroll", label: "Läst djupt (≥80 % scroll)", direction: "up", source: "client", baseRateHint: 0.25 },
   { id: "return_visit", label: "Återkommit (≥2 besök)", direction: "up", source: "profile", baseRateHint: 0.2 },
-  { id: "bounce", label: "Bounce (1 sida, kort, inga klick)", direction: "down", source: "collector", baseRateHint: 0.45 },
+  // Bounce = besökaren gjorde INGENTING: en sida, inga klick, varken 60 %
+  // scroll eller 30 s. Tröskeltalen är samma som engaged/continuation redan
+  // använder, negerade — måtten kan aldrig säga emot varandra. baseRateHint
+  // är MÄTT (glutenforum, 1 503 besökare, 2026-08-15), inte gissad; GA:s
+  // "en sida"-definition ger 92 % på samma data och är därför oduglig som
+  // beslutsmått, se migration 20260815100000.
+  { id: "bounce", label: "Bounce (en sida, inga klick, inte engagerad)", direction: "down", source: "collector", baseRateHint: 0.57 },
 ];
 
 export function metricById(id: string): MetricDef | null {
@@ -64,7 +70,12 @@ export const SITE_TYPE_PRESETS: Record<SiteType, SuccessSpec> = {
   saas: { primary: "conversion", guardrails: ["bounce", "engaged"] },
   leadgen: { primary: "form_submit", guardrails: ["bounce", "engaged"] },
   ecommerce: { primary: "conversion", guardrails: ["bounce", "engaged"] },
-  content: { primary: "engaged", guardrails: ["bounce"] },
+  // Innehållssajter mäter på bounce (ägarbeslut 2026-08-15): den har högst
+  // varians av allt vi kan observera (≈57 % mot engagerads 40 %) och ger
+  // därmed flest domslut per besökare. Konvertering blir GUARDRAIL, inte
+  // borttagen: den kostar ingenting när den saknar events, men fångar den
+  // dag ett bounce-lyft rider över sjunkande mål.
+  content: { primary: "bounce", guardrails: ["conversion", "engaged"] },
 };
 
 export function defaultSuccessSpec(siteType: SiteType = "saas"): SuccessSpec {

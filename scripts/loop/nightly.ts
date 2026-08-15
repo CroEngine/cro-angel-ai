@@ -438,12 +438,9 @@ for (const site of targets) {
             id: v.id,
             heldReason: v.held_reason ?? null,
             success: v.success,
-            arms: Array.isArray(armRows)
-              ? metricArmsFromRpc(
-                  armRows,
-                  site.test_metric === "continuation" ? "continuation" : "conversion",
-                )
-              : null,
+            // Kartan bär varje mått för sig; sajtens primärval avgörs av
+            // variantens success-kontrakt, inte av hur armarna byggs.
+            arms: Array.isArray(armRows) ? metricArmsFromRpc(armRows) : null,
           });
         }
         for (const action of planGuardrailSweep(guardInput)) {

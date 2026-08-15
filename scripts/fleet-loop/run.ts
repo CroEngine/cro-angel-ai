@@ -299,7 +299,7 @@ function runSite(a: AdaptRow): SiteResult {
       deep_scrolls: s.deep_scroll,
     };
   });
-  const arms = metricArmsFromRpc(rpc, "conversion");
+  const arms = metricArmsFromRpc(rpc);
   const ruling = arms ? evaluateRuleWithSpec(spec, arms) : null;
 
   // 5) the nightly guardrail sweep's decision on these live arms.

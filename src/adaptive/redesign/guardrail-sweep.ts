@@ -35,6 +35,10 @@ export interface ArmsRpcRow {
   form_submits?: number | string;
   engaged?: number | string;
   deep_scrolls?: number | string;
+  /** Bounce-kolumnen (migration 20260815100000). Valfri: äldre RPC-svar
+   *  saknar den, och då faller bounce-armen tillbaka på 0 i stället för att
+   *  krascha — ett omätt mått ska bli "för lite data", aldrig en gissning. */
+  bounces?: number | string;
 }
 
 export type MetricArms = Record<string, { served: ArmStats; holdout: ArmStats }>;
@@ -45,25 +49,18 @@ export type MetricArms = Record<string, { served: ArmStats; holdout: ArmStats }>
  * sajtens test_metric (continuation-läget räknar "gick vidare" som
  * conversion, precis som abTest). bounce = gick aldrig vidare.
  */
-export function metricArmsFromRpc(
-  rows: ArmsRpcRow[],
-  testMetric: "conversion" | "continuation",
-): MetricArms | null {
-  const armOf = (
-    name: string,
-  ): ArmStats & { cont: number; clicks: number; forms: number; eng: number; deep: number } => {
+export function metricArmsFromRpc(rows: ArmsRpcRow[]): MetricArms | null {
+  const armOf = (name: string) => {
     const r = rows.find((x) => x.arm === name);
-    const n = Number(r?.visits) || 0;
-    const conv = Number(r?.conversions) || 0;
-    const cont = Number(r?.continuations) || 0;
     return {
-      n,
-      conversions: testMetric === "continuation" ? cont : conv,
-      cont,
+      n: Number(r?.visits) || 0,
+      conv: Number(r?.conversions) || 0,
+      cont: Number(r?.continuations) || 0,
       clicks: Number(r?.cta_clicks) || 0,
       forms: Number(r?.form_submits) || 0,
       eng: Number(r?.engaged) || 0,
       deep: Number(r?.deep_scrolls) || 0,
+      bounced: Number(r?.bounces) || 0,
     };
   };
   const v = armOf("variant");
@@ -73,9 +70,17 @@ export function metricArmsFromRpc(
     served: { n: sn, conversions: sv },
     holdout: { n: hn, conversions: hv },
   });
+  // VARJE post bär sitt EGET mått. Tidigare tog testMetric-parametern och
+  // skrev om `conversion`-posten till continuation-siffror i continuation-
+  // läge — men kartan slås upp på metrikkatalogens id:n, så en sajt vars
+  // kontrakt hade "conversion" som GUARDRAIL fick då sin guardrail dömd på
+  // fel data. Primärvalet hör hemma hos anroparen (evaluateWinnerWithGuards),
+  // inte i kartan. Rättat 2026-08-15 när konvertering blev guardrail för
+  // bounce-sajter — utan det hade skyddet varit en attrapp.
   return {
-    conversion: pair(v.conversions, v.n, c.conversions, c.n),
-    bounce: pair(Math.max(0, v.n - v.cont), v.n, Math.max(0, c.n - c.cont), c.n),
+    conversion: pair(v.conv, v.n, c.conv, c.n),
+    continuation: pair(v.cont, v.n, c.cont, c.n),
+    bounce: pair(v.bounced, v.n, c.bounced, c.n),
     engaged: pair(v.eng, v.n, c.eng, c.n),
     cta_click: pair(v.clicks, v.n, c.clicks, c.n),
     form_submit: pair(v.forms, v.n, c.forms, c.n),
