@@ -73,19 +73,31 @@ export const SECTIONS_SCRIPT = `(() => {
     var hidden = [];
     try {
       var rotators = [];
-      var lists = el.querySelectorAll('ul, ol');
-      for (var a = 0; a < lists.length; a++) {
-        if (lists[a].children.length >= 2) rotators.push(lists[a]);
-      }
       // Curated rotator class-tokens (see pageAudit.ts) — specific enough not to
       // collide with animation utilities (Tailwind animate-*/rotate-*,
       // Animate.css animate__*/rotateIn), which a bare substring would over-match.
-      var ROT = ['rotating','rotator','typewriter','animated-list','animated-word','animated-text','animated-headline','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
+      // Listor kräver numera en rotator-token (på sig själva eller på ett
+      // omslag) och split-text-tokenen är borta — korpusmätning 2026-08-15, se
+      // pageAudit.ts. Listorna MÅSTE vara identiska: de läser samma sidor.
+      var ROT = ['rotating','rotator','typewriter','animated-list','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
       var tagged = el.querySelectorAll('[class]');
       for (var b = 0; b < tagged.length; b++) {
-        if (tagged[b].children.length < 2 || rotators.indexOf(tagged[b]) !== -1) continue;
         var cls = (tagged[b].getAttribute('class') || '').toLowerCase();
-        for (var z = 0; z < ROT.length; z++) { if (cls.indexOf(ROT[z]) !== -1) { rotators.push(tagged[b]); break; } }
+        var hit = false;
+        for (var z = 0; z < ROT.length; z++) { if (cls.indexOf(ROT[z]) !== -1) { hit = true; break; } }
+        if (!hit) continue;
+        // Rotator-MÅLET är det tokenbärande elementet självt när det bär
+        // alternativen som barn — annars en lista INNE i det. Andra grenen
+        // finns för formen där tokenen sitter på ett OMSLAG:
+        // <h1>We help you <span class="text-rotator"><ul><li>grow</li>…
+        // Omslaget har ett enda element-barn, så en ren children>=2-vakt
+        // hade missat rotatorn helt (granskningsfynd 2026-08-15).
+        var target = tagged[b].children.length >= 2 ? tagged[b] : null;
+        if (!target) {
+          var inner = tagged[b].querySelectorAll('ul, ol');
+          for (var q = 0; q < inner.length; q++) { if (inner[q].children.length >= 2) { target = inner[q]; break; } }
+        }
+        if (target && rotators.indexOf(target) === -1) rotators.push(target);
       }
       for (var r = 0; r < rotators.length; r++) {
         var kids = rotators[r].children;

@@ -97,4 +97,54 @@ describe("cleanHeadingText — collapse word-rotators, never utility classes", (
     const t = await h1Text("<h1>Just a normal headline</h1>");
     expect(t).toBe("Just a normal headline");
   });
+
+  // ── Åtstramningen 2026-08-15 (korpusmätt) ────────────────────────────────
+  // Två signaler var för breda och trunkerade äkta rubriker. Mätningen
+  // (scripts/redesign/rotator-eval.ts, 1162 rubriker på 121 verkliga sidor)
+  // visade att logiken rör EN enda rubrik i hela korpusen — hubspots — och att
+  // den blir bit-identisk efter åtstramningen. Testerna nedan låser bägge
+  // riktningarna: det som ska sluta kollapsa, och det som måste fortsätta.
+
+  test("does NOT collapse a bare <ul> in a heading — a list is not a rotator", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Förut: varje ul/ol med >=2 barn räknades som rotator utan någon
+    // rotator-signal, så andra posten (och framåt) försvann ur rubriken.
+    const t = await h1Text("<h1>Pick one <ul><li>A plan</li><li>B plan</li></ul></h1>");
+    expect(t).toBe("Pick one A plan B plan");
+  });
+
+  test("does NOT collapse split-text wrappers (animated-text/-headline/-word)", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Per-ord-avslöjande: alla barn tillhör SAMMA rubrik, inget alternerar.
+    for (const cls of ["animated-text", "animated-headline", "animated-word"]) {
+      const t = await h1Text(
+        `<h1>Grow with <span class="${cls}"><span>speed</span> <span>and</span> <span>care</span></span></h1>`,
+      );
+      expect(t, `klass ${cls}`).toBe("Grow with speed and care");
+    }
+  });
+
+  test("STILL collapses a list whose token sits on the WRAPPER, not the list", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Granskningsfynd 2026-08-15: omslaget har ETT element-barn (listan), så
+    // en ren children>=2-vakt missade rotatorn helt när listregeln togs bort.
+    const t = await h1Text(
+      '<h1>We help you <span class="text-rotator">' +
+        "<ul><li>grow</li><li>scale</li><li>close</li></ul></span></h1>",
+    );
+    expect(t).toBe("We help you grow");
+  });
+
+  test("STILL collapses the hubspot shape — the case the rule exists for", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Listan bär själv token `animated-list`, så klass-scanningen fångar den
+    // utan den nakna ul/ol-regeln. Det är hela grunden för att ta bort den.
+    const t = await h1Text(
+      "<h1>Where go-to-market teams go to " +
+        '<ul class="wf-page-header_heading-animated-list">' +
+        "<li>grow</li><li>scale</li><li>close</li><li>retain</li><li>grow</li>" +
+        "</ul></h1>",
+    );
+    expect(t).toBe("Where go-to-market teams go to grow");
+  });
 });
