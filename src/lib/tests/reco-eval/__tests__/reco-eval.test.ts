@@ -15,6 +15,7 @@ import {
   assertNoFabrication,
   FACIT_OPS,
   gainSweep,
+  reachSweep,
   runFacit,
   runRollupFacit,
   seedSweep,
@@ -29,7 +30,7 @@ const REPORT = runFacit(seedSweep(600));
 describe("reco-eval facit — baslinjen mot dold sanning", () => {
   it("golvets flytt-pick ÄR typ-priorn på varje värld (baslinjen tittar aldrig på beteende)", () => {
     // Bevisar att "baslinjen" vi mäter verkligen är dagens typvikts-prior:
-    // PROOF_TYPE_WEIGHT dominerar positions-tillägget, så golvet lyfter alltid
+    // MOVE_TYPE_WEIGHT dominerar positions-tillägget, så golvet lyfter alltid
     // den högst viktade bevis-typen — oberoende av vad besökarna gjorde.
     expect(REPORT.baselineEqualsPrior).toBe(REPORT.worlds);
   });
@@ -130,6 +131,35 @@ describe("reco-eval facit — baslinjen mot dold sanning", () => {
     expect(w1.content.sections.some((s) => s.id === w1.goldSectionId)).toBe(true);
     // Golds är ett BEVIS-sektions-id (aldrig hjälten — hjälten är inget lyftmål).
     expect(w1.goldSectionId).not.toBe("sec-0-hero");
+  });
+});
+
+// ── Flyttregelns tak (breddningen 2026-08-15) ────────────────────────────────
+describe("flyttregeln: sidans bästa sektion måste kunna nås", () => {
+  // Blandade världar — bevis-sektioner PLUS features/faq/comparison, sanning
+  // dragen oberoende av typ precis som i steg 6. Frågan är ledet FÖRE
+  // rankningen: finns guldet överhuvudtaget i menyn? Med den smala regeln
+  // (bara bevis-typer) var svaret nej i 45 % av världarna — ett tak som
+  // varken beteende-sätet, väljar-modellen eller mer trafik kunde nå förbi,
+  // och som runFacit inte kan se eftersom dess världar bara har bevis-typer.
+  const R = reachSweep(seedSweep(300));
+
+  it("guldet är ALLTID en laglig kandidat — inget osynligt tak kvar", () => {
+    expect(R.reachable).toBe(1);
+  });
+
+  it("beteende-sätet når orakel-taket i blandade världar", () => {
+    // Före breddningen: 44,8 % mot orakelns 67,8 % — gapet var rena
+    // menyluckan, inte rankningsfel. Efter: sätet ligger på taket.
+    expect(R.behaviorHitRate).toBeGreaterThan(0.6);
+    expect(R.behaviorHitRate).toBeGreaterThanOrEqual(R.oracleHitRate - 0.05);
+  });
+
+  it("priorn påstår INGENTING nytt — baslinjen ligger kvar på slumpnivå", () => {
+    // De nya vikterna ligger under pricing (1,5), så typ-priorn har inte
+    // blivit bättre på att gissa; det är beteendet som får chansen. Faller
+    // det här testet har någon gett en icke-bevis-typ för hög vikt.
+    expect(R.baselineHitRate).toBeLessThan(0.3);
   });
 });
 

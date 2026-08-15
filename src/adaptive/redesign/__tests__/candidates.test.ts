@@ -78,13 +78,45 @@ const model = (over: Partial<RedesignContentModel> = {}): RedesignContentModel =
 });
 
 describe("generateCandidates", () => {
-  it("genererar flytt för bevissektioner men aldrig hjälten eller features utan proof", () => {
+  it("genererar flytt för bevissektioner OCH övriga typer — men aldrig hjälten", () => {
+    // Breddningen 2026-08-15: features/faq/comparison är flyttbara sedan
+    // vokabulären smalnade till enbart flyttar. Hjälten är fortfarande aldrig
+    // ett flyttmål (appliceraren vägrar dessutom en flytt som landar ovanför
+    // den) och sektioner ovanför folden har inget att vinna.
     const c = generateCandidates(model());
     const moves = c.filter((x) => x.kind === "move_up").map((x) => x.targetId);
     expect(moves).toContain("sec-3-testimonials");
     expect(moves).toContain("sec-4-logos");
+    expect(moves).toContain("sec-2-features");
     expect(moves).not.toContain("sec-1-hero");
-    expect(moves).not.toContain("sec-2-features");
+  });
+
+  it("breddningen ÄNDRAR INTE rangordningen: varje bevis-typ står över varje övrig", () => {
+    // Kontraktet som gör breddningen säker (och som mätningen mot facit
+    // vilar på): priorn påstår ingenting nytt. En sida som redan hade en
+    // bevis-sektion får samma golv-val som före — bara fler alternativ under.
+    // Utan detta hade en features-sektion långt ned på sidan kunnat gå om ett
+    // kundomdöme på positionsbonusen ensam (0,05/position, tak 0,4).
+    const c = generateCandidates(
+      model({
+        sections: [
+          ...model().sections,
+          {
+            id: "sec-9-features",
+            type: "features",
+            position: 9, // maximal positionsbonus
+            heading: "Everything else you get",
+            aboveFold: false,
+            visualWeight: 3,
+          },
+        ],
+      }),
+    );
+    const score = (id: string) => c.find((x) => x.id === id)!.score;
+    expect(score("mv-sec-3-testimonials")).toBeGreaterThan(score("mv-sec-9-features"));
+    expect(score("mv-sec-4-logos")).toBeGreaterThan(score("mv-sec-9-features"));
+    // Golvets val är fortfarande bevis-sektionen, inte den nya typen.
+    expect(c[0].id).toBe("mv-sec-3-testimonials");
   });
 
   it("testimonials med proof rankas över logos; trusted_by över compliance", () => {

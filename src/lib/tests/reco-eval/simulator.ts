@@ -8,7 +8,7 @@
 // är den dolda sanningen. Då mäter eval:en om beteende-rankningen återfinner
 // sanningen ur brusigt data — inte tautologiskt.
 //
-// Steg 6 mäter BASLINJEN (dagens PROOF_TYPE_WEIGHT, som ignorerar beteende).
+// Steg 6 mäter BASLINJEN (dagens MOVE_TYPE_WEIGHT, som ignorerar beteende).
 // Det observerade engagemanget bakas in här redan nu så steg 7:s motor kan
 // mätas på EXAKT samma världar; steg 6 konsumerar det bara för "taket"
 // (orakel-på-observerat), aldrig för baslinjen.
@@ -34,6 +34,11 @@ const PRIOR_WEIGHT: Record<string, number> = {
   stats: 2.5,
   proof: 2.2,
   pricing: 1.5,
+  // Speglar motorns breddning 2026-08-15 (fortfarande DUPLICERAT med flit —
+  // simulatorn får aldrig importera rankningen den mäter).
+  comparison: 1.4,
+  faq: 1.2,
+  features: 1,
 };
 
 /** Bruset mellan dold sanning och observerat engagemang. Litet nog att signalen
@@ -81,8 +86,23 @@ function argmaxKey(m: Record<string, number>): string {
   return best;
 }
 
+/** Sektionstyper som INTE är bevis-typer men som finns på varje riktig sida
+ *  (features är den vanligaste av alla: 113 av 874 i den frysta korpusen).
+ *  Används bara av blandade världar — se makeWorld:s mixedTypes. */
+const PLAIN_TYPES = ["features", "faq", "comparison"] as const;
+
+export interface WorldOptions {
+  /** Lägg till icke-bevis-sektioner med sanning dragen PÅ SAMMA SÄTT som
+   *  bevis-sektionernas (oberoende av typ). Mäter takfrågan flyttregeln
+   *  ställer: hur ofta bor sidans BÄSTA sektion utanför det motorn får röra?
+   *
+   *  Extraherna dras SIST, efter trust-radernas slumptal, så en värld utan
+   *  flaggan är byte-identisk med före (steg 6–7-talen är orörda). */
+  mixedTypes?: boolean;
+}
+
 /** Bygg en reproducerbar syntetisk värld ur ett frö. Ren + deterministisk. */
-export function makeWorld(seed: number): World {
+export function makeWorld(seed: number, opts: WorldOptions = {}): World {
   const rnd = mulberry32(seed);
   const k = 3 + Math.floor(rnd() * 2); // 3 eller 4 bevis-sektioner
   const types = shuffle(PROOF_TYPES, rnd).slice(0, k);
@@ -113,6 +133,25 @@ export function makeWorld(seed: number): World {
   const bound = proofSections[Math.floor(rnd() * k)];
   const boundText = `Trusted by ${1000 + Math.floor(rnd() * 9000)} teams`;
   const unboundText = "30-day money-back guarantee";
+  // Blandade världar (flyttregelns takmätning): icke-bevis-sektioner med
+  // sanning dragen EXAKT som bevis-sektionernas. Eftersom sanningen är
+  // oberoende av typ kan sidans bästa sektion mycket väl vara en av dessa —
+  // och då finns den inte ens i menyn med den smala flyttregeln.
+  const plainSections = opts.mixedTypes
+    ? PLAIN_TYPES.map((type, i) => ({
+        id: `sec-${k + i + 1}-${type}`,
+        type,
+        position: k + i + 2,
+        heading: `${cap(type)} that ${VERBS[(k + i) % VERBS.length]}`,
+        aboveFold: false,
+        visualWeight: 10,
+      }))
+    : [];
+  for (const s of plainSections) {
+    const truth = rnd();
+    hiddenValue[s.id] = truth;
+    observed[s.id] = clamp01(truth + gaussian(rnd) * NOISE_SD);
+  }
   const content: RedesignContentModel = {
     sections: [
       {
@@ -124,6 +163,7 @@ export function makeWorld(seed: number): World {
         visualWeight: 40,
       },
       ...proofSections,
+      ...plainSections,
     ],
     trustSignals: [
       { type: "trusted_by", text: boundText, aboveFold: false, section: bound.id },
@@ -139,7 +179,8 @@ export function makeWorld(seed: number): World {
 
   const goldSectionId = argmaxKey(hiddenValue);
   const priorWeights: Record<string, number> = {};
-  for (const s of proofSections) priorWeights[s.id] = PRIOR_WEIGHT[s.type] ?? 0;
+  for (const s of [...proofSections, ...plainSections])
+    priorWeights[s.id] = PRIOR_WEIGHT[s.type] ?? 0;
   const priorSectionId = argmaxKey(priorWeights);
 
   return {

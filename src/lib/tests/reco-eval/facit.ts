@@ -2,7 +2,7 @@
 // katalog→golv-kedjan mot den dolda sanningen och rapporterar tre tal:
 //
 //   • BASLINJE = dagens motor-pick. generateCandidates → floorSelection → det
-//     högst rankade move_up. Per konstruktion (PROOF_TYPE_WEIGHT dominerar det
+//     högst rankade move_up. Per konstruktion (MOVE_TYPE_WEIGHT dominerar det
 //     lilla positions-tillägget) är det den högst viktade BEVIS-TYPEN på sidan
 //     — typ-priorn, som aldrig tittar på beteende. Dess träffgrad mot den dolda
 //     sanningen är därför SLUMP (~1/k): priorn kan omöjligt veta vilken sektion
@@ -220,6 +220,53 @@ export interface FacitReport {
 /** Kör facit:et över en frölista. Ren + deterministisk — samma frön in, samma
  *  rapport ut (hela skälet till att det kan vara ett committat test).
  *  `behaviorGain` är BARA för gain-svepet — produktionen kör default-gainen. */
+/** FLYTTREGELNS TAK (2026-08-15). Blandade världar: bevis-sektioner PLUS
+ *  features/faq/comparison, alla med sanning dragen oberoende av typ. Frågan
+ *  är inte "väljer motorn rätt bland kandidaterna" utan det ledet före: hur
+ *  ofta finns sidans BÄSTA sektion överhuvudtaget i menyn?
+ *
+ *  reachable = andelen världar där guldsektionen är en laglig flyttkandidat.
+ *  Är den 0,6 är 40 % av världarna omöjliga att vinna — inget beteende-säte,
+ *  ingen väljar-modell och ingen mängd trafik kan nå dem. Det är ett TAK, inte
+ *  ett fel i rankningen, och det syns inte i runFacit vars världar bara
+ *  innehåller bevis-typer. */
+export function reachSweep(seeds: number[]): {
+  worlds: number;
+  reachable: number;
+  baselineHitRate: number;
+  behaviorHitRate: number;
+  oracleHitRate: number;
+  /** Träffgrad räknat BARA på världar där guldet ens gick att välja — skiljer
+   *  "rankar fel" från "fick aldrig chansen". */
+  behaviorHitWhenReachable: number;
+} {
+  let reachable = 0;
+  let bHit = 0;
+  let behHit = 0;
+  let oHit = 0;
+  let behHitReach = 0;
+  for (const seed of seeds) {
+    const w = makeWorld(seed, { mixedTypes: true });
+    const cands = generateCandidates(w.content, undefined, undefined, undefined, FACIT_OPS);
+    const canReach = cands.some((c) => c.kind === "move_up" && c.targetId === w.goldSectionId);
+    if (canReach) reachable++;
+    const sc = scoreWorld(w);
+    if (sc.baselineHit) bHit++;
+    if (sc.behaviorHit) behHit++;
+    if (sc.oracleHit) oHit++;
+    if (canReach && sc.behaviorHit) behHitReach++;
+  }
+  const n = seeds.length || 1;
+  return {
+    worlds: seeds.length,
+    reachable: reachable / n,
+    baselineHitRate: bHit / n,
+    behaviorHitRate: behHit / n,
+    oracleHitRate: oHit / n,
+    behaviorHitWhenReachable: reachable > 0 ? behHitReach / reachable : 0,
+  };
+}
+
 export function runFacit(seeds: number[], behaviorGain?: number): FacitReport {
   const scores = seeds.map((s) => scoreWorld(makeWorld(s), behaviorGain));
   const n = scores.length || 1;

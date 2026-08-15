@@ -41,15 +41,37 @@ export interface Candidate {
   proven?: { provedOnPath: string; variantId: string; alsoProvedOn?: string[] };
 }
 
-/** Bevisbärande sektionstyper i fallande säljvikt — testimonials är starkast
- *  (riktiga röster), därefter kvantifierat förtroende. `features` är
- *  MEDVETET uteslutet: aldrig ett bevis, aldrig ett lyftmål (extract.ts). */
-const PROOF_TYPE_WEIGHT: Record<string, number> = {
+/** Typ-priorns vikter för FLYTTKANDIDATER (och för rubrik-inserts när de
+ *  är påslagna — samma typ-prior styr bägge). Hette PROOF_TYPE_WEIGHT fram
+ *  till breddningen 2026-08-15; namnet blev osant när icke-bevis-typer kom in. Två block med olika status:
+ *
+ *  BEVIS-TYPERNA (>= 1,5) är de ursprungliga: socialt bevis flyttat närmare
+ *  beslutet är den bäst belagda CRO-hypotesen vi har.
+ *
+ *  ÖVRIGA TYPER (< 1,5, ägarbeslut 2026-08-15) släpptes in när vokabulären
+ *  smalnade till enbart flyttar. Mätt på 47 frysta sidor föll 794 av 874
+ *  sektioner på just den här listan, och 21 av 47 sidor fick INGEN kandidat
+ *  alls — de kunde inte testas överhuvudtaget. Mätt mot facit i BLANDADE
+ *  världar (bevis + features/faq/comparison, sanning dragen oberoende av typ)
+ *  låg sidans bästa sektion utanför menyn i 45 % av världarna; när den låg
+ *  INNE valde beteende-sätet rätt i 81 %. Taket satt i menyn, inte i
+ *  rankningen.
+ *
+ *  De nya vikterna ligger MEDVETET under pricing (1,5): priorn har inget stöd
+ *  för att en features-sektion slår ett kundomdöme, så på en sida som redan
+ *  har en bevis-sektion är golvets val OFÖRÄNDRAT. Vinsten är att sidor utan
+ *  bevis-sektion får något att testa, och att beteende-sätet (D3) kan lyfta en
+ *  faktiskt läst sektion förbi priorn — precis som det redan gör mellan
+ *  bevis-typerna. Inbördes ordning = hur nära köpbeslutet typen ligger. */
+const MOVE_TYPE_WEIGHT: Record<string, number> = {
   testimonials: 3,
   logos: 2.5,
   stats: 2.5,
   proof: 2.2,
   pricing: 1.5,
+  comparison: 1.4,
+  faq: 1.2,
+  features: 1,
 };
 
 /** Trust-signaltyper i fallande vikt — samma ordning som fallback-stegen
@@ -205,7 +227,7 @@ export function generateCandidates(
   const moveIdxByType = new Map<string, number[]>();
   for (const s of content.sections) {
     if (s.type === "hero" || s.aboveFold) continue;
-    const typeWeight = PROOF_TYPE_WEIGHT[s.type] ?? 0;
+    const typeWeight = MOVE_TYPE_WEIGHT[s.type] ?? 0;
     const trustBonus = s.containsTrustSignals ? 1 : 0;
     if (typeWeight + trustBonus <= 0) continue;
     if (!s.heading) continue;
@@ -284,7 +306,7 @@ export function generateCandidates(
     // lägre poäng än signalerna: en rubrik är en pekare, en signal är beviset.
     for (const s of content.sections) {
       if (s.type === "hero" || !s.heading) continue;
-      const typeWeight = PROOF_TYPE_WEIGHT[s.type] ?? 0;
+      const typeWeight = MOVE_TYPE_WEIGHT[s.type] ?? 0;
       if (typeWeight <= 0 && !s.containsTrustSignals) continue;
       const text = s.heading.trim().slice(0, MAX_DETAIL_LEN);
       const key = text.replace(/\s+/g, " ").toLowerCase();

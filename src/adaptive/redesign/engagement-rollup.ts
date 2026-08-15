@@ -1,4 +1,4 @@
-// Engagemangs-rollupen (steg 8, D3): datamotsvarigheten till PROOF_TYPE_WEIGHT.
+// Engagemangs-rollupen (steg 8, D3): datamotsvarigheten till MOVE_TYPE_WEIGHT.
 // Tar råa per-sektion-observationer från runtime (steg 9: census-rubriknyckel +
 // besök + engagemangsandel) och löser upp dem till beteende-sätets nycklar
 // (BehaviorInput.sectionWeight, keyade på extract.ts "sec-N-typ"-id:n) — via

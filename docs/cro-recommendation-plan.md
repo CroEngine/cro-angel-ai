@@ -16,13 +16,21 @@ planerare + syntes + adversariell kritiker) och härdad mot kritikerns fynd.
     AVSTÄNGT vid genereringen, inte borttaget: appliceraren behåller stödet, redan
     godkända varianter servas oförändrat, och maskineriet nås via
     `withInsertSnippet()` i `context.ts`. Vokabulären bor på ETT ställe
-    (`DEFAULT_REDESIGN_GUARDRAILS.ops` + `DEFAULT_CANDIDATE_OPS`) och styr numera
-    både katalogen och den fria designern.
+    (`DEFAULT_REDESIGN_GUARDRAILS.ops`; `DEFAULT_CANDIDATE_OPS` härleds ur den)
+    och styr numera både katalogen och den fria designern.
+  - *Breddat 2026-08-15* (följdbeslut samma dag): när flytten blev enda draget
+    blev `MOVE_TYPE_WEIGHT` den bindande regeln — 794 av 874 sektioner på 47
+    frysta sidor föll på den, och 21 av 47 sidor fick ingen kandidat alls.
+    `features`, `faq` och `comparison` är nu flyttbara, med vikter UNDER
+    pricing (1,5) så typ-priorn inte påstår något nytt: golvets val är
+    oförändrat på varje sida som redan hade en bevis-sektion (mätt: 0 av 26).
+    Mätt mot facit i blandade världar gick guldets nåbarhet 55 % → 100 % och
+    beteende-sätets träff 44,8 % → 68,3 % (orakel-taket är 67,8 %).
 - **D2 — HITTA ALDRIG PÅ.** Varje serverat element är en ordagrann delsträng av
   sidan.
 - **D3 — RANKA PÅ RIKTIG BESÖKSDATA.** Rekommendationen ska grundas i vad de
   tusentals tidigare besökarna på *just den sidan* faktiskt gör ("är det pris eller
-  testimonials?"), inte i hårdkodade sektionstyp-vikter (`PROOF_TYPE_WEIGHT`).
+  testimonials?"), inte i hårdkodade sektionstyp-vikter (`MOVE_TYPE_WEIGHT`).
 - **D4 — MÄT MOT FACIT.** Rekommendationskvalitet ska utvärderas mot ett facit
   offline innan något skarpt. Idag mäts bara extraktion, aldrig om en
   rekommendation är en *bra* ändring.
@@ -105,7 +113,7 @@ snapshot-goldens om-blessade under den chromium playwright pinnar (rev 1223).
    rörs aldrig — id:n slås upp via aktuell modell). `bun run join-eval`. [D3]
 6. **Bygg facit-riggen + baslinje** — ✅ **KLAR.** `src/lib/tests/reco-eval/` med
    dold-sanning+brus-simulatorn (ovan). Icke-cirkulär: sanningen dras oberoende av
-   sektionstyp. Baslinjen (dagens `PROOF_TYPE_WEIGHT`, = golvets högsta `move_up` på
+   sektionstyp. Baslinjen (dagens `MOVE_TYPE_WEIGHT`, = golvets högsta `move_up` på
    varje värld) återfinner facit på **slumpnivå (~29 %, = mean(1/k))**; orakel-på-
    observerat på **~76 %** ⇒ **~47 % mätt, icke-cirkulärt headroom** för steg 7.
    Noll fabricering över 2 000+ slumpade världar (invarianten skopad rätt: ordagrann

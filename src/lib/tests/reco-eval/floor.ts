@@ -120,7 +120,7 @@ export function runFloorSweep(opts: FloorSweepOptions): FloorRow[] {
   const seeds = seedSweep(opts.worlds, opts.seedBase ?? 1);
   // Världarna byggs EN gång och delas av alla stegpunkter — paren ("samma
   // världar för varje n") är strukturella, inte bara deterministiska.
-  const worlds = seeds.map(makeWorld);
+  const worlds = seeds.map((s) => makeWorld(s));
   // Produktionens tystnadsvillkor: sidgolvet (MIN_VISITS, laddnings-proxyn)
   // OCH sektionsgolvet — i svepets uniforma n sammanfaller proxy och
   // sektions-n, så "vald" är tyst under det största av golven. Bägge
