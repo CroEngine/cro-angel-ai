@@ -41,6 +41,15 @@ jobs:
       - name: Applier codegen pin
         run: bun run gen:applier:check
 
+      # Kodgen-pinne 3: src/adaptive-lab/detectors.generated.ts är den CSP-
+      # säkra spegeln av samma detektorkällor (bun run scripts/gen-detectors.ts)
+      # och var den ENDA genererade artefakten utan pinne. Den hade drivit
+      # 94 rader efter källan — hela ordrotator-blocket saknades, och den bar
+      # kvar en regex-bugg källan fixat — vilket ingen märkte just för att
+      # ingenting kontrollerade den (upptäckt 2026-08-15).
+      - name: Lab detectors codegen pin
+        run: bun run scripts/gen-detectors.ts && git diff --exit-code -- src/adaptive-lab/detectors.generated.ts
+
       - name: Typecheck
         run: bun run typecheck
 
