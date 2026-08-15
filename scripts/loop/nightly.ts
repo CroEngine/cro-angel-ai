@@ -45,7 +45,11 @@ import {
   type ReuseVariantRow,
 } from "../../src/adaptive/redesign/reuse";
 import { generateCandidates } from "../../src/adaptive/redesign/candidates";
-import { buildRedesignContext, segmentInsightFrom } from "../../src/adaptive/redesign/context";
+import {
+  buildRedesignContext,
+  DEFAULT_REDESIGN_GUARDRAILS,
+  segmentInsightFrom,
+} from "../../src/adaptive/redesign/context";
 import { extractContentModel, extractQuotables } from "../../src/adaptive/redesign/extract";
 import { filterToTemplateSections } from "../../src/adaptive/redesign/template-content";
 import {
@@ -849,6 +853,9 @@ for (const site of targets) {
       const eligibility = catalogEligible({
         isTemplate: isTpl,
         crossPageSources: sourcePages.length,
+        // Ägarbeslut 2026-08-15: med move-only vokabulär finns inget korssid-
+        // citat att skydda, så carve-outen faller och katalogen tar cellen.
+        mayInsert: DEFAULT_REDESIGN_GUARDRAILS.ops.includes("insert_snippet"),
       });
       if (eligibility.skip === "template") {
         console.log(

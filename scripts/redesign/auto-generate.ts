@@ -790,7 +790,15 @@ try {
         }
         if (await adoptRun(altValidated.ops, `alt:${i + 1}`)) return true;
       }
-      const fbBase = proofInsertFallback(content, validated.ops);
+      // Bevis-lyftets nödfall är ett TEXTDRAG och går INTE genom
+      // generateRedesign — den skickas rakt in i adoptRun, så vokabulären
+      // måste grinda den här (ägarbeslut 2026-08-15, "endast flytta
+      // sektioner"). Utan grinden hade en flytt som föll i pixelgrinden
+      // producerat exakt det insert_snippet beslutet tog bort, förbi
+      // validateOps. Priset sägs ut: en sådan cell ger nu ingen variant alls.
+      const fbBase = ctx.guardrails.ops.includes("insert_snippet")
+        ? proofInsertFallback(content, validated.ops)
+        : null;
       const placements: ("after_h1" | undefined)[] = [undefined, "after_h1"];
       for (const placement of fbBase ? placements : []) {
         const fbOps = fbBase!.map((o) =>

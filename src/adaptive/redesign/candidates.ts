@@ -116,6 +116,11 @@ export const BEHAVIOR_SHRINK_N0 = 50;
  *  test körts — poängen är en hypotes-rankning, aldrig ett facit. */
 export const REUSE_PROVEN_SCORE = 5;
 
+/** Dragformerna katalogen genererar när anroparen inte säger annat. Speglar
+ *  DEFAULT_GUARDRAILS.ops i context.ts — ändra BÄGGE om vokabulären ändras
+ *  (de testas mot varandra i candidates.test.ts). */
+export const DEFAULT_CANDIDATE_OPS: readonly string[] = ["move_up"];
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 /** Beteende-termen för en kandidat förankrad i sektion `sectionId`. 0 när
@@ -178,9 +183,17 @@ export function generateCandidates(
   behavior?: BehaviorInput,
   reuse?: ReuseSeed[],
   moveReuse?: MoveSeed[],
+  // VOKABULÄREN ÄR EN SANNING (ägarbeslut 2026-08-15: "endast flytta
+  // sektioner, inte ändra text"). Katalogen ignorerade tidigare
+  // guardrails.ops helt och genererade alltid bägge dragformerna — den fria
+  // designern grindades på listan men katalogen, som är HUVUDVÄGEN sedan
+  // steg 11, gjorde inte det. Nu läser bägge samma lista, och att släppa in
+  // text igen är en ändring på ETT ställe (context.ts DEFAULT_GUARDRAILS).
+  allowedOps: readonly string[] = DEFAULT_CANDIDATE_OPS,
 ): Candidate[] {
   const out: Candidate[] = [];
   const sectionIds = new Set(content.sections.map((s) => s.id));
+  const mayInsert = allowedOps.includes("insert_snippet");
 
   // Flytt-kandidater: bevisbärande sektioner under folden. Hjälten är aldrig
   // ett flyttmål, och sektioner ovanför folden har inget att vinna.
@@ -229,6 +242,13 @@ export function generateCandidates(
       },
     };
   }
+
+  // Hela avsnittet nedanför (trust-signaler, rubrik-reserven, textåterbruket)
+  // är INSERT-kandidater — TEXTDRAG. Vokabulären avgör om de ens genereras
+  // (ägarbeslut 2026-08-15): med move-only slutar katalogen här och menyn
+  // innehåller enbart flyttar. Sorteringen är exakt densamma som i slutet, så
+  // en flytt-meny ser likadan ut oavsett vilken väg som tog den hit.
+  if (!mayInsert) return out.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 
   // Insert-kandidater: ordagranna trust-rader lyfta till under hjälten.
   // Dedup på normaliserad text — samma rad ska inte stå två gånger i menyn.

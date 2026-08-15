@@ -234,6 +234,14 @@ const flatten = (html: string): string => html.replace(/<[^>]+>/g, " ");
 describe("reco-eval facit — D2 genom den riktiga extraktionen", () => {
   const content = extractContentModel(FIXTURE_HTML);
   const candidates = generateCandidates(content);
+  // D2-kollen ska granska HELA katalogens förmåga, inte bara det nattloopen
+  // för närvarande genererar: vokabulären är move-only sedan ägarbeslutet
+  // 2026-08-15, men insert-maskineriet ligger kvar och servar godkända
+  // varianter — alltså måste ordagrannhets-kravet fortsatt bevakas på det.
+  const wideCandidates = generateCandidates(content, undefined, undefined, undefined, [
+    "move_up",
+    "insert_snippet",
+  ]);
 
   it("extraktionen ger en icke-trivial modell (sektioner + trust-rader)", () => {
     expect(content.sections.length).toBeGreaterThanOrEqual(3);
@@ -250,14 +258,22 @@ describe("reco-eval facit — D2 genom den riktiga extraktionen", () => {
     expect(guarantee.section).toBe(pricing.id);
   });
 
-  it("katalogen täcker BÅDA op-typerna (flytt + ordagrann insert)", () => {
-    expect(candidates.some((c) => c.kind === "move_up")).toBe(true);
-    expect(candidates.some((c) => c.kind === "insert_snippet")).toBe(true);
+  it("standardvokabulären ger BARA flyttar (ägarbeslut 2026-08-15)", () => {
+    expect(candidates.every((c) => c.kind === "move_up")).toBe(true);
+  });
+
+  it("katalogen täcker BÅDA op-typerna när vokabulären släpper på insert", () => {
+    expect(wideCandidates.some((c) => c.kind === "move_up")).toBe(true);
+    expect(wideCandidates.some((c) => c.kind === "insert_snippet")).toBe(true);
   });
 
   it("varje kandidat är vokabulär-låst, verbatim och pekar på en riktig sektion", () => {
     const sectionIds = new Set(content.sections.map((s) => s.id));
-    const check = assertNoFabrication(candidates, flatten(FIXTURE_HTML), sectionIds);
+    // Granskas på den BREDA katalogen: D2 (aldrig fabricera) är ett krav på
+    // varje text vi kan skriva till en kundsida, och insert-grenen är den enda
+    // som skriver text alls. Kollar vi bara move-only-menyn blir kontrollen
+    // sann men tom.
+    const check = assertNoFabrication(wideCandidates, flatten(FIXTURE_HTML), sectionIds);
     // Om det brister vill vi SE vad — violations-listan är diagnosen.
     expect(check.violations).toEqual([]);
     expect(check.ok).toBe(true);

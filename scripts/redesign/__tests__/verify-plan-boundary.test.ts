@@ -208,7 +208,14 @@ describe("plans.json → verify (riktig process, riktig Chromium)", () => {
     expect(rows[0].reason).toBeTruthy();
   }, 240_000);
 
-  it("evidence.reuse skrivs när blocket överlever — och ALDRIG när fallbacken bytte bort det", async (ctx) => {
+  // ÄGARBESLUT 2026-08-15 ("endast flytta sektioner, inte ändra text"):
+  // insert_snippet är ur vokabulären, så TEXT-återbruket kan inte längre nå
+  // en variant. Testet mäter den nya sanningen på riktig Chromium i stället
+  // för att beskriva ett flöde som inte finns: citatet avvisas i VALIDERINGEN
+  // (inte i grinden), och en avvisad plan får aldrig en proveniensstämpel.
+  // Redan GODKÄNDA insert-varianter servas oförändrat — appliceraren behåller
+  // stödet och drift-svepet håller dem på textdrift som förut.
+  it("TEXT-återbruket avvisas i vokabulären — och stämplar aldrig proveniens", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
     // Källsidan vars frysta whitelist validerar citatet (extractQuotables:
     // en löv-rad med pris). Texten nedan är EXAKT whitelist-raden.
@@ -255,14 +262,16 @@ describe("plans.json → verify (riktig process, riktig Chromium)", () => {
       { "/priser": PRISER_HTML },
     );
     expect(rows).toHaveLength(2);
-    const [survived, swapped] = rows;
-    expect(survived.verdict).toBe("verified");
-    expect(survived.evidence?.reuse).toEqual({
-      variantId: offer.variantId,
-      provedOnPath: "/enterprise",
-    });
-    // Driftsvepets kontrakt följer med gratis: beroendet deklarerat.
-    expect(survived.evidence?.dependencies).toEqual([{ path: "/priser", textSnapshot: QUOTE }]);
+    const [rejected, swapped] = rows;
+    // Ordagrant citat, laglig källsida, hjälten som mål — och ändå nej: skälet
+    // är VOKABULÄREN, inte texten. Att det avvisas i valideringen och inte
+    // först i grinden är poängen; grinden mäter aldrig ett drag vi inte får
+    // göra.
+    expect(rejected.verdict).toBe("rejected_by_validation");
+    expect(rejected.reason ?? "").toMatch(/insert_snippet/);
+    expect(rejected.evidence?.reuse).toBeUndefined();
+    // Flytt-reserven i cell 2 är oberörd av beslutet: den lever, men bär inte
+    // erbjudandets block ⇒ fortfarande ingen proveniens.
     expect(swapped.verdict).toBe("verified");
     expect(swapped.ops?.map((o) => o.targetId)).toEqual(["sec-4-pricing"]);
     expect(swapped.evidence?.reuse).toBeUndefined();
@@ -308,13 +317,16 @@ describe("plans.json → verify (riktig process, riktig Chromium)", () => {
     });
     // En flytt citerar ingen källsida: inga beroenden, ingen vidgad whitelist.
     expect(survived.evidence?.dependencies).toEqual([]);
-    expect(swapped.verdict).toBe("verified");
-    // Vilken reserv/nödfall som räddade cellen är inte poängen (grindarna
-    // avgör det) — poängen är att INGEN pricing-flytt bärs av slutvarianten,
-    // och att proveniensen därför uteblir.
-    expect(swapped.ops?.some((o) => o.op === "move_up" && o.targetId === "sec-4-pricing")).toBe(
-      false,
-    );
+    // PRISET FÖR MOVE-ONLY, utskrivet (ägarbeslut 2026-08-15): bevis-lyftets
+    // nödfall är ett insert_snippet och är därmed avstängt. Faller både
+    // huvudvalet och alt-flytten i grinden finns ingen text kvar att rädda
+    // cellen med — natten ger ett ärligt gate_fail i stället för en variant.
+    // Kontraktet testet vaktar är oförändrat: INGEN pricing-flytt bärs av
+    // slutvarianten, alltså INGEN proveniens.
+    expect(swapped.verdict).toBe("gate_fail");
+    expect(
+      swapped.ops?.some((o) => o.op === "move_up" && o.targetId === "sec-4-pricing") ?? false,
+    ).toBe(false);
     expect(swapped.evidence?.reuse).toBeUndefined();
   }, 240_000);
 });

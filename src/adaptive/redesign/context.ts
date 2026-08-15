@@ -26,19 +26,28 @@ export interface RedesignGuardrails {
   ops: string[];
 }
 
+/** Samma-sida-lyftets allowed-rad. Bor som EXPORTERAD konstant sedan
+ *  ägarbeslutet 2026-08-15 tog insert_snippet ur grundvokabulären: raden är
+ *  inte borttagen, den läggs på av den som faktiskt tillåter op:en, så
+ *  prompten aldrig kan lova ett drag valideringen avvisar. */
+export const INSERT_SNIPPET_ALLOWED =
+  "Surface ONE line the page ALREADY publishes (a trust signal or section heading, verbatim) as a new block directly below the hero (op insert_snippet) — exact text only, never paraphrased.";
+
+/** Korssid-lyftets allowed-rad — samma resonemang, men citatet kommer från en
+ *  ANNAN sida på samma sajt (buildRedesignContext lägger på den när både
+ *  vokabulären och källsidorna finns). */
+export const CROSS_PAGE_ALLOWED =
+  "Insert ONE of the listed verbatim quotes from another page of the SAME site as a new block directly below the hero (op insert_snippet) — exact text only, never paraphrased.";
+
 export const DEFAULT_REDESIGN_GUARDRAILS: RedesignGuardrails = {
   // Ägarregeln (2026-07-28, "vi ska endast skicka runt färdiga stycken"):
-  // vokabulären är OMFLYTT — flytta hela befintliga sektioner, eller lyft EN
-  // färdig rad sidan redan publicerar (ordagrant). Omskrivningar (set_text),
-  // reveal och condense är borttagna ur genereringen; redan GODKÄNDA varianter
-  // med äldre ops servas oförändrat (appliceraren behåller stödet).
+  // vokabulären är OMFLYTT — flytta hela befintliga sektioner. Omskrivningar
+  // (set_text), reveal och condense är borttagna ur genereringen; redan
+  // GODKÄNDA varianter med äldre ops servas oförändrat (appliceraren behåller
+  // stödet).
   allowed: [
     "Reorder existing sections (e.g. move social proof above pricing).",
     "Move an existing block higher/lower on the page.",
-    // Samma-sida-lyftet (kandidatkatalogen 2026-07-27): op:en är alltid i
-    // vokabulären — valideringen kräver ordagrann text ur sidans egen
-    // grounding-korpus när ingen källsida bjuds (generate.ts).
-    "Surface ONE line the page ALREADY publishes (a trust signal or section heading, verbatim) as a new block directly below the hero (op insert_snippet) — exact text only, never paraphrased.",
   ],
   forbidden: [
     "Invent any content, copy, number, testimonial or claim not already on the page.",
@@ -50,8 +59,29 @@ export const DEFAULT_REDESIGN_GUARDRAILS: RedesignGuardrails = {
     // få planen underkänd i pixelgrinden efteråt.
     "Move or rewrite the page's largest-paint (LCP) element — usually the hero image or hero headline. The serve-time performance guard blocks such an op for every real visitor, so the verifier rejects the whole variant.",
   ],
-  ops: ["move_up", "insert_snippet"],
+  // ENDAST FLYTTAR (ägarbeslut 2026-08-15: "endast flytta sektioner, inte
+  // ändra text"). Textdragen är avstängda vid vokabulären, inte borttagna ur
+  // appliceringen: befintliga varianter med insert/set_text fortsätter serva
+  // oförändrat, men inget NYTT textdrag kan längre genereras eller
+  // valideras. Att släppa in dem igen är den här raden plus
+  // DEFAULT_CANDIDATE_OPS i candidates.ts.
+  ops: ["move_up"],
 };
+
+/** Vokabulären MED samma-sida-lyftet — allt insert_snippet-maskineriet
+ *  (validateOps ordagrannhetsgren, katalogens insert-kandidater, korssid-
+ *  citaten) lever kvar och nås via den här. Sedan ägarbeslutet 2026-08-15 är
+ *  den inte längre nattloopens standard; den används av testerna och av den
+ *  som medvetet vill ha tillbaka textdraget. Att göra den till standard igen
+ *  är EN rad här plus DEFAULT_CANDIDATE_OPS i candidates.ts. */
+export function withInsertSnippet(base: RedesignGuardrails): RedesignGuardrails {
+  if (base.ops.includes("insert_snippet")) return base;
+  return {
+    ...base,
+    allowed: [...base.allowed, INSERT_SNIPPET_ALLOWED],
+    ops: [...base.ops, "insert_snippet"],
+  };
+}
 
 /** The faithfully-frozen page — the "code + screenshot" the LLM sees. Referenced
  *  by path; the bytes are attached at generation time. */
@@ -181,22 +211,19 @@ export function buildRedesignContext(inputs: {
   guardrails?: RedesignGuardrails;
   sourcePages?: SourcePageContent[];
 }): RedesignContext {
-  const sourcePages = (inputs.sourcePages ?? []).filter((p) => p.snippets.length > 0);
-  // Korssid-lyftet: med citerbara källsidor får designern även källsides-
-  // raden i allowed. (insert_snippet ligger redan i grundvokabulärens ops
-  // sedan samma-sida-lyftet 2026-07-27 — den gamla op-appendrade dubbletten
-  // borttagen 2026-07-28.)
+  const base = inputs.guardrails ?? DEFAULT_REDESIGN_GUARDRAILS;
+  // VOKABULÄREN AVGÖR (ägarbeslut 2026-08-15, "endast flytta sektioner"):
+  // källsidornas citat är bara material om ops faktiskt tillåter
+  // insert_snippet. Med move-only vokabulär skulle en korssid-rad i allowed
+  // lova designern ett drag validateOps sedan slänger — kontexten hade sagt
+  // en sak och grinden en annan. Därför härleds BÅDE allowed-raden och
+  // sourcePages ur ops i stället för att antas.
+  const mayInsert = base.ops.includes("insert_snippet");
+  const sourcePages = mayInsert
+    ? (inputs.sourcePages ?? []).filter((p) => p.snippets.length > 0)
+    : [];
   const guardrails =
-    inputs.guardrails ??
-    (sourcePages.length === 0
-      ? DEFAULT_REDESIGN_GUARDRAILS
-      : {
-          ...DEFAULT_REDESIGN_GUARDRAILS,
-          allowed: [
-            ...DEFAULT_REDESIGN_GUARDRAILS.allowed,
-            "Insert ONE of the listed verbatim quotes from another page of the SAME site as a new block directly below the hero (op insert_snippet) — exact text only, never paraphrased.",
-          ],
-        });
+    sourcePages.length === 0 ? base : { ...base, allowed: [...base.allowed, CROSS_PAGE_ALLOWED] };
   return {
     site: inputs.site,
     goal: inputs.goal,
@@ -216,15 +243,22 @@ const pct = (v: number | null): string => (v === null ? "—" : `${(v * 100).toF
  *  reference it by id, never invent. */
 export function renderRedesignPrompt(ctx: RedesignContext): string {
   const { page, content, segment: seg, goal, guardrails: g } = ctx;
+  // Prompten beskriver ENDAST de ops vokabulären släpper igenom — se
+  // utdatablocket längst ned för varför.
+  const mayRetext = g.ops.includes("set_text") || g.ops.includes("condense");
+  const mayInsert = g.ops.includes("insert_snippet");
   const L: string[] = [];
 
   L.push(`# Redesign brief — ${ctx.site} — segment: ${seg.label}`);
   L.push("");
   L.push(
     "You are optimizing ONE existing web page for ONE visitor segment. You may ONLY " +
-      "rearrange, reveal, or re-tighten content THAT IS ALREADY ON THE PAGE. You must " +
-      "not invent any content, copy, number, or claim. Output a short list of reversible " +
-      `ops (${g.ops.join(", ")}) that each reference an existing section/element by id.`,
+      (mayRetext
+        ? "rearrange, reveal, or re-tighten content THAT IS ALREADY ON THE PAGE. "
+        : "MOVE content THAT IS ALREADY ON THE PAGE — never change a single word of it. ") +
+      "You must not invent any content, copy, number, or claim. Output a short list of " +
+      `reversible ops (${g.ops.join(", ")}) that each reference an existing ` +
+      "section/element by id.",
   );
   L.push("");
 
@@ -270,7 +304,7 @@ export function renderRedesignPrompt(ctx: RedesignContext): string {
   }
   L.push("");
 
-  if (ctx.sourcePages?.length) {
+  if (mayInsert && ctx.sourcePages?.length) {
     L.push("## Quotable content from OTHER pages on the same site (verbatim ONLY)");
     L.push(
       "This page's segment disproportionately navigates onward (see the segment " +
@@ -312,15 +346,22 @@ export function renderRedesignPrompt(ctx: RedesignContext): string {
   L.push("FORBIDDEN:");
   for (const f of g.forbidden) L.push(`  - ${f}`);
   L.push("");
+  // Utdatablocket beskriver ENDAST de ops vokabulären faktiskt släpper igenom
+  // (ägarbeslut 2026-08-15). Förut stod retext-meningen kvar oavsett ops, så
+  // en move-only-prompt lärde ut ett format för set_text/condense som
+  // validateOps omedelbart avvisar — och en LLM som får ett format brukar
+  // använda det.
   L.push(
     '## Output\nA JSON array of ops. Each op: { "op": one of ' +
       `${g.ops.join("/")}, "targetId": existing section/element id, "detail": short, ` +
-      '"why": one line tying it to the segment insight }. For set_text and condense, ' +
-      '"detail" is the EXACT replacement copy — same meaning, fewer words, and it must ' +
-      "not introduce any number, superlative, or promise that is not already on the page " +
-      "(new claims are rejected). If the segment is too thin to justify a change, return " +
-      "an empty array and say why." +
-      (ctx.sourcePages?.length
+      '"why": one line tying it to the segment insight }.' +
+      (mayRetext
+        ? ' For set_text and condense, "detail" is the EXACT replacement copy — same ' +
+          "meaning, fewer words, and it must not introduce any number, superlative, or " +
+          "promise that is not already on the page (new claims are rejected)."
+        : "") +
+      " If the segment is too thin to justify a change, return an empty array and say why." +
+      (mayInsert && ctx.sourcePages?.length
         ? ' For insert_snippet: { "op": "insert_snippet", "targetId": "hero", ' +
           '"sourcePath": the listed page the quote comes from, "detail": one quote from ' +
           'the list above VERBATIM, "why": ... }. At most ONE insert per plan; it is ' +
