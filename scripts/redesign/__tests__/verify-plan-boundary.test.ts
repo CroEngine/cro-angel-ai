@@ -258,23 +258,58 @@ describe("plans.json → verify (riktig process, riktig Chromium)", () => {
           planSource: "katalog/selector",
           reuseOffers: [offer],
         }),
+        // 3) Drift-refreshens form: samma op som rad 1, men raden deklarerar
+        //    vilka ops den BEFINTLIGA varianten bär. planRow är producenten
+        //    för nattens NYA celler och känner inte fältet — refresh-grenen
+        //    skriver sin rad direkt (nightly.ts), precis som här.
+        {
+          ...planRow({
+            ...basePlan,
+            key: "refresh·mobile",
+            ops: [reuseInsert],
+            planSource: "katalog/selector",
+            reuseOffers: [offer],
+          }),
+          existingOps: ["insert_snippet"],
+        },
       ],
       { "/priser": PRISER_HTML },
     );
-    expect(rows).toHaveLength(2);
-    const [rejected, swapped] = rows;
-    // Ordagrant citat, laglig källsida, hjälten som mål — och ändå nej: skälet
-    // är VOKABULÄREN, inte texten. Att det avvisas i valideringen och inte
-    // först i grinden är poängen; grinden mäter aldrig ett drag vi inte får
-    // göra.
+    expect(rows).toHaveLength(3);
+    const [rejected, swapped, refreshed] = rows;
+    // 1) Ordagrant citat, laglig källsida, hjälten som mål — och ändå nej:
+    // skälet är VOKABULÄREN, inte texten. Att det avvisas i VALIDERINGEN och
+    // inte först i grinden är poängen; grinden mäter aldrig ett drag vi inte
+    // får göra. reason bär op-namnet, så loggen inte skyller på citatet.
     expect(rejected.verdict).toBe("rejected_by_validation");
     expect(rejected.reason ?? "").toMatch(/insert_snippet/);
-    expect(rejected.evidence?.reuse).toBeUndefined();
-    // Flytt-reserven i cell 2 är oberörd av beslutet: den lever, men bär inte
-    // erbjudandets block ⇒ fortfarande ingen proveniens.
+    // Rejektionsraden bär överhuvudtaget ingen evidence — så en assertion på
+    // evidence.reuse hade varit tom. Det som faktiskt skiljer är att ingen
+    // VARIANT-bärande rad finns: inga ops, inga serveOps.
+    expect(rejected.ops).toBeUndefined();
+    expect(rejected.serveOps).toBeUndefined();
+    // 2) Flytt-reserven är oberörd av beslutet: den lever, men bär inte
+    // erbjudandets block ⇒ ingen proveniens (det POSITIVA fallet — en rad som
+    // FINNS och ändå saknar stämpeln).
     expect(swapped.verdict).toBe("verified");
     expect(swapped.ops?.map((o) => o.targetId)).toEqual(["sec-4-pricing"]);
     expect(swapped.evidence?.reuse).toBeUndefined();
+    // 3) DRIFT-REFRESHEN av en BEFINTLIG insert-variant (granskningsfynd
+    // 2026-08-15). Exakt samma op som rad 1 — men planen bär existingOps, så
+    // vokabulären vidgas till variantens egen och draget granskas som det
+    // en gång godkändes. Utan den grenen hade nattloopen HÅLLIT varje
+    // serverande insert-variant vid första källtextändring, med skälet "föll
+    // i grindkedjan" fast grindkedjan aldrig kördes.
+    expect(refreshed.verdict).toBe("verified");
+    expect(refreshed.ops?.map((o) => o.op)).toEqual(["insert_snippet"]);
+    // Och HELA kontraktet runt den överlevande insert:en mäts här — det är
+    // den enda ände-till-ände-kollen på att proveniensstämpeln och
+    // drift-beroendet faktiskt skrivs (bägge konsumeras av nattloopen).
+    expect(refreshed.evidence?.reuse).toEqual({
+      variantId: offer.variantId,
+      provedOnPath: "/enterprise",
+    });
+    expect(refreshed.evidence?.dependencies).toEqual([{ path: "/priser", textSnapshot: QUOTE }]);
   }, 240_000);
 
   it("flytt-återbruket: kind 'move' skrivs när typklassen överlever, aldrig när alt-stegen bytte typ", async (ctx) => {
@@ -321,12 +356,10 @@ describe("plans.json → verify (riktig process, riktig Chromium)", () => {
     // nödfall är ett insert_snippet och är därmed avstängt. Faller både
     // huvudvalet och alt-flytten i grinden finns ingen text kvar att rädda
     // cellen med — natten ger ett ärligt gate_fail i stället för en variant.
-    // Kontraktet testet vaktar är oförändrat: INGEN pricing-flytt bärs av
-    // slutvarianten, alltså INGEN proveniens.
+    // gate_fail-raden bär varken ops eller evidence, så assertioner på DEM
+    // hade varit tomma; det som faktiskt mäts är att ingen variant föds.
     expect(swapped.verdict).toBe("gate_fail");
-    expect(
-      swapped.ops?.some((o) => o.op === "move_up" && o.targetId === "sec-4-pricing") ?? false,
-    ).toBe(false);
-    expect(swapped.evidence?.reuse).toBeUndefined();
+    expect(swapped.ops).toBeUndefined();
+    expect(swapped.serveOps).toBeUndefined();
   }, 240_000);
 });

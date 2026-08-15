@@ -11,7 +11,14 @@ import { describe, expect, it } from "vitest";
 import { generateCandidates } from "../../../../adaptive/redesign/candidates";
 import { extractContentModel } from "../../../../adaptive/redesign/extract";
 
-import { assertNoFabrication, gainSweep, runFacit, runRollupFacit, seedSweep } from "../facit";
+import {
+  assertNoFabrication,
+  FACIT_OPS,
+  gainSweep,
+  runFacit,
+  runRollupFacit,
+  seedSweep,
+} from "../facit";
 import { runFloorSweep } from "../floor";
 import { makeWorld } from "../simulator";
 
@@ -68,9 +75,17 @@ describe("reco-eval facit — baslinjen mot dold sanning", () => {
     // sin hemvists term, "body"-raden → exakt 0. Detta är grinden som gör
     // insert-förankringen bevisad i facit:et, inte bara påstådd i en enhetstest.
     expect(REPORT.anchorViolationCount).toBe(0);
-    // Och världarna INNEHÅLLER faktiskt bägge insert-klasserna (annars vore
-    // grinden tom): en sektionsbunden trust-rad + en neutral "body"-rad.
+    // Och grinden är INTE tom. Vakten granskar KATALOGEN, inte världen
+    // (granskningsfynd 2026-08-15: den läste w.content.trustSignals, som är
+    // sann även när katalogen slutat generera en enda insert — precis vad som
+    // hände när vokabulären blev move-only och fuzzen tystnade utan att ett
+    // test föll). Nu räknas de faktiska kandidaterna, per klass.
     const w = makeWorld(42);
+    const cands = generateCandidates(w.content, undefined, undefined, undefined, FACIT_OPS);
+    expect(cands.some((c) => c.kind === "move_up")).toBe(true);
+    expect(cands.some((c) => c.id.startsWith("insh-"))).toBe(true);
+    expect(cands.some((c) => c.id.startsWith("ins-"))).toBe(true);
+    // ...och bägge insert-klasserna är representerade i världen de kommer ur.
     expect(w.content.trustSignals.some((t) => t.section === w.boundSectionId)).toBe(true);
     expect(w.content.trustSignals.some((t) => t.section === "body")).toBe(true);
     expect(w.pageText).toContain(w.boundText);

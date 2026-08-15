@@ -47,7 +47,13 @@ export type CatalogSkip = "template" | "cross-page";
  *  lämna cellen till designern hade bytt katalogens beteende-rankade flyttar
  *  mot en fri designer som får göra exakt samma flyttar utan menyn — sämre val
  *  på samma vokabulär. Flaggan kommer från vokabulären, inte från en egen
- *  inställning, så de två aldrig kan glida isär. */
+ *  inställning, så de två aldrig kan glida isär.
+ *
+ *  I DAG ÄR DEN HÄNGSLEN, inte livrem: detect bygger earned.json:s sourcePaths
+ *  ur kontextens sourcePages, som move-only redan tömmer, så crossPageSources
+ *  är noll även utan flaggan. Den står kvar för att villkoret ska vara SANT
+ *  och inte råka-vara-sant — carve-outens mening är "designern äger citatet",
+ *  och det påståendet ska falla med citatet, inte överleva som en tom gren. */
 export function catalogEligible(args: {
   isTemplate: boolean;
   crossPageSources: number;

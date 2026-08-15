@@ -111,6 +111,16 @@ export function floorMovePick(candidates: Candidate[]): string | null {
   return topMove ? topMove.targetId : null;
 }
 
+/** Facit-fuzzens vokabulär: MOVE + INSERT, oavsett vad nattloopen just nu
+ *  genererar. Fuzzen finns för att bevisa att GENERATORN aldrig fabricerar
+ *  (D2) och att varje kandidat bär exakt sin sektions beteendeterm — och
+ *  insert-grenen är den enda som skriver TEXT till en kundsida, alltså den
+ *  enda där D2 har något att säga. Kördes fuzzen på move-only vokabulär
+ *  (ägarbeslut 2026-08-15) blev bägge grindarna sanna men TOMMA: 600 världar
+ *  utan en enda insert att granska. Vokabulären här är därför medvetet bredare
+ *  än produktionens, precis som validateOps-testerna. */
+export const FACIT_OPS: readonly string[] = ["move_up", "insert_snippet"];
+
 /** Kandidatens förankringssektion: mv → målet; insh → sektionen ur id:t;
  *  ins → signalens hemvist via detail-matchning (simulatorns texter är korta
  *  och ostädade, så detail == signaltext). null ⇒ ingen förankring (term 0). */
@@ -126,9 +136,15 @@ function anchorSection(c: Candidate, w: World): string | null {
  *  beteende-sätet, läs bägge pickarna, räkna orakel-taket och kolla
  *  icke-fabricerings-, samma-katalog- och term-förankrings-invarianterna. */
 export function scoreWorld(w: World, behaviorGain?: number): WorldScore {
-  const candidates = generateCandidates(w.content);
+  const candidates = generateCandidates(w.content, undefined, undefined, undefined, FACIT_OPS);
   const behavior: BehaviorInput = { sectionWeight: w.observed, gain: behaviorGain };
-  const behaviorCandidates = generateCandidates(w.content, behavior);
+  const behaviorCandidates = generateCandidates(
+    w.content,
+    behavior,
+    undefined,
+    undefined,
+    FACIT_OPS,
+  );
   const catalogKey = (cs: Candidate[]) =>
     cs
       .map((c) => `${c.id}::${c.detail}`)
@@ -297,14 +313,23 @@ export function runRollupFacit(seeds: number[]): RollupFacitReport {
     // termer, och jämförelsen mäter fortfarande join-troheten ensam.
     const uniformVisits = Object.fromEntries(proof.map((s) => [s.id, VISITS_PER_SECTION]));
     const directPick = floorMovePick(
-      generateCandidates(w.content, {
-        sectionWeight: w.observed,
-        sectionVisits: uniformVisits,
-      }),
+      generateCandidates(
+        w.content,
+        { sectionWeight: w.observed, sectionVisits: uniformVisits },
+        undefined,
+        undefined,
+        FACIT_OPS,
+      ),
     );
     const pickVia = (weights: Record<string, number>, visits: Record<string, number>) =>
       floorMovePick(
-        generateCandidates(w.content, { sectionWeight: weights, sectionVisits: visits }),
+        generateCandidates(
+          w.content,
+          { sectionWeight: weights, sectionVisits: visits },
+          undefined,
+          undefined,
+          FACIT_OPS,
+        ),
       );
 
     // 1) Ren rubrik-keyad input — upplösningen ska vara förlustfri.
@@ -346,7 +371,10 @@ export function runRollupFacit(seeds: number[]): RollupFacitReport {
     ]);
     if (missOver === null) {
       missNullJustOver++;
-      if (floorMovePick(generateCandidates(w.content)) === w.priorSectionId)
+      if (
+        floorMovePick(generateCandidates(w.content, undefined, undefined, undefined, FACIT_OPS)) ===
+        w.priorSectionId
+      )
         nullFallsBackToBaseline++;
     }
     const missUnder = rollupEngagement(sections, [

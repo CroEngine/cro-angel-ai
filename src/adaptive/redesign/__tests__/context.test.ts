@@ -8,6 +8,7 @@ import {
   renderRedesignPrompt,
   DEFAULT_REDESIGN_GUARDRAILS,
   CROSS_PAGE_ALLOWED,
+  guardrailsForExistingOps,
   INSERT_SNIPPET_ALLOWED,
   withInsertSnippet,
   type RedesignContentModel,
@@ -281,6 +282,66 @@ describe("ägarregeln: endast omflytt", () => {
     expect(DEFAULT_REDESIGN_GUARDRAILS.ops).toEqual(["move_up"]);
     // ...och allowed får aldrig lova mer än ops tillåter.
     expect(DEFAULT_REDESIGN_GUARDRAILS.allowed).not.toContain(INSERT_SNIPPET_ALLOWED);
+  });
+
+  // RE-VALIDERING (granskningsfynd 2026-08-15): ett beslut om vad vi
+  // GENERERAR nytt får aldrig retroaktivt fälla en variant som redan servas.
+  it("guardrailsForExistingOps vidgar till variantens EGNA ops — aldrig bredare", () => {
+    const legacy = guardrailsForExistingOps(["move_up", "insert_snippet"]);
+    expect(legacy.ops).toEqual(["move_up", "insert_snippet"]);
+    expect(legacy.allowed).toContain(INSERT_SNIPPET_ALLOWED);
+    // En ren flytt-variant får INTE textvokabulären på köpet.
+    expect(guardrailsForExistingOps(["move_up"])).toBe(DEFAULT_REDESIGN_GUARDRAILS);
+    expect(guardrailsForExistingOps([])).toBe(DEFAULT_REDESIGN_GUARDRAILS);
+    // Äldre ops utanför dagens vokabulär följer med — de passerade verify en
+    // gång, och refreshen byter text i just den planen.
+    expect(guardrailsForExistingOps(["move_up", "set_text"]).ops).toEqual(["move_up", "set_text"]);
+    // ...men set_text ensamt drar inte in insert-radens löfte i prompten.
+    expect(guardrailsForExistingOps(["set_text"]).allowed).not.toContain(INSERT_SNIPPET_ALLOWED);
+    // Dubbletter i variantens ops blåser inte upp vokabulären.
+    expect(guardrailsForExistingOps(["insert_snippet", "insert_snippet"]).ops).toEqual([
+      "move_up",
+      "insert_snippet",
+    ]);
+    // En op appliceraren inte känner släpps ALDRIG in — vidgningen läser en
+    // DB-rad, och validateOps enda vokabulärkoll är mängdmedlemskap.
+    expect(guardrailsForExistingOps(["move_up", "exfiltrate"]).ops).toEqual(["move_up"]);
+  });
+
+  it("re-validering med variantens vokabulär återfår källsidorna", () => {
+    // Utan vidgningen tömmer move-only sourcePages, och whitelisten
+    // validateOps kräver för ett ordagrant citat försvinner — refreshen hade
+    // fällts på "citatet finns inte" i stället för att läka driften.
+    const ctx = buildRedesignContext({
+      site: "example",
+      goal: { text: null, kind: null, selector: null },
+      page,
+      content,
+      segment: segmentInsightFrom(seg(), {}),
+      guardrails: guardrailsForExistingOps(["insert_snippet"]),
+      sourcePages: [{ path: "/priser", snippets: [{ text: "Från 99 kr/mån.", tag: "p" }] }],
+    });
+    expect(ctx.sourcePages?.map((p) => p.path)).toEqual(["/priser"]);
+    expect(renderRedesignPrompt(ctx)).toContain("Från 99 kr/mån.");
+  });
+
+  it("prompten förbjuder aldrig ett drag som ALLOWED sedan erbjuder", () => {
+    // Öppningsmeningen är den starkaste instruktionen i briefen. Med
+    // move+insert läste den förut "never change a single word of it" medan
+    // ALLOWED bjöd insert_snippet — en lydig modell hade svarat med noll
+    // inserts och fått det att se ut som att draget var trasigt.
+    const prompt = renderRedesignPrompt(
+      buildRedesignContext({
+        site: "example",
+        goal: { text: null, kind: null, selector: null },
+        page,
+        content,
+        segment: segmentInsightFrom(seg(), {}),
+        guardrails: withInsertSnippet(DEFAULT_REDESIGN_GUARDRAILS),
+      }),
+    );
+    expect(prompt).toContain("surface a line the page ALREADY publishes");
+    expect(prompt).not.toContain("never change a single word of it.");
   });
 
   it("withInsertSnippet lägger på BÅDE op:en och dess allowed-rad, en gång", () => {

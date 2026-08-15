@@ -69,6 +69,7 @@ import { addLlmCtas } from "../../src/adaptive/redesign/cta-llm.server";
 import { refineSectionTypesLlm } from "../../src/adaptive/redesign/section-llm.server";
 import {
   buildRedesignContext,
+  guardrailsForExistingOps,
   renderRedesignPrompt,
   segmentInsightFrom,
 } from "../../src/adaptive/redesign/context";
@@ -177,6 +178,9 @@ async function contextFor(
   total: { visits: number; conversions: number },
   observations: string[],
   sourcePaths: string[] = [],
+  /** Drift-refreshen: de ops den BEFINTLIGA varianten redan bär. Vidgar
+   *  vokabulären till exakt dem — se PlanIn.existingOps. */
+  existingOps?: readonly string[],
 ) {
   const page = await pageFor(path);
   if (!page) return null;
@@ -198,6 +202,12 @@ async function contextFor(
     page: pageRef(path),
     content: page.content,
     segment: segmentInsightFrom(segmentSummaryFor(key, total), { observations }),
+    // Re-validering av en befintlig variant döms mot DESS vokabulär, inte mot
+    // dagens (granskningsfynd 2026-08-15) — annars fäller ett beslut om vad vi
+    // GENERERAR nytt retroaktivt något som redan servas.
+    ...(existingOps && existingOps.length > 0
+      ? { guardrails: guardrailsForExistingOps(existingOps) }
+      : {}),
     sourcePages,
   });
 }
@@ -421,6 +431,16 @@ interface PlanIn {
   /** Källsidor för insert_snippet (korssid-lyftet) — samma lista som detect
    *  byggde kontexten med, så valideringen ser samma whitelist. */
   sourcePaths?: string[];
+  /** RE-VALIDERING AV EN BEFINTLIG VARIANT (drift-självläkningens refresh).
+   *  Ops:en som varianten REDAN bär, lästa ur angel_variants.ops — alltså ops
+   *  som en gång passerat verify. Vokabulären vidgas till exakt dem
+   *  (guardrailsForExistingOps), så ett ägarbeslut om vad vi GENERERAR nytt
+   *  aldrig retroaktivt fäller något som redan servas.
+   *
+   *  Sätts BARA av nattloopens refresh-gren (scripts/loop/nightly.ts), som har
+   *  variantraden i handen. En vanlig plan utelämnar fältet och döms av
+   *  standardvokabulären — annars hade varje plan validerat sig själv. */
+  existingOps?: string[];
   /** Mall-planer: exemplarens KONKRETA paths (≥2, topp efter besök). Alla med
    *  fryst kopia grindas; representanten bär mätning + skärmdumpar. */
   templatePages?: string[];
@@ -588,6 +608,7 @@ try {
           plan.total,
           plan.observations,
           plan.sourcePaths ?? [],
+          plan.existingOps,
         ))!;
     // Den RIKTIGA valideringen: verb i vokabulären, targetId måste finnas,
     // claims-vakten på varje omtextning. Kedjan litar aldrig på designern.

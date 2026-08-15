@@ -230,7 +230,24 @@ for (const site of targets) {
     // Blockbiblioteket steg 2: vinnarnas bevisade block skördas HÄR (samma
     // radläsning som drift-svepet) — deras källsidor måste också frysas, för
     // ett frö vars whitelist inte kan byggas om är inget erbjudande.
-    const reuseSeeds = harvestReuseSeeds(variants ?? []);
+    //
+    // VOKABULÄRSGRINDEN (granskningsfynd 2026-08-15): ett textfrö är ett
+    // insert_snippet. Med move-only vokabulär kan det aldrig bli en kandidat,
+    // och skörden hade då kostat en riktig webbläsarfrysning per frö och
+    // källsida varje natt — utanför 20-sidorstaket — för ingenting. Värre:
+    // erbjudandena hade fortsatt räknas mot mättnadstaken (natt-erbjudande-
+    // raderna nedanför), så block som ALDRIG stod i en meny hade blockerat
+    // sig själva från framtida erbjudanden. Flytt-fröna är oberörda; de bär
+    // ingen text och behöver ingen källsida.
+    const textReuseEnabled = DEFAULT_REDESIGN_GUARDRAILS.ops.includes("insert_snippet");
+    const reuseSeeds = textReuseEnabled ? harvestReuseSeeds(variants ?? []) : [];
+    if (!textReuseEnabled) {
+      const dormant = harvestReuseSeeds(variants ?? []).length;
+      if (dormant > 0)
+        console.log(
+          `[loop] ${site.slug}: ${dormant} textåterbruksfrö vilar — vokabulären är move-only (ägarbeslut 2026-08-15), inget insert_snippet kan genereras`,
+        );
+    }
     // Transferformen steg 4: flytt-vinnarnas typklasser. Till skillnad från
     // textfröna behöver de INGEN källsida fryst — fröet bär bara typklassen,
     // och målsidans egen katalog är hela viabilitetskollen.
@@ -516,6 +533,14 @@ for (const site of targets) {
               observations: ev.brief?.observations ?? [],
               sourcePaths: [action.path],
               ops: refreshedOps,
+              // Vokabulären varianten FÖDDES med (granskningsfynd
+              // 2026-08-15). Refreshen byter EN textrad i en redan verifierad
+              // plan — den ska granskas mot samma ops som en gång godkändes,
+              // inte mot dagens generationsvokabulär. Utan detta avvisar
+              // validateOps varje insert_snippet efter ägarbeslutet "endast
+              // flytta sektioner", och grenen nedanför håller varianten med
+              // skälet "föll i grindkedjan" trots att grindkedjan aldrig kördes.
+              existingOps: [...new Set(oldOps.map((o) => o.op))],
             },
           ]),
         );

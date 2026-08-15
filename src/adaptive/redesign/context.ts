@@ -60,11 +60,13 @@ export const DEFAULT_REDESIGN_GUARDRAILS: RedesignGuardrails = {
     "Move or rewrite the page's largest-paint (LCP) element — usually the hero image or hero headline. The serve-time performance guard blocks such an op for every real visitor, so the verifier rejects the whole variant.",
   ],
   // ENDAST FLYTTAR (ägarbeslut 2026-08-15: "endast flytta sektioner, inte
-  // ändra text"). Textdragen är avstängda vid vokabulären, inte borttagna ur
-  // appliceringen: befintliga varianter med insert/set_text fortsätter serva
-  // oförändrat, men inget NYTT textdrag kan längre genereras eller
-  // valideras. Att släppa in dem igen är den här raden plus
-  // DEFAULT_CANDIDATE_OPS i candidates.ts.
+  // ändra text"). RADEN NEDAN ÄR VOKABULÄRENS ENDA DEFINITION — katalogen
+  // (DEFAULT_CANDIDATE_OPS i candidates.ts) läser den här, den fria designern
+  // läser den här, och designerns system-prompt (scripts/loop/designer.ts)
+  // härleds ur den. Textdragen är avstängda vid GENERERINGEN, inte borttagna
+  // ur appliceringen: befintliga varianter med insert/set_text fortsätter
+  // serva oförändrat, och re-validering av en sådan variant sker mot dess
+  // EGEN vokabulär (guardrailsForExistingOps).
   ops: ["move_up"],
 };
 
@@ -73,13 +75,58 @@ export const DEFAULT_REDESIGN_GUARDRAILS: RedesignGuardrails = {
  *  citaten) lever kvar och nås via den här. Sedan ägarbeslutet 2026-08-15 är
  *  den inte längre nattloopens standard; den används av testerna och av den
  *  som medvetet vill ha tillbaka textdraget. Att göra den till standard igen
- *  är EN rad här plus DEFAULT_CANDIDATE_OPS i candidates.ts. */
+ *  är EN rad ovanför (DEFAULT_REDESIGN_GUARDRAILS.ops). */
 export function withInsertSnippet(base: RedesignGuardrails): RedesignGuardrails {
   if (base.ops.includes("insert_snippet")) return base;
   return {
     ...base,
     allowed: [...base.allowed, INSERT_SNIPPET_ALLOWED],
     ops: [...base.ops, "insert_snippet"],
+  };
+}
+
+/** De ops appliceraren (public/adaptive.js GENERATED APPLIER) kan köra. Detta
+ *  är TAKET för re-validering av en befintlig variant — aldrig generatorns
+ *  vokabulär, som är ett ägarbeslut och kan vara smalare. */
+const APPLIABLE_OPS: readonly string[] = [
+  "move_up",
+  "set_text",
+  "condense",
+  "reveal",
+  "insert_snippet",
+];
+
+/** Vokabulären för RE-VALIDERING av en variant som REDAN finns.
+ *
+ *  Granskningsfynd 2026-08-15: ett ägarbeslut om vad vi GENERERAR nytt får
+ *  aldrig retroaktivt fälla något som redan servas. Drift-självläkningen byter
+ *  EN textrad i en godkänd plan och kör om verify — med move-only vokabulär
+ *  hade validateOps avvisat variantens egen insert_snippet, och nattloopen
+ *  hade HÅLLIT den med skälet "föll i grindkedjan" fast grindkedjan aldrig
+ *  kördes. Här vidgas vokabulären till exakt de ops varianten föddes med:
+ *  aldrig bredare, och bara på ops som en gång passerat verify.
+ *
+ *  Detta är INTE en väg att generera nytt: anroparen måste ha en befintlig
+ *  variantrad att läsa ops ur. Nya planer går genom standardvokabulären. */
+export function guardrailsForExistingOps(
+  existingOps: readonly string[],
+  base: RedesignGuardrails = DEFAULT_REDESIGN_GUARDRAILS,
+): RedesignGuardrails {
+  // Bara ops appliceraren FAKTISKT kan köra (RedesignOp["op"]). Vidgningen
+  // läser en DB-rad, och validateOps enda vokabulärkoll är mängdmedlemskap —
+  // en trasig rad hade annars kunnat smuggla in en okänd op-sträng som
+  // valideringen sedan släppte igenom. Listan är appliceraren, inte
+  // generatorn: den ska rymma allt som en gång servats.
+  const extra = [...new Set(existingOps)].filter(
+    (o) => APPLIABLE_OPS.includes(o) && !base.ops.includes(o),
+  );
+  if (extra.length === 0) return base;
+  return {
+    ...base,
+    allowed: extra.includes("insert_snippet")
+      ? [...base.allowed, INSERT_SNIPPET_ALLOWED]
+      : base.allowed,
+    ops: [...base.ops, ...extra],
   };
 }
 
@@ -222,8 +269,13 @@ export function buildRedesignContext(inputs: {
   const sourcePages = mayInsert
     ? (inputs.sourcePages ?? []).filter((p) => p.snippets.length > 0)
     : [];
+  // Idempotent (granskningsfynd 2026-08-15): en anropare som skickar tillbaka
+  // en tidigare kontexts guardrails — vilket en re-verifiering naturligt gör —
+  // ska inte få raden dubblerad i ALLOWED-blocket varje varv.
   const guardrails =
-    sourcePages.length === 0 ? base : { ...base, allowed: [...base.allowed, CROSS_PAGE_ALLOWED] };
+    sourcePages.length === 0 || base.allowed.includes(CROSS_PAGE_ALLOWED)
+      ? base
+      : { ...base, allowed: [...base.allowed, CROSS_PAGE_ALLOWED] };
   return {
     site: inputs.site,
     goal: inputs.goal,
@@ -251,11 +303,18 @@ export function renderRedesignPrompt(ctx: RedesignContext): string {
 
   L.push(`# Redesign brief — ${ctx.site} — segment: ${seg.label}`);
   L.push("");
+  // Öppningen måste beskriva HELA den tillåtna vokabulären — varken mer eller
+  // mindre (granskningsfynd 2026-08-15: en move+insert-vokabulär fick förut
+  // meningen "never change a single word", som en lydig modell läser som ett
+  // förbud mot det insert-drag ALLOWED sedan erbjuder).
+  const verbs = mayRetext
+    ? "rearrange, reveal, or re-tighten content THAT IS ALREADY ON THE PAGE"
+    : mayInsert
+      ? "MOVE existing sections, or surface a line the page ALREADY publishes — " +
+        "verbatim, never a single word rewritten"
+      : "MOVE content THAT IS ALREADY ON THE PAGE — never change a single word of it";
   L.push(
-    "You are optimizing ONE existing web page for ONE visitor segment. You may ONLY " +
-      (mayRetext
-        ? "rearrange, reveal, or re-tighten content THAT IS ALREADY ON THE PAGE. "
-        : "MOVE content THAT IS ALREADY ON THE PAGE — never change a single word of it. ") +
+    `You are optimizing ONE existing web page for ONE visitor segment. You may ONLY ${verbs}. ` +
       "You must not invent any content, copy, number, or claim. Output a short list of " +
       `reversible ops (${g.ops.join(", ")}) that each reference an existing ` +
       "section/element by id.",
