@@ -13,7 +13,7 @@
 // filtrerar bara bort det som ändå aldrig hade kunnat appliceras.
 
 import { defuseMarkers } from "./defuse";
-import type { RedesignContentModel } from "./context";
+import { DEFAULT_REDESIGN_GUARDRAILS, type RedesignContentModel } from "./context";
 import type { RedesignOp } from "./generate";
 import type { MoveSeed, ReuseSeed } from "./reuse";
 
@@ -116,6 +116,13 @@ export const BEHAVIOR_SHRINK_N0 = 50;
  *  test körts — poängen är en hypotes-rankning, aldrig ett facit. */
 export const REUSE_PROVEN_SCORE = 5;
 
+/** Dragformerna katalogen genererar när anroparen inte säger annat. HÄRLEDD,
+ *  inte kopierad: vokabulären har EN definition (DEFAULT_REDESIGN_GUARDRAILS
+ *  .ops i context.ts) och katalogen läser den. En spegelkonstant hade kunnat
+ *  redigeras ensidigt — exakt den glidning mellan katalog och validering som
+ *  ägarbeslutet 2026-08-15 skulle ta bort. */
+export const DEFAULT_CANDIDATE_OPS: readonly string[] = DEFAULT_REDESIGN_GUARDRAILS.ops;
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 /** Beteende-termen för en kandidat förankrad i sektion `sectionId`. 0 när
@@ -178,9 +185,18 @@ export function generateCandidates(
   behavior?: BehaviorInput,
   reuse?: ReuseSeed[],
   moveReuse?: MoveSeed[],
+  // VOKABULÄREN ÄR EN SANNING (ägarbeslut 2026-08-15: "endast flytta
+  // sektioner, inte ändra text"). Katalogen ignorerade tidigare
+  // guardrails.ops helt och genererade alltid bägge dragformerna — den fria
+  // designern grindades på listan men katalogen, som är HUVUDVÄGEN sedan
+  // steg 11, gjorde inte det. Nu läser bägge samma lista, och att släppa in
+  // text igen är en ändring på ETT ställe
+  // (DEFAULT_REDESIGN_GUARDRAILS.ops i context.ts).
+  allowedOps: readonly string[] = DEFAULT_CANDIDATE_OPS,
 ): Candidate[] {
   const out: Candidate[] = [];
   const sectionIds = new Set(content.sections.map((s) => s.id));
+  const mayInsert = allowedOps.includes("insert_snippet");
 
   // Flytt-kandidater: bevisbärande sektioner under folden. Hjälten är aldrig
   // ett flyttmål, och sektioner ovanför folden har inget att vinna.
@@ -230,81 +246,90 @@ export function generateCandidates(
     };
   }
 
-  // Insert-kandidater: ordagranna trust-rader lyfta till under hjälten.
-  // Dedup på normaliserad text — samma rad ska inte stå två gånger i menyn.
-  const seen = new Set<string>();
-  content.trustSignals.forEach((t, i) => {
-    const text = tidySignalText(t.text).slice(0, MAX_DETAIL_LEN);
-    const key = text.replace(/\s+/g, " ").toLowerCase();
-    const weight = SIGNAL_TYPE_WEIGHT[t.type] ?? 1;
-    if (text.length < MIN_SIGNAL_LEN || seen.has(key)) return;
-    seen.add(key);
-    out.push({
-      id: `ins-${t.type}-${i}`,
-      kind: "insert_snippet",
-      targetId: "hero",
-      detail: text,
-      // Redan-ovanför-folden-signaler är svagare kandidater (redan synliga),
-      // men inte noll: en rad DIREKT under rubriken slår en rad i sidfoten.
-      // Beteende-förankring via signalens KÄLLSEKTION när extraktionen vet den
-      // ("body"/okänd ⇒ neutral term 0 — priorn ensam, precis som utan säte).
-      score:
-        weight -
-        (t.aboveFold ? 1 : 0) +
-        (sectionIds.has(t.section) ? behaviorTerm(behavior, t.section) : 0),
-      basis: `${t.type}${t.aboveFold ? " (already above the fold)" : ""}: "${text}"`,
+  // Hela blocket nedanför (trust-signaler, rubrik-reserven, textåterbruket) är
+  // INSERT-kandidater — TEXTDRAG. Vokabulären avgör om de ens genereras
+  // (ägarbeslut 2026-08-15): med move-only hoppas det över och menyn innehåller
+  // enbart flyttar. Villkoret omsluter blocket i stället för att returnera
+  // tidigt, så det finns EXAKT EN sorteringsjämförare i funktionen — en
+  // andra kopia hade kunnat drifta och låta en flytt-meny ordna sig annorlunda
+  // än flytt-delen av en bred meny (och därmed ändra golvets val).
+  if (mayInsert) {
+    // Insert-kandidater: ordagranna trust-rader lyfta till under hjälten.
+    // Dedup på normaliserad text — samma rad ska inte stå två gånger i menyn.
+    const seen = new Set<string>();
+    content.trustSignals.forEach((t, i) => {
+      const text = tidySignalText(t.text).slice(0, MAX_DETAIL_LEN);
+      const key = text.replace(/\s+/g, " ").toLowerCase();
+      const weight = SIGNAL_TYPE_WEIGHT[t.type] ?? 1;
+      if (text.length < MIN_SIGNAL_LEN || seen.has(key)) return;
+      seen.add(key);
+      out.push({
+        id: `ins-${t.type}-${i}`,
+        kind: "insert_snippet",
+        targetId: "hero",
+        detail: text,
+        // Redan-ovanför-folden-signaler är svagare kandidater (redan synliga),
+        // men inte noll: en rad DIREKT under rubriken slår en rad i sidfoten.
+        // Beteende-förankring via signalens KÄLLSEKTION när extraktionen vet den
+        // ("body"/okänd ⇒ neutral term 0 — priorn ensam, precis som utan säte).
+        score:
+          weight -
+          (t.aboveFold ? 1 : 0) +
+          (sectionIds.has(t.section) ? behaviorTerm(behavior, t.section) : 0),
+        basis: `${t.type}${t.aboveFold ? " (already above the fold)" : ""}: "${text}"`,
+      });
     });
-  });
 
-  // Bevissektionernas RUBRIKER som insert-reserv (dagens fallback-texter) —
-  // lägre poäng än signalerna: en rubrik är en pekare, en signal är beviset.
-  for (const s of content.sections) {
-    if (s.type === "hero" || !s.heading) continue;
-    const typeWeight = PROOF_TYPE_WEIGHT[s.type] ?? 0;
-    if (typeWeight <= 0 && !s.containsTrustSignals) continue;
-    const text = s.heading.trim().slice(0, MAX_DETAIL_LEN);
-    const key = text.replace(/\s+/g, " ").toLowerCase();
-    if (text.length < MIN_SIGNAL_LEN || seen.has(key)) continue;
-    seen.add(key);
-    out.push({
-      id: `insh-${s.id}`,
-      kind: "insert_snippet",
-      targetId: "hero",
-      detail: text,
-      // Rubrik-reserven förankras till SIN sektions engagemang (kritikerns
-      // fix): är sektionen sidans hetaste ska även dess en-rads-lyft kunna slå
-      // en kallare sektions flytt — annars är insert-förmågan beteende-blind.
-      score: (typeWeight || 1.5) * 0.6 + behaviorTerm(behavior, s.id),
-      basis: `heading of the ${s.type} section: "${text}"`,
+    // Bevissektionernas RUBRIKER som insert-reserv (dagens fallback-texter) —
+    // lägre poäng än signalerna: en rubrik är en pekare, en signal är beviset.
+    for (const s of content.sections) {
+      if (s.type === "hero" || !s.heading) continue;
+      const typeWeight = PROOF_TYPE_WEIGHT[s.type] ?? 0;
+      if (typeWeight <= 0 && !s.containsTrustSignals) continue;
+      const text = s.heading.trim().slice(0, MAX_DETAIL_LEN);
+      const key = text.replace(/\s+/g, " ").toLowerCase();
+      if (text.length < MIN_SIGNAL_LEN || seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        id: `insh-${s.id}`,
+        kind: "insert_snippet",
+        targetId: "hero",
+        detail: text,
+        // Rubrik-reserven förankras till SIN sektions engagemang (kritikerns
+        // fix): är sektionen sidans hetaste ska även dess en-rads-lyft kunna slå
+        // en kallare sektions flytt — annars är insert-förmågan beteende-blind.
+        score: (typeWeight || 1.5) * 0.6 + behaviorTerm(behavior, s.id),
+        basis: `heading of the ${s.type} section: "${text}"`,
+      });
+    }
+
+    // Återbrukskandidater (blockbiblioteket steg 2): vinnarnas bevisade block,
+    // erbjudna av nattloopen efter alla frö-vakter (mättnad, dubbelvisning,
+    // viabilitet). detail är ALDRIG trunkerad — validateOps kräver exakt
+    // likhet mot källsidans whitelist, och en klippt text hade fällts där.
+    // Dedup mot samma-sida-kandidaterna via samma seen-mängd: bär sidan redan
+    // texten som signal/rubrik är fröet överflödigt (uppströms-vakterna ska ha
+    // sållat det, men menyn får aldrig visa samma text två gånger).
+    (reuse ?? []).forEach((r, i) => {
+      const key = r.text.replace(/\s+/g, " ").toLowerCase().trim();
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      out.push({
+        id: `rins-${i}-${r.variantId.slice(0, 8)}`,
+        kind: "insert_snippet",
+        targetId: "hero",
+        detail: r.text,
+        sourcePath: r.sourcePath,
+        proven: {
+          provedOnPath: r.provedOnPath,
+          variantId: r.variantId,
+          ...(r.alsoWonOn && r.alsoWonOn.length > 0 ? { alsoProvedOn: r.alsoWonOn } : {}),
+        },
+        score: REUSE_PROVEN_SCORE,
+        basis: `proven block from ${r.provedOnPath}: "${r.text.slice(0, 60)}"`,
+      });
     });
   }
-
-  // Återbrukskandidater (blockbiblioteket steg 2): vinnarnas bevisade block,
-  // erbjudna av nattloopen efter alla frö-vakter (mättnad, dubbelvisning,
-  // viabilitet). detail är ALDRIG trunkerad — validateOps kräver exakt
-  // likhet mot källsidans whitelist, och en klippt text hade fällts där.
-  // Dedup mot samma-sida-kandidaterna via samma seen-mängd: bär sidan redan
-  // texten som signal/rubrik är fröet överflödigt (uppströms-vakterna ska ha
-  // sållat det, men menyn får aldrig visa samma text två gånger).
-  (reuse ?? []).forEach((r, i) => {
-    const key = r.text.replace(/\s+/g, " ").toLowerCase().trim();
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    out.push({
-      id: `rins-${i}-${r.variantId.slice(0, 8)}`,
-      kind: "insert_snippet",
-      targetId: "hero",
-      detail: r.text,
-      sourcePath: r.sourcePath,
-      proven: {
-        provedOnPath: r.provedOnPath,
-        variantId: r.variantId,
-        ...(r.alsoWonOn && r.alsoWonOn.length > 0 ? { alsoProvedOn: r.alsoWonOn } : {}),
-      },
-      score: REUSE_PROVEN_SCORE,
-      basis: `proven block from ${r.provedOnPath}: "${r.text.slice(0, 60)}"`,
-    });
-  });
 
   return out.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 }

@@ -6,11 +6,18 @@ planerare + syntes + adversariell kritiker) och härdad mot kritikerns fynd.
 
 ## Låsta ägarbeslut (får aldrig brytas)
 
-- **D1 — INGEN OMSKRIVNING.** Enda tillåtna operationerna: flytta/omordna en
-  befintlig sektion (`move_up`), och lyfta EN rad sidan redan publicerar ordagrant
-  under heron (`insert_snippet`). Att skriva om copy är förbjudet ("annars
+- **D1 — INGEN OMSKRIVNING.** Enda tillåtna operationen: flytta/omordna en
+  befintlig sektion (`move_up`). Att skriva om copy är förbjudet ("annars
   riskerar vi att förstöra"). Detta är en **säkerhetsgaranti att bevara**, inte en
   svaghet att fixa.
+  - *Skärpt 2026-08-15* ("jag vill också att vi endast fokuserar på att flytta
+    sektioner, inte ändrar text"): `insert_snippet` — att lyfta EN rad sidan redan
+    publicerar ordagrant under heron — är inte längre i vokabulären. Draget är
+    AVSTÄNGT vid genereringen, inte borttaget: appliceraren behåller stödet, redan
+    godkända varianter servas oförändrat, och maskineriet nås via
+    `withInsertSnippet()` i `context.ts`. Vokabulären bor på ETT ställe
+    (`DEFAULT_REDESIGN_GUARDRAILS.ops` + `DEFAULT_CANDIDATE_OPS`) och styr numera
+    både katalogen och den fria designern.
 - **D2 — HITTA ALDRIG PÅ.** Varje serverat element är en ordagrann delsträng av
   sidan.
 - **D3 — RANKA PÅ RIKTIG BESÖKSDATA.** Rekommendationen ska grundas i vad de

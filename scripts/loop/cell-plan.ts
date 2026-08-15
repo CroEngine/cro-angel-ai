@@ -39,13 +39,33 @@ export type CatalogSkip = "template" | "cross-page";
  *  - cross-page: celler som förtjänats på pris-flödessignalen kan bara
  *    betjänas av den fria designern — katalogen genererar enbart drag på den
  *    egna sidan och kan aldrig citera en annan sida (och utan citatet finns
- *    inga evidence.dependencies, så drift-självläkningen tystnar också). */
-export function catalogEligible(args: { isTemplate: boolean; crossPageSources: number }): {
+ *    inga evidence.dependencies, så drift-självläkningen tystnar också).
+ *
+ *  KORSSID-CARVE-OUTEN GÄLLER BARA NÄR CITATET ÄR LAGLIGT (ägarbeslut
+ *  2026-08-15, "endast flytta sektioner"): med move-only vokabulär kan
+ *  designern inte producera det insert_snippet carve-outen finns för. Att ändå
+ *  lämna cellen till designern hade bytt katalogens beteende-rankade flyttar
+ *  mot en fri designer som får göra exakt samma flyttar utan menyn — sämre val
+ *  på samma vokabulär. Flaggan kommer från vokabulären, inte från en egen
+ *  inställning, så de två aldrig kan glida isär.
+ *
+ *  I DAG ÄR DEN HÄNGSLEN, inte livrem: detect bygger earned.json:s sourcePaths
+ *  ur kontextens sourcePages, som move-only redan tömmer, så crossPageSources
+ *  är noll även utan flaggan. Den står kvar för att villkoret ska vara SANT
+ *  och inte råka-vara-sant — carve-outens mening är "designern äger citatet",
+ *  och det påståendet ska falla med citatet, inte överleva som en tom gren. */
+export function catalogEligible(args: {
+  isTemplate: boolean;
+  crossPageSources: number;
+  /** Tillåter vokabulären insert_snippet? Utelämnad ⇒ ja (bakåtkompatibel). */
+  mayInsert?: boolean;
+}): {
   eligible: boolean;
   skip: CatalogSkip | null;
 } {
   if (args.isTemplate) return { eligible: false, skip: "template" };
-  if (args.crossPageSources > 0) return { eligible: false, skip: "cross-page" };
+  if (args.crossPageSources > 0 && (args.mayInsert ?? true))
+    return { eligible: false, skip: "cross-page" };
   return { eligible: true, skip: null };
 }
 

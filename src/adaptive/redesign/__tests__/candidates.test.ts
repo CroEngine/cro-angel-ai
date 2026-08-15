@@ -5,13 +5,28 @@ import { describe, it, expect } from "vitest";
 import {
   BEHAVIOR_GAIN,
   BEHAVIOR_SHRINK_N0,
+  DEFAULT_CANDIDATE_OPS,
   REUSE_PROVEN_SCORE,
   generateCandidates,
   candidateToOp,
   floorWhy,
   tidySignalText,
 } from "../candidates";
+import { DEFAULT_REDESIGN_GUARDRAILS, withInsertSnippet } from "../context";
 import type { RedesignContentModel } from "../context";
+
+// Vokabulären är MOVE-ONLY sedan ägarbeslutet 2026-08-15 ("endast flytta
+// sektioner, inte ändra text"). Insert-maskineriet är inte borttaget — det
+// begärs EXPLICIT, precis som en anropare som medvetet vill ha tillbaka
+// textdraget måste göra. Testerna nedanför som handlar om insert-kandidater
+// går därför genom gcIns; allt annat kör standardvokabulären.
+const WITH_INSERT: readonly string[] = ["move_up", "insert_snippet"];
+const gcIns = (
+  content: RedesignContentModel,
+  behavior?: Parameters<typeof generateCandidates>[1],
+  reuse?: Parameters<typeof generateCandidates>[2],
+  moveReuse?: Parameters<typeof generateCandidates>[3],
+) => generateCandidates(content, behavior, reuse, moveReuse, WITH_INSERT);
 
 const model = (over: Partial<RedesignContentModel> = {}): RedesignContentModel => ({
   sections: [
@@ -73,7 +88,7 @@ describe("generateCandidates", () => {
   });
 
   it("testimonials med proof rankas över logos; trusted_by över compliance", () => {
-    const c = generateCandidates(model());
+    const c = gcIns(model());
     const idx = (id: string) => c.findIndex((x) => x.id === id);
     expect(idx("mv-sec-3-testimonials")).toBeLessThan(idx("mv-sec-4-logos"));
     const tb = c.find((x) => x.id.startsWith("ins-trusted_by"))!;
@@ -82,7 +97,7 @@ describe("generateCandidates", () => {
   });
 
   it("dedupar identiska texter och filtrerar för korta signaler", () => {
-    const c = generateCandidates(model());
+    const c = gcIns(model());
     const trustedBy = c.filter((x) => x.detail === "Trusted by the world's best");
     expect(trustedBy).toHaveLength(1);
     expect(c.some((x) => x.detail === "Garanti")).toBe(false);
@@ -101,7 +116,7 @@ describe("generateCandidates", () => {
   });
 
   it("candidateToOp översätter till verify-språket med väljarens why", () => {
-    const c = generateCandidates(model());
+    const c = gcIns(model());
     const move = c.find((x) => x.kind === "move_up")!;
     const ins = c.find((x) => x.kind === "insert_snippet")!;
     expect(candidateToOp(move, "därför")).toEqual({
@@ -163,7 +178,7 @@ describe("generateCandidates", () => {
   it("insert-reserven förankras till SIN sektions engagemang (kritikerns fix)", () => {
     // Het logos-sektion ⇒ även dess rubrik-insert (insh-sec-4-logos) ska bära
     // beteende-termen och slå den kalla testimonials-rubrikens insert.
-    const c = generateCandidates(model(), { sectionWeight: { "sec-4-logos": 0.8 } });
+    const c = gcIns(model(), { sectionWeight: { "sec-4-logos": 0.8 } });
     const hot = c.find((x) => x.id === "insh-sec-4-logos")!;
     const cold = c.find((x) => x.id === "insh-sec-3-testimonials")!;
     expect(hot.score).toBeGreaterThan(cold.score);
@@ -172,13 +187,13 @@ describe("generateCandidates", () => {
 
   it("trust-signal-inserts: körsektionens vikt räknas bara när sektionen finns", () => {
     // section:"body" är ingen riktig sektion ⇒ neutral term (som idag)...
-    const plainTb = generateCandidates(model()).find((x) => x.id.startsWith("ins-trusted_by"))!;
-    const stillTb = generateCandidates(model(), {
+    const plainTb = gcIns(model()).find((x) => x.id.startsWith("ins-trusted_by"))!;
+    const stillTb = gcIns(model(), {
       sectionWeight: { "sec-4-logos": 0.8 },
     }).find((x) => x.id.startsWith("ins-trusted_by"))!;
     expect(stillTb.score).toBe(plainTb.score);
     // ...men en signal extraktionen KAN sektionsbinda får sin sektions term.
-    const bound = generateCandidates(
+    const bound = gcIns(
       model({
         trustSignals: [
           {
@@ -274,7 +289,7 @@ describe("generateCandidates", () => {
       sourcePath: "/priser",
       text: "Från 299 kr per månad, avsluta utan bindningstid när du vill",
     };
-    const c = generateCandidates(model(), undefined, [seed]);
+    const c = gcIns(model(), undefined, [seed]);
     const r = c.find((x) => x.id.startsWith("rins-"))!;
     expect(r.kind).toBe("insert_snippet");
     expect(r.targetId).toBe("hero");
@@ -289,7 +304,7 @@ describe("generateCandidates", () => {
     // gränspinnarna överlevde både 4,2 och 6,5 som poäng): en testimonials-
     // sektion med trust på position 8 når exakt 3+1+0,4 = 4,4 — och fröet
     // står strax över.
-    const maxPrior = generateCandidates(
+    const maxPrior = gcIns(
       model({
         sections: [
           ...model().sections,
@@ -313,7 +328,7 @@ describe("generateCandidates", () => {
     // ...men under en beteende-ledd flytt STRAX över gränsen: w=0,16 vid
     // golv-n (30) ger 2,5+0,2+40·(30/80)·0,16 = 5,1 > 5 — målsidans egna
     // besökare vinner med minsta marginal, inte bara med bred.
-    const behaved = generateCandidates(
+    const behaved = gcIns(
       model(),
       { sectionWeight: { "sec-4-logos": 0.16 }, sectionVisits: { "sec-4-logos": 30 } },
       [seed],
@@ -327,12 +342,12 @@ describe("generateCandidates", () => {
   });
 
   it("återbruk: utan frön byte-identisk katalog; dubblett-text mot sidans egna dedupas", () => {
-    expect(generateCandidates(model(), undefined, [])).toEqual(generateCandidates(model()));
+    expect(gcIns(model(), undefined, [])).toEqual(gcIns(model()));
     // Ett frö vars text redan är en signal på sidan får ALDRIG stå två
     // gånger i menyn (uppströms-vakterna ska ha sållat det — bältet hängslen).
-    const plain = generateCandidates(model());
+    const plain = gcIns(model());
     const existingInsert = plain.find((x) => x.kind === "insert_snippet")!;
-    const dup = generateCandidates(model(), undefined, [
+    const dup = gcIns(model(), undefined, [
       {
         variantId: "22222222-bbbb-cccc-dddd-000000000002",
         provedOnPath: "/x",
@@ -344,7 +359,7 @@ describe("generateCandidates", () => {
   });
 
   it("candidateToOp bär sourcePath för återbruk — validateOps exakta gren kräver den", () => {
-    const c = generateCandidates(model(), undefined, [
+    const c = gcIns(model(), undefined, [
       {
         variantId: "33333333-cccc-dddd-eeee-000000000003",
         provedOnPath: "/priser",
@@ -361,7 +376,7 @@ describe("generateCandidates", () => {
       why: "why",
     });
     // Samma-sida-inserts bär ALDRIG sourcePath (substräng-grenen gäller dem).
-    const plainIns = generateCandidates(model()).find((x) => x.kind === "insert_snippet")!;
+    const plainIns = gcIns(model()).find((x) => x.kind === "insert_snippet")!;
     expect("sourcePath" in candidateToOp(plainIns, "w")).toBe(false);
   });
 
@@ -481,7 +496,7 @@ describe("generateCandidates", () => {
   });
 
   it("menyns insert-detail bär den städade texten (inte SSR-skarven)", () => {
-    const cands = generateCandidates(
+    const cands = gcIns(
       model({
         trustSignals: [
           {
@@ -495,5 +510,58 @@ describe("generateCandidates", () => {
     );
     const ins = cands.find((c) => c.kind === "insert_snippet")!;
     expect(ins.detail).toBe("Trusted by leading startups and companies in Sweden");
+  });
+});
+
+// ── Vokabulären (ägarbeslut 2026-08-15: "endast flytta sektioner") ──────────
+// Katalogen ignorerade tidigare guardrails.ops helt: den fria designern
+// grindades på listan, men KATALOGEN — huvudvägen sedan steg 11 — genererade
+// alltid bägge dragformerna. Testerna här låser att listan nu styr bägge, och
+// att en breddning är ett medvetet ägarbeslut och inte en refaktorering.
+describe("vokabulären styr katalogen", () => {
+  it("standardvokabulären är move-only ⇒ menyn innehåller BARA flyttar", () => {
+    expect(DEFAULT_CANDIDATE_OPS).toEqual(["move_up"]);
+    const c = generateCandidates(model());
+    expect(c.length).toBeGreaterThan(0); // fixturen HAR insert-material
+    expect(c.every((x) => x.kind === "move_up")).toBe(true);
+  });
+
+  it("katalogen och den fria designern läser SAMMA lista", () => {
+    // Glider de isär genererar katalogen drag som validateOps sedan slänger
+    // (eller tvärtom: designern erbjuds ett drag katalogen aldrig rankar).
+    expect([...DEFAULT_CANDIDATE_OPS]).toEqual(DEFAULT_REDESIGN_GUARDRAILS.ops);
+  });
+
+  it("insert-maskineriet är AVSTÄNGT, inte borttaget — vokabulären släpper på det", () => {
+    const wide = withInsertSnippet(DEFAULT_REDESIGN_GUARDRAILS);
+    const c = generateCandidates(model(), undefined, undefined, undefined, wide.ops);
+    expect(c.some((x) => x.kind === "insert_snippet")).toBe(true);
+    // ...och flyttarna är BYTE-IDENTISKA med move-only-menyn: att slå på
+    // texten LÄGGER TILL kandidater, den rör aldrig de befintliga.
+    expect(c.filter((x) => x.kind === "move_up")).toEqual(generateCandidates(model()));
+  });
+
+  it("TEXT-återbruket tystnar med move-only; FLYTT-återbruket lever kvar", () => {
+    // Priset ägaren betalar, utskrivet: ett bevisat textblock erbjuds inte
+    // längre (blockbibliotekets steg 2–3), medan flytt-transferformen från
+    // steg 4 annoterar precis som förut.
+    const textSeed = {
+      variantId: "66666666-ffff-0000-1111-000000000006",
+      provedOnPath: "/priser",
+      sourcePath: "/priser",
+      text: "En bevisad rad som inte finns i fixturens modell",
+    };
+    expect(generateCandidates(model(), undefined, [textSeed])).toEqual(generateCandidates(model()));
+    const moved = generateCandidates(model(), undefined, undefined, [
+      {
+        variantId: "77777777-0000-1111-2222-000000000007",
+        provedOnPath: "/x",
+        sectionType: "logos",
+      },
+    ]);
+    expect(moved.find((x) => x.id === "mv-sec-4-logos")!.proven).toEqual({
+      provedOnPath: "/x",
+      variantId: "77777777-0000-1111-2222-000000000007",
+    });
   });
 });

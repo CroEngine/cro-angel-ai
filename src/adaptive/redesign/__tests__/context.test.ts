@@ -7,6 +7,10 @@ import {
   buildRedesignContext,
   renderRedesignPrompt,
   DEFAULT_REDESIGN_GUARDRAILS,
+  CROSS_PAGE_ALLOWED,
+  guardrailsForExistingOps,
+  INSERT_SNIPPET_ALLOWED,
+  withInsertSnippet,
   type RedesignContentModel,
   type RedesignPageRef,
 } from "../context";
@@ -162,12 +166,18 @@ describe("renderRedesignPrompt", () => {
 });
 
 describe("sourcePages — korssid-lyftets citerbara material (task #117)", () => {
+  // Korssid-lyftet KRÄVER insert_snippet i vokabulären. Sedan ägarbeslutet
+  // 2026-08-15 ("endast flytta sektioner") ligger det inte i standarden, så
+  // testerna ber om det explicit — samma väg en anropare som medvetet vill ha
+  // tillbaka textdraget måste ta.
+  const INSERT_ON = withInsertSnippet(DEFAULT_REDESIGN_GUARDRAILS);
   const withSources = buildRedesignContext({
     site: "example",
     goal: { text: "Skapa konto", kind: "signup", selector: "#kop" },
     page,
     content,
     segment: segmentInsightFrom(seg(), {}),
+    guardrails: INSERT_ON,
     sourcePages: [
       {
         path: "/priser",
@@ -177,9 +187,10 @@ describe("sourcePages — korssid-lyftets citerbara material (task #117)", () =>
     ],
   });
 
-  it("keeps only source pages with actual snippets and extends the vocabulary", () => {
+  it("keeps only source pages with actual snippets and extends the allowlist", () => {
     expect(withSources.sourcePages?.map((p) => p.path)).toEqual(["/priser"]);
     expect(withSources.guardrails.ops).toContain("insert_snippet");
+    expect(withSources.guardrails.allowed).toContain(CROSS_PAGE_ALLOWED);
   });
 
   it("renders the quotes verbatim in the prompt with the verbatim-only rule", () => {
@@ -197,12 +208,44 @@ describe("sourcePages — korssid-lyftets citerbara material (task #117)", () =>
       page,
       content,
       segment: segmentInsightFrom(seg(), {}),
+      guardrails: INSERT_ON,
     });
     expect(single.sourcePages).toBeUndefined();
-    // Samma-sida-lyftet (2026-07-27): verbet är alltid i vokabulären —
-    // whitelist-SEKTIONEN i prompten hör dock fortfarande till källsidorna.
+    // Samma-sida-lyftet (2026-07-27): med insert påslaget är verbet i
+    // vokabulären — whitelist-SEKTIONEN i prompten hör dock fortfarande till
+    // källsidorna.
     expect(single.guardrails.ops).toContain("insert_snippet");
+    expect(single.guardrails.allowed).not.toContain(CROSS_PAGE_ALLOWED);
     expect(renderRedesignPrompt(single)).not.toContain("Quotable content");
+  });
+
+  // ÄGARBESLUTET 2026-08-15, den viktiga raden: med move-only vokabulär är
+  // källsidorna INTE material. Förut lade buildRedesignContext på korssid-
+  // raden i allowed oavsett ops, så prompten hade lovat designern ett drag
+  // validateOps omedelbart slänger — kontexten sa en sak och grinden en annan.
+  it("move-only: källsidorna faller bort helt — prompten lovar inget den inte får", () => {
+    const moveOnly = buildRedesignContext({
+      site: "example",
+      goal: { text: null, kind: null, selector: null },
+      page,
+      content,
+      segment: segmentInsightFrom(seg(), {}),
+      sourcePages: [
+        {
+          path: "/priser",
+          snippets: [{ text: "Från 99 kr/mån — alla funktioner ingår.", tag: "p" }],
+        },
+      ],
+    });
+    expect(moveOnly.sourcePages).toBeUndefined();
+    expect(moveOnly.guardrails.allowed).not.toContain(CROSS_PAGE_ALLOWED);
+    const prompt = renderRedesignPrompt(moveOnly);
+    expect(prompt).not.toContain("Quotable content");
+    expect(prompt).not.toContain("insert_snippet");
+    // Retext-formatet ska inte heller läras ut när set_text/condense är ur
+    // vokabulären — en LLM som får ett format brukar använda det.
+    expect(prompt).not.toContain("EXACT replacement copy");
+    expect(prompt).toContain("never change a single word");
   });
 });
 
@@ -214,6 +257,7 @@ describe("sourcePages — offert-fallbackens kind i prompten (slice 4)", () => {
       page,
       content,
       segment: segmentInsightFrom(seg(), {}),
+      guardrails: withInsertSnippet(DEFAULT_REDESIGN_GUARDRAILS),
       sourcePages: [
         {
           path: "/sv/pricing",
@@ -228,11 +272,85 @@ describe("sourcePages — offert-fallbackens kind i prompten (slice 4)", () => {
   });
 });
 
-describe("ägarregeln 2026-07-28: endast omflytt", () => {
-  it("default-vokabulären är move_up + insert_snippet — inget annat", () => {
-    // "Vi ska endast skicka runt färdiga stycken": omskrivningar (set_text),
-    // reveal och condense är ur GENERERINGEN. En breddning av den här listan
-    // är ett ägarbeslut, inte en refaktorering — testet gör den medveten.
-    expect(DEFAULT_REDESIGN_GUARDRAILS.ops).toEqual(["move_up", "insert_snippet"]);
+describe("ägarregeln: endast omflytt", () => {
+  it("default-vokabulären är move_up — inget annat", () => {
+    // 2026-07-28 ("vi ska endast skicka runt färdiga stycken") tog set_text,
+    // reveal och condense ur GENERERINGEN. 2026-08-15 ("endast flytta
+    // sektioner, inte ändra text") tog även insert_snippet. En breddning av
+    // den här listan är ett ägarbeslut, inte en refaktorering — testet gör
+    // den medveten.
+    expect(DEFAULT_REDESIGN_GUARDRAILS.ops).toEqual(["move_up"]);
+    // ...och allowed får aldrig lova mer än ops tillåter.
+    expect(DEFAULT_REDESIGN_GUARDRAILS.allowed).not.toContain(INSERT_SNIPPET_ALLOWED);
+  });
+
+  // RE-VALIDERING (granskningsfynd 2026-08-15): ett beslut om vad vi
+  // GENERERAR nytt får aldrig retroaktivt fälla en variant som redan servas.
+  it("guardrailsForExistingOps vidgar till variantens EGNA ops — aldrig bredare", () => {
+    const legacy = guardrailsForExistingOps(["move_up", "insert_snippet"]);
+    expect(legacy.ops).toEqual(["move_up", "insert_snippet"]);
+    expect(legacy.allowed).toContain(INSERT_SNIPPET_ALLOWED);
+    // En ren flytt-variant får INTE textvokabulären på köpet.
+    expect(guardrailsForExistingOps(["move_up"])).toBe(DEFAULT_REDESIGN_GUARDRAILS);
+    expect(guardrailsForExistingOps([])).toBe(DEFAULT_REDESIGN_GUARDRAILS);
+    // Äldre ops utanför dagens vokabulär följer med — de passerade verify en
+    // gång, och refreshen byter text i just den planen.
+    expect(guardrailsForExistingOps(["move_up", "set_text"]).ops).toEqual(["move_up", "set_text"]);
+    // ...men set_text ensamt drar inte in insert-radens löfte i prompten.
+    expect(guardrailsForExistingOps(["set_text"]).allowed).not.toContain(INSERT_SNIPPET_ALLOWED);
+    // Dubbletter i variantens ops blåser inte upp vokabulären.
+    expect(guardrailsForExistingOps(["insert_snippet", "insert_snippet"]).ops).toEqual([
+      "move_up",
+      "insert_snippet",
+    ]);
+    // En op appliceraren inte känner släpps ALDRIG in — vidgningen läser en
+    // DB-rad, och validateOps enda vokabulärkoll är mängdmedlemskap.
+    expect(guardrailsForExistingOps(["move_up", "exfiltrate"]).ops).toEqual(["move_up"]);
+  });
+
+  it("re-validering med variantens vokabulär återfår källsidorna", () => {
+    // Utan vidgningen tömmer move-only sourcePages, och whitelisten
+    // validateOps kräver för ett ordagrant citat försvinner — refreshen hade
+    // fällts på "citatet finns inte" i stället för att läka driften.
+    const ctx = buildRedesignContext({
+      site: "example",
+      goal: { text: null, kind: null, selector: null },
+      page,
+      content,
+      segment: segmentInsightFrom(seg(), {}),
+      guardrails: guardrailsForExistingOps(["insert_snippet"]),
+      sourcePages: [{ path: "/priser", snippets: [{ text: "Från 99 kr/mån.", tag: "p" }] }],
+    });
+    expect(ctx.sourcePages?.map((p) => p.path)).toEqual(["/priser"]);
+    expect(renderRedesignPrompt(ctx)).toContain("Från 99 kr/mån.");
+  });
+
+  it("prompten förbjuder aldrig ett drag som ALLOWED sedan erbjuder", () => {
+    // Öppningsmeningen är den starkaste instruktionen i briefen. Med
+    // move+insert läste den förut "never change a single word of it" medan
+    // ALLOWED bjöd insert_snippet — en lydig modell hade svarat med noll
+    // inserts och fått det att se ut som att draget var trasigt.
+    const prompt = renderRedesignPrompt(
+      buildRedesignContext({
+        site: "example",
+        goal: { text: null, kind: null, selector: null },
+        page,
+        content,
+        segment: segmentInsightFrom(seg(), {}),
+        guardrails: withInsertSnippet(DEFAULT_REDESIGN_GUARDRAILS),
+      }),
+    );
+    expect(prompt).toContain("surface a line the page ALREADY publishes");
+    expect(prompt).not.toContain("never change a single word of it.");
+  });
+
+  it("withInsertSnippet lägger på BÅDE op:en och dess allowed-rad, en gång", () => {
+    const on = withInsertSnippet(DEFAULT_REDESIGN_GUARDRAILS);
+    expect(on.ops).toEqual(["move_up", "insert_snippet"]);
+    expect(on.allowed).toContain(INSERT_SNIPPET_ALLOWED);
+    // Idempotent: dubbla anrop får inte dubblera raden i prompten.
+    expect(withInsertSnippet(on)).toBe(on);
+    // Grundvokabulären är orörd (ingen mutation av den delade konstanten).
+    expect(DEFAULT_REDESIGN_GUARDRAILS.ops).toEqual(["move_up"]);
   });
 });

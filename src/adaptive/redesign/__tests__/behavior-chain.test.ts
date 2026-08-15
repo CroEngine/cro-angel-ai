@@ -284,7 +284,14 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
       sourcePath: "/priser",
       text: "Från 299 kr per månad utan bindningstid",
     };
-    const cands = generateCandidates(CONTENT, undefined, [seed]);
+    // TEXT-återbruket kräver insert_snippet i vokabulären — ur standarden
+    // sedan ägarbeslutet 2026-08-15, så raden begärs explicit här. Den smidda
+    // markören nedanför testas mot STANDARDVOKABULÄREN (en flyttkandidats
+    // basis bär sidrubriken), alltså exakt den väg nattloopen kör.
+    const cands = generateCandidates(CONTENT, undefined, [seed], undefined, [
+      "move_up",
+      "insert_snippet",
+    ]);
     const menu = applyProbe(
       cands,
       cands.map((c) => ({ id: c.id, applicable: true })),
@@ -328,7 +335,10 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
       sourcePath: "/priser",
       text: "Från 299 kr per månad utan bindningstid",
     };
-    const marked = generateCandidates(CONTENT, undefined, [markerSeed]);
+    const marked = generateCandidates(CONTENT, undefined, [markerSeed], undefined, [
+      "move_up",
+      "insert_snippet",
+    ]);
     const markedPrompt = buildSelectionPrompt({
       heroHeadline: null,
       segmentLabel: "s",
@@ -349,7 +359,10 @@ describe("beteende-röret ände-till-ände (steg 9 → 10 → 8 → 7)", () => {
       text: "Från 299 kr per månad utan bindningstid",
       alsoWonOn: ["/enterprise", "/foretag"],
     };
-    const multi = generateCandidates(CONTENT, undefined, [multiSeed]);
+    const multi = generateCandidates(CONTENT, undefined, [multiSeed], undefined, [
+      "move_up",
+      "insert_snippet",
+    ]);
     const multiPrompt = buildSelectionPrompt({
       heroHeadline: null,
       segmentLabel: "s",

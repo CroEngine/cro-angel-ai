@@ -52,6 +52,27 @@ describe("catalogEligible", () => {
       skip: "cross-page",
     });
   });
+
+  it("move-only ⇒ korssid-carve-outen FALLER: katalogen tar cellen", () => {
+    // Ägarbeslut 2026-08-15: carve-outen finns för ett insert_snippet som
+    // citerar en annan sida. Kan designern inte producera det draget skyddar
+    // carve-outen ingenting — den hade bara bytt katalogens beteende-rankade
+    // flyttar mot en fri designer med EXAKT samma vokabulär och ingen meny.
+    expect(catalogEligible({ isTemplate: false, crossPageSources: 2, mayInsert: false })).toEqual({
+      eligible: true,
+      skip: null,
+    });
+    // Mall-carve-outen är oberoende av vokabulären och står kvar.
+    expect(catalogEligible({ isTemplate: true, crossPageSources: 2, mayInsert: false })).toEqual({
+      eligible: false,
+      skip: "template",
+    });
+    // Explicit mayInsert:true beter sig som förut (utelämnad ⇒ samma).
+    expect(catalogEligible({ isTemplate: false, crossPageSources: 1, mayInsert: true })).toEqual({
+      eligible: false,
+      skip: "cross-page",
+    });
+  });
 });
 
 describe("planRow — producentsidan av plans.json-kontraktet", () => {

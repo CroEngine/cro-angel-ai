@@ -5,9 +5,12 @@ import { parseOpsResponse, validateOps, generateRedesign, MAX_OPS } from "../gen
 
 /** Bred vokabulär för validerings-MASKINERIETS tester (claims-vakten på
  *  set_text/condense, MAX_OPS-cappen, netto-nollan): ägarregeln 2026-07-28
- *  smalnade GENERERINGENS default till omflytt (move_up + insert_snippet),
- *  men valideringen måste fortsatt kunna granska den breda vokabulären —
- *  äldre godkända varianter re-valideras med sina ursprungliga guardrails. */
+ *  smalnade GENERERINGENS default till omflytt, och 2026-08-15 ("endast
+ *  flytta sektioner, inte ändra text") till move_up ensamt — men VALIDERINGEN
+ *  måste fortsatt kunna granska den breda vokabulären: äldre godkända
+ *  varianter re-valideras med sina ursprungliga guardrails, och de servas
+ *  oförändrat. Testerna här beskriver alltså validerarens hela förmåga, inte
+ *  vad nattloopen genererar. */
 const WIDE_OPS = {
   ...DEFAULT_REDESIGN_GUARDRAILS,
   ops: ["move_up", "set_text", "condense", "reveal", "insert_snippet"],
@@ -201,6 +204,10 @@ describe("validateOps — insert_snippet (korssid-lyftet: ordagrant · hjälten 
     },
     content: ctx.content,
     segment: ctx.segment,
+    // insert_snippet ligger inte i standardvokabulären sedan 2026-08-15 —
+    // korssid-grenen begärs explicit, precis som en anropare som medvetet
+    // vill ha tillbaka textdraget måste göra.
+    guardrails: WIDE_OPS,
     sourcePages: [
       {
         path: "/priser",
@@ -210,9 +217,28 @@ describe("validateOps — insert_snippet (korssid-lyftet: ordagrant · hjälten 
   });
   const QUOTE = "Från 99 kr/mån — alla funktioner ingår.";
 
-  it("insert_snippet är ALLTID i vokabulären (samma-sida-lyftet 2026-07-27) — källsidor lägger till whitelisten", () => {
+  it("källsidorna följer med när vokabulären tillåter insert_snippet", () => {
     expect(srcCtx.guardrails.ops).toContain("insert_snippet");
-    expect(ctx.guardrails.ops).toContain("insert_snippet");
+    expect(srcCtx.sourcePages?.map((p) => p.path)).toEqual(["/priser"]);
+  });
+
+  // Motsatsen, ägarbeslutet 2026-08-15: samma ops mot MOVE-ONLY-vokabulären
+  // avvisas, och skälet säger att op:en inte finns — inte att citatet var fel.
+  it("move-only: varje insert_snippet avvisas som utanför vokabulären", () => {
+    const moveOnly = buildRedesignContext({
+      site: "demo",
+      goal: { text: null, kind: null, selector: null },
+      page: srcCtx.page,
+      content: ctx.content,
+      segment: ctx.segment,
+      sourcePages: [{ path: "/priser", snippets: [{ text: QUOTE, tag: "p" }] }],
+    });
+    const plan = validateOps(
+      [{ op: "insert_snippet", targetId: "hero", sourcePath: "/priser", detail: QUOTE, why: "w" }],
+      moveOnly,
+    );
+    expect(plan.ops).toEqual([]);
+    expect(plan.rejected[0].reason).toMatch(/not in allowed vocabulary/i);
   });
 
   it("keeps a VERBATIM quote targeting hero from an offered source page", () => {
