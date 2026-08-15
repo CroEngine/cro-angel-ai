@@ -576,15 +576,28 @@
       // Curated rotator class-tokens (see pageAudit.ts) — specific enough not to
       // collide with animation utilities (Tailwind animate-*/rotate-*,
       // Animate.css animate__*/rotateIn), which a bare substring would over-match.
-      // Den nakna ul/ol-regeln och split-text-tokenen är BORTA (korpusmätning
-      // 2026-08-15) — se pageAudit.ts för mätningen; listorna måste vara
-      // identiska, de läser samma sidor.
+      // Listor kräver numera en rotator-token (på sig själva eller på ett
+      // omslag) och split-text-tokenen är borta — korpusmätning 2026-08-15, se
+      // pageAudit.ts. Listorna MÅSTE vara identiska: de läser samma sidor.
       var ROT = ['rotating','rotator','typewriter','animated-list','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
       var tagged = el.querySelectorAll('[class]');
       for (var b = 0; b < tagged.length; b++) {
-        if (tagged[b].children.length < 2 || rotators.indexOf(tagged[b]) !== -1) continue;
         var cls = (tagged[b].getAttribute('class') || '').toLowerCase();
-        for (var z = 0; z < ROT.length; z++) { if (cls.indexOf(ROT[z]) !== -1) { rotators.push(tagged[b]); break; } }
+        var hit = false;
+        for (var z = 0; z < ROT.length; z++) { if (cls.indexOf(ROT[z]) !== -1) { hit = true; break; } }
+        if (!hit) continue;
+        // Rotator-MÅLET är det tokenbärande elementet självt när det bär
+        // alternativen som barn — annars en lista INNE i det. Andra grenen
+        // finns för formen där tokenen sitter på ett OMSLAG:
+        // <h1>We help you <span class="text-rotator"><ul><li>grow</li>…
+        // Omslaget har ett enda element-barn, så en ren children>=2-vakt
+        // hade missat rotatorn helt (granskningsfynd 2026-08-15).
+        var target = tagged[b].children.length >= 2 ? tagged[b] : null;
+        if (!target) {
+          var inner = tagged[b].querySelectorAll('ul, ol');
+          for (var q = 0; q < inner.length; q++) { if (inner[q].children.length >= 2) { target = inner[q]; break; } }
+        }
+        if (target && rotators.indexOf(target) === -1) rotators.push(target);
       }
       for (var r = 0; r < rotators.length; r++) {
         var kids = rotators[r].children;
@@ -2290,27 +2303,43 @@
       // and would over-collapse a real multi-child heading. These strings do not
       // appear in those utilities.
       //
-      // TVÅ SIGNALER BORTTAGNA (korpusmätning 2026-08-15, rotator-eval.ts):
-      //   1. En naken <ul>/<ol> med >=2 barn räknades som rotator UTAN någon
+      // TVÅ ÖVER-KOLLAPSER ÅTGÄRDADE (korpusmätning 2026-08-15, rotator-eval.ts):
+      //   1. En <ul>/<ol> med >=2 barn räknades som rotator UTAN någon
       //      rotator-signal — den kollapsade "Pick one <ul><li>A plan</li>
-      //      <li>B plan</li></ul>" till "Pick one A plan". Hubspot, sajten
-      //      regeln skrevs för, bär redan token animated-list PÅ listan, så
-      //      klass-scanningen nedan täcker den: mätt identiskt utfall.
-      //   2. animated-text / animated-headline / animated-word matchar
-      //      SPLIT-TEXT-omslag (per-ord-avslöjande), där alla barn tillhör
-      //      SAMMA rubrik — "Grow with <span class=animated-text><span>speed
-      //      </span><span>and</span><span>care</span></span>" trunkerades till
-      //      "Grow with speed".
-      // Mätningen: 1162 rubriker på 121 verkliga sidor (114 frysta förstasidor
-      // + de 10 MHTML-captures guldunderlagen byggs av). Logiken rör EN enda
-      // rubrik i hela korpusen — hubspots — och den blir bit-identisk efter
-      // åtstramningen. Noll skillnad, bägge över-kollapserna borta.
+      //      <li>B plan</li></ul>" till "Pick one A plan". Listan kräver nu en
+      //      token, på sig själv (hubspot: animated-list PÅ listan) eller på
+      //      ett omslag runt den (se target-upplösningen nedan).
+      //   2. animated-text / animated-headline / animated-word är BORTA ur
+      //      listan: de matchar SPLIT-TEXT-omslag (per-ord-avslöjande) där alla
+      //      barn tillhör SAMMA rubrik — "Grow with <span class=animated-text>
+      //      <span>speed</span><span>and</span><span>care</span></span>"
+      //      trunkerades till "Grow with speed".
+      // Mätningen jämför den GAMLA funktionen (ur git) mot den nya, båda
+      // injicerade i samma DOM-ögonblick: 10 414 element (h1-h4 + p,
+      // dokumentvitt — samma mängd konsumenterna läser) på 115 verkliga sidor,
+      // 112 frysta förstasidor + de 10 MHTML-captures guldunderlagen byggs av.
+      // NOLL skillnad. Logiken rör en enda rubrik i hela korpusen: hubspots,
+      // och den blir bit-identisk. Tre sidor kunde inte laddas; ingen av dem
+      // bär någon rotator-token, så de kan inte dölja ett fall.
       var ROT = ['rotating','rotator','typewriter','animated-list','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
       var tagged = el.querySelectorAll('[class]');
       for (var b = 0; b < tagged.length; b++) {
-        if (tagged[b].children.length < 2 || rotators.indexOf(tagged[b]) !== -1) continue;
         var cls = (tagged[b].getAttribute('class') || '').toLowerCase();
-        for (var z = 0; z < ROT.length; z++) { if (cls.indexOf(ROT[z]) !== -1) { rotators.push(tagged[b]); break; } }
+        var hit = false;
+        for (var z = 0; z < ROT.length; z++) { if (cls.indexOf(ROT[z]) !== -1) { hit = true; break; } }
+        if (!hit) continue;
+        // Rotator-MÅLET är det tokenbärande elementet självt när det bär
+        // alternativen som barn — annars en lista INNE i det. Andra grenen
+        // finns för formen där tokenen sitter på ett OMSLAG:
+        // <h1>We help you <span class="text-rotator"><ul><li>grow</li>…
+        // Omslaget har ett enda element-barn, så en ren children>=2-vakt
+        // hade missat rotatorn helt (granskningsfynd 2026-08-15).
+        var target = tagged[b].children.length >= 2 ? tagged[b] : null;
+        if (!target) {
+          var inner = tagged[b].querySelectorAll('ul, ol');
+          for (var q = 0; q < inner.length; q++) { if (inner[q].children.length >= 2) { target = inner[q]; break; } }
+        }
+        if (target && rotators.indexOf(target) === -1) rotators.push(target);
       }
       for (var r = 0; r < rotators.length; r++) {
         var kids = rotators[r].children; // live, but display:none never mutates .children

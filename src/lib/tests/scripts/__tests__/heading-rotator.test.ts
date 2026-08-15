@@ -124,6 +124,17 @@ describe("cleanHeadingText — collapse word-rotators, never utility classes", (
     }
   });
 
+  test("STILL collapses a list whose token sits on the WRAPPER, not the list", async (ctx) => {
+    if (!chromiumAvailable) return ctx.skip();
+    // Granskningsfynd 2026-08-15: omslaget har ETT element-barn (listan), så
+    // en ren children>=2-vakt missade rotatorn helt när listregeln togs bort.
+    const t = await h1Text(
+      '<h1>We help you <span class="text-rotator">' +
+        "<ul><li>grow</li><li>scale</li><li>close</li></ul></span></h1>",
+    );
+    expect(t).toBe("We help you grow");
+  });
+
   test("STILL collapses the hubspot shape — the case the rule exists for", async (ctx) => {
     if (!chromiumAvailable) return ctx.skip();
     // Listan bär själv token `animated-list`, så klass-scanningen fångar den
