@@ -397,7 +397,11 @@ export const SECTIONS_SCRIPT = `(() => {
         && ir.left >= or.left - 4 && (ir.left + ir.width) <= (or.left + or.width) + 4;
   }
   function normHeading(h) {
-    return (h || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    // DUBBEL escape: hela filen är en template literal, så \\s+ är vad som
+    // krävs för att /\\s+/ ska nå webbläsaren. Enkel \\s kollapsade till
+    // /s+/ och strippade bokstaven "s" i stället för att slå ihop blanksteg
+    // (fix 2026-08-15; samma fälla som trustSignals.ts:428 dokumenterar).
+    return (h || '').trim().toLowerCase().replace(/\\s+/g, ' ');
   }
   const deduped = [];
   for (const cand of raw) {

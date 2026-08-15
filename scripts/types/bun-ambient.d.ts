@@ -27,3 +27,14 @@ declare const Bun: {
   }>;
   file(path: string): { text(): Promise<string> };
 };
+
+// Bun-egna ImportMeta-ytor. `import.meta.dir` är Bun-specifikt (Node/TS känner
+// bara import.meta.dirname) och används av lab-skripten, som alla kör under
+// bun-shebang. Deklareras hellre än ersätts: att byta property i fyra skript
+// som aldrig körts end-to-end i den här ändringen vore en tyst runtime-
+// ändring i en typkolls-fix (städsvepet 2026-08-15, när scripts/lab togs in
+// i tsconfig.scripts).
+interface ImportMeta {
+  /** Katalogen modulen ligger i, utan avslutande slash. Bun-only. */
+  readonly dir: string;
+}
