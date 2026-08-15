@@ -28,16 +28,28 @@ export const pageAuditRun: () => any = () => ((() => {
     var hidden = [];
     try {
       var rotators = [];
-      var lists = el.querySelectorAll('ul, ol');
-      for (var a = 0; a < lists.length; a++) {
-        if (lists[a].children.length >= 2) rotators.push(lists[a]);
-      }
       // Curated rotator class-tokens. Deliberately SPECIFIC — a bare
       // "animat"/"rotat" substring collides with the ubiquitous animation
       // UTILITIES (Tailwind animate-*/rotate-*, Animate.css animate__*/rotateIn)
       // and would over-collapse a real multi-child heading. These strings do not
-      // appear in those utilities. (ul/ol above already covers hubspot.)
-      var ROT = ['rotating','rotator','typewriter','animated-list','animated-word','animated-text','animated-headline','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
+      // appear in those utilities.
+      //
+      // TVÅ SIGNALER BORTTAGNA (korpusmätning 2026-08-15, rotator-eval.ts):
+      //   1. En naken <ul>/<ol> med >=2 barn räknades som rotator UTAN någon
+      //      rotator-signal — den kollapsade "Pick one <ul><li>A plan</li>
+      //      <li>B plan</li></ul>" till "Pick one A plan". Hubspot, sajten
+      //      regeln skrevs för, bär redan token animated-list PÅ listan, så
+      //      klass-scanningen nedan täcker den: mätt identiskt utfall.
+      //   2. animated-text / animated-headline / animated-word matchar
+      //      SPLIT-TEXT-omslag (per-ord-avslöjande), där alla barn tillhör
+      //      SAMMA rubrik — "Grow with <span class=animated-text><span>speed
+      //      </span><span>and</span><span>care</span></span>" trunkerades till
+      //      "Grow with speed".
+      // Mätningen: 1162 rubriker på 121 verkliga sidor (114 frysta förstasidor
+      // + de 10 MHTML-captures guldunderlagen byggs av). Logiken rör EN enda
+      // rubrik i hela korpusen — hubspots — och den blir bit-identisk efter
+      // åtstramningen. Noll skillnad, bägge över-kollapserna borta.
+      var ROT = ['rotating','rotator','typewriter','animated-list','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
       var tagged = el.querySelectorAll('[class]');
       for (var b = 0; b < tagged.length; b++) {
         if (tagged[b].children.length < 2 || rotators.indexOf(tagged[b]) !== -1) continue;
@@ -630,14 +642,13 @@ export const sectionsRun: () => any = () => ((() => {
     var hidden = [];
     try {
       var rotators = [];
-      var lists = el.querySelectorAll('ul, ol');
-      for (var a = 0; a < lists.length; a++) {
-        if (lists[a].children.length >= 2) rotators.push(lists[a]);
-      }
       // Curated rotator class-tokens (see pageAudit.ts) — specific enough not to
       // collide with animation utilities (Tailwind animate-*/rotate-*,
       // Animate.css animate__*/rotateIn), which a bare substring would over-match.
-      var ROT = ['rotating','rotator','typewriter','animated-list','animated-word','animated-text','animated-headline','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
+      // Den nakna ul/ol-regeln och split-text-tokenen är BORTA (korpusmätning
+      // 2026-08-15) — se pageAudit.ts för mätningen; listorna måste vara
+      // identiska, de läser samma sidor.
+      var ROT = ['rotating','rotator','typewriter','animated-list','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
       var tagged = el.querySelectorAll('[class]');
       for (var b = 0; b < tagged.length; b++) {
         if (tagged[b].children.length < 2 || rotators.indexOf(tagged[b]) !== -1) continue;

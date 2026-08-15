@@ -73,14 +73,13 @@ export const SECTIONS_SCRIPT = `(() => {
     var hidden = [];
     try {
       var rotators = [];
-      var lists = el.querySelectorAll('ul, ol');
-      for (var a = 0; a < lists.length; a++) {
-        if (lists[a].children.length >= 2) rotators.push(lists[a]);
-      }
       // Curated rotator class-tokens (see pageAudit.ts) — specific enough not to
       // collide with animation utilities (Tailwind animate-*/rotate-*,
       // Animate.css animate__*/rotateIn), which a bare substring would over-match.
-      var ROT = ['rotating','rotator','typewriter','animated-list','animated-word','animated-text','animated-headline','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
+      // Den nakna ul/ol-regeln och split-text-tokenen är BORTA (korpusmätning
+      // 2026-08-15) — se pageAudit.ts för mätningen; listorna måste vara
+      // identiska, de läser samma sidor.
+      var ROT = ['rotating','rotator','typewriter','animated-list','text-rotat','word-rotat','txt-rotat','text-cycl','word-cycl','rotate-word','rotate-text','cd-words'];
       var tagged = el.querySelectorAll('[class]');
       for (var b = 0; b < tagged.length; b++) {
         if (tagged[b].children.length < 2 || rotators.indexOf(tagged[b]) !== -1) continue;
