@@ -6,6 +6,10 @@ import {
   BEHAVIOR_GAIN,
   BEHAVIOR_SHRINK_N0,
   DEFAULT_CANDIDATE_OPS,
+  MAX_POSITION_BONUS,
+  MOVE_TYPE_WEIGHT,
+  NON_PROOF_TYPES,
+  PROOF_TYPES_FLOOR,
   REUSE_PROVEN_SCORE,
   generateCandidates,
   candidateToOp,
@@ -91,32 +95,103 @@ describe("generateCandidates", () => {
     expect(moves).not.toContain("sec-1-hero");
   });
 
-  it("breddningen ÄNDRAR INTE rangordningen: varje bevis-typ står över varje övrig", () => {
-    // Kontraktet som gör breddningen säker (och som mätningen mot facit
-    // vilar på): priorn påstår ingenting nytt. En sida som redan hade en
-    // bevis-sektion får samma golv-val som före — bara fler alternativ under.
-    // Utan detta hade en features-sektion långt ned på sidan kunnat gå om ett
-    // kundomdöme på positionsbonusen ensam (0,05/position, tak 0,4).
-    const c = generateCandidates(
-      model({
-        sections: [
-          ...model().sections,
-          {
-            id: "sec-9-features",
-            type: "features",
-            position: 9, // maximal positionsbonus
-            heading: "Everything else you get",
-            aboveFold: false,
-            visualWeight: 3,
-          },
-        ],
-      }),
-    );
-    const score = (id: string) => c.find((x) => x.id === id)!.score;
-    expect(score("mv-sec-3-testimonials")).toBeGreaterThan(score("mv-sec-9-features"));
-    expect(score("mv-sec-4-logos")).toBeGreaterThan(score("mv-sec-9-features"));
-    // Golvets val är fortfarande bevis-sektionen, inte den nya typen.
-    expect(c[0].id).toBe("mv-sec-3-testimonials");
+  // GAP-KRAVET, uttömmande. Första utkastet testade bara testimonials (4,15)
+  // och logos (2,70) mot features (1,45) — de två paren som ALDRIG kan falla —
+  // och missade att comparison 1,4 på position 5 gick om pricing 1,5 på
+  // position 2. Nu prövas VARJE par i sitt värsta läge: den svagaste bevis-
+  // typen högst upp mot den starkaste övriga längst ned.
+  it("GAP-KRAVET: varje bevis-typ slår varje övrig typ i värsta positionsläget", () => {
+    const PROOF = ["testimonials", "logos", "stats", "proof", "pricing"];
+    for (const proof of PROOF) {
+      for (const other of NON_PROOF_TYPES) {
+        const c = generateCandidates({
+          ...model({ trustSignals: [] }),
+          sections: [
+            {
+              id: "sec-1-hero",
+              type: "hero",
+              position: 1,
+              heading: "H",
+              aboveFold: true,
+              visualWeight: 5,
+            },
+            // Bevis-typen SÄMST placerad (position 2 ⇒ minimal bonus)...
+            {
+              id: `sec-2-${proof}`,
+              type: proof,
+              position: 2,
+              heading: `${proof} block`,
+              aboveFold: false,
+              visualWeight: 3,
+            },
+            // ...den övriga typen BÄST placerad (position 8+ ⇒ maximal bonus).
+            {
+              id: `sec-9-${other}`,
+              type: other,
+              position: 9,
+              heading: `${other} block`,
+              aboveFold: false,
+              visualWeight: 3,
+            },
+          ],
+        });
+        const s = (id: string) => c.find((x) => x.id === id)!.score;
+        expect([`${proof} vs ${other}`, s(`mv-sec-2-${proof}`) > s(`mv-sec-9-${other}`)]).toEqual([
+          `${proof} vs ${other}`,
+          true,
+        ]);
+        expect(c[0].id).toBe(`mv-sec-2-${proof}`);
+      }
+    }
+  });
+
+  it("gap-kravet är ARITMETISKT sant, inte bara sant för fixturerna", () => {
+    // Vakten mot en framtida viktändring: håller olikheten i tabellen självt
+    // kan inget urval av sektioner vända ordningen.
+    for (const t of NON_PROOF_TYPES) {
+      expect(MOVE_TYPE_WEIGHT[t] + MAX_POSITION_BONUS).toBeLessThan(PROOF_TYPES_FLOOR);
+    }
+    // ...och golvet ÄR den svagaste bevis-typen (annars vaktar kravet fel tal).
+    const proofWeights = Object.entries(MOVE_TYPE_WEIGHT)
+      .filter(([k]) => !NON_PROOF_TYPES.includes(k))
+      .map(([, v]) => v);
+    expect(Math.min(...proofWeights)).toBe(PROOF_TYPES_FLOOR);
+  });
+
+  it("trust-bonusen får MEDVETET gå om typ-priorn", () => {
+    // En features-sektion som faktiskt BÄR en trust-signal är bevisbärande —
+    // då är det inte priorn som gissar, och den ska få stå över.
+    const c = generateCandidates({
+      ...model({ trustSignals: [] }),
+      sections: [
+        {
+          id: "sec-1-hero",
+          type: "hero",
+          position: 1,
+          heading: "H",
+          aboveFold: true,
+          visualWeight: 5,
+        },
+        {
+          id: "sec-2-pricing",
+          type: "pricing",
+          position: 2,
+          heading: "Priser",
+          aboveFold: false,
+          visualWeight: 3,
+        },
+        {
+          id: "sec-3-features",
+          type: "features",
+          position: 3,
+          heading: "Så funkar det",
+          aboveFold: false,
+          visualWeight: 3,
+          containsTrustSignals: true,
+        },
+      ],
+    });
+    expect(c[0].id).toBe("mv-sec-3-features");
   });
 
   it("testimonials med proof rankas över logos; trusted_by över compliance", () => {

@@ -49,13 +49,17 @@ export interface Candidate {
  *  beslutet är den bäst belagda CRO-hypotesen vi har.
  *
  *  ÖVRIGA TYPER (< 1,5, ägarbeslut 2026-08-15) släpptes in när vokabulären
- *  smalnade till enbart flyttar. Mätt på 47 frysta sidor föll 794 av 874
- *  sektioner på just den här listan, och 21 av 47 sidor fick INGEN kandidat
- *  alls — de kunde inte testas överhuvudtaget. Mätt mot facit i BLANDADE
- *  världar (bevis + features/faq/comparison, sanning dragen oberoende av typ)
- *  låg sidans bästa sektion utanför menyn i 45 % av världarna; när den låg
- *  INNE valde beteende-sätet rätt i 81 %. Taket satt i menyn, inte i
- *  rankningen.
+ *  smalnade till enbart flyttar. DEN EMPIRISKA GRUNDEN är korpusen: av 874
+ *  sektioner på 47 frysta sidor föll 794 på just den här listan, och 21 av 47
+ *  sidor fick INGEN kandidat alls — de kunde inte testas överhuvudtaget.
+ *  Efter breddningen (och efter att features-ledtråden stramades, se
+ *  extract.ts) är det 8 sidor.
+ *
+ *  Facit-svepet (reco-eval, reachSweep) mäter det ledet i noll-bevis-världar:
+ *  menyn går från tom till icke-tom i 100 % av dem, och beteende-sätet väljer
+ *  rätt sektion i 79,7 % mot orakelns 81,0 %. Närheten till taket är RÖR-TEST
+ *  (sätet matas med den karta oraklet argmax:ar) — det som bevisas är att
+ *  kandidaten finns att välja och att kedjan inte tappar signalen.
  *
  *  De nya vikterna ligger MEDVETET under pricing (1,5): priorn har inget stöd
  *  för att en features-sektion slår ett kundomdöme, så på en sida som redan
@@ -63,16 +67,35 @@ export interface Candidate {
  *  bevis-sektion får något att testa, och att beteende-sätet (D3) kan lyfta en
  *  faktiskt läst sektion förbi priorn — precis som det redan gör mellan
  *  bevis-typerna. Inbördes ordning = hur nära köpbeslutet typen ligger. */
-const MOVE_TYPE_WEIGHT: Record<string, number> = {
+export const MOVE_TYPE_WEIGHT: Record<string, number> = {
   testimonials: 3,
   logos: 2.5,
   stats: 2.5,
   proof: 2.2,
   pricing: 1.5,
-  comparison: 1.4,
-  faq: 1.2,
-  features: 1,
+  // ÖVRIGA TYPER — se GAP-KRAVET nedan för varför de ligger så här lågt.
+  comparison: 1,
+  faq: 0.9,
+  features: 0.8,
 };
+
+/** Positionsbonusens tak (min(position,8) · 0,05). Ligger här för att
+ *  GAP-KRAVET ska kunna uttryckas i kod och testas, inte bara påstås. */
+export const MAX_POSITION_BONUS = 0.4;
+
+/** GAP-KRAVET (granskningsfynd 2026-08-15): breddningens hela säkerhetsargument
+ *  är att typ-priorn inte påstår något nytt — en bevis-typ ska stå över varje
+ *  övrig typ OAVSETT position. Första utkastet satte comparison till 1,4, bara
+ *  0,1 under pricing, medan positionsbonusen är värd upp till 0,4: en
+ *  comparison-sektion på position 5 (1,65) gick då om en pris-sektion på
+ *  position 2 (1,60). Att korpusen råkade ge 0 av 26 ändrade golvval bevisade
+ *  ingenting — invarianten höll inte, den utlöstes bara inte där.
+ *
+ *  Kravet: max(övriga) + MAX_POSITION_BONUS < min(bevis). Trust-bonusen (+1)
+ *  står MEDVETET utanför: en sektion som faktiskt bär en trust-signal ÄR
+ *  bevisbärande, och då ska den få gå om — det är inte typ-priorn som gissar. */
+export const PROOF_TYPES_FLOOR = 1.5;
+export const NON_PROOF_TYPES: readonly string[] = ["comparison", "faq", "features"];
 
 /** Trust-signaltyper i fallande vikt — samma ordning som fallback-stegen
  *  använde; compliance/independence är svagare säljargument än socialt bevis. */
@@ -240,7 +263,10 @@ export function generateCandidates(
       targetId: s.id,
       detail: "",
       score:
-        typeWeight + trustBonus + Math.min(s.position, 8) * 0.05 + behaviorTerm(behavior, s.id),
+        typeWeight +
+        trustBonus +
+        Math.min(s.position, 8) * (MAX_POSITION_BONUS / 8) +
+        behaviorTerm(behavior, s.id),
       basis: `${s.type}${s.containsTrustSignals ? " [proof]" : ""} below the fold (position ${s.position}): "${s.heading.slice(0, 60)}"`,
     });
   }

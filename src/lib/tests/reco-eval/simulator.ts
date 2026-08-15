@@ -99,12 +99,22 @@ export interface WorldOptions {
    *  Extraherna dras SIST, efter trust-radernas slumptal, så en värld utan
    *  flaggan är byte-identisk med före (steg 6–7-talen är orörda). */
   mixedTypes?: boolean;
+  /** Antal bevis-sektioner. Utelämnat ⇒ det slumpade 3–4 (oförändrat).
+   *
+   *  0 är HELA POÄNGEN (granskningsfynd 2026-08-15): breddningen motiverades
+   *  med sidor som inte fick EN ENDA kandidat — 21 av 47 i den frysta korpusen
+   *  — men blandade världar har alltid 3–4 bevis-sektioner och kan därför inte
+   *  modellera det fallet. Med 0 mäter svepet det som faktiskt påstods. */
+  proofSections?: number;
 }
 
 /** Bygg en reproducerbar syntetisk värld ur ett frö. Ren + deterministisk. */
 export function makeWorld(seed: number, opts: WorldOptions = {}): World {
   const rnd = mulberry32(seed);
-  const k = 3 + Math.floor(rnd() * 2); // 3 eller 4 bevis-sektioner
+  // Draget görs ALLTID (även när proofSections styr antalet) så frö-sekvensen
+  // — och därmed varje befintligt facit-tal — är oförändrad.
+  const kDrawn = 3 + Math.floor(rnd() * 2); // 3 eller 4 bevis-sektioner
+  const k = opts.proofSections ?? kDrawn;
   const types = shuffle(PROOF_TYPES, rnd).slice(0, k);
 
   const proofSections = types.map((type, i) => ({
@@ -130,7 +140,9 @@ export function makeWorld(seed: number, opts: WorldOptions = {}): World {
   // slumpad bevis-sektion (extract.ts binder hemvist på riktiga sidor) och en
   // "body"-rad (footer-klassen) som ska förbli neutral. Dras EFTER sannings-
   // dragen så steg 6-talens frö-sekvens är orörd.
-  const bound = proofSections[Math.floor(rnd() * k)];
+  // Trust-raden binds till en bevis-sektion när det finns någon; i noll-bevis-
+  // världar till den första vanliga sektionen (raden ska aldrig sakna hemvist).
+  const boundIdx = Math.floor(rnd() * Math.max(k, 1));
   const boundText = `Trusted by ${1000 + Math.floor(rnd() * 9000)} teams`;
   const unboundText = "30-day money-back guarantee";
   // Blandade världar (flyttregelns takmätning): icke-bevis-sektioner med
@@ -152,6 +164,8 @@ export function makeWorld(seed: number, opts: WorldOptions = {}): World {
     hiddenValue[s.id] = truth;
     observed[s.id] = clamp01(truth + gaussian(rnd) * NOISE_SD);
   }
+  const bound = proofSections[boundIdx] ?? plainSections[0];
+  if (!bound) throw new Error("makeWorld: en värld måste ha minst en sektion");
   const content: RedesignContentModel = {
     sections: [
       {

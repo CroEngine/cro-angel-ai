@@ -194,9 +194,11 @@ function readBodyFacts(body: string): BodyFacts {
 /** Type a still-generic section from its STRUCTURE. Ordered MOST-SPECIFIC →
  *  broadest; first match wins. Precision over recall — a wrong type misleads the
  *  designer brief and the lift-target pick worse than an honest "section", so
- *  each cue demands a strong structural signal. The evidence types
- *  (pricing/testimonials/logos/comparison) are the ones that matter most: they
- *  become lift targets and [proof] markers when the heading slogan missed them. */
+ *  each cue demands a strong structural signal.
+ *
+ *  SEDAN 2026-08-15 ÄR VARJE TYP HÄR ETT MÖJLIGT LYFTMÅL (flyttregeln breddades
+ *  till features/faq/comparison), så precisionskravet gäller alla rader —
+ *  inte bara bevis-typerna. Undantaget som fanns för features är borttaget. */
 function structuralType(body: string, heading: string): string | null {
   const b = readBodyFacts(body);
   // Integrations är det ENDA fallet där rubriken är en pålitlig STRUKTUR-etikett
@@ -222,9 +224,16 @@ function structuralType(body: string, heading: string): string | null {
   if (b.blockquotes >= 4 || b.starGlyphs >= 4) return "testimonials";
   if (b.integrationsClass || (b.images >= 6 && integrationIntent)) return "integrations";
   if (b.signupForm) return "cta";
-  // features is a NON-evidence label (never a lift target), so an approximate
-  // multi-item signal is acceptable where a wrong evidence type would not be.
-  if (b.featureGridClass || b.subHeadings >= 3 || b.iconListItems >= 3) return "features";
+  // features BLEV ETT LYFTMÅL 2026-08-15 (breddade flyttregeln), och den här
+  // raden var uttryckligen ursäktad från precisionskravet med motiveringen
+  // "aldrig ett lyftmål" — så ursäkten föll med beslutet. Kvar är de
+  // ANKRADE ledtrådarna: en feature-rutnätsKLASS, eller en lista där posterna
+  // bär ikoner. Den lösa `subHeadings >= 3` är borta: tre <h3> är vilken
+  // innehållslista som helst (bloggstripar, produktkort, nyhetspuffar), och en
+  // sådan sektion blev efter breddningen en flyttkandidat som servas till
+  // riktiga besökare. Filens egen regel gäller nu även här: hellre ärligt
+  // "section" än ett falskt lyftmål.
+  if (b.featureGridClass || b.iconListItems >= 3) return "features";
   // Structural testimonials is ONLY the semantic-tag cues above (blockquote≥4 /
   // star≥4). Deliberately STILL NO structural pricing / logos, and NO loose
   // testimonials text/class cues: the 210-site scan (2026-07-24) showed the

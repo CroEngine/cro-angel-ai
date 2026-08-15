@@ -21,11 +21,23 @@ planerare + syntes + adversariell kritiker) och härdad mot kritikerns fynd.
   - *Breddat 2026-08-15* (följdbeslut samma dag): när flytten blev enda draget
     blev `MOVE_TYPE_WEIGHT` den bindande regeln — 794 av 874 sektioner på 47
     frysta sidor föll på den, och 21 av 47 sidor fick ingen kandidat alls.
-    `features`, `faq` och `comparison` är nu flyttbara, med vikter UNDER
-    pricing (1,5) så typ-priorn inte påstår något nytt: golvets val är
-    oförändrat på varje sida som redan hade en bevis-sektion (mätt: 0 av 26).
-    Mätt mot facit i blandade världar gick guldets nåbarhet 55 % → 100 % och
-    beteende-sätets träff 44,8 % → 68,3 % (orakel-taket är 67,8 %).
+    `features`, `faq` och `comparison` är nu flyttbara (av dem är bara
+    `features` ny som *bevis*-typ räknat — `comparison` och `faq` låg redan i
+    `EVIDENCE_SECTION_TYPES`, så sajt-granskningen pekade ut dem som flyttvärda
+    medan motorn vägrade flytta dem).
+    GAP-KRAVET gör säkerhetsargumentet till en invariant i stället för ett
+    påstående: `max(övriga) + MAX_POSITION_BONUS < min(bevis)`. Första utkastet
+    satte `comparison: 1.4` och bröt det — positionsbonusen (0,4) är fyra gånger
+    gapet, så en comparison-sektion på position 5 gick om pricing på position 2.
+    Vikterna är nu 1,0 / 0,9 / 0,8 och kravet testas uttömmande, par för par.
+    Följdändring i `extract.ts`: den lösa `subHeadings >= 3`-ledtråden för
+    `features` var uttryckligen ursäktad med "aldrig ett lyftmål" — ursäkten föll
+    med beslutet, så bara ankrade ledtrådar (rutnäts-klass, ikonlistposter) är
+    kvar. Sidor utan kandidat: 21 → 8.
+    Facit (`reachSweep`, noll-bevis-världar — det fall breddningen motiverades
+    med): menyn går från tom till icke-tom i 100 % av världarna, beteende-sätet
+    träffar 79,7 % mot orakelns 81,0 %. Närheten till taket är rör-test, inte
+    motorkvalitet.
 - **D2 — HITTA ALDRIG PÅ.** Varje serverat element är en ordagrann delsträng av
   sidan.
 - **D3 — RANKA PÅ RIKTIG BESÖKSDATA.** Rekommendationen ska grundas i vad de

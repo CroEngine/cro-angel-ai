@@ -134,32 +134,47 @@ describe("reco-eval facit — baslinjen mot dold sanning", () => {
   });
 });
 
-// ── Flyttregelns tak (breddningen 2026-08-15) ────────────────────────────────
-describe("flyttregeln: sidans bästa sektion måste kunna nås", () => {
-  // Blandade världar — bevis-sektioner PLUS features/faq/comparison, sanning
-  // dragen oberoende av typ precis som i steg 6. Frågan är ledet FÖRE
-  // rankningen: finns guldet överhuvudtaget i menyn? Med den smala regeln
-  // (bara bevis-typer) var svaret nej i 45 % av världarna — ett tak som
-  // varken beteende-sätet, väljar-modellen eller mer trafik kunde nå förbi,
-  // och som runFacit inte kan se eftersom dess världar bara har bevis-typer.
-  const R = reachSweep(seedSweep(300));
+// ── Flyttregeln (breddningen 2026-08-15) ─────────────────────────────────────
+describe("flyttregeln: sidor utan bevis-sektion kan testas alls", () => {
+  // Två världsformer runFacit inte kan bygga (dess världar har bara bevis-
+  // typer, så en regel om VILKA typer som får flyttas är osynlig för den).
+  const MIXED = reachSweep(seedSweep(300), { mixedTypes: true });
+  const NO_PROOF = reachSweep(seedSweep(300), { mixedTypes: true, proofSections: 0 });
 
-  it("guldet är ALLTID en laglig kandidat — inget osynligt tak kvar", () => {
-    expect(R.reachable).toBe(1);
+  it("en sida UTAN bevis-sektion får en meny — med den smala regeln fanns ingen", () => {
+    // DET FAKTISKA PÅSTÅENDET bakom breddningen. 21 av 47 frysta sidor gav
+    // noll kandidater och kunde inte testas överhuvudtaget; med bara bevis-
+    // typer i vikttabellen är menyn TOM i varje värld här.
+    expect(NO_PROOF.menuNonEmpty).toBe(1);
+    expect(NO_PROOF.reachable).toBe(1);
   });
 
-  it("beteende-sätet når orakel-taket i blandade världar", () => {
-    // Före breddningen: 44,8 % mot orakelns 67,8 % — gapet var rena
-    // menyluckan, inte rankningsfel. Efter: sätet ligger på taket.
-    expect(R.behaviorHitRate).toBeGreaterThan(0.6);
-    expect(R.behaviorHitRate).toBeGreaterThanOrEqual(R.oracleHitRate - 0.05);
+  it("sätet väljer rätt sektion i noll-bevis-världar, nära orakel-taket", () => {
+    // FÖRBEHÅLL (samma som runFacit bär sedan 2026-08-05): sätet matas med
+    // exakt den karta oraklet argmax:ar, så närheten till taket är RÖR-TEST —
+    // att kedjan katalog → golv inte tappar signalen — inte ett bevis för att
+    // motorn förutsäger konvertering. Det nya svepet lägger till ledet före:
+    // att kandidaten ens finns att välja.
+    expect(NO_PROOF.behaviorHitRate).toBeGreaterThan(0.7);
+    expect(NO_PROOF.behaviorHitRate).toBeGreaterThanOrEqual(NO_PROOF.oracleHitRate - 0.05);
   });
 
-  it("priorn påstår INGENTING nytt — baslinjen ligger kvar på slumpnivå", () => {
-    // De nya vikterna ligger under pricing (1,5), så typ-priorn har inte
-    // blivit bättre på att gissa; det är beteendet som får chansen. Faller
-    // det här testet har någon gett en icke-bevis-typ för hög vikt.
-    expect(R.baselineHitRate).toBeLessThan(0.3);
+  it("simulatorns prior-duplikat speglar motorns vikttabell — även för de nya typerna", () => {
+    // Icke-cirkulariteten vilar på att simulator.ts PRIOR_WEIGHT är en trogen
+    // kopia av MOVE_TYPE_WEIGHT. runFacit vaktar det bara för bevis-typerna
+    // (dess världar saknar de andra), så utan den här raden kunde comparison
+    // ändras i motorn och glömmas i spegeln utan att ett test föll.
+    expect(MIXED.baselineEqualsPrior).toBe(MIXED.worlds);
+    expect(NO_PROOF.baselineEqualsPrior).toBe(NO_PROOF.worlds);
+  });
+
+  it("D1/D2 håller i de NYA världsformerna", () => {
+    // De nya sektionstyperna får här sina första insh-kandidater — ordagrann-
+    // och förankringsgrindarna måste gälla dem lika.
+    expect(MIXED.fabricationViolations).toBe(0);
+    expect(MIXED.anchorViolationCount).toBe(0);
+    expect(NO_PROOF.fabricationViolations).toBe(0);
+    expect(NO_PROOF.anchorViolationCount).toBe(0);
   });
 });
 

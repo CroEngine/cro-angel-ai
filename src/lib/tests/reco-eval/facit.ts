@@ -32,7 +32,7 @@ import {
 } from "../../../adaptive/redesign/engagement-rollup";
 import { applyProbe, floorSelection } from "../../../adaptive/redesign/select";
 
-import { argmaxKey, makeWorld, type World } from "./simulator";
+import { argmaxKey, makeWorld, type World, type WorldOptions } from "./simulator";
 
 /** De ENDA op:ar som får nå produktion (generate.ts-validatorns vokabulär). */
 const PROD_VOCAB = new Set(["move_up", "insert_snippet"]);
@@ -217,56 +217,90 @@ export interface FacitReport {
   scores: WorldScore[];
 }
 
-/** Kör facit:et över en frölista. Ren + deterministisk — samma frön in, samma
- *  rapport ut (hela skälet till att det kan vara ett committat test).
- *  `behaviorGain` är BARA för gain-svepet — produktionen kör default-gainen. */
-/** FLYTTREGELNS TAK (2026-08-15). Blandade världar: bevis-sektioner PLUS
- *  features/faq/comparison, alla med sanning dragen oberoende av typ. Frågan
- *  är inte "väljer motorn rätt bland kandidaterna" utan det ledet före: hur
- *  ofta finns sidans BÄSTA sektion överhuvudtaget i menyn?
+/** FLYTTREGELNS SVEP (2026-08-15, omarbetat efter granskning).
  *
- *  reachable = andelen världar där guldsektionen är en laglig flyttkandidat.
- *  Är den 0,6 är 40 % av världarna omöjliga att vinna — inget beteende-säte,
- *  ingen väljar-modell och ingen mängd trafik kan nå dem. Det är ett TAK, inte
- *  ett fel i rankningen, och det syns inte i runFacit vars världar bara
- *  innehåller bevis-typer. */
-export function reachSweep(seeds: number[]): {
+ *  Två världsformer som runFacit inte kan bygga — dess världar innehåller bara
+ *  bevis-typer, så en regel om VILKA typer som får flyttas är osynlig för den:
+ *
+ *  - `mixedTypes`: bevis-sektioner PLUS features/faq/comparison. Mäter
+ *    ände-till-ände-träffen när menyn innehåller båda sorterna.
+ *  - `proofSections: 0`: sidor UTAN bevis-sektion — det fall breddningen
+ *    faktiskt motiverades med (21 av 47 frysta sidor fick ingen kandidat alls
+ *    och kunde inte testas). Med den smala regeln är menyn TOM där.
+ *
+ *  ÄRLIGHETSNOT: `reachable` är inte en upptäckt. Simulatorns PLAIN_TYPES är
+ *  exakt de tre typer breddningen släppte in, så måttet är 1 by construction
+ *  och fungerar som en ändringsdetektor (tas en typ bort ur vikttabellen
+ *  faller det), inte som en mätning av verkligheten. Korpussiffran är den
+ *  empiriska: 794 av 874 sektioner låg utanför den smala regeln.
+ *
+ *  ÄRLIGHETSNOT 2: `behaviorHitRate` ≈ `oracleHitRate` är RÖR-TEST, inte
+ *  motorkvalitet — sätet matas med exakt den karta oraklet argmax:ar (samma
+ *  förbehåll som runFacit bär sedan 2026-08-05). Det svepet bevisar är att
+ *  kedjan katalog → golv inte TAPPAR signalen, och — det nya — att kandidaten
+ *  ens finns att välja. */
+export interface ReachReport {
   worlds: number;
+  /** Andel världar där guldsektionen är en laglig flyttkandidat. */
   reachable: number;
+  /** Andel världar med en ICKE-TOM meny — noll här betyder "kan inte testas". */
+  menuNonEmpty: number;
   baselineHitRate: number;
   behaviorHitRate: number;
   oracleHitRate: number;
-  /** Träffgrad räknat BARA på världar där guldet ens gick att välja — skiljer
-   *  "rankar fel" från "fick aldrig chansen". */
-  behaviorHitWhenReachable: number;
-} {
+  /** Speglar simulatorns PRIOR_WEIGHT motorns MOVE_TYPE_WEIGHT? Antal världar
+   *  där golvets val ÄR prior-valet. Duplikatet är avsiktligt (icke-
+   *  cirkularitet) och måste därför vaktas — runFacit vaktar det bara för
+   *  bevis-typerna eftersom dess världar saknar de nya. */
+  baselineEqualsPrior: number;
+  /** D1/D2 i de NYA världsformerna — scoreWorld räknar dem ändå, och de nya
+   *  sektionstyperna får här sina första insh-kandidater. */
+  fabricationViolations: number;
+  anchorViolationCount: number;
+}
+
+export function reachSweep(
+  seeds: number[],
+  opts: WorldOptions = { mixedTypes: true },
+): ReachReport {
   let reachable = 0;
+  let menuNonEmpty = 0;
   let bHit = 0;
   let behHit = 0;
   let oHit = 0;
-  let behHitReach = 0;
+  let equalsPrior = 0;
+  let fabrication = 0;
+  let anchors = 0;
   for (const seed of seeds) {
-    const w = makeWorld(seed, { mixedTypes: true });
-    const cands = generateCandidates(w.content, undefined, undefined, undefined, FACIT_OPS);
-    const canReach = cands.some((c) => c.kind === "move_up" && c.targetId === w.goldSectionId);
-    if (canReach) reachable++;
+    const w = makeWorld(seed, opts);
     const sc = scoreWorld(w);
+    const cands = generateCandidates(w.content, undefined, undefined, undefined, FACIT_OPS);
+    if (cands.some((c) => c.kind === "move_up" && c.targetId === w.goldSectionId)) reachable++;
+    if (cands.some((c) => c.kind === "move_up")) menuNonEmpty++;
     if (sc.baselineHit) bHit++;
     if (sc.behaviorHit) behHit++;
     if (sc.oracleHit) oHit++;
-    if (canReach && sc.behaviorHit) behHitReach++;
+    if (sc.baselinePick === w.priorSectionId) equalsPrior++;
+    fabrication += sc.fabrication.violations.length;
+    anchors += sc.anchorViolations.length;
   }
   const n = seeds.length || 1;
   return {
     worlds: seeds.length,
     reachable: reachable / n,
+    menuNonEmpty: menuNonEmpty / n,
     baselineHitRate: bHit / n,
     behaviorHitRate: behHit / n,
     oracleHitRate: oHit / n,
-    behaviorHitWhenReachable: reachable > 0 ? behHitReach / reachable : 0,
+    baselineEqualsPrior: equalsPrior,
+    fabricationViolations: fabrication,
+    anchorViolationCount: anchors,
   };
 }
 
+/** Kör facit:et över en frölista. Ren + deterministisk — samma frön in, samma
+ *  rapport ut (hela skälet till att det kan vara ett committat test).
+ *  `behaviorGain` är BARA för gain-svepet — produktionen kör default-gainen. */
 export function runFacit(seeds: number[], behaviorGain?: number): FacitReport {
   const scores = seeds.map((s) => scoreWorld(makeWorld(s), behaviorGain));
   const n = scores.length || 1;

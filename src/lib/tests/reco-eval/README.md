@@ -22,7 +22,7 @@ For each seeded world (`simulator.ts`):
 - Thousands of visits are simulated as `observed = hidden + gaussian·noise`.
 - **Gold** = the section with the highest hidden truth (the facit).
 - **Prior** = the section today's type weights would pick (highest
-  `PROOF_TYPE_WEIGHT`). Because the truth is independent of type, the prior holds
+  `MOVE_TYPE_WEIGHT`). Because the truth is independent of type, the prior holds
   **no information** about gold — its hit-rate is chance (`mean(1/k)`).
 
 The engine only ever sees the noisy signal; the facit is the hidden truth. So

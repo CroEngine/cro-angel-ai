@@ -163,9 +163,16 @@ describe("sektions-joinen på den committade korpusen (chromium)", () => {
     if (!chromiumAvailable) return ctx.skip();
     // Uppmätt 2026-08-05 (produktions-trogen sida A, rå outerHTML): corpus-
     // delmängden 6/7 = 85,7 %. DISKRET MARGINAL uttalad (granskningsfix):
-    // golvet 0,70 TÅL en enskild flippad kandidat (5/7 = 71,4 %) och fångar
-    // två (4/7 = 57,1 %) — en omfrysning som flippar en enda kandidat ska
-    // synas i svepet, inte fälla CI.
+    // golvet 0,70 valdes mot en 7-kandidatspopulation (tålde en flippad, fångade
+    // två). BREDDADE FLYTTREGELN 2026-08-15 tog populationen till 26 och
+    // täckningen till 88,5 % (23/26) — marginalen VÄXTE, tvärtemot farhågan att
+    // de nya typerna skulle joina sämre. Vid 26 tål golvet fem flippade.
+    // Talet SKRIVS UT (granskningsfynd 2026-08-15): golvet kalibrerades på en
+    // 7-kandidatspopulation, och breddade flyttregler ändrar populationen —
+    // en grind som bara säger godkänt/underkänt döljer att marginalen krymper.
+    console.log(
+      `[join-eval] kandidat-täckning ${result!.totalCandUnik}/${result!.totalCand} = ${(result!.candCoverage * 100).toFixed(1)} % (golv 70 %)`,
+    );
     expect(result!.candCoverage).toBeGreaterThanOrEqual(0.7);
     expect(result!.totalCand).toBeGreaterThanOrEqual(5); // grinden får inte bli tom
   });

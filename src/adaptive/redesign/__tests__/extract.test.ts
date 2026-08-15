@@ -366,9 +366,20 @@ describe("extractContentModel — structural + proof section typing", () => {
     expect(typeOf(t, "Stay in the loop")).toBe("cta");
   });
 
-  it("types a >=3 sub-heading grid as features, but a single sub-heading stays section", () => {
-    const grid = `<section><h2>Everything at once</h2><div><h3>Fast</h3><h3>Secure</h3><h3>Open</h3></div></section>`;
-    expect(typeOf(grid, "Everything at once")).toBe("features");
+  // Ledtråden stramades 2026-08-15 när features blev ett LYFTMÅL (breddade
+  // flyttregeln). Bara ANKRADE signaler kvar: rutnäts-klass eller ikonbärande
+  // listposter. Bara-tre-<h3> räcker inte längre — det är vilken
+  // innehållslista som helst, och den blev efter breddningen en flyttkandidat
+  // som servas till riktiga besökare.
+  it("types an ANCHORED feature grid as features; three bare sub-headings stay section", () => {
+    const cls = `<section><h2>Everything at once</h2><div class="feature-grid"><h3>Fast</h3><h3>Secure</h3></div></section>`;
+    expect(typeOf(cls, "Everything at once")).toBe("features");
+    const icons = `<section><h2>What you get</h2><ul><li><svg></svg>Fast</li><li><svg></svg>Secure</li><li><svg></svg>Open</li></ul></section>`;
+    expect(typeOf(icons, "What you get")).toBe("features");
+    // Tre nakna <h3> — en bloggstrip, en produktlista, en nyhetspuff. Ärligt
+    // "section" i stället för ett falskt lyftmål.
+    const bare = `<section><h2>From the blog</h2><div><h3>Post one</h3><h3>Post two</h3><h3>Post three</h3></div></section>`;
+    expect(typeOf(bare, "From the blog")).toBe("section");
     const prose = `<section><h2>Our method</h2><h3>Background</h3><p>A long paragraph of prose about the method.</p></section>`;
     expect(typeOf(prose, "Our method")).toBe("section");
   });
