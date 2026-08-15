@@ -24,7 +24,13 @@ import {
   evaluateWinnerWithGuards,
   promotionBlockReason,
   type GuardArmCounts,
+  type TestMetric,
 } from "@/adaptive/redesign/winner";
+
+/** DB-kolumnen är fri text bakom ett check-villkor; läs den tolerant och
+ *  fall tillbaka på målet självt hellre än att lita på en okänd sträng. */
+const asTestMetric = (v: unknown): TestMetric =>
+  v === "continuation" || v === "bounce" ? v : "conversion";
 import { loadTopReferrerDomains } from "@/adaptive/persistence.server";
 import { buildJourney, type JourneyMilestone } from "./journey";
 import { cleanEvents } from "./data-hygiene";
@@ -155,7 +161,7 @@ export interface SiteConfigView {
   /** Testets mätmål (ägarbeslut 2026-07-20): 'conversion' (default) eller
    *  'continuation' — gick besökaren vidare till en andra sida? Nordstjärne-
    *  målet (conversionText) ändras inte; bara måttstocken för A/B-testet. */
-  testMetric: "conversion" | "continuation";
+  testMetric: TestMetric;
   /** Sajtens registrerade domän (normaliserad). null = legacy/labb. */
   domain: string | null;
   /** Stämplad av första domän-bevisade snippet-signalen — installations- och
@@ -210,7 +216,7 @@ export interface VariantComparison {
 export interface VariantAbView {
   /** Vad `conversions`-fälten räknar: konverteringar eller "gick vidare till
    *  en andra sida" (test_metric='continuation', ägarbeslut 2026-07-20). */
-  metric: "conversion" | "continuation";
+  metric: TestMetric;
   variant: { visits: number; conversions: number };
   control: { visits: number; conversions: number };
   outcome: "insufficient_data" | "no_winner" | "recommend_winner" | "recommend_stop";
@@ -480,7 +486,7 @@ export const getDashboard = createServerFn({ method: "POST" })
             adaptationsEnabled: current.adaptations_enabled === true,
             servingEnabled: current.serving_enabled === true,
             rampPct: typeof current.ramp_pct === "number" ? current.ramp_pct : 5,
-            testMetric: current.test_metric === "continuation" ? "continuation" : "conversion",
+            testMetric: asTestMetric(current.test_metric),
             domain: current.domain ?? null,
             domainVerifiedAt: current.domain_verified_at ?? null,
             billingStatus:
@@ -554,6 +560,7 @@ export const getDashboard = createServerFn({ method: "POST" })
                     conversions: Number(row?.conversions) || 0,
                     continuations: Number(row?.continuations) || 0,
                     engaged: Number(row?.engaged) || 0,
+                    bounces: Number(row?.bounces) || 0,
                   };
                 };
                 const variantFull = fullArm("variant");
@@ -574,7 +581,12 @@ export const getDashboard = createServerFn({ method: "POST" })
                 };
                 const primaryOf = (a: GuardArmCounts) => ({
                   visits: a.visits,
-                  conversions: metric === "continuation" ? a.continuations : a.conversions,
+                  conversions:
+                    metric === "continuation"
+                      ? a.continuations
+                      : metric === "bounce"
+                        ? (a.bounces ?? 0)
+                        : a.conversions,
                 });
                 const variantArm = primaryOf(variantFull);
                 const controlArm = primaryOf(controlFull);
@@ -593,7 +605,9 @@ export const getDashboard = createServerFn({ method: "POST" })
                       ? ev.stats.controlRate
                       : metric === "continuation"
                         ? 0.3
-                        : 0.04;
+                        : metric === "bounce"
+                          ? 0.57
+                          : 0.04;
                   const est = estimateVerdictTime({
                     dailyMatchedVisitors: Math.max(1, dailyVisitors ?? 0),
                     baseRate,
@@ -624,7 +638,7 @@ export const getDashboard = createServerFn({ method: "POST" })
                 // primären och prövar guardrails med kalibrerade matten.
                 const spec = validateSuccessSpec(v.success) ?? defaultSuccessSpec();
                 // Delad arm-mappning (EN sanning med nattloopens guardrail-svep).
-                const armsByMetric = metricArmsFromRpc(arms, metric);
+                const armsByMetric = metricArmsFromRpc(arms);
                 if (armsByMetric) {
                   const contractRuling = evaluateRuleWithSpec(spec, armsByMetric);
                   rulingById.set(v.id, {
@@ -1043,7 +1057,7 @@ export const setVariantStatus = createServerFn({ method: "POST" })
               ? evaluateWinnerWithGuards(variantFull, controlFull, metric)
               : null;
           const spec = validateSuccessSpec(row.success) ?? defaultSuccessSpec();
-          const armsByMetric = metricArmsFromRpc(arms as ArmsRpcRow[], metric);
+          const armsByMetric = metricArmsFromRpc(arms as ArmsRpcRow[]);
           const contract = armsByMetric ? evaluateRuleWithSpec(spec, armsByMetric) : null;
           const ruling = contract
             ? {

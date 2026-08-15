@@ -101,6 +101,13 @@ export function evaluateWinner(
     minVisits: WINNER_MIN_VISITS,
     minSuccesses: WINNER_MIN_CONVERSIONS,
   },
+  // RIKTNINGEN (bounce-bytet 2026-08-15). Default true = oförändrat beteende
+  // för varje befintlig anropare. Sätts false för mått där LÄGRE är bättre
+  // (metrikkatalogens direction: "down", t.ex. bounce). Utan den här flaggan
+  // dömde regeln alltid "högre = bättre" och hade utropat den variant som får
+  // FLER att studsa till vinnare — tyst, med full självsäkerhet, eftersom
+  // guardrail-vägen läser riktningen men primärvägen inte gjorde det.
+  higherIsBetter = true,
 ): WinnerEvaluation {
   const vRate = rate(variant);
   const cRate = rate(control);
@@ -111,18 +118,25 @@ export function evaluateWinner(
     control.visits,
   );
   const relativeLift = cRate > 0 ? (vRate - cRate) / cRate : null;
+  // stats bär ALLTID de råa talen — det är sanningen om datan. Bara domen
+  // vänds, så en läsare ser "bounce 56 % → 48 %" och z:s verkliga tecken.
   const stats = { variantRate: vRate, controlRate: cRate, relativeLift, z };
+  const sign = higherIsBetter ? 1 : -1;
+  /** z/lyft sedda från "bättre är positivt"-hållet — allt nedanför dömer på dem. */
+  const dirZ = z === null ? null : sign * z;
+  const dirLift = relativeLift === null ? null : sign * relativeLift;
+  const better = higherIsBetter ? "higher" : "lower";
   const significant =
     z !== null && Math.abs(z) >= WINNER_Z && armStatValid(variant) && armStatValid(control);
 
   // Damage limitation first: a variant that is SIGNIFICANTLY worse should be
   // pulled as soon as the standard significance rules can say so — waiting for
   // the full winner volume would just burn traffic on a proven loser.
-  if (significant && z !== null && z < 0) {
+  if (significant && dirZ !== null && dirZ < 0) {
     return {
       outcome: "recommend_stop",
       reasons: [
-        `variant converts significantly WORSE than control (${(vRate * 100).toFixed(1)}% vs ${(cRate * 100).toFixed(1)}%, z=${z.toFixed(2)}) — recommend stopping the variant`,
+        `variant is significantly WORSE than control (${(vRate * 100).toFixed(1)}% vs ${(cRate * 100).toFixed(1)}%, ${better} is better, z=${z!.toFixed(2)}) — recommend stopping the variant`,
       ],
       stats,
     };
@@ -143,7 +157,7 @@ export function evaluateWinner(
     return { outcome: "insufficient_data", reasons: lacking, stats };
   }
 
-  if (!significant || z === null || z <= 0) {
+  if (!significant || dirZ === null || dirZ <= 0) {
     return {
       outcome: "no_winner",
       reasons: [
@@ -155,11 +169,11 @@ export function evaluateWinner(
 
   // Practically relevant effect size. A 0% control with a significant positive
   // variant clears any relative bar by definition.
-  if (relativeLift !== null && relativeLift < WINNER_MIN_REL_LIFT) {
+  if (dirLift !== null && dirLift < WINNER_MIN_REL_LIFT) {
     return {
       outcome: "no_winner",
       reasons: [
-        `lift is significant but below the practical minimum (${(relativeLift * 100).toFixed(1)}% < ${WINNER_MIN_REL_LIFT * 100}%) — not worth a baseline change`,
+        `improvement is significant but below the practical minimum (${(dirLift * 100).toFixed(1)}% < ${WINNER_MIN_REL_LIFT * 100}%) — not worth a baseline change`,
       ],
       stats,
     };
@@ -180,9 +194,9 @@ export function evaluateWinner(
   return {
     outcome: "recommend_winner",
     reasons: [
-      `variant converts ${(vRate * 100).toFixed(1)}% vs control ${(cRate * 100).toFixed(1)}%` +
-        (relativeLift !== null
-          ? ` (+${(relativeLift * 100).toFixed(1)}% relative)`
+      `variant ${(vRate * 100).toFixed(1)}% vs control ${(cRate * 100).toFixed(1)}% (${better} is better)` +
+        (dirLift !== null
+          ? ` (${(dirLift * 100).toFixed(1)}% better, relative)`
           : " (control at 0%)") +
         ` at z=${z.toFixed(2)} — RECOMMENDATION ONLY: baseline swap requires manual approval`,
     ],
@@ -201,11 +215,20 @@ export function evaluateWinner(
 /** Per-arm counts exactly as the angel_variant_arms RPC returns them.
  *  `conversions` is ALWAYS the goal column (even when the test metric is
  *  continuation — the RPC reports both, and the goal guard needs the goal). */
+/** Sajtens mätmål. `conversion` är målet självt; `continuation` och `bounce`
+ *  är PROXIES som når signifikans långt tidigare — och som därför alltid
+ *  körs med målet som vakt (se evaluateWinnerWithGuards). */
+export type TestMetric = "conversion" | "continuation" | "bounce";
+
 export interface GuardArmCounts {
   visits: number;
   conversions: number;
   continuations: number;
   engaged: number;
+  /** Besökare som gjorde INGENTING: en sida, inga klick, inte engagerad
+   *  (RPC-kolumnen, migration 20260815100000). Valfri: äldre anropare och
+   *  äldre RPC-svar saknar den, och 0 blir då "för lite data" i grindarna. */
+  bounces?: number;
 }
 
 const safeRate = (num: number, den: number): number => (den > 0 ? num / den : 0);
@@ -254,19 +277,34 @@ export function guardSecondariesFromArms(
 export function evaluateWinnerWithGuards(
   variant: GuardArmCounts,
   control: GuardArmCounts,
-  testMetric: "conversion" | "continuation",
+  testMetric: TestMetric,
 ): WinnerEvaluation {
+  // Bounce (ägarbeslut 2026-08-15) är en PROXY precis som continuation, och
+  // körs därför genom exakt samma mål-vakt nedan — men med två skillnader:
+  // utfallet är "gjorde ingenting", och LÄGRE är bättre. Utan riktnings-
+  // flaggan hade regeln utropat den variant som får fler att studsa.
+  const proxy = testMetric === "continuation" || testMetric === "bounce";
   const primaryOf = (a: GuardArmCounts): VariantArm => ({
     visits: a.visits,
-    conversions: testMetric === "continuation" ? a.continuations : a.conversions,
+    conversions:
+      testMetric === "continuation"
+        ? a.continuations
+        : testMetric === "bounce"
+          ? (a.bounces ?? 0)
+          : a.conversions,
   });
   const secondaries = guardSecondariesFromArms(variant, control);
-  const thresholds =
-    testMetric === "continuation"
-      ? { minVisits: ENGAGEMENT_MIN_VISITS, minSuccesses: ENGAGEMENT_MIN_SUCCESSES }
-      : undefined;
-  const ev = evaluateWinner(primaryOf(variant), primaryOf(control), secondaries, thresholds);
-  if (testMetric !== "continuation") return ev;
+  const thresholds = proxy
+    ? { minVisits: ENGAGEMENT_MIN_VISITS, minSuccesses: ENGAGEMENT_MIN_SUCCESSES }
+    : undefined;
+  const ev = evaluateWinner(
+    primaryOf(variant),
+    primaryOf(control),
+    secondaries,
+    thresholds,
+    testMetric !== "bounce",
+  );
+  if (!proxy) return ev;
 
   const goalV: VariantArm = { visits: variant.visits, conversions: variant.conversions };
   const goalC: VariantArm = { visits: control.visits, conversions: control.conversions };
@@ -278,7 +316,7 @@ export function evaluateWinnerWithGuards(
     return {
       outcome: "no_winner",
       reasons: [
-        `proxy metric leads but GOAL conversions are significantly WORSE (${goalRates}, z=${goalZ.toFixed(2)}) — winner withdrawn: an engagement win must never ride over a sinking goal`,
+        `${testMetric} leads but GOAL conversions are significantly WORSE (${goalRates}, z=${goalZ.toFixed(2)}) — winner withdrawn: an engagement win must never ride over a sinking goal`,
         ...ev.reasons,
       ],
       stats: ev.stats,

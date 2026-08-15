@@ -6,7 +6,7 @@
 // så continuation-tal visades under conversion-rubriker. Här bor översättningen
 // metric ⇒ etiketter/copy och rubrikreglerna — testbara utan DOM.
 
-export type AbMetric = "conversion" | "continuation";
+export type AbMetric = "conversion" | "continuation" | "bounce";
 
 export interface AbMetricLabels {
   /** Kolumnrubrik för andelen i armtabellen. */
@@ -18,6 +18,11 @@ export interface AbMetricLabels {
   verb: string;
   /** Måttets namn i fallback-fotnoten "Judged on <judgedOn> only; …". */
   judgedOn: string;
+  /** Bounce är det enda måttet där LÄGRE är bättre. Utan flaggan hade
+   *  svarskortet skrivit "adapted visitors bounce MORE" om en VINST
+   *  (bounce-bytet 2026-08-15) — måttet vändes i vinnarregeln men copyn
+   *  hade fortsatt läsa som om högre vore bra. */
+  lowerIsBetter: boolean;
 }
 
 export function abMetricLabels(metric: AbMetric | null | undefined): AbMetricLabels {
@@ -27,6 +32,16 @@ export function abMetricLabels(metric: AbMetric | null | undefined): AbMetricLab
       countLabel: "Continued (2nd page)",
       verb: "continue to a second page",
       judgedOn: "continuation (reaching a second page)",
+      lowerIsBetter: false,
+    };
+  }
+  if (metric === "bounce") {
+    return {
+      rateLabel: "Bounce rate",
+      countLabel: "Bounced (did nothing)",
+      verb: "bounce",
+      judgedOn: "bounce (one page, no clicks, never engaged)",
+      lowerIsBetter: true,
     };
   }
   return {
@@ -34,6 +49,7 @@ export function abMetricLabels(metric: AbMetric | null | undefined): AbMetricLab
     countLabel: "Conversions",
     verb: "convert",
     judgedOn: "conversions",
+    lowerIsBetter: false,
   };
 }
 
@@ -58,7 +74,12 @@ export function measuredHeadline(
   liftRel: number | null,
   metric: AbMetric | null | undefined,
 ): MeasuredHeadline {
-  const { verb } = abMetricLabels(metric);
+  const { verb, lowerIsBetter } = abMetricLabels(metric);
+  // Riktningen styr BÅDE ordvalet och hur lyftet läses. För bounce är en
+  // vinst en MINSKNING, så liftRel är negativ på en vinst — att skriva ut
+  // den rakt av hade gett "Yes — -12% lift".
+  const moreOnWin = lowerIsBetter ? "less" : "more";
+  const moreOnLoss = lowerIsBetter ? "more" : "less";
   if (verdict !== "win" && verdict !== "loss") {
     return {
       title: "No proven effect yet",
@@ -74,28 +95,34 @@ export function measuredHeadline(
         title:
           metric === "continuation"
             ? "Yes — adapted continues, control didn't"
-            : "Yes — adapted converts, control didn't",
+            : metric === "bounce"
+              ? "Yes — adapted stayed, control never did"
+              : "Yes — adapted converts, control didn't",
         body: `Adapted visitors ${verb}; the held-back control group recorded none, so a relative lift percent is undefined — but the difference itself is statistically real.`,
         celebrate: true,
       };
     }
     return {
       title: "Not yet",
-      body: `Adapted visitors ${verb} less than the held-back control group.`,
+      body: `Adapted visitors ${verb} ${moreOnLoss} than the held-back control group.`,
       celebrate: false,
     };
   }
+  // För bounce är en vinst en MINSKNING (liftRel negativ) — skriv ut
+  // storleken, inte tecknet, annars blir rubriken "Yes — -12% lift".
+  // Måtten där högre är bättre behåller sin EXAKTA gamla formulering.
   const pctStr = `${liftRel > 0 ? "+" : ""}${(liftRel * 100).toFixed(0)}%`;
+  const magnitude = `${Math.abs(liftRel * 100).toFixed(0)}%`;
   if (verdict === "win") {
     return {
-      title: `Yes — ${pctStr} lift`,
-      body: `Adapted visitors ${verb} more than the held-back control group.`,
+      title: lowerIsBetter ? `Yes — ${magnitude} fewer` : `Yes — ${pctStr} lift`,
+      body: `Adapted visitors ${verb} ${moreOnWin} than the held-back control group.`,
       celebrate: true,
     };
   }
   return {
-    title: `Not yet — ${pctStr}`,
-    body: `Adapted visitors ${verb} less than the held-back control group.`,
+    title: lowerIsBetter ? `Not yet — ${magnitude} more` : `Not yet — ${pctStr}`,
+    body: `Adapted visitors ${verb} ${moreOnLoss} than the held-back control group.`,
     celebrate: false,
   };
 }

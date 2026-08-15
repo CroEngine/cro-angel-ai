@@ -17,8 +17,21 @@ describe("abMetricLabels — metric ⇒ rubriker/copy", () => {
     expect(l.countLabel).toBe("Continued (2nd page)");
     expect(l.verb).toBe("continue to a second page");
     expect(l.judgedOn).toBe("continuation (reaching a second page)");
-    for (const s of Object.values(l)) {
-      expect(s.toLowerCase()).not.toContain("conv");
+    for (const v of Object.values(l)) {
+      if (typeof v === "string") expect(v.toLowerCase()).not.toContain("conv");
+    }
+    expect(l.lowerIsBetter).toBe(false);
+  });
+
+  // Bounce (ägarbeslut 2026-08-15) är det ENDA måttet där lägre är bättre.
+  it("bounce byter alla ytor OCH markerar riktningen", () => {
+    const l = abMetricLabels("bounce");
+    expect(l.rateLabel).toBe("Bounce rate");
+    expect(l.countLabel).toBe("Bounced (did nothing)");
+    expect(l.verb).toBe("bounce");
+    expect(l.lowerIsBetter).toBe(true);
+    for (const v of Object.values(l)) {
+      if (typeof v === "string") expect(v.toLowerCase()).not.toContain("conv");
     }
   });
 
@@ -88,5 +101,35 @@ describe("measuredHeadline — svarskortets rubrikval", () => {
   it("okänt/inconclusive-domslut faller i den försiktiga grenen och firar aldrig", () => {
     expect(measuredHeadline(undefined, 0.5, "conversion").celebrate).toBe(false);
     expect(measuredHeadline("inconclusive", 0.5, "conversion").celebrate).toBe(false);
+  });
+});
+
+// Riktningen i svarskortet (bounce-bytet 2026-08-15). En vinst på bounce är en
+// MINSKNING: liftRel är negativ, och copyn måste läsa "bounce less" — inte
+// "bounce more" med ett minustecken i rubriken.
+describe("measuredHeadline — bounce läses åt rätt håll", () => {
+  it("vinst = färre studsar, aldrig ett negativt 'lyft'", () => {
+    const h = measuredHeadline("win", -0.18, "bounce");
+    expect(h.title).toBe("Yes — 18% fewer");
+    expect(h.body).toContain("bounce less");
+    expect(h.title).not.toContain("-");
+    expect(h.celebrate).toBe(true);
+  });
+
+  it("förlust = fler studsar", () => {
+    const h = measuredHeadline("loss", 0.12, "bounce");
+    expect(h.title).toBe("Not yet — 12% more");
+    expect(h.body).toContain("bounce more");
+    expect(h.celebrate).toBe(false);
+  });
+
+  it("SAMMA lyft under conversion läses tvärtom — riktningen är verklig", () => {
+    expect(measuredHeadline("win", -0.18, "bounce").body).toContain("less");
+    expect(measuredHeadline("win", 0.18, "conversion").body).toContain("more");
+  });
+
+  it("konverteringsvägens formuleringar är OFÖRÄNDRADE", () => {
+    expect(measuredHeadline("win", 0.08, "conversion").title).toBe("Yes — +8% lift");
+    expect(measuredHeadline("loss", -0.08, "conversion").title).toBe("Not yet — -8%");
   });
 });
