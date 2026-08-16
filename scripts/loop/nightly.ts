@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { anthropicDesigner } from "./designer";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
 import { buildCandidatePlan } from "./candidate-plan";
-import { catalogEligible, cellWorkDir, planRow } from "./cell-plan";
+import { catalogEligible, cellWorkDir, freezePriority, planRow } from "./cell-plan";
 import { fetchSectionBehavior } from "./section-behavior";
 import {
   REUSE_FALSIFIED_AT,
@@ -70,7 +70,7 @@ import {
 import { defaultSuccessSpec, validateSuccessSpec } from "../../src/adaptive-lab/metrics";
 import { segmentSummaryFor } from "../../src/lib/dashboard/segment-summary";
 import { mirrorStorageKey } from "../../src/lib/sandbox/mirror-key";
-import { segmentDims } from "../../src/lib/segment-key";
+import { isSegmentPrefix, segmentDims } from "../../src/lib/segment-key";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const CAP = Number(arg("cap") ?? 3); // max nya varianter per sajt och natt
@@ -201,16 +201,13 @@ for (const site of targets) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([p]) => p);
-    // Löv-toppen kapas FÖRST (10) och unionen därefter. (Heatmap-vyn är
-    // pensionerad 2026-07-26 — klick-topparna fryses inte längre; resespelarens
-    // och flödesmålens sidor räcker som backdrops.)
-    const leafPaths = [
-      ...new Set(
-        (leaves as { path?: string }[]).map(
-          (l) => (l.path || "/").split("#")[0].split("?")[0] || "/",
-        ),
-      ),
-    ].slice(0, 10);
+    // Löv-toppen: TRAFIK-rankad med mall-topp-upp (freezePriority — se
+    // granskningsfyndet där: den gamla kapningen tog de 10 FÖRSTA i databasens
+    // ordning, så "/restauranger/…" föll för "/blogg/…" alfabetiskt varje natt
+    // och mallcellen med sajtens näst största trafik stod i needs_freeze i
+    // veckor). (Heatmap-vyn är pensionerad 2026-07-26 — klick-topparna fryses
+    // inte längre; resespelarens och flödesmålens sidor räcker som backdrops.)
+    const leafPaths = freezePriority(leaves as { path?: string; visits?: number }[]);
     // Flödesdestinationerna fryses också (korssid-lyftet): en insert_snippet-op
     // kan bara citera en FRYST källsida — utan kopian tappas signalen tyst.
     const destCounts = new Map<string, number>();
@@ -419,7 +416,13 @@ for (const site of targets) {
         });
         cohortScopes = planCohortScopes(Array.isArray(cohortRows) ? cohortRows : [], {
           windowDays: 30,
-          baseRate: site.test_metric === "continuation" ? 0.4 : 0.04,
+          // Basraten per mått: conversion ~4 %, continuation ~40 %, bounce
+          // 57 % (uppmätt på glutenforum 2026-08-15). Fel basrat gör bara
+          // dagar-till-domslut-SKATTNINGEN skev — men en bounce-sajt med
+          // conversionens 0,04 hade fått varje kohortscope avfärdat som
+          // "domslut om ~450 dagar" och förslagslistan hade gått tom.
+          baseRate:
+            site.test_metric === "continuation" ? 0.4 : site.test_metric === "bounce" ? 0.57 : 0.04,
         });
         writeFileSync(
           join(dir, "cohort-opportunities.json"),
@@ -657,7 +660,9 @@ for (const site of targets) {
         `--site-config=${join(dir, "site.json")}`,
         `--out=${dir}`,
         `--cap=${CAP}`,
-        `--metric=${site.test_metric === "continuation" ? "continuation" : "conversion"}`,
+        // Proxymåtten (continuation/bounce) passerar orörda — bara okända
+        // värden faller till conversion (samma vitlista som auto-generate).
+        `--metric=${site.test_metric === "continuation" || site.test_metric === "bounce" ? site.test_metric : "conversion"}`,
       ])
     ) {
       console.warn(`[loop] ${site.slug}: detect föll — hoppar över`);
@@ -697,12 +702,26 @@ for (const site of targets) {
           .filter((v) => Array.isArray(v.required_cohorts) && v.required_cohorts.length > 0)
           .map((v) => v.segment_key),
       );
+      // Ett PÅGÅENDE test vars nyckel TÄCKER kohortnyckeln spärrar också
+      // (granskningsfynd 2026-08-16, jokerns följdrisk): en servande/briefad
+      // "alla"-variant på "/" äger hela trafiken — att rista ur en kohortcell
+      // mitt i hade tagit dess besökare ur bägge armarna (matchVariant väljer
+      // specifikast) och förgiftat sajtvitt-testets mätning. Prefixkollen är
+      // samma delade primitiv som serve/detektor (isSegmentPrefix), så domen
+      // kan inte glida: det som skulle serva över kohorten spärrar den.
+      const coveringKeys = [
+        ...((variants ?? []) as { path: string; segment_key: string }[])
+          .filter((v) => v.path === "/")
+          .map((v) => v.segment_key),
+        ...earned.briefed.filter((b) => b.path === "/").map((b) => b.key),
+      ];
       const candidate = cohortScopes.find((sc) => {
         const key = segmentKeyForScope(sc);
         return (
           key !== null &&
           !existingCohortKeys.has(key) &&
           !earned.briefed.some((b) => b.key === key) &&
+          !coveringKeys.some((k) => isSegmentPrefix(k, key)) &&
           !!pages["/"]
         );
       });
@@ -850,8 +869,9 @@ for (const site of targets) {
       // låst kontrakt). Live-grinden är OFÖRÄNDRAD och täcker källorna lika:
       // verify → ägarens knapp → ramp → guardrail-svepets hold på uppmätt
       // förlust/breach — icke-underlägsenheten döms av riktiga armar, aldrig
-      // bara offline-tal. Mall-celler stannar hos designern i v1 (alt-stegen
-      // är avstängd för mallar och katalog-proben går mot EN fryst fil).
+      // bara offline-tal. Mall-carve-outen lyft 2026-08-16 — katalogen äger
+      // även mall-celler (probe mot representanten); alt-stegen vid GRINDFALL
+      // är fortsatt avstängd för mallar (v1-rest).
       let planOps: RedesignOp[] | null = null;
       let planAltOps: RedesignOp[][] = [];
       let planSource = "designer";
@@ -876,17 +896,20 @@ for (const site of targets) {
       // såg identisk ut med "katalogen körde och valde ingenting". Operatören
       // ska kunna läsa VARFÖR ur loggen, inte gissa ur frånvaron av rader.
       const eligibility = catalogEligible({
-        isTemplate: isTpl,
         crossPageSources: sourcePages.length,
         // Ägarbeslut 2026-08-15: med move-only vokabulär finns inget korssid-
         // citat att skydda, så carve-outen faller och katalogen tar cellen.
         mayInsert: DEFAULT_REDESIGN_GUARDRAILS.ops.includes("insert_snippet"),
       });
-      if (eligibility.skip === "template") {
+      // Mall-carve-outen lyft 2026-08-16 (se catalogEligible): katalogen äger
+      // nu även mall-celler — content är mall-snittet, proben går mot
+      // representantens frysta fil, precis som designervägens verify.
+      if (isTpl && eligibility.eligible) {
         console.log(
-          `[loop] ${site.slug} ${b.path}×${b.key}: mall-cell (${b.templatePages?.length ?? 0} exemplar) — designern äger den, katalogen hoppas över (v1)`,
+          `[loop] ${site.slug} ${b.path}×${b.key}: mall-cell (${b.templatePages?.length ?? 0} exemplar) — katalogen tar den, probe mot representanten`,
         );
-      } else if (eligibility.skip === "cross-page") {
+      }
+      if (eligibility.skip === "cross-page") {
         console.log(
           `[loop] ${site.slug} ${b.path}×${b.key}: korssid-cell (${sourcePages.map((s) => s.path).join(", ")}) — designern äger den, katalogen hoppas över`,
         );

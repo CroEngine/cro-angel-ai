@@ -70,3 +70,29 @@ describe("metricTableRows — utfällbara mätartabellen", () => {
     expect(rows[1].variant).toBe("6,789 (55.0%)");
   });
 });
+
+// ── variantFor + sajtvitt-jokern (granskningsfynd 2026-08-16) ────────────────
+// Dashboarden och serve-vägen MÅSTE ranka lika: specificitet före djup. Med
+// bara djupet avgjorde radordningen ur DB:n — google-grenen hade kunnat visa
+// sajtvitt-variantens kort medan serven gav besökarna google-varianten.
+import { variantFor } from "../variant-stats";
+import type { VariantView } from "@/lib/dashboard/dashboard.functions";
+
+const vv = (segmentKey: string, id: string): VariantView =>
+  ({ id, segmentKey, status: "serving" }) as unknown as VariantView;
+
+describe("variantFor — samma rankning som serve (specificitet före djup)", () => {
+  it("konkret slår joker oavsett ordning i listan", () => {
+    const a = [vv("alla", "site"), vv("google", "g")];
+    const b = [vv("google", "g"), vv("alla", "site")];
+    expect(variantFor(a, "google·mobile·se·ny")?.id).toBe("g");
+    expect(variantFor(b, "google·mobile·se·ny")?.id).toBe("g");
+    // ...och jokern tar exakt resten.
+    expect(variantFor(a, "direct·mobile·se·ny")?.id).toBe("site");
+  });
+
+  it("djup är fortfarande tiebreak inom samma specificitet", () => {
+    const vs = [vv("google", "g1"), vv("google·mobile", "g2")];
+    expect(variantFor(vs, "google·mobile·se·ny")?.id).toBe("g2");
+  });
+});

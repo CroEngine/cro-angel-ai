@@ -27,7 +27,12 @@
 --
 -- Kolumnen ADDERAS sist: befintliga anropare läser på namn och rörs inte.
 
-create or replace function public.angel_variant_arms(p_site text, p_variant text)
+-- DROP KRÄVS (upptäckt vid appliceringen 2026-08-16): CREATE OR REPLACE kan
+-- inte ändra en funktions returtyp (42P13) när bounces-kolumnen tillkommer.
+-- Drop + create ligger i samma transaktion — inga anropare ser ett fönster.
+drop function if exists public.angel_variant_arms(text, text);
+
+create function public.angel_variant_arms(p_site text, p_variant text)
 returns table(
   arm text, visits bigint, conversions bigint, continuations bigint,
   cta_clicks bigint, form_submits bigint, engaged bigint, deep_scrolls bigint,
@@ -117,6 +122,13 @@ as $function$
   from exp
   group by 1
 $function$;
+
+-- ACL:EN MÅSTE ÅTER-STÄLLAS EFTER DROP (granskningsfynd 2026-08-16): DROP
+-- FUNCTION kastar den lagrade ACL:en och CREATE ärver default-grants — utan
+-- paret nedan får anon/authenticated EXECUTE via /rest/v1/rpc. Samma par som
+-- varje tidigare definition bar (20260713, 20260720).
+revoke all on function public.angel_variant_arms(text, text) from public, anon, authenticated;
+grant execute on function public.angel_variant_arms(text, text) to service_role;
 
 -- test_metric får ett tredje läge. Villkoret räknade tidigare bara upp
 -- conversion/continuation, så en bounce-sajt hade avvisats av databasen.

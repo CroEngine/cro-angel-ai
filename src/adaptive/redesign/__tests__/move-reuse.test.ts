@@ -258,6 +258,29 @@ describe("offerMoveSeedsForCell — vakterna", () => {
     ).toHaveLength(1);
   });
 
+  // Mall-carve-out-lyftet 2026-08-16: cellPath kan vara ett MÖNSTER. Vakterna
+  // dömer via pathsCover — strikt likhet hade åter-erbjudit ett frö till
+  // "/blogg/*" fast det falsifierats på en sida INUTI mönstret, och mall-
+  // cellen hade åter-applicerat det på exakt sidan där det mätbart föll.
+  it("mönster-cell: fall på en sida INUTI mönstret spärrar hela mallcellen", () => {
+    const records = new Map([
+      ["testimonials", { wonOnPaths: [], failedOnPaths: ["/blogg/kladdkaka"] }],
+    ]);
+    expect(offer({ cellPath: "/blogg/*", records })).toEqual([]);
+    // ...och en LEVANDE mall-variant av typen spärrar sina konkreta sidor.
+    const rows: ReuseVariantRow[] = [
+      {
+        id: "r2",
+        path: "/blogg/*",
+        status: "serving",
+        ops: [{ op: "move_up", targetId: "sec-9-testimonials" }],
+      },
+    ];
+    expect(offer({ cellPath: "/blogg/kladdkaka", rows })).toEqual([]);
+    // Mönstret spärrar aldrig en sida UTANFÖR sig.
+    expect(offer({ cellPath: "/kunder", rows })).toHaveLength(1);
+  });
+
   it("aldrig en sida som redan har en levande flytt-variant av typen", () => {
     const rows: ReuseVariantRow[] = [
       {

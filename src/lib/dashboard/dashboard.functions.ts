@@ -773,8 +773,10 @@ export const getDashboard = createServerFn({ method: "POST" })
                 returning: r.is_returning === true,
                 visits: Number(r.visits) || 0,
               }));
+              // Proxymåtten (continuation/bounce) grindar på besök ensamt —
+              // samma regel som journey.ts (utfallet finns i varje session).
               const gate =
-                siteConfig.testMetric === "continuation"
+                siteConfig.testMetric !== "conversion"
                   ? SEGMENT_MIN_VISITS_ENGAGEMENT
                   : SEGMENT_MIN_VISITS;
               for (const g of metrics.segmentGroups) {

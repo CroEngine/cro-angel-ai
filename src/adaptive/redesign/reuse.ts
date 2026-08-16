@@ -36,6 +36,7 @@
 // vars text inte längre finns i källsidans quotables är inte längre giltigt
 // och sållas i nattloopens viabilitetskoll (samma dom som driftsvepet).
 
+import { templateMatches } from "../../lib/page-template";
 import { stripTags } from "./extract";
 import { normQuote } from "./generate";
 
@@ -324,18 +325,27 @@ export function offerSeedsForCell(args: {
   const out: ReuseSeed[] = [];
   for (const seed of args.seeds) {
     if (out.length >= MAX_REUSE_OFFERS_PER_CELL) break;
-    if (seed.provedOnPath === args.cellPath) continue;
-    if (seed.sourcePath === args.cellPath) continue;
+    // Mönster-medvetna vakter (samma pathsCover som flytt-fröna): cellPath
+    // kan vara "/blogg/*" efter mall-carve-out-lyftet 2026-08-16 — strikt
+    // likhet hade missat varje sida inuti mönstret. Vilande under move-only
+    // (inga textfrön erbjuds) men lagas nu, inte när vokabulären öppnas igen.
+    if (pathsCover(seed.provedOnPath, args.cellPath)) continue;
+    if (pathsCover(seed.sourcePath, args.cellPath)) continue;
     // Transfer-lärandet (vakt 3): blocket har redan prövats och pensionerats
     // på den här sidan — hypotesen är prövad HÄR, om-erbjudande är anti-
     // lärande (och att föreslå om något ägaren tagit bort är brus).
-    if (args.records?.get(recordKey(seed.text))?.failedOnPaths.includes(args.cellPath)) continue;
+    if (
+      args.records
+        ?.get(recordKey(seed.text))
+        ?.failedOnPaths.some((p) => pathsCover(p, args.cellPath))
+    )
+      continue;
     if (textPresent(args.landingFlatHtml, seed.text)) continue;
     const key = normQuote(seed.text).toLowerCase();
     const alreadyHere = args.rows.some(
       (row) =>
         row.status !== "retired" &&
-        row.path === args.cellPath &&
+        pathsCover(row.path, args.cellPath) &&
         insertOps(row).some((o) => normQuote(o.detail).toLowerCase() === key),
     );
     if (alreadyHere) continue;
@@ -553,6 +563,17 @@ export function moveSeedSaturated(seed: MoveSeed, rows: ReuseVariantRow[]): bool
  *     delat med textfröna): flytt-frön ADDERAR inga menyrader — de
  *     annoterar rader som redan finns — så en gemensam budget hade svultit
  *     en form utan att minska bruset. */
+/** Path-domen för frö-vakterna (granskningsfynd 2026-08-16, mall-carve-out-
+ *  lyftet): en cellPath kan vara ett MALL-MÖNSTER ("/blogg/*") och frönas
+ *  paths konkreta sidor inuti det — strikt likhet missade då varje vakt.
+ *  Konkret: ett flytt-frö falsifierat på /blogg/kladdkaka hade åter-erbjudits
+ *  till cellen /blogg/* och åter-applicerats på exakt sidan där det mätbart
+ *  föll (anti-lärande). Domen är symmetrisk: mönstret täcker sina sidor och
+ *  en sida täcks av sitt mönster. */
+export function pathsCover(a: string, b: string): boolean {
+  return a === b || templateMatches(a, b) || templateMatches(b, a);
+}
+
 export function offerMoveSeedsForCell(args: {
   seeds: MoveSeed[];
   cellPath: string;
@@ -565,13 +586,16 @@ export function offerMoveSeedsForCell(args: {
   const out: MoveSeed[] = [];
   for (const seed of args.seeds) {
     if (out.length >= MAX_REUSE_OFFERS_PER_CELL) break;
-    if (seed.provedOnPath === args.cellPath) continue;
+    if (pathsCover(seed.provedOnPath, args.cellPath)) continue;
     if (!args.catalogMoveTypes.has(seed.sectionType)) continue;
-    if (args.records?.get(seed.sectionType)?.failedOnPaths.includes(args.cellPath)) continue;
+    if (
+      args.records?.get(seed.sectionType)?.failedOnPaths.some((p) => pathsCover(p, args.cellPath))
+    )
+      continue;
     const alreadyHere = args.rows.some(
       (row) =>
         row.status !== "retired" &&
-        row.path === args.cellPath &&
+        pathsCover(row.path, args.cellPath) &&
         moveTypes(row).includes(seed.sectionType),
     );
     if (alreadyHere) continue;

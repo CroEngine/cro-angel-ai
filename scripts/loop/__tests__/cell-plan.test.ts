@@ -4,7 +4,7 @@
 // största ändring hade noll test.
 import { describe, expect, it } from "vitest";
 
-import { catalogEligible, cellWorkDir, planRow } from "../cell-plan";
+import { catalogEligible, cellWorkDir, freezePriority, planRow } from "../cell-plan";
 
 import type { RedesignOp } from "../../../src/adaptive/redesign/generate";
 
@@ -29,25 +29,76 @@ describe("cellWorkDir", () => {
   });
 });
 
+describe("freezePriority — trafik-rankad frysning med mall-topp-upp", () => {
+  const lv = (path: string, visits: number) => ({ path, visits });
+
+  it("rankar på TRAFIK, aldrig databasens/alfabetets ordning", () => {
+    // needs_freeze-svälten (2026-08-16): den gamla kapningen tog de 10 första
+    // i inkommande ordning — alfabetet avgjorde vem som fick frysas.
+    const leaves = [lv("/a-liten", 5), lv("/z-stor", 900), lv("/m-mellan", 50)];
+    expect(freezePriority(leaves, { topPages: 2 })).toEqual(["/z-stor", "/m-mellan"]);
+  });
+
+  it("mall-topp-upp: topp-mallens två största exemplar garanteras plats", () => {
+    // Glutenforum-formen: bloggsidorna fyller sidtoppen, restaurang-mallen
+    // bär näst mest trafik SAMLAT men ingen enskild sida når toppen — utan
+    // topp-uppen fryses aldrig två exemplar och malldetektorn kan inte köra.
+    const leaves = [
+      lv("/", 200),
+      lv("/blogg/a", 130),
+      lv("/blogg/b", 120),
+      lv("/blogg/c", 110),
+      lv("/restauranger/x", 40),
+      lv("/restauranger/y", 35),
+      lv("/restauranger/z", 30),
+    ];
+    const got = freezePriority(leaves, { topPages: 4, topTemplates: 2 });
+    expect(got.slice(0, 4)).toEqual(["/", "/blogg/a", "/blogg/b", "/blogg/c"]);
+    expect(got).toContain("/restauranger/x");
+    expect(got).toContain("/restauranger/y");
+    // ...men inte hela svansen — två exemplar räcker för malldetektorn.
+    expect(got).not.toContain("/restauranger/z");
+  });
+
+  it("en ensam sida är ingen mall — ingen topp-upp för den", () => {
+    const got = freezePriority([lv("/", 100), lv("/blogg/ensam", 10)], { topPages: 1 });
+    expect(got).toEqual(["/"]);
+  });
+
+  it("samma besök ⇒ deterministisk ordning (path-tiebreak), query/hash strippas", () => {
+    const got = freezePriority([lv("/b?x=1", 10), lv("/a#y", 10)], { topPages: 2 });
+    expect(got).toEqual(["/a", "/b"]);
+  });
+
+  it("aggregerar per sida över segmentlöv — summan rankar, inte största lövet", () => {
+    const got = freezePriority([lv("/x", 40), lv("/x", 40), lv("/y", 60)], { topPages: 1 });
+    expect(got).toEqual(["/x"]); // 80 > 60
+  });
+});
+
 describe("catalogEligible", () => {
   it("vanlig cell ⇒ katalogen äger den", () => {
-    expect(catalogEligible({ isTemplate: false, crossPageSources: 0 })).toEqual({
+    expect(catalogEligible({ crossPageSources: 0 })).toEqual({
       eligible: true,
       skip: null,
     });
   });
 
-  it("mall-cell ⇒ designern (v1: alt-stegen avstängd, proben går mot EN fil)", () => {
-    expect(catalogEligible({ isTemplate: true, crossPageSources: 0 })).toEqual({
-      eligible: false,
-      skip: "template",
+  it("mall-cell ⇒ KATALOGEN (carve-outen lyft 2026-08-16)", () => {
+    // v1-skälet föll: designervägen bygger/mäter mot samma enda representant
+    // som proben går mot, och diagnostiken visade att alla tre återkommande
+    // döda celler på pilotsajten var designer-ägda (påhittade id:n,
+    // artikelrubriken som mål). Mallceller går nu genom menyn som alla andra.
+    expect(catalogEligible({ crossPageSources: 0 })).toEqual({
+      eligible: true,
+      skip: null,
     });
   });
 
   it("korssid-cell ⇒ designern (katalogen kan inte citera en annan sida)", () => {
     // Granskningsfynd 2026-08-08: utan carve-outen tog konvergensen tyst bort
     // korssid-lyftet för exakt de celler som FÖRTJÄNATS på pris-flödessignalen.
-    expect(catalogEligible({ isTemplate: false, crossPageSources: 1 })).toEqual({
+    expect(catalogEligible({ crossPageSources: 1 })).toEqual({
       eligible: false,
       skip: "cross-page",
     });
@@ -58,17 +109,12 @@ describe("catalogEligible", () => {
     // citerar en annan sida. Kan designern inte producera det draget skyddar
     // carve-outen ingenting — den hade bara bytt katalogens beteende-rankade
     // flyttar mot en fri designer med EXAKT samma vokabulär och ingen meny.
-    expect(catalogEligible({ isTemplate: false, crossPageSources: 2, mayInsert: false })).toEqual({
+    expect(catalogEligible({ crossPageSources: 2, mayInsert: false })).toEqual({
       eligible: true,
       skip: null,
     });
-    // Mall-carve-outen är oberoende av vokabulären och står kvar.
-    expect(catalogEligible({ isTemplate: true, crossPageSources: 2, mayInsert: false })).toEqual({
-      eligible: false,
-      skip: "template",
-    });
     // Explicit mayInsert:true beter sig som förut (utelämnad ⇒ samma).
-    expect(catalogEligible({ isTemplate: false, crossPageSources: 1, mayInsert: true })).toEqual({
+    expect(catalogEligible({ crossPageSources: 1, mayInsert: true })).toEqual({
       eligible: false,
       skip: "cross-page",
     });
