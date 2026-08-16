@@ -70,7 +70,7 @@ import {
 import { defaultSuccessSpec, validateSuccessSpec } from "../../src/adaptive-lab/metrics";
 import { segmentSummaryFor } from "../../src/lib/dashboard/segment-summary";
 import { mirrorStorageKey } from "../../src/lib/sandbox/mirror-key";
-import { segmentDims } from "../../src/lib/segment-key";
+import { isSegmentPrefix, segmentDims } from "../../src/lib/segment-key";
 
 const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split("=")[1];
 const CAP = Number(arg("cap") ?? 3); // max nya varianter per sajt och natt
@@ -705,12 +705,26 @@ for (const site of targets) {
           .filter((v) => Array.isArray(v.required_cohorts) && v.required_cohorts.length > 0)
           .map((v) => v.segment_key),
       );
+      // Ett PÅGÅENDE test vars nyckel TÄCKER kohortnyckeln spärrar också
+      // (granskningsfynd 2026-08-16, jokerns följdrisk): en servande/briefad
+      // "alla"-variant på "/" äger hela trafiken — att rista ur en kohortcell
+      // mitt i hade tagit dess besökare ur bägge armarna (matchVariant väljer
+      // specifikast) och förgiftat sajtvitt-testets mätning. Prefixkollen är
+      // samma delade primitiv som serve/detektor (isSegmentPrefix), så domen
+      // kan inte glida: det som skulle serva över kohorten spärrar den.
+      const coveringKeys = [
+        ...((variants ?? []) as { path: string; segment_key: string }[])
+          .filter((v) => v.path === "/")
+          .map((v) => v.segment_key),
+        ...earned.briefed.filter((b) => b.path === "/").map((b) => b.key),
+      ];
       const candidate = cohortScopes.find((sc) => {
         const key = segmentKeyForScope(sc);
         return (
           key !== null &&
           !existingCohortKeys.has(key) &&
           !earned.briefed.some((b) => b.key === key) &&
+          !coveringKeys.some((k) => isSegmentPrefix(k, key)) &&
           !!pages["/"]
         );
       });

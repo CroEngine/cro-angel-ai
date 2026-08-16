@@ -644,7 +644,16 @@ try {
       // sektions-id), (2) net-no-op-vakten fäller en flytt av första
       // sektionen på en hjältelös sida. Varje reserv valideras med SAMMA
       // validator som huvudplanen — ingen genväg, bara en andra chans.
-      for (const [i, alt] of (isTemplate ? [] : (plan.altOps ?? [])).entries()) {
+      //
+      // MALLAR INKLUDERADE (granskningsfynd 2026-08-16, mall-carve-out-
+      // lyftet): katalogens mall-planer bär rankade reserver byggda på SAMMA
+      // mall-snitt som huvudvalet, och valideringen är DOM-fri — exakt de två
+      // levande avslagsvägarna ovan drabbar mallar likadant. Uteslutningen
+      // var en rest från när designern ägde mallceller (utan altOps fanns
+      // inget att prova); kvar hade den gett tillbaka det återkommande döda
+      // cellsmönstret som lyftet skulle bota. GRINDFALLS-stegen
+      // (tryProofFallback) är fortsatt avstängd för mallar — v1-resten.
+      for (const [i, alt] of (plan.altOps ?? []).entries()) {
         const av = await generateRedesign(ctx, async () => JSON.stringify(alt));
         if (av.ops.length !== alt.length || av.ops.length === 0) continue;
         validated = av;

@@ -256,6 +256,46 @@ describe("sajtvitt-jokern: inträdesregeln är mätkraft", () => {
     expect(got[0].incremental.visits).toBe(140);
   });
 
+  it("ett SMITT 'alla'-löv blir aldrig en kandidat — jokern är reserverad", () => {
+    // Kanalen är rå klient-payload: 100 fejkade besök med
+    // trafficSource='alla' hade annars blivit en "konkret" kandidat med
+    // joker-matchning — förbi hela 2/3-inträdesregeln. Hoppas som 'okänd'.
+    const forged = [
+      leaf("alla", "mobile", "SE", false, 150, 0),
+      leaf("google", "mobile", "SE", false, 400, 0),
+    ];
+    const got = findEarnedSegments(forged, [], 5, "bounce");
+    // Det smidda lövet blir varken kandidat (hoppas som 'okänd') eller
+    // motiverar jokern (google 400 = 73 % ≥ 2/3 av 550) — google vinner
+    // konkret, på sitt fulla djup (greedyn föredrar djupast vid lika
+    // inkrement), och ingen nyckel bär jokertecknet.
+    expect(got.map((s) => s.key)).toEqual(["google·mobile·SE·ny"]);
+    expect(got.some((s) => s.key.includes("alla"))).toBe(false);
+  });
+
+  it("grinden binder på INKREMENTET: 90 % redan täckt ⇒ ingen joker på resten under golvet", () => {
+    // Sidan totalt 1000 besök men google-varianten täcker 950 — jokern hade
+    // ägt 50 besök, långt under grinden (100). Med totalen som grind hade ett
+    // aldrig-avgörbart "sajtvitt" test dessutom SPÄRRAT all vidare detektering
+    // (täckningen matchar varje löv).
+    const leaves = [
+      leaf("google", "mobile", "SE", false, 950, 0),
+      leaf("direct", "mobile", "SE", false, 30, 0),
+      leaf("facebook", "mobile", "SE", false, 20, 0),
+    ];
+    expect(findEarnedSegments(leaves, ["google"], 5, "bounce")).toEqual([]);
+    // ...men när resten SJÄLV bär grinden får jokern ta den (inkrementet
+    // 120 ≥ 100, bästa konkreta 70 = 58 % < 2/3).
+    const rest = [
+      leaf("google", "mobile", "SE", false, 950, 0),
+      leaf("direct", "mobile", "SE", false, 70, 0),
+      leaf("facebook", "mobile", "SE", false, 50, 0),
+    ];
+    const got = findEarnedSegments(rest, ["google"], 5, "bounce");
+    expect(got.map((s) => s.key)).toEqual(["alla"]);
+    expect(got[0].total.visits).toBe(120); // jokerns total ÄR dess inkrement
+  });
+
   it("en befintlig 'alla'-variant täcker ALLT — inga celler alls föreslås", () => {
     // Medvetet, inte en bieffekt: ett pågående sajtvitt test äger hela
     // trafiken. Att rista ur en kanalcell mitt i hade förorenat armarna —

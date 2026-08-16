@@ -233,6 +233,12 @@ export function findEarnedSegments(
     for (let d = 1; d <= leaf.dims.length; d++) {
       const dims = leaf.dims.slice(0, d);
       if (dims.includes(UNKNOWN_TOKEN)) break; // djupare prefix bär också 'okänd'
+      // Jokertecknet är RESERVERAT (granskningsfynd 2026-08-16): kanalen är
+      // rå klient-payload, så ett löv med smidd trafficSource='alla' hade
+      // annars blivit en "konkret" kandidat med joker-matchning — förbi hela
+      // 2/3-inträdesregeln, och med incrementalOf som räknar VARJE löv som
+      // sitt. Hoppas som 'okänd': ärligt ohanterat, aldrig en identitet.
+      if (dims.includes(ANY_TOKEN)) break;
       const key = segmentKeyOf(dims);
       const acc = candidates.get(key) ?? { dims, visits: 0, conversions: 0 };
       acc.visits += leaf.visits;
@@ -285,21 +291,21 @@ export function findEarnedSegments(
   const ANY_DOMINANCE_SHARE = 2 / 3;
   const anyKey = ANY_TOKEN;
   if (!existingKeys.includes(anyKey)) {
-    const anyTotal = leafList.reduce(
-      (a, l) => ({ visits: a.visits + l.visits, conversions: a.conversions + l.conversions }),
-      { visits: 0, conversions: 0 },
-    );
+    // Grinden binder på INKREMENTET, inte sidans total (granskningsfynd
+    // 2026-08-16): jokern tävlar om och SERVAR bara den otäckta resten —
+    // en sida där google-varianten redan täcker 950 av 1000 får inte ett
+    // "sajtvitt" test på 50 besök som sedan (via täckningen) spärrar all
+    // vidare detektering tills det aldrig-avgörbara testet pensioneras.
     const anyInc = incrementalOf([ANY_TOKEN], existing);
     const bestConcreteInc = Math.max(
       0,
       ...pool.map(([, c]) => incrementalOf(c.dims, existing).visits),
     );
-    if (
-      adequate(anyTotal) &&
-      anyInc.visits > 0 &&
-      bestConcreteInc < ANY_DOMINANCE_SHARE * anyInc.visits
-    ) {
-      pool.push([anyKey, { dims: [ANY_TOKEN], ...anyTotal }]);
+    if (adequate(anyInc) && bestConcreteInc < ANY_DOMINANCE_SHARE * anyInc.visits) {
+      pool.push([
+        anyKey,
+        { dims: [ANY_TOKEN], visits: anyInc.visits, conversions: anyInc.conversions },
+      ]);
     }
   }
 

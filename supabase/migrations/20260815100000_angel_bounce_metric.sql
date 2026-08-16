@@ -123,6 +123,13 @@ as $function$
   group by 1
 $function$;
 
+-- ACL:EN MÅSTE ÅTER-STÄLLAS EFTER DROP (granskningsfynd 2026-08-16): DROP
+-- FUNCTION kastar den lagrade ACL:en och CREATE ärver default-grants — utan
+-- paret nedan får anon/authenticated EXECUTE via /rest/v1/rpc. Samma par som
+-- varje tidigare definition bar (20260713, 20260720).
+revoke all on function public.angel_variant_arms(text, text) from public, anon, authenticated;
+grant execute on function public.angel_variant_arms(text, text) to service_role;
+
 -- test_metric får ett tredje läge. Villkoret räknade tidigare bara upp
 -- conversion/continuation, så en bounce-sajt hade avvisats av databasen.
 alter table public.angel_sites drop constraint if exists angel_sites_test_metric_check;

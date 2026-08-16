@@ -2,7 +2,12 @@
 // Overview-panelen och dess overlays (utbrutna ur overview-panel.tsx i
 // sajt-genomgången 2026-07-18; ren flytt, ingen semantikändring).
 
-import { isDimsPrefix, segmentDims, segmentKeysRelated } from "@/lib/segment-key";
+import {
+  isDimsPrefix,
+  segmentDims,
+  segmentKeysRelated,
+  segmentSpecificity,
+} from "@/lib/segment-key";
 
 import { measureRule, type MeasureResult } from "@/adaptive-lab/measure";
 
@@ -79,7 +84,19 @@ export function variantFor(variants: VariantView[], key: string): VariantView | 
     if (v.status !== "serving" && v.status !== "winner") continue;
     const vd = segmentDims(v.segmentKey);
     if (!isDimsPrefix(vd, dims)) continue;
-    if (!best || vd.length > segmentDims(best.segmentKey).length) best = v;
+    // SAMMA rankning som serve-vägens matchVariant (granskningsfynd
+    // 2026-08-16): specificitet (konkreta dimensioner) före djup. Med bara
+    // djupet hade "alla" (djup 1) och "google" (djup 1) avgjorts av
+    // radordningen ur DB:n — dashboarden hade kunnat tillskriva google-grenen
+    // sajtvitt-variantens kort och armar medan serven gav besökarna google.
+    if (
+      !best ||
+      segmentSpecificity(v.segmentKey) > segmentSpecificity(best.segmentKey) ||
+      (segmentSpecificity(v.segmentKey) === segmentSpecificity(best.segmentKey) &&
+        vd.length > segmentDims(best.segmentKey).length)
+    ) {
+      best = v;
+    }
   }
   return best;
 }
