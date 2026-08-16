@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
 
 import type { SegmentLeaf } from "@/lib/dashboard/aggregate";
-import { findEarnedCells, findEarnedCellsWithTemplates, findEarnedSegments, type PageSegmentLeaf } from "../earned";
+import {
+  findEarnedCells,
+  findEarnedCellsWithTemplates,
+  findEarnedSegments,
+  type PageSegmentLeaf,
+} from "../earned";
 
 const leaf = (
   channel: string,
@@ -10,7 +15,16 @@ const leaf = (
   returning: boolean,
   visits: number,
   conversions: number,
-): SegmentLeaf => ({ channel, device, country, returning, visits, conversions, formStarts: 0, formAbandons: 0 });
+): SegmentLeaf => ({
+  channel,
+  device,
+  country,
+  returning,
+  visits,
+  conversions,
+  formStarts: 0,
+  formAbandons: 0,
+});
 
 // Labbets form: fyra täckta kohorter + två tunna otäckta.
 const LAB: SegmentLeaf[] = [
@@ -82,8 +96,10 @@ describe("findEarnedSegments — stegen bygger sig själv", () => {
   });
 
   it("respekterar cap och räknar om inkrementen efter varje val", () => {
+    // a dominerar (>= 2/3 av trafiken) så sajtvitt-jokern inte är motiverad —
+    // testet mäter GREEDY-mekaniken, inte inträdesregeln (egen svit nedan).
     const leaves = [
-      leaf("a", "mobile", "SE", false, 1500, 120),
+      leaf("a", "mobile", "SE", false, 9000, 700),
       leaf("b", "mobile", "SE", false, 1400, 110),
       leaf("c", "mobile", "SE", false, 1300, 105),
     ];
@@ -100,12 +116,20 @@ describe("findEarnedSegments — stegen bygger sig själv", () => {
   });
 
   it("deterministisk ordning vid lika värde (nyckel-tiebreak)", () => {
+    // Två LIKA nycklar är per definition 50/50 — precis fallet där jokern ska
+    // vinna. En dominant tredje kanal (>= 2/3 av totalen) håller jokern ute,
+    // och tiebreaket mäts i rundorna EFTER den: x före y på nyckelordning.
     const leaves = [
+      leaf("dominant", "mobile", "SE", false, 8000, 600),
       leaf("x", "mobile", "SE", false, 1200, 100),
       leaf("y", "mobile", "SE", false, 1200, 100),
     ];
     const got = findEarnedSegments(leaves, []);
-    expect(got.map((s) => s.key)).toEqual(["x·mobile·SE·ny", "y·mobile·SE·ny"]);
+    expect(got.map((s) => s.key)).toEqual([
+      "dominant·mobile·SE·ny",
+      "x·mobile·SE·ny",
+      "y·mobile·SE·ny",
+    ]);
   });
 });
 
@@ -136,8 +160,10 @@ describe("findEarnedCells — sida × segment", () => {
   });
 
   it("rankar över sidorna: en sidas näst bästa tränger inte ut en annans bästa", () => {
+    // a dominerar sin sida (>= 2/3) så jokern inte kliver in — rankningen
+    // ÖVER sidor är det som mäts här.
     const leaves = [
-      pleaf("/", leaf("a", "mobile", "SE", false, 2000, 180)),
+      pleaf("/", leaf("a", "mobile", "SE", false, 8000, 600)),
       pleaf("/", leaf("b", "mobile", "SE", false, 1800, 150)),
       pleaf("/pricing", leaf("c", "desktop", "US", false, 1900, 160)),
     ];
@@ -159,6 +185,86 @@ describe("findEarnedCells — sida × segment", () => {
       pleaf("/pricing", leaf("google", "desktop", "US", false, 600, 55)),
     ];
     expect(findEarnedCells(leaves, [])).toEqual([]);
+  });
+});
+
+// ── Sajtvitt-jokern (ANY-token, ägarbeslut 2026-08-16) ───────────────────────
+describe("sajtvitt-jokern: inträdesregeln är mätkraft", () => {
+  it("splittrad trafik (bästa kanal < 2/3) ⇒ EN sajtvitt cell i stället för kanalceller", () => {
+    // Glutenforums startsidas verkliga form (2026-08-16): direct 106, google
+    // 56, instagram 25, other 16 — bästa kanal 52 % av 203. Ett kanaltest
+    // hade sett halva trafiken; sajtvitt ser allt.
+    const gf = [
+      leaf("direct", "mobile", "SE", false, 106, 0),
+      leaf("google", "mobile", "SE", false, 56, 0),
+      leaf("instagram", "mobile", "SE", false, 25, 0),
+      leaf("other", "mobile", "SE", false, 16, 0),
+    ];
+    const got = findEarnedSegments(gf, [], 5, "bounce");
+    expect(got.map((s) => s.key)).toEqual(["alla"]);
+    expect(got[0].total.visits).toBe(203);
+    // Jokern täcker allt ⇒ inga fler celler föreslås för sidan.
+    expect(got).toHaveLength(1);
+  });
+
+  it("dominant kanal (>= 2/3) ⇒ kanalcellen behålls, exakt dagens val", () => {
+    // Bloggsidans form: google 119 av 161 = 74 % — kanaltestet ser nästan
+    // allt, jokern köper < 1,5× och släpps inte in.
+    const blogg = [
+      leaf("google", "mobile", "SE", false, 119, 0),
+      leaf("direct", "mobile", "SE", false, 42, 0),
+    ];
+    const got = findEarnedSegments(blogg, [], 5, "bounce");
+    expect(got.map((s) => s.key)).not.toContain("alla");
+    expect(got[0].key.startsWith("google")).toBe(true);
+  });
+
+  it("ingen kanal når grinden men totalen gör det ⇒ jokern är enda vägen till ett test", () => {
+    const thin = [
+      leaf("google", "mobile", "SE", false, 40, 0),
+      leaf("direct", "mobile", "SE", false, 35, 0),
+      leaf("facebook", "mobile", "SE", false, 30, 0),
+    ];
+    expect(findEarnedSegments(thin, [], 5, "bounce").map((s) => s.key)).toEqual(["alla"]);
+    // ...och i konverteringsläget gäller BÅDA grindarna även för jokern.
+    expect(findEarnedSegments(thin, [], 5, "conversion")).toEqual([]);
+  });
+
+  it("jokern räknar på INKREMENTELL trafik: en befintlig google-variant ändrar domen", () => {
+    // Utan täckning: google 60 % av 500 ⇒ under 2/3 ⇒ joker. Med google
+    // täckt tävlar jokern bara om resten (200, där bästa konkreta är
+    // direct 120 = 60 % < 2/3) — joker på RESTEN, ärligt inkrement.
+    const leaves = [
+      leaf("google", "mobile", "SE", false, 300, 0),
+      leaf("direct", "mobile", "SE", false, 120, 0),
+      leaf("facebook", "mobile", "SE", false, 80, 0),
+    ];
+    const utan = findEarnedSegments(leaves, [], 5, "bounce");
+    expect(utan.map((s) => s.key)).toEqual(["alla"]);
+    const med = findEarnedSegments(leaves, ["google"], 5, "bounce");
+    expect(med.map((s) => s.key)).toEqual(["alla"]);
+    expect(med[0].incremental.visits).toBe(200); // google-trafiken är inte jokerns
+  });
+
+  it("'okänd'-kanalens trafik — som inget konkret prefix kan täcka — räknas av jokern", () => {
+    const leaves = [
+      leaf("google", "mobile", "SE", false, 80, 0),
+      leaf("", "mobile", "SE", false, 60, 0), // kanal saknas → okänd
+    ];
+    const got = findEarnedSegments(leaves, [], 5, "bounce");
+    expect(got.map((s) => s.key)).toEqual(["alla"]);
+    expect(got[0].incremental.visits).toBe(140);
+  });
+
+  it("en befintlig 'alla'-variant täcker ALLT — inga celler alls föreslås", () => {
+    // Medvetet, inte en bieffekt: ett pågående sajtvitt test äger hela
+    // trafiken. Att rista ur en kanalcell mitt i hade förorenat armarna —
+    // finare celler får vänta tills sajtvitt-testet är avgjort och pensionerat.
+    const gf = [
+      leaf("direct", "mobile", "SE", false, 106, 0),
+      leaf("google", "mobile", "SE", false, 56, 0),
+    ];
+    expect(findEarnedSegments(gf, ["alla"], 5, "bounce")).toEqual([]);
   });
 });
 
@@ -184,13 +290,33 @@ describe("continuation-läget (test_metric, ägarbeslut 2026-07-20)", () => {
   });
 
   it("engagemangströskeln gäller fortfarande — 99 besök kvalar inte", () => {
-    const thin: PageSegmentLeaf[] = [{ ...leaf("google", "mobile", "SE", false, 99, 0), path: "/" }];
+    const thin: PageSegmentLeaf[] = [
+      { ...leaf("google", "mobile", "SE", false, 99, 0), path: "/" },
+    ];
     expect(findEarnedCells(thin, [], 5, "continuation")).toEqual([]);
   });
 
   it("befintlig variant blockerar som vanligt även i continuation-läget", () => {
     const got = findEarnedCells(PILOT, [{ path: "/", segmentKey: "google" }], 5, "continuation");
     expect(got.map((c) => c.key)).not.toContain("google");
+  });
+
+  // Bounce-läget (ägarbeslut 2026-08-15) delar continuations grindkrav: varje
+  // besökare får ett bounce-utfall, så ett konverteringskrav vore samma
+  // kategorifel. Granskningsfynd 2026-08-16: utan den här grenen mappade
+  // nattloopen bounce → conversion och pilotens celler dömdes på 0
+  // konverteringar — detektorn gick tyst tom varje natt.
+  it("bounce-läget kvalar cellen exakt som continuation — och conversion säger nej", () => {
+    const got = findEarnedCells(PILOT, [], 5, "bounce");
+    expect(got.length).toBeGreaterThan(0);
+    expect(got[0].key).toBe("google");
+    // Identisk dom som continuation — samma grind, ingen egen tröskel.
+    expect(got).toEqual(findEarnedCells(PILOT, [], 5, "continuation"));
+    // ...och tröskeln gäller: 99 besök kvalar inte heller i bounce-läget.
+    const thin: PageSegmentLeaf[] = [
+      { ...leaf("google", "mobile", "SE", false, 99, 0), path: "/" },
+    ];
+    expect(findEarnedCells(thin, [], 5, "bounce")).toEqual([]);
   });
 });
 
@@ -229,10 +355,7 @@ describe("findEarnedCellsWithTemplates — mall-passet (glutenforum-formen)", ()
   });
 
   it("en sida som bär sin EGEN volym får per-sida-cell — och lämnar mallen", () => {
-    const withBig = [
-      ...GF,
-      page("/blogg/succen", leaf("google", "mobile", "SE", false, 120, 0)),
-    ];
+    const withBig = [...GF, page("/blogg/succen", leaf("google", "mobile", "SE", false, 120, 0))];
     const got = findEarnedCellsWithTemplates(withBig, [], 5, "continuation");
     const paths = got.map((c) => c.path);
     // Succén förtjänar egen design; mallen byggs av de ÖVRIGA artiklarna (106).
@@ -244,10 +367,7 @@ describe("findEarnedCellsWithTemplates — mall-passet (glutenforum-formen)", ()
   });
 
   it("en servande mall-variant täcker sina konkreta sidor i per-sida-passet", () => {
-    const withBig = [
-      ...GF,
-      page("/blogg/succen", leaf("google", "mobile", "SE", false, 120, 0)),
-    ];
+    const withBig = [...GF, page("/blogg/succen", leaf("google", "mobile", "SE", false, 120, 0))];
     const got = findEarnedCellsWithTemplates(
       withBig,
       [{ path: "/blogg/*", segmentKey: "google" }],

@@ -96,6 +96,31 @@ describe("matchVariant — finest verified variant wins", () => {
     expect(matchVariant(vs, visitor("google", "desktop", "se"))).toBeNull();
   });
 
+  // ── Sajtvitt-jokern (ANY-token "alla", ägarbeslut 2026-08-16) ─────────────
+  it("en 'alla'-variant servar VARJE besökare — även okänd kanal", () => {
+    const vs = [variant("alla")];
+    expect(matchVariant(vs, visitor("google", "mobile", "se"))?.segmentKey).toBe("alla");
+    expect(matchVariant(vs, visitor("facebook", "desktop", "us"))?.segmentKey).toBe("alla");
+    // Kanal saknas → "okänd" — inget konkret prefix kan täcka den, jokern kan.
+    expect(matchVariant(vs, visitor(null, "mobile", "se"))?.segmentKey).toBe("alla");
+  });
+
+  it("konkret slår joker på SPECIFICITET, inte djup — google vinner sin trafik", () => {
+    // Bägge har djup 1. Utan specificitetsregeln hade id-tiebreaket valt
+    // godtyckligt — en google-besökare hade kunnat få sajtvitt-varianten
+    // trots att en kanal-specifik finns.
+    const vs = [variant("alla"), variant("google")];
+    expect(matchVariant(vs, visitor("google", "mobile", "se"))?.segmentKey).toBe("google");
+    // ...och jokern fångar exakt resten.
+    expect(matchVariant(vs, visitor("direct", "mobile", "se"))?.segmentKey).toBe("alla");
+  });
+
+  it("djupare konkret nyckel slår jokern, och jokern slår ingenting-matchar", () => {
+    const vs = [variant("alla"), variant("google·mobile")];
+    expect(matchVariant(vs, visitor("google", "mobile", "se"))?.segmentKey).toBe("google·mobile");
+    expect(matchVariant(vs, visitor("google", "desktop", "se"))?.segmentKey).toBe("alla");
+  });
+
   it("winner serveras till 100 % — ägarens knapp ÄR beslutet att sluta mäta", () => {
     const v = variant("google", "winner", { serveOps });
     // Alla besökare, oavsett ramp-bucket, hamnar i variant-armen.
@@ -362,7 +387,10 @@ describe("serveDecision — insert_snippet med klickväg + stil-donator (slice 4
 
 describe("kohortscopade varianter (E4b-kopplingen)", () => {
   const cfg = { servingEnabled: true, rampPct: 5 };
-  const li = { ...visitor("linkedin", "mobile", "se"), cohorts: ["ch:social", "src:linkedin", "ret:new"] };
+  const li = {
+    ...visitor("linkedin", "mobile", "se"),
+    cohorts: ["ch:social", "src:linkedin", "ret:new"],
+  };
   const direct = { ...visitor("linkedin", "mobile", "se"), cohorts: ["ch:direct", "ret:new"] };
 
   it("serverar när besökarens nycklar täcker kravet (OCH-semantik)", () => {
@@ -371,16 +399,26 @@ describe("kohortscopade varianter (E4b-kopplingen)", () => {
   });
 
   it("hoppar över kohortscopad variant när kravet inte täcks — ingen servering", () => {
-    const v = variant("linkedin", "winner", { serveOps, requiredCohorts: ["src:linkedin", "seen:pricing"] });
+    const v = variant("linkedin", "winner", {
+      serveOps,
+      requiredCohorts: ["src:linkedin", "seen:pricing"],
+    });
     expect(serveDecision(cfg, [v], li, "vh-1")).toBeNull();
   });
 
   it("faller till grövre oscopad variant när den scopade inte matchar", () => {
-    const scoped = variant("linkedin·mobile", "winner", { serveOps, requiredCohorts: ["src:linkedin"] });
+    const scoped = variant("linkedin·mobile", "winner", {
+      serveOps,
+      requiredCohorts: ["src:linkedin"],
+    });
     const coarse = variant("linkedin", "winner", { serveOps });
-    expect(serveDecision(cfg, [scoped, coarse], direct, "vh-1")?.variant.segmentKey).toBe("linkedin");
+    expect(serveDecision(cfg, [scoped, coarse], direct, "vh-1")?.variant.segmentKey).toBe(
+      "linkedin",
+    );
     // …och den scopade vinner (finaste matchning) när kravet täcks.
-    expect(serveDecision(cfg, [scoped, coarse], li, "vh-1")?.variant.segmentKey).toBe("linkedin·mobile");
+    expect(serveDecision(cfg, [scoped, coarse], li, "vh-1")?.variant.segmentKey).toBe(
+      "linkedin·mobile",
+    );
   });
 
   it("tomt/frånvarande krav grindar ingenting", () => {
@@ -394,23 +432,34 @@ describe("matchVariant — mall-mönster (mall-nivå-generering 2026-07-26)", ()
 
   it("en mall-variant ('/blogg/*') servar mallens konkreta sidor", () => {
     const tpl = gm({ id: "tpl", path: "/blogg/*" });
-    const m = matchVariant([tpl], visitor("google", "mobile", "se", false, { path: "/blogg/kladdkaka" }));
+    const m = matchVariant(
+      [tpl],
+      visitor("google", "mobile", "se", false, { path: "/blogg/kladdkaka" }),
+    );
     expect(m?.id).toBe("tpl");
   });
 
   it("mallen servar INTE listningssidan eller andra mallar", () => {
     const tpl = gm({ id: "tpl", path: "/blogg/*" });
     // "/blogg" är sin egen sida (templateOf = null) och restauranger en annan mall.
-    expect(matchVariant([tpl], visitor("google", "mobile", "se", false, { path: "/blogg" }))).toBeNull();
     expect(
-      matchVariant([tpl], visitor("google", "mobile", "se", false, { path: "/restauranger/tavolo" })),
+      matchVariant([tpl], visitor("google", "mobile", "se", false, { path: "/blogg" })),
+    ).toBeNull();
+    expect(
+      matchVariant(
+        [tpl],
+        visitor("google", "mobile", "se", false, { path: "/restauranger/tavolo" }),
+      ),
     ).toBeNull();
   });
 
   it("EXAKT sida vinner över mallen — även när mallen har finare segmentnyckel", () => {
     const exact = gm({ id: "exact", path: "/blogg/kladdkaka" });
     const tplFiner = variant("google·mobile·se", "serving", { id: "tpl", path: "/blogg/*" });
-    const m = matchVariant([tplFiner, exact], visitor("google", "mobile", "se", false, { path: "/blogg/kladdkaka" }));
+    const m = matchVariant(
+      [tplFiner, exact],
+      visitor("google", "mobile", "se", false, { path: "/blogg/kladdkaka" }),
+    );
     // Sid-specifik design verifierades på exakt den sidan — path-finhet före segmentfinhet.
     expect(m?.id).toBe("exact");
   });
@@ -418,7 +467,10 @@ describe("matchVariant — mall-mönster (mall-nivå-generering 2026-07-26)", ()
   it("bland mall-varianter vinner finaste segmentnyckeln som vanligt", () => {
     const coarse = gm({ id: "coarse", path: "/blogg/*" });
     const fine = variant("google·mobile·se", "serving", { id: "fine", path: "/blogg/*" });
-    const m = matchVariant([coarse, fine], visitor("google", "mobile", "se", false, { path: "/blogg/x" }));
+    const m = matchVariant(
+      [coarse, fine],
+      visitor("google", "mobile", "se", false, { path: "/blogg/x" }),
+    );
     expect(m?.id).toBe("fine");
   });
 

@@ -19,7 +19,12 @@
 // up with the same bucket the dashboard reports.
 
 import { fnv1a32 } from "../hash";
-import { fullSegmentKey, isSegmentPrefix, segmentDepth } from "../../lib/segment-key";
+import {
+  fullSegmentKey,
+  isSegmentPrefix,
+  segmentDepth,
+  segmentSpecificity,
+} from "../../lib/segment-key";
 import { templateOf } from "../../lib/page-template";
 
 import { cohortsSatisfied } from "../context";
@@ -141,9 +146,14 @@ export function matchVariant(
   );
   if (servable.length === 0) return null;
   servable.sort((a, b) => {
-    const exact =
-      (b.path === visitor.path ? 1 : 0) - (a.path === visitor.path ? 1 : 0);
+    const exact = (b.path === visitor.path ? 1 : 0) - (a.path === visitor.path ? 1 : 0);
     if (exact !== 0) return exact;
+    // SPECIFICITET före djup (ANY-jokern 2026-08-16): "alla" (djup 1, spec 0)
+    // får aldrig slå "google" (djup 1, spec 1) för en google-besökare — jokern
+    // är reserven som fångar trafiken ingen konkret variant täcker, aldrig en
+    // konkurrent till den som gör det. Djup står kvar som tiebreak.
+    const spec = segmentSpecificity(b.segmentKey) - segmentSpecificity(a.segmentKey);
+    if (spec !== 0) return spec;
     const depth = segmentDepth(b.segmentKey) - segmentDepth(a.segmentKey);
     return depth !== 0 ? depth : a.id.localeCompare(b.id);
   });

@@ -224,7 +224,12 @@ if (mode === "detect") {
   const cap = Number(arg("cap") ?? 5);
   // Sajtens mätmål (ägarbeslut 2026-07-20): continuation-läget sänker
   // volymgrinden till engagemangströskeln — utfallet finns i varje session.
-  const metric: TestMetric = arg("metric") === "continuation" ? "continuation" : "conversion";
+  // Proxymåtten passerar SOM DE ÄR (granskningsfynd 2026-08-16: bounce föll
+  // tyst till conversion här, så en bounce-sajts celler dömdes på 0
+  // konverteringar och detektorn gick tom varje natt).
+  const rawMetric = arg("metric");
+  const metric: TestMetric =
+    rawMetric === "continuation" || rawMetric === "bounce" ? rawMetric : "conversion";
 
   // Mall-passet ingår (mall-nivå 2026-07-26): långsvansade sidor som inte når
   // per-sida-grinden grupperas per sidmall ("/blogg/*") — se earned.ts.

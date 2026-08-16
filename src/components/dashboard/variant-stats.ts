@@ -124,6 +124,8 @@ export const TOKEN_EN: Record<string, string> = {
   okänd: "unknown",
   ny: "new",
   återkommande: "returning",
+  // Sajtvitt-jokern (2026-08-16): lagras som "alla", visas som "all traffic".
+  alla: "all traffic",
 };
 export const enLabel = (label: string) =>
   label

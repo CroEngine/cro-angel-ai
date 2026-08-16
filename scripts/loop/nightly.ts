@@ -419,7 +419,13 @@ for (const site of targets) {
         });
         cohortScopes = planCohortScopes(Array.isArray(cohortRows) ? cohortRows : [], {
           windowDays: 30,
-          baseRate: site.test_metric === "continuation" ? 0.4 : 0.04,
+          // Basraten per mått: conversion ~4 %, continuation ~40 %, bounce
+          // 57 % (uppmätt på glutenforum 2026-08-15). Fel basrat gör bara
+          // dagar-till-domslut-SKATTNINGEN skev — men en bounce-sajt med
+          // conversionens 0,04 hade fått varje kohortscope avfärdat som
+          // "domslut om ~450 dagar" och förslagslistan hade gått tom.
+          baseRate:
+            site.test_metric === "continuation" ? 0.4 : site.test_metric === "bounce" ? 0.57 : 0.04,
         });
         writeFileSync(
           join(dir, "cohort-opportunities.json"),
@@ -657,7 +663,9 @@ for (const site of targets) {
         `--site-config=${join(dir, "site.json")}`,
         `--out=${dir}`,
         `--cap=${CAP}`,
-        `--metric=${site.test_metric === "continuation" ? "continuation" : "conversion"}`,
+        // Proxymåtten (continuation/bounce) passerar orörda — bara okända
+        // värden faller till conversion (samma vitlista som auto-generate).
+        `--metric=${site.test_metric === "continuation" || site.test_metric === "bounce" ? site.test_metric : "conversion"}`,
       ])
     ) {
       console.warn(`[loop] ${site.slug}: detect föll — hoppar över`);
@@ -850,8 +858,9 @@ for (const site of targets) {
       // låst kontrakt). Live-grinden är OFÖRÄNDRAD och täcker källorna lika:
       // verify → ägarens knapp → ramp → guardrail-svepets hold på uppmätt
       // förlust/breach — icke-underlägsenheten döms av riktiga armar, aldrig
-      // bara offline-tal. Mall-celler stannar hos designern i v1 (alt-stegen
-      // är avstängd för mallar och katalog-proben går mot EN fryst fil).
+      // bara offline-tal. Mall-carve-outen lyft 2026-08-16 — katalogen äger
+      // även mall-celler (probe mot representanten); alt-stegen vid GRINDFALL
+      // är fortsatt avstängd för mallar (v1-rest).
       let planOps: RedesignOp[] | null = null;
       let planAltOps: RedesignOp[][] = [];
       let planSource = "designer";
@@ -876,17 +885,20 @@ for (const site of targets) {
       // såg identisk ut med "katalogen körde och valde ingenting". Operatören
       // ska kunna läsa VARFÖR ur loggen, inte gissa ur frånvaron av rader.
       const eligibility = catalogEligible({
-        isTemplate: isTpl,
         crossPageSources: sourcePages.length,
         // Ägarbeslut 2026-08-15: med move-only vokabulär finns inget korssid-
         // citat att skydda, så carve-outen faller och katalogen tar cellen.
         mayInsert: DEFAULT_REDESIGN_GUARDRAILS.ops.includes("insert_snippet"),
       });
-      if (eligibility.skip === "template") {
+      // Mall-carve-outen lyft 2026-08-16 (se catalogEligible): katalogen äger
+      // nu även mall-celler — content är mall-snittet, proben går mot
+      // representantens frysta fil, precis som designervägens verify.
+      if (isTpl && eligibility.eligible) {
         console.log(
-          `[loop] ${site.slug} ${b.path}×${b.key}: mall-cell (${b.templatePages?.length ?? 0} exemplar) — designern äger den, katalogen hoppas över (v1)`,
+          `[loop] ${site.slug} ${b.path}×${b.key}: mall-cell (${b.templatePages?.length ?? 0} exemplar) — katalogen tar den, probe mot representanten`,
         );
-      } else if (eligibility.skip === "cross-page") {
+      }
+      if (eligibility.skip === "cross-page") {
         console.log(
           `[loop] ${site.slug} ${b.path}×${b.key}: korssid-cell (${sourcePages.map((s) => s.path).join(", ")}) — designern äger den, katalogen hoppas över`,
         );

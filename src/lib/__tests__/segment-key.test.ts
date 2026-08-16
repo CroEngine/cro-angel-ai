@@ -14,6 +14,7 @@ import {
   segmentDims,
   segmentKeyOf,
   segmentKeysRelated,
+  segmentSpecificity,
 } from "../segment-key";
 
 // Modulen är systemets lingua franca (task #89): rollupen, detektorn,
@@ -108,5 +109,38 @@ describe("segmentKeysRelated — dashboardens scoping-relation", () => {
   it("syskon och främlingar hör inte ihop", () => {
     expect(segmentKeysRelated("google·mobile", "google·desktop")).toBe(false);
     expect(segmentKeysRelated("google", "direct")).toBe(false);
+  });
+});
+
+// ── Sajtvitt-jokern (ANY_TOKEN "alla", ägarbeslut 2026-08-16) ────────────────
+describe("ANY_TOKEN — jokern matchar allt, men bara på prefix-sidan", () => {
+  it("'alla' som prefix matchar varje besökarnyckel — även okänd kanal", () => {
+    expect(isSegmentPrefix("alla", "google·mobile·se·ny")).toBe(true);
+    expect(isSegmentPrefix("alla", "okänd·desktop·us·återkommande")).toBe(true);
+    // Djupare joker: "alla·mobile" tar alla kanaler men bara mobil.
+    expect(isSegmentPrefix("alla·mobile", "google·mobile·se·ny")).toBe(true);
+    expect(isSegmentPrefix("alla·mobile", "google·desktop·se·ny")).toBe(false);
+  });
+
+  it("jokern är PREFIX-sidig: 'alla' i den fulla nyckeln matchas inte av konkret", () => {
+    // Besökarnycklar byggs alltid av konkreta tokens (fullSegmentKey), så
+    // riktningen kan inte uppstå i drift — men regeln ska ändå vara sann.
+    expect(isSegmentPrefix("google", "alla·mobile·se·ny")).toBe(false);
+  });
+
+  it("tom nyckel matchar FORTFARANDE ingenting — jokern är ett val, inte en frånvaro", () => {
+    expect(isSegmentPrefix("", "google·mobile·se·ny")).toBe(false);
+  });
+
+  it("segmentSpecificity räknar konkreta dimensioner — jokern är gratis", () => {
+    expect(segmentSpecificity("alla")).toBe(0);
+    expect(segmentSpecificity("google")).toBe(1);
+    expect(segmentSpecificity("alla·mobile")).toBe(1);
+    expect(segmentSpecificity("google·mobile·se·ny")).toBe(4);
+  });
+
+  it("segmentKeysRelated: sajtvitt hör ihop med varje konkret gren", () => {
+    expect(segmentKeysRelated("alla", "google·mobile")).toBe(true);
+    expect(segmentKeysRelated("google·mobile", "alla")).toBe(true);
   });
 });

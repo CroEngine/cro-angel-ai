@@ -31,23 +31,27 @@ describe("cellWorkDir", () => {
 
 describe("catalogEligible", () => {
   it("vanlig cell ⇒ katalogen äger den", () => {
-    expect(catalogEligible({ isTemplate: false, crossPageSources: 0 })).toEqual({
+    expect(catalogEligible({ crossPageSources: 0 })).toEqual({
       eligible: true,
       skip: null,
     });
   });
 
-  it("mall-cell ⇒ designern (v1: alt-stegen avstängd, proben går mot EN fil)", () => {
-    expect(catalogEligible({ isTemplate: true, crossPageSources: 0 })).toEqual({
-      eligible: false,
-      skip: "template",
+  it("mall-cell ⇒ KATALOGEN (carve-outen lyft 2026-08-16)", () => {
+    // v1-skälet föll: designervägen bygger/mäter mot samma enda representant
+    // som proben går mot, och diagnostiken visade att alla tre återkommande
+    // döda celler på pilotsajten var designer-ägda (påhittade id:n,
+    // artikelrubriken som mål). Mallceller går nu genom menyn som alla andra.
+    expect(catalogEligible({ crossPageSources: 0 })).toEqual({
+      eligible: true,
+      skip: null,
     });
   });
 
   it("korssid-cell ⇒ designern (katalogen kan inte citera en annan sida)", () => {
     // Granskningsfynd 2026-08-08: utan carve-outen tog konvergensen tyst bort
     // korssid-lyftet för exakt de celler som FÖRTJÄNATS på pris-flödessignalen.
-    expect(catalogEligible({ isTemplate: false, crossPageSources: 1 })).toEqual({
+    expect(catalogEligible({ crossPageSources: 1 })).toEqual({
       eligible: false,
       skip: "cross-page",
     });
@@ -58,17 +62,12 @@ describe("catalogEligible", () => {
     // citerar en annan sida. Kan designern inte producera det draget skyddar
     // carve-outen ingenting — den hade bara bytt katalogens beteende-rankade
     // flyttar mot en fri designer med EXAKT samma vokabulär och ingen meny.
-    expect(catalogEligible({ isTemplate: false, crossPageSources: 2, mayInsert: false })).toEqual({
+    expect(catalogEligible({ crossPageSources: 2, mayInsert: false })).toEqual({
       eligible: true,
       skip: null,
     });
-    // Mall-carve-outen är oberoende av vokabulären och står kvar.
-    expect(catalogEligible({ isTemplate: true, crossPageSources: 2, mayInsert: false })).toEqual({
-      eligible: false,
-      skip: "template",
-    });
     // Explicit mayInsert:true beter sig som förut (utelämnad ⇒ samma).
-    expect(catalogEligible({ isTemplate: false, crossPageSources: 1, mayInsert: true })).toEqual({
+    expect(catalogEligible({ crossPageSources: 1, mayInsert: true })).toEqual({
       eligible: false,
       skip: "cross-page",
     });

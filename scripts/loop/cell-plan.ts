@@ -30,16 +30,27 @@ export function cellWorkDir(runDir: string, path: string, key: string): string {
   return join(runDir, `cell-${safe}-${hash}`);
 }
 
-export type CatalogSkip = "template" | "cross-page";
+export type CatalogSkip = "cross-page";
 
-/** Får katalogen äga cellen? Två carve-outs, båda medvetna:
+/** Får katalogen äga cellen? EN carve-out kvar:
  *
- *  - template: mall-celler grindas mot FLERA frysta exemplar och alt-stegen är
- *    avstängd för dem; katalog-proben går mot EN fil (v1-avgränsning).
  *  - cross-page: celler som förtjänats på pris-flödessignalen kan bara
  *    betjänas av den fria designern — katalogen genererar enbart drag på den
  *    egna sidan och kan aldrig citera en annan sida (och utan citatet finns
  *    inga evidence.dependencies, så drift-självläkningen tystnar också).
+ *
+ *  MALL-CARVE-OUTEN LYFT (2026-08-16). v1-skälet var att katalog-proben går
+ *  mot EN fryst fil medan mall-celler grindas mot flera exemplar — men
+ *  designervägen bygger och mäter mot exakt SAMMA enda representant, så
+ *  proben är inte svagare än det som redan gällde. Kostnaden av carve-outen
+ *  blev synlig när diagnostikraden landade (körningen 2026-08-16): ALLA tre
+ *  återkommande döda celler på pilotsajten var designer-ägda — designern
+ *  hittade på ett sektions-id på en, valde artikelrubriken (ingen ren
+ *  sektionsnivå) på en annan — medan sajtens enda SERVANDE variant är ett
+ *  katalogformat drag (FAQ-flytt) på samma sidmall. Menyn kan per
+ *  konstruktion inte hitta på id:n, och proben sållar oupplösbara mål INNAN
+ *  en design köps. Kvarvarande v1-rest: verify:s alt-stege vid GRINDFALL är
+ *  fortsatt avstängd för mallar (validerings-reserverna gäller).
  *
  *  KORSSID-CARVE-OUTEN GÄLLER BARA NÄR CITATET ÄR LAGLIGT (ägarbeslut
  *  2026-08-15, "endast flytta sektioner"): med move-only vokabulär kan
@@ -55,7 +66,6 @@ export type CatalogSkip = "template" | "cross-page";
  *  och inte råka-vara-sant — carve-outens mening är "designern äger citatet",
  *  och det påståendet ska falla med citatet, inte överleva som en tom gren. */
 export function catalogEligible(args: {
-  isTemplate: boolean;
   crossPageSources: number;
   /** Tillåter vokabulären insert_snippet? Utelämnad ⇒ ja (bakåtkompatibel). */
   mayInsert?: boolean;
@@ -63,7 +73,6 @@ export function catalogEligible(args: {
   eligible: boolean;
   skip: CatalogSkip | null;
 } {
-  if (args.isTemplate) return { eligible: false, skip: "template" };
   if (args.crossPageSources > 0 && (args.mayInsert ?? true))
     return { eligible: false, skip: "cross-page" };
   return { eligible: true, skip: null };

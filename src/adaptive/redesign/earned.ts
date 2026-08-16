@@ -42,9 +42,15 @@ import {
  *  mäter 'continuation' — gick besökaren vidare till en andra sida? Grinden
  *  byter då krav: SEGMENT_MIN_VISITS_ENGAGEMENT besök, inget konverteringskrav
  *  (utfallet finns i varje session). Nordstjärnemålet ändras INTE — designen
- *  siktar fortfarande mot ägarens mål; det är måttstocken för testet som byts. */
-export type TestMetric = "conversion" | "continuation";
+ *  siktar fortfarande mot ägarens mål; det är måttstocken för testet som byts.
+ *
+ *  'bounce' (ägarbeslut 2026-08-15) delar continuations grindkrav av samma
+ *  skäl: varje besökare får ett bounce-utfall, så ett konverteringskrav vore
+ *  samma kategorifel. Utan den här raden mappade nattloopen bounce → conversion
+ *  och cellerna dömdes på 0 konverteringar — detektorn gick tyst tom. */
+export type TestMetric = "conversion" | "continuation" | "bounce";
 import {
+  ANY_TOKEN,
   UNKNOWN_TOKEN,
   isDimsPrefix,
   returningToken,
@@ -255,13 +261,47 @@ export function findEarnedSegments(
   // Grundfilter: inte redan en egen variant + totalen bär analysen.
   // Continuation-läget kräver bara besöksvolym — utfallet ("gick vidare")
   // finns i varje session, så konverteringskravet vore ett kategorifel.
+  const adequate = (c: { visits: number; conversions: number }): boolean =>
+    metric === "continuation" || metric === "bounce"
+      ? c.visits >= SEGMENT_MIN_VISITS_ENGAGEMENT
+      : c.visits >= SEGMENT_MIN_VISITS && c.conversions >= SEGMENT_MIN_CONVERSIONS;
   const pool = [...candidates.entries()].filter(
-    ([key, c]) =>
-      !existingKeys.includes(key) &&
-      (metric === "continuation"
-        ? c.visits >= SEGMENT_MIN_VISITS_ENGAGEMENT
-        : c.visits >= SEGMENT_MIN_VISITS && c.conversions >= SEGMENT_MIN_CONVERSIONS),
+    ([key, c]) => !existingKeys.includes(key) && adequate(c),
   );
+
+  // ── SAJTVITT-KANDIDATEN (ANY-jokern, ägarbeslut 2026-08-16) ────────────────
+  // "alla" täcker varje löv — även 'okänd'-kanalens, som inga konkreta prefix
+  // någonsin kan täcka. INTRÄDESREGELN är mätkraft, härledd ur riktiga data
+  // (glutenforum 2026-08-16): tid-till-domslut skalar ~1/andel av trafiken
+  // testet ser, så jokern släpps in när bästa konkreta kandidat bär mindre än
+  // 2/3 av den OTÄCKTA trafiken — då är ett sajtvitt test minst 1,5× snabbare
+  // än det bästa kanaltestet (startsidan: direct 52 % av 203 ⇒ joker; en
+  // bloggsida där google bär 74 % ⇒ kanalcellen behålls, exakt dagens val).
+  // Räknat på INKREMENTELL trafik: har sidan redan en google-variant tävlar
+  // jokern bara om resten — och servar också bara resten (matchVariant väljer
+  // specifikast först). Väl inne vinner jokern greedyn per konstruktion
+  // (störst inkrement) och blir sidans ENDA cell — "ETT sajtvitt test i
+  // stället för ett per kanal" är hela poängen, inte en bieffekt.
+  const ANY_DOMINANCE_SHARE = 2 / 3;
+  const anyKey = ANY_TOKEN;
+  if (!existingKeys.includes(anyKey)) {
+    const anyTotal = leafList.reduce(
+      (a, l) => ({ visits: a.visits + l.visits, conversions: a.conversions + l.conversions }),
+      { visits: 0, conversions: 0 },
+    );
+    const anyInc = incrementalOf([ANY_TOKEN], existing);
+    const bestConcreteInc = Math.max(
+      0,
+      ...pool.map(([, c]) => incrementalOf(c.dims, existing).visits),
+    );
+    if (
+      adequate(anyTotal) &&
+      anyInc.visits > 0 &&
+      bestConcreteInc < ANY_DOMINANCE_SHARE * anyInc.visits
+    ) {
+      pool.push([anyKey, { dims: [ANY_TOKEN], ...anyTotal }]);
+    }
+  }
 
   // Girigt urval med omräkning efter varje val.
   const chosen: EarnedSegment[] = [];

@@ -19,6 +19,17 @@ export const UNKNOWN_TOKEN = "okänd";
 export const RETURNING_TOKEN = "återkommande";
 export const NEW_TOKEN = "ny";
 
+/** SAJTVITT JOKERTECKEN (ägarbeslut 2026-08-16): "alla" i en dimension i en
+ *  VARIANTNYCKEL matchar varje besökarvärde i den dimensionen. Motivet är
+ *  småsajternas mätkraft: glutenforums startsida bär 203 besök över fyra
+ *  kanaler där den största (direct) bara är 52 % — ett test per kanal halverar
+ *  kraften mot ETT sajtvitt. Jokern är DATA (svensk, lagras i variantnycklar,
+ *  precis som "okänd"/"ny") och är bara meningsfull på PREFIX-sidan av en
+ *  matchning: besökarnycklar byggs alltid av konkreta tokens (fullSegmentKey).
+ *  Tom nyckel matchar FORTFARANDE ingenting — jokern är ett uttalat val,
+ *  aldrig en frånvaro. */
+export const ANY_TOKEN = "alla";
+
 /** En dimensions token — null/tom blir "okänd" (ärlig egen hink, aldrig
  *  påhittad dimension). */
 export function segToken(v: string | null | undefined): string {
@@ -63,9 +74,11 @@ export function fullSegmentKey(
 }
 
 /** Dimension-vis prefix-match på redan splittade dims — "go" matchar aldrig
- *  "google"; varje token jämförs hel. */
+ *  "google"; varje token jämförs hel. ANY_TOKEN i PREFIXET matchar varje
+ *  värde i sin dimension (jokern är prefix-sidig: besökar-/lövsidan är alltid
+ *  konkreta tokens). */
 export function isDimsPrefix(prefix: readonly string[], full: readonly string[]): boolean {
-  return prefix.length <= full.length && prefix.every((t, i) => t === full[i]);
+  return prefix.length <= full.length && prefix.every((t, i) => t === ANY_TOKEN || t === full[i]);
 }
 
 /** Dimension-vis prefix-match nyckel-mot-nyckel. Tom prefix-nyckel matchar
@@ -73,6 +86,14 @@ export function isDimsPrefix(prefix: readonly string[], full: readonly string[])
 export function isSegmentPrefix(prefix: string, full: string): boolean {
   if (!prefix) return false;
   return isDimsPrefix(segmentDims(prefix), segmentDims(full));
+}
+
+/** Specificitet = antal KONKRETA (icke-joker) dimensioner. Serve-vägens
+ *  "finaste vinner" måste räkna så här: "alla" (djup 1, specificitet 0) får
+ *  aldrig slå "google" (djup 1, specificitet 1) för en google-besökare —
+ *  jokern är reserven, inte en konkurrent. Djup förblir tiebreak. */
+export function segmentSpecificity(key: string): number {
+  return segmentDims(key).filter((t) => t !== ANY_TOKEN).length;
 }
 
 /** Föräldranyckeln (en dimension grövre); null på djup 1. */
