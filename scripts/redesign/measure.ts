@@ -392,16 +392,31 @@ export async function measurePlan(
       const NO_TOUCH_MIRROR = "[data-angel-ignore],.angel-badge";
       let insertRefusedByLcpGuard = 0;
       let resolvedAll = true;
+      // VARFÖR upplösningen vägrade — inte bara ATT den gjorde det.
+      // Nattloopen loggade förut "EJ APPLICERBAR — upplösningen vägrade" utan
+      // gren, så en cell som föll varje natt gick inte att diagnosticera i
+      // efterhand; det krävde att någon laddade ned nattens artefakter och
+      // återskapade läget för hand. Grenen + lokatorn räcker för att skilja
+      // "rubriken finns inte i den frysta kopian" (frysningsproblem) från
+      // "ingen ren sektionsnivå" (sidans struktur) — två helt olika åtgärder.
+      let unresolvedReason: string | null = null;
       for (const o of ops) {
         const el = findByLocator(o.tag, o.find);
-        if (!el || el.closest(NO_TOUCH_MIRROR)) {
+        if (!el) {
           resolvedAll = false;
+          unresolvedReason = `hittar inte lokatorn <${o.tag ?? "h1,h2,h3"}> "${o.find.slice(0, 60)}" i den frysta kopian`;
+          break;
+        }
+        if (el.closest(NO_TOUCH_MIRROR)) {
+          resolvedAll = false;
+          unresolvedReason = `målet ligger i en no-touch-zon (${o.find.slice(0, 60)})`;
           break;
         }
         if (o.op === "move_up") {
           const sec = sectionOf(el);
           if (!sec) {
             resolvedAll = false;
+            unresolvedReason = `ingen ren sektionsnivå för "${o.find.slice(0, 60)}" — ingen förfader bär exakt EN rubrik med rubrikbärande syskon`;
             break;
           }
           resolved.push({ op: "move_up", sec });
@@ -413,6 +428,7 @@ export async function measurePlan(
           // håll i synk.
           if (!o.set) {
             resolvedAll = false;
+            unresolvedReason = "insert_snippet saknar text (set)";
             break;
           }
           let anchor: Element = el;
@@ -431,6 +447,7 @@ export async function measurePlan(
           }
           if (!anchor.parentElement) {
             resolvedAll = false;
+            unresolvedReason = "insättningsankaret saknar förälder";
             break;
           }
           // Artikelsidor: LCP-elementet är ofta intro-stycket DIREKT under
@@ -474,6 +491,7 @@ export async function measurePlan(
           }
           if (anchor.closest(NO_TOUCH_MIRROR)) {
             resolvedAll = false;
+            unresolvedReason = "insättningsankaret ligger i en no-touch-zon";
             break;
           }
           resolved.push({
@@ -486,6 +504,7 @@ export async function measurePlan(
         } else {
           if (!o.set) {
             resolvedAll = false;
+            unresolvedReason = "set_text saknar text (set)";
             break;
           }
           resolved.push({ op: "set_text", el, set: o.set });
@@ -762,6 +781,7 @@ export async function measurePlan(
 
       return {
         resolvedAll,
+        unresolvedReason,
         beforeOrder: labelsOf(beforeIdx),
         afterOrder: labelsOf(afterIdx),
         orderChanged: JSON.stringify(afterIdx) !== JSON.stringify(beforeIdx),
@@ -866,6 +886,10 @@ export async function runGatedAttempts(
   attempts: GatedAttempt[];
   attemptOps: MeasureOp[];
   unresolvable: boolean;
+  /** Satt när unresolvable: VILKEN gren som vägrade + lokatorn. Följer med in
+   *  i loggen och cellens rad, så en cell som faller varje natt går att
+   *  diagnosticera ur körningen i stället för i efterhand. */
+  unresolvedReason: string | null;
   extraLiftApplied: boolean;
 }> {
   const extraLiftOps: MeasureOp[] = extraLiftFinds(ops).map((find) => {
@@ -878,7 +902,13 @@ export async function runGatedAttempts(
   for (let attempt = 1; attempt <= 2; attempt++) {
     const raw = await measurePlan(page, attemptOps, ctaTexts, false, opts.ctaSelectors ?? []);
     if (!raw.resolvedAll) {
-      return { attempts, attemptOps, unresolvable: true, extraLiftApplied };
+      return {
+        attempts,
+        attemptOps,
+        unresolvable: true,
+        unresolvedReason: raw.unresolvedReason ?? null,
+        extraLiftApplied,
+      };
     }
     const measurements = toRenderMeasurements(raw);
     const gate = evaluateRenderGates(measurements);
@@ -894,5 +924,5 @@ export async function runGatedAttempts(
     }
     break;
   }
-  return { attempts, attemptOps, unresolvable: false, extraLiftApplied };
+  return { attempts, attemptOps, unresolvable: false, unresolvedReason: null, extraLiftApplied };
 }

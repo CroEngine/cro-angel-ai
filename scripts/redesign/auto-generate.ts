@@ -707,12 +707,11 @@ try {
     // Grindarna + retry-steget — DELADE (runGatedAttempts i measure.ts):
     // kollision → ETT extra lyft per UNIK måltavla, och mätningen/serve_ops
     // räknar per konstruktion samma antal lyft i alla harness.
-    let { attempts, attemptOps, unresolvable, extraLiftApplied } = await runGatedAttempts(
-      page,
-      measureOps,
-      ctaTexts,
-      { ctaSelectors },
-    );
+    const gated = await runGatedAttempts(page, measureOps, ctaTexts, { ctaSelectors });
+    // unresolvable/unresolvedReason sätts EN gång av första körningen och läses
+    // bara; de tre nedan skrivs om av reserv-stegen (fb.* längre ned).
+    const { unresolvable, unresolvedReason } = gated;
+    let { attempts, attemptOps, extraLiftApplied } = gated;
     let last = attempts[attempts.length - 1];
     let fallbackUsed: string | null = null;
     /** Försöken från den körning som bestämde de FINALA opsen (huvudvalet,
@@ -835,14 +834,19 @@ try {
     if (unresolvable) {
       await context.close();
       if (!(await tryProofFallback())) {
+        // GRENEN MED (granskningsfynd 2026-08-15): "upplösningen vägrade" utan
+        // orsak gick inte att åtgärda i efterhand — en cell som föll varje natt
+        // krävde nedladdade artefakter och handpåläggning för att ens veta om
+        // det var frysningen eller sidans struktur som brast.
+        const why = unresolvedReason ?? "okänd gren";
         recordCell({
           path: plan.path,
           key: plan.key,
           verdict: "not_applicable",
-          reason: "op-mål/sektion kunde inte upplösas på sidan (v3 fail closed)",
+          reason: `op-mål/sektion kunde inte upplösas på sidan (v3 fail closed): ${why}`,
         });
         console.log(
-          `  ${plan.path} × ${plan.key}: EJ APPLICERBAR — upplösningen vägrade (fail closed)`,
+          `  ${plan.path} × ${plan.key}: EJ APPLICERBAR — upplösningen vägrade (fail closed) — ${why}`,
         );
         continue;
       }
