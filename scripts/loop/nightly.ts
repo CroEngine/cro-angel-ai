@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { anthropicDesigner } from "./designer";
 import { generateRedesign, type RedesignOp } from "../../src/adaptive/redesign/generate";
 import { buildCandidatePlan } from "./candidate-plan";
-import { catalogEligible, cellWorkDir, planRow } from "./cell-plan";
+import { catalogEligible, cellWorkDir, freezePriority, planRow } from "./cell-plan";
 import { fetchSectionBehavior } from "./section-behavior";
 import {
   REUSE_FALSIFIED_AT,
@@ -201,16 +201,13 @@ for (const site of targets) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([p]) => p);
-    // Löv-toppen kapas FÖRST (10) och unionen därefter. (Heatmap-vyn är
-    // pensionerad 2026-07-26 — klick-topparna fryses inte längre; resespelarens
-    // och flödesmålens sidor räcker som backdrops.)
-    const leafPaths = [
-      ...new Set(
-        (leaves as { path?: string }[]).map(
-          (l) => (l.path || "/").split("#")[0].split("?")[0] || "/",
-        ),
-      ),
-    ].slice(0, 10);
+    // Löv-toppen: TRAFIK-rankad med mall-topp-upp (freezePriority — se
+    // granskningsfyndet där: den gamla kapningen tog de 10 FÖRSTA i databasens
+    // ordning, så "/restauranger/…" föll för "/blogg/…" alfabetiskt varje natt
+    // och mallcellen med sajtens näst största trafik stod i needs_freeze i
+    // veckor). (Heatmap-vyn är pensionerad 2026-07-26 — klick-topparna fryses
+    // inte längre; resespelarens och flödesmålens sidor räcker som backdrops.)
+    const leafPaths = freezePriority(leaves as { path?: string; visits?: number }[]);
     // Flödesdestinationerna fryses också (korssid-lyftet): en insert_snippet-op
     // kan bara citera en FRYST källsida — utan kopian tappas signalen tyst.
     const destCounts = new Map<string, number>();

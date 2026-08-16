@@ -4,7 +4,7 @@
 // största ändring hade noll test.
 import { describe, expect, it } from "vitest";
 
-import { catalogEligible, cellWorkDir, planRow } from "../cell-plan";
+import { catalogEligible, cellWorkDir, freezePriority, planRow } from "../cell-plan";
 
 import type { RedesignOp } from "../../../src/adaptive/redesign/generate";
 
@@ -26,6 +26,53 @@ describe("cellWorkDir", () => {
     expect(home).toMatch(/-[0-9a-f]{8}$/); // hash-suffixet finns alltid
     // Rena skräptecken får inte ge ett namnlöst "cell--<hash>".
     expect(cellWorkDir("/run", "···", "···")).toMatch(/\/cell-home-[0-9a-f]{8}$/);
+  });
+});
+
+describe("freezePriority — trafik-rankad frysning med mall-topp-upp", () => {
+  const lv = (path: string, visits: number) => ({ path, visits });
+
+  it("rankar på TRAFIK, aldrig databasens/alfabetets ordning", () => {
+    // needs_freeze-svälten (2026-08-16): den gamla kapningen tog de 10 första
+    // i inkommande ordning — alfabetet avgjorde vem som fick frysas.
+    const leaves = [lv("/a-liten", 5), lv("/z-stor", 900), lv("/m-mellan", 50)];
+    expect(freezePriority(leaves, { topPages: 2 })).toEqual(["/z-stor", "/m-mellan"]);
+  });
+
+  it("mall-topp-upp: topp-mallens två största exemplar garanteras plats", () => {
+    // Glutenforum-formen: bloggsidorna fyller sidtoppen, restaurang-mallen
+    // bär näst mest trafik SAMLAT men ingen enskild sida når toppen — utan
+    // topp-uppen fryses aldrig två exemplar och malldetektorn kan inte köra.
+    const leaves = [
+      lv("/", 200),
+      lv("/blogg/a", 130),
+      lv("/blogg/b", 120),
+      lv("/blogg/c", 110),
+      lv("/restauranger/x", 40),
+      lv("/restauranger/y", 35),
+      lv("/restauranger/z", 30),
+    ];
+    const got = freezePriority(leaves, { topPages: 4, topTemplates: 2 });
+    expect(got.slice(0, 4)).toEqual(["/", "/blogg/a", "/blogg/b", "/blogg/c"]);
+    expect(got).toContain("/restauranger/x");
+    expect(got).toContain("/restauranger/y");
+    // ...men inte hela svansen — två exemplar räcker för malldetektorn.
+    expect(got).not.toContain("/restauranger/z");
+  });
+
+  it("en ensam sida är ingen mall — ingen topp-upp för den", () => {
+    const got = freezePriority([lv("/", 100), lv("/blogg/ensam", 10)], { topPages: 1 });
+    expect(got).toEqual(["/"]);
+  });
+
+  it("samma besök ⇒ deterministisk ordning (path-tiebreak), query/hash strippas", () => {
+    const got = freezePriority([lv("/b?x=1", 10), lv("/a#y", 10)], { topPages: 2 });
+    expect(got).toEqual(["/a", "/b"]);
+  });
+
+  it("aggregerar per sida över segmentlöv — summan rankar, inte största lövet", () => {
+    const got = freezePriority([lv("/x", 40), lv("/x", 40), lv("/y", 60)], { topPages: 1 });
+    expect(got).toEqual(["/x"]); // 80 > 60
   });
 });
 

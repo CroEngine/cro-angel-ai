@@ -15,6 +15,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 
+import { templateOf } from "../../src/lib/page-template";
 import type { RedesignOp } from "../../src/adaptive/redesign/generate";
 
 /** Arbetskatalog för en cell. Teckenvitlistan ensam är INTE injektiv —
@@ -28,6 +29,63 @@ export function cellWorkDir(runDir: string, path: string, key: string): string {
       .replace(/^-|-$/g, "") || "home";
   const hash = createHash("sha1").update(`${path}\n${key}`).digest("hex").slice(0, 8);
   return join(runDir, `cell-${safe}-${hash}`);
+}
+
+/** FRYS-PRIORITERINGEN (granskningsfynd 2026-08-16, needs_freeze-svälten).
+ *
+ *  Löv-toppen kapades förut till 10 i DATABASENS ordning — i praktiken
+ *  alfabetisk, så "/restauranger/…" föll för "/blogg/…" varje natt trots att
+ *  restaurang-MALLCELLEN bar sajtens näst största trafik (210 besök). Cellen
+ *  stod i needs_freeze i veckor: detect kräver frysta sidor, frysningen
+ *  prioriterade aldrig dem, och ingen körning kunde bryta cirkeln.
+ *
+ *  Två regler, båda ur detektorns faktiska behov:
+ *   1. TRAFIK, inte bokstavsordning: sidor rankas på aggregerade besök.
+ *   2. MALL-TOPP-UPP: malldetektorn kräver ≥ 2 frysta exemplar per mall —
+ *      för topp-mallarna (på mallens SAMLADE trafik) garanteras de två
+ *      största exemplaren plats, även när ingen av dem ensam når sidtoppen.
+ *      Det är exakt long-tail-fallet mallar finns för: många små sidor som
+ *      tillsammans bär volymen.
+ *
+ *  Ren och deterministisk (tiebreak på path) — nattloopen matar löven,
+ *  testerna matar fixturer. */
+export function freezePriority(
+  leaves: { path?: string | null; visits?: number | null }[],
+  opts: { topPages?: number; topTemplates?: number; perTemplate?: number } = {},
+): string[] {
+  const topPages = opts.topPages ?? 10;
+  const topTemplates = opts.topTemplates ?? 3;
+  const perTemplate = opts.perTemplate ?? 2;
+  const visits = new Map<string, number>();
+  for (const l of leaves) {
+    const raw = typeof l.path === "string" && l.path ? l.path : "/";
+    const p = raw.split("#")[0].split("?")[0] || "/";
+    visits.set(p, (visits.get(p) ?? 0) + (typeof l.visits === "number" ? l.visits : 0));
+  }
+  const byTraffic = [...visits.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const picked = byTraffic.slice(0, topPages).map(([p]) => p);
+  // Mall-topp-upp: gruppera på mönster, ranka mallarna på samlad trafik och
+  // säkra de två största exemplaren per topp-mall.
+  const byTemplate = new Map<string, { total: number; pages: [string, number][] }>();
+  for (const [p, v] of byTraffic) {
+    const tpl = templateOf(p);
+    if (!tpl) continue;
+    const acc = byTemplate.get(tpl) ?? { total: 0, pages: [] };
+    acc.total += v;
+    acc.pages.push([p, v]);
+    byTemplate.set(tpl, acc);
+  }
+  const templates = [...byTemplate.entries()]
+    .filter(([, g]) => g.pages.length >= 2) // en ensam sida är ingen mall
+    .sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0]))
+    .slice(0, topTemplates);
+  const out = [...picked];
+  for (const [, g] of templates) {
+    for (const [p] of g.pages.slice(0, perTemplate)) {
+      if (!out.includes(p)) out.push(p);
+    }
+  }
+  return out;
 }
 
 export type CatalogSkip = "cross-page";
