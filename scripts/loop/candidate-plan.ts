@@ -144,7 +144,23 @@ export async function buildCandidatePlan(args: {
     engagementBySection: args.behavior?.sectionWeight,
     sectionVisitsBySection: args.behavior?.sectionVisits,
   });
-  const raw = await anthropicSelect(prompt);
+  // HELT GRIND-OREN MENY ⇒ hoppa LLM-väljaren (granskningsfynd 2026-08-16,
+  // restaurang-cellen: "0/1 grind-rena · 1/1 applicerbara" — proben hade
+  // redan kört HELA grindkedjan inkl. kollisions-retryn via runGatedAttempts,
+  // så varje mätt-oren kandidat faller i verify per konstruktion; samma
+  // funktion, samma frysta fil). Att köpa en övertalnings-rankning mellan
+  // dömda kandidater är meningslöst — golvet räcker, och verify förblir
+  // domaren (bältet och hängslen: skulle probe/verify någonsin divergera är
+  // det verify som gäller). Cellen får sin ärliga gate_fail med orsak i
+  // rapporten; att den ÅTERKOMMER nästa natt är känt och olöst (cellminne
+  // över nätter finns inte än).
+  const allGateDirty = menu.every((c) => c.gateClean === false);
+  if (allGateDirty) {
+    console.log(
+      `[katalog] hela menyn grind-oren (${menu.length} kandidat(er), probens fulla mätning) — hoppar väljaren, golvet väljer; verify avgör`,
+    );
+  }
+  const raw = allGateDirty ? null : await anthropicSelect(prompt);
   const selection = (raw ? resolveSelection(raw, menu) : null) ?? floorSelection(menu);
   if (!selection) return null;
 
