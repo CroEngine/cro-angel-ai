@@ -25,6 +25,7 @@ import { Route as ApiAdaptiveInventoryRouteImport } from './routes/api/adaptive/
 import { Route as ApiPreviewJobRouteImport } from './routes/api/preview/job'
 import { Route as ApiPreviewPageRouteImport } from './routes/api/preview/page'
 import { Route as ApiPreviewReportRouteImport } from './routes/api/preview/report'
+import { Route as ApiPublicStatsRouteImport } from './routes/api/public/stats'
 import { Route as ApiSandboxMirrorRouteImport } from './routes/api/sandbox/mirror'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiPublicCorpusSplatRouteImport } from './routes/api/public/corpus.$'
@@ -113,6 +114,11 @@ const ApiPreviewReportRoute = ApiPreviewReportRouteImport.update({
   path: '/api/preview/report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicStatsRoute = ApiPublicStatsRouteImport.update({
+  id: '/api/public/stats',
+  path: '/api/public/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSandboxMirrorRoute = ApiSandboxMirrorRouteImport.update({
   id: '/api/sandbox/mirror',
   path: '/api/sandbox/mirror',
@@ -162,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/api/preview/job': typeof ApiPreviewJobRoute
   '/api/preview/page': typeof ApiPreviewPageRoute
   '/api/preview/report': typeof ApiPreviewReportRoute
+  '/api/public/stats': typeof ApiPublicStatsRoute
   '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
@@ -186,6 +193,7 @@ export interface FileRoutesByTo {
   '/api/preview/job': typeof ApiPreviewJobRoute
   '/api/preview/page': typeof ApiPreviewPageRoute
   '/api/preview/report': typeof ApiPreviewReportRoute
+  '/api/public/stats': typeof ApiPublicStatsRoute
   '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   '/api/preview/job': typeof ApiPreviewJobRoute
   '/api/preview/page': typeof ApiPreviewPageRoute
   '/api/preview/report': typeof ApiPreviewReportRoute
+  '/api/public/stats': typeof ApiPublicStatsRoute
   '/api/sandbox/mirror': typeof ApiSandboxMirrorRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/public/corpus/$': typeof ApiPublicCorpusSplatRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
     | '/api/preview/job'
     | '/api/preview/page'
     | '/api/preview/report'
+    | '/api/public/stats'
     | '/api/sandbox/mirror'
     | '/api/stripe/webhook'
     | '/api/public/corpus/$'
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
     | '/api/preview/job'
     | '/api/preview/page'
     | '/api/preview/report'
+    | '/api/public/stats'
     | '/api/sandbox/mirror'
     | '/api/stripe/webhook'
     | '/api/public/corpus/$'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/api/preview/job'
     | '/api/preview/page'
     | '/api/preview/report'
+    | '/api/public/stats'
     | '/api/sandbox/mirror'
     | '/api/stripe/webhook'
     | '/api/public/corpus/$'
@@ -310,6 +322,7 @@ export interface RootRouteChildren {
   ApiPreviewJobRoute: typeof ApiPreviewJobRoute
   ApiPreviewPageRoute: typeof ApiPreviewPageRoute
   ApiPreviewReportRoute: typeof ApiPreviewReportRoute
+  ApiPublicStatsRoute: typeof ApiPublicStatsRoute
   ApiSandboxMirrorRoute: typeof ApiSandboxMirrorRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiPublicCorpusSplatRoute: typeof ApiPublicCorpusSplatRoute
@@ -432,6 +445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPreviewReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/stats': {
+      id: '/api/public/stats'
+      path: '/api/public/stats'
+      fullPath: '/api/public/stats'
+      preLoaderRoute: typeof ApiPublicStatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sandbox/mirror': {
       id: '/api/sandbox/mirror'
       path: '/api/sandbox/mirror'
@@ -494,6 +514,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPreviewJobRoute: ApiPreviewJobRoute,
   ApiPreviewPageRoute: ApiPreviewPageRoute,
   ApiPreviewReportRoute: ApiPreviewReportRoute,
+  ApiPublicStatsRoute: ApiPublicStatsRoute,
   ApiSandboxMirrorRoute: ApiSandboxMirrorRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiPublicCorpusSplatRoute: ApiPublicCorpusSplatRoute,
