@@ -18,6 +18,7 @@ import { Route as SandboxRouteImport } from './routes/sandbox'
 import { Route as SeoAndPrivacyRouteImport } from './routes/seo-and-privacy'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TryRouteImport } from './routes/try'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ApiAdaptiveConsentConfigRouteImport } from './routes/api/adaptive/consent-config'
 import { Route as ApiAdaptiveDecideRouteImport } from './routes/api/adaptive/decide'
 import { Route as ApiAdaptiveEventsRouteImport } from './routes/api/adaptive/events'
@@ -76,6 +77,11 @@ const SignupRoute = SignupRouteImport.update({
 const TryRoute = TryRouteImport.update({
   id: '/try',
   path: '/try',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdaptiveConsentConfigRoute =
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/seo-and-privacy': typeof SeoAndPrivacyRoute
   '/signup': typeof SignupRoute
   '/try': typeof TryRoute
+  '/welcome': typeof WelcomeRoute
   '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
@@ -186,6 +193,7 @@ export interface FileRoutesByTo {
   '/seo-and-privacy': typeof SeoAndPrivacyRoute
   '/signup': typeof SignupRoute
   '/try': typeof TryRoute
+  '/welcome': typeof WelcomeRoute
   '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
@@ -212,6 +220,7 @@ export interface FileRoutesById {
   '/seo-and-privacy': typeof SeoAndPrivacyRoute
   '/signup': typeof SignupRoute
   '/try': typeof TryRoute
+  '/welcome': typeof WelcomeRoute
   '/api/adaptive/consent-config': typeof ApiAdaptiveConsentConfigRoute
   '/api/adaptive/decide': typeof ApiAdaptiveDecideRoute
   '/api/adaptive/events': typeof ApiAdaptiveEventsRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/seo-and-privacy'
     | '/signup'
     | '/try'
+    | '/welcome'
     | '/api/adaptive/consent-config'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/seo-and-privacy'
     | '/signup'
     | '/try'
+    | '/welcome'
     | '/api/adaptive/consent-config'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
@@ -289,6 +300,7 @@ export interface FileRouteTypes {
     | '/seo-and-privacy'
     | '/signup'
     | '/try'
+    | '/welcome'
     | '/api/adaptive/consent-config'
     | '/api/adaptive/decide'
     | '/api/adaptive/events'
@@ -315,6 +327,7 @@ export interface RootRouteChildren {
   SeoAndPrivacyRoute: typeof SeoAndPrivacyRoute
   SignupRoute: typeof SignupRoute
   TryRoute: typeof TryRoute
+  WelcomeRoute: typeof WelcomeRoute
   ApiAdaptiveConsentConfigRoute: typeof ApiAdaptiveConsentConfigRoute
   ApiAdaptiveDecideRoute: typeof ApiAdaptiveDecideRoute
   ApiAdaptiveEventsRoute: typeof ApiAdaptiveEventsRoute
@@ -394,6 +407,13 @@ declare module '@tanstack/react-router' {
       path: '/try'
       fullPath: '/try'
       preLoaderRoute: typeof TryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/adaptive/consent-config': {
@@ -507,6 +527,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeoAndPrivacyRoute: SeoAndPrivacyRoute,
   SignupRoute: SignupRoute,
   TryRoute: TryRoute,
+  WelcomeRoute: WelcomeRoute,
   ApiAdaptiveConsentConfigRoute: ApiAdaptiveConsentConfigRoute,
   ApiAdaptiveDecideRoute: ApiAdaptiveDecideRoute,
   ApiAdaptiveEventsRoute: ApiAdaptiveEventsRoute,

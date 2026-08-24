@@ -32,6 +32,8 @@ import {
 const asTestMetric = (v: unknown): TestMetric =>
   v === "continuation" || v === "bounce" ? v : "conversion";
 import { loadTopReferrerDomains } from "@/adaptive/persistence.server";
+// Nyckelfabriken bor i sajtskapandets delade kärna — en definition, två vägar.
+import { genKey } from "@/lib/sites/ensure-site.server";
 import { buildJourney, type JourneyMilestone } from "./journey";
 import { cleanEvents } from "./data-hygiene";
 import { reusedKindOf } from "./reuse-provenance";
@@ -119,8 +121,6 @@ export async function ownsSite(
     .maybeSingle();
   return !!data;
 }
-
-const genKey = () => "ak_" + globalThis.crypto.randomUUID().replace(/-/g, "");
 
 export interface SiteRef {
   slug: string;
@@ -1258,86 +1258,27 @@ export const createSite = createServerFn({ method: "POST" })
       context,
     }): Promise<{ ok: boolean; reason?: string; slug?: string; ingestKey?: string }> => {
       const ctx = context as unknown as AuthCtx;
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { normalizeDomain } = await import("@/adaptive/domain");
+      const { ensureSiteWithOwner } = await import("@/lib/sites/ensure-site.server");
       const slug = data.slug.toLowerCase();
 
-      // Domänen normaliseras (URL/www./versaler → "exempel.se") och är UNIK
-      // över alla sajter: två konton kan aldrig registrera samma domän, och
-      // Origin-grinden + verifieringsstämpeln binder sedan trafiken till den.
+      // Domänen normaliseras (URL/www./versaler → "exempel.se"); resten —
+      // domän-unikhet, slug-ägarskap, create-if-absent (aldrig nykla en
+      // befintlig rad), medlemskap — bor i den DELADE kärnan
+      // ensureSiteWithOwner, samma som demo-aktiveringen använder
+      // (granskningsfynd 2026-08-19: duplicerade regler forkar tyst).
+      // Formulärvägen adopterar INTE egen domän: användaren bad om en viss
+      // slug och får ärligt domain_taken i stället för en annan sajt.
       const domain = normalizeDomain(data.domain) ?? null;
       if (data.domain && !domain) {
         return { ok: false, reason: "bad_domain" };
       }
-      if (domain) {
-        const { data: taken } = await supabaseAdmin
-          .from("angel_sites")
-          .select("slug")
-          .ilike("domain", domain)
-          .neq("slug", slug)
-          .maybeSingle();
-        if (taken) return { ok: false, reason: "domain_taken" };
-      }
-
-      // Refuse a slug already owned by a DIFFERENT user.
-      const { data: members } = await supabaseAdmin
-        .from("angel_site_members")
-        .select("user_id")
-        .eq("site_slug", slug);
-      const ownedByOther = (members ?? []).some(
-        (m: { user_id: string }) => m.user_id !== ctx.userId,
+      const r = await ensureSiteWithOwner(
+        { userId: ctx.userId, isAdmin: isAdminEmail(ctx.claims?.email) },
+        { slug, name: data.name ?? null, domain, createdFrom: "manual" },
       );
-      if (ownedByOther && !isAdminEmail(ctx.claims?.email)) {
-        return { ok: false, reason: "taken" };
-      }
-
-      // Ensure the row exists (create-if-absent, never clobber name/domain) and
-      // has a key.
-      const { data: existing } = await supabaseAdmin
-        .from("angel_sites")
-        .select("ingest_key")
-        .eq("slug", slug)
-        .maybeSingle();
-      let key = existing?.ingest_key ?? null;
-      if (!existing) {
-        key = genKey();
-        const { error } = await supabaseAdmin.from("angel_sites").insert({
-          slug,
-          name: data.name ?? null,
-          domain,
-          // Nya sajter kräver prenumeration för SERVING (observation är
-          // alltid fri). exempt sätts bara manuellt (pilot/labb).
-          billing_status: "none",
-          ingest_key: key,
-          // Consent-by-default: a new site starts ANONYMOUS (the DB default —
-          // no persistent visitor id, no behavioural events) and with no
-          // holdout, per docs/consent-gate.md ("never assume consent") and
-          // GDPR's opt-in default. The owner flips the existing dashboard
-          // attestation toggle when they have a lawful basis — setConsentMode
-          // then auto-enables the DEFAULT_HOLDOUT_PCT control group, so
-          // measurement is still zero-config from the moment collection is
-          // actually allowed. The signup checkbox alone is not a lawful basis
-          // for the VISITORS of a site the account hasn't attested.
-        });
-        if (error) {
-          console.warn(`[angel] createSite insert failed: ${error.message}`);
-          return { ok: false, reason: "error" };
-        }
-      }
-      // Claiming an existing unkeyed site must NOT auto-generate a key: the
-      // site's live tag has no data-key, so keying here would silently 403
-      // every request from the running install. Locking writes is an explicit,
-      // password-gated action in Settings instead.
-
-      // Claim ownership (idempotent).
-      const { error: memErr } = await supabaseAdmin
-        .from("angel_site_members")
-        .upsert({ user_id: ctx.userId, site_slug: slug }, { onConflict: "user_id,site_slug" });
-      if (memErr) {
-        console.warn(`[angel] createSite membership failed: ${memErr.message}`);
-        return { ok: false, reason: "error" };
-      }
-      return { ok: true, slug, ingestKey: key ?? undefined };
+      if (!r.ok) return { ok: false, reason: r.reason };
+      return { ok: true, slug: r.slug, ingestKey: r.ingestKey ?? undefined };
     },
   );
 

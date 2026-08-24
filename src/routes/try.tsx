@@ -12,6 +12,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 
+import { encodePendingActivation, PENDING_ACTIVATION_KEY } from "@/lib/onboarding/derive";
+
 interface JobView {
   status: "queued" | "running" | "ok" | "failed";
   url: string;
@@ -283,11 +285,26 @@ function TryPage() {
                 <span className="font-semibold">Free until your first verified variant</span> — your
                 card waits until the robot has earned it.
               </p>
+              {/* Handoffen (2026-08-18, "snuskigt enkel onboarding"): jobb-id:t
+                  läggs i localStorage så /welcome kan auto-skapa sajten ur
+                  demo-jobbet efter auth — domän/slug/namn härleds, inga
+                  formulär. localStorage (inte sessionStorage): bekräftelse-
+                  mejlets länk öppnar ofta en ny flik. */}
               <Link
                 to="/signup"
+                onClick={() => {
+                  try {
+                    localStorage.setItem(
+                      PENDING_ACTIVATION_KEY,
+                      encodePendingActivation(id, Date.now()),
+                    );
+                  } catch {
+                    /* utan lagring faller flödet tillbaka till dashboardens formulär */
+                  }
+                }}
                 className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-emerald-600"
               >
-                Start free
+                {hostname ? `Activate on ${hostname} — free` : "Start free"}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>

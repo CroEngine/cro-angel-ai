@@ -53,6 +53,7 @@ import {
   type SiteConfigView,
 } from "@/lib/dashboard/dashboard.functions";
 import type { GoalCandidate, GoalKind } from "@/adaptive/crawler-inventory";
+import { buildSnippet as buildSnippetShared } from "@/lib/snippet";
 import { RECENT_WINDOW_DAYS } from "@/lib/dashboard/aggregate";
 import type { InventoryGroup } from "@/lib/dashboard/aggregate";
 
@@ -356,15 +357,14 @@ function Dashboard() {
   );
 }
 
-/** The one durable install tag for a site. Strips deploy-preview origins so a
- *  dashboard opened on a preview never hands out an ephemeral URL. */
+/** The one durable install tag for a site — byggaren delas med /welcome
+ *  (src/lib/snippet.ts) så onboardingen och Settings aldrig glider isär. */
 function buildSnippet(site: string, ingestKey: string | null): string {
-  const origin = (typeof window !== "undefined" ? window.location.origin : "").replace(
-    /^https:\/\/deploy-preview-\d+--/,
-    "https://",
+  return buildSnippetShared(
+    site,
+    ingestKey,
+    typeof window !== "undefined" ? window.location.origin : "",
   );
-  const keyAttr = ingestKey ? ` data-key="${ingestKey}"` : "";
-  return `<script async src="${origin}/adaptive.js" data-site="${site}"${keyAttr}></script>`;
 }
 
 /** Per-site settings dialog: the install tag (with password-guarded key

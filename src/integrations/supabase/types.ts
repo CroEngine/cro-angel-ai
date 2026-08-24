@@ -235,6 +235,7 @@ export type Database = {
           conversion_text: string | null
           conversion_url: string | null
           created_at: string
+          created_from: string | null
           day0_findings: Json | null
           day0_report_at: string | null
           day0_report_status: string | null
@@ -264,6 +265,7 @@ export type Database = {
           conversion_text?: string | null
           conversion_url?: string | null
           created_at?: string
+          created_from?: string | null
           day0_findings?: Json | null
           day0_report_at?: string | null
           day0_report_status?: string | null
@@ -293,6 +295,7 @@ export type Database = {
           conversion_text?: string | null
           conversion_url?: string | null
           created_at?: string
+          created_from?: string | null
           day0_findings?: Json | null
           day0_report_at?: string | null
           day0_report_status?: string | null

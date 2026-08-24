@@ -1,0 +1,11 @@
+-- Onboardingens härkomstkolumn (ägarbeslut 2026-08-18, "snuskigt enkel
+-- onboarding" + 1000-sajters-målet): varje sajt bär VAR den kom ifrån, så
+-- tratten paste → demo → aktivering → install går att räkna ur befintliga
+-- rader i stället för ett separat eventsystem.
+--
+--   'preview:<jobId>'  — auto-skapad ur ett demo-jobb (/try → aktivera)
+--   'manual'           — skapad via dashboardens add-site-formulär
+--   null               — historiska rader före kolumnen
+--
+-- Ingen backfill: att gissa historik vore påhittad statistik.
+alter table angel_sites add column if not exists created_from text;
