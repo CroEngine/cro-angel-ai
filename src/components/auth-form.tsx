@@ -9,6 +9,7 @@ import { useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { emailHasAccount } from "@/lib/auth.functions";
+import { decodePendingActivation, PENDING_ACTIVATION_KEY } from "@/lib/onboarding/derive";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -65,6 +66,21 @@ export function AuthForm({ redirect }: { redirect?: string }) {
   const dest =
     redirect && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/dashboard";
 
+  /** Onboarding-handoffen (2026-08-18): bär localStorage en färsk aktivering
+   *  från /try går BÅDA auth-vägarna (nytt konto OCH inloggning — även den
+   *  efter mejlbekräftelsens omväg) till /welcome, som auto-skapar sajten ur
+   *  demo-jobbet. Utan handoff gäller dest som förut. */
+  const postAuthDest = (): string => {
+    try {
+      if (decodePendingActivation(localStorage.getItem(PENDING_ACTIVATION_KEY), Date.now())) {
+        return "/welcome";
+      }
+    } catch {
+      /* lagring blockerad ⇒ vanliga vägen */
+    }
+    return dest;
+  };
+
   async function submitEmail(e: React.FormEvent) {
     e.preventDefault();
     if (busy || !email.trim()) return;
@@ -93,7 +109,7 @@ export function AuthForm({ redirect }: { redirect?: string }) {
       setError(signInErrorMessage(error));
       return;
     }
-    navigate({ to: dest });
+    navigate({ to: postAuthDest() });
   }
 
   async function submitSignup(e: React.FormEvent) {
@@ -132,7 +148,7 @@ export function AuthForm({ redirect }: { redirect?: string }) {
       return;
     }
     if (data.session) {
-      navigate({ to: dest });
+      navigate({ to: postAuthDest() });
     } else {
       setStep("confirm_sent");
     }
