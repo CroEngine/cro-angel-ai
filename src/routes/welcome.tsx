@@ -274,7 +274,7 @@ function Welcome() {
     <main className="min-h-screen bg-[#fafaf9] px-4 py-10 text-stone-900 antialiased">
       <div className="mx-auto w-full max-w-2xl">
         <div className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
-          <span className="text-xl leading-none text-emerald-700">✳</span> Angel
+          <span className="text-xl leading-none text-emerald-700">✳</span> Agritm
         </div>
 
         {(state === "boot" || state === "activating") && (
@@ -384,14 +384,14 @@ function Welcome() {
             <Block label="[ step 3 — visitor measurement ]" title="Turn on measurement">
               {attested ? (
                 <p className="mt-2 text-[14.5px] text-stone-700">
-                  <strong className="text-emerald-700">On.</strong> Angel uses a persistent visitor
+                  <strong className="text-emerald-700">On.</strong> Agritm uses a persistent visitor
                   id and conversion events on this site to measure lift. Visitors who signal GPC or
                   Do Not Track are always excluded.
                 </p>
               ) : (
                 <>
                   <p className="mt-2 text-[14.5px] text-stone-600">
-                    Paused — Angel adapts the page but stores no visitor id and records no events,
+                    Paused — Agritm adapts the page but stores no visitor id and records no events,
                     so lift isn&apos;t measured on this site. You acknowledged the
                     visitor-information terms at signup; this switch turns measurement on for{" "}
                     {site.domain}.

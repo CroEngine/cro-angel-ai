@@ -24,7 +24,7 @@ export interface LayoutDiff {
   matched: number;
   /** How many of those moved more than a few px. */
   shiftedCount: number;
-  /** Angel-attributable viewport shift, 0..1 (CLS-like): motion during apply
+  /** Agritm-attributable viewport shift, 0..1 (CLS-like): motion during apply
    *  MINUS the page's own ambient motion over an equal control window. */
   shiftedFraction: number;
   /** The page's own motion over the control window (carousels, autoplay, etc.),
@@ -36,12 +36,12 @@ export interface LayoutDiff {
 
 /** Did the adaptation survive a framework re-render? On a React/Vue/Svelte page
  *  the next render can revert our change (markers vanish) or duplicate it. We
- *  compare the count of Angel markers right after apply vs after provoking a
+ *  compare the count of Agritm markers right after apply vs after provoking a
  *  re-render (scroll / resize / time). */
 export interface RerenderProbe {
-  /** Angel markers present immediately after apply. */
+  /** Agritm markers present immediately after apply. */
   residueAfterApply: number;
-  /** Angel markers present after a re-render was provoked. */
+  /** Agritm markers present after a re-render was provoked. */
   residueAfterRerender: number;
 }
 
@@ -95,7 +95,7 @@ export interface RobustnessObservation {
   /** Skönhetsgrindarna (se VisualSanity). Optional: failReport-vägar och
    *  äldre observationer saknar den — då bedöms inte grindarna. */
   visual?: VisualSanity;
-  /** Angel residue remaining after reset() (must be 0): leftover classes /
+  /** Agritm residue remaining after reset() (must be 0): leftover classes /
    *  injected badges / hidden markers. The strongest reversibility signal —
    *  robust even on pages that mutate their own DOM. */
   residueAfterReset: number;
@@ -146,7 +146,7 @@ export interface RobustnessReport {
     /** How targets resolved across adaptations — shows the resilient fallbacks
      *  (slot / text) actually earning their keep vs the primary selector. */
     via: { selector: number; slot: number; text: number; none: number };
-    /** No Angel residue left after reset(). */
+    /** No Agritm residue left after reset(). */
     reversible: boolean;
     /** Elements removed after apply vs baseline (layout-breakage smell). */
     elementsRemoved: number;
@@ -312,7 +312,7 @@ export function analyze(o: RobustnessObservation): RobustnessReport {
     }
     // The adaptation didn't survive a re-render — a framework (React/Vue/…)
     // reverted or duplicated it. The page isn't broken (no error, still
-    // reversible), but Angel won't reliably stick there. Worth flagging.
+    // reversible), but Agritm won't reliably stick there. Worth flagging.
     if (!rerenderStable) {
       const a = o.rerender.residueAfterApply;
       const b = o.rerender.residueAfterRerender;

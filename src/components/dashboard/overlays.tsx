@@ -832,7 +832,8 @@ export function JourneysOverlay({
                       </div>
                     ))}
                     <div className="mt-3 text-[11.5px] leading-normal text-stone-400">
-                      Site-wide diagnostics — Angel never changes anything automatically from these.
+                      Site-wide diagnostics — Agritm never changes anything automatically from
+                      these.
                     </div>
                   </div>
                 )}
@@ -864,7 +865,7 @@ export function JourneysOverlay({
               — stod tidigare i både listvyn och spelaren). */}
           <div className="mt-4 pb-1 text-center text-[10.5px] text-stone-300">
             Page sequence, clicks, scroll depth, video watch time and submitted site-search terms —
-            Angel never records screens, mouse movement or keystrokes.
+            Agritm never records screens, mouse movement or keystrokes.
           </div>
         </div>
       </div>

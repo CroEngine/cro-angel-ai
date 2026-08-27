@@ -1,4 +1,4 @@
-// Angel Adaptive — dashboard data (server function).
+// Agritm Adaptive — dashboard data (server function).
 //
 // getDashboard reads angel_sites / angel_events / angel_content_inventory via
 // the service-role admin client (RLS is locked down, so reads are server-side),
@@ -147,7 +147,7 @@ export interface SiteConfigView {
   conversionKind: string | null;
   /** Per-site write key gating the ingest endpoints. null = unkeyed. */
   ingestKey: string | null;
-  /** Observe-first (croengine-vision.md): false (default) → Angel observerar
+  /** Observe-first (croengine-vision.md): false (default) → Agritm observerar
    *  bara, inga synliga adaptationer körs. Bevis-vyn visar då "Observera-läge"
    *  i st f en tom arm-tabell. */
   adaptationsEnabled: boolean;
@@ -173,7 +173,7 @@ export interface SiteConfigView {
   /** The judged business type, when detected (e.g. "comparison"). */
   businessType: string | null;
   /** Ranked conversion-goal candidates proposed at harvest — the owner confirms
-   *  one to activate Angel. Empty until the first harvest judges the page. */
+   *  one to activate Agritm. Empty until the first harvest judges the page. */
   goalCandidates: GoalCandidate[];
   /** Day-0-granskningen (task #98): länk till sajtens automatiska
    *  onboarding-rapport i angel-evidence. null tills runnern producerat den
@@ -853,7 +853,7 @@ export const getDashboard = createServerFn({ method: "POST" })
 /**
  * Set a site's consent mode (owner attestation). Writing 'attested' records the
  * owner's confirmation that they have a lawful basis / visitor consent to run
- * Angel in full; 'anonymous' reverts to storage-free operation. The snippet
+ * Agritm in full; 'anonymous' reverts to storage-free operation. The snippet
  * reads this via /api/adaptive/consent-config. Best-effort but surfaces failure
  * so the UI can report it — this is a legally meaningful action.
  */

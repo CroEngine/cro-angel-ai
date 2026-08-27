@@ -9,7 +9,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AuthForm } from "@/components/auth-form";
 
 export const Route = createFileRoute("/signup")({
-  head: () => ({ meta: [{ title: "Sign in or sign up — Angel Adaptive" }] }),
+  head: () => ({ meta: [{ title: "Sign in or sign up — Agritm" }] }),
   component: Signup,
 });
 

@@ -90,7 +90,7 @@ export const COLLECT_SCRIPT = `(() => {
     }
   }
 
-  // Never audit Angel's own runtime artifacts (C1): the snippet stamps every
+  // Never audit Agritm's own runtime artifacts (C1): the snippet stamps every
   // injected node with data-angel-injected — counting the injected secondary
   // link/badge/pill as page CTAs would pollute the findings, the inventory
   // and (on re-harvest) the goal judge's input with content the site owner
@@ -378,7 +378,7 @@ export const COLLECT_SCRIPT = `(() => {
   const raw = [];
   let maxArea = 1;
   for (const el of kept) {
-    if (isAngelArtifact(el)) continue; // never audit Angel's own injections (C1)
+    if (isAngelArtifact(el)) continue; // never audit Agritm's own injections (C1)
     const rect = el.getBoundingClientRect();
     const cs = window.getComputedStyle(el);
     if (!isVisible(el, cs, rect)) continue;

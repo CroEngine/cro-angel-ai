@@ -114,15 +114,15 @@ export function buildJourney(input: JourneyInput): JourneyMilestone[] {
       state: "upcoming",
       detail: done.install
         ? `${fmt(input.pageviews)} pageviews from ${fmt(input.uniqueVisitors)} visitors so far — nothing changes for them until you approve it.`
-        : "Install the one-line snippet. Angel observes first — nothing changes for your visitors.",
+        : "Install the one-line snippet. Agritm observes first — nothing changes for your visitors.",
     },
     {
       id: "mapped",
       title: "Your page mapped",
       state: "upcoming",
       detail: done.mapped
-        ? `${fmt(input.inventoryCount)} content pieces mapped from your own page — the only material Angel ever uses.`
-        : "Angel reads your page's own sections, proof and CTAs — it never invents content.",
+        ? `${fmt(input.inventoryCount)} content pieces mapped from your own page — the only material Agritm ever uses.`
+        : "Agritm reads your page's own sections, proof and CTAs — it never invents content.",
     },
     {
       id: "profiled",
@@ -166,7 +166,7 @@ export function buildJourney(input: JourneyInput): JourneyMilestone[] {
       state: "upcoming",
       detail: done.measuring
         ? "Serving to a small ramp against a held-back control — guardrails watch bounce, engagement and your goal nightly."
-        : "You press start; Angel serves a small ramp against a held-back control group.",
+        : "You press start; Agritm serves a small ramp against a held-back control group.",
     },
     {
       id: "verdict",

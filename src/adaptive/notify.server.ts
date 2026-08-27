@@ -225,7 +225,7 @@ export function notifyWeekOneDigest(
     site,
     "week_one_digest",
     "week-one",
-    `Week one: Angel is measuring — here's what it sees so far`,
+    `Week one: Agritm is measuring — here's what it sees so far`,
     [
       `Hi!`,
       ``,

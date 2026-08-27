@@ -1,5 +1,5 @@
 // /sandbox — the admin sandbox: paste any URL, see the page FÖRE/EFTER with
-// Angel applied. Nothing is installed on the real site — the mirror is a
+// Agritm applied. Nothing is installed on the real site — the mirror is a
 // private, token-gated copy — and sandbox slugs run anonymous mode, so a
 // preview can never write events into measurement. The mirror iframes are
 // opaque-origin (sandbox="allow-scripts", and the mirror response itself
@@ -19,7 +19,7 @@ import { createSandboxPreview, type SandboxPreview } from "@/lib/dashboard/sandb
 
 export const Route = createFileRoute("/sandbox")({
   head: () => ({
-    meta: [{ title: "Angel Adaptive — Sandbox" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Agritm Adaptive — Sandbox" }, { name: "robots", content: "noindex" }],
   }),
   // Client-only UX gate like /dashboard; the real gate is the admin check in
   // createSandboxPreview (server-side) — non-admins get a friendly refusal.
@@ -82,7 +82,7 @@ function SandboxPage() {
 
   const frameW = device === "mobile" ? 375 : 1440;
 
-  // The opaque mirror iframe reports what Angel applied via postMessage. The
+  // The opaque mirror iframe reports what Agritm applied via postMessage. The
   // mirrored page runs untrusted scripts, so only trust a message that actually
   // came from OUR EFTER iframe's window (its origin is "null" — opaque — so a
   // source-window check, not an origin check, is the meaningful guard). Worst
@@ -140,7 +140,7 @@ function SandboxPage() {
         <header>
           <h1 className="font-heading text-[23px] font-bold tracking-tight">Sandbox</h1>
           <p className="mt-2 max-w-[640px] text-sm text-stone-500">
-            Test Angel on any site — a private mirror. Nothing is installed and no measurement data
+            Test Agritm on any site — a private mirror. Nothing is installed and no measurement data
             is created.
           </p>
         </header>
@@ -234,7 +234,7 @@ function SandboxPage() {
                       key={`after-${reloadKey}-${markera}`}
                       src={afterSrc}
                       frameW={frameW}
-                      label="[ AFTER — with Angel ]"
+                      label="[ AFTER — with Agritm ]"
                       iframeRef={afterFrameRef}
                     />
                   )}

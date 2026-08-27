@@ -116,7 +116,7 @@ export function AuthForm({ redirect }: { redirect?: string }) {
     e.preventDefault();
     if (busy) return;
     if (!ack) {
-      setError("Please acknowledge how Angel uses visitor information.");
+      setError("Please acknowledge how Agritm uses visitor information.");
       return;
     }
     setBusy(true);
@@ -267,7 +267,7 @@ export function AuthForm({ redirect }: { redirect?: string }) {
                     className="mt-0.5 border-stone-400 data-[state=checked]:border-emerald-700 data-[state=checked]:bg-emerald-700"
                   />
                   <span className="text-xs leading-relaxed text-stone-600">
-                    To measure real lift, Angel uses <strong>visitor information</strong> — a
+                    To measure real lift, Agritm uses <strong>visitor information</strong> — a
                     persistent visitor id and conversion events — on the sites I connect. I confirm
                     I have a lawful basis or visitor consent for this and remain the data
                     controller. Visitors who signal Global Privacy Control or Do&nbsp;Not&nbsp;Track

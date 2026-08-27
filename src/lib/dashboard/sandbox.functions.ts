@@ -1,7 +1,7 @@
-// Angel Adaptive — admin sandbox (server functions).
+// Agritm Adaptive — admin sandbox (server functions).
 //
 // createSandboxPreview mints short-lived signed mirror URLs for the /sandbox
-// page: paste any URL, see the page FÖRE/EFTER with Angel applied — nothing
+// page: paste any URL, see the page FÖRE/EFTER with Agritm applied — nothing
 // installed on the real site, and (anonymous mode + sandbox-- slug) zero
 // events written, so previews can never add noise to measurement.
 
@@ -26,9 +26,9 @@ export interface SandboxPreview {
   /** "admin" | "invalid_url" | "unavailable" | guard reason — for the UI. */
   reason?: string;
   site?: string;
-  /** Mirror path WITH Angel (append &angel_debug=1 to highlight changes). */
+  /** Mirror path WITH Agritm (append &angel_debug=1 to highlight changes). */
   mirrorPath?: string;
-  /** Mirror path WITHOUT Angel — the FÖRE frame. */
+  /** Mirror path WITHOUT Agritm — the FÖRE frame. */
   mirrorOffPath?: string;
 }
 
@@ -67,7 +67,7 @@ export interface VariantPreview {
   reason?: string;
   /** Spegeln MED varianten tvingad (?angel_variant=<id>) — EFTER-ramen. */
   mirrorPath?: string;
-  /** Spegeln utan Angel — FÖRE-ramen. */
+  /** Spegeln utan Agritm — FÖRE-ramen. */
   mirrorOffPath?: string;
   /** Variantens segment gäller mobil → rendera ramarna i mobilbredd. */
   mobile?: boolean;

@@ -1,5 +1,5 @@
 // Delad app-navigation för inloggade ytor (design-handoffen 2026-07-16):
-// sticky vit header, ✳ Angel-ordmärke, flikar (aktiv = emerald på #f0fdf7-
+// sticky vit header, ✳ Agritm-ordmärke, flikar (aktiv = emerald på #f0fdf7-
 // pill), högerställd plats för sidans kontroller (sajtväljare etc) + Sign out.
 // Kund-konton ser bara Dashboard; Sandbox är admin (demo-/säljverktyget).
 // Corpus/Agent är bakgrundsverktyg utan flik — nås via URL när de behövs
@@ -36,7 +36,7 @@ export function AppNav({
           to="/dashboard"
           className="flex items-center gap-2 text-[16px] font-bold text-stone-900"
         >
-          <span className="text-[18px] leading-none text-emerald-700">✳</span> Angel
+          <span className="text-[18px] leading-none text-emerald-700">✳</span> Agritm
         </Link>
         <nav className="flex items-center gap-0.5">
           {TABS.filter((t) => !t.admin || isAdmin).map((t) => (
