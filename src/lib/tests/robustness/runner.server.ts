@@ -65,7 +65,7 @@ export interface RobustnessRunOptions {
    * link). When absent, the runner derives the same deterministic floor the
    * goal judge falls back to: rankGoalCandidates()'s top candidate.
    * (emphasize_goal/sticky_goal_cta fanns också här — borttagna 2026-07-20
-   * av ägarregeln: Angel rör aldrig målknappen.)
+   * av ägarregeln: Agritm rör aldrig målknappen.)
    */
   goal?: SiteGoal | null;
   prepareTimeoutMs?: number;
@@ -146,7 +146,7 @@ async function captureInteractiveBefore(
  *  falska fel på glutenforums mobilflöde (2026-07-08). Angels ops kopplar
  *  aldrig loss interaktiva element, så en försvunnen stämpel är sajtens egen
  *  re-render (kan inte bedömas); en täckning räknas bara när täckaren är ett
- *  Angel-element. */
+ *  Agritm-element. */
 async function measureInteractiveAfter(
   page: Page,
   before: { k: number; hittable: boolean }[],
@@ -305,7 +305,7 @@ export async function runSnippetRobustness(
 
   // --- prepare: audit + inject snippet (once) ---
   try {
-    // Neutralisera en LIVE Angel-installation FÖRE audit och baseline:
+    // Neutralisera en LIVE Agritm-installation FÖRE audit och baseline:
     // pilotsajter (glutenforum) kör den skarpa snippeten, som hinner applicera
     // sina adaptationer innan harnessen mäter. Utan städningen (a) skördas den
     // adapterade DOM:en in i harnessens inventory (samma klass av fel som
@@ -470,7 +470,7 @@ async function shoot(page: Page): Promise<string> {
   return buf.toString("base64");
 }
 
-/** Neutralisera en LIVE Angel-installation (pilotsajternas skarpa snippet):
+/** Neutralisera en LIVE Agritm-installation (pilotsajternas skarpa snippet):
  *  kör dess reset() och sopa residuet fysiskt. Körs i prepare-steget OCH inför
  *  varje persona — den skarpa snippeten kan återapplicera långt efter load
  *  (hydrerings-överlevnad, consent-upgrade när harnessen klickar bort
@@ -552,7 +552,7 @@ async function measurePersona(
 
   // Stamp visible in-viewport elements and record their rects (R0). We then
   // watch the page's OWN motion over a control window (carousels, autoplay,
-  // gradient animations) and net it out, so the reported shift reflects Angel's
+  // gradient animations) and net it out, so the reported shift reflects Agritm's
   // change — not the page animating itself.
   const r0 = (await page.evaluate(() => {
     const vw = window.innerWidth || 1;
@@ -589,7 +589,7 @@ async function measurePersona(
   const interactiveBefore = await captureInteractiveBefore(page);
 
   // Horisontell overflow FÖRE apply — befintlig overflow är sajtens egen och
-  // ska inte falla på Angel; skönhetsgrinden mäter bara det apply INFÖR.
+  // ska inte falla på Agritm; skönhetsgrinden mäter bara det apply INFÖR.
   const hOverflowBefore = (await page.evaluate(
     () =>
       Math.max(
@@ -651,7 +651,7 @@ async function measurePersona(
     };
   }, hOverflowBefore)) as VisualSanity;
 
-  // Net out the ambient rate: the honest Angel-attributable shift.
+  // Net out the ambient rate: the honest Agritm-attributable shift.
   const netFraction = Math.max(0, applyMove.shiftedFraction - control.shiftedFraction);
   const layout: LayoutDiff = {
     matched: applyMove.matched,

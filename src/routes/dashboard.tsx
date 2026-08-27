@@ -1,7 +1,7 @@
 // /dashboard — the customer dashboard (blueprint Step 8).
 //
 // ONE view answering three owner-questions: how is it going, who was here and
-// what did they do, and is Angel earning its keep. (It was three tabs once —
+// what did they do, and is Agritm earning its keep. (It was three tabs once —
 // the source explorer and Journeys & signals absorbed the other two; see the
 // note at the OverviewPanel call.) Everything operational lives in the header
 // Settings dialog.
@@ -72,8 +72,8 @@ const dashboardQuery = (site: string) => {
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Angel Adaptive — Dashboard" },
-      { name: "description", content: "Per-site performance of the Angel Adaptive layer." },
+      { title: "Agritm Adaptive — Dashboard" },
+      { name: "description", content: "Per-site performance of the Agritm Adaptive layer." },
     ],
   }),
   // Client-only UX gate: send unauthenticated users to /login. The session lives
@@ -298,8 +298,8 @@ function Dashboard() {
                     [ day-0 review ]
                   </span>
                   <p className="text-sm text-foreground">
-                    A measured look at your page from the day you joined — while Angel collects live
-                    visitor data.
+                    A measured look at your page from the day you joined — while Agritm collects
+                    live visitor data.
                   </p>
                   <a
                     href={d.siteConfig.day0ReportUrl}
@@ -666,8 +666,8 @@ function ConsentSection({ site, mode }: { site: string; mode: ConsentMode }) {
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {on
-              ? "Angel uses a persistent visitor id and conversion events on this site to measure lift. Visitors who signal GPC or Do Not Track are always excluded."
-              : "Paused — Angel adapts the page but stores no visitor id and records no events, so lift isn't measured on this site."}
+              ? "Agritm uses a persistent visitor id and conversion events on this site to measure lift. Visitors who signal GPC or Do Not Track are always excluded."
+              : "Paused — Agritm adapts the page but stores no visitor id and records no events, so lift isn't measured on this site."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -696,7 +696,7 @@ function ContentSection({ inventory }: { inventory: InventoryGroup[] }) {
       <span className="font-mono text-[11px] tracking-wider text-emerald-700">[ content ]</span>
       {inventory.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          Nothing harvested yet — Angel maps your published content after the first visits.
+          Nothing harvested yet — Agritm maps your published content after the first visits.
         </p>
       ) : (
         <div className="max-h-52 space-y-3 overflow-y-auto rounded-md border border-stone-200 p-3">
@@ -755,8 +755,8 @@ function ContentSection({ inventory }: { inventory: InventoryGroup[] }) {
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        What Angel found on your pages. Adaptations only ever reuse this published content — nothing
-        is invented.
+        What Agritm found on your pages. Adaptations only ever reuse this published content —
+        nothing is invented.
       </p>
     </section>
   );
@@ -1237,7 +1237,7 @@ function GoalSection({
         )}
         {confirmed ? (
           <span className="text-sm text-stone-700">
-            Angel is working toward <strong>“{activeText}”</strong>, measured against a{" "}
+            Agritm is working toward <strong>“{activeText}”</strong>, measured against a{" "}
             {config.holdoutPct || 12}% control group.
           </span>
         ) : activeSelector ? (
@@ -1247,12 +1247,12 @@ function GoalSection({
           </span>
         ) : candidates.length > 0 ? (
           <span className="text-sm text-stone-600">
-            Confirm your conversion goal to activate Angel — it won’t change or measure anything
+            Confirm your conversion goal to activate Agritm — it won’t change or measure anything
             until you do.
           </span>
         ) : (
           <span className="text-sm text-stone-500">
-            Angel is learning your page — goal candidates appear here after the first visits.
+            Agritm is learning your page — goal candidates appear here after the first visits.
           </span>
         )}
         {paused && confirmed && (

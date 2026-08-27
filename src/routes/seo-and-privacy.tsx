@@ -1,4 +1,4 @@
-// /seo-and-privacy — the honest customer-facing page: exactly what Angel sends,
+// /seo-and-privacy — the honest customer-facing page: exactly what Agritm sends,
 // stores and changes, and why it does not hurt SEO or performance.
 //
 // Every claim on this page is enforced by code (bot gate, CWV guards, claims
@@ -11,11 +11,11 @@ import type { ReactNode } from "react";
 export const Route = createFileRoute("/seo-and-privacy")({
   head: () => ({
     meta: [
-      { title: "Angel — SEO, performance & privacy" },
+      { title: "Agritm — SEO, performance & privacy" },
       {
         name: "description",
         content:
-          "Exactly what Angel sends to your site, what it stores, and why search engines always see your original page.",
+          "Exactly what Agritm sends to your site, what it stores, and why search engines always see your original page.",
       },
     ],
   }),
@@ -61,10 +61,10 @@ const SECTIONS: { kicker: string; title: string; body: (string | ReactNode)[] }[
     kicker: "privacy",
     title: "Anonymous by default, no cookies",
     body: [
-      "Angel sets no cookies. In the default anonymous mode, no visitor identifier is stored at all and no behavioural data is attributed to anyone.",
+      "Agritm sets no cookies. In the default anonymous mode, no visitor identifier is stored at all and no behavioural data is attributed to anyone.",
       "If you (the site owner) attest a lawful basis for measurement, a random identifier — generated at random, never derived from a name, e-mail or IP address — is stored in the visitor's browser and included with measurement events, so a later conversion can be counted. Our servers store that random ID and the events; nothing that identifies the person. Per-tab journey data lives in session storage and disappears when the tab closes.",
-      "What behavioural events contain: page paths, clicked-element references, scroll-depth milestones, how many seconds a visitor watched an embedded video (never which frames or its content), and — where the site owner has explicitly enabled section measurement — which of the page's own section headings were on screen and for how many seconds, plus a single yes/no flag recording whether that page view was showing one of the owner's own approved variants (so our measurement can exclude pages we ourselves rearranged). Section headings are the page's own published copy (never anything a visitor typed), capped in number and length, and scrubbed for anything resembling an e-mail address or long number before storage. One further deliberate, narrow exception: submitted site-search terms. Search terms are read only from dedicated search fields and only when a search is submitted, never keystroke by keystroke and never from any other form field; terms that look like an e-mail address or a long number are dropped before sending, and our servers redact again on arrival. Angel never records screens, mouse movement or keystrokes, and never reads the contents of any other input.",
-      "Visitors' Global Privacy Control / Do Not Track signals opt them out of Angel's own consent handling. If your consent platform explicitly tells our tag that a visitor consented, we trust your platform's signal — honouring GPC/DNT is then its responsibility, as it is for every tool it governs.",
+      "What behavioural events contain: page paths, clicked-element references, scroll-depth milestones, how many seconds a visitor watched an embedded video (never which frames or its content), and — where the site owner has explicitly enabled section measurement — which of the page's own section headings were on screen and for how many seconds, plus a single yes/no flag recording whether that page view was showing one of the owner's own approved variants (so our measurement can exclude pages we ourselves rearranged). Section headings are the page's own published copy (never anything a visitor typed), capped in number and length, and scrubbed for anything resembling an e-mail address or long number before storage. One further deliberate, narrow exception: submitted site-search terms. Search terms are read only from dedicated search fields and only when a search is submitted, never keystroke by keystroke and never from any other form field; terms that look like an e-mail address or a long number are dropped before sending, and our servers redact again on arrival. Agritm never records screens, mouse movement or keystrokes, and never reads the contents of any other input.",
+      "Visitors' Global Privacy Control / Do Not Track signals opt them out of Agritm's own consent handling. If your consent platform explicitly tells our tag that a visitor consented, we trust your platform's signal — honouring GPC/DNT is then its responsibility, as it is for every tool it governs.",
       "Known bots, crawlers and automation tools are dropped before anything is written, so they never pollute your numbers. Like every analytics tool, we cannot catch an attacker deliberately impersonating a human browser — our statistical gates are sized so noise like that does not create false winners.",
     ],
   },
@@ -76,7 +76,7 @@ function SeoAndPrivacy() {
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
           <Link to="/" className="flex items-center gap-2 font-bold text-stone-800">
-            <span className="text-emerald-700">✳</span> Angel
+            <span className="text-emerald-700">✳</span> Agritm
           </Link>
           <span className="font-mono text-[11px] tracking-wider text-stone-400">
             [ seo · performance · privacy ]
@@ -88,7 +88,7 @@ function SeoAndPrivacy() {
           SEO, performance &amp; privacy
         </h1>
         <p className="mt-3 text-stone-600">
-          Exactly what Angel sends to your site, what it stores, and why search engines always
+          Exactly what Agritm sends to your site, what it stores, and why search engines always
           see your original page. Every claim below is enforced by code, not policy.
         </p>
         <div className="mt-10 flex flex-col gap-10">

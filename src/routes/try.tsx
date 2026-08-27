@@ -125,7 +125,7 @@ function TryPage() {
     <main className="min-h-screen bg-[#faf9f7] px-4 py-16 text-stone-900">
       <div className="mx-auto w-full max-w-3xl">
         <Link to="/" className="text-[13px] font-medium text-stone-500 hover:text-stone-800">
-          ← Angel
+          ← Agritm
         </Link>
 
         {!id || gone ? (
@@ -178,7 +178,7 @@ function TryPage() {
           </Block>
         ) : (
           <>
-            <Block title={`Here's what Angel found on ${hostname ?? "your page"}.`}>
+            <Block title={`Here's what Agritm found on ${hostname ?? "your page"}.`}>
               {job.findings?.headlines && job.findings.headlines.length > 0 && (
                 <ul className="mt-1 space-y-2">
                   {job.findings.headlines.map((h) => (
@@ -234,7 +234,7 @@ function TryPage() {
                   <iframe
                     src={`/api/preview/page?id=${encodeURIComponent(id)}&which=${arm}`}
                     title={
-                      arm === "after" ? "Your page with Angel's change" : "Your page as published"
+                      arm === "after" ? "Your page with Agritm's change" : "Your page as published"
                     }
                     sandbox=""
                     className="mx-auto block h-[72vh] w-[390px] max-w-full rounded-xl border border-stone-200 bg-white shadow-sm"
@@ -268,7 +268,7 @@ function TryPage() {
                 </div>
                 <iframe
                   src={job.reportUrl}
-                  title="Angel report"
+                  title="Agritm report"
                   sandbox="allow-popups allow-popups-to-escape-sandbox"
                   className="h-[72vh] w-full"
                 />
@@ -280,7 +280,7 @@ function TryPage() {
                 Want this measured on real visitors?
               </h2>
               <p className="mt-2 text-[14.5px] leading-relaxed text-emerald-900/80">
-                Install one line of code. Angel observes first, adapts with your approval, and
+                Install one line of code. Agritm observes first, adapts with your approval, and
                 proves the lift against a held-back control group.{" "}
                 <span className="font-semibold">Free until your first verified variant</span> — your
                 card waits until the robot has earned it.

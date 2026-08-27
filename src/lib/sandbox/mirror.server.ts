@@ -1,6 +1,6 @@
-// Angel Adaptive — private sandbox mirror (server only).
+// Agritm Adaptive — private sandbox mirror (server only).
 //
-// Lets an admin preview what Angel WOULD do on any site, without installing
+// Lets an admin preview what Agritm WOULD do on any site, without installing
 // anything on it: the target page's HTML is fetched once (like any crawler),
 // rewritten to run inside our origin, and served behind a short-lived signed
 // token. The dashboard embeds the mirror in an OPAQUE-origin iframe
@@ -253,7 +253,7 @@ export interface MirrorTransformOptions {
  * Rewrite fetched target HTML into a mirror page:
  *  - CSP metas are stripped (we serve from our origin and inject a script;
  *    the target's CSP HTTP headers never applied to our response anyway),
- *  - any REAL Angel tag is stripped so an existing install can't double-run,
+ *  - any REAL Agritm tag is stripped so an existing install can't double-run,
  *  - a <base> keeps the page's own asset URLs working (only if the page
  *    doesn't already set one),
  *  - the snippet tag (absolute src → endpoint defaults to our origin) plus a
@@ -386,7 +386,7 @@ export interface FrozenPreviewOptions {
  * (buggfynd 2026-07-27: /blogg/*-varianten blev vit — live-spegeln kan aldrig
  * rendera en SPA, men den frysta kopian ÄR den färdigrenderade sidan).
  * Kopian är script-strippad, så sajtens egen JS kan inte skriva över DOM:en;
- * BARA Angel-snippeten injiceras och forceVariant-vägen (?angel_variant= på
+ * BARA Agritm-snippeten injiceras och forceVariant-vägen (?angel_variant= på
  * spegel-URL:en) applicerar variantens riktiga serve-ops på den frysta sidan.
  */
 export function frozenPreviewHtml(html: string, opts: FrozenPreviewOptions): string {

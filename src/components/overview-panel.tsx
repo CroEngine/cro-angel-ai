@@ -406,7 +406,7 @@ export function OverviewPanel({
           }}
         >
           <div className="font-mono text-[10.5px] uppercase tracking-[.14em] text-emerald-600">
-            Is Angel earning its keep?
+            Is Agritm earning its keep?
           </div>
           {siteVerdict.state === "observing" && (
             <>
@@ -414,7 +414,7 @@ export function OverviewPanel({
                 Observing
               </div>
               <p className="mt-2 text-[13.5px] text-stone-600">
-                No adaptations are live yet — Angel is learning your traffic. Approved variants
+                No adaptations are live yet — Agritm is learning your traffic. Approved variants
                 start measuring here.
               </p>
             </>
@@ -854,7 +854,7 @@ export function OverviewPanel({
                         SIDA, så gruppens sajtsumma kan se "klar" ut medan ingen
                         enskild sida bär volymen. Visa progressen mot det som
                         faktiskt låser upp — bästa sidan mot per-sida-grinden. */}
-                    None yet — Angel designs per page, and proposes one once a single page gathers
+                    None yet — Agritm designs per page, and proposes one once a single page gathers
                     enough of this group.
                     {sel.bestPage ? (
                       <div className="mt-2.5 flex items-center gap-2.5 text-[12px]">

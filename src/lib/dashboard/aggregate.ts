@@ -1,4 +1,4 @@
-// Angel Adaptive — dashboard aggregation (blueprint Step 8).
+// Agritm Adaptive — dashboard aggregation (blueprint Step 8).
 //
 // Pure functions that turn raw angel_events rows + content inventory into the
 // view model the customer dashboard renders (Overview, Visitor Segments, Live
@@ -527,7 +527,7 @@ export function proofSummary(events: DashEvent[]): ProofSummary | null {
     for (const times of m.values()) times.sort((a, b) => a - b);
     return m;
   };
-  // Mål-klick vs Angel-genvägsklick hålls isär: "assist" finns bara i den
+  // Mål-klick vs Agritm-genvägsklick hålls isär: "assist" finns bara i den
   // adapterade armen (kontrollen har inga injicerade genvägar), så att blanda
   // in dem i jämförelsen vore ett strukturellt tummen-på-vågen. Saknad path
   // räknas som mål-klick.
@@ -1614,7 +1614,7 @@ export function rageSignals(events: DashEvent[], limit = MAX_RAGE_SIGNALS): Rage
     const ref = str(e.payload.ref);
     if (!ref) continue;
     // Frustration på cookiebannern är bannerns problem, inte sajtens —
-    // ägaren kan inte åtgärda den via Angel (retro-filtret).
+    // ägaren kan inte åtgärda den via Agritm (retro-filtret).
     if (isConsentRef(ref)) continue;
     const cur = byRef.get(ref) ?? { bursts: 0, visitors: new Set<string>() };
     cur.bursts++;

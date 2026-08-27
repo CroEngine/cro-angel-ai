@@ -1,4 +1,4 @@
-// / — Angel landing: URL-paste ÄR sidan (ägarbeslut 2026-07-27, Claude/
+// / — Agritm landing: URL-paste ÄR sidan (ägarbeslut 2026-07-27, Claude/
 // ChatGPT-minimalism). En fråga, ett fält, inget annat ovanför vecket —
 // pastan startar hela tratten: förhandsvisningsjobb → /try visar exemplet
 // på prospektets EGEN sida med siffror → installera-CTA in i signup.
@@ -28,11 +28,11 @@ const GRID_BG =
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Angel — paste your website, see what it could do better" },
+      { title: "Agritm — paste your website, see what it could do better" },
       {
         name: "description",
         content:
-          "Paste your website's address. Angel builds a free example on your own page — what it would change and the numbers behind it — then installs with one line of code and proves the lift against a held-back control group.",
+          "Paste your website's address. Agritm builds a free example on your own page — what it would change and the numbers behind it — then installs with one line of code and proves the lift against a held-back control group.",
       },
     ],
   }),
@@ -63,9 +63,9 @@ function Nav() {
   return (
     <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
       <div className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
-        <span className="text-xl leading-none text-emerald-700">✳</span> Angel
+        <span className="text-xl leading-none text-emerald-700">✳</span> Agritm
       </div>
-      {/* Ägarbeslut 2026-07-27: EN grön "Try Angel" i hörnet — inga
+      {/* Ägarbeslut 2026-07-27: EN grön "Try Agritm" i hörnet — inga
           sign in/sign up-länkar (inloggningen bor diskret i sidfoten).
           Knappen fokuserar inklistringsfältet: hela sidan ÄR try-flödet. */}
       <button
@@ -77,7 +77,7 @@ function Nav() {
         }}
         className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600"
       >
-        Try Angel
+        Try Agritm
       </button>
     </header>
   );
@@ -133,7 +133,7 @@ function Hero() {
   );
 }
 
-// "Powered by"-raden (ägarbeslut 2026-07-27): ENBART infrastruktur Angel
+// "Powered by"-raden (ägarbeslut 2026-07-27): ENBART infrastruktur Agritm
 // bevisbart kör på — aldrig kund- eller partnersken, aldrig leverantörer vi
 // inte använder (ChatGPT/OpenAI hölls uttryckligen UTE tills de faktiskt är
 // i stacken; Stripe läggs till när billing armeras). Tysta wordmarks i grått
@@ -292,7 +292,7 @@ function HowItWorks() {
     {
       n: "01",
       title: "Paste",
-      body: "Angel reads your live page, finds every section, and builds one example improvement on your actual site — before/after screenshots included. No signup, no install.",
+      body: "Agritm reads your live page, finds every section, and builds one example improvement on your actual site — before/after screenshots included. No signup, no install.",
     },
     {
       n: "02",
@@ -331,7 +331,7 @@ function Promises() {
   const promises = [
     {
       title: "We never rewrite your copy.",
-      body: "Angel only rearranges sections that already exist on your page.",
+      body: "Agritm only rearranges sections that already exist on your page.",
     },
     {
       title: "We never invent content.",
@@ -495,7 +495,7 @@ function BottomCta() {
           }}
           className="mt-6 rounded-xl bg-emerald-700 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-emerald-600"
         >
-          Try Angel — free example
+          Try Agritm — free example
         </button>
         <p className="mt-3 text-[13px] text-stone-400">
           Free until your first verified variant. No signup required for the example.
@@ -510,7 +510,7 @@ function Footer() {
     <footer className="border-t border-stone-200 bg-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-6 text-sm text-stone-500">
         <div className="flex items-center gap-2 font-bold text-stone-800">
-          <span className="text-emerald-700">✳</span> Angel
+          <span className="text-emerald-700">✳</span> Agritm
         </div>
         <span className="flex items-center gap-4">
           <Link to="/login" className="text-[13px] text-stone-400 hover:text-stone-700">

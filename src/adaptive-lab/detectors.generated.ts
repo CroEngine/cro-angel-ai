@@ -2659,7 +2659,7 @@ export const ctasRun: () => any = () => ((() => {
     if (el.closest && el.closest('[data-lovable-cookie-root="1"]')) {
       continue;
     }
-    // Never audit Angel's own runtime injections (C1) — same rule as collect.
+    // Never audit Agritm's own runtime injections (C1) — same rule as collect.
     if (el.closest && el.closest('[data-angel-injected], .angel-badge, .angel-sticky-cta, .angel-secondary-cta, #angel-debug')) {
       continue;
     }
