@@ -149,7 +149,7 @@ export const Route = createFileRoute("/api/preview/job")({
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const { data: row } = await supabaseAdmin
             .from("angel_preview_jobs")
-            .select("status,report_url,findings,error,url")
+            .select("status,stage,report_url,findings,error,url")
             .eq("id", id)
             .maybeSingle();
           if (!row) return json({ ok: false, reason: "not_found" }, 404);
@@ -170,6 +170,9 @@ export const Route = createFileRoute("/api/preview/job")({
           return json({
             ok: true,
             status: row.status,
+            // Arbetarens grovfas (freeze | analyze | verify, null = köad/äldre
+            // rad) — /try:s väntesteg ritas ur den.
+            stage: row.stage ?? null,
             url: row.url,
             reportUrl: ownReport,
             findings: mapFindings(row.findings) ?? row.findings ?? null,

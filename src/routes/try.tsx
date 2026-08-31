@@ -25,13 +25,24 @@
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
 
-import { encodePendingActivation, PENDING_ACTIVATION_KEY } from "@/lib/onboarding/derive";
+import { supabase } from "@/integrations/supabase/client";
+import { activateFromPreview } from "@/lib/onboarding/onboarding.functions";
+import {
+  activationFailureMessage,
+  encodePendingActivation,
+  PENDING_ACTIVATION_KEY,
+} from "@/lib/onboarding/derive";
 import { findMovedSection, type DocumentLike } from "@/lib/preview/locate";
+import { waitSteps } from "@/lib/preview/wait-steps";
+import { AuthForm } from "@/components/auth-form";
 
 interface JobView {
   status: "queued" | "running" | "ok" | "failed";
+  /** Arbetarens grovfas (freeze | analyze | verify); null/saknad = köad,
+   *  äldre rad eller äldre arbetare — väntestegen degraderar ärligt. */
+  stage?: string | null;
   url: string;
   reportUrl: string | null;
   findings: {
@@ -80,6 +91,11 @@ function TryPage() {
     after: null,
   });
   const [canSpotlight, setCanSpotlight] = useState(false);
+  // Sparad-till-kontot-läget lyfts hit (ägarfynd 2026-08-31, "skapa konto
+  // medan man väntar"): kortet under väntestegen sätter det, och när bygget
+  // landar visar resultatvyns CTA "hämta snippeten" i stället för att be en
+  // redan sparad användare registrera sig igen.
+  const [savedSite, setSavedSite] = useState<{ slug: string; domain: string } | null>(null);
   const beforeRef = useRef<HTMLIFrameElement | null>(null);
   const afterRef = useRef<HTMLIFrameElement | null>(null);
   const started = useRef(Date.now());
@@ -359,7 +375,7 @@ function TryPage() {
             <p className="mt-4 text-center font-mono text-[10.5px] uppercase tracking-[.12em] text-stone-400">
               [ a frozen copy of your live page — the exact change the safety gates verified ]
             </p>
-            <ResultCards job={job} id={id} hostname={hostname} />
+            <ResultCards job={job} id={id} hostname={hostname} saved={savedSite} />
           </div>
         </div>
       </main>
@@ -385,30 +401,68 @@ function TryPage() {
             </p>
           </Block>
         ) : !job || job.status === "queued" || job.status === "running" ? (
-          timedOut ? (
-            <Block title="This is taking longer than it should.">
-              <p>
-                Your example is still in the queue — leave this page open, or come back to this link
-                later. If it never lands, your site may block robots; that's worth knowing too, and
-                installing the one-line snippet sidesteps it entirely.
-              </p>
-            </Block>
-          ) : (
-            <Block title={`Building your example${hostname ? ` for ${hostname}` : ""}…`}>
-              <p>
-                A real browser is loading your page, mapping every section, finding the trust
-                signals you already published, and test-lifting the strongest one above the fold —
-                with screenshots of before and after.
-              </p>
-              <p className="mt-3 text-stone-500">
-                This usually takes <span className="font-semibold">2–5 minutes</span>. The page
-                checks by itself — no need to refresh.
-              </p>
-              <div className="mt-6 h-1.5 w-full overflow-hidden rounded-full bg-stone-200">
-                <div className="h-full w-1/3 animate-pulse rounded-full bg-emerald-600" />
-              </div>
-            </Block>
-          )
+          /* Väntan (omgjord 2026-08-31, ägarfynd "olidligt… för mycket text,
+             man vet inte vart man är"): riktiga steg ur arbetarens stämpel +
+             förfluten tid i stället för prosa och en låtsas-stapel — och något
+             att GÖRA: spara exemplet till sitt konto medan det byggs. */
+          <>
+            {timedOut ? (
+              <Block title="This is taking longer than it should.">
+                <p>
+                  Your example is still in the queue — leave this page open, or come back to this
+                  link later. If it never lands, your site may block robots; that's worth knowing
+                  too, and installing the one-line snippet sidesteps it entirely.
+                </p>
+              </Block>
+            ) : (
+              <Block title={`Building your example${hostname ? ` for ${hostname}` : ""}…`}>
+                {job ? (
+                  <ol className="space-y-2.5">
+                    {/* Grenvillkoret garanterar queued|running här — TS tappar
+                        or-kedjans narrowing, därav den explicita mappningen. */}
+                    {waitSteps(job.status === "queued" ? "queued" : "running", job.stage).map(
+                      (s) => (
+                        <li key={s.key} className="flex items-center gap-2.5 text-[14.5px]">
+                          {s.state === "done" ? (
+                            <Check className="h-4 w-4 flex-none text-emerald-600" />
+                          ) : s.state === "active" ? (
+                            <Loader2 className="h-4 w-4 flex-none animate-spin text-emerald-700" />
+                          ) : (
+                            <span className="mx-[5px] h-1.5 w-1.5 flex-none rounded-full bg-stone-300" />
+                          )}
+                          <span
+                            className={
+                              s.state === "active"
+                                ? "font-medium text-stone-900"
+                                : s.state === "done"
+                                  ? "text-stone-500"
+                                  : "text-stone-400"
+                            }
+                          >
+                            {s.label}
+                          </span>
+                        </li>
+                      ),
+                    )}
+                  </ol>
+                ) : (
+                  <p className="text-stone-500">Checking on the build…</p>
+                )}
+                <p className="mt-5 flex items-baseline justify-between gap-4 text-[13px] text-stone-500">
+                  <span>Usually 2–5 minutes — this page updates by itself.</span>
+                  <Elapsed startedAt={started.current} />
+                </p>
+              </Block>
+            )}
+            {id && job && (
+              <SaveWhileWaiting
+                jobId={id}
+                hostname={hostname}
+                saved={savedSite}
+                onSaved={setSavedSite}
+              />
+            )}
+          </>
         ) : job.status === "failed" ? (
           <Block title="We couldn't build an example for that page.">
             <p>
@@ -430,7 +484,7 @@ function TryPage() {
             <p className="text-stone-500">Preparing the view…</p>
           </Block>
         ) : (
-          <ResultCards job={job} id={id} hostname={hostname} />
+          <ResultCards job={job} id={id} hostname={hostname} saved={savedSite} />
         )}
       </div>
     </main>
@@ -438,8 +492,19 @@ function TryPage() {
 }
 
 /** Fynden, rapporten och CTA:n — delade mellan uppslukande läget (efter
- *  scenen) och klassiska läget (hållna jobb utan sidkopior). */
-function ResultCards({ job, id, hostname }: { job: JobView; id: string; hostname: string | null }) {
+ *  scenen) och klassiska läget (hållna jobb utan sidkopior). saved = sajten
+ *  sparades redan under väntan ⇒ CTA:n blir "hämta snippeten", inte signup. */
+function ResultCards({
+  job,
+  id,
+  hostname,
+  saved,
+}: {
+  job: JobView;
+  id: string;
+  hostname: string | null;
+  saved?: { slug: string; domain: string } | null;
+}) {
   return (
     <>
       <Block title={`Here's what Agritm found on ${hostname ?? "your page"}.`}>
@@ -488,36 +553,217 @@ function ResultCards({ job, id, hostname }: { job: JobView; id: string; hostname
       )}
 
       <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6">
-        <h2 className="text-[17px] font-semibold text-emerald-900">
-          Want this measured on real visitors?
-        </h2>
-        <p className="mt-2 text-[14.5px] leading-relaxed text-emerald-900/80">
-          Install one line of code. Agritm observes first, adapts with your approval, and proves the
-          lift against a held-back control group.{" "}
-          <span className="font-semibold">Free until your first verified variant</span> — your card
-          waits until the robot has earned it.
-        </p>
-        {/* Handoffen (2026-08-18, "snuskigt enkel onboarding"): jobb-id:t
+        {saved ? (
+          <>
+            <h2 className="flex items-center gap-2 text-[17px] font-semibold text-emerald-900">
+              <Check className="h-4 w-4 flex-none text-emerald-700" />
+              {saved.domain} is saved to your account.
+            </h2>
+            <p className="mt-2 text-[14.5px] leading-relaxed text-emerald-900/80">
+              One line of code left: install the snippet and Agritm starts observing your real
+              visitors — every change is proven against a held-back control group.
+            </p>
+            <Link
+              to="/welcome"
+              search={{ site: saved.slug }}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-emerald-600"
+            >
+              Get your one-line snippet
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </>
+        ) : (
+          <SignupCta id={id} hostname={hostname} />
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Signup-CTA:n för den som inte sparade under väntan — oförändrad väg:
+ *  handoff i localStorage → /signup → /welcome auto-skapar sajten. */
+function SignupCta({ id, hostname }: { id: string; hostname: string | null }) {
+  return (
+    <>
+      <h2 className="text-[17px] font-semibold text-emerald-900">
+        Want this measured on real visitors?
+      </h2>
+      <p className="mt-2 text-[14.5px] leading-relaxed text-emerald-900/80">
+        Install one line of code. Agritm observes first, adapts with your approval, and proves the
+        lift against a held-back control group.{" "}
+        <span className="font-semibold">Free until your first verified variant</span> — your card
+        waits until the robot has earned it.
+      </p>
+      {/* Handoffen (2026-08-18, "snuskigt enkel onboarding"): jobb-id:t
             läggs i localStorage så /welcome kan auto-skapa sajten ur
             demo-jobbet efter auth — domän/slug/namn härleds, inga
             formulär. localStorage (inte sessionStorage): bekräftelse-
             mejlets länk öppnar ofta en ny flik. */}
+      <Link
+        to="/signup"
+        onClick={() => {
+          try {
+            localStorage.setItem(PENDING_ACTIVATION_KEY, encodePendingActivation(id, Date.now()));
+          } catch {
+            /* utan lagring faller flödet tillbaka till dashboardens formulär */
+          }
+        }}
+        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-emerald-600"
+      >
+        {hostname ? `Activate on ${hostname} — free` : "Start free"}
+        <ArrowRight className="h-4 w-4" />
+      </Link>
+    </>
+  );
+}
+
+/** Spara-medan-du-väntar-kortet (ägarfynd 2026-08-31, "går inte att göra
+ *  något… vill du skapa konto? …att det sparas ner i profilen"): skapa kontot
+ *  MEDAN exemplet byggs, så sajten redan ligger i dashboarden när det landar.
+ *  Utloggad ⇒ inbäddade auth-formuläret; varje submit stämplar handoffen så
+ *  även mejlbekräftelsens omväg (ny flik → /login → /welcome) sparar rätt
+ *  sajt. Inloggad ⇒ en UTTRYCKLIG spara-knapp — aldrig tyst auto-koppling av
+ *  en domän till ett konto. */
+function SaveWhileWaiting({
+  jobId,
+  hostname,
+  saved,
+  onSaved,
+}: {
+  jobId: string;
+  hostname: string | null;
+  saved: { slug: string; domain: string } | null;
+  onSaved: (s: { slug: string; domain: string }) => void;
+}) {
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [fail, setFail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!cancelled) setAuthed(!!data.session);
+      })
+      .catch(() => {
+        if (!cancelled) setAuthed(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const save = useCallback(async () => {
+    // Båda vägarna hit bär en session (spara-knappen, eller onAuthed direkt
+    // efter inloggning/registrering) — lås kortet i inloggat läge så ett
+    // transient fel visar knappen igen, aldrig auth-formuläret på nytt.
+    setAuthed(true);
+    setBusy(true);
+    setFail(null);
+    const r = await activateFromPreview({ data: { jobId } }).catch(() => null);
+    setBusy(false);
+    if (r?.ok && r.slug && r.domain) {
+      // Sparat inline ⇒ handoffen har gjort sitt; kvar hade den skickat en
+      // senare fristående inloggning till /welcome i onödan.
+      try {
+        localStorage.removeItem(PENDING_ACTIVATION_KEY);
+      } catch {
+        /* redan utom räckhåll */
+      }
+      onSaved({ slug: r.slug, domain: r.domain });
+      return;
+    }
+    const m = activationFailureMessage(r?.reason);
+    if (m.definitive) {
+      try {
+        localStorage.removeItem(PENDING_ACTIVATION_KEY);
+      } catch {
+        /* redan utom räckhåll */
+      }
+    }
+    setFail(m.text);
+  }, [jobId, onSaved]);
+
+  /** Handoffen stämplas vid varje submit i det inbäddade formuläret — det ÄR
+   *  avsikten "spara det här exemplet", och mejlbekräftelsens omväg läser den. */
+  const stamp = () => {
+    try {
+      localStorage.setItem(PENDING_ACTIVATION_KEY, encodePendingActivation(jobId, Date.now()));
+    } catch {
+      /* utan lagring bär onAuthed → save ändå den direkta vägen */
+    }
+  };
+
+  if (saved) {
+    return (
+      <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6">
+        <p className="flex items-start gap-2 text-[14.5px] leading-relaxed text-emerald-900">
+          <Check className="mt-0.5 h-4 w-4 flex-none text-emerald-700" />
+          <span>
+            <strong>{saved.domain} is saved to your account.</strong> It'll be in your dashboard
+            whatever this build decides.
+          </span>
+        </p>
         <Link
-          to="/signup"
-          onClick={() => {
-            try {
-              localStorage.setItem(PENDING_ACTIVATION_KEY, encodePendingActivation(id, Date.now()));
-            } catch {
-              /* utan lagring faller flödet tillbaka till dashboardens formulär */
-            }
-          }}
-          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-emerald-600"
+          to="/welcome"
+          search={{ site: saved.slug }}
+          className="mt-3 inline-flex items-center gap-1.5 text-[14px] font-semibold text-emerald-700 hover:underline"
         >
-          {hostname ? `Activate on ${hostname} — free` : "Start free"}
+          Get your one-line snippet
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6">
+      <h2 className="text-[16px] font-semibold text-emerald-900">
+        While you wait — save {hostname ?? "this example"} to your account?
+      </h2>
+      <p className="mt-1.5 text-[13.5px] leading-relaxed text-emerald-900/80">
+        It lands in your dashboard with this example — free until your first verified variant.
+      </p>
+      {authed === false && (
+        <div className="mt-4" onSubmitCapture={stamp}>
+          <AuthForm embedded onAuthed={() => void save()} />
+        </div>
+      )}
+      {authed === true && (
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={busy}
+          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-5 py-2.5 text-[14px] font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-60"
+        >
+          {busy ? "Saving…" : `Save ${hostname ?? "it"} to my account`}
+        </button>
+      )}
+      {fail && (
+        <p role="alert" className="mt-3 text-[13px] font-medium text-rose-600">
+          {fail}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Förfluten väntetid — den ärliga siffran bredvid de riktiga stegen. Egen
+ *  komponent så sekundtickandet inte ritar om hela sidan. */
+function Elapsed({ startedAt }: { startedAt: number }) {
+  // Startvärdet = startedAt (inte Date.now()): SSR och klient renderar då
+  // identiskt "0:00" och hydreringen är alltid ren; första ticket rättar.
+  const [now, setNow] = useState(startedAt);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const s = Math.max(0, Math.floor((now - startedAt) / 1000));
+  return (
+    <span className="flex-none font-mono text-[11px] tabular-nums text-stone-400">
+      {Math.floor(s / 60)}:{String(s % 60).padStart(2, "0")}
+    </span>
   );
 }
 

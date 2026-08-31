@@ -182,13 +182,25 @@ const fail = async (id: string, error: string, stage?: string, detail?: string) 
     .eq("id", id);
 };
 
+// Grovfasen till jobbraden (ägarfynd 2026-08-31, "man vet inte vart man är i
+// väntandet"): /try ritar riktiga väntesteg ur stämpeln i stället för en
+// låtsas-stapel. Best effort — en fallen stämpel får aldrig fälla bygget; och
+// updated_at följer med, så stale-svepet ser att arbetaren lever mitt i långa
+// steg.
+const setStage = async (id: string, stage: "freeze" | "analyze" | "verify") => {
+  await db
+    .from("angel_preview_jobs")
+    .update({ stage, updated_at: new Date().toISOString() })
+    .eq("id", id);
+};
+
 for (const job of jobs) {
   const dir = join(outRoot, job.id);
   mkdirSync(dir, { recursive: true });
   console.log(`\n[preview] ── ${job.id} (${job.url}) ──`);
   await db
     .from("angel_preview_jobs")
-    .update({ status: "running", updated_at: new Date().toISOString() })
+    .update({ status: "running", stage: "freeze", updated_at: new Date().toISOString() })
     .eq("id", job.id);
 
   const host = new URL(job.url).hostname;
@@ -208,6 +220,7 @@ for (const job of jobs) {
     await fail(job.id, "could_not_analyze", "thin_page");
     continue;
   }
+  await setStage(job.id, "analyze");
 
   // 2. Designa med produktions-designern — syntetisk cell, ärligt märkt.
   //    visits 0 är sant: ingen besöksdata finns före installation.
@@ -311,6 +324,7 @@ for (const job of jobs) {
       },
     ]),
   );
+  await setStage(job.id, "verify");
   const verifyOk = spawnBun([
     "scripts/redesign/auto-generate.ts",
     "--mode=verify",

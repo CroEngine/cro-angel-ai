@@ -4,7 +4,12 @@
 // aldrig ett kast mitt i auth-flödet.
 import { describe, expect, it } from "vitest";
 
-import { decodePendingActivation, deriveActivation, encodePendingActivation } from "../derive";
+import {
+  activationFailureMessage,
+  decodePendingActivation,
+  deriveActivation,
+  encodePendingActivation,
+} from "../derive";
 
 const JOB = "3c9638e9-07d6-4a01-b012-c8cbfcce8a93";
 
@@ -45,5 +50,31 @@ describe("handoffens kodek — try → signup → welcome", () => {
     expect(decodePendingActivation(JSON.stringify({ jobId: 7, at: 0 }), 0)).toBeNull();
     expect(decodePendingActivation(JSON.stringify({ jobId: "x", at: 0 }), 0)).toBeNull();
     expect(decodePendingActivation(null, 0)).toBeNull();
+  });
+});
+
+describe("activationFailureMessage — spara-kortets ärliga felvägar", () => {
+  it("upptagen domän ⇒ definitivt avslag med kontovägledning (welcome-domsluten)", () => {
+    for (const reason of ["domain_taken", "taken"]) {
+      const m = activationFailureMessage(reason);
+      expect(m.definitive).toBe(true);
+      expect(m.text).toMatch(/already registered to another account/);
+    }
+  });
+
+  it("borta jobb / ohärledbar domän ⇒ definitivt, pekar mot dashboarden", () => {
+    for (const reason of ["job_not_found", "bad_domain"]) {
+      const m = activationFailureMessage(reason);
+      expect(m.definitive).toBe(true);
+      expect(m.text).toMatch(/dashboard/);
+    }
+  });
+
+  it("transient/okänt/saknat ⇒ INTE definitivt — handoffen behålls, nytt försök bjuds", () => {
+    for (const reason of ["error", "något_nytt", null, undefined]) {
+      const m = activationFailureMessage(reason);
+      expect(m.definitive).toBe(false);
+      expect(m.text).toMatch(/try again/i);
+    }
   });
 });

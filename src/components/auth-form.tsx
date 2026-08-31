@@ -3,6 +3,11 @@
 // lösenord för befintligt konto, lösenord + visitor-info-intyget (den
 // juridiska attesten, oförändrad text) för nytt. /login och /signup renderar
 // samma komponent; ingen behöver längre veta i förväg vilken sida som är "rätt".
+//
+// embedded-läget (ägarfynd 2026-08-31, "skapa konto medan man väntar"): samma
+// formulär inuti en annan sida — utan helskärmsomslag, och med onAuthed i
+// stället för navigering när sessionen landat, så värdsidan (t.ex. /try:s
+// väntekort) själv tar nästa steg utan att lämna vyn.
 
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -52,7 +57,18 @@ export function signInErrorMessage(error: {
   return message || "Something went wrong signing you in — try again.";
 }
 
-export function AuthForm({ redirect }: { redirect?: string }) {
+export function AuthForm({
+  redirect,
+  embedded,
+  onAuthed,
+}: {
+  redirect?: string;
+  /** Rendera bara kortet (ingen helskärmscentrering) — för inbäddning. */
+  embedded?: boolean;
+  /** Kallas i stället för navigering när en session etablerats (inloggning,
+   *  eller registrering utan mejlbekräftelse) — värdsidan äger nästa steg. */
+  onAuthed?: () => void;
+}) {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -79,6 +95,16 @@ export function AuthForm({ redirect }: { redirect?: string }) {
       /* lagring blockerad ⇒ vanliga vägen */
     }
     return dest;
+  };
+
+  /** Sessionen har landat: värdsidan tar över i embedded-läget, annars
+   *  navigeras som förut (handoffen ⇒ /welcome, annars dest). */
+  const finishAuth = () => {
+    if (onAuthed) {
+      onAuthed();
+      return;
+    }
+    navigate({ to: postAuthDest() });
   };
 
   async function submitEmail(e: React.FormEvent) {
@@ -109,7 +135,7 @@ export function AuthForm({ redirect }: { redirect?: string }) {
       setError(signInErrorMessage(error));
       return;
     }
-    navigate({ to: postAuthDest() });
+    finishAuth();
   }
 
   async function submitSignup(e: React.FormEvent) {
@@ -148,7 +174,7 @@ export function AuthForm({ redirect }: { redirect?: string }) {
       return;
     }
     if (data.session) {
-      navigate({ to: postAuthDest() });
+      finishAuth();
     } else {
       setStep("confirm_sent");
     }
@@ -172,132 +198,142 @@ export function AuthForm({ redirect }: { redirect?: string }) {
     </div>
   );
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-[#fafaf9] px-4 text-stone-900">
-      <Card className="w-full max-w-sm rounded-2xl border-stone-200 shadow-none">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 font-heading text-[18px] font-bold">
-            <span className="text-xl leading-none text-emerald-700">✳</span>{" "}
-            {step === "signup" ? "Create your account" : "Sign in or sign up"}
-          </CardTitle>
-          {step !== "email" && (
-            <p className="text-sm text-muted-foreground">
-              {step === "signin" && "Welcome back — enter your password."}
-              {step === "signup" && "New here — pick a password to get started."}
-              {step === "confirm_sent" && "One click left."}
+  const card = (
+    <Card
+      className={`w-full rounded-2xl border-stone-200 shadow-none ${embedded ? "" : "max-w-sm"}`}
+    >
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 font-heading text-[18px] font-bold">
+          <span className="text-xl leading-none text-emerald-700">✳</span>{" "}
+          {step === "signup" ? "Create your account" : "Sign in or sign up"}
+        </CardTitle>
+        {step !== "email" && (
+          <p className="text-sm text-muted-foreground">
+            {step === "signin" && "Welcome back — enter your password."}
+            {step === "signup" && "New here — pick a password to get started."}
+            {step === "confirm_sent" && "One click left."}
+          </p>
+        )}
+      </CardHeader>
+      <CardContent>
+        {step === "email" && (
+          <form onSubmit={submitEmail} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="username"
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full bg-emerald-700 text-white hover:bg-emerald-600"
+              disabled={busy}
+            >
+              {busy ? "One moment…" : "Continue"}
+            </Button>
+          </form>
+        )}
+
+        {step === "signin" && (
+          <form onSubmit={submitSignin} className="space-y-4">
+            {emailChip}
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                autoFocus
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            {error && <p className="text-sm text-rose-600">{error}</p>}
+            <Button
+              type="submit"
+              className="w-full bg-emerald-700 text-white hover:bg-emerald-600"
+              disabled={busy}
+            >
+              {busy ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
+        )}
+
+        {step === "signup" && (
+          <form onSubmit={submitSignup} className="space-y-4">
+            {emailChip}
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Choose a password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                autoFocus
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div className="rounded-lg border border-stone-200 bg-stone-50/60 p-3">
+              <div className="mb-2 font-mono text-[11px] tracking-wider text-emerald-700">
+                [ visitor information ]
+              </div>
+              <label htmlFor="ack" className="flex cursor-pointer items-start gap-2.5">
+                <Checkbox
+                  id="ack"
+                  checked={ack}
+                  onCheckedChange={(v) => setAck(v === true)}
+                  className="mt-0.5 border-stone-400 data-[state=checked]:border-emerald-700 data-[state=checked]:bg-emerald-700"
+                />
+                <span className="text-xs leading-relaxed text-stone-600">
+                  To measure real lift, Agritm uses <strong>visitor information</strong> — a
+                  persistent visitor id and conversion events — on the sites I connect. I confirm I
+                  have a lawful basis or visitor consent for this and remain the data controller.
+                  Visitors who signal Global Privacy Control or Do&nbsp;Not&nbsp;Track are always
+                  excluded.
+                </span>
+              </label>
+            </div>
+            {error && <p className="text-sm text-rose-600">{error}</p>}
+            <Button
+              type="submit"
+              className="w-full bg-emerald-700 text-white hover:bg-emerald-600"
+              disabled={busy || !ack}
+            >
+              {busy ? "Creating…" : "Create account"}
+            </Button>
+          </form>
+        )}
+
+        {step === "confirm_sent" && (
+          <div className="space-y-3 text-sm">
+            <p className="text-foreground">
+              Check <strong>{email}</strong> for a confirmation link — then you&apos;re in.
             </p>
-          )}
-        </CardHeader>
-        <CardContent>
-          {step === "email" && (
-            <form onSubmit={submitEmail} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="username"
-                  autoFocus
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full bg-emerald-700 text-white hover:bg-emerald-600"
-                disabled={busy}
-              >
-                {busy ? "One moment…" : "Continue"}
-              </Button>
-            </form>
-          )}
-
-          {step === "signin" && (
-            <form onSubmit={submitSignin} className="space-y-4">
-              {emailChip}
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  autoFocus
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              {error && <p className="text-sm text-rose-600">{error}</p>}
-              <Button
-                type="submit"
-                className="w-full bg-emerald-700 text-white hover:bg-emerald-600"
-                disabled={busy}
-              >
-                {busy ? "Signing in…" : "Sign in"}
-              </Button>
-            </form>
-          )}
-
-          {step === "signup" && (
-            <form onSubmit={submitSignup} className="space-y-4">
-              {emailChip}
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Choose a password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={8}
-                  autoFocus
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="rounded-lg border border-stone-200 bg-stone-50/60 p-3">
-                <div className="mb-2 font-mono text-[11px] tracking-wider text-emerald-700">
-                  [ visitor information ]
-                </div>
-                <label htmlFor="ack" className="flex cursor-pointer items-start gap-2.5">
-                  <Checkbox
-                    id="ack"
-                    checked={ack}
-                    onCheckedChange={(v) => setAck(v === true)}
-                    className="mt-0.5 border-stone-400 data-[state=checked]:border-emerald-700 data-[state=checked]:bg-emerald-700"
-                  />
-                  <span className="text-xs leading-relaxed text-stone-600">
-                    To measure real lift, Agritm uses <strong>visitor information</strong> — a
-                    persistent visitor id and conversion events — on the sites I connect. I confirm
-                    I have a lawful basis or visitor consent for this and remain the data
-                    controller. Visitors who signal Global Privacy Control or Do&nbsp;Not&nbsp;Track
-                    are always excluded.
-                  </span>
-                </label>
-              </div>
-              {error && <p className="text-sm text-rose-600">{error}</p>}
-              <Button
-                type="submit"
-                className="w-full bg-emerald-700 text-white hover:bg-emerald-600"
-                disabled={busy || !ack}
-              >
-                {busy ? "Creating…" : "Create account"}
-              </Button>
-            </form>
-          )}
-
-          {step === "confirm_sent" && (
-            <div className="space-y-3 text-sm">
-              <p className="text-foreground">
-                Check <strong>{email}</strong> for a confirmation link — then you&apos;re in.
-              </p>
+            {/* Inbäddad: länken hade navigerat bort från värdsidan — mejlets
+                  bekräftelselänk bär hela vägen själv (→ /login → handoffen). */}
+            {!embedded && (
               <Button asChild variant="outline" className="w-full">
                 <Link to="/login">Back to sign in</Link>
               </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+  if (embedded) return card;
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#fafaf9] px-4 text-stone-900">
+      {card}
     </div>
   );
 }

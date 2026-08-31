@@ -40,6 +40,29 @@ export function encodePendingActivation(jobId: string, now: number): string {
   return JSON.stringify({ jobId, at: now });
 }
 
+/** Ärlig felöversättning för spara-medan-du-väntar-kortet på /try — SAMMA
+ *  domslut som /welcome:s felvägar (2026-08-19): definitiva avslag ⇒ rensa
+ *  handoffen och peka mot dashboarden; transienta ⇒ behåll handoffen och bjud
+ *  på nytt försök. Ren funktion så mappningen är testad, inte utspridd. */
+export function activationFailureMessage(reason: string | null | undefined): {
+  text: string;
+  definitive: boolean;
+} {
+  if (reason === "domain_taken" || reason === "taken") {
+    return {
+      text: "That website is already registered to another account. If it's yours, sign in with that account — or contact us.",
+      definitive: true,
+    };
+  }
+  if (reason === "job_not_found" || reason === "bad_domain") {
+    return {
+      text: "We couldn't carry this example over — add your site from the dashboard instead.",
+      definitive: true,
+    };
+  }
+  return { text: "Something went wrong on our side — try again.", definitive: false };
+}
+
 /** Avkoda + TTL-vakta. Trasig/for gammal post ⇒ null — aldrig ett kast i
  *  auth-flödet. */
 export function decodePendingActivation(raw: string | null, now: number): { jobId: string } | null {
