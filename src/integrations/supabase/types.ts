@@ -151,6 +151,7 @@ export type Database = {
           id: string
           report_url: string | null
           requester_hash: string
+          stage: string | null
           status: string
           updated_at: string
           url: string
@@ -162,6 +163,7 @@ export type Database = {
           id?: string
           report_url?: string | null
           requester_hash: string
+          stage?: string | null
           status?: string
           updated_at?: string
           url: string
@@ -173,6 +175,7 @@ export type Database = {
           id?: string
           report_url?: string | null
           requester_hash?: string
+          stage?: string | null
           status?: string
           updated_at?: string
           url?: string
