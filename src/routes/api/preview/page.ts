@@ -27,6 +27,25 @@ export const Route = createFileRoute("/api/preview/page")({
             .from("angel-evidence")
             .download(`preview/${id}/page-${which}.html`);
           if (error || !data) return new Response("not found", { status: 404 });
+          // ?stage=1 — den uppslukande scenens variant (granskningsfynd
+          // 2026-08-31, MAJOR): i naturhöjdsramen tappar v-höjder sitt ankare
+          // (100vh ⇒ hela kopians höjd, och mätningen jagar sig själv), så
+          // scenens kopior serveras med v-höjder omskrivna till px vid
+          // frysviewporten. Rå kopia (utan parametern) förblir orörd —
+          // cache-nyckeln skiljer via query-strängen.
+          if (params.get("stage") === "1") {
+            const { neutralizeViewportUnits } = await import("@/lib/preview/stage-css");
+            const staged = neutralizeViewportUnits(await data.text());
+            return new Response(staged, {
+              headers: {
+                "Content-Type": "text/html; charset=utf-8",
+                "X-Content-Type-Options": "nosniff",
+                "Cache-Control": "public, max-age=300",
+                "Content-Security-Policy":
+                  "default-src 'none'; img-src data: https:; media-src data: https:; style-src 'unsafe-inline'; font-src data: https:; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
+              },
+            });
+          }
           return new Response(data, {
             headers: {
               "Content-Type": "text/html; charset=utf-8",

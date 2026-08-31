@@ -332,7 +332,7 @@ for (const job of jobs) {
   // skalet läste aldrig domslutet).
   type ServeOpView = {
     op?: string;
-    locator?: { text?: string };
+    locator?: { tag?: string; text?: string };
     value?: string;
     why?: string;
   };
@@ -480,12 +480,21 @@ for (const job of jobs) {
     planSource,
     at: new Date().toISOString(),
   };
+  // Flytt-lokatorn (uppslukande sandboxen 2026-08-30): /try:s "vad
+  // flyttades?"-spotlight behöver en STRUKTURERAD pekare på den flyttade
+  // sektionen — rubriken finns annars bara inbakad i visningsradens prosa.
+  // Serve-opens locator är samma text appliceringen låstes mot; gamla jobb
+  // saknar fältet och spotlighten döljs ärligt (mapFindings ⇒ moved: null).
+  const movedOp = verified?.serveOps?.find((o) => o.op === "move_up");
   const findings = {
     ...(verified
       ? {
           fynd: changes.map((c, i) => ({ rubrik: c.label, vikt: i })),
           flyttStatus:
             "Verified on your page — no layout shift, LCP untouched, fully reversible",
+          ...(movedOp?.locator?.text
+            ? { flytt: { tag: movedOp.locator.tag ?? null, text: movedOp.locator.text } }
+            : {}),
         }
       : { fynd: [], flyttStatus: null }),
     diagnostics,

@@ -73,16 +73,32 @@ describe("mapFindings — the day0-card shape, tolerant of junk", () => {
       ],
       flyttStatus: "pass",
     });
-    expect(f).toEqual({ headlines: ["A", "B", "C"], liftTest: "pass" });
+    expect(f).toEqual({ headlines: ["A", "B", "C"], liftTest: "pass", moved: null });
   });
 
   it("returns null/empty shapes on junk instead of throwing", () => {
     expect(mapFindings(null)).toBeNull();
     expect(mapFindings("x")).toBeNull();
-    expect(mapFindings({})).toEqual({ headlines: [], liftTest: null });
+    expect(mapFindings({})).toEqual({ headlines: [], liftTest: null, moved: null });
     expect(mapFindings({ fynd: [{ vikt: 1 }], flyttStatus: 7 })).toEqual({
       headlines: [],
       liftTest: null,
+      moved: null,
+    });
+  });
+
+  it("surfaces the structured moved-locator; junk or empty text stays null", () => {
+    expect(
+      mapFindings({ fynd: [], flyttStatus: null, flytt: { tag: "h2", text: "Vanliga frågor" } })
+        ?.moved,
+    ).toEqual({ tag: "h2", text: "Vanliga frågor" });
+    // Äldre jobb utan fältet, och trasiga former, döljer spotlighten ärligt.
+    expect(mapFindings({ fynd: [], flyttStatus: null })?.moved).toBeNull();
+    expect(mapFindings({ flytt: { tag: "h2", text: "" } })?.moved).toBeNull();
+    expect(mapFindings({ flytt: { text: 42 } })?.moved).toBeNull();
+    expect(mapFindings({ flytt: { tag: 9, text: "Rubrik" } })?.moved).toEqual({
+      tag: null,
+      text: "Rubrik",
     });
   });
 });

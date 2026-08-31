@@ -63,15 +63,22 @@ export function previewAllowed(recentCount: number): boolean {
 }
 
 /** Fynd-sammanfattningen ur granskningens fynd.json — samma form som day0-
- *  svepets dashboard-kort (rubriker + flytt-testets status). */
+ *  svepets dashboard-kort (rubriker + flytt-testets status). `moved` är den
+ *  flyttade sektionens serve-lokator (uppslukande sandboxens spotlight);
+ *  jobb byggda före fältet ⇒ null, och spotlighten döljs ärligt. */
 export interface PreviewFindings {
   headlines: string[];
   liftTest: string | null;
+  moved: { tag: string | null; text: string } | null;
 }
 
 export function mapFindings(fynd: unknown): PreviewFindings | null {
   if (!fynd || typeof fynd !== "object") return null;
-  const f = fynd as { fynd?: { rubrik?: unknown; vikt?: unknown }[]; flyttStatus?: unknown };
+  const f = fynd as {
+    fynd?: { rubrik?: unknown; vikt?: unknown }[];
+    flyttStatus?: unknown;
+    flytt?: { tag?: unknown; text?: unknown };
+  };
   const rows = Array.isArray(f.fynd) ? f.fynd : [];
   return {
     headlines: rows
@@ -80,5 +87,9 @@ export function mapFindings(fynd: unknown): PreviewFindings | null {
       .slice(0, 3)
       .map((r) => r.rubrik as string),
     liftTest: typeof f.flyttStatus === "string" ? f.flyttStatus : null,
+    moved:
+      f.flytt && typeof f.flytt.text === "string" && f.flytt.text.length > 0
+        ? { tag: typeof f.flytt.tag === "string" ? f.flytt.tag : null, text: f.flytt.text }
+        : null,
   };
 }

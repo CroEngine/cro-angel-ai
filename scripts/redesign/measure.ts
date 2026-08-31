@@ -118,6 +118,20 @@ export async function measurePlan(
         /* trasig selektor i någon motor — mätningen fortsätter utan strippning */
       }
 
+      // ── Runtime-residue bort FÖRE mätning/stämpling ────────────────────
+      // En sida som redan kör live-snippeten kan frysas MED runtime-
+      // applikatorns markörer (data-angel-moved/-retext) i DOM:en
+      // (granskningsfynd 2026-08-31) — spotlightens markör-först-uppslag i
+      // /try hade då pekat ut FEL sektion i after-kopian. Attributen är rena
+      // visningsmarkörer utan geometri; de strippas så enda data-angel-moved
+      // i kopian är den DENNA mätnings flytt stämplar.
+      for (const el of Array.from(
+        document.querySelectorAll("[data-angel-moved],[data-angel-retext]"),
+      )) {
+        el.removeAttribute("data-angel-moved");
+        el.removeAttribute("data-angel-retext");
+      }
+
       // ── LCP-elementet — samma vakt-semantik som snippeten ──────────────
       // Fångas EN gång per sidladdning av captureLcpElement (direkt efter
       // load, FÖRE skärmdumpar): fullPage-skärmdumpen scrollar sidan och får
@@ -620,6 +634,12 @@ export async function measurePlan(
                 moveUnsafe++;
               }
               if (!movedEls.includes(r.sec)) movedEls.push(r.sec);
+              // SPEGELVÄND snippetens markör (applier.ts data-angel-moved,
+              // håll i synk): den flyttade sektionen stämplas så att
+              // /try-sandboxens "vad flyttades?"-spotlight kan hitta den i
+              // page-after.html. Tom sträng exakt som runtime; reset-vägen
+              // nedan tar bort den (keepApplied ⇒ den följer med i kopian).
+              r.sec.setAttribute("data-angel-moved", "");
               appliedMoves++;
             } else {
               moveUnappliable++;
