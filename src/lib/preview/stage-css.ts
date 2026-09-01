@@ -38,3 +38,20 @@ export function neutralizeViewportUnits(html: string): string {
   );
   return out;
 }
+
+/** Scroll-lås-upplåsningen (stardream-fyndet 2026-09-01): sidor frysta mitt i
+ *  en modal/backdrop (cookie-dialoger är vanligast) bär skroll-låset i kopian
+ *  — body{overflow:hidden;height:<viewport>} (Angular Material, body-scroll-
+ *  lock m.fl.) eller iOS-mönstret body{position:fixed}. I scenen blir kopian
+ *  då oskrollbar och naturhöjdsmätningen ser bara 844px. Overriden häver
+ *  BARA klippningen och fix-låset (overflow + position) — höjder och övrig
+ *  layout lämnas orörda, så sidor med äkta inre skrollcontainrar degraderar
+ *  till samma inre skroll som i dag. Endast scenens väg (?stage=1). */
+const UNLOCK_STYLE =
+  "<style data-agritm-stage-unlock>html,body{overflow:visible !important}body{position:static !important}</style>";
+
+export function unlockRootScroll(html: string): string {
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, `${UNLOCK_STYLE}</head>`);
+  if (/<body\b[^>]*>/i.test(html)) return html.replace(/(<body\b[^>]*>)/i, `$1${UNLOCK_STYLE}`);
+  return UNLOCK_STYLE + html;
+}

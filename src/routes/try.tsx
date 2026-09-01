@@ -38,6 +38,7 @@ import {
   encodePendingActivation,
   PENDING_ACTIVATION_KEY,
 } from "@/lib/onboarding/derive";
+import { measureDocHeight, type SizedDocument } from "@/lib/preview/doc-height";
 import { findMovedSection, type DocumentLike } from "@/lib/preview/locate";
 import { sceneMode, type ProbeState } from "@/lib/preview/scene";
 import { waitSteps } from "@/lib/preview/wait-steps";
@@ -213,11 +214,19 @@ function TryPage() {
           true,
         );
         const measure = () => {
-          const h = doc.documentElement?.scrollHeight ?? 0;
+          // measureDocHeight (stardream 2026-09-01): app-skal låser rotens
+          // scrollHeight till viewporthöjden — trädets största innehålls-
+          // bärare gäller då i stället, och ramhöjden låter 100%-kedjorna
+          // växa ut naturligt.
+          const h = measureDocHeight(doc as unknown as SizedDocument);
           if (h > 0) setHeights((prev) => (prev[which] === h ? prev : { ...prev, [which]: h }));
         };
         measure();
         setTimeout(measure, 600);
+        // Sen ommätning (stardream 2026-09-01): ~19MB-kopior med data-URI-
+        // bilder avkodar långsammare än 600 ms — höjden växer efter att
+        // låset hävts och bilderna satt sig. Billig extra mätpunkt.
+        setTimeout(measure, 2500);
         if (which === "after") {
           const moved = job?.findings?.moved ?? null;
           setCanSpotlight(!!findMovedSection(doc as unknown as DocumentLike, moved));
@@ -238,7 +247,7 @@ function TryPage() {
     const remeasure = () => {
       for (const which of ["before", "after"] as const) {
         const doc = (which === "before" ? beforeRef : afterRef).current?.contentDocument;
-        const h = doc?.documentElement?.scrollHeight ?? 0;
+        const h = doc ? measureDocHeight(doc as unknown as SizedDocument) : 0;
         if (h > 0) setHeights((prev) => (prev[which] === h ? prev : { ...prev, [which]: h }));
       }
     };

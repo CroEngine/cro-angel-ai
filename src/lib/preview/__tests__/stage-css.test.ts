@@ -6,7 +6,7 @@
 // 2026-08-31).
 import { describe, expect, it } from "vitest";
 
-import { neutralizeViewportUnits } from "../stage-css";
+import { neutralizeViewportUnits, unlockRootScroll } from "../stage-css";
 
 describe("neutralizeViewportUnits — v-höjder till frysviewport-px", () => {
   it("skriver om vh/svh/dvh/lvh i <style>-block, inklusive calc och decimaler", () => {
@@ -41,5 +41,33 @@ describe("neutralizeViewportUnits — v-höjder till frysviewport-px", () => {
     const out = neutralizeViewportUnits(`<style>.w{width:50vw;height:50vh}</style>`);
     expect(out).toContain("width:50vw");
     expect(out).toContain("height:422.00px");
+  });
+});
+
+// Scroll-lås-upplåsningen (stardream 2026-09-01): sidor frysta mitt i en
+// cookie-modal bär body{overflow:hidden;height:844px} i kopian — scenen blev
+// oskrollbar. Overriden injiceras EN gång, hakar i </head> när den finns,
+// och häver bara overflow/position — aldrig höjder.
+describe("unlockRootScroll — skroll-låset ur frysta modaltillstånd hävs", () => {
+  it("injiceras precis före </head> när head finns", () => {
+    const out = unlockRootScroll(
+      `<html><head><style>body{overflow:hidden}</style></head><body>x</body></html>`,
+    );
+    expect(out).toMatch(/data-agritm-stage-unlock[\s\S]*<\/head>/);
+    expect(out.match(/data-agritm-stage-unlock/g)).toHaveLength(1);
+    expect(out).toContain("overflow:visible !important");
+    expect(out).toContain("position:static !important");
+  });
+
+  it("utan </head> ⇒ direkt efter <body>-taggen; utan båda ⇒ främst", () => {
+    const withBody = unlockRootScroll(`<body class="x"><p>hej</p></body>`);
+    expect(withBody).toMatch(/<body class="x"><style data-agritm-stage-unlock/);
+    const bare = unlockRootScroll(`<p>hej</p>`);
+    expect(bare.startsWith("<style data-agritm-stage-unlock")).toBe(true);
+  });
+
+  it("höjder röres aldrig — bara overflow och position ingår i overriden", () => {
+    const out = unlockRootScroll(`<head></head>`);
+    expect(out).not.toMatch(/height/);
   });
 });
