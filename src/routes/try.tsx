@@ -19,9 +19,13 @@
 //
 // Ärlig väntan: bygget tar några minuter (isolerad arbetare, riktig browser).
 // Sidan säger det rakt ut i stället för en evig spinner — samma ärlighets-
-// kontrakt som resten av produkten. Hållna jobb (grindarna sa nej) har inga
-// sidkopior — HEAD-proben får 404 och sidan behåller den klassiska
-// rapportvyn utan sandbox.
+// kontrakt som resten av produkten.
+//
+// Hållna jobb är OCKSÅ uppslukande (ägarfynd 2026-08-31, "ens egna hemsida
+// ska poppa upp helt"): before-kopian bär scenen för alla färdiga jobb;
+// finns en after-kopia för ett hållet förslag heter armen "Proposed" och
+// märks ärligt som stoppad av grindarna — den serveras aldrig. Äldre jobb
+// utan before-kopia (404 på proben) behåller klassiska rapportvyn.
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -35,6 +39,7 @@ import {
   PENDING_ACTIVATION_KEY,
 } from "@/lib/onboarding/derive";
 import { findMovedSection, type DocumentLike } from "@/lib/preview/locate";
+import { sceneMode, type ProbeState } from "@/lib/preview/scene";
 import { waitSteps } from "@/lib/preview/wait-steps";
 import { AuthForm } from "@/components/auth-form";
 
@@ -76,14 +81,19 @@ function TryPage() {
   const [job, setJob] = useState<JobView | null>(null);
   const [gone, setGone] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
-  // Original/Variant-växlaren: före/efter-sidorna finns i lagringen BARA när
-  // grindarna släppt igenom förslaget — en HEAD-probe avgör om scenen visas
-  // (hållna jobb får 404 och behåller den ärliga rapportvyn). TRE lägen
-  // (granskningsfynd 2026-08-31): medan proben är pending hålls ok-vyn
-  // tillbaka — annars blixtrade hela klassiska kortlayouten (inkl. tunga
-  // rapport-iframen) i en proberundtur innan scenen rev och byggde om allt.
-  const [probe, setProbe] = useState<"pending" | "ok" | "missing">("pending");
-  const [arm, setArm] = useState<"after" | "before">("after");
+  // Scenens probes: before-kopian bär den uppslukande vyn (alla färdiga jobb
+  // sedan 2026-08-31 — hållna inräknade), after-kopian styr växlaren. Medan
+  // någon probe är pending hålls ok-vyn tillbaka (granskningsfynd 2026-08-31:
+  // annars blixtrade kortlayouten inkl. tunga rapport-iframen en proberundtur
+  // innan scenen rev och byggde om allt). Äldre jobb utan kopior ⇒ 404 på
+  // before ⇒ klassiska vyn. sceneMode (ren, testad) fäller besluten.
+  const [probe, setProbe] = useState<{ before: ProbeState; after: ProbeState }>({
+    before: "pending",
+    after: "pending",
+  });
+  // Växlarens arm: null = användaren har inte valt ⇒ scenens default gäller
+  // (verifierat öppnar på varianten; hållet öppnar på sidan som publicerad).
+  const [armChoice, setArmChoice] = useState<"after" | "before" | null>(null);
   // Naturlig dokumenthöjd per kopia — mäts vid load; scenen får den aktiva
   // armens höjd så sidans EGEN skroll bär hela kopian (ingen inre skroll).
   const [heights, setHeights] = useState<{ before: number | null; after: number | null }>({
@@ -160,17 +170,26 @@ function TryPage() {
   useEffect(() => {
     if (!id || job?.status !== "ok") return;
     let cancelled = false;
-    fetch(`/api/preview/page?id=${encodeURIComponent(id)}&which=after`, { method: "HEAD" })
-      .then((res) => {
-        if (!cancelled) setProbe(res.ok ? "ok" : "missing");
-      })
-      .catch(() => {
-        if (!cancelled) setProbe("missing");
-      });
+    for (const which of ["before", "after"] as const) {
+      fetch(`/api/preview/page?id=${encodeURIComponent(id)}&which=${which}`, { method: "HEAD" })
+        .then((res) => {
+          if (!cancelled) setProbe((p) => ({ ...p, [which]: res.ok ? "ok" : "missing" }));
+        })
+        .catch(() => {
+          if (!cancelled) setProbe((p) => ({ ...p, [which]: "missing" }));
+        });
+    }
     return () => {
       cancelled = true;
     };
   }, [id, job?.status]);
+
+  // Verdictet ur fynden: flyttStatus/liftTest sätts BARA för verifierade
+  // förslag (arbetaren, sedan trattens start) — hållna jobb har null och
+  // deras after-kopia märks "Proposed — held", aldrig som något serverat.
+  const verified = !!job?.findings?.liftTest;
+  const scene = sceneMode(probe.before, probe.after, verified);
+  const arm = armChoice ?? scene.defaultArm;
 
   /** Vid load av en kopia: mät naturhöjden (en gång till strax efter, när
    *  data-URI-bilderna satt sig), neutralisera länkklick (en klickad länk
@@ -215,7 +234,7 @@ function TryPage() {
   // kopian och lämnade scenen med stal höjd (klippt innehåll eller ett dött
   // band). Debouncad resize/orientation-lyssnare i uppslukande läget.
   useEffect(() => {
-    if (!(id && job?.status === "ok" && probe === "ok")) return;
+    if (!(id && job?.status === "ok" && scene.show === "scene")) return;
     const remeasure = () => {
       for (const which of ["before", "after"] as const) {
         const doc = (which === "before" ? beforeRef : afterRef).current?.contentDocument;
@@ -235,13 +254,13 @@ function TryPage() {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
     };
-  }, [id, job?.status, probe]);
+  }, [id, job?.status, scene.show]);
 
   /** "What moved?" — växla till varianten, lys upp den flyttade sektionen
    *  och skrolla dit. Ramen är i naturhöjd (aldrig inre skroll), så
    *  sektionens rect-topp i kopian ÄR dess offset från ramens topp. */
   const spotlight = useCallback(() => {
-    setArm("after");
+    setArmChoice("after");
     const frame = afterRef.current;
     const doc = frame?.contentDocument;
     if (!frame || !doc) return;
@@ -276,7 +295,7 @@ function TryPage() {
   })();
 
   // ── Uppslukande läget: kopian är sidans eget flöde ──────────────────────
-  if (id && job?.status === "ok" && probe === "ok") {
+  if (id && job?.status === "ok" && scene.show === "scene") {
     const stageHeight = heights[arm];
     // stage=1: scenens serveringsvariant — v-höjder omskrivna till px vid
     // frysviewporten, så 100vh-sektioner inte äter hela naturhöjdsramen.
@@ -299,7 +318,7 @@ function TryPage() {
                 ← Agritm
               </Link>
               <span className="hidden truncate font-mono text-[10.5px] uppercase tracking-[.12em] text-stone-400 sm:inline">
-                [ {hostname ?? "your page"} — restaged ]
+                [ {hostname ?? "your page"} — {verified ? "restaged" : "as Agritm read it"} ]
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -313,31 +332,45 @@ function TryPage() {
                   What moved?
                 </button>
               )}
-              <div className="flex gap-0.5 rounded-lg bg-stone-100 p-0.5">
-                {(
-                  [
-                    ["before", "Original"],
-                    ["after", "Variant"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={arm === key}
-                    onClick={() => setArm(key)}
-                    className={`rounded-md px-3 py-1 text-[12px] font-semibold transition ${
-                      arm === key
-                        ? "bg-white text-emerald-800 shadow-sm"
-                        : "text-stone-500 hover:text-stone-700"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              {scene.canFlip && (
+                <div className="flex gap-0.5 rounded-lg bg-stone-100 p-0.5">
+                  {(
+                    [
+                      ["before", "Original"],
+                      // Hållna förslag heter "Proposed" — aldrig "Variant",
+                      // det ordet är reserverat för grindat innehåll.
+                      ["after", verified ? "Variant" : "Proposed"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={arm === key}
+                      onClick={() => setArmChoice(key)}
+                      className={`rounded-md px-3 py-1 text-[12px] font-semibold transition ${
+                        arm === key
+                          ? "bg-white text-emerald-800 shadow-sm"
+                          : "text-stone-500 hover:text-stone-700"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Hållna jobb: ärlighetsbandet — sajten poppar upp, men inget här
+            är serverat och det sägs rakt ut innan någon hinner undra. */}
+        {!verified && (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-[12.5px] font-medium leading-relaxed text-amber-900">
+            {scene.canFlip
+              ? "Our robot drafted a change for this page, but the safety gates held it back — flip to Proposed to see the draft. Nothing unverified ever goes live."
+              : "The safety gates couldn't verify a change on this page — you're scrolling your page exactly as published."}
+          </div>
+        )}
 
         {/* Scenen: BÅDA kopiorna monterade i naturhöjd; flip byter bara
             synlighet ⇒ webbläsarens skrollposition — din plats på din egen
@@ -357,15 +390,21 @@ function TryPage() {
               className={frameClass(arm === "before")}
               style={{ height: heights.before ? `${heights.before}px` : "100svh" }}
             />
-            <iframe
-              ref={afterRef}
-              src={copySrc("after")}
-              title="Your page with Agritm's change"
-              sandbox="allow-same-origin"
-              onLoad={() => onCopyLoad("after")}
-              className={frameClass(arm === "after")}
-              style={{ height: heights.after ? `${heights.after}px` : "100svh" }}
-            />
+            {/* after-armen monteras bara när kopian finns — hållna jobb utan
+                applicerad DOM (och fallna uppladdningar) slipper en 404-ram. */}
+            {scene.canFlip && (
+              <iframe
+                ref={afterRef}
+                src={copySrc("after")}
+                title={
+                  verified ? "Your page with Agritm's change" : "Agritm's held draft (not live)"
+                }
+                sandbox="allow-same-origin"
+                onLoad={() => onCopyLoad("after")}
+                className={frameClass(arm === "after")}
+                style={{ height: heights.after ? `${heights.after}px` : "100svh" }}
+              />
+            )}
           </div>
         </div>
 
@@ -373,7 +412,13 @@ function TryPage() {
         <div className="border-t border-stone-200 bg-[#faf9f7] px-4 pb-16 pt-2">
           <div className="mx-auto w-full max-w-3xl">
             <p className="mt-4 text-center font-mono text-[10.5px] uppercase tracking-[.12em] text-stone-400">
-              [ a frozen copy of your live page — the exact change the safety gates verified ]
+              [{" "}
+              {verified
+                ? "a frozen copy of your live page — the exact change the safety gates verified"
+                : scene.canFlip
+                  ? "a frozen copy of your live page — the proposed change was held by the safety gates and is not served"
+                  : "a frozen copy of your live page — read by a real browser"}{" "}
+              ]
             </p>
             <ResultCards job={job} id={id} hostname={hostname} saved={savedSite} />
           </div>
@@ -382,7 +427,7 @@ function TryPage() {
     );
   }
 
-  // ── Klassiska läget: väntan, fel, borta — och hållna jobb (ingen kopia). ──
+  // ── Klassiska läget: väntan, fel, borta — och äldre jobb utan sidkopior. ──
   return (
     <main className="min-h-screen bg-[#faf9f7] px-4 py-16 text-stone-900">
       <div className="mx-auto w-full max-w-3xl">
@@ -476,10 +521,10 @@ function TryPage() {
               , or install the snippet — the on-page engine sees what crawlers can't.
             </p>
           </Block>
-        ) : probe === "pending" ? (
-          /* Ok-vyn hålls tillbaka en proberundtur (granskningsfynd
-             2026-08-31): annars blixtrade kortlayouten + tunga rapporten
-             innan scenen rev och byggde om hela sidan. */
+        ) : scene.show === "wait" ? (
+          /* Ok-vyn hålls tillbaka tills BÅDA proberna svarat (gransknings-
+             fynd 2026-08-31): annars blixtrade kortlayouten + tunga
+             rapporten innan scenen rev och byggde om hela sidan. */
           <Block title={`Your example for ${hostname ?? "your page"} is ready.`}>
             <p className="text-stone-500">Preparing the view…</p>
           </Block>

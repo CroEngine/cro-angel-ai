@@ -445,23 +445,22 @@ for (const job of jobs) {
     if (vrErr) console.warn(`[preview] ${job.id}: verify-report-arkivet föll: ${vrErr.message}`);
   }
 
-  // Original/Variant-växlaren i /try: hela före/efter-sidorna laddas upp
-  // ENDAST när grindarna släppt igenom förslaget — hållna jobb behåller den
-  // ärliga rapportvyn (frånvaron av objekten ÄR grinden; /try:s probe får
-  // 404). Serveras via /api/preview/page (egen origin — Supabase
-  // neutraliserar HTML på publika ytan). Enhancement, inte krav: faller en
-  // uppladdning loggas den och rapporten står kvar.
-  if (verified) {
+  // Scenen i /try (ägarfynd 2026-08-31, "ens egna hemsida ska poppa upp
+  // helt"): sidkopiorna laddas upp för ALLA färdiga jobb, inte bara
+  // verifierade. before = frysningen (finns alltid hit); after = exakt den
+  // applicering grindarna bedömde — även när domen blev gate_fail
+  // (auto-generate skriver den DOM:en oavsett verdict; konsumenter grindar
+  // på verdictet, och /try märker hållna förslag "Proposed — held", aldrig
+  // som något serverat). Jobb där upplösningen vägrade (not_applicable)
+  // saknar after-fil ⇒ scenen visar bara originalet. Serveras via
+  // /api/preview/page (egen origin — Supabase neutraliserar HTML på publika
+  // ytan). Enhancement, inte krav: faller en uppladdning loggas den och
+  // rapporten står kvar; utan before faller /try till klassiska kortvyn.
+  {
     const afterPage = join(dir, `${slug}-after.html`);
-    const pages: [string, string][] = [
-      ["page-before.html", frozen],
-      ["page-after.html", afterPage],
-    ];
+    const pages: [string, string][] = [["page-before.html", frozen]];
+    if (existsSync(afterPage)) pages.push(["page-after.html", afterPage]);
     for (const [name, path] of pages) {
-      if (!existsSync(path)) {
-        console.warn(`[preview] ${job.id}: ${name} saknar källa (${path}) — växlaren utgår`);
-        break;
-      }
       const { error: pgErr } = await db.storage
         .from("angel-evidence")
         .upload(`preview/${job.id}/${name}`, readFileSync(path), {
@@ -469,7 +468,7 @@ for (const job of jobs) {
           upsert: true,
         });
       if (pgErr) {
-        console.warn(`[preview] ${job.id}: ${name} föll: ${pgErr.message} — växlaren utgår`);
+        console.warn(`[preview] ${job.id}: ${name} föll: ${pgErr.message} — scenen utgår`);
         break;
       }
     }
