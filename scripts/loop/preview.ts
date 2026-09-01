@@ -79,21 +79,23 @@ function renderReport(o: {
   after: string | null;
   changes: { label: string; why: string }[];
 }): string {
+  // Agritm, inte Angel (rename-miss från 2026-08-25 hittad 2026-08-31):
+  // rapporten är prospektets mest lästa yta — varumärket måste stämma.
   const shots =
     o.verified && o.before && o.after
       ? `<div class="pair"><figure><figcaption>Before — your page today</figcaption><img src="${o.before}" alt="before"></figure>
-         <figure><figcaption>After — with Angel's verified change</figcaption><img src="${o.after}" alt="after"></figure></div>`
+         <figure><figcaption>After — with Agritm's verified change</figcaption><img src="${o.after}" alt="after"></figure></div>`
       : o.before
-        ? `<div class="pair"><figure><figcaption>Your page as Angel read it</figcaption><img src="${o.before}" alt="page"></figure></div>`
+        ? `<div class="pair"><figure><figcaption>Your page as Agritm read it</figcaption><img src="${o.before}" alt="page"></figure></div>`
         : "";
   const changeRows = o.changes
     .map((c) => `<li><strong>${esc(c.label)}</strong>${c.why ? ` — ${esc(c.why)}` : ""}</li>`)
     .join("");
   const verdictBlock = o.verified
     ? `<p class="ok">✓ Verified on your actual page: no layout shift, your largest content element untouched, fully reversible.</p>`
-    : `<p class="held">Angel drafted a change but its safety gates didn't clear it this time — so it shows you nothing rather than something worse. That refusal is the same honesty that guards your site in production.</p>`;
+    : `<p class="held">Agritm drafted a change but its safety gates didn't clear it this time — so it shows you nothing rather than something worse. That refusal is the same honesty that guards your site in production.</p>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex"><title>What Angel would change on ${esc(o.host)}</title>
+<meta name="robots" content="noindex"><title>What Agritm would change on ${esc(o.host)}</title>
 <style>
   body{margin:0;background:#fafaf9;color:#1c1917;font:15px/1.6 system-ui,sans-serif}
   main{max-width:880px;margin:0 auto;padding:40px 20px}
@@ -110,14 +112,14 @@ function renderReport(o: {
   .note{font-size:12.5px;color:#a8a29e;border-top:1px solid #e7e5e4;padding-top:14px;margin-top:28px}
   .cta{display:inline-block;margin-top:18px;background:#047857;color:#fff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:10px}
 </style></head><body><main>
-<div class="kicker">[ angel · free example ]</div>
-<h1>What Angel would change on ${esc(o.host)}</h1>
+<div class="kicker">[ agritm · free example ]</div>
+<h1>What Agritm would change on ${esc(o.host)}</h1>
 ${verdictBlock}
 ${shots}
 ${changeRows ? `<h2>The change, in plain words</h2><ul>${changeRows}</ul>` : ""}
-<p>Angel reads what your site already publishes and re-surfaces your strongest content per visitor — then proves the lift against a held-back control group once installed.</p>
-<a class="cta" target="_blank" rel="noreferrer" href="https://croengine.netlify.app/signup">Install Angel — one line of code</a>
-<p class="note">Honesty note: the visitor scenario used here (a mobile visitor arriving from Google) is illustrative — Angel hasn't seen your real visitors yet. The screenshots and the change above are real and were verified on your actual page. After install, proposals are earned from your real traffic and A/B-proven before anything is called a win.</p>
+<p>Agritm reads what your site already publishes and re-surfaces your strongest content per visitor — then proves the lift against a held-back control group once installed.</p>
+<a class="cta" target="_blank" rel="noreferrer" href="https://agritm.com/signup">Install Agritm — one line of code</a>
+<p class="note">Honesty note: the visitor scenario used here (a mobile visitor arriving from Google) is illustrative — Agritm hasn't seen your real visitors yet. The screenshots and the change above are real and were verified on your actual page. After install, proposals are earned from your real traffic and A/B-proven before anything is called a win.</p>
 </main></body></html>`;
 }
 
@@ -443,23 +445,22 @@ for (const job of jobs) {
     if (vrErr) console.warn(`[preview] ${job.id}: verify-report-arkivet föll: ${vrErr.message}`);
   }
 
-  // Original/Variant-växlaren i /try: hela före/efter-sidorna laddas upp
-  // ENDAST när grindarna släppt igenom förslaget — hållna jobb behåller den
-  // ärliga rapportvyn (frånvaron av objekten ÄR grinden; /try:s probe får
-  // 404). Serveras via /api/preview/page (egen origin — Supabase
-  // neutraliserar HTML på publika ytan). Enhancement, inte krav: faller en
-  // uppladdning loggas den och rapporten står kvar.
-  if (verified) {
+  // Scenen i /try (ägarfynd 2026-08-31, "ens egna hemsida ska poppa upp
+  // helt"): sidkopiorna laddas upp för ALLA färdiga jobb, inte bara
+  // verifierade. before = frysningen (finns alltid hit); after = exakt den
+  // applicering grindarna bedömde — även när domen blev gate_fail
+  // (auto-generate skriver den DOM:en oavsett verdict; konsumenter grindar
+  // på verdictet, och /try märker hållna förslag "Proposed — held", aldrig
+  // som något serverat). Jobb där upplösningen vägrade (not_applicable)
+  // saknar after-fil ⇒ scenen visar bara originalet. Serveras via
+  // /api/preview/page (egen origin — Supabase neutraliserar HTML på publika
+  // ytan). Enhancement, inte krav: faller en uppladdning loggas den och
+  // rapporten står kvar; utan before faller /try till klassiska kortvyn.
+  {
     const afterPage = join(dir, `${slug}-after.html`);
-    const pages: [string, string][] = [
-      ["page-before.html", frozen],
-      ["page-after.html", afterPage],
-    ];
+    const pages: [string, string][] = [["page-before.html", frozen]];
+    if (existsSync(afterPage)) pages.push(["page-after.html", afterPage]);
     for (const [name, path] of pages) {
-      if (!existsSync(path)) {
-        console.warn(`[preview] ${job.id}: ${name} saknar källa (${path}) — växlaren utgår`);
-        break;
-      }
       const { error: pgErr } = await db.storage
         .from("angel-evidence")
         .upload(`preview/${job.id}/${name}`, readFileSync(path), {
@@ -467,7 +468,7 @@ for (const job of jobs) {
           upsert: true,
         });
       if (pgErr) {
-        console.warn(`[preview] ${job.id}: ${name} föll: ${pgErr.message} — växlaren utgår`);
+        console.warn(`[preview] ${job.id}: ${name} föll: ${pgErr.message} — scenen utgår`);
         break;
       }
     }

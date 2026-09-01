@@ -22,8 +22,9 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 
 /** Appens publika bas-URL — EN inställning vid domänbyte (APP_ORIGIN i
- *  Netlify-miljön), aldrig hårdkodade länkar i mejlen. */
-const APP_ORIGIN = (process.env.APP_ORIGIN ?? "https://croengine.netlify.app").replace(/\/$/, "");
+ *  Netlify-miljön, satt till agritm.com 2026-08-31), aldrig hårdkodade länkar
+ *  i mejlen. Fallbacken speglar riktiga domänen sedan agritm.com gick live. */
+const APP_ORIGIN = (process.env.APP_ORIGIN ?? "https://agritm.com").replace(/\/$/, "");
 
 export type NotificationKind =
   "installed" | "variant_ready" | "test_result" | "variant_held" | "week_one_digest";

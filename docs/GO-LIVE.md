@@ -48,7 +48,7 @@ new deploy.**
 | `STRIPE_PRICE_ID` | **to charge** | checkout can't build a line item |
 | `STRIPE_WEBHOOK_SECRET` | **to charge** | subscription status never syncs back |
 | `RESEND_API_KEY` + `NOTIFY_FROM` | recommended | the trust emails (installed / week-one / variant-ready) are **log-only** |
-| `APP_ORIGIN` | recommended | email links default to `croengine.netlify.app` |
+| `APP_ORIGIN` | recommended | email links default to `agritm.com` (set to `https://agritm.com` in Netlify) |
 | `ANGEL_GH_DISPATCH_TOKEN` + `ANGEL_GH_REPO` | optional | `/try` previews wait ≤15 min for the cron instead of firing instantly |
 
 Kill-switches (default **on**, set to `0` only to disable): `ANGEL_PREVIEW_FUNNEL`

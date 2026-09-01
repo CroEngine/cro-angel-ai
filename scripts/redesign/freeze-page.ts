@@ -62,7 +62,7 @@ if (!Number.isFinite(IMG_BUDGET) || IMG_BUDGET < 0) {
   console.error("usage: --img-budget måste vara ett icke-negativt antal bytes");
   process.exit(1);
 }
-const UA = `Mozilla/5.0 (compatible; CROENGINE-freeze/1.0; +${process.env.APP_ORIGIN ?? "https://croengine.netlify.app"})`;
+const UA = `Mozilla/5.0 (compatible; AGRITM-freeze/1.0; +${process.env.APP_ORIGIN ?? "https://agritm.com"})`;
 
 // Hämtning via curl-subprocess, inte fetch(): curl följer miljöns proxy- och
 // CA-konfiguration überallt (inkl. sandlådor med egen TLS-terminering) och
