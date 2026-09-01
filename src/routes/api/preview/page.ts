@@ -3,9 +3,10 @@
 // korrekta headers (Supabase neutraliserar HTML på den publika ytan till
 // text/plain + nosniff — samma fynd som /api/preview/report).
 //
-// Objekten finns BARA när grindarna släppt igenom förslaget (arbetaren laddar
-// aldrig upp dem för hållna jobb) — 404 här ÄR grinden, och /try:s probe
-// döljer växlaren. Kopiorna är skriptstrippade frusna sidor med inlinade
+// Sedan 2026-09-01 laddas kopiorna upp för ALLA färdiga jobb (before alltid,
+// after när en applicerad DOM finns — även hållna utkast, som /try märker
+// ärligt ur verdictet); 404 på before = äldre jobb ⇒ klassiska vyn, 404 på
+// after = ingen växlare. Kopiorna är skriptstrippade frusna sidor med inlinade
 // stilar och (mestadels) data-URI-bilder; CSP:n tillåter det och inget mer —
 // skript och formulär är avstängda, och bara vår egen app får rama in dem.
 
@@ -34,8 +35,12 @@ export const Route = createFileRoute("/api/preview/page")({
           // frysviewporten. Rå kopia (utan parametern) förblir orörd —
           // cache-nyckeln skiljer via query-strängen.
           if (params.get("stage") === "1") {
-            const { neutralizeViewportUnits } = await import("@/lib/preview/stage-css");
-            const staged = neutralizeViewportUnits(await data.text());
+            const { neutralizeViewportUnits, unlockRootScroll } =
+              await import("@/lib/preview/stage-css");
+            // unlockRootScroll (stardream 2026-09-01): sidor frysta mitt i en
+            // modal bär skroll-låset i kopian — utan upplåsningen är scenen
+            // oskrollbar och naturhöjden fastnar på frysviewportens 844.
+            const staged = unlockRootScroll(neutralizeViewportUnits(await data.text()));
             return new Response(staged, {
               headers: {
                 "Content-Type": "text/html; charset=utf-8",
